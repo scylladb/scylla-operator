@@ -11,9 +11,11 @@ data:
   import-dashboard.sh: |
    #!/bin/bash
    sleep 30
-   JSON=$(curl $DASHBOARD_URL)
+   JSON="{ \"dashboard\": $(curl $DASHBOARD_URL), \"overwrite\": false }"
    SERVER="$HOST.$NAMESPACE.svc.cluster.local:$PORT"
-   curl -XPOST -i http://$USER:$PASSWORD@$SERVER/api/dashboards/db --max-time 10 -H "Content-Type: application/json;charset=UTF-8" --data-binary "$JSON"
+   curl -XPOST -i http://$USER:$PASSWORD@$SERVER/api/dashboards/db --max-time 10 -H "Content-Type: application/json;charset=UTF-8" -d @- <<CURL_DATA
+   $JSON
+   CURL_DATA
 
 ---
 

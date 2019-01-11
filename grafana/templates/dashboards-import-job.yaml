@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "grafana.fullname" . }}-dashboard-import-script
+  labels:
+    app: {{ template "grafana.name" . }}
+    chart: {{ template "grafana.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+data:
+  import-dashboard.sh: |
+   #!/bin/bash
+   sleep 30
+   JSON=$(curl $DASHBOARD_URL)
+   SERVER="$HOST.$NAMESPACE.svc.cluster.local:$PORT"
+   curl -XPOST -i http://$USER:$PASSWORD@$SERVER/api/dashboards/db --max-time 10 -H "Content-Type: application/json;charset=UTF-8" --data-binary "$JSON"
+
+---
+
+{{- range $index, $dashboardurl := .Values.dashboardsJobInclude }}
+apiVersion: batch/v1
+kind: Job 
+metadata:
+  name: {{ template "grafana.fullname" $ }}-dashboard-job-{{ $index }}
+  labels:
+    app: {{ template "grafana.name" $ }}
+    chart: {{ template "grafana.chart" $ }}
+    release: {{ $.Release.Name }}
+    heritage: {{ $.Release.Service }}
+spec:
+  activeDeadlineSeconds: 450
+  template:
+    metadata:
+      labels:
+        app: {{ template "grafana.name" $ }}
+      release: {{ $.Release.Name }}
+    spec:
+      containers:
+      - name: {{ template "grafana.fullname" $ }}-grafana-dashboard-curl
+        image: "tutum/curl:latest"
+        env:
+        - name: USER
+          value: {{ $.Values.adminUser | quote }}
+        - name: PASSWORD
+          value: {{ $.Values.adminPassword | quote }}
+        - name: HOST
+          value: {{ template "grafana.fullname" $ }}
+        - name: PORT
+          value: {{ $.Values.service.port | quote }}
+        - name: DASHBOARD_URL
+          value: {{ $dashboardurl }}
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        command: ["bin/bash", "-c", "--", "/opt/import-dashboard.sh" ] 
+        volumeMounts:
+        - name: import-dashboard
+          mountPath: /opt/import-dashboard.sh
+          subPath: import-dashboard.sh
+      volumes:
+      - name: import-dashboard
+        configMap:
+          name: {{ template "grafana.fullname" $ }}-dashboard-import-script
+          defaultMode: 0777
+
+      restartPolicy: "OnFailure"
+---
+{{- end }}

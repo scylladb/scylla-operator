@@ -1,27 +1,19 @@
-# Grafana Helm Chart
+# Scylla Grafana Helm Chart
 
-* Installs the web dashboarding system [Grafana](http://grafana.org/)
+* Installs the web dashboarding system [Grafana](http://grafana.org/), specially configured to work with Scylla.
 
 ## TL;DR;
 
 ```console
-$ helm install stable/grafana
-```
-
-## Installing the Chart
-
-To install the chart with the release name `my-release`:
-
-```console
-$ helm install --name my-release stable/grafana
+$ helm install --name scylla-graf --namespace monitoring .
 ```
 
 ## Uninstalling the Chart
 
-To uninstall/delete the my-release deployment:
+To uninstall/delete deployment:
 
 ```console
-$ helm delete my-release
+$ helm delete --purge scylla-graf
 ```
 
 The command removes all the Kubernetes components associated with the chart and deletes the release.

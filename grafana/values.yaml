@@ -160,7 +160,6 @@ dashboardsJobInclude:
    - https://raw.githubusercontent.com/scylladb/scylla-operator/master/grafana/dashboards/ver_2.3/scylla-dash-cpu-per-server.2.3.json
    - https://raw.githubusercontent.com/scylladb/scylla-operator/master/grafana/dashboards/ver_2.3/scylla-dash-io-per-server.2.3.json
    - https://raw.githubusercontent.com/scylladb/scylla-operator/master/grafana/dashboards/ver_2.3/scylla-dash-per-machine.2.3.json
-   - https://raw.githubusercontent.com/scylladb/scylla-grafana-monitoring/master/grafana/scylla-dash-per-server.2.3.template.json
    - https://raw.githubusercontent.com/scylladb/scylla-operator/master/grafana/dashboards/ver_2.3/scylla-dash-per-server.2.3.json
    - https://raw.githubusercontent.com/scylladb/scylla-operator/master/grafana/dashboards/ver_2.3/scylla-dash.2.3.json
 

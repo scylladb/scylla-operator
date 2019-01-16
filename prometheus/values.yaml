@@ -862,20 +862,51 @@ serverFiles:
 
   ## Alerts configuration
   ## Ref: https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
-  alerts: {}
-  # groups:
-  #   - name: Instances
-  #     rules:
-  #       - alert: InstanceDown
-  #         expr: up == 0
-  #         for: 5m
-  #         labels:
-  #           severity: page
-  #         annotations:
-  #           description: '{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 5 minutes.'
-  #           summary: 'Instance {{ $labels.instance }} down'
+  alerts:
+    groups:
+    - name: scylla.rules
+      rules:
+      - alert: InstanceDown
+        expr: up == 0
+        for: 30s
+        labels:
+          severity: "2"
+        annotations:
+          description: '{{ $labels.instance }} has been down for more than 30 seconds.'
+          summary: 'Instance {{ $labels.instance }} down'
+      - alert: DiskFull
+        expr: node_filesystem_avail{mountpoint="/var/lib/scylla"} / node_filesystem_size{mountpoint="/var/lib/scylla"} * 100 < 25
+        for: 30s
+        labels:
+          severity: "2"
+        annotations:
+          description: '{{ $labels.instance }} has less than 25% free disk space.'
+          summary: 'Instance {{ $labels.instance }} low disk space'
+      - alert: DiskFull
+        expr: node_filesystem_avail{mountpoint="/var/lib/scylla"} / node_filesystem_size{mountpoint="/var/lib/scylla"} * 100 < 10
+        for: 30s
+        labels:
+          severity: "3"
+        annotations:
+          description: '{{ $labels.instance }} has less than 10% free disk space.'
+          summary: 'Instance {{ $labels.instance }} low disk space'
+      - alert: DiskFull
+        expr: node_filesystem_avail{mountpoint="/var/lib/scylla"} / node_filesystem_size{mountpoint="/var/lib/scylla"} * 100 < 1
+        for: 30s
+        labels:
+          severity: "4"
+        annotations:
+          description: '{{ $labels.instance }} has less than 1% free disk space.'
+          summary: 'Instance {{ $labels.instance }} low disk space'
+      - alert: NoCql
+        expr: cql_status == -1
+        for: 30s
+        labels:
+          severity: "2"
+        annotations:
+          description: '{{ $labels.host }} has denied cql connection for more than 30 seconds.'
+          summary: 'Instance {{ $labels.host }} no cql connection'
 
-  rules: {}
 
   prometheus.yml:
     rule_files:

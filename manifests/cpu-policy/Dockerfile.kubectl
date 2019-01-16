@@ -1,0 +1,12 @@
+FROM debian:jessie
+
+MAINTAINER Yannis Zarkadas
+
+ARG KUBE_VERSION="1.11.5"
+
+RUN apt-get update && apt-get install -y curl
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v$KUBE_VERSION/bin/linux/amd64/kubectl && chmod +x ./kubectl && mv ./kubectl /usr/local/bin/kubectl
+COPY ./cpu_manager.sh /cpu_manager.sh
+RUN chmod +x /cpu_manager.sh
+
+ENTRYPOINT ["/bin/bash", "-c", "/cpu_manager.sh"]

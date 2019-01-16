@@ -529,13 +529,13 @@ server:
   global:
     ## How frequently to scrape targets by default
     ##
-    scrape_interval: 1m
+    scrape_interval: 5s
     ## How long until a scrape request times out
     ##
-    scrape_timeout: 10s
+    scrape_timeout: 4s
     ## How frequently to evaluate rules
     ##
-    evaluation_interval: 1m
+    evaluation_interval: 5s
 
   ## Additional Prometheus server container arguments
   ##

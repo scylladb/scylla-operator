@@ -175,6 +175,17 @@ datasources:
       url: http://scylla-prom-prometheus-server.monitoring.svc.cluster.local
       access: proxy
       isDefault: true
+    - name: alertmanager
+      type: camptocamp-prometheus-alertmanager-datasource
+      orgId: 1
+      typeLogoUrl: public/img/icn-datasource.svg
+      access: proxy
+      url: http://scylla-prom-prometheus-alertmanager.monitoring.svc.cluster.local
+      jsonData:
+        severity_critical: '4'
+        severity_high: '3'
+        severity_warning: '2'
+        severity_info: '1'
 
 ## Configure grafana dashboard providers
 ## ref: http://docs.grafana.org/administration/provisioning/#dashboards

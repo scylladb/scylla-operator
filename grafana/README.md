@@ -13,7 +13,7 @@ $ helm install --name scylla-graf --namespace monitoring .
 To uninstall/delete deployment:
 
 ```console
-$ helm delete --purge scylla-graf
+$ helm delete --purge scylla-graf --purge
 ```
 
 The command removes all the Kubernetes components associated with the chart and deletes the release.

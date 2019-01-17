@@ -21,7 +21,7 @@ This chart bootstraps a [Prometheus](https://prometheus.io/) deployment on a [Ku
 To install the chart with the release name `my-release`:
 
 ```console
-$ helm install --name my-release stable/prometheus
+$ helm install --name scylla-prom stable/prometheus
 ```
 
 The command deploys Prometheus on the Kubernetes cluster in the default configuration. The [configuration](#configuration) section lists the parameters that can be configured during installation.
@@ -33,7 +33,7 @@ The command deploys Prometheus on the Kubernetes cluster in the default configur
 To uninstall/delete the `my-release` deployment:
 
 ```console
-$ helm delete my-release
+$ helm delete scylla-prom --purge
 ```
 
 The command removes all the Kubernetes components associated with the chart and deletes the release.

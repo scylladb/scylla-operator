@@ -154,6 +154,16 @@ And access `http://0.0.0.0:3000` from your browser.
 
 TODO
 
+## Bugs
+
+If you find a bug or need help running scylla, you can reach out in the following ways:
+* [Slack](https://scylladb-users-slackin.herokuapp.com/) in the `#scylla-operator` channel.
+* File an [issue](https://github.com/kubernetes-sigs/kubebuilder/issues) describing the problem and how to reproduce.
+
+## Acknowledgements
+
+This project is based on cassandra operator, a community effort started by [yanniszark](https://github.com/yanniszark) of [Arrikto](https://www.arrikto.com/), as part of the [Rook project](https://rook.io/).
+
 
 ## Release History
 

@@ -1,0 +1,3 @@
+version: "1"
+domain: scylladb.com
+repo: github.com/scylladb/scylla-operator

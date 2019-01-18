@@ -93,7 +93,7 @@ kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"templat
 Inside this repository folder, run:
 
 ```
-kubectl apply -f manifests/raid-daemonset.yaml
+kubectl apply -f docs/gke/manifests/raid-daemonset.yaml
 ```
 
 #### Install `cpu-policy` Daemonset
@@ -101,27 +101,33 @@ kubectl apply -f manifests/raid-daemonset.yaml
 (If you don't want to setup cpu-policy, just skip this step.)
 
 ```
-kubectl apply -f manifests/cpu-policy-daemonset.yaml
+kubectl apply -f docs/gke/manifests/cpu-policy-daemonset.yaml
 ```
 #### Install the local provisioner
 
 (If you don't want to setup the local provisioner, just skip this step.)
 
 ```
-helm install --name local-provisioner manifests/provisioner
+helm install --name local-provisioner docs/gke/manifests/provisioner
 ```
 
 
 ### Installing the Scylla Operator
 
 ```
-kubectl apply -f manifests/operator.yaml
+kubectl apply -f docs/gke/manifests/operator.yaml
 ```
 
 Spining up Scylla Cluster!
 
 ```
-kubectl apply -f manifests/cluster.yaml
+kubectl apply -f docs/gke/manifests/simple_cluster.yaml
+```
+
+Check the status of your cluster
+
+```
+kubectl describe cluster simple-cluster -n scylla
 ```
 
 ### Setting up Monitoring

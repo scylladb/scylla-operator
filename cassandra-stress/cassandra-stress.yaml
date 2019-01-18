@@ -14,7 +14,7 @@ spec:
         command:
           - "/bin/bash"
           - "-c"
-          - 'cassandra-stress write no-warmup n=20000000 cl=ONE -mode native cql3 connectionsPerHost=60 -col n=FIXED\(5\) size=FIXED\(64\)  -pop seq=1..20000000 -node "10.35.250.218" -rate threads=400 limit=50000/s -log file=/cassandra-stress.load.data -schema "replication(factor=2)" -errors ignore; cat /cassandra-stress.load.data'
+          - 'cassandra-stress write no-warmup n=20000000 cl=ONE -mode native cql3 connectionsPerHost=60 -col n=FIXED\(5\) size=FIXED\(64\)  -pop seq=1..20000000 -node "10.35.249.151" -rate threads=400 limit=50000/s -log file=/cassandra-stress.load.data -schema "replication(factor=2)" -errors ignore; cat /cassandra-stress.load.data'
         resources:
           limits:
             cpu: 5
@@ -48,7 +48,7 @@ spec:
         command:
           - "/bin/bash"
           - "-c"
-          - 'cassandra-stress write no-warmup n=20000000 cl=ONE -mode native cql3 connectionsPerHost=60 -col n=FIXED\(5\) size=FIXED\(64\)  -pop seq=20000001..40000000 -node "10.35.250.218" -rate threads=400 limit=50000/s -log file=/cassandra-stress.load.data -schema "replication(factor=2)" -errors ignore; cat /cassandra-stress.load.data'
+          - 'cassandra-stress write no-warmup n=20000000 cl=ONE -mode native cql3 connectionsPerHost=60 -col n=FIXED\(5\) size=FIXED\(64\)  -pop seq=20000001..40000000 -node "10.35.249.151" -rate threads=400 limit=50000/s -log file=/cassandra-stress.load.data -schema "replication(factor=2)" -errors ignore; cat /cassandra-stress.load.data'
         resources:
           limits:
             cpu: 5
@@ -82,7 +82,7 @@ spec:
         command:
           - "/bin/bash"
           - "-c"
-          - 'cassandra-stress write no-warmup n=20000000 cl=ONE -mode native cql3 connectionsPerHost=60 -col n=FIXED\(5\) size=FIXED\(64\)  -pop seq=40000001..60000000 -node "10.35.250.218" -rate threads=400 limit=50000/s -log file=/cassandra-stress.load.data -schema "replication(factor=2)" -errors ignore; cat /cassandra-stress.load.data'
+          - 'cassandra-stress write no-warmup n=20000000 cl=ONE -mode native cql3 connectionsPerHost=60 -col n=FIXED\(5\) size=FIXED\(64\)  -pop seq=40000001..60000000 -node "10.35.249.151" -rate threads=400 limit=50000/s -log file=/cassandra-stress.load.data -schema "replication(factor=2)" -errors ignore; cat /cassandra-stress.load.data'
         resources:
           limits:
             cpu: 5
@@ -116,7 +116,7 @@ spec:
         command:
           - "/bin/bash"
           - "-c"
-          - 'cassandra-stress write no-warmup n=20000000 cl=ONE -mode native cql3 connectionsPerHost=60 -col n=FIXED\(5\) size=FIXED\(64\)  -pop seq=60000001..80000000 -node "10.35.250.218" -rate threads=400 limit=50000/s -log file=/cassandra-stress.load.data -schema "replication(factor=2)" -errors ignore; cat /cassandra-stress.load.data'
+          - 'cassandra-stress write no-warmup n=20000000 cl=ONE -mode native cql3 connectionsPerHost=60 -col n=FIXED\(5\) size=FIXED\(64\)  -pop seq=60000001..80000000 -node "10.35.249.151" -rate threads=400 limit=50000/s -log file=/cassandra-stress.load.data -schema "replication(factor=2)" -errors ignore; cat /cassandra-stress.load.data'
         resources:
           limits:
             cpu: 5
@@ -150,7 +150,7 @@ spec:
         command:
           - "/bin/bash"
           - "-c"
-          - 'cassandra-stress write no-warmup n=20000000 cl=ONE -mode native cql3 connectionsPerHost=60 -col n=FIXED\(5\) size=FIXED\(64\)  -pop seq=80000001..100000000 -node "10.35.250.218" -rate threads=400 limit=50000/s -log file=/cassandra-stress.load.data -schema "replication(factor=2)" -errors ignore; cat /cassandra-stress.load.data'
+          - 'cassandra-stress write no-warmup n=20000000 cl=ONE -mode native cql3 connectionsPerHost=60 -col n=FIXED\(5\) size=FIXED\(64\)  -pop seq=80000001..100000000 -node "10.35.249.151" -rate threads=400 limit=50000/s -log file=/cassandra-stress.load.data -schema "replication(factor=2)" -errors ignore; cat /cassandra-stress.load.data'
         resources:
           limits:
             cpu: 5
@@ -184,7 +184,7 @@ spec:
         command:
           - "/bin/bash"
           - "-c"
-          - 'cassandra-stress write no-warmup n=20000000 cl=ONE -mode native cql3 connectionsPerHost=60 -col n=FIXED\(5\) size=FIXED\(64\)  -pop seq=100000001..120000000 -node "10.35.250.218" -rate threads=400 limit=50000/s -log file=/cassandra-stress.load.data -schema "replication(factor=2)" -errors ignore; cat /cassandra-stress.load.data'
+          - 'cassandra-stress write no-warmup n=20000000 cl=ONE -mode native cql3 connectionsPerHost=60 -col n=FIXED\(5\) size=FIXED\(64\)  -pop seq=100000001..120000000 -node "10.35.249.151" -rate threads=400 limit=50000/s -log file=/cassandra-stress.load.data -schema "replication(factor=2)" -errors ignore; cat /cassandra-stress.load.data'
         resources:
           limits:
             cpu: 5

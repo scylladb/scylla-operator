@@ -55,7 +55,6 @@ subjects:
   name: cpu-policy-daemonset
   namespace: default
 ---
-
 # Daemonset that will change cpuManagerPolicy to static.
 apiVersion: apps/v1
 kind: DaemonSet
@@ -72,9 +71,16 @@ spec:
     spec:
       hostPID: true
       hostIPC: true
-      nodeSelector:
-        role: scylla-clusters
-        role: cassandra-stress
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: role
+                  operator: In
+                  values:
+                   - scylla-clusters
+                   - cassandra-stress
       serviceAccountName: cpu-policy-daemonset
       containers:
       - name: cpu-policy
@@ -96,16 +102,16 @@ spec:
           hostPath:
             path: /
         - name: dbus
-          hostPath: 
+          hostPath:
             path: /var/run/dbus
         - name: systemd
-          hostPath: 
+          hostPath:
             path: /run/systemd
         - name: systemctl
-          hostPath: 
+          hostPath:
             path: /bin/systemctl
         - name: system
-          hostPath: 
+          hostPath:
             path: /etc/systemd/system
         - name: usr
           hostPath:

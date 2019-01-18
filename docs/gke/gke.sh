@@ -17,11 +17,12 @@ GCP_USER=$1
 GCP_PROJECT=$2
 GCP_ZONE=$3
 GCP_REGION=${GCP_ZONE:0:$((${#GCP_ZONE}-2))}
+CLUSTER_NAME=scylla-demo
 
 # gcloud: Create GKE cluster
 echo "Creating GKE cluster..."
 gcloud beta container --project $GCP_PROJECT \
-clusters create "scylla-demo" --username "admin" \
+clusters create $CLUSTER_NAME --username "admin" \
 --zone $GCP_ZONE \
 --cluster-version "1.11.6-gke.2" \
 --node-version "1.11.6-gke.2" \
@@ -36,7 +37,7 @@ clusters create "scylla-demo" --username "admin" \
 
 gcloud beta container --project $GCP_PROJECT \
 node-pools create "cassandra-stress-pool" \
---cluster "scylla-demo" \
+--cluster $CLUSTER_NAME \
 --zone $GCP_ZONE \
 --node-version "1.11.6-gke.2" \
 --machine-type "n1-standard-32" \
@@ -48,7 +49,7 @@ node-pools create "cassandra-stress-pool" \
 
 gcloud beta container --project $GCP_PROJECT \
 node-pools create "operator-pool" \
---cluster "scylla-demo" \
+--cluster $CLUSTER_NAME \
 --zone $GCP_ZONE \
 --node-version "1.11.6-gke.2" \
 --machine-type "n1-standard-8" \
@@ -62,7 +63,7 @@ node-pools create "operator-pool" \
 
 # gcloud: Get credentials for new cluster
 echo "Getting credentials for newly created cluster..."
-gcloud container clusters get-credentials scylla-demo --zone=$GCP_ZONE
+gcloud container clusters get-credentials $CLUSTER_NAME --zone=$GCP_ZONE
 
 # Install helm
 echo "Checking if helm is present on the machine..."
@@ -92,7 +93,7 @@ sleep 5
 kubectl apply -f manifests/cpu-policy-daemonset.yaml
 
 # Wait for Tiller to become ready
-until [[ kubectl get deployment tiller-deploy -n kube-system -o 'jsonpath={.status.readyReplicas}' -eq 1 ]];
+until [[ `kubectl get deployment tiller-deploy -n kube-system -o 'jsonpath={.status.readyReplicas}'` -eq 1 ]];
 do
     echo "Waiting for Tiller pod to become Ready..."
     sleep 5
@@ -104,8 +105,8 @@ helm install --name local-provisioner manifests/provisioner
 echo "Your disks are ready to use."
 
 echo "Start the scylla operator:"
-echo kubectl apply -f manifests/operator.yaml
+echo "kubectl apply -f manifests/operator.yaml"
 
 echo "Start the scylla cluster:"
 sed "s/<gcp_region>/${GCP_REGION}/g;s/<gcp_zone>/${GCP_ZONE}/g" manifests/cluster.yaml 
-echo kubectl apply -f manifests/cluster.yaml
+echo "kubectl apply -f manifests/cluster.yaml"

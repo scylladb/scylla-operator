@@ -96,7 +96,8 @@ daemonset:
   #
   # NodeSelector constraint for local-volume-provisioner scheduling to nodes.
   # Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
-  nodeSelector: {}
+  nodeSelector: 
+    role: scylla-clusters
   #
   # If configured KubeConfigEnv will (optionally) specify the location of kubeconfig file on the node.
   #  kubeConfigEnv: KUBECONFIG

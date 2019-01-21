@@ -1,8 +1,8 @@
 package validating
 
 import (
-	"github.com/rook/rook/pkg/operator/cassandra/controller/util"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/controller/cluster/util"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"

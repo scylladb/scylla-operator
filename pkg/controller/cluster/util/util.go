@@ -63,6 +63,13 @@ func GetMemberServicesForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Clust
 	return svcList.Items, nil
 }
 
+// RefFromString is a helper function that takes a string
+// and outputs a reference to that string.
+// Useful for initializing a string pointer from a literal.
+func RefFromString(s string) *string {
+	return &s
+}
+
 // RefFromInt32 is a helper function that takes a int32
 // and outputs a reference to that int.
 func RefFromInt32(i int32) *int32 {

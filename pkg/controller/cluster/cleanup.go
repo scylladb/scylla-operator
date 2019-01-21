@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controller/cluster/util"
@@ -17,6 +18,7 @@ func (cc *ClusterController) cleanup(c *scyllav1alpha1.Cluster) error {
 
 	svcList := &corev1.ServiceList{}
 	sts := &appsv1.StatefulSet{}
+	logger := util.LoggerForCluster(c)
 
 	for _, r := range c.Spec.Datacenter.Racks {
 
@@ -30,20 +32,21 @@ func (cc *ClusterController) cleanup(c *scyllav1alpha1.Cluster) error {
 			return errors.Wrap(err, "error getting statefulset")
 		}
 
-		//
+		// Get all member services
+		err = cc.List(
+			context.TODO(),
+			&client.ListOptions{LabelSelector: naming.RackSelector(r, c)},
+			svcList,
+		)
+		if err != nil {
+			return errors.Wrap(err, "error listing member services")
+		}
+		logger.Debugf("Cleanup: servicelist is %v", spew.Sdump(svcList.Items))
+
 		memberCount := *sts.Spec.Replicas
 		memberServiceCount := int32(len(svcList.Items))
 		// If there are more services than members, some services need to be cleaned up
 		if memberServiceCount > memberCount {
-			// Get all member services
-			err := cc.List(
-				context.TODO(),
-				&client.ListOptions{LabelSelector: naming.RackSelector(r, c)},
-				svcList,
-			)
-			if err != nil {
-				return errors.Wrap(err, "error listing member services")
-			}
 			// maxIndex is the maximum index that should be present in a
 			// member service of this rack
 			maxIndex := memberCount - 1

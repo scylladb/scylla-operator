@@ -23,6 +23,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controller/cluster/util"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -52,9 +53,13 @@ func Add(mgr manager.Manager) error {
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 
 	kubeClient := kubernetes.NewForConfigOrDie(mgr.GetConfig())
-
+	uncachedClient, err := client.New(mgr.GetConfig(), client.Options{})
+	if err != nil {
+		log.Fatalf("Failed to get dynamic uncached client: %+v", err)
+	}
 	return &ClusterController{
 		Client:        mgr.GetClient(),
+		UncachedClient: uncachedClient,
 		KubeClient:    kubeClient,
 		Recorder:      mgr.GetRecorder("scylla-cluster-controller"),
 		OperatorImage: getOperatorImage(kubeClient),
@@ -118,7 +123,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	/////////////////////////////////////////
 
 	err = c.Watch(
-		&source.Kind{Type: &appsv1.StatefulSet{}},
+		&source.Kind{Type: &corev1.Service{}},
 		&handler.EnqueueRequestForOwner{
 			IsController: true,
 			OwnerType:    &scyllav1alpha1.Cluster{},
@@ -155,6 +160,7 @@ var _ reconcile.Reconciler = &ClusterController{}
 // ClusterController reconciles a Cluster object
 type ClusterController struct {
 	client.Client
+	UncachedClient client.Client
 	Recorder      record.EventRecorder
 	OperatorImage string
 	// Original k8s client needed for patch ops
@@ -171,7 +177,7 @@ type ClusterController struct {
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
 // +kubebuilder:rbac:groups=,resources=pods,verbs=get;list;watch;delete
 // +kubebuilder:rbac:groups=,resources=services,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=,resources=persistentvolumeclaims,verbs=get;delete
+// +kubebuilder:rbac:groups=,resources=persistentvolumeclaims,verbs=get;list;watch;delete
 // +kubebuilder:rbac:groups=,resources=events,verbs=create;update;patch
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=scylla.scylladb.com,resources=clusters,verbs=get;list;watch;create;update;patch;delete
@@ -179,7 +185,7 @@ type ClusterController struct {
 func (cc *ClusterController) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the Cluster instance
 	c := &scyllav1alpha1.Cluster{}
-	err := cc.Get(context.TODO(), request.NamespacedName, c)
+	err := cc.UncachedClient.Get(context.TODO(), request.NamespacedName, c)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.

@@ -261,10 +261,11 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 								},
 							},
 							ReadinessProbe: &corev1.Probe{
-								InitialDelaySeconds: int32(15),
+								InitialDelaySeconds: int32(30),
 								TimeoutSeconds:      int32(5),
 								// TODO: Investigate if it's optimal to call status every 10 seconds
 								PeriodSeconds: int32(10),
+								SuccessThreshold: int32(3),
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Port: intstr.FromInt(naming.ProbePort),

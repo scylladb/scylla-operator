@@ -24,4 +24,4 @@ resources:
 - ../manager/manager.yaml
 
 patches:
-- manager_image_patch.yaml
+- manager_patch.yaml

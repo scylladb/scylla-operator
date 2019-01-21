@@ -31,6 +31,8 @@ rules:
   - persistentvolumeclaims
   verbs:
   - get
+  - list
+  - watch
   - delete
 - apiGroups:
   - ""

@@ -37,22 +37,6 @@
   revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
 
 [[projects]]
-  digest = "1:5c1e58f68ac83cf9c05c6c6748cd91b830dd94be9d2e6480add3c6524bb86b68"
-  name = "github.com/coreos/go-systemd"
-  packages = ["journal"]
-  pruneopts = "UT"
-  revision = "9002847aa1425fb6ac49077c0a630b3b67e0fbfd"
-  version = "v18"
-
-[[projects]]
-  digest = "1:39ff4d4d6baca1ac63c6a03404b761d664be14a71bb5a4aca8fef643d0f66fef"
-  name = "github.com/coreos/pkg"
-  packages = ["capnslog"]
-  pruneopts = "UT"
-  revision = "97fdf19511ea361ae1c100dd393cc47f8dcfa1e1"
-  version = "v4"
-
-[[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -472,47 +456,6 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:e31b101965b00ed88f013aa36abbcfc3d9eb45a8533d9cc04e007e93f8525a8a"
-  name = "github.com/rook/rook"
-  packages = [
-    "pkg/apis/cassandra.rook.io",
-    "pkg/apis/cassandra.rook.io/v1alpha1",
-    "pkg/apis/ceph.rook.io",
-    "pkg/apis/ceph.rook.io/v1",
-    "pkg/apis/ceph.rook.io/v1beta1",
-    "pkg/apis/cockroachdb.rook.io",
-    "pkg/apis/cockroachdb.rook.io/v1alpha1",
-    "pkg/apis/edgefs.rook.io",
-    "pkg/apis/edgefs.rook.io/v1alpha1",
-    "pkg/apis/minio.rook.io",
-    "pkg/apis/minio.rook.io/v1alpha1",
-    "pkg/apis/nfs.rook.io",
-    "pkg/apis/nfs.rook.io/v1alpha1",
-    "pkg/apis/rook.io",
-    "pkg/apis/rook.io/v1alpha2",
-    "pkg/client/clientset/versioned",
-    "pkg/client/clientset/versioned/scheme",
-    "pkg/client/clientset/versioned/typed/cassandra.rook.io/v1alpha1",
-    "pkg/client/clientset/versioned/typed/ceph.rook.io/v1",
-    "pkg/client/clientset/versioned/typed/ceph.rook.io/v1beta1",
-    "pkg/client/clientset/versioned/typed/cockroachdb.rook.io/v1alpha1",
-    "pkg/client/clientset/versioned/typed/edgefs.rook.io/v1alpha1",
-    "pkg/client/clientset/versioned/typed/minio.rook.io/v1alpha1",
-    "pkg/client/clientset/versioned/typed/nfs.rook.io/v1alpha1",
-    "pkg/client/clientset/versioned/typed/rook.io/v1alpha2",
-    "pkg/clusterd",
-    "pkg/daemon/ceph/model",
-    "pkg/operator/cassandra/constants",
-    "pkg/operator/cassandra/controller/util",
-    "pkg/operator/k8sutil",
-    "pkg/util/exec",
-    "pkg/util/sys",
-  ]
-  pruneopts = "UT"
-  revision = "978b0328926bb8653c12c1982337b4328493bb43"
-  version = "v0.9.1"
-
-[[projects]]
   digest = "1:87c2e02fb01c27060ccc5ba7c5a407cc91147726f8f40b70cceeedbc52b1f3a8"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
@@ -922,11 +865,10 @@
   version = "kubernetes-1.12.3"
 
 [[projects]]
-  digest = "1:00801c9b72f6e356eedbc65f7ec0ad88fc540c85ca955e173064f3c6513b38b2"
+  digest = "1:becb15119e9cd2a28b820d2f30fb6daf8d3f498154af4e0fb1df4ab32b1cbdb0"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
-    "discovery/fake",
     "dynamic",
     "informers",
     "informers/admissionregistration",
@@ -1041,7 +983,6 @@
     "rest",
     "rest/watch",
     "restmapper",
-    "testing",
     "third_party/forked/golang/template",
     "tools/auth",
     "tools/cache",
@@ -1116,7 +1057,7 @@
   revision = "0317810137be915b9cf888946c6e115c1bfac693"
 
 [[projects]]
-  digest = "1:f82798f9d23dbcd8045006f165c3a244da3e8d1aca9eb73517ab741712d341b4"
+  digest = "1:c89cbf8dda5c3addd250e2407c9090fb87455f849b724ae7cf4cc5f5ea3d9946"
   name = "k8s.io/kubernetes"
   packages = [
     "pkg/api/legacyscheme",
@@ -1157,7 +1098,6 @@
     "pkg/util/node",
     "pkg/util/parsers",
     "pkg/util/taints",
-    "pkg/util/version",
   ]
   pruneopts = "UT"
   revision = "435f92c719f279a3a67808c80521ea17d5715c66"
@@ -1259,7 +1199,6 @@
     "github.com/onsi/gomega",
     "github.com/pkg/errors",
     "github.com/prometheus/common/log",
-    "github.com/rook/rook/pkg/operator/cassandra/controller/util",
     "github.com/sirupsen/logrus",
     "github.com/spf13/cobra",
     "github.com/stretchr/testify/require",
@@ -1274,24 +1213,17 @@
     "k8s.io/apimachinery/pkg/labels",
     "k8s.io/apimachinery/pkg/runtime",
     "k8s.io/apimachinery/pkg/runtime/schema",
-    "k8s.io/apimachinery/pkg/runtime/serializer",
     "k8s.io/apimachinery/pkg/types",
     "k8s.io/apimachinery/pkg/util/intstr",
-    "k8s.io/apimachinery/pkg/util/runtime",
     "k8s.io/apimachinery/pkg/util/sets",
     "k8s.io/apimachinery/pkg/util/strategicpatch",
-    "k8s.io/apimachinery/pkg/watch",
-    "k8s.io/client-go/discovery",
-    "k8s.io/client-go/discovery/fake",
     "k8s.io/client-go/informers",
     "k8s.io/client-go/informers/internalinterfaces",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/kubernetes/scheme",
     "k8s.io/client-go/plugin/pkg/client/auth/gcp",
     "k8s.io/client-go/rest",
-    "k8s.io/client-go/testing",
     "k8s.io/client-go/tools/record",
-    "k8s.io/client-go/util/flowcontrol",
     "k8s.io/code-generator/cmd/deepcopy-gen",
     "k8s.io/kubernetes/pkg/controller/endpoint",
     "sigs.k8s.io/controller-runtime/pkg/client",

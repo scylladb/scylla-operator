@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse
+import argparse, sys, os
 
 template = """
 apiVersion: batch/v1
@@ -17,7 +17,7 @@ spec:
         command:
           - "/bin/bash"
           - "-c"
-          - 'cassandra-stress write no-warmup n={d.ops} cl=ONE -mode native cql3 connectionsPerHost={d.connections_per_host} -col n=FIXED\(5\) size=FIXED\(64\)  -pop seq={}..{} -node="{d.host}" -rate threads={d.threads} {d.limit} -log file=/cassandra-stress.load.data -schema "replication(factor=1)" -errors ignore; cat /cassandra-stress.load.data'
+          - 'cassandra-stress write no-warmup n={d.ops} cl=ONE -mode native cql3 connectionsPerHost={d.connections_per_host} -col n=FIXED\(5\) size=FIXED\(64\)  -pop seq={}..{} -node "{d.host}" -rate threads={d.threads} {d.limit} -log file=/cassandra-stress.load.data -schema "replication(factor=2)" -errors ignore; cat /cassandra-stress.load.data'
         resources:
           limits:
             cpu: {d.cpu}
@@ -28,10 +28,13 @@ spec:
       affinity:
         podAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-            labelSelector:
-              matchLabels:
-                app: cassandra-stress
-       
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: cassandra-stress
+                topologyKey: kubernetes.io/hostname
+         
 """
 
 def parse():
@@ -39,7 +42,7 @@ def parse():
     parser.add_argument('--num-jobs', type=int, default=1, help='number of Kubernetes jobs to generate - defaults to 1', dest='num_jobs')
     parser.add_argument('--name', default='cassandra-stress', help='name of the generated yaml file - defaults to cassandra-stress')
     parser.add_argument('--scylla-version', default='2.3.1', help='version of scylla server to use for cassandra-stress - defaults to 2.3.1', dest='scylla_version')
-    parser.add_argument('--host', default='simple-cluster.scylla.svc', help='ip or dns name of host to connect to - defaults to simple-cluster.scylla.svc')
+    parser.add_argument('--host', default='scylla-cluster.scylla.svc', help='ip or dns name of host to connect to - defaults to scylla-cluster.scylla.svc')
     parser.add_argument('--cpu', default=1, type=int, help='number of cpus that will be used for each job - defaults to 1')
     parser.add_argument('--memory', default=None, help='memory that will be used for each job in GB, ie 2G - defaults to 2G * cpu')
     parser.add_argument('--ops', type=int, default=10000000, help='number of operations for each job - defaults to 10000000')
@@ -55,6 +58,9 @@ def create_job_list(args):
     for i in range(args.num_jobs):
         manifests.append(template.format(i, i*args.ops+1, (i+1)*args.ops, d=args))
     return manifests
+
+def get_script_path():
+    return os.path.dirname(os.path.realpath(sys.argv[0]))
 
 if __name__ == "__main__":
     args = parse()
@@ -77,6 +83,6 @@ if __name__ == "__main__":
     if args.print_to_stdout:
       print('\n---\n'.join(manifests))
     else:
-      f = open(args.name + '.yaml', 'w')
+      f = open(get_script_path() + '/' + args.name + '.yaml', 'w')
       f.write('\n---\n'.join(manifests))
       f.close

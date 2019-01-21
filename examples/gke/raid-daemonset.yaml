@@ -1,0 +1,84 @@
+# Daemonset that will group NUM_DISKS disks following the pattern '/dev/ssd{i}'
+# into a raid0 array and mount that array onto RAID_DIR.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: raid-local-disks
+spec:
+  selector:
+    matchLabels:
+      name: raid-local-disks
+  template:
+    metadata:
+      labels:
+        name: raid-local-disks
+    spec:
+      nodeSelector:
+        role: scylla-clusters
+      containers:
+      - name: raid-local-disks
+        image: yanniszark/raid-setup:0.1
+        env:
+          - name: RAID_DIR
+            value: "/mnt/hostfs/mnt/raid-disks/disk0"
+          - name: DISK_MNT_DIR_PREFIX
+            value: "/mnt/hostfs/mnt/disks/ssd"
+          - name: DISK_DEV_PREFIX
+            value: "/dev/sd"  
+        command:
+          - "/bin/bash"
+          - "-c"
+          - "--"
+        args:
+          - |
+            set -e
+            set -x 
+            
+            function sleep_forever() {
+                while true; do sleep 100; done
+            }
+            # If the disk has already been created, sleep indefinitely
+            if [ -b "/dev/md0" ]; then
+                echo "raid array already created!"
+                sleep_forever
+            fi
+
+            # Discover how many disks there are
+            DISK_DEV_SUFFIX=(b c d e f g h i)
+            MAX_NUM_DISKS=8
+            declare -a DISKS
+            for i in `seq 0 $((MAX_NUM_DISKS-1))`;
+            do
+                CURR_DISK="${DISK_DEV_PREFIX}${DISK_DEV_SUFFIX[$i]}"
+                if [ ! -b "$CURR_DISK" ]; then
+                  break
+                fi
+                DISKS[$i]="$CURR_DISK"
+                NUM_DISKS=$((i+1))
+            done
+
+            # Unmount disks from host filesystem
+            for i in `seq 0 $((NUM_DISKS-1))`;
+            do 
+                umount "${DISK_MNT_DIR_PREFIX}${i}" &> /dev/null || echo "Disk ${DISK_MNT_DIR_PREFIX}${i} already unmounted."
+            done
+            
+            # Create a raid array
+            yes | mdadm --create /dev/md0 --force --level=0 --raid-devices="$NUM_DISKS" "${DISKS[@]}"
+            
+            # Format the raid array as xfs
+            mkfs.xfs /dev/md0
+            
+            # Mount the raid array in a predefined location
+            mkdir -p $RAID_DIR
+            mount /dev/md0 $RAID_DIR
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: hostfs
+          mountPath: /mnt/hostfs
+          mountPropagation: Bidirectional
+      volumes:
+      - name: hostfs
+        hostPath:
+          path: /

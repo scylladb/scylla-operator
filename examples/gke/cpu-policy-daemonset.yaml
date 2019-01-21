@@ -1,0 +1,124 @@
+# ClusterRole for cpu-policy-daemonset.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cpu-policy-daemonset
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - list
+  - apiGroups:
+      - apps
+      - extensions
+    resources:
+      - daemonsets
+    verbs:
+      - get
+  - apiGroups:
+      - ""
+    resources:
+      - pods/eviction
+    verbs:
+      - create
+
+
+---
+
+# ServiceAccount for cpu-policy daemonset.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cpu-policy-daemonset
+  namespace: default
+---
+# Bind cpu-policy daemonset ServiceAccount with ClusterRole.
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cpu-policy-daemonset
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cpu-policy-daemonset
+subjects:
+- kind: ServiceAccount
+  name: cpu-policy-daemonset
+  namespace: default
+---
+# Daemonset that will change cpuManagerPolicy to static.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: cpu-policy
+spec:
+  selector:
+    matchLabels:
+      name: cpu-policy
+  template:
+    metadata:
+      labels:
+        name: cpu-policy
+    spec:
+      hostPID: true
+      hostIPC: true
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: role
+                  operator: In
+                  values:
+                   - scylla-clusters
+                   - cassandra-stress
+      serviceAccountName: cpu-policy-daemonset
+      containers:
+      - name: cpu-policy
+        image: yanniszark/kubectl:1.11.5
+        imagePullPolicy: Always
+        env:
+          - name: NODE
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - name: hostfs
+            mountPath: /mnt/hostfs
+            mountPropagation: Bidirectional
+      volumes:
+        - name: hostfs
+          hostPath:
+            path: /
+        - name: dbus
+          hostPath:
+            path: /var/run/dbus
+        - name: systemd
+          hostPath:
+            path: /run/systemd
+        - name: systemctl
+          hostPath:
+            path: /bin/systemctl
+        - name: system
+          hostPath:
+            path: /etc/systemd/system
+        - name: usr
+          hostPath:
+            path: /usr
+        - name: lib
+          hostPath:
+            path: /lib/systemd
+        - name: lib-linux
+          hostPath:
+            path: /lib/systemd

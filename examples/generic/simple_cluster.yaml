@@ -1,0 +1,99 @@
+# Namespace where the Scylla Cluster will be created
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: scylla
+
+---
+
+# Role for scylla members.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: simple-cluster-member
+  namespace: scylla
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+  - apiGroups:
+      - ""
+    resources:
+      - services
+    verbs:
+      - get
+      - list
+      - patch
+      - watch
+  - apiGroups:
+      - "apps"
+    resources:
+      - statefulsets
+    verbs:
+      - get
+      - list
+      - patch
+      - watch
+  - apiGroups:
+      - scylla.scylladb.com
+    resources:
+      - clusters
+    verbs:
+      - get
+
+---
+
+# ServiceAccount for scylla members.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: simple-cluster-member
+  namespace: scylla
+
+---
+
+# RoleBinding for scylla members.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: simple-cluster-member
+  namespace: scylla
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: simple-cluster-member
+subjects:
+  - kind: ServiceAccount
+    name: simple-cluster-member
+    namespace: scylla
+
+---
+
+# Simple Scylla Cluster
+apiVersion: scylla.scylladb.com/v1alpha1
+kind: Cluster
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: simple-cluster
+  namespace: scylla
+spec:
+  version: 2.3.1
+  developerMode: true
+  datacenter:
+    name: us-east-1
+    racks:
+      - name: us-east-1a
+        members: 1
+        storage:
+          capacity: 5Gi
+        resources:
+          requests:
+            cpu: 1
+            memory: 2Gi
+          limits:
+            cpu: 1
+            memory: 2Gi

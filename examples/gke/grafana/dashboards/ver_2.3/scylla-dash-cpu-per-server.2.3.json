@@ -1,0 +1,518 @@
+{
+    "annotations": {
+        "list": []
+    },
+    "class": "dashboard",
+    "editable": true,
+    "gnetId": null,
+    "hideControls": true,
+    "id": null,
+    "links": [],
+    "panels": [
+        {
+            "class": "text_panel",
+            "content": "<img src=\"http://www.scylladb.com/wp-content/uploads/logo-scylla-white-simple.png\" height=\"70\">\n<hr style=\"border-top: 3px solid #5780c1;\">",
+            "editable": true,
+            "error": false,
+            "gridPos": {
+                "h": 6,
+                "w": 24,
+                "x": 0,
+                "y": 0
+            },
+            "id": 1,
+            "isNew": true,
+            "links": [],
+            "mode": "html",
+            "span": 12,
+            "title": "",
+            "transparent": true,
+            "type": "text"
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "class": "percent_panel",
+            "datasource": "prometheus",
+            "description": "the percentage of the time during which the CPU is utilized by Scylla. Note that because Scylla does busy polling for some time before going idle, CPU utilization as seen by the operating system may be much higher. Your system is not yet CPU-bottlenecked until this metric is high",
+            "editable": true,
+            "error": false,
+            "fill": 0,
+            "grid": {
+                "threshold1": null,
+                "threshold1Color": "rgba(216, 200, 27, 0.27)",
+                "threshold2": null,
+                "threshold2Color": "rgba(234, 112, 112, 0.22)"
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 10,
+                "x": 0,
+                "y": 6
+            },
+            "id": 2,
+            "isNew": true,
+            "legend": {
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "show": false,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "percentage": false,
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [
+                {}
+            ],
+            "span": 5,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "avg(scylla_reactor_utilization{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"} ) by ([[by]])",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "timeFrom": null,
+            "timeShift": null,
+            "title": "CPU Utilization per [[by]]",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 0,
+                "value_type": "cumulative"
+            },
+            "transparent": false,
+            "type": "graph",
+            "xaxis": {
+                "show": true
+            },
+            "yaxes": [
+                {
+                    "format": "percent",
+                    "logBase": 1,
+                    "max": 101,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ]
+        },
+        {
+            "class": "text_panel",
+            "content": "##  ",
+            "editable": true,
+            "error": false,
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 10,
+                "y": 6
+            },
+            "id": 3,
+            "isNew": true,
+            "links": [],
+            "mode": "markdown",
+            "span": 3,
+            "style": {},
+            "title": "",
+            "transparent": true,
+            "type": "text"
+        },
+        {
+            "class": "dashlist",
+            "editable": true,
+            "error": false,
+            "gridPos": {
+                "h": 6,
+                "w": 4,
+                "x": 16,
+                "y": 6
+            },
+            "headings": false,
+            "id": 4,
+            "isNew": true,
+            "limit": 10,
+            "links": [],
+            "query": "",
+            "recent": false,
+            "search": true,
+            "span": 2,
+            "starred": false,
+            "tags": [
+                "2.3"
+            ],
+            "title": "Dashboards",
+            "type": "dashlist"
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "class": "percent_panel",
+            "datasource": "prometheus",
+            "description": "Time spent handling foreground requests (like reads, writes, and some system tasks). The remaining time is either idle, or used by background load like compactions and repairs. Background load in Scylla is opportunistic: background requests will try to use all resources available to complete as fast as possible and rely on the schedulers to provide isolation. This graph is better understood in conjunction with the main CPU load graph. For example, if there are spikes in CPU load that are not present in this graph, that indicates that the foreground load itself is stable.",
+            "editable": true,
+            "error": false,
+            "fill": 0,
+            "grid": {
+                "threshold1": null,
+                "threshold1Color": "rgba(216, 200, 27, 0.27)",
+                "threshold2": null,
+                "threshold2Color": "rgba(234, 112, 112, 0.22)"
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 10,
+                "x": 0,
+                "y": 12
+            },
+            "id": 5,
+            "isNew": true,
+            "legend": {
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "show": false,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "percentage": false,
+            "pointradius": 1,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [
+                {}
+            ],
+            "span": 5,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "avg(irate(scylla_scheduler_runtime_ms{group=\"main\",instance=~\"[[node]]\" ,cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) by ([[by]])/10 + avg(irate(scylla_scheduler_runtime_ms{group=\"statement\",instance=~\"[[node]]\" ,cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) by ([[by]])/10",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "metric": "",
+                    "refId": "A",
+                    "step": 30
+                }
+            ],
+            "timeFrom": null,
+            "timeShift": null,
+            "title": "Foreground CPU Utilization by [[by]]",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 0,
+                "value_type": "cumulative"
+            },
+            "transparent": false,
+            "type": "graph",
+            "xaxis": {
+                "show": true
+            },
+            "yaxes": [
+                {
+                    "format": "percent",
+                    "logBase": 1,
+                    "max": 101,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ]
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "class": "ns_panel",
+            "datasource": "prometheus",
+            "description": "Scylla employs an event-loop like reactor that alternates between the execution of different groups of tasks periodically. The maximum amount of time during which a task group can run is called the \"task quota\". Some task groups may disrespect that and run for longer. This may cause latency issues",
+            "editable": true,
+            "error": false,
+            "fill": 0,
+            "grid": {
+                "threshold1": null,
+                "threshold1Color": "rgba(216, 200, 27, 0.27)",
+                "threshold2": null,
+                "threshold2Color": "rgba(234, 112, 112, 0.22)"
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 10,
+                "x": 10,
+                "y": 12
+            },
+            "id": 6,
+            "isNew": true,
+            "legend": {
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "show": false,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "percentage": false,
+            "pointradius": 1,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "span": 5,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "sum(irate(scylla_scheduler_time_spent_on_task_quota_violations_ns{group=\"main\",instance=~\"[[node]]\" ,cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) by ([[by]])",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "metric": "",
+                    "refId": "A",
+                    "step": 30
+                }
+            ],
+            "timeFrom": null,
+            "timeShift": null,
+            "title": "Time spent in task quota violations by [[by]]",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 0,
+                "value_type": "cumulative"
+            },
+            "type": "graph",
+            "xaxis": {
+                "show": true
+            },
+            "yaxes": [
+                {
+                    "format": "ns",
+                    "logBase": 1,
+                    "max": null,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ]
+        }
+    ],
+    "refresh": "30s",
+    "schemaVersion": 12,
+    "sharedCrosshair": true,
+    "style": "dark",
+    "tags": [
+        "2.3"
+    ],
+    "templating": {
+        "list": [
+            {
+                "allValue": null,
+                "current": {
+                    "tags": [],
+                    "text": "Instance",
+                    "value": "instance"
+                },
+                "hide": 0,
+                "includeAll": false,
+                "label": "by",
+                "multi": false,
+                "name": "by",
+                "options": [
+                    {
+                        "selected": false,
+                        "text": "Cluster",
+                        "value": "cluster"
+                    },
+                    {
+                        "selected": false,
+                        "text": "DC",
+                        "value": "dc"
+                    },
+                    {
+                        "selected": true,
+                        "text": "Instance",
+                        "value": "instance"
+                    },
+                    {
+                        "selected": false,
+                        "text": "Shard",
+                        "value": "shard"
+                    }
+                ],
+                "query": "Cluster,DC,Instance,Shard",
+                "type": "custom"
+            },
+            {
+                "allValue": null,
+                "class": "template_variable_single",
+                "current": {},
+                "datasource": "prometheus",
+                "hide": 0,
+                "includeAll": false,
+                "label": "cluster",
+                "multi": false,
+                "name": "cluster",
+                "options": [],
+                "query": "label_values(scylla_reactor_utilization, cluster)",
+                "refresh": 2,
+                "regex": "",
+                "sort": 1,
+                "tagValuesQuery": "",
+                "tags": [],
+                "tagsQuery": "",
+                "type": "query",
+                "useTags": false
+            },
+            {
+                "allValue": null,
+                "class": "template_variable_all",
+                "current": {
+                    "text": "All",
+                    "value": [
+                        "$__all"
+                    ]
+                },
+                "datasource": "prometheus",
+                "hide": 0,
+                "includeAll": true,
+                "label": "dc",
+                "multi": true,
+                "name": "dc",
+                "options": [],
+                "query": "label_values(scylla_reactor_utilization{cluster=~\"$cluster\"}, dc)",
+                "refresh": 2,
+                "regex": "",
+                "sort": 1,
+                "tagValuesQuery": "",
+                "tags": [],
+                "tagsQuery": "",
+                "type": "query",
+                "useTags": false
+            },
+            {
+                "allValue": null,
+                "class": "template_variable_all",
+                "current": {
+                    "text": "All",
+                    "value": [
+                        "$__all"
+                    ]
+                },
+                "datasource": "prometheus",
+                "hide": 0,
+                "includeAll": true,
+                "label": "node",
+                "multi": true,
+                "name": "node",
+                "options": [],
+                "query": "label_values(scylla_reactor_utilization{cluster=~\"$cluster|$^\", dc=~\"$dc\"}, instance)",
+                "refresh": 2,
+                "regex": "",
+                "sort": 1,
+                "tagValuesQuery": "",
+                "tags": [],
+                "tagsQuery": "",
+                "type": "query",
+                "useTags": false
+            },
+            {
+                "allValue": null,
+                "class": "template_variable_all",
+                "current": {
+                    "text": "All",
+                    "value": [
+                        "$__all"
+                    ]
+                },
+                "datasource": "prometheus",
+                "hide": 0,
+                "includeAll": true,
+                "label": "shard",
+                "multi": true,
+                "name": "shard",
+                "options": [],
+                "query": "label_values(scylla_reactor_utilization,shard)",
+                "refresh": 2,
+                "regex": "",
+                "sort": 3,
+                "tagValuesQuery": "",
+                "tags": [],
+                "tagsQuery": "",
+                "type": "query",
+                "useTags": false
+            }
+        ]
+    },
+    "time": {
+        "from": "now-30m",
+        "to": "now"
+    },
+    "timepicker": {
+        "now": true,
+        "refresh_intervals": [
+            "5s",
+            "10s",
+            "30s",
+            "1m",
+            "5m",
+            "15m",
+            "30m",
+            "1h",
+            "2h",
+            "1d"
+        ],
+        "time_options": [
+            "5m",
+            "15m",
+            "1h",
+            "6h",
+            "12h",
+            "24h",
+            "2d",
+            "7d",
+            "30d"
+        ]
+    },
+    "timezone": "browser",
+    "title": "Scylla CPU Per Server Metrics 2.3",
+    "uid": "cpu-2-3",
+    "version": 5
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse
+import argparse, sys, os
 
 template = """
 apiVersion: batch/v1
@@ -25,13 +25,15 @@ spec:
       restartPolicy: Never
       nodeSelector:
         {d.nodeselector}
-      # affinity:
-      #   podAffinity:
-      #     preferredDuringSchedulingIgnoredDuringExecution:
-      #       - podAffinityTerm:
-      #           labelSelector:
-      #             matchLabels:
-      #               app: cassandra-stress
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: cassandra-stress
+                topologyKey: kubernetes.io/hostname
          
 """
 
@@ -57,6 +59,9 @@ def create_job_list(args):
         manifests.append(template.format(i, i*args.ops+1, (i+1)*args.ops, d=args))
     return manifests
 
+def get_script_path():
+    return os.path.dirname(os.path.realpath(sys.argv[0]))
+
 if __name__ == "__main__":
     args = parse()
 
@@ -78,6 +83,6 @@ if __name__ == "__main__":
     if args.print_to_stdout:
       print('\n---\n'.join(manifests))
     else:
-      f = open(args.name + '.yaml', 'w')
+      f = open(get_script_path() + '/' + args.name + '.yaml', 'w')
       f.write('\n---\n'.join(manifests))
       f.close

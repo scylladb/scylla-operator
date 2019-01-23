@@ -33,7 +33,7 @@ Scylla performs the best when it has fast disks and direct access to the cpu. To
 
 If you find a bug or need help running scylla, you can reach out in the following ways:
 * `#kubernetes` channel on [Slack](https://scylladb-users-slackin.herokuapp.com/).
-* File an [issue](https://github.com/kubernetes-sigs/kubebuilder/issues) describing the problem and how to reproduce.
+* File an [issue](https://github.com/scylladb/scylla-operator/issues) describing the problem and how to reproduce.
 
 ## Building the project
 

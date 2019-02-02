@@ -58,12 +58,12 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 		log.Fatalf("Failed to get dynamic uncached client: %+v", err)
 	}
 	return &ClusterController{
-		Client:        mgr.GetClient(),
+		Client:         mgr.GetClient(),
 		UncachedClient: uncachedClient,
-		KubeClient:    kubeClient,
-		Recorder:      mgr.GetRecorder("scylla-cluster-controller"),
-		OperatorImage: getOperatorImage(kubeClient),
-		scheme:        mgr.GetScheme(),
+		KubeClient:     kubeClient,
+		Recorder:       mgr.GetRecorder("scylla-cluster-controller"),
+		OperatorImage:  getOperatorImage(kubeClient),
+		scheme:         mgr.GetScheme(),
 	}
 }
 
@@ -161,8 +161,8 @@ var _ reconcile.Reconciler = &ClusterController{}
 type ClusterController struct {
 	client.Client
 	UncachedClient client.Client
-	Recorder      record.EventRecorder
-	OperatorImage string
+	Recorder       record.EventRecorder
+	OperatorImage  string
 	// Original k8s client needed for patch ops
 	// Will replace once the dynamic client adds this feature
 	// https://github.com/kubernetes-sigs/controller-runtime/pull/235

@@ -14,7 +14,7 @@ local-build: generate fmt vet
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet
-	go run ./cmd operator --image=$IMG
+	go run ./cmd operator --image="$IMG" --enable-admission-webhook=false
 
 # Install CRDs into a cluster
 install: manifests
@@ -44,12 +44,12 @@ generate:
 
 # Build the docker image
 docker-build: test
-	docker build . -t ${IMG}
+	docker build . -t "$IMG"
 	@echo "updating kustomize image patch file for manager resource"
 	sed -i'' -e 's@image: .*@image: '"${IMG}"'@' ./config/default/manager_patch.yaml
 
 # Push the docker image
 docker-push:
-	docker push ${IMG}
+	docker push "$IMG"
 
 publish: docker-build docker-push

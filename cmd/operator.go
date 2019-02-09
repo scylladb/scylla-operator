@@ -5,6 +5,7 @@ import (
 	"github.com/scylladb/scylla-operator/cmd/options"
 	"github.com/scylladb/scylla-operator/pkg/apis"
 	"github.com/scylladb/scylla-operator/pkg/controller"
+	"github.com/scylladb/scylla-operator/pkg/webhook"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -20,7 +21,7 @@ func newOperatorCmd() *cobra.Command {
 		Run:   startOperator,
 	}
 	options.
-		GetControllerOptions().
+		GetOperatorOptions().
 		AddFlags(operatorCmd)
 
 	return operatorCmd
@@ -29,7 +30,7 @@ func newOperatorCmd() *cobra.Command {
 func startOperator(cmd *cobra.Command, args []string) {
 
 	// Validate the cmd flags
-	opts := options.GetControllerOptions()
+	opts := options.GetOperatorOptions()
 	if err := opts.Validate(); err != nil {
 		log.Fatalf("%+v", err)
 	}
@@ -61,6 +62,13 @@ func startOperator(cmd *cobra.Command, args []string) {
 	// Setup all Controllers
 	if err := controller.UseOperatorControllers(mgr); err != nil {
 		log.Fatalf("%+v", err)
+	}
+
+	// Enable webhook if requested
+	if opts.EnableAdmissionWebhook {
+		if err := webhook.AddToManager(mgr); err != nil {
+			log.Fatalf("%+v", err)
+		}
 	}
 
 	log.Printf("Starting the operator...")

@@ -6,25 +6,27 @@ import (
 )
 
 // Singleton
-var controllerOpts = &controllerOptions{
+var operatorOpts = &operatorOptions{
 	commonOptions: GetCommonOptions(),
 }
 
-type controllerOptions struct {
+type operatorOptions struct {
 	*commonOptions
-	Image string
+	Image                  string
+	EnableAdmissionWebhook bool
 }
 
-func GetControllerOptions() *controllerOptions {
-	return controllerOpts
+func GetOperatorOptions() *operatorOptions {
+	return operatorOpts
 }
 
-func (o *controllerOptions) AddFlags(cmd *cobra.Command) {
+func (o *operatorOptions) AddFlags(cmd *cobra.Command) {
 	o.commonOptions.AddFlags(cmd)
 	cmd.Flags().StringVar(&o.Image, "image", "", "image of the operator used")
+	cmd.Flags().BoolVar(&o.EnableAdmissionWebhook, "enable-admission-webhook", true, "enable the admission webhook")
 }
 
-func (o *controllerOptions) Validate() error {
+func (o *operatorOptions) Validate() error {
 
 	if o.Image == "" && o.commonOptions.Validate() != nil {
 		return errors.New("image not set - you must set either image or namespace and name")

@@ -15,6 +15,8 @@ If you don't want to run the commands step-by-step, you can just run a script th
 # ./gke.sh yanniszark@arrikto.com gke-demo-226716 us-west1-b
 ```
 
+:warning: Make sure to pass a ZONE (ex.: us-west1-b) and not a REGION (ex.: us-west1) or it will deploy nodes in each ZONE available in the region.
+
 After you deploy, see how you can [benchmark your cluster with cassandra-stress]().
 
 ## Walkthrough

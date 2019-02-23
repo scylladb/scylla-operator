@@ -32,6 +32,7 @@ GCP_PROJECT=$2
 GCP_ZONE=$3
 GCP_REGION=${GCP_ZONE:0:$((${#GCP_ZONE}-2))}
 CLUSTER_NAME=scylla-demo
+CLUSTER_VERSION=1.11.7-gke.6
 
 # Check if the environment has the prerequisites installed
 check_prerequisites
@@ -39,12 +40,12 @@ check_prerequisites
 # gcloud: Create GKE cluster
 
 # Nodepool for scylla clusters
-echo "Creating GKE cluster..."
-gcloud beta container --project "${GCP_PROJECT}" \
+# Do NOT use gcloud beta
+gcloud container --project "${GCP_PROJECT}" \
 clusters create "${CLUSTER_NAME}" --username "admin" \
 --zone "${GCP_ZONE}" \
---cluster-version "1.11.6-gke.2" \
---node-version "1.11.6-gke.2" \
+--cluster-version "${CLUSTER_VERSION}" \
+--node-version "${CLUSTER_VERSION}" \
 --machine-type "n1-standard-32" \
 --num-nodes "5" \
 --disk-type "pd-ssd" --disk-size "20" \
@@ -55,11 +56,11 @@ clusters create "${CLUSTER_NAME}" --username "admin" \
 --no-enable-autoupgrade --no-enable-autorepair
 
 # Nodepool for cassandra-stress pods
-gcloud beta container --project "${GCP_PROJECT}" \
+gcloud container --project "${GCP_PROJECT}" \
 node-pools create "cassandra-stress-pool" \
 --cluster "${CLUSTER_NAME}" \
 --zone "${GCP_ZONE}" \
---node-version "1.11.6-gke.2" \
+--node-version "${CLUSTER_VERSION}" \
 --machine-type "n1-standard-32" \
 --num-nodes "2" \
 --disk-type "pd-ssd" --disk-size "20" \
@@ -68,11 +69,11 @@ node-pools create "cassandra-stress-pool" \
 --no-enable-autoupgrade --no-enable-autorepair
 
 # Nodepool for scylla operator and monitoring
-gcloud beta container --project "${GCP_PROJECT}" \
+gcloud container --project "${GCP_PROJECT}" \
 node-pools create "operator-pool" \
 --cluster "${CLUSTER_NAME}" \
 --zone "${GCP_ZONE}" \
---node-version "1.11.6-gke.2" \
+--node-version "${CLUSTER_VERSION}" \
 --machine-type "n1-standard-8" \
 --num-nodes "1" \
 --disk-type "pd-ssd" --disk-size "20" \
@@ -84,12 +85,16 @@ node-pools create "operator-pool" \
 # making the cluster unavailable for a while.
 # We deal with this by waiting a while for the unavailability
 # to start and then polling with kubectl to detect when it ends.
-sleep 180
-if [ ! "$(kubectl version &> /dev/null)" ]; then
-        echo "Waiting for gke cluster to finish upgrading the control plane..."
-        sleep 30
-fi
 
+gcloud container operations list --sort-by START_TIME | tail
+
+echo "Waiting GKE to UPGRADE_MASTER"
+sleep 180
+until [[ $(gcloud container clusters list --zone=$GCP_ZONE | grep $CLUSTER_NAME | awk '{ print $8 }') -eq "RUNNING" ]];
+do
+    echo "Waiting cluster readiness"
+    sleep 10
+done
 
 # gcloud: Get credentials for new cluster
 echo "Getting credentials for newly created cluster..."
@@ -108,12 +113,12 @@ kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"templat
 
 # Install RAID Daemonset
 echo "Installing RAID Daemonset..."
-kubectl apply -f manifests/raid-daemonset.yaml
+kubectl apply -f raid-daemonset.yaml
 
 # Install cpu-policy Daemonset
 echo "Installing cpu-policy Daemonset..."
 sleep 5
-kubectl apply -f manifests/cpu-policy-daemonset.yaml
+kubectl apply -f cpu-policy-daemonset.yaml
 
 # Wait for Tiller to become ready
 until [[ $(kubectl get deployment tiller-deploy -n kube-system -o 'jsonpath={.status.readyReplicas}') -eq 1 ]];
@@ -124,12 +129,12 @@ done
 
 # Install local volume provisioner
 echo "Installing local volume provisioner..."
-helm install --name local-provisioner manifests/provisioner
+helm install --name local-provisioner provisioner
 echo "Your disks are ready to use."
 
 echo "Start the scylla operator:"
-echo "kubectl apply -f manifests/operator.yaml"
+echo "kubectl apply -f operator.yaml"
 
 echo "Start the scylla cluster:"
-sed "s/<gcp_region>/${GCP_REGION}/g;s/<gcp_zone>/${GCP_ZONE}/g" manifests/cluster.yaml
-echo "kubectl apply -f manifests/cluster.yaml"
+sed -i "s/<gcp_region>/${GCP_REGION}/g;s/<gcp_zone>/${GCP_ZONE}/g" cluster.yaml
+echo "kubectl apply -f cluster.yaml"

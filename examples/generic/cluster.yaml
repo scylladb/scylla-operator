@@ -87,7 +87,7 @@ spec:
     name: us-east-1
     racks:
       - name: us-east-1a
-        members: 1
+        members: 3
         storage:
           capacity: 5Gi
         resources:

@@ -67,7 +67,7 @@ func (h *ClusterCreateUpdateHandler) validatingClusterFn(ctx context.Context, ob
 
 	// Then, check the transitions
 	if !apierrors.IsNotFound(err) {
-		allowed, msg = checkTransitions(obj, oldObj)
+		allowed, msg = checkTransitions(oldObj, obj)
 	}
 
 	return allowed, msg, nil

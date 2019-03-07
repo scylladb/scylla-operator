@@ -3,8 +3,13 @@ kind: StatefulSet
 metadata:
   name: controller-manager
   namespace: system
+  labels:
+    app: scylla-operator
 spec:
   template:
+    metadata:
+      labels:
+        app: scylla-operator
     spec:
       containers:
       # Change the value of image field below to your controller image URL

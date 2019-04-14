@@ -87,7 +87,10 @@ func checkTransitions(old, new *scyllav1alpha1.Cluster) (allowed bool, msg strin
 		rackMap[oldRack.Name] = oldRack
 	}
 	for _, newRack := range new.Spec.Datacenter.Racks {
-		oldRack := rackMap[newRack.Name]
+		oldRack, exists := rackMap[newRack.Name]
+		if !exists {
+			continue
+		}
 
 		// Check that placement is the same as before
 		if !reflect.DeepEqual(oldRack.Placement, newRack.Placement) {

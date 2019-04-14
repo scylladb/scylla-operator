@@ -55,7 +55,7 @@ func (cc *ClusterController) cleanup(c *scyllav1alpha1.Cluster) error {
 				if err != nil {
 					return errors.WithStack(err)
 				}
-				if svcIndex > maxIndex {
+				if svcIndex > maxIndex && svc.Labels[naming.DecommissionLabel] == naming.LabelValueTrue {
 					err := cc.cleanupMemberResources(&svc, r, c)
 					if err != nil {
 						return errors.WithStack(err)

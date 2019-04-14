@@ -1,6 +1,6 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= yanniszark/scylla-operator:master
+IMG ?= "yanniszark/scylla-operator:master"
 
 all: test local-build
 
@@ -14,7 +14,7 @@ local-build: generate fmt vet
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet
-	go run ./cmd operator --image=$IMG
+	go run ./cmd operator --image="${IMG}" --enable-admission-webhook=false
 
 # Install CRDs into a cluster
 install: manifests
@@ -23,12 +23,12 @@ install: manifests
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: install
 	kubectl apply -f config/rbac
-	kustomize build config/default | kubectl apply -f -
+	kustomize build config | kubectl apply -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests:
 	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
-	kustomize build config/default > config/samples/operator.yaml
+	kustomize build config > examples/generic/operator.yaml
 
 # Run go fmt against code
 fmt:
@@ -44,12 +44,12 @@ generate:
 
 # Build the docker image
 docker-build: test
-	docker build . -t ${IMG}
+	docker build . -t "${IMG}"
 	@echo "updating kustomize image patch file for manager resource"
-	sed -i'' -e 's@image: .*@image: '"${IMG}"'@' ./config/default/manager_patch.yaml
+	sed -i'' -e 's@image: .*@image: '"${IMG}"'@' ./config/manager_patch.yaml
 
 # Push the docker image
 docker-push:
-	docker push ${IMG}
+	docker push "${IMG}"
 
 publish: docker-build docker-push

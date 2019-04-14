@@ -18,7 +18,6 @@ package controller
 import (
 	"github.com/scylladb/scylla-operator/pkg/controller/cluster"
 	"github.com/scylladb/scylla-operator/pkg/sidecar"
-	"github.com/scylladb/scylla-operator/pkg/webhook/default_server"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
@@ -34,7 +33,6 @@ func UseSidecarControllers(m manager.Manager) error {
 func UseOperatorControllers(m manager.Manager) error {
 	controllers := []func(manager.Manager) error{
 		cluster.Add,
-		defaultserver.Add,
 	}
 	return addToManager(m, controllers)
 }

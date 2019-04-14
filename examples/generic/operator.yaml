@@ -276,6 +276,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   labels:
+    app: scylla-operator
     control-plane: controller-manager
     controller-tools.k8s.io: "1.0"
   name: scylla-operator-controller-manager
@@ -289,6 +290,7 @@ spec:
   template:
     metadata:
       labels:
+        app: scylla-operator
         control-plane: controller-manager
         controller-tools.k8s.io: "1.0"
     spec:

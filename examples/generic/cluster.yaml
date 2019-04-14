@@ -81,13 +81,13 @@ metadata:
   name: simple-cluster
   namespace: scylla
 spec:
-  version: 2.3.1
+  version: 3.0.3
   developerMode: true
   datacenter:
     name: us-east-1
     racks:
       - name: us-east-1a
-        members: 1
+        members: 3
         storage:
           capacity: 5Gi
         resources:

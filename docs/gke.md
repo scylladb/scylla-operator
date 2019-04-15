@@ -8,7 +8,7 @@ Because this guide focuses on showing a glimpse of the true performance of Scyll
 
 If you don't want to run the commands step-by-step, you can just run a script that will set everything up for you:
 ```bash
-# From inside the docs/gke folder 
+# From inside the examples/gke folder 
 ./gke.sh [GCP user] [GCP project] [GCP zone]
 
 # Example:

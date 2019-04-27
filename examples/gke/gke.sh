@@ -21,6 +21,30 @@ check_prerequisites() {
     fi
 }
 
+check_cluster_readiness() {
+until [[ "$(gcloud container clusters list --zone=us-east1-b | grep scylla-demo | awk '{ print $8 }')" == "RUNNING" ]]; do 
+  echo "Waiting for cluster readiness... "
+  echo $(gcloud container clusters list --zone=us-east1-b | grep scylla-demo)
+  sleep 10
+  WAIT_TIME=$((WAIT_TIME+10))
+  if [[  "$(gcloud container operations list --sort-by=START_TIME --filter="scylla-demo AND UPGRADE_MASTER" | grep RUNNING)" != "" ]]; then
+    gcloud container operations list --sort-by=START_TIME --filter="scylla-demo AND UPGRADE_MASTER"
+    gcloud container operations wait $(gcloud container operations list --sort-by=START_TIME --filter="scylla-demo AND UPGRADE_MASTER" | tail -1 | awk '{print $1}')
+  else 
+    gcloud container operations list --sort-by=START_TIME --filter="scylla-demo AND UPGRADE_MASTER" | tail -1
+  fi
+done
+gcloud container clusters list --zone=us-east1-b | grep scylla-demo
+}
+
+check_tiller_readiness(){
+until [[ $(kubectl get deployment tiller-deploy -n kube-system -o 'jsonpath={.status.readyReplicas}') -eq 1 ]];
+do
+    echo "Waiting for Tiller pod to become Ready..."
+    sleep 5
+done
+}
+
 if [ $# -ne 3 ]; then
     echo "illegal number of parameters"
     display_usage
@@ -32,7 +56,7 @@ GCP_PROJECT=$2
 GCP_ZONE=$3
 GCP_REGION=${GCP_ZONE:0:$((${#GCP_ZONE}-2))}
 CLUSTER_NAME=scylla-demo
-CLUSTER_VERSION=1.11.7-gke.6
+CLUSTER_VERSION=1.12.7-gke.7
 
 # Check if the environment has the prerequisites installed
 check_prerequisites
@@ -90,20 +114,17 @@ gcloud container operations list --sort-by START_TIME | tail
 
 echo "Waiting GKE to UPGRADE_MASTER"
 sleep 180
-until [[ $(gcloud container clusters list --zone=$GCP_ZONE | grep $CLUSTER_NAME | awk '{ print $8 }') -eq "RUNNING" ]];
-do
-    echo "Waiting cluster readiness"
-    sleep 10
-done
-
+check_cluster_readiness
 # gcloud: Get credentials for new cluster
 echo "Getting credentials for newly created cluster..."
 gcloud container clusters get-credentials "${CLUSTER_NAME}" --zone="${GCP_ZONE}"
 
+check_cluster_readiness
 # Setup GKE RBAC
 echo "Setting up GKE RBAC..."
 kubectl create clusterrolebinding cluster-admin-binding --clusterrole cluster-admin --user "${GCP_USER}"
 
+check_cluster_readiness
 # Setup Tiller
 echo "Setting up Tiller..."
 helm init
@@ -111,22 +132,19 @@ kubectl create serviceaccount --namespace kube-system tiller
 kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
 kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
 
+check_cluster_readiness
 # Install RAID Daemonset
 echo "Installing RAID Daemonset..."
 kubectl apply -f raid-daemonset.yaml
 
+check_cluster_readiness
 # Install cpu-policy Daemonset
 echo "Installing cpu-policy Daemonset..."
 sleep 5
 kubectl apply -f cpu-policy-daemonset.yaml
 
 # Wait for Tiller to become ready
-until [[ $(kubectl get deployment tiller-deploy -n kube-system -o 'jsonpath={.status.readyReplicas}') -eq 1 ]];
-do
-    echo "Waiting for Tiller pod to become Ready..."
-    sleep 5
-done
-
+check_tiller_readiness
 # Install local volume provisioner
 echo "Installing local volume provisioner..."
 helm install --name local-provisioner provisioner

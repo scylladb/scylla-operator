@@ -103,7 +103,7 @@ spec:
                   - key: failure-domain.beta.kubernetes.io/zone
                     operator: In
                     values:
-                      - <gcp_region>
+                      - <gcp_zone>
                   - key: role
                     operator: In
                     values:

@@ -113,12 +113,13 @@ node-pools create "operator-pool" \
 gcloud container operations list --sort-by START_TIME | tail
 
 echo "Waiting GKE to UPGRADE_MASTER"
-sleep 180
+sleep 120
 check_cluster_readiness
 # gcloud: Get credentials for new cluster
 echo "Getting credentials for newly created cluster..."
 gcloud container clusters get-credentials "${CLUSTER_NAME}" --zone="${GCP_ZONE}"
 
+sleep 60
 check_cluster_readiness
 # Setup GKE RBAC
 echo "Setting up GKE RBAC..."

@@ -13,8 +13,11 @@ spec:
       labels:
         name: raid-local-disks
     spec:
-      nodeSelector:
-        role: scylla-clusters
+      tolerations:
+        - key: role
+          operator: Equal
+          value: scylla-clusters
+          effect: NoSchedule
       containers:
       - name: raid-local-disks
         image: yanniszark/raid-setup:0.1
@@ -33,19 +36,17 @@ spec:
           - |
             set -e
             set -x 
-            
-            function sleep_forever() {
-                while true; do sleep 100; done
-            }
+
             # If the disk has already been created, sleep indefinitely
             if [ -b "/dev/md0" ]; then
                 echo "raid array already created!"
-                sleep_forever
+                sleep infinity
             fi
 
             # Discover how many disks there are
             DISK_DEV_SUFFIX=(b c d e f g h i)
             MAX_NUM_DISKS=8
+            NUM_DISKS=0
             declare -a DISKS
             for i in `seq 0 $((MAX_NUM_DISKS-1))`;
             do
@@ -56,6 +57,11 @@ spec:
                 DISKS[$i]="$CURR_DISK"
                 NUM_DISKS=$((i+1))
             done
+
+            if [ $NUM_DISKS -eq 0 ]; then
+              echo "no local disks detected!"
+              sleep infinity
+            fi
 
             # Unmount disks from host filesystem
             for i in `seq 0 $((NUM_DISKS-1))`;

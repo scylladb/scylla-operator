@@ -22,19 +22,19 @@ check_prerequisites() {
 }
 
 check_cluster_readiness() {
-until [[ "$(gcloud container clusters list --zone=us-east1-b | grep scylla-demo | awk '{ print $8 }')" == "RUNNING" ]]; do 
+until [[ "$(gcloud container clusters list --zone=${GCP_ZONE} | grep scylla-demo | awk '{ print $8 }')" == "RUNNING" ]]; do
   echo "Waiting for cluster readiness... "
-  echo $(gcloud container clusters list --zone=us-east1-b | grep scylla-demo)
+  echo $(gcloud container clusters list --zone=${GCP_ZONE} | grep scylla-demo)
   sleep 10
   WAIT_TIME=$((WAIT_TIME+10))
   if [[  "$(gcloud container operations list --sort-by=START_TIME --filter="scylla-demo AND UPGRADE_MASTER" | grep RUNNING)" != "" ]]; then
     gcloud container operations list --sort-by=START_TIME --filter="scylla-demo AND UPGRADE_MASTER"
-    gcloud container operations wait $(gcloud container operations list --sort-by=START_TIME --filter="scylla-demo AND UPGRADE_MASTER" | tail -1 | awk '{print $1}')
+    gcloud container operations wait $(gcloud container operations list --sort-by=START_TIME --filter="scylla-demo AND UPGRADE_MASTER" | tail -1 | awk '{print $1}') --zone="${GCP_ZONE}"
   else 
     gcloud container operations list --sort-by=START_TIME --filter="scylla-demo AND UPGRADE_MASTER" | tail -1
   fi
 done
-gcloud container clusters list --zone=us-east1-b | grep scylla-demo
+gcloud container clusters list --zone="${GCP_ZONE}" | grep scylla-demo
 }
 
 check_tiller_readiness(){
@@ -44,6 +44,10 @@ do
     sleep 5
 done
 }
+
+#########
+# Start #
+#########
 
 if [ $# -ne 3 ]; then
     echo "illegal number of parameters"
@@ -71,10 +75,10 @@ clusters create "${CLUSTER_NAME}" --username "admin" \
 --cluster-version "${CLUSTER_VERSION}" \
 --node-version "${CLUSTER_VERSION}" \
 --machine-type "n1-standard-32" \
---num-nodes "5" \
+--num-nodes "3" \
 --disk-type "pd-ssd" --disk-size "20" \
 --local-ssd-count "8" \
---node-labels role=scylla-clusters \
+--node-taints role=scylla-clusters:NoSchedule \
 --image-type "UBUNTU" \
 --enable-cloud-logging --enable-cloud-monitoring \
 --no-enable-autoupgrade --no-enable-autorepair
@@ -88,7 +92,7 @@ node-pools create "cassandra-stress-pool" \
 --machine-type "n1-standard-32" \
 --num-nodes "2" \
 --disk-type "pd-ssd" --disk-size "20" \
---node-labels role=cassandra-stress \
+--node-taints role=cassandra-stress:NoSchedule \
 --image-type "UBUNTU" \
 --no-enable-autoupgrade --no-enable-autorepair
 
@@ -98,10 +102,9 @@ node-pools create "operator-pool" \
 --cluster "${CLUSTER_NAME}" \
 --zone "${GCP_ZONE}" \
 --node-version "${CLUSTER_VERSION}" \
---machine-type "n1-standard-8" \
+--machine-type "n1-standard-4" \
 --num-nodes "1" \
 --disk-type "pd-ssd" --disk-size "20" \
---node-labels role=scylla-operator \
 --image-type "UBUNTU" \
 --no-enable-autoupgrade --no-enable-autorepair
 
@@ -110,6 +113,7 @@ node-pools create "operator-pool" \
 # We deal with this by waiting a while for the unavailability
 # to start and then polling with kubectl to detect when it ends.
 
+# Is this command needed ???
 gcloud container operations list --sort-by START_TIME | tail
 
 echo "Waiting GKE to UPGRADE_MASTER"
@@ -151,9 +155,8 @@ echo "Installing local volume provisioner..."
 helm install --name local-provisioner provisioner
 echo "Your disks are ready to use."
 
-echo "Start the scylla operator:"
-echo "kubectl apply -f operator.yaml"
+echo "Starting the scylla operator..."
+kubectl apply -f operator.yaml
 
-echo "Start the scylla cluster:"
-sed -i "s/<gcp_region>/${GCP_REGION}/g;s/<gcp_zone>/${GCP_ZONE}/g" cluster.yaml
-echo "kubectl apply -f cluster.yaml"
+echo "Starting the scylla cluster..."
+sed "s/<gcp_region>/${GCP_REGION}/g;s/<gcp_zone>/${GCP_ZONE}/g" cluster.yaml | kubectl apply -f -

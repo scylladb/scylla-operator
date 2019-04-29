@@ -46,6 +46,11 @@ spec:
                     operator: In
                     values: 
                       - us-east-1a
+          tolerations:
+            - key: role
+              operator: Equal
+              value: scylla-clusters
+              effect: NoSchedule
 ```
 
 ## Settings Explanation
@@ -82,3 +87,4 @@ Rack Settings:
     * [`nodeAffinity`](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature)
     * [`podAffinity`](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#inter-pod-affinity-and-anti-affinity-beta-feature)
     * [`podAntiAffinity`](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#inter-pod-affinity-and-anti-affinity-beta-feature)
+    * [`tolerations`](https://kubernetes.io/docs/concepts/configuration/taint-and-toleration)

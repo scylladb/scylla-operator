@@ -87,7 +87,7 @@ spec:
     name: <gcp_zone>
     racks:
       - name: <gcp_region>
-        members: 2
+        members: 3
         storage:
           storageClassName: local-raid-disks
           capacity: 2995G
@@ -104,7 +104,8 @@ spec:
                     operator: In
                     values:
                       - <gcp_zone>
-                  - key: role
-                    operator: In
-                    values:
-                      - scylla-clusters
+          tolerations:
+            - key: role
+              operator: Equal
+              value: scylla-clusters
+              effect: NoSchedule

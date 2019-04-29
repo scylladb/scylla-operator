@@ -57,6 +57,11 @@ spec:
                       placement:
                         description: Placement describes restrictions for the nodes
                           Scylla is scheduled on.
+                        properties:
+                          tolerations:
+                            items:
+                              type: object
+                            type: array
                         type: object
                       resources:
                         description: Resources the Scylla Pods will use.

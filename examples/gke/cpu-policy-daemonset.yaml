@@ -76,11 +76,19 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
-                - key: role
-                  operator: In
+                - key: cloud.google.com/gke-nodepool
+                  operator: NotIn
                   values:
-                   - scylla-clusters
-                   - cassandra-stress
+                   - operator-pool
+      tolerations:
+        - key: role
+          operator: Equal
+          value: scylla-clusters
+          effect: NoSchedule
+        - key: role
+          operator: Equal
+          value: cassandra-stress
+          effect: NoSchedule
       serviceAccountName: cpu-policy-daemonset
       containers:
       - name: cpu-policy

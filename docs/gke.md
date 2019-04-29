@@ -8,8 +8,14 @@ Because this guide focuses on showing a glimpse of the true performance of Scyll
 
 If you don't want to run the commands step-by-step, you can just run a script that will set everything up for you:
 ```bash
-# From inside the examples/gke folder 
-./gke.sh [GCP user] [GCP project] [GCP zone]
+# Edit according to your preference
+GCP_USER=$(gcloud config list account --format "value(core.account)")
+GCP_PROJECT=$(gcloud config list project --format "value(core.project)")
+GCP_ZONE=us-west1-b
+
+# From inside the examples/gke folder
+cd examples/gke
+./gke.sh "$GCP_USER" "$GCP_PROJECT" "$GCP_ZONE"
 
 # Example:
 # ./gke.sh yanniszark@arrikto.com gke-demo-226716 us-west1-b
@@ -17,12 +23,25 @@ If you don't want to run the commands step-by-step, you can just run a script th
 
 :warning: Make sure to pass a ZONE (ex.: us-west1-b) and not a REGION (ex.: us-west1) or it will deploy nodes in each ZONE available in the region.
 
-After you deploy, see how you can [benchmark your cluster with cassandra-stress]().
+After you deploy, see how you can [benchmark your cluster with cassandra-stress](#benchmark-with-cassandra-stress).
 
 ## Walkthrough
 
 
 ### Google Kubernetes Engine Setup
+
+#### Configure environment variables
+
+First of all, we export all the configuration options as environment variables.
+Edit according to your own environment.
+
+```
+GCP_USER=$(gcloud config list account --format "value(core.account)")
+GCP_PROJECT=$(gcloud config list project --format "value(core.project)")
+GCP_REGION=us-west1
+GCP_ZONE=us-west1-b
+CLUSTER_NAME=scylla-demo
+```
 
 #### Creating a GKE cluster
 
@@ -34,13 +53,12 @@ For this guide, we'll create a GKE cluster with the following:
 gcloud beta container --project "${GCP_PROJECT}" \
 clusters create "${CLUSTER_NAME}" --username "admin" \
 --zone "${GCP_ZONE}" \
---cluster-version "1.11.6-gke.2" \
---node-version "1.11.6-gke.2" \
+--cluster-version "1.12.7-gke.10" \
 --machine-type "n1-standard-32" \
---num-nodes "5" \
+--num-nodes "3" \
 --disk-type "pd-ssd" --disk-size "20" \
 --local-ssd-count "8" \
---node-labels role=scylla-clusters \
+--node-taints role=scylla-clusters:NoSchedule \
 --image-type "UBUNTU" \
 --enable-cloud-logging --enable-cloud-monitoring \
 --no-enable-autoupgrade --no-enable-autorepair
@@ -53,26 +71,23 @@ gcloud beta container --project "${GCP_PROJECT}" \
 node-pools create "cassandra-stress-pool" \
 --cluster "${CLUSTER_NAME}" \
 --zone "${GCP_ZONE}" \
---node-version "1.11.6-gke.2" \
 --machine-type "n1-standard-32" \
 --num-nodes "2" \
 --disk-type "pd-ssd" --disk-size "20" \
---node-labels role=cassandra-stress \
+--node-taints role=cassandra-stress:NoSchedule \
 --image-type "UBUNTU" \
 --no-enable-autoupgrade --no-enable-autorepair
 ```
 
-3. A NodePool of 1 `n1-standard-8` Node, where the operator and the monitoring stack will be deployed.
+3. A NodePool of 1 `n1-standard-4` Node, where the operator and the monitoring stack will be deployed.
 ```
 gcloud beta container --project "${GCP_PROJECT}" \
 node-pools create "operator-pool" \
 --cluster "${CLUSTER_NAME}" \
 --zone "${GCP_ZONE}" \
---node-version "1.11.6-gke.2" \
---machine-type "n1-standard-8" \
+--machine-type "n1-standard-4" \
 --num-nodes "1" \
 --disk-type "pd-ssd" --disk-size "20" \
---node-labels role=scylla-operator \
 --image-type "UBUNTU" \
 --no-enable-autoupgrade --no-enable-autorepair
 ```
@@ -134,16 +149,16 @@ kubectl apply -f examples/gke/cpu-policy-daemonset.yaml
 kubectl apply -f examples/gke/operator.yaml
 ```
 
-Spinning up Scylla Cluster!
+Spinning up the Scylla Cluster!
 
 ```
-kubectl apply -f examples/gke/simple_cluster.yaml
+sed "s/<gcp_region>/${GCP_REGION}/g;s/<gcp_zone>/${GCP_ZONE}/g" examples/gke/cluster.yaml | kubectl apply -f -
 ```
 
 Check the status of your cluster
 
 ```
-kubectl describe cluster simple-cluster -n scylla
+kubectl describe cluster scylla-cluster -n scylla
 ```
 
 ### Setting up Monitoring
@@ -167,7 +182,7 @@ export POD_NAME=$(kubectl get pods --namespace monitoring -l "app=grafana,releas
 kubectl --namespace monitoring port-forward $POD_NAME 3000
 ```
 
-And access `http://0.0.0.0:3000` from your browser.
+And access `http://0.0.0.0:3000` from your browser and login with the credentials `admin`:`admin`.
 
 :warning: Keep in mind that Grafana needs Prometheus DNS to be visible to get information. The Grafana available in this files was configured to work with the name `scylla-prom` and `monitoring` namespace. You can edit this configuration under `grafana/values.yaml`.
 
@@ -182,7 +197,7 @@ After deploying our cluster along with the monitoring, we can benchmark it using
 
 # Run a benchmark with 10 jobs, with 6 cpus and 50.000.000 operations each.
 # Each Job will throttle throughput to 30.000 ops/sec for a total of 300.000 ops/sec.
-scripts/cass-stress-gen.py --num-jobs=10 --cpu=6 --memory=20G --ops=50000000 --limit=30000 --nodeselector role=cassandra-stress
+scripts/cass-stress-gen.py --num-jobs=10 --cpu=6 --memory=20G --ops=50000000 --limit=30000
 kubectl apply -f scripts/cassandra-stress.yaml
 ```
 
@@ -190,5 +205,5 @@ While the benchmark is running, open up Grafana and take a look at the monitorin
 
 After the Jobs finish, clean them up with:
 ```bash
-kubectl delete -f ./cassandra-stress.yaml
+kubectl delete -f scripts/cassandra-stress.yaml
 ```

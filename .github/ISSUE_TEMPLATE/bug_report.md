@@ -7,6 +7,11 @@ assignees: ''
 
 ---
 
+<!-- **Are you in the right place?**
+1. For issues or feature requests, please create an issue in this repository.
+2. For general technical and non-technical questions, we are happy to help you on our [Slack](https://scylladb-users-slackin.herokuapp.com/).
+3. Did you already search the existing open issues for anything similar? -->
+
 **Describe the bug**
 A clear and concise description of what the bug is.
 

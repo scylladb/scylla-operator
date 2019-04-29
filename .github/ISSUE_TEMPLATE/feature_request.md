@@ -7,13 +7,16 @@ assignees: ''
 
 ---
 
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+<!-- **Are you in the right place?**
+1. For issues or feature requests, please create an issue in this repository.
+2. For general technical and non-technical questions, we are happy to help you on our [Slack](https://scylladb-users-slackin.herokuapp.com/).
+3. Did you already search the existing open issues for anything similar? -->
 
-**Possible solution**
-A clear and concise description of what you want to happen.
+**Is this a bug report or feature request?**
+* Feature Request
 
-**Other Alternatives**
-A clear and concise description of any alternative solutions or features you've considered.
+**What should the feature do:**
 
-**Additional context**
-Add any other context or screenshots about the feature request here.
+**What is use case behind this feature:**
+
+**Additional Information:**

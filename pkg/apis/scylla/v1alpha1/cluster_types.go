@@ -75,9 +75,14 @@ type RackSpec struct {
 	// Storage describes the underlying storage that Scylla will consume.
 	Storage StorageSpec `json:"storage"`
 	// Placement describes restrictions for the nodes Scylla is scheduled on.
-	Placement *corev1.Affinity `json:"placement,omitempty"`
+	Placement *PlacementSpec `json:"placement,omitempty"`
 	// Resources the Scylla Pods will use.
 	Resources corev1.ResourceRequirements `json:"resources"`
+}
+
+type PlacementSpec struct {
+	corev1.Affinity
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
 // ImageSpec is the desired state for a container image.

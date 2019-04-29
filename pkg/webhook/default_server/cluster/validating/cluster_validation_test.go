@@ -68,9 +68,7 @@ func TestCheckTransitions(t *testing.T) {
 	dcNameChanged.Spec.Datacenter.Name = "new-random-name"
 
 	rackPlacementChanged := old.DeepCopy()
-	rackPlacementChanged.Spec.Datacenter.Racks[0].Placement = &corev1.Affinity{
-		NodeAffinity: &corev1.NodeAffinity{},
-	}
+	rackPlacementChanged.Spec.Datacenter.Racks[0].Placement = &scyllav1alpha1.PlacementSpec{}
 
 	rackStorageChanged := old.DeepCopy()
 	rackStorageChanged.Spec.Datacenter.Racks[0].Storage.Capacity = "15Gi"

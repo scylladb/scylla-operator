@@ -130,6 +130,7 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 							},
 						},
 					},
+					Tolerations: r.Placement.Tolerations,
 					InitContainers: []corev1.Container{
 						{
 							Name:            "sidecar-injection",
@@ -290,7 +291,7 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 						},
 					},
 					ServiceAccountName: naming.ServiceAccountNameForMembers(c),
-					Affinity:           r.Placement,
+					Affinity:           &r.Placement.Affinity,
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{

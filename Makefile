@@ -1,6 +1,8 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= "yanniszark/scylla-operator:master"
+REPO ?= "yanniszark/scylla-operator"
+TAG ?= "v0.0-$(shell git rev-parse --short HEAD)"
+IMG ?= "${REPO}:${TAG}"
 
 all: test local-build
 
@@ -28,7 +30,9 @@ deploy: install
 # Generate manifests e.g. CRD, RBAC etc.
 manifests:
 	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
+	cd config && kustomize edit set image yanniszark/scylla-operator="${IMG}"
 	kustomize build config > examples/generic/operator.yaml
+	kustomize build config > examples/gke/operator.yaml
 
 # Run go fmt against code
 fmt:
@@ -45,8 +49,6 @@ generate:
 # Build the docker image
 docker-build: test
 	docker build . -t "${IMG}"
-	@echo "updating kustomize image patch file for manager resource"
-	sed -i'' -e 's@image: .*@image: '"${IMG}"'@' ./config/manager_patch.yaml
 
 # Push the docker image
 docker-push:

@@ -22,19 +22,19 @@ check_prerequisites() {
 }
 
 check_cluster_readiness() {
-until [[ "$(gcloud container clusters list --zone=us-east1-b | grep scylla-demo | awk '{ print $8 }')" == "RUNNING" ]]; do 
+until [[ "$(gcloud container clusters list --zone=$1 | grep scylla-demo | awk '{ print $8 }')" == "RUNNING" ]]; do
   echo "Waiting for cluster readiness... "
-  echo $(gcloud container clusters list --zone=us-east1-b | grep scylla-demo)
+  echo $(gcloud container clusters list --zone=$1 | grep scylla-demo)
   sleep 10
   WAIT_TIME=$((WAIT_TIME+10))
   if [[  "$(gcloud container operations list --sort-by=START_TIME --filter="scylla-demo AND UPGRADE_MASTER" | grep RUNNING)" != "" ]]; then
-    gcloud container operations list --sort-by=START_TIME --filter="scylla-demo AND UPGRADE_MASTER"
-    gcloud container operations wait $(gcloud container operations list --sort-by=START_TIME --filter="scylla-demo AND UPGRADE_MASTER" | tail -1 | awk '{print $1}')
+    gcloud container operations list --sort-by=START_TIME --filter="scylla-demo AND UPGRADE_MASTER" --zone=$1
+    gcloud container operations wait $(gcloud container operations list --sort-by=START_TIME --filter="scylla-demo AND UPGRADE_MASTER" --zone=$1 | tail -1 | awk '{print $1}') --zone=$1
   else 
-    gcloud container operations list --sort-by=START_TIME --filter="scylla-demo AND UPGRADE_MASTER" | tail -1
+    gcloud container operations list --sort-by=START_TIME --filter="scylla-demo AND UPGRADE_MASTER" --zone=$1 | tail -1
   fi
 done
-gcloud container clusters list --zone=us-east1-b | grep scylla-demo
+gcloud container clusters list --zone=$1 | grep scylla-demo
 }
 
 check_tiller_readiness(){
@@ -114,18 +114,18 @@ gcloud container operations list --sort-by START_TIME | tail
 
 echo "Waiting GKE to UPGRADE_MASTER"
 sleep 120
-check_cluster_readiness
+check_cluster_readiness $GCP_ZONE
 # gcloud: Get credentials for new cluster
 echo "Getting credentials for newly created cluster..."
 gcloud container clusters get-credentials "${CLUSTER_NAME}" --zone="${GCP_ZONE}"
 
 sleep 60
-check_cluster_readiness
+check_cluster_readiness $GCP_ZONE
 # Setup GKE RBAC
 echo "Setting up GKE RBAC..."
 kubectl create clusterrolebinding cluster-admin-binding --clusterrole cluster-admin --user "${GCP_USER}"
 
-check_cluster_readiness
+check_cluster_readiness $GCP_ZONE
 # Setup Tiller
 echo "Setting up Tiller..."
 helm init
@@ -133,12 +133,12 @@ kubectl create serviceaccount --namespace kube-system tiller
 kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
 kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
 
-check_cluster_readiness
+check_cluster_readiness $GCP_ZONE
 # Install RAID Daemonset
 echo "Installing RAID Daemonset..."
 kubectl apply -f raid-daemonset.yaml
 
-check_cluster_readiness
+check_cluster_readiness $GCP_ZONE
 # Install cpu-policy Daemonset
 echo "Installing cpu-policy Daemonset..."
 sleep 5

@@ -7,15 +7,15 @@ IMG ?= "${REPO}:${TAG}"
 all: test local-build
 
 # Run tests
-test: generate fmt vet manifests
+test: generate fmt vet manifests vendor
 	go test ./pkg/... ./cmd/... -coverprofile cover.out
 
 # Build local-build binary
-local-build: generate fmt vet
+local-build: generate fmt vet vendor
 	go build -o bin/manager github.com/scylladb/scylla-operator/cmd
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
-run: generate fmt vet
+run: generate fmt vet vendor
 	go run ./cmd operator --image="${IMG}" --enable-admission-webhook=false
 
 # Install CRDs into a cluster
@@ -45,6 +45,10 @@ vet:
 # Generate code
 generate:
 	go generate ./pkg/... ./cmd/...
+
+# Ensure dependencies
+vendor:
+	dep ensure -v
 
 # Build the docker image
 docker-build: test

@@ -163,16 +163,16 @@ kubectl describe cluster scylla-cluster -n scylla
 
 ### Setting up Monitoring
 
-Both Prometheus and Grafana were configured to work out-of-the-box with Scylla Operator. Both of them will be available under the `monitoring` namespace. If you want to customize them, you can edit `prometheus/values.yaml` and `grafana/values.yaml` then run the following commands:
+Both Prometheus and Grafana were configured with specific rules for Scylla Operator. Both of them will be available under the `monitoring` namespace. Customization can be done in `examples/gke/prometheus/values.yaml` and `examples/gke/grafana/values.yaml`.
 
 1. Install Prometheus
 ```
-helm upgrade --install scylla-prom --namespace monitoring examples/gke/prometheus
+helm upgrade --install scylla-prom --namespace monitoring stable/prometheus -f examples/gke/prometheus/values.yaml
 ```
 
 2. Install Grafana
 ```
-helm upgrade --install scylla-graf --namespace monitoring examples/gke/grafana
+helm upgrade --install scylla-graf --namespace monitoring stable/grafana -f examples/gke/grafana/values.yaml
 ```
 
 To see Grafana locally, run:
@@ -184,7 +184,25 @@ kubectl --namespace monitoring port-forward $POD_NAME 3000
 
 And access `http://0.0.0.0:3000` from your browser and login with the credentials `admin`:`admin`.
 
-:warning: Keep in mind that Grafana needs Prometheus DNS to be visible to get information. The Grafana available in this files was configured to work with the name `scylla-prom` and `monitoring` namespace. You can edit this configuration under `grafana/values.yaml`.
+3. Install dashboards
+
+Get Grafana password and forward to localhost
+```
+export GRAFANA_PASSWORD=$(kubectl get secret --namespace monitoring scylla-graf-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo)
+export POD_NAME=$(kubectl get pods --namespace monitoring -l "app=grafana,release=scylla-graf" -o jsonpath="{.items[0].metadata.name}")
+kubectl --namespace monitoring port-forward $POD_NAME 3000
+```
+
+Clone scylla-grafana-monitoring project
+```
+git clone https://github.com/scylladb/scylla-grafana-monitorin /tmp
+cd /tmp/scylla-grafana-monitoring
+git checkout scylla-monitoring-2.3
+rm -rf grafana/build/* && ./load-grafana.sh -a $GRAFANA_PASSWORD
+
+```
+
+:warning: Keep in mind that this is a test setup. For production use, check grafana and prometheus helm chart page for advanced deployment instructions.
 
 
 ## Benchmark with cassandra-stress

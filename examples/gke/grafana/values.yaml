@@ -93,8 +93,7 @@ resources: {}
 ## Node labels for pod assignment
 ## ref: https://kubernetes.io/docs/user-guide/node-selection/
 #
-nodeSelector: 
-  role: scylla-operator
+## nodeSelector:
 
 ## Tolerations for pod assignment
 ## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/

@@ -113,8 +113,7 @@ alertmanager:
   ## Node labels for alertmanager pod assignment
   ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
   ##
-  nodeSelector: 
-    role: scylla-operator
+  ## nodeSelector:
 
   ## Pod affinity
   ##
@@ -328,8 +327,7 @@ kubeStateMetrics:
   ## Node labels for kube-state-metrics pod assignment
   ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
   ##
-  nodeSelector: 
-    role: scylla-operator
+  ## nodeSelector:
 
   ## Annotations to be added to kube-state-metrics pods
   ##
@@ -452,8 +450,7 @@ nodeExporter:
   ## Node labels for node-exporter pod assignment
   ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
   ##
-  nodeSelector: 
-    role: scylla-operator
+  ## nodeSelector:
 
   ## Annotations to be added to node-exporter pods
   ##
@@ -621,8 +618,7 @@ server:
   ## Node labels for Prometheus server pod assignment
   ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
   ##
-  nodeSelector: 
-    role: scylla-operator
+  ## nodeSelector:
 
   ## Pod affinity
   ##
@@ -802,8 +798,7 @@ pushgateway:
   ## Node labels for pushgateway pod assignment
   ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
   ##
-  nodeSelector: 
-    role: scylla-operator
+  ## nodeSelector:
 
   ## Annotations to be added to pushgateway pods
   ##

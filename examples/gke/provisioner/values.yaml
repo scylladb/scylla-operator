@@ -96,8 +96,7 @@ daemonset:
   #
   # NodeSelector constraint for local-volume-provisioner scheduling to nodes.
   # Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
-  nodeSelector: 
-    role: scylla-clusters
+  # nodeSelector:
   #
   # If configured KubeConfigEnv will (optionally) specify the location of kubeconfig file on the node.
   #  kubeConfigEnv: KUBECONFIG
@@ -112,7 +111,15 @@ daemonset:
   #
   # Node tolerations for local-volume-provisioner scheduling to nodes with taints.
   # Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
-  tolerations: []
+  tolerations:
+    - key: role
+      operator: Equal
+      value: scylla-clusters
+      effect: NoSchedule
+    - key: role
+      operator: Equal
+      value: cassandra-stress
+      effect: NoSchedule
   #
   # If configured, resources will set the requests/limits field to the Daemonset PodSpec.
   # Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/

@@ -1,3 +1,7 @@
+# apiVersion and kind of Kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
 # Adds namespace to all resources.
 namespace: scylla-operator-system
 
@@ -6,6 +10,7 @@ namespace: scylla-operator-system
 # "wordpress" becomes "alices-wordpress".
 # Note that it should also match with the prefix (text before '-') of the namespace
 # field above.
+
 namePrefix: scylla-operator-
 
 # Labels to add to all resources and selectors.
@@ -23,5 +28,9 @@ resources:
 - rbac/rbac_role_binding.yaml
 - manager/manager.yaml
 
-patches:
+patchesStrategicMerge:
 - manager_patch.yaml
+images:
+- name: yanniszark/scylla-operator
+  newName: yanniszark/scylla-operator
+  newTag: v0.0-002ab6f

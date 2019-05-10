@@ -64,6 +64,11 @@ spec:
                       placement:
                         description: Placement describes restrictions for the nodes
                           Scylla is scheduled on.
+                        properties:
+                          tolerations:
+                            items:
+                              type: object
+                            type: array
                         type: object
                       resources:
                         description: Resources the Scylla Pods will use.
@@ -79,18 +84,18 @@ spec:
                             description: Name of storageClass to request
                             type: string
                         required:
-                          - capacity
+                        - capacity
                         type: object
                     required:
-                      - name
-                      - members
-                      - storage
-                      - resources
+                    - name
+                    - members
+                    - storage
+                    - resources
                     type: object
                   type: array
               required:
-                - name
-                - racks
+              - name
+              - racks
               type: object
             developerMode:
               description: DeveloperMode determines if the cluster runs in developer-mode.
@@ -108,15 +113,15 @@ spec:
                   description: Version of the image.
                   type: string
               required:
-                - version
-                - repository
+              - version
+              - repository
               type: object
             version:
               description: Version of Scylla to use.
               type: string
           required:
-            - version
-            - datacenter
+          - version
+          - datacenter
           type: object
         status:
           properties:
@@ -137,111 +142,111 @@ metadata:
   creationTimestamp: null
   name: scylla-operator-manager-role
 rules:
-  - apiGroups:
-      - ""
-    resources:
-      - pods
-    verbs:
-      - get
-      - list
-      - watch
-      - delete
-  - apiGroups:
-      - ""
-    resources:
-      - services
-    verbs:
-      - get
-      - list
-      - watch
-      - create
-      - update
-      - patch
-      - delete
-  - apiGroups:
-      - ""
-    resources:
-      - persistentvolumeclaims
-    verbs:
-      - get
-      - delete
-      - watch
-      - list
-  - apiGroups:
-      - ""
-    resources:
-      - events
-    verbs:
-      - create
-      - update
-      - patch
-  - apiGroups:
-      - apps
-    resources:
-      - statefulsets
-    verbs:
-      - get
-      - list
-      - watch
-      - create
-      - update
-      - patch
-      - delete
-  - apiGroups:
-      - scylla.scylladb.com
-    resources:
-      - clusters
-    verbs:
-      - get
-      - list
-      - watch
-      - create
-      - update
-      - patch
-      - delete
-  - apiGroups:
-      - scylla.scylladb.com
-    resources:
-      - clusters/status
-    verbs:
-      - update
-  - apiGroups:
-      - admissionregistration.k8s.io
-    resources:
-      - mutatingwebhookconfigurations
-      - validatingwebhookconfigurations
-    verbs:
-      - get
-      - list
-      - watch
-      - create
-      - update
-      - patch
-      - delete
-  - apiGroups:
-      - ""
-    resources:
-      - secrets
-    verbs:
-      - get
-      - list
-      - watch
-      - create
-      - update
-      - patch
-      - delete
-  - apiGroups:
-      - ""
-    resources:
-      - services
-    verbs:
-      - get
-      - list
-      - watch
-      - create
-      - update
-      - patch
-      - delete
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - persistentvolumeclaims
+  verbs:
+  - get
+  - list
+  - watch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - update
+  - patch
+- apiGroups:
+  - apps
+  resources:
+  - statefulsets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - clusters
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - clusters/status
+  verbs:
+  - update
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  - validatingwebhookconfigurations
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -253,9 +258,9 @@ roleRef:
   kind: ClusterRole
   name: scylla-operator-manager-role
 subjects:
-  - kind: ServiceAccount
-    name: default
-    namespace: scylla-operator-system
+- kind: ServiceAccount
+  name: default
+  namespace: scylla-operator-system
 ---
 apiVersion: v1
 kind: Service
@@ -267,7 +272,7 @@ metadata:
   namespace: scylla-operator-system
 spec:
   ports:
-    - port: 443
+  - port: 443
   selector:
     control-plane: controller-manager
     controller-tools.k8s.io: "1.0"
@@ -295,33 +300,34 @@ spec:
         controller-tools.k8s.io: "1.0"
     spec:
       containers:
-        - args:
-            - operator
-          env:
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-          image: yanniszark/scylla-operator:master
-          imagePullPolicy: Always
-          name: manager
-          resources:
-            limits:
-              cpu: 1
-              memory: 1Gi
-          volumeMounts:
-            - mountPath: /tmp/cert
-              name: webhook-server-secret
-              readOnly: true
+      - args:
+        - operator
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: yanniszark/scylla-operator:v0.0-002ab6f
+        imagePullPolicy: Always
+        name: manager
+        resources:
+          limits:
+            cpu: 100m
+            memory: 30Mi
+          requests:
+            cpu: 100m
+            memory: 20Mi
+        volumeMounts:
+        - mountPath: /tmp/cert
+          name: webhook-server-secret
+          readOnly: true
       terminationGracePeriodSeconds: 10
       volumes:
-        - name: webhook-server-secret
-          secret:
-            optional: true
-            secretName: webhook-server-secret
-      nodeSelector:
-        role: scylla-operator
+      - name: webhook-server-secret
+        secret:
+          optional: true
+          secretName: webhook-server-secret

@@ -1,11 +1,17 @@
 # Scylla Operator
 > Kubernetes Operator for Scylla (Pre-release version :warning:)
 
+[Scylla](https://www.scylladb.com) is a close-to-the-hardware rewrite of Cassandra in C++. It features a shared nothing architecture that enables true linear scaling and major hardware optimizations that achieve ultra-low latencies and extreme throughput. It is a drop-in replacement for Cassandra and uses the same interfaces.
+
 ![](https://pbs.twimg.com/media/DwknrKJWkAE7qEQ.jpg)
 
 ## Quickstart
 
-To quickly deploy a Scylla cluster on any Kubernetes cluster, follow the [quickstart guide](docs/quickstart.md).
+To quickly deploy a Scylla cluster, choose one of the following options:
+
+* [Minikube](docs/minikube.md): super quick and easy way to get started with the Scylla operator.
+* [GKE](docs/gke.md): advanced guide for deploying Scylla with the best performance settings.
+* [Generic](docs/generic.md): your platform isn't included? Follow this guide!
 
 
 ## Description

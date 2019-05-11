@@ -1,17 +1,14 @@
-# Quickstart
+# Deploying Scylla on a Kubernetes Cluster
 
-[Scylla](https://www.scylladb.com) is a close-to-the-hardware rewrite of Scylla in C++. It features a shared nothing architecture that enables true linear scaling and major hardware optimizations that achieve ultra-low latencies and extreme throughput. It is a drop-in replacement for Cassandra and uses the same interfaces.
+This is a guide to deploy a Scylla Cluster in a generic Kubernetes environment, meaning that Scylla will not be deployed with the ideal performance. Scylla performs the best when it has fast disks and direct access to the cpu. This requires some extra setup, which is platform-specific. To deploy Scylla with maximum performance, follow the guide for your environment:
+
+* [GKE](gke.md)
 
 ## Prerequisites
 
 * A Kubernetes cluster (version >= 1.11)
 * A [Storage Class](https://kubernetes.io/docs/concepts/storage/storage-classes/) to provision [PersistentVolumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/).
 
-## Notice
-
-This is a guide to deploy a Scylla Cluster in a generic Kubernetes environment, meaning that Scylla will not be deployed with the ideal performance. Scylla performs the best when it has fast disks and direct access to the cpu. This requires some extra setup, which is platform-specific. To deploy Scylla with maximum performance, follow the guide for your environment:
-
-* [GKE](gke.md)
 
 ## Deploy Scylla Operator
 
@@ -88,7 +85,7 @@ session = cluster.connect()
 
 The operator supports scale up of a rack as well as addition of new racks. To make the changes, you can use:
 ```console
-kubectl edit clusters.scylla.scylladb.com simple-cluster
+kubectl -n scylla edit clusters.scylla.scylladb.com simple-cluster
 ```
 * To scale up a rack, change the `Spec.Members` field of the rack to the desired value.
 * To add a new rack, append the `racks` list with a new rack. Remember to choose a different rack name for the new rack.
@@ -102,7 +99,7 @@ kubectl -n scylla describe clusters.scylla.scylladb.com simple-cluster
 
 The operator supports scale down of a rack. To make the changes, you can use:
 ```console
-kubectl edit clusters.scylla.scylladb.com simple-cluster
+kubectl -n scylla edit clusters.scylla.scylladb.com simple-cluster
 ```
 * To scale down a rack, change the `Spec.Members` field of the rack to the desired value.
 * After editing and saving the yaml, check your cluster's Status and Events for information on what's happening:
@@ -132,5 +129,5 @@ kubectl -n scylla-operator-system logs -l app=scylla-operator
 If everything looks OK in the operator logs, you can also look in the logs for one of the Scylla instances:
 
 ```console
-kubectl -n scylla logs simple-cluster-east-1-east-1a-0
+kubectl -n scylla logs simple-cluster-us-east-1-us-east-1a-0
 ```

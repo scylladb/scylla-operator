@@ -93,6 +93,10 @@ func MemberServiceForPod(pod *corev1.Pod, cluster *scyllav1alpha1.Cluster) *core
 func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, sidecarImage string) *appsv1.StatefulSet {
 
 	rackLabels := naming.RackLabels(r, c)
+	placement := r.Placement
+	if placement == nil {
+		placement = &scyllav1alpha1.PlacementSpec{}
+	}
 
 	return &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -130,7 +134,7 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 							},
 						},
 					},
-					Tolerations: r.Placement.Tolerations,
+					Tolerations: placement.Tolerations,
 					InitContainers: []corev1.Container{
 						{
 							Name:            "sidecar-injection",
@@ -291,7 +295,7 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 						},
 					},
 					ServiceAccountName: naming.ServiceAccountNameForMembers(c),
-					Affinity:           &r.Placement.Affinity,
+					Affinity:           &placement.Affinity,
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{

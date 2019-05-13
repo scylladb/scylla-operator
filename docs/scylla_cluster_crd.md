@@ -2,7 +2,7 @@
 
 Scylla database clusters can be created and configuring using the `clusters.scylla.scylladb.com` custom resource definition (CRD).
 
-Please refer to the the [user guide walk-through](quickstart.md) for deployment instructions.
+Please refer to the the [user guide walk-through](generic.md) for deployment instructions.
 This page will explain all the available configuration options on the Scylla CRD.
 
 ## Sample

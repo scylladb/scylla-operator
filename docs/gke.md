@@ -2,7 +2,7 @@
 
 This guide is focused on deploying Scylla on GKE with maximum performance. It sets up the kubelets on GKE nodes to run with [static cpu policy](https://kubernetes.io/blog/2018/07/24/feature-highlight-cpu-manager/) and uses [local sdd disks](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/local-ssd) in RAID0 for maximum performance.
 
-Because this guide focuses on showing a glimpse of the true performance of Scylla, we use 32 core machines with local SSDs. This might be overkill if all you want is a quick setup to play around with scylla operator. If you just want to quickly set up a Scylla cluster for the first time, we suggest you look at the [quickstart guide](quickstart.md) first.
+Because this guide focuses on showing a glimpse of the true performance of Scylla, we use 32 core machines with local SSDs. This might be overkill if all you want is a quick setup to play around with scylla operator. If you just want to quickly set up a Scylla cluster for the first time, we suggest you look at the [quickstart guide](generic.md) first.
 
 ## TL;DR;
 

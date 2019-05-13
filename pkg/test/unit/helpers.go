@@ -32,7 +32,7 @@ func NewSingleRackCluster(members int32) *scyllav1alpha1.Cluster {
 		Status: scyllav1alpha1.ClusterStatus{
 			Racks: map[string]*scyllav1alpha1.RackStatus{
 				"test-rack": {
-					Members: members,
+					Members:      members,
 					ReadyMembers: members,
 				},
 			},

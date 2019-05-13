@@ -2,9 +2,16 @@
 
 ## Prerequisites
 
-1. [GO 1.11](https://golang.org/dl/) or greater installed
-2. Git client installed
-3. Github account
+To develop on scylla-operator, your environment must have the following:
+
+1. [Go 1.12](https://golang.org/dl/)
+    * Make sure [GOPATH](https://github.com/golang/go/wiki/SettingGOPATH) is set to `GOPATH=$HOME/go`.
+2. [Kustomize v2.0.3](https://github.com/kubernetes-sigs/kustomize/releases/tag/v2.0.3)
+3. [kubebuilder v1.0.7](https://github.com/kubernetes-sigs/kubebuilder/releases/tag/v1.0.7)
+4. [dep v0.5.0](https://github.com/golang/dep/releases/tag/v0.5.1)
+5. [Docker](https://docs.docker.com/install/)
+4. Git client installed
+5. Github account
 
 ## Initial Setup
 
@@ -14,7 +21,7 @@ From your browser navigate to [http://github.com/scylladb/scylla-operator](http:
 
 ### Clone Your Fork
 
-Open a console window and do the following;
+Open a console window and do the following:
 
 ```bash
 # Create the scylla operator repo path

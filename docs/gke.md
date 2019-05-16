@@ -175,30 +175,30 @@ helm upgrade --install scylla-prom --namespace monitoring stable/prometheus -f e
 helm upgrade --install scylla-graf --namespace monitoring stable/grafana -f examples/gke/grafana/values.yaml
 ```
 
-To see Grafana locally, run:
+To access Grafana locally, run:
 
 ```
 export POD_NAME=$(kubectl get pods --namespace monitoring -l "app=grafana,release=scylla-graf" -o jsonpath="{.items[0].metadata.name}")
 kubectl --namespace monitoring port-forward $POD_NAME 3000
 ```
 
-And access `http://0.0.0.0:3000` from your browser and login with the credentials `admin`:`admin`.
+You can find it on `http://0.0.0.0:3000` and login with the credentials `admin`:`admin`.
 
 3. Install dashboards
 
-Get Grafana password and forward to localhost
+If you haven't forwarded Grafana to localhost, we will need it now:
 ```
-export GRAFANA_PASSWORD=$(kubectl get secret --namespace monitoring scylla-graf-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo)
 export POD_NAME=$(kubectl get pods --namespace monitoring -l "app=grafana,release=scylla-graf" -o jsonpath="{.items[0].metadata.name}")
 kubectl --namespace monitoring port-forward $POD_NAME 3000
 ```
 
-Clone scylla-grafana-monitoring project
+Clone scylla-grafana-monitoring project and export dashboards:
 ```
-git clone https://github.com/scylladb/scylla-grafana-monitorin /tmp
+git clone https://github.com/scylladb/scylla-grafana-monitoring /tmp
 cd /tmp/scylla-grafana-monitoring
 git checkout scylla-monitoring-2.3
-rm -rf grafana/build/* && ./load-grafana.sh -a $GRAFANA_PASSWORD
+export GRAFANA_PASSWORD=$(kubectl get secret --namespace monitoring scylla-graf-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo)
+./load-grafana.sh -a $GRAFANA_PASSWORD
 
 ```
 

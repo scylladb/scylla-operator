@@ -26,7 +26,7 @@ livenessProbe:
 
 image:
   repository: grafana/grafana
-  tag: 6.1.6
+  tag: 5.4.2
   pullPolicy: IfNotPresent
 
   ## Optionally specify an array of imagePullSecrets.
@@ -224,9 +224,7 @@ extraVolumeMounts: []
 
 ## Pass the plugins you want installed as a list.
 ##
-plugins:
-   - camptocamp-prometheus-alertmanager-datasource
-   - grafana-piechart-panel
+plugins: "camptocamp-prometheus-alertmanager-datasource,grafana-piechart-panel"
 
 ## Configure grafana datasources
 ## ref: http://docs.grafana.org/administration/provisioning/#datasources

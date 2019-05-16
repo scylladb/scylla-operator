@@ -81,13 +81,13 @@ metadata:
   name: scylla-cluster
   namespace: scylla
 spec:
-  version: 3.0.3
+  version: 3.0.6
   cpuset: true
   datacenter:
     name: <gcp_zone>
     racks:
       - name: <gcp_region>
-        members: 3
+        members: 2
         storage:
           storageClassName: local-raid-disks
           capacity: 2995G

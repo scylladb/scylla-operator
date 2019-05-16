@@ -60,7 +60,7 @@ GCP_PROJECT=$2
 GCP_ZONE=$3
 GCP_REGION=${GCP_ZONE:0:$((${#GCP_ZONE}-2))}
 CLUSTER_NAME=scylla-demo
-CLUSTER_VERSION=1.12.7-gke.7
+CLUSTER_VERSION=1.12.7-gke.10
 
 # Check if the environment has the prerequisites installed
 check_prerequisites
@@ -75,7 +75,7 @@ clusters create "${CLUSTER_NAME}" --username "admin" \
 --cluster-version "${CLUSTER_VERSION}" \
 --node-version "${CLUSTER_VERSION}" \
 --machine-type "n1-standard-32" \
---num-nodes "3" \
+--num-nodes "4" \
 --disk-type "pd-ssd" --disk-size "20" \
 --local-ssd-count "8" \
 --node-taints role=scylla-clusters:NoSchedule \

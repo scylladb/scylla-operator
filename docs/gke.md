@@ -194,7 +194,7 @@ kubectl --namespace monitoring port-forward $POD_NAME 3000
 
 Clone scylla-grafana-monitoring project and export dashboards:
 ```
-git clone https://github.com/scylladb/scylla-grafana-monitoring /tmp
+git clone https://github.com/scylladb/scylla-grafana-monitoring /tmp/scylla-grafana-monitoring
 cd /tmp/scylla-grafana-monitoring
 git checkout scylla-monitoring-2.3
 export GRAFANA_PASSWORD=$(kubectl get secret --namespace monitoring scylla-graf-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo)

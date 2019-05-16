@@ -1498,6 +1498,15 @@ serverFiles:
           - source_labels: [__meta_kubernetes_pod_label_cassandra_rook_io_rack]
             action: replace
             target_label: rack
+          - source_labels: [scylla_cluster]
+            action: replace
+            target_label: cluster
+          - source_labels: [scylla_datacenter]
+            action: replace
+            target_label: dc
+          - source_labels: [scylla_rack]
+            action: replace
+            target_label: rack
 
 # adds additional scrape configs to prometheus.yml
 # must be a string so you have to add a | after extraScrapeConfigs:

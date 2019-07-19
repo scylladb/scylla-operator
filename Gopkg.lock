@@ -503,7 +503,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:74e1118fa74d629d0e694bd6ca72a35e681f12af9179debef678ed137d6b7867"
+  digest = "1:6ec11be01ce051ca8144cd34f62627d3a575bde02b8f6e297d89f036e175e37a"
   name = "github.com/yanniszark/go-nodetool"
   packages = [
     "client",
@@ -511,7 +511,7 @@
     "version",
   ]
   pruneopts = "UT"
-  revision = "4edbb8916da8fcfd66e5824e6e5e9c9130cc8b44"
+  revision = "cc333b9c2b54be5ed617fcaa2bf32c6fff93f719"
 
 [[projects]]
   digest = "1:3c1a69cdae3501bf75e76d0d86dc6f2b0a7421bc205c0cb7b96b19eed464a34d"

@@ -114,6 +114,8 @@ func (c *client) Do(request interface{}) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to send HTTP request: %v", err)
 	}
+	defer response.Body.Close()
+
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf(
 			"unexpected server response code for request %s. "+

@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"fmt"
+
 	"github.com/pkg/errors"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controller/cluster/util"
@@ -32,15 +33,11 @@ func (a *RackScaleUp) Name() string {
 	return RackScaleUpAction
 }
 
-func (a *RackScaleUp) Execute(s *State) error {
+func (a *RackScaleUp) Execute(ctx context.Context, s *State) error {
 
 	r, c := a.Rack, a.Cluster
 	sts := &appsv1.StatefulSet{}
-	err := s.Get(
-		context.TODO(),
-		naming.NamespacedName(naming.StatefulSetNameForRack(r, c), c.Namespace),
-		sts,
-	)
+	err := s.Get(ctx, naming.NamespacedName(naming.StatefulSetNameForRack(r, c), c.Namespace), sts)
 	if err != nil {
 		return errors.Wrap(err, "failed to get statefulset")
 	}

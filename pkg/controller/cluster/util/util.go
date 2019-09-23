@@ -2,10 +2,13 @@ package util
 
 import (
 	"context"
+
+	"go.uber.org/zap/zapcore"
+
 	"github.com/pkg/errors"
+	"github.com/scylladb/go-log"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -16,23 +19,21 @@ import (
 
 // LoggerForCluster returns a logger that will log with context
 // about the current cluster
-func LoggerForCluster(c *scyllav1alpha1.Cluster) *log.Entry {
-	return log.WithFields(
-		log.Fields{
-			"cluster":         c.Namespace + "/" + c.Name,
-			"resourceVersion": c.ResourceVersion,
-		},
-	)
+func LoggerForCluster(c *scyllav1alpha1.Cluster) log.Logger {
+	l, _ := log.NewProduction(log.Config{
+		Level: zapcore.DebugLevel,
+	})
+	return l.With("cluster", c.Namespace+"/"+c.Name, "resourceVersion", c.ResourceVersion)
 }
 
 // StatefulSetStatusesStale checks if the StatefulSet Objects of a Cluster
 // have been observed by the StatefulSet controller.
 // If they haven't, their status might be stale, so it's better to wait
 // and process them later.
-func AreStatefulSetStatusesStale(c *scyllav1alpha1.Cluster, client client.Client) (bool, error) {
+func AreStatefulSetStatusesStale(ctx context.Context, c *scyllav1alpha1.Cluster, client client.Client) (bool, error) {
 	sts := &appsv1.StatefulSet{}
 	for _, r := range c.Spec.Datacenter.Racks {
-		err := client.Get(context.TODO(), naming.NamespacedName(naming.StatefulSetNameForRack(r, c), c.Namespace), sts)
+		err := client.Get(ctx, naming.NamespacedName(naming.StatefulSetNameForRack(r, c), c.Namespace), sts)
 		if apierrors.IsNotFound(err) {
 			continue
 		}
@@ -46,20 +47,14 @@ func AreStatefulSetStatusesStale(c *scyllav1alpha1.Cluster, client client.Client
 	return false, nil
 }
 
-func GetMemberServicesForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, cl client.Client) ([]corev1.Service, error) {
-
+func GetMemberServicesForRack(ctx context.Context, r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, cl client.Client) ([]corev1.Service, error) {
 	svcList := &corev1.ServiceList{}
-	err := cl.List(
-		context.TODO(),
-		&client.ListOptions{
-			LabelSelector: naming.RackSelector(r, c),
-		},
-		svcList,
-	)
+	err := cl.List(ctx, &client.ListOptions{
+		LabelSelector: naming.RackSelector(r, c),
+	}, svcList)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list member services")
 	}
-
 	return svcList.Items, nil
 }
 

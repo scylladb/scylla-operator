@@ -1,14 +1,8 @@
 package unit
 
 import (
-	"context"
-	"encoding/hex"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
-	log "github.com/sirupsen/logrus"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"math/rand"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func NewSingleRackCluster(members int32) *scyllav1alpha1.Cluster {
@@ -38,16 +32,4 @@ func NewSingleRackCluster(members int32) *scyllav1alpha1.Cluster {
 			},
 		},
 	}
-}
-
-func CreateRandomNamespace(client client.Client) string {
-	namespaceNameBytes := make([]byte, 10)
-	rand.Read(namespaceNameBytes)
-	namespaceName := "test-" + hex.EncodeToString(namespaceNameBytes)
-	namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespaceName}}
-	err := client.Create(context.TODO(), namespace)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return namespaceName
 }

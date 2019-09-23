@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"fmt"
+
 	"github.com/pkg/errors"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controller/cluster/resource"
@@ -36,16 +37,13 @@ func (a *RackCreate) Name() string {
 	return RackCreateAction
 }
 
-func (a *RackCreate) Execute(s *State) error {
+func (a *RackCreate) Execute(ctx context.Context, s *State) error {
 	r, c := a.Rack, a.Cluster
 	newSts := resource.StatefulSetForRack(r, c, a.OperatorImage)
 	existingSts := &appsv1.StatefulSet{}
-	err := s.Get(
-		context.TODO(),
-		naming.NamespacedNameForObject(newSts),
-		existingSts,
-	)
+	err := s.Get(ctx, naming.NamespacedNameForObject(newSts), existingSts)
 	// Check if StatefulSet already exists
+	// TODO: Check this logic
 	if err == nil {
 		err = util.VerifyOwner(existingSts, c)
 		return errors.Wrap(err, "failed to verify owner")
@@ -56,17 +54,11 @@ func (a *RackCreate) Execute(s *State) error {
 	}
 
 	// StatefulSet doesn't exist, so we create it
-	err = s.Create(context.TODO(), newSts)
+	err = s.Create(ctx, newSts)
 	if err != nil {
 		return errors.Wrapf(err, "error creating statefulset '%s' for rack '%s'", newSts.Name, r.Name)
 	}
 
-	s.recorder.Event(
-		c,
-		corev1.EventTypeNormal,
-		naming.SuccessSynced,
-		fmt.Sprintf("Rack %s created", r.Name),
-	)
-
+	s.recorder.Event(c, corev1.EventTypeNormal, naming.SuccessSynced, fmt.Sprintf("Rack %s created", r.Name))
 	return nil
 }

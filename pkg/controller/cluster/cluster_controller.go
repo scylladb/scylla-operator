@@ -17,11 +17,12 @@ package cluster
 
 import (
 	"context"
+	"reflect"
+
 	"github.com/pkg/errors"
-	"github.com/prometheus/common/log"
+	"github.com/scylladb/go-log"
 	"github.com/scylladb/scylla-operator/cmd/options"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
-	"github.com/scylladb/scylla-operator/pkg/controller/cluster/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -29,7 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -45,24 +45,24 @@ const concurrency = 1
 // Add creates a new Cluster Controller and adds it to the Manager with default RBAC.
 // The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+func Add(mgr manager.Manager, logger log.Logger) error {
+	return add(mgr, newReconciler(mgr, logger))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-
+func newReconciler(mgr manager.Manager, logger log.Logger) reconcile.Reconciler {
+	ctx := log.WithNewTraceID(context.Background())
 	kubeClient := kubernetes.NewForConfigOrDie(mgr.GetConfig())
 	uncachedClient, err := client.New(mgr.GetConfig(), client.Options{})
 	if err != nil {
-		log.Fatalf("Failed to get dynamic uncached client: %+v", err)
+		logger.Fatal(ctx, "Failed to get dynamic uncached client", "error", err)
 	}
 	return &ClusterController{
 		Client:         mgr.GetClient(),
 		UncachedClient: uncachedClient,
 		KubeClient:     kubeClient,
 		Recorder:       mgr.GetRecorder("scylla-cluster-controller"),
-		OperatorImage:  getOperatorImage(kubeClient),
+		OperatorImage:  getOperatorImage(ctx, kubeClient, logger),
 		scheme:         mgr.GetScheme(),
 	}
 }
@@ -137,7 +137,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-func getOperatorImage(kubeClient kubernetes.Interface) string {
+func getOperatorImage(ctx context.Context, kubeClient kubernetes.Interface, l log.Logger) string {
 
 	opts := options.GetOperatorOptions()
 	if opts.Image != "" {
@@ -146,11 +146,11 @@ func getOperatorImage(kubeClient kubernetes.Interface) string {
 
 	pod, err := kubeClient.CoreV1().Pods(opts.Namespace).Get(opts.Name, metav1.GetOptions{})
 	if err != nil {
-		log.Fatalf("Failed to get operator image: %+v", err)
+		l.Fatal(ctx, "Failed to get operator image: %+v", err)
 	}
 
 	if len(pod.Spec.Containers) != 1 {
-		log.Fatalf("Operator Pod must have exactly 1 container, found %d", len(pod.Spec.Containers))
+		l.Fatal(ctx, "Operator Pod must have exactly 1 container", "count", len(pod.Spec.Containers))
 	}
 	return pod.Spec.Containers[0].Image
 }
@@ -170,6 +170,7 @@ type ClusterController struct {
 	// https://github.com/kubernetes/enhancements/issues/555
 	KubeClient kubernetes.Interface
 	scheme     *runtime.Scheme
+	logger     log.Logger
 }
 
 // Reconcile reads that state of the cluster for a Cluster object and makes changes based on the state read
@@ -183,9 +184,10 @@ type ClusterController struct {
 // +kubebuilder:rbac:groups=scylla.scylladb.com,resources=clusters,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=scylla.scylladb.com,resources=clusters/status,verbs=update
 func (cc *ClusterController) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	ctx := log.WithNewTraceID(context.Background())
 	// Fetch the Cluster instance
 	c := &scyllav1alpha1.Cluster{}
-	err := cc.UncachedClient.Get(context.TODO(), request.NamespacedName, c)
+	err := cc.UncachedClient.Get(ctx, request.NamespacedName, c)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
@@ -195,25 +197,25 @@ func (cc *ClusterController) Reconcile(request reconcile.Request) (reconcile.Res
 		// Error reading the object - requeue the request.
 		return reconcile.Result{Requeue: true}, err
 	}
-	logger := util.LoggerForCluster(c)
+	//logger := util.LoggerForCluster(c)
+	logger := cc.logger.With("cluster", c.Namespace+"/"+c.Name, "resourceVersion", c.ResourceVersion)
 	copy := c.DeepCopy()
 	if err = cc.sync(copy); err != nil {
-		logger.Error("An error occured during cluster reconciliation. Printing stacktrace:")
-		logger.Errorf("%+v", err)
+		logger.Error(ctx, "An error occured during cluster reconciliation", "error", err)
 		return reconcile.Result{}, errors.Wrap(err, "sync failed")
 	}
 
 	// Update status if needed
 	// If there's a change in the status, update it
 	if !reflect.DeepEqual(c.Status, copy.Status) {
-		logger.Info("Writing cluster status.")
-		err = cc.Status().Update(context.TODO(), copy)
+		logger.Info(ctx, "Writing cluster status.")
+		err = cc.Status().Update(ctx, copy)
 		if err != nil {
-			logger.Errorf("Failed to update cluster status: %+v", err)
+			logger.Error(ctx, "Failed to update cluster status", "error", err)
 			return reconcile.Result{}, errors.WithStack(err)
 		}
 	}
 
-	logger.Info("Successful reconciliation")
+	logger.Info(ctx, "Reconciliation successful")
 	return reconcile.Result{}, nil
 }

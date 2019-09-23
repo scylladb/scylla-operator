@@ -18,13 +18,16 @@ package sidecar
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"time"
+
 	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
+	"github.com/scylladb/go-log"
 	"github.com/scylladb/scylla-operator/cmd/options"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/config"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
-	log "github.com/sirupsen/logrus"
 	"github.com/yanniszark/go-nodetool/nodetool"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -33,14 +36,12 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/informers/internalinterfaces"
 	"k8s.io/client-go/kubernetes"
-	"net/url"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"time"
 )
 
 const concurrency = 1
@@ -48,29 +49,29 @@ const concurrency = 1
 // Add creates a new Cluster Controller and adds it to the Manager with default RBAC.
 // The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+func Add(mgr manager.Manager, l log.Logger) error {
+	return add(mgr, newReconciler(mgr, l))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-
+func newReconciler(mgr manager.Manager, logger log.Logger) reconcile.Reconciler {
+	ctx := log.WithNewTraceID(context.Background())
 	opts := options.GetSidecarOptions()
 	kubeClient := kubernetes.NewForConfigOrDie(mgr.GetConfig())
 	member, err := identity.Retrieve(opts.Name, opts.Namespace, kubeClient)
 	if err != nil {
-		log.Fatalf("Failed to get member: %+v", err)
+		logger.Fatal(ctx, "Failed to get member", "error", err)
 	}
-	log.Infof("Member: %v", spew.Sdump(member))
+	logger.Info(ctx, "Member loaded", "", spew.Sdump(member))
 
 	url, err := url.Parse(fmt.Sprintf("http://127.0.0.1:%d/%s/", naming.JolokiaPort, naming.JolokiaContext))
 	if err != nil {
-		log.Fatalf("Failed to parse url: %+v", err)
+		logger.Fatal(ctx, "Failed to parse url", "error", err)
 	}
 
 	client, err := client.New(mgr.GetConfig(), client.Options{})
 	if err != nil {
-		log.Fatalf("Error getting dynamic client: %+v", err)
+		logger.Fatal(ctx, "Error getting dynamic client", "error", err)
 	}
 
 	mc := &MemberController{
@@ -79,10 +80,11 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 		member:     member,
 		scheme:     mgr.GetScheme(),
 		nodetool:   nodetool.NewFromURL(url),
+		logger:     logger,
 	}
 
-	if err = mc.onStartup(); err != nil {
-		log.Fatalf("Error occured during startup: %+v", err)
+	if err = mc.onStartup(ctx); err != nil {
+		logger.Fatal(ctx, "Error occurred during startup", "error", err)
 	}
 	return mc
 }
@@ -150,51 +152,49 @@ type MemberController struct {
 	member     *identity.Member
 	nodetool   *nodetool.Nodetool
 	scheme     *runtime.Scheme
+	logger     log.Logger
 }
 
 // Reconcile observes the state of a Scylla Member
 func (mc *MemberController) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 
+	ctx := log.WithNewTraceID(context.Background())
 	memberService := &corev1.Service{}
-	err := mc.Get(
-		context.TODO(),
-		naming.NamespacedName(request.Name, request.Namespace),
-		memberService,
-	)
+	err := mc.Get(ctx, naming.NamespacedName(request.Name, request.Namespace), memberService)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
-			log.Infof("Object %+v not found", request.NamespacedName)
+			mc.logger.Info(ctx, "Object not found", "namespace", request.Namespace, "name", request.Name)
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{Requeue: true}, errors.Wrap(err, "failed to get service from reconcile request")
 	}
 
-	log.Info("Starting reconciliation...")
-	if err := mc.sync(memberService); err != nil {
-		log.Errorf("An error occured during reconciliation: %+v", err)
+	mc.logger.Info(ctx, "Starting reconciliation...")
+	if err := mc.sync(ctx, memberService); err != nil {
+		mc.logger.Error(ctx, "An error occurred during reconciliation", "error", err)
 		return reconcile.Result{Requeue: true}, errors.WithStack(err)
 	}
 
 	return reconcile.Result{}, nil
 }
 
-func (mc *MemberController) onStartup() error {
+func (mc *MemberController) onStartup(ctx context.Context) error {
 
-	log.Info("Setting up HTTP Checks...")
+	mc.logger.Info(ctx, "Setting up HTTP Checks...")
 	// HTTP Checks
-	go mc.setupHTTPChecks()
+	go mc.setupHTTPChecks(ctx)
 
 	// Setup config files
-	log.Info("Setting up config files")
-	cmd, err := config.NewForMember(mc.member, mc.kubeClient, mc.Client).Setup()
+	mc.logger.Info(ctx, "Setting up config files")
+	cmd, err := config.NewForMember(mc.member, mc.kubeClient, mc.Client, mc.logger).Setup(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to setup config files")
 	}
 
 	// Start the scylla process
-	log.Info("Starting the scylla process")
+	mc.logger.Info(ctx, "Starting the scylla process")
 	if err = cmd.Start(); err != nil {
 		return errors.Wrap(err, "error starting database daemon: %s")
 	}

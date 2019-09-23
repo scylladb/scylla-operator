@@ -2,13 +2,13 @@ package identity
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/pkg/errors"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"time"
 )
 
 // Member encapsulates the identity for a single member
@@ -28,7 +28,6 @@ type Member struct {
 }
 
 func Retrieve(name, namespace string, kubeclient kubernetes.Interface) (*Member, error) {
-
 	// Get the member's service
 	var memberService *corev1.Service
 	var err error
@@ -41,7 +40,6 @@ func Retrieve(name, namespace string, kubeclient kubernetes.Interface) (*Member,
 		if retryCount > maxRetryCount {
 			return nil, errors.Wrap(err, "failed to get memberservice")
 		}
-		log.Errorf("Something went wrong trying to get Member Service %s", name)
 		time.Sleep(500 * time.Millisecond)
 	}
 

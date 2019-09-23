@@ -3,20 +3,21 @@ package config
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
+
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
+	"github.com/scylladb/go-log"
 	"github.com/scylladb/scylla-operator/cmd/options"
 	"github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
-	log "github.com/sirupsen/logrus"
-	"io/ioutil"
 	"k8s.io/client-go/kubernetes"
-	"os"
-	"os/exec"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -33,39 +34,37 @@ type ScyllaConfig struct {
 	client.Client
 	member     *identity.Member
 	kubeClient kubernetes.Interface
+	logger     log.Logger
 }
 
-func NewForMember(
-	m *identity.Member,
-	kubeClient kubernetes.Interface,
-	client client.Client,
-) *ScyllaConfig {
+func NewForMember(m *identity.Member, kubeClient kubernetes.Interface, client client.Client, l log.Logger) *ScyllaConfig {
 	return &ScyllaConfig{
 		member:     m,
 		kubeClient: kubeClient,
 		Client:     client,
+		logger:     l,
 	}
 }
 
-func (s *ScyllaConfig) Setup() (*exec.Cmd, error) {
+func (s *ScyllaConfig) Setup(ctx context.Context) (*exec.Cmd, error) {
 
 	var err error
 	var cmd *exec.Cmd
 
-	log.Info("Setting up scylla.yaml")
+	s.logger.Info(ctx, "Setting up scylla.yaml")
 	if err = s.setupScyllaYAML(); err != nil {
 		return nil, errors.Wrap(err, "failed to setup scylla.yaml")
 	}
-	log.Info("Setting up cassandra-rackdc.properties")
+	s.logger.Info(ctx, "Setting up cassandra-rackdc.properties")
 	if err = s.setupRackDCProperties(); err != nil {
 		return nil, errors.Wrap(err, "failed to setup rackdc properties file")
 	}
-	log.Info("Setting up jolokia config")
+	s.logger.Info(ctx, "Setting up jolokia config")
 	if err = s.setupJolokia(); err != nil {
 		return nil, errors.Wrap(err, "failed to setup jolokia")
 	}
-	log.Info("Setting up entrypoint script")
-	if cmd, err = s.setupEntrypoint(); err != nil {
+	s.logger.Info(ctx, "Setting up entrypoint script")
+	if cmd, err = s.setupEntrypoint(ctx); err != nil {
 		return nil, errors.Wrap(err, "failed to setup entrypoint")
 	}
 
@@ -168,7 +167,7 @@ func (s *ScyllaConfig) setupJolokia() error {
 	return nil
 }
 
-func (s *ScyllaConfig) setupEntrypoint() (*exec.Cmd, error) {
+func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	m := s.member
 	// Get seeds
 	seeds, err := m.GetSeeds(s.kubeClient)
@@ -179,7 +178,7 @@ func (s *ScyllaConfig) setupEntrypoint() (*exec.Cmd, error) {
 	// Check if we need to run in developer mode
 	devMode := "0"
 	cluster := &v1alpha1.Cluster{}
-	err = s.Get(context.TODO(), naming.NamespacedName(s.member.Cluster, s.member.Namespace), cluster)
+	err = s.Get(ctx, naming.NamespacedName(s.member.Cluster, s.member.Namespace), cluster)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting cluster")
 	}
@@ -229,7 +228,7 @@ func (s *ScyllaConfig) setupEntrypoint() (*exec.Cmd, error) {
 	scyllaCmd := exec.Command(entrypointPath, args...)
 	scyllaCmd.Stderr = os.Stderr
 	scyllaCmd.Stdout = os.Stdout
-	log.Infof("Scylla entrypoint command:\n %v", scyllaCmd)
+	s.logger.Info(ctx, "Scylla entrypoint command:\n %v", scyllaCmd)
 
 	return scyllaCmd, nil
 }

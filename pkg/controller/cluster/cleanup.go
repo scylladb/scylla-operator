@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+
 	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
@@ -14,17 +15,16 @@ import (
 )
 
 // cleanup deletes all resources remaining because of cluster scale downs
-func (cc *ClusterController) cleanup(c *scyllav1alpha1.Cluster) error {
-
+func (cc *ClusterController) cleanup(ctx context.Context, c *scyllav1alpha1.Cluster) error {
 	svcList := &corev1.ServiceList{}
 	sts := &appsv1.StatefulSet{}
-	logger := util.LoggerForCluster(c)
+	logger := cc.logger.With("cluster", c.Namespace+"/"+c.Name, "resourceVersion", c.ResourceVersion)
 
 	for _, r := range c.Spec.Datacenter.Racks {
 
 		// Get rack status. If it doesn't exist, the rack isn't yet created.
 		stsName := naming.StatefulSetNameForRack(r, c)
-		err := cc.Get(context.TODO(), naming.NamespacedName(stsName, c.Namespace), sts)
+		err := cc.Get(ctx, naming.NamespacedName(stsName, c.Namespace), sts)
 		if apierrors.IsNotFound(err) {
 			continue
 		}
@@ -33,15 +33,11 @@ func (cc *ClusterController) cleanup(c *scyllav1alpha1.Cluster) error {
 		}
 
 		// Get all member services
-		err = cc.List(
-			context.TODO(),
-			&client.ListOptions{LabelSelector: naming.RackSelector(r, c)},
-			svcList,
-		)
+		err = cc.List(ctx, &client.ListOptions{LabelSelector: naming.RackSelector(r, c)}, svcList)
 		if err != nil {
 			return errors.Wrap(err, "error listing member services")
 		}
-		logger.Debugf("Cleanup: servicelist is %v", spew.Sdump(svcList.Items))
+		logger.Debug(ctx, "Cleanup: service list", "items", spew.Sdump(svcList.Items))
 
 		memberCount := *sts.Spec.Replicas
 		memberServiceCount := int32(len(svcList.Items))
@@ -56,7 +52,7 @@ func (cc *ClusterController) cleanup(c *scyllav1alpha1.Cluster) error {
 					return errors.WithStack(err)
 				}
 				if svcIndex > maxIndex && svc.Labels[naming.DecommissionLabel] == naming.LabelValueTrue {
-					err := cc.cleanupMemberResources(&svc, r, c)
+					err := cc.cleanupMemberResources(ctx, &svc, r, c)
 					if err != nil {
 						return errors.WithStack(err)
 					}
@@ -71,18 +67,14 @@ func (cc *ClusterController) cleanup(c *scyllav1alpha1.Cluster) error {
 // Currently those are :
 //  - A PVC
 //  - A ClusterIP Service
-func (cc *ClusterController) cleanupMemberResources(memberService *corev1.Service, r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster) error {
+func (cc *ClusterController) cleanupMemberResources(ctx context.Context, memberService *corev1.Service, r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster) error {
 
 	memberName := memberService.Name
 	logger := util.LoggerForCluster(c)
-	logger.Infof("Cleaning up resources for member %s", memberName)
+	logger.Info(ctx, "Cleaning up resources for member", "name", memberName)
 	// Delete PVC if it exists
 	pvc := &corev1.PersistentVolumeClaim{}
-	err := cc.Get(
-		context.TODO(),
-		naming.NamespacedName(naming.PVCNameForPod(memberName), c.Namespace),
-		pvc,
-	)
+	err := cc.Get(ctx, naming.NamespacedName(naming.PVCNameForPod(memberName), c.Namespace), pvc)
 	// If PVC is found
 	if !apierrors.IsNotFound(err) {
 		// If there's another error return
@@ -90,13 +82,13 @@ func (cc *ClusterController) cleanupMemberResources(memberService *corev1.Servic
 			return errors.Wrap(err, "failed to get pvc")
 		}
 		// Else delete the PVC
-		if err = cc.Delete(context.TODO(), pvc); err != nil {
+		if err = cc.Delete(ctx, pvc); err != nil {
 			return errors.Wrap(err, "failed to delete pvc")
 		}
 	}
 
 	// Delete Member Service
-	if err = cc.Delete(context.TODO(), memberService); err != nil && !apierrors.IsNotFound(err) {
+	if err = cc.Delete(ctx, memberService); err != nil && !apierrors.IsNotFound(err) {
 		return errors.Wrap(err, "failed to delete member service")
 	}
 

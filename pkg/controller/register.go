@@ -16,31 +16,32 @@ limitations under the License.
 package controller
 
 import (
+	"github.com/scylladb/go-log"
 	"github.com/scylladb/scylla-operator/pkg/controller/cluster"
 	"github.com/scylladb/scylla-operator/pkg/sidecar"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 // UseSidecarControllers uses the controllers for the sidecar
-func UseSidecarControllers(m manager.Manager) error {
-	controllers := []func(manager.Manager) error{
+func UseSidecarControllers(m manager.Manager, l log.Logger) error {
+	controllers := []func(manager.Manager, log.Logger) error{
 		sidecar.Add,
 	}
-	return addToManager(m, controllers)
+	return addToManager(m, controllers, l)
 }
 
 // UseSidecarControllers uses the controllers for the operator
-func UseOperatorControllers(m manager.Manager) error {
-	controllers := []func(manager.Manager) error{
+func UseOperatorControllers(m manager.Manager, l log.Logger) error {
+	controllers := []func(manager.Manager, log.Logger) error{
 		cluster.Add,
 	}
-	return addToManager(m, controllers)
+	return addToManager(m, controllers, l)
 }
 
 // AddToManager adds all Controllers to the Manager
-func addToManager(m manager.Manager, controllers []func(manager.Manager) error) error {
+func addToManager(m manager.Manager, controllers []func(manager.Manager, log.Logger) error, l log.Logger) error {
 	for _, f := range controllers {
-		if err := f(m); err != nil {
+		if err := f(m, l); err != nil {
 			return err
 		}
 	}

@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"fmt"
+
 	"github.com/pkg/errors"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controller/cluster/util"
@@ -14,23 +15,18 @@ import (
 // UpdateStatus updates the status of the given Scylla Cluster.
 // It doesn't post the result to the API Server yet.
 // That will be done at the end of the sync loop.
-func (cc *ClusterController) updateStatus(cluster *scyllav1alpha1.Cluster) error {
-
-	logger := util.LoggerForCluster(cluster)
-	logger.Info("Calculating cluster status...")
-
+func (cc *ClusterController) updateStatus(ctx context.Context, cluster *scyllav1alpha1.Cluster) error {
 	clusterStatus := scyllav1alpha1.ClusterStatus{
 		Racks: map[string]*scyllav1alpha1.RackStatus{},
 	}
 	sts := &appsv1.StatefulSet{}
 
 	for _, rack := range cluster.Spec.Datacenter.Racks {
-
 		rackStatus := &scyllav1alpha1.RackStatus{}
 
 		// Get corresponding StatefulSet from lister
 		err := cc.Get(
-			context.TODO(),
+			ctx,
 			naming.NamespacedName(naming.StatefulSetNameForRack(rack, cluster), cluster.Namespace),
 			sts,
 		)
@@ -49,7 +45,7 @@ func (cc *ClusterController) updateStatus(cluster *scyllav1alpha1.Cluster) error
 		rackStatus.ReadyMembers = sts.Status.ReadyReplicas
 
 		// Update Scaling Down condition
-		svcList, err := util.GetMemberServicesForRack(rack, cluster, cc.Client)
+		svcList, err := util.GetMemberServicesForRack(ctx, rack, cluster, cc.Client)
 		if err != nil {
 			return fmt.Errorf("error trying to get Pods for rack %s", rack.Name)
 		}

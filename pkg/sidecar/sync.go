@@ -1,15 +1,16 @@
 package sidecar
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 	"github.com/scylladb/scylla-operator/pkg/controller/cluster/util"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	log "github.com/sirupsen/logrus"
 	"github.com/yanniszark/go-nodetool/nodetool"
 	corev1 "k8s.io/api/core/v1"
 )
 
-func (mc *MemberController) sync(memberService *corev1.Service) error {
+func (mc *MemberController) sync(ctx context.Context, memberService *corev1.Service) error {
 	// Check if member must decommission
 	if decommission, ok := memberService.Labels[naming.DecommissionLabel]; ok {
 		// Check if member has already decommissioned
@@ -18,7 +19,7 @@ func (mc *MemberController) sync(memberService *corev1.Service) error {
 		}
 		// Else, decommission member
 		if err := mc.nodetool.Decommission(); err != nil {
-			log.Errorf("Error during decommission: %+v", errors.WithStack(err))
+			mc.logger.Error(ctx, "Error during decommission", "error", errors.WithStack(err))
 		}
 		// Confirm memberService has been decommissioned
 		if opMode, err := mc.nodetool.OperationMode(); err != nil || opMode != nodetool.NodeOperationModeDecommissioned {

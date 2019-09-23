@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"fmt"
+
 	"github.com/pkg/errors"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controller/cluster/util"
@@ -32,40 +33,35 @@ func (a *RackScaleDown) Name() string {
 	return RackScaleDownAction
 }
 
-func (a *RackScaleDown) Execute(s *State) error {
+func (a *RackScaleDown) Execute(ctx context.Context, s *State) error {
 
 	r, c := a.Rack, a.Cluster
-	logger := util.LoggerForCluster(c)
-
 	// Get the current actual number of Members
 	members := c.Status.Racks[r.Name].Members
 
 	// Find the member to decommission
 	memberName := fmt.Sprintf("%s-%d", naming.StatefulSetNameForRack(r, c), members-1)
-	logger.Infof("Member of interest: %s", memberName)
 	memberService := &corev1.Service{}
-	err := s.Get(context.TODO(), naming.NamespacedName(memberName, c.Namespace), memberService)
+	err := s.Get(ctx, naming.NamespacedName(memberName, c.Namespace), memberService)
 	if err != nil {
 		return errors.Wrap(err, "failed to get Member Service")
 	}
 
 	// Check if there is a scale down in progress that has completed
 	if memberService.Labels[naming.DecommissionLabel] == naming.LabelValueTrue {
-		return errors.WithStack(a.completeScaleDown(s))
+		return errors.WithStack(a.completeScaleDown(ctx, s))
 	}
 
 	if _, ok := memberService.Labels[naming.DecommissionLabel]; r.Members < c.Status.Racks[r.Name].Members && !ok {
-		return errors.WithStack(a.beginScaleDown(s, memberService))
+		return errors.WithStack(a.beginScaleDown(ctx, s, memberService))
 	}
 
 	return nil
 }
 
-func (a *RackScaleDown) beginScaleDown(s *State, memberService *corev1.Service) error {
+func (a *RackScaleDown) beginScaleDown(ctx context.Context, s *State, memberService *corev1.Service) error {
 
 	r, c := a.Rack, a.Cluster
-	logger := util.LoggerForCluster(c)
-	logger.Infof("Scale down requested, member %s will decommission", memberService.Name)
 
 	// Record the intent to decommission the member
 	old := memberService.DeepCopy()
@@ -74,26 +70,21 @@ func (a *RackScaleDown) beginScaleDown(s *State, memberService *corev1.Service) 
 		return errors.Wrap(err, "error patching member service")
 	}
 
-	s.recorder.Event(
-		c,
-		corev1.EventTypeNormal,
-		naming.SuccessSynced,
+	s.recorder.Event(c, corev1.EventTypeNormal, naming.SuccessSynced,
 		fmt.Sprintf("Rack %s scaling down to %d members", r.Name, c.Status.Racks[r.Name].Members-1),
 	)
 
 	return nil
 }
 
-func (a *RackScaleDown) completeScaleDown(s *State) error {
+func (a *RackScaleDown) completeScaleDown(ctx context.Context, s *State) error {
 
 	r, c := a.Rack, a.Cluster
-	logger := util.LoggerForCluster(c)
-	logger.Infof("Completing scale down for rack %s", r.Name)
 
 	// Get rack's statefulset
 	stsName := naming.StatefulSetNameForRack(r, c)
 	sts := &appsv1.StatefulSet{}
-	err := s.Get(context.TODO(), naming.NamespacedName(stsName, c.Namespace), sts)
+	err := s.Get(ctx, naming.NamespacedName(stsName, c.Namespace), sts)
 	if err != nil {
 		return errors.Wrap(err, "error trying to get statefulset")
 	}

@@ -2,11 +2,12 @@ package options
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/pkg/errors"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"os"
+	"go.uber.org/zap"
 )
 
 // Singleton
@@ -40,7 +41,8 @@ func (o *commonOptions) Validate() error {
 	if o.Namespace == "" {
 		return errors.New("pod-namespace not set")
 	}
-	if _, err := log.ParseLevel(o.LogLevel); err != nil {
+	atomic := zap.NewAtomicLevel()
+	if err := atomic.UnmarshalText([]byte(o.LogLevel)); err != nil {
 		return errors.Wrapf(err, "invalid log level: '%s'", o.LogLevel)
 	}
 	return nil

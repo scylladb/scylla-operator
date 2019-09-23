@@ -17,11 +17,12 @@ package validating
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/pkg/errors"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"net/http"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -55,7 +56,7 @@ func (h *ClusterCreateUpdateHandler) validatingClusterFn(ctx context.Context, ob
 	var msg string
 	oldObj := &scyllav1alpha1.Cluster{}
 
-	err := h.Client.Get(context.TODO(), naming.NamespacedNameForObject(obj), oldObj)
+	err := h.Client.Get(ctx, naming.NamespacedNameForObject(obj), oldObj)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return false, "failed to get cluster", errors.WithStack(err)
 	}

@@ -1,10 +1,12 @@
 package cluster
 
 import (
+	"context"
+	"testing"
+
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controller/cluster/actions"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
-	"testing"
 )
 
 func TestNextAction(t *testing.T) {
@@ -69,7 +71,7 @@ func TestNextAction(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 
 			// Calculate next action
-			a := cc.nextAction(test.cluster)
+			a := cc.nextAction(context.Background(), test.cluster)
 			if a == nil {
 				t.Fatalf("No action taken, expected action %s", test.expectedAction)
 			}

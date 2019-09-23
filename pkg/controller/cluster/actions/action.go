@@ -1,6 +1,8 @@
 package actions
 
 import (
+	"context"
+
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -16,7 +18,7 @@ type Action interface {
 	// Execute will execute the action using the
 	// ClusterController to read and write the
 	// state of the system.
-	Execute(s *State) error
+	Execute(ctx context.Context, s *State) error
 }
 
 // State contains tools to discover and modify
@@ -30,11 +32,7 @@ type State struct {
 	recorder record.EventRecorder
 }
 
-func NewState(
-	client client.Client,
-	kubeclient kubernetes.Interface,
-	recorder record.EventRecorder,
-) *State {
+func NewState(client client.Client, kubeclient kubernetes.Interface, recorder record.EventRecorder) *State {
 	return &State{
 		Client:     client,
 		kubeclient: kubeclient,

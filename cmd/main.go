@@ -1,8 +1,13 @@
 package main
 
 import (
-	log "github.com/sirupsen/logrus"
+	"context"
+
+	"github.com/scylladb/go-log"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+
 	// TODO: What is this package for?
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
@@ -11,14 +16,15 @@ import (
 // For more info on the structure of the code in package main,
 // see: https://github.com/spf13/cobra
 func main() {
+	ctx := log.WithNewTraceID(context.Background())
+	atom := zap.NewAtomicLevelAt(zapcore.DebugLevel)
+	logger, _ := log.NewProduction(log.Config{
+		Level: atom,
+	})
 
 	var rootCmd = &cobra.Command{}
-
-	rootCmd.AddCommand(
-		newOperatorCmd(),
-		newSidecarCmd(),
-	)
+	rootCmd.AddCommand(newOperatorCmd(ctx, logger, atom), newSidecarCmd(ctx, logger, atom))
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatalf("Root command: a fatal error occured: %+v", err)
+		logger.Error(context.Background(), "Root command: a fatal error occured: %+v", err)
 	}
 }

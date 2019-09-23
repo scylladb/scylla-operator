@@ -456,6 +456,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:dd8ab81682f386f0557285c3550d08b9641dd64f0f7ad125c2298f3c3275eda1"
+  name = "github.com/scylladb/go-log"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "2e4ab32fc413adff82d89e7a2756d1b9ac4956fe"
+  version = "v0.0.2"
+
+[[projects]]
   digest = "1:87c2e02fb01c27060ccc5ba7c5a407cc91147726f8f40b70cceeedbc52b1f3a8"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
@@ -1199,10 +1207,12 @@
     "github.com/onsi/gomega",
     "github.com/pkg/errors",
     "github.com/prometheus/common/log",
-    "github.com/sirupsen/logrus",
+    "github.com/scylladb/go-log",
     "github.com/spf13/cobra",
     "github.com/stretchr/testify/require",
     "github.com/yanniszark/go-nodetool/nodetool",
+    "go.uber.org/zap",
+    "go.uber.org/zap/zapcore",
     "k8s.io/api/admissionregistration/v1beta1",
     "k8s.io/api/apps/v1",
     "k8s.io/api/core/v1",

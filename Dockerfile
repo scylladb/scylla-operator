@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.12.2 as builder
+FROM golang:1.13 as builder
 
 # Copy in the go src
 WORKDIR /go/src/github.com/scylladb/scylla-operator
@@ -11,7 +11,7 @@ COPY vendor/ vendor/
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager github.com/scylladb/scylla-operator/cmd
 
 # Copy the operator into a thin image
-FROM alpine:3.8
+FROM alpine:3.10
 
 # Run tini as PID 1 and avoid signal handling issues
 ADD https://github.com/krallin/tini/releases/download/v0.18.0/tini-static-amd64 /usr/local/bin/tini

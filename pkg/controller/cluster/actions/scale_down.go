@@ -60,7 +60,6 @@ func (a *RackScaleDown) Execute(ctx context.Context, s *State) error {
 }
 
 func (a *RackScaleDown) beginScaleDown(ctx context.Context, s *State, memberService *corev1.Service) error {
-
 	r, c := a.Rack, a.Cluster
 
 	// Record the intent to decommission the member
@@ -78,7 +77,6 @@ func (a *RackScaleDown) beginScaleDown(ctx context.Context, s *State, memberServ
 }
 
 func (a *RackScaleDown) completeScaleDown(ctx context.Context, s *State) error {
-
 	r, c := a.Rack, a.Cluster
 
 	// Get rack's statefulset
@@ -96,11 +94,6 @@ func (a *RackScaleDown) completeScaleDown(ctx context.Context, s *State) error {
 	}
 
 	// Cleanup is done on each sync loop, no need to do anything else here
-	s.recorder.Event(
-		c,
-		corev1.EventTypeNormal,
-		naming.SuccessSynced,
-		fmt.Sprintf("Rack %s scaled down to %d members", r.Name, c.Status.Racks[r.Name].Members-1),
-	)
+	s.recorder.Event(c, corev1.EventTypeNormal, naming.SuccessSynced, fmt.Sprintf("Rack %s scaled down to %d members", r.Name, c.Status.Racks[r.Name].Members-1))
 	return nil
 }

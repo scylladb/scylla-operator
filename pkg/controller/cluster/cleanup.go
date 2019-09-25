@@ -20,7 +20,6 @@ func (cc *ClusterController) cleanup(ctx context.Context, c *scyllav1alpha1.Clus
 	logger := cc.logger.With("cluster", c.Namespace+"/"+c.Name, "resourceVersion", c.ResourceVersion)
 
 	for _, r := range c.Spec.Datacenter.Racks {
-
 		// Get rack status. If it doesn't exist, the rack isn't yet created.
 		stsName := naming.StatefulSetNameForRack(r, c)
 		err := cc.Get(ctx, naming.NamespacedName(stsName, c.Namespace), sts)
@@ -67,7 +66,6 @@ func (cc *ClusterController) cleanup(ctx context.Context, c *scyllav1alpha1.Clus
 //  - A PVC
 //  - A ClusterIP Service
 func (cc *ClusterController) cleanupMemberResources(ctx context.Context, memberService *corev1.Service, r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster) error {
-
 	memberName := memberService.Name
 	logger := util.LoggerForCluster(c)
 	logger.Info(ctx, "Cleaning up resources for member", "name", memberName)

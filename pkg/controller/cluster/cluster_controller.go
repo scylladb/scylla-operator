@@ -138,7 +138,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 }
 
 func getOperatorImage(ctx context.Context, kubeClient kubernetes.Interface, l log.Logger) string {
-
 	opts := options.GetOperatorOptions()
 	if opts.Image != "" {
 		return opts.Image

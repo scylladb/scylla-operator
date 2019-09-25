@@ -180,7 +180,6 @@ func (mc *MemberController) Reconcile(request reconcile.Request) (reconcile.Resu
 }
 
 func (mc *MemberController) onStartup(ctx context.Context) error {
-
 	mc.logger.Info(ctx, "Setting up HTTP Checks...")
 	// HTTP Checks
 	go mc.setupHTTPChecks(ctx)
@@ -197,6 +196,5 @@ func (mc *MemberController) onStartup(ctx context.Context) error {
 	if err = cmd.Start(); err != nil {
 		return errors.Wrap(err, "error starting database daemon: %s")
 	}
-
 	return nil
 }

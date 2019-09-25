@@ -2,6 +2,9 @@ package resource
 
 import (
 	"fmt"
+	"path"
+	"strings"
+
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controller/cluster/util"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -11,8 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/kubernetes/pkg/controller/endpoint"
-	"path"
-	"strings"
 )
 
 const officialScyllaRepo = "scylladb/scylla"
@@ -91,7 +92,6 @@ func MemberServiceForPod(pod *corev1.Pod, cluster *scyllav1alpha1.Cluster) *core
 }
 
 func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, sidecarImage string) *appsv1.StatefulSet {
-
 	rackLabels := naming.RackLabels(r, c)
 	placement := r.Placement
 	if placement == nil {

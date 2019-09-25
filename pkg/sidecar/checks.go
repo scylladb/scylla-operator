@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/pkg/errors"
+
 	"github.com/scylladb/go-log"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/yanniszark/go-nodetool/nodetool"
@@ -18,9 +19,9 @@ func (mc *MemberController) setupHTTPChecks(ctx context.Context) {
 	http.HandleFunc(naming.LivenessProbePath, livenessCheck(mc))
 	http.HandleFunc(naming.ReadinessProbePath, readinessCheck(mc))
 
-	err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", naming.ProbePort), nil)
-	// If ListenAndServe returns, something went wrong
-	mc.logger.Fatal(ctx, "Error in HTTP checks", "error", errors.WithStack(err))
+	if err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", naming.ProbePort), nil); err != nil {
+		mc.logger.Fatal(ctx, "Error in HTTP checks", "error", errors.WithStack(err))
+	}
 }
 
 func livenessCheck(mc *MemberController) func(http.ResponseWriter, *http.Request) {

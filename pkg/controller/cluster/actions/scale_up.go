@@ -34,7 +34,6 @@ func (a *RackScaleUp) Name() string {
 }
 
 func (a *RackScaleUp) Execute(ctx context.Context, s *State) error {
-
 	r, c := a.Rack, a.Cluster
 	sts := &appsv1.StatefulSet{}
 	err := s.Get(ctx, naming.NamespacedName(naming.StatefulSetNameForRack(r, c), c.Namespace), sts)
@@ -47,12 +46,6 @@ func (a *RackScaleUp) Execute(ctx context.Context, s *State) error {
 	}
 
 	// Record event for successful scale-up
-	s.recorder.Event(
-		c,
-		corev1.EventTypeNormal,
-		naming.SuccessSynced,
-		fmt.Sprintf("Rack %s scaled up to %d members", r.Name, *sts.Spec.Replicas+1),
-	)
-
+	s.recorder.Event(c, corev1.EventTypeNormal, naming.SuccessSynced, fmt.Sprintf("Rack %s scaled up to %d members", r.Name, *sts.Spec.Replicas+1))
 	return nil
 }

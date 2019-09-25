@@ -47,7 +47,6 @@ func NewForMember(m *identity.Member, kubeClient kubernetes.Interface, client cl
 }
 
 func (s *ScyllaConfig) Setup(ctx context.Context) (*exec.Cmd, error) {
-
 	var err error
 	var cmd *exec.Cmd
 
@@ -78,7 +77,6 @@ func (s *ScyllaConfig) Setup(ctx context.Context) (*exec.Cmd, error) {
 // - rpc_address
 // - endpoint_snitch
 func (s *ScyllaConfig) setupScyllaYAML() error {
-
 	// Read default scylla.yaml
 	scyllaYAMLBytes, err := ioutil.ReadFile(scyllaYAMLPath)
 	if err != nil {

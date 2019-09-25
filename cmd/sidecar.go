@@ -3,18 +3,15 @@ package main
 import (
 	"context"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/scylladb/go-log"
+	"github.com/scylladb/scylla-operator/cmd/options"
 	"github.com/scylladb/scylla-operator/pkg/apis"
 	"github.com/scylladb/scylla-operator/pkg/controller"
+	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
-
-	"go.uber.org/zap"
-
-	"github.com/scylladb/go-log"
-	"github.com/scylladb/scylla-operator/cmd/options"
-	"github.com/spf13/cobra"
 )
 
 func newSidecarCmd(ctx context.Context, logger log.Logger, level zap.AtomicLevel) *cobra.Command {
@@ -28,7 +25,7 @@ func newSidecarCmd(ctx context.Context, logger log.Logger, level zap.AtomicLevel
 			if err := opts.Validate(); err != nil {
 				logger.Fatal(ctx, "sidecar options", "error", err)
 			}
-			logger.Info(ctx, "sidecar started", "options", spew.Sdump(opts))
+			logger.Info(ctx, "sidecar started", "options", opts)
 
 			// Set log level
 			if err := level.UnmarshalText([]byte(opts.LogLevel)); err != nil {

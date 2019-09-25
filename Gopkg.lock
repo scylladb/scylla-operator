@@ -1200,7 +1200,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/davecgh/go-spew/spew",
     "github.com/emicklei/go-restful",
     "github.com/ghodss/yaml",
     "github.com/onsi/ginkgo",

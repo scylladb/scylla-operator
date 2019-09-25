@@ -3,7 +3,6 @@ package cluster
 import (
 	"context"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controller/cluster/util"
@@ -37,7 +36,7 @@ func (cc *ClusterController) cleanup(ctx context.Context, c *scyllav1alpha1.Clus
 		if err != nil {
 			return errors.Wrap(err, "error listing member services")
 		}
-		logger.Debug(ctx, "Cleanup: service list", "items", spew.Sdump(svcList.Items))
+		logger.Debug(ctx, "Cleanup: service list", "items", svcList.Items)
 
 		memberCount := *sts.Spec.Replicas
 		memberServiceCount := int32(len(svcList.Items))

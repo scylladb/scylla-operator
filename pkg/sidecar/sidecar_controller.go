@@ -21,7 +21,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
 	"github.com/scylladb/scylla-operator/cmd/options"
@@ -62,7 +61,7 @@ func newReconciler(mgr manager.Manager, logger log.Logger) reconcile.Reconciler 
 	if err != nil {
 		logger.Fatal(ctx, "Failed to get member", "error", err)
 	}
-	logger.Info(ctx, "Member loaded", "", spew.Sdump(member))
+	logger.Info(ctx, "Member loaded", "member", member)
 
 	url, err := url.Parse(fmt.Sprintf("http://127.0.0.1:%d/%s/", naming.JolokiaPort, naming.JolokiaContext))
 	if err != nil {

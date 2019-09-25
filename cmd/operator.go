@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"github.com/scylladb/go-log"
-
-	"github.com/davecgh/go-spew/spew"
 	"github.com/scylladb/scylla-operator/cmd/options"
 	"github.com/scylladb/scylla-operator/pkg/apis"
 	"github.com/scylladb/scylla-operator/pkg/controller"
@@ -27,7 +25,7 @@ func newOperatorCmd(ctx context.Context, logger log.Logger, level zap.AtomicLeve
 			if err := opts.Validate(); err != nil {
 				logger.Fatal(ctx, "invalid options", "error", err)
 			}
-			logger.Info(ctx, "Operator started", "options", spew.Sdump(opts))
+			logger.Info(ctx, "Operator started", "options", opts)
 
 			// Set log level
 			if err := level.UnmarshalText([]byte(opts.LogLevel)); err != nil {

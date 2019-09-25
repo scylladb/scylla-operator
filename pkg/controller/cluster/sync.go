@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
@@ -29,7 +28,7 @@ func (cc *ClusterController) sync(c *scyllav1alpha1.Cluster) error {
 	ctx := log.WithNewTraceID(context.Background())
 	logger := cc.logger.With("cluster", c.Namespace+"/"+c.Name, "resourceVersion", c.ResourceVersion)
 	logger.Info(ctx, "Starting reconciliation...")
-	logger.Debug(ctx, "Cluster State", "object", spew.Sdump(c))
+	logger.Debug(ctx, "Cluster State", "object", c)
 
 	// Before syncing, ensure that all StatefulSets are up-to-date
 	stale, err := util.AreStatefulSetStatusesStale(ctx, c, cc.Client)

@@ -139,7 +139,7 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 						{
 							Name:            "sidecar-injection",
 							Image:           sidecarImage,
-							ImagePullPolicy: "Always",
+							ImagePullPolicy: "IfNotPresent",
 							Command: []string{
 								"/bin/sh",
 								"-c",

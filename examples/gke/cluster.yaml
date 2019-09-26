@@ -81,7 +81,7 @@ metadata:
   name: scylla-cluster
   namespace: scylla
 spec:
-  version: 3.0.6
+  version: 3.0.10
   cpuset: true
   datacenter:
     name: <gcp_zone>

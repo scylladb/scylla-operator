@@ -97,7 +97,7 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 	if placement == nil {
 		placement = &scyllav1alpha1.PlacementSpec{}
 	}
-
+	opt := true
 	return &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            naming.StatefulSetNameForRack(r, c),
@@ -131,6 +131,17 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 							Name: "shared",
 							VolumeSource: corev1.VolumeSource{
 								EmptyDir: &corev1.EmptyDirVolumeSource{},
+							},
+						},
+						{
+							Name: "scylla-config-volume",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "scylla-config",
+									},
+									Optional: &opt,
+								},
 							},
 						},
 					},
@@ -243,6 +254,11 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 								{
 									Name:      "shared",
 									MountPath: naming.SharedDirName,
+									ReadOnly:  true,
+								},
+								{
+									Name:      "scylla-config-volume",
+									MountPath: naming.ScyllaConfigDirName,
 									ReadOnly:  true,
 								},
 							},

@@ -61,6 +61,9 @@ const (
 
 	SharedDirName = "/mnt/shared"
 
+	ScyllaConfigDirName = "/mnt/scylla-config"
+	ScyllaConfigName    = "scylla.yaml"
+
 	DataDir = "/var/lib/scylla"
 
 	JolokiaJarName = "jolokia.jar"

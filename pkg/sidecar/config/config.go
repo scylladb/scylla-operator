@@ -22,7 +22,8 @@ import (
 
 const (
 	configDirScylla            = "/etc/scylla"
-	scyllaYAMLPath             = configDirScylla + "/" + "scylla.yaml"
+	scyllaYAMLPath             = configDirScylla + "/" + naming.ScyllaConfigName
+	scyllaYAMLConfigMapPath    = naming.ScyllaConfigDirName + "/" + naming.ScyllaConfigName
 	scyllaRackDCPropertiesPath = configDirScylla + "/" + "cassandra-rackdc.properties"
 	scyllaJMXPath              = "/usr/lib/scylla/jmx/scylla-jmx"
 	jolokiaPath                = naming.SharedDirName + "/" + naming.JolokiaJarName
@@ -83,6 +84,11 @@ func (s *ScyllaConfig) setupScyllaYAML() error {
 		return errors.Wrap(err, "failed to open scylla.yaml")
 	}
 
+	// Read config map scylla.yaml
+	scyllaYAMLConfigMapBytes, err := ioutil.ReadFile(scyllaYAMLConfigMapPath)
+	if err != nil {
+		s.logger.Info(context.Background(), "no scylla.yaml config map available")
+	}
 	// Custom options
 	var cfg = make(map[string]interface{})
 	m := s.member
@@ -94,8 +100,12 @@ func (s *ScyllaConfig) setupScyllaYAML() error {
 	if err != nil {
 		return errors.Wrap(err, "failed to parse override options for scylla.yaml")
 	}
+	scyllaYAMLConfigMapFilteredBytes, err := mergeYAMLs(scyllaYAMLConfigMapBytes, overrideYAMLBytes)
+	if err != nil {
+		return errors.Wrap(err, "failed to merged config map YAML with default yaml values")
+	}
 
-	customScyllaYAMLBytes, err := mergeYAMLs(scyllaYAMLBytes, overrideYAMLBytes)
+	customScyllaYAMLBytes, err := mergeYAMLs(scyllaYAMLBytes, scyllaYAMLConfigMapFilteredBytes)
 	if err != nil {
 		return errors.Wrap(err, "failed to merged YAMLs")
 	}
@@ -226,7 +236,7 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	scyllaCmd := exec.Command(entrypointPath, args...)
 	scyllaCmd.Stderr = os.Stderr
 	scyllaCmd.Stdout = os.Stdout
-	s.logger.Info(ctx, "Scylla entrypoint command:\n %v", scyllaCmd)
+	s.logger.Info(ctx, "Scylla entrypoint", "command", scyllaCmd)
 
 	return scyllaCmd, nil
 }

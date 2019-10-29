@@ -98,6 +98,10 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 		placement = &scyllav1alpha1.PlacementSpec{}
 	}
 	opt := true
+	scyllaConfigMap := r.ScyllaConfig
+	if scyllaConfigMap == "" {
+		scyllaConfigMap = "scylla-config"
+	}
 	return &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            naming.StatefulSetNameForRack(r, c),
@@ -138,7 +142,7 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "scylla-config",
+										Name: scyllaConfigMap,
 									},
 									Optional: &opt,
 								},

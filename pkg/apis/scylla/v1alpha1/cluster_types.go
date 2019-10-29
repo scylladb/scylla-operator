@@ -78,6 +78,8 @@ type RackSpec struct {
 	Placement *PlacementSpec `json:"placement,omitempty"`
 	// Resources the Scylla Pods will use.
 	Resources corev1.ResourceRequirements `json:"resources"`
+	// Scylla config map name to customize scylla.yaml
+	ScyllaConfig string `json:"scylla_config_map"`
 }
 
 type PlacementSpec struct {

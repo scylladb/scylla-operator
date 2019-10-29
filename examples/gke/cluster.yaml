@@ -87,6 +87,7 @@ spec:
     name: <gcp_zone>
     racks:
       - name: <gcp_region>
+        scylla_config_map: "scylla-config"
         members: 2
         storage:
           storageClassName: local-raid-disks

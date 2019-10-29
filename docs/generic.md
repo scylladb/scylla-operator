@@ -81,6 +81,23 @@ cluster = Cluster(['simple-cluster-client.scylla.svc'])
 session = cluster.connect()
 ```
 
+## Configure Scylla
+
+The operator can take a ConfigMap and apply it to the scylla.yaml configuration file.
+This is done by adding a ConfigMap to Kubernetes and refering to this in the Rack specification.
+The ConfigMap is just a file called `scylla.yaml` that has the properties you want to change in it.
+The operator will take the default properties for the rest of the configuration. 
+
+* Create a ConfigMap the default name that the operator uses is `scylla-config`:
+```console
+kubectl create configmap scylla-config -n scylla --from-file=/path/to/scylla.yaml
+```
+* Wait for the mount to propagate and then restart the cluster:
+```console
+kubectl rollout restart -n scylla statefulset/simple-cluster-us-east-1-us-east-1a
+```
+* The new config should be applied automatically by the operator, check the logs to be sure.
+
 ## Scale Up
 
 The operator supports scale up of a rack as well as addition of new racks. To make the changes, you can use:

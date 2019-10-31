@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
+	"github.com/magiconair/properties"
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
 	"github.com/scylladb/scylla-operator/cmd/options"
@@ -21,29 +22,33 @@ import (
 )
 
 const (
-	configDirScylla            = "/etc/scylla"
-	scyllaYAMLPath             = configDirScylla + "/" + naming.ScyllaConfigName
-	scyllaYAMLConfigMapPath    = naming.ScyllaConfigDirName + "/" + naming.ScyllaConfigName
-	scyllaRackDCPropertiesPath = configDirScylla + "/" + "cassandra-rackdc.properties"
-	scyllaJMXPath              = "/usr/lib/scylla/jmx/scylla-jmx"
-	jolokiaPath                = naming.SharedDirName + "/" + naming.JolokiaJarName
-	entrypointPath             = "/docker-entrypoint.py"
-	rackDCPropertiesFormat     = "dc=%s" + "\n" + "rack=%s" + "\n" + "prefer_local=false" + "\n"
+	configDirScylla                     = "/etc/scylla"
+	scyllaYAMLPath                      = configDirScylla + "/" + naming.ScyllaConfigName
+	scyllaYAMLConfigMapPath             = naming.ScyllaConfigDirName + "/" + naming.ScyllaConfigName
+	scyllaRackDCPropertiesPath          = configDirScylla + "/" + naming.ScyllaRackDCPropertiesName
+	scyllaRackDCPropertiesConfigMapPath = naming.ScyllaConfigDirName + "/" + naming.ScyllaRackDCPropertiesName
+	scyllaJMXPath                       = "/usr/lib/scylla/jmx/scylla-jmx"
+	jolokiaPath                         = naming.SharedDirName + "/" + naming.JolokiaJarName
+	entrypointPath                      = "/docker-entrypoint.py"
 )
 
 type ScyllaConfig struct {
 	client.Client
-	member     *identity.Member
-	kubeClient kubernetes.Interface
-	logger     log.Logger
+	member                              *identity.Member
+	kubeClient                          kubernetes.Interface
+	scyllaRackDCPropertiesPath          string
+	scyllaRackDCPropertiesConfigMapPath string
+	logger                              log.Logger
 }
 
 func NewForMember(m *identity.Member, kubeClient kubernetes.Interface, client client.Client, l log.Logger) *ScyllaConfig {
 	return &ScyllaConfig{
-		member:     m,
-		kubeClient: kubeClient,
-		Client:     client,
-		logger:     l,
+		member:                              m,
+		kubeClient:                          kubeClient,
+		Client:                              client,
+		scyllaRackDCPropertiesPath:          scyllaRackDCPropertiesPath,
+		scyllaRackDCPropertiesConfigMapPath: scyllaRackDCPropertiesConfigMapPath,
+		logger:                              l,
 	}
 }
 
@@ -119,11 +124,39 @@ func (s *ScyllaConfig) setupScyllaYAML() error {
 }
 
 func (s *ScyllaConfig) setupRackDCProperties() error {
-	rackdcProperties := []byte(fmt.Sprintf(rackDCPropertiesFormat, s.member.Datacenter, s.member.Rack))
-	if err := ioutil.WriteFile(scyllaRackDCPropertiesPath, rackdcProperties, os.ModePerm); err != nil {
+	suppliedProperties := loadProperties(s.scyllaRackDCPropertiesConfigMapPath, s.logger)
+	rackDCProperties := createRackDCProperties(suppliedProperties, s.member.Datacenter, s.member.Rack)
+	f, err := os.Create(s.scyllaRackDCPropertiesPath)
+	if err != nil {
+		return errors.Wrap(err, "error trying to create cassandra-rackdc.properties")
+	}
+	if _, err := rackDCProperties.Write(f, properties.UTF8); err != nil {
 		return errors.Wrap(err, "error trying to write cassandra-rackdc.properties")
 	}
 	return nil
+}
+
+func createRackDCProperties(suppliedProperties *properties.Properties, dc, rack string) *properties.Properties {
+	suppliedProperties.DisableExpansion = true
+	rackDCProperties := properties.NewProperties()
+	rackDCProperties.DisableExpansion = true
+	rackDCProperties.Set("dc", dc)
+	rackDCProperties.Set("rack", rack)
+	rackDCProperties.Set("prefer_local", suppliedProperties.GetString("prefer_local", "false"))
+	if dcSuffix, ok := suppliedProperties.Get("dc_suffix"); ok {
+		rackDCProperties.Set("dc_suffix", dcSuffix)
+	}
+	return rackDCProperties
+}
+
+func loadProperties(fileName string, logger log.Logger) *properties.Properties {
+	l := &properties.Loader{Encoding: properties.UTF8}
+	p, err := l.LoadFile(scyllaRackDCPropertiesConfigMapPath)
+	if err != nil {
+		logger.Info(context.Background(), "unable to read properties", "file", fileName)
+		return properties.NewProperties()
+	}
+	return p
 }
 
 // setupJolokia injects jolokia as a javaagent by

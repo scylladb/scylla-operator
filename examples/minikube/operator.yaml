@@ -312,7 +312,7 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         image: yanniszark/scylla-operator:v0.0-ee79ff2
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         name: manager
         resources:
           limits:

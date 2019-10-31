@@ -2,9 +2,61 @@ package config
 
 import (
 	"bytes"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/magiconair/properties"
+	"github.com/stretchr/testify/require"
 )
+
+func TestCreateRackDCProperties(t *testing.T) {
+	tests := map[string]struct {
+		input *properties.Properties
+		dc    string
+		rack  string
+		want  *properties.Properties
+	}{
+		"empty input": {
+			input: properties.LoadMap(map[string]string{}),
+			dc:    "dc",
+			rack:  "rack",
+			want:  properties.LoadMap(map[string]string{"dc": "dc", "rack": "rack", "prefer_local": "false"}),
+		},
+		"override dc": {
+			input: properties.LoadMap(map[string]string{"dc": "dc2"}),
+			dc:    "dc",
+			rack:  "rack",
+			want:  properties.LoadMap(map[string]string{"dc": "dc", "rack": "rack", "prefer_local": "false"}),
+		},
+		"override rack": {
+			input: properties.LoadMap(map[string]string{"rack": "rack2"}),
+			dc:    "dc",
+			rack:  "rack",
+			want:  properties.LoadMap(map[string]string{"dc": "dc", "rack": "rack", "prefer_local": "false"}),
+		},
+		"override prefer_local": {
+			input: properties.LoadMap(map[string]string{"prefer_local": "true"}),
+			dc:    "dc",
+			rack:  "rack",
+			want:  properties.LoadMap(map[string]string{"dc": "dc", "rack": "rack", "prefer_local": "true"}),
+		},
+		"override dc_suffix": {
+			input: properties.LoadMap(map[string]string{"dc_suffix": "suffix"}),
+			dc:    "dc",
+			rack:  "rack",
+			want:  properties.LoadMap(map[string]string{"dc": "dc", "rack": "rack", "prefer_local": "false", "dc_suffix": "suffix"}),
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			got := createRackDCProperties(tc.input, tc.dc, tc.rack)
+			if diff := cmp.Diff(tc.want.Map(), got.Map()); diff != "" {
+				t.Fatalf("expected: %v, got: %v, diff: %s", tc.want, got, diff)
+			}
+		})
+	}
+}
 
 func TestMergeYAMLs(t *testing.T) {
 	tests := []struct {

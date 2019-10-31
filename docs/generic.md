@@ -98,6 +98,12 @@ kubectl rollout restart -n scylla statefulset/simple-cluster-us-east-1-us-east-1
 ```
 * The new config should be applied automatically by the operator, check the logs to be sure.
 
+Configuring `cassandra-rackdc.properties` is done by adding the file to the same mount as `scylla.yaml`.
+```console
+kubectl create configmap scylla-config -n scylla --from-file=/tmp/scylla.yaml --from-file=/tmp/cassandra-rackdc.properties -o yaml --dry-run | kubectl replace -f -
+```
+The operator will then apply the overridable properties `prefer_local` and `dc_suffix` if they are available in the provided mounted file.
+
 ## Scale Up
 
 The operator supports scale up of a rack as well as addition of new racks. To make the changes, you can use:

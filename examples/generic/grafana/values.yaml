@@ -284,7 +284,18 @@ notifiers: {}
 ##
 ## `path` must be /var/lib/grafana/dashboards/<provider_name>
 ##
-dashboardProviders: {}
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+    - name: '3.0.1'
+      orgId: 1
+      folder: '3.0.1'
+      type: file
+      disableDeletion: false
+      updateIntervalSeconds: 10 #how often Grafana will scan for changed dashboards
+      options:
+        path: /var/lib/grafana/dashboards/ver_3.0.1
 #  dashboardproviders.yaml:
 #    apiVersion: 1
 #    providers:
@@ -303,7 +314,22 @@ dashboardProviders: {}
 ##
 ## dashboards per provider, use provider name as key.
 ##
-dashboards: {}
+dashboards:
+  3.0.1:
+    scylla-cpu:
+      file: dashboards/scylla-cpu.3.0.json
+    scylla-cql:
+      file: dashboards/scylla-cql.3.0.json
+    scylla-detailed:
+      file: dashboards/scylla-detailed.3.0.json
+    scylla-errors:
+      file: dashboards/scylla-errors.3.0.json
+    scylla-io:
+      file: dashboards/scylla-io.3.0.json
+    scylla-os:
+      file: dashboards/scylla-os.3.0.json
+    scylla-overview:
+      file: dashboards/scylla-overview.3.0.json
   # default:
   #   some-dashboard:
   #     json: |

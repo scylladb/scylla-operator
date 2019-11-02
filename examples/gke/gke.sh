@@ -102,7 +102,7 @@ node-pools create "operator-pool" \
 --cluster "${CLUSTER_NAME}" \
 --zone "${GCP_ZONE}" \
 --node-version "${CLUSTER_VERSION}" \
---machine-type "n1-standard-4" \
+--machine-type "n1-standard-8" \
 --num-nodes "1" \
 --disk-type "pd-ssd" --disk-size "20" \
 --image-type "UBUNTU" \

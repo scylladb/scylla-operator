@@ -17,7 +17,7 @@ spec:
         command:
           - "/bin/bash"
           - "-c"
-          - 'cassandra-stress write no-warmup n={d.ops} cl=ONE -mode native cql3 connectionsPerHost={d.connections_per_host} -col n=FIXED\(5\) size=FIXED\(64\)  -pop seq={}..{} -node="{d.host}" -rate threads={d.threads} {d.limit} -log file=/cassandra-stress.load.data -schema "replication(factor=1)" -errors ignore; cat /cassandra-stress.load.data'
+          - 'cassandra-stress write no-warmup n={d.ops} cl=ONE -mode native cql3 connectionsPerHost={d.connections_per_host} -col n=FIXED\(5\) size=FIXED\(64\)  -pop seq={}..{} -node "{d.host}" -rate threads={d.threads} {d.limit} -log file=/cassandra-stress.load.data -schema "replication(factor=1)" -errors ignore; cat /cassandra-stress.load.data'
         resources:
           limits:
             cpu: {d.cpu}
@@ -28,9 +28,12 @@ spec:
       affinity:
         podAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-            labelSelector:
-              matchLabels:
-                app: cassandra-stress
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app: cassandra-stress
        
 """
 
@@ -38,7 +41,7 @@ def parse():
     parser = argparse.ArgumentParser(description='Generate cassandra-stress job templates for Kubernetes.')
     parser.add_argument('--num-jobs', type=int, default=1, help='number of Kubernetes jobs to generate - defaults to 1', dest='num_jobs')
     parser.add_argument('--name', default='cassandra-stress', help='name of the generated yaml file - defaults to cassandra-stress')
-    parser.add_argument('--scylla-version', default='2.3.1', help='version of scylla server to use for cassandra-stress - defaults to 2.3.1', dest='scylla_version')
+    parser.add_argument('--scylla-version', default='3.0.10', help='version of scylla server to use for cassandra-stress - defaults to 2.3.1', dest='scylla_version')
     parser.add_argument('--host', default='simple-cluster.scylla.svc', help='ip or dns name of host to connect to - defaults to simple-cluster.scylla.svc')
     parser.add_argument('--cpu', default=1, type=int, help='number of cpus that will be used for each job - defaults to 1')
     parser.add_argument('--memory', default=None, help='memory that will be used for each job in GB, ie 2G - defaults to 2G * cpu')
@@ -47,7 +50,7 @@ def parse():
     parser.add_argument('--limit', default='', help='rate limit for each job - defaults to no rate-limiting')
     parser.add_argument('--connections-per-host', default=None, help='number of connections per host - defaults to number of cpus', dest='connections_per_host')
     parser.add_argument('--print-to-stdout', action='store_const', const=True, help='print to stdout instead of writing to a file', dest='print_to_stdout')
-    parser.add_argument('--nodeselector', default=None, help='nodeselector limits cassandra-stress pods to certain nodes. Use as a label selector, eg. --nodeselector role=scylla', dest='nodeselector')
+    parser.add_argument('--nodeselector', default={}, help='nodeselector limits cassandra-stress pods to certain nodes. Use as a label selector, eg. --nodeselector role=scylla', dest='nodeselector')
     return parser.parse_args()
 
 def create_job_list(args):
@@ -68,7 +71,7 @@ if __name__ == "__main__":
       args.connections_per_host = args.cpu
     if args.limit:
       args.limit = 'limit={}/s'.format(args.limit)
-    if args.nodeselector != None:
+    if args.nodeselector:
       parts = args.nodeselector.split("=")
       args.nodeselector = "{}: {}".format(parts[0], parts[1])
 

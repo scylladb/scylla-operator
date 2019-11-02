@@ -25,6 +25,11 @@ spec:
       restartPolicy: Never
       nodeSelector:
         {d.nodeselector}
+      tolerations:
+        - key: role
+          operator: Equal
+          value: cassandra-stress
+          effect: NoSchedule
       affinity:
         podAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -70,7 +75,7 @@ if __name__ == "__main__":
     if args.connections_per_host is None:
       args.connections_per_host = args.cpu
     if args.limit:
-      args.limit = 'limit={}/s'.format(args.limit)
+      args.limit = 'throttle={}/s'.format(args.limit)
     if args.nodeselector:
       parts = args.nodeselector.split("=")
       args.nodeselector = "{}: {}".format(parts[0], parts[1])

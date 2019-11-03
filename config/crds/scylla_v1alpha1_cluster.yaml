@@ -66,6 +66,9 @@ spec:
                       resources:
                         description: Resources the Scylla Pods will use.
                         type: object
+                      scyllaConfigMap:
+                        description: Scylla config map name to customize scylla.yaml
+                        type: string
                       storage:
                         description: Storage describes the underlying storage that
                           Scylla will consume.
@@ -84,6 +87,7 @@ spec:
                     - members
                     - storage
                     - resources
+                    - scyllaConfigMap
                     type: object
                   type: array
               required:

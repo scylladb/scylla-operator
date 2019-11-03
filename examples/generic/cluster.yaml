@@ -87,6 +87,7 @@ spec:
     name: us-east-1
     racks:
       - name: us-east-1a
+        scyllaConfigMap: "scyllaConfig"
         members: 3
         storage:
           capacity: 5Gi

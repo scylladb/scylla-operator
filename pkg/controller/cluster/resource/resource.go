@@ -98,6 +98,11 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 		placement = &scyllav1alpha1.PlacementSpec{}
 	}
 	opt := true
+	scyllaConfigMap := r.ScyllaConfig
+	// TODO: Remove when updating the config map name is implemented
+	if scyllaConfigMap == "" {
+		scyllaConfigMap = "scyllaConfig"
+	}
 	return &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            naming.StatefulSetNameForRack(r, c),

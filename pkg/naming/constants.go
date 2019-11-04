@@ -61,7 +61,7 @@ const (
 
 	SharedDirName = "/mnt/shared"
 
-	ScyllaConfigDirName        = "/mnt/config"
+	ScyllaConfigDirName        = "/mnt/scylla-config"
 	ScyllaConfigName           = "scylla.yaml"
 	ScyllaRackDCPropertiesName = "cassandra-rackdc.properties"
 

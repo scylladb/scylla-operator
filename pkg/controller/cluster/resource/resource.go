@@ -99,9 +99,8 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 	}
 	opt := true
 	scyllaConfigMap := r.ScyllaConfig
-	// TODO: Remove when updating the config map name is implemented
 	if scyllaConfigMap == "" {
-		scyllaConfigMap = "scyllaConfig"
+		scyllaConfigMap = "scylla-config"
 	}
 	return &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -139,11 +138,11 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 							},
 						},
 						{
-							Name: "scyllaConfigVolume",
+							Name: "scylla-config-volume",
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: r.ScyllaConfig,
+										Name: scyllaConfigMap,
 									},
 									Optional: &opt,
 								},
@@ -262,7 +261,7 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 									ReadOnly:  true,
 								},
 								{
-									Name:      "scyllaConfigVolume",
+									Name:      "scylla-config-volume",
 									MountPath: naming.ScyllaConfigDirName,
 									ReadOnly:  true,
 								},

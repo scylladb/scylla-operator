@@ -88,9 +88,9 @@ This is done by adding a ConfigMap to Kubernetes and refering to this in the Rac
 The ConfigMap is just a file called `scylla.yaml` that has the properties you want to change in it.
 The operator will take the default properties for the rest of the configuration. 
 
-* Create a ConfigMap named `scyllaCnfig` like this:
+* Create a ConfigMap the default name that the operator uses is `scylla-config`:
 ```console
-kubectl create configmap scyllaConfig -n scylla --from-file=/path/to/scylla.yaml
+kubectl create configmap scylla-config -n scylla --from-file=/path/to/scylla.yaml
 ```
 * Wait for the mount to propagate and then restart the cluster:
 ```console

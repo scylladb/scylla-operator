@@ -1,0 +1,2211 @@
+{
+    "annotations": {
+        "list": [
+            {
+                "builtIn": 1,
+                "datasource": "-- Grafana --",
+                "enable": true,
+                "hide": true,
+                "iconColor": "rgba(0, 211, 255, 1)",
+                "name": "Annotations & Alerts",
+                "type": "dashboard"
+            }
+        ]
+    },
+    "class": "dashboard",
+    "editable": true,
+    "gnetId": null,
+    "graphTooltip": 1,
+    "hideControls": true,
+    "id": null,
+    "links": [],
+    "originalTitle": "CQL",
+    "overwrite": true,
+    "panels": [
+        {
+            "class": "text_panel",
+            "content": "<img src=\"data:image/png;base64,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\" height=\"70\">\n<span style=\"font-size:40px\"> [[cluster]]</span><hr style=\"border-top: 3px solid #5780c1;\">",
+            "editable": true,
+            "error": false,
+            "gridPos": {
+                "h": 4,
+                "w": 24,
+                "x": 0,
+                "y": 0
+            },
+            "id": 1,
+            "isNew": true,
+            "links": [],
+            "mode": "html",
+            "options": {},
+            "span": 12,
+            "title": "",
+            "transparent": true,
+            "type": "text"
+        },
+        {
+            "class": "text_panel",
+            "content": "<h1 style=\"color:#5881c2; border-bottom: 3px solid #5881c2;\">CQL - Coordinator</h1>",
+            "editable": true,
+            "error": false,
+            "gridPos": {
+                "h": 2,
+                "w": 24,
+                "x": 0,
+                "y": 4
+            },
+            "id": 2,
+            "isNew": true,
+            "links": [],
+            "mode": "html",
+            "options": {},
+            "span": 12,
+            "style": {},
+            "title": "",
+            "transparent": true,
+            "type": "text"
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "class": "ops_panel",
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "prometheus",
+            "editable": true,
+            "error": false,
+            "fill": 0,
+            "fillGradient": 0,
+            "grid": {},
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 0,
+                "y": 6
+            },
+            "id": 3,
+            "isNew": true,
+            "legend": {
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "show": false,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "options": {
+                "dataLinks": []
+            },
+            "percentage": false,
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [
+                {}
+            ],
+            "spaceLength": 10,
+            "span": 3,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "sum(irate(scylla_cql_inserts{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[300s])) by ([[by]])",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "metric": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "thresholds": [],
+            "timeFrom": null,
+            "timeRegions": [],
+            "timeShift": null,
+            "title": "CQL Insert",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 0,
+                "value_type": "cumulative"
+            },
+            "type": "graph",
+            "xaxis": {
+                "buckets": null,
+                "mode": "time",
+                "name": null,
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "format": "ops",
+                    "logBase": 1,
+                    "max": null,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false,
+                "alignLevel": null
+            }
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "class": "ops_panel",
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "prometheus",
+            "editable": true,
+            "error": false,
+            "fill": 0,
+            "fillGradient": 0,
+            "grid": {},
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 6,
+                "y": 6
+            },
+            "id": 4,
+            "isNew": true,
+            "legend": {
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "show": false,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "options": {
+                "dataLinks": []
+            },
+            "percentage": false,
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [
+                {}
+            ],
+            "spaceLength": 10,
+            "span": 3,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "sum(irate(scylla_cql_reads{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[300s])) by ([[by]])",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "metric": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "thresholds": [],
+            "timeFrom": null,
+            "timeRegions": [],
+            "timeShift": null,
+            "title": "CQL Reads",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 0,
+                "value_type": "cumulative"
+            },
+            "type": "graph",
+            "xaxis": {
+                "buckets": null,
+                "mode": "time",
+                "name": null,
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "format": "ops",
+                    "logBase": 1,
+                    "max": null,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false,
+                "alignLevel": null
+            }
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "class": "ops_panel",
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "prometheus",
+            "editable": true,
+            "error": false,
+            "fill": 0,
+            "fillGradient": 0,
+            "grid": {},
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 12,
+                "y": 6
+            },
+            "id": 5,
+            "isNew": true,
+            "legend": {
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "show": false,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "options": {
+                "dataLinks": []
+            },
+            "percentage": false,
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [
+                {}
+            ],
+            "spaceLength": 10,
+            "span": 3,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "sum(irate(scylla_cql_deletes{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[300s])) by ([[by]])",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "metric": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "thresholds": [],
+            "timeFrom": null,
+            "timeRegions": [],
+            "timeShift": null,
+            "title": "CQL Deletes",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 0,
+                "value_type": "cumulative"
+            },
+            "type": "graph",
+            "xaxis": {
+                "buckets": null,
+                "mode": "time",
+                "name": null,
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "format": "ops",
+                    "logBase": 1,
+                    "max": null,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false,
+                "alignLevel": null
+            }
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "class": "ops_panel",
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "prometheus",
+            "editable": true,
+            "error": false,
+            "fill": 0,
+            "fillGradient": 0,
+            "grid": {},
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 18,
+                "y": 6
+            },
+            "id": 6,
+            "isNew": true,
+            "legend": {
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "show": false,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "options": {
+                "dataLinks": []
+            },
+            "percentage": false,
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [
+                {}
+            ],
+            "spaceLength": 10,
+            "span": 3,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "sum(irate(scylla_cql_updates{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[300s])) by ([[by]])",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "metric": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "thresholds": [],
+            "timeFrom": null,
+            "timeRegions": [],
+            "timeShift": null,
+            "title": "CQL Updates",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 0,
+                "value_type": "cumulative"
+            },
+            "type": "graph",
+            "xaxis": {
+                "buckets": null,
+                "mode": "time",
+                "name": null,
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "format": "ops",
+                    "logBase": 1,
+                    "max": null,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false,
+                "alignLevel": null
+            }
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "class": "graph_panel",
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "prometheus",
+            "description": "amount of CQL connections currently established",
+            "editable": true,
+            "error": false,
+            "fill": 0,
+            "fillGradient": 0,
+            "grid": {},
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 0,
+                "y": 12
+            },
+            "id": 7,
+            "isNew": true,
+            "legend": {
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "show": false,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "options": {
+                "dataLinks": []
+            },
+            "percentage": false,
+            "pointradius": 1,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "span": 3,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "sum(scylla_transport_current_connections{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]])",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "metric": "",
+                    "refId": "A",
+                    "step": 30
+                }
+            ],
+            "thresholds": [],
+            "timeFrom": null,
+            "timeRegions": [],
+            "timeShift": null,
+            "title": "Client CQL connections by [[by]]",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 0,
+                "value_type": "cumulative"
+            },
+            "type": "graph",
+            "xaxis": {
+                "buckets": null,
+                "mode": "time",
+                "name": null,
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false,
+                "alignLevel": null
+            }
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "class": "graph_panel",
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "prometheus",
+            "description": "Number of CQL batches command, each batched command is counted once",
+            "editable": true,
+            "error": false,
+            "fill": 0,
+            "fillGradient": 0,
+            "grid": {},
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 6,
+                "y": 12
+            },
+            "id": 8,
+            "isNew": true,
+            "legend": {
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "show": false,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "options": {
+                "dataLinks": []
+            },
+            "percentage": false,
+            "pointradius": 1,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "span": 3,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "sum(irate(scylla_cql_batches{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[300s])) by ([[by]])",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "metric": "",
+                    "refId": "A",
+                    "step": 30
+                }
+            ],
+            "thresholds": [],
+            "timeFrom": null,
+            "timeRegions": [],
+            "timeShift": null,
+            "title": "CQL Batches by [[by]]",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 0,
+                "value_type": "cumulative"
+            },
+            "type": "graph",
+            "xaxis": {
+                "buckets": null,
+                "mode": "time",
+                "name": null,
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false,
+                "alignLevel": null
+            }
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "class": "graph_panel",
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "prometheus",
+            "description": "Number of CQL command batched. Each batch would add the number of commands inside the batch",
+            "editable": true,
+            "error": false,
+            "fill": 0,
+            "fillGradient": 0,
+            "grid": {},
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 12,
+                "y": 12
+            },
+            "id": 9,
+            "isNew": true,
+            "legend": {
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "show": false,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "options": {
+                "dataLinks": []
+            },
+            "percentage": false,
+            "pointradius": 1,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "span": 3,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "sum(irate(scylla_cql_statements_in_batches{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[300s])) by ([[by]])",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "metric": "",
+                    "refId": "A",
+                    "step": 30
+                }
+            ],
+            "thresholds": [],
+            "timeFrom": null,
+            "timeRegions": [],
+            "timeShift": null,
+            "title": "CQL Command In Batches by [[by]]",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 0,
+                "value_type": "cumulative"
+            },
+            "type": "graph",
+            "xaxis": {
+                "buckets": null,
+                "mode": "time",
+                "name": null,
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false,
+                "alignLevel": null
+            }
+        },
+        {
+            "class": "plain_text",
+            "content": "<span/>",
+            "editable": true,
+            "error": false,
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 18,
+                "y": 12
+            },
+            "id": 10,
+            "isNew": true,
+            "links": [],
+            "mode": "html",
+            "options": {},
+            "span": 3,
+            "style": {},
+            "title": "",
+            "transparent": true,
+            "type": "text"
+        },
+        {
+            "class": "text_panel",
+            "content": "<h1 style=\"color:#5881c2; border-bottom: 3px solid #5881c2;\">Optimization</h1>",
+            "editable": true,
+            "error": false,
+            "gridPos": {
+                "h": 2,
+                "w": 24,
+                "x": 0,
+                "y": 18
+            },
+            "id": 11,
+            "isNew": true,
+            "links": [],
+            "mode": "html",
+            "options": {},
+            "span": 12,
+            "style": {},
+            "title": "",
+            "transparent": true,
+            "type": "text"
+        },
+        {
+            "cacheTimeout": null,
+            "class": "gauge_errors_panel",
+            "colorBackground": false,
+            "colorValue": true,
+            "colors": [
+                "#299c46",
+                "rgba(237, 129, 40, 0.89)",
+                "#d44a3a"
+            ],
+            "datasource": "prometheus",
+            "description": "All of the requests should be prepared\n\nPrepared statements remove the overhead of parsing the query every time and allow optimal routing of requests from client to server",
+            "editable": true,
+            "error": false,
+            "format": "percent",
+            "gauge": {
+                "maxValue": 100,
+                "minValue": 0,
+                "show": true,
+                "thresholdLabels": false,
+                "thresholdMarkers": true
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 2,
+                "x": 0,
+                "y": 20
+            },
+            "id": 12,
+            "interval": null,
+            "isNew": true,
+            "links": [],
+            "mappingType": 1,
+            "mappingTypes": [
+                {
+                    "name": "value to text",
+                    "value": 1
+                },
+                {
+                    "name": "range to text",
+                    "value": 2
+                }
+            ],
+            "maxDataPoints": 100,
+            "nullPointMode": "connected",
+            "nullText": null,
+            "options": {},
+            "postfix": "",
+            "postfixFontSize": "50%",
+            "prefix": "",
+            "prefixFontSize": "50%",
+            "rangeMaps": [
+                {
+                    "from": "null",
+                    "text": "N/A",
+                    "to": "null"
+                }
+            ],
+            "span": 1,
+            "sparkline": {
+                "fillColor": "rgba(31, 118, 189, 0.18)",
+                "full": false,
+                "lineColor": "rgb(31, 120, 193)",
+                "show": false
+            },
+            "tableColumn": "",
+            "targets": [
+                {
+                    "expr": "floor(100 *sum(irate(scylla_query_processor_statements_prepared{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) /(sum(irate(scylla_cql_reads{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) + sum(irate(scylla_cql_inserts{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) + sum(irate(scylla_cql_updates{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) + sum(irate(scylla_cql_deletes{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])))) OR vector(0)",
+                    "format": "time_series",
+                    "hide": false,
+                    "instant": false,
+                    "interval": "",
+                    "intervalFactor": 1,
+                    "legendFormat": "aaa",
+                    "refId": "A"
+                }
+            ],
+            "thresholds": "4,10",
+            "title": "CQL Non-Prepared Statements",
+            "transparent": true,
+            "type": "singlestat",
+            "valueFontSize": "110%",
+            "valueMaps": [
+                {
+                    "op": "=",
+                    "text": "N/A",
+                    "value": "null"
+                }
+            ],
+            "valueName": "current"
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "class": "ops_panel",
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "prometheus",
+            "description": "All of the requests should be prepared\n",
+            "editable": true,
+            "error": false,
+            "fill": 0,
+            "fillGradient": 0,
+            "grid": {},
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 2,
+                "y": 20
+            },
+            "id": 13,
+            "isNew": true,
+            "legend": {
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "show": false,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "options": {
+                "dataLinks": []
+            },
+            "percentage": false,
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [
+                {}
+            ],
+            "spaceLength": 10,
+            "span": 3,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "sum(irate(scylla_query_processor_statements_prepared{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) by ([[by]])",
+                    "format": "time_series",
+                    "hide": false,
+                    "intervalFactor": 2,
+                    "refId": "A"
+                }
+            ],
+            "thresholds": [],
+            "timeFrom": null,
+            "timeRegions": [],
+            "timeShift": null,
+            "title": "CQL Non-Prepared Statements",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 0,
+                "value_type": "cumulative"
+            },
+            "type": "graph",
+            "xaxis": {
+                "buckets": null,
+                "mode": "time",
+                "name": null,
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "format": "ops",
+                    "logBase": 1,
+                    "max": null,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false,
+                "alignLevel": null
+            }
+        },
+        {
+            "cacheTimeout": null,
+            "class": "gauge_errors_panel",
+            "colorBackground": false,
+            "colorValue": true,
+            "colors": [
+                "#299c46",
+                "rgba(237, 129, 40, 0.89)",
+                "#d44a3a"
+            ],
+            "datasource": "prometheus",
+            "description": "All requests should be paged\n\nNon Paged request sources:\n- Client modifying the fetch size\n\nNon Paged requests require reading all the results and returning them in a single request.",
+            "editable": true,
+            "error": false,
+            "format": "percent",
+            "gauge": {
+                "maxValue": 100,
+                "minValue": 0,
+                "show": true,
+                "thresholdLabels": false,
+                "thresholdMarkers": true
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 2,
+                "x": 8,
+                "y": 20
+            },
+            "id": 14,
+            "interval": null,
+            "isNew": true,
+            "links": [],
+            "mappingType": 1,
+            "mappingTypes": [
+                {
+                    "name": "value to text",
+                    "value": 1
+                },
+                {
+                    "name": "range to text",
+                    "value": 2
+                }
+            ],
+            "maxDataPoints": 100,
+            "nullPointMode": "connected",
+            "nullText": null,
+            "options": {},
+            "postfix": "",
+            "postfixFontSize": "50%",
+            "prefix": "",
+            "prefixFontSize": "50%",
+            "rangeMaps": [
+                {
+                    "from": "null",
+                    "text": "N/A",
+                    "to": "null"
+                }
+            ],
+            "span": 1,
+            "sparkline": {
+                "fillColor": "rgba(31, 118, 189, 0.18)",
+                "full": false,
+                "lineColor": "rgb(31, 120, 193)",
+                "show": false
+            },
+            "tableColumn": "",
+            "targets": [
+                {
+                    "expr": "100 * (sum(irate(scylla_cql_unpaged_select_queries{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s]))/sum(irate(scylla_cql_reads{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s]))) OR vector(0)",
+                    "format": "time_series",
+                    "hide": false,
+                    "instant": false,
+                    "interval": "",
+                    "intervalFactor": 1,
+                    "legendFormat": "aaa",
+                    "refId": "A"
+                }
+            ],
+            "thresholds": "4,10",
+            "title": "Non-Paged CQL Reads",
+            "transparent": true,
+            "type": "singlestat",
+            "valueFontSize": "110%",
+            "valueMaps": [
+                {
+                    "op": "=",
+                    "text": "N/A",
+                    "value": "null"
+                }
+            ],
+            "valueName": "current"
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "class": "ops_panel",
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "prometheus",
+            "description": "Non-Paged requests require reading all the results and returning them in a single request",
+            "editable": true,
+            "error": false,
+            "fill": 0,
+            "fillGradient": 0,
+            "grid": {},
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 10,
+                "y": 20
+            },
+            "id": 15,
+            "isNew": true,
+            "legend": {
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "show": false,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "options": {
+                "dataLinks": []
+            },
+            "percentage": false,
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [
+                {}
+            ],
+            "spaceLength": 10,
+            "span": 3,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "sum(irate(scylla_cql_unpaged_select_queries{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) by ([[by]])",
+                    "format": "time_series",
+                    "hide": false,
+                    "intervalFactor": 2,
+                    "refId": "A"
+                }
+            ],
+            "thresholds": [],
+            "timeFrom": null,
+            "timeRegions": [],
+            "timeShift": null,
+            "title": "Non-Paged CQL Reads",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 0,
+                "value_type": "cumulative"
+            },
+            "type": "graph",
+            "xaxis": {
+                "buckets": null,
+                "mode": "time",
+                "name": null,
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "format": "ops",
+                    "logBase": 1,
+                    "max": null,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false,
+                "alignLevel": null
+            }
+        },
+        {
+            "cacheTimeout": null,
+            "class": "gauge_errors_panel",
+            "colorBackground": false,
+            "colorValue": true,
+            "colors": [
+                "#299c46",
+                "rgba(237, 129, 40, 0.89)",
+                "#d44a3a"
+            ],
+            "datasource": "prometheus",
+            "description": "All of the requests should be Token Aware\n\nNon Token Aware requests sources:\n* Non-Prepared Stamements\n* Client not using a Token Aware load balancing policy\n\nTokenAware requests are sent to a Scylla node that is also a replica. Token Un-Aware requests require extra hop and additional processing.\n\nNote that the metric shows incorrect values when batches are used.",
+            "editable": true,
+            "error": false,
+            "format": "percent",
+            "gauge": {
+                "maxValue": 100,
+                "minValue": 0,
+                "show": true,
+                "thresholdLabels": false,
+                "thresholdMarkers": true
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 2,
+                "x": 16,
+                "y": 20
+            },
+            "id": 16,
+            "interval": null,
+            "isNew": true,
+            "links": [],
+            "mappingType": 1,
+            "mappingTypes": [
+                {
+                    "name": "value to text",
+                    "value": 1
+                },
+                {
+                    "name": "range to text",
+                    "value": 2
+                }
+            ],
+            "maxDataPoints": 100,
+            "nullPointMode": "connected",
+            "nullText": null,
+            "options": {},
+            "postfix": "",
+            "postfixFontSize": "50%",
+            "prefix": "",
+            "prefixFontSize": "50%",
+            "rangeMaps": [
+                {
+                    "from": "null",
+                    "text": "N/A",
+                    "to": "null"
+                }
+            ],
+            "span": 1,
+            "sparkline": {
+                "fillColor": "rgba(31, 118, 189, 0.18)",
+                "full": false,
+                "lineColor": "rgb(31, 120, 193)",
+                "show": false
+            },
+            "tableColumn": "",
+            "targets": [
+                {
+                    "expr": "100 - floor(100*(sum(irate(scylla_storage_proxy_coordinator_reads_local_node{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) +sum(irate(scylla_storage_proxy_coordinator_total_write_attempts_local_node{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])))/(sum(irate(scylla_cql_inserts{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s]) + irate(scylla_cql_updates{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s]) + irate(scylla_cql_deletes{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s]) + irate(scylla_cql_reads{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])))) OR vector(0)",
+                    "format": "time_series",
+                    "hide": false,
+                    "intervalFactor": 1,
+                    "legendFormat": "aaa",
+                    "refId": "A"
+                }
+            ],
+            "thresholds": "4,10",
+            "title": "Non-Token Aware",
+            "transparent": true,
+            "type": "singlestat",
+            "valueFontSize": "110%",
+            "valueMaps": [
+                {
+                    "op": "=",
+                    "text": "N/A",
+                    "value": "null"
+                }
+            ],
+            "valueName": "current"
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "class": "ops_panel",
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "prometheus",
+            "description": "Requests that are not token aware indicates that requests are not routed to the right node, which require extra hop and additional processing.\n\nNote that the metric shows incorrect values when batches are used.",
+            "editable": true,
+            "error": false,
+            "fill": 0,
+            "fillGradient": 0,
+            "grid": {},
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 18,
+                "y": 20
+            },
+            "id": 17,
+            "isNew": true,
+            "legend": {
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "show": false,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "options": {
+                "dataLinks": []
+            },
+            "percentage": false,
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [
+                {}
+            ],
+            "spaceLength": 10,
+            "span": 3,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "sum(irate(scylla_cql_reads{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) by ([[by]]) - sum(irate(scylla_storage_proxy_coordinator_reads_local_node{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) by ([[by]]) + sum(irate(scylla_cql_inserts{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s]) + irate(scylla_cql_updates{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s]) + irate(scylla_cql_deletes{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) by ([[by]]) - sum(irate(scylla_storage_proxy_coordinator_total_write_attempts_local_node{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) by ([[by]])\n",
+                    "format": "time_series",
+                    "hide": false,
+                    "intervalFactor": 2,
+                    "refId": "A"
+                }
+            ],
+            "thresholds": [],
+            "timeFrom": null,
+            "timeRegions": [],
+            "timeShift": null,
+            "title": "Non-Token Aware Queries",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 0,
+                "value_type": "cumulative"
+            },
+            "type": "graph",
+            "xaxis": {
+                "buckets": null,
+                "mode": "time",
+                "name": null,
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "format": "ops",
+                    "logBase": 1,
+                    "max": null,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false,
+                "alignLevel": null
+            }
+        },
+        {
+            "cacheTimeout": null,
+            "class": "gauge_errors_panel",
+            "colorBackground": false,
+            "colorValue": true,
+            "colors": [
+                "#299c46",
+                "rgba(237, 129, 40, 0.89)",
+                "#d44a3a"
+            ],
+            "datasource": "prometheus",
+            "description": "Reversed CQL Reads entail additional processing on server side\n\nSources: CQL Read requests with ORDER BY that is different from the \"CLUSTERING ORDER BY\" of the table\nAlternatives:\n\n* Denormalize your data (use a Materialized View)",
+            "editable": true,
+            "error": false,
+            "format": "percent",
+            "gauge": {
+                "maxValue": 100,
+                "minValue": 0,
+                "show": true,
+                "thresholdLabels": false,
+                "thresholdMarkers": true
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 2,
+                "x": 0,
+                "y": 26
+            },
+            "id": 18,
+            "interval": null,
+            "isNew": true,
+            "links": [],
+            "mappingType": 1,
+            "mappingTypes": [
+                {
+                    "name": "value to text",
+                    "value": 1
+                },
+                {
+                    "name": "range to text",
+                    "value": 2
+                }
+            ],
+            "maxDataPoints": 100,
+            "nullPointMode": "connected",
+            "nullText": null,
+            "options": {},
+            "postfix": "",
+            "postfixFontSize": "50%",
+            "prefix": "",
+            "prefixFontSize": "50%",
+            "rangeMaps": [
+                {
+                    "from": "null",
+                    "text": "N/A",
+                    "to": "null"
+                }
+            ],
+            "span": 1,
+            "sparkline": {
+                "fillColor": "rgba(31, 118, 189, 0.18)",
+                "full": false,
+                "lineColor": "rgb(31, 120, 193)",
+                "show": false
+            },
+            "tableColumn": "",
+            "targets": [
+                {
+                    "expr": "100 * sum(irate(scylla_cql_reverse_queries{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) / sum(irate(scylla_cql_reads{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) OR vector(0)",
+                    "format": "time_series",
+                    "hide": false,
+                    "instant": false,
+                    "interval": "",
+                    "intervalFactor": 1,
+                    "legendFormat": "aaa",
+                    "refId": "A"
+                }
+            ],
+            "thresholds": "4,10",
+            "title": "Reversed CQL Reads",
+            "transparent": true,
+            "type": "singlestat",
+            "valueFontSize": "110%",
+            "valueMaps": [
+                {
+                    "op": "=",
+                    "text": "N/A",
+                    "value": "null"
+                }
+            ],
+            "valueName": "current"
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "class": "ops_panel",
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "prometheus",
+            "description": "Reversed CQL Reads entail additional processing on server side and should be avoided",
+            "editable": true,
+            "error": false,
+            "fill": 0,
+            "fillGradient": 0,
+            "grid": {},
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 2,
+                "y": 26
+            },
+            "id": 19,
+            "isNew": true,
+            "legend": {
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "show": false,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "options": {
+                "dataLinks": []
+            },
+            "percentage": false,
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [
+                {}
+            ],
+            "spaceLength": 10,
+            "span": 3,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "sum(irate(scylla_cql_reverse_queries{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) by ([[by]])",
+                    "format": "time_series",
+                    "hide": false,
+                    "intervalFactor": 2,
+                    "refId": "A"
+                }
+            ],
+            "thresholds": [],
+            "timeFrom": null,
+            "timeRegions": [],
+            "timeShift": null,
+            "title": "Reversed CQL Reads",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 0,
+                "value_type": "cumulative"
+            },
+            "type": "graph",
+            "xaxis": {
+                "buckets": null,
+                "mode": "time",
+                "name": null,
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "format": "ops",
+                    "logBase": 1,
+                    "max": null,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false,
+                "alignLevel": null
+            }
+        },
+        {
+            "cacheTimeout": null,
+            "class": "gauge_errors_panel",
+            "colorBackground": false,
+            "colorValue": true,
+            "colors": [
+                "#299c46",
+                "rgba(237, 129, 40, 0.89)",
+                "#d44a3a"
+            ],
+            "datasource": "prometheus",
+            "description": "ALLOW FILTERING CQL Reads, the percentage of read requests with 'ALLOW FILTERING'\n\nALLOW FILTERING CQL Reads entail additional processing on server side\n\nSources: CQL Read requests with \"ALLOW FILTERING\"\n\nALLOW FILTERING should be used when large parts of the filtered data is returned - check \n\"ALLOW FILTERING CQL Read Filtered Rows to check what percentage of the data is used\"\n\nAlternatives:\n- Use a Secondary Index\n- Denormalize your data (use a Materialized View)",
+            "editable": true,
+            "error": false,
+            "format": "percent",
+            "gauge": {
+                "maxValue": 100,
+                "minValue": 0,
+                "show": true,
+                "thresholdLabels": false,
+                "thresholdMarkers": true
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 2,
+                "x": 8,
+                "y": 26
+            },
+            "id": 20,
+            "interval": null,
+            "isNew": true,
+            "links": [],
+            "mappingType": 1,
+            "mappingTypes": [
+                {
+                    "name": "value to text",
+                    "value": 1
+                },
+                {
+                    "name": "range to text",
+                    "value": 2
+                }
+            ],
+            "maxDataPoints": 100,
+            "nullPointMode": "connected",
+            "nullText": null,
+            "options": {},
+            "postfix": "",
+            "postfixFontSize": "50%",
+            "prefix": "",
+            "prefixFontSize": "50%",
+            "rangeMaps": [
+                {
+                    "from": "null",
+                    "text": "N/A",
+                    "to": "null"
+                }
+            ],
+            "span": 1,
+            "sparkline": {
+                "fillColor": "rgba(31, 118, 189, 0.18)",
+                "full": false,
+                "lineColor": "rgb(31, 120, 193)",
+                "show": false
+            },
+            "tableColumn": "",
+            "targets": [
+                {
+                    "expr": "100 * sum(irate(scylla_cql_filtered_read_requests{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) / sum(irate(scylla_cql_reads{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) OR vector(0)",
+                    "format": "time_series",
+                    "hide": false,
+                    "intervalFactor": 1,
+                    "legendFormat": "aaa",
+                    "refId": "A"
+                }
+            ],
+            "thresholds": "4,10",
+            "title": "ALLOW FILTERING CQL Reads",
+            "transparent": true,
+            "type": "singlestat",
+            "valueFontSize": "110%",
+            "valueMaps": [
+                {
+                    "op": "=",
+                    "text": "N/A",
+                    "value": "null"
+                }
+            ],
+            "valueName": "current"
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "class": "rps_panel",
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "prometheus",
+            "description": "Read requests with ALLOW FILTERING\n\nALLOW FILTERING CQL Reads entail additional processing on server side and should be avoided",
+            "editable": true,
+            "error": false,
+            "fill": 0,
+            "fillGradient": 0,
+            "grid": {},
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 10,
+                "y": 26
+            },
+            "id": 21,
+            "isNew": true,
+            "legend": {
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "show": false,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "options": {
+                "dataLinks": []
+            },
+            "percentage": false,
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "span": 3,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "sum(irate(scylla_cql_filtered_read_requests{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) by ([[by]])",
+                    "format": "time_series",
+                    "hide": false,
+                    "intervalFactor": 2,
+                    "refId": "A"
+                }
+            ],
+            "thresholds": [],
+            "timeFrom": null,
+            "timeRegions": [],
+            "timeShift": null,
+            "title": "ALLOW FILTERING CQL Reads",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 0,
+                "value_type": "cumulative"
+            },
+            "type": "graph",
+            "xaxis": {
+                "buckets": null,
+                "mode": "time",
+                "name": null,
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "format": "rps",
+                    "logBase": 1,
+                    "max": null,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false,
+                "alignLevel": null
+            }
+        },
+        {
+            "cacheTimeout": null,
+            "class": "gauge_errors_panel",
+            "colorBackground": false,
+            "colorValue": true,
+            "colors": [
+                "#299c46",
+                "rgba(237, 129, 40, 0.89)",
+                "#d44a3a"
+            ],
+            "datasource": "prometheus",
+            "description": "ALLOW FILTERING Filtered rows, the percentage of rows that were read and then filtered.\n\nALLOW FILTERING CQL Reads entail additional processing on server side. \nReading a row and then filter it is a waste of resources.\n\nSources: CQL Read requests with \"ALLOW FILTERING\"\n\nALLOW FILTERING should be used when large parts of the filtered data is returned\n\nAlternatives:\n- Use a Secondary Index\n- Denormalize your data (use a Materialized View)",
+            "editable": true,
+            "error": false,
+            "format": "percent",
+            "gauge": {
+                "maxValue": 100,
+                "minValue": 0,
+                "show": true,
+                "thresholdLabels": false,
+                "thresholdMarkers": true
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 2,
+                "x": 16,
+                "y": 26
+            },
+            "id": 22,
+            "interval": null,
+            "isNew": true,
+            "links": [],
+            "mappingType": 1,
+            "mappingTypes": [
+                {
+                    "name": "value to text",
+                    "value": 1
+                },
+                {
+                    "name": "range to text",
+                    "value": 2
+                }
+            ],
+            "maxDataPoints": 100,
+            "nullPointMode": "connected",
+            "nullText": null,
+            "options": {},
+            "postfix": "",
+            "postfixFontSize": "50%",
+            "prefix": "",
+            "prefixFontSize": "50%",
+            "rangeMaps": [
+                {
+                    "from": "null",
+                    "text": "N/A",
+                    "to": "null"
+                }
+            ],
+            "span": 1,
+            "sparkline": {
+                "fillColor": "rgba(31, 118, 189, 0.18)",
+                "full": false,
+                "lineColor": "rgb(31, 120, 193)",
+                "show": false
+            },
+            "tableColumn": "",
+            "targets": [
+                {
+                    "expr": "100 * sum(irate(scylla_cql_filtered_rows_dropped_total{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s]))  /sum(irate(scylla_cql_filtered_rows_read_total{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) OR vector(0)",
+                    "format": "time_series",
+                    "hide": false,
+                    "instant": false,
+                    "interval": "",
+                    "intervalFactor": 1,
+                    "legendFormat": "aaa",
+                    "refId": "A"
+                }
+            ],
+            "thresholds": "4,10",
+            "title": "ALLOW FILTERING Filtered Rows",
+            "transparent": true,
+            "type": "singlestat",
+            "valueFontSize": "110%",
+            "valueMaps": [
+                {
+                    "op": "=",
+                    "text": "N/A",
+                    "value": "null"
+                }
+            ],
+            "valueName": "current"
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "class": "rps_panel",
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "prometheus",
+            "description": "CQL Queries with ALLOW FILTERING should be avoided.\nDropped rows are rows that were read but were filtered by the server.\nWhen dropped rows is relatively high you should consider the alternatives",
+            "editable": true,
+            "error": false,
+            "fill": 0,
+            "fillGradient": 0,
+            "grid": {},
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 18,
+                "y": 26
+            },
+            "id": 23,
+            "isNew": true,
+            "legend": {
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "show": false,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "options": {
+                "dataLinks": []
+            },
+            "percentage": false,
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "span": 3,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "sum(irate(scylla_cql_filtered_rows_read_total{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) by ([[by]])",
+                    "format": "time_series",
+                    "hide": false,
+                    "intervalFactor": 2,
+                    "legendFormat": "rows read $node $shard",
+                    "refId": "A"
+                },
+                {
+                    "expr": "sum(irate(scylla_cql_filtered_rows_matched_total{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) by ([[by]])",
+                    "format": "time_series",
+                    "hide": false,
+                    "interval": "",
+                    "intervalFactor": 2,
+                    "legendFormat": "rows matched $node $shard",
+                    "refId": "B"
+                },
+                {
+                    "expr": "sum(irate(scylla_cql_filtered_rows_dropped_total{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) by ([[by]])",
+                    "format": "time_series",
+                    "intervalFactor": 2,
+                    "legendFormat": "rows dropped $node $shard",
+                    "refId": "C"
+                }
+            ],
+            "thresholds": [],
+            "timeFrom": null,
+            "timeRegions": [],
+            "timeShift": null,
+            "title": "ALLOW FILTERING CQL Read Filtering",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 0,
+                "value_type": "cumulative"
+            },
+            "type": "graph",
+            "xaxis": {
+                "buckets": null,
+                "mode": "time",
+                "name": null,
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "format": "rps",
+                    "logBase": 1,
+                    "max": null,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false,
+                "alignLevel": null
+            }
+        },
+        {
+            "cacheTimeout": null,
+            "class": "gauge_errors_panel",
+            "colorBackground": false,
+            "colorValue": true,
+            "colors": [
+                "#299c46",
+                "rgba(237, 129, 40, 0.89)",
+                "#d44a3a"
+            ],
+            "datasource": "prometheus",
+            "description": "Cross DC traffic may cause additional latencies and network loads and in most cases, should be avoided.\n\nCross DC Read requests sources:\n- Consistency Level that is not LOCAL_XXX\n- Tables with read_repair_chance > 0\n\nNote:\n- If requests are supposed to be  DC local - verify client is using a DCAware policy and a LOCAL_XX consistency level",
+            "editable": true,
+            "error": false,
+            "format": "percent",
+            "gauge": {
+                "maxValue": 100,
+                "minValue": 0,
+                "show": true,
+                "thresholdLabels": false,
+                "thresholdMarkers": true
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 4,
+                "x": 0,
+                "y": 32
+            },
+            "id": 24,
+            "interval": null,
+            "isNew": true,
+            "links": [],
+            "mappingType": 1,
+            "mappingTypes": [
+                {
+                    "name": "value to text",
+                    "value": 1
+                },
+                {
+                    "name": "range to text",
+                    "value": 2
+                }
+            ],
+            "maxDataPoints": 100,
+            "nullPointMode": "connected",
+            "nullText": null,
+            "options": {},
+            "postfix": "",
+            "postfixFontSize": "50%",
+            "prefix": "",
+            "prefixFontSize": "50%",
+            "rangeMaps": [
+                {
+                    "from": "null",
+                    "text": "N/A",
+                    "to": "null"
+                }
+            ],
+            "repeat": "dc",
+            "span": 2,
+            "sparkline": {
+                "fillColor": "rgba(31, 118, 189, 0.18)",
+                "full": false,
+                "lineColor": "rgb(31, 120, 193)",
+                "show": false
+            },
+            "tableColumn": "",
+            "targets": [
+                {
+                    "expr": "100*(sum(irate(scylla_storage_proxy_coordinator_reads_remote_node{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) - sum(irate(scylla_storage_proxy_coordinator_reads_remote_node{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", datacenter=~\"$dc\", shard=~\"[[shard]]\"}[30s])))/sum(irate(scylla_storage_proxy_coordinator_reads_remote_node{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) OR vector(0)",
+                    "format": "time_series",
+                    "intervalFactor": 1,
+                    "refId": "A"
+                }
+            ],
+            "thresholds": "4,10",
+            "title": "Cross DC read requests $dc",
+            "transparent": true,
+            "type": "singlestat",
+            "valueFontSize": "110%",
+            "valueMaps": [
+                {
+                    "op": "=",
+                    "text": "N/A",
+                    "value": "null"
+                }
+            ],
+            "valueName": "current"
+        }
+    ],
+    "refresh": "30s",
+    "schemaVersion": 12,
+    "style": "dark",
+    "tags": [
+        "3.0"
+    ],
+    "templating": {
+        "list": [
+            {
+                "allValue": null,
+                "class": "by_template_var",
+                "current": {
+                    "tags": [],
+                    "text": "Instance",
+                    "value": "instance"
+                },
+                "hide": 0,
+                "includeAll": false,
+                "label": "by",
+                "multi": false,
+                "name": "by",
+                "options": [
+                    {
+                        "selected": false,
+                        "text": "Cluster",
+                        "value": "cluster"
+                    },
+                    {
+                        "selected": false,
+                        "text": "DC",
+                        "value": "dc"
+                    },
+                    {
+                        "selected": true,
+                        "text": "Instance",
+                        "value": "instance"
+                    },
+                    {
+                        "selected": false,
+                        "text": "instance,shard",
+                        "value": "instance,shard"
+                    }
+                ],
+                "query": "Cluster,DC,Instance,Shard",
+                "skipUrlSync": false,
+                "type": "custom"
+            },
+            {
+                "allValue": null,
+                "class": "template_variable_single",
+                "current": {},
+                "datasource": "prometheus",
+                "definition": "",
+                "hide": 0,
+                "includeAll": false,
+                "label": "cluster",
+                "multi": false,
+                "name": "cluster",
+                "options": [],
+                "query": "label_values(scylla_reactor_utilization, cluster)",
+                "refresh": 2,
+                "regex": "",
+                "skipUrlSync": false,
+                "sort": 1,
+                "tagValuesQuery": "",
+                "tags": [],
+                "tagsQuery": "",
+                "type": "query",
+                "useTags": false
+            },
+            {
+                "allValue": null,
+                "class": "template_variable_all",
+                "current": {
+                    "text": "All",
+                    "value": [
+                        "$__all"
+                    ]
+                },
+                "datasource": "prometheus",
+                "definition": "",
+                "hide": 0,
+                "includeAll": true,
+                "label": "dc",
+                "multi": true,
+                "name": "dc",
+                "options": [],
+                "query": "label_values(scylla_reactor_utilization{cluster=~\"$cluster\"}, dc)",
+                "refresh": 2,
+                "regex": "",
+                "skipUrlSync": false,
+                "sort": 1,
+                "tagValuesQuery": "",
+                "tags": [],
+                "tagsQuery": "",
+                "type": "query",
+                "useTags": false
+            },
+            {
+                "allValue": null,
+                "class": "template_variable_all",
+                "current": {
+                    "text": "All",
+                    "value": [
+                        "$__all"
+                    ]
+                },
+                "datasource": "prometheus",
+                "definition": "",
+                "hide": 0,
+                "includeAll": true,
+                "label": "node",
+                "multi": true,
+                "name": "node",
+                "options": [],
+                "query": "label_values(scylla_reactor_utilization{cluster=~\"$cluster|$^\", dc=~\"$dc\"}, instance)",
+                "refresh": 2,
+                "regex": "",
+                "skipUrlSync": false,
+                "sort": 1,
+                "tagValuesQuery": "",
+                "tags": [],
+                "tagsQuery": "",
+                "type": "query",
+                "useTags": false
+            },
+            {
+                "allValue": null,
+                "class": "template_variable_all",
+                "current": {
+                    "text": "All",
+                    "value": [
+                        "$__all"
+                    ]
+                },
+                "datasource": "prometheus",
+                "definition": "",
+                "hide": 0,
+                "includeAll": true,
+                "label": "shard",
+                "multi": true,
+                "name": "shard",
+                "options": [],
+                "query": "label_values(scylla_reactor_utilization,shard)",
+                "refresh": 2,
+                "regex": "",
+                "skipUrlSync": false,
+                "sort": 3,
+                "tagValuesQuery": "",
+                "tags": [],
+                "tagsQuery": "",
+                "type": "query",
+                "useTags": false
+            }
+        ]
+    },
+    "time": {
+        "from": "now-5m",
+        "to": "now"
+    },
+    "timepicker": {
+        "now": true,
+        "refresh_intervals": [
+            "5s",
+            "10s",
+            "30s",
+            "1m",
+            "5m",
+            "15m",
+            "30m",
+            "1h",
+            "2h",
+            "1d"
+        ],
+        "time_options": [
+            "5m",
+            "15m",
+            "1h",
+            "6h",
+            "12h",
+            "24h",
+            "2d",
+            "7d",
+            "30d"
+        ]
+    },
+    "timezone": "browser",
+    "title": "Scylla CQL",
+    "uid": "cql-3-0",
+    "version": 0
+}

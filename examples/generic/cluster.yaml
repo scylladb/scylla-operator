@@ -85,6 +85,7 @@ spec:
   developerMode: true
   datacenter:
     name: us-east-1
+    scyllaConfig: "scylla-config"
     racks:
       - name: us-east-1a
         members: 3

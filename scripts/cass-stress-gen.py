@@ -20,7 +20,7 @@ spec:
         command:
           - "/bin/bash"
           - "-c"
-          - 'cassandra-stress write no-warmup n={d.ops} cl=ONE -mode native cql3 connectionsPerHost={d.connections_per_host} -col n=FIXED\(5\) size=FIXED\(64\)  -pop seq={}..{} -node "{d.host}" -rate threads={d.threads} {d.limit} -log file=/cassandra-stress.load.data -schema "replication(factor=2)" -errors ignore; cat /cassandra-stress.load.data'
+          - 'cassandra-stress write no-warmup n={d.ops} cl=ONE -mode native cql3 connectionsPerHost={d.connections_per_host} -col n=FIXED\(5\) size=FIXED\(64\)  -pop seq={}..{} -node "{d.host}" -rate threads={d.threads} {d.limit} -log file=/cassandra-stress.load.data -schema "replication(factor=1)" -errors ignore; cat /cassandra-stress.load.data'
         resources:
           limits:
             cpu: {d.cpu}
@@ -49,7 +49,7 @@ def parse():
     parser.add_argument('--num-jobs', type=int, default=1, help='number of Kubernetes jobs to generate - defaults to 1', dest='num_jobs')
     parser.add_argument('--name', default='cassandra-stress', help='name of the generated yaml file - defaults to cassandra-stress')
     parser.add_argument('--namespace', default='default', help='namespace of the cassandra-stress jobs - defaults to "default"')
-    parser.add_argument('--scylla-version', default='2.3.1', help='version of scylla server to use for cassandra-stress - defaults to 2.3.1', dest='scylla_version')
+    parser.add_argument('--scylla-version', default='3.0.10', help='version of scylla server to use for cassandra-stress - defaults to 2.3.1', dest='scylla_version')
     parser.add_argument('--host', default='scylla-cluster-client.scylla.svc', help='ip or dns name of host to connect to - defaults to scylla-cluster-client.scylla.svc')
     parser.add_argument('--cpu', default=1, type=int, help='number of cpus that will be used for each job - defaults to 1')
     parser.add_argument('--memory', default=None, help='memory that will be used for each job in GB, ie 2G - defaults to 2G * cpu')
@@ -81,7 +81,7 @@ if __name__ == "__main__":
     if args.connections_per_host is None:
       args.connections_per_host = args.cpu
     if args.limit:
-      args.limit = 'limit={}/s'.format(args.limit)
+      args.limit = 'throttle={}/s'.format(args.limit)
     if args.nodeselector:
       parts = args.nodeselector.split("=")
       args.nodeselector = "{}: {},".format(parts[0], parts[1])

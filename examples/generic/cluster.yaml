@@ -85,9 +85,9 @@ spec:
   developerMode: true
   datacenter:
     name: us-east-1
-    scyllaConfig: "scylla-config"
     racks:
       - name: us-east-1a
+        scyllaConfig: "scylla-config"
         members: 3
         storage:
           capacity: 5Gi

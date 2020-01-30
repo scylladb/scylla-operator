@@ -313,6 +313,24 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 								},
 							},
 						},
+						{
+							Name:            "scylla-manager-agent",
+							Image:           "scylladb/scylla-manager-agent:2.0.1",
+							ImagePullPolicy: "IfNotPresent",
+							Ports: []corev1.ContainerPort{
+								{
+									Name:          "agent-rest-api",
+									ContainerPort: 10001,
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      naming.PVCTemplateName,
+									MountPath: naming.DataDir,
+									ReadOnly:  true,
+								},
+							},
+						},
 					},
 					ServiceAccountName: naming.ServiceAccountNameForMembers(c),
 					Affinity:           &placement.Affinity,

@@ -30,6 +30,12 @@ spec:
           type: object
         spec:
           properties:
+            agentRepository:
+              description: Repository to pull the agent image from. Defaults to "scylladb/scylla-manager-agent".
+              type: string
+            agentVersion:
+              description: Version of Scylla Manager Agent to use. Defaults to "latest".
+              type: string
             cpuset:
               description: CpuSet determines if the cluster will use cpu-pinning for
                 max performance.
@@ -118,6 +124,7 @@ spec:
               type: string
           required:
           - version
+          - agentVersion
           - datacenter
           type: object
         status:

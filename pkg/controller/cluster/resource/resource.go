@@ -16,7 +16,10 @@ import (
 	"k8s.io/kubernetes/pkg/controller/endpoint"
 )
 
-const officialScyllaRepo = "scylladb/scylla"
+const (
+	officialScyllaRepo             = "scylladb/scylla"
+	officialScyllaManagerAgentRepo = "scylladb/scylla-manager-agent"
+)
 
 func HeadlessServiceForCluster(c *scyllav1alpha1.Cluster) *corev1.Service {
 	return &corev1.Service{
@@ -315,7 +318,7 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 						},
 						{
 							Name:            "scylla-manager-agent",
-							Image:           "scylladb/scylla-manager-agent:2.0.1",
+							Image:           agentImageForCluster(c),
 							ImagePullPolicy: "IfNotPresent",
 							Ports: []corev1.ContainerPort{
 								{
@@ -363,4 +366,16 @@ func imageForCluster(c *scyllav1alpha1.Cluster) string {
 		repo = *c.Spec.Repository
 	}
 	return fmt.Sprintf("%s:%s", repo, c.Spec.Version)
+}
+
+func agentImageForCluster(c *scyllav1alpha1.Cluster) string {
+	repo := officialScyllaManagerAgentRepo
+	if c.Spec.AgentRepository != nil {
+		repo = *c.Spec.AgentRepository
+	}
+	version := "latest"
+	if c.Spec.AgentVersion != nil {
+		version = *c.Spec.AgentVersion
+	}
+	return fmt.Sprintf("%s:%s", repo, version)
 }

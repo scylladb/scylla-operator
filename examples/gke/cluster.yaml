@@ -82,6 +82,7 @@ metadata:
   namespace: scylla
 spec:
   version: 3.0.10
+  agentVersion: 2.0.1
   cpuset: true
   datacenter:
     name: <gcp_zone>

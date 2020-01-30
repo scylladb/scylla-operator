@@ -48,6 +48,10 @@ type ClusterSpec struct {
 	Version string `json:"version"`
 	// Repository to pull the image from.
 	Repository *string `json:"repository,omitempty"`
+	// Version of Scylla Manager Agent to use. Defaults to "latest".
+	AgentVersion *string `json:"agentVersion"`
+	// Repository to pull the agent image from. Defaults to "scylladb/scylla-manager-agent".
+	AgentRepository *string `json:"agentRepository,omitempty"`
 	// DeveloperMode determines if the cluster runs in developer-mode.
 	DeveloperMode bool `json:"developerMode,omitempty"`
 	// CpuSet determines if the cluster will use cpu-pinning for max performance.

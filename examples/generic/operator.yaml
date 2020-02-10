@@ -79,6 +79,10 @@ spec:
                       resources:
                         description: Resources the Scylla Pods will use.
                         type: object
+                      scyllaAgentConfig:
+                        description: Scylla config map name to customize scylla manager
+                          agent
+                        type: string
                       scyllaConfig:
                         description: Scylla config map name to customize scylla.yaml
                         type: string
@@ -101,6 +105,7 @@ spec:
                     - storage
                     - resources
                     - scyllaConfig
+                    - scyllaAgentConfig
                     type: object
                   type: array
               required:

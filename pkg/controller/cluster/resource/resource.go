@@ -101,10 +101,6 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 		placement = &scyllav1alpha1.PlacementSpec{}
 	}
 	opt := true
-	scyllaConfigMap := r.ScyllaConfig
-	if scyllaConfigMap == "" {
-		scyllaConfigMap = "scylla-config"
-	}
 	return &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            naming.StatefulSetNameForRack(r, c),
@@ -145,7 +141,18 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: scyllaConfigMap,
+										Name: stringOrDefault(r.ScyllaConfig, "scylla-config"),
+									},
+									Optional: &opt,
+								},
+							},
+						},
+						{
+							Name: "scylla-agent-config-volume",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: stringOrDefault(r.ScyllaAgentConfig, "scylla-agent-config"),
 									},
 									Optional: &opt,
 								},
@@ -320,6 +327,12 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 							Name:            "scylla-manager-agent",
 							Image:           agentImageForCluster(c),
 							ImagePullPolicy: "IfNotPresent",
+							Args: []string{
+								"-c",
+								"/etc/scylla-manager-agent/scylla-manager-agent.yaml",
+								"-c",
+								naming.ScyllaAgentConfigDirName + "/scylla-manager-agent.yaml",
+							},
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "agent-rest-api",
@@ -330,6 +343,11 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 								{
 									Name:      naming.PVCTemplateName,
 									MountPath: naming.DataDir,
+									ReadOnly:  true,
+								},
+								{
+									Name:      "scylla-agent-config-volume",
+									MountPath: naming.ScyllaAgentConfigDirName,
 									ReadOnly:  true,
 								},
 							},
@@ -378,4 +396,11 @@ func agentImageForCluster(c *scyllav1alpha1.Cluster) string {
 		version = *c.Spec.AgentVersion
 	}
 	return fmt.Sprintf("%s:%s", repo, version)
+}
+
+func stringOrDefault(str, def string) string {
+	if str != "" {
+		return str
+	}
+	return def
 }

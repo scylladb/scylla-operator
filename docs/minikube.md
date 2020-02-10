@@ -114,6 +114,17 @@ kubectl create configmap scylla-config -n scylla --from-file=/tmp/scylla.yaml --
 ```
 The operator will then apply the overridable properties `prefer_local` and `dc_suffix` if they are available in the provided mounted file.
 
+## Configure Scylla Manager Agent
+
+The operator creates a second container for each scylla instance that runs [Scylla Manager Agent](https://hub.docker.com/r/scylladb/scylla-manager-agent).
+This container serves as a sidecar and it's the main endpoint for [Scylla Manager](https://hub.docker.com/r/scylladb/scylla-manager) when interacting with Scylla.
+The Scylla Manager Agent can be configured with various things such as the security token used to allow access to it's API.
+
+To configure the agent you just create a new config-map called _scylla-agent-config_ and populate it with the contents in the `scylla-manager-agent.yaml` file like this:
+```console
+kubectl create configmap scylla-agent-config -n scylla --from-file=scylla-manager-agent.yaml
+```
+
 ## Clean Up
  
 To clean up all resources associated with this walk-through, you can run the commands below.

@@ -129,7 +129,41 @@ kubectl -n scylla edit clusters.scylla.scylladb.com simple-cluster
 ```console
 kubectl -n scylla describe clusters.scylla.scylladb.com simple-cluster
 ```
-  
+
+## Configure Scylla
+
+The operator can take a ConfigMap and apply it to the scylla.yaml configuration file.
+This is done by adding a ConfigMap to Kubernetes and refering to this in the Rack specification.
+The ConfigMap is just a file called `scylla.yaml` that has the properties you want to change in it.
+The operator will take the default properties for the rest of the configuration. 
+
+* Create a ConfigMap the default name that the operator uses is `scylla-config`:
+```console
+kubectl create configmap scylla-config -n scylla --from-file=/path/to/scylla.yaml
+```
+* Wait for the mount to propagate and then restart the cluster:
+```console
+kubectl rollout restart -n scylla statefulset/simple-cluster-us-east-1-us-east-1a
+```
+* The new config should be applied automatically by the operator, check the logs to be sure.
+
+Configuring `cassandra-rackdc.properties` is done by adding the file to the same mount as `scylla.yaml`.
+```console
+kubectl create configmap scylla-config -n scylla --from-file=/tmp/scylla.yaml --from-file=/tmp/cassandra-rackdc.properties -o yaml --dry-run | kubectl replace -f -
+```
+The operator will then apply the overridable properties `prefer_local` and `dc_suffix` if they are available in the provided mounted file.
+
+## Configure Scylla Manager Agent
+
+The operator creates a second container for each scylla instance that runs [Scylla Manager Agent](https://hub.docker.com/r/scylladb/scylla-manager-agent).
+This container serves as a sidecar and it's the main endpoint for [Scylla Manager](https://hub.docker.com/r/scylladb/scylla-manager) when interacting with Scylla.
+The Scylla Manager Agent can be configured with various things such as the security token used to allow access to it's API.
+
+To configure the agent you just create a new config-map called _scylla-agent-config_ and populate it with the contents in the `scylla-manager-agent.yaml` file like this:
+```console
+kubectl create configmap scylla-agent-config -n scylla --from-file=scylla-manager-agent.yaml
+```
+
 ## Clean Up
  
 To clean up all resources associated with this walk-through, you can run the commands below.

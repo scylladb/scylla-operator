@@ -84,6 +84,8 @@ type RackSpec struct {
 	Resources corev1.ResourceRequirements `json:"resources"`
 	// Scylla config map name to customize scylla.yaml
 	ScyllaConfig string `json:"scyllaConfig"`
+	// Scylla config map name to customize scylla manager agent
+	ScyllaAgentConfig string `json:"scyllaAgentConfig"`
 }
 
 type PlacementSpec struct {

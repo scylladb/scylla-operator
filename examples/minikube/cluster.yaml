@@ -89,6 +89,7 @@ spec:
     racks:
       - name: us-east-1a
         scyllaConfig: "scylla-config"
+        scyllaAgentConfig: "scylla-agent-config"
         members: 1
         storage:
           capacity: 5Gi

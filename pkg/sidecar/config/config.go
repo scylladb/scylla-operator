@@ -27,10 +27,11 @@ const (
 	scyllaYAMLConfigMapPath             = naming.ScyllaConfigDirName + "/" + naming.ScyllaConfigName
 	scyllaRackDCPropertiesPath          = configDirScylla + "/" + naming.ScyllaRackDCPropertiesName
 	scyllaRackDCPropertiesConfigMapPath = naming.ScyllaConfigDirName + "/" + naming.ScyllaRackDCPropertiesName
-	scyllaJMXPath                       = "/usr/lib/scylla/jmx/scylla-jmx"
 	jolokiaPath                         = naming.SharedDirName + "/" + naming.JolokiaJarName
 	entrypointPath                      = "/docker-entrypoint.py"
 )
+
+var scyllaJMXPaths = []string{"/usr/lib/scylla/jmx/scylla-jmx", "/opt/scylladb/jmx/scylla-jmx"}
 
 type ScyllaConfig struct {
 	client.Client
@@ -191,6 +192,10 @@ func (s *ScyllaConfig) setupJolokia() error {
 	}
 	jolokiaCfg := fmt.Sprintf("-javaagent:%s=%s", jolokiaPath, strings.Join(cmd, ","))
 
+	scyllaJMXPath, err := findScyllaJMX()
+	if err != nil {
+		return errors.Wrap(err, "scylla-jmx unavailable")
+	}
 	// Open scylla-jmx file
 	scyllaJMXBytes, err := ioutil.ReadFile(scyllaJMXPath)
 	if err != nil {
@@ -206,6 +211,23 @@ func (s *ScyllaConfig) setupJolokia() error {
 		return errors.Wrap(err, "error writing scylla-jmx: %s")
 	}
 	return nil
+}
+
+func findScyllaJMX() (string, error) {
+	for _, file := range scyllaJMXPaths {
+		if fileExists(file) {
+			return file, nil
+		}
+	}
+	return "", errors.Errorf("No scylla-jmx found, tried [%v]", scyllaJMXPaths)
+}
+
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
 }
 
 func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {

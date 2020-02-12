@@ -81,7 +81,7 @@ metadata:
   name: scylla-cluster
   namespace: scylla
 spec:
-  version: 3.0.10
+  version: 3.2.1
   agentVersion: 2.0.1
   cpuset: true
   datacenter:

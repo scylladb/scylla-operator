@@ -343,7 +343,6 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 								{
 									Name:      naming.PVCTemplateName,
 									MountPath: naming.DataDir,
-									ReadOnly:  true,
 								},
 								{
 									Name:      "scylla-agent-config-volume",

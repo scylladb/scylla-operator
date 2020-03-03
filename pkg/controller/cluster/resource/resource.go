@@ -248,16 +248,6 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 										},
 									},
 								},
-								{
-									Name: "MEMORY",
-									ValueFrom: &corev1.EnvVarSource{
-										ResourceFieldRef: &corev1.ResourceFieldSelector{
-											ContainerName: "scylla",
-											Resource:      "limits.memory",
-											Divisor:       resource.MustParse("1Mi"),
-										},
-									},
-								},
 							},
 							Resources: r.Resources,
 							VolumeMounts: []corev1.VolumeMount{

@@ -1,10 +1,11 @@
 package options
 
 import (
+	"os"
+
 	"github.com/pkg/errors"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 // Singleton
@@ -14,8 +15,7 @@ var sidecarOpts = &sidecarOptions{
 
 type sidecarOptions struct {
 	*commonOptions
-	CPU    string
-	Memory string
+	CPU string
 }
 
 func GetSidecarOptions() *sidecarOptions {
@@ -25,7 +25,6 @@ func GetSidecarOptions() *sidecarOptions {
 func (o *sidecarOptions) AddFlags(cmd *cobra.Command) {
 	o.commonOptions.AddFlags(cmd)
 	cmd.Flags().StringVar(&o.CPU, "cpu", os.Getenv(naming.EnvVarCPU), "number of cpus to use")
-	cmd.Flags().StringVar(&o.Memory, "memory", os.Getenv(naming.EnvVarMemory), "amount of memory to use")
 }
 
 func (o *sidecarOptions) Validate() error {
@@ -34,9 +33,6 @@ func (o *sidecarOptions) Validate() error {
 	}
 	if o.CPU == "" {
 		return errors.New("cpu not set")
-	}
-	if o.Memory == "" {
-		return errors.New("memory not set")
 	}
 	return nil
 }

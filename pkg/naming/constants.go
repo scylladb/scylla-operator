@@ -41,7 +41,6 @@ const (
 	EnvVarEnvVarPodName = "POD_NAME"
 	EnvVarPodNamespace  = "POD_NAMESPACE"
 	EnvVarCPU           = "CPU"
-	EnvVarMemory        = "MEMORY"
 )
 
 // Recorder Values

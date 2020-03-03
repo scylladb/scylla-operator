@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -249,29 +248,13 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		devMode = "1"
 	}
 
-	// Get cpu cores
-	cpu := options.GetSidecarOptions().CPU
-
-	// Get memory
-	mem := options.GetSidecarOptions().Memory
-	// Leave some memory for other stuff
-	memNumber, _ := strconv.ParseInt(mem, 10, 64)
-	maxFn := func(x, y int64) (z int64) {
-		if z = x; x < y {
-			z = y
-		}
-		return
-	}
-	mem = fmt.Sprintf("%dM", maxFn(memNumber-700, 0))
-
 	args := []string{
 		fmt.Sprintf("--listen-address=%s", m.IP),
 		fmt.Sprintf("--broadcast-address=%s", m.StaticIP),
 		fmt.Sprintf("--broadcast-rpc-address=%s", m.StaticIP),
 		fmt.Sprintf("--seeds=%s", strings.Join(seeds, ",")),
 		fmt.Sprintf("--developer-mode=%s", devMode),
-		fmt.Sprintf("--smp=%s", cpu),
-		fmt.Sprintf("--memory=%s", mem),
+		fmt.Sprintf("--smp=%s", options.GetSidecarOptions().CPU),
 	}
 
 	// See if we need to use cpu-pinning

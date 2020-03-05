@@ -181,7 +181,7 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 					},
 					Containers: []corev1.Container{
 						{
-							Name:            "scylla",
+							Name:            naming.ScyllaContainerName,
 							Image:           ImageForCluster(c),
 							ImagePullPolicy: "IfNotPresent",
 							Ports: []corev1.ContainerPort{
@@ -242,7 +242,7 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 									Name: "CPU",
 									ValueFrom: &corev1.EnvVarSource{
 										ResourceFieldRef: &corev1.ResourceFieldSelector{
-											ContainerName: "scylla",
+											ContainerName: naming.ScyllaContainerName,
 											Resource:      "limits.cpu",
 											Divisor:       resource.MustParse("1"),
 										},

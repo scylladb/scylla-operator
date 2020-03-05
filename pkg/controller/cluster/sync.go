@@ -115,7 +115,7 @@ func (cc *ClusterController) nextAction(ctx context.Context, cluster *scyllav1al
 		}
 	}
 
-	logger.Debug(ctx, "Different version racks", "count", differentVersionRacks)
+	logger.Debug(ctx, "Different version racks", "count", differentVersionRacks, "total", len(cluster.Spec.Datacenter.Racks))
 
 	// Check that all racks are ready before taking any action
 	for _, rack := range cluster.Spec.Datacenter.Racks {

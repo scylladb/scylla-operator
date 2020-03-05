@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/json"
+
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -9,6 +10,17 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/client-go/kubernetes"
 )
+
+// UpgradeStatefulSetVersion attempts to set the image of a StatefulSet
+func UpgradeStatefulSetVersion(sts *appsv1.StatefulSet, image string, kubeClient kubernetes.Interface) error {
+	upgradeSts := sts.DeepCopy()
+	idx := findContainerByName(upgradeSts, "scylla")
+	if idx < 0 {
+		return errors.New("error, can't find statefulset named 'scylla'")
+	}
+	upgradeSts.Spec.Template.Spec.Containers[idx].Image = image
+	return PatchStatefulSet(sts, upgradeSts, kubeClient)
+}
 
 // ScaleStatefulSet attempts to scale a StatefulSet by the given amount
 func ScaleStatefulSet(sts *appsv1.StatefulSet, amount int32, kubeClient kubernetes.Interface) error {
@@ -66,4 +78,13 @@ func PatchService(old, new *corev1.Service, kubeClient kubernetes.Interface) err
 
 	_, err = kubeClient.CoreV1().Services(old.Namespace).Patch(old.Name, types.StrategicMergePatchType, patchBytes)
 	return err
+}
+
+func findContainerByName(sts *appsv1.StatefulSet, name string) int {
+	for i, container := range sts.Spec.Template.Spec.Containers {
+		if container.Name == name {
+			return i
+		}
+	}
+	return -1
 }

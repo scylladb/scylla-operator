@@ -25,11 +25,7 @@ func (cc *ClusterController) updateStatus(ctx context.Context, cluster *scyllav1
 		rackStatus := &scyllav1alpha1.RackStatus{}
 
 		// Get corresponding StatefulSet from lister
-		err := cc.Get(
-			ctx,
-			naming.NamespacedName(naming.StatefulSetNameForRack(rack, cluster), cluster.Namespace),
-			sts,
-		)
+		err := cc.Get(ctx, naming.NamespacedName(naming.StatefulSetNameForRack(rack, cluster), cluster.Namespace), sts)
 		// If it wasn't found, continue
 		if apierrors.IsNotFound(err) {
 			continue

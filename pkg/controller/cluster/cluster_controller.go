@@ -17,6 +17,7 @@ package cluster
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -86,8 +87,10 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			oldCluster := e.ObjectOld.(*scyllav1alpha1.Cluster)
 			newCluster := e.ObjectNew.(*scyllav1alpha1.Cluster)
 			if reflect.DeepEqual(oldCluster, newCluster) {
+				fmt.Println("CLUSTERS ARE EQUAL")
 				return false
 			}
+			fmt.Println("CLUSTERS ARE NOT EQUAL")
 			return true
 		},
 	}

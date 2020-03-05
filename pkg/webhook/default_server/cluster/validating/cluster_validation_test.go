@@ -1,13 +1,13 @@
 package validating
 
 import (
+	"testing"
+
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
-	"github.com/scylladb/scylla-operator/pkg/controller/cluster/util"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"testing"
 )
 
 func TestCheckValues(t *testing.T) {
@@ -49,94 +49,115 @@ func TestCheckValues(t *testing.T) {
 }
 
 func TestCheckTransitions(t *testing.T) {
-
-	old := unit.NewSingleRackCluster(3)
-
-	versionChanged := old.DeepCopy()
-	versionChanged.Spec.Version = "100.100.100"
-
-	repoChanged := old.DeepCopy()
-	repoChanged.Spec.Repository = util.RefFromString("my-private-repo")
-
-	sidecarImageChanged := old.DeepCopy()
-	sidecarImageChanged.Spec.SidecarImage = &scyllav1alpha1.ImageSpec{
-		Version:    "1.0.0",
-		Repository: "my-private-repo",
-	}
-
-	dcNameChanged := old.DeepCopy()
-	dcNameChanged.Spec.Datacenter.Name = "new-random-name"
-
-	rackPlacementChanged := old.DeepCopy()
-	rackPlacementChanged.Spec.Datacenter.Racks[0].Placement = &scyllav1alpha1.PlacementSpec{}
-
-	rackStorageChanged := old.DeepCopy()
-	rackStorageChanged.Spec.Datacenter.Racks[0].Storage.Capacity = "15Gi"
-
-	rackResourcesChanged := old.DeepCopy()
-	rackResourcesChanged.Spec.Datacenter.Racks[0].Resources.Requests = map[corev1.ResourceName]resource.Quantity{
-		corev1.ResourceCPU: *resource.NewMilliQuantity(1000, resource.DecimalSI),
-	}
-
-	rackDeleted := old.DeepCopy()
-	rackDeleted.Spec.Datacenter.Racks = nil
-
 	tests := []struct {
 		name    string
+		old     *scyllav1alpha1.Cluster
 		new     *scyllav1alpha1.Cluster
 		allowed bool
 	}{
 		{
 			name:    "same as old",
-			new:     old,
+			old:     unit.NewSingleRackCluster(3),
+			new:     unit.NewSingleRackCluster(3),
 			allowed: true,
 		},
+
 		{
-			name:    "version changed",
-			new:     versionChanged,
+			name:    "major version changed",
+			old:     unit.NewSingleRackCluster(3),
+			new:     unit.NewDetailedSingleRackCluster("test-cluster", "test-ns", "repo", "3.3.1", "test-dc", "test-rack", 3),
 			allowed: false,
 		},
 		{
+			name:    "minor version changed",
+			old:     unit.NewSingleRackCluster(3),
+			new:     unit.NewDetailedSingleRackCluster("test-cluster", "test-ns", "repo", "2.4.2", "test-dc", "test-rack", 3),
+			allowed: true,
+		},
+		{
+			name:    "patch version changed",
+			old:     unit.NewSingleRackCluster(3),
+			new:     unit.NewDetailedSingleRackCluster("test-cluster", "test-ns", "repo", "2.3.2", "test-dc", "test-rack", 3),
+			allowed: true,
+		},
+		{
 			name:    "repo changed",
-			new:     repoChanged,
+			old:     unit.NewSingleRackCluster(3),
+			new:     unit.NewDetailedSingleRackCluster("test-cluster", "test-ns", "new-repo", "2.3.2", "test-dc", "test-rack", 3),
 			allowed: false,
 		},
 		{
 			name:    "sidecarImage changed",
-			new:     sidecarImageChanged,
+			old:     unit.NewSingleRackCluster(3),
+			new:     sidecarImageChanged(unit.NewSingleRackCluster(3)),
 			allowed: false,
 		},
 		{
 			name:    "dcName changed",
-			new:     dcNameChanged,
+			old:     unit.NewSingleRackCluster(3),
+			new:     unit.NewDetailedSingleRackCluster("test-cluster", "test-ns", "repo", "2.3.1", "new-dc", "test-rack", 3),
 			allowed: false,
 		},
 		{
 			name:    "rackPlacement changed",
-			new:     rackPlacementChanged,
+			old:     unit.NewSingleRackCluster(3),
+			new:     placementChanged(unit.NewSingleRackCluster(3)),
 			allowed: false,
 		},
 		{
 			name:    "rackStorage changed",
-			new:     rackStorageChanged,
+			old:     unit.NewSingleRackCluster(3),
+			new:     storageChanged(unit.NewSingleRackCluster(3)),
 			allowed: false,
 		},
 		{
 			name:    "rackResources changed",
-			new:     rackResourcesChanged,
+			old:     unit.NewSingleRackCluster(3),
+			new:     resourceChanged(unit.NewSingleRackCluster(3)),
 			allowed: false,
 		},
 		{
 			name:    "rack deleted",
-			new:     rackDeleted,
+			old:     unit.NewSingleRackCluster(3),
+			new:     rackDeleted(unit.NewSingleRackCluster(3)),
 			allowed: false,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			allowed, msg := checkTransitions(old, test.new)
+			allowed, msg := checkTransitions(test.old, test.new)
 			require.Equalf(t, test.allowed, allowed, "Wrong value returned from checkTransitions function. Message: '%s'", msg)
 		})
 	}
+}
+
+func placementChanged(c *scyllav1alpha1.Cluster) *scyllav1alpha1.Cluster {
+	c.Spec.Datacenter.Racks[0].Placement = &scyllav1alpha1.PlacementSpec{}
+	return c
+}
+
+func resourceChanged(c *scyllav1alpha1.Cluster) *scyllav1alpha1.Cluster {
+	c.Spec.Datacenter.Racks[0].Resources.Requests = map[corev1.ResourceName]resource.Quantity{
+		corev1.ResourceCPU: *resource.NewMilliQuantity(1000, resource.DecimalSI),
+	}
+	return c
+}
+
+func rackDeleted(c *scyllav1alpha1.Cluster) *scyllav1alpha1.Cluster {
+	c.Spec.Datacenter.Racks = nil
+	return c
+}
+
+func sidecarImageChanged(c *scyllav1alpha1.Cluster) *scyllav1alpha1.Cluster {
+	c.Spec.SidecarImage = &scyllav1alpha1.ImageSpec{
+		Version:    "1.0.0",
+		Repository: "my-private-repo",
+	}
+	return c
+}
+
+func storageChanged(c *scyllav1alpha1.Cluster) *scyllav1alpha1.Cluster {
+	c.Spec.Datacenter.Racks[0].Storage.Capacity = "15Gi"
+	return c
 }

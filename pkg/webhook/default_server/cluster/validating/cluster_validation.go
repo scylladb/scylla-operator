@@ -2,9 +2,11 @@ package validating
 
 import (
 	"fmt"
+	"reflect"
+
+	"github.com/blang/semver"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"reflect"
 )
 
 func checkValues(c *scyllav1alpha1.Cluster) (allowed bool, msg string) {
@@ -49,14 +51,27 @@ func checkValues(c *scyllav1alpha1.Cluster) (allowed bool, msg string) {
 }
 
 func checkTransitions(old, new *scyllav1alpha1.Cluster) (allowed bool, msg string) {
-	// Check that version remained the same
-	if old.Spec.Version != new.Spec.Version {
-		return false, "change of version is currently not supported"
+	fmt.Println("CHECK_TRANSITIONS")
+	oldVersion, err := semver.Parse(old.Spec.Version)
+	if err != nil {
+		fmt.Printf("OLD VERSION ERROR=%s\n", err)
+		return false, fmt.Sprintf("invalid old semantic version, err=%s", err)
 	}
+	newVersion, err := semver.Parse(new.Spec.Version)
+	if err != nil {
+		fmt.Printf("NEW VERSION ERROR=%s\n", err)
+		return false, fmt.Sprintf("invalid new semantic version, err=%s", err)
+	}
+	// Check that version remained the same
+	if !(newVersion.GE(oldVersion) && newVersion.Major == oldVersion.Major) {
+		fmt.Printf("REJECTING VERSION CHANGE, old=%s, new=%s\n", oldVersion, newVersion)
+		return false, "only upgrading of minor version supported"
+	}
+	fmt.Printf("ACCEPTING VERSION CHANGE, old=%s, new=%s\n", oldVersion, newVersion)
 
 	// Check that repository remained the same
-	if old.Spec.Repository != new.Spec.Repository {
-		return false, "repository change is currently not supported"
+	if !reflect.DeepEqual(old.Spec.Repository, new.Spec.Repository) {
+		return false, fmt.Sprintf("repository change is currently not supported, old=%v, new=%v", *old.Spec.Repository, *new.Spec.Repository)
 	}
 
 	// Check that sidecarImage remained the same

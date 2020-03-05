@@ -25,6 +25,9 @@ func NewDetailedSingleRackCluster(name, namespace, repo, version, dc, rack strin
 					{
 						Name:    rack,
 						Members: members,
+						Storage: scyllav1alpha1.StorageSpec{
+							Capacity: "5Gi",
+						},
 					},
 				},
 			},
@@ -32,6 +35,7 @@ func NewDetailedSingleRackCluster(name, namespace, repo, version, dc, rack strin
 		Status: scyllav1alpha1.ClusterStatus{
 			Racks: map[string]*scyllav1alpha1.RackStatus{
 				rack: {
+					Version:      version,
 					Members:      members,
 					ReadyMembers: members,
 				},

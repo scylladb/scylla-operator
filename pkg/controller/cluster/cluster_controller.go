@@ -64,7 +64,7 @@ func newReconciler(mgr manager.Manager, logger log.Logger) reconcile.Reconciler 
 		Recorder:       mgr.GetRecorder("scylla-cluster-controller"),
 		OperatorImage:  getOperatorImage(ctx, kubeClient, logger),
 		scheme:         mgr.GetScheme(),
-		logger:         logger.Named("cluster_controller"),
+		logger:         logger.Named("cluster-controller"),
 	}
 }
 

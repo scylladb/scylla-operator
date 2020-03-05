@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/scylladb/go-log"
 	"github.com/scylladb/scylla-operator/cmd/options"
@@ -57,6 +58,7 @@ func newOperatorCmd(ctx context.Context, logger log.Logger, level zap.AtomicLeve
 			}
 
 			// Enable webhook if requested
+			fmt.Printf("WEBHOOK ENABLE=%v\n", opts.EnableAdmissionWebhook)
 			if opts.EnableAdmissionWebhook {
 				if err := webhook.AddToManager(mgr); err != nil {
 					logger.Fatal(ctx, "unable to add web hook to manager", "error", err)

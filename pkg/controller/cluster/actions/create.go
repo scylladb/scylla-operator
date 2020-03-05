@@ -49,7 +49,7 @@ func (a *RackCreate) Execute(ctx context.Context, s *State) error {
 		return errors.Wrap(err, "failed to verify owner")
 	}
 	// Check if an error occured
-	if err != nil && !apierrors.IsNotFound(err) {
+	if !apierrors.IsNotFound(err) {
 		return errors.Wrapf(err, "error trying to get statefulset %s", existingSts.Name)
 	}
 

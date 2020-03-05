@@ -115,6 +115,8 @@ type ClusterStatus struct {
 
 // RackStatus is the status of a Scylla Rack
 type RackStatus struct {
+	// Version is the current version of Scylla in use.
+	Version string `json:"version"`
 	// Members is the current number of members requested in the specific Rack
 	Members int32 `json:"members"`
 	// ReadyMembers is the number of ready members in the specific Rack

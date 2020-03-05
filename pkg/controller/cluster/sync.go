@@ -28,7 +28,7 @@ func (cc *ClusterController) sync(c *scyllav1alpha1.Cluster) error {
 	ctx := log.WithNewTraceID(context.Background())
 	logger := cc.logger.With("cluster", c.Namespace+"/"+c.Name, "resourceVersion", c.ResourceVersion)
 	logger.Info(ctx, "Starting reconciliation...")
-	logger.Debug(ctx, "Cluster State", "object", c)
+	logger.Info(ctx, "Cluster State", "object", c)
 
 	// Before syncing, ensure that all StatefulSets are up-to-date
 	stale, err := util.AreStatefulSetStatusesStale(ctx, c, cc.Client)
@@ -118,10 +118,17 @@ func (cc *ClusterController) nextAction(ctx context.Context, cluster *scyllav1al
 
 	// Check if any rack needs to scale up
 	for _, rack := range cluster.Spec.Datacenter.Racks {
-
 		if rack.Members > cluster.Status.Racks[rack.Name].Members {
 			logger.Info(ctx, "Next Action: Scale-Up rack", "name", rack.Name)
 			return actions.NewRackScaleUpAction(rack, cluster)
+		}
+	}
+
+	// Check if any rack needs version upgrade
+	for _, rack := range cluster.Spec.Datacenter.Racks {
+		if cluster.Spec.Version != cluster.Status.Racks[rack.Name].Version {
+			logger.Info(ctx, "Next Action: Scale-Up rack", "name", rack.Name)
+			return actions.NewRackVersionUpgradeAction(rack, cluster)
 		}
 	}
 

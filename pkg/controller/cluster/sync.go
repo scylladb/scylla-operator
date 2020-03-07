@@ -89,6 +89,10 @@ func (cc *ClusterController) nextAction(ctx context.Context, cluster *scyllav1al
 		}
 	}
 
+	////////////////////////////////////////////
+	// Check if there are actions in progress //
+	////////////////////////////////////////////
+
 	// Check if there is a scale-down in progress
 	for _, rack := range cluster.Spec.Datacenter.Racks {
 		if scyllav1alpha1.IsRackConditionTrue(cluster.Status.Racks[rack.Name], scyllav1alpha1.RackConditionTypeMemberLeaving) {
@@ -96,6 +100,23 @@ func (cc *ClusterController) nextAction(ctx context.Context, cluster *scyllav1al
 			logger.Info(ctx, "Next Action: Scale-Down rack", "name", rack.Name)
 			return actions.NewRackScaleDownAction(rack, cluster)
 		}
+	}
+
+	// Check if there is an upgrade in progress
+	differentVersionRacks := 0
+	for _, rack := range cluster.Spec.Datacenter.Racks {
+		if scyllav1alpha1.IsRackConditionTrue(cluster.Status.Racks[rack.Name], scyllav1alpha1.RackConditionTypeUpgrading) {
+			logger.Info(ctx, "Rack is upgrading. Waiting until the upgrade is complete.", "name", rack.Name)
+			return nil
+		}
+
+		if cluster.Status.Racks[rack.Name].Version != cluster.Spec.Version {
+			differentVersionRacks += 1
+		}
+	}
+	// Continue the cluster upgrade if there is one in progress.
+	if differentVersionRacks != 0 && differentVersionRacks != len(cluster.Spec.Datacenter.Racks) {
+
 	}
 
 	// Check that all racks are ready before taking any action
@@ -107,6 +128,10 @@ func (cc *ClusterController) nextAction(ctx context.Context, cluster *scyllav1al
 			return nil
 		}
 	}
+
+	///////////////////////////////////////////////////////////////////////////////////////
+	// At this point, the cluster is in a stable state and ready to start another action //
+	///////////////////////////////////////////////////////////////////////////////////////
 
 	// Check if any rack needs to scale down
 	for _, rack := range cluster.Spec.Datacenter.Racks {
@@ -127,8 +152,8 @@ func (cc *ClusterController) nextAction(ctx context.Context, cluster *scyllav1al
 	// Check if any rack needs version upgrade
 	for _, rack := range cluster.Spec.Datacenter.Racks {
 		if cluster.Spec.Version != cluster.Status.Racks[rack.Name].Version {
-			logger.Info(ctx, "Next Action: Scale-Up rack", "name", rack.Name)
-			return actions.NewRackVersionUpgradeAction(rack, cluster)
+			logger.Info(ctx, "Next Action: Upgrade rack", "name", rack.Name)
+			return actions.NewClusterVersionUpgradeAction(cluster)
 		}
 	}
 

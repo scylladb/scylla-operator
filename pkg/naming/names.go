@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
@@ -56,4 +57,21 @@ func IndexFromName(n string) (int32, error) {
 	}
 
 	return int32(index), nil
+}
+
+func ImageToVersion(image string) (string, error){
+	parts := strings.Split(image, ":")
+	if len(parts) != 2 || len(parts[1]) == 0 {
+		return "", errors.New(fmt.Sprintf("Invalid image name: %s", image))
+	}
+	return parts[1], nil
+}
+
+func FindScyllaContainer(containers []corev1.Container) (int, error) {
+	for idx := range containers {
+		if containers[idx].Name == ScyllaContainerName {
+			return idx, nil
+		}
+	}
+	return -1, errors.New(fmt.Sprintf("Scylla Container '%s' not found", ScyllaContainerName))
 }

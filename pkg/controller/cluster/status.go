@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pkg/errors"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
@@ -39,6 +40,40 @@ func (cc *ClusterController) updateStatus(ctx context.Context, cluster *scyllav1
 		rackStatus.Members = *sts.Spec.Replicas
 		// Update ReadyMembers
 		rackStatus.ReadyMembers = sts.Status.ReadyReplicas
+
+		// Update Rack Version
+		if rackStatus.Members == 0 {
+			rackStatus.Version = cluster.Spec.Version
+		} else {
+			firstRackMemberName := fmt.Sprintf("%s-0", naming.StatefulSetNameForRack(rack, cluster))
+			firstRackMember := &corev1.Pod{}
+			err := cc.Get(ctx, naming.NamespacedName(firstRackMemberName, cluster.Namespace), firstRackMember)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			idx, err := naming.FindScyllaContainer(sts.Spec.Template.Spec.Containers)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			rackStatus.Version, err = naming.ImageToVersion(firstRackMember.Spec.Containers[idx].Image)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+		}
+
+		// Update Upgrading condition
+		idx, err := naming.FindScyllaContainer(sts.Spec.Template.Spec.Containers)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		desiredRackVersion, err := naming.ImageToVersion(sts.Spec.Template.Spec.Containers[idx].Image)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		actualRackVersion := rackStatus.Version
+		if desiredRackVersion != actualRackVersion {
+			scyllav1alpha1.SetRackCondition(rackStatus, scyllav1alpha1.RackConditionTypeUpgrading)
+		}
 
 		// Update Scaling Down condition
 		svcList, err := util.GetMemberServicesForRack(ctx, rack, cluster, cc.Client)

@@ -56,6 +56,8 @@ const (
 
 // Configuration Values
 const (
+	ScyllaContainerName = "scylla"
+
 	PVCTemplateName = "data"
 
 	SharedDirName = "/mnt/shared"

@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"fmt"
+	"github.com/scylladb/scylla-operator/pkg/controller/cluster/resource"
 
 	"github.com/scylladb/scylla-operator/pkg/controller/cluster/util"
 	corev1 "k8s.io/api/core/v1"
@@ -16,47 +17,44 @@ import (
 )
 
 const (
-	officialScyllaRepo       = "scylladb/scylla"
-	RackVersionUpgradeAction = "rack-version-upgrade"
+	ClusterVersionUpgradeAction = "rack-version-upgrade"
 )
 
-type RackVersionUpgrade struct {
-	Rack    scyllav1alpha1.RackSpec
+type ClusterVersionUpgrade struct {
 	Cluster *scyllav1alpha1.Cluster
 }
 
-func NewRackVersionUpgradeAction(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster) *RackVersionUpgrade {
-	return &RackVersionUpgrade{
-		Rack:    r,
+func NewClusterVersionUpgradeAction(c *scyllav1alpha1.Cluster) *ClusterVersionUpgrade {
+	return &ClusterVersionUpgrade{
 		Cluster: c,
 	}
 }
 
-func (a *RackVersionUpgrade) Name() string {
-	return RackVersionUpgradeAction
+func (a *ClusterVersionUpgrade) Name() string {
+	return ClusterVersionUpgradeAction
 }
 
-func (a *RackVersionUpgrade) Execute(ctx context.Context, s *State) error {
-	r, c := a.Rack, a.Cluster
-	sts := &appsv1.StatefulSet{}
-	err := s.Get(ctx, naming.NamespacedName(naming.StatefulSetNameForRack(r, c), c.Namespace), sts)
-	if err != nil {
-		return errors.Wrap(err, "failed to get statefulset")
+func (a *ClusterVersionUpgrade) Execute(ctx context.Context, s *State) error {
+	c := a.Cluster
+	for _, r := range c.Spec.Datacenter.Racks {
+		if c.Status.Racks[r.Name].Version != c.Spec.Version {
+			sts := &appsv1.StatefulSet{}
+			err := s.Get(ctx, naming.NamespacedName(naming.StatefulSetNameForRack(r, c), c.Namespace), sts)
+			if err != nil {
+				return errors.Wrap(err, "failed to get statefulset")
+			}
+			image := resource.ImageForCluster(c)
+			if err = util.UpgradeStatefulSetImage(sts, image, s.kubeclient); err != nil {
+				return errors.Wrap(err, "failed to upgrade statefulset")
+			}
+			// Record event for successful version upgrade
+			s.recorder.Event(
+				c,
+				corev1.EventTypeNormal,
+				naming.SuccessSynced,
+				fmt.Sprintf("Rack %s upgraded up to version %s", r.Name, c.Spec.Version),
+			)
+		}
 	}
-	image := imageForCluster(c)
-	if err = util.UpgradeStatefulSetVersion(sts, image, s.kubeclient); err != nil {
-		return errors.Wrap(err, "failed to upgrade statefulset")
-	}
-
-	// Record event for successful version upgrade
-	s.recorder.Event(c, corev1.EventTypeNormal, naming.SuccessSynced, fmt.Sprintf("Rack %s upgraded up to version %s", r.Name, image))
 	return nil
-}
-
-func imageForCluster(c *scyllav1alpha1.Cluster) string {
-	repo := officialScyllaRepo
-	if c.Spec.Repository != nil {
-		repo = *c.Spec.Repository
-	}
-	return fmt.Sprintf("%s:%s", repo, c.Spec.Version)
 }

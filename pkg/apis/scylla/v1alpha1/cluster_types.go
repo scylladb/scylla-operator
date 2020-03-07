@@ -135,6 +135,7 @@ type RackConditionType string
 
 const (
 	RackConditionTypeMemberLeaving RackConditionType = "MemberLeaving"
+	RackConditionTypeUpgrading     RackConditionType = "RackUpgrading"
 )
 
 func init() {

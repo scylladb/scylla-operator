@@ -182,7 +182,7 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 					Containers: []corev1.Container{
 						{
 							Name:            "scylla",
-							Image:           imageForCluster(c),
+							Image:           ImageForCluster(c),
 							ImagePullPolicy: "IfNotPresent",
 							Ports: []corev1.ContainerPort{
 								{
@@ -367,7 +367,7 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 	}
 }
 
-func imageForCluster(c *scyllav1alpha1.Cluster) string {
+func ImageForCluster(c *scyllav1alpha1.Cluster) string {
 	repo := officialScyllaRepo
 	if c.Spec.Repository != nil {
 		repo = *c.Spec.Repository

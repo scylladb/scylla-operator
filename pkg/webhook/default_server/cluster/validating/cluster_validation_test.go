@@ -72,7 +72,7 @@ func TestCheckTransitions(t *testing.T) {
 			name:    "minor version changed",
 			old:     unit.NewSingleRackCluster(3),
 			new:     unit.NewDetailedSingleRackCluster("test-cluster", "test-ns", "repo", "2.4.2", "test-dc", "test-rack", 3),
-			allowed: true,
+			allowed: false,
 		},
 		{
 			name:    "patch version changed",

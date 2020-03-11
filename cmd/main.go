@@ -17,7 +17,7 @@ import (
 // see: https://github.com/spf13/cobra
 func main() {
 	ctx := log.WithNewTraceID(context.Background())
-	atom := zap.NewAtomicLevelAt(zapcore.DebugLevel)
+	atom := zap.NewAtomicLevelAt(zapcore.InfoLevel)
 	logger, _ := log.NewProduction(log.Config{
 		Level: atom,
 	})

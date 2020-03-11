@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/scylladb/go-log"
 	"github.com/scylladb/scylla-operator/cmd/options"
@@ -58,7 +57,6 @@ func newOperatorCmd(ctx context.Context, logger log.Logger, level zap.AtomicLeve
 			}
 
 			// Enable webhook if requested
-			fmt.Printf("WEBHOOK ENABLE=%v\n", opts.EnableAdmissionWebhook)
 			if opts.EnableAdmissionWebhook {
 				if err := webhook.AddToManager(mgr); err != nil {
 					logger.Fatal(ctx, "unable to add web hook to manager", "error", err)
@@ -67,7 +65,7 @@ func newOperatorCmd(ctx context.Context, logger log.Logger, level zap.AtomicLeve
 
 			logger.Info(ctx, "Starting the operator...")
 			if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
-				logger.Fatal(ctx, "error launching manager", "error", err)
+				logger.Fatal(ctx, "error launching manager", "mode", "operator", "error", err)
 			}
 		},
 	}

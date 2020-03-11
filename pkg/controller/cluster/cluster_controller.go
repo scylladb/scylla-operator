@@ -17,7 +17,6 @@ package cluster
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -65,6 +64,7 @@ func newReconciler(mgr manager.Manager, logger log.Logger) reconcile.Reconciler 
 		Recorder:       mgr.GetRecorder("scylla-cluster-controller"),
 		OperatorImage:  getOperatorImage(ctx, kubeClient, logger),
 		scheme:         mgr.GetScheme(),
+		logger:         logger.Named("cluster_controller"),
 	}
 }
 
@@ -87,10 +87,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			oldCluster := e.ObjectOld.(*scyllav1alpha1.Cluster)
 			newCluster := e.ObjectNew.(*scyllav1alpha1.Cluster)
 			if reflect.DeepEqual(oldCluster, newCluster) {
-				fmt.Println("CLUSTERS ARE EQUAL")
 				return false
 			}
-			fmt.Println("CLUSTERS ARE NOT EQUAL")
 			return true
 		},
 	}
@@ -203,7 +201,7 @@ func (cc *ClusterController) Reconcile(request reconcile.Request) (reconcile.Res
 	logger := cc.logger.With("cluster", c.Namespace+"/"+c.Name, "resourceVersion", c.ResourceVersion)
 	copy := c.DeepCopy()
 	if err = cc.sync(copy); err != nil {
-		logger.Error(ctx, "An error occured during cluster reconciliation", "error", err)
+		logger.Error(ctx, "An error occurred during cluster reconciliation", "error", err)
 		return reconcile.Result{}, errors.Wrap(err, "sync failed")
 	}
 

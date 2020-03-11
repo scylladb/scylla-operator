@@ -59,7 +59,7 @@ func newSidecarCmd(ctx context.Context, logger log.Logger, level zap.AtomicLevel
 
 			logger.Info(ctx, "Starting the sidecar...")
 			if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
-				logger.Fatal(ctx, "error launching manager", "error", err)
+				logger.Fatal(ctx, "error launching manager", "mode", "sidecar", "error", err)
 			}
 		},
 	}

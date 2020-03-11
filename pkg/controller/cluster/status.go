@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pkg/errors"
@@ -72,6 +73,7 @@ func (cc *ClusterController) updateStatus(ctx context.Context, cluster *scyllav1
 		}
 		actualRackVersion := rackStatus.Version
 		if desiredRackVersion != actualRackVersion {
+			cc.logger.Info(ctx, "Rack should be upgraded", "actual_version", actualRackVersion, "desired_version", desiredRackVersion, "rack", rack.Name)
 			scyllav1alpha1.SetRackCondition(rackStatus, scyllav1alpha1.RackConditionTypeUpgrading)
 		}
 

@@ -51,23 +51,18 @@ func checkValues(c *scyllav1alpha1.Cluster) (allowed bool, msg string) {
 }
 
 func checkTransitions(old, new *scyllav1alpha1.Cluster) (allowed bool, msg string) {
-	fmt.Println("CHECK_TRANSITIONS")
 	oldVersion, err := semver.Parse(old.Spec.Version)
 	if err != nil {
-		fmt.Printf("OLD VERSION ERROR=%s\n", err)
 		return false, fmt.Sprintf("invalid old semantic version, err=%s", err)
 	}
 	newVersion, err := semver.Parse(new.Spec.Version)
 	if err != nil {
-		fmt.Printf("NEW VERSION ERROR=%s\n", err)
 		return false, fmt.Sprintf("invalid new semantic version, err=%s", err)
 	}
 	// Check that version remained the same
-	if !(newVersion.GE(oldVersion) && newVersion.Major == oldVersion.Major) {
-		fmt.Printf("REJECTING VERSION CHANGE, old=%s, new=%s\n", oldVersion, newVersion)
-		return false, "only upgrading of minor version supported"
+	if newVersion.Major != oldVersion.Major || newVersion.Minor != oldVersion.Minor {
+		return false, "only upgrading of patch versions are supported"
 	}
-	fmt.Printf("ACCEPTING VERSION CHANGE, old=%s, new=%s\n", oldVersion, newVersion)
 
 	// Check that repository remained the same
 	if !reflect.DeepEqual(old.Spec.Repository, new.Spec.Repository) {

@@ -2,9 +2,9 @@ package util
 
 import (
 	"encoding/json"
-	"github.com/scylladb/scylla-operator/pkg/naming"
 
 	"github.com/pkg/errors"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"

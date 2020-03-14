@@ -13,6 +13,14 @@ To develop on scylla-operator, your environment must have the following:
 4. Git client installed
 5. Github account
 
+To install all binary dependencies (Go, kustomize, kubebuilder, dep), simply run:
+```bash
+make bin/deps
+```
+This will install all binary dependencies under `bin/deps`.
+If you have some of the above already installed, it is completely safe to run the command, since it only
+affects the `bin/deps` folder.
+
 ## Initial Setup
 
 ### Create a Fork

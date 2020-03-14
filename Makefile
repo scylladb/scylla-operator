@@ -1,8 +1,14 @@
 
 # Image URL to use all building/pushing image targets
 REPO ?= "yanniszark/scylla-operator"
-TAG ?= "v0.0-$(shell git rev-parse --short HEAD)"
-IMG ?= "${REPO}:${TAG}"
+TAG ?= "$(shell git describe --tags --always --long)"
+IMG ?= "$(REPO):$(TAG)"
+
+.EXPORT_ALL_VARIABLES:
+DOCKER_BUILDKIT = 1
+GO111MODULE = off
+KUBEBUILDER_ASSETS = $(CURDIR)/bin/deps
+PATH := $(CURDIR)/bin/deps:$(CURDIR)/bin/deps/go/bin:$(PATH)
 
 all: test local-build
 
@@ -12,11 +18,11 @@ test: fmt vet manifests vendor
 
 # Build local-build binary
 local-build: fmt vet vendor
-	go build -o bin/manager github.com/scylladb/scylla-operator/cmd
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o bin/manager github.com/scylladb/scylla-operator/cmd
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: fmt vet vendor
-	go run ./cmd operator --image="${IMG}" --enable-admission-webhook=false
+	go run ./cmd operator --image="$(IMG)" --enable-admission-webhook=false
 
 # Install CRDs into a cluster
 install: manifests
@@ -30,7 +36,7 @@ deploy: install
 # Generate manifests e.g. CRD, RBAC etc.
 manifests:
 	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
-	cd config && kustomize edit set image yanniszark/scylla-operator="${IMG}"
+	cd config && kustomize edit set image yanniszark/scylla-operator="$(IMG)"
 	kustomize build config > examples/generic/operator.yaml
 	kustomize build config > examples/gke/operator.yaml
 	kustomize build config > examples/minikube/operator.yaml
@@ -52,11 +58,15 @@ vendor:
 	dep ensure -v
 
 # Build the docker image
-docker-build: test
-	docker build . -t "${IMG}"
+docker-build:
+	docker build . -t "$(IMG)"
 
 # Push the docker image
 docker-push:
-	docker push "${IMG}"
+	docker push "$(IMG)"
 
 publish: docker-build docker-push
+
+bin/deps:
+	mkdir -p bin/deps
+	hack/binary_deps.py bin/deps

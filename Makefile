@@ -1,8 +1,8 @@
 
 # Image URL to use all building/pushing image targets
-REPO ?= "yanniszark/scylla-operator"
-TAG ?= "$(shell git describe --tags --always --long)"
-IMG ?= "$(REPO):$(TAG)"
+REPO ?= yanniszark/scylla-operator
+TAG ?= $(shell git describe --tags --always --long)
+IMG ?= $(REPO):$(TAG)
 
 .EXPORT_ALL_VARIABLES:
 DOCKER_BUILDKIT = 1

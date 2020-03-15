@@ -2,6 +2,7 @@ package resource
 
 import (
 	"fmt"
+	"github.com/scylladb/scylla-operator/cmd/options"
 	"path"
 	"strings"
 
@@ -101,7 +102,7 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 		placement = &scyllav1alpha1.PlacementSpec{}
 	}
 	opt := true
-	return &appsv1.StatefulSet{
+	sts := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            naming.StatefulSetNameForRack(r, c),
 			Namespace:       c.Namespace,
@@ -313,34 +314,6 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 								},
 							},
 						},
-						{
-							Name:            "scylla-manager-agent",
-							Image:           agentImageForCluster(c),
-							ImagePullPolicy: "IfNotPresent",
-							Args: []string{
-								"-c",
-								"/etc/scylla-manager-agent/scylla-manager-agent.yaml",
-								"-c",
-								naming.ScyllaAgentConfigDirName + "/scylla-manager-agent.yaml",
-							},
-							Ports: []corev1.ContainerPort{
-								{
-									Name:          "agent-rest-api",
-									ContainerPort: 10001,
-								},
-							},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      naming.PVCTemplateName,
-									MountPath: naming.DataDir,
-								},
-								{
-									Name:      "scylla-agent-config-volume",
-									MountPath: naming.ScyllaAgentConfigDirName,
-									ReadOnly:  true,
-								},
-							},
-						},
 					},
 					ServiceAccountName: naming.ServiceAccountNameForMembers(c),
 					Affinity:           &placement.Affinity,
@@ -362,6 +335,43 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 						},
 					},
 				},
+			},
+		},
+	}
+
+	// If the scylla-agent feature-flag is enabled, add the Scylla Agent sidecar
+	if options.GetOperatorOptions().EnableScyllaAgentSidecar {
+		sts.Spec.Template.Spec.Containers = append(sts.Spec.Template.Spec.Containers, *agentContainer(c))
+	}
+	return sts
+}
+
+func agentContainer(c *scyllav1alpha1.Cluster) *corev1.Container {
+	return &corev1.Container{
+		Name:            "scylla-manager-agent",
+		Image:           agentImageForCluster(c),
+		ImagePullPolicy: "IfNotPresent",
+		Args: []string{
+			"-c",
+			"/etc/scylla-manager-agent/scylla-manager-agent.yaml",
+			"-c",
+			naming.ScyllaAgentConfigDirName + "/scylla-manager-agent.yaml",
+		},
+		Ports: []corev1.ContainerPort{
+			{
+				Name:          "agent-rest-api",
+				ContainerPort: 10001,
+			},
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      naming.PVCTemplateName,
+				MountPath: naming.DataDir,
+			},
+			{
+				Name:      "scylla-agent-config-volume",
+				MountPath: naming.ScyllaAgentConfigDirName,
+				ReadOnly:  true,
 			},
 		},
 	}

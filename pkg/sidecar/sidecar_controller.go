@@ -21,13 +21,14 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
+
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
 	"github.com/scylladb/scylla-operator/cmd/options"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/config"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
-	"github.com/yanniszark/go-nodetool/nodetool"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -78,7 +79,7 @@ func newReconciler(mgr manager.Manager, logger log.Logger) reconcile.Reconciler 
 		kubeClient: kubeClient,
 		member:     member,
 		scheme:     mgr.GetScheme(),
-		nodetool:   nodetool.NewFromURL(url),
+		nodetool:   scyllaclient.New(),
 		logger:     logger,
 	}
 
@@ -149,7 +150,7 @@ type MemberController struct {
 	client.Client
 	kubeClient kubernetes.Interface
 	member     *identity.Member
-	nodetool   *nodetool.Nodetool
+	nodetool   *scyllaclient.Client
 	scheme     *runtime.Scheme
 	logger     log.Logger
 }

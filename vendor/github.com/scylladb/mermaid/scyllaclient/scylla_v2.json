@@ -1,0 +1,4892 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "1.0.0",
+    "title": "Scylla API",
+    "description": "The scylla API version 2.0",
+    "termsOfService": "http://www.scylladb.com/tos/",
+    "contact": {
+      "name": "Scylla Team",
+      "email": "info@scylladb.com",
+      "url": "http://scylladb.com"
+    },
+    "license": {
+      "name": "AGPL",
+      "url": "https://github.com/scylladb/scylla/blob/master/LICENSE.AGPL"
+    }
+  },
+  "host": "mermaid.magic.host",
+  "basePath": "/v2",
+  "schemes": [
+    "http"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/config/background_writer_scheduling_quota": {
+      "get": {
+        "description": "max cpu usage ratio (between 0 and 1) for compaction process. Not intended for setting in normal operations. Setting it to 1 or higher will disable it, recommended operational setting is 0.5.",
+        "operationId": "find_config_background_writer_scheduling_quota",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "number"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/auto_adjust_flush_quota": {
+      "get": {
+        "description": "true: auto-adjust memtable shares for flush processes",
+        "operationId": "find_config_auto_adjust_flush_quota",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/memtable_flush_static_shares": {
+      "get": {
+        "description": "If set to higher than 0, ignore the controller's output and set the memtable shares statically. Do not set this unless you know what you are doing and suspect a problem in the controller. This option will be retired when the controller reaches more maturity",
+        "operationId": "find_config_memtable_flush_static_shares",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "number"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/compaction_static_shares": {
+      "get": {
+        "description": "If set to higher than 0, ignore the controller's output and set the compaction shares statically. Do not set this unless you know what you are doing and suspect a problem in the controller. This option will be retired when the controller reaches more maturity",
+        "operationId": "find_config_compaction_static_shares",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "number"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/compaction_enforce_min_threshold": {
+      "get": {
+        "description": "If set to true, enforce the min_threshold option for compactions strictly. If false (default), Scylla may decide to compact even if below min_threshold",
+        "operationId": "find_config_compaction_enforce_min_threshold",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/cluster_name": {
+      "get": {
+        "description": "The name of the cluster; used to prevent machines in one logical cluster from joining another. All nodes participating in a cluster must have the same value.",
+        "operationId": "find_config_cluster_name",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/listen_address": {
+      "get": {
+        "description": "The IP address or hostname that Scylla binds to for connecting to other Scylla nodes. Set this parameter or listen_interface, not both. You must change the default setting for multiple nodes to communicate:\n\nGenerally set to empty. If the node is properly configured (host name, name resolution, and so on), Scylla uses InetAddress.getLocalHost() to get the local address from the system.\nFor a single node cluster, you can use the default setting (localhost).\nIf Scylla can't find the correct address, you must specify the IP address or host name.\nNever specify 0.0.0.0; it is always wrong.",
+        "operationId": "find_config_listen_address",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/listen_interface": {
+      "get": {
+        "description": "The interface that Scylla binds to for connecting to other Scylla nodes. Interfaces must correspond to a single address, IP aliasing is not supported. See listen_address.",
+        "operationId": "find_config_listen_interface",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/commitlog_directory": {
+      "get": {
+        "description": "The directory where the commit log is stored. For optimal write performance, it is recommended the commit log be on a separate disk partition (ideally, a separate physical device) from the data file directories.",
+        "operationId": "find_config_commitlog_directory",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/data_file_directories": {
+      "get": {
+        "description": "The directory location where table data (SSTables) is stored",
+        "operationId": "find_config_data_file_directories",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/hints_directory": {
+      "get": {
+        "description": "The directory where hints files are stored if hinted handoff is enabled.",
+        "operationId": "find_config_hints_directory",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/view_hints_directory": {
+      "get": {
+        "description": "The directory where materialized-view updates are stored while a view replica is unreachable.",
+        "operationId": "find_config_view_hints_directory",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/saved_caches_directory": {
+      "get": {
+        "description": "The directory location where table key and row caches are stored.",
+        "operationId": "find_config_saved_caches_directory",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/commit_failure_policy": {
+      "get": {
+        "description": "Policy for commit disk failures:\n\n die          Shut down gossip and Thrift and kill the JVM, so the node can be replaced.\n stop         Shut down gossip and Thrift, leaving the node effectively dead, but can be inspected using JMX.\n stop_commit  Shut down the commit log, letting writes collect but continuing to service reads (as in pre-2.0.5 Cassandra).\n ignore       Ignore fatal errors and let the batches fail.",
+        "operationId": "find_config_commit_failure_policy",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/disk_failure_policy": {
+      "get": {
+        "description": "Sets how Scylla responds to disk failure. Recommend settings are stop or best_effort.\n\n die              Shut down gossip and Thrift and kill the JVM for any file system errors or single SSTable errors, so the node can be replaced.\n stop_paranoid    Shut down gossip and Thrift even for single SSTable errors.\n stop             Shut down gossip and Thrift, leaving the node effectively dead, but available for inspection using JMX.\n best_effort      Stop using the failed disk and respond to requests based on the remaining available SSTables. This means you will see obsolete data at consistency level of ONE.\n ignore           Ignores fatal errors and lets the requests fail; all file system errors are logged but otherwise ignored. Scylla acts as in versions prior to Cassandra 1.2.\n\nRelated information: Handling Disk Failures In Cassandra 1.2 blog and Recovering from a single disk failure using JBOD.\n",
+        "operationId": "find_config_disk_failure_policy",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/endpoint_snitch": {
+      "get": {
+        "description": "Set to a class that implements the IEndpointSnitch. Scylla uses snitches for locating nodes and routing requests.\n\n SimpleSnitch: Use for single-data center deployments or single-zone in public clouds. Does not recognize data center or rack information. It treats strategy order as proximity, which can improve cache locality when disabling read repair.\n\n GossipingPropertyFileSnitch: Recommended for production. The rack and data center for the local node are defined in the cassandra-rackdc.properties file and propagated to other nodes via gossip. To allow migration from the PropertyFileSnitch, it uses the cassandra-topology.properties file if it is present.\n\n Ec2Snitch: For EC2 deployments in a single region. Loads region and availability zone information from the EC2 API. The region is treated as the data center and the availability zone as the rack. Uses only private IPs. Subsequently it does not work across multiple regions.\n\n Ec2MultiRegionSnitch: Uses public IPs as the broadcast_address to allow cross-region connectivity. This means you must also set seed addresses to the public IP and open the storage_port or ssl_storage_port on the public IP firewall. For intra-region traffic, Scylla switches to the private IP after establishing a connection.\n\n GoogleCloudSnitch: For deployments on Google Cloud Platform across one or more regions. The region is treated as a datacenter and the availability zone is treated as a rack within the datacenter. The communication should occur over private IPs within the same logical network.\n\n RackInferringSnitch: Proximity is determined by rack and data center, which are assumed to correspond to the 3rd and 2nd octet of each node's IP address, respectively. This snitch is best used as an example for writing a custom snitch class (unless this happens to match your deployment conventions).\n\nRelated information: Snitches\n",
+        "operationId": "find_config_endpoint_snitch",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/rpc_address": {
+      "get": {
+        "description": "The listen address for client connections (Thrift RPC service and native transport).Valid values are:\n\n unset:   Resolves the address using the hostname configuration of the node. If left unset, the hostname must resolve to the IP address of this node using /etc/hostname, /etc/hosts, or DNS.\n 0.0.0.0 : Listens on all configured interfaces, but you must set the broadcast_rpc_address to a value other than 0.0.0.0.\n IP address\n hostname\nRelated information: Network\n",
+        "operationId": "find_config_rpc_address",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/rpc_interface": {
+      "get": {
+        "description": "The listen address for client connections. Interfaces must correspond to a single address, IP aliasing is not supported. See rpc_address.",
+        "operationId": "find_config_rpc_interface",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/seed_provider": {
+      "get": {
+        "description": "The addresses of hosts deemed contact points. Scylla nodes use the -seeds list to find each other and learn the topology of the ring.\n\n  class_name (Default: org.apache.cassandra.locator.SimpleSeedProvider)\n   The class within Scylla that handles the seed logic. It can be customized, but this is typically not required.\n   - seeds (Default: 127.0.0.1)    A comma-delimited list of IP addresses used by gossip for bootstrapping new nodes joining a cluster. When running multiple nodes, you must change the list from the default value. In multiple data-center clusters, the seed list should include at least one node from each data center (replication group). More than a single seed node per data center is recommended for fault tolerance. Otherwise, gossip has to communicate with another data center when bootstrapping a node. Making every node a seed node is not recommended because of increased maintenance and reduced gossip performance. Gossip optimization is not critical, but it is recommended to use a small seed list (approximately three nodes per data center).\n\nRelated information: Initializing a multiple node cluster (single data center) and Initializing a multiple node cluster (multiple data centers).",
+        "operationId": "find_config_seed_provider",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/compaction_throughput_mb_per_sec": {
+      "get": {
+        "description": "Throttles compaction to the specified total throughput across the entire system. The faster you insert data, the faster you need to compact in order to keep the SSTable count down. The recommended Value is 16 to 32 times the rate of write throughput (in MBs/second). Setting the value to 0 disables compaction throttling.\nRelated information: Configuring compaction",
+        "operationId": "find_config_compaction_throughput_mb_per_sec",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/compaction_large_partition_warning_threshold_mb": {
+      "get": {
+        "description": "Log a warning when writing partitions larger than this value",
+        "operationId": "find_config_compaction_large_partition_warning_threshold_mb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/compaction_large_row_warning_threshold_mb": {
+      "get": {
+        "description": "Log a warning when writing rows larger than this value",
+        "operationId": "find_config_compaction_large_row_warning_threshold_mb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/compaction_large_cell_warning_threshold_mb": {
+      "get": {
+        "description": "Log a warning when writing cells larger than this value",
+        "operationId": "find_config_compaction_large_cell_warning_threshold_mb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/compaction_rows_count_warning_threshold": {
+      "get": {
+        "description": "Log a warning when writing a number of rows larger than this value",
+        "operationId": "find_config_compaction_rows_count_warning_threshold",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/memtable_total_space_in_mb": {
+      "get": {
+        "description": "Specifies the total memory used for all memtables on a node. This replaces the per-table storage settings memtable_operations_in_millions and memtable_throughput_in_mb.",
+        "operationId": "find_config_memtable_total_space_in_mb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/concurrent_reads": {
+      "get": {
+        "description": "For workloads with more data than can fit in memory, the bottleneck is reads fetching data from disk. Setting to (16 × number_of_drives) allows operations to queue low enough in the stack so that the OS and drives can reorder them.",
+        "operationId": "find_config_concurrent_reads",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/concurrent_writes": {
+      "get": {
+        "description": "Writes in Cassandra are rarely I/O bound, so the ideal number of concurrent writes depends on the number of CPU cores in your system. The recommended value is (8 x number_of_cpu_cores).",
+        "operationId": "find_config_concurrent_writes",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/concurrent_counter_writes": {
+      "get": {
+        "description": "Counter writes read the current values before incrementing and writing them back. The recommended value is (16 × number_of_drives) .",
+        "operationId": "find_config_concurrent_counter_writes",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/incremental_backups": {
+      "get": {
+        "description": "Backs up data updated since the last snapshot was taken. When enabled, Scylla creates a hard link to each SSTable flushed or streamed locally in a backups/ subdirectory of the keyspace data. Removing these links is the operator's responsibility.\nRelated information: Enabling incremental backups",
+        "operationId": "find_config_incremental_backups",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/snapshot_before_compaction": {
+      "get": {
+        "description": "Enable or disable taking a snapshot before each compaction. This option is useful to back up data when there is a data format change. Be careful using this option because Cassandra does not clean up older snapshots automatically.\nRelated information: Configuring compaction",
+        "operationId": "find_config_snapshot_before_compaction",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/phi_convict_threshold": {
+      "get": {
+        "description": "Adjusts the sensitivity of the failure detector on an exponential scale. Generally this setting never needs adjusting.\nRelated information: Failure detection and recovery",
+        "operationId": "find_config_phi_convict_threshold",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/commitlog_sync": {
+      "get": {
+        "description": "The method that Scylla uses to acknowledge writes in milliseconds:\n\n periodic : Used with commitlog_sync_period_in_ms (Default: 10000 - 10 seconds ) to control how often the commit log is synchronized to disk. Periodic syncs are acknowledged immediately.\n batch : Used with commitlog_sync_batch_window_in_ms (Default: disabled **) to control how long Scylla waits for other writes before performing a sync. When using this method, writes are not acknowledged until fsynced to disk.\nRelated information: Durability",
+        "operationId": "find_config_commitlog_sync",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/commitlog_segment_size_in_mb": {
+      "get": {
+        "description": "Sets the size of the individual commitlog file segments. A commitlog segment may be archived, deleted, or recycled after all its data has been flushed to SSTables. This amount of data can potentially include commitlog segments from every table in the system. The default size is usually suitable for most commitlog archiving, but if you want a finer granularity, 8 or 16 MB is reasonable. See Commit log archive configuration.\nRelated information: Commit log archive configuration",
+        "operationId": "find_config_commitlog_segment_size_in_mb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/commitlog_sync_period_in_ms": {
+      "get": {
+        "description": "Controls how long the system waits for other writes before performing a sync in ''periodic'' mode.",
+        "operationId": "find_config_commitlog_sync_period_in_ms",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/commitlog_sync_batch_window_in_ms": {
+      "get": {
+        "description": "Controls how long the system waits for other writes before performing a sync in ''batch'' mode.",
+        "operationId": "find_config_commitlog_sync_batch_window_in_ms",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/commitlog_total_space_in_mb": {
+      "get": {
+        "description": "Total space used for commitlogs. If the used space goes above this value, Scylla rounds up to the next nearest segment multiple and flushes memtables to disk for the oldest commitlog segments, removing those log segments. This reduces the amount of data to replay on startup, and prevents infrequently-updated tables from indefinitely keeping commitlog segments. A small total commitlog space tends to cause more flush activity on less-active tables.\nRelated information: Configuring memtable throughput",
+        "operationId": "find_config_commitlog_total_space_in_mb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/commitlog_reuse_segments": {
+      "get": {
+        "description": "Whether or not to re-use commitlog segments when finished instead of deleting them. Can improve commitlog latency on some file systems.\n",
+        "operationId": "find_config_commitlog_reuse_segments",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/commitlog_use_o_dsync": {
+      "get": {
+        "description": "Whether or not to use O_DSYNC mode for commitlog segments IO. Can improve commitlog latency on some file systems.\n",
+        "operationId": "find_config_commitlog_use_o_dsync",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/compaction_preheat_key_cache": {
+      "get": {
+        "description": "When set to true , cached row keys are tracked during compaction, and re-cached to their new positions in the compacted SSTable. If you have extremely large key caches for tables, set the value to false ; see Global row and key caches properties.",
+        "operationId": "find_config_compaction_preheat_key_cache",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/concurrent_compactors": {
+      "get": {
+        "description": "Sets the number of concurrent compaction processes allowed to run simultaneously on a node, not including validation compactions for anti-entropy repair. Simultaneous compactions help preserve read performance in a mixed read-write workload by mitigating the tendency of small SSTables to accumulate during a single long-running compaction. If compactions run too slowly or too fast, change compaction_throughput_mb_per_sec first.",
+        "operationId": "find_config_concurrent_compactors",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/in_memory_compaction_limit_in_mb": {
+      "get": {
+        "description": "Size limit for rows being compacted in memory. Larger rows spill to disk and use a slower two-pass compaction process. When this occurs, a message is logged specifying the row key. The recommended value is 5 to 10 percent of the available Java heap size.",
+        "operationId": "find_config_in_memory_compaction_limit_in_mb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/preheat_kernel_page_cache": {
+      "get": {
+        "description": "Enable or disable kernel page cache preheating from contents of the key cache after compaction. When enabled it preheats only first page (4KB) of each row to optimize for sequential access. It can be harmful for fat rows, see CASSANDRA-4937 for more details.",
+        "operationId": "find_config_preheat_kernel_page_cache",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/sstable_preemptive_open_interval_in_mb": {
+      "get": {
+        "description": "When compacting, the replacement opens SSTables before they are completely written and uses in place of the prior SSTables for any range previously written. This setting helps to smoothly transfer reads between the SSTables by reducing page cache churn and keeps hot rows hot.",
+        "operationId": "find_config_sstable_preemptive_open_interval_in_mb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/defragment_memory_on_idle": {
+      "get": {
+        "description": "When set to true, will defragment memory when the cpu is idle.  This reduces the amount of work Scylla performs when processing client requests.",
+        "operationId": "find_config_defragment_memory_on_idle",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/memtable_allocation_type": {
+      "get": {
+        "description": "Specify the way Cassandra allocates and manages memtable memory. See Off-heap memtables in Cassandra 2.1. Options are:\n heap_buffers     On heap NIO (non-blocking I/O) buffers.\n offheap_buffers  Off heap (direct) NIO buffers.\n offheap_objects  Native memory, eliminating NIO buffer heap overhead.",
+        "operationId": "find_config_memtable_allocation_type",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/memtable_cleanup_threshold": {
+      "get": {
+        "description": "Ratio of occupied non-flushing memtable size to total permitted size for triggering a flush of the largest memtable. Larger values mean larger flushes and less compaction, but also less concurrent flush activity, which can make it difficult to keep your disks saturated under heavy write load.",
+        "operationId": "find_config_memtable_cleanup_threshold",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "number"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/file_cache_size_in_mb": {
+      "get": {
+        "description": "Total memory to use for SSTable-reading buffers.",
+        "operationId": "find_config_file_cache_size_in_mb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/memtable_flush_queue_size": {
+      "get": {
+        "description": "The number of full memtables to allow pending flush (memtables waiting for a write thread). At a minimum, set to the maximum number of indexes created on a single table.\nRelated information: Flushing data from the memtable",
+        "operationId": "find_config_memtable_flush_queue_size",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/memtable_flush_writers": {
+      "get": {
+        "description": "Sets the number of memtable flush writer threads. These threads are blocked by disk I/O, and each one holds a memtable in memory while blocked. If you have a large Java heap size and many data directories, you can increase the value for better flush performance.",
+        "operationId": "find_config_memtable_flush_writers",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/memtable_heap_space_in_mb": {
+      "get": {
+        "description": "Total permitted memory to use for memtables. Triggers a flush based on memtable_cleanup_threshold. Cassandra stops accepting writes when the limit is exceeded until a flush completes. If unset, sets to default.",
+        "operationId": "find_config_memtable_heap_space_in_mb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/memtable_offheap_space_in_mb": {
+      "get": {
+        "description": "See memtable_heap_space_in_mb",
+        "operationId": "find_config_memtable_offheap_space_in_mb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/column_index_size_in_kb": {
+      "get": {
+        "description": "Granularity of the index of rows within a partition. For huge rows, decrease this setting to improve seek time. If you use key cache, be careful not to make this setting too large because key cache will be overwhelmed. If you're unsure of the size of the rows, it's best to use the default setting.",
+        "operationId": "find_config_column_index_size_in_kb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/index_summary_capacity_in_mb": {
+      "get": {
+        "description": "Fixed memory pool size in MB for SSTable index summaries. If the memory usage of all index summaries exceeds this limit, any SSTables with low read rates shrink their index summaries to meet this limit. This is a best-effort process. In extreme conditions, Cassandra may need to use more than this amount of memory.",
+        "operationId": "find_config_index_summary_capacity_in_mb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/index_summary_resize_interval_in_minutes": {
+      "get": {
+        "description": "How frequently index summaries should be re-sampled. This is done periodically to redistribute memory from the fixed-size pool to SSTables proportional their recent read rates. To disable, set to -1. This leaves existing index summaries at their current sampling level.",
+        "operationId": "find_config_index_summary_resize_interval_in_minutes",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/reduce_cache_capacity_to": {
+      "get": {
+        "description": "Sets the size percentage to which maximum cache capacity is reduced when Java heap usage reaches the threshold defined by reduce_cache_sizes_at. Together with flush_largest_memtables_at, these properties constitute an emergency measure for preventing sudden out-of-memory (OOM) errors.",
+        "operationId": "find_config_reduce_cache_capacity_to",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "number"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/reduce_cache_sizes_at": {
+      "get": {
+        "description": "When Java heap usage (after a full concurrent mark sweep (CMS) garbage collection) exceeds this percentage, Cassandra reduces the cache capacity to the fraction of the current size as specified by reduce_cache_capacity_to. To disable, set the value to 1.0.",
+        "operationId": "find_config_reduce_cache_sizes_at",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "number"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/stream_throughput_outbound_megabits_per_sec": {
+      "get": {
+        "description": "Throttles all outbound streaming file transfers on a node to the specified throughput. Cassandra does mostly sequential I/O when streaming data during bootstrap or repair, which can lead to saturating the network connection and degrading client (RPC) performance.",
+        "operationId": "find_config_stream_throughput_outbound_megabits_per_sec",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/inter_dc_stream_throughput_outbound_megabits_per_sec": {
+      "get": {
+        "description": "Throttles all streaming file transfer between the data centers. This setting allows throttles streaming throughput betweens data centers in addition to throttling all network stream traffic as configured with stream_throughput_outbound_megabits_per_sec.",
+        "operationId": "find_config_inter_dc_stream_throughput_outbound_megabits_per_sec",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/trickle_fsync": {
+      "get": {
+        "description": "When doing sequential writing, enabling this option tells fsync to force the operating system to flush the dirty buffers at a set interval trickle_fsync_interval_in_kb. Enable this parameter to avoid sudden dirty buffer flushing from impacting read latencies. Recommended to use on SSDs, but not on HDDs.",
+        "operationId": "find_config_trickle_fsync",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/trickle_fsync_interval_in_kb": {
+      "get": {
+        "description": "Sets the size of the fsync in kilobytes.",
+        "operationId": "find_config_trickle_fsync_interval_in_kb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/auto_bootstrap": {
+      "get": {
+        "description": "This setting has been removed from default configuration. It makes new (non-seed) nodes automatically migrate the right data to themselves. Do not set this to false unless you really know what you are doing.\nRelated information: Initializing a multiple node cluster (single data center) and Initializing a multiple node cluster (multiple data centers).",
+        "operationId": "find_config_auto_bootstrap",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/batch_size_warn_threshold_in_kb": {
+      "get": {
+        "description": "Log WARN on any batch size exceeding this value in kilobytes. Caution should be taken on increasing the size of this threshold as it can lead to node instability.",
+        "operationId": "find_config_batch_size_warn_threshold_in_kb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/batch_size_fail_threshold_in_kb": {
+      "get": {
+        "description": "Fail any multiple-partition batch exceeding this value. 50kb (10x warn threshold) by default.",
+        "operationId": "find_config_batch_size_fail_threshold_in_kb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/broadcast_address": {
+      "get": {
+        "description": "The IP address a node tells other nodes in the cluster to contact it by. It allows public and private address to be different. For example, use the broadcast_address parameter in topologies where not all nodes have access to other nodes by their private IP addresses.\nIf your Scylla cluster is deployed across multiple Amazon EC2 regions and you use the EC2MultiRegionSnitch , set the broadcast_address to public IP address of the node and the listen_address to the private IP.",
+        "operationId": "find_config_broadcast_address",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/listen_on_broadcast_address": {
+      "get": {
+        "description": "When using multiple physical network interfaces, set this to true to listen on broadcast_address in addition to the listen_address, allowing nodes to communicate in both interfaces.  Ignore this property if the network configuration automatically routes between the public and private networks such as EC2.",
+        "operationId": "find_config_listen_on_broadcast_address",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/initial_token": {
+      "get": {
+        "description": "Used in the single-node-per-token architecture, where a node owns exactly one contiguous range in the ring space. Setting this property overrides num_tokens.\nIf you not using vnodes or have num_tokens set it to 1 or unspecified (#num_tokens), you should always specify this parameter when setting up a production cluster for the first time and when adding capacity. For more information, see this parameter in the Cassandra 1.1 Node and Cluster Configuration documentation.\nThis parameter can be used with num_tokens (vnodes ) in special cases such as Restoring from a snapshot.",
+        "operationId": "find_config_initial_token",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/num_tokens": {
+      "get": {
+        "description": "Defines the number of tokens randomly assigned to this node on the ring when using virtual nodes (vnodes). The more tokens, relative to other nodes, the larger the proportion of data that the node stores. Generally all nodes should have the same number of tokens assuming equal hardware capability. The recommended value is 256. If unspecified (#num_tokens), Scylla uses 1 (equivalent to #num_tokens : 1) for legacy compatibility and uses the initial_token setting.\nIf not using vnodes, comment #num_tokens : 256 or set num_tokens : 1 and use initial_token. If you already have an existing cluster with one token per node and wish to migrate to vnodes, see Enabling virtual nodes on an existing production cluster.\nNote: If using DataStax Enterprise, the default setting of this property depends on the type of node and type of install.",
+        "operationId": "find_config_num_tokens",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/partitioner": {
+      "get": {
+        "description": "Distributes rows (by partition key) across all nodes in the cluster. Any IPartitioner may be used, including your own as long as it is in the class path. For new clusters use the default partitioner.\nScylla provides the following partitioners for backwards compatibility:\n\n RandomPartitioner\n ByteOrderedPartitioner\n OrderPreservingPartitioner (deprecated)\n\nRelated information: Partitioners",
+        "operationId": "find_config_partitioner",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/storage_port": {
+      "get": {
+        "description": "The port for inter-node communication.",
+        "operationId": "find_config_storage_port",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/auto_snapshot": {
+      "get": {
+        "description": "Enable or disable whether a snapshot is taken of the data before keyspace truncation or dropping of tables. To prevent data loss, using the default setting is strongly advised. If you set to false, you will lose data on truncation or drop.",
+        "operationId": "find_config_auto_snapshot",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/key_cache_keys_to_save": {
+      "get": {
+        "description": "Number of keys from the key cache to save. (0: all)",
+        "operationId": "find_config_key_cache_keys_to_save",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/key_cache_save_period": {
+      "get": {
+        "description": "Duration in seconds that keys are saved in cache. Caches are saved to saved_caches_directory. Saved caches greatly improve cold-start speeds and has relatively little effect on I/O.",
+        "operationId": "find_config_key_cache_save_period",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/key_cache_size_in_mb": {
+      "get": {
+        "description": "A global cache setting for tables. It is the maximum size of the key cache in memory. To disable set to 0.\nRelated information: nodetool setcachecapacity.",
+        "operationId": "find_config_key_cache_size_in_mb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/row_cache_keys_to_save": {
+      "get": {
+        "description": "Number of keys from the row cache to save.",
+        "operationId": "find_config_row_cache_keys_to_save",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/row_cache_size_in_mb": {
+      "get": {
+        "description": "Maximum size of the row cache in memory. Row cache can save more time than key_cache_size_in_mb, but is space-intensive because it contains the entire row. Use the row cache only for hot rows or static rows. If you reduce the size, you may not get you hottest keys loaded on start up.",
+        "operationId": "find_config_row_cache_size_in_mb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/row_cache_save_period": {
+      "get": {
+        "description": "Duration in seconds that rows are saved in cache. Caches are saved to saved_caches_directory.",
+        "operationId": "find_config_row_cache_save_period",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/memory_allocator": {
+      "get": {
+        "description": "The off-heap memory allocator. In addition to caches, this property affects storage engine meta data. Supported values:\n NativeAllocator\n JEMallocAllocator\n\nExperiments show that jemalloc saves some memory compared to the native allocator because it is more fragmentation resistant. To use, install jemalloc as a library and modify cassandra-env.sh (instructions in file).",
+        "operationId": "find_config_memory_allocator",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/counter_cache_size_in_mb": {
+      "get": {
+        "description": "When no value is specified a minimum of 2.5% of Heap or 50MB. If you perform counter deletes and rely on low gc_grace_seconds, you should disable the counter cache. To disable, set to 0",
+        "operationId": "find_config_counter_cache_size_in_mb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/counter_cache_save_period": {
+      "get": {
+        "description": "Duration after which Cassandra should save the counter cache (keys only). Caches are saved to saved_caches_directory.",
+        "operationId": "find_config_counter_cache_save_period",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/counter_cache_keys_to_save": {
+      "get": {
+        "description": "Number of keys from the counter cache to save. When disabled all keys are saved.",
+        "operationId": "find_config_counter_cache_keys_to_save",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/tombstone_warn_threshold": {
+      "get": {
+        "description": "The maximum number of tombstones a query can scan before warning.",
+        "operationId": "find_config_tombstone_warn_threshold",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/tombstone_failure_threshold": {
+      "get": {
+        "description": "The maximum number of tombstones a query can scan before aborting.",
+        "operationId": "find_config_tombstone_failure_threshold",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/range_request_timeout_in_ms": {
+      "get": {
+        "description": "The time in milliseconds that the coordinator waits for sequential or index scans to complete.",
+        "operationId": "find_config_range_request_timeout_in_ms",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/read_request_timeout_in_ms": {
+      "get": {
+        "description": "The time that the coordinator waits for read operations to complete",
+        "operationId": "find_config_read_request_timeout_in_ms",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/counter_write_request_timeout_in_ms": {
+      "get": {
+        "description": "The time that the coordinator waits for counter writes to complete.",
+        "operationId": "find_config_counter_write_request_timeout_in_ms",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/cas_contention_timeout_in_ms": {
+      "get": {
+        "description": "The time that the coordinator continues to retry a CAS (compare and set) operation that contends with other proposals for the same row.",
+        "operationId": "find_config_cas_contention_timeout_in_ms",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/truncate_request_timeout_in_ms": {
+      "get": {
+        "description": "The time that the coordinator waits for truncates (remove all data from a table) to complete. The long default value allows for a snapshot to be taken before removing the data. If auto_snapshot is disabled (not recommended), you can reduce this time.",
+        "operationId": "find_config_truncate_request_timeout_in_ms",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/write_request_timeout_in_ms": {
+      "get": {
+        "description": "The time in milliseconds that the coordinator waits for write operations to complete.\nRelated information: About hinted handoff writes",
+        "operationId": "find_config_write_request_timeout_in_ms",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/request_timeout_in_ms": {
+      "get": {
+        "description": "The default timeout for other, miscellaneous operations.\nRelated information: About hinted handoff writes",
+        "operationId": "find_config_request_timeout_in_ms",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/cross_node_timeout": {
+      "get": {
+        "description": "Enable or disable operation timeout information exchange between nodes (to accurately measure request timeouts). If disabled Cassandra assumes the request was forwarded to the replica instantly by the coordinator.\nCAUTION:\nBefore enabling this property make sure NTP (network time protocol) is installed and the times are synchronized between the nodes.",
+        "operationId": "find_config_cross_node_timeout",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/internode_send_buff_size_in_bytes": {
+      "get": {
+        "description": "Sets the sending socket buffer size in bytes for inter-node calls.\nWhen setting this parameter and internode_recv_buff_size_in_bytes, the buffer size is limited by net.core.wmem_max. When unset, buffer size is defined by net.ipv4.tcp_wmem. See man tcp and:\n\n /proc/sys/net/core/wmem_max\n /proc/sys/net/core/rmem_max\n /proc/sys/net/ipv4/tcp_wmem\n /proc/sys/net/ipv4/tcp_wmem\n",
+        "operationId": "find_config_internode_send_buff_size_in_bytes",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/internode_recv_buff_size_in_bytes": {
+      "get": {
+        "description": "Sets the receiving socket buffer size in bytes for inter-node calls.",
+        "operationId": "find_config_internode_recv_buff_size_in_bytes",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/internode_compression": {
+      "get": {
+        "description": "Controls whether traffic between nodes is compressed. The valid values are:\n\n all: All traffic is compressed.\n dc : Traffic between data centers is compressed.\n none : No compression.",
+        "operationId": "find_config_internode_compression",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/inter_dc_tcp_nodelay": {
+      "get": {
+        "description": "Enable or disable tcp_nodelay for inter-data center communication. When disabled larger, but fewer, network packets are sent. This reduces overhead from the TCP protocol itself. However, if cross data-center responses are blocked, it will increase latency.",
+        "operationId": "find_config_inter_dc_tcp_nodelay",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/streaming_socket_timeout_in_ms": {
+      "get": {
+        "description": "Enable or disable socket timeout for streaming operations. When a timeout occurs during streaming, streaming is retried from the start of the current file. Avoid setting this value too low, as it can result in a significant amount of data re-streaming.",
+        "operationId": "find_config_streaming_socket_timeout_in_ms",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/start_native_transport": {
+      "get": {
+        "description": "Enable or disable the native transport server. Uses the same address as the rpc_address, but the port is different from the rpc_port. See native_transport_port.",
+        "operationId": "find_config_start_native_transport",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/native_transport_port": {
+      "get": {
+        "description": "Port on which the CQL native transport listens for clients.",
+        "operationId": "find_config_native_transport_port",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/native_transport_port_ssl": {
+      "get": {
+        "description": "Port on which the CQL TLS native transport listens for clients.Enabling client encryption and keeping native_transport_port_ssl disabled will use encryptionfor native_transport_port. Setting native_transport_port_ssl to a different valuefrom native_transport_port will use encryption for native_transport_port_ssl whilekeeping native_transport_port unencrypted",
+        "operationId": "find_config_native_transport_port_ssl",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/native_transport_max_threads": {
+      "get": {
+        "description": "The maximum number of thread handling requests. The meaning is the same as rpc_max_threads.\nDefault is different (128 versus unlimited).\nNo corresponding native_transport_min_threads.\nIdle threads are stopped after 30 seconds.\n",
+        "operationId": "find_config_native_transport_max_threads",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/native_transport_max_frame_size_in_mb": {
+      "get": {
+        "description": "The maximum size of allowed frame. Frame (requests) larger than this are rejected as invalid.",
+        "operationId": "find_config_native_transport_max_frame_size_in_mb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/broadcast_rpc_address": {
+      "get": {
+        "description": "RPC address to broadcast to drivers and other Scylla nodes. This cannot be set to 0.0.0.0. If blank, it is set to the value of the rpc_address or rpc_interface. If rpc_address or rpc_interfaceis set to 0.0.0.0, this property must be set.\n",
+        "operationId": "find_config_broadcast_rpc_address",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/rpc_port": {
+      "get": {
+        "description": "Thrift port for client connections.",
+        "operationId": "find_config_rpc_port",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/start_rpc": {
+      "get": {
+        "description": "Starts the Thrift RPC server",
+        "operationId": "find_config_start_rpc",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/rpc_keepalive": {
+      "get": {
+        "description": "Enable or disable keepalive on client connections (RPC or native).",
+        "operationId": "find_config_rpc_keepalive",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/rpc_max_threads": {
+      "get": {
+        "description": "Regardless of your choice of RPC server (rpc_server_type), the number of maximum requests in the RPC thread pool dictates how many concurrent requests are possible. However, if you are using the parameter sync in the rpc_server_type, it also dictates the number of clients that can be connected. For a large number of client connections, this could cause excessive memory usage for the thread stack. Connection pooling on the client side is highly recommended. Setting a maximum thread pool size acts as a safeguard against misbehaved clients. If the maximum is reached, Cassandra blocks additional connections until a client disconnects.",
+        "operationId": "find_config_rpc_max_threads",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/rpc_min_threads": {
+      "get": {
+        "description": "Sets the minimum thread pool size for remote procedure calls.",
+        "operationId": "find_config_rpc_min_threads",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/rpc_recv_buff_size_in_bytes": {
+      "get": {
+        "description": "Sets the receiving socket buffer size for remote procedure calls.",
+        "operationId": "find_config_rpc_recv_buff_size_in_bytes",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/rpc_send_buff_size_in_bytes": {
+      "get": {
+        "description": "Sets the sending socket buffer size in bytes for remote procedure calls.",
+        "operationId": "find_config_rpc_send_buff_size_in_bytes",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/rpc_server_type": {
+      "get": {
+        "description": "Cassandra provides three options for the RPC server. On Windows, sync is about 30% slower than hsha. On Linux, sync and hsha performance is about the same, but hsha uses less memory.\n\n sync    (Default One thread per Thrift connection.) For a very large number of clients, memory is the limiting factor. On a 64-bit JVM, 180KB is the minimum stack size per thread and corresponds to your use of virtual memory. Physical memory may be limited depending on use of stack space.\n hsh      Half synchronous, half asynchronous. All Thrift clients are handled asynchronously using a small number of threads that does not vary with the number of clients and thus scales well to many clients. The RPC requests are synchronous (one thread per active request).\n          Note: When selecting this option, you must change the default value (unlimited) of rpc_max_threads.\n Your own RPC server: You must provide a fully-qualified class name of an o.a.c.t.TServerFactory that can create a server instance.",
+        "operationId": "find_config_rpc_server_type",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/cache_hit_rate_read_balancing": {
+      "get": {
+        "description": "This boolean controls whether the replicas for read query will be choosen based on cache hit ratio",
+        "operationId": "find_config_cache_hit_rate_read_balancing",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/dynamic_snitch_badness_threshold": {
+      "get": {
+        "description": "Sets the performance threshold for dynamically routing requests away from a poorly performing node. A value of 0.2 means Cassandra continues to prefer the static snitch values until the node response time is 20% worse than the best performing node. Until the threshold is reached, incoming client requests are statically routed to the closest replica (as determined by the snitch). Having requests consistently routed to a given replica can help keep a working set of data hot when read repair is less than 1.",
+        "operationId": "find_config_dynamic_snitch_badness_threshold",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "number"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/dynamic_snitch_reset_interval_in_ms": {
+      "get": {
+        "description": "Time interval in milliseconds to reset all node scores, which allows a bad node to recover.",
+        "operationId": "find_config_dynamic_snitch_reset_interval_in_ms",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/dynamic_snitch_update_interval_in_ms": {
+      "get": {
+        "description": "The time interval for how often the snitch calculates node scores. Because score calculation is CPU intensive, be careful when reducing this interval.",
+        "operationId": "find_config_dynamic_snitch_update_interval_in_ms",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/hinted_handoff_enabled": {
+      "get": {
+        "description": "Enable or disable hinted handoff. To enable per data center, add data center list. For example: hinted_handoff_enabled: DC1,DC2. A hint indicates that the write needs to be replayed to an unavailable node. Related information: About hinted handoff writes",
+        "operationId": "find_config_hinted_handoff_enabled",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/hinted_handoff_throttle_in_kb": {
+      "get": {
+        "description": "Maximum throttle per delivery thread in kilobytes per second. This rate reduces proportionally to the number of nodes in the cluster. For example, if there are two nodes in the cluster, each delivery thread will use the maximum rate. If there are three, each node will throttle to half of the maximum, since the two nodes are expected to deliver hints simultaneously.",
+        "operationId": "find_config_hinted_handoff_throttle_in_kb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/max_hint_window_in_ms": {
+      "get": {
+        "description": "Maximum amount of time that hints are generates hints for an unresponsive node. After this interval, new hints are no longer generated until the node is back up and responsive. If the node goes down again, a new interval begins. This setting can prevent a sudden demand for resources when a node is brought back online and the rest of the cluster attempts to replay a large volume of hinted writes.\nRelated information: Failure detection and recovery",
+        "operationId": "find_config_max_hint_window_in_ms",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/max_hints_delivery_threads": {
+      "get": {
+        "description": "Number of threads with which to deliver hints. In multiple data-center deployments, consider increasing this number because cross data-center handoff is generally slower.",
+        "operationId": "find_config_max_hints_delivery_threads",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/batchlog_replay_throttle_in_kb": {
+      "get": {
+        "description": "Total maximum throttle. Throttling is reduced proportionally to the number of nodes in the cluster.",
+        "operationId": "find_config_batchlog_replay_throttle_in_kb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/request_scheduler": {
+      "get": {
+        "description": "Defines a scheduler to handle incoming client requests according to a defined policy. This scheduler is useful for throttling client requests in single clusters containing multiple keyspaces. This parameter is specifically for requests from the client and does not affect inter-node communication. Valid values are:\n\n org.apache.cassandra.scheduler.NoScheduler   No scheduling takes place.\n org.apache.cassandra.scheduler.RoundRobinScheduler   Round robin of client requests to a node with a separate queue for each request_scheduler_id property.\n A Java class that implements the RequestScheduler interface.",
+        "operationId": "find_config_request_scheduler",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/request_scheduler_id": {
+      "get": {
+        "description": "An identifier on which to perform request scheduling. Currently the only valid value is keyspace. See weights.",
+        "operationId": "find_config_request_scheduler_id",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/request_scheduler_options": {
+      "get": {
+        "description": "Contains a list of properties that define configuration options for request_scheduler:\n\n throttle_limit: The number of in-flight requests per client. Requests beyond this limit are queued up until running requests complete. Recommended value is ((concurrent_reads + concurrent_writes) × 2)\n default_weight: (Default: 1 **)  How many requests are handled during each turn of the RoundRobin.\n weights: (Default: Keyspace: 1)  Takes a list of keyspaces. It sets how many requests are handled during each turn of the RoundRobin, based on the request_scheduler_id.",
+        "operationId": "find_config_request_scheduler_options",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/thrift_framed_transport_size_in_mb": {
+      "get": {
+        "description": "Frame size (maximum field length) for Thrift. The frame is the row or part of the row the application is inserting.",
+        "operationId": "find_config_thrift_framed_transport_size_in_mb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/thrift_max_message_length_in_mb": {
+      "get": {
+        "description": "The maximum length of a Thrift message in megabytes, including all fields and internal Thrift overhead (1 byte of overhead for each frame). Message length is usually used in conjunction with batches. A frame length greater than or equal to 24 accommodates a batch with four inserts, each of which is 24 bytes. The required message length is greater than or equal to 24+24+24+24+4 (number of frames).",
+        "operationId": "find_config_thrift_max_message_length_in_mb",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/authenticator": {
+      "get": {
+        "description": "The authentication backend, used to identify users. The available authenticators are:\n\n org.apache.cassandra.auth.AllowAllAuthenticator : Disables authentication; no checks are performed.\n org.apache.cassandra.auth.PasswordAuthenticator : Authenticates users with user names and hashed passwords stored in the system_auth.credentials table. If you use the default, 1, and the node with the lone replica goes down, you will not be able to log into the cluster because the system_auth keyspace was not replicated.\nRelated information: Internal authentication",
+        "operationId": "find_config_authenticator",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/internode_authenticator": {
+      "get": {
+        "description": "Internode authentication backend. It implements org.apache.cassandra.auth.AllowAllInternodeAuthenticator to allows or disallow connections from peer nodes.",
+        "operationId": "find_config_internode_authenticator",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/authorizer": {
+      "get": {
+        "description": "The authorization backend. It implements IAuthenticator, which limits access and provides permissions. The available authorizers are:\n\n AllowAllAuthorizer : Disables authorization; allows any action to any user.\n CassandraAuthorizer : Stores permissions in system_auth.permissions table. If you use the default, 1, and the node with the lone replica goes down, you will not be able to log into the cluster because the system_auth keyspace was not replicated.\nRelated information: Object permissions",
+        "operationId": "find_config_authorizer",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/role_manager": {
+      "get": {
+        "description": "The role-management backend, used to maintain grantts and memberships between roles.\nThe available role-managers are:\n CassandraRoleManager : Stores role data in the system_auth keyspace.",
+        "operationId": "find_config_role_manager",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/permissions_validity_in_ms": {
+      "get": {
+        "description": "How long permissions in cache remain valid. Depending on the authorizer, such as CassandraAuthorizer, fetching permissions can be resource intensive. Permissions caching is disabled when this property is set to 0 or when AllowAllAuthorizer is used. The cached value is considered valid as long as both its value is not older than the permissions_validity_in_ms and the cached value has been read at least once during the permissions_validity_in_ms time frame. If any of these two conditions doesn't hold the cached value is going to be evicted from the cache.\nRelated information: Object permissions",
+        "operationId": "find_config_permissions_validity_in_ms",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/permissions_update_interval_in_ms": {
+      "get": {
+        "description": "Refresh interval for permissions cache (if enabled). After this interval, cache entries become eligible for refresh. An async reload is scheduled every permissions_update_interval_in_ms time period and the old value is returned until it completes. If permissions_validity_in_ms has a non-zero value, then this property must also have a non-zero value. It's recommended to set this value to be at least 3 times smaller than the permissions_validity_in_ms.",
+        "operationId": "find_config_permissions_update_interval_in_ms",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/permissions_cache_max_entries": {
+      "get": {
+        "description": "Maximum cached permission entries. Must have a non-zero value if permissions caching is enabled (see a permissions_validity_in_ms description).",
+        "operationId": "find_config_permissions_cache_max_entries",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/server_encryption_options": {
+      "get": {
+        "description": "Enable or disable inter-node encryption. You must also generate keys and provide the appropriate key and trust store locations and passwords. No custom encryption options are currently enabled. The available options are:\n\ninternode_encryption : (Default: none ) Enable or disable encryption of inter-node communication using the TLS_RSA_WITH_AES_128_CBC_SHA cipher suite for authentication, key exchange, and encryption of data transfers. The available inter-node options are:\n all : Encrypt all inter-node communications.\n none : No encryption.\n dc : Encrypt the traffic between the data centers (server only).\n rack : Encrypt the traffic between the racks(server only).\ncertificate : (Default: conf/scylla.crt) The location of a PEM-encoded x509 certificate used to identify and encrypt the internode communication.\nkeyfile : (Default: conf/scylla.key) PEM Key file associated with certificate.\ntruststore : (Default: <system truststore> ) Location of the truststore containing the trusted certificate for authenticating remote servers.\n\nThe advanced settings are:\n\n priority_string : GnuTLS priority string controlling TLS algorithms used/allowed.\n require_client_auth : (Default: false ) Enables or disables certificate authentication.\nRelated information: Node-to-node encryption",
+        "operationId": "find_config_server_encryption_options",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/client_encryption_options": {
+      "get": {
+        "description": "Enable or disable client-to-node encryption. You must also generate keys and provide the appropriate key and certificate. No custom encryption options are currently enabled. The available options are:\n\n enabled : (Default: false ) To enable, set to true.\n certificate: (Default: conf/scylla.crt) The location of a PEM-encoded x509 certificate used to identify and encrypt the client/server communication.\n keyfile: (Default: conf/scylla.key) PEM Key file associated with certificate.\ntruststore : (Default: <system truststore> ) Location of the truststore containing the trusted certificate for authenticating remote servers.\n\nThe advanced settings are:\n\n priority_string : GnuTLS priority string controlling TLS algorithms used/allowed.\n require_client_auth : (Default: false ) Enables or disables certificate authentication.\nRelated information: Client-to-node encryption",
+        "operationId": "find_config_client_encryption_options",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/ssl_storage_port": {
+      "get": {
+        "description": "The SSL port for encrypted communication. Unused unless enabled in encryption_options.",
+        "operationId": "find_config_ssl_storage_port",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/enable_in_memory_data_store": {
+      "get": {
+        "description": "Enable in memory mode (system tables are always persisted)",
+        "operationId": "find_config_enable_in_memory_data_store",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/enable_cache": {
+      "get": {
+        "description": "Enable cache",
+        "operationId": "find_config_enable_cache",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/enable_commitlog": {
+      "get": {
+        "description": "Enable commitlog",
+        "operationId": "find_config_enable_commitlog",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/volatile_system_keyspace_for_testing": {
+      "get": {
+        "description": "Don't persist system keyspace - testing only!",
+        "operationId": "find_config_volatile_system_keyspace_for_testing",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/api_port": {
+      "get": {
+        "description": "Http Rest API port",
+        "operationId": "find_config_api_port",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/api_address": {
+      "get": {
+        "description": "Http Rest API address",
+        "operationId": "find_config_api_address",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/api_ui_dir": {
+      "get": {
+        "description": "The directory location of the API GUI",
+        "operationId": "find_config_api_ui_dir",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/api_doc_dir": {
+      "get": {
+        "description": "The API definition file directory",
+        "operationId": "find_config_api_doc_dir",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/load_balance": {
+      "get": {
+        "description": "CQL request load balancing: 'none' or round-robin'",
+        "operationId": "find_config_load_balance",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/consistent_rangemovement": {
+      "get": {
+        "description": "When set to true, range movements will be consistent. It means: 1) it will refuse to bootstrap a new node if other bootstrapping/leaving/moving nodes detected. 2) data will be streamed to a new node only from the node which is no longer responsible for the token range. Same as -Dcassandra.consistent.rangemovement in cassandra",
+        "operationId": "find_config_consistent_rangemovement",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/join_ring": {
+      "get": {
+        "description": "When set to true, a node will join the token ring. When set to false, a node will not join the token ring. User can use nodetool join to initiate ring joinging later. Same as -Dcassandra.join_ring in cassandra.",
+        "operationId": "find_config_join_ring",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/load_ring_state": {
+      "get": {
+        "description": "When set to true, load tokens and host_ids previously saved. Same as -Dcassandra.load_ring_state in cassandra.",
+        "operationId": "find_config_load_ring_state",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/replace_node": {
+      "get": {
+        "description": "The UUID of the node to replace. Same as -Dcassandra.replace_node in cssandra.",
+        "operationId": "find_config_replace_node",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/replace_token": {
+      "get": {
+        "description": "The tokens of the node to replace. Same as -Dcassandra.replace_token in cassandra.",
+        "operationId": "find_config_replace_token",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/replace_address": {
+      "get": {
+        "description": "The listen_address or broadcast_address of the dead node to replace. Same as -Dcassandra.replace_address.",
+        "operationId": "find_config_replace_address",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/replace_address_first_boot": {
+      "get": {
+        "description": "Like replace_address option, but if the node has been bootstrapped successfully it will be ignored. Same as -Dcassandra.replace_address_first_boot.",
+        "operationId": "find_config_replace_address_first_boot",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/override_decommission": {
+      "get": {
+        "description": "Set true to force a decommissioned node to join the cluster",
+        "operationId": "find_config_override_decommission",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/ring_delay_ms": {
+      "get": {
+        "description": "Time a node waits to hear from other nodes before joining the ring in milliseconds. Same as -Dcassandra.ring_delay_ms in cassandra.",
+        "operationId": "find_config_ring_delay_ms",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/shadow_round_ms": {
+      "get": {
+        "description": "The maximum gossip shadow round time. Can be used to reduce the gossip feature check time during node boot up.",
+        "operationId": "find_config_shadow_round_ms",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/fd_max_interval_ms": {
+      "get": {
+        "description": "The maximum failure_detector interval time in milliseconds. Interval larger than the maximum will be ignored. Larger cluster may need to increase the default.",
+        "operationId": "find_config_fd_max_interval_ms",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/fd_initial_value_ms": {
+      "get": {
+        "description": "The initial failure_detector interval time in milliseconds.",
+        "operationId": "find_config_fd_initial_value_ms",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/shutdown_announce_in_ms": {
+      "get": {
+        "description": "Time a node waits after sending gossip shutdown message in milliseconds. Same as -Dcassandra.shutdown_announce_in_ms in cassandra.",
+        "operationId": "find_config_shutdown_announce_in_ms",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/developer_mode": {
+      "get": {
+        "description": "Relax environment checks. Setting to true can reduce performance and reliability significantly.",
+        "operationId": "find_config_developer_mode",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/skip_wait_for_gossip_to_settle": {
+      "get": {
+        "description": "An integer to configure the wait for gossip to settle. -1: wait normally, 0: do not wait at all, n: wait for at most n polls. Same as -Dcassandra.skip_wait_for_gossip_to_settle in cassandra.",
+        "operationId": "find_config_skip_wait_for_gossip_to_settle",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/experimental": {
+      "get": {
+        "description": "Set to true to unlock experimental features.",
+        "operationId": "find_config_experimental",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/lsa_reclamation_step": {
+      "get": {
+        "description": "Minimum number of segments to reclaim in a single step",
+        "operationId": "find_config_lsa_reclamation_step",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/prometheus_port": {
+      "get": {
+        "description": "Prometheus port, set to zero to disable",
+        "operationId": "find_config_prometheus_port",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/prometheus_address": {
+      "get": {
+        "description": "Prometheus listening address",
+        "operationId": "find_config_prometheus_address",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/prometheus_prefix": {
+      "get": {
+        "description": "Set the prefix of the exported Prometheus metrics. Changing this will break Scylla's dashboard compatibility, do not change unless you know what you are doing.",
+        "operationId": "find_config_prometheus_prefix",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/abort_on_lsa_bad_alloc": {
+      "get": {
+        "description": "Abort when allocation in LSA region fails",
+        "operationId": "find_config_abort_on_lsa_bad_alloc",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/murmur3_partitioner_ignore_msb_bits": {
+      "get": {
+        "description": "Number of most siginificant token bits to ignore in murmur3 partitioner; increase for very large clusters",
+        "operationId": "find_config_murmur3_partitioner_ignore_msb_bits",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/virtual_dirty_soft_limit": {
+      "get": {
+        "description": "Soft limit of virtual dirty memory expressed as a portion of the hard limit",
+        "operationId": "find_config_virtual_dirty_soft_limit",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "number"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/sstable_summary_ratio": {
+      "get": {
+        "description": "Enforces that 1 byte of summary is written for every N (2000 by default) bytes written to data file. Value must be between 0 and 1.",
+        "operationId": "find_config_sstable_summary_ratio",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "number"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/large_memory_allocation_warning_threshold": {
+      "get": {
+        "description": "Warn about memory allocations above this size; set to zero to disable",
+        "operationId": "find_config_large_memory_allocation_warning_threshold",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/enable_deprecated_partitioners": {
+      "get": {
+        "description": "Enable the byteordered and murmurs partitioners. These partitioners are deprecated and will be removed in a future version.",
+        "operationId": "find_config_enable_deprecated_partitioners",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/enable_keyspace_column_family_metrics": {
+      "get": {
+        "description": "Enable per keyspace and per column family metrics reporting",
+        "operationId": "find_config_enable_keyspace_column_family_metrics",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/enable_sstable_data_integrity_check": {
+      "get": {
+        "description": "Enable interposer which checks for integrity of every sstable write. Performance is affected to some extent as a result. Useful to help debugging problems that may arise at another layers.",
+        "operationId": "find_config_enable_sstable_data_integrity_check",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/cpu_scheduler": {
+      "get": {
+        "description": "Enable cpu scheduling",
+        "operationId": "find_config_cpu_scheduler",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/view_building": {
+      "get": {
+        "description": "Enable view building; should only be set to false when the node is experience issues due to view building",
+        "operationId": "find_config_view_building",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/enable_sstables_mc_format": {
+      "get": {
+        "description": "Enable SSTables 'mc' format to be used as the default file format",
+        "operationId": "find_config_enable_sstables_mc_format",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/enable_dangerous_direct_import_of_cassandra_counters": {
+      "get": {
+        "description": "Only turn this option on if you want to import tables from Cassandra containing counters, and you are SURE that no counters in that table were created in a version earlier than Cassandra 2.1. It is not enough to have ever since upgraded to newer versions of Cassandra. If you EVER used a version earlier than 2.1 in the cluster where these SSTables come from, DO NOT TURN ON THIS OPTION! You will corrupt your data. You have been warned.",
+        "operationId": "find_config_enable_dangerous_direct_import_of_cassandra_counters",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/enable_shard_aware_drivers": {
+      "get": {
+        "description": "Enable native transport drivers to use connection-per-shard for better performance",
+        "operationId": "find_config_enable_shard_aware_drivers",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/default_log_level": {
+      "get": {
+        "description": "",
+        "operationId": "find_config_default_log_level",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/logger_log_level": {
+      "get": {
+        "description": "",
+        "operationId": "find_config_logger_log_level",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/log_to_stdout": {
+      "get": {
+        "description": "",
+        "operationId": "find_config_log_to_stdout",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    },
+    "/config/log_to_syslog": {
+      "get": {
+        "description": "",
+        "operationId": "find_config_log_to_syslog",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Config value",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "ErrorModel": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

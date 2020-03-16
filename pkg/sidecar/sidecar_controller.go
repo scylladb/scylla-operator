@@ -18,8 +18,9 @@ package sidecar
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"time"
+
+	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
@@ -27,7 +28,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/config"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
-	"github.com/yanniszark/go-nodetool/nodetool"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -63,23 +63,22 @@ func newReconciler(mgr manager.Manager, logger log.Logger) reconcile.Reconciler 
 	}
 	logger.Info(ctx, "Member loaded", "member", member)
 
-	url, err := url.Parse(fmt.Sprintf("http://127.0.0.1:%d/%s/", naming.JolokiaPort, naming.JolokiaContext))
-	if err != nil {
-		logger.Fatal(ctx, "Failed to parse url", "error", err)
-	}
-
 	client, err := client.New(mgr.GetConfig(), client.Options{})
 	if err != nil {
 		logger.Fatal(ctx, "Error getting dynamic client", "error", err)
 	}
-
+	l := logger.Named("member_controller")
+	scyllaClient, err := scyllaclient.NewClient(scyllaclient.DefaultConfig(), l.Named("scylla_client"))
+	if err != nil {
+		logger.Fatal(ctx, "Error creating scylla client", "error", err)
+	}
 	mc := &MemberController{
-		Client:     client,
-		kubeClient: kubeClient,
-		member:     member,
-		scheme:     mgr.GetScheme(),
-		nodetool:   nodetool.NewFromURL(url),
-		logger:     logger,
+		Client:       client,
+		kubeClient:   kubeClient,
+		member:       member,
+		scheme:       mgr.GetScheme(),
+		scyllaClient: scyllaClient,
+		logger:       l,
 	}
 
 	if err = mc.onStartup(ctx); err != nil {
@@ -147,11 +146,11 @@ var _ reconcile.Reconciler = &MemberController{}
 // MemberController reconciles the sidecar
 type MemberController struct {
 	client.Client
-	kubeClient kubernetes.Interface
-	member     *identity.Member
-	nodetool   *nodetool.Nodetool
-	scheme     *runtime.Scheme
-	logger     log.Logger
+	kubeClient   kubernetes.Interface
+	member       *identity.Member
+	scyllaClient *scyllaclient.Client
+	scheme       *runtime.Scheme
+	logger       log.Logger
 }
 
 // Reconcile observes the state of a Scylla Member

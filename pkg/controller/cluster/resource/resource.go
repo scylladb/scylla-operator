@@ -2,9 +2,10 @@ package resource
 
 import (
 	"fmt"
-	"github.com/scylladb/scylla-operator/cmd/options"
 	"path"
 	"strings"
+
+	"github.com/scylladb/scylla-operator/cmd/options"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controller/cluster/util"
@@ -88,6 +89,10 @@ func MemberServiceForPod(pod *corev1.Pod, cluster *scyllav1alpha1.Cluster) *core
 				{
 					Name: "cql-ssl",
 					Port: 9142,
+				},
+				{
+					Name: "agent-api",
+					Port: 10001,
 				},
 			},
 			PublishNotReadyAddresses: true,
@@ -205,10 +210,6 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 								{
 									Name:          "thrift",
 									ContainerPort: 9160,
-								},
-								{
-									Name:          "jolokia",
-									ContainerPort: 8778,
 								},
 								{
 									Name:          "prometheus",

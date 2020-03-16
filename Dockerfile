@@ -9,8 +9,6 @@ RUN chmod +x /usr/local/bin/tini
 # Add files for the sidecar
 RUN mkdir -p /sidecar
 
-# Jolokia plugin to sidecar for JMX<->HTTP
-ADD "http://search.maven.org/remotecontent?filepath=org/jolokia/jolokia-jvm/1.6.0/jolokia-jvm-1.6.0-agent.jar" /sidecar/jolokia.jar
 # Add tini to sidecar
 RUN cp /usr/local/bin/tini /sidecar/tini
 

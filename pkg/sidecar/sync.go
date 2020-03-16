@@ -3,26 +3,31 @@ package sidecar
 import (
 	"context"
 
+	"github.com/scylladb/scylla-operator/pkg/util/network"
+
 	"github.com/pkg/errors"
 	"github.com/scylladb/scylla-operator/pkg/controller/cluster/util"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	"github.com/yanniszark/go-nodetool/nodetool"
 	corev1 "k8s.io/api/core/v1"
 )
 
 func (mc *MemberController) sync(ctx context.Context, memberService *corev1.Service) error {
 	// Check if member must decommission
 	if decommission, ok := memberService.Labels[naming.DecommissionLabel]; ok {
+		host, err := network.FindFirstNonLocalIP()
+		if err != nil {
+			return errors.Wrapf(err, "error during decommission")
+		}
 		// Check if member has already decommissioned
 		if decommission == naming.LabelValueTrue {
 			return nil
 		}
 		// Else, decommission member
-		if err := mc.nodetool.Decommission(); err != nil {
+		if err := mc.scyllaClient.Decommission(ctx, host.String()); err != nil {
 			mc.logger.Error(ctx, "Error during decommission", "error", errors.WithStack(err))
 		}
 		// Confirm memberService has been decommissioned
-		if opMode, err := mc.nodetool.OperationMode(); err != nil || opMode != nodetool.NodeOperationModeDecommissioned {
+		if opMode, err := mc.scyllaClient.OperationMode(ctx, host.String()); err != nil || !opMode.IsDecommisioned() {
 			return errors.Wrapf(err, "error during decommission, operation mode: %s", opMode)
 		}
 		// Update Label to signal that decommission has completed

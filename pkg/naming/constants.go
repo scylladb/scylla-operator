@@ -69,10 +69,6 @@ const (
 
 	DataDir = "/var/lib/scylla"
 
-	JolokiaJarName = "jolokia.jar"
-	JolokiaPort    = 8778
-	JolokiaContext = "jolokia"
-
 	ReadinessProbePath = "/readyz"
 	LivenessProbePath  = "/healthz"
 	ProbePort          = 8080

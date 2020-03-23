@@ -125,6 +125,17 @@ To configure the agent you just create a new config-map called _scylla-agent-con
 kubectl create configmap scylla-agent-config -n scylla --from-file=scylla-manager-agent.yaml
 ```
 
+In order for the operator to be able to use the agent it may need to be configured accordingly. For example it needs a matching security token.
+The operator uses a file called `scylla-client.yaml` for this and the content is today limited to two properties:
+```yaml
+auth_token: the_token
+```
+To configure the operator you just create a new config-map called _scylla-client-config_ and populate it with the contents in the `scylla-client.yaml` file like this:
+```console
+kubectl create configmap scylla-agent-config -n scylla --from-file=scylla-manager-agent.yaml
+```
+After a restart the operator will use the security token when it interacts with scylla via the agent.
+
 ## Clean Up
  
 To clean up all resources associated with this walk-through, you can run the commands below.

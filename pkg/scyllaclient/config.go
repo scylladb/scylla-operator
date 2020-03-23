@@ -4,9 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/scylladb/scylla-operator/pkg/util/network"
-
 	"github.com/pkg/errors"
+	"github.com/scylladb/scylla-operator/pkg/util/network"
 	"go.uber.org/multierr"
 )
 
@@ -20,10 +19,10 @@ type Config struct {
 	// Transport scheme HTTP or HTTPS.
 	Scheme string
 	// AuthToken specifies the authentication token.
-	AuthToken string
+	AuthToken string `yaml:"auth_token"`
 	// Timeout specifies time to complete a single request to Scylla REST API
 	// possibly including opening a TCP connection.
-	Timeout time.Duration
+	Timeout time.Duration `yaml:"timeout"`
 	// PoolDecayDuration specifies size of time window to measure average
 	// request time in Epsilon-Greedy host pool.
 	Backoff BackoffConfig

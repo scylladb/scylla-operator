@@ -164,6 +164,17 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 								},
 							},
 						},
+						{
+							Name: "scylla-client-config-volume",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "scylla-client-config",
+									},
+									Optional: &opt,
+								},
+							},
+						},
 					},
 					Tolerations: placement.Tolerations,
 					InitContainers: []corev1.Container{
@@ -267,6 +278,11 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 									MountPath: naming.ScyllaConfigDirName,
 									ReadOnly:  true,
 								},
+								{
+									Name:      "scylla-client-config-volume",
+									MountPath: naming.ScyllaClientConfigDirName,
+									ReadOnly:  true,
+								},
 							},
 							// Add CAP_SYS_NICE as instructed by scylla logs
 							SecurityContext: &corev1.SecurityContext{
@@ -354,7 +370,7 @@ func agentContainer(c *scyllav1alpha1.Cluster) *corev1.Container {
 		ImagePullPolicy: "IfNotPresent",
 		Args: []string{
 			"-c",
-			"/etc/scylla-manager-agent/scylla-manager-agent.yaml",
+			naming.ScyllaAgentConfigDefaultFile,
 			"-c",
 			naming.ScyllaAgentConfigDirName + "/scylla-manager-agent.yaml",
 		},

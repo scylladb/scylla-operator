@@ -696,6 +696,18 @@
   version = "v1.3.2"
 
 [[projects]]
+  digest = "1:3974bf1cc2974d320b595197e917c37c3cf1db678467aae5dd79df00b69b965d"
+  name = "go.uber.org/config"
+  packages = [
+    ".",
+    "internal/merge",
+    "internal/unreachable",
+  ]
+  pruneopts = "UT"
+  revision = "c917157c9ba905e1c93f74a2611bc4356abe94d0"
+  version = "v1.4.0"
+
+[[projects]]
   digest = "1:60bf2a5e347af463c42ed31a493d817f8a72f102543060ed992754e689805d1a"
   name = "go.uber.org/multierr"
   packages = ["."]
@@ -730,6 +742,17 @@
   ]
   pruneopts = "UT"
   revision = "ff983b9c42bc9fbf91556e191cc8efb585c16908"
+
+[[projects]]
+  branch = "master"
+  digest = "1:3403849330a8ab0adfff079dc6c6ad7bd8961a4a6891d05b9797063b4024f623"
+  name = "golang.org/x/lint"
+  packages = [
+    ".",
+    "golint",
+  ]
+  pruneopts = "UT"
+  revision = "738671d3881b9731cc63024d5d88cf28db875626"
 
 [[projects]]
   branch = "master"
@@ -1413,9 +1436,11 @@
     "github.com/scylladb/go-set/strset",
     "github.com/spf13/cobra",
     "github.com/stretchr/testify/require",
+    "go.uber.org/config",
     "go.uber.org/multierr",
     "go.uber.org/zap",
     "go.uber.org/zap/zapcore",
+    "gopkg.in/yaml.v2",
     "k8s.io/api/admissionregistration/v1beta1",
     "k8s.io/api/apps/v1",
     "k8s.io/api/core/v1",

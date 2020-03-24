@@ -318,7 +318,6 @@ spec:
       containers:
       - args:
         - operator
-        - --enable-scylla-agent-sidecar
         env:
         - name: POD_NAME
           valueFrom:

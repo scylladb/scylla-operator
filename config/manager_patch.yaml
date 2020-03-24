@@ -19,7 +19,6 @@ spec:
         command:
         args:
           - operator
-          - --enable-scylla-agent-sidecar
         env:
           - name: POD_NAME
             valueFrom:

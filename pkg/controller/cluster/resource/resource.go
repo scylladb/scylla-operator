@@ -5,8 +5,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/scylladb/scylla-operator/cmd/options"
-
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controller/cluster/util"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -356,10 +354,7 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 		},
 	}
 
-	// If the scylla-agent feature-flag is enabled, add the Scylla Agent sidecar
-	if options.GetOperatorOptions().EnableScyllaAgentSidecar {
-		sts.Spec.Template.Spec.Containers = append(sts.Spec.Template.Spec.Containers, *agentContainer(c))
-	}
+	sts.Spec.Template.Spec.Containers = append(sts.Spec.Template.Spec.Containers, *agentContainer(c))
 	return sts
 }
 

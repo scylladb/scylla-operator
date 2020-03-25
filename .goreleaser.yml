@@ -1,0 +1,24 @@
+# .goreleaser.yml
+dockers:
+  # You can have multiple Docker images.
+  -
+    # Skips the docker push. Could be useful if you also do draft releases.
+    # If set to auto, the release will not be pushed to the docker repository
+    # in case there is an indicator for prerelease in the tag e.g. v1.0.0-rc1
+    # Defaults to false.
+    skip_push: true
+
+    # Path to the Dockerfile (from the project root).
+    dockerfile: Dockerfile
+
+    # If your Dockerfile copies files other than the binary itself,
+    # you should list them here as well.
+    # Note that goreleaser will create the same structure inside the temporary
+    # folder, so if you add `foo/bar.json` here, on your Dockerfile you can
+    # `COPY foo/bar.json /whatever.json`.
+    # Also note that the paths here are relative to the folder in which
+    # goreleaser is being run.
+    # This field does not support wildcards, you can add an entire folder here
+    # and use wildcards when you `COPY`/`ADD` in your Dockerfile.
+    extra_files:
+      - config.yml

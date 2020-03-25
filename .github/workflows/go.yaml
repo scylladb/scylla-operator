@@ -1,0 +1,62 @@
+name: Go
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+
+  build:
+    name: Build
+    env:
+      # We have to change the working directory because of GOPATH
+      working-directory: ${{ github.workspace }}/src/github.com/${{ github.repository }}
+      working-directory-rel: src/github.com/${{ github.repository }}
+      GOPATH: ${{ github.workspace }}
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Check out code into the GOPATH directory
+        uses: actions/checkout@v2
+        with:
+          path: ${{ env.working-directory-rel }}
+
+      - name: Install python3 deps
+        run: pip3 install requests
+
+      - name: Cache tools
+        id: cache-tools
+        uses: actions/cache@v1
+        with:
+          path: ${{ format('{0}/bin/deps', env.working-directory-rel) }}
+          key: ${{ runner.os }}-${{ hashFiles(format('{0}/hack/binary_deps.py', env.working-directory-rel)) }}
+
+      - name: Install binary deps
+        if: steps['cache-tools'].outputs['cache-hit'] != 'true'
+        working-directory: ${{ env.working-directory }}
+        run: make bin/deps
+
+      - name: Go Dependencies
+        working-directory: ${{ env.working-directory }}
+        run: hack/run_and_diff.py make vendor
+
+      - name: Code Formatting
+        working-directory: ${{ env.working-directory }}
+        run: hack/run_and_diff.py -v make fmt
+
+      - name: Code Inspection
+        working-directory: ${{ env.working-directory }}
+        run: hack/run_and_diff.py -v make vet
+
+      - name: Unit Tests
+        working-directory: ${{ env.working-directory }}
+        run: hack/run_and_diff.py -v make test
+
+      - name: Build
+        working-directory: ${{ env.working-directory }}
+        run: make local-build
+
+# TODO:
+# - docker push?
+# - E2E

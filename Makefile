@@ -3,18 +3,19 @@
 REPO ?= yanniszark/scylla-operator
 TAG ?= $(shell git describe --tags --always)
 IMG ?= $(REPO):$(TAG)
-GOVERSION ?= $(go version)
 
 .EXPORT_ALL_VARIABLES:
 DOCKER_BUILDKIT = 1
 GO111MODULE = off
 KUBEBUILDER_ASSETS = $(CURDIR)/bin/deps
 PATH := $(CURDIR)/bin/deps:$(CURDIR)/bin/deps/go/bin:$(PATH)
+GOROOT = $(CURDIR)/bin/deps/go
+GOVERSION = $(shell go version)
 
 all: test local-build
 
 # Run tests
-test: fmt vet manifests vendor
+test: fmt vet vendor
 	go test ./pkg/... ./cmd/... -coverprofile cover.out
 
 # Build local-build binary
@@ -68,3 +69,5 @@ release: bin/deps
 bin/deps:
 	mkdir -p bin/deps
 	hack/binary_deps.py bin/deps
+
+.PHONY: vendor

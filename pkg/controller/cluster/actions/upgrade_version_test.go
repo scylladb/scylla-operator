@@ -1,12 +1,14 @@
 package actions
 
 import (
+	"testing"
+
 	"github.com/scylladb/scylla-operator/pkg/controller/cluster/resource"
+	"github.com/scylladb/scylla-operator/pkg/controller/cluster/util"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
-	"testing"
 )
 
 func TestUpgradeStatefulSetScyllaImage(t *testing.T) {
@@ -30,7 +32,7 @@ func TestUpgradeStatefulSetScyllaImage(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			kubeClient := fake.NewSimpleClientset(sts)
-			err := upgradeStatefulSetScyllaImage(test.sts, test.expectedImage, kubeClient)
+			err := util.UpgradeStatefulSetScyllaImage(test.sts, test.expectedImage, kubeClient)
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}

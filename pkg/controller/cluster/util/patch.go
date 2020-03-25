@@ -12,8 +12,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-// UpgradeStatefulSetImage attempts to set the image of a StatefulSet
-func UpgradeStatefulSetImage(sts *appsv1.StatefulSet, image string, kubeClient kubernetes.Interface) error {
+// UpgradeStatefulSetScyllaImage attempts to set the image of a StatefulSet
+func UpgradeStatefulSetScyllaImage(sts *appsv1.StatefulSet, image string, kubeClient kubernetes.Interface) error {
 	upgradeSts := sts.DeepCopy()
 	idx, err := naming.FindScyllaContainer(upgradeSts.Spec.Template.Spec.Containers)
 	if err != nil {

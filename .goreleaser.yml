@@ -16,7 +16,7 @@ dockers:
         - 'yanniszark/scylla-operator:{{ .Tag }}'
       binaries:
           - manager
-      skip_push: true
+      skip_push: auto
       dockerfile: Dockerfile
       extra_files:
         - cmd

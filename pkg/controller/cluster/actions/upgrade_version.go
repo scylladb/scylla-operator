@@ -44,7 +44,7 @@ func (a *ClusterVersionUpgrade) Execute(ctx context.Context, s *State) error {
 				return errors.Wrap(err, "failed to get statefulset")
 			}
 			image := resource.ImageForCluster(c)
-			if err := util.UpgradeStatefulSetImage(sts, image, s.kubeclient); err != nil {
+			if err := util.UpgradeStatefulSetScyllaImage(sts, image, s.kubeclient); err != nil {
 				return errors.Wrap(err, "failed to upgrade statefulset")
 			}
 			// Record event for successful version upgrade

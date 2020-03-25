@@ -14,6 +14,7 @@ KUBEBUILDER_URL = "https://github.com/kubernetes-sigs/kubebuilder/releases/downl
 KUSTOMIZE_URL = "https://github.com/kubernetes-sigs/kustomize/releases/download/v2.0.3/kustomize_2.0.3_linux_amd64"
 DEP_URL = "https://github.com/golang/dep/releases/download/v0.5.4/dep-linux-amd64"
 GO_URL = "https://dl.google.com/go/go1.12.17.linux-amd64.tar.gz"
+GORELEASER_URL = "https://github.com/goreleaser/goreleaser/releases/download/v0.129.0/goreleaser_Linux_x86_64.tar.gz"
 
 
 def parse_args():
@@ -65,6 +66,9 @@ def main():
 
     log.info("Installing go...")
     download_from_tar(GO_URL, args.output_dir, flatten=False)
+
+    log.info("Installing goreleaser...")
+    download_from_tar(GORELEASER_URL, args.output_dir)
 
 
 if __name__ == "__main__":

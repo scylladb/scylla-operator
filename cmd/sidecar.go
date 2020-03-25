@@ -25,7 +25,8 @@ func newSidecarCmd(ctx context.Context, logger log.Logger, level zap.AtomicLevel
 			if err := opts.Validate(); err != nil {
 				logger.Fatal(ctx, "sidecar options", "error", err)
 			}
-			logger.Info(ctx, "sidecar started", "options", opts)
+			logger.Info(ctx, "sidecar started", "version", version, "build_date", date,
+				"commit", commit, "built_by", builtBy, "go_version", goVersion, "options", opts)
 
 			// Set log level
 			if err := level.UnmarshalText([]byte(opts.LogLevel)); err != nil {

@@ -1,16 +1,3 @@
-# Build the manager binary
-FROM golang:1.14 as builder
-
-# Copy in the go src
-WORKDIR /go/src/github.com/scylladb/scylla-operator
-COPY pkg/    pkg/
-COPY cmd/    cmd/
-COPY vendor/ vendor/
-
-# Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager github.com/scylladb/scylla-operator/cmd
-
-# Copy the operator into a thin image
 FROM alpine:3.11
 
 # Run tini as PID 1 and avoid signal handling issues
@@ -28,7 +15,7 @@ ADD "http://search.maven.org/remotecontent?filepath=org/jolokia/jolokia-jvm/1.6.
 RUN cp /usr/local/bin/tini /sidecar/tini
 
 # Add operator binary
-COPY --from=builder /go/src/github.com/scylladb/scylla-operator/manager /usr/local/bin/scylla-operator
+COPY manager /usr/local/bin/scylla-operator
 RUN chmod +x /usr/local/bin/scylla-operator
 
 # Add executables to sidecar folder

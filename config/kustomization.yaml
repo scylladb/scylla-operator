@@ -33,4 +33,4 @@ patchesStrategicMerge:
 images:
 - name: yanniszark/scylla-operator
   newName: yanniszark/scylla-operator
-  newTag: v0.1.3
+  newTag: v0.1.4

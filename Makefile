@@ -59,13 +59,11 @@ vendor:
 	dep ensure -v
 
 # Build the docker image
-docker-build:
-	GOVERSION="$(GOVERSION)" goreleaser --skip-validate --skip-publish --rm-dist
+docker-build: bin/deps
+	GOVERSION="$(GOVERSION)" ./bin/deps/goreleaser --skip-validate --skip-publish --rm-dist
 
-release:
-	GOVERSION="$(GOVERSION)" goreleaser --rm-dist
-
-publish: docker-build docker-push
+release: bin/deps
+	GOVERSION="$(GOVERSION)" ./bin/deps/goreleaser --rm-dist
 
 bin/deps:
 	mkdir -p bin/deps

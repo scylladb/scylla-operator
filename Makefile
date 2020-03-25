@@ -1,8 +1,9 @@
 
 # Image URL to use all building/pushing image targets
 REPO ?= yanniszark/scylla-operator
-TAG ?= $(shell git describe --tags --always --long)
+TAG ?= $(shell git describe --tags --always)
 IMG ?= $(REPO):$(TAG)
+GOVERSION ?= $(go version)
 
 .EXPORT_ALL_VARIABLES:
 DOCKER_BUILDKIT = 1
@@ -59,11 +60,10 @@ vendor:
 
 # Build the docker image
 docker-build:
-	docker build . -t "$(IMG)"
+	GOVERSION="$(GOVERSION)" goreleaser --skip-validate --skip-publish --rm-dist
 
-# Push the docker image
-docker-push:
-	docker push "$(IMG)"
+release:
+	GOVERSION="$(GOVERSION)" goreleaser --rm-dist
 
 publish: docker-build docker-push
 

@@ -25,7 +25,8 @@ func newOperatorCmd(ctx context.Context, logger log.Logger, level zap.AtomicLeve
 			if err := opts.Validate(); err != nil {
 				logger.Fatal(ctx, "invalid options", "error", err)
 			}
-			logger.Info(ctx, "Operator started", "options", opts)
+			logger.Info(ctx, "Operator started", "version", version, "build_date", date,
+				"commit", commit, "built_by", builtBy, "go_version", goVersion, "options", opts)
 
 			// Set log level
 			if err := level.UnmarshalText([]byte(opts.LogLevel)); err != nil {

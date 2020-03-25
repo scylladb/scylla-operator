@@ -12,6 +12,14 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
+var (
+	builtBy   string
+	commit    string
+	date      string
+	goVersion string
+	version   string
+)
+
 // Basic structure for a simple cobra cli application
 // For more info on the structure of the code in package main,
 // see: https://github.com/spf13/cobra

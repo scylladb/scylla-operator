@@ -16,7 +16,7 @@ all: test local-build
 
 # Run tests
 test: fmt vet vendor
-	go test ./pkg/... ./cmd/... -coverprofile cover.out
+	./bin/deps/go/bin/go test ./pkg/... ./cmd/... -coverprofile cover.out
 
 # Build local-build binary
 local-build: fmt vet vendor
@@ -24,7 +24,7 @@ local-build: fmt vet vendor
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: fmt vet vendor
-	go run ./cmd operator --image="$(IMG)" --enable-admission-webhook=false
+	./bin/deps/go/bin/go run ./cmd operator --image="$(IMG)" --enable-admission-webhook=false
 
 # Install CRDs into a cluster
 install: manifests
@@ -36,24 +36,24 @@ deploy: install
 	kustomize build config | kubectl apply -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
-manifests:
-	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
+manifests: bin/deps
+	./bin/deps/go/bin/go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
 	cd config && kustomize edit set image yanniszark/scylla-operator="$(IMG)"
 	kustomize build config > examples/generic/operator.yaml
 	kustomize build config > examples/gke/operator.yaml
 	kustomize build config > examples/minikube/operator.yaml
 
 # Run go fmt against code
-fmt:
-	go fmt ./pkg/... ./cmd/...
+fmt: bin/deps
+	./bin/deps/go/bin/go fmt ./pkg/... ./cmd/...
 
 # Run go vet against code
-vet:
-	go vet ./pkg/... ./cmd/...
+vet: bin/deps
+	./bin/deps/go/bin/go vet ./pkg/... ./cmd/...
 
 # Generate code
-generate:
-	go generate ./pkg/... ./cmd/...
+generate: bin/deps
+	./bin/deps/go/bin/go generate ./pkg/... ./cmd/...
 
 # Ensure dependencies
 vendor:

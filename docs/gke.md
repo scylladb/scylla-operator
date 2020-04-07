@@ -190,9 +190,9 @@ The operator creates a second container for each scylla instance that runs [Scyl
 This container serves as a sidecar and it's the main endpoint for [Scylla Manager](https://hub.docker.com/r/scylladb/scylla-manager) when interacting with Scylla.
 The Scylla Manager Agent can be configured with various things such as the security token used to allow access to it's API.
 
-To configure the agent you just create a new config-map called _scylla-agent-config_ and populate it with the contents in the `scylla-manager-agent.yaml` file like this:
+To configure the agent you just create a new config-map called _scylla-agent-config-secret_ and populate it with the contents in the `scylla-manager-agent.yaml` file like this:
 ```console
-kubectl create configmap scylla-agent-config -n scylla --from-file=scylla-manager-agent.yaml
+kubectl create secret -n scylla generic scylla-agent-config-secret --from-file scylla-manager-agent.yaml
 ```
 
 In order for the operator to be able to use the agent it may need to be configured accordingly. For example it needs a matching security token.
@@ -200,9 +200,9 @@ The operator uses a file called `scylla-client.yaml` for this and the content is
 ```yaml
 auth_token: the_token
 ```
-To configure the operator you just create a new config-map called _scylla-client-config_ and populate it with the contents in the `scylla-client.yaml` file like this:
+To configure the operator you just create a new config-map called _scylla-client-config-secret_ and populate it with the contents in the `scylla-client.yaml` file like this:
 ```console
-kubectl create configmap scylla-agent-config -n scylla --from-file=scylla-manager-agent.yaml
+kubectl create secret -n scylla generic scylla-client-config-secret --from-file scylla-manager-agent.yaml
 ```
 After a restart the operator will use the security token when it interacts with scylla via the agent.
 

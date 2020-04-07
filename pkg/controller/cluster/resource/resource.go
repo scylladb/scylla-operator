@@ -154,22 +154,18 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 						{
 							Name: "scylla-agent-config-volume",
 							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: stringOrDefault(r.ScyllaAgentConfig, "scylla-agent-config"),
-									},
-									Optional: &opt,
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: "scylla-agent-config-secret",
+									Optional:   &opt,
 								},
 							},
 						},
 						{
 							Name: "scylla-client-config-volume",
 							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "scylla-client-config",
-									},
-									Optional: &opt,
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: "scylla-client-config-secret",
+									Optional:   &opt,
 								},
 							},
 						},

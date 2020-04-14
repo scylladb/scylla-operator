@@ -26,7 +26,6 @@ const (
 	scyllaYAMLConfigMapPath             = naming.ScyllaConfigDirName + "/" + naming.ScyllaConfigName
 	scyllaRackDCPropertiesPath          = configDirScylla + "/" + naming.ScyllaRackDCPropertiesName
 	scyllaRackDCPropertiesConfigMapPath = naming.ScyllaConfigDirName + "/" + naming.ScyllaRackDCPropertiesName
-	jolokiaPath                         = naming.SharedDirName + "/" + naming.JolokiaJarName
 	entrypointPath                      = "/docker-entrypoint.py"
 )
 
@@ -63,10 +62,6 @@ func (s *ScyllaConfig) Setup(ctx context.Context) (*exec.Cmd, error) {
 	s.logger.Info(ctx, "Setting up cassandra-rackdc.properties")
 	if err = s.setupRackDCProperties(); err != nil {
 		return nil, errors.Wrap(err, "failed to setup rackdc properties file")
-	}
-	s.logger.Info(ctx, "Setting up jolokia config")
-	if err = s.setupJolokia(); err != nil {
-		return nil, errors.Wrap(err, "failed to setup jolokia")
 	}
 	s.logger.Info(ctx, "Setting up entrypoint script")
 	if cmd, err = s.setupEntrypoint(ctx); err != nil {
@@ -157,76 +152,6 @@ func loadProperties(fileName string, logger log.Logger) *properties.Properties {
 		return properties.NewProperties()
 	}
 	return p
-}
-
-// setupJolokia injects jolokia as a javaagent by
-// modifying the scylla-jmx file.
-func (s *ScyllaConfig) setupJolokia() error {
-
-	// Create Jolokia Config
-	opts := []struct {
-		flag, value string
-	}{
-		{
-			flag:  "host",
-			value: "localhost",
-		},
-		{
-			flag:  "port",
-			value: fmt.Sprintf("%d", naming.JolokiaPort),
-		},
-		{
-			flag:  "executor",
-			value: "fixed",
-		},
-		{
-			flag:  "threadNr",
-			value: "2",
-		},
-	}
-
-	cmd := []string{}
-	for _, opt := range opts {
-		cmd = append(cmd, fmt.Sprintf("%s=%s", opt.flag, opt.value))
-	}
-	jolokiaCfg := fmt.Sprintf("-javaagent:%s=%s", jolokiaPath, strings.Join(cmd, ","))
-
-	scyllaJMXPath, err := findScyllaJMX()
-	if err != nil {
-		return errors.Wrap(err, "scylla-jmx unavailable")
-	}
-	// Open scylla-jmx file
-	scyllaJMXBytes, err := ioutil.ReadFile(scyllaJMXPath)
-	if err != nil {
-		return errors.Wrap(err, "error reading scylla-jmx")
-	}
-	// Inject jolokia as a javaagent
-	scyllaJMX := string(scyllaJMXBytes)
-	splitIndex := strings.Index(scyllaJMX, `\`) + len(`\`)
-	injectedLine := fmt.Sprintf("\n    %s \\", jolokiaCfg)
-	scyllaJMXCustom := scyllaJMX[:splitIndex] + injectedLine + scyllaJMX[splitIndex:]
-	// Write the custom scylla-jmx contents back
-	if err := ioutil.WriteFile(scyllaJMXPath, []byte(scyllaJMXCustom), os.ModePerm); err != nil {
-		return errors.Wrap(err, "error writing scylla-jmx: %s")
-	}
-	return nil
-}
-
-func findScyllaJMX() (string, error) {
-	for _, file := range scyllaJMXPaths {
-		if fileExists(file) {
-			return file, nil
-		}
-	}
-	return "", errors.Errorf("No scylla-jmx found, tried [%v]", scyllaJMXPaths)
-}
-
-func fileExists(filename string) bool {
-	info, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return !info.IsDir()
 }
 
 func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {

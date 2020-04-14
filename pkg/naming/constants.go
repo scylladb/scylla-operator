@@ -62,16 +62,15 @@ const (
 
 	SharedDirName = "/mnt/shared"
 
-	ScyllaConfigDirName        = "/mnt/scylla-config"
-	ScyllaAgentConfigDirName   = "/mnt/scylla-agent-config"
-	ScyllaConfigName           = "scylla.yaml"
-	ScyllaRackDCPropertiesName = "cassandra-rackdc.properties"
+	ScyllaConfigDirName          = "/mnt/scylla-config"
+	ScyllaAgentConfigDirName     = "/mnt/scylla-agent-config"
+	ScyllaAgentConfigDefaultFile = "/etc/scylla-manager-agent/scylla-manager-agent.yaml"
+	ScyllaClientConfigDirName    = "/mnt/scylla-client-config"
+	ScyllaClientConfigFileName   = "scylla-client.yaml"
+	ScyllaConfigName             = "scylla.yaml"
+	ScyllaRackDCPropertiesName   = "cassandra-rackdc.properties"
 
 	DataDir = "/var/lib/scylla"
-
-	JolokiaJarName = "jolokia.jar"
-	JolokiaPort    = 8778
-	JolokiaContext = "jolokia"
 
 	ReadinessProbePath = "/readyz"
 	LivenessProbePath  = "/healthz"

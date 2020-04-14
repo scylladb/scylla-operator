@@ -82,7 +82,7 @@ metadata:
   namespace: scylla
 spec:
   version: 3.1.0
-  agentVersion: 2.0.1
+  agentVersion: 2.0.2
   developerMode: true
   datacenter:
     name: us-east-1

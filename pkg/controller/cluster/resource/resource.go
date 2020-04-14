@@ -2,7 +2,6 @@ package resource
 
 import (
 	"fmt"
-	"github.com/scylladb/scylla-operator/cmd/options"
 	"path"
 	"strings"
 
@@ -89,6 +88,10 @@ func MemberServiceForPod(pod *corev1.Pod, cluster *scyllav1alpha1.Cluster) *core
 					Name: "cql-ssl",
 					Port: 9142,
 				},
+				{
+					Name: "agent-api",
+					Port: 10001,
+				},
 			},
 			PublishNotReadyAddresses: true,
 		},
@@ -151,11 +154,18 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 						{
 							Name: "scylla-agent-config-volume",
 							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: stringOrDefault(r.ScyllaAgentConfig, "scylla-agent-config"),
-									},
-									Optional: &opt,
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: "scylla-agent-config-secret",
+									Optional:   &opt,
+								},
+							},
+						},
+						{
+							Name: "scylla-client-config-volume",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: "scylla-client-config-secret",
+									Optional:   &opt,
 								},
 							},
 						},
@@ -205,10 +215,6 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 								{
 									Name:          "thrift",
 									ContainerPort: 9160,
-								},
-								{
-									Name:          "jolokia",
-									ContainerPort: 8778,
 								},
 								{
 									Name:          "prometheus",
@@ -264,6 +270,11 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 								{
 									Name:      "scylla-config-volume",
 									MountPath: naming.ScyllaConfigDirName,
+									ReadOnly:  true,
+								},
+								{
+									Name:      "scylla-client-config-volume",
+									MountPath: naming.ScyllaClientConfigDirName,
 									ReadOnly:  true,
 								},
 							},
@@ -339,10 +350,7 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 		},
 	}
 
-	// If the scylla-agent feature-flag is enabled, add the Scylla Agent sidecar
-	if options.GetOperatorOptions().EnableScyllaAgentSidecar {
-		sts.Spec.Template.Spec.Containers = append(sts.Spec.Template.Spec.Containers, *agentContainer(c))
-	}
+	sts.Spec.Template.Spec.Containers = append(sts.Spec.Template.Spec.Containers, *agentContainer(c))
 	return sts
 }
 
@@ -353,7 +361,7 @@ func agentContainer(c *scyllav1alpha1.Cluster) *corev1.Container {
 		ImagePullPolicy: "IfNotPresent",
 		Args: []string{
 			"-c",
-			"/etc/scylla-manager-agent/scylla-manager-agent.yaml",
+			naming.ScyllaAgentConfigDefaultFile,
 			"-c",
 			naming.ScyllaAgentConfigDirName + "/scylla-manager-agent.yaml",
 		},

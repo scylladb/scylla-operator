@@ -187,6 +187,57 @@ kubectl create secret -n scylla generic scylla-client-config-secret --from-file 
 ```
 After a restart the operator will use the security token when it interacts with scylla via the agent.
 
+ ### Setting up Monitoring
+ 
+ Both Prometheus and Grafana were configured with specific rules for Scylla Operator.
+ Both of them will be available under the `monitoring` namespace. 
+ Customization can be done in `examples/generic/prometheus/values.yaml` and `examples/generic/grafana/values.yaml`.
+ 
+ 1. Create the monitoring namespace
+ ```console
+ kubectl create namespace monitoring
+ ```
+ 
+ 1. Install Prometheus
+ ```console
+ helm upgrade --install scylla-prom --namespace monitoring stable/prometheus -f examples/generic/prometheus/values.yaml
+ ```
+ 
+ 2. Install Grafana
+ ```console
+ helm upgrade --install scylla-graf --namespace monitoring stable/grafana -f examples/generic/grafana/values.yaml
+ ```
+ 
+ To access Grafana locally, run:
+ 
+ ```
+ export POD_NAME=$(kubectl get pods --namespace monitoring -l "app=grafana,release=scylla-graf" -o jsonpath="{.items[0].metadata.name}")
+ kubectl --namespace monitoring port-forward $POD_NAME 3000
+ ```
+ 
+ You can find it on `http://0.0.0.0:3000` and login with the credentials `admin`:`admin`.
+ 
+ 3. Install dashboards
+ 
+ If you haven't forwarded Grafana to localhost, we will need it now:
+ ```
+ export POD_NAME=$(kubectl get pods --namespace monitoring -l "app=grafana,release=scylla-graf" -o jsonpath="{.items[0].metadata.name}")
+ kubectl --namespace monitoring port-forward $POD_NAME 3000
+ ```
+ 
+ Clone scylla-grafana-monitoring project and export dashboards:
+ ```
+ git clone https://github.com/scylladb/scylla-grafana-monitoring /tmp/scylla-grafana-monitoring
+ cd /tmp/scylla-grafana-monitoring
+ git checkout scylla-monitoring-2.3
+ ./generate-dashboards.sh
+ export GRAFANA_PASSWORD=$(kubectl get secret --namespace monitoring scylla-graf-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo)
+ ./load-grafana.sh -a $GRAFANA_PASSWORD
+ 
+ ```
+ 
+ :warning: Keep in mind that this is a test setup. For production use, check grafana and prometheus helm chart page for advanced deployment instructions.
+
 ## Scale Up
 
 The operator supports scale up of a rack as well as addition of new racks. To make the changes, you can use:
@@ -200,6 +251,26 @@ kubectl -n scylla edit clusters.scylla.scylladb.com simple-cluster
 kubectl -n scylla describe clusters.scylla.scylladb.com simple-cluster 
 ```
 
+## Benchmark with cassandra-stress
+
+After deploying our cluster along with the monitoring, we can benchmark it using cassandra-stress and see its performance in Grafana. We have a mini cli that generates Kubernetes Jobs that run cassandra-stress against a cluster.
+
+> Because cassandra-stress doesn't scale well to multiple cores, we use multiple jobs with a small core count for each
+
+```bash
+
+# Run a benchmark with 10 jobs, with 6 cpus and 50.000.000 operations each.
+# Each Job will throttle throughput to 30.000 ops/sec for a total of 300.000 ops/sec.
+scripts/cass-stress-gen.py --num-jobs=10 --cpu=6 --memory=20G --ops=50000000 --limit=30000
+kubectl apply -f scripts/cassandra-stress.yaml
+```
+
+While the benchmark is running, open up Grafana and take a look at the monitoring metrics.
+
+After the Jobs finish, clean them up with:
+```bash
+kubectl delete -f scripts/cassandra-stress.yaml
+```
  
 ## Scale Down
 
@@ -211,40 +282,6 @@ kubectl -n scylla edit clusters.scylla.scylladb.com simple-cluster
 * After editing and saving the yaml, check your cluster's Status and Events for information on what's happening:
 ```console
 kubectl -n scylla describe clusters.scylla.scylladb.com simple-cluster
-```
-
-## Configure Scylla
-
-The operator can take a ConfigMap and apply it to the scylla.yaml configuration file.
-This is done by adding a ConfigMap to Kubernetes and refering to this in the Rack specification.
-The ConfigMap is just a file called `scylla.yaml` that has the properties you want to change in it.
-The operator will take the default properties for the rest of the configuration. 
-
-* Create a ConfigMap the default name that the operator uses is `scylla-config`:
-```console
-kubectl create configmap scylla-config -n scylla --from-file=/path/to/scylla.yaml
-```
-* Wait for the mount to propagate and then restart the cluster:
-```console
-kubectl rollout restart -n scylla statefulset/simple-cluster-us-east-1-us-east-1a
-```
-* The new config should be applied automatically by the operator, check the logs to be sure.
-
-Configuring `cassandra-rackdc.properties` is done by adding the file to the same mount as `scylla.yaml`.
-```console
-kubectl create configmap scylla-config -n scylla --from-file=/tmp/scylla.yaml --from-file=/tmp/cassandra-rackdc.properties -o yaml --dry-run | kubectl replace -f -
-```
-The operator will then apply the overridable properties `prefer_local` and `dc_suffix` if they are available in the provided mounted file.
-
-## Configure Scylla Manager Agent
-
-The operator creates a second container for each scylla instance that runs [Scylla Manager Agent](https://hub.docker.com/r/scylladb/scylla-manager-agent).
-This container serves as a sidecar and it's the main endpoint for [Scylla Manager](https://hub.docker.com/r/scylladb/scylla-manager) when interacting with Scylla.
-The Scylla Manager Agent can be configured with various things such as the security token used to allow access to it's API.
-
-To configure the agent you just create a new config-map called _scylla-agent-config_ and populate it with the contents in the `scylla-manager-agent.yaml` file like this:
-```console
-kubectl create configmap scylla-agent-config -n scylla --from-file=scylla-manager-agent.yaml
 ```
 
 ## Clean Up

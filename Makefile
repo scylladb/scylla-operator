@@ -41,7 +41,6 @@ manifests: bin/deps
 	cd config && kustomize edit set image yanniszark/scylla-operator="$(IMG)"
 	kustomize build config > examples/generic/operator.yaml
 	kustomize build config > examples/gke/operator.yaml
-	kustomize build config > examples/minikube/operator.yaml
 
 # Run go fmt against code
 fmt: bin/deps

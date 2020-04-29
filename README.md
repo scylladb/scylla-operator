@@ -9,10 +9,8 @@
 
 To quickly deploy a Scylla cluster, choose one of the following options:
 
-* [Minikube](docs/minikube.md): super quick and easy way to get started with the Scylla operator.
-* [GKE](docs/gke.md): advanced guide for deploying Scylla with the best performance settings.
-* [Generic](docs/generic.md): your platform isn't included? Follow this guide!
-
+* [Generic](docs/generic.md): Follow this guide for the general way to use the operator.
+* [GKE](docs/gke.md): An advanced guide for deploying Scylla with the best performance settings on [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine).
 
 ## Description
 

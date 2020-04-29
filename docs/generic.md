@@ -1,6 +1,9 @@
 # Deploying Scylla on a Kubernetes Cluster
 
-This is a guide to deploy a Scylla Cluster in a generic Kubernetes environment, meaning that Scylla will not be deployed with the ideal performance. Scylla performs the best when it has fast disks and direct access to the cpu. This requires some extra setup, which is platform-specific. To deploy Scylla with maximum performance, follow the guide for your environment:
+This is a guide to deploy a Scylla Cluster in a generic Kubernetes environment, meaning that Scylla will not be deployed with the ideal performance.
+Scylla performs the best when it has fast disks and direct access to the cpu.
+This requires some extra setup, which is platform-specific.
+For specific configuration and setup, check for details about your particular environment:
 
 * [GKE](gke.md)
 
@@ -9,6 +12,15 @@ This is a guide to deploy a Scylla Cluster in a generic Kubernetes environment, 
 * A Kubernetes cluster (version >= 1.11)
 * A [Storage Class](https://kubernetes.io/docs/concepts/storage/storage-classes/) to provision [PersistentVolumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/).
 
+## Running locally
+
+Running kubernetes locally is a daunting and error prone task.
+Fortunately there are ways to make life easier and [Minikube](https://minikube.sigs.k8s.io/docs/) makes it a breeze.
+
+We need to give minikube a little bit more resources than default so start minikube like this:
+```console
+minikube start --cpus=6 --memory=6144
+```
 
 ## Deploy Scylla Operator
 
@@ -18,12 +30,26 @@ First deploy the  Scylla Operator using the following commands:
 kubectl apply -f examples/generic/operator.yaml
 ```
 
-This will install the operator StatefulSet in namespace scylla-operator-system. You can check if the operator is up and running with:
+This will install the operator StatefulSet in namespace scylla-operator-system.
+You can check if the operator is up and running with:
  
 ```console
 kubectl -n scylla-operator-system get pod
 ```
  
+If you want to check the logs of the operator you can do so with:
+ 
+ ```console
+kubectl -n scylla-operator-system logs scylla-operator-controller-manager-0
+```
+
+The output should be something like:
+```console
+{"L":"INFO","T":"2020-04-28T08:49:17.065Z","M":"Operator started","version":"0.1.6","build_date":"2020-04-14T12:58:26Z","commit":"416da6008d2165752bfef51ed65145a77c25d3a3","built_by":"goreleaser","go_version":"go version go1.14.2 linux/amd64","options":{"Name":"scylla-operator-controller-manager-0","Namespace":"scylla-operator-system","LogLevel":"info","Image":"","EnableAdmissionWebhook":true},"_trace_id":"ZcptKkJHQh6MYQOxLSWXlw"}
+{"L":"INFO","T":"2020-04-28T08:49:17.180Z","M":"Registering Components.","_trace_id":"ZcptKkJHQh6MYQOxLSWXlw"}
+{"L":"INFO","T":"2020-04-28T08:49:17.665Z","M":"Starting the operator...","_trace_id":"ZcptKkJHQh6MYQOxLSWXlw"}
+```
+
 ## Create and Initialize a Scylla Cluster
 
 Now that the operator is running, we can create an instance of a Scylla cluster by creating an instance of the `clusters.scylla.scylladb.com` resource.
@@ -43,6 +69,33 @@ This is important because it shows that  has successfully extended Kubernetes to
 kubectl -n scylla get clusters.scylla.scylladb.com
 ```
 
+Checking the pods that are created is as easy as:
+
+```console
+kubectl -n scylla get pods
+```
+
+The output should be something like:
+
+```console
+NAME                                    READY   STATUS    RESTARTS   AGE
+simple-cluster-us-east-1-us-east-1a-0   2/2     Running   0          9m49s
+simple-cluster-us-east-1-us-east-1a-1   2/2     Running   0          7m43s
+simple-cluster-us-east-1-us-east-1a-2   2/2     Running   0          6m46s
+```
+
+It is important to note that the operator creates these instances according to a pattern.
+This pattern is as follows: `CLUSTER_NAME-DATACENTER_NAME-RACK_NAME-INSTANCE_NUMBER` as specified in `cluster.yaml`.
+
+In the above example we have the following properties:
+
+ - CLUSTER_NAME: `simple-cluster`
+ - DATACENTER_NAME: `us-east-1`
+ - RACK_NAME: `us-east-1a`
+ - INSTANCE_NUMBER: An automatically generated number attached to the pod name.
+
+We picked the names to resemble something you can find in a cloud service but this is inconsequential, they can be set to anything you want.
+
 To check if all the desired members are running, you should see the same number of entries from the following command as the number of members that was specified in `cluster.yaml`:
 
 ```console
@@ -53,6 +106,12 @@ You can also track the state of a Scylla cluster from its status. To check the c
 
 ```console
 kubectl -n scylla describe clusters.scylla.scylladb.com simple-cluster
+```
+
+Checking the logs of the running scylla instances can be done like this:
+
+```console
+kubectl -n scylla logs simple-cluster-us-east-1-us-east-1a-0 scylla
 ```
 
 ## Accessing the Database
@@ -68,7 +127,9 @@ kubectl exec -n scylla -it simple-cluster-east-1-east-1a-0 -- cqlsh
 
 * From inside a Pod:
 
-When you create a new Cluster,  automatically creates a Service for the clients to use in order to access the Cluster. The service's name follows the convention `<cluster-name>-client`. You can see this Service in your cluster by running:
+When you create a new Cluster,  automatically creates a Service for the clients to use in order to access the Cluster.
+The service's name follows the convention `<cluster-name>-client`. 
+You can see this Service in your cluster by running:
 ```console
 kubectl -n scylla describe service simple-cluster-client
 ```

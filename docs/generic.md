@@ -22,6 +22,11 @@ We need to give minikube a little bit more resources than default so start minik
 minikube start --cpus=6 --memory=6144
 ```
 
+Then make kubectl aware of this local installation like this:
+```console
+eval $(minikube docker-env)
+```
+
 ## Deploy Scylla Operator
 
 First deploy the  Scylla Operator using the following commands:

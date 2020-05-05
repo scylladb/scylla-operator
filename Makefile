@@ -1,6 +1,6 @@
 
 # Image URL to use all building/pushing image targets
-REPO ?= yanniszark/scylla-operator
+REPO ?= scylladb/scylla-operator
 TAG ?= $(shell git describe --tags --always)
 IMG ?= $(REPO):$(TAG)
 
@@ -38,7 +38,7 @@ deploy: install
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: bin/deps
 	./bin/deps/go/bin/go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
-	cd config && kustomize edit set image yanniszark/scylla-operator="$(IMG)"
+	cd config && kustomize edit set image scylladb/scylla-operator="$(IMG)"
 	kustomize build config > examples/generic/operator.yaml
 	kustomize build config > examples/gke/operator.yaml
 

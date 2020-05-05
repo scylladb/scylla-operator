@@ -284,18 +284,18 @@ notifiers: {}
 ##
 ## `path` must be /var/lib/grafana/dashboards/<provider_name>
 ##
-dashboardProviders: {}
-#  dashboardproviders.yaml:
-#    apiVersion: 1
-#    providers:
-#    - name: 'default'
-#      orgId: 1
-#      folder: ''
-#      type: file
-#      disableDeletion: false
-#      editable: true
-#      options:
-#        path: /var/lib/grafana/dashboards/default
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+    - name: 'ds1'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: false
+      editable: true
+      options:
+        path: /var/lib/grafana/dashboards/ds1
 
 ## Configure grafana dashboard to import
 ## NOTE: To use dashboards you must also enable/configure dashboardProviders
@@ -328,8 +328,8 @@ dashboards: {}
 ##   example-dashboard.json: |
 ##     RAW_JSON
 ##
-dashboardsConfigMaps: {}
-#  default: ""
+dashboardsConfigMaps:
+  ds1: "scylla-grafana-dashboard"
 
 ## Grafana's primary configuration
 ## NOTE: values in map will be converted to ini format
@@ -400,18 +400,18 @@ sidecar:
 #     memory: 50Mi
   # skipTlsVerify Set to true to skip tls verification for kube api calls
   # skipTlsVerify: true
-  dashboards:
-    enabled: false
+#  dashboards:
+#    enabled: false
     # label that the configmaps with dashboards are marked with
-    label: grafana_dashboard
+#    label: grafana_dashboard
     # folder in the pod that should hold the collected dashboards (unless `defaultFolderName` is set)
-    folder: /tmp/dashboards
+#    folder: /tmp/dashboards
     # The default folder name, it will create a subfolder under the `folder` and put dashboards in there instead
-    defaultFolderName: null
+#    defaultFolderName: null
     # If specified, the sidecar will search for dashboard config-maps inside this namespace.
     # Otherwise the namespace in which the sidecar is running will be used.
     # It's also possible to specify ALL to search in all namespaces
-    searchNamespace: null
+#    searchNamespace: null
   datasources:
     enabled: false
     # label that the configmaps with datasources are marked with

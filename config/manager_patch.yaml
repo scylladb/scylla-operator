@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
       # Change the value of image field below to your controller image URL
-      - image: yanniszark/scylla-operator:latest
+      - image: scylladb/scylla-operator:latest
         imagePullPolicy: IfNotPresent
         name: manager
         command:

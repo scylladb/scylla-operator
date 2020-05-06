@@ -48,6 +48,8 @@ type ClusterSpec struct {
 	Version string `json:"version"`
 	// Repository to pull the image from.
 	Repository *string `json:"repository,omitempty"`
+	// Alternator designates this cluster an Alternator cluster
+	Alternator *AlternatorSpec `json:"alternator,omitempty"`
 	// Version of Scylla Manager Agent to use. Defaults to "latest".
 	AgentVersion *string `json:"agentVersion"`
 	// Repository to pull the agent image from. Defaults to "scylladb/scylla-manager-agent".
@@ -106,6 +108,15 @@ type StorageSpec struct {
 	Capacity string `json:"capacity"`
 	// Name of storageClass to request
 	StorageClassName *string `json:"storageClassName,omitempty"`
+}
+
+type AlternatorSpec struct {
+	// Port on which to bind the Alternator API
+	Port int32 `json:"port,omitempty"`
+}
+
+func (a *AlternatorSpec) Enabled() bool {
+	return a != nil && a.Port > 0
 }
 
 // ClusterStatus is the status of a Scylla Cluster

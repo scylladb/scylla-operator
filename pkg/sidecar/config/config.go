@@ -181,7 +181,9 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		fmt.Sprintf("--developer-mode=%s", devMode),
 		fmt.Sprintf("--smp=%s", options.GetSidecarOptions().CPU),
 	}
-
+	if cluster.Spec.Alternator.Enabled() {
+		args = append(args, fmt.Sprintf("--alternator-port=%d", cluster.Spec.Alternator.Port))
+	}
 	// See if we need to use cpu-pinning
 	// TODO: Add more checks to make sure this is valid.
 	// eg. parse the cpuset and check the number of cpus is the same as cpu limits

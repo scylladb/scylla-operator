@@ -3,7 +3,7 @@
 
 [Scylla](https://www.scylladb.com) is a close-to-the-hardware rewrite of Cassandra in C++. It features a shared nothing architecture that enables true linear scaling and major hardware optimizations that achieve ultra-low latencies and extreme throughput. It is a drop-in replacement for Cassandra and uses the same interfaces.
 
-![](https://pbs.twimg.com/media/DwknrKJWkAE7qEQ.jpg)
+![](logo.png)
 
 ## Quickstart
 

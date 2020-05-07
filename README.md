@@ -16,7 +16,7 @@ To quickly deploy a Scylla cluster, choose one of the following options:
 
 Scylla Operator is in **Beta** status.
 
-The scylla-operator is a Kubernetes operator for managing scylla clusters. Currently it supports:
+The scylla-operator is a Kubernetes Operator for managing Scylla clusters. Currently it supports:
 * Deploying multi-zone clusters
 * Scaling up or adding new racks
 * Scaling down
@@ -25,13 +25,13 @@ The scylla-operator is a Kubernetes operator for managing scylla clusters. Curre
 Future additions include:
 * Integration with [Scylla Manager](https://docs.scylladb.com/operating-scylla/manager/)
 * Version Upgrade
-* Backups
-* Restores
+* Backup
+* Restore
 
 
 ## Top-Performance Setup
 
-Scylla performs the best when it has fast disks and direct access to the cpu. To deploy Scylla with maximum performance, follow the guide for your environment:
+Scylla performs the best when it has fast disks and direct access to the CPU. To deploy Scylla with maximum performance, follow the guide for your environment:
 * [GKE](docs/gke/gke.md)
 
 
@@ -49,12 +49,12 @@ You can easily build Scylla Operator in your environment:
 
 ## Contributing
 
-We would love for you to contribute to Scylla Operator, help make it even better and learn together! Use these resources to help you get started:
+We would **love** you to contribute to Scylla Operator, help make it even better and learn together! Use these resources to help you get started:
 * `#scylla-operator` channel on [Slack](https://scylladb-users-slackin.herokuapp.com/).
 * [Contributing Guide](docs/contributing.md)
 
 ## Acknowledgements
 
-This project is based on cassandra operator, a community effort started by [yanniszark](https://github.com/yanniszark) of [Arrikto](https://www.arrikto.com/), as part of the [Rook project](https://rook.io/).
+This project is based on the Apache Cassandra Operator, a community effort started by [yanniszark](https://github.com/yanniszark) of [Arrikto](https://www.arrikto.com/), as part of the [Rook project](https://rook.io/).
 
 

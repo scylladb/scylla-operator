@@ -125,7 +125,7 @@ kubectl -n scylla logs simple-cluster-us-east-1-us-east-1a-0 scylla
 
 To get a cqlsh shell in your new Cluster:
 ```console
-kubectl exec -n scylla -it simple-cluster-east-1-east-1a-0 -- cqlsh
+kubectl exec -n scylla -it simple-cluster-us-east-1-us-east-1a-0 -- cqlsh
 > DESCRIBE KEYSPACES;
 ```
 

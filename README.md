@@ -32,7 +32,7 @@ Future additions include:
 ## Top-Performance Setup
 
 Scylla performs the best when it has fast disks and direct access to the CPU. To deploy Scylla with maximum performance, follow the guide for your environment:
-* [GKE](docs/gke/gke.md)
+* [GKE](docs/gke.md)
 
 
 ## Bugs

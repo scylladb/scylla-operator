@@ -51,7 +51,7 @@ For this guide, we'll create a GKE cluster with the following:
 1. A NodePool of 3 `n1-standard-32` Nodes, where the Scylla Pods will be deployed. Each of these Nodes has 8 local SSDs attached, which will later be combined into a RAID0 array. It is important to disable `autoupgrade` and `autorepair`, since they cause loss of data on local SSDs. 
 
 ```
-gcloud beta container --project "${GCP_PROJECT}" \
+gcloud container --project "${GCP_PROJECT}" \
 clusters create "${CLUSTER_NAME}" --username "admin" \
 --zone "${GCP_ZONE}" \
 --cluster-version "1.15.11-gke.3" \
@@ -68,7 +68,7 @@ clusters create "${CLUSTER_NAME}" --username "admin" \
 2. A NodePool of 2 `n1-standard-32` Nodes to deploy `cassandra-stress` later on.
 
 ```
-gcloud beta container --project "${GCP_PROJECT}" \
+gcloud container --project "${GCP_PROJECT}" \
 node-pools create "cassandra-stress-pool" \
 --cluster "${CLUSTER_NAME}" \
 --zone "${GCP_ZONE}" \
@@ -82,7 +82,7 @@ node-pools create "cassandra-stress-pool" \
 
 3. A NodePool of 1 `n1-standard-4` Node, where the operator and the monitoring stack will be deployed.
 ```
-gcloud beta container --project "${GCP_PROJECT}" \
+gcloud container --project "${GCP_PROJECT}" \
 node-pools create "operator-pool" \
 --cluster "${CLUSTER_NAME}" \
 --zone "${GCP_ZONE}" \

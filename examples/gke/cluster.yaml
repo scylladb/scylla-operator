@@ -81,7 +81,7 @@ metadata:
   name: scylla-cluster
   namespace: scylla
 spec:
-  version: 3.2.1
+  version: 4.0.0
   agentVersion: 2.0.2
   cpuset: true
   datacenter:
@@ -89,7 +89,8 @@ spec:
     racks:
       - name: <gcp_region>
         scyllaConfig: "scylla-config"
-        members: 2
+        scyllaAgentConfig: "scylla-agent-config"
+        members: 3
         storage:
           storageClassName: local-raid-disks
           capacity: 2995G
@@ -98,14 +99,6 @@ spec:
             cpu: 30
             memory: 115G
         placement:
-          nodeAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              nodeSelectorTerms:
-                - matchExpressions:
-                  - key: failure-domain.beta.kubernetes.io/zone
-                    operator: In
-                    values:
-                      - <gcp_zone>
           tolerations:
             - key: role
               operator: Equal

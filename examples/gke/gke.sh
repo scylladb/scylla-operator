@@ -60,7 +60,7 @@ GCP_PROJECT=$2
 GCP_ZONE=$3
 GCP_REGION=${GCP_ZONE:0:$((${#GCP_ZONE}-2))}
 CLUSTER_NAME=scylla-demo
-CLUSTER_VERSION=1.12.7-gke.10
+CLUSTER_VERSION=1.15.11-gke.3
 
 # Check if the environment has the prerequisites installed
 check_prerequisites
@@ -73,9 +73,8 @@ gcloud container --project "${GCP_PROJECT}" \
 clusters create "${CLUSTER_NAME}" --username "admin" \
 --zone "${GCP_ZONE}" \
 --cluster-version "${CLUSTER_VERSION}" \
---node-version "${CLUSTER_VERSION}" \
 --machine-type "n1-standard-32" \
---num-nodes "4" \
+--num-nodes "3" \
 --disk-type "pd-ssd" --disk-size "20" \
 --local-ssd-count "8" \
 --node-taints role=scylla-clusters:NoSchedule \
@@ -88,7 +87,6 @@ gcloud container --project "${GCP_PROJECT}" \
 node-pools create "cassandra-stress-pool" \
 --cluster "${CLUSTER_NAME}" \
 --zone "${GCP_ZONE}" \
---node-version "${CLUSTER_VERSION}" \
 --machine-type "n1-standard-32" \
 --num-nodes "2" \
 --disk-type "pd-ssd" --disk-size "20" \
@@ -101,7 +99,6 @@ gcloud container --project "${GCP_PROJECT}" \
 node-pools create "operator-pool" \
 --cluster "${CLUSTER_NAME}" \
 --zone "${GCP_ZONE}" \
---node-version "${CLUSTER_VERSION}" \
 --machine-type "n1-standard-4" \
 --num-nodes "1" \
 --disk-type "pd-ssd" --disk-size "20" \
@@ -142,18 +139,18 @@ check_cluster_readiness
 echo "Installing RAID Daemonset..."
 kubectl apply -f raid-daemonset.yaml
 
-check_cluster_readiness
-# Install cpu-policy Daemonset
-echo "Installing cpu-policy Daemonset..."
-sleep 5
-kubectl apply -f cpu-policy-daemonset.yaml
-
 # Wait for Tiller to become ready
 check_tiller_readiness
 # Install local volume provisioner
 echo "Installing local volume provisioner..."
 helm install --name local-provisioner provisioner
 echo "Your disks are ready to use."
+
+check_cluster_readiness
+# Install cpu-policy Daemonset
+echo "Installing cpu-policy Daemonset..."
+sleep 5
+kubectl apply -f cpu-policy-daemonset.yaml
 
 echo "Starting the scylla operator..."
 kubectl apply -f operator.yaml

@@ -80,7 +80,7 @@ clusters create "${CLUSTER_NAME}" --username "admin" \
 --local-ssd-count "8" \
 --node-taints role=scylla-clusters:NoSchedule \
 --image-type "UBUNTU" \
---enable-cloud-logging --enable-cloud-monitoring \
+--enable-cloud-logging --enable-stackdriver-kubernetes \
 --no-enable-autoupgrade --no-enable-autorepair
 
 # Nodepool for cassandra-stress pods

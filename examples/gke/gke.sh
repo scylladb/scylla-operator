@@ -60,7 +60,7 @@ GCP_PROJECT=$2
 GCP_ZONE=$3
 GCP_REGION=${GCP_ZONE:0:$((${#GCP_ZONE}-2))}
 CLUSTER_NAME=scylla-demo
-CLUSTER_VERSION=1.12.7-gke.10
+CLUSTER_VERSION=1.16.8-gke.15
 
 # Check if the environment has the prerequisites installed
 check_prerequisites

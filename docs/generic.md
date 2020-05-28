@@ -212,6 +212,13 @@ After a restart the operator will use the security token when it interacts with 
  ```
  
  2. Install Grafana
+ 
+ First you need to prepare the dashboards to make them available in Grafana. 
+ You can do this by running the following command in the directory `examples/generic`:
+ ```console
+make grafana/values.yaml
+ ```
+Now the dashboards can be created along with the grafana plugin like this:
  ```console
  helm upgrade --install scylla-graf --namespace monitoring stable/grafana -f examples/generic/grafana/values.yaml
  ```

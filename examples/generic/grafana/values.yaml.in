@@ -316,20 +316,20 @@ dashboardProviders:
 ##
 dashboards:
   scylla:
-    scylla-cpu-3.0:
-      file: dashboards/scylla-cpu.3.0.json
-    scylla-cql.3.0:
-      file: dashboards/scylla-cql.3.0.json
-    scylla-detailed.3.0:
-      file: dashboards/scylla-detailed.3.0.json
-    scylla-errors.3.0:
-      file: dashboards/scylla-errors.3.0.json
-    scylla-io.3.0:
-      file: dashboards/scylla-io.3.0.json
-    scylla-os.3.0:
-      file: dashboards/scylla-os.3.0.json
-    scylla-overview.3.0:
-      file: dashboards/scylla-overview.3.0.json
+    scylla-cpu-4.0:
+
+    scylla-cql-4.0:
+
+    scylla-detailed-4.0:
+
+    scylla-errors-4.0:
+
+    scylla-io-4.0:
+
+    scylla-os-4.0:
+
+    scylla-overview-4.0:
+
   # default:
   #   some-dashboard:
   #     json: |

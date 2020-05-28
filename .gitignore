@@ -20,3 +20,5 @@ dist/
 *.swo
 *~
 
+examples/gke/grafana/values.yaml
+examples/generic/grafana/values.yaml

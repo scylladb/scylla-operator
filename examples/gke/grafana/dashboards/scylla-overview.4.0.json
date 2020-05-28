@@ -9,6 +9,51 @@
                 "iconColor": "rgba(0, 211, 255, 1)",
                 "name": "Annotations & Alerts",
                 "type": "dashboard"
+            },
+            {
+                "class": "annotation_restart",
+                "datasource": "prometheus",
+                "enable": true,
+                "expr": "resets(scylla_gossip_heart_beat[1m])>0",
+                "hide": false,
+                "iconColor": "rgba(255, 96, 96, 1)",
+                "limit": 100,
+                "name": "node_restart",
+                "showIn": 0,
+                "tagKeys": "instance,dc,cluster",
+                "tags": [],
+                "titleFormat": "restart",
+                "type": "tags"
+            },
+            {
+                "class": "annotation_stall",
+                "datasource": "prometheus",
+                "enable": false,
+                "expr": "changes(scylla_stall_detector_reported[1m])>0",
+                "hide": false,
+                "iconColor": "rgba(255, 96, 96, 1)",
+                "limit": 100,
+                "name": "stall detector",
+                "showIn": 0,
+                "tagKeys": "dc,instance,shard",
+                "tags": [],
+                "titleFormat": "Stall found",
+                "type": "tags"
+            },
+            {
+                "class": "annotation_schema_changed",
+                "datasource": "prometheus",
+                "enable": false,
+                "expr": "changes(scylla_database_schema_changed[30s])>0",
+                "hide": false,
+                "iconColor": "rgba(255, 96, 96, 1)",
+                "limit": 100,
+                "name": "Schema Changed",
+                "showIn": 0,
+                "tagKeys": "instance,dc,cluster",
+                "tags": [],
+                "titleFormat": "schema changed",
+                "type": "tags"
             }
         ]
     },
@@ -24,7 +69,8 @@
     "panels": [
         {
             "class": "text_panel",
-            "content": "<img src=\"data:image/png;base64,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\" height=\"70\">\n<span style=\"font-size:40px\"> [[cluster]]</span><hr style=\"border-top: 3px solid #5780c1;\">",
+            "content": "<div id=\"amnon\"><img src=\"data:image/png;base64,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\" style=\"margin-top:-20px\" height=\"55\">\n<span style=\"font-size:40px\">  [[cluster]]</span><span style=\"padding-top: 25px;float:right\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_dash_version]]%0Amonitoring-version%3D[[monitoring_version]]\" target=\"_blank\"><input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#57d1e5;color:black;font-size:20px\" value=\"Report an issue\"></a></span><hr style=\"border-top: 3px solid #5780c1;\"></div>",
+            "datasource": null,
             "editable": true,
             "error": false,
             "gridPos": {
@@ -220,26 +266,182 @@
             "valueName": "current"
         },
         {
-            "class": "text_panel",
-            "content": "##  ",
+            "cacheTimeout": null,
+            "class": "single_stat_panel_fail",
+            "colorBackground": false,
+            "colorValue": true,
+            "colors": [
+                "rgba(50, 172, 45, 0.97)",
+                "rgba(250, 113, 0, 0.89)",
+                "rgba(255, 0, 0, 0.9)"
+            ],
+            "datasource": "prometheus",
+            "description": "Number of nodes that reported their status as Starting or Joining",
             "editable": true,
             "error": false,
+            "format": "none",
+            "gauge": {
+                "maxValue": 100,
+                "minValue": 0,
+                "show": false,
+                "thresholdLabels": false,
+                "thresholdMarkers": false
+            },
             "gridPos": {
                 "h": 6,
-                "w": 4,
+                "w": 2,
                 "x": 4,
                 "y": 4
             },
             "id": 4,
+            "interval": null,
             "isNew": true,
             "links": [],
-            "mode": "markdown",
+            "mappingType": 1,
+            "mappingTypes": [
+                {
+                    "name": "value to text",
+                    "value": 1
+                },
+                {
+                    "name": "range to text",
+                    "value": 2
+                }
+            ],
+            "maxDataPoints": 100,
+            "nullPointMode": "connected",
+            "nullText": null,
             "options": {},
-            "span": 2,
-            "style": {},
-            "title": "",
+            "postfix": "",
+            "postfixFontSize": "50%",
+            "prefix": "",
+            "prefixFontSize": "50%",
+            "rangeMaps": [
+                {
+                    "from": "null",
+                    "text": "N/A",
+                    "to": "null"
+                }
+            ],
+            "span": 1,
+            "sparkline": {
+                "fillColor": "rgba(31, 118, 189, 0.18)",
+                "full": false,
+                "lineColor": "rgb(31, 120, 193)",
+                "show": false
+            },
+            "tableColumn": "",
+            "targets": [
+                {
+                    "expr": "count(scylla_node_operation_mode==1) +  count(scylla_node_operation_mode==2)OR vector(0)",
+                    "intervalFactor": 1,
+                    "legendFormat": "Joining",
+                    "refId": "A",
+                    "step": 20
+                }
+            ],
+            "thresholds": "1,2",
+            "title": "Joining",
             "transparent": true,
-            "type": "text"
+            "type": "singlestat",
+            "valueFontSize": "150%",
+            "valueMaps": [
+                {
+                    "op": "=",
+                    "text": "N/A",
+                    "value": "null"
+                }
+            ],
+            "valueName": "current"
+        },
+        {
+            "cacheTimeout": null,
+            "class": "single_stat_panel_fail",
+            "colorBackground": false,
+            "colorValue": true,
+            "colors": [
+                "rgba(50, 172, 45, 0.97)",
+                "rgba(250, 113, 0, 0.89)",
+                "rgba(255, 0, 0, 0.9)"
+            ],
+            "datasource": "prometheus",
+            "description": "Number of nodes that reported their status as  Leaving, Decommissioned, Draining or Drained",
+            "editable": true,
+            "error": false,
+            "format": "none",
+            "gauge": {
+                "maxValue": 100,
+                "minValue": 0,
+                "show": false,
+                "thresholdLabels": false,
+                "thresholdMarkers": false
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 2,
+                "x": 6,
+                "y": 4
+            },
+            "id": 5,
+            "interval": null,
+            "isNew": true,
+            "links": [],
+            "mappingType": 1,
+            "mappingTypes": [
+                {
+                    "name": "value to text",
+                    "value": 1
+                },
+                {
+                    "name": "range to text",
+                    "value": 2
+                }
+            ],
+            "maxDataPoints": 100,
+            "nullPointMode": "connected",
+            "nullText": null,
+            "options": {},
+            "postfix": "",
+            "postfixFontSize": "50%",
+            "prefix": "",
+            "prefixFontSize": "50%",
+            "rangeMaps": [
+                {
+                    "from": "null",
+                    "text": "N/A",
+                    "to": "null"
+                }
+            ],
+            "span": 1,
+            "sparkline": {
+                "fillColor": "rgba(31, 118, 189, 0.18)",
+                "full": false,
+                "lineColor": "rgb(31, 120, 193)",
+                "show": false
+            },
+            "tableColumn": "",
+            "targets": [
+                {
+                    "expr": "count(scylla_node_operation_mode>3)OR vector(0)",
+                    "intervalFactor": 1,
+                    "legendFormat": "Leaving",
+                    "refId": "A",
+                    "step": 20
+                }
+            ],
+            "thresholds": "1,2",
+            "title": "Leaving",
+            "transparent": true,
+            "type": "singlestat",
+            "valueFontSize": "150%",
+            "valueMaps": [
+                {
+                    "op": "=",
+                    "text": "N/A",
+                    "value": "null"
+                }
+            ],
+            "valueName": "current"
         },
         {
             "aliasColors": {},
@@ -260,7 +462,8 @@
                 "x": 8,
                 "y": 4
             },
-            "id": 5,
+            "hiddenSeries": false,
+            "id": 6,
             "isNew": true,
             "legend": {
                 "avg": false,
@@ -306,7 +509,7 @@
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
-                "sort": 0,
+                "sort": 2,
                 "value_type": "cumulative"
             },
             "type": "graph",
@@ -355,7 +558,7 @@
                 "x": 16,
                 "y": 4
             },
-            "id": 6,
+            "id": 7,
             "links": [],
             "options": {},
             "pageSize": null,
@@ -417,16 +620,6 @@
                     "type": "hidden"
                 },
                 {
-                    "class": "hidden_column",
-                    "pattern": "Value",
-                    "type": "hidden"
-                },
-                {
-                    "class": "hidden_column",
-                    "pattern": "cluster",
-                    "type": "hidden"
-                },
-                {
                     "alias": "Version",
                     "colorMode": null,
                     "colors": [
@@ -437,8 +630,8 @@
                     "dateFormat": "YYYY-MM-DD HH:mm:ss",
                     "decimals": 2,
                     "link": true,
-                    "linkTooltip": "${__cell_12}",
-                    "linkUrl": "/d/OS-[[dash_version]]/OS-metrics?refresh=30s&orgId=1&var-by=instance&var-node=${__cell_9}",
+                    "linkTooltip": "${__cell_11}",
+                    "linkUrl": "/d/OS-[[dash_version]]/OS-metrics?refresh=30s&orgId=1&var-by=instance&var-node=${__cell_8}",
                     "mappingType": 1,
                     "pattern": "svr",
                     "thresholds": [],
@@ -457,7 +650,7 @@
                     "decimals": 2,
                     "link": true,
                     "linkTooltip": "Jump to the OS node information",
-                    "linkUrl": "/d/OS-[[dash_version]]/OS-metrics?refresh=30s&orgId=1&var-by=instance&var-node=${__cell_9}",
+                    "linkUrl": "/d/OS-[[dash_version]]/OS-metrics?refresh=30s&orgId=1&var-by=instance&var-node=${__cell_8}",
                     "mappingType": 1,
                     "pattern": "OS",
                     "thresholds": [],
@@ -481,7 +674,7 @@
                     "decimals": 2,
                     "link": true,
                     "linkTooltip": "Jump to the CQL information",
-                    "linkUrl": "/d/cql-[[dash_version]]/scylla-cql?refresh=30s&orgId=1&var-by=instance&var-node=${__cell_9}",
+                    "linkUrl": "/d/cql-[[dash_version]]/scylla-cql?refresh=30s&orgId=1&var-by=instance&var-node=${__cell_8}",
                     "mappingType": 1,
                     "pattern": "CQL",
                     "thresholds": [],
@@ -505,7 +698,7 @@
                     "decimals": 2,
                     "link": true,
                     "linkTooltip": "Jump to the Errors metrics information",
-                    "linkUrl": "/d/error-[[dash_version]]/scylla-errors?refresh=30s&orgId=1&var-by=instance&var-node=${__cell_9}",
+                    "linkUrl": "/d/error-[[dash_version]]/scylla-errors?refresh=30s&orgId=1&var-by=instance&var-node=${__cell_8}",
                     "mappingType": 1,
                     "pattern": "Errors",
                     "thresholds": [],
@@ -529,7 +722,7 @@
                     "decimals": 2,
                     "link": true,
                     "linkTooltip": "Jump to the Errors metrics information",
-                    "linkUrl": "/d/io-[[dash_version]]/i-o?refresh=30s&orgId=1&var-by=instance&var-node=${__cell_9}",
+                    "linkUrl": "/d/io-[[dash_version]]/i-o?refresh=30s&orgId=1&var-by=instance&var-node=${__cell_8}",
                     "mappingType": 1,
                     "pattern": "IO",
                     "thresholds": [],
@@ -554,7 +747,7 @@
                     "decimals": 2,
                     "link": true,
                     "linkTooltip": "Jump to the node CPU information",
-                    "linkUrl": "/d/cpu-[[dash_version]]/CPU-Metrics?refresh=30s&orgId=1&var-by=instance&var-node=${__cell_9}",
+                    "linkUrl": "/d/cpu-[[dash_version]]/CPU-Metrics?refresh=30s&orgId=1&var-by=instance&var-node=${__cell_8}",
                     "mappingType": 1,
                     "pattern": "CPU",
                     "thresholds": [],
@@ -566,11 +759,64 @@
                             "value": "cpu"
                         }
                     ]
+                },
+                {
+                    "alias": "Status",
+                    "mappingType": 2,
+                    "pattern": "Value",
+                    "rangeMaps": [
+                        {
+                            "from": "1",
+                            "text": "Starting",
+                            "to": "1"
+                        },
+                        {
+                            "from": "2",
+                            "text": "Joining",
+                            "to": "2"
+                        },
+                        {
+                            "from": "3",
+                            "text": "Normal",
+                            "to": "3"
+                        },
+                        {
+                            "from": "4",
+                            "text": "Leaving",
+                            "to": "4"
+                        },
+                        {
+                            "from": "5",
+                            "text": "Decommissioned",
+                            "to": "5"
+                        },
+                        {
+                            "from": "6",
+                            "text": "Draining",
+                            "to": "6"
+                        },
+                        {
+                            "from": "7",
+                            "text": "Drained",
+                            "to": "7"
+                        },
+                        {
+                            "from": "8",
+                            "text": "Moving",
+                            "to": "8"
+                        }
+                    ],
+                    "type": "string"
+                },
+                {
+                    "class": "hidden_column",
+                    "pattern": "cluster",
+                    "type": "hidden"
                 }
             ],
             "targets": [
                 {
-                    "expr": "scylla_scylladb_current_version{cluster=~\"$cluster|$^\", dc=~\"$dc\"}",
+                    "expr": "0*scylla_scylladb_current_version{cluster=~\"$cluster|$^\", dc=~\"$dc\"} + on (instance) group_left() scylla_node_operation_mode{cluster=~\"$cluster|$^\", dc=~\"$dc\"}",
                     "format": "table",
                     "instant": true,
                     "intervalFactor": 1,
@@ -599,7 +845,8 @@
                 "x": 0,
                 "y": 10
             },
-            "id": 7,
+            "hiddenSeries": false,
+            "id": 8,
             "isNew": true,
             "legend": {
                 "avg": false,
@@ -652,7 +899,7 @@
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
-                "sort": 0,
+                "sort": 2,
                 "value_type": "cumulative"
             },
             "type": "graph",
@@ -703,7 +950,8 @@
                 "x": 8,
                 "y": 10
             },
-            "id": 8,
+            "hiddenSeries": false,
+            "id": 9,
             "isNew": true,
             "legend": {
                 "avg": false,
@@ -734,7 +982,7 @@
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "$func(irate(scylla_transport_requests_served{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) by ([[by]]) + $func(irate(scylla_thrift_served{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) by ([[by]])",
+                    "expr": "$func(irate(scylla_transport_requests_served{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[60s])) by ([[by]]) + $func(irate(scylla_thrift_served{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[60s])) by ([[by]])",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -750,7 +998,7 @@
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
-                "sort": 0,
+                "sort": 2,
                 "value_type": "cumulative"
             },
             "type": "graph",
@@ -793,7 +1041,7 @@
                 "x": 16,
                 "y": 10
             },
-            "id": 9,
+            "id": 10,
             "links": [],
             "options": {},
             "pageSize": null,
@@ -809,7 +1057,7 @@
                     "alias": "Time",
                     "dateFormat": "YYYY-MM-DD HH:mm:ss",
                     "link": true,
-                    "linkTooltip": "Jump to see the node details",
+                    "linkTooltip": "Jump to the see the node",
                     "linkUrl": "/d/detailed-[[dash_version]]/detailed?refresh=30s&orgId=1&var-by=instance&var-node=${__cell_4}&from=${__cell_0}",
                     "pattern": "Time",
                     "type": "date"
@@ -850,7 +1098,7 @@
                     "dateFormat": "YYYY-MM-DD HH:mm:ss",
                     "decimals": 2,
                     "link": true,
-                    "linkTooltip": "Jump to see the node details",
+                    "linkTooltip": "Jump to the see the node",
                     "linkUrl": "/d/detailed-[[dash_version]]/detailed?refresh=30s&orgId=1&var-by=instance&var-node=${__cell}",
                     "mappingType": 1,
                     "pattern": "instance",
@@ -890,6 +1138,7 @@
         {
             "class": "plain_text",
             "content": "<h1 style=\"color:#5881c2; border-bottom: 3px solid #5881c2;\">Latencies - Coordinator</h1>",
+            "datasource": null,
             "editable": true,
             "error": false,
             "gridPos": {
@@ -898,7 +1147,7 @@
                 "x": 0,
                 "y": 16
             },
-            "id": 10,
+            "id": 11,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -912,7 +1161,7 @@
         {
             "aliasColors": {},
             "bars": false,
-            "class": "us_panel",
+            "class": "ops_panel",
             "dashLength": 10,
             "dashes": false,
             "datasource": "prometheus",
@@ -923,106 +1172,11 @@
             "grid": {},
             "gridPos": {
                 "h": 6,
-                "w": 8,
+                "w": 6,
                 "x": 0,
                 "y": 18
             },
-            "id": 11,
-            "isNew": true,
-            "legend": {
-                "avg": false,
-                "current": false,
-                "max": false,
-                "min": false,
-                "show": false,
-                "total": false,
-                "values": false
-            },
-            "lines": true,
-            "linewidth": 2,
-            "links": [],
-            "nullPointMode": "connected",
-            "options": {
-                "dataLinks": []
-            },
-            "percentage": false,
-            "pointradius": 5,
-            "points": false,
-            "renderer": "flot",
-            "seriesOverrides": [
-                {}
-            ],
-            "spaceLength": 10,
-            "span": 4,
-            "stack": false,
-            "steppedLine": false,
-            "targets": [
-                {
-                    "expr": "$func(rate(scylla_storage_proxy_coordinator_write_latency_sum{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[30s])) by ([[by]])/($func(rate(scylla_storage_proxy_coordinator_write_latency_count{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[30s])) by ([[by]]) + 1)",
-                    "intervalFactor": 1,
-                    "legendFormat": "",
-                    "refId": "A",
-                    "step": 1
-                }
-            ],
-            "thresholds": [],
-            "timeFrom": null,
-            "timeRegions": [],
-            "timeShift": null,
-            "title": "Average write latency by [[by]]",
-            "tooltip": {
-                "msResolution": false,
-                "shared": true,
-                "sort": 0,
-                "value_type": "cumulative"
-            },
-            "type": "graph",
-            "xaxis": {
-                "buckets": null,
-                "mode": "time",
-                "name": null,
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "format": "\u00b5s",
-                    "logBase": 1,
-                    "max": null,
-                    "min": 0,
-                    "show": true
-                },
-                {
-                    "format": "short",
-                    "logBase": 1,
-                    "max": null,
-                    "min": null,
-                    "show": true
-                }
-            ],
-            "yaxis": {
-                "align": false,
-                "alignLevel": null
-            }
-        },
-        {
-            "aliasColors": {},
-            "bars": false,
-            "class": "us_panel",
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": "prometheus",
-            "editable": true,
-            "error": false,
-            "fill": 0,
-            "fillGradient": 0,
-            "grid": {},
-            "gridPos": {
-                "h": 6,
-                "w": 8,
-                "x": 8,
-                "y": 18
-            },
+            "hiddenSeries": false,
             "id": 12,
             "isNew": true,
             "legend": {
@@ -1049,15 +1203,14 @@
                 {}
             ],
             "spaceLength": 10,
-            "span": 4,
+            "span": 3,
             "stack": false,
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "histogram_quantile(0.95, sum(rate(scylla_storage_proxy_coordinator_write_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[30s])) by ([[by]], le))",
+                    "expr": "$func(rate(scylla_storage_proxy_coordinator_write_latency_count{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[60s])) by ([[by]])",
                     "intervalFactor": 1,
                     "legendFormat": "",
-                    "metric": "",
                     "refId": "A",
                     "step": 1
                 }
@@ -1066,11 +1219,11 @@
             "timeFrom": null,
             "timeRegions": [],
             "timeShift": null,
-            "title": "95th percentile write latency by [[by]]",
+            "title": "Writes",
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
-                "sort": 0,
+                "sort": 2,
                 "value_type": "cumulative"
             },
             "type": "graph",
@@ -1083,7 +1236,7 @@
             },
             "yaxes": [
                 {
-                    "format": "\u00b5s",
+                    "format": "ops",
                     "logBase": 1,
                     "max": null,
                     "min": 0,
@@ -1116,10 +1269,11 @@
             "grid": {},
             "gridPos": {
                 "h": 6,
-                "w": 8,
-                "x": 16,
+                "w": 6,
+                "x": 6,
                 "y": 18
             },
+            "hiddenSeries": false,
             "id": 13,
             "isNew": true,
             "legend": {
@@ -1146,15 +1300,14 @@
                 {}
             ],
             "spaceLength": 10,
-            "span": 4,
+            "span": 3,
             "stack": false,
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "histogram_quantile(0.99, sum(rate(scylla_storage_proxy_coordinator_write_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[30s])) by ([[by]], le))",
+                    "expr": "$func(rate(scylla_storage_proxy_coordinator_write_latency_sum{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[60s])) by ([[by]])/($func(rate(scylla_storage_proxy_coordinator_write_latency_count{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[60s])) by ([[by]]) + 1)",
                     "intervalFactor": 1,
                     "legendFormat": "",
-                    "metric": "",
                     "refId": "A",
                     "step": 1
                 }
@@ -1163,11 +1316,11 @@
             "timeFrom": null,
             "timeRegions": [],
             "timeShift": null,
-            "title": "99th percentile write latency by [[by]]",
+            "title": "Average write latency by [[by]]",
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
-                "sort": 0,
+                "sort": 2,
                 "value_type": "cumulative"
             },
             "type": "graph",
@@ -1213,10 +1366,11 @@
             "grid": {},
             "gridPos": {
                 "h": 6,
-                "w": 8,
-                "x": 0,
-                "y": 24
+                "w": 6,
+                "x": 12,
+                "y": 18
             },
+            "hiddenSeries": false,
             "id": 14,
             "isNew": true,
             "legend": {
@@ -1243,14 +1397,15 @@
                 {}
             ],
             "spaceLength": 10,
-            "span": 4,
+            "span": 3,
             "stack": false,
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "$func(rate(scylla_storage_proxy_coordinator_read_latency_sum{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[30s])) by ([[by]])/($func(rate(scylla_storage_proxy_coordinator_read_latency_count{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[30s])) by ([[by]]) + 1)",
+                    "expr": "histogram_quantile(0.95, sum(rate(scylla_storage_proxy_coordinator_write_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[60s])) by ([[by]], le))",
                     "intervalFactor": 1,
                     "legendFormat": "",
+                    "metric": "",
                     "refId": "A",
                     "step": 1
                 }
@@ -1259,11 +1414,11 @@
             "timeFrom": null,
             "timeRegions": [],
             "timeShift": null,
-            "title": "Average read latency by [[by]]",
+            "title": "95th percentile write latency by [[by]]",
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
-                "sort": 0,
+                "sort": 2,
                 "value_type": "cumulative"
             },
             "type": "graph",
@@ -1309,10 +1464,11 @@
             "grid": {},
             "gridPos": {
                 "h": 6,
-                "w": 8,
-                "x": 8,
-                "y": 24
+                "w": 6,
+                "x": 18,
+                "y": 18
             },
+            "hiddenSeries": false,
             "id": 15,
             "isNew": true,
             "legend": {
@@ -1339,12 +1495,12 @@
                 {}
             ],
             "spaceLength": 10,
-            "span": 4,
+            "span": 3,
             "stack": false,
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "histogram_quantile(0.95, sum(rate(scylla_storage_proxy_coordinator_read_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[30s])) by ([[by]], le))",
+                    "expr": "histogram_quantile(0.99, sum(rate(scylla_storage_proxy_coordinator_write_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[60s])) by ([[by]], le))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -1356,11 +1512,205 @@
             "timeFrom": null,
             "timeRegions": [],
             "timeShift": null,
-            "title": "95th percentile read latency by [[by]]",
+            "title": "99th percentile write latency by [[by]]",
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
-                "sort": 0,
+                "sort": 2,
+                "value_type": "cumulative"
+            },
+            "type": "graph",
+            "xaxis": {
+                "buckets": null,
+                "mode": "time",
+                "name": null,
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "format": "\u00b5s",
+                    "logBase": 1,
+                    "max": null,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false,
+                "alignLevel": null
+            }
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "class": "ops_panel",
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "prometheus",
+            "editable": true,
+            "error": false,
+            "fill": 0,
+            "fillGradient": 0,
+            "grid": {},
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 0,
+                "y": 24
+            },
+            "hiddenSeries": false,
+            "id": 16,
+            "isNew": true,
+            "legend": {
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "show": false,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "options": {
+                "dataLinks": []
+            },
+            "percentage": false,
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [
+                {}
+            ],
+            "spaceLength": 10,
+            "span": 3,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "$func(rate(scylla_storage_proxy_coordinator_read_latency_count{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[60s])) by ([[by]])",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "thresholds": [],
+            "timeFrom": null,
+            "timeRegions": [],
+            "timeShift": null,
+            "title": "Reads",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 2,
+                "value_type": "cumulative"
+            },
+            "type": "graph",
+            "xaxis": {
+                "buckets": null,
+                "mode": "time",
+                "name": null,
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "format": "ops",
+                    "logBase": 1,
+                    "max": null,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false,
+                "alignLevel": null
+            }
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "class": "us_panel",
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "prometheus",
+            "editable": true,
+            "error": false,
+            "fill": 0,
+            "fillGradient": 0,
+            "grid": {},
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 6,
+                "y": 24
+            },
+            "hiddenSeries": false,
+            "id": 17,
+            "isNew": true,
+            "legend": {
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "show": false,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "options": {
+                "dataLinks": []
+            },
+            "percentage": false,
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [
+                {}
+            ],
+            "spaceLength": 10,
+            "span": 3,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "$func(rate(scylla_storage_proxy_coordinator_read_latency_sum{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[60s])) by ([[by]])/($func(rate(scylla_storage_proxy_coordinator_read_latency_count{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[60s])) by ([[by]]) + 1)",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "thresholds": [],
+            "timeFrom": null,
+            "timeRegions": [],
+            "timeShift": null,
+            "title": "Average read latency by [[by]]",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 2,
                 "value_type": "cumulative"
             },
             "type": "graph",
@@ -1406,11 +1756,12 @@
             "grid": {},
             "gridPos": {
                 "h": 6,
-                "w": 8,
-                "x": 16,
+                "w": 6,
+                "x": 12,
                 "y": 24
             },
-            "id": 16,
+            "hiddenSeries": false,
+            "id": 18,
             "isNew": true,
             "legend": {
                 "avg": false,
@@ -1436,12 +1787,12 @@
                 {}
             ],
             "spaceLength": 10,
-            "span": 4,
+            "span": 3,
             "stack": false,
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "histogram_quantile(0.99, sum(rate(scylla_storage_proxy_coordinator_read_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[30s])) by ([[by]], le))",
+                    "expr": "histogram_quantile(0.95, sum(rate(scylla_storage_proxy_coordinator_read_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[60s])) by ([[by]], le))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -1453,11 +1804,11 @@
             "timeFrom": null,
             "timeRegions": [],
             "timeShift": null,
-            "title": "99th percentile read latency by [[by]]",
+            "title": "95th percentile read latency by [[by]]",
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
-                "sort": 0,
+                "sort": 2,
                 "value_type": "cumulative"
             },
             "type": "graph",
@@ -1490,57 +1841,12 @@
             }
         },
         {
-            "class": "text_header_panel",
-            "content": "<h1 style=\"color:#5881c2; border-bottom: 3px solid #5881c2;\">Reads and Writes - Coordinator</h1>",
-            "editable": true,
-            "error": false,
-            "gridPos": {
-                "h": 2,
-                "w": 12,
-                "x": 0,
-                "y": 30
-            },
-            "id": 17,
-            "isNew": true,
-            "links": [],
-            "mode": "html",
-            "options": {},
-            "span": 6,
-            "style": {},
-            "title": "",
-            "transparent": true,
-            "type": "text"
-        },
-        {
-            "class": "text_header_panel",
-            "content": "<h1 style=\"color:#5881c2; border-bottom: 3px solid #5881c2;\">Timeouts and Errors - Coordinator</h1>",
-            "editable": true,
-            "error": false,
-            "gridPos": {
-                "h": 2,
-                "w": 12,
-                "x": 12,
-                "y": 30
-            },
-            "id": 18,
-            "isNew": true,
-            "links": [],
-            "mode": "html",
-            "options": {},
-            "span": 6,
-            "style": {},
-            "title": "",
-            "transparent": true,
-            "type": "text"
-        },
-        {
             "aliasColors": {},
             "bars": false,
-            "class": "queue_lenght_panel",
+            "class": "us_panel",
             "dashLength": 10,
             "dashes": false,
             "datasource": "prometheus",
-            "description": "Foreground writes are writes that weren't acknowledged yet to the application. For instance, if a single replica responded and two are needed due to the consistency level. This metric represents a queue size, not a rate. High values here correlate with increased write latencies.",
             "editable": true,
             "error": false,
             "fill": 0,
@@ -1549,815 +1855,11 @@
             "gridPos": {
                 "h": 6,
                 "w": 6,
-                "x": 0,
-                "y": 32
+                "x": 18,
+                "y": 24
             },
+            "hiddenSeries": false,
             "id": 19,
-            "isNew": true,
-            "legend": {
-                "avg": false,
-                "current": false,
-                "max": false,
-                "min": false,
-                "show": false,
-                "total": false,
-                "values": false
-            },
-            "lines": true,
-            "linewidth": 2,
-            "links": [],
-            "nullPointMode": "connected",
-            "options": {
-                "dataLinks": []
-            },
-            "percentage": false,
-            "pointradius": 5,
-            "points": false,
-            "renderer": "flot",
-            "seriesOverrides": [],
-            "spaceLength": 10,
-            "span": 3,
-            "stack": false,
-            "steppedLine": false,
-            "targets": [
-                {
-                    "expr": "$func(scylla_storage_proxy_coordinator_foreground_writes{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}) by ([[by]])",
-                    "intervalFactor": 1,
-                    "legendFormat": "",
-                    "refId": "A",
-                    "step": 10
-                }
-            ],
-            "thresholds": [],
-            "timeFrom": null,
-            "timeRegions": [],
-            "timeShift": null,
-            "title": "Foreground Writes",
-            "tooltip": {
-                "msResolution": false,
-                "shared": true,
-                "sort": 0,
-                "value_type": "cumulative"
-            },
-            "type": "graph",
-            "xaxis": {
-                "buckets": null,
-                "mode": "time",
-                "name": null,
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "format": "short",
-                    "label": "Queue Length",
-                    "logBase": 1,
-                    "max": null,
-                    "min": 0,
-                    "show": true
-                },
-                {
-                    "format": "short",
-                    "logBase": 1,
-                    "max": null,
-                    "min": null,
-                    "show": true
-                }
-            ],
-            "yaxis": {
-                "align": false,
-                "alignLevel": null
-            }
-        },
-        {
-            "aliasColors": {},
-            "bars": false,
-            "class": "queue_lenght_panel",
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": "prometheus",
-            "description": "Foreground reads are reads that weren't acknowledged yet to the application. For instance, if a single replica responded and two are needed due to the consistency level. This metric represents a queue size, not a rate. High values here correlate with increased read latencies.",
-            "editable": true,
-            "error": false,
-            "fill": 0,
-            "fillGradient": 0,
-            "grid": {},
-            "gridPos": {
-                "h": 6,
-                "w": 6,
-                "x": 6,
-                "y": 32
-            },
-            "id": 20,
-            "isNew": true,
-            "legend": {
-                "avg": false,
-                "current": false,
-                "max": false,
-                "min": false,
-                "show": false,
-                "total": false,
-                "values": false
-            },
-            "lines": true,
-            "linewidth": 2,
-            "links": [],
-            "nullPointMode": "connected",
-            "options": {
-                "dataLinks": []
-            },
-            "percentage": false,
-            "pointradius": 5,
-            "points": false,
-            "renderer": "flot",
-            "seriesOverrides": [],
-            "spaceLength": 10,
-            "span": 3,
-            "stack": false,
-            "steppedLine": false,
-            "targets": [
-                {
-                    "expr": "$func(scylla_storage_proxy_coordinator_foreground_reads{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}) by ([[by]])",
-                    "intervalFactor": 1,
-                    "legendFormat": "",
-                    "metric": "",
-                    "refId": "A",
-                    "step": 10
-                }
-            ],
-            "thresholds": [],
-            "timeFrom": null,
-            "timeRegions": [],
-            "timeShift": null,
-            "title": "Foreground Reads",
-            "tooltip": {
-                "msResolution": false,
-                "shared": true,
-                "sort": 0,
-                "value_type": "cumulative"
-            },
-            "type": "graph",
-            "xaxis": {
-                "buckets": null,
-                "mode": "time",
-                "name": null,
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "format": "short",
-                    "label": "Queue Length",
-                    "logBase": 1,
-                    "max": null,
-                    "min": 0,
-                    "show": true
-                },
-                {
-                    "format": "short",
-                    "logBase": 1,
-                    "max": null,
-                    "min": null,
-                    "show": true
-                }
-            ],
-            "yaxis": {
-                "align": false,
-                "alignLevel": null
-            }
-        },
-        {
-            "aliasColors": {},
-            "bars": false,
-            "class": "wps_panel",
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": "prometheus",
-            "description": "Requests that Scylla tried to write but timed out. Timeouts are counted in the node that received the request (the coordinator), not at the replicas.",
-            "editable": true,
-            "error": false,
-            "fill": 0,
-            "fillGradient": 0,
-            "grid": {},
-            "gridPos": {
-                "h": 6,
-                "w": 6,
-                "x": 12,
-                "y": 32
-            },
-            "id": 21,
-            "isNew": true,
-            "legend": {
-                "avg": false,
-                "current": false,
-                "max": false,
-                "min": false,
-                "show": false,
-                "total": false,
-                "values": false
-            },
-            "lines": true,
-            "linewidth": 2,
-            "links": [],
-            "nullPointMode": "connected",
-            "options": {
-                "dataLinks": []
-            },
-            "percentage": false,
-            "pointradius": 5,
-            "points": false,
-            "renderer": "flot",
-            "seriesOverrides": [],
-            "spaceLength": 10,
-            "span": 3,
-            "stack": false,
-            "steppedLine": false,
-            "targets": [
-                {
-                    "expr": "$func(irate(scylla_storage_proxy_coordinator_write_timeouts{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[30s])) by ([[by]])",
-                    "intervalFactor": 1,
-                    "legendFormat": "",
-                    "refId": "A",
-                    "step": 10
-                }
-            ],
-            "thresholds": [],
-            "timeFrom": null,
-            "timeRegions": [],
-            "timeShift": null,
-            "title": "Write Timeouts",
-            "tooltip": {
-                "msResolution": false,
-                "shared": true,
-                "sort": 0,
-                "value_type": "cumulative"
-            },
-            "type": "graph",
-            "xaxis": {
-                "buckets": null,
-                "mode": "time",
-                "name": null,
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "format": "wps",
-                    "logBase": 1,
-                    "max": null,
-                    "min": 0,
-                    "show": true
-                },
-                {
-                    "format": "short",
-                    "logBase": 1,
-                    "max": null,
-                    "min": null,
-                    "show": true
-                }
-            ],
-            "yaxis": {
-                "align": false,
-                "alignLevel": null
-            }
-        },
-        {
-            "aliasColors": {},
-            "bars": false,
-            "class": "wps_panel",
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": "prometheus",
-            "description": "Requests that Scylla did not even try to write because replicas that were needed to execute this write were unavailable. Unavailable writes are counted in the node that received the request (the coordinator), not at the replicas.",
-            "editable": true,
-            "error": false,
-            "fill": 0,
-            "fillGradient": 0,
-            "grid": {},
-            "gridPos": {
-                "h": 6,
-                "w": 6,
-                "x": 18,
-                "y": 32
-            },
-            "id": 22,
-            "isNew": true,
-            "legend": {
-                "avg": false,
-                "current": false,
-                "max": false,
-                "min": false,
-                "show": false,
-                "total": false,
-                "values": false
-            },
-            "lines": true,
-            "linewidth": 2,
-            "links": [],
-            "nullPointMode": "connected",
-            "options": {
-                "dataLinks": []
-            },
-            "percentage": false,
-            "pointradius": 5,
-            "points": false,
-            "renderer": "flot",
-            "seriesOverrides": [],
-            "spaceLength": 10,
-            "span": 3,
-            "stack": false,
-            "steppedLine": false,
-            "targets": [
-                {
-                    "expr": "$func(irate(scylla_storage_proxy_coordinator_write_unavailable{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[30s])) by ([[by]])",
-                    "intervalFactor": 1,
-                    "legendFormat": "",
-                    "refId": "A",
-                    "step": 10
-                }
-            ],
-            "thresholds": [],
-            "timeFrom": null,
-            "timeRegions": [],
-            "timeShift": null,
-            "title": "Write Unavailable",
-            "tooltip": {
-                "msResolution": false,
-                "shared": true,
-                "sort": 0,
-                "value_type": "cumulative"
-            },
-            "type": "graph",
-            "xaxis": {
-                "buckets": null,
-                "mode": "time",
-                "name": null,
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "format": "wps",
-                    "logBase": 1,
-                    "max": null,
-                    "min": 0,
-                    "show": true
-                },
-                {
-                    "format": "short",
-                    "logBase": 1,
-                    "max": null,
-                    "min": null,
-                    "show": true
-                }
-            ],
-            "yaxis": {
-                "align": false,
-                "alignLevel": null
-            }
-        },
-        {
-            "aliasColors": {},
-            "bars": false,
-            "class": "queue_lenght_panel",
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": "prometheus",
-            "description": "Background writes are writes that are already acknowledged to the application but have additional work to be done. For instance, if a replica responded and only one is needed, this request is still listed as a background request until all replicas respond. This metric represents a queue size, not a rate. High values here correlate with increased write latencies.",
-            "editable": true,
-            "error": false,
-            "fill": 0,
-            "fillGradient": 0,
-            "grid": {},
-            "gridPos": {
-                "h": 6,
-                "w": 6,
-                "x": 0,
-                "y": 38
-            },
-            "id": 23,
-            "isNew": true,
-            "legend": {
-                "avg": false,
-                "current": false,
-                "max": false,
-                "min": false,
-                "show": false,
-                "total": false,
-                "values": false
-            },
-            "lines": true,
-            "linewidth": 2,
-            "links": [],
-            "nullPointMode": "connected",
-            "options": {
-                "dataLinks": []
-            },
-            "percentage": false,
-            "pointradius": 5,
-            "points": false,
-            "renderer": "flot",
-            "seriesOverrides": [],
-            "spaceLength": 10,
-            "span": 3,
-            "stack": false,
-            "steppedLine": false,
-            "targets": [
-                {
-                    "expr": "$func(scylla_storage_proxy_coordinator_background_writes{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}) by ([[by]])",
-                    "intervalFactor": 1,
-                    "legendFormat": "",
-                    "refId": "A",
-                    "step": 10
-                }
-            ],
-            "thresholds": [],
-            "timeFrom": null,
-            "timeRegions": [],
-            "timeShift": null,
-            "title": "Background Writes",
-            "tooltip": {
-                "msResolution": false,
-                "shared": true,
-                "sort": 0,
-                "value_type": "cumulative"
-            },
-            "type": "graph",
-            "xaxis": {
-                "buckets": null,
-                "mode": "time",
-                "name": null,
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "format": "short",
-                    "label": "Queue Length",
-                    "logBase": 1,
-                    "max": null,
-                    "min": 0,
-                    "show": true
-                },
-                {
-                    "format": "short",
-                    "logBase": 1,
-                    "max": null,
-                    "min": null,
-                    "show": true
-                }
-            ],
-            "yaxis": {
-                "align": false,
-                "alignLevel": null
-            }
-        },
-        {
-            "aliasColors": {},
-            "bars": false,
-            "class": "queue_lenght_panel",
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": "prometheus",
-            "description": "Background reads are reads that are already acknowledged to the application but have additional work to be done. For instance, if a replica responded and only one is needed, this request is still listed as a background request until all replicas respond. This metric represents a queue size, not a rate. High values here correlate with increased read latencies.",
-            "editable": true,
-            "error": false,
-            "fill": 0,
-            "fillGradient": 0,
-            "grid": {},
-            "gridPos": {
-                "h": 6,
-                "w": 6,
-                "x": 6,
-                "y": 38
-            },
-            "id": 24,
-            "isNew": true,
-            "legend": {
-                "avg": false,
-                "current": false,
-                "max": false,
-                "min": false,
-                "show": false,
-                "total": false,
-                "values": false
-            },
-            "lines": true,
-            "linewidth": 2,
-            "links": [],
-            "nullPointMode": "connected",
-            "options": {
-                "dataLinks": []
-            },
-            "percentage": false,
-            "pointradius": 5,
-            "points": false,
-            "renderer": "flot",
-            "seriesOverrides": [],
-            "spaceLength": 10,
-            "span": 3,
-            "stack": false,
-            "steppedLine": false,
-            "targets": [
-                {
-                    "expr": "$func(scylla_storage_proxy_coordinator_background_reads{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]])",
-                    "intervalFactor": 1,
-                    "legendFormat": "",
-                    "refId": "A",
-                    "step": 10
-                }
-            ],
-            "thresholds": [],
-            "timeFrom": null,
-            "timeRegions": [],
-            "timeShift": null,
-            "title": "Background Reads",
-            "tooltip": {
-                "msResolution": false,
-                "shared": true,
-                "sort": 0,
-                "value_type": "cumulative"
-            },
-            "type": "graph",
-            "xaxis": {
-                "buckets": null,
-                "mode": "time",
-                "name": null,
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "format": "short",
-                    "label": "Queue Length",
-                    "logBase": 1,
-                    "max": null,
-                    "min": 0,
-                    "show": true
-                },
-                {
-                    "format": "short",
-                    "logBase": 1,
-                    "max": null,
-                    "min": null,
-                    "show": true
-                }
-            ],
-            "yaxis": {
-                "align": false,
-                "alignLevel": null
-            }
-        },
-        {
-            "aliasColors": {},
-            "bars": false,
-            "class": "rps_panel",
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": "prometheus",
-            "description": "Requests that Scylla tried to read but timed out. Timeouts are counted in the node that received the request (the coordinator), not at the replicas.",
-            "editable": true,
-            "error": false,
-            "fill": 0,
-            "fillGradient": 0,
-            "grid": {},
-            "gridPos": {
-                "h": 6,
-                "w": 6,
-                "x": 12,
-                "y": 38
-            },
-            "id": 25,
-            "isNew": true,
-            "legend": {
-                "avg": false,
-                "current": false,
-                "max": false,
-                "min": false,
-                "show": false,
-                "total": false,
-                "values": false
-            },
-            "lines": true,
-            "linewidth": 2,
-            "links": [],
-            "nullPointMode": "connected",
-            "options": {
-                "dataLinks": []
-            },
-            "percentage": false,
-            "pointradius": 5,
-            "points": false,
-            "renderer": "flot",
-            "seriesOverrides": [],
-            "spaceLength": 10,
-            "span": 3,
-            "stack": false,
-            "steppedLine": false,
-            "targets": [
-                {
-                    "expr": "$func(irate(scylla_storage_proxy_coordinator_read_timeouts{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) by ([[by]])",
-                    "intervalFactor": 1,
-                    "legendFormat": "",
-                    "refId": "A",
-                    "step": 10
-                }
-            ],
-            "thresholds": [],
-            "timeFrom": null,
-            "timeRegions": [],
-            "timeShift": null,
-            "title": "Read Timeouts",
-            "tooltip": {
-                "msResolution": false,
-                "shared": true,
-                "sort": 0,
-                "value_type": "cumulative"
-            },
-            "type": "graph",
-            "xaxis": {
-                "buckets": null,
-                "mode": "time",
-                "name": null,
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "format": "rps",
-                    "logBase": 1,
-                    "max": null,
-                    "min": 0,
-                    "show": true
-                },
-                {
-                    "format": "short",
-                    "logBase": 1,
-                    "max": null,
-                    "min": null,
-                    "show": true
-                }
-            ],
-            "yaxis": {
-                "align": false,
-                "alignLevel": null
-            }
-        },
-        {
-            "aliasColors": {},
-            "bars": false,
-            "class": "rps_panel",
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": "prometheus",
-            "description": "Requests that Scylla did not even try to read because replicas that were needed to execute this write were unavailable. Unavailable reads are counted in the node that received the request (the coordinator), not at the replicas.",
-            "editable": true,
-            "error": false,
-            "fill": 0,
-            "fillGradient": 0,
-            "grid": {},
-            "gridPos": {
-                "h": 6,
-                "w": 6,
-                "x": 18,
-                "y": 38
-            },
-            "id": 26,
-            "isNew": true,
-            "legend": {
-                "avg": false,
-                "current": false,
-                "max": false,
-                "min": false,
-                "show": false,
-                "total": false,
-                "values": false
-            },
-            "lines": true,
-            "linewidth": 2,
-            "links": [],
-            "nullPointMode": "connected",
-            "options": {
-                "dataLinks": []
-            },
-            "percentage": false,
-            "pointradius": 5,
-            "points": false,
-            "renderer": "flot",
-            "seriesOverrides": [],
-            "spaceLength": 10,
-            "span": 3,
-            "stack": false,
-            "steppedLine": false,
-            "targets": [
-                {
-                    "expr": "$func(irate(scylla_storage_proxy_coordinator_read_unavailable{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) by ([[by]])",
-                    "intervalFactor": 1,
-                    "legendFormat": "",
-                    "refId": "A",
-                    "step": 10
-                }
-            ],
-            "thresholds": [],
-            "timeFrom": null,
-            "timeRegions": [],
-            "timeShift": null,
-            "title": "Read Unavailable",
-            "tooltip": {
-                "msResolution": false,
-                "shared": true,
-                "sort": 0,
-                "value_type": "cumulative"
-            },
-            "type": "graph",
-            "xaxis": {
-                "buckets": null,
-                "mode": "time",
-                "name": null,
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "format": "rps",
-                    "logBase": 1,
-                    "max": null,
-                    "min": 0,
-                    "show": true
-                },
-                {
-                    "format": "short",
-                    "logBase": 1,
-                    "max": null,
-                    "min": null,
-                    "show": true
-                }
-            ],
-            "yaxis": {
-                "align": false,
-                "alignLevel": null
-            }
-        },
-        {
-            "content": "<h1 style=\"color:#5881c2; border-bottom: 3px solid #5881c2;\">Cache - Replica</h1>",
-            "editable": true,
-            "error": false,
-            "gridPos": {
-                "h": 2,
-                "w": 12,
-                "x": 0,
-                "y": 44
-            },
-            "id": 27,
-            "isNew": true,
-            "links": [],
-            "mode": "html",
-            "span": 6,
-            "style": {},
-            "title": "",
-            "transparent": true,
-            "type": "text"
-        },
-        {
-            "content": "<h1 style=\"color:#5881c2; border-bottom: 3px solid #5881c2;\">Timeouts</h1>",
-            "editable": true,
-            "error": false,
-            "gridPos": {
-                "h": 2,
-                "w": 12,
-                "x": 12,
-                "y": 44
-            },
-            "id": 28,
-            "isNew": true,
-            "links": [],
-            "mode": "html",
-            "span": 6,
-            "style": {},
-            "title": "",
-            "transparent": true,
-            "type": "text"
-        },
-        {
-            "aliasColors": {},
-            "bars": false,
-            "class": "ops_panel",
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": "prometheus",
-            "description": "Number of rows that were read from the cache, without needing to be fetched from storage.",
-            "editable": true,
-            "error": false,
-            "fill": 0,
-            "fillGradient": 0,
-            "grid": {},
-            "gridPos": {
-                "h": 6,
-                "w": 6,
-                "x": 0,
-                "y": 46
-            },
-            "id": 29,
             "isNew": true,
             "legend": {
                 "avg": false,
@@ -2388,7 +1890,152 @@
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "$func(irate(scylla_cache_row_hits{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) by ([[by]])",
+                    "expr": "histogram_quantile(0.99, sum(rate(scylla_storage_proxy_coordinator_read_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[60s])) by ([[by]], le))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "metric": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "thresholds": [],
+            "timeFrom": null,
+            "timeRegions": [],
+            "timeShift": null,
+            "title": "99th percentile read latency by [[by]]",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 2,
+                "value_type": "cumulative"
+            },
+            "type": "graph",
+            "xaxis": {
+                "buckets": null,
+                "mode": "time",
+                "name": null,
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "format": "\u00b5s",
+                    "logBase": 1,
+                    "max": null,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false,
+                "alignLevel": null
+            }
+        },
+        {
+            "class": "plain_text",
+            "content": "<h1 style=\"color:#5881c2; border-bottom: 3px solid #5881c2;\">Cache - Replica</h1>",
+            "datasource": null,
+            "editable": true,
+            "error": false,
+            "gridPos": {
+                "h": 2,
+                "w": 12,
+                "x": 0,
+                "y": 30
+            },
+            "id": 20,
+            "isNew": true,
+            "links": [],
+            "mode": "html",
+            "options": {},
+            "span": 6,
+            "style": {},
+            "title": "",
+            "transparent": true,
+            "type": "text"
+        },
+        {
+            "class": "plain_text",
+            "content": "<h1 style=\"color:#5881c2; border-bottom: 3px solid #5881c2;\">Timeouts</h1>",
+            "datasource": null,
+            "editable": true,
+            "error": false,
+            "gridPos": {
+                "h": 2,
+                "w": 12,
+                "x": 12,
+                "y": 30
+            },
+            "id": 21,
+            "isNew": true,
+            "links": [],
+            "mode": "html",
+            "options": {},
+            "span": 6,
+            "style": {},
+            "title": "",
+            "transparent": true,
+            "type": "text"
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "class": "ops_panel",
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "prometheus",
+            "description": "Number of rows that were read from the cache, without needing to be fetched from storage.",
+            "editable": true,
+            "error": false,
+            "fill": 0,
+            "fillGradient": 0,
+            "grid": {},
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 0,
+                "y": 32
+            },
+            "hiddenSeries": false,
+            "id": 22,
+            "isNew": true,
+            "legend": {
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "show": false,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "options": {
+                "dataLinks": []
+            },
+            "percentage": false,
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [
+                {}
+            ],
+            "spaceLength": 10,
+            "span": 3,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "$func(irate(scylla_cache_row_hits{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[60s])) by ([[by]])",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -2403,7 +2050,7 @@
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
-                "sort": 0,
+                "sort": 2,
                 "value_type": "cumulative"
             },
             "type": "graph",
@@ -2452,9 +2099,10 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 46
+                "y": 32
             },
-            "id": 30,
+            "hiddenSeries": false,
+            "id": 23,
             "isNew": true,
             "legend": {
                 "avg": false,
@@ -2485,7 +2133,7 @@
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "$func(irate(scylla_cache_row_misses{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[30s])) by ([[by]])",
+                    "expr": "$func(irate(scylla_cache_row_misses{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[60s])) by ([[by]])",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -2500,7 +2148,7 @@
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
-                "sort": 0,
+                "sort": 2,
                 "value_type": "cumulative"
             },
             "type": "graph",
@@ -2535,7 +2183,7 @@
         {
             "aliasColors": {},
             "bars": false,
-            "class": "wpm_panel",
+            "class": "wps_panel",
             "dashLength": 10,
             "dashes": false,
             "datasource": "prometheus",
@@ -2549,9 +2197,10 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 46
+                "y": 32
             },
-            "id": 31,
+            "hiddenSeries": false,
+            "id": 24,
             "isNew": true,
             "legend": {
                 "avg": false,
@@ -2580,7 +2229,7 @@
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "$func(delta(scylla_storage_proxy_coordinator_write_timeouts{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[1m])) by ([[by]])",
+                    "expr": "$func(rate(scylla_storage_proxy_coordinator_write_timeouts{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[1m])) by ([[by]])",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -2591,11 +2240,11 @@
             "timeFrom": null,
             "timeRegions": [],
             "timeShift": null,
-            "title": "Write Timeouts/Minutes by [[by]]",
+            "title": "Write Timeouts/Seconds by [[by]]",
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
-                "sort": 0,
+                "sort": 2,
                 "value_type": "cumulative"
             },
             "type": "graph",
@@ -2608,8 +2257,7 @@
             },
             "yaxes": [
                 {
-                    "decimals": 0,
-                    "format": "wpm",
+                    "format": "wps",
                     "logBase": 1,
                     "max": null,
                     "min": 0,
@@ -2631,7 +2279,7 @@
         {
             "aliasColors": {},
             "bars": false,
-            "class": "rpm_panel",
+            "class": "rps_panel",
             "dashLength": 10,
             "dashes": false,
             "datasource": "prometheus",
@@ -2645,9 +2293,10 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 46
+                "y": 32
             },
-            "id": 32,
+            "hiddenSeries": false,
+            "id": 25,
             "isNew": true,
             "legend": {
                 "avg": false,
@@ -2676,7 +2325,7 @@
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "$func(delta(scylla_storage_proxy_coordinator_read_timeouts{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[1m])) by ([[by]])",
+                    "expr": "$func(rate(scylla_storage_proxy_coordinator_read_timeouts{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[1m])+rate(scylla_storage_proxy_coordinator_cas_read_timeouts{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[1m])+rate(scylla_storage_proxy_coordinator_range_timeouts{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[1m])) by ([[by]])",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -2687,11 +2336,11 @@
             "timeFrom": null,
             "timeRegions": [],
             "timeShift": null,
-            "title": "Read Timeouts/Minutes by [[by]]",
+            "title": "Read Timeouts/Seconds by [[by]]",
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
-                "sort": 0,
+                "sort": 2,
                 "value_type": "cumulative"
             },
             "type": "graph",
@@ -2704,8 +2353,7 @@
             },
             "yaxes": [
                 {
-                    "decimals": 0,
-                    "format": "rpm",
+                    "format": "rps",
                     "logBase": 1,
                     "max": null,
                     "min": 0,
@@ -2727,15 +2375,16 @@
         {
             "class": "plain_text",
             "content": "<h1 style=\"color:#5881c2; border-bottom: 3px solid #5881c2;\">Your Panels</h1>",
+            "datasource": null,
             "editable": true,
             "error": false,
             "gridPos": {
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 52
+                "y": 38
             },
-            "id": 33,
+            "id": 26,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -2763,9 +2412,10 @@
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 54
+                "y": 40
             },
-            "id": 34,
+            "hiddenSeries": false,
+            "id": 27,
             "isNew": true,
             "legend": {
                 "avg": false,
@@ -2802,7 +2452,7 @@
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
-                "sort": 0,
+                "sort": 2,
                 "value_type": "cumulative"
             },
             "type": "graph",
@@ -2851,9 +2501,10 @@
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 54
+                "y": 40
             },
-            "id": 35,
+            "hiddenSeries": false,
+            "id": 28,
             "isNew": true,
             "legend": {
                 "avg": false,
@@ -2890,7 +2541,7 @@
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
-                "sort": 0,
+                "sort": 2,
                 "value_type": "cumulative"
             },
             "type": "graph",
@@ -2924,16 +2575,17 @@
         },
         {
             "class": "plain_text",
-            "content": "<h4 style=\"color:#5881c2; border-bottom: 0px solid #5881c2;\">Scylla Monitoring version - 3.0</h4>",
+            "content": "<h4 style=\"color:#5881c2; border-bottom: 0px solid #5881c2;\">Scylla Monitoring version - 3.3</h4>",
+            "datasource": null,
             "editable": true,
             "error": false,
             "gridPos": {
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 60
+                "y": 46
             },
-            "id": 36,
+            "id": 29,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -2946,10 +2598,10 @@
         }
     ],
     "refresh": "30s",
-    "schemaVersion": 12,
+    "schemaVersion": 16,
     "style": "dark",
     "tags": [
-        "3.0"
+        "4.0"
     ],
     "templating": {
         "list": [
@@ -2995,7 +2647,12 @@
             {
                 "allValue": null,
                 "class": "template_variable_single",
-                "current": {},
+                "current": {
+                    "isNone": true,
+                    "selected": false,
+                    "text": "None",
+                    "value": ""
+                },
                 "datasource": "prometheus",
                 "definition": "",
                 "hide": 0,
@@ -3101,43 +2758,23 @@
             },
             {
                 "allValue": null,
+                "class": "template_variable_single",
                 "current": {
                     "text": "/var/lib/scylla",
                     "value": "/var/lib/scylla"
                 },
                 "datasource": "prometheus",
+                "definition": "",
                 "hide": 0,
                 "includeAll": false,
-                "label": "Mounnt path",
+                "label": "Mount path",
                 "multi": false,
                 "name": "mount_point",
                 "options": [],
                 "query": "node_filesystem_avail_bytes",
                 "refresh": 2,
                 "regex": "/mountpoint=\"([^\"]*)\".*/",
-                "sort": 0,
-                "tagValuesQuery": "",
-                "tags": [],
-                "tagsQuery": "",
-                "type": "query",
-                "useTags": false
-            },
-            {
-                "allValue": null,
-                "current": {
-                    "text": "/var/lib/scylla",
-                    "value": "/var/lib/scylla"
-                },
-                "datasource": "prometheus",
-                "hide": 0,
-                "includeAll": false,
-                "label": "Mounnt path",
-                "multi": false,
-                "name": "mount_point",
-                "options": [],
-                "query": "node_filesystem_avail_bytes",
-                "refresh": 2,
-                "regex": "/mountpoint=\"([^\"]*)\".*/",
+                "skipUrlSync": false,
                 "sort": 0,
                 "tagValuesQuery": "",
                 "tags": [],
@@ -3195,11 +2832,21 @@
                 "type": "custom"
             },
             {
+                "class": "adhoc_filter",
+                "datasource": "prometheus",
+                "filters": [],
+                "hide": 0,
+                "label": "ad hoc",
+                "name": "adhoc",
+                "skipUrlSync": false,
+                "type": "adhoc"
+            },
+            {
                 "allValue": null,
                 "class": "template_variable_custom",
                 "current": {
-                    "text": "3-0",
-                    "value": "3-0"
+                    "text": "4.0",
+                    "value": "4.0"
                 },
                 "hide": 2,
                 "includeAll": false,
@@ -3209,11 +2856,57 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "3-0",
-                        "value": "3-0"
+                        "text": "4.0",
+                        "value": "4.0"
                     }
                 ],
-                "query": "3-0",
+                "query": "4.0",
+                "skipUrlSync": false,
+                "type": "custom"
+            },
+            {
+                "allValue": null,
+                "class": "template_variable_custom",
+                "current": {
+                    "text": "4.0",
+                    "value": "4.0"
+                },
+                "hide": 2,
+                "includeAll": false,
+                "label": null,
+                "multi": false,
+                "name": "scylla_dash_version",
+                "options": [
+                    {
+                        "selected": true,
+                        "text": "4.0",
+                        "value": "4.0"
+                    }
+                ],
+                "query": "4.0",
+                "skipUrlSync": false,
+                "type": "custom"
+            },
+            {
+                "allValue": null,
+                "class": "monitor_version_var",
+                "current": {
+                    "text": "3.3",
+                    "value": "3.3"
+                },
+                "hide": 2,
+                "includeAll": false,
+                "label": null,
+                "multi": false,
+                "name": "monitoring_version",
+                "options": [
+                    {
+                        "selected": true,
+                        "text": "3.3",
+                        "value": "3.3"
+                    }
+                ],
+                "query": "3.3",
                 "skipUrlSync": false,
                 "type": "custom"
             }
@@ -3251,6 +2944,6 @@
     },
     "timezone": "browser",
     "title": "Overview",
-    "uid": "overview-3-0",
-    "version": 3
+    "uid": "overview-4-0",
+    "version": 1
 }

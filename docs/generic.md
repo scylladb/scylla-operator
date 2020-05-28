@@ -11,6 +11,7 @@ For specific configuration and setup, check for details about your particular en
 
 * A Kubernetes cluster (version >= 1.11)
 * A [Storage Class](https://kubernetes.io/docs/concepts/storage/storage-classes/) to provision [PersistentVolumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/).
+* Helm 3 installed, Go to the [helm docs](https://docs.helm.sh/using_helm/#installing-helm) if you need to install it.
 
 ## Running locally
 

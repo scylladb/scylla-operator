@@ -316,6 +316,8 @@ dashboardProviders:
 ##
 dashboards:
   scylla:
+    alternator-4.0:
+
     scylla-cpu-4.0:
 
     scylla-cql-4.0:

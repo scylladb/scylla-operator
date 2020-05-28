@@ -214,10 +214,14 @@ After a restart the operator will use the security token when it interacts with 
  2. Install Grafana
  
  First you need to prepare the dashboards to make them available in Grafana. 
- You can do this by running the following command in the directory `examples/generic`:
+ You can do this by running the following command in the `examples` directory:
  ```console
-make grafana/values.yaml
+./dashboards -t generic
  ```
+If you are deploying to `GKE` the replace the argument with `gke` instead of `generic`.
+
+__NB__: Keep in mind that this is a test setup. For production use, check grafana and prometheus helm chart page for advanced deployment instructions.
+
 Now the dashboards can be created along with the grafana plugin like this:
  ```console
  helm upgrade --install scylla-graf --namespace monitoring stable/grafana -f examples/generic/grafana/values.yaml
@@ -231,27 +235,6 @@ Now the dashboards can be created along with the grafana plugin like this:
  ```
  
  You can find it on `http://0.0.0.0:3000` and login with the credentials `admin`:`admin`.
- 
- 3. Install dashboards
- 
- If you haven't forwarded Grafana to localhost, we will need it now:
- ```
- export POD_NAME=$(kubectl get pods --namespace monitoring -l "app=grafana,release=scylla-graf" -o jsonpath="{.items[0].metadata.name}")
- kubectl --namespace monitoring port-forward $POD_NAME 3000
- ```
- 
- Clone scylla-grafana-monitoring project and export dashboards:
- ```
- git clone https://github.com/scylladb/scylla-grafana-monitoring /tmp/scylla-grafana-monitoring
- cd /tmp/scylla-grafana-monitoring
- git checkout scylla-monitoring-2.3
- ./generate-dashboards.sh
- export GRAFANA_PASSWORD=$(kubectl get secret --namespace monitoring scylla-graf-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo)
- ./load-grafana.sh -a $GRAFANA_PASSWORD
- 
- ```
- 
- :warning: Keep in mind that this is a test setup. For production use, check grafana and prometheus helm chart page for advanced deployment instructions.
 
 ## Scale Up
 

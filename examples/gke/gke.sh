@@ -37,14 +37,6 @@ done
 gcloud container clusters list --zone="${GCP_ZONE}" | grep scylla-demo
 }
 
-check_tiller_readiness(){
-until [[ $(kubectl get deployment tiller-deploy -n kube-system -o 'jsonpath={.status.readyReplicas}') -eq 1 ]];
-do
-    echo "Waiting for Tiller pod to become Ready..."
-    sleep 5
-done
-}
-
 #########
 # Start #
 #########
@@ -60,7 +52,7 @@ GCP_PROJECT=$2
 GCP_ZONE=$3
 GCP_REGION=${GCP_ZONE:0:$((${#GCP_ZONE}-2))}
 CLUSTER_NAME=scylla-demo
-CLUSTER_VERSION=1.12.7-gke.10
+CLUSTER_VERSION=1.16.8-gke.15
 
 # Check if the environment has the prerequisites installed
 check_prerequisites
@@ -80,7 +72,7 @@ clusters create "${CLUSTER_NAME}" --username "admin" \
 --local-ssd-count "8" \
 --node-taints role=scylla-clusters:NoSchedule \
 --image-type "UBUNTU" \
---enable-cloud-logging --enable-cloud-monitoring \
+--enable-cloud-logging --enable-stackdriver-kubernetes \
 --no-enable-autoupgrade --no-enable-autorepair
 
 # Nodepool for cassandra-stress pods
@@ -130,14 +122,6 @@ echo "Setting up GKE RBAC..."
 kubectl create clusterrolebinding cluster-admin-binding --clusterrole cluster-admin --user "${GCP_USER}"
 
 check_cluster_readiness
-# Setup Tiller
-echo "Setting up Tiller..."
-helm init
-kubectl create serviceaccount --namespace kube-system tiller
-kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
-kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
-
-check_cluster_readiness
 # Install RAID Daemonset
 echo "Installing RAID Daemonset..."
 kubectl apply -f raid-daemonset.yaml
@@ -148,8 +132,6 @@ echo "Installing cpu-policy Daemonset..."
 sleep 5
 kubectl apply -f cpu-policy-daemonset.yaml
 
-# Wait for Tiller to become ready
-check_tiller_readiness
 # Install local volume provisioner
 echo "Installing local volume provisioner..."
 helm install --name local-provisioner provisioner

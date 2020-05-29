@@ -89,6 +89,7 @@ spec:
     racks:
       - name: <gcp_region>
         scyllaConfig: "scylla-config"
+        scyllaAgentConfig: "scylla-agent-config"
         members: 2
         storage:
           storageClassName: local-raid-disks

@@ -212,6 +212,17 @@ After a restart the operator will use the security token when it interacts with 
  ```
  
  2. Install Grafana
+ 
+ First you need to prepare the dashboards to make them available in Grafana. 
+ You can do this by running the following command in the `examples` directory:
+ ```console
+./dashboards.sh -t generic
+ ```
+If you are deploying to `GKE` the replace the argument with `gke` instead of `generic`.
+
+__NB__: Keep in mind that this is a test setup. For production use, check grafana and prometheus helm chart page for advanced deployment instructions.
+
+Now the dashboards can be created along with the grafana plugin like this:
  ```console
  helm upgrade --install scylla-graf --namespace monitoring stable/grafana -f examples/generic/grafana/values.yaml
  ```
@@ -224,27 +235,6 @@ After a restart the operator will use the security token when it interacts with 
  ```
  
  You can find it on `http://0.0.0.0:3000` and login with the credentials `admin`:`admin`.
- 
- 3. Install dashboards
- 
- If you haven't forwarded Grafana to localhost, we will need it now:
- ```
- export POD_NAME=$(kubectl get pods --namespace monitoring -l "app=grafana,release=scylla-graf" -o jsonpath="{.items[0].metadata.name}")
- kubectl --namespace monitoring port-forward $POD_NAME 3000
- ```
- 
- Clone scylla-grafana-monitoring project and export dashboards:
- ```
- git clone https://github.com/scylladb/scylla-grafana-monitoring /tmp/scylla-grafana-monitoring
- cd /tmp/scylla-grafana-monitoring
- git checkout scylla-monitoring-2.3
- ./generate-dashboards.sh
- export GRAFANA_PASSWORD=$(kubectl get secret --namespace monitoring scylla-graf-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo)
- ./load-grafana.sh -a $GRAFANA_PASSWORD
- 
- ```
- 
- :warning: Keep in mind that this is a test setup. For production use, check grafana and prometheus helm chart page for advanced deployment instructions.
 
 ## Scale Up
 
@@ -273,6 +263,35 @@ scripts/cass-stress-gen.py --num-jobs=10 --cpu=6 --memory=20G --ops=50000000 --l
 kubectl apply -f scripts/cassandra-stress.yaml
 ```
 
+Make sure you set the proper arguments in case you have altered things such as _name_ or _namespace_.
+
+```bash
+./scripts/cass-stress-gen.py -h
+usage: cass-stress-gen.py [-h] [--num-jobs NUM_JOBS] [--name NAME] [--namespace NAMESPACE] [--scylla-version SCYLLA_VERSION] [--host HOST] [--cpu CPU] [--memory MEMORY] [--ops OPS] [--threads THREADS] [--limit LIMIT]
+                          [--connections-per-host CONNECTIONS_PER_HOST] [--print-to-stdout] [--nodeselector NODESELECTOR]
+
+Generate cassandra-stress job templates for Kubernetes.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --num-jobs NUM_JOBS   number of Kubernetes jobs to generate - defaults to 1
+  --name NAME           name of the generated yaml file - defaults to cassandra-stress
+  --namespace NAMESPACE
+                        namespace of the cassandra-stress jobs - defaults to "default"
+  --scylla-version SCYLLA_VERSION
+                        version of scylla server to use for cassandra-stress - defaults to 4.0.0
+  --host HOST           ip or dns name of host to connect to - defaults to scylla-cluster-client.scylla.svc
+  --cpu CPU             number of cpus that will be used for each job - defaults to 1
+  --memory MEMORY       memory that will be used for each job in GB, ie 2G - defaults to 2G * cpu
+  --ops OPS             number of operations for each job - defaults to 10000000
+  --threads THREADS     number of threads used for each job - defaults to 50 * cpu
+  --limit LIMIT         rate limit for each job - defaults to no rate-limiting
+  --connections-per-host CONNECTIONS_PER_HOST
+                        number of connections per host - defaults to number of cpus
+  --print-to-stdout     print to stdout instead of writing to a file
+  --nodeselector NODESELECTOR
+                        nodeselector limits cassandra-stress pods to certain nodes. Use as a label selector, eg. --nodeselector role=scylla
+```
 While the benchmark is running, open up Grafana and take a look at the monitoring metrics.
 
 After the Jobs finish, clean them up with:

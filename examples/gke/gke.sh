@@ -52,7 +52,7 @@ GCP_PROJECT=$2
 GCP_ZONE=$3
 GCP_REGION=${GCP_ZONE:0:$((${#GCP_ZONE}-2))}
 CLUSTER_NAME=scylla-demo
-CLUSTER_VERSION=1.16.8-gke.15
+CLUSTER_VERSION="$(gcloud container get-server-config --format "value(validMasterVersions[0])")"
 
 # Check if the environment has the prerequisites installed
 check_prerequisites
@@ -94,7 +94,7 @@ node-pools create "operator-pool" \
 --cluster "${CLUSTER_NAME}" \
 --zone "${GCP_ZONE}" \
 --node-version "${CLUSTER_VERSION}" \
---machine-type "n1-standard-4" \
+--machine-type "n1-standard-8" \
 --num-nodes "1" \
 --disk-type "pd-ssd" --disk-size "20" \
 --image-type "UBUNTU" \

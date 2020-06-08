@@ -1,11 +1,37 @@
 #!/bin/bash
 set -e
 
+#########
+# Start #
+#########
+
 display_usage() {
 	echo "End-to-end deployment script for scylla on GKE."
-	echo "usage: $0 [GCP user] [GCP project] [GCP zone]"
+	echo "usage: $0 [GCP user] [GCP project] [GCP zone] [cluster name (optional)]"
     echo "example: $0 yanniszark@arrikto.com gke-demo-226716 us-west1-b"
 }
+
+case $# in
+  [3,4])
+    ;;
+  *)
+    echo "illegal number of parameters"
+    display_usage
+    exit 1
+    ;;
+esac
+
+GCP_USER=$1
+GCP_PROJECT=$2
+GCP_ZONE=$3
+GCP_REGION=${GCP_ZONE:0:$((${#GCP_ZONE}-2))}
+CLUSTER_NAME=scylla-demo
+if [ "x$4" != "x" ]
+then
+  CLUSTER_NAME=$4
+fi
+
+CLUSTER_VERSION="$(gcloud container get-server-config --format "value(validMasterVersions[0])")"
 
 check_prerequisites() {
     echo "Checking if kubectl is present on the machine..."
@@ -22,37 +48,20 @@ check_prerequisites() {
 }
 
 check_cluster_readiness() {
-until [[ "$(gcloud container clusters list --zone=${GCP_ZONE} | grep scylla-demo | awk '{ print $8 }')" == "RUNNING" ]]; do
+until [[ "$(gcloud container clusters list --zone=${GCP_ZONE} | grep ${CLUSTER_NAME} | awk '{ print $8 }')" == "RUNNING" ]]; do
   echo "Waiting for cluster readiness... "
-  echo $(gcloud container clusters list --zone=${GCP_ZONE} | grep scylla-demo)
+  echo $(gcloud container clusters list --zone=${GCP_ZONE} | grep ${CLUSTER_NAME})
   sleep 10
   WAIT_TIME=$((WAIT_TIME+10))
-  if [[  "$(gcloud container operations list --sort-by=START_TIME --filter="scylla-demo AND UPGRADE_MASTER" | grep RUNNING)" != "" ]]; then
-    gcloud container operations list --sort-by=START_TIME --filter="scylla-demo AND UPGRADE_MASTER"
-    gcloud container operations wait $(gcloud container operations list --sort-by=START_TIME --filter="scylla-demo AND UPGRADE_MASTER" | tail -1 | awk '{print $1}') --zone="${GCP_ZONE}"
+  if [[  "$(gcloud container operations list --sort-by=START_TIME --filter="${CLUSTER_NAME} AND UPGRADE_MASTER" | grep RUNNING)" != "" ]]; then
+    gcloud container operations list --sort-by=START_TIME --filter="${CLUSTER_NAME} AND UPGRADE_MASTER"
+    gcloud container operations wait $(gcloud container operations list --sort-by=START_TIME --filter="${CLUSTER_NAME} AND UPGRADE_MASTER" | tail -1 | awk '{print $1}') --zone="${GCP_ZONE}"
   else 
-    gcloud container operations list --sort-by=START_TIME --filter="scylla-demo AND UPGRADE_MASTER" | tail -1
+    gcloud container operations list --sort-by=START_TIME --filter="${CLUSTER_NAME} AND UPGRADE_MASTER" | tail -1
   fi
 done
-gcloud container clusters list --zone="${GCP_ZONE}" | grep scylla-demo
+gcloud container clusters list --zone="${GCP_ZONE}" | grep ${CLUSTER_NAME}
 }
-
-#########
-# Start #
-#########
-
-if [ $# -ne 3 ]; then
-    echo "illegal number of parameters"
-    display_usage
-    exit 1
-fi
-
-GCP_USER=$1
-GCP_PROJECT=$2
-GCP_ZONE=$3
-GCP_REGION=${GCP_ZONE:0:$((${#GCP_ZONE}-2))}
-CLUSTER_NAME=scylla-demo
-CLUSTER_VERSION="$(gcloud container get-server-config --format "value(validMasterVersions[0])")"
 
 # Check if the environment has the prerequisites installed
 check_prerequisites
@@ -134,7 +143,7 @@ kubectl apply -f cpu-policy-daemonset.yaml
 
 # Install local volume provisioner
 echo "Installing local volume provisioner..."
-helm install --name local-provisioner provisioner
+helm install local-provisioner provisioner
 echo "Your disks are ready to use."
 
 echo "Starting the scylla operator..."

@@ -7,29 +7,79 @@ set -e
 
 display_usage() {
 	echo "End-to-end deployment script for scylla on GKE."
-	echo "usage: $0 [GCP user] [GCP project] [GCP zone] [cluster name (optional)]"
-    echo "example: $0 yanniszark@arrikto.com gke-demo-226716 us-west1-b"
+	echo "usage: $0 -u|--gcp-user [GCP user] -p|--gcp-project [GCP project] -z|--gcp-zone [GCP zone] -c|--k8s-cluster-name [cluster name (optional)]"
 }
 
-case $# in
-  [3,4])
-    ;;
-  *)
-    echo "illegal number of parameters"
-    display_usage
-    exit 1
-    ;;
-esac
-
-GCP_USER=$1
-GCP_PROJECT=$2
-GCP_ZONE=$3
-GCP_REGION=${GCP_ZONE:0:$((${#GCP_ZONE}-2))}
 CLUSTER_NAME=scylla-demo
-if [ "x$4" != "x" ]
+
+while (( "$#" )); do
+  case "$1" in
+    -u|--gcp-user)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        GCP_USER=$2
+        shift 2
+      else
+        echo "Error: Argument for $1 is missing" >&2
+        exit 1
+      fi
+      ;;
+    -p|--gcp-project)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        GCP_PROJECT=$2
+        shift 2
+      else
+        echo "Error: Argument for $1 is missing" >&2
+        exit 1
+      fi
+      ;;
+    -z|--gcp-zone)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        GCP_ZONE=$2
+        shift 2
+      else
+        echo "Error: Argument for $1 is missing" >&2
+        exit 1
+      fi
+      ;;
+    -c|--k8s-cluster-name)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        CLUSTER_NAME=$2
+        shift 2
+      else
+        echo "Error: Argument for $1 is missing" >&2
+        exit 1
+      fi
+      ;;
+    -*|--*=) # unsupported flags
+      echo "Error: Unsupported flag $1" >&2
+      exit 1
+      ;;
+    *) # preserve positional arguments
+      PARAMS="$PARAMS $1"
+      shift
+      ;;
+  esac
+done
+
+if [ "x$GCP_USER" == "x" ]
 then
-  CLUSTER_NAME=$4
+  display_usage
+  exit 1
 fi
+
+if [ "x$GCP_PROJECT" == "x" ]
+then
+  display_usage
+  exit 1
+fi
+
+if [ "x$GCP_ZONE" == "x" ]
+then
+  display_usage
+  exit 1
+fi
+
+GCP_REGION=${GCP_ZONE:0:$((${#GCP_ZONE}-2))}
 
 CLUSTER_VERSION="$(gcloud container get-server-config --format "value(validMasterVersions[0])")"
 

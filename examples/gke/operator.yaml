@@ -139,6 +139,12 @@ spec:
               - version
               - repository
               type: object
+            sysctls:
+              description: 'Sysctl properties to be applied during initialization
+                given as a list of key=value pairs. Example: fs.aio-max-nr=232323'
+              items:
+                type: string
+              type: array
             version:
               description: Version of Scylla to use.
               type: string

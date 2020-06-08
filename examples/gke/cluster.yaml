@@ -90,6 +90,8 @@ spec:
       - name: <gcp_region>
         scyllaConfig: "scylla-config"
         scyllaAgentConfig: "scylla-agent-config"
+        sysctls:
+          - "fs.aio-max-nr=2097152"
         members: 2
         storage:
           storageClassName: local-raid-disks

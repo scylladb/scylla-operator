@@ -61,41 +61,51 @@ func MemberServiceForPod(pod *corev1.Pod, cluster *scyllav1alpha1.Cluster) *core
 			Annotations:     map[string]string{endpoint.TolerateUnreadyEndpointsAnnotation: "true"},
 		},
 		Spec: corev1.ServiceSpec{
-			Type:     corev1.ServiceTypeClusterIP,
-			Selector: naming.StatefulSetPodLabel(pod.Name),
-			Ports: []corev1.ServicePort{
-				{
-					Name: "inter-node-communication",
-					Port: 7000,
-				},
-				{
-					Name: "ssl-inter-node-communication",
-					Port: 7001,
-				},
-				{
-					Name: "jmx-monitoring",
-					Port: 7199,
-				},
-				{
-					Name: "cql",
-					Port: 9042,
-				},
-				{
-					Name: "thrift",
-					Port: 9160,
-				},
-				{
-					Name: "cql-ssl",
-					Port: 9142,
-				},
-				{
-					Name: "agent-api",
-					Port: 10001,
-				},
-			},
+			Type:                     corev1.ServiceTypeClusterIP,
+			Selector:                 naming.StatefulSetPodLabel(pod.Name),
+			Ports:                    memberServicePorts(cluster),
 			PublishNotReadyAddresses: true,
 		},
 	}
+}
+
+func memberServicePorts(cluster *scyllav1alpha1.Cluster) []corev1.ServicePort {
+	ports := []corev1.ServicePort{
+		{
+			Name: "inter-node-communication",
+			Port: 7000,
+		},
+		{
+			Name: "ssl-inter-node-communication",
+			Port: 7001,
+		},
+		{
+			Name: "jmx-monitoring",
+			Port: 7199,
+		},
+		{
+			Name: "agent-api",
+			Port: 10001,
+		},
+	}
+	if cluster.Spec.Alternator.Enabled() {
+		ports = append(ports, corev1.ServicePort{
+			Name: "alternator",
+			Port: cluster.Spec.Alternator.Port,
+		})
+	} else {
+		ports = append(ports, corev1.ServicePort{
+			Name: "cql",
+			Port: 9042,
+		}, corev1.ServicePort{
+			Name: "cql-ssl",
+			Port: 9142,
+		}, corev1.ServicePort{
+			Name: "thrift",
+			Port: 9160,
+		})
+	}
+	return ports
 }
 
 func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, sidecarImage string) *appsv1.StatefulSet {
@@ -195,32 +205,7 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 							Name:            naming.ScyllaContainerName,
 							Image:           ImageForCluster(c),
 							ImagePullPolicy: "IfNotPresent",
-							Ports: []corev1.ContainerPort{
-								{
-									Name:          "intra-node",
-									ContainerPort: 7000,
-								},
-								{
-									Name:          "tls-intra-node",
-									ContainerPort: 7001,
-								},
-								{
-									Name:          "jmx",
-									ContainerPort: 7199,
-								},
-								{
-									Name:          "cql",
-									ContainerPort: 9042,
-								},
-								{
-									Name:          "thrift",
-									ContainerPort: 9160,
-								},
-								{
-									Name:          "prometheus",
-									ContainerPort: 9180,
-								},
-							},
+							Ports:           containerPorts(c),
 							// TODO: unprivileged entrypoint
 							Command: []string{
 								path.Join(naming.SharedDirName, "tini"),
@@ -352,6 +337,47 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 
 	sts.Spec.Template.Spec.Containers = append(sts.Spec.Template.Spec.Containers, *agentContainer(c))
 	return sts
+}
+
+func containerPorts(c *scyllav1alpha1.Cluster) []corev1.ContainerPort {
+	ports := []corev1.ContainerPort{
+		{
+			Name:          "intra-node",
+			ContainerPort: 7000,
+		},
+		{
+			Name:          "tls-intra-node",
+			ContainerPort: 7001,
+		},
+		{
+			Name:          "jmx",
+			ContainerPort: 7199,
+		},
+		{
+			Name:          "prometheus",
+			ContainerPort: 9180,
+		},
+	}
+
+	if c.Spec.Alternator.Enabled() {
+		ports = append(ports, corev1.ContainerPort{
+			Name:          "alternator",
+			ContainerPort: c.Spec.Alternator.Port,
+		})
+	} else {
+		ports = append(ports, corev1.ContainerPort{
+			Name:          "cql",
+			ContainerPort: 9042,
+		}, corev1.ContainerPort{
+			Name:          "cql-ssl",
+			ContainerPort: 9142,
+		}, corev1.ContainerPort{
+			Name:          "thrift",
+			ContainerPort: 9160,
+		})
+	}
+
+	return ports
 }
 
 func agentContainer(c *scyllav1alpha1.Cluster) *corev1.Container {

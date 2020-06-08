@@ -120,6 +120,33 @@ Checking the logs of the running scylla instances can be done like this:
 kubectl -n scylla logs simple-cluster-us-east-1-us-east-1a-0 scylla
 ```
 
+### Deploying Alternator
+
+The operator is also capable of deploying [Alternator](https://www.scylladb.com/alternator/) instead of the regular Scylla.
+This requires a small change in the cluster definition.
+Change the `cluster.yaml` file from this:
+```yaml
+spec:
+  version: 4.0.0
+  agentVersion: 2.0.2
+  developerMode: true
+  datacenter:
+    name: us-east-1
+```
+to this:
+```yaml
+spec:
+  version: 4.0.0
+  alternator:
+    port: 8000
+  agentVersion: 2.0.2
+  developerMode: true
+  datacenter:
+    name: us-east-1
+```
+You can specify whichever port you want.
+Once this is done the regular CQL ports will no longer be available, the cluster is a pure Alienator cluster.
+
 ## Accessing the Database
 
 * From kubectl:
@@ -147,6 +174,8 @@ from cassandra.cluster import Cluster
 cluster = Cluster(['simple-cluster-client.scylla.svc'])
 session = cluster.connect()
 ```
+
+If you are running the Alternator you can access the API on the port you specified using plain http.
 
 ## Configure Scylla
 

@@ -274,10 +274,9 @@ Now the dashboards can be created along with the grafana plugin like this:
  
  To access Grafana locally, run:
  
- ```
- export POD_NAME=$(kubectl get pods --namespace monitoring -l "app=grafana,release=scylla-graf" -o jsonpath="{.items[0].metadata.name}")
- kubectl --namespace monitoring port-forward $POD_NAME 3000
- ```
+```
+kubectl --namespace monitoring port-forward $(kubectl get pods -n monitoring -l "app.kubernetes.io/instance=scylla-graf" -o jsonpath="{.items[0].metadata.name}") 3000
+```
  
  You can find it on `http://0.0.0.0:3000` and login with the credentials `admin`:`admin`.
 

@@ -59,8 +59,9 @@ func WithFields(ctx context.Context, keyvals ...interface{}) context.Context {
 	return context.WithValue(ctx, ctxFields, value)
 }
 
-// Fields returns key-value pairs assigned to the context sorted by the key.
-func Fields(ctx context.Context) []zapcore.Field {
+// contextFields returns key-value pairs assigned to the context sorted by the
+// key.
+func contextFields(ctx context.Context) []zapcore.Field {
 	if ctx == nil {
 		return nil
 	}

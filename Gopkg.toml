@@ -87,3 +87,7 @@ version="v1.4.7"
 [[constraint]]
   name = "github.com/magiconair/properties"
   version = "1.8.1"
+
+[[constraint]]
+  name = "github.com/scylladb/go-log"
+  version = "0.0.4"

@@ -618,12 +618,12 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:dd8ab81682f386f0557285c3550d08b9641dd64f0f7ad125c2298f3c3275eda1"
+  digest = "1:a78f46fb7d8e73b8ad0b6929f66a7e42db415993fb3dae1325da32e14648a4ea"
   name = "github.com/scylladb/go-log"
   packages = ["."]
   pruneopts = "UT"
-  revision = "2e4ab32fc413adff82d89e7a2756d1b9ac4956fe"
-  version = "v0.0.2"
+  revision = "7b6b28305cceaa7710c98aa8ee3ef0d4f8efd802"
+  version = "v0.0.4"
 
 [[projects]]
   digest = "1:6f3ce746342be7b14a2d1ca33a4a11fd6cb0300e5d34c766f01e19e936fb10af"

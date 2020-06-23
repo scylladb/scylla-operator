@@ -90,7 +90,8 @@ func (l Logger) log(ctx context.Context, lvl zapcore.Level, msg string, keyvals 
 	}
 
 	if ce := l.base.Check(lvl, msg); ce != nil {
-		ce.Write(l.zapify(ctx, keyvals)...)
+		fields := stringifyErrors(l.zapify(ctx, keyvals), lvl >= zapcore.ErrorLevel)
+		ce.Write(fields...)
 	}
 }
 
@@ -113,7 +114,7 @@ func (l Logger) zapify(ctx context.Context, keyvals []interface{}) []zapcore.Fie
 		if ok {
 			extraFields++
 		}
-		extra = Fields(ctx)
+		extra = contextFields(ctx)
 		extraFields += len(extra)
 	}
 

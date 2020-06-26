@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -17,6 +18,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/kubernetes/pkg/kubelet/cm/cpuset"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -173,13 +175,18 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		devMode = "1"
 	}
 
+	shards, err := strconv.Atoi(options.GetSidecarOptions().CPU)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
 	args := []string{
 		fmt.Sprintf("--listen-address=%s", m.IP),
 		fmt.Sprintf("--broadcast-address=%s", m.StaticIP),
 		fmt.Sprintf("--broadcast-rpc-address=%s", m.StaticIP),
 		fmt.Sprintf("--seeds=%s", strings.Join(seeds, ",")),
 		fmt.Sprintf("--developer-mode=%s", devMode),
-		fmt.Sprintf("--smp=%s", options.GetSidecarOptions().CPU),
+		fmt.Sprintf("--overprovisioned=%d", 0),
+		fmt.Sprintf("--smp=%d", shards),
 	}
 	if cluster.Spec.Alternator.Enabled() {
 		args = append(args, fmt.Sprintf("--alternator-port=%d", cluster.Spec.Alternator.Port))
@@ -194,7 +201,9 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-
+		if err := s.validateCpuSet(ctx, cpusAllowed, shards); err != nil {
+			return nil, errors.WithStack(err)
+		}
 		args = append(args, fmt.Sprintf("--cpuset=%s", cpusAllowed))
 	}
 
@@ -204,6 +213,18 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	s.logger.Info(ctx, "Scylla entrypoint", "command", scyllaCmd)
 
 	return scyllaCmd, nil
+}
+
+func (s *ScyllaConfig) validateCpuSet(ctx context.Context, cpusAllowed string, shards int) error {
+	cpuSet, err := cpuset.Parse(cpusAllowed)
+	if err != nil {
+		return err
+	}
+	if cpuSet.Size() != shards {
+		s.logger.Info(ctx, "suboptimal shard and cpuset config, shard count (config: 'CPU') and cpuset size should match for optimal performance",
+			"shards", shards, "cpuset", cpuSet.String())
+	}
+	return nil
 }
 
 // mergeYAMLs merges two arbitrary YAML structures at the top level.

@@ -1279,7 +1279,7 @@
   revision = "0317810137be915b9cf888946c6e115c1bfac693"
 
 [[projects]]
-  digest = "1:c89cbf8dda5c3addd250e2407c9090fb87455f849b724ae7cf4cc5f5ea3d9946"
+  digest = "1:72ff367f476e217e2a2ea5ac5d3da75677bd2746059bfeb617d22a9cb55373d3"
   name = "k8s.io/kubernetes"
   packages = [
     "pkg/api/legacyscheme",
@@ -1304,6 +1304,7 @@
     "pkg/features",
     "pkg/fieldpath",
     "pkg/kubelet/apis",
+    "pkg/kubelet/cm/cpuset",
     "pkg/kubelet/types",
     "pkg/master/ports",
     "pkg/scheduler/algorithm",
@@ -1465,6 +1466,7 @@
     "k8s.io/client-go/tools/record",
     "k8s.io/code-generator/cmd/deepcopy-gen",
     "k8s.io/kubernetes/pkg/controller/endpoint",
+    "k8s.io/kubernetes/pkg/kubelet/cm/cpuset",
     "sigs.k8s.io/controller-runtime/pkg/client",
     "sigs.k8s.io/controller-runtime/pkg/client/config",
     "sigs.k8s.io/controller-runtime/pkg/controller",

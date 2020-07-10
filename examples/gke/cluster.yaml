@@ -100,6 +100,9 @@ spec:
           limits:
             cpu: 30
             memory: 115G
+          requests:
+            cpu: 30
+            memory: 115G
         placement:
           nodeAffinity:
             requiredDuringSchedulingIgnoredDuringExecution:

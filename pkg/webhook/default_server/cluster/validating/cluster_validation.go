@@ -33,16 +33,18 @@ func checkValues(c *scyllav1alpha1.Cluster) (allowed bool, msg string) {
 				return false, fmt.Sprintf("when using cpuset, you must use whole cpu cores, but rack %s has %dm", rack.Name, cores)
 			}
 
-			// Requests == Limits or only Limits must be set for QOS class guaranteed
+			// Requests == Limits and Requests must be set and equal for QOS class guaranteed
 			requests := rack.Resources.Requests
 			if requests != nil {
-				if requests.Cpu().MilliValue() == 0 {
+				if requests.Cpu().MilliValue() != limits.Cpu().MilliValue() {
 					return false, fmt.Sprintf("when using cpuset, cpu requests must be the same as cpu limits in rack %s", rack.Name)
 				}
-				if requests.Memory().MilliValue() == 0 {
+				if requests.Memory().MilliValue() != limits.Memory().MilliValue() {
 					return false, fmt.Sprintf("when using cpuset, memory requests must be the same as memory limits in rack %s", rack.Name)
 				}
-				return false, fmt.Sprintf("when using cpuset, requests must be the same as limits in rack %s", rack.Name)
+			} else {
+				// Copy the limits
+				rack.Resources.Requests = limits.DeepCopy()
 			}
 		}
 	}

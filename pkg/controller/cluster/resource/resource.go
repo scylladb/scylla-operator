@@ -191,6 +191,16 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 								"-c",
 								fmt.Sprintf("cp -a /sidecar/* %s", naming.SharedDirName),
 							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("1"),
+									corev1.ResourceMemory: resource.MustParse("200M"),
+								},
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("1"),
+									corev1.ResourceMemory: resource.MustParse("200M"),
+								},
+							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "shared",
@@ -396,6 +406,16 @@ func sysctlInitContainer(sysctls []string) *corev1.Container {
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &opt,
 		},
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("1"),
+				corev1.ResourceMemory: resource.MustParse("200M"),
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("1"),
+				corev1.ResourceMemory: resource.MustParse("200M"),
+			},
+		},
 		Command: []string{
 			"/bin/sh",
 			"-c",
@@ -430,6 +450,16 @@ func agentContainer(c *scyllav1alpha1.Cluster) *corev1.Container {
 				Name:      "scylla-agent-config-volume",
 				MountPath: naming.ScyllaAgentConfigDirName,
 				ReadOnly:  true,
+			},
+		},
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("1"),
+				corev1.ResourceMemory: resource.MustParse("200M"),
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("1"),
+				corev1.ResourceMemory: resource.MustParse("200M"),
 			},
 		},
 	}

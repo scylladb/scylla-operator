@@ -1,8 +1,8 @@
 package unit
 
 import (
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
-	"github.com/scylladb/scylla-operator/pkg/controller/cluster/util"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -33,7 +33,7 @@ func NewDetailedSingleRackCluster(name, namespace, repo, version, dc, rack strin
 			},
 		},
 		Status: scyllav1alpha1.ClusterStatus{
-			Racks: map[string]*scyllav1alpha1.RackStatus{
+			Racks: map[string]scyllav1alpha1.RackStatus{
 				rack: {
 					Version:      version,
 					Members:      members,

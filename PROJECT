@@ -1,3 +1,7 @@
-version: "1"
-domain: scylladb.com
+domain: scylla.scylladb.com
 repo: github.com/scylladb/scylla-operator
+resources:
+- group: scylla
+  kind: Cluster
+  version: v1alpha1
+version: "2"

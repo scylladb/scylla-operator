@@ -10,10 +10,9 @@ import tempfile
 
 log = logging.getLogger(__name__)
 
-KUBEBUILDER_URL = "https://github.com/kubernetes-sigs/kubebuilder/releases/download/v1.0.5/kubebuilder_1.0.5_linux_amd64.tar.gz"
-KUSTOMIZE_URL = "https://github.com/kubernetes-sigs/kustomize/releases/download/v2.0.3/kustomize_2.0.3_linux_amd64"
-DEP_URL = "https://github.com/golang/dep/releases/download/v0.5.4/dep-linux-amd64"
-GO_URL = "https://dl.google.com/go/go1.14.1.linux-amd64.tar.gz"
+KUBEBUILDER_URL = "https://github.com/kubernetes-sigs/kubebuilder/releases/download/v2.3.1/kubebuilder_2.3.1_linux_amd64.tar.gz"
+KUSTOMIZE_URL = "https://github.com/kubernetes-sigs/kustomize/releases/download/v3.1.0/kustomize_3.1.0_linux_amd64"
+GO_URL = "https://dl.google.com/go/go1.13.12.linux-amd64.tar.gz"
 GORELEASER_URL = "https://github.com/goreleaser/goreleaser/releases/download/v0.129.0/goreleaser_Linux_x86_64.tar.gz"
 
 
@@ -57,12 +56,9 @@ def main():
     download_from_tar(KUBEBUILDER_URL, args.output_dir)
 
     log.info("Installing kustomize...")
-    download_to(KUSTOMIZE_URL, os.path.join(args.output_dir, "kustomize"))
-    os.chmod(os.path.join(args.output_dir, "kustomize"), 755)
-
-    log.info("Installing dep...")
-    download_to(DEP_URL, os.path.join(args.output_dir, "dep"))
-    os.chmod(os.path.join(args.output_dir, "dep"), 755)
+    kustomize_path = os.path.join(args.output_dir, "kustomize")
+    download_to(KUSTOMIZE_URL, kustomize_path)
+    os.chmod(kustomize_path, 755)
 
     log.info("Installing go...")
     download_from_tar(GO_URL, args.output_dir, flatten=False)

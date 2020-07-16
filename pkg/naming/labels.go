@@ -2,7 +2,8 @@ package naming
 
 import (
 	"fmt"
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/apis/scylla/v1alpha1"
+
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )

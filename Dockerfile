@@ -1,22 +1,22 @@
-FROM alpine:3.11
+# Build the manager binary
+FROM golang:1.13 as builder
 
-# Run tini as PID 1 and avoid signal handling issues
-ADD https://github.com/krallin/tini/releases/download/v0.18.0/tini-static-amd64 /usr/local/bin/tini
+WORKDIR /workspace
+# Copy the Go Modules manifests
+COPY go.mod go.mod
+COPY go.sum go.sum
+# cache deps before building and copying source so that we don't need to re-download as much
+# and so that source changes don't invalidate our downloaded layer
+RUN go mod download
 
-# Add exec permissions
-RUN chmod +x /usr/local/bin/tini
+# Copy source
+COPY . .
 
-# Add files for the sidecar
-RUN mkdir -p /sidecar
+# Build
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o scylla-operator github.com/scylladb/scylla-operator/pkg/cmd
 
-# Add tini to sidecar
-RUN cp /usr/local/bin/tini /sidecar/tini
+FROM alpine:3.12
+WORKDIR /
+COPY --from=builder /workspace/scylla-operator .
 
-# Add operator binary
-COPY manager /usr/local/bin/scylla-operator
-RUN chmod +x /usr/local/bin/scylla-operator
-
-# Add executables to sidecar folder
-RUN cp /usr/local/bin/scylla-operator /sidecar/scylla-operator
-
-ENTRYPOINT ["tini", "--", "scylla-operator"]
+ENTRYPOINT ["/scylla-operator"]

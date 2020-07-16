@@ -2,75 +2,93 @@ all: test local-build
 
 # Image URL to use all building/pushing image targets
 REPO	?= scylladb/scylla-operator
-TAG		?= $(shell git describe --tags --always)
+TAG		?= $(shell git describe --tags --always --abbrev=0)
 IMG		?= $(REPO):$(TAG)
+# Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
+CRD_OPTIONS ?= "crd:trivialVersions=true"
 
 .EXPORT_ALL_VARIABLES:
 DOCKER_BUILDKIT		:= 1
-GO111MODULE			:= off
 KUBEBUILDER_ASSETS	:= $(CURDIR)/bin/deps
-PATH				:= $(CURDIR)/bin/deps/go/bin:$(CURDIR)/bin/deps:$(PATH)
+PATH				:= $(CURDIR)/bin/deps:$(PATH):
+PATH				:= $(CURDIR)/bin/deps/go/bin:$(PATH):
 GOROOT				:= $(CURDIR)/bin/deps/go
 GOVERSION			:= $(shell go version)
 
-# Run tests
-.PHONY: test
-test: fmt vet vendor
-	go test ./pkg/... ./cmd/... -coverprofile cover.out
+# Default package
+PKG := ./pkg/...
 
-# Build local-build binary
-.PHONY: local-build
-local-build: fmt vet vendor
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o bin/manager github.com/scylladb/scylla-operator/cmd
+# Run tests
+test: generate fmt vet manifests
+	go test $(PKG) -coverprofile cover.out
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
-.PHONY: run
-run: fmt vet vendor
+run: generate fmt vet manifests
 	go run ./cmd operator --image="$(IMG)" --enable-admission-webhook=false
 
 # Install CRDs into a cluster
-.PHONY: install
-install: manifests
-	kubectl apply -f config/crds
+install: manifests cert-manager
+	kustomize build config/crd | kubectl apply -f -
+
+# Uninstall CRDs from a cluster
+uninstall: manifests
+	kustomize build config/crd | kubectl delete -f -
+	kubectl delete -f examples/generic/cert-manager.yaml
+
+cert-manager:
+	cat config/certmanager/cert-manager.yaml > examples/generic/cert-manager.yaml
+	cat config/certmanager/cert-manager.yaml > examples/gke/cert-manager.yaml
+	kubectl apply -f examples/generic/cert-manager.yaml
+	kubectl -n cert-manager wait --for=condition=ready pod -l app=cert-manager --timeout=60s
+	kubectl -n cert-manager wait --for=condition=ready pod -l app=cainjector --timeout=60s
+	kubectl -n cert-manager wait --for=condition=ready pod -l app=webhook --timeout=60s
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-.PHONY: deploy
-deploy: install
-	kubectl apply -f config/rbac
-	kustomize build config | kubectl apply -f -
+deploy: manifests cert-manager
+	cd config/manager && kustomize edit set image controller=${IMG}
+	kustomize build config/default | kubectl apply -f -
+	kustomize build config/default > examples/generic/operator.yaml
+	kustomize build config/default > examples/gke/operator.yaml
 
 # Generate manifests e.g. CRD, RBAC etc.
-.PHONY: manifests
-manifests: bin/deps
-	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
-	cd config && kustomize edit set image scylladb/scylla-operator="$(IMG)"
-	kustomize build config > examples/generic/operator.yaml
-	kustomize build config > examples/gke/operator.yaml
+manifests: bin/deps controller-gen
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) webhook rbac:roleName=manager-role paths="$(PKG)" output:crd:artifacts:config=config/crd/bases output:rbac:artifacts:config=config/rbac/bases
 
 # Run go fmt against code
-.PHONY: fmt
-fmt: bin/deps
-	go fmt ./pkg/... ./cmd/...
+fmt:
+	go fmt $(PKG)
 
 # Run go vet against code
-.PHONY: vet
-vet: bin/deps
-	go vet ./pkg/... ./cmd/...
+vet:
+	go vet $(PKG)
 
 # Generate code
-.PHONY: generate
-generate: bin/deps
-	go generate ./pkg/... ./cmd/...
-
-# Ensure dependencies
-.PHONY: vendor
-vendor:
-	dep ensure -v
+generate: controller-gen
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="$(PKG)"
 
 # Build the docker image
 .PHONY: docker-build
 docker-build: bin/deps
 	goreleaser --skip-validate --skip-publish --rm-dist
+
+# Push the docker image
+docker-push:
+	docker push ${IMG}
+
+# Ensure dependencies
+.PHONY: vendor
+vendor:
+	go mod vendor
+
+# Build local-build binary
+.PHONY: local-build
+local-build: fmt vet vendor
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o bin/scylla-operator github.com/scylladb/scylla-operator/pkg/cmd
+
+# find or download controller-gen
+# download controller-gen if necessary
+controller-gen: bin/deps
+CONTROLLER_GEN=bin/deps/controller-gen
 
 release: bin/deps
 	goreleaser --rm-dist

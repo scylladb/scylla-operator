@@ -81,7 +81,7 @@ fi
 
 GCP_REGION=${GCP_ZONE:0:$((${#GCP_ZONE}-2))}
 
-CLUSTER_VERSION="$(gcloud container get-server-config --format "value(validMasterVersions[0])")"
+CLUSTER_VERSION="$(gcloud container get-server-config --zone ${GCP_ZONE} --format "value(validMasterVersions[0])")"
 
 check_prerequisites() {
     echo "Checking if kubectl is present on the machine..."
@@ -196,8 +196,11 @@ echo "Installing local volume provisioner..."
 helm install local-provisioner provisioner
 echo "Your disks are ready to use."
 
+echo "Starting the cert manger..."
+kubectl apply -f cert-manager.yaml
+sleep 30
 echo "Starting the scylla operator..."
 kubectl apply -f operator.yaml
-
+sleep 30
 echo "Starting the scylla cluster..."
 sed "s/<gcp_region>/${GCP_REGION}/g;s/<gcp_zone>/${GCP_ZONE}/g" cluster.yaml | kubectl apply -f -

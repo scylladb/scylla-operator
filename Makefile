@@ -39,6 +39,9 @@ cert-manager:
 	cat config/certmanager/cert-manager.yaml > examples/generic/cert-manager.yaml
 	cat config/certmanager/cert-manager.yaml > examples/gke/cert-manager.yaml
 	kubectl apply -f examples/generic/cert-manager.yaml
+	kubectl -n cert-manager wait --for=condition=ready pod -l app=cert-manager --timeout=60s
+	kubectl -n cert-manager wait --for=condition=ready pod -l app=cainjector --timeout=60s
+	kubectl -n cert-manager wait --for=condition=ready pod -l app=webhook --timeout=60s
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests cert-manager

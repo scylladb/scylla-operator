@@ -7,6 +7,9 @@ import tarfile
 import requests
 import argparse
 import tempfile
+import subprocess
+import shlex
+import os
 
 log = logging.getLogger(__name__)
 
@@ -14,7 +17,7 @@ KUBEBUILDER_URL = "https://github.com/kubernetes-sigs/kubebuilder/releases/downl
 KUSTOMIZE_URL = "https://github.com/kubernetes-sigs/kustomize/releases/download/v3.1.0/kustomize_3.1.0_linux_amd64"
 GO_URL = "https://dl.google.com/go/go1.13.12.linux-amd64.tar.gz"
 GORELEASER_URL = "https://github.com/goreleaser/goreleaser/releases/download/v0.129.0/goreleaser_Linux_x86_64.tar.gz"
-
+CONTROLLER_GEN_PKG = "sigs.k8s.io/controller-tools/cmd/controller-gen@v0.3.0"
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Install binary dependencies")
@@ -45,6 +48,11 @@ def download_from_tar(url, output_dir, paths_inside_tar=[], flatten=True):
                 m.name = os.path.basename(m.name)
             tar.extract(m, output_dir)
 
+def download_go_package(pkg, output_dir):
+    env = os.environ.copy()
+    env["GOBIN"] = os.path.abspath(output_dir)
+    p = subprocess.Popen(shlex.split("go get {}".format(pkg)), env=env)
+    p.wait()
 
 def main():
     global log
@@ -62,6 +70,9 @@ def main():
 
     log.info("Installing go...")
     download_from_tar(GO_URL, args.output_dir, flatten=False)
+
+    log.info("Installing controller-gen...")
+    download_go_package(CONTROLLER_GEN_PKG, args.output_dir)
 
     log.info("Installing goreleaser...")
     download_from_tar(GORELEASER_URL, args.output_dir,

@@ -29,9 +29,23 @@ Then make kubectl aware of this local installation like this:
 eval $(minikube docker-env)
 ```
 
+## Deploy Cert Manager
+First deploy Cert Manager, you can either follow [upsteam instructions](https://cert-manager.io/docs/installation/kubernetes/) or use following command:
+
+```console
+kubectl apply -f examples/generic/cert-manager.yaml
+```
+This will install Cert Manager with self signed certificate. 
+
+Once it's deployed, wait until all Cert Manager pods will enter into Running state:
+
+```console
+kubectl wait -n cert-manager --for=condition=ready pod -l app=cert-manager --timeout=60s
+```
+
 ## Deploy Scylla Operator
 
-First deploy the  Scylla Operator using the following commands:
+Deploy the  Scylla Operator using the following commands:
 
 ```console
 kubectl apply -f examples/generic/operator.yaml

@@ -834,6 +834,15 @@ spec:
             developerMode:
               description: DeveloperMode determines if the cluster runs in developer-mode.
               type: boolean
+            network:
+              description: Networking config
+              properties:
+                dnsPolicy:
+                  description: DNSPolicy defines how a pod's DNS will be configured.
+                  type: string
+                hostNetworking:
+                  type: boolean
+              type: object
             repository:
               description: Repository to pull the image from.
               type: string

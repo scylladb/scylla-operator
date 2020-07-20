@@ -140,6 +140,8 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 					},
 				},
 				Spec: corev1.PodSpec{
+					HostNetwork: c.Spec.Network.HostNetworking,
+					DNSPolicy:   c.Spec.Network.GetDNSPolicy(),
 					Volumes: []corev1.Volume{
 						{
 							Name: "shared",

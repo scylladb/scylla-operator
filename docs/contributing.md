@@ -4,11 +4,10 @@
 
 To develop on scylla-operator, your environment must have the following:
 
-1. [Go 1.12](https://golang.org/dl/)
+1. [Go 1.13](https://golang.org/dl/)
     * Make sure [GOPATH](https://github.com/golang/go/wiki/SettingGOPATH) is set to `GOPATH=$HOME/go`.
-2. [Kustomize v2.0.3](https://github.com/kubernetes-sigs/kustomize/releases/tag/v2.0.3)
-3. [kubebuilder v1.0.7](https://github.com/kubernetes-sigs/kubebuilder/releases/tag/v1.0.7)
-4. [dep v0.5.0](https://github.com/golang/dep/releases/tag/v0.5.1)
+2. [Kustomize v3.1.0](https://github.com/kubernetes-sigs/kustomize/releases/tag/v3.1.0)
+3. [kubebuilder v2.3.1](https://github.com/kubernetes-sigs/kubebuilder/releases/tag/v2.3.1)
 5. [Docker](https://docs.docker.com/install/)
 6. [goreleaser](https://goreleaser.com/)
 7. Git client installed

@@ -137,6 +137,23 @@ Scylla achieves top-notch performance by pinning the CPUs it uses. To enable thi
 kubectl apply -f examples/gke/cpu-policy-daemonset.yaml
 ```
 
+### Deploy Cert Manager
+
+You can either follow [upsteam instructions](https://cert-manager.io/docs/installation/kubernetes/) or use following command:
+
+```console
+kubectl apply -f examples/gke/cert-manager.yaml
+```
+
+This will install Cert Manager with self signed certificate.  
+
+Once it's deployed, wait until all Cert Manager pods will enter into Running state:
+
+```console
+kubectl wait -n cert-manager --for=condition=ready pod -l app=cert-manager --timeout=60s
+```
+
+
 ### Installing the Scylla Operator
 
 In order for the example to work you need to modify the cluster definition in the following way:

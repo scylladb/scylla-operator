@@ -92,7 +92,7 @@ spec:
       serviceAccountName: cpu-policy-daemonset
       containers:
       - name: cpu-policy
-        image: yanniszark/kubectl:1.11.5
+        image: scylladb/kubectl:1.11.5
         imagePullPolicy: Always
         env:
           - name: NODE

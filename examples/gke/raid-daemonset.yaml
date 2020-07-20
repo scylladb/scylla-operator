@@ -20,7 +20,7 @@ spec:
           effect: NoSchedule
       containers:
       - name: raid-local-disks
-        image: yanniszark/raid-setup:0.1
+        image: scylladb/raid-setup:0.1
         env:
           - name: RAID_DIR
             value: "/mnt/hostfs/mnt/raid-disks/disk0"

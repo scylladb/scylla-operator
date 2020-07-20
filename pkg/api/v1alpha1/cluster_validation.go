@@ -41,7 +41,6 @@ func checkValues(c *Cluster) error {
 				if requests.Memory().MilliValue() != limits.Memory().MilliValue() {
 					return errors.Errorf("when using cpuset, memory requests must be the same as memory limits in rack %s", rack.Name)
 				}
-				return errors.Errorf("when using cpuset, requests must be the same as limits in rack %s", rack.Name)
 			} else {
 				// Copy the limits
 				rack.Resources.Requests = limits.DeepCopy()

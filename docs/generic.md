@@ -261,39 +261,37 @@ After a restart the operator will use the security token when it interacts with 
  Both of them will be available under the `monitoring` namespace. 
  Customization can be done in `examples/generic/prometheus/values.yaml` and `examples/generic/grafana/values.yaml`.
  
- 1. Create the monitoring namespace
- ```console
- kubectl create namespace monitoring
- ```
- 
- 1. Install Prometheus
- ```console
- helm upgrade --install scylla-prom --namespace monitoring stable/prometheus -f examples/generic/prometheus/values.yaml
- ```
- 
- 2. Install Grafana
- 
- First you need to prepare the dashboards to make them available in Grafana. 
- You can do this by running the following command in the `examples` directory:
- ```console
-./dashboards.sh -t generic
- ```
-If you are deploying to `GKE` the replace the argument with `gke` instead of `generic`.
+1. Create the monitoring namespace
+    ```console
+    kubectl create namespace monitoring
+    ```
+2. Install Prometheus
+    ```console
+    helm upgrade --install scylla-prom --namespace monitoring stable/prometheus -f examples/generic/prometheus/values.yaml
+    ```
+    If you want to tweak the prometheus properties, for example it's assigned memory, you can override it by adding a command line argument like this: `--set server.resources.limits.memory=4Gi`
 
-__NB__: Keep in mind that this is a test setup. For production use, check grafana and prometheus helm chart page for advanced deployment instructions.
+3. Install Grafana
+    First you need to prepare the dashboards to make them available in Grafana. 
+    You can do this by running the following command in the `examples` directory:
+    ```console
+    ./dashboards.sh -t generic
+    ```
+    If you are deploying to `GKE` the replace the argument with `gke` instead of `generic`.
 
-Now the dashboards can be created along with the grafana plugin like this:
- ```console
- helm upgrade --install scylla-graf --namespace monitoring stable/grafana -f examples/generic/grafana/values.yaml
- ```
+    __NB__: Keep in mind that this is a test setup. For production use, check grafana and prometheus helm chart page for advanced deployment instructions.
+
+    Now the dashboards can be created along with the grafana plugin like this:
+    ```console
+    helm upgrade --install scylla-graf --namespace monitoring stable/grafana -f examples/generic/grafana/values.yaml
+    ```
  
- To access Grafana locally, run:
+    To access Grafana locally, run:
+    ```
+    kubectl --namespace monitoring port-forward $(kubectl get pods -n monitoring -l "app.kubernetes.io/instance=scylla-graf" -o jsonpath="{.items[0].metadata.name}") 3000
+    ```
  
-```
-kubectl --namespace monitoring port-forward $(kubectl get pods -n monitoring -l "app.kubernetes.io/instance=scylla-graf" -o jsonpath="{.items[0].metadata.name}") 3000
-```
- 
- You can find it on `http://0.0.0.0:3000` and login with the credentials `admin`:`admin`.
+    You can find it on `http://0.0.0.0:3000` and login with the credentials `admin`:`admin`.
 
 ## Scale Up
 

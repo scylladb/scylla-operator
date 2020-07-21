@@ -135,6 +135,21 @@ Checking the logs of the running scylla instances can be done like this:
 kubectl -n scylla logs simple-cluster-us-east-1-us-east-1a-0 scylla
 ```
 
+### Configure host networking
+
+To squeeze the most out of your deployment it is sometimes necessary to employ [host networking](https://kubernetes.io/docs/concepts/services-networking/).
+To enable this the CRD allows for specifying a `network` parameter as such:
+
+```yaml
+version: 4.0.0
+  agentVersion: 2.0.2
+  cpuset: true
+  network:
+    hostNetworking: true
+```
+
+This will result in hosts network to be used for the Scylla Stateful Set deployment.
+
 ### Configure container kernel parameters
 
 Sometimes it is necessary to run the container with different kernel parameters.

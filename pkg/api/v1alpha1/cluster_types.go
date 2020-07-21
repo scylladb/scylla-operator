@@ -52,6 +52,23 @@ type ClusterSpec struct {
 	// given as a list of key=value pairs.
 	// Example: fs.aio-max-nr=232323
 	Sysctls []string `json:"sysctls,omitempty"`
+	// Networking config
+	Network Network `json:"network,omitempty"`
+}
+
+type Network struct {
+	HostNetworking bool             `json:"hostNetworking,omitempty"`
+	DNSPolicy      corev1.DNSPolicy `json:"dnsPolicy,omitempty"`
+}
+
+func (s Network) GetDNSPolicy() corev1.DNSPolicy {
+	if s.DNSPolicy == "" {
+		if s.HostNetworking {
+			return corev1.DNSClusterFirstWithHostNet
+		}
+		return corev1.DNSDefault
+	}
+	return s.DNSPolicy
 }
 
 // DatacenterSpec is the desired state for a Scylla Datacenter.

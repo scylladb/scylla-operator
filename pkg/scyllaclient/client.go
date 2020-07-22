@@ -10,20 +10,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hailocab/go-hostpool"
-
-	"github.com/go-openapi/strfmt"
-
-	scyllaClient "github.com/scylladb/scylla-operator/pkg/scyllaclient/internal/scylla/client"
-	"github.com/scylladb/scylla-operator/pkg/util/httpx"
-
-	"github.com/scylladb/scylla-operator/pkg/auth"
-
 	api "github.com/go-openapi/runtime/client"
 	apiMiddleware "github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/strfmt"
+	"github.com/hailocab/go-hostpool"
 	"github.com/scylladb/go-log"
 	"github.com/scylladb/go-set/strset"
+	"github.com/scylladb/scylla-operator/pkg/auth"
+	scyllaClient "github.com/scylladb/scylla-operator/pkg/scyllaclient/internal/scylla/client"
 	scyllaOperations "github.com/scylladb/scylla-operator/pkg/scyllaclient/internal/scylla/client/operations"
+	"github.com/scylladb/scylla-operator/pkg/util/httpx"
 )
 
 type Client struct {

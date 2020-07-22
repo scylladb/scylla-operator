@@ -21,7 +21,7 @@ Fortunately there are ways to make life easier and [Minikube](https://minikube.s
 
 We need to give minikube a little bit more resources than default so start minikube like this:
 ```console
-minikube start --cpus=6 --memory=6144
+minikube start --cpus=6
 ```
 
 Then make kubectl aware of this local installation like this:

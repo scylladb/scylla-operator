@@ -34,7 +34,7 @@ func livenessCheck(mc *MemberReconciler) func(http.ResponseWriter, *http.Request
 			return
 		}
 		// Check if JMX is reachable
-		_, err = mc.scyllaClient.Status(context.Background(), host.String())
+		_, err = mc.scyllaClient.Ping(context.Background(), host.String())
 		if err != nil {
 			mc.logger.Error(log.WithTraceID(req.Context()), "Liveness check failed", "error", err)
 			w.WriteHeader(http.StatusServiceUnavailable)

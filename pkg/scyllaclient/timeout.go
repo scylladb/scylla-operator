@@ -1,3 +1,5 @@
+// Copyright (C) 2017 ScyllaDB
+
 package scyllaclient
 
 import (
@@ -6,9 +8,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/scylladb/scylla-operator/pkg/util/httpx"
-
 	"github.com/pkg/errors"
+	"github.com/scylladb/scylla-operator/pkg/util/httpx"
+)
+
+var (
+	// ErrTimeout is returned when request times out.
+	ErrTimeout = errors.New("timeout")
 )
 
 // body defers context cancellation until response body is closed.
@@ -25,7 +31,7 @@ func (b body) Close() error {
 // timeout sets request context timeout for individual requests.
 func timeout(next http.RoundTripper, timeout time.Duration) http.RoundTripper {
 	return httpx.RoundTripperFunc(func(req *http.Request) (resp *http.Response, err error) {
-		d, ok := req.Context().Value(ctxCustomTimeout).(time.Duration)
+		d, ok := hasCustomTimeout(req.Context())
 		if !ok {
 			d = timeout
 		}
@@ -40,7 +46,7 @@ func timeout(next http.RoundTripper, timeout time.Duration) http.RoundTripper {
 			}
 
 			if errors.Cause(err) == context.DeadlineExceeded && ctx.Err() == context.DeadlineExceeded {
-				err = errors.Errorf("timeout after %s", d)
+				err = errors.Wrapf(ErrTimeout, "after %s", d)
 			}
 		}()
 		return next.RoundTrip(req.WithContext(ctx))

@@ -10,7 +10,7 @@ display_usage() {
 	echo "usage: $0 -u|--gcp-user [GCP user] -p|--gcp-project [GCP project] -z|--gcp-zone [GCP zone] -c|--k8s-cluster-name [cluster name (optional)]"
 }
 
-CLUSTER_NAME=scylla-demo
+CLUSTER_NAME=$([ -z "$USER" ] && echo "scylla-demo" || echo "$USER-scylla-demo")
 
 while (( "$#" )); do
   case "$1" in

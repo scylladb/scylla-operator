@@ -159,6 +159,7 @@ const (
 )
 
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 
 // Cluster is the Schema for the clusters API
 type Cluster struct {

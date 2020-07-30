@@ -95,8 +95,11 @@ func (c *Client) HostDatacenter(ctx context.Context, host string) (dc string, er
 }
 
 func (c *Client) Status(ctx context.Context, host string) (NodeStatusInfoSlice, error) {
+	// Always query same host
+	ctx = forceHost(ctx, host)
+
 	// Get all hosts
-	resp, err := c.scyllaOps.StorageServiceHostIDGet(&scyllaOperations.StorageServiceHostIDGetParams{Context: forceHost(ctx, host)})
+	resp, err := c.scyllaOps.StorageServiceHostIDGet(&scyllaOperations.StorageServiceHostIDGetParams{Context: ctx})
 	if err != nil {
 		return nil, err
 	}

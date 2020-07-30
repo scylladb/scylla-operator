@@ -47,13 +47,12 @@ cert-manager:
 deploy: manifests cert-manager
 	cd config/manager && kustomize edit set image controller=${IMG}
 	kustomize build config/default | kubectl apply -f -
-	kustomize build config/default > examples/generic/operator.yaml
-	kustomize build config/default > examples/gke/operator.yaml
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: bin/deps controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) webhook rbac:roleName=manager-role paths="$(PKG)" output:crd:artifacts:config=config/crd/bases output:rbac:artifacts:config=config/rbac/bases
-
+	kustomize build config/default > examples/generic/operator.yaml
+	kustomize build config/default > examples/gke/operator.yaml
 # Run go fmt against code
 fmt:
 	go fmt $(PKG)

@@ -26,7 +26,7 @@ done
 
 if [[ "x${TARGET}" == "x" ]]
 then
-  echo "-t/--target (gke,generic) is mandatory"
+  echo "-t/--target (gke,generic,eks) is mandatory"
   exit
 fi
 

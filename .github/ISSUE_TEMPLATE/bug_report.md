@@ -25,7 +25,7 @@ Steps to reproduce the behavior:
 A clear and concise description of what you expected to happen.
 
 **Config Files**
-If relevant, paste your configuration files here (use a pastebin service, such as https://paste.fedoraproject.org/)
+If relevant, upload your configuration files here using GitHub, there is no need to upload them to any 3rd party services
 
 **Logs**
 Please, provide `kubectl get events`, `kubectl logs -n scylla pod-name` and other relevant information.

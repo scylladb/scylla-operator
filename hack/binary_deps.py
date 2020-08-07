@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import platform
 import sys
 import logging
 import tarfile
@@ -9,15 +10,24 @@ import argparse
 import tempfile
 import subprocess
 import shlex
-import os
 
 log = logging.getLogger(__name__)
 
+# assume linux
 KUBEBUILDER_URL = "https://github.com/kubernetes-sigs/kubebuilder/releases/download/v2.3.1/kubebuilder_2.3.1_linux_amd64.tar.gz"
 KUSTOMIZE_URL = "https://github.com/kubernetes-sigs/kustomize/releases/download/v3.1.0/kustomize_3.1.0_linux_amd64"
-GO_URL = "https://dl.google.com/go/go1.13.12.linux-amd64.tar.gz"
+GO_URL = "https://dl.google.com/go/go1.13.15.linux-amd64.tar.gz"
 GORELEASER_URL = "https://github.com/goreleaser/goreleaser/releases/download/v0.129.0/goreleaser_Linux_x86_64.tar.gz"
+
+# override if Darwin
+if (platform.system() == 'Darwin'):
+    KUBEBUILDER_URL = "https://github.com/kubernetes-sigs/kubebuilder/releases/download/v2.3.1/kubebuilder_2.3.1_darwin_amd64.tar.gz"
+    KUSTOMIZE_URL = "https://github.com/kubernetes-sigs/kustomize/releases/download/v3.1.0/kustomize_3.1.0_darwin_amd64"
+    GO_URL = "https://golang.org/dl/go1.13.15.darwin-amd64.tar.gz"
+    GORELEASER_URL = "https://github.com/goreleaser/goreleaser/releases/download/v0.129.0/goreleaser_Darwin_x86_64.tar.gz"
+
 CONTROLLER_GEN_PKG = "sigs.k8s.io/controller-tools/cmd/controller-gen@v0.3.0"
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Install binary dependencies")

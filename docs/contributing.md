@@ -21,6 +21,8 @@ This will install all binary dependencies under `bin/deps`.
 If you have some of the above already installed, it is completely safe to run the command, since it only
 affects the `bin/deps` folder.
 
+Note: The command only works on Linux and OSX. Windows is not supported.
+
 ## Initial Setup
 
 ### Create a Fork

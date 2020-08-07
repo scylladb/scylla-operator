@@ -93,5 +93,6 @@ release: bin/deps
 	goreleaser --rm-dist
 
 bin/deps: hack/binary_deps.py
+	pip install -r hack/requirements.txt
 	mkdir -p bin/deps
 	hack/binary_deps.py bin/deps

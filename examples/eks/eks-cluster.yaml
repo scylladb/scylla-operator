@@ -7,7 +7,6 @@ metadata:
   region: <eks_region>
 
 nodeGroups:
-
   - name: scylla-pool
     instanceType: i3.2xlarge
     desiredCapacity: 3
@@ -17,13 +16,6 @@ nodeGroups:
       role: "scylla-clusters:NoSchedule"
     ssh:
       allow: true
-    preBootstrapCommands:
-      - cpupower frequency-set -g performance
-      - curl -o /etc/yum.repos.d/scylla.repo -L http://repositories.scylladb.com/scylla/repo/3e3ec6ec-92b2-46ec-b64f-5b2338bc47de/centos/scylladb-4.0.repo
-      - yum install -y scylla-server hwloc ethtool
-      - /opt/scylladb/scripts/scylla_setup --ntp-domain amazon --no-coredump-setup --no-sysconfig-setup --no-raid-setup --no-io-setup --no-bootparam-setup --no-ec2-check --no-cpuscaling-setup
-      - /opt/scylladb/scripts/scylla_raid_setup --disks /dev/nvme0n1 --root /mnt/raid-disks/disk0 --update-fstab
-      - /opt/scylladb/scripts/perftune.py --nic eth0 --mode sq --tune net
     kubeletExtraConfig:
       cpuManagerPolicy: static
     availabilityZones:
@@ -49,9 +41,3 @@ nodeGroups:
       pool: "monitoring-pool"
     ssh:
       allow: true
-    preBootstrapCommands:
-      - blkdiscard /dev/nvme0n1
-      - mkfs.xfs -f /dev/nvme0n1
-      - mkdir -p /mnt/raid-disks/disk0
-      - mount -t xfs -o noatime /dev/nvme0n1 /mnt/raid-disks/disk0
-      - echo "/dev/nvme0n1 /mnt/raid-disks/disk0 xfs noatime,nofail 0 0\n" >> /etc/fstab

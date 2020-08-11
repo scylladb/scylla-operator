@@ -96,7 +96,7 @@ Script requires several dependencies:
 
 We deploy the local volume provisioner, which will discover their mount points and make them available as PersistentVolumes.
 ```
-helm install --name local-provisioner examples/eks/provisioner
+helm install local-provisioner examples/eks/provisioner
 ```
 
 ### Installing the Scylla Operator and Scylla

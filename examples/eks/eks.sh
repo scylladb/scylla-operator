@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 #########
 # Start #
@@ -81,6 +81,10 @@ check_prerequisites
 # Create EKS cluster
 
 sed "s/<eks_region>/${EKS_REGION}/g;s/<eks_cluster_name>/${CLUSTER_NAME}/g;s/<eks_zone>/${EKS_ZONE}/g" eks-cluster.yaml | eksctl create cluster -f -
+
+# Configure node disks and network
+kubectl apply -f node-setup-daemonset.yaml
+sleep 60
 
 # Install local volume provisioner
 echo "Installing local volume provisioner..."

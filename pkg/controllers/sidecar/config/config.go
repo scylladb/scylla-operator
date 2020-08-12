@@ -166,6 +166,8 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 
 	// Check if we need to run in developer mode
 	devMode := "0"
+	// Check if we need to run io-setup
+	ioSetup := "0"
 	cluster := &v1alpha1.Cluster{}
 	err = s.Get(ctx, naming.NamespacedName(s.member.Cluster, s.member.Namespace), cluster)
 	if err != nil {
@@ -173,6 +175,9 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	}
 	if cluster.Spec.DeveloperMode {
 		devMode = "1"
+	}
+	if cluster.Spec.IoSetup {
+		ioSetup = "1"
 	}
 	shards, err := strconv.Atoi(options.GetSidecarOptions().CPU)
 	if err != nil {
@@ -184,6 +189,7 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		fmt.Sprintf("--broadcast-rpc-address=%s", m.StaticIP),
 		fmt.Sprintf("--seeds=%s", strings.Join(seeds, ",")),
 		fmt.Sprintf("--developer-mode=%s", devMode),
+		fmt.Sprintf("--io-setup=%s", ioSetup),
 		fmt.Sprintf("--overprovisioned=%d", 0),
 		fmt.Sprintf("--smp=%d", shards),
 	}

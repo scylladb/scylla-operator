@@ -44,6 +44,8 @@ type ClusterSpec struct {
 	DeveloperMode bool `json:"developerMode,omitempty"`
 	// CpuSet determines if the cluster will use cpu-pinning for max performance.
 	CpuSet bool `json:"cpuset,omitempty"`
+	// IoSetup determines if scylla should run io-setup at startup
+	IoSetup bool `json:"ioSetup,omitempty"`
 	// Datacenter that will make up this cluster.
 	Datacenter DatacenterSpec `json:"datacenter"`
 	// User-provided image for the sidecar that replaces default.

@@ -84,6 +84,7 @@ spec:
   version: 4.0.0
   agentVersion: 2.0.2
   cpuset: true
+  ioSetup: true
   sysctls:
     - "fs.aio-max-nr=2097152"
   network:

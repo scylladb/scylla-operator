@@ -187,6 +187,12 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		fmt.Sprintf("--overprovisioned=%d", 0),
 		fmt.Sprintf("--smp=%d", shards),
 	}
+
+	// Explicitly disable io setup if not requested
+	if !cluster.Spec.IoSetup {
+		args = append(args, fmt.Sprintf("--io-setup=%d", 0))
+	}
+
 	if cluster.Spec.Alternator.Enabled() {
 		args = append(args, fmt.Sprintf("--alternator-port=%d", cluster.Spec.Alternator.Port))
 	}

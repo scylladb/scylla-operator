@@ -84,6 +84,7 @@ spec:
   version: 4.0.0
   agentVersion: 2.0.2
   developerMode: true
+  ioSetup: true
   datacenter:
     name: us-east-1
     racks:

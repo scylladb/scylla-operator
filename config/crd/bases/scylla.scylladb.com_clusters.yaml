@@ -486,6 +486,9 @@ spec:
             developerMode:
               description: DeveloperMode determines if the cluster runs in developer-mode.
               type: boolean
+            ioSetup:
+              description: ioSetup determines if scylladb container should do io setup at startup
+              type: boolean
             network:
               description: Networking config
               properties:

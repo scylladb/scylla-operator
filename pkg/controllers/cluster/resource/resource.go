@@ -350,6 +350,14 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 	if sysctlContainer != nil {
 		sts.Spec.Template.Spec.InitContainers = append(sts.Spec.Template.Spec.InitContainers, *sysctlContainer)
 	}
+	for _, VolumeMount := range r.VolumeMounts {
+		sts.Spec.Template.Spec.Containers[0].VolumeMounts = append(
+			sts.Spec.Template.Spec.Containers[0].VolumeMounts, *VolumeMount.DeepCopy())
+	}
+	for _, Volume := range r.Volumes {
+		sts.Spec.Template.Spec.Volumes = append(
+			sts.Spec.Template.Spec.Volumes, *Volume.DeepCopy())
+	}
 	sts.Spec.Template.Spec.Containers = append(sts.Spec.Template.Spec.Containers, *agentContainer(c))
 	return sts
 }

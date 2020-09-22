@@ -15,7 +15,7 @@ namePrefix: scylla-operator-
 bases:
 - ../crd
 - ../rbac
-- ../manager
+- ../operator
 - ../webhook
 - ../certmanager
 

@@ -1,0 +1,48 @@
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: cluster-webhook
+webhooks:
+  - clientConfig:
+      caBundle: Cg==
+      service:
+        name: scylla-operator-webhook-service
+        namespace: system
+        path: /mutate-scylla-scylladb-com-v1alpha1-cluster
+    failurePolicy: Fail
+    name: webhook.scylla.scylladb.com
+    rules:
+      - apiGroups:
+          - scylla.scylladb.com
+        apiVersions:
+          - v1alpha1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - clusters
+
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: cluster-webhook
+webhooks:
+  - clientConfig:
+      caBundle: Cg==
+      service:
+        name: scylla-operator-webhook-service
+        namespace: system
+        path: /validate-scylla-scylladb-com-v1alpha1-cluster
+    failurePolicy: Fail
+    name: webhook.scylla.scylladb.com
+    rules:
+      - apiGroups:
+          - scylla.scylladb.com
+        apiVersions:
+          - v1alpha1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - clusters

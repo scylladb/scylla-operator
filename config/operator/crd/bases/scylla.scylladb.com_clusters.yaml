@@ -46,6 +46,51 @@ spec:
                   format: int32
                   type: integer
               type: object
+            backups:
+              description: Backups specifies backup task in Scylla Manager. When Scylla Manager is not installed, these will be ignored.
+              items:
+                properties:
+                  dc:
+                    items:
+                      type: string
+                    type: array
+                  interval:
+                    type: string
+                  keyspace:
+                    items:
+                      type: string
+                    type: array
+                  location:
+                    items:
+                      type: string
+                    type: array
+                  name:
+                    type: string
+                  num_retries:
+                    format: int64
+                    type: integer
+                  rate_limit:
+                    items:
+                      type: string
+                    type: array
+                  retention:
+                    format: int64
+                    type: integer
+                  snapshot_parallel:
+                    items:
+                      type: string
+                    type: array
+                  start_date:
+                    type: string
+                  upload_parallel:
+                    items:
+                      type: string
+                    type: array
+                required:
+                - location
+                - name
+                type: object
+              type: array
             cpuset:
               description: CpuSet determines if the cluster will use cpu-pinning for max performance.
               type: boolean
@@ -1325,6 +1370,38 @@ spec:
                 hostNetworking:
                   type: boolean
               type: object
+            repairs:
+              description: Repairs specifies repair task in Scylla Manager. When Scylla Manager is not installed, these will be ignored.
+              items:
+                properties:
+                  dc:
+                    items:
+                      type: string
+                    type: array
+                  fail_fast:
+                    type: boolean
+                  intensity:
+                    format: int64
+                    type: integer
+                  interval:
+                    type: string
+                  keyspace:
+                    items:
+                      type: string
+                    type: array
+                  name:
+                    type: string
+                  num_retries:
+                    format: int64
+                    type: integer
+                  small_table_threshold:
+                    type: string
+                  start_date:
+                    type: string
+                required:
+                - name
+                type: object
+              type: array
             repository:
               description: Repository to pull the image from.
               type: string
@@ -1357,6 +1434,58 @@ spec:
         status:
           description: ClusterStatus defines the observed state of Cluster
           properties:
+            backups:
+              items:
+                properties:
+                  dc:
+                    items:
+                      type: string
+                    type: array
+                  error:
+                    type: string
+                  id:
+                    type: string
+                  interval:
+                    type: string
+                  keyspace:
+                    items:
+                      type: string
+                    type: array
+                  location:
+                    items:
+                      type: string
+                    type: array
+                  name:
+                    type: string
+                  num_retries:
+                    format: int64
+                    type: integer
+                  rate_limit:
+                    items:
+                      type: string
+                    type: array
+                  retention:
+                    format: int64
+                    type: integer
+                  snapshot_parallel:
+                    items:
+                      type: string
+                    type: array
+                  start_date:
+                    type: string
+                  upload_parallel:
+                    items:
+                      type: string
+                    type: array
+                required:
+                - error
+                - id
+                - location
+                - name
+                type: object
+              type: array
+            manager_id:
+              type: string
             racks:
               additionalProperties:
                 description: RackStatus is the status of a Scylla Rack
@@ -1392,6 +1521,43 @@ spec:
                 - version
                 type: object
               type: object
+            repairs:
+              items:
+                properties:
+                  dc:
+                    items:
+                      type: string
+                    type: array
+                  error:
+                    type: string
+                  fail_fast:
+                    type: boolean
+                  id:
+                    type: string
+                  intensity:
+                    format: int64
+                    type: integer
+                  interval:
+                    type: string
+                  keyspace:
+                    items:
+                      type: string
+                    type: array
+                  name:
+                    type: string
+                  num_retries:
+                    format: int64
+                    type: integer
+                  small_table_threshold:
+                    type: string
+                  start_date:
+                    type: string
+                required:
+                - error
+                - id
+                - name
+                type: object
+              type: array
           type: object
       type: object
   version: v1alpha1

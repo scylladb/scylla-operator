@@ -31,7 +31,10 @@ func (cc *ClusterReconciler) cleanup(ctx context.Context, c *scyllav1alpha1.Clus
 		}
 
 		// Get all member services
-		err = cc.List(ctx, svcList, &client.ListOptions{LabelSelector: naming.RackSelector(r, c)})
+		err = cc.List(ctx, svcList, &client.ListOptions{
+			Namespace:     c.Namespace,
+			LabelSelector: naming.RackSelector(r, c)},
+		)
 		if err != nil {
 			return errors.Wrap(err, "error listing member services")
 		}

@@ -1,17 +1,9 @@
-# Namespace where the Scylla Cluster will be created
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: scylla
-
----
-
 # Role for scylla members.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: simple-cluster-member
-  namespace: scylla
+  name: cluster-member
+  namespace: scylla-manager-system
 rules:
   - apiGroups:
       - ""
@@ -50,47 +42,43 @@ rules:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: simple-cluster-member
-  namespace: scylla
+  name: cluster-member
+  namespace: scylla-manager-system
 
 ---
-
 # RoleBinding for scylla members.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: simple-cluster-member
-  namespace: scylla
+  name: member-rolebinding
+  namespace: scylla-manager-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: simple-cluster-member
+  name: cluster-member
 subjects:
   - kind: ServiceAccount
-    name: simple-cluster-member
-    namespace: scylla
+    name: scylla-manager-cluster-member
+    namespace: scylla-manager-system
 
 ---
-
-# Simple Scylla Cluster
+# Scylla Manager Cluster
 apiVersion: scylla.scylladb.com/v1alpha1
 kind: Cluster
 metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
-  name: simple-cluster
-  namespace: scylla
+  name: cluster
+  namespace: scylla-manager
 spec:
   version: 4.0.0
   agentVersion: 2.0.2
   developerMode: true
   datacenter:
-    name: us-east-1
+    name: manager-dc
     racks:
-      - name: us-east-1a
+      - name: manager-rack
         scyllaConfig: "scylla-config"
         scyllaAgentConfig: "scylla-agent-config"
-        members: 3
+        members: 1
         storage:
           capacity: 5Gi
         resources:
@@ -100,10 +88,3 @@ spec:
           limits:
             cpu: 1
             memory: 1Gi
-        volumes:
-          - name: coredumpfs
-            hostPath:
-              path: /tmp/coredumps
-        volumeMounts:
-          - mountPath: /tmp/coredumps
-            name: coredumpfs

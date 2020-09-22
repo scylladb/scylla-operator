@@ -51,38 +51,49 @@ spec:
               items:
                 properties:
                   dc:
+                    description: DC a list of datacenter glob patterns, e.g. 'dc1,!otherdc*' used to specify the DCs to include or exclude from backup.
                     items:
                       type: string
                     type: array
                   interval:
+                    description: Interval task schedule interval e.g. 3d2h10m, valid units are d, h, m, s (default "0").
                     type: string
                   keyspace:
+                    description: Keyspace a list of keyspace/tables glob patterns, e.g. 'keyspace,!keyspace.table_prefix_*' used to include or exclude keyspaces from repair.
                     items:
                       type: string
                     type: array
                   location:
+                    description: 'Location a list of backup locations in the format [<dc>:]<provider>:<name> ex. s3:my-bucket. The <dc>: part is optional and is only needed when different datacenters are being used to upload data to different locations. <name> must be an alphanumeric string and may contain a dash and or a dot, but other characters are forbidden. The only supported storage <provider> at the moment are s3 and gcs.'
                     items:
                       type: string
                     type: array
                   name:
+                    description: Name of a task, it must be unique across all tasks.
                     type: string
-                  num_retries:
+                  numRetries:
+                    description: NumRetries the number of times a scheduled task will retry to run before failing (default 3).
                     format: int64
                     type: integer
-                  rate_limit:
+                  rateLimit:
+                    description: 'RateLimit a list of megabytes (MiB) per second rate limits expressed in the format [<dc>:]<limit>. The <dc>: part is optional and only needed when different datacenters need different upload limits. Set to 0 for no limit (default 100).'
                     items:
                       type: string
                     type: array
                   retention:
+                    description: Retention The number of backups which are to be stored (default 3).
                     format: int64
                     type: integer
-                  snapshot_parallel:
+                  snapshotParallel:
+                    description: 'SnapshotParallel a list of snapshot parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set, the limit is global (e.g. ''dc1:2,5'') the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters.'
                     items:
                       type: string
                     type: array
-                  start_date:
+                  startDate:
+                    description: StartDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s (default "now").
                     type: string
-                  upload_parallel:
+                  uploadParallel:
+                    description: 'UploadParallel a list of upload parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set the limit is global (e.g. ''dc1:2,5'') the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters.'
                     items:
                       type: string
                     type: array
@@ -1375,28 +1386,41 @@ spec:
               items:
                 properties:
                   dc:
+                    description: DC list of datacenter glob patterns, e.g. 'dc1', '!otherdc*' used to specify the DCs to include or exclude from backup.
                     items:
                       type: string
                     type: array
-                  fail_fast:
+                  failFast:
+                    description: FailFast stop repair on first error.
                     type: boolean
                   intensity:
+                    description: Intensity integer >= 1 or a decimal between (0,1), higher values may result in higher speed and cluster load. 0 value means repair at maximum intensity.
                     format: int64
                     type: integer
                   interval:
+                    description: Interval task schedule interval e.g. 3d2h10m, valid units are d, h, m, s (default "0").
                     type: string
                   keyspace:
+                    description: Keyspace a list of keyspace/tables glob patterns, e.g. 'keyspace,!keyspace.table_prefix_*' used to include or exclude keyspaces from repair.
                     items:
                       type: string
                     type: array
                   name:
+                    description: Name of a task, it must be unique across all tasks.
                     type: string
-                  num_retries:
+                  numRetries:
+                    description: NumRetries the number of times a scheduled task will retry to run before failing (default 3).
                     format: int64
                     type: integer
-                  small_table_threshold:
+                  parallel:
+                    description: Parallel The maximum number of repair jobs to run in parallel, each node can participate in at most one repair at any given time. Default is means system will repair at maximum parallelism.
+                    format: int64
+                    type: integer
+                  smallTableThreshold:
+                    description: SmallTableThreshold enable small table optimization for tables of size lower than given threshold. Supported units [B, MiB, GiB, TiB] (default "1GiB").
                     type: string
-                  start_date:
+                  startDate:
+                    description: StartDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s (default "now").
                     type: string
                 required:
                 - name
@@ -1438,6 +1462,7 @@ spec:
               items:
                 properties:
                   dc:
+                    description: DC a list of datacenter glob patterns, e.g. 'dc1,!otherdc*' used to specify the DCs to include or exclude from backup.
                     items:
                       type: string
                     type: array
@@ -1446,34 +1471,44 @@ spec:
                   id:
                     type: string
                   interval:
+                    description: Interval task schedule interval e.g. 3d2h10m, valid units are d, h, m, s (default "0").
                     type: string
                   keyspace:
+                    description: Keyspace a list of keyspace/tables glob patterns, e.g. 'keyspace,!keyspace.table_prefix_*' used to include or exclude keyspaces from repair.
                     items:
                       type: string
                     type: array
                   location:
+                    description: 'Location a list of backup locations in the format [<dc>:]<provider>:<name> ex. s3:my-bucket. The <dc>: part is optional and is only needed when different datacenters are being used to upload data to different locations. <name> must be an alphanumeric string and may contain a dash and or a dot, but other characters are forbidden. The only supported storage <provider> at the moment are s3 and gcs.'
                     items:
                       type: string
                     type: array
                   name:
+                    description: Name of a task, it must be unique across all tasks.
                     type: string
-                  num_retries:
+                  numRetries:
+                    description: NumRetries the number of times a scheduled task will retry to run before failing (default 3).
                     format: int64
                     type: integer
-                  rate_limit:
+                  rateLimit:
+                    description: 'RateLimit a list of megabytes (MiB) per second rate limits expressed in the format [<dc>:]<limit>. The <dc>: part is optional and only needed when different datacenters need different upload limits. Set to 0 for no limit (default 100).'
                     items:
                       type: string
                     type: array
                   retention:
+                    description: Retention The number of backups which are to be stored (default 3).
                     format: int64
                     type: integer
-                  snapshot_parallel:
+                  snapshotParallel:
+                    description: 'SnapshotParallel a list of snapshot parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set, the limit is global (e.g. ''dc1:2,5'') the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters.'
                     items:
                       type: string
                     type: array
-                  start_date:
+                  startDate:
+                    description: StartDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s (default "now").
                     type: string
-                  upload_parallel:
+                  uploadParallel:
+                    description: 'UploadParallel a list of upload parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set the limit is global (e.g. ''dc1:2,5'') the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters.'
                     items:
                       type: string
                     type: array
@@ -1484,7 +1519,7 @@ spec:
                 - name
                 type: object
               type: array
-            manager_id:
+            managerId:
               type: string
             racks:
               additionalProperties:
@@ -1525,32 +1560,45 @@ spec:
               items:
                 properties:
                   dc:
+                    description: DC list of datacenter glob patterns, e.g. 'dc1', '!otherdc*' used to specify the DCs to include or exclude from backup.
                     items:
                       type: string
                     type: array
                   error:
                     type: string
-                  fail_fast:
+                  failFast:
+                    description: FailFast stop repair on first error.
                     type: boolean
                   id:
                     type: string
                   intensity:
+                    description: Intensity integer >= 1 or a decimal between (0,1), higher values may result in higher speed and cluster load. 0 value means repair at maximum intensity.
                     format: int64
                     type: integer
                   interval:
+                    description: Interval task schedule interval e.g. 3d2h10m, valid units are d, h, m, s (default "0").
                     type: string
                   keyspace:
+                    description: Keyspace a list of keyspace/tables glob patterns, e.g. 'keyspace,!keyspace.table_prefix_*' used to include or exclude keyspaces from repair.
                     items:
                       type: string
                     type: array
                   name:
+                    description: Name of a task, it must be unique across all tasks.
                     type: string
-                  num_retries:
+                  numRetries:
+                    description: NumRetries the number of times a scheduled task will retry to run before failing (default 3).
                     format: int64
                     type: integer
-                  small_table_threshold:
+                  parallel:
+                    description: Parallel The maximum number of repair jobs to run in parallel, each node can participate in at most one repair at any given time. Default is means system will repair at maximum parallelism.
+                    format: int64
+                    type: integer
+                  smallTableThreshold:
+                    description: SmallTableThreshold enable small table optimization for tables of size lower than given threshold. Supported units [B, MiB, GiB, TiB] (default "1GiB").
                     type: string
-                  start_date:
+                  startDate:
+                    description: StartDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s (default "now").
                     type: string
                 required:
                 - error

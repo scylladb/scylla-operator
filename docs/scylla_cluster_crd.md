@@ -18,6 +18,21 @@ spec:
   repository: scylladb/scylla
   developerMode: true
   cpuset: false
+  repairs:
+  - name: "weekly us-east-1 repair"
+    intensity: 2
+    interval: "7d"
+    dc: ["us-east-1"]
+  backups:
+  - name: "daily users backup"
+    rateLimit: 50
+    location: ["s3:cluster-backups"]
+    interval: "1d"
+    keyspace: ["users"]
+  - name: "weekly full cluster backup"
+    rateLimit: 50
+    location: ["s3:cluster-backups"]
+    interval: "7d"
   datacenter:
     name: us-east-1
     racks:
@@ -55,7 +70,7 @@ spec:
 
 ## Settings Explanation
 
-Cluster Settings:
+### Cluster Settings
 
 * `version`: The version of Scylla to use. It is used as the image tag to pull.
 * `repository`: Optional field. Specifies a custom image repo. If left unset, the official docker hub repo is used (scylladb/scylla).
@@ -64,12 +79,60 @@ Cluster Settings:
 
 In the Scylla model, each cluster contains datacenters and each datacenter contains racks. At the moment, the operator only supports single datacenter setups.
 
-Datacenter Settings:
+### Scylla Manager settings
+
+Tasks are scheduled only when Scylla Manager is deployed in K8s cluster.
+
+Repairs:
+* `name` - mandatory - human readable name of the task. It must be unique across all tasks.
+* `startDate` - specifies the task start date expressed in the RFC3339 format or `now[+duration]`, e.g. `now+3d2h10m`, 
+valid units are d, h, m, s (default "now").
+* `interval` - task schedule interval e.g. `3d2h10m`, valid units are d, h, m, s (default "0").
+* `numRetries` - the number of times a scheduled task will retry to run before failing (default 3).
+* `dc` - list of datacenter glob patterns, e.g. `["dc1", "!otherdc*"]` used to specify the DCs to include or exclude from backup.
+* `failFast` - stop repair on first error.
+* `intensity` - integer >= 1 or a decimal between (0,1), higher values may result in higher speed and cluster load. 
+0 value means repair at maximum intensity.
+* `parallel` - The maximum number of repair jobs to run in parallel, each node can participate in at most one repair 
+at any given time. Default is means system will repair at maximum parallelism.
+* `keyspace` - a list of keyspace/tables glob patterns, e.g. `["keyspace", "!keyspace.table_prefix_*"]`
+used to include or exclude keyspaces from repair.
+* `smallTableThreshold` - enable small table optimization for tables of size lower than given threshold.
+Supported units `[B, MiB, GiB, TiB]` (default `"1GiB"`).
+
+Backups:
+
+* `name` - mandatory - human readable name of the task. It must be unique across all tasks.
+* `startDate` - specifies the task start date expressed in the RFC3339 format or `now[+duration]`, e.g. `now+3d2h10m`, 
+valid units are d, h, m, s (default "now").
+* `interval` - task schedule interval e.g. `3d2h10m`, valid units are d, h, m, s (default "0").
+* `numRetries` - the number of times a scheduled task will retry to run before failing (default 3).
+* `dc` - a list of datacenter glob patterns, e.g. `["dc1","!otherdc*"]` used to specify the DCs to include or exclude from backup.
+* `keyspace` - a list of keyspace/tables glob patterns, e.g. `["keyspace","!keyspace.table_prefix_*"]` used to include or exclude keyspaces from backup.
+* `location` - a list of backup locations in the format `[<dc>:]<provider>:<name>` ex. `s3:my-bucket`. 
+The `<dc>:` part is optional and is only needed when different datacenters are being used to upload data to different locations. 
+`<name>` must be an alphanumeric string and may contain a dash and or a dot, but other characters are forbidden.
+The only supported storage <provider> at the moment are `s3` and `gcs`.
+* `rateLimit` - a list of megabytes (MiB) per second rate limits expressed in the format `[<dc>:]<limit>`.
+The `<dc>:` part is optional and only needed when different datacenters need different upload limits.
+Set to 0 for no limit (default 100).
+* `retention` - The number of backups which are to be stored (default 3).
+* `snapshotParallel` - a list of snapshot parallelism limits in the format `[<dc>:]<limit>`.
+The `<dc>:` part is optional and allows for specifying different limits in selected datacenters.
+If The `<dc>:` part is not set, the limit is global (e.g. `["dc1:2,5"]`) the runs are parallel in n nodes (2 in dc1)
+and n nodes in all the other datacenters.
+* `uploadParallel` - a list of upload parallelism limits in the format `[<dc>:]<limit>`.
+The `<dc>:` part is optional and allows for specifying different limits in selected datacenters.
+If The `<dc>:` part is not set the limit is global (e.g. `["dc1:2,5"]`) the runs are parallel in n nodes (2 in dc1)
+and n nodes in all the other datacenters.
+
+
+### Datacenter Settings
 
 * `name`: Name of the datacenter. Usually, a datacenter corresponds to a region.
 * `racks`: List of racks for the specific datacenter.
 
-Rack Settings:
+### Rack Settings
 
 * `name`: Name of the rack. Usually, a rack corresponds to an availability zone.
 * `members`: Number of Scylla members for the specific rack. (In Scylla documentation, they are called nodes. We don't call them nodes to avoid confusion as a Scylla Node corresponds to a Kubernetes Pod, not a Kubernetes Node).

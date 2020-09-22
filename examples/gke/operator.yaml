@@ -65,6 +65,90 @@ spec:
                   format: int32
                   type: integer
               type: object
+            backups:
+              description: Backups specifies backup task in Scylla Manager. When Scylla
+                Manager is not installed, these will be ignored.
+              items:
+                properties:
+                  dc:
+                    description: DC a list of datacenter glob patterns, e.g. 'dc1,!otherdc*'
+                      used to specify the DCs to include or exclude from backup.
+                    items:
+                      type: string
+                    type: array
+                  interval:
+                    description: Interval task schedule interval e.g. 3d2h10m, valid
+                      units are d, h, m, s (default "0").
+                    type: string
+                  keyspace:
+                    description: Keyspace a list of keyspace/tables glob patterns,
+                      e.g. 'keyspace,!keyspace.table_prefix_*' used to include or
+                      exclude keyspaces from repair.
+                    items:
+                      type: string
+                    type: array
+                  location:
+                    description: 'Location a list of backup locations in the format
+                      [<dc>:]<provider>:<name> ex. s3:my-bucket. The <dc>: part is
+                      optional and is only needed when different datacenters are being
+                      used to upload data to different locations. <name> must be an
+                      alphanumeric string and may contain a dash and or a dot, but
+                      other characters are forbidden. The only supported storage <provider>
+                      at the moment are s3 and gcs.'
+                    items:
+                      type: string
+                    type: array
+                  name:
+                    description: Name of a task, it must be unique across all tasks.
+                    type: string
+                  numRetries:
+                    description: NumRetries the number of times a scheduled task will
+                      retry to run before failing (default 3).
+                    format: int64
+                    type: integer
+                  rateLimit:
+                    description: 'RateLimit a list of megabytes (MiB) per second rate
+                      limits expressed in the format [<dc>:]<limit>. The <dc>: part
+                      is optional and only needed when different datacenters need
+                      different upload limits. Set to 0 for no limit (default 100).'
+                    items:
+                      type: string
+                    type: array
+                  retention:
+                    description: Retention The number of backups which are to be stored
+                      (default 3).
+                    format: int64
+                    type: integer
+                  snapshotParallel:
+                    description: 'SnapshotParallel a list of snapshot parallelism
+                      limits in the format [<dc>:]<limit>. The <dc>: part is optional
+                      and allows for specifying different limits in selected datacenters.
+                      If The <dc>: part is not set, the limit is global (e.g. ''dc1:2,5'')
+                      the runs are parallel in n nodes (2 in dc1) and n nodes in all
+                      the other datacenters.'
+                    items:
+                      type: string
+                    type: array
+                  startDate:
+                    description: StartDate specifies the task start date expressed
+                      in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid
+                      units are d, h, m, s (default "now").
+                    type: string
+                  uploadParallel:
+                    description: 'UploadParallel a list of upload parallelism limits
+                      in the format [<dc>:]<limit>. The <dc>: part is optional and
+                      allows for specifying different limits in selected datacenters.
+                      If The <dc>: part is not set the limit is global (e.g. ''dc1:2,5'')
+                      the runs are parallel in n nodes (2 in dc1) and n nodes in all
+                      the other datacenters.'
+                    items:
+                      type: string
+                    type: array
+                required:
+                - location
+                - name
+                type: object
+              type: array
             cpuset:
               description: CpuSet determines if the cluster will use cpu-pinning for
                 max performance.
@@ -2193,6 +2277,67 @@ spec:
                 hostNetworking:
                   type: boolean
               type: object
+            repairs:
+              description: Repairs specifies repair task in Scylla Manager. When Scylla
+                Manager is not installed, these will be ignored.
+              items:
+                properties:
+                  dc:
+                    description: DC list of datacenter glob patterns, e.g. 'dc1',
+                      '!otherdc*' used to specify the DCs to include or exclude from
+                      backup.
+                    items:
+                      type: string
+                    type: array
+                  failFast:
+                    description: FailFast stop repair on first error.
+                    type: boolean
+                  intensity:
+                    description: Intensity integer >= 1 or a decimal between (0,1),
+                      higher values may result in higher speed and cluster load. 0
+                      value means repair at maximum intensity.
+                    format: int64
+                    type: integer
+                  interval:
+                    description: Interval task schedule interval e.g. 3d2h10m, valid
+                      units are d, h, m, s (default "0").
+                    type: string
+                  keyspace:
+                    description: Keyspace a list of keyspace/tables glob patterns,
+                      e.g. 'keyspace,!keyspace.table_prefix_*' used to include or
+                      exclude keyspaces from repair.
+                    items:
+                      type: string
+                    type: array
+                  name:
+                    description: Name of a task, it must be unique across all tasks.
+                    type: string
+                  numRetries:
+                    description: NumRetries the number of times a scheduled task will
+                      retry to run before failing (default 3).
+                    format: int64
+                    type: integer
+                  parallel:
+                    description: Parallel The maximum number of repair jobs to run
+                      in parallel, each node can participate in at most one repair
+                      at any given time. Default is means system will repair at maximum
+                      parallelism.
+                    format: int64
+                    type: integer
+                  smallTableThreshold:
+                    description: SmallTableThreshold enable small table optimization
+                      for tables of size lower than given threshold. Supported units
+                      [B, MiB, GiB, TiB] (default "1GiB").
+                    type: string
+                  startDate:
+                    description: StartDate specifies the task start date expressed
+                      in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid
+                      units are d, h, m, s (default "now").
+                    type: string
+                required:
+                - name
+                type: object
+              type: array
             repository:
               description: Repository to pull the image from.
               type: string
@@ -2226,6 +2371,96 @@ spec:
         status:
           description: ClusterStatus defines the observed state of Cluster
           properties:
+            backups:
+              items:
+                properties:
+                  dc:
+                    description: DC a list of datacenter glob patterns, e.g. 'dc1,!otherdc*'
+                      used to specify the DCs to include or exclude from backup.
+                    items:
+                      type: string
+                    type: array
+                  error:
+                    type: string
+                  id:
+                    type: string
+                  interval:
+                    description: Interval task schedule interval e.g. 3d2h10m, valid
+                      units are d, h, m, s (default "0").
+                    type: string
+                  keyspace:
+                    description: Keyspace a list of keyspace/tables glob patterns,
+                      e.g. 'keyspace,!keyspace.table_prefix_*' used to include or
+                      exclude keyspaces from repair.
+                    items:
+                      type: string
+                    type: array
+                  location:
+                    description: 'Location a list of backup locations in the format
+                      [<dc>:]<provider>:<name> ex. s3:my-bucket. The <dc>: part is
+                      optional and is only needed when different datacenters are being
+                      used to upload data to different locations. <name> must be an
+                      alphanumeric string and may contain a dash and or a dot, but
+                      other characters are forbidden. The only supported storage <provider>
+                      at the moment are s3 and gcs.'
+                    items:
+                      type: string
+                    type: array
+                  name:
+                    description: Name of a task, it must be unique across all tasks.
+                    type: string
+                  numRetries:
+                    description: NumRetries the number of times a scheduled task will
+                      retry to run before failing (default 3).
+                    format: int64
+                    type: integer
+                  rateLimit:
+                    description: 'RateLimit a list of megabytes (MiB) per second rate
+                      limits expressed in the format [<dc>:]<limit>. The <dc>: part
+                      is optional and only needed when different datacenters need
+                      different upload limits. Set to 0 for no limit (default 100).'
+                    items:
+                      type: string
+                    type: array
+                  retention:
+                    description: Retention The number of backups which are to be stored
+                      (default 3).
+                    format: int64
+                    type: integer
+                  snapshotParallel:
+                    description: 'SnapshotParallel a list of snapshot parallelism
+                      limits in the format [<dc>:]<limit>. The <dc>: part is optional
+                      and allows for specifying different limits in selected datacenters.
+                      If The <dc>: part is not set, the limit is global (e.g. ''dc1:2,5'')
+                      the runs are parallel in n nodes (2 in dc1) and n nodes in all
+                      the other datacenters.'
+                    items:
+                      type: string
+                    type: array
+                  startDate:
+                    description: StartDate specifies the task start date expressed
+                      in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid
+                      units are d, h, m, s (default "now").
+                    type: string
+                  uploadParallel:
+                    description: 'UploadParallel a list of upload parallelism limits
+                      in the format [<dc>:]<limit>. The <dc>: part is optional and
+                      allows for specifying different limits in selected datacenters.
+                      If The <dc>: part is not set the limit is global (e.g. ''dc1:2,5'')
+                      the runs are parallel in n nodes (2 in dc1) and n nodes in all
+                      the other datacenters.'
+                    items:
+                      type: string
+                    type: array
+                required:
+                - error
+                - id
+                - location
+                - name
+                type: object
+              type: array
+            managerId:
+              type: string
             racks:
               additionalProperties:
                 description: RackStatus is the status of a Scylla Rack
@@ -2265,6 +2500,71 @@ spec:
                 - version
                 type: object
               type: object
+            repairs:
+              items:
+                properties:
+                  dc:
+                    description: DC list of datacenter glob patterns, e.g. 'dc1',
+                      '!otherdc*' used to specify the DCs to include or exclude from
+                      backup.
+                    items:
+                      type: string
+                    type: array
+                  error:
+                    type: string
+                  failFast:
+                    description: FailFast stop repair on first error.
+                    type: boolean
+                  id:
+                    type: string
+                  intensity:
+                    description: Intensity integer >= 1 or a decimal between (0,1),
+                      higher values may result in higher speed and cluster load. 0
+                      value means repair at maximum intensity.
+                    format: int64
+                    type: integer
+                  interval:
+                    description: Interval task schedule interval e.g. 3d2h10m, valid
+                      units are d, h, m, s (default "0").
+                    type: string
+                  keyspace:
+                    description: Keyspace a list of keyspace/tables glob patterns,
+                      e.g. 'keyspace,!keyspace.table_prefix_*' used to include or
+                      exclude keyspaces from repair.
+                    items:
+                      type: string
+                    type: array
+                  name:
+                    description: Name of a task, it must be unique across all tasks.
+                    type: string
+                  numRetries:
+                    description: NumRetries the number of times a scheduled task will
+                      retry to run before failing (default 3).
+                    format: int64
+                    type: integer
+                  parallel:
+                    description: Parallel The maximum number of repair jobs to run
+                      in parallel, each node can participate in at most one repair
+                      at any given time. Default is means system will repair at maximum
+                      parallelism.
+                    format: int64
+                    type: integer
+                  smallTableThreshold:
+                    description: SmallTableThreshold enable small table optimization
+                      for tables of size lower than given threshold. Supported units
+                      [B, MiB, GiB, TiB] (default "1GiB").
+                    type: string
+                  startDate:
+                    description: StartDate specifies the task start date expressed
+                      in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid
+                      units are d, h, m, s (default "now").
+                    type: string
+                required:
+                - error
+                - id
+                - name
+                type: object
+              type: array
           type: object
       type: object
   version: v1alpha1
@@ -2278,6 +2578,32 @@ status:
     plural: ""
   conditions: []
   storedVersions: []
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: scylla-operator-system/scylla-operator-serving-cert
+  name: scylla-operator-cluster-webhook
+webhooks:
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: scylla-operator-webhook-service
+      namespace: scylla-operator-system
+      path: /mutate-scylla-scylladb-com-v1alpha1-cluster
+  failurePolicy: Fail
+  name: webhook.scylla.scylladb.com
+  rules:
+  - apiGroups:
+    - scylla.scylladb.com
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - clusters
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -2357,6 +2683,7 @@ rules:
   - admissionregistration.k8s.io
   resources:
   - validatingwebhookconfigurations
+  - mutatingwebhookconfigurations
   verbs:
   - get
   - list
@@ -2499,8 +2826,7 @@ kind: ValidatingWebhookConfiguration
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: scylla-operator-system/scylla-operator-serving-cert
-  creationTimestamp: null
-  name: scylla-operator-validating-webhook-configuration
+  name: scylla-operator-cluster-webhook
 webhooks:
 - clientConfig:
     caBundle: Cg==
@@ -2509,7 +2835,7 @@ webhooks:
       namespace: scylla-operator-system
       path: /validate-scylla-scylladb-com-v1alpha1-cluster
   failurePolicy: Fail
-  name: vcluster.kb.io
+  name: webhook.scylla.scylladb.com
   rules:
   - apiGroups:
     - scylla.scylladb.com

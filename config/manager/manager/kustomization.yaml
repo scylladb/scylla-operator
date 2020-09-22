@@ -1,0 +1,21 @@
+resources:
+- manager.yaml
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+images:
+- name: manager
+  newName: scylladb/scylla-manager
+  newTag: 2.1.2
+- name: operator
+  newName: scylladb/scylla-operator
+  newTag: v0.2.4
+
+configMapGenerator:
+  - name: manager-config
+    files:
+      - scylla-manager.yaml
+
+configurations:
+  - varconfig.yaml
+

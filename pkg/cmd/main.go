@@ -43,8 +43,12 @@ func main() {
 	})
 
 	var rootCmd = &cobra.Command{}
-	rootCmd.AddCommand(newOperatorCmd(ctx, logger, atom), newSidecarCmd(ctx, logger, atom))
+	rootCmd.AddCommand(
+		newOperatorCmd(ctx, logger, atom),
+		newSidecarCmd(ctx, logger, atom),
+		newManagerControllerCmd(ctx, logger, atom),
+	)
 	if err := rootCmd.Execute(); err != nil {
-		logger.Error(context.Background(), "Root command: a fatal error occured: %+v", err)
+		logger.Error(context.Background(), "Root command: a fatal error occured", "error", err)
 	}
 }

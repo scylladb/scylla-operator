@@ -127,7 +127,7 @@ kubectl apply -f examples/gke/raid-daemonset.yaml
 
 After combining the local SSDs into RAID0 arrays, we deploy the local volume provisioner, which will discover their mount points and make them available as PersistentVolumes.
 ```
-helm install --name local-provisioner examples/gke/provisioner
+helm install local-provisioner examples/gke/provisioner
 ```
 
 #### Install `cpu-policy` Daemonset

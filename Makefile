@@ -38,6 +38,7 @@ uninstall: manifests
 cert-manager:
 	cat config/certmanager/cert-manager.yaml > examples/generic/cert-manager.yaml
 	cat config/certmanager/cert-manager.yaml > examples/gke/cert-manager.yaml
+	cat config/certmanager/cert-manager.yaml > examples/eks/cert-manager.yaml
 	kubectl apply -f examples/generic/cert-manager.yaml
 	kubectl -n cert-manager wait --for=condition=ready pod -l app=cert-manager --timeout=60s
 	kubectl -n cert-manager wait --for=condition=ready pod -l app=cainjector --timeout=60s
@@ -53,6 +54,7 @@ manifests: bin/deps controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) webhook rbac:roleName=manager-role paths="$(PKG)" output:crd:artifacts:config=config/crd/bases output:rbac:artifacts:config=config/rbac/bases
 	kustomize build config/default > examples/generic/operator.yaml
 	kustomize build config/default > examples/gke/operator.yaml
+	kustomize build config/default > examples/eks/operator.yaml
 # Run go fmt against code
 fmt:
 	go fmt $(PKG)

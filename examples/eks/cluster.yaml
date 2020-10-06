@@ -1,0 +1,114 @@
+# Namespace where the Scylla Cluster will be created
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: scylla
+
+---
+
+# Role for scylla members.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scylla-cluster-member
+  namespace: scylla
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+  - apiGroups:
+      - ""
+    resources:
+      - services
+    verbs:
+      - get
+      - list
+      - patch
+      - watch
+  - apiGroups:
+      - "apps"
+    resources:
+      - statefulsets
+    verbs:
+      - get
+      - list
+      - patch
+      - watch
+  - apiGroups:
+      - scylla.scylladb.com
+    resources:
+      - clusters
+    verbs:
+      - get
+
+---
+
+# ServiceAccount for scylla members.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: scylla-cluster-member
+  namespace: scylla
+
+---
+
+# RoleBinding for scylla members.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: scylla-cluster-member
+  namespace: scylla
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: scylla-cluster-member
+subjects:
+  - kind: ServiceAccount
+    name: scylla-cluster-member
+    namespace: scylla
+
+---
+
+# Scylla Cluster
+apiVersion: scylla.scylladb.com/v1alpha1
+kind: Cluster
+metadata:
+  name: scylla-cluster
+  namespace: scylla
+spec:
+  version: 4.0.0
+  agentVersion: 2.0.2
+  cpuset: true
+  network:
+    hostNetworking: true
+  datacenter:
+    name: <eks_zone>
+    racks:
+      - name: <eks_region>
+        scyllaConfig: "scylla-config"
+        scyllaAgentConfig: "scylla-agent-config"
+        members: 3
+        storage:
+          storageClassName: local-raid-disks
+          capacity: 1800G
+        resources:
+          limits:
+            cpu: 5
+            memory: 58G
+        placement:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                  - key: failure-domain.beta.kubernetes.io/zone
+                    operator: In
+                    values:
+                      - <eks_zone>
+          tolerations:
+            - key: role
+              operator: Equal
+              value: scylla-clusters
+              effect: NoSchedule

@@ -1,0 +1,43 @@
+---
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: <eks_cluster_name>
+  region: <eks_region>
+
+nodeGroups:
+  - name: scylla-pool
+    instanceType: i3.2xlarge
+    desiredCapacity: 3
+    labels:
+      pool: "scylla-pool"
+    taints:
+      role: "scylla-clusters:NoSchedule"
+    ssh:
+      allow: true
+    kubeletExtraConfig:
+      cpuManagerPolicy: static
+    availabilityZones:
+      - <eks_zone>
+
+  - name: cassandra-stress-pool
+    instanceType: c4.2xlarge
+    desiredCapacity: 4
+    labels:
+      pool: "cassandra-stress-pool"
+    taints:
+      role: "cassandra-stress:NoSchedule"
+    ssh:
+      allow: true
+    preBootstrapCommands:
+      - curl -o /etc/yum.repos.d/scylla.repo -L http://repositories.scylladb.com/scylla/repo/3e3ec6ec-92b2-46ec-b64f-5b2338bc47de/centos/scylladb-4.0.repo
+      - yum install -y scylla-tools
+
+  - name: monitoring-pool
+    instanceType: i3.large
+    desiredCapacity: 1
+    labels:
+      pool: "monitoring-pool"
+    ssh:
+      allow: true

@@ -107,4 +107,3 @@ spec:
         volumeMounts:
           - mountPath: /tmp/coredumps
             name: coredumpfs
-

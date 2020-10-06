@@ -18,9 +18,8 @@ import (
 // It doesn't post the result to the API Server yet.
 // That will be done at the end of the sync loop.
 func (cc *ClusterReconciler) updateStatus(ctx context.Context, cluster *scyllav1alpha1.Cluster) error {
-	clusterStatus := scyllav1alpha1.ClusterStatus{
-		Racks: map[string]scyllav1alpha1.RackStatus{},
-	}
+	cluster.Status.Racks = map[string]scyllav1alpha1.RackStatus{}
+
 	sts := &appsv1.StatefulSet{}
 
 	for _, rack := range cluster.Spec.Datacenter.Racks {
@@ -100,9 +99,8 @@ func (cc *ClusterReconciler) updateStatus(ctx context.Context, cluster *scyllav1
 		}
 
 		// Update Status for Rack
-		clusterStatus.Racks[rack.Name] = rackStatus
+		cluster.Status.Racks[rack.Name] = rackStatus
 	}
-	cluster.Status = clusterStatus
 
 	return nil
 }

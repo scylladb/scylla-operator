@@ -31,6 +31,7 @@ const (
 
 	AppName         = "scylla"
 	OperatorAppName = "scylla-operator"
+	ManagerAppName  = "scylla-manager"
 
 	PrometheusScrapeAnnotation = "prometheus.io/scrape"
 	PrometheusPortAnnotation   = "prometheus.io/port"

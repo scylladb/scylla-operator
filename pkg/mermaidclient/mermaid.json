@@ -1,0 +1,1533 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Scylla Manager API",
+    "version": "0.1"
+  },
+  "basePath": "/api/v1",
+  "produces": [
+    "application/json"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "definitions": {
+    "Version": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "Cluster": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "auth_token": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "ssl_user_cert_file": {
+          "type": "string",
+          "format": "byte"
+        },
+        "ssl_user_key_file": {
+          "type": "string",
+          "format": "byte"
+        },
+        "without_repair": {
+          "type": "boolean"
+        }
+      }
+    },
+    "RepairUnit": {
+      "type": "object",
+      "properties": {
+        "keyspace": {
+          "type": "string"
+        },
+        "tables": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "all_tables": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ClusterStatus": {
+      "type": "array",
+      "items": {
+        "properties": {
+          "dc": {
+            "type": "string"
+          },
+          "host_id": {
+            "type": "string"
+          },
+          "host": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "ssl": {
+            "type": "boolean"
+          },
+          "alternator_status": {
+            "type": "string"
+          },
+          "alternator_rtt_ms": {
+            "type": "number",
+            "format": "float"
+          },
+          "cql_status": {
+            "type": "string"
+          },
+          "cql_rtt_ms": {
+            "type": "number",
+            "format": "float"
+          },
+          "rest_status": {
+            "type": "string"
+          },
+          "rest_rtt_ms": {
+            "type": "number",
+            "format": "float"
+          },
+          "total_ram": {
+            "type": "integer"
+          },
+          "uptime": {
+            "type": "integer"
+          },
+          "cpu_count": {
+            "type": "integer"
+          },
+          "scylla_version": {
+            "type": "string"
+          },
+          "agent_version": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "RepairProgress": {
+      "type": "object",
+      "properties": {
+        "token_ranges": {
+          "type": "number",
+          "format": "int"
+        },
+        "success": {
+          "type": "number",
+          "format": "int"
+        },
+        "error": {
+          "type": "number",
+          "format": "int"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "dcs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "host": {
+                "type": "string"
+              },
+              "intensity":{
+                "type": "number"
+              },
+              "tables": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/TableRepairProgress"
+                }
+              }
+            }
+          }
+        },
+        "tables": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TableRepairProgress"
+          }
+        }
+      }
+    },
+    "TableRepairProgress": {
+      "properties": {
+        "token_ranges": {
+          "type": "number",
+          "format": "int"
+        },
+        "success": {
+          "type": "number",
+          "format": "int"
+        },
+        "error": {
+          "type": "number",
+          "format": "int"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "keyspace": {
+          "type": "string"
+        },
+        "table": {
+          "type": "string"
+        }
+      }
+    },
+    "Schedule": {
+      "type": "object",
+      "properties": {
+        "start_date": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "interval": {
+          "type": "string"
+        },
+        "num_retries": {
+          "type": "number",
+          "format": "int"
+        }
+      }
+    },
+    "Task": {
+      "type": "object",
+      "properties": {
+        "cluster_id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "schedule": {
+          "$ref": "#/definitions/Schedule"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "ExtendedTask": {
+      "type": "object",
+      "properties": {
+        "cluster_id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "schedule": {
+          "$ref": "#/definitions/Schedule"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "status": {
+          "type": "string"
+        },
+        "cause": {
+          "type": "string"
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end_time": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "next_activation": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "failures": {
+          "type": "integer"
+        }
+      }
+    },
+    "TaskUpdate": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "schedule": {
+          "$ref": "#/definitions/Schedule"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "TaskRun": {
+      "type": "object",
+      "properties": {
+        "cluster_id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "task_id": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "cause": {
+          "type": "string"
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end_time": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "TaskRunRepairProgress": {
+      "type": "object",
+      "properties": {
+        "run": {
+          "$ref": "#/definitions/TaskRun"
+        },
+        "progress": {
+          "$ref": "#/definitions/RepairProgress"
+        }
+      }
+    },
+    "RepairTarget": {
+      "type": "object",
+      "properties": {
+        "cluster_id": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "dc": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "with_hosts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "token_ranges": {
+          "type": "string"
+        },
+        "units": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RepairUnit"
+          }
+        }
+      }
+    },
+    "BackupListItem": {
+      "type": "object",
+      "properties": {
+        "cluster_id": {
+          "type": "string"
+        },
+        "units": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/BackupUnit"
+          }
+        },
+        "snapshot_info": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SnapshotInfo"
+          }
+        }
+      }
+    },
+    "BackupFilesInfo": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "type": "string"
+        },
+        "schema": {
+          "type": "string"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "keyspace": {
+                "type": "string"
+              },
+              "table": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "size": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      }
+    },
+    "BackupTarget": {
+      "type": "object",
+      "properties": {
+        "cluster_id": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "dc": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "with_hosts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "location": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "retention": {
+          "type": "integer"
+        },
+        "rate_limit": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "snapshot_parallel": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "upload_parallel": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "units": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/BackupUnit"
+          }
+        },
+        "size": {
+          "type": "integer"
+        }
+      }
+    },
+    "BackupUnit": {
+      "type": "object",
+      "properties": {
+        "keyspace": {
+          "type": "string"
+        },
+        "tables": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "all_tables": {
+          "type": "boolean"
+        }
+      }
+    },
+    "SnapshotInfo": {
+      "type": "object",
+      "properties": {
+        "snapshot_tag": {
+          "type": "string"
+        },
+        "size": {
+          "type": "integer"
+        }
+      }
+    },
+    "TaskRunBackupProgress": {
+      "type": "object",
+      "properties": {
+        "run": {
+          "$ref": "#/definitions/TaskRun"
+        },
+        "progress": {
+          "$ref": "#/definitions/BackupProgress"
+        }
+      }
+    },
+    "BackupProgress": {
+      "type": "object",
+      "properties": {
+        "snapshot_tag": {
+          "type": "string"
+        },
+        "dcs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/HostProgress"
+          }
+        },
+        "stage": {
+          "type": "string"
+        },
+        "size": {
+          "type": "integer"
+        },
+        "uploaded": {
+          "type": "integer"
+        },
+        "skipped": {
+          "type": "integer"
+        },
+        "failed": {
+          "type": "integer"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        }
+      }
+    },
+    "HostProgress": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "keyspaces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/KeyspaceProgress"
+          }
+        },
+        "size": {
+          "type": "integer"
+        },
+        "uploaded": {
+          "type": "integer"
+        },
+        "skipped": {
+          "type": "integer"
+        },
+        "failed": {
+          "type": "integer"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        }
+      }
+    },
+    "KeyspaceProgress": {
+      "type": "object",
+      "properties": {
+        "keyspace": {
+          "type": "string"
+        },
+        "tables": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TableProgress"
+          }
+        },
+        "size": {
+          "type": "integer"
+        },
+        "uploaded": {
+          "type": "integer"
+        },
+        "skipped": {
+          "type": "integer"
+        },
+        "failed": {
+          "type": "integer"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        }
+      }
+    },
+    "TableProgress": {
+      "type": "object",
+      "properties": {
+        "table": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        },
+        "size": {
+          "type": "integer"
+        },
+        "uploaded": {
+          "type": "integer"
+        },
+        "skipped": {
+          "type": "integer"
+        },
+        "failed": {
+          "type": "integer"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        }
+      }
+    },
+    "ErrorResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "description": "Error description",
+          "type": "string"
+        },
+        "trace_id": {
+          "description": "Request ID for tracing in logs",
+          "type": "string"
+        }
+      }
+    }
+  },
+  "paths": {
+    "/version": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Server version",
+            "schema": {
+              "$ref": "#/definitions/Version"
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/clusters": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "List of all clusters",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Cluster"
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "post": {
+        "parameters": [
+          {
+            "name": "cluster",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/Cluster"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Cluster added",
+            "headers": {
+              "Location": {
+                "type": "string"
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/cluster/{cluster_id}": {
+      "parameters": [
+        {
+          "type": "string",
+          "name": "cluster_id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Cluster info",
+            "schema": {
+              "$ref": "#/definitions/Cluster"
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "parameters": [
+          {
+            "name": "cluster",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/Cluster"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated cluster info",
+            "schema": {
+              "$ref": "#/definitions/Cluster"
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "parameters": [
+          {
+            "type": "boolean",
+            "name": "cql_creds",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "ssl_user_cert",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cluster deleted"
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/cluster/{cluster_id}/status": {
+      "get": {
+        "parameters": [
+          {
+            "type": "string",
+            "name": "cluster_id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cluster hosts and their statuses",
+            "schema": {
+              "$ref": "#/definitions/ClusterStatus"
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/cluster/{cluster_id}/tasks": {
+      "parameters": [
+        {
+          "type": "string",
+          "name": "cluster_id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "get": {
+        "parameters": [
+          {
+            "name": "all",
+            "in": "query",
+            "type": "boolean",
+            "required": false
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "type": "string",
+            "required": false
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "type": "string",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of tasks",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ExtendedTask"
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "post": {
+        "parameters": [
+          {
+            "name": "taskFields",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/TaskUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Task added",
+            "headers": {
+              "Location": {
+                "type": "string"
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/cluster/{cluster_id}/tasks/repair/target": {
+      "parameters": [
+        {
+          "type": "string",
+          "name": "cluster_id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "get": {
+        "parameters": [
+          {
+            "name": "taskFields",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/TaskUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Repair target",
+            "schema": {
+              "$ref": "#/definitions/RepairTarget"
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/cluster/{cluster_id}/tasks/backup/target": {
+      "parameters": [
+        {
+          "type": "string",
+          "name": "cluster_id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "get": {
+        "parameters": [
+          {
+            "name": "taskFields",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/TaskUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Backup target",
+            "schema": {
+              "$ref": "#/definitions/BackupTarget"
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/cluster/{cluster_id}/task/{task_type}/{task_id}": {
+      "parameters": [
+        {
+          "type": "string",
+          "name": "cluster_id",
+          "in": "path",
+          "required": true
+        },
+        {
+          "type": "string",
+          "name": "task_type",
+          "in": "path",
+          "required": true
+        },
+        {
+          "type": "string",
+          "name": "task_id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Task info",
+            "schema": {
+              "$ref": "#/definitions/Task"
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "parameters": [
+          {
+            "name": "taskFields",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/TaskUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated task info",
+            "schema": {
+              "$ref": "#/definitions/Task"
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "responses": {
+          "200": {
+            "description": "Task deleted"
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/cluster/{cluster_id}/task/{task_type}/{task_id}/start": {
+      "parameters": [
+        {
+          "type": "string",
+          "name": "cluster_id",
+          "in": "path",
+          "required": true
+        },
+        {
+          "type": "string",
+          "name": "task_type",
+          "in": "path",
+          "required": true
+        },
+        {
+          "type": "string",
+          "name": "task_id",
+          "in": "path",
+          "required": true
+        },
+        {
+          "type": "boolean",
+          "name": "continue",
+          "in": "query",
+          "required": true
+        }
+      ],
+      "put": {
+        "responses": {
+          "200": {
+            "description": "Task started"
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/cluster/{cluster_id}/task/{task_type}/{task_id}/stop": {
+      "parameters": [
+        {
+          "type": "string",
+          "name": "cluster_id",
+          "in": "path",
+          "required": true
+        },
+        {
+          "type": "string",
+          "name": "task_type",
+          "in": "path",
+          "required": true
+        },
+        {
+          "type": "string",
+          "name": "task_id",
+          "in": "path",
+          "required": true
+        },
+        {
+          "type": "boolean",
+          "name": "disable",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "put": {
+        "responses": {
+          "200": {
+            "description": "Task stopped"
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/cluster/{cluster_id}/task/{task_type}/{task_id}/history": {
+      "parameters": [
+        {
+          "type": "string",
+          "name": "cluster_id",
+          "in": "path",
+          "required": true
+        },
+        {
+          "type": "string",
+          "name": "task_type",
+          "in": "path",
+          "required": true
+        },
+        {
+          "type": "string",
+          "name": "task_id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "get": {
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "type": "integer",
+            "format": "int",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of task runs",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/TaskRun"
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/cluster/{cluster_id}/task/repair/{task_id}/{run_id}": {
+      "get": {
+        "parameters": [
+          {
+            "type": "string",
+            "name": "cluster_id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "task_id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "run_id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Repair progress",
+            "schema": {
+              "$ref": "#/definitions/TaskRunRepairProgress"
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/cluster/{cluster_id}/task/backup/{task_id}/{run_id}": {
+      "get": {
+        "parameters": [
+          {
+            "type": "string",
+            "name": "cluster_id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "task_id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "run_id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Backup progress",
+            "schema": {
+              "$ref": "#/definitions/TaskRunBackupProgress"
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/cluster/{cluster_id}/backups": {
+      "get": {
+        "parameters": [
+          {
+            "type": "string",
+            "name": "cluster_id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "name": "locations",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "cluster_id",
+            "in": "query"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "name": "keyspace",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "min_date",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "max_date",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Backup list",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/BackupListItem"
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "parameters": [
+          {
+            "type": "string",
+            "name": "cluster_id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "snapshot_tag",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "name": "locations",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/cluster/{cluster_id}/backups/files": {
+      "get": {
+        "parameters": [
+          {
+            "type": "string",
+            "name": "cluster_id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "name": "keyspace",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "snapshot_tag",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "name": "locations",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "cluster_id",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Backup list",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/BackupFilesInfo"
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/cluster/{cluster_id}/repairs/intensity": {
+      "post": {
+        "parameters": [
+          {
+            "type": "string",
+            "name": "cluster_id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "number",
+            "name": "intensity",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    }
+  }
+}

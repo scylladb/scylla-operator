@@ -38,6 +38,14 @@ func HeadlessServiceNameForCluster(c *scyllav1alpha1.Cluster) string {
 	return fmt.Sprintf("%s-client", c.Name)
 }
 
+func CrossNamespaceServiceNameForCluster(c *scyllav1alpha1.Cluster) string {
+	return fmt.Sprintf("%s.%s.svc.cluster.local", HeadlessServiceNameForCluster(c), c.Namespace)
+}
+
+func ManagerClusterName(c *scyllav1alpha1.Cluster) string {
+	return c.Namespace + "/" + c.Name
+}
+
 func PVCNameForPod(podName string) string {
 	return fmt.Sprintf("%s-%s", PVCTemplateName, podName)
 }

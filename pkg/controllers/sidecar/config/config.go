@@ -107,13 +107,13 @@ func (s *ScyllaConfig) setupScyllaYAML() error {
 		return errors.Wrap(err, "failed to merged config map YAML with default yaml values")
 	}
 
-	customScyllaYAMLBytes, err := mergeYAMLs(customScyllaYAMLBytes, scyllaYAMLConfigMapBytes)
+	finalScyllaYaml, err := mergeYAMLs(customScyllaYAMLBytes, scyllaYAMLConfigMapBytes)
 	if err != nil {
 		return errors.Wrap(err, "failed to merged YAMLs")
 	}
 
 	// Write result to file
-	if err = ioutil.WriteFile(scyllaYAMLPath, customScyllaYAMLBytes, os.ModePerm); err != nil {
+	if err = ioutil.WriteFile(scyllaYAMLPath, finalScyllaYaml, os.ModePerm); err != nil {
 		return errors.Wrap(err, "error trying to write scylla.yaml")
 	}
 

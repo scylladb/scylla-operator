@@ -102,12 +102,12 @@ func (s *ScyllaConfig) setupScyllaYAML() error {
 	if err != nil {
 		return errors.Wrap(err, "failed to parse override options for scylla.yaml")
 	}
-	scyllaYAMLConfigMapFilteredBytes, err := mergeYAMLs(defaultYAMLBytes, scyllaYAMLConfigMapBytes)
+	scyllaYAMLConfigMapFilteredBytes, err := mergeYAMLs(defaultYAMLBytes, scyllaYAMLBytes)
 	if err != nil {
 		return errors.Wrap(err, "failed to merged config map YAML with default yaml values")
 	}
 
-	customScyllaYAMLBytes, err := mergeYAMLs(scyllaYAMLConfigMapFilteredBytes, scyllaYAMLBytes)
+	customScyllaYAMLBytes, err := mergeYAMLs(customScyllaYAMLBytes, scyllaYAMLConfigMapBytes)
 	if err != nil {
 		return errors.Wrap(err, "failed to merged YAMLs")
 	}

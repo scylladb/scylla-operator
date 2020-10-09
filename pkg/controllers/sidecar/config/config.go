@@ -98,16 +98,16 @@ func (s *ScyllaConfig) setupScyllaYAML() error {
 	cfg["rpc_address"] = "0.0.0.0"
 	cfg["endpoint_snitch"] = "GossipingPropertyFileSnitch"
 
-	overrideYAMLBytes, err := yaml.Marshal(cfg)
+	defaultYAMLBytes, err := yaml.Marshal(cfg)
 	if err != nil {
 		return errors.Wrap(err, "failed to parse override options for scylla.yaml")
 	}
-	scyllaYAMLConfigMapFilteredBytes, err := mergeYAMLs(scyllaYAMLConfigMapBytes, overrideYAMLBytes)
+	scyllaYAMLConfigMapFilteredBytes, err := mergeYAMLs(defaultYAMLBytes, scyllaYAMLConfigMapBytes)
 	if err != nil {
 		return errors.Wrap(err, "failed to merged config map YAML with default yaml values")
 	}
 
-	customScyllaYAMLBytes, err := mergeYAMLs(scyllaYAMLBytes, scyllaYAMLConfigMapFilteredBytes)
+	customScyllaYAMLBytes, err := mergeYAMLs(scyllaYAMLConfigMapFilteredBytes, scyllaYAMLBytes)
 	if err != nil {
 		return errors.Wrap(err, "failed to merged YAMLs")
 	}

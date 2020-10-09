@@ -2,10 +2,14 @@ package config
 
 import (
 	"bytes"
+	"io"
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/magiconair/properties"
+	"github.com/scylladb/scylla-operator/pkg/controllers/sidecar/identity"
 	"github.com/stretchr/testify/require"
 )
 
@@ -110,4 +114,75 @@ func TestAllowedCPUs(t *testing.T) {
 	cpusAllowed, err := getCPUsAllowedList("./procstatus")
 	require.Equal(t, err, nil)
 	t.Log(cpusAllowed)
+}
+
+func TestScyllaYamlMerging(t *testing.T) {
+	tests := []struct {
+		DefaultContent    string
+		UserConfigContent string
+		ExpectedResult    string
+	}{
+		{
+			DefaultContent:    "",
+			UserConfigContent: "",
+			ExpectedResult:    "cluster_name: cluster-name\nendpoint_snitch: GossipingPropertyFileSnitch\nrpc_address: 0.0.0.0\n",
+		},
+		{
+			DefaultContent:    "some_key: 1",
+			UserConfigContent: "",
+			ExpectedResult:    "cluster_name: cluster-name\nendpoint_snitch: GossipingPropertyFileSnitch\nrpc_address: 0.0.0.0\nsome_key: 1\n",
+		},
+		{
+			DefaultContent:    "cluster_name: default-name",
+			UserConfigContent: "",
+			ExpectedResult:    "cluster_name: cluster-name\nendpoint_snitch: GossipingPropertyFileSnitch\nrpc_address: 0.0.0.0\n",
+		},
+		{
+			DefaultContent:    "some_key: 1",
+			UserConfigContent: "cluster_name: different_name",
+			ExpectedResult:    "cluster_name: different_name\nendpoint_snitch: GossipingPropertyFileSnitch\nrpc_address: 0.0.0.0\nsome_key: 1\n",
+		},
+		{
+			DefaultContent:    "some_key: 1",
+			UserConfigContent: "some_key: 2",
+			ExpectedResult:    "cluster_name: cluster-name\nendpoint_snitch: GossipingPropertyFileSnitch\nrpc_address: 0.0.0.0\nsome_key: 2\n",
+		},
+	}
+
+	for _, test := range tests {
+		scyllaYamlPath := writeTempFile(t, "scylla-yaml", test.DefaultContent)
+		defer os.Remove(scyllaYamlPath)
+		configMapYamlPath := writeTempFile(t, "config-map", test.UserConfigContent)
+		defer os.Remove(configMapYamlPath)
+
+		sc := &ScyllaConfig{member: &identity.Member{Cluster: "cluster-name"}}
+		if err := sc.setupScyllaYAML(scyllaYamlPath, configMapYamlPath); err != nil {
+			t.Error(err)
+		}
+
+		resultContent, err := ioutil.ReadFile(scyllaYamlPath)
+		if err != nil {
+			t.Error(err)
+		}
+
+		if string(resultContent) != test.ExpectedResult {
+			t.Error(cmp.Diff(test.ExpectedResult, string(resultContent)))
+		}
+	}
+}
+
+func writeTempFile(t *testing.T, namePattern, content string) string {
+	tmp, err := ioutil.TempFile(os.TempDir(), namePattern)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := io.WriteString(tmp, content); err != nil {
+		t.Error(err)
+	}
+	if err := tmp.Close(); err != nil {
+		t.Error(err)
+	}
+
+	return tmp.Name()
 }

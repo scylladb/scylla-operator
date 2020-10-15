@@ -88,7 +88,7 @@ vendor: bin/deps
 # Build local-build binary
 .PHONY: local-build
 local-build: fmt vet vendor
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o bin/scylla-operator github.com/scylladb/scylla-operator/pkg/cmd
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -a -o bin/scylla-operator github.com/scylladb/scylla-operator/pkg/cmd
 
 # find or download controller-gen
 # download controller-gen if necessary

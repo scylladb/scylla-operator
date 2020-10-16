@@ -60,11 +60,11 @@ manifests: bin/deps controller-gen
 	kustomize build config/manager/default > examples/eks/manager.yaml
 
 # Run go fmt against code
-fmt:
+fmt: bin/deps
 	go fmt $(PKG)
 
 # Run go vet against code
-vet:
+vet: bin/deps
 	go vet $(PKG)
 
 # Generate code
@@ -82,7 +82,7 @@ docker-push:
 
 # Ensure dependencies
 .PHONY: vendor
-vendor:
+vendor: bin/deps
 	go mod vendor
 
 # Build local-build binary

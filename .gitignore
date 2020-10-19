@@ -27,3 +27,7 @@ dist/
 
 examples/gke/grafana/values.yaml
 examples/generic/grafana/values.yaml
+
+# additions for docs
+/docs/_build
+/source/.doctrees

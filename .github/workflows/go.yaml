@@ -29,13 +29,13 @@ jobs:
         id: cache-tools
         uses: actions/cache@v1
         with:
-          path: ${{ format('{0}/bin/deps', env.working-directory-rel) }}
-          key: ${{ runner.os }}-${{ hashFiles(format('{0}/hack/binary_deps.py', env.working-directory-rel)) }}
+          path: ${{ format('{0}/bin', env.GOPATH) }}
+          key: ${{ runner.os }}-${{ hashFiles(format('{0}/install-dependencies.sh', env.working-directory-rel)) }}
 
-      - name: Install binary deps
+      - name: Install deps
         if: steps['cache-tools'].outputs['cache-hit'] != 'true'
         working-directory: ${{ env.working-directory }}
-        run: make bin/deps
+        run: ./install-dependencies.sh
 
       - name: Go Dependencies
         working-directory: ${{ env.working-directory }}

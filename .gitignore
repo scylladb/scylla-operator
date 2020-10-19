@@ -5,7 +5,6 @@
 *.dll
 *.so
 *.dylib
-bin/deps
 bin/scylla-operator
 dist/
 

@@ -1,6 +1,6 @@
 # Deploying Scylla on GKE
 
-This guide is focused on deploying Scylla on GKE with maximum performance.
+This guide is focused on deploying Scylla on GKE with maximum performance (without any persistence guarantees).
 It sets up the kubelets on GKE nodes to run with [static cpu policy](https://kubernetes.io/blog/2018/07/24/feature-highlight-cpu-manager/) and uses [local sdd disks](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/local-ssd) in RAID0 for maximum performance.
 
 Most of the commands used to setup the Scylla cluster are the same for all environments
@@ -48,7 +48,7 @@ CLUSTER_NAME=scylla-demo
 
 For this guide, we'll create a GKE cluster with the following:
 
-1. A NodePool of 3 `n1-standard-32` Nodes, where the Scylla Pods will be deployed. Each of these Nodes has 8 local SSDs attached, which will later be combined into a RAID0 array. It is important to disable `autoupgrade` and `autorepair`, since they cause loss of data on local SSDs. 
+1. A NodePool of 3 `n1-standard-32` Nodes, where the Scylla Pods will be deployed. Each of these Nodes has 8 local SSDs attached, which will later be combined into a RAID0 array. It is important to disable `autoupgrade` and `autorepair`, since they increase the frequency of loss of data on local SSDs. 
 
 ```
 gcloud beta container --project "${GCP_PROJECT}" \

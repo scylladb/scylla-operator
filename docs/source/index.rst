@@ -4,7 +4,7 @@ Scylla Operator Documentation
 
 .. toctree::
    :hidden:
-   :depth: 2
+   :maxdepth: 2
 
    generic
    eks

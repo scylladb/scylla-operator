@@ -9,8 +9,8 @@
 
 To quickly deploy a Scylla cluster, choose one of the following options:
 
-* [Generic](docs/generic.md): Follow this guide for the general way to use the operator.
-* [GKE](docs/gke.md): An advanced guide for deploying Scylla with the best performance settings on [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine).
+* [Generic](docs/source/generic.md): Follow this guide for the general way to use the operator.
+* [GKE](docs/source/gke.md): An advanced guide for deploying Scylla with the best performance settings on [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine).
 
 ## Description
 
@@ -32,7 +32,7 @@ Future additions include:
 ## Top-Performance Setup
 
 Scylla performs the best when it has fast disks and direct access to the CPU. To deploy Scylla with maximum performance, follow the guide for your environment:
-* [GKE](docs/gke.md)
+* [GKE](docs/source/gke.md)
 
 
 ## Bugs
@@ -51,7 +51,7 @@ You can easily build Scylla Operator in your environment:
 
 We would **love** you to contribute to Scylla Operator, help make it even better and learn together! Use these resources to help you get started:
 * `#scylla-operator` channel on [Slack](https://scylladb-users-slackin.herokuapp.com/).
-* [Contributing Guide](docs/contributing.md)
+* [Contributing Guide](docs/source/contributing.md)
 
 ## Acknowledgements
 

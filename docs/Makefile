@@ -1,16 +1,17 @@
 # You can set these variables from the command line.
-SPHINXOPTS    =
-SPHINXBUILD   = poetry run sphinx-build
-PAPER         =
-BUILDDIR      = _build
-SOURCEDIR     = source
+POETRY        := $(HOME)/.poetry/bin/poetry
+SPHINXBUILD   := $(POETRY) run sphinx-build
+SPHINXOPTS    :=
+PAPER         :=
+BUILDDIR      := _build
+SOURCEDIR     := source
 
 # Internal variables.
-PAPEROPT_a4     = -D latex_paper_size=a4
-PAPEROPT_letter = -D latex_paper_size=letter
-ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) $(SOURCEDIR)
+PAPEROPT_a4     := -D latex_paper_size=a4
+PAPEROPT_letter := -D latex_paper_size=letter
+ALLSPHINXOPTS   := -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) $(SOURCEDIR)
 # the i18n builder cannot share the environment and doctrees with the others
-I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
+I18NSPHINXOPTS  := $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) $(SOURCEDIR)
 
 .PHONY: all
 all: dirhtml
@@ -29,7 +30,7 @@ clean:
 
 .PHONY: preview
 preview: setup
-	poetry run sphinx-autobuild -b dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/dirhtml --port 5500
+	$(POETRY) run sphinx-autobuild -b dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/dirhtml --port 5500
 
 .PHONY: dirhtml
 dirhtml: setup
@@ -63,10 +64,13 @@ dummy: 	setup
 
 .PHONY: linkcheck
 linkcheck: setup
-	$(SPHINXBUILD) -b linkcheck . $(BUILDDIR)/linkcheck
+	$(SPHINXBUILD) -b linkcheck $(SOURCEDIR) $(BUILDDIR)/linkcheck
+
+GIT_BRANCH = $(shell git branch --show-current)
 
 .PHONY: multiversion
 multiversion: setup
-	poetry run sphinx-multiversion source _build/dirhtml
+	@mkdir -p $(HOME)/.cache/pypoetry/virtualenvs
+	$(POETRY) run sphinx-multiversion -D smv_branch_whitelist=$(GIT_BRANCH) -D smv_outputdir_format=$(GIT_BRANCH:branch-%=%) $(SOURCEDIR) $(BUILDDIR)/dirhtml
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/dirhtml."

@@ -1,4 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# Copyright (C) 2017 ScyllaDB
+#
+
+set -eu -o pipefail
 
 cat <<- _EOF_
 <!DOCTYPE html>

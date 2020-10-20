@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/blang/semver"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -51,7 +52,8 @@ type ClusterSpec struct {
 	// Sysctl properties to be applied during initialization
 	// given as a list of key=value pairs.
 	// Example: fs.aio-max-nr=232323
-	Sysctls []string `json:"sysctls,omitempty"`
+	Sysctls    []string `json:"sysctls,omitempty"`
+	ScyllaArgs string   `json:"scyllaArgs,omitempty"`
 	// Networking config
 	Network Network `json:"network,omitempty"`
 	// Repairs specifies repair task in Scylla Manager.
@@ -268,6 +270,14 @@ type ClusterList struct {
 	Items           []Cluster `json:"items"`
 }
 
+// Version of scylla docker starting from which passing arguments via entry-point is supported
+var ScyllaVersionThatSupportsArgsText = "4.2.0"
+var ScyllaVersionThatSupportsArgs semver.Version
+
 func init() {
+	var err error
+	if ScyllaVersionThatSupportsArgs, err = semver.Parse(ScyllaVersionThatSupportsArgsText); err != nil {
+		panic(err)
+	}
 	SchemeBuilder.Register(&Cluster{}, &ClusterList{})
 }

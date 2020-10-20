@@ -186,3 +186,71 @@ func writeTempFile(t *testing.T, namePattern, content string) string {
 
 	return tmp.Name()
 }
+
+func TestScyllaArgumentsAllTypesInOne(t *testing.T) {
+	argumentsMap := convertScyllaArguments("--arg1 --arg2 val --arg3=val --arg4 --arg5 \"val\" --arg6=\"val\" --arg7")
+	require.Equal(t, "", argumentsMap["arg1"])
+	require.Equal(t, "val", argumentsMap["arg2"])
+	require.Equal(t, "val", argumentsMap["arg3"])
+	require.Equal(t, "", argumentsMap["arg4"])
+	require.Equal(t, "\"val\"", argumentsMap["arg5"])
+	require.Equal(t, "\"val\"", argumentsMap["arg6"])
+	require.Equal(t, "", argumentsMap["arg7"])
+	require.Equal(t, "", argumentsMap["not_existing_key"])
+	require.Equal(t, 7, len(argumentsMap))
+}
+
+func TestScyllaArgumentsAllTypesInOneWithGarbage(t *testing.T) {
+	argumentsMap := convertScyllaArguments("--arg1 --arg2 val --arg3=val asdasdasdas --arg4 --arg5 \"val\" --arg6=\"val\" --arg7")
+	require.Equal(t, "", argumentsMap["arg1"])
+	require.Equal(t, "val", argumentsMap["arg2"])
+	require.Equal(t, "val", argumentsMap["arg3"])
+	require.Equal(t, "", argumentsMap["arg4"])
+	require.Equal(t, "\"val\"", argumentsMap["arg5"])
+	require.Equal(t, "\"val\"", argumentsMap["arg6"])
+	require.Equal(t, "", argumentsMap["arg7"])
+	require.Equal(t, "", argumentsMap["not_existing_key"])
+	require.Equal(t, 7, len(argumentsMap))
+}
+
+func TestScyllaArgumentsSingleFlag(t *testing.T) {
+	t.Log("Single flag - test started")
+	argumentsMap := convertScyllaArguments("--arg1")
+	require.Equal(t, "", argumentsMap["arg1"])
+	require.Equal(t, "", argumentsMap["not_existing_key"])
+	require.Equal(t, 1, len(argumentsMap))
+}
+
+func TestScyllaArgumentsSingleArgument(t *testing.T) {
+	argumentsMap := convertScyllaArguments("--arg1 val")
+	require.Equal(t, "val", argumentsMap["arg1"])
+	require.Equal(t, "", argumentsMap["not_existing_key"])
+	require.Equal(t, 1, len(argumentsMap))
+}
+
+func TestScyllaArgumentsSingleArgumemt2(t *testing.T) {
+	argumentsMap := convertScyllaArguments("--arg1=val")
+	require.Equal(t, "val", argumentsMap["arg1"])
+	require.Equal(t, "", argumentsMap["not_existing_key"])
+	require.Equal(t, 1, len(argumentsMap))
+}
+
+func TestScyllaArgumentsSingleArgumemtQuoted(t *testing.T) {
+	argumentsMap := convertScyllaArguments("--arg1 \"val\"")
+	require.Equal(t, "\"val\"", argumentsMap["arg1"])
+	require.Equal(t, "", argumentsMap["not_existing_key"])
+	require.Equal(t, 1, len(argumentsMap))
+}
+
+func TestScyllaArgumentsSingleArgumemt2Quoted(t *testing.T) {
+	argumentsMap := convertScyllaArguments("--arg1=\"val\"")
+	require.Equal(t, "\"val\"", argumentsMap["arg1"])
+	require.Equal(t, "", argumentsMap["not_existing_key"])
+	require.Equal(t, 1, len(argumentsMap))
+}
+
+func TestScyllaArgumentsEmpty(t *testing.T) {
+	argumentsMap := convertScyllaArguments("")
+	require.Equal(t, "", argumentsMap["not_existing_key"])
+	require.Equal(t, 0, len(argumentsMap))
+}

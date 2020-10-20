@@ -15,7 +15,7 @@ jobs:
       working-directory: ${{ github.workspace }}/src/github.com/${{ github.repository }}
       working-directory-rel: src/github.com/${{ github.repository }}
       GOPATH: ${{ github.workspace }}
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
       - name: Check out code into the GOPATH directory
         uses: actions/checkout@v2

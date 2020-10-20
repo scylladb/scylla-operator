@@ -3,9 +3,12 @@ package config
 import (
 	"context"
 	"fmt"
+	"github.com/blang/semver"
 	"io/ioutil"
+	"k8s.io/utils/pointer"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -156,6 +159,32 @@ func loadProperties(fileName string, logger log.Logger) *properties.Properties {
 	return p
 }
 
+var scyllaArgumentsRegexp = regexp.MustCompile(`--([^= ]+)(="[^"]+"|=[^ ]+|[ \t]+"[^"]+"|[ \t]+[^-][^-]?[^ ]*|)`)
+
+func convertScyllaArguments(scyllaArguments string) map[string]string {
+	output := make(map[string]string)
+	for _, value := range scyllaArgumentsRegexp.FindAllStringSubmatch(scyllaArguments, -1) {
+		if value[2] == "" {
+			output[value[1]] = ""
+		} else if value[2][0] == '=' {
+			output[value[1]] = strings.TrimSpace(value[2][1:])
+		} else {
+			output[value[1]] = strings.TrimSpace(value[2])
+		}
+	}
+	return output
+}
+
+func appendScyllaArguments(ctx context.Context, s *ScyllaConfig, scyllaArgs string, scyllaFinalArgs map[string]*string) {
+	for argName, argValue := range convertScyllaArguments(scyllaArgs) {
+		if existing := scyllaFinalArgs[argName]; existing == nil {
+			scyllaFinalArgs[argName] = pointer.StringPtr(strings.TrimSpace(argValue))
+		} else {
+			s.logger.Info(ctx, fmt.Sprintf("ScyllaArgs: argument '%s' is ignored, it is already in the list", argName))
+		}
+	}
+}
+
 func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	m := s.member
 	// Get seeds
@@ -178,17 +207,18 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	args := []string{
-		fmt.Sprintf("--listen-address=%s", m.IP),
-		fmt.Sprintf("--broadcast-address=%s", m.StaticIP),
-		fmt.Sprintf("--broadcast-rpc-address=%s", m.StaticIP),
-		fmt.Sprintf("--seeds=%s", strings.Join(seeds, ",")),
-		fmt.Sprintf("--developer-mode=%s", devMode),
-		fmt.Sprintf("--overprovisioned=%d", 0),
-		fmt.Sprintf("--smp=%d", shards),
+
+	args := map[string]*string{
+		"listen-address":        &m.IP,
+		"broadcast-address":     &m.StaticIP,
+		"broadcast-rpc-address": &m.StaticIP,
+		"seeds":                 pointer.StringPtr(strings.Join(seeds, ",")),
+		"developer-mode":        &devMode,
+		"overprovisioned":       pointer.StringPtr("0"),
+		"smp":                   pointer.StringPtr(strconv.Itoa(shards)),
 	}
 	if cluster.Spec.Alternator.Enabled() {
-		args = append(args, fmt.Sprintf("--alternator-port=%d", cluster.Spec.Alternator.Port))
+		args["alternator-port"] = pointer.StringPtr(strconv.Itoa(int(cluster.Spec.Alternator.Port)))
 	}
 	// See if we need to use cpu-pinning
 	// TODO: Add more checks to make sure this is valid.
@@ -203,10 +233,31 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		if err := s.validateCpuSet(ctx, cpusAllowed, shards); err != nil {
 			return nil, errors.WithStack(err)
 		}
-		args = append(args, fmt.Sprintf("--cpuset=%s", cpusAllowed))
+		args["cpuset"] = &cpusAllowed
 	}
 
-	scyllaCmd := exec.Command(entrypointPath, args...)
+	if len(cluster.Spec.ScyllaArgs) > 0 {
+		version, err := semver.Parse(cluster.Spec.Version)
+		if err != nil {
+			s.logger.Info(ctx, "This scylla version might not support ScyllaArgs", "version", cluster.Spec.Version)
+			appendScyllaArguments(ctx, s, cluster.Spec.ScyllaArgs, args)
+		} else if version.LT(v1alpha1.ScyllaVersionThatSupportsArgs) {
+			s.logger.Info(ctx, "This scylla version does not support ScyllaArgs. ScyllaArgs is ignored", "version", cluster.Spec.Version)
+		} else {
+			appendScyllaArguments(ctx, s, cluster.Spec.ScyllaArgs, args)
+		}
+	}
+
+	var argsList []string
+	for key, value := range args {
+		if value == nil {
+			argsList = append(argsList, fmt.Sprintf("--%s", key))
+		} else {
+			argsList = append(argsList, fmt.Sprintf("--%s=%s", key, *value))
+		}
+	}
+
+	scyllaCmd := exec.Command(entrypointPath, argsList...)
 	scyllaCmd.Stderr = os.Stderr
 	scyllaCmd.Stdout = os.Stdout
 	s.logger.Info(ctx, "Scylla entrypoint", "command", scyllaCmd)

@@ -10,6 +10,14 @@ import (
 
 func checkValues(c *Cluster) error {
 	rackNames := sets.NewString()
+
+	if len(c.Spec.ScyllaArgs) > 0 {
+		version, err := semver.Parse(c.Spec.Version)
+		if err == nil && version.LT(ScyllaVersionThatSupportsArgs) {
+			return errors.Errorf("ScyllaArgs is only supported starting from %s", ScyllaVersionThatSupportsArgsText)
+		}
+	}
+
 	for _, rack := range c.Spec.Datacenter.Racks {
 		// Check that no two racks have the same name
 		if rackNames.Has(rack.Name) {

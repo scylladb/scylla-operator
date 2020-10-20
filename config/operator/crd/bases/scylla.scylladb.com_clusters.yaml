@@ -1429,6 +1429,8 @@ spec:
             repository:
               description: Repository to pull the image from.
               type: string
+            scyllaArgs:
+              type: string
             sidecarImage:
               description: User-provided image for the sidecar that replaces default.
               properties:

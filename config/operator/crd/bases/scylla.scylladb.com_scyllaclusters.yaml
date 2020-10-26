@@ -6,14 +6,14 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.3.0
   creationTimestamp: null
-  name: clusters.scylla.scylladb.com
+  name: scyllaclusters.scylla.scylladb.com
 spec:
   group: scylla.scylladb.com
   names:
-    kind: Cluster
-    listKind: ClusterList
-    plural: clusters
-    singular: cluster
+    kind: ScyllaCluster
+    listKind: ScyllaClusterList
+    plural: scyllaclusters
+    singular: scyllacluster
   scope: Namespaced
   subresources:
     status: {}

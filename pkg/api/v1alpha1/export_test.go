@@ -2,10 +2,10 @@
 
 package v1alpha1
 
-func CheckValues(c *Cluster) error {
+func CheckValues(c *ScyllaCluster) error {
 	return checkValues(c)
 }
 
-func CheckTransitions(old, new *Cluster) error {
+func CheckTransitions(old, new *ScyllaCluster) error {
 	return checkTransitions(old, new)
 }

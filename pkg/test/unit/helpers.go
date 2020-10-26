@@ -6,12 +6,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func NewSingleRackCluster(members int32) *scyllav1alpha1.Cluster {
+func NewSingleRackCluster(members int32) *scyllav1alpha1.ScyllaCluster {
 	return NewDetailedSingleRackCluster("test-cluster", "test-ns", "repo", "2.3.1", "test-dc", "test-rack", members)
 }
 
-func NewDetailedSingleRackCluster(name, namespace, repo, version, dc, rack string, members int32) *scyllav1alpha1.Cluster {
-	return &scyllav1alpha1.Cluster{
+func NewDetailedSingleRackCluster(name, namespace, repo, version, dc, rack string, members int32) *scyllav1alpha1.ScyllaCluster {
+	return &scyllav1alpha1.ScyllaCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,

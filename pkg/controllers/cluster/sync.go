@@ -24,7 +24,7 @@ const (
 
 // sync attempts to sync the given Scylla Cluster.
 // NOTE: the Cluster Object is a DeepCopy. Modify at will.
-func (cc *ClusterReconciler) sync(c *scyllav1alpha1.Cluster) error {
+func (cc *ClusterReconciler) sync(c *scyllav1alpha1.ScyllaCluster) error {
 	ctx := log.WithNewTraceID(context.Background())
 	logger := cc.Logger.With("cluster", c.Namespace+"/"+c.Name, "resourceVersion", c.ResourceVersion)
 	logger.Info(ctx, "Starting reconciliation...")
@@ -78,7 +78,7 @@ func (cc *ClusterReconciler) sync(c *scyllav1alpha1.Cluster) error {
 	return nil
 }
 
-func (cc *ClusterReconciler) nextAction(ctx context.Context, cluster *scyllav1alpha1.Cluster) actions.Action {
+func (cc *ClusterReconciler) nextAction(ctx context.Context, cluster *scyllav1alpha1.ScyllaCluster) actions.Action {
 	logger := cc.Logger.With("cluster", cluster.Namespace+"/"+cluster.Name, "resourceVersion", cluster.ResourceVersion)
 
 	// Check if any rack isn't created

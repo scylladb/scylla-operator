@@ -195,7 +195,7 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 
 	// Check if we need to run in developer mode
 	devMode := "0"
-	cluster := &v1alpha1.Cluster{}
+	cluster := &v1alpha1.ScyllaCluster{}
 	err = s.Get(ctx, naming.NamespacedName(s.member.Cluster, s.member.Namespace), cluster)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting cluster")

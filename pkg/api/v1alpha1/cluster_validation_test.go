@@ -25,7 +25,7 @@ func TestCheckValues(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		obj     *v1alpha1.Cluster
+		obj     *v1alpha1.ScyllaCluster
 		allowed bool
 	}{
 		{
@@ -55,8 +55,8 @@ func TestCheckValues(t *testing.T) {
 func TestCheckTransitions(t *testing.T) {
 	tests := []struct {
 		name    string
-		old     *v1alpha1.Cluster
-		new     *v1alpha1.Cluster
+		old     *v1alpha1.ScyllaCluster
+		new     *v1alpha1.ScyllaCluster
 		allowed bool
 	}{
 		{
@@ -140,24 +140,24 @@ func TestCheckTransitions(t *testing.T) {
 	}
 }
 
-func placementChanged(c *v1alpha1.Cluster) *v1alpha1.Cluster {
+func placementChanged(c *v1alpha1.ScyllaCluster) *v1alpha1.ScyllaCluster {
 	c.Spec.Datacenter.Racks[0].Placement = &v1alpha1.PlacementSpec{}
 	return c
 }
 
-func resourceChanged(c *v1alpha1.Cluster) *v1alpha1.Cluster {
+func resourceChanged(c *v1alpha1.ScyllaCluster) *v1alpha1.ScyllaCluster {
 	c.Spec.Datacenter.Racks[0].Resources.Requests = map[corev1.ResourceName]resource.Quantity{
 		corev1.ResourceCPU: *resource.NewMilliQuantity(1000, resource.DecimalSI),
 	}
 	return c
 }
 
-func rackDeleted(c *v1alpha1.Cluster) *v1alpha1.Cluster {
+func rackDeleted(c *v1alpha1.ScyllaCluster) *v1alpha1.ScyllaCluster {
 	c.Spec.Datacenter.Racks = nil
 	return c
 }
 
-func sidecarImageChanged(c *v1alpha1.Cluster) *v1alpha1.Cluster {
+func sidecarImageChanged(c *v1alpha1.ScyllaCluster) *v1alpha1.ScyllaCluster {
 	c.Spec.SidecarImage = &v1alpha1.ImageSpec{
 		Version:    "1.0.0",
 		Repository: "my-private-repo",
@@ -165,7 +165,7 @@ func sidecarImageChanged(c *v1alpha1.Cluster) *v1alpha1.Cluster {
 	return c
 }
 
-func storageChanged(c *v1alpha1.Cluster) *v1alpha1.Cluster {
+func storageChanged(c *v1alpha1.ScyllaCluster) *v1alpha1.ScyllaCluster {
 	c.Spec.Datacenter.Racks[0].Storage.Capacity = "15Gi"
 	return c
 }

@@ -55,7 +55,7 @@ func newOperatorCmd(ctx context.Context, logger log.Logger, level zap.AtomicLeve
 
 			// Enable webhook if requested
 			if opts.EnableAdmissionWebhook {
-				if err = (&v1alpha1.Cluster{}).SetupWebhookWithManager(mgr); err != nil {
+				if err = (&v1alpha1.ScyllaCluster{}).SetupWebhookWithManager(mgr); err != nil {
 					logger.Fatal(ctx, "unable to add web hook to manager", "error", err)
 				}
 			}

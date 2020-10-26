@@ -253,7 +253,7 @@ const (
 // +kubebuilder:subresource:status
 
 // Cluster is the Schema for the clusters API
-type Cluster struct {
+type ScyllaCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -264,10 +264,10 @@ type Cluster struct {
 // +kubebuilder:object:root=true
 
 // ClusterList contains a list of Cluster
-type ClusterList struct {
+type ScyllaClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Cluster `json:"items"`
+	Items           []ScyllaCluster `json:"items"`
 }
 
 // Version of scylla docker starting from which passing arguments via entry-point is supported
@@ -279,5 +279,5 @@ func init() {
 	if ScyllaVersionThatSupportsArgs, err = semver.Parse(ScyllaVersionThatSupportsArgsText); err != nil {
 		panic(err)
 	}
-	SchemeBuilder.Register(&Cluster{}, &ClusterList{})
+	SchemeBuilder.Register(&ScyllaCluster{}, &ScyllaClusterList{})
 }

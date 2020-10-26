@@ -8,7 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-func checkValues(c *Cluster) error {
+func checkValues(c *ScyllaCluster) error {
 	rackNames := sets.NewString()
 
 	if len(c.Spec.ScyllaArgs) > 0 {
@@ -59,7 +59,7 @@ func checkValues(c *Cluster) error {
 	return nil
 }
 
-func checkTransitions(old, new *Cluster) error {
+func checkTransitions(old, new *ScyllaCluster) error {
 	oldVersion, err := semver.Parse(old.Spec.Version)
 	if err != nil {
 		return errors.Errorf("invalid old semantic version, err=%s", err)

@@ -285,7 +285,7 @@ func TestManagerSynchronization(t *testing.T) {
 		test := tcs[i]
 		t.Run(test.Name, func(t *testing.T) {
 			ctx := context.Background()
-			cluster := &v1alpha1.Cluster{
+			cluster := &v1alpha1.ScyllaCluster{
 				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
 				Spec:       test.Spec,
 				Status:     test.Status,

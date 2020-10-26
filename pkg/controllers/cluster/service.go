@@ -15,7 +15,7 @@ import (
 // syncClusterHeadlessService checks if a Headless Service exists
 // for the given Cluster, in order for the StatefulSets to utilize it.
 // If it doesn't exists, then create it.
-func (cc *ClusterReconciler) syncClusterHeadlessService(ctx context.Context, c *scyllav1alpha1.Cluster) error {
+func (cc *ClusterReconciler) syncClusterHeadlessService(ctx context.Context, c *scyllav1alpha1.ScyllaCluster) error {
 	clusterHeadlessService := resource.HeadlessServiceForCluster(c)
 	_, err := controllerutil.CreateOrUpdate(ctx, cc.Client, clusterHeadlessService, serviceMutateFn(ctx, clusterHeadlessService, cc.Client))
 	if err != nil {
@@ -29,7 +29,7 @@ func (cc *ClusterReconciler) syncClusterHeadlessService(ctx context.Context, c *
 // which will serve as a static ip.
 // If it doesn't exist, it creates it.
 // It also assigns the first two members of each rack as seeds.
-func (cc *ClusterReconciler) syncMemberServices(ctx context.Context, c *scyllav1alpha1.Cluster) error {
+func (cc *ClusterReconciler) syncMemberServices(ctx context.Context, c *scyllav1alpha1.ScyllaCluster) error {
 	podlist := &corev1.PodList{}
 
 	// For every Pod of the cluster that exists, check that a

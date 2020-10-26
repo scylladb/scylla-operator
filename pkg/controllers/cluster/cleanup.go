@@ -14,7 +14,7 @@ import (
 )
 
 // cleanup deletes all resources remaining because of cluster scale downs
-func (cc *ClusterReconciler) cleanup(ctx context.Context, c *scyllav1alpha1.Cluster) error {
+func (cc *ClusterReconciler) cleanup(ctx context.Context, c *scyllav1alpha1.ScyllaCluster) error {
 	svcList := &corev1.ServiceList{}
 	sts := &appsv1.StatefulSet{}
 	logger := cc.Logger.With("cluster", c.Namespace+"/"+c.Name, "resourceVersion", c.ResourceVersion)
@@ -68,7 +68,7 @@ func (cc *ClusterReconciler) cleanup(ctx context.Context, c *scyllav1alpha1.Clus
 // Currently those are :
 //  - A PVC
 //  - A ClusterIP Service
-func (cc *ClusterReconciler) cleanupMemberResources(ctx context.Context, memberService *corev1.Service, r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster) error {
+func (cc *ClusterReconciler) cleanupMemberResources(ctx context.Context, memberService *corev1.Service, r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaCluster) error {
 	memberName := memberService.Name
 	logger := util.LoggerForCluster(c)
 	logger.Info(ctx, "Cleaning up resources for member", "name", memberName)

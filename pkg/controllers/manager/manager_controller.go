@@ -114,7 +114,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	var cluster v1alpha1.Cluster
+	var cluster v1alpha1.ScyllaCluster
 	if err := r.UncachedClient.Get(ctx, req.NamespacedName, &cluster); err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
@@ -250,7 +250,7 @@ func (r *Reconciler) managerState(ctx context.Context, clusterID string) (*state
 	}, nil
 }
 
-func (r *Reconciler) getAuthToken(ctx context.Context, cluster *v1alpha1.Cluster) (string, error) {
+func (r *Reconciler) getAuthToken(ctx context.Context, cluster *v1alpha1.ScyllaCluster) (string, error) {
 	const agentConfigKey = "scylla-manager-agent.yaml"
 	secret := &v1.Secret{}
 	agentSecretName := cluster.Spec.Datacenter.Racks[0].ScyllaAgentConfig
@@ -277,6 +277,6 @@ func (r *Reconciler) getAuthToken(ctx context.Context, cluster *v1alpha1.Cluster
 
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.Cluster{}).
+		For(&v1alpha1.ScyllaCluster{}).
 		Complete(r)
 }

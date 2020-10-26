@@ -12,7 +12,7 @@ metadata:
     cert-manager.io/inject-ca-from: scylla-operator-system/scylla-operator-serving-cert
     controller-gen.kubebuilder.io/version: v0.3.0
   creationTimestamp: null
-  name: clusters.scylla.scylladb.com
+  name: scyllaclusters.scylla.scylladb.com
 spec:
   conversion:
     strategy: Webhook
@@ -24,10 +24,10 @@ spec:
         path: /convert
   group: scylla.scylladb.com
   names:
-    kind: Cluster
-    listKind: ClusterList
-    plural: clusters
-    singular: cluster
+    kind: ScyllaCluster
+    listKind: ScyllaClusterList
+    plural: scyllaclusters
+    singular: scyllacluster
   preserveUnknownFields: false
   scope: Namespaced
   subresources:

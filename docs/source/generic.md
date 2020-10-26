@@ -87,7 +87,7 @@ We can verify that a Kubernetes object has been created that represents our new 
 This is important because it shows that  has successfully extended Kubernetes to make Scylla clusters a first class citizen in the Kubernetes cloud-native environment.
 
 ```console
-kubectl -n scylla get clusters.scylla.scylladb.com
+kubectl -n scylla get ScyllaCluster
 ```
 
 Checking the pods that are created is as easy as:
@@ -126,7 +126,7 @@ kubectl -n scylla get pod -l app=scylla
 You can also track the state of a Scylla cluster from its status. To check the current status of a Cluster, run:
 
 ```console
-kubectl -n scylla describe clusters.scylla.scylladb.com simple-cluster
+kubectl -n scylla describe ScyllaCluster simple-cluster
 ```
 
 Checking the logs of the running scylla instances can be done like this:
@@ -312,13 +312,13 @@ After a restart the operator will use the security token when it interacts with 
 
 The operator supports scale up of a rack as well as addition of new racks. To make the changes, you can use:
 ```console
-kubectl -n scylla edit clusters.scylla.scylladb.com simple-cluster
+kubectl -n scylla edit ScyllaCluster simple-cluster
 ```
 * To scale up a rack, change the `Spec.Members` field of the rack to the desired value.
 * To add a new rack, append the `racks` list with a new rack. Remember to choose a different rack name for the new rack.
 * After editing and saving the yaml, check your cluster's Status and Events for information on what's happening:  
 ```console
-kubectl -n scylla describe clusters.scylla.scylladb.com simple-cluster 
+kubectl -n scylla describe ScyllaCluster simple-cluster
 ```
 
 ## Benchmark with cassandra-stress
@@ -375,12 +375,12 @@ kubectl delete -f scripts/cassandra-stress.yaml
 
 The operator supports scale down of a rack. To make the changes, you can use:
 ```console
-kubectl -n scylla edit clusters.scylla.scylladb.com simple-cluster
+kubectl -n scylla edit ScyllaCluster simple-cluster
 ```
 * To scale down a rack, change the `Spec.Members` field of the rack to the desired value.
 * After editing and saving the yaml, check your cluster's Status and Events for information on what's happening:
 ```console
-kubectl -n scylla describe clusters.scylla.scylladb.com simple-cluster
+kubectl -n scylla describe ScyllaCluster simple-cluster
 ```
 
 ## Clean Up

@@ -21,7 +21,7 @@ type state struct {
 	BackupTasks []*BackupTask
 }
 
-func sync(ctx context.Context, cluster *v1alpha1.Cluster, authToken string, state *state) ([]action, bool, error) {
+func sync(ctx context.Context, cluster *v1alpha1.ScyllaCluster, authToken string, state *state) ([]action, bool, error) {
 	var actions []action
 	requeue := false
 	clusterID := ""
@@ -76,7 +76,7 @@ func sync(ctx context.Context, cluster *v1alpha1.Cluster, authToken string, stat
 	return actions, requeue, nil
 }
 
-func syncTasks(clusterID string, cluster *v1alpha1.Cluster, state *state) ([]action, error) {
+func syncTasks(clusterID string, cluster *v1alpha1.ScyllaCluster, state *state) ([]action, error) {
 	syncer := newStateCache(cluster, state)
 
 	var actions []action
@@ -116,7 +116,7 @@ func syncTasks(clusterID string, cluster *v1alpha1.Cluster, state *state) ([]act
 	return actions, nil
 }
 
-func syncBackupTasks(clusterID string, cluster *v1alpha1.Cluster, syncer stateCache, managerState *state) ([]action, error) {
+func syncBackupTasks(clusterID string, cluster *v1alpha1.ScyllaCluster, syncer stateCache, managerState *state) ([]action, error) {
 	var actions []action
 
 	for _, bt := range cluster.Spec.Backups {
@@ -159,7 +159,7 @@ func syncBackupTasks(clusterID string, cluster *v1alpha1.Cluster, syncer stateCa
 	return actions, nil
 }
 
-func syncRepairTasks(clusterID string, cluster *v1alpha1.Cluster, syncer stateCache, managerState *state) ([]action, error) {
+func syncRepairTasks(clusterID string, cluster *v1alpha1.ScyllaCluster, syncer stateCache, managerState *state) ([]action, error) {
 	var actions []action
 
 	for _, rt := range cluster.Spec.Repairs {
@@ -208,7 +208,7 @@ type stateCache struct {
 	statusIDNameMapping map[string]string
 }
 
-func newStateCache(cluster *v1alpha1.Cluster, state *state) stateCache {
+func newStateCache(cluster *v1alpha1.ScyllaCluster, state *state) stateCache {
 	s := stateCache{
 		stateTasks:          strset.New(),
 		specTasks:           strset.New(),

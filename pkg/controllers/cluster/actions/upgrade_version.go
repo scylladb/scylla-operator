@@ -19,11 +19,11 @@ const (
 )
 
 type ClusterVersionUpgrade struct {
-	Cluster *scyllav1alpha1.Cluster
+	Cluster *scyllav1alpha1.ScyllaCluster
 	logger  log.Logger
 }
 
-func NewClusterVersionUpgradeAction(c *scyllav1alpha1.Cluster, l log.Logger) *ClusterVersionUpgrade {
+func NewClusterVersionUpgradeAction(c *scyllav1alpha1.ScyllaCluster, l log.Logger) *ClusterVersionUpgrade {
 	return &ClusterVersionUpgrade{
 		Cluster: c,
 		logger:  l,

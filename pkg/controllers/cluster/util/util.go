@@ -19,7 +19,7 @@ import (
 
 // LoggerForCluster returns a logger that will log with context
 // about the current cluster
-func LoggerForCluster(c *scyllav1alpha1.Cluster) log.Logger {
+func LoggerForCluster(c *scyllav1alpha1.ScyllaCluster) log.Logger {
 	l, _ := log.NewProduction(log.Config{
 		Level: zapcore.DebugLevel,
 	})
@@ -30,7 +30,7 @@ func LoggerForCluster(c *scyllav1alpha1.Cluster) log.Logger {
 // have been observed by the StatefulSet controller.
 // If they haven't, their status might be stale, so it's better to wait
 // and process them later.
-func AreStatefulSetStatusesStale(ctx context.Context, c *scyllav1alpha1.Cluster, client client.Client) (bool, error) {
+func AreStatefulSetStatusesStale(ctx context.Context, c *scyllav1alpha1.ScyllaCluster, client client.Client) (bool, error) {
 	sts := &appsv1.StatefulSet{}
 	for _, r := range c.Spec.Datacenter.Racks {
 		err := client.Get(ctx, naming.NamespacedName(naming.StatefulSetNameForRack(r, c), c.Namespace), sts)
@@ -47,7 +47,7 @@ func AreStatefulSetStatusesStale(ctx context.Context, c *scyllav1alpha1.Cluster,
 	return false, nil
 }
 
-func GetMemberServicesForRack(ctx context.Context, r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, cl client.Client) ([]corev1.Service, error) {
+func GetMemberServicesForRack(ctx context.Context, r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaCluster, cl client.Client) ([]corev1.Service, error) {
 	svcList := &corev1.ServiceList{}
 	err := cl.List(ctx, svcList, &client.ListOptions{
 		LabelSelector: naming.RackSelector(r, c),
@@ -89,7 +89,7 @@ func VerifyOwner(obj, owner metav1.Object) error {
 
 // NewControllerRef returns an OwnerReference to
 // the provided Cluster Object
-func NewControllerRef(c *scyllav1alpha1.Cluster) metav1.OwnerReference {
+func NewControllerRef(c *scyllav1alpha1.ScyllaCluster) metav1.OwnerReference {
 	return *metav1.NewControllerRef(c, schema.GroupVersionKind{
 		Group:   "scylla.scylladb.com",
 		Version: "v1alpha1",

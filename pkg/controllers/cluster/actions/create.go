@@ -21,11 +21,11 @@ var _ Action = &RackCreate{}
 
 type RackCreate struct {
 	Rack          scyllav1alpha1.RackSpec
-	Cluster       *scyllav1alpha1.Cluster
+	Cluster       *scyllav1alpha1.ScyllaCluster
 	OperatorImage string
 }
 
-func NewRackCreateAction(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, image string) *RackCreate {
+func NewRackCreateAction(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaCluster, image string) *RackCreate {
 	return &RackCreate{
 		Rack:          r,
 		Cluster:       c,

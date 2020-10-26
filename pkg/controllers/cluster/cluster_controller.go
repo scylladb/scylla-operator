@@ -94,7 +94,7 @@ func (cc *ClusterReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error
 	ctx := log.WithNewTraceID(context.Background())
 	cc.Logger.Debug(ctx, "Reconcile request", "request", request.String())
 	// Fetch the Cluster instance
-	c := &scyllav1alpha1.Cluster{}
+	c := &scyllav1alpha1.ScyllaCluster{}
 	err := cc.UncachedClient.Get(ctx, request.NamespacedName, c)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -144,8 +144,8 @@ func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	//////////////////////////////////
 	clusterSpecChangedPredicate := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			oldCluster := e.ObjectOld.(*scyllav1alpha1.Cluster)
-			newCluster := e.ObjectNew.(*scyllav1alpha1.Cluster)
+			oldCluster := e.ObjectOld.(*scyllav1alpha1.ScyllaCluster)
+			newCluster := e.ObjectNew.(*scyllav1alpha1.ScyllaCluster)
 			if reflect.DeepEqual(oldCluster, newCluster) {
 				return false
 			}
@@ -154,7 +154,7 @@ func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	err = c.Watch(
-		&source.Kind{Type: &scyllav1alpha1.Cluster{}},
+		&source.Kind{Type: &scyllav1alpha1.ScyllaCluster{}},
 		&handler.EnqueueRequestForObject{},
 		predicate.ResourceVersionChangedPredicate{},
 		clusterSpecChangedPredicate,
@@ -171,7 +171,7 @@ func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		&source.Kind{Type: &appsv1.StatefulSet{}},
 		&handler.EnqueueRequestForOwner{
 			IsController: true,
-			OwnerType:    &scyllav1alpha1.Cluster{},
+			OwnerType:    &scyllav1alpha1.ScyllaCluster{},
 		},
 		predicate.ResourceVersionChangedPredicate{},
 	)
@@ -187,7 +187,7 @@ func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		&source.Kind{Type: &corev1.Service{}},
 		&handler.EnqueueRequestForOwner{
 			IsController: true,
-			OwnerType:    &scyllav1alpha1.Cluster{},
+			OwnerType:    &scyllav1alpha1.ScyllaCluster{},
 		},
 		predicate.ResourceVersionChangedPredicate{},
 	)

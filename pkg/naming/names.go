@@ -26,23 +26,23 @@ func NamespacedNameForObject(obj metav1.Object) client.ObjectKey {
 	}
 }
 
-func StatefulSetNameForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster) string {
+func StatefulSetNameForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaCluster) string {
 	return fmt.Sprintf("%s-%s-%s", c.Name, c.Spec.Datacenter.Name, r.Name)
 }
 
-func ServiceAccountNameForMembers(c *scyllav1alpha1.Cluster) string {
+func ServiceAccountNameForMembers(c *scyllav1alpha1.ScyllaCluster) string {
 	return fmt.Sprintf("%s-member", c.Name)
 }
 
-func HeadlessServiceNameForCluster(c *scyllav1alpha1.Cluster) string {
+func HeadlessServiceNameForCluster(c *scyllav1alpha1.ScyllaCluster) string {
 	return fmt.Sprintf("%s-client", c.Name)
 }
 
-func CrossNamespaceServiceNameForCluster(c *scyllav1alpha1.Cluster) string {
+func CrossNamespaceServiceNameForCluster(c *scyllav1alpha1.ScyllaCluster) string {
 	return fmt.Sprintf("%s.%s.svc.cluster.local", HeadlessServiceNameForCluster(c), c.Namespace)
 }
 
-func ManagerClusterName(c *scyllav1alpha1.Cluster) string {
+func ManagerClusterName(c *scyllav1alpha1.ScyllaCluster) string {
 	return c.Namespace + "/" + c.Name
 }
 

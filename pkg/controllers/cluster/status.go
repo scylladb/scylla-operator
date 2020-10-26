@@ -17,7 +17,7 @@ import (
 // UpdateStatus updates the status of the given Scylla Cluster.
 // It doesn't post the result to the API Server yet.
 // That will be done at the end of the sync loop.
-func (cc *ClusterReconciler) updateStatus(ctx context.Context, cluster *scyllav1alpha1.Cluster) error {
+func (cc *ClusterReconciler) updateStatus(ctx context.Context, cluster *scyllav1alpha1.ScyllaCluster) error {
 	cluster.Status.Racks = map[string]scyllav1alpha1.RackStatus{}
 
 	sts := &appsv1.StatefulSet{}

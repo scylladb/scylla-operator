@@ -27,7 +27,7 @@ import (
 // log is for logging in this package.
 var clusterlog = logf.Log.WithName("cluster-resource")
 
-func (r *Cluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
+func (r *ScyllaCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
 		Complete()
@@ -37,12 +37,12 @@ func (r *Cluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
 //
 
 // +kubebuilder:webhook:path=/validate-scylla-scylladb-com-v1alpha1-cluster,failurePolicy=fail,groups=scylla.scylladb.com,resources=clusters,verbs=create;update,versions=v1alpha1,name=webhook.scylla.scylladb.com,mutating=false
-var _ webhook.Validator = &Cluster{}
+var _ webhook.Validator = &ScyllaCluster{}
 
 // +kubebuilder:webhook:path=/mutate-scylla-scylladb-com-v1alpha1-cluster,failurePolicy=fail,groups=scylla.scylladb.com,resources=clusters,verbs=create;update,versions=v1alpha1,name=webhook.scylla.scylladb.com,mutating=true
-var _ webhook.Defaulter = &Cluster{}
+var _ webhook.Defaulter = &ScyllaCluster{}
 
-func (c *Cluster) Default() {
+func (c *ScyllaCluster) Default() {
 	for i, repairTask := range c.Spec.Repairs {
 		if repairTask.StartDate == nil {
 			c.Spec.Repairs[i].StartDate = pointer.StringPtr("now")
@@ -75,7 +75,7 @@ func (c *Cluster) Default() {
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *Cluster) ValidateCreate() error {
+func (r *ScyllaCluster) ValidateCreate() error {
 	clusterlog.Info("validate create", "name", r.Name)
 
 	// First, check the values
@@ -87,7 +87,7 @@ func (r *Cluster) ValidateCreate() error {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *Cluster) ValidateUpdate(old runtime.Object) error {
+func (r *ScyllaCluster) ValidateUpdate(old runtime.Object) error {
 	clusterlog.Info("validate update", "name", r.Name)
 
 	// First, check the values
@@ -95,7 +95,7 @@ func (r *Cluster) ValidateUpdate(old runtime.Object) error {
 		return err
 	}
 
-	if err := checkTransitions(old.(*Cluster), r); err != nil {
+	if err := checkTransitions(old.(*ScyllaCluster), r); err != nil {
 		return err
 	}
 
@@ -103,7 +103,7 @@ func (r *Cluster) ValidateUpdate(old runtime.Object) error {
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *Cluster) ValidateDelete() error {
+func (r *ScyllaCluster) ValidateDelete() error {
 	clusterlog.Info("validate delete", "name", r.Name)
 	// no validation during delete
 	return nil

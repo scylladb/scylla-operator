@@ -54,7 +54,7 @@ func TestNextAction(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		cluster        *scyllav1alpha1.Cluster
+		cluster        *scyllav1alpha1.ScyllaCluster
 		expectedAction string
 		expectNoAction bool
 	}{

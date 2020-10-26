@@ -20,7 +20,7 @@ const (
 	officialScyllaManagerAgentRepo = "scylladb/scylla-manager-agent"
 )
 
-func HeadlessServiceForCluster(c *scyllav1alpha1.Cluster) *corev1.Service {
+func HeadlessServiceForCluster(c *scyllav1alpha1.ScyllaCluster) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            naming.HeadlessServiceNameForCluster(c),
@@ -42,7 +42,7 @@ func HeadlessServiceForCluster(c *scyllav1alpha1.Cluster) *corev1.Service {
 	}
 }
 
-func MemberServiceForPod(pod *corev1.Pod, cluster *scyllav1alpha1.Cluster) *corev1.Service {
+func MemberServiceForPod(pod *corev1.Pod, cluster *scyllav1alpha1.ScyllaCluster) *corev1.Service {
 	labels := naming.ClusterLabels(cluster)
 	labels[naming.DatacenterNameLabel] = pod.Labels[naming.DatacenterNameLabel]
 	labels[naming.RackNameLabel] = pod.Labels[naming.RackNameLabel]
@@ -66,7 +66,7 @@ func MemberServiceForPod(pod *corev1.Pod, cluster *scyllav1alpha1.Cluster) *core
 	}
 }
 
-func memberServicePorts(cluster *scyllav1alpha1.Cluster) []corev1.ServicePort {
+func memberServicePorts(cluster *scyllav1alpha1.ScyllaCluster) []corev1.ServicePort {
 	ports := []corev1.ServicePort{
 		{
 			Name: "inter-node-communication",
@@ -105,7 +105,7 @@ func memberServicePorts(cluster *scyllav1alpha1.Cluster) []corev1.ServicePort {
 	return ports
 }
 
-func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, sidecarImage string) *appsv1.StatefulSet {
+func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaCluster, sidecarImage string) *appsv1.StatefulSet {
 	rackLabels := naming.RackLabels(r, c)
 	placement := r.Placement
 	if placement == nil {
@@ -362,7 +362,7 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster, si
 	return sts
 }
 
-func containerPorts(c *scyllav1alpha1.Cluster) []corev1.ContainerPort {
+func containerPorts(c *scyllav1alpha1.ScyllaCluster) []corev1.ContainerPort {
 	ports := []corev1.ContainerPort{
 		{
 			Name:          "intra-node",
@@ -433,7 +433,7 @@ func sysctlInitContainer(sysctls []string) *corev1.Container {
 	}
 }
 
-func agentContainer(c *scyllav1alpha1.Cluster) *corev1.Container {
+func agentContainer(c *scyllav1alpha1.ScyllaCluster) *corev1.Container {
 	return &corev1.Container{
 		Name:            "scylla-manager-agent",
 		Image:           agentImageForCluster(c),
@@ -474,7 +474,7 @@ func agentContainer(c *scyllav1alpha1.Cluster) *corev1.Container {
 	}
 }
 
-func ImageForCluster(c *scyllav1alpha1.Cluster) string {
+func ImageForCluster(c *scyllav1alpha1.ScyllaCluster) string {
 	repo := officialScyllaRepo
 	if c.Spec.Repository != nil {
 		repo = *c.Spec.Repository
@@ -482,7 +482,7 @@ func ImageForCluster(c *scyllav1alpha1.Cluster) string {
 	return fmt.Sprintf("%s:%s", repo, c.Spec.Version)
 }
 
-func agentImageForCluster(c *scyllav1alpha1.Cluster) string {
+func agentImageForCluster(c *scyllav1alpha1.ScyllaCluster) string {
 	repo := officialScyllaManagerAgentRepo
 	if c.Spec.AgentRepository != nil {
 		repo = *c.Spec.AgentRepository

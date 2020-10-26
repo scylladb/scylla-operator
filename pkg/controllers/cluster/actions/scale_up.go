@@ -19,10 +19,10 @@ var _ Action = &RackScaleUp{}
 
 type RackScaleUp struct {
 	Rack    scyllav1alpha1.RackSpec
-	Cluster *scyllav1alpha1.Cluster
+	Cluster *scyllav1alpha1.ScyllaCluster
 }
 
-func NewRackScaleUpAction(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.Cluster) *RackScaleUp {
+func NewRackScaleUpAction(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaCluster) *RackScaleUp {
 	return &RackScaleUp{
 		Rack:    r,
 		Cluster: c,

@@ -9,7 +9,7 @@ images:
   newTag: 2.1.2
 - name: operator
   newName: scylladb/scylla-operator
-  newTag: v0.2.4
+  newTag: v0.3.0
 
 configMapGenerator:
   - name: manager-config

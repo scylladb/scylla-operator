@@ -1,8 +1,10 @@
+
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   creationTimestamp: null
-  name: role
+  name: manager-role
 rules:
 - apiGroups:
   - ""
@@ -10,33 +12,8 @@ rules:
   - events
   verbs:
   - create
-  - update
-  - patch
-- apiGroups:
-  - apps
-  resources:
-  - statefulsets
-  verbs:
-  - get
-  - list
-- apiGroups:
-  - scylla.scylladb.com
-  resources:
-  - clusters
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - scylla.scylladb.com
-  resources:
-  - clusters/status
-  verbs:
   - patch
   - update
-  - watch
-  - get
-  - list
 - apiGroups:
   - ""
   resources:
@@ -52,3 +29,28 @@ rules:
   verbs:
   - get
   - list
+- apiGroups:
+  - apps
+  resources:
+  - statefulsets
+  verbs:
+  - get
+  - list
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - scyllaclusters
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - scyllaclusters/status
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch

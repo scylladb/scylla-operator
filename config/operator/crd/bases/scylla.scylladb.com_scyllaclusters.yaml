@@ -1458,7 +1458,7 @@ spec:
           - version
           type: object
         status:
-          description: ClusterStatus defines the observed state of Cluster
+          description: ClusterStatus defines the observed state of ScyllaCluster
           properties:
             backups:
               items:

@@ -32,7 +32,7 @@ rules:
   - apiGroups:
       - scylla.scylladb.com
     resources:
-      - clusters
+      - scyllaclusters
     verbs:
       - get
 
@@ -64,7 +64,7 @@ subjects:
 ---
 # Scylla Manager Cluster
 apiVersion: scylla.scylladb.com/v1alpha1
-kind: Cluster
+kind: ScyllaCluster
 metadata:
   name: cluster
   namespace: scylla-manager

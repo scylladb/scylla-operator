@@ -216,7 +216,7 @@ type BackupTaskStatus struct {
 	Error          string `json:"error"`
 }
 
-// ClusterStatus defines the observed state of Cluster
+// ClusterStatus defines the observed state of ScyllaCluster
 type ClusterStatus struct {
 	Racks     map[string]RackStatus `json:"racks,omitempty"`
 	ManagerID *string               `json:"managerId,omitempty"`

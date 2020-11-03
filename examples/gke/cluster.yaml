@@ -40,7 +40,7 @@ rules:
   - apiGroups:
       - scylla.scylladb.com
     resources:
-      - clusters
+      - scyllaclusters
     verbs:
       - get
 
@@ -74,7 +74,7 @@ subjects:
 
 # Scylla Cluster
 apiVersion: scylla.scylladb.com/v1alpha1
-kind: Cluster
+kind: ScyllaCluster
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"

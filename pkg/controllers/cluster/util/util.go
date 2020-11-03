@@ -93,6 +93,6 @@ func NewControllerRef(c *scyllav1alpha1.ScyllaCluster) metav1.OwnerReference {
 	return *metav1.NewControllerRef(c, schema.GroupVersionKind{
 		Group:   "scylla.scylladb.com",
 		Version: "v1alpha1",
-		Kind:    "Cluster",
+		Kind:    "ScyllaCluster",
 	})
 }

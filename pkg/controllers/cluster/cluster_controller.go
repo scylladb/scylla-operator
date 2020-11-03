@@ -83,13 +83,14 @@ func New(ctx context.Context, mgr ctrl.Manager, logger log.Logger) (*ClusterReco
 	}, nil
 }
 
-// +kubebuilder:rbac:groups=,resources=pods,verbs=get;list;watch;delete
-// +kubebuilder:rbac:groups=,resources=services,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=,resources=persistentvolumeclaims,verbs=get;list;watch;delete
-// +kubebuilder:rbac:groups=,resources=events,verbs=create;update;patch
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;delete
+// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;delete
+// +kubebuilder:rbac:groups="",resources=events,verbs=create;update;patch
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=scylla.scylla.scylladb.com,resources=clusters,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=scylla.scylla.scylladb.com,resources=clusters/status,verbs=update;get;patch
+// +kubebuilder:rbac:groups=scylla.scylladb.com,resources=scyllaclusters,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=scylla.scylladb.com,resources=scyllaclusters/status,verbs=update;get;patch
+
 func (cc *ClusterReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error) {
 	ctx := log.WithNewTraceID(context.Background())
 	cc.Logger.Debug(ctx, "Reconcile request", "request", request.String())

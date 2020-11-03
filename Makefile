@@ -50,7 +50,10 @@ deploy: manifests cert-manager
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests:
-	controller-gen $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="$(PKG)" output:crd:artifacts:config=config/operator/crd/bases output:rbac:artifacts:config=config/operator/rbac/bases
+	controller-gen $(CRD_OPTIONS) paths="$(PKG)" output:crd:dir=config/operator/crd/bases \
+	rbac:roleName=manager-role output:rbac:artifacts:config=config/operator/rbac \
+	webhook output:webhook:artifacts:config=config/operator/webhook
+
 	kustomize build config/operator/default > examples/generic/operator.yaml
 	kustomize build config/operator/default > examples/gke/operator.yaml
 	kustomize build config/operator/default > examples/eks/operator.yaml

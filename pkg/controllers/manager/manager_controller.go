@@ -105,6 +105,13 @@ func discoverManager(ctx context.Context, mgr mgr.Manager) (*mermaidclient.Clien
 	return &manager, nil
 }
 
+// +kubebuilder:rbac:groups="",resources=events,verbs=create;update;patch
+// +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list
+// +kubebuilder:rbac:groups=scylla.scylladb.com,resources=scyllaclusters,verbs=get;list;watch
+// +kubebuilder:rbac:groups=scylla.scylladb.com,resources=scyllaclusters/status,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=services,verbs=get;list
+
 func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
 	logger := r.Logger.With("cluster", req.NamespacedName)

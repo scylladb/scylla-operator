@@ -54,6 +54,7 @@ manifests:
 	rbac:roleName=manager-role output:rbac:artifacts:config=config/operator/rbac \
 	webhook output:webhook:artifacts:config=config/operator/webhook
 
+	controller-gen $(CRD_OPTIONS) paths="./pkg/controllers/manager" rbac:roleName=manager-role output:rbac:artifacts:config=config/manager/rbac
 	kustomize build config/operator/default > examples/generic/operator.yaml
 	kustomize build config/operator/default > examples/gke/operator.yaml
 	kustomize build config/operator/default > examples/eks/operator.yaml

@@ -9,7 +9,7 @@ This page will explain all the available configuration options on the Scylla CRD
 
 ```yaml
 apiVersion: scylla.scylladb.com/v1alpha1
-kind: Cluster
+kind: ScyllaCluster
 metadata:
   name: simple-cluster
   namespace: scylla

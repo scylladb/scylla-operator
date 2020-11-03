@@ -15,14 +15,14 @@ vars:
 - name: MANAGER_CLUSTER_NAME
   objref:
     group: scylla.scylladb.com
-    kind: Cluster
+    kind: ScyllaCluster
     version: v1alpha1
     name: cluster
   fieldref:
     fieldpath: metadata.name
 - name: MANAGER_CLUSTER_DC
   objref:
-    kind: Cluster
+    kind: ScyllaCluster
     group: scylla.scylladb.com
     version: v1alpha1
     name: cluster
@@ -30,7 +30,7 @@ vars:
     fieldpath: spec.datacenter.name
 - name: MANAGER_CLUSTER_RACK
   objref:
-    kind: Cluster
+    kind: ScyllaCluster
     group: scylla.scylladb.com
     version: v1alpha1
     name: cluster
@@ -38,7 +38,7 @@ vars:
     fieldpath: spec.datacenter.racks[0].name
 - name: MANAGER_CLUSTER_NAMESPACE
   objref:
-    kind: Cluster
+    kind: ScyllaCluster
     group: scylla.scylladb.com
     version: v1alpha1
     name: cluster

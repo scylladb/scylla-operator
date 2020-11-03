@@ -33,14 +33,11 @@ func (r *ScyllaCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-//
+// +kubebuilder:webhook:verbs=create;update,path=/mutate-scylla-scylladb-com-v1alpha1-scyllacluster,mutating=true,failurePolicy=fail,groups=scylla.scylladb.com,resources=scyllaclusters,versions=v1alpha1,name=webhook.scylla.scylladb.com
+// +kubebuilder:webhook:verbs=create;update,path=/validate-scylla-scylladb-com-v1alpha1-scyllacluster,mutating=false,failurePolicy=fail,groups=scylla.scylladb.com,resources=scyllaclusters,versions=v1alpha1,name=webhook.scylla.scylladb.com
 
-// +kubebuilder:webhook:path=/validate-scylla-scylladb-com-v1alpha1-cluster,failurePolicy=fail,groups=scylla.scylladb.com,resources=clusters,verbs=create;update,versions=v1alpha1,name=webhook.scylla.scylladb.com,mutating=false
-var _ webhook.Validator = &ScyllaCluster{}
-
-// +kubebuilder:webhook:path=/mutate-scylla-scylladb-com-v1alpha1-cluster,failurePolicy=fail,groups=scylla.scylladb.com,resources=clusters,verbs=create;update,versions=v1alpha1,name=webhook.scylla.scylladb.com,mutating=true
 var _ webhook.Defaulter = &ScyllaCluster{}
+var _ webhook.Validator = &ScyllaCluster{}
 
 func (c *ScyllaCluster) Default() {
 	for i, repairTask := range c.Spec.Repairs {

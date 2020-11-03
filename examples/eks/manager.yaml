@@ -42,7 +42,7 @@ rules:
 - apiGroups:
   - scylla.scylladb.com
   resources:
-  - clusters
+  - scyllaclusters
   verbs:
   - get
 ---
@@ -50,7 +50,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   creationTimestamp: null
-  name: scylla-manager-role
+  name: scylla-manager-manager-role
 rules:
 - apiGroups:
   - ""
@@ -58,33 +58,8 @@ rules:
   - events
   verbs:
   - create
-  - update
-  - patch
-- apiGroups:
-  - apps
-  resources:
-  - statefulsets
-  verbs:
-  - get
-  - list
-- apiGroups:
-  - scylla.scylladb.com
-  resources:
-  - clusters
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - scylla.scylladb.com
-  resources:
-  - clusters/status
-  verbs:
   - patch
   - update
-  - watch
-  - get
-  - list
 - apiGroups:
   - ""
   resources:
@@ -100,6 +75,31 @@ rules:
   verbs:
   - get
   - list
+- apiGroups:
+  - apps
+  resources:
+  - statefulsets
+  verbs:
+  - get
+  - list
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - scyllaclusters
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - scyllaclusters/status
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -122,7 +122,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: scylla-manager-role
+  name: role
 subjects:
 - kind: ServiceAccount
   name: default
@@ -249,7 +249,7 @@ spec:
         name: scylla-manager-config-volume
 ---
 apiVersion: scylla.scylladb.com/v1alpha1
-kind: Cluster
+kind: ScyllaCluster
 metadata:
   name: scylla-manager-cluster
   namespace: scylla-manager-system

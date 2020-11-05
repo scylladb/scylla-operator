@@ -121,7 +121,11 @@ func (cc *ClusterReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error
 	if !reflect.DeepEqual(c.Status, copy.Status) {
 		logger.Info(ctx, "Writing cluster status.")
 		if err := cc.Status().Update(ctx, copy); err != nil {
-			logger.Error(ctx, "Failed to update cluster status", "error", err)
+			if apierrors.IsConflict(err) {
+				logger.Info(ctx, "Failed to update cluster status", "error", err)
+			} else {
+				logger.Error(ctx, "Failed to update cluster status", "error", err)
+			}
 			return reconcile.Result{}, errors.WithStack(err)
 		}
 	}

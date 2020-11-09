@@ -36,6 +36,7 @@ func (cc *ClusterReconciler) sync(c *scyllav1alpha1.ScyllaCluster) error {
 		return errors.Wrap(err, "failed to check sts staleness")
 	}
 	if stale {
+		logger.Debug(ctx, "StatefulSets are not ready!")
 		return nil
 	}
 	logger.Debug(ctx, "All StatefulSets are up-to-date!")

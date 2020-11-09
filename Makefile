@@ -18,8 +18,11 @@ PATH				:= $(GOPATH)/bin:$(PATH):
 PKG := ./pkg/...
 
 # Run tests
-test: generate fmt vet manifests
+test: fmt vet
 	go test $(PKG) -coverprofile cover.out
+
+integration-test:
+	go test $(PKG) -tags integration
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet manifests

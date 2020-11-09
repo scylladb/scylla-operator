@@ -5,12 +5,12 @@ package cluster_test
 
 import (
 	"context"
-	"fmt"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/test/integration"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -18,7 +18,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/pointer"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("Cluster controller", func() {
@@ -45,11 +44,14 @@ var _ = Describe("Cluster controller", func() {
 
 			Expect(waitForCluster(ctx, scylla)).To(Succeed())
 
+			Expect(testEnv.Refresh(ctx, scylla)).To(Succeed())
+			sst := integration.NewStatefulSetOperatorStub(GinkgoT(), testEnv, retryInterval)
+			sst.Start(ctx, scylla.Name, scylla.Namespace)
+
 			// Cluster should be scaled sequentially up to 3
 			for _, rack := range scylla.Spec.Datacenter.Racks {
 				for _, replicas := range clusterScaleSteps(rack.Members) {
 					Expect(assertRackScaled(ctx, rack, scylla, replicas)).To(Succeed())
-					Expect(createFakePods(ctx, testEnv, rack, scylla)).To(Succeed())
 				}
 			}
 
@@ -151,57 +153,6 @@ func assertRackScaled(ctx context.Context, rack scyllav1alpha1.RackSpec, cluster
 		if err != nil {
 			return false, err
 		}
-
-		return *sts.Spec.Replicas == replicas, nil
+		return *sts.Spec.Replicas >= replicas, nil
 	})
-}
-
-func createFakePods(ctx context.Context, client client.Client, rack scyllav1alpha1.RackSpec, cluster *scyllav1alpha1.ScyllaCluster) error {
-	sts, err := statefulSetOfRack(ctx, rack, cluster)
-	if err != nil {
-		return err
-	}
-
-	podTemplate := corev1.Pod{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Pod",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "template",
-			Namespace: sts.Namespace,
-			Labels:    naming.RackLabels(rack, cluster),
-		},
-		Spec: sts.Spec.Template.Spec,
-		Status: corev1.PodStatus{
-			Phase: corev1.PodRunning,
-		},
-	}
-
-	for i, c := range podTemplate.Spec.Containers {
-		podTemplate.Spec.Containers[i].VolumeMounts = []corev1.VolumeMount{}
-		podTemplate.Status.ContainerStatuses = append(podTemplate.Status.ContainerStatuses, corev1.ContainerStatus{
-			Name:  c.Name,
-			Ready: true,
-		})
-	}
-
-	for i := sts.Status.Replicas; i < *sts.Spec.Replicas; i++ {
-		pod := podTemplate.DeepCopy()
-		pod.Name = fmt.Sprintf("%s-%d", sts.Name, i)
-		pod.Spec.Hostname = pod.Name
-		pod.Spec.Subdomain = cluster.Name
-		if err := client.Create(ctx, pod); err != nil {
-			return err
-		}
-	}
-
-	sts.Status.Replicas = *sts.Spec.Replicas
-	sts.Status.ReadyReplicas = *sts.Spec.Replicas
-	sts.Status.ObservedGeneration = sts.Generation
-	if err := client.Status().Update(ctx, sts); err != nil {
-		return err
-	}
-
-	return nil
 }

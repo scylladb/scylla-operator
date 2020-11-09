@@ -6,7 +6,7 @@ kind: Kustomization
 images:
 - name: manager
   newName: scylladb/scylla-manager
-  newTag: 2.1.2
+  newTag: 2.2.0
 - name: operator
   newName: scylladb/scylla-operator
   newTag: v0.3.0

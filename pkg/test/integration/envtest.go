@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/scylladb/go-log"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
 	utilyaml "github.com/scylladb/scylla-operator/pkg/util/yaml"
 	corev1 "k8s.io/api/core/v1"
@@ -58,6 +59,7 @@ type TestEnvironment struct {
 	Client
 	Config *rest.Config
 
+	logger log.Logger
 	cancel context.CancelFunc
 }
 
@@ -81,7 +83,7 @@ func WithPollTimeout(timeout time.Duration) func(*option) {
 }
 
 // NewTestEnvironment creates a new environment spinning up a local api-server.
-func NewTestEnvironment(options ...EnvOption) (*TestEnvironment, error) {
+func NewTestEnvironment(logger log.Logger, options ...EnvOption) (*TestEnvironment, error) {
 
 	envOpts := &option{
 		pollRetryInterval: 200 * time.Millisecond,
@@ -126,6 +128,7 @@ func NewTestEnvironment(options ...EnvOption) (*TestEnvironment, error) {
 			Timeout:       envOpts.pollTimeout,
 		},
 		Config: mgr.GetConfig(),
+		logger: logger,
 	}, nil
 }
 

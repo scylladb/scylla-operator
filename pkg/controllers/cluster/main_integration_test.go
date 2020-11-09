@@ -49,7 +49,7 @@ func TestMain(m *testing.M) {
 
 	logger.Info(ctx, "Creating test environment")
 	var err error
-	testEnv, err = integration.NewTestEnvironment(
+	testEnv, err = integration.NewTestEnvironment(logger.Named("env"),
 		integration.WithPollRetryInterval(retryInterval),
 		integration.WithPollTimeout(timeout),
 	)

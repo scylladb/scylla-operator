@@ -158,7 +158,14 @@ func (c *Client) Status(ctx context.Context, host string) (NodeStatusInfoSlice, 
 }
 
 func (c *Client) Decommission(ctx context.Context, host string) error {
-	_, err := c.scyllaOps.StorageServiceDecommissionPost(&scyllaOperations.StorageServiceDecommissionPostParams{Context: forceHost(ctx, host)})
+	queryCtx := forceHost(ctx, host)
+	// On decommission request api server waits till decommission is completed
+	// Usually decommission takes significant amount of time therefore request is failing by timeout
+	// As result of the scylla client will retry it and get 500 response that is saying that
+	//   decommission is already in progress.
+	// To avoid that we pass noRetry to the context
+	queryCtx = noRetry(queryCtx)
+	_, err := c.scyllaOps.StorageServiceDecommissionPost(&scyllaOperations.StorageServiceDecommissionPostParams{Context: queryCtx})
 	if err != nil {
 		return err
 	}
@@ -171,6 +178,14 @@ func (c *Client) OperationMode(ctx context.Context, host string) (OperationalMod
 		return "", err
 	}
 	return operationalModeFromString(resp.Payload), nil
+}
+
+func (c *Client) IsNativeTransportEnabled(ctx context.Context, host string) (bool, error) {
+	resp, err := c.scyllaOps.StorageServiceNativeTransportGet(&scyllaOperations.StorageServiceNativeTransportGetParams{Context: forceHost(ctx, host)})
+	if err != nil {
+		return false, err
+	}
+	return resp.Payload, nil
 }
 
 func DefaultTransport() *http.Transport {

@@ -74,12 +74,13 @@ func (mc *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Resu
 	}
 
 	mc.logger.Info(ctx, "Starting reconciliation...")
-	if err := mc.sync(ctx, memberService); err != nil {
-		mc.logger.Error(ctx, "An error occurred during reconciliation", "error", err)
-		return reconcile.Result{Requeue: true}, errors.WithStack(err)
-	}
 
-	return reconcile.Result{}, nil
+	requeue, err := mc.sync(ctx, memberService)
+	if err != nil {
+		mc.logger.Error(ctx, "An error occurred during reconciliation", "error", err)
+		return reconcile.Result{Requeue: requeue}, errors.WithStack(err)
+	}
+	return reconcile.Result{Requeue: requeue}, nil
 }
 
 // newReconciler returns a new reconcile.Reconciler

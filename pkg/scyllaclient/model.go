@@ -52,35 +52,65 @@ func (s NodeState) String() string {
 type OperationalMode string
 
 const (
-	OperationalModeClient         OperationalMode = "CLIENT"
-	OperationalModeDecommissioned OperationalMode = "DECOMMISSIONED"
-	OperationalModeJoining        OperationalMode = "JOINING"
-	OperationalModeLeaving        OperationalMode = "LEAVING"
-	OperationalModeNormal         OperationalMode = "NORMAL"
-	OperationalModeUnknown        OperationalMode = "UNKNOWN"
+	OperationalModeClient          OperationalMode = "CLIENT"
+	OperationalModeDecommissioned  OperationalMode = "DECOMMISSIONED"
+	OperationalModeDecommissioning OperationalMode = "DECOMMISSIONING"
+	OperationalModeJoining         OperationalMode = "JOINING"
+	OperationalModeLeaving         OperationalMode = "LEAVING"
+	OperationalModeNormal          OperationalMode = "NORMAL"
+	OperationalModeDrained         OperationalMode = "DRAINED"
+	OperationalModeDraining        OperationalMode = "DRAINING"
+	OperationalModeUnknown         OperationalMode = "UNKNOWN"
 )
 
 var (
 	operationalModeMap = map[string]OperationalMode{
-		"CLIENT":         OperationalModeClient,
-		"DECOMMISSIONED": OperationalModeDecommissioned,
-		"JOINING":        OperationalModeJoining,
-		"LEAVING":        OperationalModeLeaving,
-		"NORMAL":         OperationalModeNormal,
+		"CLIENT":          OperationalModeClient,
+		"DECOMMISSIONED":  OperationalModeDecommissioned,
+		"DECOMMISSIONING": OperationalModeDecommissioning,
+		"JOINING":         OperationalModeJoining,
+		"LEAVING":         OperationalModeLeaving,
+		"DRAINED":         OperationalModeDrained,
+		"DRAINING":        OperationalModeDraining,
+		"NORMAL":          OperationalModeNormal,
 	}
 )
 
 func (o OperationalMode) String() string {
 	switch o {
-	case "CLIENT", "DECOMMISSIONED", "JOINING", "LEAVING", "NORMAL":
+	case "CLIENT", "DECOMMISSIONED", "DECOMMISSIONING", "JOINING", "LEAVING", "NORMAL", "DRAINED", "DRAINING":
 		return string(o)
 	default:
 		return "UNKNOWN"
 	}
 }
 
-func (o OperationalMode) IsDecommisioned() bool {
+func (o OperationalMode) IsDecommissioned() bool {
 	return o == OperationalModeDecommissioned
+}
+
+func (o OperationalMode) IsDecommissioning() bool {
+	return o == OperationalModeDecommissioned
+}
+
+func (o OperationalMode) IsLeaving() bool {
+	return o == OperationalModeLeaving
+}
+
+func (o OperationalMode) IsNormal() bool {
+	return o == OperationalModeNormal
+}
+
+func (o OperationalMode) IsJoining() bool {
+	return o == OperationalModeJoining
+}
+
+func (o OperationalMode) IsDrained() bool {
+	return o == OperationalModeDrained
+}
+
+func (o OperationalMode) IsDraining() bool {
+	return o == OperationalModeDraining
 }
 
 func operationalModeFromString(str string) OperationalMode {

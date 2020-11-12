@@ -310,8 +310,7 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaClust
 								PreStop: &corev1.Handler{
 									Exec: &corev1.ExecAction{
 										Command: []string{
-											"nodetool",
-											"drain",
+											"/bin/sh", "-c", "PID=$(pgrep -x scylla);supervisorctl stop scylla; while kill -0 $PID; do sleep 1; done;",
 										},
 									},
 								},

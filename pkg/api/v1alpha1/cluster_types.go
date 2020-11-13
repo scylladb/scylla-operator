@@ -54,6 +54,13 @@ type ClusterSpec struct {
 	// Example: fs.aio-max-nr=232323
 	Sysctls    []string `json:"sysctls,omitempty"`
 	ScyllaArgs string   `json:"scyllaArgs,omitempty"`
+
+	// Timezone property links /etc/localtime on scylla containers to the host timezone file.
+	// Host timezone file path is calculated of Timezone value,
+	//   if Timezone starts with '/' it is assumed to be full path the the timezone file.
+	// Otherwise host file path is calculated by prepending Timezone with '/usr/share/zoneinfo/'.
+	Timezone string `json:"timeZone,omitempty"`
+
 	// Networking config
 	Network Network `json:"network,omitempty"`
 	// Repairs specifies repair task in Scylla Manager.

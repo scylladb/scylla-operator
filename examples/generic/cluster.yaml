@@ -83,6 +83,7 @@ metadata:
 spec:
   version: 4.0.0
   agentVersion: 2.0.2
+  timeZone: GMT
   developerMode: true
   datacenter:
     name: us-east-1
@@ -90,7 +91,7 @@ spec:
       - name: us-east-1a
         scyllaConfig: "scylla-config"
         scyllaAgentConfig: "scylla-agent-config"
-        members: 3
+        members: 1
         storage:
           capacity: 5Gi
         resources:

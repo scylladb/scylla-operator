@@ -350,6 +350,37 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaClust
 	if sysctlContainer != nil {
 		sts.Spec.Template.Spec.InitContainers = append(sts.Spec.Template.Spec.InitContainers, *sysctlContainer)
 	}
+
+	if c.Spec.Timezone != "" {
+		var timezone string
+		hostPath := corev1.HostPathFile
+		if c.Spec.Timezone[0] == '/' {
+			timezone = c.Spec.Timezone
+		} else {
+			timezone = "/usr/share/zoneinfo/" + c.Spec.Timezone
+		}
+
+		sts.Spec.Template.Spec.Containers[0].VolumeMounts = append(
+			sts.Spec.Template.Spec.Containers[0].VolumeMounts,
+			corev1.VolumeMount{Name: "host-timezone", MountPath: "/etc/localtime", ReadOnly: true})
+
+		// /etc/localtime is getting overridden by tmpfiles whenever scylla container is started.
+		// It is getting linked to /usr/share/zoneinfo/UTC, so we need to mount ther too
+		// cat /usr/lib/tmpfiles.d/etc.conf:
+		// L /etc/localtime - - - - ../usr/share/zoneinfo/UTC
+		sts.Spec.Template.Spec.Containers[0].VolumeMounts = append(
+			sts.Spec.Template.Spec.Containers[0].VolumeMounts,
+			corev1.VolumeMount{Name: "host-timezone", MountPath: "/usr/share/zoneinfo/UTC", ReadOnly: true})
+
+		sts.Spec.Template.Spec.Volumes = append(
+			sts.Spec.Template.Spec.Volumes,
+			corev1.Volume{
+				Name: "host-timezone",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{Path: timezone, Type: &hostPath},
+				}})
+	}
+
 	for _, VolumeMount := range r.VolumeMounts {
 		sts.Spec.Template.Spec.Containers[0].VolumeMounts = append(
 			sts.Spec.Template.Spec.Containers[0].VolumeMounts, *VolumeMount.DeepCopy())

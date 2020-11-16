@@ -36,6 +36,7 @@ Currently it supports:
 * :doc:`Deploying Scylla on EKS <eks>`
 * :doc:`Deploying Scylla on GKE <gke>`
 * :doc:`Deploying Scylla Manager on a Kubernetes Cluster <manager>`
+* :doc:`Node operations <node_operations>`
 * :doc:`Scylla Cluster Custom Resource Definition (CRD) <scylla_cluster_crd>`
 * :doc:`Contributing to the Scylla Operator Project <contributing>`
 

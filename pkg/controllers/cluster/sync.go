@@ -17,7 +17,7 @@ const (
 	// Messages to display when experiencing an error.
 	MessageHeadlessServiceSyncFailed = "Failed to sync Headless Service for cluster"
 	MessageMemberServicesSyncFailed  = "Failed to sync MemberServices for cluster"
-	MessageUpdateStatusFailed        = "Failed to update status for cluster"
+	MessageUpdateStatusFailed        = "Failed to update status for cluster: %+v"
 	MessageCleanupFailed             = "Failed to clean up cluster resources"
 	MessageClusterSyncFailed         = "Failed to sync cluster, got error: %+v"
 )
@@ -61,7 +61,7 @@ func (cc *ClusterReconciler) sync(c *scyllav1alpha1.ScyllaCluster) error {
 	// Update Status
 	logger.Info(ctx, "Calculating cluster status...")
 	if err := cc.updateStatus(ctx, c); err != nil {
-		cc.Recorder.Event(c, corev1.EventTypeWarning, naming.ErrSyncFailed, MessageUpdateStatusFailed)
+		cc.Recorder.Event(c, corev1.EventTypeWarning, naming.ErrSyncFailed, fmt.Sprintf(MessageUpdateStatusFailed, err))
 		return errors.Wrap(err, "failed to update status")
 	}
 
@@ -74,6 +74,7 @@ func (cc *ClusterReconciler) sync(c *scyllav1alpha1.ScyllaCluster) error {
 
 	if err != nil {
 		cc.Recorder.Event(c, corev1.EventTypeWarning, naming.ErrSyncFailed, fmt.Sprintf(MessageClusterSyncFailed, errors.Cause(err)))
+		return err
 	}
 
 	return nil

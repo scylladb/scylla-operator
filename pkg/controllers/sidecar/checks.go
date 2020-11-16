@@ -46,24 +46,42 @@ func livenessCheck(mc *MemberReconciler) func(http.ResponseWriter, *http.Request
 
 func readinessCheck(mc *MemberReconciler) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
+		ctx := log.WithTraceID(req.Context())
+
 		host, err := network.FindFirstNonLocalIP()
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			mc.logger.Error(log.WithTraceID(req.Context()), "Readiness check failed", "error", err)
+			mc.logger.Error(ctx, "Readiness check failed", "error", err)
 			return
 		}
+
 		// Contact Scylla to learn about the status of the member
 		hosts, err := mc.scyllaClient.Status(context.Background(), host.String())
 		if err != nil {
-			mc.logger.Error(log.WithTraceID(req.Context()), "error while executing nodetool status in readiness check", "error", err)
+			mc.logger.Error(ctx, "error while executing nodetool status in readiness check", "error", err)
+		}
+
+		for _, h := range hosts {
+			mc.logger.Debug(ctx, "Host readiness", "host", h.Addr, "status", h.Status, "state", h.State)
 		}
 		for _, h := range hosts {
 			if h.Addr == mc.member.StaticIP && h.IsUN() {
-				w.WriteHeader(http.StatusOK)
-				return
+				transportEnabled, err := mc.scyllaClient.IsNativeTransportEnabled(ctx, host.String())
+				if err != nil {
+					w.WriteHeader(http.StatusServiceUnavailable)
+					mc.logger.Error(ctx, "Readiness check failed", "error", err)
+					return
+				}
+
+				mc.logger.Debug(ctx, "Host native transport", "host", h.Addr, "enabled", transportEnabled)
+				if transportEnabled {
+					w.WriteHeader(http.StatusOK)
+					return
+				}
 			}
 		}
-		mc.logger.Error(log.WithTraceID(req.Context()), "Readiness check failed, node not ready")
+
+		mc.logger.Error(ctx, "Readiness check failed, node not ready")
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}
 }

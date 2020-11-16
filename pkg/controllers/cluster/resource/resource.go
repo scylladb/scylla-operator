@@ -50,6 +50,10 @@ func MemberServiceForPod(pod *corev1.Pod, cluster *scyllav1alpha1.ScyllaCluster)
 	if strings.HasSuffix(pod.Name, "-0") || strings.HasSuffix(pod.Name, "-1") {
 		labels[naming.SeedLabel] = ""
 	}
+	rackName := pod.Labels[naming.RackNameLabel]
+	if replaceAddr, ok := cluster.Status.Racks[rackName].ReplaceAddressFirstBoot[pod.Name]; ok && replaceAddr != "" {
+		labels[naming.ReplaceLabel] = replaceAddr
+	}
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            pod.Name,

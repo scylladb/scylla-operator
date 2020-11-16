@@ -182,7 +182,8 @@ func (mc *MemberReconciler) onStartup(ctx context.Context) error {
 
 	// Setup config files
 	mc.logger.Info(ctx, "Setting up config files")
-	cmd, err := config.NewForMember(mc.member, mc.kubeClient, mc.Client, mc.logger).Setup(ctx)
+	cfg := config.NewForMember(mc.member, mc.kubeClient, mc.Client, mc.logger)
+	cmd, err := cfg.Setup(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to setup config files")
 	}

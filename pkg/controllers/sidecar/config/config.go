@@ -3,14 +3,15 @@ package config
 import (
 	"context"
 	"fmt"
-	"github.com/blang/semver"
 	"io/ioutil"
-	"k8s.io/utils/pointer"
 	"os"
 	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/blang/semver"
+	"k8s.io/utils/pointer"
 
 	"github.com/ghodss/yaml"
 	"github.com/magiconair/properties"
@@ -219,6 +220,10 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	}
 	if cluster.Spec.Alternator.Enabled() {
 		args["alternator-port"] = pointer.StringPtr(strconv.Itoa(int(cluster.Spec.Alternator.Port)))
+	}
+	// If node is being replaced
+	if addr, ok := m.ServiceLabels[naming.ReplaceLabel]; ok {
+		args["replace-address-first-boot"] = pointer.StringPtr(addr)
 	}
 	// See if we need to use cpu-pinning
 	// TODO: Add more checks to make sure this is valid.

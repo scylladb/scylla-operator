@@ -1564,6 +1564,11 @@ spec:
                     description: ReadyMembers is the number of ready members in the specific Rack
                     format: int32
                     type: integer
+                  replace_address_first_boot:
+                    additionalProperties:
+                      type: string
+                    description: Pool of addresses which should be replaced by new nodes.
+                    type: object
                   version:
                     description: Version is the current version of Scylla in use.
                     type: string

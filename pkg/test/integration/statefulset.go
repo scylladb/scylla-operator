@@ -5,9 +5,7 @@ package integration
 import (
 	"context"
 	"fmt"
-	"time"
 
-	"github.com/onsi/ginkgo"
 	"github.com/scylladb/go-log"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -15,68 +13,52 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-type statefulSetOperatorStub struct {
-	t        ginkgo.GinkgoTInterface
-	env      *TestEnvironment
-	interval time.Duration
-	logger   log.Logger
+type StatefulSetOperatorStub struct {
+	env    *TestEnvironment
+	logger log.Logger
+
+	stopCh chan struct{}
 }
 
-func NewStatefulSetOperatorStub(t ginkgo.GinkgoTInterface, env *TestEnvironment, interval time.Duration) *statefulSetOperatorStub {
-	return &statefulSetOperatorStub{
-		t:        t,
-		env:      env,
-		interval: interval,
-		logger:   env.logger.Named("sts_stub"),
+func NewStatefulSetOperatorStub(env *TestEnvironment) *StatefulSetOperatorStub {
+
+	return &StatefulSetOperatorStub{
+		env:    env,
+		logger: env.logger.Named("sts_stub"),
 	}
 }
 
-func (s *statefulSetOperatorStub) Start(ctx context.Context, name, namespace string) {
-	go func() {
-		ticker := time.NewTicker(s.interval)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
+func WithPodCondition(condition corev1.PodCondition) func(pod *corev1.Pod) {
+	return func(pod *corev1.Pod) {
+		for i, pc := range pod.Status.Conditions {
+			if pc.Type == condition.Type {
+				pod.Status.Conditions[i].Status = condition.Status
 				return
-			case <-ticker.C:
-				cluster := &scyllav1alpha1.ScyllaCluster{}
-				if err := s.env.Get(ctx, client.ObjectKey{
-					Name:      name,
-					Namespace: namespace,
-				}, cluster); err != nil {
-					s.t.Errorf("refresh scylla cluster obj, err: %s", err)
-					continue
-				}
-
-				if err := s.syncStatefulSet(ctx, cluster); err != nil {
-					s.t.Errorf("sync statefulset, err: %s", err)
-				}
 			}
 		}
-	}()
-}
-
-func (s *statefulSetOperatorStub) syncStatefulSet(ctx context.Context, cluster *scyllav1alpha1.ScyllaCluster) error {
-	stss := &appsv1.StatefulSetList{}
-	err := s.env.List(ctx, stss, &client.ListOptions{Namespace: cluster.Namespace})
-	if err != nil {
-		return err
+		pod.Status.Conditions = append(pod.Status.Conditions, condition)
 	}
 
-	for _, sts := range stss.Items {
-		var rack scyllav1alpha1.RackSpec
-		for _, r := range cluster.Spec.Datacenter.Racks {
-			if sts.Name == naming.StatefulSetNameForRack(r, cluster) {
-				rack = r
-				break
-			}
+}
+
+type PodOption func(pod *corev1.Pod)
+
+func (s *StatefulSetOperatorStub) CreatePods(ctx context.Context, cluster *scyllav1alpha1.ScyllaCluster, options ...PodOption) error {
+	for _, rack := range cluster.Spec.Datacenter.Racks {
+		sts := &appsv1.StatefulSet{}
+
+		err := s.env.Get(ctx, client.ObjectKey{
+			Name:      naming.StatefulSetNameForRack(rack, cluster),
+			Namespace: cluster.Namespace,
+		}, sts)
+		if err != nil {
+			return err
 		}
 
-		podTemplate := corev1.Pod{
+		podTemplate := &corev1.Pod{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "Pod",
 				APIVersion: "v1",
@@ -100,14 +82,29 @@ func (s *statefulSetOperatorStub) syncStatefulSet(ctx context.Context, cluster *
 			})
 		}
 
-		for i := sts.Status.Replicas; i < *sts.Spec.Replicas; i++ {
+		for _, opt := range options {
+			opt(podTemplate)
+		}
+
+		mutateFn := func() error {
+			return nil
+		}
+
+		for i := 0; i < int(*sts.Spec.Replicas); i++ {
 			pod := podTemplate.DeepCopy()
 			pod.Name = fmt.Sprintf("%s-%d", sts.Name, i)
 			pod.Spec.Hostname = pod.Name
 			pod.Spec.Subdomain = cluster.Name
-			s.logger.Info(ctx, "Spawning fake Pod", "sts", sts.Name, "pod", pod.Name)
-			if err := s.env.Create(ctx, pod); err != nil {
+
+			if op, err := controllerutil.CreateOrUpdate(ctx, s.env, pod, mutateFn); err != nil {
 				return err
+			} else {
+				switch op {
+				case controllerutil.OperationResultCreated:
+					s.logger.Info(ctx, "Spawned fake Pod", "sts", sts.Name, "pod", pod.Name)
+				case controllerutil.OperationResultUpdated:
+					s.logger.Info(ctx, "Updated fake Pod", "sts", sts.Name, "pod", pod.Name)
+				}
 			}
 		}
 
@@ -115,7 +112,39 @@ func (s *statefulSetOperatorStub) syncStatefulSet(ctx context.Context, cluster *
 		sts.Status.ReadyReplicas = *sts.Spec.Replicas
 		sts.Status.ObservedGeneration = sts.Generation
 		s.logger.Info(ctx, "Updating StatefulSet status", "replicas", sts.Status.Replicas, "observed_generation", sts.Status.ObservedGeneration)
-		if err := s.env.Status().Update(ctx, &sts); err != nil {
+		if err := s.env.Status().Update(ctx, sts); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *StatefulSetOperatorStub) SyncStatus(ctx context.Context, cluster *scyllav1alpha1.ScyllaCluster) error {
+	for _, rack := range cluster.Spec.Datacenter.Racks {
+		sts := &appsv1.StatefulSet{}
+
+		err := s.env.Get(ctx, client.ObjectKey{
+			Name:      naming.StatefulSetNameForRack(rack, cluster),
+			Namespace: cluster.Namespace,
+		}, sts)
+		if err != nil {
+			return err
+		}
+
+		pods := &corev1.PodList{}
+		if err := s.env.List(ctx, pods, &client.ListOptions{
+			Namespace:     cluster.Namespace,
+			LabelSelector: naming.RackSelector(rack, cluster),
+		}); err != nil {
+			return err
+		}
+
+		sts.Status.Replicas = int32(len(pods.Items))
+		sts.Status.ReadyReplicas = int32(len(pods.Items))
+		sts.Status.ObservedGeneration = sts.Generation
+		s.logger.Info(ctx, "Updating StatefulSet status", "replicas", sts.Status.Replicas, "observed_generation", sts.Status.ObservedGeneration)
+		if err := s.env.Status().Update(ctx, sts); err != nil {
 			return err
 		}
 	}

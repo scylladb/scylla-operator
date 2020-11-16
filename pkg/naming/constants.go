@@ -19,6 +19,9 @@ const (
 	// Values: {true, false}
 	DecommissionLabel = "scylla/decommissioned"
 
+	// ReplaceLabel express the intent to replace pod under the specific member.
+	ReplaceLabel = "scylla/replace"
+
 	LabelValueTrue  = "true"
 	LabelValueFalse = "false"
 )

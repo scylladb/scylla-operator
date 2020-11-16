@@ -2,6 +2,8 @@ package config
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -9,8 +11,19 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/magiconair/properties"
+	"github.com/scylladb/go-log"
+	"github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/cmd/options"
 	"github.com/scylladb/scylla-operator/pkg/controllers/sidecar/identity"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubefake "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestCreateRackDCProperties(t *testing.T) {
@@ -253,4 +266,66 @@ func TestScyllaArgumentsEmpty(t *testing.T) {
 	argumentsMap := convertScyllaArguments("")
 	require.Equal(t, "", argumentsMap["not_existing_key"])
 	require.Equal(t, 0, len(argumentsMap))
+}
+
+func TestReplaceNodeLabelInMemberService(t *testing.T) {
+	atom := zap.NewAtomicLevelAt(zapcore.InfoLevel)
+	logger, _ := log.NewProduction(log.Config{
+		Level: atom,
+	})
+	if err := v1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		t.Fatal(err)
+	}
+
+	replaceAddr := "1.2.3.4"
+	options.GetSidecarOptions().CPU = "1"
+
+	m := &identity.Member{
+		Namespace: "namespace",
+		Cluster:   "cluster",
+		ServiceLabels: map[string]string{
+			naming.ReplaceLabel: replaceAddr,
+		},
+	}
+
+	fakeSeedService := &corev1.Service{
+		ObjectMeta: v1.ObjectMeta{
+			Namespace: m.Namespace,
+			Labels: map[string]string{
+				naming.SeedLabel:        "",
+				naming.ClusterNameLabel: m.Cluster,
+			},
+		},
+	}
+	fakeCluster := &v1alpha1.ScyllaCluster{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      m.Cluster,
+			Namespace: m.Namespace,
+		},
+	}
+	clientFake := fake.NewFakeClientWithScheme(scheme.Scheme, fakeCluster)
+	kubeClientFake := kubefake.NewSimpleClientset(fakeSeedService)
+
+	cfg := NewForMember(m, kubeClientFake, clientFake, logger)
+
+	cmd, err := cfg.setupEntrypoint(context.Background())
+	if err != nil {
+		t.Errorf("entrypoint setup, err: %s", err)
+	}
+
+	expectedArg := fmt.Sprintf("--replace-address-first-boot=%s", replaceAddr)
+
+	if !contains(cmd.Args, expectedArg) {
+		t.Errorf("missing Scylla parameter %s", expectedArg)
+	}
+
+}
+
+func contains(arr []string, v string) bool {
+	for _, elem := range arr {
+		if elem == v {
+			return true
+		}
+	}
+	return false
 }

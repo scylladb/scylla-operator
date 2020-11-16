@@ -22,10 +22,11 @@ type Member struct {
 	// IP of the Pod
 	IP string
 	// ClusterIP of the member's Service
-	StaticIP   string
-	Rack       string
-	Datacenter string
-	Cluster    string
+	StaticIP      string
+	Rack          string
+	Datacenter    string
+	Cluster       string
+	ServiceLabels map[string]string
 }
 
 func Retrieve(ctx context.Context, name, namespace string, kubeclient kubernetes.Interface) (*Member, error) {
@@ -51,18 +52,18 @@ func Retrieve(ctx context.Context, name, namespace string, kubeclient kubernetes
 	}
 
 	return &Member{
-		Name:       name,
-		Namespace:  namespace,
-		IP:         pod.Status.PodIP,
-		StaticIP:   memberService.Spec.ClusterIP,
-		Rack:       pod.Labels[naming.RackNameLabel],
-		Datacenter: pod.Labels[naming.DatacenterNameLabel],
-		Cluster:    pod.Labels[naming.ClusterNameLabel],
+		Name:          name,
+		Namespace:     namespace,
+		IP:            pod.Status.PodIP,
+		StaticIP:      memberService.Spec.ClusterIP,
+		Rack:          pod.Labels[naming.RackNameLabel],
+		Datacenter:    pod.Labels[naming.DatacenterNameLabel],
+		Cluster:       pod.Labels[naming.ClusterNameLabel],
+		ServiceLabels: memberService.Labels,
 	}, nil
 }
 
 func (m *Member) GetSeeds(ctx context.Context, kubeClient kubernetes.Interface) ([]string, error) {
-
 	var services *corev1.ServiceList
 	var err error
 

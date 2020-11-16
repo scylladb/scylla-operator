@@ -99,6 +99,12 @@ func (cc *ClusterReconciler) nextAction(ctx context.Context, cluster *scyllav1al
 	// Check if there is a scale-down in progress
 	for _, rack := range cluster.Spec.Datacenter.Racks {
 		rackStatus := cluster.Status.Racks[rack.Name]
+		if scyllav1alpha1.IsRackConditionTrue(&rackStatus, scyllav1alpha1.RackConditionTypeMemberReplacing) {
+			// Perform node replace
+			logger.Info(ctx, "Next Action: Node replace rack", "name", rack.Name)
+			return actions.NewRackReplaceNodeAction(rack, cluster, logger.Named("replace"))
+		}
+
 		if scyllav1alpha1.IsRackConditionTrue(&rackStatus, scyllav1alpha1.RackConditionTypeMemberLeaving) {
 			// Resume scale down
 			logger.Info(ctx, "Next Action: Scale-Down rack", "name", rack.Name)

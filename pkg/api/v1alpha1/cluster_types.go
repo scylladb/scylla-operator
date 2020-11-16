@@ -234,6 +234,8 @@ type RackStatus struct {
 	ReadyMembers int32 `json:"readyMembers"`
 	// Conditions are the latest available observations of a rack's state.
 	Conditions []RackCondition `json:"conditions,omitempty"`
+	// Pool of addresses which should be replaced by new nodes.
+	ReplaceAddressFirstBoot map[string]string `json:"replace_address_first_boot,omitempty"`
 }
 
 // RackCondition is an observation about the state of a rack.
@@ -245,8 +247,9 @@ type RackCondition struct {
 type RackConditionType string
 
 const (
-	RackConditionTypeMemberLeaving RackConditionType = "MemberLeaving"
-	RackConditionTypeUpgrading     RackConditionType = "RackUpgrading"
+	RackConditionTypeMemberLeaving   RackConditionType = "MemberLeaving"
+	RackConditionTypeUpgrading       RackConditionType = "RackUpgrading"
+	RackConditionTypeMemberReplacing RackConditionType = "MemberReplacing"
 )
 
 // +kubebuilder:object:root=true

@@ -44,9 +44,15 @@ func (cc *ClusterReconciler) syncMemberServices(ctx context.Context, c *scyllav1
 		}
 		for _, pod := range podlist.Items {
 			memberService := resource.MemberServiceForPod(&pod, c)
-			_, err := controllerutil.CreateOrUpdate(ctx, cc.Client, memberService, serviceMutateFn(ctx, memberService, cc.Client))
+			op, err := controllerutil.CreateOrUpdate(ctx, cc.Client, memberService, serviceMutateFn(ctx, memberService, cc.Client))
 			if err != nil {
 				return errors.Wrapf(err, "error syncing member service %s", memberService.Name)
+			}
+			switch op {
+			case controllerutil.OperationResultCreated:
+				cc.Logger.Info(ctx, "Member service created", "member", memberService.Name, "labels", memberService.Labels)
+			case controllerutil.OperationResultUpdated:
+				cc.Logger.Info(ctx, "Member service updated", "member", memberService.Name, "labels", memberService.Labels)
 			}
 		}
 	}

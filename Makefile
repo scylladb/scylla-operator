@@ -1,9 +1,10 @@
 all: test local-build
 
 # Image URL to use all building/pushing image targets
-REPO	?= scylladb/scylla-operator
-TAG		?= $(shell git describe --tags --always --abbrev=0)
-IMG		?= $(REPO):$(TAG)
+REPO		?= scylladb/scylla-operator
+TAG			?= $(shell git describe --tags --always --abbrev=0)
+IMG			?= $(REPO):$(TAG)
+NIGHTLY_IMG	?= $(REPO):nightly
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
@@ -98,3 +99,7 @@ local-build: fmt vet vendor
 
 release:
 	goreleaser --rm-dist
+
+nightly:
+	goreleaser --snapshot --rm-dist --config=.goreleaser-nightly.yml
+	docker push ${NIGHTLY_IMG}

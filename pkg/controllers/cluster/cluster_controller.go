@@ -19,6 +19,7 @@ package cluster
 import (
 	"context"
 	"reflect"
+	"strings"
 
 	"github.com/scylladb/go-log"
 	"github.com/scylladb/scylla-operator/pkg/cmd/options"
@@ -72,12 +73,17 @@ func New(ctx context.Context, mgr ctrl.Manager, logger log.Logger) (*ClusterReco
 		return nil, errors.Wrap(err, "get dynamic uncached client")
 	}
 
+	operatorImage, err := getOperatorImage(ctx, kubeClient)
+	if err != nil {
+		return nil, errors.Wrap(err, "get operator image")
+	}
+
 	return &ClusterReconciler{
 		Client:         mgr.GetClient(),
 		UncachedClient: uncachedClient,
 		KubeClient:     kubeClient,
 		Recorder:       mgr.GetEventRecorderFor("scylla-cluster-controller"),
-		OperatorImage:  getOperatorImage(ctx, kubeClient, logger),
+		OperatorImage:  operatorImage,
 		Scheme:         mgr.GetScheme(),
 		Logger:         logger,
 	}, nil
@@ -203,19 +209,24 @@ func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
-func getOperatorImage(ctx context.Context, kubeClient kubernetes.Interface, l log.Logger) string {
+func getOperatorImage(ctx context.Context, kubeClient kubernetes.Interface) (string, error) {
 	opts := options.GetOperatorOptions()
 	if opts.Image != "" {
-		return opts.Image
+		return opts.Image, nil
 	}
 
 	pod, err := kubeClient.CoreV1().Pods(opts.Namespace).Get(ctx, opts.Name, metav1.GetOptions{})
 	if err != nil {
-		l.Fatal(ctx, "Failed to get operator image", "error", err)
+		return "", errors.Wrap(err, "list pods")
 	}
 
-	if len(pod.Spec.Containers) != 1 {
-		l.Fatal(ctx, "Operator Pod must have exactly 1 container", "count", len(pod.Spec.Containers))
+	// Scylla Operator image must contain two words: "scylla" and "operator"
+	for _, c := range pod.Spec.Containers {
+		img := strings.ToLower(c.Image)
+		if strings.Contains(img, "scylla") && strings.Contains(img, "operator") {
+			return c.Image, nil
+		}
 	}
-	return pod.Spec.Containers[0].Image
+
+	return "", errors.New("cannot find scylla operator container in pod spec")
 }

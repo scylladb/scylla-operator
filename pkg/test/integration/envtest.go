@@ -23,6 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -57,7 +58,8 @@ func init() {
 type TestEnvironment struct {
 	manager.Manager
 	Client
-	Config *rest.Config
+	KubeClient kubernetes.Interface
+	Config     *rest.Config
 
 	logger log.Logger
 	cancel context.CancelFunc
@@ -127,8 +129,9 @@ func NewTestEnvironment(logger log.Logger, options ...EnvOption) (*TestEnvironme
 			RetryInterval: envOpts.pollTimeout,
 			Timeout:       envOpts.pollTimeout,
 		},
-		Config: mgr.GetConfig(),
-		logger: logger,
+		KubeClient: kubernetes.NewForConfigOrDie(mgr.GetConfig()),
+		Config:     mgr.GetConfig(),
+		logger:     logger,
 	}, nil
 }
 

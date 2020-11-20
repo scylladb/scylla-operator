@@ -18,6 +18,7 @@ spec:
   repository: scylladb/scylla
   developerMode: true
   cpuset: false
+  automaticOrphanedNodeCleanup: true
   repairs:
   - name: "weekly us-east-1 repair"
     intensity: 2

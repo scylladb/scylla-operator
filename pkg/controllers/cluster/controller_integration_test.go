@@ -61,6 +61,49 @@ var _ = Describe("Cluster controller", func() {
 		})
 	})
 
+	It("When PVC affinity is bound to lost node, node is replaced", func() {
+		scylla := singleNodeCluster(ns)
+		scylla.Spec.AutomaticOrphanedNodeCleanup = true
+
+		Expect(testEnv.Create(ctx, scylla)).To(Succeed())
+		defer func() {
+			Expect(testEnv.Delete(ctx, scylla)).To(Succeed())
+		}()
+
+		Expect(waitForCluster(ctx, scylla)).To(Succeed())
+		Expect(testEnv.Refresh(ctx, scylla)).To(Succeed())
+
+		sstStub := integration.NewStatefulSetOperatorStub(testEnv)
+		rack := scylla.Spec.Datacenter.Racks[0]
+
+		pvOption := integration.WithPVNodeAffinity([]corev1.NodeSelectorRequirement{
+			{
+				Key:      "some-label",
+				Operator: corev1.NodeSelectorOpIn,
+				Values:   []string{"some-value"},
+			},
+		})
+
+		// Cluster should be scaled sequentially up to member count
+		for _, replicas := range clusterScaleSteps(rack.Members) {
+			Expect(assertRackScaled(ctx, rack, scylla, replicas)).To(Succeed())
+			Expect(sstStub.CreatePods(ctx, scylla)).To(Succeed())
+			Expect(sstStub.CreatePVCs(ctx, scylla, pvOption)).To(Succeed())
+		}
+
+		services, err := rackMemberService(ns.Namespace, rack, scylla)
+		Expect(err).To(BeNil())
+		Expect(services).To(Not(BeEmpty()))
+
+		service := services[0]
+
+		Eventually(func() map[string]string {
+			Expect(testEnv.Refresh(ctx, &service)).To(Succeed())
+
+			return service.Labels
+		}).Should(HaveKeyWithValue(naming.ReplaceLabel, ""))
+	})
+
 	Context("Node replace", func() {
 		var (
 			scylla  *scyllav1alpha1.ScyllaCluster
@@ -244,6 +287,42 @@ func singleRackCluster(ns *corev1.Namespace) *scyllav1alpha1.ScyllaCluster {
 					{
 						Name:    "rack1",
 						Members: 3,
+						Storage: scyllav1alpha1.StorageSpec{
+							Capacity: "10M",
+						},
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("1"),
+								corev1.ResourceMemory: resource.MustParse("200M"),
+							},
+							Limits: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("1"),
+								corev1.ResourceMemory: resource.MustParse("200M"),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func singleNodeCluster(ns *corev1.Namespace) *scyllav1alpha1.ScyllaCluster {
+	return &scyllav1alpha1.ScyllaCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: "test-",
+			Namespace:    ns.Name,
+		},
+		Spec: scyllav1alpha1.ClusterSpec{
+			Version:       "4.2.0",
+			AgentVersion:  pointer.StringPtr("2.2.0"),
+			DeveloperMode: true,
+			Datacenter: scyllav1alpha1.DatacenterSpec{
+				Name: "dc1",
+				Racks: []scyllav1alpha1.RackSpec{
+					{
+						Name:    "rack1",
+						Members: 1,
 						Storage: scyllav1alpha1.StorageSpec{
 							Capacity: "10M",
 						},

@@ -7,6 +7,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/util/nodeaffinity"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -36,31 +37,103 @@ func (cc *ClusterReconciler) cleanup(ctx context.Context, c *scyllav1alpha1.Scyl
 			LabelSelector: naming.RackSelector(r, c)},
 		)
 		if err != nil {
-			return errors.Wrap(err, "error listing member services")
+			return errors.Wrap(err, "listing member services")
 		}
-		logger.Debug(ctx, "Cleanup: service list", "items", svcList.Items)
+		logger.Debug(ctx, "Cleanup: service list", "len", len(svcList.Items), "items", svcList.Items)
 
-		memberCount := *sts.Spec.Replicas
-		memberServiceCount := int32(len(svcList.Items))
-		// If there are more services than members, some services need to be cleaned up
-		if memberServiceCount > memberCount {
-			// maxIndex is the maximum index that should be present in a
-			// member service of this rack
-			maxIndex := memberCount - 1
-			for _, svc := range svcList.Items {
-				svcIndex, err := naming.IndexFromName(svc.Name)
+		if err := cc.decommissionCleanup(ctx, c, sts, svcList); err != nil {
+			return errors.Wrap(err, "decommission cleanup")
+		}
+
+		if c.Spec.AutomaticOrphanedNodeCleanup {
+			if err := cc.orphanedCleanup(ctx, c, svcList); err != nil {
+				return errors.Wrap(err, "orphaned cleanup")
+			}
+		}
+
+	}
+	return nil
+}
+
+// orphanedCleanup verifies if any Pod has PVC with node affinity set to not existing node.
+// This may happen when node disappears.
+// StatefulSet controller won't be able to schedule new pod on next available node
+// due to orphaned affinity.
+// Operator checks if any Pod PVC is orphaned, and if so, mark member service as
+// a replacement candidate.
+func (cc *ClusterReconciler) orphanedCleanup(ctx context.Context, c *scyllav1alpha1.ScyllaCluster, svcs *corev1.ServiceList) error {
+	nodes := &corev1.NodeList{}
+	if err := cc.List(ctx, nodes); err != nil {
+		return errors.Wrap(err, "list nodes")
+	}
+	cc.Logger.Debug(ctx, "Found nodes", "len", len(nodes.Items))
+
+	for _, svc := range svcs.Items {
+		pvc := &corev1.PersistentVolumeClaim{}
+		if err := cc.Get(ctx, naming.NamespacedName(naming.PVCNameForPod(svc.Name), c.Namespace), pvc); err != nil {
+			if apierrors.IsNotFound(err) {
+				cc.Logger.Debug(ctx, "Pod PVC not found", "pod", svc.Name, "name", naming.PVCNameForPod(svc.Name))
+				continue
+			}
+			return errors.Wrap(err, "get pvc")
+		}
+
+		pv := &corev1.PersistentVolume{}
+		if err := cc.Get(ctx, naming.NamespacedName(pvc.Spec.VolumeName, ""), pv); err != nil {
+			if apierrors.IsNotFound(err) {
+				cc.Logger.Debug(ctx, "PV not found", "pv", pvc.Spec.VolumeName)
+				continue
+			}
+			return errors.Wrap(err, "get pv")
+		}
+
+		ns, err := nodeaffinity.NewNodeSelector(pv.Spec.NodeAffinity.Required)
+		if err != nil {
+			return errors.Wrap(err, "new node selector")
+		}
+
+		orphanedVolume := true
+		for _, node := range nodes.Items {
+			if ns.Match(&node) {
+				cc.Logger.Debug(ctx, "PVC attachment found", "pvc", pvc.Name, "node", node.Name)
+				orphanedVolume = false
+				break
+			}
+		}
+
+		if orphanedVolume {
+			cc.Logger.Info(ctx, "Found orphaned PVC, triggering replace node", "member", svc.Name)
+			if err := util.MarkAsReplaceCandidate(ctx, &svc, cc.KubeClient); err != nil {
+				return errors.Wrap(err, "mark orphaned service as replace")
+			}
+		}
+	}
+
+	return nil
+}
+
+func (cc *ClusterReconciler) decommissionCleanup(ctx context.Context, c *scyllav1alpha1.ScyllaCluster, sts *appsv1.StatefulSet, svcs *corev1.ServiceList) error {
+	memberCount := *sts.Spec.Replicas
+	memberServiceCount := int32(len(svcs.Items))
+	// If there are more services than members, some services need to be cleaned up
+	if memberServiceCount > memberCount {
+		// maxIndex is the maximum index that should be present in a
+		// member service of this rack
+		maxIndex := memberCount - 1
+		for _, svc := range svcs.Items {
+			svcIndex, err := naming.IndexFromName(svc.Name)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			if svcIndex > maxIndex && svc.Labels[naming.DecommissionLabel] == naming.LabelValueTrue {
+				err := cc.cleanupMemberResources(ctx, &svc, c)
 				if err != nil {
 					return errors.WithStack(err)
-				}
-				if svcIndex > maxIndex && svc.Labels[naming.DecommissionLabel] == naming.LabelValueTrue {
-					err := cc.cleanupMemberResources(ctx, &svc, r, c)
-					if err != nil {
-						return errors.WithStack(err)
-					}
 				}
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -68,7 +141,7 @@ func (cc *ClusterReconciler) cleanup(ctx context.Context, c *scyllav1alpha1.Scyl
 // Currently those are :
 //  - A PVC
 //  - A ClusterIP Service
-func (cc *ClusterReconciler) cleanupMemberResources(ctx context.Context, memberService *corev1.Service, r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaCluster) error {
+func (cc *ClusterReconciler) cleanupMemberResources(ctx context.Context, memberService *corev1.Service, c *scyllav1alpha1.ScyllaCluster) error {
 	memberName := memberService.Name
 	logger := util.LoggerForCluster(c)
 	logger.Info(ctx, "Cleaning up resources for member", "name", memberName)

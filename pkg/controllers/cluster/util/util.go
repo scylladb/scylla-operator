@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"go.uber.org/zap/zapcore"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
@@ -95,4 +96,17 @@ func NewControllerRef(c *scyllav1alpha1.ScyllaCluster) metav1.OwnerReference {
 		Version: "v1alpha1",
 		Kind:    "ScyllaCluster",
 	})
+}
+
+// MarkAsReplaceCandidate patches member service with special label indicating
+// that service must be replaced.
+func MarkAsReplaceCandidate(ctx context.Context, member *corev1.Service, kubeClient kubernetes.Interface) error {
+	if _, ok := member.Labels[naming.ReplaceLabel]; !ok {
+		patched := member.DeepCopy()
+		patched.Labels[naming.ReplaceLabel] = ""
+		if err := PatchService(ctx, member, patched, kubeClient); err != nil {
+			return errors.Wrap(err, "patch service as replace")
+		}
+	}
+	return nil
 }

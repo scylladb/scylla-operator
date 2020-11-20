@@ -48,7 +48,7 @@ _This procedure is for replacing one dead node. To replace more than one dead no
     ```bash
     $ kubectl -n scylla label svc simple-cluster-us-east-1-us-east-1a-2 scylla/replace=""
     ```
-    Your failed pod should be recreated on available node
+    Your failed Pod should be recreated on available k8s node
     ```bash
     $ kubectl -n scylla get pods        
     NAME                                    READY   STATUS    RESTARTS   AGE
@@ -71,3 +71,10 @@ _This procedure is for replacing one dead node. To replace more than one dead no
    UN  10.43.191.172  74.77 KB   256          ?       1ffa7a82-c41c-4706-8f5f-4d45a39c7003  us-east-1a
    ```
 1. Run the repair on the cluster to make sure that the data is synced with the other nodes in the cluster. You can use [Scylla Manager](manager.md) to run the repair.
+
+### Automatic cleanup and replacement in case when k8s node is lost
+
+In case when your k8s cluster loses one of the nodes due to incident or explicit removal, Scylla Pods may become unschedulable due to PVC node affinity.
+
+When `automaticOrphanedNodeCleanup` flag is enabled in your ScyllaCluster, Scylla Operator will perform automatic 
+node replacement of a Pod which lost his bound resources.

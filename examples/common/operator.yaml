@@ -61,6 +61,9 @@ spec:
                   format: int32
                   type: integer
               type: object
+            automaticOrphanedNodeCleanup:
+              description: AutomaticOrphanedNodeCleanup controls if automatic orphan node cleanup should be performed.
+              type: boolean
             backups:
               description: Backups specifies backup task in Scylla Manager. When Scylla Manager is not installed, these will be ignored.
               items:
@@ -1686,9 +1689,25 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - persistentvolumeclaims
   verbs:
   - delete
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - persistentvolumes
+  verbs:
   - get
   - list
   - watch

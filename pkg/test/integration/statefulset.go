@@ -11,6 +11,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -41,7 +42,6 @@ func WithPodCondition(condition corev1.PodCondition) func(pod *corev1.Pod) {
 		}
 		pod.Status.Conditions = append(pod.Status.Conditions, condition)
 	}
-
 }
 
 type PodOption func(pod *corev1.Pod)
@@ -114,6 +114,89 @@ func (s *StatefulSetOperatorStub) CreatePods(ctx context.Context, cluster *scyll
 		s.logger.Info(ctx, "Updating StatefulSet status", "replicas", sts.Status.Replicas, "observed_generation", sts.Status.ObservedGeneration)
 		if err := s.env.Status().Update(ctx, sts); err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+func WithPVNodeAffinity(matchExpressions []corev1.NodeSelectorRequirement) func(pv *corev1.PersistentVolume) {
+	return func(pv *corev1.PersistentVolume) {
+		pv.Spec.NodeAffinity = &corev1.VolumeNodeAffinity{
+			Required: &corev1.NodeSelector{
+				NodeSelectorTerms: []corev1.NodeSelectorTerm{
+					{
+						MatchExpressions: matchExpressions,
+					},
+				},
+			},
+		}
+	}
+}
+
+type PVOption func(pv *corev1.PersistentVolume)
+
+func (s *StatefulSetOperatorStub) CreatePVCs(ctx context.Context, cluster *scyllav1alpha1.ScyllaCluster, pvOptions ...PVOption) error {
+	for _, rack := range cluster.Spec.Datacenter.Racks {
+		sts := &appsv1.StatefulSet{}
+
+		err := s.env.Get(ctx, client.ObjectKey{
+			Name:      naming.StatefulSetNameForRack(rack, cluster),
+			Namespace: cluster.Namespace,
+		}, sts)
+		if err != nil {
+			return err
+		}
+
+		pods := &corev1.PodList{}
+		if err := s.env.List(ctx, pods, &client.ListOptions{
+			Namespace:     cluster.Namespace,
+			LabelSelector: naming.RackSelector(rack, cluster),
+		}); err != nil {
+			return err
+		}
+
+		for _, pod := range pods.Items {
+			pv := &corev1.PersistentVolume{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pv-1337",
+				},
+				Spec: corev1.PersistentVolumeSpec{
+					PersistentVolumeSource: corev1.PersistentVolumeSource{
+						Local: &corev1.LocalVolumeSource{
+							Path: "/random-path",
+						},
+					},
+					AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany},
+					Capacity:    corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")},
+				},
+			}
+
+			for _, opt := range pvOptions {
+				opt(pv)
+			}
+
+			if err := s.env.Create(ctx, pv); err != nil {
+				return err
+			}
+
+			pvc := &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      naming.PVCNameForPod(pod.Name),
+					Namespace: pod.Namespace,
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					VolumeName:  pv.Name,
+					AccessModes: pv.Spec.AccessModes,
+					Resources: corev1.ResourceRequirements{
+						Limits:   pv.Spec.Capacity,
+						Requests: pv.Spec.Capacity,
+					},
+				},
+			}
+			if err := s.env.Create(ctx, pvc); err != nil {
+				return err
+			}
 		}
 	}
 

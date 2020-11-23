@@ -65,6 +65,9 @@ func TestMain(m *testing.M) {
 	}()
 
 	options.GetOperatorOptions().Image = "scylladb/scylla-operator"
+	defer func() {
+		options.GetOperatorOptions().Image = ""
+	}()
 
 	reconciler, err := cluster.New(ctx, testEnv.Manager, logger)
 	if err != nil {

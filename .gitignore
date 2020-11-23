@@ -24,8 +24,7 @@ dist/
 *.swo
 *~
 
-examples/gke/grafana/values.yaml
-examples/generic/grafana/values.yaml
+examples/common/grafana/values.yaml
 
 # additions for docs
 /docs/_build

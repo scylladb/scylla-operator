@@ -193,14 +193,14 @@ kubectl apply -f cpu-policy-daemonset.yaml
 
 # Install local volume provisioner
 echo "Installing local volume provisioner..."
-helm install local-provisioner provisioner
+helm install local-provisioner ../common/provisioner
 echo "Your disks are ready to use."
 
 echo "Starting the cert manger..."
-kubectl apply -f cert-manager.yaml
+kubectl apply -f ../common/cert-manager.yaml
 sleep 30
 echo "Starting the scylla operator..."
-kubectl apply -f operator.yaml
+kubectl apply -f ../common/operator.yaml
 sleep 30
 echo "Starting the scylla cluster..."
 sed "s/<gcp_region>/${GCP_REGION}/g;s/<gcp_zone>/${GCP_ZONE}/g" cluster.yaml | kubectl apply -f -

@@ -36,13 +36,11 @@ install: manifests cert-manager
 # Uninstall CRDs from a cluster
 uninstall: manifests
 	kustomize build config/operator/crd | kubectl delete -f -
-	kubectl delete -f examples/generic/cert-manager.yaml
+	kubectl delete -f examples/common/cert-manager.yaml
 
 cert-manager:
-	cat config/operator/certmanager/cert-manager.yaml > examples/generic/cert-manager.yaml
-	cat config/operator/certmanager/cert-manager.yaml > examples/gke/cert-manager.yaml
-	cat config/operator/certmanager/cert-manager.yaml > examples/eks/cert-manager.yaml
-	kubectl apply -f examples/generic/cert-manager.yaml
+	cat config/operator/certmanager/cert-manager.yaml > examples/common/cert-manager.yaml
+	kubectl apply -f examples/common/cert-manager.yaml
 	kubectl -n cert-manager wait --for=condition=ready pod -l app=cert-manager --timeout=60s
 	kubectl -n cert-manager wait --for=condition=ready pod -l app=cainjector --timeout=60s
 	kubectl -n cert-manager wait --for=condition=ready pod -l app=webhook --timeout=60s
@@ -59,12 +57,8 @@ manifests:
 	webhook output:webhook:artifacts:config=config/operator/webhook
 
 	controller-gen $(CRD_OPTIONS) paths="./pkg/controllers/manager" rbac:roleName=manager-role output:rbac:artifacts:config=config/manager/rbac
-	kustomize build config/operator/default > examples/generic/operator.yaml
-	kustomize build config/operator/default > examples/gke/operator.yaml
-	kustomize build config/operator/default > examples/eks/operator.yaml
-	kustomize build config/manager/default > examples/generic/manager.yaml
-	kustomize build config/manager/default > examples/gke/manager.yaml
-	kustomize build config/manager/default > examples/eks/manager.yaml
+	kustomize build config/operator/default > examples/common/operator.yaml
+	kustomize build config/manager/default > examples/common/manager.yaml
 
 # Run go fmt against code
 fmt:

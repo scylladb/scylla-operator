@@ -88,15 +88,15 @@ sleep 60
 
 # Install local volume provisioner
 echo "Installing local volume provisioner..."
-helm install local-provisioner provisioner
+helm install local-provisioner ../common/provisioner
 echo "Your disks are ready to use."
 
 echo "Starting the cert manger..."
-kubectl apply -f cert-manager.yaml
+kubectl apply -f ../common/cert-manager.yaml
 kubectl -n cert-manager wait --for=condition=ready pod -l app=webhook --timeout=60s
 
 echo "Starting the scylla operator..."
-kubectl apply -f operator.yaml
+kubectl apply -f ../common/operator.yaml
 kubectl -n scylla-operator-system wait --for=condition=ready pod -l control-plane=controller-manager --timeout=60s
 
 echo "Starting the scylla cluster..."

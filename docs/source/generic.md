@@ -33,7 +33,7 @@ eval $(minikube docker-env)
 First deploy Cert Manager, you can either follow [upsteam instructions](https://cert-manager.io/docs/installation/kubernetes/) or use following command:
 
 ```console
-kubectl apply -f examples/generic/cert-manager.yaml
+kubectl apply -f examples/common/cert-manager.yaml
 ```
 This will install Cert Manager with self signed certificate. 
 
@@ -48,7 +48,7 @@ kubectl wait -n cert-manager --for=condition=ready pod -l app=cert-manager --tim
 Deploy the  Scylla Operator using the following commands:
 
 ```console
-kubectl apply -f examples/generic/operator.yaml
+kubectl apply -f examples/common/operator.yaml
 ```
 
 This will install the operator StatefulSet in namespace scylla-operator-system.
@@ -274,7 +274,7 @@ After a restart the operator will use the security token when it interacts with 
  
  Both Prometheus and Grafana were configured with specific rules for Scylla Operator.
  Both of them will be available under the `monitoring` namespace. 
- Customization can be done in `examples/generic/prometheus/values.yaml` and `examples/generic/grafana/values.yaml`.
+ Customization can be done in `examples/common/prometheus/values.yaml` and `examples/common/grafana/values.yaml`.
  
 1. Create the monitoring namespace
     ```console
@@ -282,7 +282,7 @@ After a restart the operator will use the security token when it interacts with 
     ```
 2. Install Prometheus
     ```console
-    helm upgrade --install scylla-prom --namespace monitoring stable/prometheus -f examples/generic/prometheus/values.yaml
+    helm upgrade --install scylla-prom --namespace monitoring stable/prometheus -f examples/common/prometheus/values.yaml
     ```
     If you want to tweak the prometheus properties, for example it's assigned memory, you can override it by adding a command line argument like this: `--set server.resources.limits.memory=4Gi`
 
@@ -290,15 +290,13 @@ After a restart the operator will use the security token when it interacts with 
     First you need to prepare the dashboards to make them available in Grafana. 
     You can do this by running the following command in the `examples` directory:
     ```console
-    ./dashboards.sh -t generic
+    ./dashboards.sh
     ```
-    If you are deploying to `GKE` the replace the argument with `gke` instead of `generic`.
-
     __NB__: Keep in mind that this is a test setup. For production use, check grafana and prometheus helm chart page for advanced deployment instructions.
 
     Now the dashboards can be created along with the grafana plugin like this:
     ```console
-    helm upgrade --install scylla-graf --namespace monitoring stable/grafana -f examples/generic/grafana/values.yaml
+    helm upgrade --install scylla-graf --namespace monitoring stable/grafana -f examples/common/grafana/values.yaml
     ```
  
     To access Grafana locally, run:
@@ -391,7 +389,8 @@ To clean up all resources associated with this walk-through, you can run the com
 
 ```console
 kubectl delete -f examples/generic/cluster.yaml
-kubectl delete -f examples/generic/operator.yaml
+kubectl delete -f examples/common/operator.yaml
+kubectl delete -f examples/common/cert-manager.yaml
 ```
 
 ## Troubleshooting

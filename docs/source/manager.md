@@ -44,7 +44,7 @@ Controller also supports task updates and unscheduling.
 Deploy the Scylla Manager using the following commands:
 
 ```console
-kubectl apply -f examples/generic/manager.yaml
+kubectl apply -f examples/common/manager.yaml
 ```
 
 This will install the Scylla Manager in the `scylla-manager-system` namespace.
@@ -211,7 +211,7 @@ To clean up all resources associated with Scylla Manager, you can run the comman
 **NOTE:** this will destroy your Scylla Manager database and delete all of its associated data.
 
 ```console
-kubectl delete -f examples/generic/manager.yaml
+kubectl delete -f examples/common/manager.yaml
 ```
 
 ## Troubleshooting

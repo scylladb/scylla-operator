@@ -127,7 +127,7 @@ kubectl apply -f examples/gke/raid-daemonset.yaml
 
 After combining the local SSDs into RAID0 arrays, we deploy the local volume provisioner, which will discover their mount points and make them available as PersistentVolumes.
 ```
-helm install local-provisioner examples/gke/provisioner
+helm install local-provisioner examples/common/provisioner
 ```
 
 #### Install `cpu-policy` Daemonset
@@ -142,7 +142,7 @@ kubectl apply -f examples/gke/cpu-policy-daemonset.yaml
 You can either follow [upsteam instructions](https://cert-manager.io/docs/installation/kubernetes/) or use following command:
 
 ```console
-kubectl apply -f examples/gke/cert-manager.yaml
+kubectl apply -f examples/common/cert-manager.yaml
 ```
 
 This will install Cert Manager with self signed certificate.  

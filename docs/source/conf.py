@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import sys
+from datetime import date
 from sphinx.util import logging
 import recommonmark
 from recommonmark.transform import AutoStructify
@@ -41,7 +42,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'Scylla Documentation Theme and Extensions'
-copyright = u'2012, ScyllaDB. All rights reserved.'
+copyright = str(date.today().year) + ', ScyllaDB. All rights reserved.'
 author = u'Scylla Project Contributors'
 
 # The version info for the project you're documenting, acts as replacement for

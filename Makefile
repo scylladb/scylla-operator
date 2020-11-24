@@ -2,9 +2,8 @@ all: test local-build
 
 # Image URL to use all building/pushing image targets
 REPO		?= scylladb/scylla-operator
-TAG			?= $(shell git describe --tags --always --abbrev=0)
+TAG			?= $(shell ./version.sh)
 IMG			?= $(REPO):$(TAG)
-NIGHTLY_IMG	?= $(REPO):nightly
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
@@ -47,11 +46,12 @@ cert-manager:
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests cert-manager
-	cd config/operator/operator && kustomize edit set image controller=${IMG}
-	kustomize build config/operator/default | kubectl apply -f -
+	kubectl apply -f examples/common/operator.yaml
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests:
+	cd config/operator/operator && kustomize edit set image controller=${IMG}
+
 	controller-gen $(CRD_OPTIONS) paths="$(PKG)" output:crd:dir=config/operator/crd/bases \
 	rbac:roleName=manager-role output:rbac:artifacts:config=config/operator/rbac \
 	webhook output:webhook:artifacts:config=config/operator/webhook
@@ -96,4 +96,4 @@ release:
 
 nightly:
 	goreleaser --snapshot --rm-dist --config=.goreleaser-nightly.yml
-	docker push ${NIGHTLY_IMG}
+	docker push ${IMG}

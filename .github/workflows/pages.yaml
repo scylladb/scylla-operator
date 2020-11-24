@@ -13,6 +13,8 @@ jobs:
   release:
     name: Release docs
     runs-on: ubuntu-latest
+    env:
+      LATEST_VERSION: master
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -32,4 +34,3 @@ jobs:
         run : ./docs/_utils/deploy.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          LATEST_VERSION: master

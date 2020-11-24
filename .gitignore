@@ -27,5 +27,6 @@ dist/
 examples/common/grafana/values.yaml
 
 # additions for docs
-/docs/_build
-/source/.doctrees
+docs/_build
+docs/poetry.lock
+source/.doctrees

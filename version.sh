@@ -19,7 +19,7 @@
 set -euo pipefail
 
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
-if [[ "$BRANCH" != "master" ]]; then
+if [[ $BRANCH == branch-* ]]; then
   echo $(git describe --tags --always --abbrev=0)
   exit 0
 fi

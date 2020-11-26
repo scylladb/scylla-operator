@@ -122,7 +122,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: role
+  name: scylla-manager-manager-role
 subjects:
 - kind: ServiceAccount
   name: default

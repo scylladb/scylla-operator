@@ -40,6 +40,12 @@ var _ webhook.Defaulter = &ScyllaCluster{}
 var _ webhook.Validator = &ScyllaCluster{}
 
 func (c *ScyllaCluster) Default() {
+	if c.Spec.Alternator != nil {
+		if c.Spec.Alternator.WriteIsolation == "" {
+			c.Spec.Alternator.WriteIsolation = "always"
+		}
+	}
+
 	for i, repairTask := range c.Spec.Repairs {
 		if repairTask.StartDate == nil {
 			c.Spec.Repairs[i].StartDate = pointer.StringPtr("now")

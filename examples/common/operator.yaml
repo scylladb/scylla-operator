@@ -60,6 +60,8 @@ spec:
                   description: Port on which to bind the Alternator API
                   format: int32
                   type: integer
+                write_isolation:
+                  type: string
               type: object
             automaticOrphanedNodeCleanup:
               description: AutomaticOrphanedNodeCleanup controls if automatic orphan node cleanup should be performed.

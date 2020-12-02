@@ -35,7 +35,7 @@ spec:
         args:
           - |
             set -e
-            set -x 
+            set -x
 
             # If the disk has already been created, sleep indefinitely
             if [ -b "/dev/md0" ]; then
@@ -65,19 +65,26 @@ spec:
 
             # Unmount disks from host filesystem
             for i in `seq 0 $((NUM_DISKS-1))`;
-            do 
-                umount "${DISK_MNT_DIR_PREFIX}${i}" &> /dev/null || echo "Disk ${DISK_MNT_DIR_PREFIX}${i} already unmounted."
+            do
+                CURR_DISK=${DISKS[$i]}
+                DISCARD_FLAG_PATH="/sys/block/${CURR_DISK#'/dev/'}/queue/discard_granularity"
+                umount $CURR_DISK &> /dev/null || echo "Disk $CURR_DISK already unmounted."
+                if [ "`cat $DISCARD_FLAG_PATH`" != "0" ]; then
+                    blkdiscard $CURR_DISK || true
+                fi
             done
-            
+            # Waits till udev reread device data
+            udevadm settle
             # Create a raid array
-            yes | mdadm --create /dev/md0 --force --level=0 --raid-devices="$NUM_DISKS" "${DISKS[@]}"
-            
+            yes | mdadm --create /dev/md0 --force --level=0 -c1024 --raid-devices="$NUM_DISKS" "${DISKS[@]}"
+            # Waits till udev reread md0 device data
+            udevadm settle
             # Format the raid array as xfs
             mkfs.xfs /dev/md0
-            
+
             # Mount the raid array in a predefined location
             mkdir -p $RAID_DIR
-            mount /dev/md0 $RAID_DIR
+            mount -o noatime /dev/md0 $RAID_DIR
         securityContext:
           privileged: true
         volumeMounts:

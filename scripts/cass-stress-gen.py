@@ -85,7 +85,7 @@ if __name__ == "__main__":
       args.limit = 'throttle={}/s'.format(args.limit)
     if args.nodeselector:
       parts = args.nodeselector.split("=")
-      args.nodeselector = "{}: {},".format(parts[0], parts[1])
+      args.nodeselector = "{}: {}".format(parts[0], parts[1])
 
     # Create manifests
     manifests = create_job_list(args)

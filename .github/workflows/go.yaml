@@ -63,10 +63,15 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Publish nightly image
+      - name: Build nightly image
         if: ${{ github.event_name != 'pull_request' }}
         working-directory: ${{ env.working-directory }}
         run: make nightly
+
+      - name: Publish nightly image
+        if: ${{ github.event_name != 'pull_request' }}
+        working-directory: ${{ env.working-directory }}
+        run: make docker-push
 
 # TODO:
 # - E2E

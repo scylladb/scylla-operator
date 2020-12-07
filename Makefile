@@ -96,4 +96,3 @@ release:
 
 nightly:
 	goreleaser --snapshot --rm-dist --config=.goreleaser-nightly.yml
-	docker push ${IMG}

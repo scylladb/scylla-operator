@@ -29,8 +29,10 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/scylladb/go-log v0.0.4
 	github.com/scylladb/go-set v1.0.2
+	github.com/scylladb/gocqlx/v2 v2.2.0
 	github.com/spf13/cobra v1.0.0
 	github.com/stretchr/testify v1.6.1
+	go.uber.org/atomic v1.5.0
 	go.uber.org/config v1.4.0
 	go.uber.org/multierr v1.4.0
 	go.uber.org/zap v1.14.0

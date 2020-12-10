@@ -1,0 +1,44 @@
+run:
+  deadline: 5m
+  tests: false
+
+linters-settings:
+  errcheck:
+    check-blank: true
+  gocognit:
+    min-complexity: 50
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - performance
+      - style
+    disabled-checks:
+      - commentedOutCode
+      - evalOrder
+      - hugeParam
+      - importShadow
+      - yodaStyleExpr
+      - whyNoLint
+  lll:
+    line-length: 180
+
+linters:
+  enable-all: true
+  disable:
+    - funlen
+    - gas
+    - gochecknoglobals
+    - gochecknoinits
+    - gomnd
+    - interfacer
+    - maligned
+    - nakedret
+    - prealloc
+    - wsl
+
+issues:
+  exclude-use-default: false
+  exclude:
+    - composite literal uses unkeyed fields
+    - Error return value of `.+\.Close` is not checked
+    - method Json should be JSON

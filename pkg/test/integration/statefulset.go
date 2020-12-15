@@ -163,12 +163,17 @@ func (s *StatefulSetOperatorStub) CreatePVCs(ctx context.Context, cluster *scyll
 		for _, pod := range pods.Items {
 			pv := &corev1.PersistentVolume{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "pv-1337",
+					GenerateName: "pv-1337",
 				},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Local: &corev1.LocalVolumeSource{
 							Path: "/random-path",
+						},
+					},
+					NodeAffinity: &corev1.VolumeNodeAffinity{
+						Required: &corev1.NodeSelector{
+							NodeSelectorTerms: []corev1.NodeSelectorTerm{{}},
 						},
 					},
 					AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany},
@@ -198,7 +203,8 @@ func (s *StatefulSetOperatorStub) CreatePVCs(ctx context.Context, cluster *scyll
 					},
 				},
 			}
-			if err := s.env.Create(ctx, pvc); err != nil {
+
+			if _, err := controllerutil.CreateOrUpdate(ctx, s.env, pvc, func() error { return nil }); err != nil {
 				return err
 			}
 		}

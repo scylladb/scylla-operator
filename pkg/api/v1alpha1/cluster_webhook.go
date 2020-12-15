@@ -17,6 +17,10 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"reflect"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -40,6 +44,22 @@ var _ webhook.Defaulter = &ScyllaCluster{}
 var _ webhook.Validator = &ScyllaCluster{}
 
 func (c *ScyllaCluster) Default() {
+	for _, r := range c.Spec.Datacenter.Racks {
+		// Empty agent resources
+		if reflect.DeepEqual(r.AgentResources, corev1.ResourceRequirements{}) {
+			r.AgentResources = corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("50m"),
+					corev1.ResourceMemory: resource.MustParse("10M"),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("1"),
+					corev1.ResourceMemory: resource.MustParse("200M"),
+				},
+			}
+		}
+	}
+
 	for i, repairTask := range c.Spec.Repairs {
 		if repairTask.StartDate == nil {
 			c.Spec.Repairs[i].StartDate = pointer.StringPtr("now")

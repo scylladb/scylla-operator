@@ -121,6 +121,28 @@ spec:
                   items:
                     description: RackSpec is the desired state for a Scylla Rack.
                     properties:
+                      agentResources:
+                        description: AgentResources which Agent container will use.
+                        properties:
+                          limits:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                          requests:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                        type: object
                       members:
                         description: Members is the number of Scylla instances in this rack.
                         format: int32
@@ -492,7 +514,7 @@ spec:
                             type: array
                         type: object
                       resources:
-                        description: Resources the Scylla Pods will use.
+                        description: Resources the Scylla container will use.
                         properties:
                           limits:
                             additionalProperties:
@@ -532,7 +554,7 @@ spec:
                         - capacity
                         type: object
                       volumeMounts:
-                        description: Volume mounts to be added to scylla nodes
+                        description: VolumeMounts to be added to Scylla container.
                         items:
                           description: VolumeMount describes a mounting of a Volume within a container.
                           properties:
@@ -560,6 +582,7 @@ spec:
                           type: object
                         type: array
                       volumes:
+                        description: Volumes added to Scylla container.
                         items:
                           description: Volume represents a named volume in a pod that may be accessed by any container in the pod.
                           properties:

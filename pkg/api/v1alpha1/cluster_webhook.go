@@ -39,19 +39,7 @@ func (r *ScyllaCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Defaulter = &ScyllaCluster{}
 var _ webhook.Validator = &ScyllaCluster{}
 
-const (
-	AlternatorWriteIsolationAlways         = "always"
-	AlternatorWriteIsolationForbidRMW      = "forbid_rmw"
-	AlternatorWriteIsolationOnlyRMWUsesLWT = "only_rmw_uses_lwt"
-)
-
 func (c *ScyllaCluster) Default() {
-	if c.Spec.Alternator != nil {
-		if c.Spec.Alternator.WriteIsolation == "" {
-			c.Spec.Alternator.WriteIsolation = AlternatorWriteIsolationOnlyRMWUsesLWT
-		}
-	}
-
 	for i, repairTask := range c.Spec.Repairs {
 		if repairTask.StartDate == nil {
 			c.Spec.Repairs[i].StartDate = pointer.StringPtr("now")

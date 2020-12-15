@@ -131,11 +131,6 @@ func (in *ClusterSpec) DeepCopyInto(out *ClusterSpec) {
 		**out = **in
 	}
 	in.Datacenter.DeepCopyInto(&out.Datacenter)
-	if in.SidecarImage != nil {
-		in, out := &in.SidecarImage, &out.SidecarImage
-		*out = new(ImageSpec)
-		**out = **in
-	}
 	if in.Sysctls != nil {
 		in, out := &in.Sysctls, &out.Sysctls
 		*out = make([]string, len(*in))

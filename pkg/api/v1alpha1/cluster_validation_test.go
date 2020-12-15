@@ -91,12 +91,6 @@ func TestCheckTransitions(t *testing.T) {
 			allowed: false,
 		},
 		{
-			name:    "sidecarImage changed",
-			old:     unit.NewSingleRackCluster(3),
-			new:     sidecarImageChanged(unit.NewSingleRackCluster(3)),
-			allowed: false,
-		},
-		{
 			name:    "dcName changed",
 			old:     unit.NewSingleRackCluster(3),
 			new:     unit.NewDetailedSingleRackCluster("test-cluster", "test-ns", "repo", "2.3.1", "new-dc", "test-rack", 3),
@@ -154,14 +148,6 @@ func resourceChanged(c *v1alpha1.ScyllaCluster) *v1alpha1.ScyllaCluster {
 
 func rackDeleted(c *v1alpha1.ScyllaCluster) *v1alpha1.ScyllaCluster {
 	c.Spec.Datacenter.Racks = nil
-	return c
-}
-
-func sidecarImageChanged(c *v1alpha1.ScyllaCluster) *v1alpha1.ScyllaCluster {
-	c.Spec.SidecarImage = &v1alpha1.ImageSpec{
-		Version:    "1.0.0",
-		Repository: "my-private-repo",
-	}
 	return c
 }
 

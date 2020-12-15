@@ -106,11 +106,6 @@ func checkTransitions(old, new *ScyllaCluster) error {
 		return errors.Errorf("repository change is currently not supported, old=%v, new=%v", *old.Spec.Repository, *new.Spec.Repository)
 	}
 
-	// Check that sidecarImage remained the same
-	if !reflect.DeepEqual(old.Spec.SidecarImage, new.Spec.SidecarImage) {
-		return errors.Errorf("change of sidecarImage is currently not supported")
-	}
-
 	// Check that the datacenter name didn't change
 	if old.Spec.Datacenter.Name != new.Spec.Datacenter.Name {
 		return errors.Errorf("change of datacenter name is currently not supported")

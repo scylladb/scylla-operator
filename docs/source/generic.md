@@ -185,12 +185,17 @@ spec:
   version: 4.0.0
   alternator:
     port: 8000
+    writeIsolation: only_rmw_uses_lwt
   agentVersion: 2.0.2
   developerMode: true
   datacenter:
     name: us-east-1
 ```
 You can specify whichever port you want.
+
+You must provide desired write isolation, supported values are: "always", "forbid_rmw", "only_rmw_uses_lwt".
+Difference between those isolation levels can be found in Scylla Alternator documentation.
+
 Once this is done the regular CQL ports will no longer be available, the cluster is a pure Alienator cluster.
 
 ## Accessing the Database

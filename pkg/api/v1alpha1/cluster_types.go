@@ -200,7 +200,7 @@ type StorageSpec struct {
 type AlternatorSpec struct {
 	// Port on which to bind the Alternator API
 	Port           int32  `json:"port,omitempty"`
-	WriteIsolation string `json:"write_isolation,omitempty"`
+	WriteIsolation string `json:"writeIsolation,omitempty"`
 }
 
 func (a *AlternatorSpec) Enabled() bool {

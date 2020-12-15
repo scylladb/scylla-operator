@@ -8,8 +8,36 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
+const (
+	AlternatorWriteIsolationAlways         = "always"
+	AlternatorWriteIsolationForbidRMW      = "forbid_rmw"
+	AlternatorWriteIsolationOnlyRMWUsesLWT = "only_rmw_uses_lwt"
+)
+
+var (
+	AlternatorSupportedWriteIsolation = []string{
+		AlternatorWriteIsolationAlways,
+		AlternatorWriteIsolationForbidRMW,
+		AlternatorWriteIsolationOnlyRMWUsesLWT,
+	}
+)
+
 func checkValues(c *ScyllaCluster) error {
 	rackNames := sets.NewString()
+
+	if c.Spec.Alternator != nil {
+		if c.Spec.Alternator.WriteIsolation != "" {
+			found := false
+			for _, wi := range AlternatorSupportedWriteIsolation {
+				if c.Spec.Alternator.WriteIsolation == wi {
+					found = true
+				}
+			}
+			if !found {
+				return errors.Errorf("unsupported Alternator.WriteIsolation %q, allowed values are %s", c.Spec.Alternator.WriteIsolation, AlternatorSupportedWriteIsolation)
+			}
+		}
+	}
 
 	if len(c.Spec.ScyllaArgs) > 0 {
 		version, err := semver.Parse(c.Spec.Version)

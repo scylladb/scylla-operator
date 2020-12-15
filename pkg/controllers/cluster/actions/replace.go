@@ -5,7 +5,6 @@ package actions
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
@@ -14,7 +13,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -128,25 +126,6 @@ func podReady(pod *corev1.Pod) bool {
 	return false
 }
 
-const (
-	retryInterval     = time.Second
-	waitForPVCTimeout = 30 * time.Second
-)
-
-func waitForPVC(ctx context.Context, cc client.Client, name, namespace string) error {
-	pvc := &corev1.PersistentVolumeClaim{}
-	return wait.PollImmediate(retryInterval, waitForPVCTimeout, func() (bool, error) {
-		err := cc.Get(ctx, naming.NamespacedName(name, namespace), pvc)
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				return false, nil
-			}
-			return false, err
-		}
-		return true, nil
-	})
-}
-
 func (a *RackReplaceNode) replaceNode(ctx context.Context, state *State, member *corev1.Service) error {
 	r, c := a.Rack, a.Cluster
 
@@ -159,49 +138,46 @@ func (a *RackReplaceNode) replaceNode(ctx context.Context, state *State, member 
 
 	// Proceed to destructive operations only when IP address is saved in cluster Status.
 	if err := cc.Status().Update(ctx, c); err != nil {
-		return errors.Wrap(err, "failed to delete pvc")
+		return errors.Wrap(err, "failed to update replace address in cluster status")
 	}
 
 	// Delete PVC if it exists
 	pvc := &corev1.PersistentVolumeClaim{}
-	err := cc.Get(ctx, naming.NamespacedName(naming.PVCNameForPod(member.Name), member.Namespace), pvc)
-	if err != nil {
+	if err := cc.Get(ctx, naming.NamespacedName(naming.PVCNameForPod(member.Name), member.Namespace), pvc); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return errors.Wrap(err, "failed to get pvc")
 		}
-		a.Logger.Info(ctx, "Member PVC not found", "member", member.Name)
-	} else {
-		a.Logger.Info(ctx, "Deleting member PVC", "member", member.Name, "pvc", pvc.Name)
-		if err = cc.Delete(ctx, pvc); err != nil {
-			return errors.Wrap(err, "failed to delete pvc")
-		}
-
-		// Wait until PVC is deleted, ignore error
-		a.Logger.Info(ctx, "Waiting for PVC deletion", "member", member.Name, "pvc", pvc.Name)
-		_ = waitForPVC(ctx, cc, naming.PVCNameForPod(member.Name), member.Namespace)
-
-		state.recorder.Event(c, corev1.EventTypeNormal, naming.SuccessSynced,
-			fmt.Sprintf("Rack %q removed %q PVC", r.Name, member.Name),
-		)
+		a.Logger.Debug(ctx, "PVC not found", "member", member.Name, "pvc", naming.PVCNameForPod(member.Name))
+		// Retry, we are in the middle of replace
+		return nil
 	}
 
 	// Delete Pod if it exists
 	pod := &corev1.Pod{}
-	err = cc.Get(ctx, naming.NamespacedName(member.Name, member.Namespace), pod)
-	if err != nil {
+	if err := cc.Get(ctx, naming.NamespacedName(member.Name, member.Namespace), pod); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return errors.Wrap(err, "get pod")
 		}
-		a.Logger.Info(ctx, "Member Pod not found", "member", member.Name)
-	} else {
-		a.Logger.Info(ctx, "Deleting member Pod", "member", member.Name)
-		if err = cc.Delete(ctx, pod, client.GracePeriodSeconds(0)); err != nil {
-			return errors.Wrap(err, "delete pod")
-		}
-		state.recorder.Event(c, corev1.EventTypeNormal, naming.SuccessSynced,
-			fmt.Sprintf("Rack %q removed %q Pod", r.Name, member.Name),
-		)
+		a.Logger.Debug(ctx, "Pod not found", "pod", member.Name)
+		// Retry, we are in the middle of replace
+		return nil
 	}
+
+	// Remove finalizer, which will wait until pod is deleted.
+	// We want to delete pod anyway, so it's better to delete pvc immediately.
+	pvcCopy := pvc.DeepCopy()
+	pvcCopy.SetFinalizers([]string{})
+	if err := cc.Update(ctx, pvcCopy); err != nil {
+		return errors.Wrap(err, "failed to update pvc")
+	}
+
+	a.Logger.Info(ctx, "Deleting member PVC", "member", member.Name, "pvc", pvc.Name)
+	if err := cc.Delete(ctx, pvc); err != nil {
+		return errors.Wrap(err, "failed to delete pvc")
+	}
+	state.recorder.Event(c, corev1.EventTypeNormal, naming.SuccessSynced,
+		fmt.Sprintf("Rack %q removed %q PVC", r.Name, member.Name),
+	)
 
 	// Delete member Service
 	a.Logger.Info(ctx, "Deleting member Service", "member", member.Name)
@@ -211,6 +187,14 @@ func (a *RackReplaceNode) replaceNode(ctx context.Context, state *State, member 
 
 	state.recorder.Event(c, corev1.EventTypeNormal, naming.SuccessSynced,
 		fmt.Sprintf("Rack %q removed %q Service", r.Name, member.Name),
+	)
+
+	a.Logger.Info(ctx, "Deleting member Pod", "member", member.Name)
+	if err := cc.Delete(ctx, pod, client.GracePeriodSeconds(0)); err != nil {
+		return errors.Wrap(err, "delete pod")
+	}
+	state.recorder.Event(c, corev1.EventTypeNormal, naming.SuccessSynced,
+		fmt.Sprintf("Rack %q removed %q Pod", r.Name, member.Name),
 	)
 
 	return nil

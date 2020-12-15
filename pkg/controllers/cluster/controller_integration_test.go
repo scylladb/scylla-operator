@@ -124,6 +124,7 @@ var _ = Describe("Cluster controller", func() {
 			for _, replicas := range clusterScaleSteps(rack.Members) {
 				Expect(assertRackScaled(ctx, rack, scylla, replicas)).To(Succeed())
 				Expect(sstStub.CreatePods(ctx, scylla)).To(Succeed())
+				Expect(sstStub.CreatePVCs(ctx, scylla)).To(Succeed())
 			}
 		})
 

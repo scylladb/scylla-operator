@@ -361,7 +361,7 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaClust
 		sts.Spec.Template.Spec.Volumes = append(
 			sts.Spec.Template.Spec.Volumes, *Volume.DeepCopy())
 	}
-	sts.Spec.Template.Spec.Containers = append(sts.Spec.Template.Spec.Containers, *agentContainer(c))
+	sts.Spec.Template.Spec.Containers = append(sts.Spec.Template.Spec.Containers, agentContainer(r, c))
 	return sts
 }
 
@@ -436,8 +436,8 @@ func sysctlInitContainer(sysctls []string) *corev1.Container {
 	}
 }
 
-func agentContainer(c *scyllav1alpha1.ScyllaCluster) *corev1.Container {
-	return &corev1.Container{
+func agentContainer(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaCluster) corev1.Container {
+	return corev1.Container{
 		Name:            "scylla-manager-agent",
 		Image:           agentImageForCluster(c),
 		ImagePullPolicy: "IfNotPresent",
@@ -464,16 +464,7 @@ func agentContainer(c *scyllav1alpha1.ScyllaCluster) *corev1.Container {
 				ReadOnly:  true,
 			},
 		},
-		Resources: corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("50m"),
-				corev1.ResourceMemory: resource.MustParse("10M"),
-			},
-			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("1"),
-				corev1.ResourceMemory: resource.MustParse("200M"),
-			},
-		},
+		Resources: r.AgentResources,
 	}
 }
 

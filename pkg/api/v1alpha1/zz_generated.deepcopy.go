@@ -323,6 +323,7 @@ func (in *RackSpec) DeepCopyInto(out *RackSpec) {
 		(*in).DeepCopyInto(*out)
 	}
 	in.Resources.DeepCopyInto(&out.Resources)
+	in.AgentResources.DeepCopyInto(&out.AgentResources)
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
 		*out = make([]v1.Volume, len(*in))

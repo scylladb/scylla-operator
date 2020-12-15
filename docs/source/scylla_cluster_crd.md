@@ -141,12 +141,13 @@ and n nodes in all the other datacenters.
   * `capacity`: Capacity of the PersistentVolume to request.
   * `storageClassName`: Optional field. [StorageClass](https://kubernetes.io/docs/concepts/storage/storage-classes/) of PersistentVolume to request.
 * `resources`: Defines the CPU and RAM resources for the Scylla Pods.
-  * `requests`: The minimum amount of resources needed to run a Scylla Pod.
+  * `requests`: The minimum amount of resources needed to run a Scylla container.
     * `cpu`: CPU requests.
     * `memory`: RAM requests.
-  * `limits`: The maximum amount of resources that can be used by a Scylla Pod.
+  * `limits`: The maximum amount of resources that can be used by a Scylla container.
     * `cpu`: CPU limits.
     * `memory`: RAM limits.
+* `agentResources`: Defines the CPU and RAM resources for the Scylla Manager Agent container. See `resources` for details.
 * `placement`: Defines the placement of Scylla Pods. Has the following subfields:
     * [`nodeAffinity`](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature)
     * [`podAffinity`](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#inter-pod-affinity-and-anti-affinity-beta-feature)

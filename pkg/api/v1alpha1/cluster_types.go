@@ -164,10 +164,13 @@ type RackSpec struct {
 	Storage StorageSpec `json:"storage"`
 	// Placement describes restrictions for the nodes Scylla is scheduled on.
 	Placement *PlacementSpec `json:"placement,omitempty"`
-	// Resources the Scylla Pods will use.
+	// Resources the Scylla container will use.
 	Resources corev1.ResourceRequirements `json:"resources"`
-	Volumes   []corev1.Volume             `json:"volumes,omitempty" patchStrategy:"merge,retainKeys" patchMergeKey:"name" protobuf:"bytes,1,rep,name=volumes"`
-	// Volume mounts to be added to scylla nodes
+	// AgentResources which Agent container will use.
+	AgentResources corev1.ResourceRequirements `json:"agentResources,omitempty"`
+	// Volumes added to Scylla container.
+	Volumes []corev1.Volume `json:"volumes,omitempty" patchStrategy:"merge,retainKeys" patchMergeKey:"name" protobuf:"bytes,1,rep,name=volumes"`
+	// VolumeMounts to be added to Scylla container.
 	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty" patchStrategy:"merge" patchMergeKey:"mountPath" protobuf:"bytes,9,rep,name=volumeMounts"`
 	// Scylla config map name to customize scylla.yaml
 	ScyllaConfig string `json:"scyllaConfig"`

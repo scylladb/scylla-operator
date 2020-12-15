@@ -1474,19 +1474,6 @@ spec:
               type: string
             scyllaArgs:
               type: string
-            sidecarImage:
-              description: User-provided image for the sidecar that replaces default.
-              properties:
-                repository:
-                  description: Repository to pull the image from.
-                  type: string
-                version:
-                  description: Version of the image.
-                  type: string
-              required:
-              - repository
-              - version
-              type: object
             sysctls:
               description: 'Sysctl properties to be applied during initialization given as a list of key=value pairs. Example: fs.aio-max-nr=232323'
               items:

@@ -49,8 +49,6 @@ type ClusterSpec struct {
 	AutomaticOrphanedNodeCleanup bool `json:"automaticOrphanedNodeCleanup,omitempty"`
 	// Datacenter that will make up this cluster.
 	Datacenter DatacenterSpec `json:"datacenter"`
-	// User-provided image for the sidecar that replaces default.
-	SidecarImage *ImageSpec `json:"sidecarImage,omitempty"`
 	// Sysctl properties to be applied during initialization
 	// given as a list of key=value pairs.
 	// Example: fs.aio-max-nr=232323

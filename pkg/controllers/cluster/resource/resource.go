@@ -168,7 +168,7 @@ func StatefulSetForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaClust
 							Name: "scylla-agent-config-volume",
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
-									SecretName: "scylla-agent-config-secret",
+									SecretName: stringOrDefault(r.ScyllaAgentConfig, "scylla-agent-config-secret"),
 									Optional:   &opt,
 								},
 							},

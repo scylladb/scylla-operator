@@ -22,6 +22,10 @@ const (
 	// ReplaceLabel express the intent to replace pod under the specific member.
 	ReplaceLabel = "scylla/replace"
 
+	// NodeMaintenanceLabel means that node is under maintenance.
+	// Readiness check will always fail when this label is added to member service.
+	NodeMaintenanceLabel = "scylla/node-maintenance"
+
 	LabelValueTrue  = "true"
 	LabelValueFalse = "false"
 )

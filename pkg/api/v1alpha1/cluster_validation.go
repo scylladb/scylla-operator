@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	"reflect"
+	"strconv"
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
@@ -80,6 +81,15 @@ func checkValues(c *ScyllaCluster) error {
 			} else {
 				// Copy the limits
 				rack.Resources.Requests = limits.DeepCopy()
+			}
+		}
+	}
+
+	for _, r := range c.Spec.Repairs {
+		if r.Intensity != nil {
+			_, err := strconv.ParseFloat(*r.Intensity, 64)
+			if err != nil {
+				return errors.Errorf("invalid intensity %q in %q repair task, it must be a float value", *r.Intensity, r.Name)
 			}
 		}
 	}

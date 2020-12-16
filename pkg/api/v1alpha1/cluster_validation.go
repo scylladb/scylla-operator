@@ -6,6 +6,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
+	"github.com/scylladb/go-set/strset"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -85,13 +86,26 @@ func checkValues(c *ScyllaCluster) error {
 		}
 	}
 
+	managerTaskNames := strset.New()
 	for _, r := range c.Spec.Repairs {
+		if managerTaskNames.Has(r.Name) {
+			return errors.Errorf("manager task names must be unique, got collision on %q", r.Name)
+		}
+		managerTaskNames.Add(r.Name)
+
 		if r.Intensity != nil {
 			_, err := strconv.ParseFloat(*r.Intensity, 64)
 			if err != nil {
 				return errors.Errorf("invalid intensity %q in %q repair task, it must be a float value", *r.Intensity, r.Name)
 			}
 		}
+	}
+
+	for _, b := range c.Spec.Backups {
+		if managerTaskNames.Has(b.Name) {
+			return errors.Errorf("manager task names must be unique, got collision on %q", b.Name)
+		}
+		managerTaskNames.Add(b.Name)
 	}
 
 	return nil

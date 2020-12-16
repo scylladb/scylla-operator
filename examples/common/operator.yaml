@@ -1415,6 +1415,19 @@ spec:
             developerMode:
               description: DeveloperMode determines if the cluster runs in developer-mode.
               type: boolean
+            genericUpgrade:
+              description: GenericUpgrade allows to configure behavior of generic upgrade logic.
+              properties:
+                failureStrategy:
+                  description: FailureStrategy specifies which logic is executed when upgrade failure happens. Currently only Retry is supported.
+                  type: string
+                pollInterval:
+                  description: PollInterval specifies how often upgrade logic polls on state updates. Increasing this value should lower number of requests sent to apiserver, but it may affect overall time required spent during upgrade.
+                  type: string
+                validationTimeout:
+                  description: ValidationTimeout specifies how long it can take for Scylla to boot and enter ready state after upgrade until FailureStrategy is executed.
+                  type: string
+              type: object
             network:
               description: Networking config
               properties:
@@ -1493,6 +1506,7 @@ spec:
           description: ClusterStatus defines the observed state of ScyllaCluster
           properties:
             backups:
+              description: Backups reflects status of backup tasks.
               items:
                 properties:
                   dc:
@@ -1554,6 +1568,7 @@ spec:
                 type: object
               type: array
             managerId:
+              description: ManagerID contains ID under which cluster was registered in Scylla Manager.
               type: string
             racks:
               additionalProperties:
@@ -1594,8 +1609,10 @@ spec:
                 - readyMembers
                 - version
                 type: object
+              description: Racks reflect status of cluster racks.
               type: object
             repairs:
+              description: Repairs reflects status of repair tasks.
               items:
                 properties:
                   dc:
@@ -1647,6 +1664,35 @@ spec:
                 - name
                 type: object
               type: array
+            upgrade:
+              description: Upgrade reflects state of ongoing upgrade procedure.
+              properties:
+                currentNode:
+                  description: CurrentNode node under upgrade.
+                  type: string
+                currentRack:
+                  description: CurrentRack rack under upgrade.
+                  type: string
+                dataSnapshotTag:
+                  description: DataSnapshotTag snapshot tag of data keyspaces.
+                  type: string
+                fromVersion:
+                  description: FromVersion reflects from which version ScyllaCluster is being upgraded.
+                  type: string
+                state:
+                  description: State reflects current upgrade state.
+                  type: string
+                systemSnapshotTag:
+                  description: SystemSnapshotTag snapshot tag of system keyspaces.
+                  type: string
+                toVersion:
+                  description: ToVersion reflects to which version ScyllaCluster is being upgraded.
+                  type: string
+              required:
+              - fromVersion
+              - state
+              - toVersion
+              type: object
           type: object
       type: object
   version: v1alpha1

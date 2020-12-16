@@ -47,6 +47,10 @@ func WithPodCondition(condition corev1.PodCondition) func(pod *corev1.Pod) {
 type PodOption func(pod *corev1.Pod)
 
 func (s *StatefulSetOperatorStub) CreatePods(ctx context.Context, cluster *scyllav1alpha1.ScyllaCluster, options ...PodOption) error {
+	return s.CreatePodsPartition(ctx, cluster, 0, options...)
+}
+
+func (s *StatefulSetOperatorStub) CreatePodsPartition(ctx context.Context, cluster *scyllav1alpha1.ScyllaCluster, partition int, options ...PodOption) error {
 	for _, rack := range cluster.Spec.Datacenter.Racks {
 		sts := &appsv1.StatefulSet{}
 
@@ -90,7 +94,7 @@ func (s *StatefulSetOperatorStub) CreatePods(ctx context.Context, cluster *scyll
 			return nil
 		}
 
-		for i := 0; i < int(*sts.Spec.Replicas); i++ {
+		for i := partition; i < int(*sts.Spec.Replicas); i++ {
 			pod := podTemplate.DeepCopy()
 			pod.Name = fmt.Sprintf("%s-%d", sts.Name, i)
 			pod.Spec.Hostname = pod.Name

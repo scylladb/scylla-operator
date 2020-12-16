@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"runtime"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -157,6 +158,95 @@ func (c *Client) Status(ctx context.Context, host string) (NodeStatusInfoSlice, 
 	return all, nil
 }
 
+const (
+	snapshotTimeout = 5 * time.Minute
+	drainTimeout    = 5 * time.Minute
+)
+
+// Keyspaces return a list of all the keyspaces.
+func (c *Client) Keyspaces(ctx context.Context) ([]string, error) {
+	resp, err := c.scyllaOps.StorageServiceKeyspacesGet(&scyllaOperations.StorageServiceKeyspacesGetParams{Context: ctx})
+	if err != nil {
+		return nil, err
+	}
+	return resp.Payload, nil
+}
+
+// Snapshots lists available snapshots.
+func (c *Client) Snapshots(ctx context.Context, host string) ([]string, error) {
+	ctx = customTimeout(ctx, snapshotTimeout)
+
+	resp, err := c.scyllaOps.StorageServiceSnapshotsGet(&scyllaOperations.StorageServiceSnapshotsGetParams{
+		Context: forceHost(ctx, host),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var tags []string
+	for _, p := range resp.Payload {
+		tags = append(tags, p.Key)
+	}
+
+	return tags, nil
+}
+
+// TakeSnapshot flushes and takes a snapshot of a keyspace.
+// Multiple keyspaces may have the same tag.
+func (c *Client) TakeSnapshot(ctx context.Context, host, tag, keyspace string, tables ...string) error {
+	ctx = customTimeout(ctx, snapshotTimeout)
+
+	var cfPtr *string
+
+	if len(tables) > 0 {
+		v := strings.Join(tables, ",")
+		cfPtr = &v
+	}
+
+	if _, err := c.scyllaOps.StorageServiceKeyspaceFlushByKeyspacePost(&scyllaOperations.StorageServiceKeyspaceFlushByKeyspacePostParams{ // nolint: errcheck
+		Context:  forceHost(ctx, host),
+		Keyspace: keyspace,
+		Cf:       cfPtr,
+	}); err != nil {
+		return err
+	}
+
+	if _, err := c.scyllaOps.StorageServiceSnapshotsPost(&scyllaOperations.StorageServiceSnapshotsPostParams{ // nolint: errcheck
+		Context: forceHost(ctx, host),
+		Tag:     &tag,
+		Kn:      &keyspace,
+		Cf:      cfPtr,
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// DeleteSnapshot removes a snapshot with a given tag.
+func (c *Client) DeleteSnapshot(ctx context.Context, host, tag string) error {
+	ctx = customTimeout(ctx, snapshotTimeout)
+
+	_, err := c.scyllaOps.StorageServiceSnapshotsDelete(&scyllaOperations.StorageServiceSnapshotsDeleteParams{ // nolint: errcheck
+		Context: forceHost(ctx, host),
+		Tag:     &tag,
+	})
+	return err
+}
+
+// Drain makes node unavailable for writes, flushes memtables and replays commitlog
+func (c *Client) Drain(ctx context.Context, host string) error {
+	ctx = customTimeout(ctx, drainTimeout)
+
+	if _, err := c.scyllaOps.StorageServiceDrainPost(&scyllaOperations.StorageServiceDrainPostParams{ // nolint: errcheck
+		Context: forceHost(ctx, host),
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c *Client) Decommission(ctx context.Context, host string) error {
 	queryCtx := forceHost(ctx, host)
 	// On decommission request api server waits till decommission is completed
@@ -170,6 +260,14 @@ func (c *Client) Decommission(ctx context.Context, host string) error {
 		return err
 	}
 	return nil
+}
+
+func (c *Client) ScyllaVersion(ctx context.Context) (string, error) {
+	resp, err := c.scyllaOps.StorageServiceScyllaReleaseVersionGet(&scyllaOperations.StorageServiceScyllaReleaseVersionGetParams{Context: ctx})
+	if err != nil {
+		return "", err
+	}
+	return resp.Payload, nil
 }
 
 func (c *Client) OperationMode(ctx context.Context, host string) (OperationalMode, error) {

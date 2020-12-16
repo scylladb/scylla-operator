@@ -18,9 +18,11 @@ package v1alpha1
 
 import (
 	"reflect"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -94,6 +96,22 @@ func (c *ScyllaCluster) Default() {
 		if backupTask.Retention == nil {
 			c.Spec.Backups[i].Retention = pointer.Int64Ptr(3)
 		}
+	}
+
+	if c.Spec.GenericUpgrade == nil {
+		c.Spec.GenericUpgrade = &GenericUpgradeSpec{}
+	}
+
+	if c.Spec.GenericUpgrade.FailureStrategy == "" {
+		c.Spec.GenericUpgrade.FailureStrategy = GenericUpgradeFailureStrategyRetry
+	}
+
+	if c.Spec.GenericUpgrade.ValidationTimeout == nil {
+		c.Spec.GenericUpgrade.ValidationTimeout = &metav1.Duration{Duration: 30 * time.Minute}
+	}
+
+	if c.Spec.GenericUpgrade.PollInterval == nil {
+		c.Spec.GenericUpgrade.PollInterval = &metav1.Duration{Duration: time.Second}
 	}
 }
 

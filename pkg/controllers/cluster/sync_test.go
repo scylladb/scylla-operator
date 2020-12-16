@@ -86,7 +86,7 @@ func TestNextAction(t *testing.T) {
 		{
 			name:           "patch upgrade in-progress",
 			cluster:        clusterResumeVersionUpgrade,
-			expectNoAction: true,
+			expectedAction: actions.ClusterVersionUpgradeAction,
 		},
 	}
 

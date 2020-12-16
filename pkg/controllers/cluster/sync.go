@@ -113,35 +113,12 @@ func (cc *ClusterReconciler) nextAction(ctx context.Context, cluster *scyllav1al
 	}
 
 	// Check if there is an upgrade in progress
-	differentVersionRacks := 0
 	for _, rack := range cluster.Spec.Datacenter.Racks {
 		rackStatus := cluster.Status.Racks[rack.Name]
-		if scyllav1alpha1.IsRackConditionTrue(&rackStatus, scyllav1alpha1.RackConditionTypeUpgrading) {
-			logger.Info(ctx, "Rack is upgrading. Waiting until the upgrade is complete.", "name", rack.Name)
-			return nil
+		if cluster.Status.Upgrade != nil ||
+			scyllav1alpha1.IsRackConditionTrue(&rackStatus, scyllav1alpha1.RackConditionTypeUpgrading) {
+			return actions.NewClusterVersionUpgradeAction(cluster, logger)
 		}
-		if cluster.Status.Racks[rack.Name].Version != cluster.Spec.Version {
-			differentVersionRacks += 1
-		}
-	}
-
-	logger.Debug(ctx, "Different version racks", "count", differentVersionRacks, "total", len(cluster.Spec.Datacenter.Racks))
-
-	// Check that all racks are ready before taking any action
-	for _, rack := range cluster.Spec.Datacenter.Racks {
-		rackStatus := cluster.Status.Racks[rack.Name]
-		if rackStatus.Members != rackStatus.ReadyMembers {
-			logger.Info(ctx, "Rack is not ready", "name", rack.Name,
-				"members", rackStatus.Members, "ready_members", rackStatus.ReadyMembers)
-			return nil
-		}
-	}
-
-	// Continue the cluster upgrade if there is one in progress.
-	if differentVersionRacks != 0 && differentVersionRacks != len(cluster.Spec.Datacenter.Racks) {
-		logger.Info(ctx, "Only %d/%d racks are upgraded, continuing with version upgrade",
-			differentVersionRacks, len(cluster.Spec.Datacenter.Racks))
-		return actions.NewClusterVersionUpgradeAction(cluster, logger)
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////

@@ -30,6 +30,19 @@ func StatefulSetNameForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaC
 	return fmt.Sprintf("%s-%s-%s", c.Name, c.Spec.Datacenter.Name, r.Name)
 }
 
+func ServiceNameFromPod(pod *corev1.Pod) string {
+	// Pod and Service has the same name
+	return pod.Name
+}
+
+func MemberServiceName(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaCluster, idx int) string {
+	return fmt.Sprintf("%s-%d", StatefulSetNameForRack(r, c), idx)
+}
+
+func ServiceDNSName(service string, c *scyllav1alpha1.ScyllaCluster) string {
+	return fmt.Sprintf("%s.%s", service, CrossNamespaceServiceNameForCluster(c))
+}
+
 func ServiceAccountNameForMembers(c *scyllav1alpha1.ScyllaCluster) string {
 	return fmt.Sprintf("%s-member", c.Name)
 }
@@ -83,4 +96,18 @@ func FindScyllaContainer(containers []corev1.Container) (int, error) {
 		}
 	}
 	return -1, errors.New(fmt.Sprintf("Scylla Container '%s' not found", ScyllaContainerName))
+}
+
+// ScyllaImage returns version of Scylla container.
+func ScyllaImage(containers []corev1.Container) (string, error) {
+	idx, err := FindScyllaContainer(containers)
+	if err != nil {
+		return "", errors.Wrap(err, "find scylla container")
+	}
+
+	version, err := ImageToVersion(containers[idx].Image)
+	if err != nil {
+		return "", errors.Wrap(err, "parse scylla container version")
+	}
+	return version, nil
 }

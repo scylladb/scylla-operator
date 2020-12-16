@@ -108,23 +108,16 @@ func checkValues(c *ScyllaCluster) error {
 		managerTaskNames.Add(b.Name)
 	}
 
+	if c.Spec.GenericUpgrade != nil {
+		if c.Spec.GenericUpgrade.FailureStrategy != GenericUpgradeFailureStrategyRetry {
+			return errors.Errorf("unsupported generic upgrade failure strategy %q", GenericUpgradeFailureStrategyRetry)
+		}
+	}
+
 	return nil
 }
 
 func checkTransitions(old, new *ScyllaCluster) error {
-	oldVersion, err := semver.Parse(old.Spec.Version)
-	if err != nil {
-		return errors.Errorf("invalid old semantic version, err=%s", err)
-	}
-	newVersion, err := semver.Parse(new.Spec.Version)
-	if err != nil {
-		return errors.Errorf("invalid new semantic version, err=%s", err)
-	}
-	// Check that version remained the same
-	if newVersion.Major != oldVersion.Major || newVersion.Minor != oldVersion.Minor {
-		return errors.Errorf("only upgrading of patch versions are supported")
-	}
-
 	// Check that repository remained the same
 	if !reflect.DeepEqual(old.Spec.Repository, new.Spec.Repository) {
 		return errors.Errorf("repository change is currently not supported, old=%v, new=%v", *old.Spec.Repository, *new.Spec.Repository)

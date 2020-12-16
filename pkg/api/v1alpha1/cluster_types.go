@@ -47,6 +47,8 @@ type ClusterSpec struct {
 	CpuSet bool `json:"cpuset,omitempty"`
 	// AutomaticOrphanedNodeCleanup controls if automatic orphan node cleanup should be performed.
 	AutomaticOrphanedNodeCleanup bool `json:"automaticOrphanedNodeCleanup,omitempty"`
+	// GenericUpgrade allows to configure behavior of generic upgrade logic.
+	GenericUpgrade *GenericUpgradeSpec `json:"genericUpgrade,omitempty"`
 	// Datacenter that will make up this cluster.
 	Datacenter DatacenterSpec `json:"datacenter"`
 	// Sysctl properties to be applied during initialization
@@ -62,6 +64,28 @@ type ClusterSpec struct {
 	// Backups specifies backup task in Scylla Manager.
 	// When Scylla Manager is not installed, these will be ignored.
 	Backups []BackupTaskSpec `json:"backups,omitempty"`
+}
+
+// GenericUpgradeFailureStrategy allows to specify how upgrade logic should handle failures.
+type GenericUpgradeFailureStrategy string
+
+const (
+	// GenericUpgradeFailureStrategyRetry infinitely retry until node becomes ready.
+	GenericUpgradeFailureStrategyRetry GenericUpgradeFailureStrategy = "Retry"
+)
+
+// GenericUpgradeSpec hold generic upgrade procedure parameters.
+type GenericUpgradeSpec struct {
+	// ValidationTimeout specifies how long it can take for Scylla to boot and enter ready state
+	// after image upgrade until FailureStrategy is executed.
+	ValidationTimeout *metav1.Duration `json:"validationTimeout,omitempty"`
+	// FailureStrategy specifies which logic is executed when upgrade failure happens.
+	// Currently only Retry is supported.
+	FailureStrategy GenericUpgradeFailureStrategy `json:"failureStrategy,omitempty"`
+	// PollInterval specifies how often upgrade logic polls on state updates.
+	// Increasing this value should lower number of requests sent to apiserver, but it may affect
+	// overall time spent during upgrade.
+	PollInterval *metav1.Duration `json:"pollInterval,omitempty"`
 }
 
 type SchedulerTaskSpec struct {
@@ -231,10 +255,34 @@ type BackupTaskStatus struct {
 
 // ClusterStatus defines the observed state of ScyllaCluster
 type ClusterStatus struct {
-	Racks     map[string]RackStatus `json:"racks,omitempty"`
-	ManagerID *string               `json:"managerId,omitempty"`
-	Repairs   []RepairTaskStatus    `json:"repairs,omitempty"`
-	Backups   []BackupTaskStatus    `json:"backups,omitempty"`
+	// Racks reflect status of cluster racks.
+	Racks map[string]RackStatus `json:"racks,omitempty"`
+	// ManagerID contains ID under which cluster was registered in Scylla Manager.
+	ManagerID *string `json:"managerId,omitempty"`
+	// Repairs reflects status of repair tasks.
+	Repairs []RepairTaskStatus `json:"repairs,omitempty"`
+	// Backups reflects status of backup tasks.
+	Backups []BackupTaskStatus `json:"backups,omitempty"`
+	// Upgrade reflects state of ongoing upgrade procedure.
+	Upgrade *UpgradeStatus `json:"upgrade,omitempty"`
+}
+
+// UpgradeStatus contains state of ongoing upgrade procedure.
+type UpgradeStatus struct {
+	// State reflects current upgrade state.
+	State string `json:"state"`
+	// CurrentNode node under upgrade.
+	CurrentNode string `json:"currentNode,omitempty"`
+	// CurrentRack rack under upgrade.
+	CurrentRack string `json:"currentRack,omitempty"`
+	// FromVersion reflects from which version ScyllaCluster is being upgraded.
+	FromVersion string `json:"fromVersion"`
+	// ToVersion reflects to which version ScyllaCluster is being upgraded.
+	ToVersion string `json:"toVersion"`
+	// SystemSnapshotTag snapshot tag of system keyspaces.
+	SystemSnapshotTag string `json:"systemSnapshotTag,omitempty"`
+	// DataSnapshotTag snapshot tag of data keyspaces.
+	DataSnapshotTag string `json:"dataSnapshotTag,omitempty"`
 }
 
 // RackStatus is the status of a Scylla Rack

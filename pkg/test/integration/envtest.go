@@ -126,7 +126,7 @@ func NewTestEnvironment(logger log.Logger, options ...EnvOption) (*TestEnvironme
 		Manager: mgr,
 		Client: Client{
 			Client:        mgr.GetClient(),
-			RetryInterval: envOpts.pollTimeout,
+			RetryInterval: envOpts.pollRetryInterval,
 			Timeout:       envOpts.pollTimeout,
 		},
 		KubeClient: kubernetes.NewForConfigOrDie(mgr.GetConfig()),

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/scylladb/scylla-operator/pkg/util/network"
 	"go.uber.org/multierr"
 )
 
@@ -48,10 +47,9 @@ type BackoffConfig struct {
 }
 
 // DefaultConfig returns a Config initialized with default values.
-func DefaultConfig() Config {
-	host, _ := network.FindFirstNonLocalIP()
+func DefaultConfig(hosts ...string) Config {
 	return Config{
-		Hosts:   []string{host.String()},
+		Hosts:   hosts,
 		Port:    "10001",
 		Scheme:  "https",
 		Timeout: 15 * time.Second,

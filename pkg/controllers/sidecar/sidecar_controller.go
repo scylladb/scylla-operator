@@ -28,6 +28,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/pkg/util/cfgutil"
+	"github.com/scylladb/scylla-operator/pkg/util/network"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -100,7 +101,12 @@ func New(ctx context.Context, mgr manager.Manager, logger log.Logger) (*MemberRe
 		return nil, errors.Wrap(err, "get dynamic client")
 	}
 
-	cfg := scyllaclient.DefaultConfig()
+	host, err := network.FindFirstNonLocalIP()
+	if err != nil {
+		return nil, errors.Wrap(err, "get scylla address")
+	}
+
+	cfg := scyllaclient.DefaultConfig(host.String())
 	if err := cfgutil.ParseYAML(&cfg, naming.ScyllaClientConfigDirName+"/"+naming.ScyllaClientConfigFileName); err != nil {
 		return nil, errors.Wrap(err, "parse scylla agent config")
 	}

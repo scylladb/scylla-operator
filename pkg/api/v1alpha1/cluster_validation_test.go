@@ -28,6 +28,18 @@ func TestCheckValues(t *testing.T) {
 		Intensity: pointer.StringPtr("100Mib"),
 	})
 
+	nonUniqueManagerTaskNames := validCluster.DeepCopy()
+	nonUniqueManagerTaskNames.Spec.Backups = append(nonUniqueManagerTaskNames.Spec.Backups, v1alpha1.BackupTaskSpec{
+		SchedulerTaskSpec: v1alpha1.SchedulerTaskSpec{
+			Name: "task-name",
+		},
+	})
+	nonUniqueManagerTaskNames.Spec.Repairs = append(nonUniqueManagerTaskNames.Spec.Repairs, v1alpha1.RepairTaskSpec{
+		SchedulerTaskSpec: v1alpha1.SchedulerTaskSpec{
+			Name: "task-name",
+		},
+	})
+
 	tests := []struct {
 		name    string
 		obj     *v1alpha1.ScyllaCluster
@@ -46,6 +58,11 @@ func TestCheckValues(t *testing.T) {
 		{
 			name:    "invalid intensity in repair task spec",
 			obj:     invalidIntensity,
+			allowed: false,
+		},
+		{
+			name:    "non-unique names in manager tasks spec",
+			obj:     nonUniqueManagerTaskNames,
 			allowed: false,
 		},
 	}

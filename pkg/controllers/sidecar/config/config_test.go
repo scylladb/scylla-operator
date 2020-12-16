@@ -16,6 +16,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/cmd/options"
 	"github.com/scylladb/scylla-operator/pkg/controllers/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/util/slices"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -315,17 +316,8 @@ func TestReplaceNodeLabelInMemberService(t *testing.T) {
 
 	expectedArg := fmt.Sprintf("--replace-address-first-boot=%s", replaceAddr)
 
-	if !contains(cmd.Args, expectedArg) {
+	if !slices.ContainsString(expectedArg, cmd.Args) {
 		t.Errorf("missing Scylla parameter %s", expectedArg)
 	}
 
-}
-
-func contains(arr []string, v string) bool {
-	for _, elem := range arr {
-		if elem == v {
-			return true
-		}
-	}
-	return false
 }

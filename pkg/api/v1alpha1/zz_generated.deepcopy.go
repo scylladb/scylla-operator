@@ -388,7 +388,7 @@ func (in *RepairTaskSpec) DeepCopyInto(out *RepairTaskSpec) {
 	}
 	if in.Intensity != nil {
 		in, out := &in.Intensity, &out.Intensity
-		*out = new(int64)
+		*out = new(string)
 		**out = **in
 	}
 	if in.Parallel != nil {
@@ -403,6 +403,11 @@ func (in *RepairTaskSpec) DeepCopyInto(out *RepairTaskSpec) {
 	}
 	if in.SmallTableThreshold != nil {
 		in, out := &in.SmallTableThreshold, &out.SmallTableThreshold
+		*out = new(string)
+		**out = **in
+	}
+	if in.Host != nil {
+		in, out := &in.Host, &out.Host
 		*out = new(string)
 		**out = **in
 	}

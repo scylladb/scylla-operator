@@ -111,7 +111,7 @@ func TestManagerSynchronization(t *testing.T) {
 						},
 						DC:        []string{"dc1"},
 						FailFast:  pointer.BoolPtr(false),
-						Intensity: pointer.Int64Ptr(17),
+						Intensity: pointer.StringPtr("0.5"),
 						Keyspace:  []string{"keyspace1"},
 					},
 				},
@@ -180,7 +180,7 @@ func TestManagerSynchronization(t *testing.T) {
 							SchedulerTaskSpec: v1alpha1.SchedulerTaskSpec{
 								Name: "repair",
 							},
-							Intensity: pointer.Int64Ptr(666),
+							Intensity: pointer.StringPtr("666"),
 						},
 					},
 				},
@@ -197,7 +197,7 @@ func TestManagerSynchronization(t *testing.T) {
 							SchedulerTaskSpec: v1alpha1.SchedulerTaskSpec{
 								Name: "repair",
 							},
-							Intensity: pointer.Int64Ptr(123),
+							Intensity: pointer.StringPtr("123"),
 						},
 						ID: "repair-id",
 					},
@@ -214,7 +214,7 @@ func TestManagerSynchronization(t *testing.T) {
 						SchedulerTaskSpec: v1alpha1.SchedulerTaskSpec{
 							Name: "repair",
 						},
-						Intensity: pointer.Int64Ptr(666),
+						Intensity: pointer.StringPtr("666"),
 					},
 				},
 			},
@@ -227,7 +227,7 @@ func TestManagerSynchronization(t *testing.T) {
 							SchedulerTaskSpec: v1alpha1.SchedulerTaskSpec{
 								Name: "repair",
 							},
-							Intensity: pointer.Int64Ptr(666),
+							Intensity: pointer.StringPtr("666"),
 						},
 					},
 				},
@@ -244,7 +244,7 @@ func TestManagerSynchronization(t *testing.T) {
 							SchedulerTaskSpec: v1alpha1.SchedulerTaskSpec{
 								Name: "repair",
 							},
-							Intensity: pointer.Int64Ptr(666),
+							Intensity: pointer.StringPtr("666"),
 						},
 						ID: "repair-id",
 					},

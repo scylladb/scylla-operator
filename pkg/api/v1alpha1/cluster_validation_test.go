@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/utils/pointer"
 )
 
 func TestCheckValues(t *testing.T) {
-
 	validCluster := unit.NewSingleRackCluster(3)
 	validCluster.Spec.Datacenter.Racks[0].Resources = corev1.ResourceRequirements{
 		Limits: map[corev1.ResourceName]resource.Quantity{
@@ -22,6 +22,11 @@ func TestCheckValues(t *testing.T) {
 
 	sameName := validCluster.DeepCopy()
 	sameName.Spec.Datacenter.Racks = append(sameName.Spec.Datacenter.Racks, sameName.Spec.Datacenter.Racks[0])
+
+	invalidIntensity := validCluster.DeepCopy()
+	invalidIntensity.Spec.Repairs = append(invalidIntensity.Spec.Repairs, v1alpha1.RepairTaskSpec{
+		Intensity: pointer.StringPtr("100Mib"),
+	})
 
 	tests := []struct {
 		name    string
@@ -36,6 +41,11 @@ func TestCheckValues(t *testing.T) {
 		{
 			name:    "two racks with same name",
 			obj:     sameName,
+			allowed: false,
+		},
+		{
+			name:    "invalid intensity in repair task spec",
+			obj:     invalidIntensity,
 			allowed: false,
 		},
 	}

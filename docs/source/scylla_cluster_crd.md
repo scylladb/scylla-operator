@@ -92,10 +92,17 @@ valid units are d, h, m, s (default "now").
 * `numRetries` - the number of times a scheduled task will retry to run before failing (default 3).
 * `dc` - list of datacenter glob patterns, e.g. `["dc1", "!otherdc*"]` used to specify the DCs to include or exclude from backup.
 * `failFast` - stop repair on first error.
-* `intensity` - integer >= 1 or a decimal between (0,1), higher values may result in higher speed and cluster load. 
-0 value means repair at maximum intensity.
-* `parallel` - The maximum number of repair jobs to run in parallel, each node can participate in at most one repair 
-at any given time. Default is means system will repair at maximum parallelism.
+* `intensity` - specifies how many token ranges (per shard) to repair in a single Scylla repair job. By default this is 1.
+  If you set it to 0 the number of token ranges is adjusted to the maximum supported by node (see max_repair_ranges_in_parallel in Scylla logs).
+  Valid values are 0 and integers >= 1. Higher values will result in increased cluster load and slightly faster repairs.
+  Changing the intensity impacts repair granularity if you need to resume it, the higher the value the more work on resume.
+  For Scylla clusters that **do not support row-level repair**, intensity can be a decimal between (0,1).
+  In that case it specifies percent of shards that can be repaired in parallel on a repair master node.
+  For Scylla clusters that are row-level repair enabled, setting intensity below 1 has the same effect as setting intensity 1.
+* `parallel` - specifies the maximum number of Scylla repair jobs that can run at the same time (on different token ranges and replicas).
+  Each node can take part in at most one repair at any given moment. By default the maximum possible parallelism is used.
+  The effective parallelism depends on a keyspace replication factor (RF) and the number of nodes.
+  The formula to calculate it is as follows: number of nodes / RF, ex. for 6 node cluster with RF=3 the maximum parallelism is 2.
 * `keyspace` - a list of keyspace/tables glob patterns, e.g. `["keyspace", "!keyspace.table_prefix_*"]`
 used to include or exclude keyspaces from repair.
 * `smallTableThreshold` - enable small table optimization for tables of size lower than given threshold.

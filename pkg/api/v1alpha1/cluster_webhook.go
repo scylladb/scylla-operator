@@ -73,6 +73,12 @@ func (c *ScyllaCluster) Default() {
 		if repairTask.SmallTableThreshold == nil {
 			c.Spec.Repairs[i].SmallTableThreshold = pointer.StringPtr("1GiB")
 		}
+		if repairTask.Intensity == nil {
+			c.Spec.Repairs[i].Intensity = pointer.StringPtr("1")
+		}
+		if repairTask.Parallel == nil {
+			c.Spec.Repairs[i].Parallel = pointer.Int64Ptr(0)
+		}
 	}
 
 	for i, backupTask := range c.Spec.Backups {

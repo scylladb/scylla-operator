@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/scylladb/scylla-operator/pkg/controllers/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/util/network"
 
 	"github.com/pkg/errors"
@@ -25,18 +26,41 @@ func (mc *MemberReconciler) setupHTTPChecks(ctx context.Context) {
 	}
 }
 
+func nodeUnderMaintenance(ctx context.Context, mc *MemberReconciler) (bool, error) {
+	member, err := identity.Retrieve(ctx, mc.member.Name, mc.member.Namespace, mc.kubeClient)
+	if err != nil {
+		return false, errors.Wrap(err, "get member service")
+	}
+
+	_, ok := member.ServiceLabels[naming.NodeMaintenanceLabel]
+	return ok, nil
+}
+
 func livenessCheck(mc *MemberReconciler) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
+		ctx := log.WithTraceID(req.Context())
+
+		if maintenance, err := nodeUnderMaintenance(ctx, mc); err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			mc.logger.Error(ctx, "Liveness check failed", "error", err)
+			return
+		} else if maintenance {
+			// During maintenance Pod should stay alive.
+			w.WriteHeader(http.StatusOK)
+			mc.logger.Info(ctx, "Node under maintenance")
+			return
+		}
+
 		host, err := network.FindFirstNonLocalIP()
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			mc.logger.Error(log.WithTraceID(req.Context()), "Liveness check failed", "error", err)
+			mc.logger.Error(ctx, "Liveness check failed", "error", err)
 			return
 		}
 		// Check if JMX is reachable
 		_, err = mc.scyllaClient.Ping(context.Background(), host.String())
 		if err != nil {
-			mc.logger.Error(log.WithTraceID(req.Context()), "Liveness check failed", "error", err)
+			mc.logger.Error(ctx, "Liveness check failed", "error", err)
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
@@ -47,6 +71,17 @@ func livenessCheck(mc *MemberReconciler) func(http.ResponseWriter, *http.Request
 func readinessCheck(mc *MemberReconciler) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		ctx := log.WithTraceID(req.Context())
+
+		if maintenance, err := nodeUnderMaintenance(ctx, mc); err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			mc.logger.Error(ctx, "Readiness check failed", "error", err)
+			return
+		} else if maintenance {
+			// During maintenance Pod shouldn't be declare to be ready.
+			w.WriteHeader(http.StatusServiceUnavailable)
+			mc.logger.Info(ctx, "Node under maintenance")
+			return
+		}
 
 		host, err := network.FindFirstNonLocalIP()
 		if err != nil {

@@ -172,7 +172,7 @@ func (a *RackReplaceNode) replaceNode(ctx context.Context, state *State, member 
 	}
 
 	a.Logger.Info(ctx, "Deleting member PVC", "member", member.Name, "pvc", pvc.Name)
-	if err := cc.Delete(ctx, pvc); err != nil {
+	if err := cc.Delete(ctx, pvc, client.GracePeriodSeconds(0)); err != nil {
 		return errors.Wrap(err, "failed to delete pvc")
 	}
 	state.recorder.Event(c, corev1.EventTypeNormal, naming.SuccessSynced,

@@ -3,6 +3,7 @@
 package manager
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
@@ -57,8 +58,13 @@ func (r RepairTask) ToManager() (*mermaidclient.Task, error) {
 			props["fail_fast"] = true
 		}
 	}
+
 	if r.Intensity != nil {
-		props["intensity"] = *r.Intensity
+		intensity, err := strconv.ParseFloat(*r.Intensity, 64)
+		if err != nil {
+			return nil, errors.Wrap(err, "parse intensity")
+		}
+		props["intensity"] = intensity
 	}
 	if r.Parallel != nil {
 		props["parallel"] = *r.Parallel

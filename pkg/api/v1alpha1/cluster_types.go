@@ -76,9 +76,6 @@ const (
 
 // GenericUpgradeSpec hold generic upgrade procedure parameters.
 type GenericUpgradeSpec struct {
-	// ValidationTimeout specifies how long it can take for Scylla to boot and enter ready state
-	// after image upgrade until FailureStrategy is executed.
-	ValidationTimeout *metav1.Duration `json:"validationTimeout,omitempty"`
 	// FailureStrategy specifies which logic is executed when upgrade failure happens.
 	// Currently only Retry is supported.
 	FailureStrategy GenericUpgradeFailureStrategy `json:"failureStrategy,omitempty"`

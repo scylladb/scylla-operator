@@ -43,9 +43,8 @@ type ClusterVersionUpgrade struct {
 	ScyllaClient   *scyllaclient.Client
 	ClusterSession cqlSession
 
-	ipMapping         map[string]string
-	pollInterval      time.Duration
-	validationTimeout time.Duration
+	ipMapping    map[string]string
+	pollInterval time.Duration
 
 	currentRack *scyllav1alpha1.RackSpec
 	currentNode *corev1.Pod
@@ -143,14 +142,10 @@ func (a *ClusterVersionUpgrade) Execute(ctx context.Context, s *State) error {
 	a.recorder = s.recorder
 
 	a.pollInterval = scyllav1alpha1.DefaultGenericUpgradePollInterval
-	a.validationTimeout = scyllav1alpha1.DefaultGenericUpgradeValidationTimeout
 
 	if a.Cluster.Spec.GenericUpgrade != nil {
 		if a.Cluster.Spec.GenericUpgrade.PollInterval != nil {
 			a.pollInterval = a.Cluster.Spec.GenericUpgrade.PollInterval.Duration
-		}
-		if a.Cluster.Spec.GenericUpgrade.ValidationTimeout != nil {
-			a.validationTimeout = a.Cluster.Spec.GenericUpgrade.ValidationTimeout.Duration
 		}
 	}
 

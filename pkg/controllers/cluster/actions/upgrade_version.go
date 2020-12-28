@@ -43,8 +43,9 @@ type ClusterVersionUpgrade struct {
 	ScyllaClient   *scyllaclient.Client
 	ClusterSession cqlSession
 
-	ipMapping    map[string]string
-	pollInterval time.Duration
+	ipMapping         map[string]string
+	pollInterval      time.Duration
+	validationTimeout time.Duration
 
 	currentRack *scyllav1alpha1.RackSpec
 	currentNode *corev1.Pod
@@ -140,7 +141,18 @@ func (a *ClusterVersionUpgrade) Execute(ctx context.Context, s *State) error {
 	a.cc = s.Client
 	a.kubeClient = s.kubeclient
 	a.recorder = s.recorder
-	a.pollInterval = a.Cluster.Spec.GenericUpgrade.PollInterval.Duration
+
+	a.pollInterval = scyllav1alpha1.DefaultGenericUpgradePollInterval
+	a.validationTimeout = scyllav1alpha1.DefaultGenericUpgradeValidationTimeout
+
+	if a.Cluster.Spec.GenericUpgrade != nil {
+		if a.Cluster.Spec.GenericUpgrade.PollInterval != nil {
+			a.pollInterval = a.Cluster.Spec.GenericUpgrade.PollInterval.Duration
+		}
+		if a.Cluster.Spec.GenericUpgrade.ValidationTimeout != nil {
+			a.validationTimeout = a.Cluster.Spec.GenericUpgrade.ValidationTimeout.Duration
+		}
+	}
 
 	switch a.upgradeProcedure(ctx) {
 	case genericUpgradeProcedure:
@@ -663,8 +675,8 @@ func (a *ClusterVersionUpgrade) deletePod(ctx context.Context) (fsm.Event, error
 	return ActionSuccess, nil
 }
 
-func (a *ClusterVersionUpgrade) validateUpgrade(ctx context.Context) (fsm.Event, error) {
-	err := wait.PollImmediate(a.pollInterval, a.Cluster.Spec.GenericUpgrade.ValidationTimeout.Duration, func() (done bool, err error) {
+func (a *ClusterVersionUpgrade) nodeUpgradedConditionFunc(ctx context.Context) func() (bool, error) {
+	return func() (bool, error) {
 		node, err := a.getCurrentNode(ctx)
 		if err != nil {
 			return false, errors.Wrap(err, "get current node")
@@ -684,15 +696,22 @@ func (a *ClusterVersionUpgrade) validateUpgrade(ctx context.Context) (fsm.Event,
 
 		a.logger.Debug(ctx, "Node validation", "node", node.Name, "ready", podReady(node), "ver", ver)
 		return podReady(node) && a.Cluster.Status.Upgrade.ToVersion == ver, nil
-	})
-	if err != nil {
-		if errors.Is(err, wait.ErrWaitTimeout) {
-			if a.Cluster.Spec.GenericUpgrade.FailureStrategy == scyllav1alpha1.GenericUpgradeFailureStrategyRetry {
-				// Return error to reschedule reconciliation loop.
-				return ActionFailure, errors.Wrap(err, "wait for ready pods")
-			}
+	}
+}
+
+func (a *ClusterVersionUpgrade) validateUpgrade(ctx context.Context) (fsm.Event, error) {
+	failureStrategy := scyllav1alpha1.GenericUpgradeFailureStrategyRetry
+	if a.Cluster.Spec.GenericUpgrade != nil {
+		failureStrategy = a.Cluster.Spec.GenericUpgrade.FailureStrategy
+	}
+
+	switch failureStrategy {
+	case scyllav1alpha1.GenericUpgradeFailureStrategyRetry:
+		if err := wait.PollImmediateInfinite(a.pollInterval, a.nodeUpgradedConditionFunc(ctx)); err != nil {
+			return ActionFailure, errors.Wrap(err, "validate node upgrade")
 		}
-		return ActionFailure, errors.Wrap(err, "validate node upgrade")
+	default:
+		return ActionFailure, errors.Errorf("unsupported failure strategy %s", failureStrategy)
 	}
 
 	return ActionSuccess, nil

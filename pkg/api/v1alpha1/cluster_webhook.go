@@ -46,8 +46,7 @@ var _ webhook.Defaulter = &ScyllaCluster{}
 var _ webhook.Validator = &ScyllaCluster{}
 
 const (
-	DefaultGenericUpgradePollInterval      = time.Second
-	DefaultGenericUpgradeValidationTimeout = 30 * time.Minute
+	DefaultGenericUpgradePollInterval = time.Second
 )
 
 func (c *ScyllaCluster) Default() {
@@ -109,10 +108,6 @@ func (c *ScyllaCluster) Default() {
 
 	if c.Spec.GenericUpgrade.FailureStrategy == "" {
 		c.Spec.GenericUpgrade.FailureStrategy = GenericUpgradeFailureStrategyRetry
-	}
-
-	if c.Spec.GenericUpgrade.ValidationTimeout == nil {
-		c.Spec.GenericUpgrade.ValidationTimeout = &metav1.Duration{Duration: DefaultGenericUpgradeValidationTimeout}
 	}
 
 	if c.Spec.GenericUpgrade.PollInterval == nil {

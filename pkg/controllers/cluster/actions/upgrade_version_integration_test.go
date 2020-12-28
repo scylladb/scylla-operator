@@ -54,8 +54,7 @@ var _ = Describe("Cluster controller", func() {
 		BeforeEach(func() {
 			scylla = testEnv.SingleRackCluster(ns)
 			scylla.Spec.GenericUpgrade = &scyllav1alpha1.GenericUpgradeSpec{
-				PollInterval:      &metav1.Duration{Duration: 200 * time.Millisecond},
-				ValidationTimeout: &metav1.Duration{Duration: 5 * time.Second},
+				PollInterval: &metav1.Duration{Duration: 200 * time.Millisecond},
 			}
 
 			Expect(testEnv.Create(ctx, scylla)).To(Succeed())

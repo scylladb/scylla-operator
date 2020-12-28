@@ -45,6 +45,11 @@ func (r *ScyllaCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Defaulter = &ScyllaCluster{}
 var _ webhook.Validator = &ScyllaCluster{}
 
+const (
+	DefaultGenericUpgradePollInterval      = time.Second
+	DefaultGenericUpgradeValidationTimeout = 30 * time.Minute
+)
+
 func (c *ScyllaCluster) Default() {
 	for _, r := range c.Spec.Datacenter.Racks {
 		// Empty agent resources
@@ -107,11 +112,11 @@ func (c *ScyllaCluster) Default() {
 	}
 
 	if c.Spec.GenericUpgrade.ValidationTimeout == nil {
-		c.Spec.GenericUpgrade.ValidationTimeout = &metav1.Duration{Duration: 30 * time.Minute}
+		c.Spec.GenericUpgrade.ValidationTimeout = &metav1.Duration{Duration: DefaultGenericUpgradeValidationTimeout}
 	}
 
 	if c.Spec.GenericUpgrade.PollInterval == nil {
-		c.Spec.GenericUpgrade.PollInterval = &metav1.Duration{Duration: time.Second}
+		c.Spec.GenericUpgrade.PollInterval = &metav1.Duration{Duration: DefaultGenericUpgradePollInterval}
 	}
 }
 

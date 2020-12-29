@@ -196,10 +196,12 @@ type RackSpec struct {
 	Resources corev1.ResourceRequirements `json:"resources"`
 	// AgentResources which Agent container will use.
 	AgentResources corev1.ResourceRequirements `json:"agentResources,omitempty"`
-	// Volumes added to Scylla container.
-	Volumes []corev1.Volume `json:"volumes,omitempty" patchStrategy:"merge,retainKeys" patchMergeKey:"name" protobuf:"bytes,1,rep,name=volumes"`
+	// Volumes added to Scylla Pod.
+	Volumes []corev1.Volume `json:"volumes,omitempty" patchStrategy:"merge,retainKeys" patchMergeKey:"name"`
 	// VolumeMounts to be added to Scylla container.
-	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty" patchStrategy:"merge" patchMergeKey:"mountPath" protobuf:"bytes,9,rep,name=volumeMounts"`
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty" patchStrategy:"merge" patchMergeKey:"mountPath"`
+	// AgentVolumeMounts to be added to Agent container.
+	AgentVolumeMounts []corev1.VolumeMount `json:"agentVolumeMounts,omitempty" patchStrategy:"merge" patchMergeKey:"mountPath"`
 	// Scylla config map name to customize scylla.yaml
 	ScyllaConfig string `json:"scyllaConfig"`
 	// Scylla config map name to customize scylla manager agent

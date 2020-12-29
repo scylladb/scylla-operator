@@ -59,7 +59,7 @@ To add a feature or to make a bug fix, you will need to create a branch in your 
 
 You can build the project using the Makefile commands:
 * Open the Makefile and change the `IMG` environment variable to a repository you have access to.
-* Run `make publish` and wait for the image to be built and uploaded in your repo.
+* Run `make docker-push` and wait for the image to be built and uploaded in your repo.
 
 ### Create a Branch
 

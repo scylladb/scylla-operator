@@ -104,6 +104,6 @@ spec:
           - name: coredumpfs
             hostPath:
               path: /tmp/coredumps
-        agentVolumeMounts:
+        volumeMounts:
           - mountPath: /tmp/coredumps
             name: coredumpfs

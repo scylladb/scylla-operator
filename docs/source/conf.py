@@ -102,7 +102,7 @@ html_style = ''
 #
 html_theme_options = {
     'header_links': [
-    ('Scylla Operator', 'https://docs.scylladb.com/operating-scylla/scylla-operator/'),
+    ('Scylla Operator', 'https://scylladb.github.io/scylla-operator/'),
     ('Scylla Cloud', 'https://docs.scylladb.com/scylla-cloud/'),
     ('Scylla University', 'https://university.scylladb.com/'),
     ('ScyllaDB Home', 'https://www.scylladb.com/')],

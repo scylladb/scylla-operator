@@ -437,7 +437,7 @@ func sysctlInitContainer(sysctls []string) *corev1.Container {
 }
 
 func agentContainer(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaCluster) corev1.Container {
-	return corev1.Container{
+	cnt := corev1.Container{
 		Name:            "scylla-manager-agent",
 		Image:           agentImageForCluster(c),
 		ImagePullPolicy: "IfNotPresent",
@@ -466,6 +466,12 @@ func agentContainer(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaCluster) 
 		},
 		Resources: r.AgentResources,
 	}
+
+	for _, vm := range r.AgentVolumeMounts {
+		cnt.VolumeMounts = append(cnt.VolumeMounts, *vm.DeepCopy())
+	}
+
+	return cnt
 }
 
 func ImageForCluster(c *scyllav1alpha1.ScyllaCluster) string {

@@ -5,6 +5,7 @@ package actions
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
@@ -13,6 +14,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -163,21 +165,40 @@ func (a *RackReplaceNode) replaceNode(ctx context.Context, state *State, member 
 		return nil
 	}
 
-	// Remove finalizer, which will wait until pod is deleted.
-	// We want to delete pod anyway, so it's better to delete pvc immediately.
-	pvcCopy := pvc.DeepCopy()
-	pvcCopy.SetFinalizers([]string{})
-	if err := cc.Update(ctx, pvcCopy); err != nil {
-		return errors.Wrap(err, "failed to update pvc")
-	}
-
 	a.Logger.Info(ctx, "Deleting member PVC", "member", member.Name, "pvc", pvc.Name)
-	if err := cc.Delete(ctx, pvc, client.GracePeriodSeconds(0)); err != nil {
+	if err := cc.Delete(ctx, pvc); err != nil {
 		return errors.Wrap(err, "failed to delete pvc")
 	}
 	state.recorder.Event(c, corev1.EventTypeNormal, naming.SuccessSynced,
 		fmt.Sprintf("Rack %q removed %q PVC", r.Name, member.Name),
 	)
+
+	a.Logger.Debug(ctx, "Waiting for PVC deletion", "member", member.Name, "pvc", pvc.Name)
+	if err := wait.PollImmediate(time.Second, time.Minute, func() (done bool, err error) {
+		p := &corev1.PersistentVolumeClaim{}
+		if err := cc.Get(ctx, naming.NamespacedName(naming.PVCNameForPod(member.Name), member.Namespace), p); err != nil {
+			if apierrors.IsNotFound(err) {
+				a.Logger.Debug(ctx, "PVC deleted", "member", member.Name, "pvc", pvc.Name)
+				return true, nil
+			}
+			return false, errors.Wrap(err, "failed to get pvc")
+		}
+
+		// Remove finalizer, which will wait until pod is deleted.
+		// We want to delete pod anyway, so it's better to delete pvc immediately.
+		pvcCopy := p.DeepCopy()
+		pvcCopy.SetFinalizers([]string{})
+		if err := cc.Update(ctx, pvcCopy); err != nil {
+			return false, errors.Wrap(err, "failed to update pvc")
+		}
+
+		return false, nil
+	}); err != nil {
+		if !errors.Is(err, wait.ErrWaitTimeout) {
+			return errors.Wrap(err, "wait pvc deletion")
+		}
+		a.Logger.Debug(ctx, "PVC deletion timeout", "member", member.Name, "pvc", pvc.Name)
+	}
 
 	// Delete member Service
 	a.Logger.Info(ctx, "Deleting member Service", "member", member.Name)

@@ -51,7 +51,7 @@ This will install the Scylla Manager in the `scylla-manager-system` namespace.
 You can check if the Scylla Manager is up and running with:
  
 ```console
-$ kubectl -n scylla-manager-system get pods                                              
+kubectl -n scylla-manager-system get pods                                              
 NAME                                               READY   STATUS    RESTARTS   AGE
 scylla-manager-cluster-manager-dc-manager-rack-0   2/2     Running   0          37m
 scylla-manager-controller-0                        1/1     Running   0          28m
@@ -140,7 +140,7 @@ In this task listing we can see CQL and REST healthchecks.
 You can either define tasks prior Cluster creation, or for existing Cluster.
 Let's edit already running cluster definition to add repair and backup task.
 ```console
-$ kubectl -n scylla edit Cluster simple-cluster                            
+kubectl -n scylla edit Cluster simple-cluster                            
 ``` 
 
 Add following task definition to Cluster spec:
@@ -187,7 +187,7 @@ As you can see, we have two new tasks, weekly recurring backup, and one repair w
 To check progress of run you can use following command:
 
 ```console
-$ kubectl -n scylla-manager-system exec -ti scylla-manager-scylla-manager-7bd9f968b9-w25jw -- sctool task progress --cluster d1d532cd-49f2-4c97-9263-25126532803b repair/d4946360-c29d-4bb4-8b9d-619ada495c2a
+kubectl -n scylla-manager-system exec -ti scylla-manager-scylla-manager-7bd9f968b9-w25jw -- sctool task progress --cluster d1d532cd-49f2-4c97-9263-25126532803b repair/d4946360-c29d-4bb4-8b9d-619ada495c2a
 Status:         RUNNING
 Start time:     23 Sep 20 14:38:42 UTC
 Duration:       13s

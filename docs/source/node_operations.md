@@ -6,7 +6,7 @@ To upgrade Scylla version using Operator user have to modify existing ScyllaClus
 
 In this example cluster will be upgraded to `2020.1.0` version.
 ```bash
-$ kubectl -n scylla patch ScyllaCluster simple-cluster  -p '{"spec":{"version": "4.2.2}}' --type=merge
+kubectl -n scylla patch ScyllaCluster simple-cluster  -p '{"spec":{"version": "4.2.2}}' --type=merge
 ```
 
 Operator supports two types of version upgrades:
@@ -29,7 +29,7 @@ Example: `4.0.0 -> 2020.1.0` or `4.0.0 -> 4.1.0` or even `4.0.0 -> nightly`
 
 User can observe current state of upgrade in ScyllaCluster status.
 ```bash
-$ kubectl -n scylla describe ScyllaCluster simple-cluster
+kubectl -n scylla describe ScyllaCluster simple-cluster
 [...]
 Status:
   Racks:
@@ -91,14 +91,14 @@ Upgrade may get stuck on `validate_upgrade` stage. This happens when Scylla Pod 
 
 To continue with upgrade, first turn off operator by scaling Operator replicas to zero:
 ```bash
-$ kubectl -n scylla-operator-system scale sts scylla-operator-controller-manager --replicas=0
+kubectl -n scylla-operator-system scale sts scylla-operator-controller-manager --replicas=0
 ```
 Then user have to manually resolve issue with Scylla by checking what is the root cause of a failure in Scylla container logs.
 If needed data and system keyspaces SSTable snapshots are available on the node. You can check ScyllaCluster status for their names.
 
 Once issue is resolved and Scylla Pod is up and running (Pod is in Ready state), scale Operator back to one replica:
 ```bash
-$ kubectl -n scylla-operator-system scale sts scylla-operator-controller-manager --replicas=1
+kubectl -n scylla-operator-system scale sts scylla-operator-controller-manager --replicas=1
 ```
 
 Operator should continue upgrade process from where it left off.
@@ -115,7 +115,7 @@ _This procedure is for replacing one dead node. To replace more than one dead no
 
 1. Verify the status of the node using `nodetool status` command, the node with status DN is down and need to be replaced
     ```bash
-    $ kubectl -n scylla exec -ti simple-cluster-us-east-1-us-east-1a-0 -c scylla -- nodetool status
+    kubectl -n scylla exec -ti simple-cluster-us-east-1-us-east-1a-0 -c scylla -- nodetool status
     Datacenter: us-east-1
     =====================
     Status=Up/Down
@@ -127,7 +127,7 @@ _This procedure is for replacing one dead node. To replace more than one dead no
     ```
 1. Identify service which is bound to down node by checking IP address
     ```bash
-    $ kubectl -n scylla get svc 
+    kubectl -n scylla get svc 
     NAME                                    TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                                                           AGE
     simple-cluster-client                   ClusterIP   None            <none>        9180/TCP                                                          3h12m
     simple-cluster-us-east-1-us-east-1a-0   ClusterIP   10.43.231.189   <none>        7000/TCP,7001/TCP,7199/TCP,10001/TCP,9042/TCP,9142/TCP,9160/TCP   3h12m
@@ -136,12 +136,12 @@ _This procedure is for replacing one dead node. To replace more than one dead no
     ```
 1. Drain node which we would like to replace using. **This command may delete your data from local disks attached to given node!**
     ```bash
-    $ kubectl drain gke-scylla-demo-default-pool-b4b390a1-6j12 --ignore-daemonsets --delete-local-data 
+    kubectl drain gke-scylla-demo-default-pool-b4b390a1-6j12 --ignore-daemonsets --delete-local-data 
     ```
 
     Pod which will be replaced should enter the `Pending` state
     ```bash
-    $ kubectl -n scylla get pods        
+    kubectl -n scylla get pods        
     NAME                                    READY   STATUS    RESTARTS   AGE
     simple-cluster-us-east-1-us-east-1a-0   2/2     Running   0          3h21m
     simple-cluster-us-east-1-us-east-1a-1   2/2     Running   0          3h19m
@@ -149,11 +149,11 @@ _This procedure is for replacing one dead node. To replace more than one dead no
     ```
 1. To being node replacing, add `scylla/replace=""` label to service bound to pod we are replacing. 
     ```bash
-    $ kubectl -n scylla label svc simple-cluster-us-east-1-us-east-1a-2 scylla/replace=""
+    kubectl -n scylla label svc simple-cluster-us-east-1-us-east-1a-2 scylla/replace=""
     ```
     Your failed Pod should be recreated on available k8s node
     ```bash
-    $ kubectl -n scylla get pods        
+    kubectl -n scylla get pods        
     NAME                                    READY   STATUS    RESTARTS   AGE
     simple-cluster-us-east-1-us-east-1a-0   2/2     Running   0          3h27m
     simple-cluster-us-east-1-us-east-1a-1   2/2     Running   0          3h25m
@@ -163,7 +163,7 @@ _This procedure is for replacing one dead node. To replace more than one dead no
    After bootstraping is over, your new Pod should be ready to go.
    Old one shouldn't be no longer visible in `nodetool status`
    ```bash
-   $ kubectl -n scylla exec -ti simple-cluster-us-east-1-us-east-1a-0 -c scylla -- nodetool status
+   kubectl -n scylla exec -ti simple-cluster-us-east-1-us-east-1a-0 -c scylla -- nodetool status
    Datacenter: us-east-1
    =====================
    Status=Up/Down
@@ -193,13 +193,13 @@ For example user may turn off Scylla process, do something with the filesystem a
 To enable maintenance mode add `scylla/node-maintenance` label to service in front of Scylla Pod.
 
 ```bash
-$ kubectl -n scylla label svc simple-cluster-us-east1-b-us-east1-2 scylla/node-maintenance=""
+kubectl -n scylla label svc simple-cluster-us-east1-b-us-east1-2 scylla/node-maintenance=""
 ```
 
 To disable, simply remove this label from service.
 
 ```bash
-$ kubectl -n scylla label svc simple-cluster-us-east1-b-us-east1-2 scylla/node-maintenance-
+kubectl -n scylla label svc simple-cluster-us-east1-b-us-east1-2 scylla/node-maintenance-
 ```
 
 
@@ -217,7 +217,7 @@ Where:
 * `BACKUP_LOCATION` - is a location where backup is stored. For example, for bucket called `backups` stored in AWS S3, location is `s3:backups`.
 
 ```bash
-$ sctool backup list -c simple-cluster --all-clusters -L s3:backups
+sctool backup list -c simple-cluster --all-clusters -L s3:backups
 Snapshots:
   - sm_20201227144037UTC (409MiB)
   - sm_20201228145917UTC (434MiB)
@@ -258,12 +258,12 @@ tar -ztvf task_287791d9-c257-4850-aef5-7537d6e69d90_tag_sm_20201228145917UTC_sch
 
 Extract this archive and copy each schema file to one of the cluster Pods by:
 ```bash
-$ kubectl -n scylla cp users.cql simple-cluster-us-east-1-us-east-1a-0:/tmp/users.cql -c scylla
+kubectl -n scylla cp users.cql simple-cluster-us-east-1-us-east-1a-0:/tmp/users.cql -c scylla
 ```
 
 To import schema simply execute:
 ```bash
-$ kubectl -n scylla exec simple-cluster-us-east-1-us-east-1a-0 -c scylla -- cqlsh -f /tmp/users.cql
+kubectl -n scylla exec simple-cluster-us-east-1-us-east-1a-0 -c scylla -- cqlsh -f /tmp/users.cql
 ```
 
 Once the schema is recreated we can proceed to downloading data files.
@@ -271,7 +271,7 @@ Once the schema is recreated we can proceed to downloading data files.
 First let's save a list of snapshot files to file called `backup_files.out`:
 
 ```bash
-$ kubectl -n scylla-manager-system exec scylla-manager-controller-0 -- sctool backup files -c simple-cluster -L s3:backups -T sm_20201228145917UTC > backup_files.out
+kubectl -n scylla-manager-system exec scylla-manager-controller-0 -- sctool backup files -c simple-cluster -L s3:backups -T sm_20201228145917UTC > backup_files.out
 ```
 
 We will be using `sstableloader` to restore data. `sstableloader` needs a specific directory structure to work namely: `<keyspace>/<table>/<contents>`

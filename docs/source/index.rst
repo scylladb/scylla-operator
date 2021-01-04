@@ -24,11 +24,12 @@ For the latest status of the project, and reports issue, see the Github Project.
 scylla-operator is a Kubernetes Operator for managing Scylla clusters.
 
 Currently it supports:
+
 * Deploying multi-zone clusters
 * Scaling up or adding new racks
 * Scaling down
 * Monitoring with Prometheus and Grafana
-* Integration with `Scylla Manager <https://docs.scylladb.com/operating-scylla/manager/>`
+* Integration with `Scylla Manager <https://docs.scylladb.com/operating-scylla/manager/>`_
 * Dead node replacement
 * Version Upgrade
 * Backup

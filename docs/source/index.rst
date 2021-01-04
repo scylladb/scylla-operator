@@ -10,6 +10,7 @@ Scylla Operator Documentation
    eks
    gke
    manager
+   node_operations
    scylla_cluster_crd
    contributing
 
@@ -19,7 +20,7 @@ The Scylla operator manages Scylla clusters deployed to Kubernetes and automates
 .. image:: logo.png
    :width: 200pt
 
-For the latest status of the project, and reports issue, see the Github Project. Also check out the K8 Operator lesson on Scylla University.
+For the latest status of the project, and reports issue, see the Github Project. Also check out the K8s Operator lesson on Scylla University.
 
 scylla-operator is a Kubernetes Operator for managing Scylla clusters.
 

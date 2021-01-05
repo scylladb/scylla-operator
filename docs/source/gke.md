@@ -80,13 +80,13 @@ node-pools create "cassandra-stress-pool" \
 --no-enable-autoupgrade --no-enable-autorepair
 ```
 
-3. A NodePool of 1 `n1-standard-4` Node, where the operator and the monitoring stack will be deployed.
+3. A NodePool of 1 `n1-standard-8` Node, where the operator and the monitoring stack will be deployed.
 ```
 gcloud beta container --project "${GCP_PROJECT}" \
 node-pools create "operator-pool" \
 --cluster "${CLUSTER_NAME}" \
 --zone "${GCP_ZONE}" \
---machine-type "n1-standard-4" \
+--machine-type "n1-standard-8 \
 --num-nodes "1" \
 --disk-type "pd-ssd" --disk-size "20" \
 --image-type "UBUNTU" \

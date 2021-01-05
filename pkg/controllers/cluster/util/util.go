@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -20,7 +20,7 @@ import (
 
 // LoggerForCluster returns a logger that will log with context
 // about the current cluster
-func LoggerForCluster(c *scyllav1alpha1.ScyllaCluster) log.Logger {
+func LoggerForCluster(c *scyllav1.ScyllaCluster) log.Logger {
 	l, _ := log.NewProduction(log.Config{
 		Level: zapcore.DebugLevel,
 	})
@@ -31,7 +31,7 @@ func LoggerForCluster(c *scyllav1alpha1.ScyllaCluster) log.Logger {
 // have been observed by the StatefulSet controller.
 // If they haven't, their status might be stale, so it's better to wait
 // and process them later.
-func AreStatefulSetStatusesStale(ctx context.Context, c *scyllav1alpha1.ScyllaCluster, client client.Client) (bool, error) {
+func AreStatefulSetStatusesStale(ctx context.Context, c *scyllav1.ScyllaCluster, client client.Client) (bool, error) {
 	sts := &appsv1.StatefulSet{}
 	for _, r := range c.Spec.Datacenter.Racks {
 		err := client.Get(ctx, naming.NamespacedName(naming.StatefulSetNameForRack(r, c), c.Namespace), sts)
@@ -48,7 +48,7 @@ func AreStatefulSetStatusesStale(ctx context.Context, c *scyllav1alpha1.ScyllaCl
 	return false, nil
 }
 
-func GetMemberServicesForRack(ctx context.Context, r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaCluster, cl client.Client) ([]corev1.Service, error) {
+func GetMemberServicesForRack(ctx context.Context, r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, cl client.Client) ([]corev1.Service, error) {
 	svcList := &corev1.ServiceList{}
 	err := cl.List(ctx, svcList, &client.ListOptions{
 		LabelSelector: naming.RackSelector(r, c),
@@ -90,10 +90,10 @@ func VerifyOwner(obj, owner metav1.Object) error {
 
 // NewControllerRef returns an OwnerReference to
 // the provided Cluster Object
-func NewControllerRef(c *scyllav1alpha1.ScyllaCluster) metav1.OwnerReference {
+func NewControllerRef(c *scyllav1.ScyllaCluster) metav1.OwnerReference {
 	return *metav1.NewControllerRef(c, schema.GroupVersionKind{
 		Group:   "scylla.scylladb.com",
-		Version: "v1alpha1",
+		Version: "v1",
 		Kind:    "ScyllaCluster",
 	})
 }

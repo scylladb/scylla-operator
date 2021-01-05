@@ -3,5 +3,5 @@ repo: github.com/scylladb/scylla-operator
 resources:
 - group: scylla
   kind: ScyllaCluster
-  version: v1alpha1
+  version: v1
 version: "2"

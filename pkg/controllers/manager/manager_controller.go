@@ -11,12 +11,12 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
-	"github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"go.uber.org/multierr"
 	"gopkg.in/yaml.v2"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -79,7 +79,7 @@ func discoverManager(ctx context.Context, mgr mgr.Manager) (*mermaidclient.Clien
 		return nil, errors.Wrap(err, "get dynamic client")
 	}
 
-	svcList := &v1.ServiceList{}
+	svcList := &corev1.ServiceList{}
 	err = cl.List(ctx, svcList, &client.ListOptions{
 		LabelSelector: naming.ManagerSelector(),
 	})
@@ -121,7 +121,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	var cluster v1alpha1.ScyllaCluster
+	var cluster scyllav1.ScyllaCluster
 	if err := r.UncachedClient.Get(ctx, req.NamespacedName, &cluster); err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
@@ -257,9 +257,9 @@ func (r *Reconciler) managerState(ctx context.Context, clusterID string) (*state
 	}, nil
 }
 
-func (r *Reconciler) getAuthToken(ctx context.Context, cluster *v1alpha1.ScyllaCluster) (string, error) {
+func (r *Reconciler) getAuthToken(ctx context.Context, cluster *scyllav1.ScyllaCluster) (string, error) {
 	const agentConfigKey = "scylla-manager-agent.yaml"
-	secret := &v1.Secret{}
+	secret := &corev1.Secret{}
 	agentSecretName := cluster.Spec.Datacenter.Racks[0].ScyllaAgentConfig
 	secretKey := client.ObjectKey{
 		Name:      agentSecretName,
@@ -284,6 +284,6 @@ func (r *Reconciler) getAuthToken(ctx context.Context, cluster *v1alpha1.ScyllaC
 
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.ScyllaCluster{}).
+		For(&scyllav1.ScyllaCluster{}).
 		Complete(r)
 }

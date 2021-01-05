@@ -14,7 +14,7 @@ import (
 	"github.com/scylladb/go-log"
 	"github.com/scylladb/go-set/strset"
 	"github.com/scylladb/gocqlx/v2"
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/resource"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -39,14 +39,14 @@ const (
 )
 
 type ClusterVersionUpgrade struct {
-	Cluster        *scyllav1alpha1.ScyllaCluster
+	Cluster        *scyllav1.ScyllaCluster
 	ScyllaClient   *scyllaclient.Client
 	ClusterSession cqlSession
 
 	ipMapping    map[string]string
 	pollInterval time.Duration
 
-	currentRack *scyllav1alpha1.RackSpec
+	currentRack *scyllav1.RackSpec
 	currentNode *corev1.Pod
 
 	cc         client.Client
@@ -55,7 +55,7 @@ type ClusterVersionUpgrade struct {
 	logger     log.Logger
 }
 
-func NewClusterVersionUpgradeAction(c *scyllav1alpha1.ScyllaCluster, l log.Logger) *ClusterVersionUpgrade {
+func NewClusterVersionUpgradeAction(c *scyllav1.ScyllaCluster, l log.Logger) *ClusterVersionUpgrade {
 	return &ClusterVersionUpgrade{
 		Cluster:   c,
 		logger:    l,
@@ -141,7 +141,7 @@ func (a *ClusterVersionUpgrade) Execute(ctx context.Context, s *State) error {
 	a.kubeClient = s.kubeclient
 	a.recorder = s.recorder
 
-	a.pollInterval = scyllav1alpha1.DefaultGenericUpgradePollInterval
+	a.pollInterval = scyllav1.DefaultGenericUpgradePollInterval
 
 	if a.Cluster.Spec.GenericUpgrade != nil {
 		if a.Cluster.Spec.GenericUpgrade.PollInterval != nil {
@@ -252,8 +252,8 @@ func (a *ClusterVersionUpgrade) beginUpgrade(ctx context.Context) (fsm.Event, er
 	}
 
 	now := timeutc.Now()
-	err := a.upgradeClusterStatus(ctx, func(status *scyllav1alpha1.ClusterStatus) {
-		status.Upgrade = &scyllav1alpha1.UpgradeStatus{
+	err := a.upgradeClusterStatus(ctx, func(status *scyllav1.ClusterStatus) {
+		status.Upgrade = &scyllav1.UpgradeStatus{
 			State:             string(BeginUpgrade),
 			FromVersion:       fromVersion,
 			ToVersion:         a.Cluster.Spec.Version,
@@ -267,7 +267,7 @@ func (a *ClusterVersionUpgrade) beginUpgrade(ctx context.Context) (fsm.Event, er
 
 	// Wait until patch is applied, other functions relies on Status.Upgrade being non-nil.
 	err = wait.PollImmediate(a.pollInterval, actionTimeout, func() (done bool, err error) {
-		cluster := &scyllav1alpha1.ScyllaCluster{}
+		cluster := &scyllav1.ScyllaCluster{}
 		if err := a.cc.Get(ctx, naming.NamespacedName(a.Cluster.Name, a.Cluster.Namespace), cluster); err != nil {
 			return false, err
 		}
@@ -502,7 +502,7 @@ func (a *ClusterVersionUpgrade) updateRackSpec(ctx context.Context) (fsm.Event, 
 	return ActionSuccess, nil
 }
 
-func (a *ClusterVersionUpgrade) nextRack(ctx context.Context) (*scyllav1alpha1.RackSpec, error) {
+func (a *ClusterVersionUpgrade) nextRack(ctx context.Context) (*scyllav1.RackSpec, error) {
 	for _, r := range a.Cluster.Spec.Datacenter.Racks {
 		pods := &corev1.PodList{}
 		if err := a.cc.List(ctx, pods, &client.ListOptions{
@@ -532,7 +532,7 @@ func (a *ClusterVersionUpgrade) findNextRack(ctx context.Context) (fsm.Event, er
 		return ActionFailure, errors.Wrap(err, "find next rack")
 	}
 
-	if err := a.upgradeClusterStatus(ctx, func(status *scyllav1alpha1.ClusterStatus) {
+	if err := a.upgradeClusterStatus(ctx, func(status *scyllav1.ClusterStatus) {
 		if r == nil {
 			status.Upgrade.CurrentRack = ""
 		} else {
@@ -554,9 +554,9 @@ func (a *ClusterVersionUpgrade) findNextRack(ctx context.Context) (fsm.Event, er
 	return ActionSuccess, nil
 }
 
-func (a *ClusterVersionUpgrade) getCurrentRack(ctx context.Context) (*scyllav1alpha1.RackSpec, error) {
+func (a *ClusterVersionUpgrade) getCurrentRack(ctx context.Context) (*scyllav1.RackSpec, error) {
 	if a.currentRack == nil {
-		cluster := &scyllav1alpha1.ScyllaCluster{}
+		cluster := &scyllav1.ScyllaCluster{}
 		if err := a.cc.Get(ctx, naming.NamespacedName(a.Cluster.Name, a.Cluster.Namespace), cluster); err != nil {
 			return nil, errors.Wrap(err, "refresh cluster")
 		}
@@ -574,7 +574,7 @@ func (a *ClusterVersionUpgrade) getCurrentRack(ctx context.Context) (*scyllav1al
 
 func (a *ClusterVersionUpgrade) getCurrentNode(ctx context.Context) (*corev1.Pod, error) {
 	if a.currentNode == nil {
-		cluster := &scyllav1alpha1.ScyllaCluster{}
+		cluster := &scyllav1.ScyllaCluster{}
 		if err := a.cc.Get(ctx, naming.NamespacedName(a.Cluster.Name, a.Cluster.Namespace), cluster); err != nil {
 			return nil, errors.Wrap(err, "refresh cluster")
 		}
@@ -625,7 +625,7 @@ func (a *ClusterVersionUpgrade) findNextNode(ctx context.Context) (fsm.Event, er
 		return ActionFailure, errors.Wrap(err, "find next node")
 	}
 
-	if err := a.upgradeClusterStatus(ctx, func(status *scyllav1alpha1.ClusterStatus) {
+	if err := a.upgradeClusterStatus(ctx, func(status *scyllav1.ClusterStatus) {
 		if n == nil {
 			status.Upgrade.CurrentNode = ""
 		} else {
@@ -695,13 +695,13 @@ func (a *ClusterVersionUpgrade) nodeUpgradedConditionFunc(ctx context.Context) f
 }
 
 func (a *ClusterVersionUpgrade) validateUpgrade(ctx context.Context) (fsm.Event, error) {
-	failureStrategy := scyllav1alpha1.GenericUpgradeFailureStrategyRetry
+	failureStrategy := scyllav1.GenericUpgradeFailureStrategyRetry
 	if a.Cluster.Spec.GenericUpgrade != nil {
 		failureStrategy = a.Cluster.Spec.GenericUpgrade.FailureStrategy
 	}
 
 	switch failureStrategy {
-	case scyllav1alpha1.GenericUpgradeFailureStrategyRetry:
+	case scyllav1.GenericUpgradeFailureStrategyRetry:
 		if err := wait.PollImmediateInfinite(a.pollInterval, a.nodeUpgradedConditionFunc(ctx)); err != nil {
 			return ActionFailure, errors.Wrap(err, "validate node upgrade")
 		}
@@ -726,9 +726,9 @@ func (a *ClusterVersionUpgrade) clearSystemBackup(ctx context.Context) (fsm.Even
 	return ActionSuccess, nil
 }
 
-func (a *ClusterVersionUpgrade) upgradeClusterStatus(ctx context.Context, f func(cluster *scyllav1alpha1.ClusterStatus)) error {
-	cluster := &scyllav1alpha1.ScyllaCluster{}
-	patched := &scyllav1alpha1.ScyllaCluster{}
+func (a *ClusterVersionUpgrade) upgradeClusterStatus(ctx context.Context, f func(cluster *scyllav1.ClusterStatus)) error {
+	cluster := &scyllav1.ScyllaCluster{}
+	patched := &scyllav1.ScyllaCluster{}
 
 	resourceVersion := ""
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -771,7 +771,7 @@ func (a *ClusterVersionUpgrade) upgradeClusterStatus(ctx context.Context, f func
 func (a *ClusterVersionUpgrade) onStateTransition(ctx context.Context, currentState, nextState fsm.State, event fsm.Event) error {
 	a.logger.Info(ctx, "Upgrade state transition", "event", event, "from", currentState, "to", nextState)
 
-	err := a.upgradeClusterStatus(ctx, func(status *scyllav1alpha1.ClusterStatus) {
+	err := a.upgradeClusterStatus(ctx, func(status *scyllav1.ClusterStatus) {
 		status.Upgrade.State = string(nextState)
 	})
 	if err != nil {
@@ -783,7 +783,7 @@ func (a *ClusterVersionUpgrade) onStateTransition(ctx context.Context, currentSt
 
 func (a *ClusterVersionUpgrade) finishUpgrade(ctx context.Context) (fsm.Event, error) {
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		cluster := &scyllav1alpha1.ScyllaCluster{}
+		cluster := &scyllav1.ScyllaCluster{}
 		if err := a.cc.Get(ctx, naming.NamespacedName(a.Cluster.Name, a.Cluster.Namespace), cluster); err != nil {
 			return err
 		}
@@ -804,7 +804,7 @@ func (a *ClusterVersionUpgrade) finishUpgrade(ctx context.Context) (fsm.Event, e
 	return fsm.NoOp, nil
 }
 
-func (a *ClusterVersionUpgrade) setRollingUpgradeStrategy(ctx context.Context, rack *scyllav1alpha1.RackSpec) error {
+func (a *ClusterVersionUpgrade) setRollingUpgradeStrategy(ctx context.Context, rack *scyllav1.RackSpec) error {
 	sts := &appsv1.StatefulSet{}
 	err := a.cc.Get(ctx, naming.NamespacedName(naming.StatefulSetNameForRack(*rack, a.Cluster), a.Cluster.Namespace), sts)
 	if err != nil {
@@ -844,7 +844,7 @@ func (a *ClusterVersionUpgrade) restoreUpgradeStrategy(ctx context.Context) (fsm
 	return ActionSuccess, nil
 }
 
-func (a *ClusterVersionUpgrade) rackHosts(racks []scyllav1alpha1.RackSpec) []string {
+func (a *ClusterVersionUpgrade) rackHosts(racks []scyllav1.RackSpec) []string {
 	hosts := make([]string, 0, len(racks))
 	for _, r := range a.Cluster.Spec.Datacenter.Racks {
 		for i := 0; i < int(r.Members); i++ {

@@ -1,6 +1,6 @@
 // Copyright (C) 2017 ScyllaDB
 
-package v1alpha1
+package v1
 
 func CheckValues(c *ScyllaCluster) error {
 	return checkValues(c)

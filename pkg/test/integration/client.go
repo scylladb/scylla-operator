@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -20,7 +20,7 @@ type Client struct {
 	client.Client
 }
 
-func (c *Client) UpdateScyllaCluster(ctx context.Context, cluster *scyllav1alpha1.ScyllaCluster, opts ...client.UpdateOption) error {
+func (c *Client) UpdateScyllaCluster(ctx context.Context, cluster *scyllav1.ScyllaCluster, opts ...client.UpdateOption) error {
 	rv := cluster.ResourceVersion
 
 	if err := c.Client.Update(ctx, cluster, opts...); err != nil {
@@ -28,7 +28,7 @@ func (c *Client) UpdateScyllaCluster(ctx context.Context, cluster *scyllav1alpha
 	}
 
 	return wait.Poll(c.RetryInterval, c.Timeout, func() (bool, error) {
-		newCluster := &scyllav1alpha1.ScyllaCluster{}
+		newCluster := &scyllav1.ScyllaCluster{}
 		key := client.ObjectKey{
 			Namespace: cluster.Namespace,
 			Name:      cluster.Name,

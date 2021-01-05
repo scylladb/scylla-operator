@@ -17,7 +17,7 @@ import (
 	"github.com/magiconair/properties"
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
-	"github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/cmd/options"
 	"github.com/scylladb/scylla-operator/pkg/controllers/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -196,7 +196,7 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 
 	// Check if we need to run in developer mode
 	devMode := "0"
-	cluster := &v1alpha1.ScyllaCluster{}
+	cluster := &v1.ScyllaCluster{}
 	err = s.Get(ctx, naming.NamespacedName(s.member.Cluster, s.member.Namespace), cluster)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting cluster")
@@ -249,7 +249,7 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		if err != nil {
 			s.logger.Info(ctx, "This scylla version might not support ScyllaArgs", "version", cluster.Spec.Version)
 			appendScyllaArguments(ctx, s, cluster.Spec.ScyllaArgs, args)
-		} else if version.LT(v1alpha1.ScyllaVersionThatSupportsArgs) {
+		} else if version.LT(v1.ScyllaVersionThatSupportsArgs) {
 			s.logger.Info(ctx, "This scylla version does not support ScyllaArgs. ScyllaArgs is ignored", "version", cluster.Spec.Version)
 		} else {
 			appendScyllaArguments(ctx, s, cluster.Spec.ScyllaArgs, args)

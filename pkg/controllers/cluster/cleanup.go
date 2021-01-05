@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/util/nodeaffinity"
@@ -15,7 +15,7 @@ import (
 )
 
 // cleanup deletes all resources remaining because of cluster scale downs
-func (cc *ClusterReconciler) cleanup(ctx context.Context, c *scyllav1alpha1.ScyllaCluster) error {
+func (cc *ClusterReconciler) cleanup(ctx context.Context, c *scyllav1.ScyllaCluster) error {
 	svcList := &corev1.ServiceList{}
 	sts := &appsv1.StatefulSet{}
 	logger := cc.Logger.With("cluster", c.Namespace+"/"+c.Name, "resourceVersion", c.ResourceVersion)
@@ -61,7 +61,7 @@ func (cc *ClusterReconciler) cleanup(ctx context.Context, c *scyllav1alpha1.Scyl
 // due to orphaned affinity.
 // Operator checks if any Pod PVC is orphaned, and if so, mark member service as
 // a replacement candidate.
-func (cc *ClusterReconciler) orphanedCleanup(ctx context.Context, c *scyllav1alpha1.ScyllaCluster, svcs *corev1.ServiceList) error {
+func (cc *ClusterReconciler) orphanedCleanup(ctx context.Context, c *scyllav1.ScyllaCluster, svcs *corev1.ServiceList) error {
 	nodes := &corev1.NodeList{}
 	if err := cc.List(ctx, nodes); err != nil {
 		return errors.Wrap(err, "list nodes")
@@ -112,7 +112,7 @@ func (cc *ClusterReconciler) orphanedCleanup(ctx context.Context, c *scyllav1alp
 	return nil
 }
 
-func (cc *ClusterReconciler) decommissionCleanup(ctx context.Context, c *scyllav1alpha1.ScyllaCluster, sts *appsv1.StatefulSet, svcs *corev1.ServiceList) error {
+func (cc *ClusterReconciler) decommissionCleanup(ctx context.Context, c *scyllav1.ScyllaCluster, sts *appsv1.StatefulSet, svcs *corev1.ServiceList) error {
 	memberCount := *sts.Spec.Replicas
 	memberServiceCount := int32(len(svcs.Items))
 	// If there are more services than members, some services need to be cleaned up
@@ -141,7 +141,7 @@ func (cc *ClusterReconciler) decommissionCleanup(ctx context.Context, c *scyllav
 // Currently those are :
 //  - A PVC
 //  - A ClusterIP Service
-func (cc *ClusterReconciler) cleanupMemberResources(ctx context.Context, memberService *corev1.Service, c *scyllav1alpha1.ScyllaCluster) error {
+func (cc *ClusterReconciler) cleanupMemberResources(ctx context.Context, memberService *corev1.Service, c *scyllav1.ScyllaCluster) error {
 	memberName := memberService.Name
 	logger := util.LoggerForCluster(c)
 	logger.Info(ctx, "Cleaning up resources for member", "name", memberName)

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
@@ -24,8 +24,8 @@ func TestManagerSynchronization(t *testing.T) {
 
 	tcs := []struct {
 		Name   string
-		Spec   v1alpha1.ClusterSpec
-		Status v1alpha1.ClusterStatus
+		Spec   v1.ClusterSpec
+		Status v1.ClusterStatus
 		State  state
 
 		Actions []action
@@ -33,8 +33,8 @@ func TestManagerSynchronization(t *testing.T) {
 	}{
 		{
 			Name:   "Empty manager, empty spec, add cluster and requeue",
-			Spec:   v1alpha1.ClusterSpec{},
-			Status: v1alpha1.ClusterStatus{},
+			Spec:   v1.ClusterSpec{},
+			Status: v1.ClusterStatus{},
 			State:  state{},
 
 			Requeue: true,
@@ -42,10 +42,10 @@ func TestManagerSynchronization(t *testing.T) {
 		},
 		{
 			Name: "Empty manager, task in spec, add cluster and requeue",
-			Spec: v1alpha1.ClusterSpec{
-				Repairs: []v1alpha1.RepairTaskSpec{},
+			Spec: v1.ClusterSpec{
+				Repairs: []v1.RepairTaskSpec{},
 			},
-			Status: v1alpha1.ClusterStatus{},
+			Status: v1.ClusterStatus{},
 			State:  state{},
 
 			Requeue: true,
@@ -53,8 +53,8 @@ func TestManagerSynchronization(t *testing.T) {
 		},
 		{
 			Name:   "Cluster registered in manager do nothing",
-			Spec:   v1alpha1.ClusterSpec{},
-			Status: v1alpha1.ClusterStatus{},
+			Spec:   v1.ClusterSpec{},
+			Status: v1.ClusterStatus{},
 			State: state{
 				Clusters: []*mermaidclient.Cluster{{
 					Name:      clusterName,
@@ -67,8 +67,8 @@ func TestManagerSynchronization(t *testing.T) {
 		},
 		{
 			Name: "Cluster registered in manager but auth token is different, update and requeue",
-			Spec: v1alpha1.ClusterSpec{},
-			Status: v1alpha1.ClusterStatus{
+			Spec: v1.ClusterSpec{},
+			Status: v1.ClusterStatus{
 				ManagerID: pointer.StringPtr(clusterID),
 			},
 			State: state{
@@ -84,8 +84,8 @@ func TestManagerSynchronization(t *testing.T) {
 		},
 		{
 			Name: "Name collision, delete old one, add new and requeue",
-			Spec: v1alpha1.ClusterSpec{},
-			Status: v1alpha1.ClusterStatus{
+			Spec: v1.ClusterSpec{},
+			Status: v1.ClusterStatus{
 				ManagerID: pointer.StringPtr(clusterID),
 			},
 			State: state{
@@ -103,10 +103,10 @@ func TestManagerSynchronization(t *testing.T) {
 		},
 		{
 			Name: "Schedule repair task",
-			Spec: v1alpha1.ClusterSpec{
-				Repairs: []v1alpha1.RepairTaskSpec{
+			Spec: v1.ClusterSpec{
+				Repairs: []v1.RepairTaskSpec{
 					{
-						SchedulerTaskSpec: v1alpha1.SchedulerTaskSpec{
+						SchedulerTaskSpec: v1.SchedulerTaskSpec{
 							Name: "my-repair",
 						},
 						DC:        []string{"dc1"},
@@ -116,7 +116,7 @@ func TestManagerSynchronization(t *testing.T) {
 					},
 				},
 			},
-			Status: v1alpha1.ClusterStatus{
+			Status: v1.ClusterStatus{
 				ManagerID: pointer.StringPtr(clusterID),
 			},
 			State: state{
@@ -131,10 +131,10 @@ func TestManagerSynchronization(t *testing.T) {
 		},
 		{
 			Name: "Schedule backup task",
-			Spec: v1alpha1.ClusterSpec{
-				Backups: []v1alpha1.BackupTaskSpec{
+			Spec: v1.ClusterSpec{
+				Backups: []v1.BackupTaskSpec{
 					{
-						SchedulerTaskSpec: v1alpha1.SchedulerTaskSpec{
+						SchedulerTaskSpec: v1.SchedulerTaskSpec{
 							Name: "my-backup",
 						},
 						DC:               []string{"dc1"},
@@ -147,7 +147,7 @@ func TestManagerSynchronization(t *testing.T) {
 					},
 				},
 			},
-			Status: v1alpha1.ClusterStatus{
+			Status: v1.ClusterStatus{
 				ManagerID: pointer.StringPtr(clusterID),
 			},
 			State: state{
@@ -162,22 +162,22 @@ func TestManagerSynchronization(t *testing.T) {
 		},
 		{
 			Name: "Update repair if it's already registered in Manager",
-			Spec: v1alpha1.ClusterSpec{
-				Repairs: []v1alpha1.RepairTaskSpec{
+			Spec: v1.ClusterSpec{
+				Repairs: []v1.RepairTaskSpec{
 					{
-						SchedulerTaskSpec: v1alpha1.SchedulerTaskSpec{
+						SchedulerTaskSpec: v1.SchedulerTaskSpec{
 							Name: "repair",
 						},
 					},
 				},
 			},
-			Status: v1alpha1.ClusterStatus{
+			Status: v1.ClusterStatus{
 				ManagerID: pointer.StringPtr(clusterID),
-				Repairs: []v1alpha1.RepairTaskStatus{
+				Repairs: []v1.RepairTaskStatus{
 					{
 						ID: "repair-id",
-						RepairTaskSpec: v1alpha1.RepairTaskSpec{
-							SchedulerTaskSpec: v1alpha1.SchedulerTaskSpec{
+						RepairTaskSpec: v1.RepairTaskSpec{
+							SchedulerTaskSpec: v1.SchedulerTaskSpec{
 								Name: "repair",
 							},
 							Intensity: pointer.StringPtr("666"),
@@ -193,8 +193,8 @@ func TestManagerSynchronization(t *testing.T) {
 				}},
 				RepairTasks: []*RepairTask{
 					{
-						RepairTaskSpec: v1alpha1.RepairTaskSpec{
-							SchedulerTaskSpec: v1alpha1.SchedulerTaskSpec{
+						RepairTaskSpec: v1.RepairTaskSpec{
+							SchedulerTaskSpec: v1.SchedulerTaskSpec{
 								Name: "repair",
 							},
 							Intensity: pointer.StringPtr("123"),
@@ -208,23 +208,23 @@ func TestManagerSynchronization(t *testing.T) {
 		},
 		{
 			Name: "Do not update task when it didn't change",
-			Spec: v1alpha1.ClusterSpec{
-				Repairs: []v1alpha1.RepairTaskSpec{
+			Spec: v1.ClusterSpec{
+				Repairs: []v1.RepairTaskSpec{
 					{
-						SchedulerTaskSpec: v1alpha1.SchedulerTaskSpec{
+						SchedulerTaskSpec: v1.SchedulerTaskSpec{
 							Name: "repair",
 						},
 						Intensity: pointer.StringPtr("666"),
 					},
 				},
 			},
-			Status: v1alpha1.ClusterStatus{
+			Status: v1.ClusterStatus{
 				ManagerID: pointer.StringPtr(clusterID),
-				Repairs: []v1alpha1.RepairTaskStatus{
+				Repairs: []v1.RepairTaskStatus{
 					{
 						ID: "repair-id",
-						RepairTaskSpec: v1alpha1.RepairTaskSpec{
-							SchedulerTaskSpec: v1alpha1.SchedulerTaskSpec{
+						RepairTaskSpec: v1.RepairTaskSpec{
+							SchedulerTaskSpec: v1.SchedulerTaskSpec{
 								Name: "repair",
 							},
 							Intensity: pointer.StringPtr("666"),
@@ -240,8 +240,8 @@ func TestManagerSynchronization(t *testing.T) {
 				}},
 				RepairTasks: []*RepairTask{
 					{
-						RepairTaskSpec: v1alpha1.RepairTaskSpec{
-							SchedulerTaskSpec: v1alpha1.SchedulerTaskSpec{
+						RepairTaskSpec: v1.RepairTaskSpec{
+							SchedulerTaskSpec: v1.SchedulerTaskSpec{
 								Name: "repair",
 							},
 							Intensity: pointer.StringPtr("666"),
@@ -255,8 +255,8 @@ func TestManagerSynchronization(t *testing.T) {
 		},
 		{
 			Name: "Delete tasks from Manager unknown to spec",
-			Spec: v1alpha1.ClusterSpec{},
-			Status: v1alpha1.ClusterStatus{
+			Spec: v1.ClusterSpec{},
+			Status: v1.ClusterStatus{
 				ManagerID: pointer.StringPtr(clusterID),
 			},
 			State: state{
@@ -267,8 +267,8 @@ func TestManagerSynchronization(t *testing.T) {
 				}},
 				RepairTasks: []*RepairTask{
 					{
-						RepairTaskSpec: v1alpha1.RepairTaskSpec{
-							SchedulerTaskSpec: v1alpha1.SchedulerTaskSpec{
+						RepairTaskSpec: v1.RepairTaskSpec{
+							SchedulerTaskSpec: v1.SchedulerTaskSpec{
 								Name: "other-repair",
 							},
 						},
@@ -285,7 +285,7 @@ func TestManagerSynchronization(t *testing.T) {
 		test := tcs[i]
 		t.Run(test.Name, func(t *testing.T) {
 			ctx := context.Background()
-			cluster := &v1alpha1.ScyllaCluster{
+			cluster := &v1.ScyllaCluster{
 				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
 				Spec:       test.Spec,
 				Status:     test.Status,

@@ -6,7 +6,7 @@ import (
 
 	"github.com/blang/semver"
 
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/actions"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 )
@@ -19,27 +19,27 @@ func TestNextAction(t *testing.T) {
 	clusterNewRackCreate := cluster.DeepCopy()
 	clusterNewRackCreate.Spec.Datacenter.Racks = append(
 		clusterNewRackCreate.Spec.Datacenter.Racks,
-		scyllav1alpha1.RackSpec{
+		scyllav1.RackSpec{
 			Name:    "new-rack",
 			Members: 2,
 		},
 	)
 
 	clusterExistingRackScaleUp := cluster.DeepCopy()
-	clusterExistingRackScaleUp.Status.Racks["test-rack"] = scyllav1alpha1.RackStatus{
+	clusterExistingRackScaleUp.Status.Racks["test-rack"] = scyllav1.RackStatus{
 		Members:      members - 1,
 		ReadyMembers: members - 1,
 	}
 
 	clusterBeginRackScaleDown := cluster.DeepCopy()
-	clusterBeginRackScaleDown.Status.Racks["test-rack"] = scyllav1alpha1.RackStatus{
+	clusterBeginRackScaleDown.Status.Racks["test-rack"] = scyllav1.RackStatus{
 		Members:      members + 1,
 		ReadyMembers: members + 1,
 	}
 
 	clusterResumeRackScaleDown := cluster.DeepCopy()
 	testRackStatus := clusterResumeRackScaleDown.Status.Racks["test-rack"]
-	scyllav1alpha1.SetRackCondition(&testRackStatus, scyllav1alpha1.RackConditionTypeMemberLeaving)
+	scyllav1.SetRackCondition(&testRackStatus, scyllav1.RackConditionTypeMemberLeaving)
 	clusterResumeRackScaleDown.Status.Racks["test-rack"] = testRackStatus
 
 	clusterBeginVersionUpgrade := cluster.DeepCopy()
@@ -49,12 +49,12 @@ func TestNextAction(t *testing.T) {
 
 	clusterResumeVersionUpgrade := cluster.DeepCopy()
 	testRackStatus = clusterResumeVersionUpgrade.Status.Racks["test-rack"]
-	scyllav1alpha1.SetRackCondition(&testRackStatus, scyllav1alpha1.RackConditionTypeUpgrading)
+	scyllav1.SetRackCondition(&testRackStatus, scyllav1.RackConditionTypeUpgrading)
 	clusterResumeVersionUpgrade.Status.Racks["test-rack"] = testRackStatus
 
 	tests := []struct {
 		name           string
-		cluster        *scyllav1alpha1.ScyllaCluster
+		cluster        *scyllav1.ScyllaCluster
 		expectedAction string
 		expectNoAction bool
 	}{

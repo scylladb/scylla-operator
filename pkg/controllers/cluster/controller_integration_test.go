@@ -9,7 +9,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/test/integration"
 	corev1 "k8s.io/api/core/v1"
@@ -104,7 +104,7 @@ var _ = Describe("Cluster controller", func() {
 
 	Context("Node replace", func() {
 		var (
-			scylla  *scyllav1alpha1.ScyllaCluster
+			scylla  *scyllav1.ScyllaCluster
 			sstStub *integration.StatefulSetOperatorStub
 		)
 
@@ -222,7 +222,7 @@ var _ = Describe("Cluster controller", func() {
 	})
 })
 
-func rackMemberService(namespace string, rack scyllav1alpha1.RackSpec, cluster *scyllav1alpha1.ScyllaCluster) ([]corev1.Service, error) {
+func rackMemberService(namespace string, rack scyllav1.RackSpec, cluster *scyllav1.ScyllaCluster) ([]corev1.Service, error) {
 	services := &corev1.ServiceList{}
 	Expect(wait.PollImmediate(retryInterval, timeout, func() (bool, error) {
 		err := testEnv.List(ctx, services, &client.ListOptions{
@@ -238,7 +238,7 @@ func rackMemberService(namespace string, rack scyllav1alpha1.RackSpec, cluster *
 	return services.Items, nil
 }
 
-func nonSeedServices(namespace string, rack scyllav1alpha1.RackSpec, cluster *scyllav1alpha1.ScyllaCluster) ([]corev1.Service, error) {
+func nonSeedServices(namespace string, rack scyllav1.RackSpec, cluster *scyllav1.ScyllaCluster) ([]corev1.Service, error) {
 	services, err := rackMemberService(namespace, rack, cluster)
 	if err != nil {
 		return nil, err
@@ -254,7 +254,7 @@ func nonSeedServices(namespace string, rack scyllav1alpha1.RackSpec, cluster *sc
 	return nonSeedServices, nil
 }
 
-func seedServices(namespace string, rack scyllav1alpha1.RackSpec, cluster *scyllav1alpha1.ScyllaCluster) ([]corev1.Service, error) {
+func seedServices(namespace string, rack scyllav1.RackSpec, cluster *scyllav1.ScyllaCluster) ([]corev1.Service, error) {
 	services, err := rackMemberService(namespace, rack, cluster)
 	if err != nil {
 		return nil, err
@@ -270,23 +270,23 @@ func seedServices(namespace string, rack scyllav1alpha1.RackSpec, cluster *scyll
 	return seedServices, nil
 }
 
-func singleNodeCluster(ns *corev1.Namespace) *scyllav1alpha1.ScyllaCluster {
-	return &scyllav1alpha1.ScyllaCluster{
+func singleNodeCluster(ns *corev1.Namespace) *scyllav1.ScyllaCluster {
+	return &scyllav1.ScyllaCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "test-",
 			Namespace:    ns.Name,
 		},
-		Spec: scyllav1alpha1.ClusterSpec{
+		Spec: scyllav1.ClusterSpec{
 			Version:       "4.2.0",
 			AgentVersion:  pointer.StringPtr("2.2.0"),
 			DeveloperMode: true,
-			Datacenter: scyllav1alpha1.DatacenterSpec{
+			Datacenter: scyllav1.DatacenterSpec{
 				Name: "dc1",
-				Racks: []scyllav1alpha1.RackSpec{
+				Racks: []scyllav1.RackSpec{
 					{
 						Name:    "rack1",
 						Members: 1,
-						Storage: scyllav1alpha1.StorageSpec{
+						Storage: scyllav1.StorageSpec{
 							Capacity: "10M",
 						},
 						Resources: corev1.ResourceRequirements{
@@ -306,9 +306,9 @@ func singleNodeCluster(ns *corev1.Namespace) *scyllav1alpha1.ScyllaCluster {
 	}
 }
 
-func assertClusterStatusReflectsSpec(ctx context.Context, spec *scyllav1alpha1.ScyllaCluster) error {
+func assertClusterStatusReflectsSpec(ctx context.Context, spec *scyllav1.ScyllaCluster) error {
 	return wait.Poll(retryInterval, timeout, func() (bool, error) {
-		cluster := &scyllav1alpha1.ScyllaCluster{}
+		cluster := &scyllav1.ScyllaCluster{}
 		if err := testEnv.Get(ctx, naming.NamespacedName(spec.Name, spec.Namespace), cluster); err != nil {
 			return false, err
 		}

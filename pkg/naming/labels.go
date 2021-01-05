@@ -3,14 +3,14 @@ package naming
 import (
 	"fmt"
 
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
 // ClusterLabels returns a map of label keys and values
 // for the given Cluster.
-func ClusterLabels(c *scyllav1alpha1.ScyllaCluster) map[string]string {
+func ClusterLabels(c *scyllav1.ScyllaCluster) map[string]string {
 	labels := recommendedLabels()
 	labels[ClusterNameLabel] = c.Name
 	return labels
@@ -18,7 +18,7 @@ func ClusterLabels(c *scyllav1alpha1.ScyllaCluster) map[string]string {
 
 // DatacenterLabels returns a map of label keys and values
 // for the given Datacenter.
-func DatacenterLabels(c *scyllav1alpha1.ScyllaCluster) map[string]string {
+func DatacenterLabels(c *scyllav1.ScyllaCluster) map[string]string {
 	recLabels := recommendedLabels()
 	dcLabels := ClusterLabels(c)
 	dcLabels[DatacenterNameLabel] = c.Spec.Datacenter.Name
@@ -28,7 +28,7 @@ func DatacenterLabels(c *scyllav1alpha1.ScyllaCluster) map[string]string {
 
 // RackLabels returns a map of label keys and values
 // for the given Rack.
-func RackLabels(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaCluster) map[string]string {
+func RackLabels(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) map[string]string {
 	recLabels := recommendedLabels()
 	rackLabels := DatacenterLabels(c)
 	rackLabels[RackNameLabel] = r.Name
@@ -45,7 +45,7 @@ func StatefulSetPodLabel(name string) map[string]string {
 }
 
 // RackSelector returns a LabelSelector for the given rack.
-func RackSelector(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaCluster) labels.Selector {
+func RackSelector(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) labels.Selector {
 
 	rackLabelsSet := labels.Set(RackLabels(r, c))
 	sel := labels.SelectorFromSet(rackLabelsSet)

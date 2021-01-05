@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
@@ -18,11 +18,11 @@ const RackScaleDownAction = "rack-scale-down"
 var _ Action = &RackScaleDown{}
 
 type RackScaleDown struct {
-	Rack    scyllav1alpha1.RackSpec
-	Cluster *scyllav1alpha1.ScyllaCluster
+	Rack    scyllav1.RackSpec
+	Cluster *scyllav1.ScyllaCluster
 }
 
-func NewRackScaleDownAction(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaCluster) *RackScaleDown {
+func NewRackScaleDownAction(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) *RackScaleDown {
 	return &RackScaleDown{
 		Rack:    r,
 		Cluster: c,

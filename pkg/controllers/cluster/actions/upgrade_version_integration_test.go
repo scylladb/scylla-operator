@@ -23,7 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/test/integration"
 )
 
@@ -44,7 +44,7 @@ var _ = Describe("Cluster controller", func() {
 
 	Context("Cluster upgrade", func() {
 		var (
-			scylla  *scyllav1alpha1.ScyllaCluster
+			scylla  *scyllav1.ScyllaCluster
 			sstStub *integration.StatefulSetOperatorStub
 
 			originalActionsNewSessionFunc             func(hosts []string) (actions.CQLSession, error)
@@ -53,7 +53,7 @@ var _ = Describe("Cluster controller", func() {
 
 		BeforeEach(func() {
 			scylla = testEnv.SingleRackCluster(ns)
-			scylla.Spec.GenericUpgrade = &scyllav1alpha1.GenericUpgradeSpec{
+			scylla.Spec.GenericUpgrade = &scyllav1.GenericUpgradeSpec{
 				PollInterval: &metav1.Duration{Duration: 200 * time.Millisecond},
 			}
 
@@ -138,7 +138,7 @@ var _ = Describe("Cluster controller", func() {
 			Expect(testEnv.Update(ctx, scylla)).To(Succeed())
 
 			By("Then: Cluster status should contain upgrade status")
-			Eventually(func() *scyllav1alpha1.UpgradeStatus {
+			Eventually(func() *scyllav1.UpgradeStatus {
 				Expect(testEnv.Refresh(ctx, scylla)).To(Succeed())
 				return scylla.Status.Upgrade
 			}, shortWait).ShouldNot(BeNil())
@@ -247,7 +247,7 @@ var _ = Describe("Cluster controller", func() {
 			Eventually(scyllaFake.KeyspaceSnapshots, shortWait).Should(BeEmpty())
 
 			By("Then: upgrade status is cleared out")
-			Eventually(func() *scyllav1alpha1.UpgradeStatus {
+			Eventually(func() *scyllav1.UpgradeStatus {
 				Expect(testEnv.Refresh(ctx, scylla)).To(Succeed())
 				return scylla.Status.Upgrade
 			}, shortWait).Should(BeNil())

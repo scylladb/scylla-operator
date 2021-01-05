@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/resource"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -20,12 +20,12 @@ const RackCreateAction = "rack-create"
 var _ Action = &RackCreate{}
 
 type RackCreate struct {
-	Rack          scyllav1alpha1.RackSpec
-	Cluster       *scyllav1alpha1.ScyllaCluster
+	Rack          scyllav1.RackSpec
+	Cluster       *scyllav1.ScyllaCluster
 	OperatorImage string
 }
 
-func NewRackCreateAction(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaCluster, image string) *RackCreate {
+func NewRackCreateAction(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, image string) *RackCreate {
 	return &RackCreate{
 		Rack:          r,
 		Cluster:       c,

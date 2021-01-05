@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -26,7 +26,7 @@ func NamespacedNameForObject(obj metav1.Object) client.ObjectKey {
 	}
 }
 
-func StatefulSetNameForRack(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaCluster) string {
+func StatefulSetNameForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) string {
 	return fmt.Sprintf("%s-%s-%s", c.Name, c.Spec.Datacenter.Name, r.Name)
 }
 
@@ -35,27 +35,27 @@ func ServiceNameFromPod(pod *corev1.Pod) string {
 	return pod.Name
 }
 
-func MemberServiceName(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaCluster, idx int) string {
+func MemberServiceName(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, idx int) string {
 	return fmt.Sprintf("%s-%d", StatefulSetNameForRack(r, c), idx)
 }
 
-func ServiceDNSName(service string, c *scyllav1alpha1.ScyllaCluster) string {
+func ServiceDNSName(service string, c *scyllav1.ScyllaCluster) string {
 	return fmt.Sprintf("%s.%s", service, CrossNamespaceServiceNameForCluster(c))
 }
 
-func ServiceAccountNameForMembers(c *scyllav1alpha1.ScyllaCluster) string {
+func ServiceAccountNameForMembers(c *scyllav1.ScyllaCluster) string {
 	return fmt.Sprintf("%s-member", c.Name)
 }
 
-func HeadlessServiceNameForCluster(c *scyllav1alpha1.ScyllaCluster) string {
+func HeadlessServiceNameForCluster(c *scyllav1.ScyllaCluster) string {
 	return fmt.Sprintf("%s-client", c.Name)
 }
 
-func CrossNamespaceServiceNameForCluster(c *scyllav1alpha1.ScyllaCluster) string {
+func CrossNamespaceServiceNameForCluster(c *scyllav1.ScyllaCluster) string {
 	return fmt.Sprintf("%s.%s.svc.cluster.local", HeadlessServiceNameForCluster(c), c.Namespace)
 }
 
-func ManagerClusterName(c *scyllav1alpha1.ScyllaCluster) string {
+func ManagerClusterName(c *scyllav1.ScyllaCluster) string {
 	return c.Namespace + "/" + c.Name
 }
 

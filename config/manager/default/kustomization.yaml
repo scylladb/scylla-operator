@@ -16,7 +16,7 @@ vars:
   objref:
     group: scylla.scylladb.com
     kind: ScyllaCluster
-    version: v1alpha1
+    version: v1
     name: cluster
   fieldref:
     fieldpath: metadata.name
@@ -24,7 +24,7 @@ vars:
   objref:
     kind: ScyllaCluster
     group: scylla.scylladb.com
-    version: v1alpha1
+    version: v1
     name: cluster
   fieldref:
     fieldpath: spec.datacenter.name
@@ -32,7 +32,7 @@ vars:
   objref:
     kind: ScyllaCluster
     group: scylla.scylladb.com
-    version: v1alpha1
+    version: v1
     name: cluster
   fieldref:
     fieldpath: spec.datacenter.racks[0].name
@@ -40,7 +40,7 @@ vars:
   objref:
     kind: ScyllaCluster
     group: scylla.scylladb.com
-    version: v1alpha1
+    version: v1
     name: cluster
   fieldref:
     fieldpath: metadata.namespace

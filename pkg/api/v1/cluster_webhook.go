@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package v1
 
 import (
 	"reflect"
@@ -39,8 +39,8 @@ func (r *ScyllaCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:verbs=create;update,path=/mutate-scylla-scylladb-com-v1alpha1-scyllacluster,mutating=true,failurePolicy=fail,groups=scylla.scylladb.com,resources=scyllaclusters,versions=v1alpha1,name=webhook.scylla.scylladb.com
-// +kubebuilder:webhook:verbs=create;update,path=/validate-scylla-scylladb-com-v1alpha1-scyllacluster,mutating=false,failurePolicy=fail,groups=scylla.scylladb.com,resources=scyllaclusters,versions=v1alpha1,name=webhook.scylla.scylladb.com
+// +kubebuilder:webhook:verbs=create;update,path=/mutate-scylla-scylladb-com-v1-scyllacluster,mutating=true,failurePolicy=fail,groups=scylla.scylladb.com,resources=scyllaclusters,versions=v1,name=webhook.scylla.scylladb.com
+// +kubebuilder:webhook:verbs=create;update,path=/validate-scylla-scylladb-com-v1-scyllacluster,mutating=false,failurePolicy=fail,groups=scylla.scylladb.com,resources=scyllaclusters,versions=v1,name=webhook.scylla.scylladb.com
 
 var _ webhook.Defaulter = &ScyllaCluster{}
 var _ webhook.Validator = &ScyllaCluster{}

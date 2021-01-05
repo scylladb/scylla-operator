@@ -9,7 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
@@ -21,15 +21,15 @@ import (
 const RackReplaceNodeAction = "rack-replace-node"
 
 type RackReplaceNode struct {
-	Rack    scyllav1alpha1.RackSpec
-	Cluster *scyllav1alpha1.ScyllaCluster
+	Rack    scyllav1.RackSpec
+	Cluster *scyllav1.ScyllaCluster
 	Logger  log.Logger
 }
 
 var _ Action = &RackReplaceNode{}
 
 // NewRackReplaceNodeAction returns action used for Scylla node replacement.
-func NewRackReplaceNodeAction(r scyllav1alpha1.RackSpec, c *scyllav1alpha1.ScyllaCluster, l log.Logger) *RackReplaceNode {
+func NewRackReplaceNodeAction(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, l log.Logger) *RackReplaceNode {
 	return &RackReplaceNode{
 		Rack:    r,
 		Cluster: c,

@@ -1,9 +1,9 @@
-package v1alpha1_test
+package v1_test
 
 import (
 	"testing"
 
-	"github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -24,25 +24,25 @@ func TestCheckValues(t *testing.T) {
 	sameName.Spec.Datacenter.Racks = append(sameName.Spec.Datacenter.Racks, sameName.Spec.Datacenter.Racks[0])
 
 	invalidIntensity := validCluster.DeepCopy()
-	invalidIntensity.Spec.Repairs = append(invalidIntensity.Spec.Repairs, v1alpha1.RepairTaskSpec{
+	invalidIntensity.Spec.Repairs = append(invalidIntensity.Spec.Repairs, v1.RepairTaskSpec{
 		Intensity: pointer.StringPtr("100Mib"),
 	})
 
 	nonUniqueManagerTaskNames := validCluster.DeepCopy()
-	nonUniqueManagerTaskNames.Spec.Backups = append(nonUniqueManagerTaskNames.Spec.Backups, v1alpha1.BackupTaskSpec{
-		SchedulerTaskSpec: v1alpha1.SchedulerTaskSpec{
+	nonUniqueManagerTaskNames.Spec.Backups = append(nonUniqueManagerTaskNames.Spec.Backups, v1.BackupTaskSpec{
+		SchedulerTaskSpec: v1.SchedulerTaskSpec{
 			Name: "task-name",
 		},
 	})
-	nonUniqueManagerTaskNames.Spec.Repairs = append(nonUniqueManagerTaskNames.Spec.Repairs, v1alpha1.RepairTaskSpec{
-		SchedulerTaskSpec: v1alpha1.SchedulerTaskSpec{
+	nonUniqueManagerTaskNames.Spec.Repairs = append(nonUniqueManagerTaskNames.Spec.Repairs, v1.RepairTaskSpec{
+		SchedulerTaskSpec: v1.SchedulerTaskSpec{
 			Name: "task-name",
 		},
 	})
 
 	tests := []struct {
 		name    string
-		obj     *v1alpha1.ScyllaCluster
+		obj     *v1.ScyllaCluster
 		allowed bool
 	}{
 		{
@@ -69,7 +69,7 @@ func TestCheckValues(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := v1alpha1.CheckValues(test.obj)
+			err := v1.CheckValues(test.obj)
 			if test.allowed {
 				require.NoError(t, err, "Wrong value returned from checkValues function. Message: '%s'", err)
 			} else {
@@ -82,8 +82,8 @@ func TestCheckValues(t *testing.T) {
 func TestCheckTransitions(t *testing.T) {
 	tests := []struct {
 		name    string
-		old     *v1alpha1.ScyllaCluster
-		new     *v1alpha1.ScyllaCluster
+		old     *v1.ScyllaCluster
+		new     *v1.ScyllaCluster
 		allowed bool
 	}{
 		{
@@ -151,7 +151,7 @@ func TestCheckTransitions(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := v1alpha1.CheckTransitions(test.old, test.new)
+			err := v1.CheckTransitions(test.old, test.new)
 			if test.allowed {
 				require.NoError(t, err, "Wrong value returned from checkTransitions function. Message: '%s'", err)
 			} else {
@@ -161,24 +161,24 @@ func TestCheckTransitions(t *testing.T) {
 	}
 }
 
-func placementChanged(c *v1alpha1.ScyllaCluster) *v1alpha1.ScyllaCluster {
-	c.Spec.Datacenter.Racks[0].Placement = &v1alpha1.PlacementSpec{}
+func placementChanged(c *v1.ScyllaCluster) *v1.ScyllaCluster {
+	c.Spec.Datacenter.Racks[0].Placement = &v1.PlacementSpec{}
 	return c
 }
 
-func resourceChanged(c *v1alpha1.ScyllaCluster) *v1alpha1.ScyllaCluster {
+func resourceChanged(c *v1.ScyllaCluster) *v1.ScyllaCluster {
 	c.Spec.Datacenter.Racks[0].Resources.Requests = map[corev1.ResourceName]resource.Quantity{
 		corev1.ResourceCPU: *resource.NewMilliQuantity(1000, resource.DecimalSI),
 	}
 	return c
 }
 
-func rackDeleted(c *v1alpha1.ScyllaCluster) *v1alpha1.ScyllaCluster {
+func rackDeleted(c *v1.ScyllaCluster) *v1.ScyllaCluster {
 	c.Spec.Datacenter.Racks = nil
 	return c
 }
 
-func storageChanged(c *v1alpha1.ScyllaCluster) *v1alpha1.ScyllaCluster {
+func storageChanged(c *v1.ScyllaCluster) *v1.ScyllaCluster {
 	c.Spec.Datacenter.Racks[0].Storage.Capacity = "15Gi"
 	return c
 }

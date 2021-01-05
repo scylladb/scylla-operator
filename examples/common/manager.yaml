@@ -248,7 +248,7 @@ spec:
           name: scylla-manager-manager-config-2tfggm9842
         name: scylla-manager-config-volume
 ---
-apiVersion: scylla.scylladb.com/v1alpha1
+apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
 metadata:
   name: scylla-manager-cluster

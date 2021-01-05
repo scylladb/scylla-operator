@@ -7,7 +7,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pkg/errors"
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
@@ -17,9 +17,9 @@ import (
 // UpdateStatus updates the status of the given Scylla Cluster.
 // It doesn't post the result to the API Server yet.
 // That will be done at the end of the sync loop.
-func (cc *ClusterReconciler) updateStatus(ctx context.Context, cluster *scyllav1alpha1.ScyllaCluster) error {
+func (cc *ClusterReconciler) updateStatus(ctx context.Context, cluster *scyllav1.ScyllaCluster) error {
 	if cluster.Status.Racks == nil {
-		cluster.Status.Racks = map[string]scyllav1alpha1.RackStatus{}
+		cluster.Status.Racks = map[string]scyllav1.RackStatus{}
 	}
 
 	sts := &appsv1.StatefulSet{}
@@ -45,7 +45,7 @@ func (cc *ClusterReconciler) updateStatus(ctx context.Context, cluster *scyllav1
 
 	// Update each rack status
 	for _, rack := range cluster.Spec.Datacenter.Racks {
-		rackStatus := scyllav1alpha1.RackStatus{
+		rackStatus := scyllav1.RackStatus{
 			ReplaceAddressFirstBoot: make(map[string]string),
 		}
 		// ReplaceAddress may keep address of non-existing service.
@@ -103,7 +103,7 @@ func (cc *ClusterReconciler) updateStatus(ctx context.Context, cluster *scyllav1
 		actualRackVersion := rackStatus.Version
 		if desiredRackVersion != actualRackVersion {
 			cc.Logger.Info(ctx, "Rack should be upgraded", "actual_version", actualRackVersion, "desired_version", desiredRackVersion, "rack", rack.Name)
-			scyllav1alpha1.SetRackCondition(&rackStatus, scyllav1alpha1.RackConditionTypeUpgrading)
+			scyllav1.SetRackCondition(&rackStatus, scyllav1.RackConditionTypeUpgrading)
 		}
 
 		// Update Scaling Down condition
@@ -116,7 +116,7 @@ func (cc *ClusterReconciler) updateStatus(ctx context.Context, cluster *scyllav1
 			// Check if there is a decommission in progress
 			if _, ok := svc.Labels[naming.DecommissionLabel]; ok {
 				// Add MemberLeaving Condition to rack status
-				scyllav1alpha1.SetRackCondition(&rackStatus, scyllav1alpha1.RackConditionTypeMemberLeaving)
+				scyllav1.SetRackCondition(&rackStatus, scyllav1.RackConditionTypeMemberLeaving)
 				// Sanity check. Only the last member should be decommissioning.
 				index, err := naming.IndexFromName(svc.Name)
 				if err != nil {
@@ -134,7 +134,7 @@ func (cc *ClusterReconciler) updateStatus(ctx context.Context, cluster *scyllav1
 					rackStatus.ReplaceAddressFirstBoot[svc.Name] = svc.Spec.ClusterIP
 				}
 				cc.Logger.Info(ctx, "Rack member is being replaced", "rack", rack.Name, "member", svc.Name)
-				scyllav1alpha1.SetRackCondition(&rackStatus, scyllav1alpha1.RackConditionTypeMemberReplacing)
+				scyllav1.SetRackCondition(&rackStatus, scyllav1.RackConditionTypeMemberReplacing)
 			}
 		}
 

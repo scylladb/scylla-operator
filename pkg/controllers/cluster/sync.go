@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/actions"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -24,7 +24,7 @@ const (
 
 // sync attempts to sync the given Scylla Cluster.
 // NOTE: the Cluster Object is a DeepCopy. Modify at will.
-func (cc *ClusterReconciler) sync(c *scyllav1alpha1.ScyllaCluster) error {
+func (cc *ClusterReconciler) sync(c *scyllav1.ScyllaCluster) error {
 	ctx := log.WithNewTraceID(context.Background())
 	logger := cc.Logger.With("cluster", c.Namespace+"/"+c.Name, "resourceVersion", c.ResourceVersion)
 	logger.Info(ctx, "Starting reconciliation...")
@@ -80,7 +80,7 @@ func (cc *ClusterReconciler) sync(c *scyllav1alpha1.ScyllaCluster) error {
 	return nil
 }
 
-func (cc *ClusterReconciler) nextAction(ctx context.Context, cluster *scyllav1alpha1.ScyllaCluster) actions.Action {
+func (cc *ClusterReconciler) nextAction(ctx context.Context, cluster *scyllav1.ScyllaCluster) actions.Action {
 	logger := cc.Logger.With("cluster", cluster.Namespace+"/"+cluster.Name, "resourceVersion", cluster.ResourceVersion)
 
 	// Check if any rack isn't created
@@ -99,13 +99,13 @@ func (cc *ClusterReconciler) nextAction(ctx context.Context, cluster *scyllav1al
 	// Check if there is a scale-down in progress
 	for _, rack := range cluster.Spec.Datacenter.Racks {
 		rackStatus := cluster.Status.Racks[rack.Name]
-		if scyllav1alpha1.IsRackConditionTrue(&rackStatus, scyllav1alpha1.RackConditionTypeMemberReplacing) {
+		if scyllav1.IsRackConditionTrue(&rackStatus, scyllav1.RackConditionTypeMemberReplacing) {
 			// Perform node replace
 			logger.Info(ctx, "Next Action: Node replace rack", "name", rack.Name)
 			return actions.NewRackReplaceNodeAction(rack, cluster, logger.Named("replace"))
 		}
 
-		if scyllav1alpha1.IsRackConditionTrue(&rackStatus, scyllav1alpha1.RackConditionTypeMemberLeaving) {
+		if scyllav1.IsRackConditionTrue(&rackStatus, scyllav1.RackConditionTypeMemberLeaving) {
 			// Resume scale down
 			logger.Info(ctx, "Next Action: Scale-Down rack", "name", rack.Name)
 			return actions.NewRackScaleDownAction(rack, cluster)
@@ -116,7 +116,7 @@ func (cc *ClusterReconciler) nextAction(ctx context.Context, cluster *scyllav1al
 	for _, rack := range cluster.Spec.Datacenter.Racks {
 		rackStatus := cluster.Status.Racks[rack.Name]
 		if cluster.Status.Upgrade != nil ||
-			scyllav1alpha1.IsRackConditionTrue(&rackStatus, scyllav1alpha1.RackConditionTypeUpgrading) {
+			scyllav1.IsRackConditionTrue(&rackStatus, scyllav1.RackConditionTypeUpgrading) {
 			return actions.NewClusterVersionUpgradeAction(cluster, logger)
 		}
 	}

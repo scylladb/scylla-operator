@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/scylladb/go-log"
-	"github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/cmd/options"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster"
 	"github.com/spf13/cobra"
@@ -55,7 +55,7 @@ func newOperatorCmd(ctx context.Context, logger log.Logger, level zap.AtomicLeve
 
 			// Enable webhook if requested
 			if opts.EnableAdmissionWebhook {
-				if err = (&v1alpha1.ScyllaCluster{}).SetupWebhookWithManager(mgr); err != nil {
+				if err = (&v1.ScyllaCluster{}).SetupWebhookWithManager(mgr); err != nil {
 					logger.Fatal(ctx, "unable to add web hook to manager", "error", err)
 				}
 			}

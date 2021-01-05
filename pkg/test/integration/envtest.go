@@ -17,7 +17,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	utilyaml "github.com/scylladb/scylla-operator/pkg/util/yaml"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,7 +43,7 @@ func rootPath() string {
 
 func init() {
 	// Register the scheme.
-	utilruntime.Must(scyllav1alpha1.AddToScheme(scheme.Scheme))
+	utilruntime.Must(scyllav1.AddToScheme(scheme.Scheme))
 
 	root := rootPath()
 	env = &envtest.Environment{
@@ -118,7 +118,7 @@ func NewTestEnvironment(logger log.Logger, options ...EnvOption) (*TestEnvironme
 		return nil, errors.Wrap(err, "start testenv manager")
 	}
 
-	if err := (&scyllav1alpha1.ScyllaCluster{}).SetupWebhookWithManager(mgr); err != nil {
+	if err := (&scyllav1.ScyllaCluster{}).SetupWebhookWithManager(mgr); err != nil {
 		return nil, errors.Wrap(err, "create webhook")
 	}
 

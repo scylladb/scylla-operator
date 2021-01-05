@@ -12,7 +12,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/magiconair/properties"
 	"github.com/scylladb/go-log"
-	"github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/cmd/options"
 	"github.com/scylladb/scylla-operator/pkg/controllers/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -274,7 +274,7 @@ func TestReplaceNodeLabelInMemberService(t *testing.T) {
 	logger, _ := log.NewProduction(log.Config{
 		Level: atom,
 	})
-	if err := v1alpha1.AddToScheme(scheme.Scheme); err != nil {
+	if err := scyllav1.AddToScheme(scheme.Scheme); err != nil {
 		t.Fatal(err)
 	}
 
@@ -298,7 +298,7 @@ func TestReplaceNodeLabelInMemberService(t *testing.T) {
 			},
 		},
 	}
-	fakeCluster := &v1alpha1.ScyllaCluster{
+	fakeCluster := &scyllav1.ScyllaCluster{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      m.Cluster,
 			Namespace: m.Namespace,

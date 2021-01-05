@@ -8,7 +8,7 @@ This page will explain all the available configuration options on the Scylla CRD
 ## Sample
 
 ```yaml
-apiVersion: scylla.scylladb.com/v1alpha1
+apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
 metadata:
   name: simple-cluster

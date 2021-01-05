@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/scylladb/go-log"
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/v1alpha1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -46,11 +46,11 @@ func WithPodCondition(condition corev1.PodCondition) func(pod *corev1.Pod) {
 
 type PodOption func(pod *corev1.Pod)
 
-func (s *StatefulSetOperatorStub) CreatePods(ctx context.Context, cluster *scyllav1alpha1.ScyllaCluster, options ...PodOption) error {
+func (s *StatefulSetOperatorStub) CreatePods(ctx context.Context, cluster *scyllav1.ScyllaCluster, options ...PodOption) error {
 	return s.CreatePodsPartition(ctx, cluster, 0, options...)
 }
 
-func (s *StatefulSetOperatorStub) CreatePodsPartition(ctx context.Context, cluster *scyllav1alpha1.ScyllaCluster, partition int, options ...PodOption) error {
+func (s *StatefulSetOperatorStub) CreatePodsPartition(ctx context.Context, cluster *scyllav1.ScyllaCluster, partition int, options ...PodOption) error {
 	for _, rack := range cluster.Spec.Datacenter.Racks {
 		sts := &appsv1.StatefulSet{}
 
@@ -140,7 +140,7 @@ func WithPVNodeAffinity(matchExpressions []corev1.NodeSelectorRequirement) func(
 
 type PVOption func(pv *corev1.PersistentVolume)
 
-func (s *StatefulSetOperatorStub) CreatePVCs(ctx context.Context, cluster *scyllav1alpha1.ScyllaCluster, pvOptions ...PVOption) error {
+func (s *StatefulSetOperatorStub) CreatePVCs(ctx context.Context, cluster *scyllav1.ScyllaCluster, pvOptions ...PVOption) error {
 	for _, rack := range cluster.Spec.Datacenter.Racks {
 		sts := &appsv1.StatefulSet{}
 
@@ -213,7 +213,7 @@ func (s *StatefulSetOperatorStub) CreatePVCs(ctx context.Context, cluster *scyll
 	return nil
 }
 
-func (s *StatefulSetOperatorStub) SyncStatus(ctx context.Context, cluster *scyllav1alpha1.ScyllaCluster) error {
+func (s *StatefulSetOperatorStub) SyncStatus(ctx context.Context, cluster *scyllav1.ScyllaCluster) error {
 	for _, rack := range cluster.Spec.Datacenter.Racks {
 		sts := &appsv1.StatefulSet{}
 

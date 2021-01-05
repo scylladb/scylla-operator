@@ -1720,9 +1720,9 @@ spec:
               type: object
           type: object
       type: object
-  version: v1alpha1
+  version: v1
   versions:
-  - name: v1alpha1
+  - name: v1
     served: true
     storage: true
 status:
@@ -1745,14 +1745,14 @@ webhooks:
     service:
       name: scylla-operator-webhook-service
       namespace: scylla-operator-system
-      path: /mutate-scylla-scylladb-com-v1alpha1-scyllacluster
+      path: /mutate-scylla-scylladb-com-v1-scyllacluster
   failurePolicy: Fail
   name: webhook.scylla.scylladb.com
   rules:
   - apiGroups:
     - scylla.scylladb.com
     apiVersions:
-    - v1alpha1
+    - v1
     operations:
     - CREATE
     - UPDATE
@@ -1985,14 +1985,14 @@ webhooks:
     service:
       name: scylla-operator-webhook-service
       namespace: scylla-operator-system
-      path: /validate-scylla-scylladb-com-v1alpha1-scyllacluster
+      path: /validate-scylla-scylladb-com-v1-scyllacluster
   failurePolicy: Fail
   name: webhook.scylla.scylladb.com
   rules:
   - apiGroups:
     - scylla.scylladb.com
     apiVersions:
-    - v1alpha1
+    - v1
     operations:
     - CREATE
     - UPDATE

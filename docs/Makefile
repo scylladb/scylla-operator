@@ -45,7 +45,7 @@ singlehtml: setup
 	@echo "Build finished. The HTML page is in $(BUILDDIR)/singlehtml."
 
 .PHONY: epub
-epub: 	setup
+epub: setup
 	$(SPHINXBUILD) -b epub $(ALLSPHINXOPTS) $(BUILDDIR)/epub
 	@echo
 	@echo "Build finished. The epub file is in $(BUILDDIR)/epub."
@@ -66,11 +66,13 @@ dummy: 	setup
 linkcheck: setup
 	$(SPHINXBUILD) -b linkcheck $(SOURCEDIR) $(BUILDDIR)/linkcheck
 
-GIT_BRANCH = $(shell git branch --show-current)
-
 .PHONY: multiversion
 multiversion: setup
 	@mkdir -p $(HOME)/.cache/pypoetry/virtualenvs
-	$(POETRY) run sphinx-multiversion -D smv_branch_whitelist=$(GIT_BRANCH) -D smv_outputdir_format=$(GIT_BRANCH:branch-%=%) $(SOURCEDIR) $(BUILDDIR)/dirhtml
+	$(POETRY) run sphinx-multiversion $(SOURCEDIR) $(BUILDDIR)/dirhtml
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/dirhtml."
+
+.PHONY: multiversionpreview
+multiversionpreview: multiversion
+	$(POETRY) run python3 -m http.server 5500 --directory $(BUILDDIR)/dirhtml

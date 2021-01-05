@@ -285,13 +285,18 @@ After a restart the operator will use the security token when it interacts with 
     ```console
     kubectl create namespace monitoring
     ```
-2. Install Prometheus
+1. Add Prometheus charts repository
+   ```console
+   helm repo add stable  https://charts.helm.sh/stable
+   helm repo update
+   ```
+1. Install Prometheus
     ```console
     helm upgrade --install scylla-prom --namespace monitoring stable/prometheus -f examples/common/prometheus/values.yaml
     ```
     If you want to tweak the prometheus properties, for example it's assigned memory, you can override it by adding a command line argument like this: `--set server.resources.limits.memory=4Gi`
 
-3. Install Grafana
+1. Install Grafana
     First you need to prepare the dashboards to make them available in Grafana. 
     You can do this by running the following command in the `examples` directory:
     ```console

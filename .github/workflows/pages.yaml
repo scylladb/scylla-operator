@@ -1,13 +1,11 @@
 name: Release docs
 
 on:
-  workflow_dispatch:
   push:
     branches:
-      - master
-      - 'branch-**'
-    paths:
-      - 'docs/**'
+    - master
+    tags:       
+    - '**'
 
 jobs:
   release:

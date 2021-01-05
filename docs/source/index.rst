@@ -41,7 +41,7 @@ Currently it supports:
 **Choose a topic to begin**:
 
 * :doc:`Deploying Scylla on a Kubernetes Cluster <generic>`
-* :doc:`Deploying Scylla on EKS <eks>`
+* :doc:`Deploying Scylla on EKS (experimental) <eks>`
 * :doc:`Deploying Scylla on GKE <gke>`
 * :doc:`Deploying Scylla Manager on a Kubernetes Cluster <manager>`
 * :doc:`Node operations <node_operations>`

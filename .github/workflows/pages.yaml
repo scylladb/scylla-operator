@@ -4,9 +4,8 @@ on:
   push:
     branches:
     - master
-    tags:       
-    - '**'
-
+    paths:
+    - 'docs/**'
 jobs:
   release:
     name: Release docs

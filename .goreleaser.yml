@@ -11,17 +11,12 @@ builds:
     goos:
       - linux
     goarch:
-        - amd64
+      - amd64
 
 dockers:
-    - image_templates:
-        - 'scylladb/scylla-operator:{{ .Tag }}'
-      binaries:
-          - scylla-operator
-      skip_push: auto
-      dockerfile: Dockerfile
-      extra_files:
-        - go.mod
-        - go.sum
-        - pkg
-        - vendor
+  - image_templates:
+      - 'scylladb/scylla-operator:{{ .Tag }}'
+    binaries:
+      - scylla-operator
+    skip_push: auto
+    dockerfile: Dockerfile

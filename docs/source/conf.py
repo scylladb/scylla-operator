@@ -152,7 +152,7 @@ redirects_file = "_utils/redirections.yaml"
 
 # -- Options for multiversion extension ----------------------------------
 # Whitelist pattern for tags (set to None to ignore all tags)
-TAGS = []
+TAGS = ['v0.3.0', 'v1.0.0$']
 smv_tag_whitelist = multiversion_regex_builder(TAGS)
 # Whitelist pattern for branches (set to None to ignore all branches)
 BRANCHES = ['master']

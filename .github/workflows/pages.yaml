@@ -12,7 +12,7 @@ jobs:
     name: Release docs
     runs-on: ubuntu-latest
     env:
-      LATEST_VERSION: v1.0.0
+      LATEST_VERSION: v1.0
     steps:
       - name: Checkout
         uses: actions/checkout@v2

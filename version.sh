@@ -19,7 +19,7 @@
 set -euo pipefail
 
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
-if [[ $BRANCH == branch-* ]]; then
+if [[ $BRANCH =~ ^v[0-9]+\.[0-9]+$ ]]; then
   echo $(git describe --tags --always --abbrev=0)
   exit 0
 fi

@@ -1,6 +1,7 @@
 name: Release docs
 
 on:
+  workflow_dispatch:
   push:
     branches:
     - master
@@ -12,7 +13,7 @@ jobs:
     name: Release docs
     runs-on: ubuntu-latest
     env:
-      LATEST_VERSION: master
+      LATEST_VERSION: v1.0.0
     steps:
       - name: Checkout
         uses: actions/checkout@v2

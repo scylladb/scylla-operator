@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: scylladb/scylla-operator
-  newTag: v1.0.0
+  newTag: nightly

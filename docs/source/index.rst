@@ -11,6 +11,7 @@ Scylla Operator Documentation
    gke
    manager
    node_operations
+   upgrade
    scylla_cluster_crd
    contributing
 
@@ -45,6 +46,7 @@ Currently it supports:
 * :doc:`Deploying Scylla on GKE <gke>`
 * :doc:`Deploying Scylla Manager on a Kubernetes Cluster <manager>`
 * :doc:`Node operations <node_operations>`
+* :doc:`Upgrade procedures <upgrade>`
 * :doc:`Scylla Cluster Custom Resource Definition (CRD) <scylla_cluster_crd>`
 * :doc:`Contributing to the Scylla Operator Project <contributing>`
 

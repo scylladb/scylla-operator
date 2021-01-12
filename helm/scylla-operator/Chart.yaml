@@ -1,0 +1,17 @@
+apiVersion: v2
+appVersion: v1.0.0
+name: scylla-operator
+version: 1.0.0
+description: Scylla Operator is a Kubernetes Operator for managing and automating tasks related to managing a Scylla clusters.
+keywords:
+  - scylla
+  - scylladb
+  - scylla-operator
+  - operator
+home: https://www.scylladb.com/
+sources:
+  - https://github.com/scylladb/scylla-operator
+maintainers:
+  - name: Maciej Zimnoch
+    email: maciej@scylladb.com
+icon: https://github.com/scylladb/scylla-operator/raw/master/logo.png

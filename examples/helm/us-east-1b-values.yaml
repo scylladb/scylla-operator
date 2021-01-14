@@ -1,0 +1,38 @@
+scyllaImage:
+  tag: 4.3.0
+agentImage:
+  tag: 2.2.1
+
+cpuset: true
+hostNetworking: true
+
+sysctls:
+- "fs.aio-max-nr=2097152"
+
+datacenter: us-east1-b
+racks:
+- name: us-east1
+  members: 2
+  storage:
+    capacity: 100G
+  resources:
+    limits:
+      cpu: 4
+      memory: 16G
+    requests:
+      cpu: 4
+      memory: 16G
+  placement:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+            - key: failure-domain.beta.kubernetes.io/zone
+              operator: In
+              values:
+              - us-east1-b
+    tolerations:
+      - key: role
+        operator: Equal
+        value: scylla-clusters
+        effect: NoSchedule

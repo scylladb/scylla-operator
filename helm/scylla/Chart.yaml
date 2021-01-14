@@ -1,0 +1,18 @@
+apiVersion: v2
+appVersion: v1.0.0
+name: scylla
+version: 1.0.0
+description: Scylla is a close-to-the-hardware rewrite of Cassandra in C++. It is a drop-in replacement for Cassandra and uses the same interfaces.
+keywords:
+  - scylla
+  - scylladb
+  - scylla-operator
+  - operator
+home: https://www.scylladb.com/
+sources:
+  - https://github.com/scylladb/scylla-operator
+  - https://github.com/scylladb/scylla
+maintainers:
+  - name: Maciej Zimnoch
+    email: maciej@scylladb.com
+icon: https://www.scylladb.com/wp-content/uploads/brand-logo-vert@2x.png

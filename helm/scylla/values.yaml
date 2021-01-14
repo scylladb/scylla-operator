@@ -1,0 +1,67 @@
+# Specifies under which namespace Scylla will be installed
+namespace: scylla
+
+# Allows to override Scylla name showing up in recommended k8s labels
+nameOverride: ""
+# Allows to override names used in Scylla k8s objects.
+fullnameOverride: ""
+
+# Allows to customize Scylla image
+scyllaImage:
+  repository: scylladb/scylla
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: 4.3.0
+# Allows to customize Scylla image
+agentImage:
+  repository: scylladb/scylla-manager-agent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: 2.2.1
+
+alternator:
+  # Allows to enable Alternator (DynamoDB compatible API) frontend
+  enabled: false
+  port: 8000
+  writeIsolation: "always"
+
+# Whether developer mode should be enabled.
+developerMode: false
+# cpuset determines if the cluster will use cpu-pinning for max performance.
+cpuset: false
+# Whether to enable host networking in Scylla Pod
+hostNetworking: false
+# Whether Scylla Operator should perform automatic cleanup of orphaned Pods
+automaticOrphanedNodeCleanup: false
+# Sysctl properties to be applied during initialization given as a list of key=value pairs
+sysctls: []
+
+# Scylla Manager Backups task definition
+backups: []
+# Scylla Manager Repair task definition
+repairs: []
+
+# Name of datacenter
+datacenter: "us-east-1"
+# List of racks
+racks:
+  - name: "us-east-1a"
+    # Name of additional scylla config configMap
+    scyllaConfig: "scylla-config"
+    # Name of additional scylla manager agent config stored as secret
+    scyllaAgentConfig: "scylla-agent-config"
+    # Number of rack members (nodes)
+    members: 3
+    # Storage definition
+    storage:
+      capacity: 5Gi
+    # Scylla container resource definition
+    resources:
+       limits:
+         cpu: 1
+         memory: 4Gi
+       requests:
+         cpu: 1
+         memory: 4Gi
+
+# Whether to create Prometheus ServiceMonitor
+serviceMonitor:
+  create: false

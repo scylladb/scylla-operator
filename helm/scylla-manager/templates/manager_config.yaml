@@ -1,0 +1,17 @@
+apiVersion: v1
+data:
+  scylla-manager.yaml: |-
+    http: :5080
+    logger:
+      level: {{ .Values.logLevel }}
+    database:
+      hosts:
+        {{- range $rack := .Values.scylla.racks }}
+        {{- range $idx, $e := until ($rack.members | int) }}
+        - {{ printf "%s-%s-%s-%s-%d.%s.svc" $.Release.Name (default "scylla" $.Values.scylla.fullnameOverride) $.Values.scylla.datacenter $rack.name $idx $.Release.Namespace }}
+        {{- end }}
+        {{- end }}
+kind: ConfigMap
+metadata:
+  name: scylla-manager-manager-config-2tfggm9842
+  namespace: {{ .Release.Namespace }}

@@ -4,7 +4,10 @@ This pages describes Scylla Operator upgrade procedures.
 
 ## `v0.3.0` -> `v1.0.0`
 
-`v0.3.0` used a very common name as a CRD kind. In `v1.0.0` this issue was solved by using less common kind which is easier to disambiguate.
+***Note:*** There's an experimental migration procedure available [here](migration.md).
+
+`v0.3.0` used a very common name as a CRD kind (`Cluster`). In `v1.0.0` this issue was solved by using less common
+kind which is easier to disambiguate. (`ScyllaCluster`).
 This change is backward incompatible, so Scylla cluster must be turned off and recreated from scratch.
 In case you need to preserve your data, refer to backup and restore guide.
 

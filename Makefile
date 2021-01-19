@@ -51,6 +51,7 @@ deploy: manifests cert-manager
 # Generate manifests e.g. CRD, RBAC etc.
 manifests:
 	cd config/operator/operator && kustomize edit set image controller=${IMG}
+	cd config/manager/manager && kustomize edit set image operator=${IMG}
 
 	controller-gen $(CRD_OPTIONS) paths="$(PKG)" output:crd:dir=config/operator/crd/bases \
 	rbac:roleName=manager-role output:rbac:artifacts:config=config/operator/rbac \

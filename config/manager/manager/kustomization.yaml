@@ -9,13 +9,12 @@ images:
   newTag: 2.2.0
 - name: operator
   newName: scylladb/scylla-operator
-  newTag: v0.3.0
+  newTag: nightly
 
 configMapGenerator:
-  - name: manager-config
-    files:
-      - scylla-manager.yaml
+- files:
+  - scylla-manager.yaml
+  name: manager-config
 
 configurations:
-  - varconfig.yaml
-
+- varconfig.yaml

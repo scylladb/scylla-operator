@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/scylladb/go-log"
 	"github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/cmd/options"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/spf13/cobra"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	"go.uber.org/zap"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -36,11 +39,20 @@ func newOperatorCmd(ctx context.Context, logger log.Logger, level zap.AtomicLeve
 			cfg := ctrl.GetConfigOrDie()
 			// Create a new Cmd to provide shared dependencies and start components
 			mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-				Scheme:             scheme,
-				MetricsBindAddress: fmt.Sprintf(":%d", naming.MetricsPort),
+				Scheme:                 scheme,
+				HealthProbeBindAddress: fmt.Sprintf(":%d", naming.ProbePort),
+				MetricsBindAddress:     fmt.Sprintf(":%d", naming.MetricsPort),
 			})
 			if err != nil {
 				logger.Fatal(ctx, "unable to create manager", "error", err)
+			}
+
+			if err := mgr.AddHealthzCheck("ping", healthz.Ping); err != nil {
+				logger.Fatal(ctx, "unable to set up liveness probe", "error", err)
+			}
+
+			if err := mgr.AddReadyzCheck("ping", healthz.Ping); err != nil {
+				logger.Fatal(ctx, "unable to set up readiness probe", "error", err)
 			}
 
 			logger.Info(ctx, "Registering Components.")

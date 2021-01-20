@@ -36,7 +36,8 @@ func newOperatorCmd(ctx context.Context, logger log.Logger, level zap.AtomicLeve
 			cfg := ctrl.GetConfigOrDie()
 			// Create a new Cmd to provide shared dependencies and start components
 			mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-				Scheme: scheme,
+				Scheme:             scheme,
+				MetricsBindAddress: fmt.Sprintf(":%d", naming.MetricsPort),
 			})
 			if err != nil {
 				logger.Fatal(ctx, "unable to create manager", "error", err)

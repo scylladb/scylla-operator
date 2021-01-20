@@ -83,4 +83,5 @@ const (
 	ReadinessProbePath = "/readyz"
 	LivenessProbePath  = "/healthz"
 	ProbePort          = 8080
+	MetricsPort        = 8081
 )

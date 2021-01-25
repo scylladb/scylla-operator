@@ -37,7 +37,7 @@ on #kubernetes channel.
     kubectl apply -f examples/common/cert-manager.yaml
    ```
     If your `cert-manager` was installed in another way, follow official instructions on `cert-manager` website.
-1. `examples/common/operator.yaml` file contains multiple resources. Extract **only** `ClusterResourceDefinition` to separate file.
+1. `examples/common/operator.yaml` file contains multiple resources. Extract **only** `CustomResourceDefinition` to separate file.
 1. Install v1.0.0 CRD definition from file created in the previous step:
     ```
     kubectl apply -f examples/common/crd.yaml

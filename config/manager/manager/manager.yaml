@@ -59,6 +59,11 @@ spec:
     - port: 80
       targetPort: 5080
       protocol: TCP
+      name: api
+    - port: 5090
+      targetPort: 5090
+      protocol: TCP
+      name: metrics
   selector:
     app: scylla-manager
 ---

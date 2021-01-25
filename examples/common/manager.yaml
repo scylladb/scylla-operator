@@ -149,9 +149,14 @@ metadata:
   namespace: scylla-manager-system
 spec:
   ports:
-  - port: 80
+  - name: api
+    port: 80
     protocol: TCP
     targetPort: 5080
+  - name: metrics
+    port: 5090
+    protocol: TCP
+    targetPort: 5090
   selector:
     app: scylla-manager
 ---

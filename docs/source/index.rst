@@ -10,6 +10,7 @@ Scylla Operator Documentation
    eks
    gke
    manager
+   monitoring
    node_operations
    upgrade
    scylla_cluster_crd
@@ -45,6 +46,7 @@ Currently it supports:
 * :doc:`Deploying Scylla on EKS (experimental) <eks>`
 * :doc:`Deploying Scylla on GKE <gke>`
 * :doc:`Deploying Scylla Manager on a Kubernetes Cluster <manager>`
+* :doc:`Setting up Monitoring using Prometheus and Grafana <monitoring>`
 * :doc:`Node operations <node_operations>`
 * :doc:`Upgrade procedures <upgrade>`
 * :doc:`Scylla Cluster Custom Resource Definition (CRD) <scylla_cluster_crd>`

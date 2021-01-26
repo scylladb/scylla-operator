@@ -239,6 +239,80 @@ const (
 	FinishUpgrade          fsm.State = "finish_upgrade"
 )
 
+func (a *ClusterVersionUpgrade) fsm() *fsm.StateMachine {
+	state := BeginUpgrade
+	if a.Cluster.Status.Upgrade != nil {
+		state = fsm.State(a.Cluster.Status.Upgrade.State)
+	}
+
+	type eventState struct {
+		Event fsm.Event
+		State fsm.State
+	}
+	addTransition := func(st fsm.StateTransitions, s fsm.State, a fsm.Action, ess ...eventState) {
+		ev := map[fsm.Event]fsm.State{}
+		for _, es := range ess {
+			ev[es.Event] = es.State
+		}
+		st[s] = fsm.Transition{
+			Action: a,
+			Events: ev,
+		}
+	}
+
+	st := fsm.StateTransitions{}
+	addTransition(st, BeginUpgrade, a.beginUpgrade, []eventState{
+		{ActionSuccess, CheckSchemaAgreement},
+	}...)
+	addTransition(st, CheckSchemaAgreement, a.checkSchemaAgreement, []eventState{
+		{ActionSuccess, CreateSystemBackup},
+	}...)
+	addTransition(st, CreateSystemBackup, a.createSystemBackup, []eventState{
+		{ActionSuccess, FindNextRack},
+	}...)
+	addTransition(st, FindNextRack, a.findNextRack, []eventState{
+		{ActionSuccess, UpgradeImageInPodSpec},
+		{AllRacksUpgraded, ClearSystemBackup},
+	}...)
+	addTransition(st, UpgradeImageInPodSpec, a.updateRackSpec, []eventState{
+		{ActionSuccess, FindNextNode},
+	}...)
+	addTransition(st, RestoreUpgradeStrategy, a.restoreUpgradeStrategy, []eventState{
+		{ActionSuccess, FindNextRack},
+	}...)
+	addTransition(st, FindNextNode, a.findNextNode, []eventState{
+		{ActionSuccess, EnableMaintenanceMode},
+		{AllNodesUpgraded, RestoreUpgradeStrategy},
+	}...)
+	addTransition(st, EnableMaintenanceMode, a.enableMaintenanceMode, []eventState{
+		{ActionSuccess, DrainNode},
+	}...)
+	addTransition(st, DrainNode, a.drainNode, []eventState{
+		{ActionSuccess, BackupData},
+	}...)
+	addTransition(st, BackupData, a.createDataBackup, []eventState{
+		{ActionSuccess, DisableMaintenanceMode},
+	}...)
+	addTransition(st, DisableMaintenanceMode, a.disableMaintenanceMode, []eventState{
+		{ActionSuccess, DeletePod},
+	}...)
+	addTransition(st, DeletePod, a.deletePod, []eventState{
+		{ActionSuccess, ValidateUpgrade},
+	}...)
+	addTransition(st, ValidateUpgrade, a.validateUpgrade, []eventState{
+		{ActionSuccess, ClearDataBackup},
+	}...)
+	addTransition(st, ClearDataBackup, a.clearDataBackup, []eventState{
+		{ActionSuccess, FindNextNode},
+	}...)
+	addTransition(st, ClearSystemBackup, a.clearSystemBackup, []eventState{
+		{ActionSuccess, FinishUpgrade},
+	}...)
+	addTransition(st, FinishUpgrade, a.finishUpgrade)
+
+	return fsm.New(state, st, a.onStateTransition)
+}
+
 func snapshotTag(prefix string, t time.Time) string {
 	return fmt.Sprintf("so_%s_%sUTC", prefix, t.UTC().Format("20060102150405"))
 }
@@ -853,108 +927,4 @@ func (a *ClusterVersionUpgrade) rackHosts(racks []scyllav1.RackSpec) []string {
 		}
 	}
 	return hosts
-}
-
-func (a *ClusterVersionUpgrade) fsm() *fsm.StateMachine {
-	state := BeginUpgrade
-	if a.Cluster.Status.Upgrade != nil {
-		state = fsm.State(a.Cluster.Status.Upgrade.State)
-	}
-
-	stateTransitions := fsm.StateTransitions{
-		BeginUpgrade: {
-			Action: a.beginUpgrade,
-			Events: map[fsm.Event]fsm.State{
-				ActionSuccess: CheckSchemaAgreement,
-			}},
-		CheckSchemaAgreement: {
-			Action: a.checkSchemaAgreement,
-			Events: map[fsm.Event]fsm.State{
-				ActionSuccess: CreateSystemBackup,
-			}},
-		CreateSystemBackup: {
-			Action: a.createSystemBackup,
-			Events: map[fsm.Event]fsm.State{
-				ActionSuccess: FindNextRack,
-			}},
-		FindNextRack: {
-			Action: a.findNextRack,
-			Events: map[fsm.Event]fsm.State{
-				ActionSuccess:    UpgradeImageInPodSpec,
-				AllRacksUpgraded: ClearSystemBackup,
-			},
-		},
-		UpgradeImageInPodSpec: {
-			Action: a.updateRackSpec,
-			Events: map[fsm.Event]fsm.State{
-				ActionSuccess: FindNextNode,
-			},
-		},
-		RestoreUpgradeStrategy: {
-			Action: a.restoreUpgradeStrategy,
-			Events: map[fsm.Event]fsm.State{
-				ActionSuccess: FindNextRack,
-			},
-		},
-		FindNextNode: {
-			Action: a.findNextNode,
-			Events: map[fsm.Event]fsm.State{
-				ActionSuccess:    EnableMaintenanceMode,
-				AllNodesUpgraded: RestoreUpgradeStrategy,
-			},
-		},
-		EnableMaintenanceMode: {
-			Action: a.enableMaintenanceMode,
-			Events: map[fsm.Event]fsm.State{
-				ActionSuccess: DrainNode,
-			},
-		},
-		DrainNode: {
-			Action: a.drainNode,
-			Events: map[fsm.Event]fsm.State{
-				ActionSuccess: BackupData,
-			},
-		},
-		BackupData: {
-			Action: a.createDataBackup,
-			Events: map[fsm.Event]fsm.State{
-				ActionSuccess: DisableMaintenanceMode,
-			},
-		},
-		DisableMaintenanceMode: {
-			Action: a.disableMaintenanceMode,
-			Events: map[fsm.Event]fsm.State{
-				ActionSuccess: DeletePod,
-			},
-		},
-		DeletePod: {
-			Action: a.deletePod,
-			Events: map[fsm.Event]fsm.State{
-				ActionSuccess: ValidateUpgrade,
-			},
-		},
-		ValidateUpgrade: {
-			Action: a.validateUpgrade,
-			Events: map[fsm.Event]fsm.State{
-				ActionSuccess: ClearDataBackup,
-			},
-		},
-		ClearDataBackup: {
-			Action: a.clearDataBackup,
-			Events: map[fsm.Event]fsm.State{
-				ActionSuccess: FindNextNode,
-			},
-		},
-		ClearSystemBackup: {
-			Action: a.clearSystemBackup,
-			Events: map[fsm.Event]fsm.State{
-				ActionSuccess: FinishUpgrade,
-			},
-		},
-		FinishUpgrade: {
-			Action: a.finishUpgrade,
-		},
-	}
-
-	return fsm.New(state, stateTransitions, a.onStateTransition)
 }

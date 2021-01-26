@@ -186,12 +186,46 @@ func (a *ClusterVersionUpgrade) genericUpgrade(ctx context.Context) error {
 
 func (a *ClusterVersionUpgrade) patchUpgrade(ctx context.Context) error {
 	c := a.Cluster
+
 	for _, r := range c.Spec.Datacenter.Racks {
-		a.logger.Debug(ctx, fmt.Sprintf("Rack: %s, Rack Members: %d, Spec members: %d\n", r.Name, r.Members, c.Status.Racks[r.Name].Members))
+		sts := &appsv1.StatefulSet{}
+		if err := a.cc.Get(ctx, naming.NamespacedName(naming.StatefulSetNameForRack(r, c), c.Namespace), sts); err != nil {
+			return errors.Wrap(err, "get statefulset")
+		}
+
+		scyllaVersion, err := naming.ScyllaImage(sts.Spec.Template.Spec.Containers)
+		if err != nil {
+			return errors.Wrap(err, "get scylla container version")
+		}
+
+		if c.Spec.Version == scyllaVersion {
+			pods := &corev1.PodList{}
+			if err := a.cc.List(ctx, pods, &client.ListOptions{
+				LabelSelector: naming.RackSelector(r, a.Cluster),
+			}); err != nil {
+				return errors.Wrap(err, "get pods")
+			}
+
+			for _, p := range pods.Items {
+				scyllaVersion, err := naming.ScyllaImage(p.Spec.Containers)
+				if err != nil {
+					return errors.Wrap(err, "get scylla container version")
+				}
+
+				if c.Spec.Version != scyllaVersion || !podReady(&p) {
+					a.logger.Info(ctx, "Waiting until rack is updated", "rack", r.Name, "pod", p.Name, "pod_version", scyllaVersion, "spec_version", c.Spec.Version)
+					return nil
+				}
+			}
+		}
+	}
+
+	for _, r := range c.Spec.Datacenter.Racks {
+		a.logger.Info(ctx, "Checking if rack needs to be upgraded", "rack", r.Name, "rack_version", c.Status.Racks[r.Name].Version, "spec_version", c.Spec.Version)
 		if c.Status.Racks[r.Name].Version != c.Spec.Version {
 			sts := &appsv1.StatefulSet{}
 			if err := a.cc.Get(ctx, naming.NamespacedName(naming.StatefulSetNameForRack(r, c), c.Namespace), sts); err != nil {
-				return errors.Wrap(err, "failed to get statefulset")
+				return errors.Wrap(err, "get statefulset")
 			}
 
 			scyllaVersion, err := naming.ScyllaImage(sts.Spec.Template.Spec.Containers)
@@ -200,10 +234,12 @@ func (a *ClusterVersionUpgrade) patchUpgrade(ctx context.Context) error {
 			}
 
 			if c.Spec.Version != scyllaVersion {
+				a.logger.Info(ctx, "Upgrading rack", "rack", r.Name, "rack_version", scyllaVersion, "spec_version", c.Spec.Version)
 				image := resource.ImageForCluster(c)
 				if err := util.UpgradeStatefulSetScyllaImage(ctx, sts, image, a.kubeClient); err != nil {
-					return errors.Wrap(err, "failed to upgrade statefulset")
+					return errors.Wrap(err, "upgrade Scylla image in statefulset")
 				}
+
 				// Record event for successful version upgrade
 				a.recorder.Event(c, corev1.EventTypeNormal, naming.SuccessSynced, fmt.Sprintf("Rack %s upgraded up to version %s", r.Name, c.Spec.Version))
 			}

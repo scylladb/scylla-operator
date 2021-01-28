@@ -5,14 +5,17 @@ package integration
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/scylladb/go-log"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -54,71 +57,83 @@ func (s *StatefulSetOperatorStub) CreatePodsPartition(ctx context.Context, clust
 	for _, rack := range cluster.Spec.Datacenter.Racks {
 		sts := &appsv1.StatefulSet{}
 
-		err := s.env.Get(ctx, client.ObjectKey{
-			Name:      naming.StatefulSetNameForRack(rack, cluster),
-			Namespace: cluster.Namespace,
-		}, sts)
+		err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+			err := s.env.Get(ctx, client.ObjectKey{
+				Name:      naming.StatefulSetNameForRack(rack, cluster),
+				Namespace: cluster.Namespace,
+			}, sts)
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					// StatefulSet for rack might not be created yet.
+					return nil
+				}
+				return err
+			}
+
+			podTemplate := &corev1.Pod{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Pod",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "template",
+					Namespace: sts.Namespace,
+					Labels:    naming.RackLabels(rack, cluster),
+				},
+				Spec: sts.Spec.Template.Spec,
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+				},
+			}
+
+			for i, c := range podTemplate.Spec.Containers {
+				podTemplate.Spec.Containers[i].VolumeMounts = []corev1.VolumeMount{}
+				podTemplate.Status.ContainerStatuses = append(podTemplate.Status.ContainerStatuses, corev1.ContainerStatus{
+					Name:  c.Name,
+					Ready: true,
+				})
+			}
+
+			for _, opt := range options {
+				opt(podTemplate)
+			}
+
+			mutateFn := func() error {
+				return nil
+			}
+
+			for i := partition; i < int(*sts.Spec.Replicas); i++ {
+				pod := podTemplate.DeepCopy()
+				pod.Name = fmt.Sprintf("%s-%d", sts.Name, i)
+				pod.Spec.Hostname = pod.Name
+				pod.Spec.Subdomain = cluster.Name
+
+				if op, err := controllerutil.CreateOrUpdate(ctx, s.env, pod, mutateFn); err != nil {
+					return err
+				} else {
+					switch op {
+					case controllerutil.OperationResultCreated:
+						s.logger.Info(ctx, "Spawned fake Pod", "sts", sts.Name, "pod", pod.Name)
+					case controllerutil.OperationResultUpdated:
+						s.logger.Info(ctx, "Updated fake Pod", "sts", sts.Name, "pod", pod.Name)
+					}
+				}
+			}
+
+			sts.Status.Replicas = *sts.Spec.Replicas
+			sts.Status.ReadyReplicas = *sts.Spec.Replicas
+			sts.Status.ObservedGeneration = sts.Generation
+			s.logger.Info(ctx, "Updating StatefulSet status", "replicas", sts.Status.Replicas, "observed_generation", sts.Status.ObservedGeneration)
+			if err := s.env.Status().Update(ctx, sts); err != nil {
+				return err
+			}
+			return nil
+		})
+
 		if err != nil {
 			return err
 		}
 
-		podTemplate := &corev1.Pod{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Pod",
-				APIVersion: "v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "template",
-				Namespace: sts.Namespace,
-				Labels:    naming.RackLabels(rack, cluster),
-			},
-			Spec: sts.Spec.Template.Spec,
-			Status: corev1.PodStatus{
-				Phase: corev1.PodRunning,
-			},
-		}
-
-		for i, c := range podTemplate.Spec.Containers {
-			podTemplate.Spec.Containers[i].VolumeMounts = []corev1.VolumeMount{}
-			podTemplate.Status.ContainerStatuses = append(podTemplate.Status.ContainerStatuses, corev1.ContainerStatus{
-				Name:  c.Name,
-				Ready: true,
-			})
-		}
-
-		for _, opt := range options {
-			opt(podTemplate)
-		}
-
-		mutateFn := func() error {
-			return nil
-		}
-
-		for i := partition; i < int(*sts.Spec.Replicas); i++ {
-			pod := podTemplate.DeepCopy()
-			pod.Name = fmt.Sprintf("%s-%d", sts.Name, i)
-			pod.Spec.Hostname = pod.Name
-			pod.Spec.Subdomain = cluster.Name
-
-			if op, err := controllerutil.CreateOrUpdate(ctx, s.env, pod, mutateFn); err != nil {
-				return err
-			} else {
-				switch op {
-				case controllerutil.OperationResultCreated:
-					s.logger.Info(ctx, "Spawned fake Pod", "sts", sts.Name, "pod", pod.Name)
-				case controllerutil.OperationResultUpdated:
-					s.logger.Info(ctx, "Updated fake Pod", "sts", sts.Name, "pod", pod.Name)
-				}
-			}
-		}
-
-		sts.Status.Replicas = *sts.Spec.Replicas
-		sts.Status.ReadyReplicas = *sts.Spec.Replicas
-		sts.Status.ObservedGeneration = sts.Generation
-		s.logger.Info(ctx, "Updating StatefulSet status", "replicas", sts.Status.Replicas, "observed_generation", sts.Status.ObservedGeneration)
-		if err := s.env.Status().Update(ctx, sts); err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -239,6 +254,47 @@ func (s *StatefulSetOperatorStub) SyncStatus(ctx context.Context, cluster *scyll
 		s.logger.Info(ctx, "Updating StatefulSet status", "replicas", sts.Status.Replicas, "observed_generation", sts.Status.ObservedGeneration)
 		if err := s.env.Status().Update(ctx, sts); err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *StatefulSetOperatorStub) SyncPods(ctx context.Context, rack scyllav1.RackSpec, cluster *scyllav1.ScyllaCluster) error {
+	sts := &appsv1.StatefulSet{}
+
+	err := s.env.Get(ctx, client.ObjectKey{
+		Name:      naming.StatefulSetNameForRack(rack, cluster),
+		Namespace: cluster.Namespace,
+	}, sts)
+	if err != nil {
+		return err
+	}
+
+	pods := &corev1.PodList{}
+	if err := s.env.List(ctx, pods, &client.ListOptions{
+		Namespace:     cluster.Namespace,
+		LabelSelector: naming.RackSelector(rack, cluster),
+	}); err != nil {
+		return err
+	}
+
+	for _, p := range pods.Items {
+		if !reflect.DeepEqual(p.Spec, sts.Spec.Template.Spec) {
+			p.Spec = sts.Spec.Template.Spec
+			for i := range p.Spec.Containers {
+				p.Spec.Containers[i].VolumeMounts = []corev1.VolumeMount{}
+			}
+
+			s.logger.Info(ctx, "Syncing Pod spec with StatefulSet template", "pod", p.Name, "rack", rack.Name)
+
+			if err := s.env.Delete(ctx, &p); err != nil {
+				return err
+			}
+			p.ResourceVersion = ""
+			if err := s.env.Create(ctx, &p); err != nil {
+				return err
+			}
 		}
 	}
 

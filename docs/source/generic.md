@@ -275,46 +275,9 @@ kubectl create secret -n scylla generic scylla-client-config-secret --from-file 
 ```
 After a restart the operator will use the security token when it interacts with scylla via the agent.
 
- ### Setting up Monitoring
+ ### Set up monitoring
  
- Both Prometheus and Grafana were configured with specific rules for Scylla Operator.
- Both of them will be available under the `monitoring` namespace. 
- Customization can be done in `examples/common/prometheus/values.yaml` and `examples/common/grafana/values.yaml`.
- 
-1. Create the monitoring namespace
-    ```console
-    kubectl create namespace monitoring
-    ```
-1. Add Prometheus charts repository
-   ```console
-   helm repo add stable  https://charts.helm.sh/stable
-   helm repo update
-   ```
-1. Install Prometheus
-    ```console
-    helm upgrade --install scylla-prom --namespace monitoring stable/prometheus -f examples/common/prometheus/values.yaml
-    ```
-    If you want to tweak the prometheus properties, for example it's assigned memory, you can override it by adding a command line argument like this: `--set server.resources.limits.memory=4Gi`
-
-1. Install Grafana
-    First you need to prepare the dashboards to make them available in Grafana. 
-    You can do this by running the following command in the `examples` directory:
-    ```console
-    ./dashboards.sh
-    ```
-    __NB__: Keep in mind that this is a test setup. For production use, check grafana and prometheus helm chart page for advanced deployment instructions.
-
-    Now the dashboards can be created along with the grafana plugin like this:
-    ```console
-    helm upgrade --install scylla-graf --namespace monitoring stable/grafana -f examples/common/grafana/values.yaml
-    ```
- 
-    To access Grafana locally, run:
-    ```
-    kubectl --namespace monitoring port-forward $(kubectl get pods -n monitoring -l "app.kubernetes.io/instance=scylla-graf" -o jsonpath="{.items[0].metadata.name}") 3000
-    ```
- 
-    You can find it on `http://0.0.0.0:3000` and login with the credentials `admin`:`admin`.
+To set up monitoring using Prometheus and Grafana follow [this guide](monitoring.md).
 
 ## Scale Up
 

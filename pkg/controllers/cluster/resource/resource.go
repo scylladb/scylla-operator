@@ -37,6 +37,10 @@ func HeadlessServiceForCluster(c *scyllav1.ScyllaCluster) *corev1.Service {
 					Name: "prometheus",
 					Port: 9180,
 				},
+				{
+					Name: "agent-prometheus",
+					Port: 5090,
+				},
 			},
 		},
 	}

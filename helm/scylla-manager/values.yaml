@@ -1,0 +1,81 @@
+# Specifies under which namespace Scylla Manager will be installed
+namespace: scylla-manager-system
+
+# Allows to override Scylla Manager name showing up in recommended k8s labels
+nameOverride: ""
+# Allows to override names used in Scylla Manager k8s objects.
+fullnameOverride: ""
+
+# Allows to customize Scylla Manager image
+image:
+  repository: scylladb
+  pullPolicy: IfNotPresent
+  tag: 2.2.1
+
+# Allows to customize Scylla Manager Controller image
+controllerImage:
+  repository: scylladb
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+# Scylla Manager log level, allowed values are: error, warn, info, debug, trace
+logLevel: info
+# Resources allocated to Scylla Manager pods
+resources:
+  limits:
+    cpu: 500m
+    memory: 500Mi
+  requests:
+    cpu: 500m
+    memory: 500Mi
+# Resources allocated to Scylla Manager pods
+controllerResources:
+  limits:
+    cpu: 100m
+    memory: 30Mi
+  requests:
+    cpu: 100m
+    memory: 20Mi
+# Node selector for Scylla Manager pods
+nodeSelector: { }
+
+# Tolerations for Scylla Manager pods
+tolerations: [ ]
+
+# Affinity for Scylla Manager pods
+affinity: { }
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+scylla:
+  developerMode: true
+  namespace: scylla-manager-system
+  scyllaImage:
+    tag: 4.3.0
+  agentImage:
+    tag: 2.2.1
+  datacenter: manager-dc
+  racks:
+  - name: manager-rack
+    members: 1
+    storage:
+      capacity: 5Gi
+    resources:
+      limits:
+        cpu: 1
+        memory: 1Gi
+      requests:
+        cpu: 1
+        memory: 1Gi
+
+# Whether to create Prometheus ServiceMonitor
+serviceMonitor:
+  create: false

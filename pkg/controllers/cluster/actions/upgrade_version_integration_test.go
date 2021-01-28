@@ -42,6 +42,69 @@ var _ = Describe("Cluster controller", func() {
 		Expect(testEnv.Delete(ctx, ns)).To(Succeed())
 	})
 
+	It("Multi rack patch upgrade is sequential over racks", func() {
+		const (
+			preUpdateVersion  = "4.2.0"
+			postUpdateVersion = "4.2.1"
+		)
+		scylla := testEnv.MultiRackCluster(ns, 1, 1)
+
+		Expect(testEnv.Create(ctx, scylla)).To(Succeed())
+		Expect(testEnv.WaitForCluster(ctx, scylla)).To(Succeed())
+		Expect(testEnv.Refresh(ctx, scylla)).To(Succeed())
+
+		sstStub := integration.NewStatefulSetOperatorStub(testEnv)
+
+		// Cluster should be scaled sequentially up to member count
+		for _, rack := range scylla.Spec.Datacenter.Racks {
+			for _, replicas := range testEnv.ClusterScaleSteps(rack.Members) {
+				Expect(sstStub.CreatePods(ctx, scylla)).To(Succeed())
+				Expect(testEnv.AssertRackScaled(ctx, rack, scylla, replicas)).To(Succeed())
+				Expect(sstStub.CreatePods(ctx, scylla)).To(Succeed())
+			}
+		}
+
+		By("When: patch version upgrade is requested")
+		Expect(testEnv.Refresh(ctx, scylla)).To(Succeed())
+		scylla.Spec.Version = postUpdateVersion
+		Expect(testEnv.Update(ctx, scylla)).To(Succeed())
+
+		firstRack := scylla.Spec.Datacenter.Racks[0]
+		secondRack := scylla.Spec.Datacenter.Racks[1]
+
+		By("Then: image is updated in first rack")
+		Eventually(func() string {
+			ver, err := scyllaImageInRackStatefulSet(ctx, firstRack, scylla)
+			Expect(err).ToNot(HaveOccurred())
+
+			return ver
+		}).Should(Equal(postUpdateVersion))
+
+		By("Then: Scylla image stays the same in second rack")
+		Eventually(func() string {
+			ver, err := scyllaImageInRackStatefulSet(ctx, secondRack, scylla)
+			Expect(err).ToNot(HaveOccurred())
+
+			return ver
+		}).Should(Equal(preUpdateVersion))
+
+		By("When: first rack pods enters ready state")
+
+		Expect(sstStub.SyncPods(ctx, firstRack, scylla)).To(Succeed())
+		Expect(sstStub.SyncStatus(ctx, scylla)).To(Succeed())
+		pods := &corev1.PodList{}
+		Expect(testEnv.List(ctx, pods, &client.ListOptions{LabelSelector: naming.RackSelector(firstRack, scylla)})).To(Succeed())
+		Expect(markPodReady(pods, 0))
+
+		By("Then: Scylla image is updated in second rack")
+		Eventually(func() string {
+			ver, err := scyllaImageInRackStatefulSet(ctx, secondRack, scylla)
+			Expect(err).ToNot(HaveOccurred())
+
+			return ver
+		}).Should(Equal(postUpdateVersion))
+	})
+
 	Context("Cluster upgrade", func() {
 		var (
 			scylla  *scyllav1.ScyllaCluster
@@ -149,13 +212,7 @@ var _ = Describe("Cluster controller", func() {
 			By("Then: Scylla image is upgraded")
 			rack := scylla.Spec.Datacenter.Racks[0]
 			Eventually(func() string {
-				sts, err := testEnv.StatefulSetOfRack(ctx, rack, scylla)
-				Expect(err).ToNot(HaveOccurred())
-
-				idx, err := naming.FindScyllaContainer(sts.Spec.Template.Spec.Containers)
-				Expect(err).ToNot(HaveOccurred())
-
-				ver, err := naming.ImageToVersion(sts.Spec.Template.Spec.Containers[idx].Image)
+				ver, err := scyllaImageInRackStatefulSet(ctx, rack, scylla)
 				Expect(err).ToNot(HaveOccurred())
 
 				return ver
@@ -219,25 +276,7 @@ var _ = Describe("Cluster controller", func() {
 				scyllaFake.SetOperationalMode(scyllaclient.OperationalModeNormal)
 
 				By("When: node pod is ready")
-				for _, p := range podList.Items {
-					if strings.HasSuffix(p.Name, fmt.Sprintf("%d", nodeUnderUpgradeIdx)) {
-						found := false
-						for i, c := range p.Status.Conditions {
-							if c.Type == corev1.PodReady {
-								p.Status.Conditions[i].Status = corev1.ConditionTrue
-								found = true
-							}
-						}
-						if !found {
-							p.Status.Conditions = append(p.Status.Conditions, corev1.PodCondition{
-								Type:   corev1.PodReady,
-								Status: corev1.ConditionTrue,
-							})
-						}
-
-						Expect(testEnv.Status().Update(ctx, &p)).To(Succeed())
-					}
-				}
+				Expect(markPodReady(podList, nodeUnderUpgradeIdx)).To(Succeed())
 
 				By("Then: data snapshot is removed")
 				Eventually(scyllaFake.KeyspaceSnapshots, shortWait).Should(ConsistOf(systemKeyspaces))
@@ -255,6 +294,45 @@ var _ = Describe("Cluster controller", func() {
 	})
 
 })
+
+func scyllaImageInRackStatefulSet(ctx context.Context, rack scyllav1.RackSpec, cluster *scyllav1.ScyllaCluster) (string, error) {
+	sts, err := testEnv.StatefulSetOfRack(ctx, rack, cluster)
+	if err != nil {
+		return "", err
+	}
+
+	ver, err := naming.ScyllaImage(sts.Spec.Template.Spec.Containers)
+	if err != nil {
+		return "", err
+	}
+
+	return ver, nil
+
+}
+
+func markPodReady(pods *corev1.PodList, idx int) error {
+	for _, p := range pods.Items {
+		if strings.HasSuffix(p.Name, fmt.Sprintf("%d", idx)) {
+			found := false
+			for i, c := range p.Status.Conditions {
+				if c.Type == corev1.PodReady {
+					p.Status.Conditions[i].Status = corev1.ConditionTrue
+					found = true
+				}
+			}
+			if !found {
+				p.Status.Conditions = append(p.Status.Conditions, corev1.PodCondition{
+					Type:   corev1.PodReady,
+					Status: corev1.ConditionTrue,
+				})
+			}
+
+			return testEnv.Status().Update(ctx, &p)
+		}
+	}
+
+	return nil
+}
 
 type cqlSessionStub struct {
 }

@@ -1,0 +1,19 @@
+{{- if .Values.serviceMonitor.create -}}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ printf "%s-service-monitor" (include "scylla-manager.fullname" .) }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  jobLabel: "app"
+  selector:
+    matchLabels:
+      app: scylla-manager
+  endpoints:
+    - port: metrics
+      metricRelabelings:
+        - sourceLabels: [ host ]
+          targetLabel: instance
+          regex: (.*)
+          replacement: ${1}
+{{ end }}

@@ -4,6 +4,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -51,6 +52,49 @@ func (t *TestEnvironment) SingleRackCluster(ns *corev1.Namespace) *scyllav1.Scyl
 			},
 		},
 	}
+}
+
+func (t *TestEnvironment) MultiRackCluster(ns *corev1.Namespace, members ...int32) *scyllav1.ScyllaCluster {
+	storage := scyllav1.StorageSpec{
+		Capacity: "10M",
+	}
+	resources := corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("1"),
+			corev1.ResourceMemory: resource.MustParse("200M"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("1"),
+			corev1.ResourceMemory: resource.MustParse("200M"),
+		},
+	}
+
+	c := &scyllav1.ScyllaCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: "test-",
+			Namespace:    ns.Name,
+		},
+		Spec: scyllav1.ClusterSpec{
+			Version:       "4.2.0",
+			AgentVersion:  pointer.StringPtr("2.2.0"),
+			DeveloperMode: true,
+			Datacenter: scyllav1.DatacenterSpec{
+				Name:  "dc1",
+				Racks: []scyllav1.RackSpec{},
+			},
+		},
+	}
+
+	for i, m := range members {
+		c.Spec.Datacenter.Racks = append(c.Spec.Datacenter.Racks, scyllav1.RackSpec{
+			Name:      fmt.Sprintf("rack%d", i),
+			Members:   m,
+			Storage:   storage,
+			Resources: resources,
+		})
+	}
+
+	return c
 }
 
 func (t *TestEnvironment) WaitForCluster(ctx context.Context, cluster *scyllav1.ScyllaCluster) error {

@@ -1,0 +1,6 @@
+The Scylla Cluster has been deployed. Check its status by running:
+
+  kubectl -n {{ .Release.Namespace }} get pods -l "app.kubernetes.io/name={{ template "scylla.name" . }}"
+
+Visit https://github.com/scylladb/scylla-operator for tutorials on how to
+maintain Scylla clusters using the Scylla Operator and set up monitoring.

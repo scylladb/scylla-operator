@@ -20,6 +20,12 @@ To quickly deploy a Scylla cluster, choose one of the following options:
 * [GKE](docs/source/gke.md): An advanced guide for deploying Scylla with the best performance settings on [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine).
 * [EKS](docs/source/eks.md): An advanced guide for deploying Scylla with the best performance settings on [Amazon Elastic Kubernetes Service](https://aws.amazon.com/eks/).
 
+You can also use Helm charts to deploy both Scylla Operator and Scylla clusters:
+
+```bash
+helm repo add scylla-operator https://storage.googleapis.com/scylla-operator-charts
+```
+
 ## Description
 
 > Kubernetes Operator for Scylla

@@ -5,7 +5,6 @@ package integration
 import (
 	"context"
 	"fmt"
-
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
@@ -15,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/pointer"
+	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -47,6 +47,14 @@ func (t *TestEnvironment) SingleRackCluster(ns *corev1.Namespace) *scyllav1.Scyl
 								corev1.ResourceMemory: resource.MustParse("200M"),
 							},
 						},
+						Placement: &scyllav1.PlacementSpec{
+							Tolerations: []corev1.Toleration{
+								{
+									Key:      "node.kubernetes.io/not-ready",
+									Operator: corev1.TolerationOpExists,
+								},
+							},
+						},
 					},
 				},
 			},
@@ -68,8 +76,16 @@ func (t *TestEnvironment) MultiRackCluster(ns *corev1.Namespace, members ...int3
 			corev1.ResourceMemory: resource.MustParse("200M"),
 		},
 	}
+	placement := &scyllav1.PlacementSpec{
+		Tolerations: []corev1.Toleration{
+			{
+				Key:      "node.kubernetes.io/not-ready",
+				Operator: corev1.TolerationOpExists,
+			},
+		},
+	}
 
-	c := &scyllav1.ScyllaCluster{
+		c := &scyllav1.ScyllaCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "test-",
 			Namespace:    ns.Name,
@@ -91,6 +107,7 @@ func (t *TestEnvironment) MultiRackCluster(ns *corev1.Namespace, members ...int3
 			Members:   m,
 			Storage:   storage,
 			Resources: resources,
+			Placement: placement,
 		})
 	}
 
@@ -158,4 +175,42 @@ func (t *TestEnvironment) RackMemberServices(ctx context.Context, namespace stri
 	}
 
 	return services.Items, nil
+}
+
+func (t *TestEnvironment) MembersNotScheduled(spec scyllav1.RackSpec, status scyllav1.RackStatus) error {
+	return wait.Poll(t.RetryInterval, t.Timeout, func() (bool, error) {
+		return spec.Members > status.Members, nil
+	})
+}
+
+func (t *TestEnvironment) AssertRackResourcesScaled(ctx context.Context, rack scyllav1.RackSpec, cluster *scyllav1.ScyllaCluster, resources corev1.ResourceRequirements) error {
+	return wait.Poll(t.RetryInterval, t.Timeout, func() (bool, error) {
+		c := &scyllav1.ScyllaCluster{}
+		if err := t.Get(ctx, naming.NamespacedName(cluster.Name, cluster.Namespace), c); err != nil {
+			return false, err
+		}
+		return reflect.DeepEqual(c.Spec.Datacenter.Racks[0].Resources, resources), nil
+	})
+}
+
+func (t *TestEnvironment) SingleSecret(name string, ns *corev1.Namespace, token string) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns.Name,
+		},
+		Data: map[string][]byte{
+			"token": []byte(token),
+		},
+	}
+}
+
+func (t *TestEnvironment) AssertRackScaledDown(ctx context.Context, rack scyllav1.RackSpec, cluster *scyllav1.ScyllaCluster, replicas int32) error {
+	return wait.Poll(t.RetryInterval, t.Timeout, func() (bool, error) {
+		sts, err := t.StatefulSetOfRack(ctx, rack, cluster)
+		if err != nil {
+			return false, err
+		}
+		return *sts.Spec.Replicas <= replicas, nil
+	})
 }

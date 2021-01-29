@@ -25,7 +25,6 @@ var (
 )
 
 func checkValues(c *ScyllaCluster) error {
-	rackNames := sets.NewString()
 
 	if c.Spec.Alternator != nil {
 		if c.Spec.Alternator.WriteIsolation != "" {
@@ -47,13 +46,26 @@ func checkValues(c *ScyllaCluster) error {
 			return errors.Errorf("ScyllaArgs is only supported starting from %s", ScyllaVersionThatSupportsArgsText)
 		}
 	}
+	rackNames := sets.NewString()
 
 	for _, rack := range c.Spec.Datacenter.Racks {
+
 		// Check that no two racks have the same name
 		if rackNames.Has(rack.Name) {
 			return errors.Errorf("two racks have the same name: '%s'", rack.Name)
 		}
 		rackNames.Insert(rack.Name)
+
+		// Check that requested values are not 0
+		requests := rack.Resources.Requests
+		if requests != nil {
+			if requests.Cpu() != nil && requests.Cpu().MilliValue() == 0 {
+				return errors.Errorf("requesting 0 cpus is invalid for rack %s", rack.Name)
+			}
+			if requests.Memory() != nil && requests.Memory().MilliValue() == 0 {
+				return errors.Errorf("requesting 0 memory is invalid for rack %s", rack.Name)
+			}
+		}
 
 		// Check that limits are defined
 		limits := rack.Resources.Limits
@@ -159,11 +171,6 @@ func checkTransitions(old, new *ScyllaCluster) error {
 		// Check that storage is the same as before
 		if !reflect.DeepEqual(oldRack.Storage, newRack.Storage) {
 			return errors.Errorf("rack %s: changes in storage are not currently supported", oldRack.Name)
-		}
-
-		// Check that resources are the same as before
-		if !reflect.DeepEqual(oldRack.Resources, newRack.Resources) {
-			return errors.Errorf("rack %s: changes in resources are not currently supported", oldRack.Name)
 		}
 	}
 

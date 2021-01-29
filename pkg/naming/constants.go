@@ -56,10 +56,12 @@ const (
 	// SuccessSynced is used as part of the Event 'reason' when a Cluster is
 	// synced.
 	SuccessSynced = "Synced"
+	SuccessScaled = "Scaled"
 	// ErrResourceExists is used as part of the Event 'reason' when a
 	// Cluster fails to sync due to a resource of the same name already
 	// existing.
-	ErrSyncFailed = "ErrSyncFailed"
+	ErrSyncFailed      = "ErrSyncFailed"
+	ErrReconcileFailed = "ErrReconcileFailed"
 )
 
 // Configuration Values

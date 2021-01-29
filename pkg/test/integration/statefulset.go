@@ -5,8 +5,7 @@ package integration
 import (
 	"context"
 	"fmt"
-	"reflect"
-
+	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -16,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
+	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -233,11 +233,10 @@ func (s *StatefulSetOperatorStub) SyncStatus(ctx context.Context, cluster *scyll
 	for _, rack := range cluster.Spec.Datacenter.Racks {
 		sts := &appsv1.StatefulSet{}
 
-		err := s.env.Get(ctx, client.ObjectKey{
+		if err := s.env.Get(ctx, client.ObjectKey{
 			Name:      naming.StatefulSetNameForRack(rack, cluster),
 			Namespace: cluster.Namespace,
-		}, sts)
-		if err != nil {
+		}, sts); err != nil {
 			return err
 		}
 
@@ -264,11 +263,10 @@ func (s *StatefulSetOperatorStub) SyncStatus(ctx context.Context, cluster *scyll
 func (s *StatefulSetOperatorStub) SyncPods(ctx context.Context, rack scyllav1.RackSpec, cluster *scyllav1.ScyllaCluster) error {
 	sts := &appsv1.StatefulSet{}
 
-	err := s.env.Get(ctx, client.ObjectKey{
+	if err := s.env.Get(ctx, client.ObjectKey{
 		Name:      naming.StatefulSetNameForRack(rack, cluster),
 		Namespace: cluster.Namespace,
-	}, sts)
-	if err != nil {
+	}, sts); err != nil {
 		return err
 	}
 
@@ -298,6 +296,71 @@ func (s *StatefulSetOperatorStub) SyncPods(ctx context.Context, rack scyllav1.Ra
 			}
 		}
 	}
+	return nil
+}
 
+func (s *StatefulSetOperatorStub) DeletePod(ctx context.Context, cluster *scyllav1.ScyllaCluster, rack scyllav1.RackSpec) error {
+	pods := &corev1.PodList{}
+	if err := s.env.List(ctx, pods, &client.ListOptions{
+		Namespace:     cluster.Namespace,
+		LabelSelector: naming.RackSelector(rack, cluster),
+	}); err != nil {
+		return err
+	}
+
+	sts := &appsv1.StatefulSet{}
+	if err := s.env.Get(ctx, client.ObjectKey{
+		Name:      naming.StatefulSetNameForRack(rack, cluster),
+		Namespace: cluster.Namespace,
+	}, sts); err != nil {
+		return err
+	}
+
+	// delete redundant pods
+	for i, redundantPods := 1, len(pods.Items) - int(*sts.Spec.Replicas);
+		redundantPods > 0;
+		i, redundantPods = i+1, redundantPods-1 {
+		if err := s.env.Delete(ctx, &pods.Items[len(pods.Items)-i]); err != nil {
+			return err
+		}
+	}
+
+	sts.Status.Replicas = *sts.Spec.Replicas
+	sts.Status.ReadyReplicas = *sts.Spec.Replicas
+	sts.Status.ObservedGeneration = sts.Generation
+	s.logger.Info(ctx, "Updating StatefulSet status", "replicas", sts.Status.Replicas, "observed_generation", sts.Status.ObservedGeneration)
+
+	if err := s.env.Status().Update(ctx, sts); err != nil {
+		s.logger.Error(ctx, "Error occurred while updating status.", "error", err)
+		return err
+	}
+	return nil
+}
+
+// SetDecommissionLabel sets appropriate label for all services exceeding given replicas count.
+// Returns nil or error if one occured.
+func (s *StatefulSetOperatorStub) SetDecommissionLabel(ctx context.Context, cluster *scyllav1.ScyllaCluster, rack scyllav1.RackSpec, replicas int) error {
+	pods := &corev1.PodList{}
+	if err := s.env.List(ctx, pods, &client.ListOptions{
+		Namespace:     cluster.Namespace,
+		LabelSelector: naming.RackSelector(rack, cluster),
+	}); err != nil {
+		return err
+	}
+
+	for i, redundantPods := 1, len(pods.Items) - replicas;
+		redundantPods > 0;
+		i, redundantPods = i+1, redundantPods-1 {
+		memberName := fmt.Sprintf("%s-%d", naming.StatefulSetNameForRack(rack, cluster), len(pods.Items)-i)
+		memberService := &corev1.Service{}
+		if err := s.env.Get(ctx, naming.NamespacedName(memberName, cluster.Namespace), memberService); err != nil {
+			return errors.Wrap(err, "failed to get Member Service")
+		}
+		memberService.Labels[naming.DecommissionLabel] = naming.LabelValueTrue
+		if err := s.env.Update(ctx, memberService); err != nil {
+			s.logger.Error(ctx, "Updating memberService", "error", err)
+			return err
+		}
+	}
 	return nil
 }

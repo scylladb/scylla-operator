@@ -29,16 +29,20 @@ import (
 var _ = Describe("Cluster controller", func() {
 	var (
 		ns *corev1.Namespace
+		node *corev1.Node
 	)
 
 	BeforeEach(func() {
 		var err error
 		ns, err = testEnv.CreateNamespace(ctx, "ns")
 		Expect(err).To(BeNil())
+		node = singleNode(ns)
+		Expect(testEnv.Create(ctx, node)).To(Succeed())
 	})
 
 	AfterEach(func() {
 		Expect(testEnv.Delete(ctx, ns)).To(Succeed())
+		Expect(testEnv.Delete(ctx, node)).To(Succeed())
 	})
 
 	It("Multi rack patch upgrade is sequential over racks", func() {

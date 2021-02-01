@@ -11,19 +11,19 @@ import (
 )
 
 // Singleton
-var commonOpts = &commonOptions{}
+var commonOpts = &CommonOptions{}
 
-type commonOptions struct {
+type CommonOptions struct {
 	Name      string
 	Namespace string
 	LogLevel  string
 }
 
-func GetCommonOptions() *commonOptions {
+func GetCommonOptions() *CommonOptions {
 	return commonOpts
 }
 
-func (o *commonOptions) AddFlags(cmd *cobra.Command) {
+func (o *CommonOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&o.Name, "pod-name", os.Getenv(naming.EnvVarEnvVarPodName), "name of the pod")
 	cmd.Flags().StringVar(&o.Namespace, "pod-namespace", os.Getenv(naming.EnvVarPodNamespace), "namespace of the pod")
 	cmd.Flags().StringVar(&o.LogLevel,
@@ -34,7 +34,7 @@ func (o *commonOptions) AddFlags(cmd *cobra.Command) {
 
 }
 
-func (o *commonOptions) Validate() error {
+func (o *CommonOptions) Validate() error {
 	if o.Name == "" {
 		return errors.New("pod-name not set")
 	}

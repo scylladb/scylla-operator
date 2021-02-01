@@ -6,11 +6,11 @@ import (
 
 // Singleton
 var managerOpts = &managerOptions{
-	commonOptions: GetCommonOptions(),
+	CommonOptions: GetCommonOptions(),
 }
 
 type managerOptions struct {
-	*commonOptions
+	*CommonOptions
 }
 
 func GetManagerOptions() *managerOptions {
@@ -18,7 +18,7 @@ func GetManagerOptions() *managerOptions {
 }
 
 func (o *managerOptions) AddFlags(cmd *cobra.Command) {
-	o.commonOptions.AddFlags(cmd)
+	o.CommonOptions.AddFlags(cmd)
 }
 
 func (o *managerOptions) Validate() error {

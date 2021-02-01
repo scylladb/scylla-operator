@@ -21,9 +21,12 @@ var _ = Describe("Cluster controller", func() {
 			namespace = "ns"
 			name      = "name"
 		)
-		opts := options.GetOperatorOptions()
-		opts.Namespace = namespace
-		opts.Name = name
+		opts := &options.OperatorOptions{
+			CommonOptions: &options.CommonOptions{
+				Name:      name,
+				Namespace: namespace,
+			},
+		}
 
 		pod := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -38,7 +41,7 @@ var _ = Describe("Cluster controller", func() {
 		}
 
 		kubeClientFake := kubefake.NewSimpleClientset(pod)
-		image, err := getOperatorImage(context.Background(), kubeClientFake)
+		image, err := getOperatorImage(context.Background(), kubeClientFake, opts)
 		if expectedImage == "" {
 			Expect(err).To(HaveOccurred())
 		} else {

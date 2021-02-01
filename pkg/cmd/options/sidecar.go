@@ -10,11 +10,11 @@ import (
 
 // Singleton
 var sidecarOpts = &sidecarOptions{
-	commonOptions: GetCommonOptions(),
+	CommonOptions: GetCommonOptions(),
 }
 
 type sidecarOptions struct {
-	*commonOptions
+	*CommonOptions
 	CPU string
 }
 
@@ -23,12 +23,12 @@ func GetSidecarOptions() *sidecarOptions {
 }
 
 func (o *sidecarOptions) AddFlags(cmd *cobra.Command) {
-	o.commonOptions.AddFlags(cmd)
+	o.CommonOptions.AddFlags(cmd)
 	cmd.Flags().StringVar(&o.CPU, "cpu", os.Getenv(naming.EnvVarCPU), "number of cpus to use")
 }
 
 func (o *sidecarOptions) Validate() error {
-	if err := o.commonOptions.Validate(); err != nil {
+	if err := o.CommonOptions.Validate(); err != nil {
 		return errors.WithStack(err)
 	}
 	if o.CPU == "" {

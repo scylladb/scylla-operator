@@ -73,7 +73,7 @@ func New(ctx context.Context, mgr ctrl.Manager, logger log.Logger) (*ClusterReco
 		return nil, errors.Wrap(err, "get dynamic uncached client")
 	}
 
-	operatorImage, err := getOperatorImage(ctx, kubeClient)
+	operatorImage, err := getOperatorImage(ctx, kubeClient, options.GetOperatorOptions())
 	if err != nil {
 		return nil, errors.Wrap(err, "get operator image")
 	}
@@ -211,8 +211,7 @@ func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
-func getOperatorImage(ctx context.Context, kubeClient kubernetes.Interface) (string, error) {
-	opts := options.GetOperatorOptions()
+func getOperatorImage(ctx context.Context, kubeClient kubernetes.Interface, opts *options.OperatorOptions) (string, error) {
 	if opts.Image != "" {
 		return opts.Image, nil
 	}

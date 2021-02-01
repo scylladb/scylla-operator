@@ -6,6 +6,7 @@ package cluster_test
 import (
 	"context"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -13,6 +14,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/test/integration"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -134,6 +136,7 @@ var _ = Describe("Cluster controller", func() {
 		})
 
 		It("replace non seed node", func() {
+			const shortWait = 2 * time.Second
 			rack := scylla.Spec.Datacenter.Racks[0]
 
 			services, err := nonSeedServices(ns.Namespace, rack, scylla)
@@ -155,19 +158,27 @@ var _ = Describe("Cluster controller", func() {
 				return scylla.Status.Racks[rack.Name].ReplaceAddressFirstBoot, nil
 			}).Should(HaveKeyWithValue(serviceToReplace.Name, replacedServiceIP))
 
-			By("Old Pod should be removed")
-			Eventually(func() (bool, error) {
-				if err := sstStub.SyncStatus(ctx, scylla); err != nil {
-					return false, err
-				}
+			By("Old PVC should be removed")
+			Eventually(func() []corev1.PersistentVolumeClaim {
+				pvcs := &corev1.PersistentVolumeClaimList{}
 
-				if err := testEnv.Refresh(ctx, scylla); err != nil {
-					return false, err
-				}
-				readyMembers := scylla.Status.Racks[rack.Name].ReadyMembers
-				expectedMembers := scylla.Spec.Datacenter.Racks[0].Members
-				return readyMembers == expectedMembers-1, nil
-			}).Should(BeTrue())
+				Expect(testEnv.List(ctx, pvcs, &client.ListOptions{
+					LabelSelector: naming.RackSelector(rack, scylla),
+				})).To(Succeed())
+
+				return pvcs.Items
+			}, shortWait).Should(HaveLen(int(rack.Members - 1)))
+
+			By("Old Pod should be removed")
+			Eventually(func() []corev1.Pod {
+				pods := &corev1.PodList{}
+
+				Expect(testEnv.List(ctx, pods, &client.ListOptions{
+					LabelSelector: naming.RackSelector(rack, scylla),
+				})).To(Succeed())
+
+				return pods.Items
+			}, shortWait).Should(HaveLen(int(rack.Members - 1)))
 
 			By("When new pod is scheduled")
 			Expect(sstStub.CreatePods(ctx, scylla)).To(Succeed())
@@ -184,11 +195,14 @@ var _ = Describe("Cluster controller", func() {
 					Name:      serviceToReplace.Name,
 				}
 				if err := testEnv.Get(ctx, key, service); err != nil {
+					if apierrors.IsNotFound(err) {
+						return nil, nil
+					}
 					return nil, err
 				}
 
 				return service.Labels, nil
-			}).Should(HaveKeyWithValue(naming.ReplaceLabel, replacedServiceIP))
+			}, shortWait).Should(HaveKeyWithValue(naming.ReplaceLabel, replacedServiceIP))
 		})
 
 		It("replace seed node", func() {

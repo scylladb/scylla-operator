@@ -208,6 +208,7 @@ func (s *StatefulSetOperatorStub) CreatePVCs(ctx context.Context, cluster *scyll
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      naming.PVCNameForPod(pod.Name),
 					Namespace: pod.Namespace,
+					Labels:    naming.RackLabels(rack, cluster),
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:  pv.Name,
@@ -218,7 +219,7 @@ func (s *StatefulSetOperatorStub) CreatePVCs(ctx context.Context, cluster *scyll
 					},
 				},
 			}
-
+			s.logger.Info(ctx, "Creating/updating PVC", "pvc", pvc.Name, "pod", pod.Name)
 			if _, err := controllerutil.CreateOrUpdate(ctx, s.env, pvc, func() error { return nil }); err != nil {
 				return err
 			}

@@ -61,7 +61,6 @@ var _ = Describe("Cluster controller", func() {
 
 	It("When PVC affinity is bound to lost node, node is replaced", func() {
 		scylla := singleNodeCluster(ns)
-		scylla.Spec.AutomaticOrphanedNodeCleanup = true
 
 		Expect(testEnv.Create(ctx, scylla)).To(Succeed())
 		defer func() {
@@ -88,6 +87,10 @@ var _ = Describe("Cluster controller", func() {
 			Expect(sstStub.CreatePods(ctx, scylla)).To(Succeed())
 			Expect(sstStub.CreatePVCs(ctx, scylla, pvOption)).To(Succeed())
 		}
+
+		Expect(testEnv.Refresh(ctx, scylla)).To(Succeed())
+		scylla.Spec.AutomaticOrphanedNodeCleanup = true
+		Expect(testEnv.Update(ctx, scylla)).To(Succeed())
 
 		services, err := rackMemberService(ns.Namespace, rack, scylla)
 		Expect(err).To(BeNil())

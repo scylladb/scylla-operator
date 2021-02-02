@@ -67,10 +67,10 @@ scylla:
     resources:
       limits:
         cpu: 1
-        memory: 1Gi
+        memory: 200Mi
       requests:
         cpu: 1
-        memory: 1Gi
+        memory: 200Mi
 
 # Whether to create Prometheus ServiceMonitor
 serviceMonitor:

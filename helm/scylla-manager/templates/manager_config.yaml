@@ -8,10 +8,10 @@ data:
       hosts:
         {{- range $rack := .Values.scylla.racks }}
         {{- range $idx, $e := until ($rack.members | int) }}
-        - {{ printf "%s-%s-%s-%s-%d.%s.svc" $.Release.Name (default "scylla" $.Values.scylla.fullnameOverride) $.Values.scylla.datacenter $rack.name $idx $.Release.Namespace }}
+        - {{ printf "%s-%s-%s-%d.%s.svc" $.Release.Name $.Values.scylla.datacenter $rack.name $idx $.Release.Namespace }}
         {{- end }}
         {{- end }}
 kind: ConfigMap
 metadata:
-  name: scylla-manager-manager-config-2tfggm9842
+  name: scylla-manager-manager-config
   namespace: {{ .Release.Namespace }}

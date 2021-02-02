@@ -41,7 +41,7 @@ spec:
           name: scylla-manager-config-volume
       volumes:
       - configMap:
-          name: scylla-manager-manager-config-2tfggm9842
+          name: scylla-manager-manager-config
         name: scylla-manager-config-volume
       {{- with .Values.nodeSelector }}
       nodeSelector:

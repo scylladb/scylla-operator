@@ -1,0 +1,15 @@
+# Specify desired Scylla Operator image
+image:
+  tag: nightly
+
+# Change log level
+logLevel: info
+
+# Resources allocated to Scylla Operator pods
+resources:
+  limits:
+    cpu: 200m
+    memory: 128Mi
+  requests:
+    cpu: 200m
+    memory: 32Mi

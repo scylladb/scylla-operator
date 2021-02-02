@@ -9,6 +9,7 @@ Scylla Operator Documentation
    generic
    eks
    gke
+   helm
    manager
    monitoring
    node_operations
@@ -46,11 +47,9 @@ Currently it supports:
 * :doc:`Deploying Scylla on EKS (experimental) <eks>`
 * :doc:`Deploying Scylla on GKE <gke>`
 * :doc:`Deploying Scylla Manager on a Kubernetes Cluster <manager>`
+* :doc:`Deploying Scylla stack using Helm Charts <helm>`
 * :doc:`Setting up Monitoring using Prometheus and Grafana <monitoring>`
 * :doc:`Node operations <node_operations>`
 * :doc:`Upgrade procedures <upgrade>`
 * :doc:`Scylla Cluster Custom Resource Definition (CRD) <scylla_cluster_crd>`
 * :doc:`Contributing to the Scylla Operator Project <contributing>`
-
-
-

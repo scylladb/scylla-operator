@@ -1,6 +1,3 @@
-# Specifies under which namespace Scylla Manager will be installed
-namespace: scylla-manager-system
-
 # Allows to override Scylla Manager name showing up in recommended k8s labels
 nameOverride: ""
 # Allows to override names used in Scylla Manager k8s objects.
@@ -57,7 +54,6 @@ serviceAccount:
 
 scylla:
   developerMode: true
-  namespace: scylla-manager-system
   scyllaImage:
     tag: 4.3.0
   agentImage:

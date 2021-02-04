@@ -1,7 +1,10 @@
 package options
 
 import (
+	"os"
+
 	"github.com/pkg/errors"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/spf13/cobra"
 )
 
@@ -14,6 +17,7 @@ type OperatorOptions struct {
 	*CommonOptions
 	Image                  string
 	EnableAdmissionWebhook bool
+	RackFromNode           bool
 }
 
 func GetOperatorOptions() *OperatorOptions {
@@ -24,6 +28,7 @@ func (o *OperatorOptions) AddFlags(cmd *cobra.Command) {
 	o.CommonOptions.AddFlags(cmd)
 	cmd.Flags().StringVar(&o.Image, "image", "", "image of the operator used")
 	cmd.Flags().BoolVar(&o.EnableAdmissionWebhook, "enable-admission-webhook", true, "enable the admission webhook")
+	cmd.Flags().BoolVar(&o.RackFromNode, "rack-from-node", os.Getenv(naming.EnvVarRackFromNode) == "true", "Use node labels instead of pod labels for rack")
 }
 
 func (o *OperatorOptions) Validate() error {

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/scylladb/scylla-operator/pkg/cmd/options"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,12 +52,25 @@ func Retrieve(ctx context.Context, name, namespace string, kubeclient kubernetes
 		return nil, errors.Wrap(err, "failed to get pod")
 	}
 
+	rack := pod.Labels[naming.RackNameLabel]
+	if options.GetSidecarOptions().RackFromNode {
+		node, err := kubeclient.CoreV1().Nodes().Get(ctx, pod.Spec.NodeName, metav1.GetOptions{})
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get node")
+		}
+		var ok bool
+		rack, ok = node.Labels[naming.RackNameLabel]
+		if !ok {
+			return nil, errors.Wrap(err, fmt.Sprintf("failed to get rack name from label %s", naming.RackNameLabel))
+		}
+	}
+
 	return &Member{
 		Name:          name,
 		Namespace:     namespace,
 		IP:            pod.Status.PodIP,
 		StaticIP:      memberService.Spec.ClusterIP,
-		Rack:          pod.Labels[naming.RackNameLabel],
+		Rack:          rack,
 		Datacenter:    pod.Labels[naming.DatacenterNameLabel],
 		Cluster:       pod.Labels[naming.ClusterNameLabel],
 		ServiceLabels: memberService.Labels,

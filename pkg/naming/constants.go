@@ -49,6 +49,7 @@ const (
 	EnvVarEnvVarPodName = "POD_NAME"
 	EnvVarPodNamespace  = "POD_NAMESPACE"
 	EnvVarCPU           = "CPU"
+	EnvVarRackFromNode  = "RACK_FROM_NODE"
 )
 
 // Recorder Values

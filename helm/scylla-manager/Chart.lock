@@ -1,6 +1,6 @@
 dependencies:
 - name: scylla
-  repository: https://scylla-operator-charts.storage.googleapis.com
+  repository: file://../scylla
   version: 1.0.0
-digest: sha256:ec26309efc06d922976012585a0461f0ac161882aa3211785e9c63935840f3ae
-generated: "2021-01-15T15:56:15.892575131+01:00"
+digest: sha256:40da60d50e6a16c1c75a17564b461f5e5afc33417109f172d26944d7c9fdd103
+generated: "2021-02-04T15:13:31.081380767+01:00"

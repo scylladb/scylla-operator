@@ -23,7 +23,11 @@ To quickly deploy a Scylla cluster, choose one of the following options:
 You can also use Helm charts to deploy both Scylla Operator and Scylla clusters:
 
 ```bash
-helm repo add scylla-operator https://storage.googleapis.com/scylla-operator-charts
+# Stable charts
+helm repo add scylla-operator https://storage.googleapis.com/scylla-operator-charts/stable
+
+# Latest charts
+helm repo add scylla-operator https://storage.googleapis.com/scylla-operator-charts/latest
 ```
 
 ## Description
@@ -73,5 +77,3 @@ We would **love** you to contribute to Scylla Operator, help make it even better
 ## Acknowledgements
 
 This project is based on the Apache Cassandra Operator, a community effort started by [yanniszark](https://github.com/yanniszark) of [Arrikto](https://www.arrikto.com/), as part of the [Rook project](https://rook.io/).
-
-

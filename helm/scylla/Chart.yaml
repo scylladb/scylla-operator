@@ -1,8 +1,8 @@
 apiVersion: v2
-appVersion: v1.0.0
 name: scylla
-version: 1.0.0
 description: Scylla is a close-to-the-hardware rewrite of Cassandra in C++. It is a drop-in replacement for Cassandra and uses the same interfaces.
+version: "0.0.0" # overwritten during publishing
+appVersion: "0.0.0" # overwritten during publishing
 keywords:
   - scylla
   - scylladb

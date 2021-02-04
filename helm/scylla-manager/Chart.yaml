@@ -1,12 +1,12 @@
 apiVersion: v2
-appVersion: v1.0.0
 name: scylla-manager
-version: 1.0.0
 description: Scylla Manager automates database operations.
+version: "0.0.0" # overwritten during publishing
+appVersion: "0.0.0" # overwritten during publishing
 dependencies:
   - name: scylla
     version: 1.0.0
-    repository: https://scylla-operator-charts.storage.googleapis.com
+    repository: file://../scylla
 keywords:
   - scylla
   - scylladb

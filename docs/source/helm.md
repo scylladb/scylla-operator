@@ -15,7 +15,7 @@ We will use Minikube K8s cluster, but this could be any K8s cluster supported by
 ### TL;DR
 
 ```
-helm repo add scylla https://scylla-operator-charts.storage.googleapis.com
+helm repo add scylla https://scylla-operator-charts.storage.googleapis.com/stable
 helm repo update
 kubectl apply -f examples/common/cert-manager.yaml 
 helm install scylla-operator scylla/scylla-operator --create-namespace --namespace scylla-operator
@@ -44,7 +44,7 @@ kubectl wait -n cert-manager --for=condition=ready pod -l app=cert-manager --tim
 
 To install Scylla Helm Chart repository execute the following commands:
 ```
-helm repo add scylla https://scylla-operator-charts.storage.googleapis.com
+helm repo add scylla https://scylla-operator-charts.storage.googleapis.com/stable
 helm repo update
 ```
 

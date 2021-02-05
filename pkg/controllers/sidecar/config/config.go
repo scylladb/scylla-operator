@@ -218,6 +218,9 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		"overprovisioned":       pointer.StringPtr("0"),
 		"smp":                   pointer.StringPtr(strconv.Itoa(shards)),
 	}
+	if cluster.Spec.Network.HostNetworking {
+		args["broadcast-rpc-address"] = &m.IP
+	}
 	if cluster.Spec.Alternator.Enabled() {
 		args["alternator-port"] = pointer.StringPtr(strconv.Itoa(int(cluster.Spec.Alternator.Port)))
 		if cluster.Spec.Alternator.WriteIsolation != "" {

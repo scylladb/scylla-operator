@@ -61,7 +61,7 @@ then
     sudo apt-get install -y "${debian_packages[@]}"
 fi
 
-go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.3.0 sigs.k8s.io/kustomize/kustomize/v3@v3.5.1 github.com/goreleaser/goreleaser@v0.138.0
+go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.3.0 sigs.k8s.io/kustomize/kustomize/v3@v3.5.1
 
 mkdir -p tmp
 cd tmp

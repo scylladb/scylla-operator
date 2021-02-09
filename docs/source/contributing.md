@@ -8,10 +8,9 @@ To develop on scylla-operator, your environment must have the following:
     * Make sure [GOPATH](https://github.com/golang/go/wiki/SettingGOPATH) is set to `GOPATH=$HOME/go`.
 2. [Kustomize v3.1.0](https://github.com/kubernetes-sigs/kustomize/releases/tag/v3.1.0)
 3. [kubebuilder v2.3.1](https://github.com/kubernetes-sigs/kubebuilder/releases/tag/v2.3.1)
-5. [Docker](https://docs.docker.com/install/)
-6. [goreleaser](https://goreleaser.com/)
-7. Git client installed
-8. Github account
+4. [Docker](https://docs.docker.com/install/)
+5. Git client installed
+6. Github account
 
 To install all dependencies (Go, kustomize, kubebuilder, dep), simply run:
 ```bash

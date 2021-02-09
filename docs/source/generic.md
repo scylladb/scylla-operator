@@ -66,7 +66,7 @@ kubectl -n scylla-operator-system logs scylla-operator-controller-manager-0
 
 The output should be something like:
 ```console
-{"L":"INFO","T":"2020-04-28T08:49:17.065Z","M":"Operator started","version":"0.1.6","build_date":"2020-04-14T12:58:26Z","commit":"416da6008d2165752bfef51ed65145a77c25d3a3","built_by":"goreleaser","go_version":"go version go1.14.2 linux/amd64","options":{"Name":"scylla-operator-controller-manager-0","Namespace":"scylla-operator-system","LogLevel":"info","Image":"","EnableAdmissionWebhook":true},"_trace_id":"ZcptKkJHQh6MYQOxLSWXlw"}
+{"L":"INFO","T":"2020-04-28T08:49:17.065Z","M":"Operator started","version":"0.1.6","build_date":"2020-04-14T12:58:26Z","commit":"416da6008d2165752bfef51ed65145a77c25d3a3","go_version":"go version go1.14.2 linux/amd64","options":{"Name":"scylla-operator-controller-manager-0","Namespace":"scylla-operator-system","LogLevel":"info","Image":"","EnableAdmissionWebhook":true},"_trace_id":"ZcptKkJHQh6MYQOxLSWXlw"}
 {"L":"INFO","T":"2020-04-28T08:49:17.180Z","M":"Registering Components.","_trace_id":"ZcptKkJHQh6MYQOxLSWXlw"}
 {"L":"INFO","T":"2020-04-28T08:49:17.665Z","M":"Starting the operator...","_trace_id":"ZcptKkJHQh6MYQOxLSWXlw"}
 ```

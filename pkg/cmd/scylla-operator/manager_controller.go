@@ -4,8 +4,9 @@ import (
 	"context"
 
 	"github.com/scylladb/go-log"
-	"github.com/scylladb/scylla-operator/pkg/cmd/options"
+	"github.com/scylladb/scylla-operator/pkg/cmd/scylla-operator/options"
 	"github.com/scylladb/scylla-operator/pkg/controllers/manager"
+	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 
 	"go.uber.org/zap"
@@ -23,8 +24,9 @@ func newManagerControllerCmd(ctx context.Context, logger log.Logger, level zap.A
 			if err := opts.Validate(); err != nil {
 				logger.Fatal(ctx, "invalid options", "error", err)
 			}
-			logger.Info(ctx, "Scylla Manager Controller started", "version", version, "build_date", date,
-				"commit", commit, "built_by", builtBy, "go_version", goVersion, "options", opts)
+			v := version.Get()
+			logger.Info(ctx, "Scylla Manager Controller started", "version", v.GitVersion, "build_date", v.BuildDate,
+				"commit", v.GitCommit, "go_version", v.GoVersion, "options", opts)
 
 			// Set log level
 			if err := level.UnmarshalText([]byte(opts.LogLevel)); err != nil {

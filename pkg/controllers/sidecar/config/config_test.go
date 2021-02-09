@@ -13,7 +13,7 @@ import (
 	"github.com/magiconair/properties"
 	"github.com/scylladb/go-log"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
-	"github.com/scylladb/scylla-operator/pkg/cmd/options"
+	"github.com/scylladb/scylla-operator/pkg/cmd/scylla-operator/options"
 	"github.com/scylladb/scylla-operator/pkg/controllers/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/util/slices"

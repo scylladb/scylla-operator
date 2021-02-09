@@ -4,8 +4,9 @@ import (
 	"context"
 
 	"github.com/scylladb/go-log"
-	"github.com/scylladb/scylla-operator/pkg/cmd/options"
+	"github.com/scylladb/scylla-operator/pkg/cmd/scylla-operator/options"
 	"github.com/scylladb/scylla-operator/pkg/controllers/sidecar"
+	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -23,8 +24,9 @@ func newSidecarCmd(ctx context.Context, logger log.Logger, level zap.AtomicLevel
 			if err := opts.Validate(); err != nil {
 				logger.Fatal(ctx, "sidecar options", "error", err)
 			}
-			logger.Info(ctx, "sidecar started", "version", version, "build_date", date,
-				"commit", commit, "built_by", builtBy, "go_version", goVersion, "options", opts)
+			v := version.Get()
+			logger.Info(ctx, "sidecar started", "version", v.GitVersion, "build_date", v.BuildDate,
+				"commit", v.GitCommit, "go_version", v.GoVersion, "options", opts)
 
 			// Set log level
 			if err := level.UnmarshalText([]byte(opts.LogLevel)); err != nil {

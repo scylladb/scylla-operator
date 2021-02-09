@@ -8,8 +8,8 @@ images:
   newName: scylladb/scylla-manager
   newTag: 2.2.0
 - name: operator
-  newName: scylladb/scylla-operator
-  newTag: nightly
+  newName: docker.io/scylladb/scylla-operator
+  newTag: latest
 
 configMapGenerator:
 - files:

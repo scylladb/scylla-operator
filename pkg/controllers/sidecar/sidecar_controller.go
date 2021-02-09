@@ -22,7 +22,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
-	"github.com/scylladb/scylla-operator/pkg/cmd/options"
+	"github.com/scylladb/scylla-operator/pkg/cmd/scylla-operator/options"
 	"github.com/scylladb/scylla-operator/pkg/controllers/sidecar/config"
 	"github.com/scylladb/scylla-operator/pkg/controllers/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/naming"

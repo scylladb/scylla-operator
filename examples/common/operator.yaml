@@ -1909,8 +1909,6 @@ spec:
       - args:
         - operator
         - --log-level=debug
-        command:
-        - /scylla-operator
         env:
         - name: POD_NAME
           valueFrom:
@@ -1920,7 +1918,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        image: scylladb/scylla-operator:nightly
+        image: docker.io/scylladb/scylla-operator:latest
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

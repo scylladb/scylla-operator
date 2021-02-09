@@ -1,12 +1,10 @@
-// +build integration
 // Copyright (C) 2017 ScyllaDB
 
-package cluster_test
+package integration
 
 import (
 	"context"
 	"strings"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -90,9 +88,11 @@ var _ = Describe("Cluster controller", func() {
 			Expect(sstStub.CreatePVCs(ctx, scylla, pvOption)).To(Succeed())
 		}
 
-		Expect(testEnv.Refresh(ctx, scylla)).To(Succeed())
-		scylla.Spec.AutomaticOrphanedNodeCleanup = true
-		Expect(testEnv.Update(ctx, scylla)).To(Succeed())
+		Eventually(func() error {
+			Expect(testEnv.Refresh(ctx, scylla)).To(Succeed())
+			scylla.Spec.AutomaticOrphanedNodeCleanup = true
+			return testEnv.Update(ctx, scylla)
+		}, shortWait).Should(Succeed())
 
 		services, err := rackMemberService(ns.Namespace, rack, scylla)
 		Expect(err).To(BeNil())
@@ -136,7 +136,6 @@ var _ = Describe("Cluster controller", func() {
 		})
 
 		It("replace non seed node", func() {
-			const shortWait = 2 * time.Second
 			rack := scylla.Spec.Datacenter.Racks[0]
 
 			services, err := nonSeedServices(ns.Namespace, rack, scylla)
@@ -234,7 +233,7 @@ var _ = Describe("Cluster controller", func() {
 				}
 
 				return found, nil
-			}).Should(BeTrue())
+			}, shortWait).Should(BeTrue())
 		})
 	})
 })

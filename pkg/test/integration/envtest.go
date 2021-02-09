@@ -89,7 +89,7 @@ func NewTestEnvironment(logger log.Logger, options ...EnvOption) (*TestEnvironme
 
 	envOpts := &option{
 		pollRetryInterval: 200 * time.Millisecond,
-		pollTimeout:       5 * time.Second,
+		pollTimeout:       60 * time.Second,
 	}
 
 	for _, opt := range options {

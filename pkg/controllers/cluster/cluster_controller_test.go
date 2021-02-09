@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
-	"github.com/scylladb/scylla-operator/pkg/cmd/options"
+	"github.com/scylladb/scylla-operator/pkg/cmd/scylla-operator/options"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubefake "k8s.io/client-go/kubernetes/fake"
@@ -80,7 +80,7 @@ func TestGetOperatorImage(t *testing.T) {
 			}
 
 			kubeClientFake := kubefake.NewSimpleClientset(pod)
-			image, err := getOperatorImage(context.Background(), kubeClientFake, opts)
+			image, err := GetOperatorImage(context.Background(), kubeClientFake, opts)
 			// Can't use DeepEqual because of different stacks in pkg/error
 			if (err == nil && tc.expectedError != nil) || (err != nil && tc.expectedError == nil) || (err != tc.expectedError && err.Error() != tc.expectedError.Error()) {
 				t.Errorf("expected error %#v, got %#v", tc.expectedError, err)

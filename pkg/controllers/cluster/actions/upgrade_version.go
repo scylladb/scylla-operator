@@ -41,7 +41,7 @@ const (
 type ClusterVersionUpgrade struct {
 	Cluster        *scyllav1.ScyllaCluster
 	ScyllaClient   *scyllaclient.Client
-	ClusterSession cqlSession
+	ClusterSession CQLSession
 
 	ipMapping    map[string]string
 	pollInterval time.Duration
@@ -72,11 +72,11 @@ var ScyllaClientForClusterFunc = func(ctx context.Context, cc client.Client, hos
 	return scyllaclient.NewClient(cfg, logger)
 }
 
-type cqlSession interface {
+type CQLSession interface {
 	AwaitSchemaAgreement(ctx context.Context) error
 }
 
-var NewSessionFunc = func(hosts []string) (cqlSession, error) {
+var NewSessionFunc = func(hosts []string) (CQLSession, error) {
 	cluster := gocql.NewCluster(hosts...)
 	return gocqlx.WrapSession(cluster.CreateSession())
 }

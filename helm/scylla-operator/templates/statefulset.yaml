@@ -28,8 +28,6 @@ spec:
         - args:
             - operator
             - --log-level={{ .Values.logLevel }}
-          command:
-            - /scylla-operator
           env:
             - name: POD_NAME
               valueFrom:

@@ -16,12 +16,6 @@ import (
 )
 
 var (
-	builtBy   string
-	commit    string
-	date      string
-	goVersion string
-	version   string
-
 	scheme = runtime.NewScheme()
 )
 

@@ -1,77 +1,157 @@
+# Copyright (C) 2021 ScyllaDB
+
 name: Go
 
 on:
   push:
-    branches: [ master ]
+    # Restrict the branches to only those we want to promote from.
+    branches:
+    - 'master'
+    - 'v[0-9]+\.[0-9]+'
+    # Act only on temporary tags, the final ones are created by manually promoting
+    # an existing candidate image, after it goes through QA. We need to be carefull
+    # to avoid overwritting those, building from the same sources may not result
+    # in the same image content that was tested, e.g. if a base image changed in the meantime.
+    tags:
+    - 'v[0-9]+\.[0-9]+\.[0-9]-(alpha|beta|rc)\.[0-9]+'
   pull_request:
-    branches: [ master ]
+    branches:
+    - '*'
+  schedule:
+  - cron:  '0 23 * * *' # daily at 11pm
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  go_version: 1.15.7
+  image_ref: docker.io/scylladb/scylla-operator
+  promotion_branch: 'refs/heads/master'
+  latest_tag: latest
 
 jobs:
-  build:
-    name: Build
-    env:
-      # We have to change the working directory because of GOPATH
-      working-directory: ${{ github.workspace }}/src/github.com/${{ github.repository }}
-      working-directory-rel: src/github.com/${{ github.repository }}
-      GOPATH: ${{ github.workspace }}
+  verify:
+    name: Verify
     runs-on: ubuntu-20.04
     steps:
-      - name: Check out code into the GOPATH directory
-        uses: actions/checkout@v2
-        with:
-          path: ${{ env.working-directory-rel }}
+    - name: Setup go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.go_version }}
+    - uses: actions/checkout@v2
+    - name: Verify
+      run: make verify --warn-undefined-variables
 
-      - name: Install python3 deps
-        run: pip3 install requests
+  verify-deps:
+    name: Verify dependencies
+    runs-on: ubuntu-20.04
+    steps:
+    - name: Setup go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.go_version }}
+    - uses: actions/checkout@v2
+    - name: Verify dependencies
+      run: make verify-deps --warn-undefined-variables
 
-      - name: Cache tools
-        id: cache-tools
-        uses: actions/cache@v1
-        with:
-          path: ${{ format('{0}/bin', env.GOPATH) }}
-          key: ${{ runner.os }}-${{ hashFiles(format('{0}/install-dependencies.sh', env.working-directory-rel)) }}
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-20.04
+    steps:
+    - name: Setup go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.go_version }}
+    - uses: actions/checkout@v2
+    - name: Build
+      run: make --warn-undefined-variables
+    - name: Test
+      run: make test --warn-undefined-variables
 
-      - name: Install deps
-        if: steps['cache-tools'].outputs['cache-hit'] != 'true'
-        working-directory: ${{ env.working-directory }}
-        run: ./install-dependencies.sh
+  test-integration:
+    name: Test integration
+    runs-on: ubuntu-20.04
+    steps:
+    - name: Setup go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.go_version }}
+    - name: Export GOPATH
+      run: echo "GOPATH=$( go env GOPATH )" | tee -a ${GITHUB_ENV}
+    - uses: actions/checkout@v2
+    - name: Install python3 deps
+      run: pip3 install requests
+#   TODO: Consider cache removal. Caching means that jobs and periodis won't be able to verify that external depepndencies are still present and working.
+    - name: Cache tools
+      id: cache-tools
+      uses: actions/cache@v2
+      with:
+        path: ${{ format('{0}/bin', env.GOPATH) }}
+        key: ${{ runner.os }}-${{ hashFiles('./install-dependencies.sh') }}
+    - name: Install deps
+      if: ${{ steps['cache-tools'].outputs['cache-hit'] != 'true' }}
+      run: ./install-dependencies.sh
+    - name: Test integration
+      run: make test-integration --warn-undefined-variables
 
-      - name: Go Dependencies
-        working-directory: ${{ env.working-directory }}
-        run: hack/run_and_diff.py make vendor
+  images:
+    name: Build images
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - uses: docker/build-push-action@v2
+      with:
+        context: .
+        file: ./Dockerfile
+        platforms: linux/amd64
+        push: false
 
-      - name: Code Formatting
-        working-directory: ${{ env.working-directory }}
-        run: hack/run_and_diff.py -v make fmt
+  # TODO: Add e2e - use the same image sha from images step
 
-      - name: Code Inspection
-        working-directory: ${{ env.working-directory }}
-        run: hack/run_and_diff.py -v make vet
+  # TODO: Add upgrade-e2e - use the same image sha from images step
 
-      - name: Unit Tests
-        working-directory: ${{ env.working-directory }}
-        run: hack/run_and_diff.py -v make test
+  # Dummy step for different propromotion jobs to depend on
+  success:
+    name: All tests successfull
+    runs-on: ubuntu-20.04
+    needs:
+    - verify
+    - build-and-test
+    - test-integration
+    - images
+    # TODO: Depend on e2e when available
+    # TODO: Depend on upgrade-e2e when available
+    steps:
+    - run: /bin/true
 
-      - name: Build
-        working-directory: ${{ env.working-directory }}
-        run: make local-build
-
-      - name: Login to DockerHub
-        if: ${{ github.event_name != 'pull_request' }}
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build nightly image
-        if: ${{ github.event_name != 'pull_request' }}
-        working-directory: ${{ env.working-directory }}
-        run: make nightly
-
-      - name: Publish nightly image
-        if: ${{ github.event_name != 'pull_request' }}
-        working-directory: ${{ env.working-directory }}
-        run: make docker-push
-
-# TODO:
-# - E2E
+  promote:
+    name: Promote artifacts
+    runs-on: ubuntu-20.04
+    needs: [success]
+    if: ${{ github.event_name != 'pull_request' }}
+    steps:
+    - name: Determine promotion tag
+      if: ${{ github.event_name != 'schedule' }}
+      run: |
+        source ./hack/lib/tag-from-gh-ref.sh
+        echo "IMAGE_TAG=$( tag_from_gh_ref "${GITHUB_REF} )" | tee -a ${GITHUB_ENV}
+    - name: Determine promotion tag for scheduled job
+      if: ${{ github.event_name == 'schedule' }}
+      run: |
+        echo "IMAGE_TAG=nightly" | tee -a ${GITHUB_ENV}
+    - name: Login to DockerHub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - uses: actions/checkout@v2
+    # TODO: use the same image sha from images step - has to match what we used for e2e
+    - name: Publish latest image
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        file: ./Dockerfile
+        platforms: linux/amd64
+        push: true
+        tags: ${{ env.image_ref }}:${{ env.IMAGE_TAG }}

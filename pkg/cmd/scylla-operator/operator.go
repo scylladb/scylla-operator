@@ -6,9 +6,10 @@ import (
 
 	"github.com/scylladb/go-log"
 	"github.com/scylladb/scylla-operator/pkg/api/v1"
-	"github.com/scylladb/scylla-operator/pkg/cmd/options"
+	"github.com/scylladb/scylla-operator/pkg/cmd/scylla-operator/options"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
@@ -27,8 +28,9 @@ func newOperatorCmd(ctx context.Context, logger log.Logger, level zap.AtomicLeve
 			if err := opts.Validate(); err != nil {
 				logger.Fatal(ctx, "invalid options", "error", err)
 			}
-			logger.Info(ctx, "Operator started", "version", version, "build_date", date,
-				"commit", commit, "built_by", builtBy, "go_version", goVersion, "options", opts)
+			v := version.Get()
+			logger.Info(ctx, "Operator started", "version", v.GitVersion, "build_date", v.BuildDate,
+				"commit", v.GitCommit, "go_version", v.GoVersion, "options", opts)
 
 			// Set log level
 			if err := level.UnmarshalText([]byte(opts.LogLevel)); err != nil {

@@ -23,9 +23,7 @@ spec:
         control-plane: controller-manager
     spec:
       containers:
-      - command:
-        - /scylla-operator
-        args:
+      - args:
         - operator
         - --log-level=debug
         env:

@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/scylladb/go-log"
-	"github.com/scylladb/scylla-operator/pkg/cmd/options"
+	"github.com/scylladb/scylla-operator/pkg/cmd/scylla-operator/options"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -73,7 +73,7 @@ func New(ctx context.Context, mgr ctrl.Manager, logger log.Logger) (*ClusterReco
 		return nil, errors.Wrap(err, "get dynamic uncached client")
 	}
 
-	operatorImage, err := getOperatorImage(ctx, kubeClient, options.GetOperatorOptions())
+	operatorImage, err := GetOperatorImage(ctx, kubeClient, options.GetOperatorOptions())
 	if err != nil {
 		return nil, errors.Wrap(err, "get operator image")
 	}
@@ -211,7 +211,7 @@ func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
-func getOperatorImage(ctx context.Context, kubeClient kubernetes.Interface, opts *options.OperatorOptions) (string, error) {
+func GetOperatorImage(ctx context.Context, kubeClient kubernetes.Interface, opts *options.OperatorOptions) (string, error) {
 	if opts.Image != "" {
 		return opts.Image, nil
 	}

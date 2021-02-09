@@ -1,8 +1,6 @@
-// +build integration
-
 // Copyright (C) 2017 ScyllaDB
 
-package actions_test
+package integration
 
 import (
 	"context"
@@ -16,7 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
-	"github.com/scylladb/scylla-operator/pkg/cmd/options"
+	"github.com/scylladb/scylla-operator/pkg/cmd/scylla-operator/options"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster"
 	"github.com/scylladb/scylla-operator/pkg/test/integration"
 	"go.uber.org/zap"
@@ -33,7 +31,8 @@ var (
 
 const (
 	retryInterval = 200 * time.Millisecond
-	timeout       = 30 * time.Second
+	timeout       = 60 * time.Second
+	shortWait     = 30 * time.Second
 )
 
 func TestMain(m *testing.M) {

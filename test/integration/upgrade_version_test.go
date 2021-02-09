@@ -1,7 +1,6 @@
-// +build integration
 // Copyright (C) 2017 ScyllaDB
 
-package actions_test
+package integration
 
 import (
 	"context"
@@ -159,12 +158,10 @@ var _ = Describe("Cluster controller", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				return ver
-			}).Should(Equal("4.2.1"))
+			}, shortWait).Should(Equal("4.2.1"))
 		})
 
 		It("Major upgrade", func() {
-			shortWait := 2 * time.Second
-
 			systemKeyspaces := []string{"system_schema", "system"}
 			allKeyspaces := []string{"system_schema", "system", "data_0", "data_1"}
 
@@ -196,9 +193,11 @@ var _ = Describe("Cluster controller", func() {
 			}
 
 			By("When: Scylla Cluster major version is upgraded")
-			Expect(testEnv.Refresh(ctx, scylla)).To(Succeed())
-			scylla.Spec.Version = "5.2.0"
-			Expect(testEnv.Update(ctx, scylla)).To(Succeed())
+			Eventually(func() error {
+				Expect(testEnv.Refresh(ctx, scylla)).To(Succeed())
+				scylla.Spec.Version = "5.2.0"
+				return testEnv.Update(ctx, scylla)
+			}, shortWait).Should(Succeed())
 
 			By("Then: Cluster status should contain upgrade status")
 			Eventually(func() *scyllav1.UpgradeStatus {

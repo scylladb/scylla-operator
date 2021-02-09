@@ -14,6 +14,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -184,12 +185,14 @@ func (a *RackReplaceNode) replaceNode(ctx context.Context, state *State, member 
 			return false, errors.Wrap(err, "failed to get pvc")
 		}
 
-		// Remove finalizer, which will wait until pod is deleted.
-		// We want to delete pod anyway, so it's better to delete pvc immediately.
-		pvcCopy := p.DeepCopy()
-		pvcCopy.SetFinalizers([]string{})
-		if err := cc.Update(ctx, pvcCopy); err != nil {
-			return false, errors.Wrap(err, "failed to update pvc")
+		if len(p.Finalizers) != 0 {
+			// Remove finalizer, which will wait until pod is deleted.
+			// We want to delete pod anyway, so it's better to delete pvc immediately.
+			if err := cc.Patch(ctx, pvc, util.StrategicMergePatchFunc(func(_ runtime.Object) ([]byte, error) {
+				return []byte(fmt.Sprintf(`{"metadata":{"$patch":"replace","finalizers":[],"name":"%s","uid":"%s"}}`, p.Name, p.UID)), nil
+			})); err != nil {
+				return false, errors.Wrap(err, "clear PVC finalizers")
+			}
 		}
 
 		return false, nil

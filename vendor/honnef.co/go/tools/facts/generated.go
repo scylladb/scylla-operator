@@ -19,7 +19,6 @@ const (
 	Goyacc
 	Cgo
 	Stringer
-	ProtocGenGo
 )
 
 var (
@@ -52,16 +51,10 @@ func isGenerated(path string) (Generator, bool) {
 				return Goyacc, true
 			case "by cmd/cgo;":
 				return Cgo, true
-			case "by protoc-gen-go.":
-				return ProtocGenGo, true
 			}
 			if strings.HasPrefix(text, `by "stringer `) {
 				return Stringer, true
 			}
-			if strings.HasPrefix(text, `by goyacc `) {
-				return Goyacc, true
-			}
-
 			return Unknown, true
 		}
 		if bytes.Equal(s, oldCgo) {

@@ -26,9 +26,7 @@ defaults:
 
 env:
   go_version: 1.15.7
-  image_ref: docker.io/scylladb/scylla-operator
-  promotion_branch: 'refs/heads/master'
-  latest_tag: latest
+  repo_ref: docker.io/scylladb/scylla-operator
 
 jobs:
   verify:
@@ -117,6 +115,7 @@ jobs:
     runs-on: ubuntu-20.04
     needs:
     - verify
+    - verify-deps
     - build-and-test
     - test-integration
     - images
@@ -131,11 +130,13 @@ jobs:
     needs: [success]
     if: ${{ github.event_name != 'pull_request' }}
     steps:
+    - uses: actions/checkout@v2
     - name: Determine promotion tag
       if: ${{ github.event_name != 'schedule' }}
       run: |
         source ./hack/lib/tag-from-gh-ref.sh
-        echo "IMAGE_TAG=$( tag_from_gh_ref "${GITHUB_REF} )" | tee -a ${GITHUB_ENV}
+        IMAGE_TAG=$( tag_from_gh_ref "${GITHUB_REF}" )
+        echo "IMAGE_TAG=${IMAGE_TAG}" | tee -a ${GITHUB_ENV}
     - name: Determine promotion tag for scheduled job
       if: ${{ github.event_name == 'schedule' }}
       run: |
@@ -154,4 +155,4 @@ jobs:
         file: ./Dockerfile
         platforms: linux/amd64
         push: true
-        tags: ${{ env.image_ref }}:${{ env.IMAGE_TAG }}
+        tags: ${{ env.repo_ref }}:${{ env.IMAGE_TAG }}

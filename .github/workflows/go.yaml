@@ -139,6 +139,9 @@ jobs:
     if: ${{ github.event_name != 'pull_request' }}
     steps:
     - uses: actions/checkout@v2
+      with:
+        # Helm Chart version needs to be semantic, we need tags in checked out repo to determine latest one.
+        fetch_depth: 0
     - name: Determine promotion tag
       if: ${{ github.event_name != 'schedule' }}
       run: |
@@ -154,9 +157,8 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - uses: actions/checkout@v2
     # TODO: use the same image sha from images step - has to match what we used for e2e
-    - name: Publish latest image
+    - name: Publish container image
       uses: docker/build-push-action@v2
       with:
         context: .
@@ -164,3 +166,12 @@ jobs:
         platforms: linux/amd64
         push: true
         tags: ${{ env.repo_ref }}:${{ env.IMAGE_TAG }}
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@master
+      with:
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+    - name: Publish Helm Chart
+      env:
+        HELM_CHANNEL: latest
+        HELM_APP_VERSION: ${{ env.IMAGE_TAG }}
+      run: make helm-publish

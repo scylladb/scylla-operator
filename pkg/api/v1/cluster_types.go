@@ -17,7 +17,6 @@ limitations under the License.
 package v1
 
 import (
-	"github.com/blang/semver"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -334,14 +333,6 @@ type ScyllaClusterList struct {
 	Items           []ScyllaCluster `json:"items"`
 }
 
-// Version of scylla docker starting from which passing arguments via entry-point is supported
-var ScyllaVersionThatSupportsArgsText = "4.2.0"
-var ScyllaVersionThatSupportsArgs semver.Version
-
 func init() {
-	var err error
-	if ScyllaVersionThatSupportsArgs, err = semver.Parse(ScyllaVersionThatSupportsArgsText); err != nil {
-		panic(err)
-	}
 	SchemeBuilder.Register(&ScyllaCluster{}, &ScyllaClusterList{})
 }

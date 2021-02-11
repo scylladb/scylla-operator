@@ -78,6 +78,7 @@ const (
 	ScyllaClientConfigFileName   = "scylla-client.yaml"
 	ScyllaConfigName             = "scylla.yaml"
 	ScyllaRackDCPropertiesName   = "cassandra-rackdc.properties"
+	ScyllaIOPropertiesName       = "io_properties.yaml"
 
 	DataDir = "/var/lib/scylla"
 

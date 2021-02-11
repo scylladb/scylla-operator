@@ -90,6 +90,10 @@ jobs:
     - name: Install deps
       if: ${{ steps['cache-tools'].outputs['cache-hit'] != 'true' }}
       run: ./install-dependencies.sh
+    - name: Tolerate flakes on promotion jobs
+      if: ${{ github.event_name != 'pull_request' }}
+      run: |
+        echo "GO_TEST_EXTRA_ARGS=-ginkgo.flakeAttempts=5" | tee -a ${GITHUB_ENV}
     - name: Test integration
       run: make test-integration --warn-undefined-variables
 

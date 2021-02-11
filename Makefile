@@ -38,6 +38,7 @@ GO_BUILD_BINDIR ?=
 GO_LD_EXTRA_FLAGS ?=
 GO_TEST_PACKAGES :=./pkg/... # ./cmd/...
 GO_TEST_FLAGS ?=-race
+GO_TEST_COUNT ?=
 GO_TEST_EXTRA_FLAGS ?=
 GO_TEST_ARGS ?=
 GO_TEST_EXTRA_ARGS ?=
@@ -155,11 +156,12 @@ update: update-gofmt
 .PHONY: update
 
 test-unit:
-	$(GO) test $(GO_TEST_FLAGS) $(GO_TEST_EXTRA_FLAGS) $(GO_TEST_PACKAGES) $(if $(GO_TEST_ARGS)$(GO_TEST_EXTRA_ARGS),-args $(GO_TEST_ARGS) $(GO_TEST_EXTRA_ARGS))
+	$(GO) test $(GO_TEST_COUNT) $(GO_TEST_FLAGS) $(GO_TEST_EXTRA_FLAGS) $(GO_TEST_PACKAGES) $(if $(GO_TEST_ARGS)$(GO_TEST_EXTRA_ARGS),-args $(GO_TEST_ARGS) $(GO_TEST_EXTRA_ARGS))
 .PHONY: test-unit
 
 test-integration: GO_TEST_PACKAGES :=./test/integration/...
-test-integration: GO_TEST_FLAGS += -count=1 -p=1 -timeout 30m -v
+test-integration: GO_TEST_COUNT :=-count=1
+test-integration: GO_TEST_FLAGS += -p=1 -timeout 30m -v
 test-integration: GO_TEST_ARGS += -ginkgo.progress
 test-integration: test-unit
 .PHONY: test-integration

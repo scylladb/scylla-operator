@@ -10,14 +10,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/blang/semver"
 	"k8s.io/utils/pointer"
 
 	"github.com/ghodss/yaml"
 	"github.com/magiconair/properties"
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
-	"github.com/scylladb/scylla-operator/pkg/api/v1"
+	v1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/cmd/scylla-operator/options"
 	"github.com/scylladb/scylla-operator/pkg/controllers/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -28,8 +27,10 @@ import (
 
 const (
 	configDirScylla                     = "/etc/scylla"
+	configDirScyllaD                    = "/etc/scylla.d"
 	scyllaYAMLPath                      = configDirScylla + "/" + naming.ScyllaConfigName
 	scyllaYAMLConfigMapPath             = naming.ScyllaConfigDirName + "/" + naming.ScyllaConfigName
+	scyllaIOPropertiesPath              = configDirScyllaD + "/" + naming.ScyllaIOPropertiesName
 	scyllaRackDCPropertiesPath          = configDirScylla + "/" + naming.ScyllaRackDCPropertiesName
 	scyllaRackDCPropertiesConfigMapPath = naming.ScyllaConfigDirName + "/" + naming.ScyllaRackDCPropertiesName
 	entrypointPath                      = "/docker-entrypoint.py"
@@ -244,16 +245,22 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		args["cpuset"] = &cpusAllowed
 	}
 
+	version := v1.NewScyllaVersion(cluster.Spec.Version)
+
+	s.logger.Info(ctx, "Scylla version detected", "version", version)
+
 	if len(cluster.Spec.ScyllaArgs) > 0 {
-		version, err := semver.Parse(cluster.Spec.Version)
-		if err != nil {
-			s.logger.Info(ctx, "This scylla version might not support ScyllaArgs", "version", cluster.Spec.Version)
-			appendScyllaArguments(ctx, s, cluster.Spec.ScyllaArgs, args)
-		} else if version.LT(v1.ScyllaVersionThatSupportsArgs) {
+		if !version.SupportFeatureUnsafe(v1.ScyllaVersionThatSupportsArgs) {
 			s.logger.Info(ctx, "This scylla version does not support ScyllaArgs. ScyllaArgs is ignored", "version", cluster.Spec.Version)
 		} else {
 			appendScyllaArguments(ctx, s, cluster.Spec.ScyllaArgs, args)
 		}
+	}
+
+	if _, err := os.Stat(scyllaIOPropertiesPath); err == nil && version.SupportFeatureSafe(v1.ScyllaVersionThatSupportsDisablingIOTuning) {
+		s.logger.Info(ctx, "Scylla IO properties are already set, skipping io tuning")
+		ioSetup := "0"
+		args["io-setup"] = &ioSetup
 	}
 
 	var argsList []string

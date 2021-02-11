@@ -35,10 +35,12 @@ GO_BUILD_PACKAGES_EXPANDED ?=$(shell $(GO) list $(GO_BUILD_PACKAGES))
 go_build_binaries =$(notdir $(GO_BUILD_PACKAGES_EXPANDED))
 GO_BUILD_FLAGS ?=-trimpath
 GO_BUILD_BINDIR ?=
-GO_LD_EXTRAFLAGS ?=
+GO_LD_EXTRA_FLAGS ?=
 GO_TEST_PACKAGES :=./pkg/... # ./cmd/...
 GO_TEST_FLAGS ?=-race
+GO_TEST_EXTRA_FLAGS ?=
 GO_TEST_ARGS ?=
+GO_TEST_EXTRA_ARGS ?=
 
 
 define version-ldflags
@@ -153,11 +155,12 @@ update: update-gofmt
 .PHONY: update
 
 test-unit:
-	$(GO) test $(GO_TEST_FLAGS) $(GO_TEST_PACKAGES) $(if $(GO_TEST_ARGS),-args $(GO_TEST_ARGS))
+	$(GO) test $(GO_TEST_FLAGS) $(GO_TEST_EXTRA_FLAGS) $(GO_TEST_PACKAGES) $(if $(GO_TEST_ARGS)$(GO_TEST_EXTRA_ARGS),-args $(GO_TEST_ARGS) $(GO_TEST_EXTRA_ARGS))
 .PHONY: test-unit
 
 test-integration: GO_TEST_PACKAGES :=./test/integration/...
-test-integration: GO_TEST_FLAGS += -count=1 -p=1 -timeout 30m
+test-integration: GO_TEST_FLAGS += -count=1 -p=1 -timeout 30m -v
+test-integration: GO_TEST_ARGS += -ginkgo.progress
 test-integration: test-unit
 .PHONY: test-integration
 

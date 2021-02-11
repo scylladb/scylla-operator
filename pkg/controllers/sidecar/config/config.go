@@ -17,7 +17,7 @@ import (
 	"github.com/magiconair/properties"
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
-	"github.com/scylladb/scylla-operator/pkg/api/v1"
+	v1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/cmd/options"
 	"github.com/scylladb/scylla-operator/pkg/controllers/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -28,8 +28,10 @@ import (
 
 const (
 	configDirScylla                     = "/etc/scylla"
+	configDirScyllaD                    = "/etc/scylla.d"
 	scyllaYAMLPath                      = configDirScylla + "/" + naming.ScyllaConfigName
 	scyllaYAMLConfigMapPath             = naming.ScyllaConfigDirName + "/" + naming.ScyllaConfigName
+	scyllaIOPropertiesPath              = configDirScyllaD + "/" + naming.ScyllaIOPropertiesName
 	scyllaRackDCPropertiesPath          = configDirScylla + "/" + naming.ScyllaRackDCPropertiesName
 	scyllaRackDCPropertiesConfigMapPath = naming.ScyllaConfigDirName + "/" + naming.ScyllaRackDCPropertiesName
 	entrypointPath                      = "/docker-entrypoint.py"
@@ -257,6 +259,12 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		} else {
 			appendScyllaArguments(ctx, s, cluster.Spec.ScyllaArgs, args)
 		}
+	}
+
+	if _, err := os.Stat(scyllaIOPropertiesPath); err == nil {
+		s.logger.Info(ctx, "Scylla IO properties are already set, skipping io tuning (feature only supported for Scylla >= 3.3)")
+		ioSetup := "0"
+		args["io-setup"] = &ioSetup
 	}
 
 	var argsList []string

@@ -55,7 +55,7 @@ define version-ldflags
 -X $(1).gitTreeState="$(GIT_TREE_STATE)" \
 -X $(1).buildDate="$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')"
 endef
-GO_LD_FLAGS ?=-ldflags "$(call version-ldflags,$(GO_PACKAGE)/pkg/version) $(GO_LD_EXTRAFLAGS)"
+GO_LD_FLAGS ?=-ldflags "$(call version-ldflags,$(GO_PACKAGE)/pkg/version) $(GO_LD_EXTRA_FLAGS)"
 
 # TODO: look into how to make these local to the targets
 export DOCKER_BUILDKIT :=1

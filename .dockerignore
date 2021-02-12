@@ -1,6 +1,1 @@
-bin
-config
-docs
-examples
-hack
-scripts
+/scylla-operator

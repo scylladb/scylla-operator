@@ -94,7 +94,7 @@ var _ = Describe("Cluster controller", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			return ver
-		}).Should(Equal(preUpdateVersion))
+		}, shortWait).Should(Equal(preUpdateVersion))
 
 		By("When: first rack pods enters ready state")
 
@@ -110,7 +110,7 @@ var _ = Describe("Cluster controller", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			return ver
-		}).Should(Equal(postUpdateVersion))
+		}, shortWait).Should(Equal(postUpdateVersion))
 	})
 
 	Context("Cluster upgrade", func() {
@@ -152,9 +152,11 @@ var _ = Describe("Cluster controller", func() {
 		})
 
 		It("Patch version upgrade", func() {
-			Expect(testEnv.Refresh(ctx, scylla)).To(Succeed())
-			scylla.Spec.Version = "4.2.1"
-			Expect(testEnv.Update(ctx, scylla)).To(Succeed())
+			Eventually(func() error {
+				Expect(testEnv.Refresh(ctx, scylla)).To(Succeed())
+				scylla.Spec.Version = "4.2.1"
+				return testEnv.Update(ctx, scylla)
+			}, shortWait).Should(Succeed())
 
 			Eventually(func() string {
 				sts, err := testEnv.StatefulSetOfRack(ctx, scylla.Spec.Datacenter.Racks[0], scylla)

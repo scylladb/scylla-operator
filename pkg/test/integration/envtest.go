@@ -23,6 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -58,8 +59,9 @@ func init() {
 type TestEnvironment struct {
 	manager.Manager
 	Client
-	KubeClient kubernetes.Interface
-	Config     *rest.Config
+	Config        *rest.Config
+	KubeClient    kubernetes.Interface
+	DynamicClient dynamic.Interface
 
 	logger log.Logger
 	cancel context.CancelFunc
@@ -122,6 +124,7 @@ func NewTestEnvironment(logger log.Logger, options ...EnvOption) (*TestEnvironme
 		return nil, errors.Wrap(err, "create webhook")
 	}
 
+	restConfig := mgr.GetConfig()
 	return &TestEnvironment{
 		Manager: mgr,
 		Client: Client{
@@ -129,9 +132,10 @@ func NewTestEnvironment(logger log.Logger, options ...EnvOption) (*TestEnvironme
 			RetryInterval: envOpts.pollRetryInterval,
 			Timeout:       envOpts.pollTimeout,
 		},
-		KubeClient: kubernetes.NewForConfigOrDie(mgr.GetConfig()),
-		Config:     mgr.GetConfig(),
-		logger:     logger,
+		Config:        restConfig,
+		KubeClient:    kubernetes.NewForConfigOrDie(restConfig),
+		DynamicClient: dynamic.NewForConfigOrDie(restConfig),
+		logger:        logger,
 	}, nil
 }
 

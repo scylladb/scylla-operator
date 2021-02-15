@@ -18,6 +18,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	testutils "github.com/scylladb/scylla-operator/pkg/test/utils"
 	"github.com/scylladb/scylla-operator/pkg/util/httpx"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,6 +36,14 @@ var _ = Describe("Cluster controller", func() {
 		var err error
 		ns, err = testEnv.CreateNamespace(ctx, "ns")
 		Expect(err).To(BeNil())
+	})
+
+	JustAfterEach(func() {
+		if CurrentGinkgoTestDescription().Failed {
+			By("Collecting YAML dumps")
+			dumpObjects(ctx, testEnv.DynamicClient, scyllaGVR, ns.Name, metav1.ListOptions{})
+			dumpObjects(ctx, testEnv.DynamicClient, appsv1.SchemeGroupVersion.WithResource("statefulsets"), ns.Name, metav1.ListOptions{})
+		}
 	})
 
 	AfterEach(func() {

@@ -11,6 +11,7 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/test/integration"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -31,6 +32,14 @@ var _ = Describe("Cluster controller", func() {
 		Expect(err).To(BeNil())
 	})
 
+	JustAfterEach(func() {
+		if CurrentGinkgoTestDescription().Failed {
+			By("Collecting YAML dumps")
+			dumpObjects(ctx, testEnv.DynamicClient, scyllaGVR, ns.Name, metav1.ListOptions{})
+			dumpObjects(ctx, testEnv.DynamicClient, appsv1.SchemeGroupVersion.WithResource("statefulsets"), ns.Name, metav1.ListOptions{})
+		}
+	})
+
 	AfterEach(func() {
 		Expect(testEnv.Delete(ctx, ns)).To(Succeed())
 	})
@@ -40,7 +49,6 @@ var _ = Describe("Cluster controller", func() {
 			scylla := testEnv.SingleRackCluster(ns)
 
 			Expect(testEnv.Create(ctx, scylla)).To(Succeed())
-			defer testEnv.Delete(ctx, scylla)
 
 			Expect(testEnv.WaitForCluster(ctx, scylla)).To(Succeed())
 
@@ -63,9 +71,6 @@ var _ = Describe("Cluster controller", func() {
 		scylla := singleNodeCluster(ns)
 
 		Expect(testEnv.Create(ctx, scylla)).To(Succeed())
-		defer func() {
-			Expect(testEnv.Delete(ctx, scylla)).To(Succeed())
-		}()
 
 		Expect(testEnv.WaitForCluster(ctx, scylla)).To(Succeed())
 		Expect(testEnv.Refresh(ctx, scylla)).To(Succeed())

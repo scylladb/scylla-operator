@@ -14,6 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/cmd/scylla-operator/options"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster"
 	"github.com/scylladb/scylla-operator/pkg/test/integration"
@@ -25,8 +26,9 @@ import (
 )
 
 var (
-	testEnv *integration.TestEnvironment
-	ctx     = context.Background()
+	testEnv   *integration.TestEnvironment
+	ctx       = context.Background()
+	scyllaGVR = scyllav1.GroupVersion.WithResource("scyllaclusters")
 )
 
 const (

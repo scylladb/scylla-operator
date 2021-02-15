@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -30,6 +31,7 @@ var _ = Describe("Cluster controller", func() {
 		var err error
 		ns, err = testEnv.CreateNamespace(ctx, "ns")
 		Expect(err).To(BeNil())
+		klog.Infof("Created namespace %q", ns.Name)
 	})
 
 	JustAfterEach(func() {
@@ -41,7 +43,8 @@ var _ = Describe("Cluster controller", func() {
 	})
 
 	AfterEach(func() {
-		Expect(testEnv.Delete(ctx, ns)).To(Succeed())
+		err := destroyNamespace(ctx, testEnv.KubeClient, testEnv.DynamicClient, ns.Name)
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	Context("Cluster is scaled sequentially", func() {

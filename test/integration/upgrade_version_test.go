@@ -21,6 +21,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
@@ -36,6 +37,7 @@ var _ = Describe("Cluster controller", func() {
 		var err error
 		ns, err = testEnv.CreateNamespace(ctx, "ns")
 		Expect(err).To(BeNil())
+		klog.Infof("Created namespace %q", ns.Name)
 	})
 
 	JustAfterEach(func() {
@@ -47,7 +49,8 @@ var _ = Describe("Cluster controller", func() {
 	})
 
 	AfterEach(func() {
-		Expect(testEnv.Delete(ctx, ns)).To(Succeed())
+		err := destroyNamespace(ctx, testEnv.KubeClient, testEnv.DynamicClient, ns.Name)
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("Multi rack patch upgrade is sequential over racks", func() {

@@ -186,8 +186,8 @@ test-unit:
 
 test-integration: GO_TEST_PACKAGES :=./test/integration/...
 test-integration: GO_TEST_COUNT :=-count=1
-test-integration: GO_TEST_FLAGS += -p=1 -timeout 30m -v
-test-integration: GO_TEST_ARGS += -ginkgo.progress
+test-integration: GO_TEST_FLAGS += -timeout 30m -v
+test-integration: GO_TEST_ARGS += -ginkgo.parallel.total=1 -ginkgo.progress
 test-integration: test-unit
 .PHONY: test-integration
 

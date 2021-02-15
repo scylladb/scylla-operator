@@ -243,9 +243,9 @@ manifests:
 	kustomize build config/manager/default > examples/common/manager.yaml
 .PHONY: manifests
 
-latest:
+image:
 	docker build . -t $(IMAGE_REF)
-.PHONY: latest
+.PHONY: image
 
 # Generate code
 generate:

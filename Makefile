@@ -45,7 +45,8 @@ HELM_CHARTS ?=scylla-operator scylla-manager scylla
 HELM_CHARTS_DIR ?=helm
 HELM_LOCAL_REPO ?=$(HELM_CHARTS_DIR)/repo/$(HELM_CHANNEL)
 HELM_APP_VERSION ?=$(IMAGE_TAG)
-HELM_CHART_VERSION ?=$(GIT_TAG)-$(HELM_APP_VERSION)
+HELM_CHART_VERSION_SUFFIX ?=
+HELM_CHART_VERSION ?=$(GIT_TAG)$(HELM_CHART_VERSION_SUFFIX)
 HELM_BUCKET ?=gs://scylla-operator-charts/$(HELM_CHANNEL)
 HELM_REPOSITORY ?=https://scylla-operator-charts.storage.googleapis.com/$(HELM_CHANNEL)
 

@@ -29,7 +29,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -152,25 +151,11 @@ func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return errors.Wrap(err, "controller creation failed")
 	}
 
-	//////////////////////////////////
-	// Watch for changes to Cluster //
-	//////////////////////////////////
-	clusterSpecChangedPredicate := predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			oldCluster := e.ObjectOld.(*scyllav1.ScyllaCluster)
-			newCluster := e.ObjectNew.(*scyllav1.ScyllaCluster)
-			if reflect.DeepEqual(oldCluster, newCluster) {
-				return false
-			}
-			return true
-		},
-	}
-
 	err = c.Watch(
 		&source.Kind{Type: &scyllav1.ScyllaCluster{}},
 		&handler.EnqueueRequestForObject{},
 		predicate.ResourceVersionChangedPredicate{},
-		clusterSpecChangedPredicate,
+		predicate.Funcs{},
 	)
 	if err != nil {
 		return errors.Wrap(err, "cluster watch setup failed")
@@ -186,7 +171,7 @@ func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			IsController: true,
 			OwnerType:    &scyllav1.ScyllaCluster{},
 		},
-		predicate.ResourceVersionChangedPredicate{},
+		predicate.Funcs{},
 	)
 	if err != nil {
 		return errors.Wrap(err, "statefulset watch setup failed")
@@ -202,7 +187,7 @@ func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			IsController: true,
 			OwnerType:    &scyllav1.ScyllaCluster{},
 		},
-		predicate.ResourceVersionChangedPredicate{},
+		predicate.Funcs{},
 	)
 	if err != nil {
 		return errors.Wrap(err, "services watch setup failed")

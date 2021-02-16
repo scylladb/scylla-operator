@@ -9,7 +9,7 @@ images:
   newTag: 2.2.0
 - name: operator
   newName: docker.io/scylladb/scylla-operator
-  newTag: latest
+  newTag: "1.1"
 
 configMapGenerator:
 - files:

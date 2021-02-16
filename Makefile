@@ -2,7 +2,7 @@ all: build
 
 SHELL :=/bin/bash -euEo pipefail
 
-IMAGE_TAG ?= latest
+IMAGE_TAG ?= 1.1
 IMAGE_REF ?= docker.io/scylladb/scylla-operator:$(IMAGE_TAG)
 
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)

@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: docker.io/scylladb/scylla-operator
-  newTag: latest
+  newTag: "1.1"

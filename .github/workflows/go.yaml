@@ -7,13 +7,15 @@ on:
     # Restrict the branches to only those we want to promote from.
     branches:
     - 'master'
-    - 'v[0-9]+\.[0-9]+'
+    - 'v[0-9]+.[0-9]+'
     # Act only on temporary tags, the final ones are created by manually promoting
     # an existing candidate image, after it goes through QA. We need to be carefull
     # to avoid overwritting those, building from the same sources may not result
     # in the same image content that was tested, e.g. if a base image changed in the meantime.
     tags:
-    - 'v[0-9]+\.[0-9]+\.[0-9]-(alpha|beta|rc)\.[0-9]+'
+    - 'v[0-9]+.[0-9]+.[0-9]+-alpha.[0-9]+'
+    - 'v[0-9]+.[0-9]+.[0-9]+-beta.[0-9]+'
+    - 'v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+'
   pull_request:
     branches:
     - '*'

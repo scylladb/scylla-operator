@@ -2,6 +2,46 @@
 
 This pages describes Scylla Operator upgrade procedures.
 
+## `v1.0.0` -> `v1.1.0`
+
+During this update we will change probes and image for Scylla Operator.
+A new version brings an automation for upgrade of sidecar image, so a rolling restart of managed Scylla clusters is expected.
+
+1. Get name of StatefulSet managing Scylla Operator
+   ```shell
+   kubectl --namespace scylla-operator-system get sts --selector="control-plane=controller-manager"
+
+   NAME                                 READY   AGE
+   scylla-operator-controller-manager   1/1     95m
+   ```
+
+1. Change probes and used container image by applying following patch:
+    ```yaml
+    spec:
+      template:
+        spec:
+          containers:
+          - name: manager
+            image: docker.io/scylladb/scylla-operator:1.1.0
+            livenessProbe:
+              httpGet:
+                path: /healthz
+                port: 8080
+                scheme: HTTP
+            readinessProbe:
+              $retainKeys:
+              - httpGet
+              httpGet:
+                path: /readyz
+                port: 8080
+                scheme: HTTP
+    ```
+    To apply above patch save it to file (`operator-patch.yaml` for example) and apply to Operator StatefulSet:
+    ```shell
+    kubectl -n scylla-operator-system patch sts scylla-operator-controller-manager --patch "$(cat operator-patch.yaml)"
+    ```
+
+
 ## `v0.3.0` -> `v1.0.0`
 
 ***Note:*** There's an experimental migration procedure available [here](migration.md).
@@ -50,4 +90,3 @@ In case you need to preserve your data, refer to backup and restore guide.
     kind: ScyllaCluster
     ```
 1. Once your cluster definition is ready, use `kubectl apply` to install fresh Scylla cluster.
-

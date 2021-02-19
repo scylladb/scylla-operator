@@ -81,6 +81,7 @@ func IndexFromName(n string) (int32, error) {
 	return int32(index), nil
 }
 
+// ImageToVersion strips version part from container image.
 func ImageToVersion(image string) (string, error) {
 	parts := strings.Split(image, ":")
 	if len(parts) != 2 || len(parts[1]) == 0 {
@@ -89,17 +90,28 @@ func ImageToVersion(image string) (string, error) {
 	return parts[1], nil
 }
 
+// FindScyllaContainer returns Scylla container from given list.
 func FindScyllaContainer(containers []corev1.Container) (int, error) {
+	return FindContainerWithName(containers, ScyllaContainerName)
+}
+
+// FindSidecarInjectorContainer returns sidecar injector container from given list.
+func FindSidecarInjectorContainer(containers []corev1.Container) (int, error) {
+	return FindContainerWithName(containers, SidecarInjectorContainerName)
+}
+
+// FindContainerWithName returns container having
+func FindContainerWithName(containers []corev1.Container, name string) (int, error) {
 	for idx := range containers {
-		if containers[idx].Name == ScyllaContainerName {
+		if containers[idx].Name == name {
 			return idx, nil
 		}
 	}
-	return -1, errors.New(fmt.Sprintf("Scylla Container '%s' not found", ScyllaContainerName))
+	return 0, errors.Errorf(" '%s' container not found", name)
 }
 
-// ScyllaImage returns version of Scylla container.
-func ScyllaImage(containers []corev1.Container) (string, error) {
+// ScyllaVersion returns version of Scylla container.
+func ScyllaVersion(containers []corev1.Container) (string, error) {
 	idx, err := FindScyllaContainer(containers)
 	if err != nil {
 		return "", errors.Wrap(err, "find scylla container")
@@ -108,6 +120,20 @@ func ScyllaImage(containers []corev1.Container) (string, error) {
 	version, err := ImageToVersion(containers[idx].Image)
 	if err != nil {
 		return "", errors.Wrap(err, "parse scylla container version")
+	}
+	return version, nil
+}
+
+// SidecarVersion returns version of sidecar container.
+func SidecarVersion(containers []corev1.Container) (string, error) {
+	idx, err := FindSidecarInjectorContainer(containers)
+	if err != nil {
+		return "", errors.Wrap(err, "find sidecar container")
+	}
+
+	version, err := ImageToVersion(containers[idx].Image)
+	if err != nil {
+		return "", errors.Wrap(err, "parse sidecar container version")
 	}
 	return version, nil
 }

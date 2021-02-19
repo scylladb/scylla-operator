@@ -2,19 +2,28 @@ package cluster
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
-
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/actions"
+	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/resource"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 func TestNextAction(t *testing.T) {
 
+	const (
+		operatorImage = "scylladb/scylla-operator:latest"
+	)
+
 	members := int32(3)
 	cluster := unit.NewSingleRackCluster(members)
+	rack := resource.StatefulSetForRack(cluster.Spec.Datacenter.Racks[0], cluster, operatorImage)
 
 	clusterNewRackCreate := cluster.DeepCopy()
 	clusterNewRackCreate.Spec.Datacenter.Racks = append(
@@ -52,51 +61,78 @@ func TestNextAction(t *testing.T) {
 	scyllav1.SetRackCondition(&testRackStatus, scyllav1.RackConditionTypeUpgrading)
 	clusterResumeVersionUpgrade.Status.Racks["test-rack"] = testRackStatus
 
+	clusterSidecarUpgrade := cluster.DeepCopy()
+	rackWithOldSidecarImage := rack.DeepCopy()
+	idx, err := naming.FindSidecarInjectorContainer(rackWithOldSidecarImage.Spec.Template.Spec.InitContainers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rackWithOldSidecarImage.Spec.Template.Spec.InitContainers[idx].Image = "scylladb/scylla-operator:old"
+
 	tests := []struct {
 		name           string
 		cluster        *scyllav1.ScyllaCluster
+		objects        []runtime.Object
 		expectedAction string
 		expectNoAction bool
 	}{
 		{
 			name:           "create rack",
 			cluster:        clusterNewRackCreate,
+			objects:        []runtime.Object{rack},
 			expectedAction: actions.RackCreateAction,
 		},
 		{
 			name:           "scale up existing rack",
 			cluster:        clusterExistingRackScaleUp,
+			objects:        []runtime.Object{rack},
 			expectedAction: actions.RackScaleUpAction,
 		},
 		{
 			name:           "scale down begin",
 			cluster:        clusterBeginRackScaleDown,
+			objects:        []runtime.Object{rack},
 			expectedAction: actions.RackScaleDownAction,
 		},
 		{
 			name:           "scale down resume",
 			cluster:        clusterResumeRackScaleDown,
+			objects:        []runtime.Object{rack},
 			expectedAction: actions.RackScaleDownAction,
 		},
 		{
 			name:           "patch upgrade begin",
 			cluster:        clusterBeginVersionUpgrade,
+			objects:        []runtime.Object{rack},
 			expectedAction: actions.ClusterVersionUpgradeAction,
 		},
 		{
 			name:           "patch upgrade in-progress",
 			cluster:        clusterResumeVersionUpgrade,
+			objects:        []runtime.Object{rack},
 			expectedAction: actions.ClusterVersionUpgradeAction,
 		},
+		{
+			name:           "sidecar upgrade",
+			cluster:        clusterSidecarUpgrade,
+			objects:        []runtime.Object{rackWithOldSidecarImage},
+			expectedAction: fmt.Sprintf("%s%s", actions.RackSynchronizedActionPrefix, actions.SidecarVersionUpgradeAction),
+		},
 	}
-
-	cc := &ClusterReconciler{}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
+			cc := &ClusterReconciler{
+				KubeClient:    fake.NewSimpleClientset(test.objects...),
+				OperatorImage: operatorImage,
+			}
+
 			// Calculate next action
-			a := cc.nextAction(context.Background(), test.cluster)
+			a, err := cc.nextAction(context.Background(), test.cluster)
+			if err != nil {
+				t.Errorf("expected non nil err, got %s", err)
+			}
 			if a == nil {
 				if test.expectNoAction {
 					return

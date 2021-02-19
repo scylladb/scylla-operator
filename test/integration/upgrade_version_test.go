@@ -300,7 +300,7 @@ func scyllaImageInRackStatefulSet(ctx context.Context, rack scyllav1.RackSpec, c
 		return "", err
 	}
 
-	ver, err := naming.ScyllaImage(sts.Spec.Template.Spec.Containers)
+	ver, err := naming.ScyllaVersion(sts.Spec.Template.Spec.Containers)
 	if err != nil {
 		return "", err
 	}

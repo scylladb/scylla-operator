@@ -8,6 +8,7 @@ import (
 	"github.com/scylladb/go-log"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/actions"
+	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/resource"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
@@ -66,21 +67,22 @@ func (cc *ClusterReconciler) sync(c *scyllav1.ScyllaCluster) error {
 	}
 
 	// Calculate and execute next action
-	if act := cc.nextAction(ctx, c); act != nil {
+	if act, err := cc.nextAction(ctx, c); err != nil {
+		cc.Recorder.Event(c, corev1.EventTypeWarning, naming.ErrSyncFailed, fmt.Sprintf(MessageUpdateStatusFailed, err))
+		return errors.Wrap(err, "failed to determine next action")
+	} else if act != nil {
 		s := actions.NewState(cc.Client, cc.KubeClient, cc.Recorder)
 		logger.Debug(ctx, "New action", "name", act.Name())
-		err = act.Execute(ctx, s)
-	}
-
-	if err != nil {
-		cc.Recorder.Event(c, corev1.EventTypeWarning, naming.ErrSyncFailed, fmt.Sprintf(MessageClusterSyncFailed, errors.Cause(err)))
-		return err
+		if err := act.Execute(ctx, s); err != nil {
+			cc.Recorder.Event(c, corev1.EventTypeWarning, naming.ErrSyncFailed, fmt.Sprintf(MessageClusterSyncFailed, errors.Cause(err)))
+			return err
+		}
 	}
 
 	return nil
 }
 
-func (cc *ClusterReconciler) nextAction(ctx context.Context, cluster *scyllav1.ScyllaCluster) actions.Action {
+func (cc *ClusterReconciler) nextAction(ctx context.Context, cluster *scyllav1.ScyllaCluster) (actions.Action, error) {
 	logger := cc.Logger.With("cluster", cluster.Namespace+"/"+cluster.Name, "resourceVersion", cluster.ResourceVersion)
 
 	// Check if any rack isn't created
@@ -88,7 +90,7 @@ func (cc *ClusterReconciler) nextAction(ctx context.Context, cluster *scyllav1.S
 		// For each rack, check if a status entry exists
 		if _, ok := cluster.Status.Racks[rack.Name]; !ok {
 			logger.Info(ctx, "Next Action: Create rack", "name", rack.Name)
-			return actions.NewRackCreateAction(rack, cluster, cc.OperatorImage)
+			return actions.NewRackCreateAction(rack, cluster, cc.OperatorImage), nil
 		}
 	}
 
@@ -102,13 +104,13 @@ func (cc *ClusterReconciler) nextAction(ctx context.Context, cluster *scyllav1.S
 		if scyllav1.IsRackConditionTrue(&rackStatus, scyllav1.RackConditionTypeMemberReplacing) {
 			// Perform node replace
 			logger.Info(ctx, "Next Action: Node replace rack", "name", rack.Name)
-			return actions.NewRackReplaceNodeAction(rack, cluster, logger.Named("replace"))
+			return actions.NewRackReplaceNodeAction(rack, cluster, logger.Named("replace")), nil
 		}
 
 		if scyllav1.IsRackConditionTrue(&rackStatus, scyllav1.RackConditionTypeMemberLeaving) {
 			// Resume scale down
 			logger.Info(ctx, "Next Action: Scale-Down rack", "name", rack.Name)
-			return actions.NewRackScaleDownAction(rack, cluster)
+			return actions.NewRackScaleDownAction(rack, cluster), nil
 		}
 	}
 
@@ -117,7 +119,18 @@ func (cc *ClusterReconciler) nextAction(ctx context.Context, cluster *scyllav1.S
 		rackStatus := cluster.Status.Racks[rack.Name]
 		if cluster.Status.Upgrade != nil ||
 			scyllav1.IsRackConditionTrue(&rackStatus, scyllav1.RackConditionTypeUpgrading) {
-			return actions.NewClusterVersionUpgradeAction(cluster, logger)
+			return actions.NewClusterVersionUpgradeAction(cluster, logger), nil
+		}
+	}
+
+	// Check if there is an sidecar upgrade in progress
+	for _, rack := range cluster.Spec.Datacenter.Racks {
+		update, container, err := cc.sidecarUpdateNeeded(ctx, rack, cluster)
+		if err != nil {
+			return nil, errors.Wrap(err, "check if sidecar update is needed")
+		}
+		if update {
+			return actions.NewSidecarUpgrade(cluster, container, logger), nil
 		}
 	}
 
@@ -129,7 +142,7 @@ func (cc *ClusterReconciler) nextAction(ctx context.Context, cluster *scyllav1.S
 	for _, rack := range cluster.Spec.Datacenter.Racks {
 		if rack.Members < cluster.Status.Racks[rack.Name].Members {
 			logger.Info(ctx, "Next Action: Scale-Down rack", "name", rack.Name)
-			return actions.NewRackScaleDownAction(rack, cluster)
+			return actions.NewRackScaleDownAction(rack, cluster), nil
 		}
 	}
 
@@ -137,7 +150,7 @@ func (cc *ClusterReconciler) nextAction(ctx context.Context, cluster *scyllav1.S
 	for _, rack := range cluster.Spec.Datacenter.Racks {
 		if rack.Members > cluster.Status.Racks[rack.Name].Members {
 			logger.Info(ctx, "Next Action: Scale-Up rack", "name", rack.Name)
-			return actions.NewRackScaleUpAction(rack, cluster)
+			return actions.NewRackScaleUpAction(rack, cluster), nil
 		}
 	}
 
@@ -145,10 +158,36 @@ func (cc *ClusterReconciler) nextAction(ctx context.Context, cluster *scyllav1.S
 	for _, rack := range cluster.Spec.Datacenter.Racks {
 		if cluster.Spec.Version != cluster.Status.Racks[rack.Name].Version {
 			logger.Info(ctx, "Next Action: Upgrade rack", "name", rack.Name)
-			return actions.NewClusterVersionUpgradeAction(cluster, logger)
+			return actions.NewClusterVersionUpgradeAction(cluster, logger), nil
 		}
 	}
 
 	// Nothing to do
-	return nil
+	return nil, nil
+}
+
+func (cc *ClusterReconciler) sidecarUpdateNeeded(ctx context.Context, rack scyllav1.RackSpec, cluster *scyllav1.ScyllaCluster) (bool, corev1.Container, error) {
+	desiredSts := resource.StatefulSetForRack(rack, cluster, cc.OperatorImage)
+	desiredIdx, err := naming.FindSidecarInjectorContainer(desiredSts.Spec.Template.Spec.InitContainers)
+	if err != nil {
+		return false, corev1.Container{}, errors.Wrap(err, "find sidecar container in desired sts")
+	}
+
+	actualSts, err := util.GetStatefulSetForRack(ctx, rack, cluster, cc.KubeClient)
+	if err != nil {
+		return false, corev1.Container{}, errors.Wrap(err, "fetch rack sts")
+	}
+
+	actualIdx, err := naming.FindSidecarInjectorContainer(actualSts.Spec.Template.Spec.InitContainers)
+	if err != nil {
+		return false, corev1.Container{}, errors.Wrap(err, "find sidecar container in actual sts")
+	}
+
+	actualSidecarContainer := actualSts.Spec.Template.Spec.InitContainers[actualIdx]
+	desiredSidecarContainer := desiredSts.Spec.Template.Spec.InitContainers[desiredIdx]
+
+	cc.Logger.Debug(ctx, "Sidecar update", "rack", rack.Name, "desired_image", desiredSidecarContainer.Image, "actual_image", actualSidecarContainer.Image)
+
+	return actualSidecarContainer.Image != desiredSidecarContainer.Image, desiredSidecarContainer, nil
+
 }

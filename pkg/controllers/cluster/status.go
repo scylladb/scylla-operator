@@ -81,25 +81,14 @@ func (cc *ClusterReconciler) updateStatus(ctx context.Context, cluster *scyllav1
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			idx, err := naming.FindScyllaContainer(sts.Spec.Template.Spec.Containers)
-			if err != nil {
-				return errors.WithStack(err)
-			}
-			rackStatus.Version, err = naming.ImageToVersion(sts.Spec.Template.Spec.Containers[idx].Image)
+			rackStatus.Version, err = naming.ScyllaVersion(sts.Spec.Template.Spec.Containers)
 			if err != nil {
 				return errors.WithStack(err)
 			}
 		}
 
 		// Update Upgrading condition
-		idx, err := naming.FindScyllaContainer(sts.Spec.Template.Spec.Containers)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		desiredRackVersion, err := naming.ImageToVersion(sts.Spec.Template.Spec.Containers[idx].Image)
-		if err != nil {
-			return errors.WithStack(err)
-		}
+		desiredRackVersion := cluster.Spec.Version
 		actualRackVersion := rackStatus.Version
 		if desiredRackVersion != actualRackVersion {
 			cc.Logger.Info(ctx, "Rack should be upgraded", "actual_version", actualRackVersion, "desired_version", desiredRackVersion, "rack", rack.Name)

@@ -190,7 +190,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, sidecarI
 					Tolerations: placement.Tolerations,
 					InitContainers: []corev1.Container{
 						{
-							Name:            "sidecar-injection",
+							Name:            naming.SidecarInjectorContainerName,
 							Image:           sidecarImage,
 							ImagePullPolicy: "IfNotPresent",
 							Command: []string{

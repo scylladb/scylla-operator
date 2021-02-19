@@ -64,7 +64,8 @@ const (
 
 // Configuration Values
 const (
-	ScyllaContainerName = "scylla"
+	ScyllaContainerName          = "scylla"
+	SidecarInjectorContainerName = "sidecar-injection"
 
 	PVCTemplateName = "data"
 

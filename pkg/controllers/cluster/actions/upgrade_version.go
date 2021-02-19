@@ -136,6 +136,7 @@ func (a *ClusterVersionUpgrade) upgradeProcedure(ctx context.Context) upgradePro
 	return genericUpgradeProcedure
 }
 
+// TODO:(zimnx) Refactor patch version upgrade into rack_synchronized action.
 func (a *ClusterVersionUpgrade) Execute(ctx context.Context, s *State) error {
 	a.cc = s.Client
 	a.kubeClient = s.kubeclient
@@ -193,7 +194,7 @@ func (a *ClusterVersionUpgrade) patchUpgrade(ctx context.Context) error {
 			return errors.Wrap(err, "get statefulset")
 		}
 
-		scyllaVersion, err := naming.ScyllaImage(sts.Spec.Template.Spec.Containers)
+		scyllaVersion, err := naming.ScyllaVersion(sts.Spec.Template.Spec.Containers)
 		if err != nil {
 			return errors.Wrap(err, "get scylla container version")
 		}
@@ -207,7 +208,7 @@ func (a *ClusterVersionUpgrade) patchUpgrade(ctx context.Context) error {
 			}
 
 			for _, p := range pods.Items {
-				scyllaVersion, err := naming.ScyllaImage(p.Spec.Containers)
+				scyllaVersion, err := naming.ScyllaVersion(p.Spec.Containers)
 				if err != nil {
 					return errors.Wrap(err, "get scylla container version")
 				}
@@ -228,7 +229,7 @@ func (a *ClusterVersionUpgrade) patchUpgrade(ctx context.Context) error {
 				return errors.Wrap(err, "get statefulset")
 			}
 
-			scyllaVersion, err := naming.ScyllaImage(sts.Spec.Template.Spec.Containers)
+			scyllaVersion, err := naming.ScyllaVersion(sts.Spec.Template.Spec.Containers)
 			if err != nil {
 				return errors.Wrap(err, "get scylla container version")
 			}
@@ -622,7 +623,7 @@ func (a *ClusterVersionUpgrade) nextRack(ctx context.Context) (*scyllav1.RackSpe
 		}
 
 		for _, p := range pods.Items {
-			containerVersion, err := naming.ScyllaImage(p.Spec.Containers)
+			containerVersion, err := naming.ScyllaVersion(p.Spec.Containers)
 			if err != nil {
 				return nil, errors.Wrap(err, "get scylla container version")
 			}
@@ -715,7 +716,7 @@ func (a *ClusterVersionUpgrade) nextNode(ctx context.Context) (*corev1.Pod, erro
 		})
 
 		for _, p := range pods.Items {
-			containerVersion, err := naming.ScyllaImage(p.Spec.Containers)
+			containerVersion, err := naming.ScyllaVersion(p.Spec.Containers)
 			if err != nil {
 				return nil, errors.Wrap(err, "get scylla container image version")
 			}
@@ -794,7 +795,7 @@ func (a *ClusterVersionUpgrade) nodeUpgradedConditionFunc(ctx context.Context) f
 			return false, errors.Wrap(err, "refresh pod")
 		}
 
-		ver, err := naming.ScyllaImage(node.Spec.Containers)
+		ver, err := naming.ScyllaVersion(node.Spec.Containers)
 		if err != nil {
 			return false, errors.Wrap(err, "get scylla container image")
 		}

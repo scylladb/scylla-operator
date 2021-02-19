@@ -59,6 +59,16 @@ func GetMemberServicesForRack(ctx context.Context, r scyllav1.RackSpec, c *scyll
 	return svcList.Items, nil
 }
 
+// GetStatefulSetForRack returns rack underlying StatefulSet.
+func GetStatefulSetForRack(ctx context.Context, rack scyllav1.RackSpec, cluster *scyllav1.ScyllaCluster, kubeClient kubernetes.Interface) (*appsv1.StatefulSet, error) {
+	stsName := naming.StatefulSetNameForRack(rack, cluster)
+	sts, err := kubeClient.AppsV1().StatefulSets(cluster.Namespace).Get(ctx, stsName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return sts, nil
+}
+
 // RefFromString is a helper function that takes a string
 // and outputs a reference to that string.
 // Useful for initializing a string pointer from a literal.

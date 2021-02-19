@@ -63,7 +63,7 @@ func TestMain(m *testing.M) {
 		}
 	}()
 
-	options.GetOperatorOptions().Image = "scylladb/scylla-operator"
+	options.GetOperatorOptions().Image = "scylladb/scylla-operator:latest"
 	defer func() {
 		options.GetOperatorOptions().Image = ""
 	}()

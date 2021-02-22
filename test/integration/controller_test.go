@@ -30,7 +30,7 @@ import (
 
 var _ = Describe("Cluster controller", func() {
 	var (
-		ns *corev1.Namespace
+		ns   *corev1.Namespace
 		node *corev1.Node
 	)
 
@@ -488,7 +488,6 @@ func assertClusterStatusReflectsSpec(ctx context.Context, spec *scyllav1.ScyllaC
 	})
 }
 
-
 func singleNode(ns *corev1.Namespace) *corev1.Node {
 	node := corev1.Node{
 		TypeMeta: metav1.TypeMeta{
@@ -502,8 +501,7 @@ func singleNode(ns *corev1.Namespace) *corev1.Node {
 		Spec: corev1.NodeSpec{
 			Taints: []corev1.Taint{},
 		},
-		Status: corev1.NodeStatus{
-		},
+		Status: corev1.NodeStatus{},
 	}
 	return &node
 }

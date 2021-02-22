@@ -3,13 +3,13 @@ package actions
 import (
 	"context"
 	"fmt"
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
-	"reflect"
 	"github.com/pkg/errors"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"reflect"
 )
 
 const RackScaleResourcesAction = "rack-scale-resources"

@@ -104,7 +104,7 @@ func WillContainLoad(ctx context.Context, logger log.Logger, cluster *scyllav1.S
 	}
 
 	// compare with current capacity
-	if loadSum > int64(rack.Members) * capacity {
+	if loadSum > int64(rack.Members)*capacity {
 		logger.Error(ctx, "Unable to store current load in new rack spec", "current load", loadSum, "new capacity", int64(rack.Members)*capacity)
 		return false, nil
 	}
@@ -156,8 +156,7 @@ func WillSchedule(ctx context.Context, c *scyllav1.ScyllaCluster, cl client.Clie
 	for _, rack := range c.Spec.Datacenter.Racks {
 		hasNodeToBeScheduledOn := false
 		for _, node := range nodes.Items {
-			if taintsPreventScheduling, nodeAffinityPreventsScheduling, err := checkTaintTolerationAndNodeAffinity(node, rack);
-			err != nil {
+			if taintsPreventScheduling, nodeAffinityPreventsScheduling, err := checkTaintTolerationAndNodeAffinity(node, rack); err != nil {
 				return false, err
 			} else if !taintsPreventScheduling && !nodeAffinityPreventsScheduling {
 				hasNodeToBeScheduledOn = true

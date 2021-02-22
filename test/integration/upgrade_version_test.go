@@ -28,7 +28,7 @@ import (
 
 var _ = Describe("Cluster controller", func() {
 	var (
-		ns *corev1.Namespace
+		ns   *corev1.Namespace
 		node *corev1.Node
 	)
 

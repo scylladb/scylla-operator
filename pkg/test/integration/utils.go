@@ -85,7 +85,7 @@ func (t *TestEnvironment) MultiRackCluster(ns *corev1.Namespace, members ...int3
 		},
 	}
 
-		c := &scyllav1.ScyllaCluster{
+	c := &scyllav1.ScyllaCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "test-",
 			Namespace:    ns.Name,

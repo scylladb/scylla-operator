@@ -317,9 +317,7 @@ func (s *StatefulSetOperatorStub) DeletePod(ctx context.Context, cluster *scylla
 	}
 
 	// delete redundant pods
-	for i, redundantPods := 1, len(pods.Items) - int(*sts.Spec.Replicas);
-		redundantPods > 0;
-		i, redundantPods = i+1, redundantPods-1 {
+	for i, redundantPods := 1, len(pods.Items)-int(*sts.Spec.Replicas); redundantPods > 0; i, redundantPods = i+1, redundantPods-1 {
 		if err := s.env.Delete(ctx, &pods.Items[len(pods.Items)-i]); err != nil {
 			return err
 		}
@@ -348,9 +346,7 @@ func (s *StatefulSetOperatorStub) SetDecommissionLabel(ctx context.Context, clus
 		return err
 	}
 
-	for i, redundantPods := 1, len(pods.Items) - replicas;
-		redundantPods > 0;
-		i, redundantPods = i+1, redundantPods-1 {
+	for i, redundantPods := 1, len(pods.Items)-replicas; redundantPods > 0; i, redundantPods = i+1, redundantPods-1 {
 		memberName := fmt.Sprintf("%s-%d", naming.StatefulSetNameForRack(rack, cluster), len(pods.Items)-i)
 		memberService := &corev1.Service{}
 		if err := s.env.Get(ctx, naming.NamespacedName(memberName, cluster.Namespace), memberService); err != nil {

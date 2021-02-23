@@ -359,3 +359,16 @@ func fixContentType(next http.RoundTripper) http.RoundTripper {
 		return next.RoundTrip(req)
 	})
 }
+
+func (c *Client) StorageServiceLoadGetWrapper(ctx context.Context) (*scyllaOperations.StorageServiceLoadGetOK, error) {
+	return c.scyllaOps.StorageServiceLoadGet(&scyllaOperations.StorageServiceLoadGetParams{Context: ctx})
+}
+
+func (c *Client) AddBearerToken(bearerToken string) {
+	c.transport = auth.AddToken(c.transport, bearerToken)
+
+}
+
+func ForceHostWrapper(ctx context.Context, hostName string) context.Context {
+	return forceHost(ctx, hostName)
+}

@@ -139,7 +139,7 @@ func TestCheckTransitions(t *testing.T) {
 			name:    "rackResources changed",
 			old:     unit.NewSingleRackCluster(3),
 			new:     resourceChanged(unit.NewSingleRackCluster(3)),
-			allowed: false,
+			allowed: true,
 		},
 		{
 			name:    "rack deleted",

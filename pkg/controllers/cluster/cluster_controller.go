@@ -18,30 +18,30 @@ package cluster
 
 import (
 	"context"
-	"reflect"
-	"strings"
-
+	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
 	"github.com/scylladb/scylla-operator/pkg/cmd/scylla-operator/options"
+	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
+	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/record"
+	"reflect"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	"github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
+	"sigs.k8s.io/controller-runtime/pkg/source"
+	"strings"
 )
 
 const concurrency = 1
@@ -62,6 +62,19 @@ type ClusterReconciler struct {
 
 	Scheme *runtime.Scheme
 	Logger log.Logger
+}
+
+var ScyllaClientForStorageServiceLoad = func(logger log.Logger) (*scyllaclient.Client, error) {
+	conf := scyllaclient.DefaultConfig()
+	return scyllaclient.NewClient(conf, logger)
+}
+
+var KubeClientForStorageServiceLoad = func(KubeClient kubernetes.Interface) kubernetes.Interface {
+	return KubeClient
+}
+
+var ClientForStorageServiceLoad = func(cl client.Client) client.Client {
+	return cl
 }
 
 func New(ctx context.Context, mgr ctrl.Manager, logger log.Logger) (*ClusterReconciler, error) {
@@ -104,8 +117,7 @@ func (cc *ClusterReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error
 	cc.Logger.Debug(ctx, "Reconcile request", "request", request.String())
 	// Fetch the Cluster instance
 	c := &scyllav1.ScyllaCluster{}
-	err := cc.UncachedClient.Get(ctx, request.NamespacedName, c)
-	if err != nil {
+	if err := cc.UncachedClient.Get(ctx, request.NamespacedName, c); err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
@@ -117,9 +129,19 @@ func (cc *ClusterReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error
 		return reconcile.Result{Requeue: true}, err
 	}
 
+	// Ensure that all Pods have nodes to be scheduled on in terms of node affinity and taints and toleration.
+	if nodeAvailableForScheduling, err := util.WillSchedule(ctx, c, cc.Client); err != nil {
+		cc.Logger.Error(ctx, "Error occurred while checking scheduling possibilities in terms of node affinity and taints and toleration.", "error", err)
+		return reconcile.Result{Requeue: true}, err
+	} else if !nodeAvailableForScheduling {
+		cc.Logger.Error(ctx, "No node suitable for scheduling because of either node affinity or taints and tolerations")
+		cc.Recorder.Event(c, corev1.EventTypeWarning, naming.ErrReconcileFailed, MessagePreferedScheduleFailed)
+		return reconcile.Result{}, errors.Wrap(err, "no node for scheduling")
+	}
+
 	logger := cc.Logger.With("cluster", c.Namespace+"/"+c.Name, "resourceVersion", c.ResourceVersion)
 	copy := c.DeepCopy()
-	if err = cc.sync(copy); err != nil {
+	if err := cc.sync(copy); err != nil {
 		logger.Error(ctx, "An error occurred during cluster reconciliation", "error", err)
 		return reconcile.Result{}, errors.Wrap(err, "sync failed")
 	}
@@ -138,6 +160,29 @@ func (cc *ClusterReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error
 		}
 	}
 
+	// Check if current container load will be contained by new number of members.
+	sc, err := ScyllaClientForStorageServiceLoad(cc.Logger)
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, "Error creating new ScyllaClient")
+	}
+	for _, rack := range c.Spec.Datacenter.Racks {
+		// If member count goes up there is no need to check if load will be contained.
+		if !util.RackScalingDown(c, rack) {
+			continue
+		}
+		if !util.RackReady(c, rack) {
+			cc.Logger.Debug(ctx, "Pods are not ready for reconciliation.")
+			return reconcile.Result{Requeue: true}, nil
+		} else {
+			if willContain, err := util.WillContainLoad(ctx, cc.Logger, c, rack, sc, ClientForStorageServiceLoad(cc.Client)); err != nil {
+				cc.Logger.Error(ctx, "Error occurred while checking if new spec could contain pods' load.", "error", err)
+				return reconcile.Result{}, errors.Wrap(err, "failed storage service load query")
+			} else if !willContain { // Don't try to reconcile again.
+				cc.Logger.Info(ctx, "New spec would not contain current load.")
+				return reconcile.Result{}, nil
+			}
+		}
+	}
 	logger.Info(ctx, "Reconciliation successful")
 	return reconcile.Result{}, nil
 }

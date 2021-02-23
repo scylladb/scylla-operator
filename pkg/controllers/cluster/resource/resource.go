@@ -200,12 +200,8 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, sidecarI
 							},
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("1"),
-									corev1.ResourceMemory: resource.MustParse("200M"),
-								},
-								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("1"),
-									corev1.ResourceMemory: resource.MustParse("200M"),
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("10Mi"),
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{

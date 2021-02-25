@@ -86,7 +86,7 @@ rst_prolog = """
 .. |mon_version| replace:: 3.1
 .. |man_version| replace:: 2.0
 .. |mon_root| replace::  :doc:`Scylla Monitoring Stack </operating-scylla/monitoring/index>`
-""" 
+"""
 
 # -- Options for HTML output ----------------------------------------------
 
@@ -131,7 +131,7 @@ html_sidebars = {'**': ['side-nav.html']}
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'ScyllaDocumentationdoc'
 
-# URL which points to the root of the HTML documentation. 
+# URL which points to the root of the HTML documentation.
 html_baseurl = 'https://operator.docs.scylladb.com'
 
 # Dictionary of values to pass into the template engine’s context for all pages
@@ -155,7 +155,7 @@ redirects_file = "_utils/redirections.yaml"
 TAGS = []
 smv_tag_whitelist = multiversion_regex_builder(TAGS)
 # Whitelist pattern for branches (set to None to ignore all branches)
-BRANCHES = ['master', 'v0.3', 'v1.0']
+BRANCHES = ['master', 'v0.3', 'v1.0', 'v1.1']
 smv_branch_whitelist = multiversion_regex_builder(BRANCHES)
 # Defines which version is considered to be the latest stable version.
 # Must be listed in smv_tag_whitelist or smv_branch_whitelist.

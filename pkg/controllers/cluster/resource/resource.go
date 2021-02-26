@@ -10,6 +10,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -480,6 +481,21 @@ func agentContainer(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) corev1.Conta
 	}
 
 	return cnt
+}
+
+func MakePodDisruptionBudget(c *scyllav1.ScyllaCluster) *v1beta1.PodDisruptionBudget {
+	maxUnavailable := intstr.FromInt(1)
+	return &v1beta1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            naming.PodDisruptionBudgetName(c),
+			Namespace:       c.Namespace,
+			OwnerReferences: []metav1.OwnerReference{util.NewControllerRef(c)},
+		},
+		Spec: v1beta1.PodDisruptionBudgetSpec{
+			MaxUnavailable: &maxUnavailable,
+			Selector:       metav1.SetAsLabelSelector(naming.ClusterLabels(c)),
+		},
+	}
 }
 
 func ImageForCluster(c *scyllav1.ScyllaCluster) string {

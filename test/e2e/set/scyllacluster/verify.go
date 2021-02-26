@@ -5,8 +5,12 @@ import (
 
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	appsv1 "k8s.io/api/apps/v1"
+	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -16,6 +20,12 @@ func verifyStatefulset(ctx context.Context, s *appsv1.StatefulSet) {
 	o.Expect(s.Spec.Replicas).NotTo(o.BeNil())
 	o.Expect(s.Status.ReadyReplicas).To(o.Equal(*s.Spec.Replicas))
 	o.Expect(s.Status.CurrentRevision).To(o.Equal(s.Status.UpdateRevision))
+}
+
+func verifyPodDisruptionBudget(sc *scyllav1.ScyllaCluster, pdb *policyv1beta1.PodDisruptionBudget) {
+	o.Expect(pdb.ObjectMeta.OwnerReferences).To(o.ConsistOf(util.NewControllerRef(sc)))
+	o.Expect(pdb.Spec.MaxUnavailable.IntValue()).To(o.Equal(1))
+	o.Expect(pdb.Spec.Selector).To(o.Equal(metav1.SetAsLabelSelector(naming.ClusterLabels(sc))))
 }
 
 func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, sc *scyllav1.ScyllaCluster) {
@@ -42,6 +52,10 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 	if sc.Status.Upgrade != nil {
 		o.Expect(sc.Status.Upgrade.FromVersion).To(o.Equal(sc.Status.Upgrade.ToVersion))
 	}
+
+	pdb, err := kubeClient.PolicyV1beta1().PodDisruptionBudgets(sc.Namespace).Get(ctx, naming.PodDisruptionBudgetName(sc), metav1.GetOptions{})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	verifyPodDisruptionBudget(sc, pdb)
 
 	// TODO: Use scylla client to check at least "UN"
 	scyllaClient, _, err := getScyllaClient(ctx, kubeClient.CoreV1(), sc)

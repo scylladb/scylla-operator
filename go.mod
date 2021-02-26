@@ -38,7 +38,7 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/utils v0.0.0-20200603063816-c1c6865ac451
 	sigs.k8s.io/controller-runtime v0.6.1
-	sigs.k8s.io/controller-tools v0.3.0
+	sigs.k8s.io/controller-tools v0.4.1
 	sigs.k8s.io/kustomize/kustomize/v3 v3.5.1
 	sigs.k8s.io/yaml v1.2.0
 )

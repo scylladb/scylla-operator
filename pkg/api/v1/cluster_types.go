@@ -32,14 +32,18 @@ type ClusterSpec struct {
 
 	// Version of Scylla to use.
 	Version string `json:"version"`
-	// Repository to pull the image from.
-	Repository *string `json:"repository,omitempty"`
+	// Repository to pull the Scylla image from.
+	//+kubebuilder:default:="docker.io/scylladb/scylla"
+	//+optional
+	Repository string `json:"repository,omitempty"`
 	// Alternator designates this cluster an Alternator cluster
 	Alternator *AlternatorSpec `json:"alternator,omitempty"`
-	// Version of Scylla Manager Agent to use. Defaults to "latest".
-	AgentVersion *string `json:"agentVersion"`
-	// Repository to pull the agent image from. Defaults to "scylladb/scylla-manager-agent".
-	AgentRepository *string `json:"agentRepository,omitempty"`
+	// Version of Scylla Manager Agent to use.
+	AgentVersion string `json:"agentVersion"`
+	// Repository to pull the agent image from.
+	//+kubebuilder:default:="docker.io/scylladb/scylla-manager-agent"
+	//+optional
+	AgentRepository string `json:"agentRepository,omitempty"`
 	// DeveloperMode determines if the cluster runs in developer-mode.
 	DeveloperMode bool `json:"developerMode,omitempty"`
 	// CpuSet determines if the cluster will use cpu-pinning for max performance.
@@ -77,10 +81,12 @@ const (
 type GenericUpgradeSpec struct {
 	// FailureStrategy specifies which logic is executed when upgrade failure happens.
 	// Currently only Retry is supported.
+	// +kubebuilder:default:="Retry"
 	FailureStrategy GenericUpgradeFailureStrategy `json:"failureStrategy,omitempty"`
 	// PollInterval specifies how often upgrade logic polls on state updates.
 	// Increasing this value should lower number of requests sent to apiserver, but it may affect
 	// overall time spent during upgrade.
+	// +kubebuilder:default:="1s"
 	PollInterval *metav1.Duration `json:"pollInterval,omitempty"`
 }
 
@@ -89,9 +95,12 @@ type SchedulerTaskSpec struct {
 	Name string `json:"name"`
 	// StartDate specifies the task start date expressed in the RFC3339 format or now[+duration],
 	// e.g. now+3d2h10m, valid units are d, h, m, s (default "now").
+	// +kubebuilder:default:="now"
 	StartDate *string `json:"startDate,omitempty"`
+	// +kubebuilder:default:="0"
 	// Interval task schedule interval e.g. 3d2h10m, valid units are d, h, m, s (default "0").
 	Interval *string `json:"interval,omitempty"`
+	// +kubebuilder:default:=3
 	// NumRetries the number of times a scheduled task will retry to run before failing (default 3).
 	NumRetries *int64 `json:"numRetries,omitempty"`
 }
@@ -110,17 +119,20 @@ type RepairTaskSpec struct {
 	// For Scylla clusters that *do not support row-level repair*, intensity can be a decimal between (0,1).
 	// In that case it specifies percent of shards that can be repaired in parallel on a repair master node.
 	// For Scylla clusters that are row-level repair enabled, setting intensity below 1 has the same effect as setting intensity 1.
+	// +kubebuilder:default:="1"
 	Intensity *string `json:"intensity,omitempty" mapstructure:"intensity,omitempty"`
 	// Parallel the maximum number of Scylla repair jobs that can run at the same time (on different token ranges and replicas).
 	// Each node can take part in at most one repair at any given moment. By default the maximum possible parallelism is used.
 	// The effective parallelism depends on a keyspace replication factor (RF) and the number of nodes.
 	// The formula to calculate it is as follows: number of nodes / RF, ex. for 6 node cluster with RF=3 the maximum parallelism is 2.
+	// +kubebuilder:default:=0
 	Parallel *int64 `json:"parallel,omitempty" mapstructure:"parallel,omitempty"`
 	// Keyspace a list of keyspace/tables glob patterns, e.g. 'keyspace,!keyspace.table_prefix_*'
 	// used to include or exclude keyspaces from repair.
 	Keyspace []string `json:"keyspace,omitempty" mapstructure:"keyspace,omitempty"`
 	// SmallTableThreshold enable small table optimization for tables of size lower than given threshold.
 	// Supported units [B, MiB, GiB, TiB] (default "1GiB").
+	// +kubebuilder:default:="1GiB"
 	SmallTableThreshold *string `json:"smallTableThreshold,omitempty" mapstructure:"small_table_threshold,omitempty"`
 	// Host to repair, by default all hosts are repaired
 	Host *string `json:"host,omitempty" mapstructure:"host,omitempty"`
@@ -145,6 +157,7 @@ type BackupTaskSpec struct {
 	// Set to 0 for no limit (default 100).
 	RateLimit []string `json:"rateLimit,omitempty" mapstructure:"rate_limit,omitempty"`
 	// Retention The number of backups which are to be stored (default 3).
+	// +kubebuilder:default:=3
 	Retention *int64 `json:"retention,omitempty" mapstructure:"retention,omitempty"`
 	// SnapshotParallel a list of snapshot parallelism limits in the format [<dc>:]<limit>.
 	// The <dc>: part is optional and allows for specifying different limits in selected datacenters.
@@ -194,6 +207,7 @@ type RackSpec struct {
 	// Resources the Scylla container will use.
 	Resources corev1.ResourceRequirements `json:"resources"`
 	// AgentResources which Agent container will use.
+	// +kubebuilder:default:={requests: {cpu: "50m", memory: "10M"}, limits: {cpu: "1", memory: "200M"}}
 	AgentResources corev1.ResourceRequirements `json:"agentResources,omitempty"`
 	// Volumes added to Scylla Pod.
 	Volumes []corev1.Volume `json:"volumes,omitempty" patchStrategy:"merge,retainKeys" patchMergeKey:"name"`

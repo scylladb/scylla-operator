@@ -13,11 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-)
-
-const (
-	officialScyllaRepo             = "scylladb/scylla"
-	officialScyllaManagerAgentRepo = "scylladb/scylla-manager-agent"
+	"k8s.io/utils/pointer"
 )
 
 func HeadlessServiceForCluster(c *scyllav1.ScyllaCluster) *corev1.Service {
@@ -128,7 +124,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, sidecarI
 			OwnerReferences: []metav1.OwnerReference{util.NewControllerRef(c)},
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: util.RefFromInt32(0),
+			Replicas: pointer.Int32Ptr(0),
 			// Use a common Headless Service for all StatefulSets
 			ServiceName: naming.HeadlessServiceNameForCluster(c),
 			Selector: &metav1.LabelSelector{
@@ -475,23 +471,11 @@ func agentContainer(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) corev1.Conta
 }
 
 func ImageForCluster(c *scyllav1.ScyllaCluster) string {
-	repo := officialScyllaRepo
-	if c.Spec.Repository != nil {
-		repo = *c.Spec.Repository
-	}
-	return fmt.Sprintf("%s:%s", repo, c.Spec.Version)
+	return fmt.Sprintf("%s:%s", c.Spec.Repository, c.Spec.Version)
 }
 
 func agentImageForCluster(c *scyllav1.ScyllaCluster) string {
-	repo := officialScyllaManagerAgentRepo
-	if c.Spec.AgentRepository != nil {
-		repo = *c.Spec.AgentRepository
-	}
-	version := "latest"
-	if c.Spec.AgentVersion != nil {
-		version = *c.Spec.AgentVersion
-	}
-	return fmt.Sprintf("%s:%s", repo, version)
+	return fmt.Sprintf("%s:%s", c.Spec.AgentRepository, c.Spec.AgentVersion)
 }
 
 func stringOrDefault(str, def string) string {

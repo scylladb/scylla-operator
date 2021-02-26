@@ -69,19 +69,6 @@ func GetStatefulSetForRack(ctx context.Context, rack scyllav1.RackSpec, cluster 
 	return sts, nil
 }
 
-// RefFromString is a helper function that takes a string
-// and outputs a reference to that string.
-// Useful for initializing a string pointer from a literal.
-func RefFromString(s string) *string {
-	return &s
-}
-
-// RefFromInt32 is a helper function that takes a int32
-// and outputs a reference to that int.
-func RefFromInt32(i int32) *int32 {
-	return &i
-}
-
 // VerifyOwner checks if the owner Object is the controller
 // of the obj Object and returns an error if it isn't.
 func VerifyOwner(obj, owner metav1.Object) error {

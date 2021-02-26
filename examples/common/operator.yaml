@@ -48,10 +48,11 @@ spec:
           description: ClusterSpec defines the desired state of Cluster
           properties:
             agentRepository:
-              description: Repository to pull the agent image from. Defaults to "scylladb/scylla-manager-agent".
+              default: scylladb/scylla-manager-agent
+              description: Repository to pull the agent image from.
               type: string
             agentVersion:
-              description: Version of Scylla Manager Agent to use. Defaults to "latest".
+              description: Version of Scylla Manager Agent to use.
               type: string
             alternator:
               description: Alternator designates this cluster an Alternator cluster
@@ -76,6 +77,7 @@ spec:
                       type: string
                     type: array
                   interval:
+                    default: "0"
                     description: Interval task schedule interval e.g. 3d2h10m, valid units are d, h, m, s (default "0").
                     type: string
                   keyspace:
@@ -92,6 +94,7 @@ spec:
                     description: Name of a task, it must be unique across all tasks.
                     type: string
                   numRetries:
+                    default: 3
                     description: NumRetries the number of times a scheduled task will retry to run before failing (default 3).
                     format: int64
                     type: integer
@@ -101,6 +104,7 @@ spec:
                       type: string
                     type: array
                   retention:
+                    default: 3
                     description: Retention The number of backups which are to be stored (default 3).
                     format: int64
                     type: integer
@@ -110,6 +114,7 @@ spec:
                       type: string
                     type: array
                   startDate:
+                    default: now
                     description: StartDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s (default "now").
                     type: string
                   uploadParallel:
@@ -137,6 +142,13 @@ spec:
                     description: RackSpec is the desired state for a Scylla Rack.
                     properties:
                       agentResources:
+                        default:
+                          limits:
+                            cpu: "1"
+                            memory: 200M
+                          requests:
+                            cpu: 50m
+                            memory: 10M
                         description: AgentResources which Agent container will use.
                         properties:
                           limits:
@@ -1447,9 +1459,11 @@ spec:
               description: GenericUpgrade allows to configure behavior of generic upgrade logic.
               properties:
                 failureStrategy:
+                  default: Retry
                   description: FailureStrategy specifies which logic is executed when upgrade failure happens. Currently only Retry is supported.
                   type: string
                 pollInterval:
+                  default: 1s
                   description: PollInterval specifies how often upgrade logic polls on state updates. Increasing this value should lower number of requests sent to apiserver, but it may affect overall time spent during upgrade.
                   type: string
               type: object
@@ -1478,9 +1492,11 @@ spec:
                     description: Host to repair, by default all hosts are repaired
                     type: string
                   intensity:
+                    default: "1"
                     description: Intensity how many token ranges (per shard) to repair in a single Scylla repair job. By default this is 1. If you set it to 0 the number of token ranges is adjusted to the maximum supported by node (see max_repair_ranges_in_parallel in Scylla logs). Valid values are 0 and integers >= 1. Higher values will result in increased cluster load and slightly faster repairs. Changing the intensity impacts repair granularity if you need to resume it, the higher the value the more work on resume. For Scylla clusters that *do not support row-level repair*, intensity can be a decimal between (0,1). In that case it specifies percent of shards that can be repaired in parallel on a repair master node. For Scylla clusters that are row-level repair enabled, setting intensity below 1 has the same effect as setting intensity 1.
                     type: string
                   interval:
+                    default: "0"
                     description: Interval task schedule interval e.g. 3d2h10m, valid units are d, h, m, s (default "0").
                     type: string
                   keyspace:
@@ -1492,17 +1508,21 @@ spec:
                     description: Name of a task, it must be unique across all tasks.
                     type: string
                   numRetries:
+                    default: 3
                     description: NumRetries the number of times a scheduled task will retry to run before failing (default 3).
                     format: int64
                     type: integer
                   parallel:
+                    default: 0
                     description: 'Parallel the maximum number of Scylla repair jobs that can run at the same time (on different token ranges and replicas). Each node can take part in at most one repair at any given moment. By default the maximum possible parallelism is used. The effective parallelism depends on a keyspace replication factor (RF) and the number of nodes. The formula to calculate it is as follows: number of nodes / RF, ex. for 6 node cluster with RF=3 the maximum parallelism is 2.'
                     format: int64
                     type: integer
                   smallTableThreshold:
+                    default: 1GiB
                     description: SmallTableThreshold enable small table optimization for tables of size lower than given threshold. Supported units [B, MiB, GiB, TiB] (default "1GiB").
                     type: string
                   startDate:
+                    default: now
                     description: StartDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s (default "now").
                     type: string
                 required:
@@ -1510,6 +1530,7 @@ spec:
                 type: object
               type: array
             repository:
+              default: docker.io/scylladb/scylla-operator
               description: Repository to pull the image from.
               type: string
             scyllaArgs:
@@ -1544,6 +1565,7 @@ spec:
                   id:
                     type: string
                   interval:
+                    default: "0"
                     description: Interval task schedule interval e.g. 3d2h10m, valid units are d, h, m, s (default "0").
                     type: string
                   keyspace:
@@ -1560,6 +1582,7 @@ spec:
                     description: Name of a task, it must be unique across all tasks.
                     type: string
                   numRetries:
+                    default: 3
                     description: NumRetries the number of times a scheduled task will retry to run before failing (default 3).
                     format: int64
                     type: integer
@@ -1569,6 +1592,7 @@ spec:
                       type: string
                     type: array
                   retention:
+                    default: 3
                     description: Retention The number of backups which are to be stored (default 3).
                     format: int64
                     type: integer
@@ -1578,6 +1602,7 @@ spec:
                       type: string
                     type: array
                   startDate:
+                    default: now
                     description: StartDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s (default "now").
                     type: string
                   uploadParallel:
@@ -1656,9 +1681,11 @@ spec:
                   id:
                     type: string
                   intensity:
+                    default: "1"
                     description: Intensity how many token ranges (per shard) to repair in a single Scylla repair job. By default this is 1. If you set it to 0 the number of token ranges is adjusted to the maximum supported by node (see max_repair_ranges_in_parallel in Scylla logs). Valid values are 0 and integers >= 1. Higher values will result in increased cluster load and slightly faster repairs. Changing the intensity impacts repair granularity if you need to resume it, the higher the value the more work on resume. For Scylla clusters that *do not support row-level repair*, intensity can be a decimal between (0,1). In that case it specifies percent of shards that can be repaired in parallel on a repair master node. For Scylla clusters that are row-level repair enabled, setting intensity below 1 has the same effect as setting intensity 1.
                     type: string
                   interval:
+                    default: "0"
                     description: Interval task schedule interval e.g. 3d2h10m, valid units are d, h, m, s (default "0").
                     type: string
                   keyspace:
@@ -1670,17 +1697,21 @@ spec:
                     description: Name of a task, it must be unique across all tasks.
                     type: string
                   numRetries:
+                    default: 3
                     description: NumRetries the number of times a scheduled task will retry to run before failing (default 3).
                     format: int64
                     type: integer
                   parallel:
+                    default: 0
                     description: 'Parallel the maximum number of Scylla repair jobs that can run at the same time (on different token ranges and replicas). Each node can take part in at most one repair at any given moment. By default the maximum possible parallelism is used. The effective parallelism depends on a keyspace replication factor (RF) and the number of nodes. The formula to calculate it is as follows: number of nodes / RF, ex. for 6 node cluster with RF=3 the maximum parallelism is 2.'
                     format: int64
                     type: integer
                   smallTableThreshold:
+                    default: 1GiB
                     description: SmallTableThreshold enable small table optimization for tables of size lower than given threshold. Supported units [B, MiB, GiB, TiB] (default "1GiB").
                     type: string
                   startDate:
+                    default: now
                     description: StartDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s (default "now").
                     type: string
                 required:
@@ -1731,33 +1762,6 @@ status:
     plural: ""
   conditions: []
   storedVersions: []
----
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: MutatingWebhookConfiguration
-metadata:
-  annotations:
-    cert-manager.io/inject-ca-from: scylla-operator-system/scylla-operator-serving-cert
-  creationTimestamp: null
-  name: scylla-operator-mutating-webhook-configuration
-webhooks:
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: scylla-operator-webhook-service
-      namespace: scylla-operator-system
-      path: /mutate-scylla-scylladb-com-v1-scyllacluster
-  failurePolicy: Fail
-  name: webhook.scylla.scylladb.com
-  rules:
-  - apiGroups:
-    - scylla.scylladb.com
-    apiVersions:
-    - v1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - scyllaclusters
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole

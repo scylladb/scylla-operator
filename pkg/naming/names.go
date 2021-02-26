@@ -51,6 +51,10 @@ func HeadlessServiceNameForCluster(c *scyllav1.ScyllaCluster) string {
 	return fmt.Sprintf("%s-client", c.Name)
 }
 
+func PodDisruptionBudgetName(c *scyllav1.ScyllaCluster) string {
+	return c.Name
+}
+
 func CrossNamespaceServiceNameForCluster(c *scyllav1.ScyllaCluster) string {
 	return fmt.Sprintf("%s.%s.svc.cluster.local", HeadlessServiceNameForCluster(c), c.Namespace)
 }

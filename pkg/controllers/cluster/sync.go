@@ -16,11 +16,12 @@ import (
 
 const (
 	// Messages to display when experiencing an error.
-	MessageHeadlessServiceSyncFailed = "Failed to sync Headless Service for cluster"
-	MessageMemberServicesSyncFailed  = "Failed to sync MemberServices for cluster"
-	MessageUpdateStatusFailed        = "Failed to update status for cluster: %+v"
-	MessageCleanupFailed             = "Failed to clean up cluster resources"
-	MessageClusterSyncFailed         = "Failed to sync cluster, got error: %+v"
+	MessageHeadlessServiceSyncFailed     = "Failed to sync Headless Service for cluster"
+	MessagePodDisruptionBudgetSyncFailed = "Failed to sync Pod Disruption Budget for cluster"
+	MessageMemberServicesSyncFailed      = "Failed to sync MemberServices for cluster"
+	MessageUpdateStatusFailed            = "Failed to update status for cluster: %+v"
+	MessageCleanupFailed                 = "Failed to clean up cluster resources"
+	MessageClusterSyncFailed             = "Failed to sync cluster, got error: %+v"
 )
 
 // sync attempts to sync the given Scylla Cluster.
@@ -51,6 +52,12 @@ func (cc *ClusterReconciler) sync(c *scyllav1.ScyllaCluster) error {
 	if err := cc.syncClusterHeadlessService(ctx, c); err != nil {
 		cc.Recorder.Event(c, corev1.EventTypeWarning, naming.ErrSyncFailed, MessageHeadlessServiceSyncFailed)
 		return errors.Wrap(err, "failed to sync headless service")
+	}
+
+	// Sync Cluster Pod Disruption Budget
+	if err := cc.syncPodDisruptionBudget(ctx, c); err != nil {
+		cc.Recorder.Event(c, corev1.EventTypeWarning, naming.ErrSyncFailed, MessagePodDisruptionBudgetSyncFailed)
+		return errors.Wrap(err, "failed to sync pod disruption budget")
 	}
 
 	// Sync Cluster Member Services

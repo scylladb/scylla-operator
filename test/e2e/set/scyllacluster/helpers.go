@@ -196,10 +196,15 @@ func getScyllaClient(ctx context.Context, client corev1client.CoreV1Interface, s
 }
 
 func getFirstNonSeedNodeName(sc *scyllav1.ScyllaCluster) string {
+	return getNodeName(sc, 2)
+}
+
+func getNodeName(sc *scyllav1.ScyllaCluster, idx int) string {
 	return fmt.Sprintf(
-		"%s-%s-%s-"+"2",
+		"%s-%s-%s-%d",
 		sc.Name,
 		sc.Spec.Datacenter.Name,
 		sc.Spec.Datacenter.Racks[0].Name,
+		idx,
 	)
 }

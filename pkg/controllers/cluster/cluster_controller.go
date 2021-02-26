@@ -29,6 +29,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/api/policy/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -149,12 +150,10 @@ func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		MaxConcurrentReconciles: concurrency,
 	})
 	if err != nil {
-		return errors.Wrap(err, "controller creation failed")
+		return errors.Wrap(err, "controller creation")
 	}
 
-	//////////////////////////////////
-	// Watch for changes to Cluster //
-	//////////////////////////////////
+	// Watch for changes to ScyllaCluster
 	clusterSpecChangedPredicate := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			oldCluster := e.ObjectOld.(*scyllav1.ScyllaCluster)
@@ -173,13 +172,10 @@ func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		clusterSpecChangedPredicate,
 	)
 	if err != nil {
-		return errors.Wrap(err, "cluster watch setup failed")
+		return errors.Wrap(err, "cluster watch setup")
 	}
 
-	/////////////////////////////////////////////
-	// Watch StatefulSets created by a Cluster //
-	/////////////////////////////////////////////
-
+	// Watch StatefulSets created by a ScyllaCluster
 	err = c.Watch(
 		&source.Kind{Type: &appsv1.StatefulSet{}},
 		&handler.EnqueueRequestForOwner{
@@ -189,13 +185,10 @@ func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		predicate.ResourceVersionChangedPredicate{},
 	)
 	if err != nil {
-		return errors.Wrap(err, "statefulset watch setup failed")
+		return errors.Wrap(err, "statefulset watch setup")
 	}
 
-	/////////////////////////////////////////
-	// Watch Services created by a Cluster //
-	/////////////////////////////////////////
-
+	// Watch Services created by a ScyllaCluster.
 	err = c.Watch(
 		&source.Kind{Type: &corev1.Service{}},
 		&handler.EnqueueRequestForOwner{
@@ -205,7 +198,20 @@ func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		predicate.ResourceVersionChangedPredicate{},
 	)
 	if err != nil {
-		return errors.Wrap(err, "services watch setup failed")
+		return errors.Wrap(err, "services watch setup")
+	}
+
+	// Watch PDBs created for ScyllaCluster
+	err = c.Watch(
+		&source.Kind{Type: &v1beta1.PodDisruptionBudget{}},
+		&handler.EnqueueRequestForOwner{
+			IsController: true,
+			OwnerType:    &scyllav1.ScyllaCluster{},
+		},
+		predicate.ResourceVersionChangedPredicate{},
+	)
+	if err != nil {
+		return errors.Wrap(err, "pod disruption budget watch setup")
 	}
 
 	return nil

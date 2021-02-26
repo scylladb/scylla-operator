@@ -24,6 +24,7 @@ import (
 )
 
 const (
+	ServiceAccountName        = "e2e-user"
 	serviceAccountWaitTimeout = 1 * time.Minute
 )
 
@@ -151,7 +152,7 @@ func (f *Framework) setupNamespace(ctx context.Context) {
 	// Create user service account.
 	userSA, err := f.KubeAdminClient().CoreV1().ServiceAccounts(ns.Name).Create(ctx, &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "e2e-user",
+			Name: ServiceAccountName,
 		},
 	}, metav1.CreateOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -159,7 +160,7 @@ func (f *Framework) setupNamespace(ctx context.Context) {
 	// Grant it edit permission in this namespace.
 	_, err = f.KubeAdminClient().RbacV1().RoleBindings(ns.Name).Create(ctx, &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "e2e-user",
+			Name: userSA.Name,
 		},
 		Subjects: []rbacv1.Subject{
 			{

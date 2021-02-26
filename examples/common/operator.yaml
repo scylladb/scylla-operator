@@ -9,26 +9,16 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    cert-manager.io/inject-ca-from: scylla-operator-system/scylla-operator-serving-cert
     controller-gen.kubebuilder.io/version: v0.3.0
   creationTimestamp: null
   name: scyllaclusters.scylla.scylladb.com
 spec:
-  conversion:
-    strategy: Webhook
-    webhookClientConfig:
-      caBundle: Cg==
-      service:
-        name: scylla-operator-webhook-service
-        namespace: scylla-operator-system
-        path: /convert
   group: scylla.scylladb.com
   names:
     kind: ScyllaCluster
     listKind: ScyllaClusterList
     plural: scyllaclusters
     singular: scyllacluster
-  preserveUnknownFields: false
   scope: Namespaced
   subresources:
     status: {}

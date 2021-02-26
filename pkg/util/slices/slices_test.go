@@ -4,29 +4,46 @@ package slices
 
 import (
 	"testing"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/ginkgo/extensions/table"
-	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/types"
-	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 )
 
-var _ = Describe("Slices tests", func() {
-	DescribeTable("ContainsString", func(v string, arr []string, matcher types.GomegaMatcher) {
-		Expect(ContainsString(v, arr)).To(matcher)
-	},
-		Entry("empty", "a", []string{}, BeFalse()),
-		Entry("contain element", "a", []string{"a", "b"}, BeTrue()),
-		Entry("at the end", "b", []string{"a", "b"}, BeTrue()),
-		Entry("does not contain element", "c", []string{"a", "b"}, BeFalse()),
-	)
-})
-
-func TestSlices(t *testing.T) {
-	RegisterFailHandler(Fail)
-
-	RunSpecsWithDefaultAndCustomReporters(t,
-		"Slices Suite",
-		[]Reporter{printer.NewlineReporter{}})
+func TestContainsString(t *testing.T) {
+	tt := []struct {
+		name     string
+		s        string
+		array    []string
+		expected bool
+	}{
+		{
+			name:     "empty",
+			s:        "a",
+			array:    []string{},
+			expected: false,
+		},
+		{
+			name:     "contain element",
+			s:        "a",
+			array:    []string{"a", "b"},
+			expected: true,
+		},
+		{
+			name:     "at the end",
+			s:        "b",
+			array:    []string{"a", "b"},
+			expected: true,
+		},
+		{
+			name:     "does not contain element",
+			s:        "c",
+			array:    []string{"a", "b"},
+			expected: false,
+		},
+	}
+	for _, tc := range tt {
+		t.Run(t.Name(), func(t *testing.T) {
+			got := ContainsString(tc.s, tc.array)
+			if got != tc.expected {
+				t.Errorf("expected %t, got %t", tc.expected, got)
+			}
+		})
+	}
 }

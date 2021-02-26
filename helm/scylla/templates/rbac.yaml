@@ -36,6 +36,9 @@ rules:
       - scyllaclusters
     verbs:
       - get
+  {{- if .Values.rbac.clusterRole.rules }}
+    {{- toYaml .Values.rbac.clusterRole.rules | nindent 2 }}
+  {{- end }}
 
 ---
 {{- if .Values.serviceAccount.create -}}

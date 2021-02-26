@@ -23,6 +23,11 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
+rbac:
+  clusterRole:
+    # Define additional rules to add to the ClusterRole
+    rules: []
+
 alternator:
   # Allows to enable Alternator (DynamoDB compatible API) frontend
   enabled: false

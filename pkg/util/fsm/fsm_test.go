@@ -6,12 +6,9 @@ import (
 	"context"
 	"testing"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"github.com/scylladb/scylla-operator/pkg/util/fsm"
 	"go.uber.org/atomic"
-	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 )
 
 const (
@@ -23,119 +20,143 @@ const (
 	ActionSuccess fsm.Event = "success"
 )
 
-var _ = Describe("FSM tests", func() {
-	type patient struct {
-		registrationDone bool
-		doctorAnalyzed   bool
-		medicineApplied  bool
-		paymentDone      bool
+type patient struct {
+	registrationDone bool
+	doctorAnalyzed   bool
+	medicineApplied  bool
+	paymentDone      bool
+}
+
+func newCountingHook(counter *atomic.Int64) func(context.Context, fsm.State, fsm.State, fsm.Event) error {
+	return func(context.Context, fsm.State, fsm.State, fsm.Event) error {
+		counter.Inc()
+		return nil
+	}
+}
+
+func TestFSMFullTransition(t *testing.T) {
+	ctx := context.Background()
+	hookCalled := atomic.NewInt64(0)
+	p := patient{}
+
+	fsm := fsm.New(Registration, fsm.StateTransitions{
+		Registration: fsm.Transition{
+			Action: func(ctx context.Context) (fsm.Event, error) {
+				p.registrationDone = true
+				return ActionSuccess, nil
+			},
+			Events: map[fsm.Event]fsm.State{
+				ActionSuccess: DoctorAppointment,
+			},
+		},
+		DoctorAppointment: fsm.Transition{
+			Action: func(ctx context.Context) (fsm.Event, error) {
+				p.doctorAnalyzed = true
+				return ActionSuccess, nil
+			},
+			Events: map[fsm.Event]fsm.State{
+				ActionSuccess: ApplyMedicine,
+			},
+		},
+		ApplyMedicine: fsm.Transition{
+			Action: func(ctx context.Context) (fsm.Event, error) {
+				p.medicineApplied = true
+				return ActionSuccess, nil
+			},
+			Events: map[fsm.Event]fsm.State{
+				ActionSuccess: RequirePayment,
+			},
+		},
+		RequirePayment: fsm.Transition{
+			Action: func(ctx context.Context) (fsm.Event, error) {
+				p.paymentDone = true
+				return fsm.NoOp, nil
+			},
+			Events: map[fsm.Event]fsm.State{
+				ActionSuccess: DoctorAppointment,
+			},
+		},
+	}, newCountingHook(hookCalled))
+
+	err := fsm.Transition(ctx)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	var (
-		ctx        context.Context
-		hookCalled *atomic.Int64
+	err = fsm.Transition(ctx)
+	n := hookCalled.Load()
+	if n != int64(3) {
+		t.Errorf("expected 3 hook calls, got %d", n)
+	}
 
-		countingHook = func(ctx context.Context, currentState, nextState fsm.State, event fsm.Event) error {
-			hookCalled.Inc()
-			return nil
-		}
-	)
+	if !p.registrationDone {
+		t.Errorf("registration wasn't done")
+	}
 
-	BeforeEach(func() {
-		ctx = context.Background()
-		hookCalled = atomic.NewInt64(0)
+	if !p.doctorAnalyzed {
+		t.Errorf("doctor didn't analyze")
+	}
+	if !p.medicineApplied {
+		t.Errorf("medicine wasn't applied")
+	}
+	if !p.paymentDone {
+		t.Errorf("payment wasn't doe")
+	}
+}
+
+func TestFSMActionFailure(t *testing.T) {
+	ctx := context.Background()
+	hookCalled := atomic.NewInt64(0)
+
+	fsm := fsm.New(Registration, fsm.StateTransitions{
+		Registration: fsm.Transition{
+			Action: func(ctx context.Context) (fsm.Event, error) {
+				return fsm.NoOp, errors.New("fail!")
+			},
+		},
+	}, newCountingHook(hookCalled))
+
+	err := fsm.Transition(ctx)
+	if err == nil {
+		t.Fatalf("expected error to occur")
+	}
+
+	err = fsm.Transition(ctx)
+	n := hookCalled.Load()
+	if n != int64(0) {
+		t.Errorf("expected 0 hook calls, got %d", n)
+	}
+
+	current := fsm.Current()
+	if current != Registration {
+		t.Errorf("expected registration state, got %v", current)
+	}
+}
+
+func TestFSMHookFailureInteruptsMachine(t *testing.T) {
+	ctx := context.Background()
+
+	fsm := fsm.New(Registration, fsm.StateTransitions{
+		Registration: fsm.Transition{
+			Action: func(ctx context.Context) (fsm.Event, error) {
+				return ActionSuccess, nil
+			},
+			Events: map[fsm.Event]fsm.State{
+				ActionSuccess: DoctorAppointment,
+			},
+		},
+		DoctorAppointment: fsm.Transition{},
+	}, func(ctx context.Context, currentState, nextState fsm.State, event fsm.Event) error {
+		return errors.New("fail!")
 	})
 
-	It("Full transition", func() {
-		p := patient{}
+	err := fsm.Transition(ctx)
+	if err == nil {
+		t.Fatalf("expected error to occur")
+	}
 
-		fsm := fsm.New(Registration, fsm.StateTransitions{
-			Registration: fsm.Transition{
-				Action: func(ctx context.Context) (fsm.Event, error) {
-					p.registrationDone = true
-					return ActionSuccess, nil
-				},
-				Events: map[fsm.Event]fsm.State{
-					ActionSuccess: DoctorAppointment,
-				},
-			},
-			DoctorAppointment: fsm.Transition{
-				Action: func(ctx context.Context) (fsm.Event, error) {
-					p.doctorAnalyzed = true
-					return ActionSuccess, nil
-				},
-				Events: map[fsm.Event]fsm.State{
-					ActionSuccess: ApplyMedicine,
-				},
-			},
-			ApplyMedicine: fsm.Transition{
-				Action: func(ctx context.Context) (fsm.Event, error) {
-					p.medicineApplied = true
-					return ActionSuccess, nil
-				},
-				Events: map[fsm.Event]fsm.State{
-					ActionSuccess: RequirePayment,
-				},
-			},
-			RequirePayment: fsm.Transition{
-				Action: func(ctx context.Context) (fsm.Event, error) {
-					p.paymentDone = true
-					return fsm.NoOp, nil
-				},
-				Events: map[fsm.Event]fsm.State{
-					ActionSuccess: DoctorAppointment,
-				},
-			},
-		}, countingHook)
-
-		Expect(fsm.Transition(ctx)).To(Succeed())
-
-		Expect(hookCalled.Load()).To(Equal(int64(3)))
-
-		Expect(p.registrationDone).To(BeTrue())
-		Expect(p.doctorAnalyzed).To(BeTrue())
-		Expect(p.medicineApplied).To(BeTrue())
-		Expect(p.paymentDone).To(BeTrue())
-	})
-
-	It("action failure", func() {
-		fsm := fsm.New(Registration, fsm.StateTransitions{
-			Registration: fsm.Transition{
-				Action: func(ctx context.Context) (fsm.Event, error) {
-					return fsm.NoOp, errors.New("fail!")
-				},
-			},
-		}, countingHook)
-
-		Expect(fsm.Transition(ctx)).To(HaveOccurred())
-		Expect(hookCalled.Load()).To(Equal(int64(0)))
-		Expect(fsm.Current()).To(Equal(Registration))
-	})
-
-	It("hook failure interrupts machine", func() {
-		fsm := fsm.New(Registration, fsm.StateTransitions{
-			Registration: fsm.Transition{
-				Action: func(ctx context.Context) (fsm.Event, error) {
-					return ActionSuccess, nil
-				},
-				Events: map[fsm.Event]fsm.State{
-					ActionSuccess: DoctorAppointment,
-				},
-			},
-			DoctorAppointment: fsm.Transition{},
-		}, func(ctx context.Context, currentState, nextState fsm.State, event fsm.Event) error {
-			return errors.New("fail!")
-		})
-
-		Expect(fsm.Transition(ctx)).To(HaveOccurred())
-		Expect(fsm.Current()).To(Equal(Registration))
-	})
-})
-
-func TestFSM(t *testing.T) {
-	RegisterFailHandler(Fail)
-
-	RunSpecsWithDefaultAndCustomReporters(t,
-		"FSM Suite",
-		[]Reporter{printer.NewlineReporter{}})
+	current := fsm.Current()
+	if current != Registration {
+		t.Errorf("expected registration state, got %v", current)
+	}
 }

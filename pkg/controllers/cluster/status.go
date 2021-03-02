@@ -57,8 +57,9 @@ func (cc *ClusterReconciler) updateStatus(ctx context.Context, cluster *scyllav1
 		}
 		// Get corresponding StatefulSet from lister
 		err := cc.Get(ctx, naming.NamespacedName(naming.StatefulSetNameForRack(rack, cluster), cluster.Namespace), sts)
-		// If it wasn't found, continue
+		// If it wasn't found, clear rack status and continue
 		if apierrors.IsNotFound(err) {
+			delete(cluster.Status.Racks, rack.Name)
 			continue
 		}
 		// If we got a different error, requeue and log it

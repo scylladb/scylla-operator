@@ -6,7 +6,7 @@ metadata:
 spec:
   jobLabel: "app"
   targetLabels: ["scylla/cluster"]
-  podTargetLabels: ["scylla/datacenter"]
+  podTargetLabels: ["scylla/datacenter","scylla/rack"]
   selector:
     matchLabels:
       app: scylla

@@ -10,8 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"k8s.io/utils/pointer"
-
 	"github.com/ghodss/yaml"
 	"github.com/magiconair/properties"
 	"github.com/pkg/errors"
@@ -20,8 +18,10 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/cmd/scylla-operator/options"
 	"github.com/scylladb/scylla-operator/pkg/controllers/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/semver"
 	"github.com/scylladb/scylla-operator/pkg/util/cpuset"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -245,19 +245,19 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		args["cpuset"] = &cpusAllowed
 	}
 
-	version := v1.NewScyllaVersion(cluster.Spec.Version)
+	version := semver.NewScyllaVersion(cluster.Spec.Version)
 
 	s.logger.Info(ctx, "Scylla version detected", "version", version)
 
 	if len(cluster.Spec.ScyllaArgs) > 0 {
-		if !version.SupportFeatureUnsafe(v1.ScyllaVersionThatSupportsArgs) {
+		if !version.SupportFeatureUnsafe(semver.ScyllaVersionThatSupportsArgs) {
 			s.logger.Info(ctx, "This scylla version does not support ScyllaArgs. ScyllaArgs is ignored", "version", cluster.Spec.Version)
 		} else {
 			appendScyllaArguments(ctx, s, cluster.Spec.ScyllaArgs, args)
 		}
 	}
 
-	if _, err := os.Stat(scyllaIOPropertiesPath); err == nil && version.SupportFeatureSafe(v1.ScyllaVersionThatSupportsDisablingIOTuning) {
+	if _, err := os.Stat(scyllaIOPropertiesPath); err == nil && version.SupportFeatureSafe(semver.ScyllaVersionThatSupportsDisablingIOTuning) {
 		s.logger.Info(ctx, "Scylla IO properties are already set, skipping io tuning")
 		ioSetup := "0"
 		args["io-setup"] = &ioSetup

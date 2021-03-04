@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1
+package semver
 
 import (
 	"github.com/blang/semver"

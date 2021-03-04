@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-set/strset"
+	"github.com/scylladb/scylla-operator/pkg/semver"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -41,9 +42,9 @@ func checkValues(c *ScyllaCluster) error {
 	}
 
 	if len(c.Spec.ScyllaArgs) > 0 {
-		version := NewScyllaVersion(c.Spec.Version)
-		if !version.SupportFeatureUnsafe(ScyllaVersionThatSupportsArgs) {
-			return errors.Errorf("ScyllaArgs is only supported starting from %s", ScyllaVersionThatSupportsArgs)
+		version := semver.NewScyllaVersion(c.Spec.Version)
+		if !version.SupportFeatureUnsafe(semver.ScyllaVersionThatSupportsArgs) {
+			return errors.Errorf("ScyllaArgs is only supported starting from %s", semver.ScyllaVersionThatSupportsArgs)
 		}
 	}
 

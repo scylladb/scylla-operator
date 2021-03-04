@@ -38,36 +38,72 @@ type Loader interface {
 	Cleanup() error
 }
 
-// Kunstructured allows manipulation of k8s objects
-// that do not have Golang structs.
+// Kunstructured represents a Kubernetes Resource Model object.
 type Kunstructured interface {
-	Map() map[string]interface{}
-	SetMap(map[string]interface{})
+	// Several uses.
 	Copy() Kunstructured
-	GetFieldValue(string) (interface{}, error)
-	GetString(string) (string, error)
-	GetStringSlice(string) ([]string, error)
-	GetBool(path string) (bool, error)
-	GetFloat64(path string) (float64, error)
-	GetInt64(path string) (int64, error)
-	GetSlice(path string) ([]interface{}, error)
-	GetStringMap(path string) (map[string]string, error)
-	GetMap(path string) (map[string]interface{}, error)
-	MarshalJSON() ([]byte, error)
-	UnmarshalJSON([]byte) error
-	GetGvk() resid.Gvk
-	SetGvk(resid.Gvk)
-	GetKind() string
-	GetName() string
-	SetName(string)
-	SetNamespace(string)
-	GetLabels() map[string]string
-	SetLabels(map[string]string)
+
+	// GetAnnotations returns the k8s annotations.
 	GetAnnotations() map[string]string
-	SetAnnotations(map[string]string)
-	MatchesLabelSelector(selector string) (bool, error)
+
+	// GetData returns a top-level "data" field, as in a ConfigMap.
+	GetDataMap() map[string]string
+
+	// Used by ResAccumulator and ReplacementTransformer.
+	GetFieldValue(string) (interface{}, error)
+
+	// Used by Resource.OrgId
+	GetGvk() resid.Gvk
+
+	// Used by resource.Factory.SliceFromBytes
+	GetKind() string
+
+	// GetLabels returns the k8s labels.
+	GetLabels() map[string]string
+
+	// Used by Resource.CurId and resource factory.
+	GetName() string
+
+	// Used by special case code in
+	// ResMap.SubsetThatCouldBeReferencedByResource
+	GetSlice(path string) ([]interface{}, error)
+
+	// GetString returns the value of a string field.
+	// Used by Resource.GetNamespace
+	GetString(string) (string, error)
+
+	// Several uses.
+	Map() map[string]interface{}
+
+	// Used by Resource.AsYAML and Resource.String
+	MarshalJSON() ([]byte, error)
+
+	// Used by resWrangler.Select
 	MatchesAnnotationSelector(selector string) (bool, error)
-	Patch(Kunstructured) error
+
+	// Used by resWrangler.Select
+	MatchesLabelSelector(selector string) (bool, error)
+
+	// SetAnnotations replaces the k8s annotations.
+	SetAnnotations(map[string]string)
+
+	// SetDataMap sets a top-level "data" field, as in a ConfigMap.
+	SetDataMap(map[string]string)
+
+	// Used by PatchStrategicMergeTransformer.
+	SetGvk(resid.Gvk)
+
+	// SetLabels replaces the k8s labels.
+	SetLabels(map[string]string)
+
+	// SetName changes the name.
+	SetName(string)
+
+	// SetNamespace changes the namespace.
+	SetNamespace(string)
+
+	// Needed, for now, by kyaml/filtersutil.ApplyToJSON.
+	UnmarshalJSON([]byte) error
 }
 
 // KunstructuredFactory makes instances of Kunstructured.
@@ -75,14 +111,8 @@ type KunstructuredFactory interface {
 	SliceFromBytes([]byte) ([]Kunstructured, error)
 	FromMap(m map[string]interface{}) Kunstructured
 	Hasher() KunstructuredHasher
-	MakeConfigMap(
-		kvLdr KvLoader,
-		options *types.GeneratorOptions,
-		args *types.ConfigMapArgs) (Kunstructured, error)
-	MakeSecret(
-		kvLdr KvLoader,
-		options *types.GeneratorOptions,
-		args *types.SecretArgs) (Kunstructured, error)
+	MakeConfigMap(kvLdr KvLoader, args *types.ConfigMapArgs) (Kunstructured, error)
+	MakeSecret(kvLdr KvLoader, args *types.SecretArgs) (Kunstructured, error)
 }
 
 // KunstructuredHasher returns a hash of the argument

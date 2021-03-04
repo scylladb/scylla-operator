@@ -4,11 +4,6 @@
 package git
 
 import (
-	"bytes"
-	"log"
-	"os/exec"
-
-	"github.com/pkg/errors"
 	"sigs.k8s.io/kustomize/api/filesys"
 )
 
@@ -19,94 +14,29 @@ type Cloner func(repoSpec *RepoSpec) error
 // to say, some remote API, to obtain a local clone of
 // a remote repo.
 func ClonerUsingGitExec(repoSpec *RepoSpec) error {
-	gitProgram, err := exec.LookPath("git")
-	if err != nil {
-		return errors.Wrap(err, "no 'git' program on path")
-	}
-	repoSpec.Dir, err = filesys.NewTmpConfirmedDir()
+	r, err := newCmdRunner()
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command(
-		gitProgram,
-		"init",
-		repoSpec.Dir.String())
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err = cmd.Run()
-	if err != nil {
-		log.Printf("Error initializing empty git repo: %s", out.String())
-		return errors.Wrapf(
-			err,
-			"trouble initializing empty git repo in %s",
-			repoSpec.Dir.String())
+	repoSpec.Dir = r.dir
+	if err = r.run("init"); err != nil {
+		return err
 	}
-
-	cmd = exec.Command(
-		gitProgram,
-		"remote",
-		"add",
-		"origin",
-		repoSpec.CloneSpec())
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	cmd.Dir = repoSpec.Dir.String()
-	err = cmd.Run()
-	if err != nil {
-		log.Printf("Error setting git remote: %s", out.String())
-		return errors.Wrapf(
-			err,
-			"trouble adding remote %s",
-			repoSpec.CloneSpec())
+	if err = r.run(
+		"remote", "add", "origin", repoSpec.CloneSpec()); err != nil {
+		return err
 	}
-	if repoSpec.Ref == "" {
-		repoSpec.Ref = "master"
+	ref := "HEAD"
+	if repoSpec.Ref != "" {
+		ref = repoSpec.Ref
 	}
-	cmd = exec.Command(
-		gitProgram,
-		"fetch",
-		"--depth=1",
-		"origin",
-		repoSpec.Ref)
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	cmd.Dir = repoSpec.Dir.String()
-	err = cmd.Run()
-	if err != nil {
-		log.Printf("Error performing git fetch: %s", out.String())
-		return errors.Wrapf(err, "trouble fetching %s", repoSpec.Ref)
+	if err = r.run("fetch", "--depth=1", "origin", ref); err != nil {
+		return err
 	}
-
-	cmd = exec.Command(
-		gitProgram,
-		"reset",
-		"--hard",
-		"FETCH_HEAD")
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	cmd.Dir = repoSpec.Dir.String()
-	err = cmd.Run()
-	if err != nil {
-		log.Printf("Error performing git reset: %s", out.String())
-		return errors.Wrapf(
-			err, "trouble hard resetting empty repository to %s", repoSpec.Ref)
+	if err = r.run("checkout", "FETCH_HEAD"); err != nil {
+		return err
 	}
-
-	cmd = exec.Command(
-		gitProgram,
-		"submodule",
-		"update",
-		"--init",
-		"--recursive")
-	cmd.Stdout = &out
-	cmd.Dir = repoSpec.Dir.String()
-	err = cmd.Run()
-	if err != nil {
-		return errors.Wrapf(err, "trouble fetching submodules for %s", repoSpec.Ref)
-	}
-
-	return nil
+	return r.run("submodule", "update", "--init", "--recursive")
 }
 
 // DoNothingCloner returns a cloner that only sets

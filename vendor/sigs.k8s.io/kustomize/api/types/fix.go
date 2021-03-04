@@ -4,41 +4,44 @@
 package types
 
 import (
-	"log"
 	"regexp"
 
 	"sigs.k8s.io/yaml"
 )
 
-// FixKustomizationPreUnmarshalling modies the raw data
+// FixKustomizationPreUnmarshalling modifies the raw data
 // before marshalling - e.g. changes old field names to
 // new field names.
-func FixKustomizationPreUnmarshalling(data []byte) []byte {
-	deprecateFieldsMap := map[string]string{
+func FixKustomizationPreUnmarshalling(data []byte) ([]byte, error) {
+	deprecatedFieldsMap := map[string]string{
 		"imageTags:": "images:",
 	}
-	for oldname, newname := range deprecateFieldsMap {
+	for oldname, newname := range deprecatedFieldsMap {
 		pattern := regexp.MustCompile(oldname)
 		data = pattern.ReplaceAll(data, []byte(newname))
 	}
-	if useLegacyPatch(data) {
+	doLegacy, err := useLegacyPatch(data)
+	if err != nil {
+		return nil, err
+	}
+	if doLegacy {
 		pattern := regexp.MustCompile("patches:")
 		data = pattern.ReplaceAll(data, []byte("patchesStrategicMerge:"))
 	}
-	return data
+	return data, nil
 }
 
-func useLegacyPatch(data []byte) bool {
+func useLegacyPatch(data []byte) (bool, error) {
 	found := false
 	var object map[string]interface{}
 	err := yaml.Unmarshal(data, &object)
 	if err != nil {
-		log.Fatalf("invalid content from %s\n", string(data))
+		return false, err
 	}
 	if rawPatches, ok := object["patches"]; ok {
 		patches, ok := rawPatches.([]interface{})
 		if !ok {
-			log.Fatalf("invalid patches from %v\n", rawPatches)
+			return false, err
 		}
 		for _, p := range patches {
 			_, ok := p.(string)
@@ -47,5 +50,5 @@ func useLegacyPatch(data []byte) bool {
 			}
 		}
 	}
-	return found
+	return found, nil
 }

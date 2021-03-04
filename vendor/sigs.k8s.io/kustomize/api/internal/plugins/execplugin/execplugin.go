@@ -9,20 +9,18 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"strconv"
+	"runtime"
 	"strings"
 
+	"github.com/google/shlex"
+
 	"github.com/pkg/errors"
-	"sigs.k8s.io/kustomize/api/resid"
+	"sigs.k8s.io/kustomize/api/internal/plugins/utils"
 	"sigs.k8s.io/kustomize/api/resmap"
-	"sigs.k8s.io/kustomize/api/types"
 	"sigs.k8s.io/yaml"
 )
 
 const (
-	idAnnotation        = "kustomize.config.k8s.io/id"
-	HashAnnotation      = "kustomize.config.k8s.io/needs-hash"
-	BehaviorAnnotation  = "kustomize.config.k8s.io/behavior"
 	tmpConfigFilePrefix = "kust-plugin-config-"
 )
 
@@ -53,7 +51,14 @@ func (p *ExecPlugin) ErrIfNotExecutable() error {
 	if err != nil {
 		return err
 	}
-	if f.Mode()&0111 == 0000 {
+	// In Windows, it is not possible to determine whether a
+	// file is executable through file mode.
+	// TODO: provide for setting the executable FileMode bit on Windows
+	// The (fs *fileStat) Mode() (m FileMode) {} function in
+	// https://golang.org/src/os/types_windows.go
+	// lacks the ability to set the FileMode executable bit in response
+	// to file data on Windows.
+	if f.Mode()&0111 == 0000 && runtime.GOOS != "windows" {
 		return fmt.Errorf("unexecutable plugin at: %s", p.path)
 	}
 	return nil
@@ -86,7 +91,7 @@ func (p *ExecPlugin) processOptionalArgsFields() error {
 	var c argsConfig
 	yaml.Unmarshal(p.cfg, &c)
 	if c.ArgsOneLiner != "" {
-		p.args = strings.Split(c.ArgsOneLiner, " ")
+		p.args, _ = shlex.Split(c.ArgsOneLiner)
 	}
 	if c.ArgsFromFile != "" {
 		content, err := p.h.Loader().Load(c.ArgsFromFile)
@@ -112,12 +117,12 @@ func (p *ExecPlugin) Generate() (resmap.ResMap, error) {
 	if err != nil {
 		return nil, err
 	}
-	return p.UpdateResourceOptions(rm)
+	return utils.UpdateResourceOptions(rm)
 }
 
 func (p *ExecPlugin) Transform(rm resmap.ResMap) error {
 	// add ResIds as annotations to all objects so that we can add them back
-	inputRM, err := p.getResMapWithIdAnnotation(rm)
+	inputRM, err := utils.GetResMapWithIDAnnotation(rm)
 	if err != nil {
 		return err
 	}
@@ -135,7 +140,7 @@ func (p *ExecPlugin) Transform(rm resmap.ResMap) error {
 	}
 
 	// update the original ResMap based on the output
-	return p.updateResMapValues(output, rm)
+	return utils.UpdateResMapValues(p.path, p.h, output, rm)
 }
 
 // invokePlugin writes plugin config to a temp file, then
@@ -157,6 +162,7 @@ func (p *ExecPlugin) invokePlugin(input []byte) ([]byte, error) {
 		return nil, errors.Wrap(
 			err, "closing plugin config file "+f.Name())
 	}
+	//nolint:gosec
 	cmd := exec.Command(
 		p.path, append([]string{f.Name()}, p.args...)...)
 	cmd.Env = p.getEnv()
@@ -180,91 +186,4 @@ func (p *ExecPlugin) getEnv() []string {
 		"KUSTOMIZE_PLUGIN_CONFIG_STRING="+string(p.cfg),
 		"KUSTOMIZE_PLUGIN_CONFIG_ROOT="+p.h.Loader().Root())
 	return env
-}
-
-// Returns a new copy of the given ResMap with the ResIds annotated in each Resource
-func (p *ExecPlugin) getResMapWithIdAnnotation(rm resmap.ResMap) (resmap.ResMap, error) {
-	inputRM := rm.DeepCopy()
-	for _, r := range inputRM.Resources() {
-		idString, err := yaml.Marshal(r.CurId())
-		if err != nil {
-			return nil, err
-		}
-		annotations := r.GetAnnotations()
-		if annotations == nil {
-			annotations = make(map[string]string)
-		}
-		annotations[idAnnotation] = string(idString)
-		r.SetAnnotations(annotations)
-	}
-	return inputRM, nil
-}
-
-// updateResMapValues updates the Resource value in the given ResMap
-// with the emitted Resource values in output.
-func (p *ExecPlugin) updateResMapValues(output []byte, rm resmap.ResMap) error {
-	outputRM, err := p.h.ResmapFactory().NewResMapFromBytes(output)
-	if err != nil {
-		return err
-	}
-	for _, r := range outputRM.Resources() {
-		// for each emitted Resource, find the matching Resource in the original ResMap
-		// using its id
-		annotations := r.GetAnnotations()
-		idString, ok := annotations[idAnnotation]
-		if !ok {
-			return fmt.Errorf("the transformer %s should not remove annotation %s",
-				p.path, idAnnotation)
-		}
-		id := resid.ResId{}
-		err := yaml.Unmarshal([]byte(idString), &id)
-		if err != nil {
-			return err
-		}
-		res, err := rm.GetByCurrentId(id)
-		if err != nil {
-			return fmt.Errorf("unable to find unique match to %s", id.String())
-		}
-		// remove the annotation set by Kustomize to track the resource
-		delete(annotations, idAnnotation)
-		if len(annotations) == 0 {
-			annotations = nil
-		}
-		r.SetAnnotations(annotations)
-
-		// update the ResMap resource value with the transformed object
-		res.Kunstructured = r.Kunstructured
-	}
-	return nil
-}
-
-// updateResourceOptions updates the generator options for each resource in the
-// given ResMap based on plugin provided annotations.
-func (p *ExecPlugin) UpdateResourceOptions(rm resmap.ResMap) (resmap.ResMap, error) {
-	for _, r := range rm.Resources() {
-		// Disable name hashing by default and require plugin to explicitly
-		// request it for each resource.
-		annotations := r.GetAnnotations()
-		behavior := annotations[BehaviorAnnotation]
-		var needsHash bool
-		if val, ok := annotations[HashAnnotation]; ok {
-			b, err := strconv.ParseBool(val)
-			if err != nil {
-				return nil, fmt.Errorf(
-					"the annotation %q contains an invalid value (%q)",
-					HashAnnotation, val)
-			}
-			needsHash = b
-		}
-		delete(annotations, HashAnnotation)
-		delete(annotations, BehaviorAnnotation)
-		if len(annotations) == 0 {
-			annotations = nil
-		}
-		r.SetAnnotations(annotations)
-		r.SetOptions(types.NewGenArgs(
-			&types.GeneratorArgs{Behavior: behavior},
-			&types.GeneratorOptions{DisableNameSuffixHash: !needsHash}))
-	}
-	return rm, nil
 }

@@ -26,3 +26,33 @@ const (
 	// No restrictions, do whatever you want.
 	PluginRestrictionsNone
 )
+
+// BuiltinPluginLoadingOptions distinguish ways in which builtin plugins are used.
+//go:generate stringer -type=BuiltinPluginLoadingOptions
+type BuiltinPluginLoadingOptions int
+
+const (
+	BploUndefined BuiltinPluginLoadingOptions = iota
+
+	// Desired in production use for performance.
+	BploUseStaticallyLinked
+
+	// Desired in testing and development cycles where it's undesirable
+	// to generate static code.
+	BploLoadFromFileSys
+)
+
+// FnPluginLoadingOptions set way functions-based pluing are restricted
+type FnPluginLoadingOptions struct {
+	// Allow to run executables
+	EnableExec bool
+	// Allow to run starlark
+	EnableStar bool
+	// Allow container access to network
+	Network     bool
+	NetworkName string
+	// list of mounts
+	Mounts []string
+	// list of env variables to pass to fn
+	Env []string
+}

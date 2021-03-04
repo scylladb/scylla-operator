@@ -3,6 +3,9 @@
 
 package builtinpluginconsts
 
+// TODO: rename 'fieldSpecs' to 'referrers' for clarity.
+// This will, however, break anyone using a custom config.
+
 const (
 	nameReferenceFieldSpecs = `
 nameReference:
@@ -17,6 +20,11 @@ nameReference:
     kind: HorizontalPodAutoscaler
 
 - kind: ReplicaSet
+  fieldSpecs:
+  - path: spec/scaleTargetRef/name
+    kind: HorizontalPodAutoscaler
+
+- kind: StatefulSet
   fieldSpecs:
   - path: spec/scaleTargetRef/name
     kind: HorizontalPodAutoscaler
@@ -116,6 +124,10 @@ nameReference:
     kind: CronJob
   - path: spec/configSource/configMap
     kind: Node
+  - path: rules/resourceNames
+    kind: Role
+  - path: rules/resourceNames
+    kind: ClusterRole
 
 - kind: Secret
   version: v1
@@ -233,6 +245,8 @@ nameReference:
     kind: Ingress
   - path: metadata/annotations/nginx.ingress.kubernetes.io\/auth-tls-secret
     kind: Ingress
+  - path: spec/tls/secretName
+    kind: Ingress
   - path: imagePullSecrets/name
     kind: ServiceAccount
   - path: parameters/secretName
@@ -247,6 +261,12 @@ nameReference:
     kind: Role
   - path: rules/resourceNames
     kind: ClusterRole
+  - path: spec/template/spec/containers/env/valueFrom/secretKeyRef/name
+    kind: Service
+    group: serving.knative.dev
+    version: v1
+  - path: spec/azureFile/secretName
+    kind: PersistentVolume
 
 - kind: Service
   version: v1
@@ -257,6 +277,10 @@ nameReference:
   - path: spec/rules/http/paths/backend/serviceName
     kind: Ingress
   - path: spec/backend/serviceName
+    kind: Ingress
+  - path: spec/rules/http/paths/backend/service/name
+    kind: Ingress
+  - path: spec/defaultBackend/service/name
     kind: Ingress
   - path: spec/service/name
     kind: APIService
@@ -345,5 +369,31 @@ nameReference:
     kind: PersistentVolumeClaim
   - path: spec/volumeClaimTemplates/spec/storageClassName
     kind: StatefulSet
+
+- kind: PriorityClass
+  version: v1
+  group: scheduling.k8s.io
+  fieldSpecs:
+  - path: spec/priorityClassName
+    kind: Pod
+  - path: spec/template/spec/priorityClassName
+    kind: StatefulSet
+  - path: spec/template/spec/priorityClassName
+    kind: Deployment
+  - path: spec/template/spec/priorityClassName
+    kind: ReplicationController
+  - path: spec/jobTemplate/spec/template/spec/priorityClassName
+    kind: CronJob
+  - path: spec/template/spec/priorityClassName
+    kind: Job
+  - path: spec/template/spec/priorityClassName
+    kind: DaemonSet
+
+- kind: IngressClass
+  version: v1
+  group: networking.k8s.io/v1
+  fieldSpecs:
+  - path: spec/ingressClassName
+    kind: Ingress
 `
 )

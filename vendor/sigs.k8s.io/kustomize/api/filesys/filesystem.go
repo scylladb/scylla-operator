@@ -8,13 +8,20 @@ import (
 	"path/filepath"
 )
 
+const (
+	Separator = string(filepath.Separator)
+	SelfDir   = "."
+	ParentDir = ".."
+)
+
 // FileSystem groups basic os filesystem methods.
+// It's supposed be functional subset of https://golang.org/pkg/os
 type FileSystem interface {
 	// Create a file.
-	Create(name string) (File, error)
+	Create(path string) (File, error)
 	// MkDir makes a directory.
 	Mkdir(path string) error
-	// MkDir makes a directory path, creating intervening directories.
+	// MkDirAll makes a directory path, creating intervening directories.
 	MkdirAll(path string) error
 	// RemoveAll removes path and any children it contains.
 	RemoveAll(path string) error
@@ -30,11 +37,13 @@ type FileSystem interface {
 	CleanedAbs(path string) (ConfirmedDir, string, error)
 	// Exists is true if the path exists in the file system.
 	Exists(path string) bool
-	// Glob returns the list of matching files
+	// Glob returns the list of matching files,
+	// emulating https://golang.org/pkg/path/filepath/#Glob
 	Glob(pattern string) ([]string, error)
 	// ReadFile returns the contents of the file at the given path.
 	ReadFile(path string) ([]byte, error)
-	// WriteFile writes the data to a file at the given path.
+	// WriteFile writes the data to a file at the given path,
+	// overwriting anything that's already there.
 	WriteFile(path string, data []byte) error
 	// Walk walks the file system with the given WalkFunc.
 	Walk(path string, walkFn filepath.WalkFunc) error

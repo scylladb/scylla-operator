@@ -4,6 +4,8 @@
 package target
 
 import (
+	"fmt"
+
 	"sigs.k8s.io/kustomize/api/internal/plugins/builtinconfig"
 	"sigs.k8s.io/kustomize/api/internal/plugins/builtinhelpers"
 	"sigs.k8s.io/kustomize/api/resmap"
@@ -30,6 +32,7 @@ func (kt *KustTarget) configureBuiltinGenerators() (
 	for _, bpt := range []builtinhelpers.BuiltinPluginType{
 		builtinhelpers.ConfigMapGenerator,
 		builtinhelpers.SecretGenerator,
+		builtinhelpers.HelmChartInflationGenerator,
 	} {
 		r, err := generatorConfigurators[bpt](
 			kt, bpt, builtinhelpers.GeneratorFactories[bpt])
@@ -74,14 +77,12 @@ var generatorConfigurators = map[builtinhelpers.BuiltinPluginType]func(
 	builtinhelpers.SecretGenerator: func(kt *KustTarget, bpt builtinhelpers.BuiltinPluginType, f gFactory) (
 		result []resmap.Generator, err error) {
 		var c struct {
-			types.GeneratorOptions
 			types.SecretArgs
-		}
-		if kt.kustomization.GeneratorOptions != nil {
-			c.GeneratorOptions = *kt.kustomization.GeneratorOptions
 		}
 		for _, args := range kt.kustomization.SecretGenerator {
 			c.SecretArgs = args
+			c.SecretArgs.Options = types.MergeGlobalOptionsIntoLocal(
+				c.SecretArgs.Options, kt.kustomization.GeneratorOptions)
 			p := f()
 			err := kt.configureBuiltinPlugin(p, c, bpt)
 			if err != nil {
@@ -95,14 +96,29 @@ var generatorConfigurators = map[builtinhelpers.BuiltinPluginType]func(
 	builtinhelpers.ConfigMapGenerator: func(kt *KustTarget, bpt builtinhelpers.BuiltinPluginType, f gFactory) (
 		result []resmap.Generator, err error) {
 		var c struct {
-			types.GeneratorOptions
 			types.ConfigMapArgs
-		}
-		if kt.kustomization.GeneratorOptions != nil {
-			c.GeneratorOptions = *kt.kustomization.GeneratorOptions
 		}
 		for _, args := range kt.kustomization.ConfigMapGenerator {
 			c.ConfigMapArgs = args
+			c.ConfigMapArgs.Options = types.MergeGlobalOptionsIntoLocal(
+				c.ConfigMapArgs.Options, kt.kustomization.GeneratorOptions)
+			p := f()
+			err := kt.configureBuiltinPlugin(p, c, bpt)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, p)
+		}
+		return
+	},
+
+	builtinhelpers.HelmChartInflationGenerator: func(kt *KustTarget, bpt builtinhelpers.BuiltinPluginType, f gFactory) (
+		result []resmap.Generator, err error) {
+		var c struct {
+			types.HelmChartArgs
+		}
+		for _, args := range kt.kustomization.HelmChartInflationGenerator {
+			c.HelmChartArgs = args
 			p := f()
 			err := kt.configureBuiltinPlugin(p, c, bpt)
 			if err != nil {
@@ -143,12 +159,12 @@ var transformerConfigurators = map[builtinhelpers.BuiltinPluginType]func(
 		kt *KustTarget, bpt builtinhelpers.BuiltinPluginType, f tFactory, _ *builtinconfig.TransformerConfig) (
 		result []resmap.Transformer, err error) {
 		var c struct {
-			Target types.PatchTarget `json:"target,omitempty" yaml:"target,omitempty"`
-			Path   string            `json:"path,omitempty" yaml:"path,omitempty"`
-			JsonOp string            `json:"jsonOp,omitempty" yaml:"jsonOp,omitempty"`
+			Target *types.Selector `json:"target,omitempty" yaml:"target,omitempty"`
+			Path   string          `json:"path,omitempty" yaml:"path,omitempty"`
+			JsonOp string          `json:"jsonOp,omitempty" yaml:"jsonOp,omitempty"`
 		}
 		for _, args := range kt.kustomization.PatchesJson6902 {
-			c.Target = *args.Target
+			c.Target = args.Target
 			c.Path = args.Path
 			c.JsonOp = args.Patch
 			p := f()
@@ -167,8 +183,7 @@ var transformerConfigurators = map[builtinhelpers.BuiltinPluginType]func(
 			return
 		}
 		var c struct {
-			Paths   []types.PatchStrategicMerge `json:"paths,omitempty" yaml:"paths,omitempty"`
-			Patches string                      `json:"patches,omitempty" yaml:"patches,omitempty"`
+			Paths []types.PatchStrategicMerge `json:"paths,omitempty" yaml:"paths,omitempty"`
 		}
 		c.Paths = kt.kustomization.PatchesStrategicMerge
 		p := f()
@@ -293,5 +308,11 @@ var transformerConfigurators = map[builtinhelpers.BuiltinPluginType]func(
 			result = append(result, p)
 		}
 		return
+	},
+	// No kustomization file keyword for this yet.
+	builtinhelpers.ValueAddTransformer: func(
+		kt *KustTarget, bpt builtinhelpers.BuiltinPluginType, f tFactory, tc *builtinconfig.TransformerConfig) (
+		result []resmap.Transformer, err error) {
+		return nil, fmt.Errorf("valueadd keyword not yet defined")
 	},
 }

@@ -3,14 +3,30 @@
 
 package types
 
+import (
+	"bytes"
+	"encoding/json"
+
+	"sigs.k8s.io/yaml"
+)
+
 const (
-	KustomizationVersion = "kustomize.config.k8s.io/v1beta1"
-	KustomizationKind    = "Kustomization"
+	KustomizationVersion  = "kustomize.config.k8s.io/v1beta1"
+	KustomizationKind     = "Kustomization"
+	ComponentVersion      = "kustomize.config.k8s.io/v1alpha1"
+	ComponentKind         = "Component"
+	MetadataNamespacePath = "metadata/namespace"
 )
 
 // Kustomization holds the information needed to generate customized k8s api resources.
 type Kustomization struct {
 	TypeMeta `json:",inline" yaml:",inline"`
+
+	// MetaData is a pointer to avoid marshalling empty struct
+	MetaData *ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
+
+	// OpenAPI contains information about what kubernetes schema to use.
+	OpenAPI map[string]string `json:"openapi,omitempty" yaml:"openapi,omitempty"`
 
 	//
 	// Operators - what kustomize can do.
@@ -42,7 +58,7 @@ type Kustomization struct {
 	// JSONPatches is a list of JSONPatch for applying JSON patch.
 	// Format documented at https://tools.ietf.org/html/rfc6902
 	// and http://jsonpatch.com
-	PatchesJson6902 []PatchJson6902 `json:"patchesJson6902,omitempty" yaml:"patchesJson6902,omitempty"`
+	PatchesJson6902 []Patch `json:"patchesJson6902,omitempty" yaml:"patchesJson6902,omitempty"`
 
 	// Patches is a list of patches, where each one can be either a
 	// Strategic Merge Patch or a JSON patch.
@@ -72,9 +88,13 @@ type Kustomization struct {
 	//
 
 	// Resources specifies relative paths to files holding YAML representations
-	// of kubernetes API objects, or specifcations of other kustomizations
+	// of kubernetes API objects, or specifications of other kustomizations
 	// via relative paths, absolute paths, or URLs.
 	Resources []string `json:"resources,omitempty" yaml:"resources,omitempty"`
+
+	// Components specifies relative paths to specifications of other Components
+	// via relative paths, absolute paths, or URLs.
+	Components []string `json:"components,omitempty" yaml:"components,omitempty"`
 
 	// Crds specifies relative paths to Custom Resource Definition files.
 	// This allows custom resources to be recognized as operands, making
@@ -105,6 +125,11 @@ type Kustomization struct {
 	// the map will have a suffix hash generated from its contents.
 	SecretGenerator []SecretArgs `json:"secretGenerator,omitempty" yaml:"secretGenerator,omitempty"`
 
+	// HelmChartInflationGenerator is a list of helm chart configurations.
+	// The resulting resource is a normal operand rendered from
+	// a remote chart by `helm template`
+	HelmChartInflationGenerator []HelmChartArgs `json:"helmChartInflationGenerator,omitempty" yaml:"helmChartInflationGenerator,omitempty"`
+
 	// GeneratorOptions modify behavior of all ConfigMap and Secret generators.
 	GeneratorOptions *GeneratorOptions `json:"generatorOptions,omitempty" yaml:"generatorOptions,omitempty"`
 
@@ -117,6 +142,9 @@ type Kustomization struct {
 	// Transformers is a list of files containing transformers
 	Transformers []string `json:"transformers,omitempty" yaml:"transformers,omitempty"`
 
+	// Validators is a list of files containing validators
+	Validators []string `json:"validators,omitempty" yaml:"validators,omitempty"`
+
 	// Inventory appends an object that contains the record
 	// of all other objects, which can be used in apply, prune and delete
 	Inventory *Inventory `json:"inventory,omitempty" yaml:"inventory,omitempty"`
@@ -127,25 +155,58 @@ type Kustomization struct {
 // moving content of deprecated fields to newer
 // fields.
 func (k *Kustomization) FixKustomizationPostUnmarshalling() {
-	if k.APIVersion == "" {
-		k.APIVersion = KustomizationVersion
-	}
+
 	if k.Kind == "" {
 		k.Kind = KustomizationKind
 	}
-	for _, b := range k.Bases {
-		k.Resources = append(k.Resources, b)
+	if k.APIVersion == "" {
+		if k.Kind == ComponentKind {
+			k.APIVersion = ComponentVersion
+		} else {
+			k.APIVersion = KustomizationVersion
+		}
 	}
+	k.Resources = append(k.Resources, k.Bases...)
 	k.Bases = nil
+}
+
+// FixKustomizationPreMarshalling fixes things
+// that should occur after the kustomization file
+// has been processed.
+func (k *Kustomization) FixKustomizationPreMarshalling() {
+	// PatchesJson6902 should be under the Patches field.
+	k.Patches = append(k.Patches, k.PatchesJson6902...)
+	k.PatchesJson6902 = nil
 }
 
 func (k *Kustomization) EnforceFields() []string {
 	var errs []string
-	if k.APIVersion != "" && k.APIVersion != KustomizationVersion {
-		errs = append(errs, "apiVersion should be "+KustomizationVersion)
+	if k.Kind != "" && k.Kind != KustomizationKind && k.Kind != ComponentKind {
+		errs = append(errs, "kind should be "+KustomizationKind+" or "+ComponentKind)
 	}
-	if k.Kind != "" && k.Kind != KustomizationKind {
-		errs = append(errs, "kind should be "+KustomizationKind)
+	requiredVersion := KustomizationVersion
+	if k.Kind == ComponentKind {
+		requiredVersion = ComponentVersion
+	}
+	if k.APIVersion != "" && k.APIVersion != requiredVersion {
+		errs = append(errs, "apiVersion for "+k.Kind+" should be "+requiredVersion)
 	}
 	return errs
+}
+
+// Unmarshal replace k with the content in YAML input y
+func (k *Kustomization) Unmarshal(y []byte) error {
+	j, err := yaml.YAMLToJSON(y)
+	if err != nil {
+		return err
+	}
+	dec := json.NewDecoder(bytes.NewReader(j))
+	dec.DisallowUnknownFields()
+	var nk Kustomization
+	err = dec.Decode(&nk)
+	if err != nil {
+		return err
+	}
+	*k = nk
+	return nil
 }

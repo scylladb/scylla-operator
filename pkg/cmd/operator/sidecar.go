@@ -1,10 +1,10 @@
-package main
+package operator
 
 import (
 	"context"
 
 	"github.com/scylladb/go-log"
-	"github.com/scylladb/scylla-operator/pkg/cmd/scylla-operator/options"
+	"github.com/scylladb/scylla-operator/pkg/cmd/operator/options"
 	"github.com/scylladb/scylla-operator/pkg/controllers/sidecar"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 )
 
-func newSidecarCmd(ctx context.Context, logger log.Logger, level zap.AtomicLevel) *cobra.Command {
+func NewSidecarCmd(ctx context.Context, logger log.Logger, level zap.AtomicLevel) *cobra.Command {
 	var sidecarCmd = &cobra.Command{
 		Use:   "sidecar",
 		Short: "Start the scylla sidecar.",

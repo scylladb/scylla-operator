@@ -7,9 +7,9 @@ ENV GOPATH=/go \
     GODEBUG=madvdontneed=1
 ENV PATH=$PATH:$GOROOT/bin:$GOPATH/bin
 RUN apt-get update; \
-    apt-get install -y build-essential git curl; \
+    apt-get install -y --no-install-recommends build-essential git curl gzip ca-certificates; \
     apt-get clean; \
-    curl --fail -L https://storage.googleapis.com/golang/go1.15.7.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+    curl --fail -L https://storage.googleapis.com/golang/go1.16.linux-amd64.tar.gz | tar -C /usr/local -xzf -
 WORKDIR /go/src/github.com/scylladb/scylla-operator
 COPY . .
 RUN make build --warn-undefined-variables
@@ -20,4 +20,5 @@ SHELL ["/bin/bash", "-euEo", "pipefail", "-c"]
 # we have to keep it there until we figure out how to properly upgrade them.
 COPY --from=builder /go/src/github.com/scylladb/scylla-operator/scylla-operator /usr/bin/
 RUN ln -s /usr/bin/scylla-operator /scylla-operator
+COPY --from=builder /go/src/github.com/scylladb/scylla-operator/scylla-operator-tests /usr/bin/
 ENTRYPOINT ["/usr/bin/scylla-operator"]

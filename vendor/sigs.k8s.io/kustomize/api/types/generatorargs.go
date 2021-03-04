@@ -21,4 +21,7 @@ type GeneratorArgs struct {
 
 	// KvPairSources for the generator.
 	KvPairSources `json:",inline,omitempty" yaml:",inline,omitempty"`
+
+	// Local overrides to global generatorOptions field.
+	Options *GeneratorOptions `json:"options,omitempty" yaml:"options,omitempty"`
 }

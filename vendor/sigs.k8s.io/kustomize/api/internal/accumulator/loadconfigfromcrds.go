@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-openapi/spec"
 	"github.com/pkg/errors"
-	"k8s.io/kube-openapi/pkg/common"
+	"sigs.k8s.io/kustomize/api/filesys"
 	"sigs.k8s.io/kustomize/api/ifc"
 	"sigs.k8s.io/kustomize/api/internal/plugins/builtinconfig"
 	"sigs.k8s.io/kustomize/api/resid"
@@ -17,8 +17,16 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+// OpenAPIDefinition describes single type.
+// Normally these definitions are auto-generated using gen-openapi.
+// Same as in k8s.io / kube-openapi / pkg / common.
+type OpenAPIDefinition struct {
+	Schema       spec.Schema
+	Dependencies []string
+}
+
 type myProperties map[string]spec.Schema
-type nameToApiMap map[string]common.OpenAPIDefinition
+type nameToApiMap map[string]OpenAPIDefinition
 
 // LoadConfigFromCRDs parse CRD schemas from paths into a TransformerConfig
 func LoadConfigFromCRDs(
@@ -78,7 +86,7 @@ func makeConfigFromApiMap(m nameToApiMap) (*builtinconfig.TransformerConfig, err
 // openAPI definition once
 // "x-kubernetes-group-version-kind" is available in CRD
 func makeGvkFromTypeName(n string) resid.Gvk {
-	names := strings.Split(n, ".")
+	names := strings.Split(n, filesys.SelfDir)
 	kind := names[len(names)-1]
 	return resid.Gvk{Kind: kind}
 }
@@ -93,10 +101,7 @@ func looksLikeAk8sType(properties myProperties) bool {
 		return false
 	}
 	_, ok = properties["metadata"]
-	if !ok {
-		return false
-	}
-	return true
+	return ok
 }
 
 const (
@@ -164,7 +169,7 @@ func loadCrdIntoConfig(
 				err = theConfig.AddNamereferenceFieldSpec(
 					builtinconfig.NameBackReferences{
 						Gvk: resid.Gvk{Kind: kind, Version: version},
-						FieldSpecs: []types.FieldSpec{
+						Referrers: []types.FieldSpec{
 							makeFs(theGvk, append(path, propName, nameKey))},
 					})
 				if err != nil {

@@ -11,6 +11,7 @@ import (
 
 	"sigs.k8s.io/kustomize/api/ifc"
 	"sigs.k8s.io/kustomize/api/internal/kusterr"
+	"sigs.k8s.io/kustomize/api/resid"
 	"sigs.k8s.io/kustomize/api/types"
 )
 
@@ -35,23 +36,18 @@ func (rf *Factory) FromMap(m map[string]interface{}) *Resource {
 
 // FromMapWithName returns a new instance with the given "original" name.
 func (rf *Factory) FromMapWithName(n string, m map[string]interface{}) *Resource {
-	return rf.makeOne(rf.kf.FromMap(m), nil).setOriginalName(n)
-}
-
-// FromMapWithNamespace returns a new instance with the given "original" namespace.
-func (rf *Factory) FromMapWithNamespace(n string, m map[string]interface{}) *Resource {
-	return rf.makeOne(rf.kf.FromMap(m), nil).setOriginalNs(n)
+	return rf.FromMapWithNamespaceAndName(resid.DefaultNamespace, n, m)
 }
 
 // FromMapWithNamespaceAndName returns a new instance with the given "original" namespace.
 func (rf *Factory) FromMapWithNamespaceAndName(ns string, n string, m map[string]interface{}) *Resource {
-	return rf.makeOne(rf.kf.FromMap(m), nil).setOriginalNs(ns).setOriginalName(n)
+	return rf.makeOne(rf.kf.FromMap(m), nil).setPreviousNamespaceAndName(ns, n)
 }
 
 // FromMapAndOption returns a new instance of Resource with given options.
 func (rf *Factory) FromMapAndOption(
-	m map[string]interface{}, args *types.GeneratorArgs, option *types.GeneratorOptions) *Resource {
-	return rf.makeOne(rf.kf.FromMap(m), types.NewGenArgs(args, option))
+	m map[string]interface{}, args *types.GeneratorArgs) *Resource {
+	return rf.makeOne(rf.kf.FromMap(m), types.NewGenArgs(args))
 }
 
 // FromKunstructured returns a new instance of Resource.
@@ -66,13 +62,13 @@ func (rf *Factory) makeOne(
 		log.Fatal("unstruct ifc must not be null")
 	}
 	if o == nil {
-		o = types.NewGenArgs(nil, nil)
+		o = types.NewGenArgs(nil)
 	}
 	r := &Resource{
-		Kunstructured: u,
-		options:       o,
+		kunStr:  u,
+		options: o,
 	}
-	return r.setOriginalName(r.GetName()).setOriginalNs(r.GetNamespace())
+	return r
 }
 
 // SliceFromPatches returns a slice of resources given a patch path
@@ -94,7 +90,7 @@ func (rf *Factory) SliceFromPatches(
 	return result, nil
 }
 
-// FromBytes unmarshals bytes into one Resource.
+// FromBytes unmarshalls bytes into one Resource.
 func (rf *Factory) FromBytes(in []byte) (*Resource, error) {
 	result, err := rf.SliceFromBytes(in)
 	if err != nil {
@@ -146,34 +142,36 @@ func (rf *Factory) SliceFromBytes(in []byte) ([]*Resource, error) {
 	return result, nil
 }
 
-// MakeConfigMap makes an instance of Resource for ConfigMap
-func (rf *Factory) MakeConfigMap(
-	kvLdr ifc.KvLoader,
-	options *types.GeneratorOptions,
-	args *types.ConfigMapArgs) (*Resource, error) {
-	u, err := rf.kf.MakeConfigMap(kvLdr, options, args)
+// SliceFromBytesWithNames unmarshals bytes into a Resource slice with specified original
+// name.
+func (rf *Factory) SliceFromBytesWithNames(names []string, in []byte) ([]*Resource, error) {
+	result, err := rf.SliceFromBytes(in)
 	if err != nil {
 		return nil, err
 	}
-	return rf.makeOne(
-		u,
-		types.NewGenArgs(
-			&types.GeneratorArgs{Behavior: args.Behavior},
-			options)), nil
+	if len(names) != len(result) {
+		return nil, fmt.Errorf("number of names doesn't match number of resources")
+	}
+	for i, res := range result {
+		res.setPreviousNamespaceAndName(resid.DefaultNamespace, names[i])
+	}
+	return result, nil
+}
+
+// MakeConfigMap makes an instance of Resource for ConfigMap
+func (rf *Factory) MakeConfigMap(kvLdr ifc.KvLoader, args *types.ConfigMapArgs) (*Resource, error) {
+	u, err := rf.kf.MakeConfigMap(kvLdr, args)
+	if err != nil {
+		return nil, err
+	}
+	return rf.makeOne(u, types.NewGenArgs(&args.GeneratorArgs)), nil
 }
 
 // MakeSecret makes an instance of Resource for Secret
-func (rf *Factory) MakeSecret(
-	kvLdr ifc.KvLoader,
-	options *types.GeneratorOptions,
-	args *types.SecretArgs) (*Resource, error) {
-	u, err := rf.kf.MakeSecret(kvLdr, options, args)
+func (rf *Factory) MakeSecret(kvLdr ifc.KvLoader, args *types.SecretArgs) (*Resource, error) {
+	u, err := rf.kf.MakeSecret(kvLdr, args)
 	if err != nil {
 		return nil, err
 	}
-	return rf.makeOne(
-		u,
-		types.NewGenArgs(
-			&types.GeneratorArgs{Behavior: args.Behavior},
-			options)), nil
+	return rf.makeOne(u, types.NewGenArgs(&args.GeneratorArgs)), nil
 }

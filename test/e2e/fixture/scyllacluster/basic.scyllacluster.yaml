@@ -1,0 +1,22 @@
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: basic
+spec:
+  version: 4.2.0
+  agentVersion: 2.2.0
+  developerMode: true
+  datacenter:
+    name: us-east-1
+    racks:
+      - name: us-east-1a
+        members: 1
+        storage:
+          capacity: 100Mi
+        resources:
+          requests:
+            cpu: 10m
+            memory: 100Mi
+          limits:
+            cpu: 1
+            memory: 1Gi

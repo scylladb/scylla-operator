@@ -1,10 +1,10 @@
-package main
+package operator
 
 import (
 	"context"
 
 	"github.com/scylladb/go-log"
-	"github.com/scylladb/scylla-operator/pkg/cmd/scylla-operator/options"
+	"github.com/scylladb/scylla-operator/pkg/cmd/operator/options"
 	"github.com/scylladb/scylla-operator/pkg/controllers/manager"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 )
 
-func newManagerControllerCmd(ctx context.Context, logger log.Logger, level zap.AtomicLevel) *cobra.Command {
+func NewManagerControllerCmd(ctx context.Context, logger log.Logger, level zap.AtomicLevel) *cobra.Command {
 	var managerControllerCmd = &cobra.Command{
 		Use:   "manager-controller",
 		Short: "Start the scylla manager controller.",

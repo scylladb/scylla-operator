@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
-	"github.com/scylladb/scylla-operator/pkg/cmd/scylla-operator/options"
+	"github.com/scylladb/scylla-operator/pkg/cmd/operator/options"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster"
 	"github.com/scylladb/scylla-operator/pkg/test/integration"
 	"go.uber.org/zap"

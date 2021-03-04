@@ -22,36 +22,45 @@ on:
   schedule:
   - cron:  '0 23 * * *' # daily at 11pm
 
+env:
+  go_version: 1.16
+  GOPATH: ${{ github.workspace }}/go
+  git_repo_path: ${{ github.workspace }}/go/src/github.com/scylladb/scylla-operator
+  image_repo_ref: docker.io/scylladb/scylla-operator
+  retention_days: 3
+
 defaults:
   run:
     shell: bash
-
-env:
-  go_version: 1.15.7
-  repo_ref: docker.io/scylladb/scylla-operator
+    working-directory: "./go/src/github.com/scylladb/scylla-operator"
 
 jobs:
   verify:
     name: Verify
     runs-on: ubuntu-20.04
     steps:
+    - uses: actions/checkout@v2
+      with:
+        path: ${{ env.git_repo_path }}
     - name: Setup go
       uses: actions/setup-go@v2
       with:
         go-version: ${{ env.go_version }}
-    - uses: actions/checkout@v2
     - name: Verify
       run: make verify --warn-undefined-variables
+
 
   verify-deps:
     name: Verify dependencies
     runs-on: ubuntu-20.04
     steps:
+    - uses: actions/checkout@v2
+      with:
+        path: ${{ env.git_repo_path }}
     - name: Setup go
       uses: actions/setup-go@v2
       with:
         go-version: ${{ env.go_version }}
-    - uses: actions/checkout@v2
     - name: Verify dependencies
       run: make verify-deps --warn-undefined-variables
 
@@ -59,11 +68,14 @@ jobs:
     name: Build and test
     runs-on: ubuntu-20.04
     steps:
+    - uses: actions/checkout@v2
+      with:
+        path: ${{ env.git_repo_path }}
+        fetch-depth: 0
     - name: Setup go
       uses: actions/setup-go@v2
       with:
         go-version: ${{ env.go_version }}
-    - uses: actions/checkout@v2
     - name: Build
       run: make --warn-undefined-variables
     - name: Make sure new unit tests aren't flaky
@@ -77,13 +89,15 @@ jobs:
     name: Test integration
     runs-on: ubuntu-20.04
     steps:
+    - uses: actions/checkout@v2
+      with:
+        path: ${{ env.git_repo_path }}
     - name: Setup go
       uses: actions/setup-go@v2
       with:
         go-version: ${{ env.go_version }}
     - name: Export GOPATH
       run: echo "GOPATH=$( go env GOPATH )" | tee -a ${GITHUB_ENV}
-    - uses: actions/checkout@v2
     - name: Install python3 deps
       run: pip3 install requests
 #   TODO: Consider cache removal. Caching means that jobs and periodis won't be able to verify that external depepndencies are still present and working.
@@ -108,14 +122,107 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
-    - uses: docker/build-push-action@v2
       with:
-        context: .
-        file: ./Dockerfile
-        platforms: linux/amd64
-        push: false
+        path: ${{ env.git_repo_path }}
+        fetch-depth: 0  # also fetch tags
+    - name: Install podman
+      run: |
+        set -x
+        # Install nativelly when we have Ubuntu >= 20.10
+        . /etc/os-release
+        echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
+        curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key | sudo apt-key add -
+        sudo apt-get update
+        sudo apt-get -y install podman
+    - name: Build image
+      run: |
+        set -x
+        podman build --squash -f ./Dockerfile -t '${{ env.image_repo_ref }}:pr' .
+        podman images '${{ env.image_repo_ref }}:pr'
+        podman save '${{ env.image_repo_ref }}:pr' | lz4 - ~/operatorimage.tar.lz4
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: operatorimage.tar.lz4
+        path: ~/operatorimage.tar.lz4
+        if-no-files-found: error
+        retention-days: ${{ env.retention_days }}
 
-  # TODO: Add e2e - use the same image sha from images step
+  test-e2e:
+    name: Test e2e
+    runs-on: ubuntu-20.04
+    needs: images
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: ${{ env.git_repo_path }}
+        fetch-depth: 0  # also fetch tags
+    - uses: actions/download-artifact@v2
+      with:
+        name: operatorimage.tar.lz4
+        path: ~/
+    - name: Load image
+      run: |
+        set -x
+        unlz4 ~/operatorimage.tar.lz4 - | docker load
+        # docker looses the registry part on save/load
+        docker tag "$( echo "${image_repo_ref}:pr" | sed -E -e 's~[^/]+/(.*)~\1~' )" "${image_repo_ref}:pr"
+        docker images '${{ env.image_repo_ref }}:pr'
+    - name: Setup go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.go_version }}
+    - name: Setup minikube
+      uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/setup-minikube
+    - name: Install tools
+      run: |
+        set -x
+        go install github.com/mikefarah/yq/v4@v4.6.1
+    - name: Deploy scylla-operator
+      env:
+        ARTIFACTS_DIR: ${{ runner.temp }}/e2e-artifacts
+      run: |
+        set -x
+        timeout 10m ./hack/ci-deploy.sh '${{ env.image_repo_ref }}:pr'
+        kubectl get pods -A
+    - name: Tolerate flakes on promotion jobs
+      if: ${{ github.event_name != 'pull_request' }}
+      run: |
+        echo "SCYLLA_OPERATOR_TESTS_FLAKE_ATTEMPTS=5" | tee -a ${GITHUB_ENV}
+    - name: Run e2e
+      env:
+        ARTIFACTS_DIR: ${{ runner.temp }}/e2e-artifacts
+      run: |
+        set -x
+        timeout 45m docker run --rm --entrypoint=/usr/bin/scylla-operator-tests -v "/root/.kube/config:/root/.kube/config" '${{ env.image_repo_ref }}:pr' run
+    - name: Dump cluster state
+      if: ${{ always() }}
+      env:
+        ARTIFACTS_DIR: ${{ runner.temp }}/e2e-artifacts
+      working-directory: ${{ runner.temp }}
+      run: timeout 10m ${{ env.git_repo_path }}/hack/ci-gather-artifacts.sh
+    - name: Get machine logs and info
+      if: ${{ always() }}
+      working-directory: ${{ runner.temp }}/e2e-artifacts
+      run: |
+        set -x
+        docker info > docker.info
+        docker images -a > docker.images
+        docker stats -a --no-stream --no-trunc > docker.stats
+        free -h > free
+        journalctl -u kubelet > kubelet.log
+    - name: Compress artifacts
+      if: ${{ always() }}
+      working-directory: ${{ runner.temp }}
+      run: tar -c --use-compress-program=lz4 -f ./e2e-artifacts.tar.lz4 "e2e-artifacts/"
+    - name: Upload artifacts
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: e2e-artifacts.tar.lz4
+        path: ${{ runner.temp }}/e2e-artifacts.tar.lz4
+        if-no-files-found: error
+        retention-days: ${{ env.retention_days }}
 
   # TODO: Add upgrade-e2e - use the same image sha from images step
 
@@ -129,10 +236,12 @@ jobs:
     - build-and-test
     - test-integration
     - images
-    # TODO: Depend on e2e when available
+    - test-e2e
     # TODO: Depend on upgrade-e2e when available
     steps:
-    - run: /bin/true
+    - name: Always succeed
+      working-directory: .
+      run: true
 
   promote:
     name: Promote artifacts
@@ -142,6 +251,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
+        path: ${{ env.git_repo_path }}
         # Helm Chart version needs to be semantic, we need tags in checked out repo to determine latest one.
         fetch-depth: 0
     - name: Determine promotion tag
@@ -169,7 +279,7 @@ jobs:
         file: ./Dockerfile
         platforms: linux/amd64
         push: true
-        tags: ${{ env.repo_ref }}:${{ env.IMAGE_TAG }}
+        tags: ${{ env.image_repo_ref }}:${{ env.IMAGE_TAG }}
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@master
       with:

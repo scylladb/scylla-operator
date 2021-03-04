@@ -1,4 +1,5 @@
 /scylla-operator
+/scylla-operator-tests
 
 # Test binary, build with `go test -c`
 *.test

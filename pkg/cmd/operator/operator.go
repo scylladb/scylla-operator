@@ -1,12 +1,12 @@
-package main
+package operator
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/scylladb/go-log"
-	"github.com/scylladb/scylla-operator/pkg/api/v1"
-	"github.com/scylladb/scylla-operator/pkg/cmd/scylla-operator/options"
+	"github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/cmd/operator/options"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/version"
@@ -18,7 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 )
 
-func newOperatorCmd(ctx context.Context, logger log.Logger, level zap.AtomicLevel) *cobra.Command {
+func NewOperatorCmd(ctx context.Context, logger log.Logger, level zap.AtomicLevel) *cobra.Command {
 	var operatorCmd = &cobra.Command{
 		Use:   "operator",
 		Short: "Start the scylla operator.",

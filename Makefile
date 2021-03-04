@@ -8,11 +8,12 @@ IMAGE_REF ?= docker.io/scylladb/scylla-operator:$(IMAGE_TAG)
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS 	?= "crd:trivialVersions=true"
 
-GO_REQUIRED_MIN_VERSION ?=1.15.7
 CODEGEN_PKG ?=./vendor/k8s.io/code-generator
 CODEGEN_HEADER_FILE ?=/dev/null
 CODEGEN_APIS_PACKAGE ?=$(GO_PACKAGE)/pkg/api
 CODEGEN_GROUPS_VERSIONS ?="scyllaclusters/v1"
+
+GO_REQUIRED_MIN_VERSION ?=1.16
 
 GIT_TAG ?=$(shell git describe --long --tags --abbrev=7 --match 'v[0-9]*' || echo 'v0.0.0-unknown')
 GIT_COMMIT ?=$(shell git rev-parse --short "HEAD^{commit}" 2>/dev/null)
@@ -31,18 +32,19 @@ GO_PACKAGES ?=./...
 
 go_packages_dirs :=$(shell $(GO) list -f '{{ .Dir }}' $(GO_PACKAGES) || echo 'no_package_dir_detected')
 GO_TEST_PACKAGES ?=$(GO_PACKAGES)
-GO_BUILD_PACKAGES ?=./pkg/cmd/...
+GO_BUILD_PACKAGES ?=./cmd/...
 GO_BUILD_PACKAGES_EXPANDED ?=$(shell $(GO) list $(GO_BUILD_PACKAGES))
 go_build_binaries =$(notdir $(GO_BUILD_PACKAGES_EXPANDED))
 GO_BUILD_FLAGS ?=-trimpath
 GO_BUILD_BINDIR ?=
 GO_LD_EXTRA_FLAGS ?=
-GO_TEST_PACKAGES :=./pkg/... # ./cmd/...
+GO_TEST_PACKAGES :=./pkg/... ./cmd/...
 GO_TEST_FLAGS ?=-race
 GO_TEST_COUNT ?=
 GO_TEST_EXTRA_FLAGS ?=
 GO_TEST_ARGS ?=
 GO_TEST_EXTRA_ARGS ?=
+GO_TEST_E2E_EXTRA_ARGS ?=
 
 HELM_CHANNEL ?=latest
 HELM_CHARTS ?=scylla-operator scylla-manager scylla
@@ -123,7 +125,7 @@ clean:
 .PHONY: clean
 
 verify-govet:
-	$(GO) vet $(GO_MOD_FLAGS) $(GO_PACKAGES)
+	$(GO) vet $(GO_PACKAGES)
 .PHONY: verify-govet
 
 verify-gofmt:
@@ -234,6 +236,10 @@ test-integration: GO_TEST_FLAGS += -p=1 -timeout 30m -v
 test-integration: GO_TEST_ARGS += -ginkgo.progress
 test-integration: test-unit
 .PHONY: test-integration
+
+test-e2e:
+	$(GO) run ./cmd/scylla-operator-tests run $(GO_TEST_E2E_EXTRA_ARGS)
+.PHONY: test-e2e
 
 test-version-script:
 	./hack/lib/tag-from-gh-ref.sh

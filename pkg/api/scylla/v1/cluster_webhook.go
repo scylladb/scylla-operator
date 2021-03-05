@@ -34,7 +34,7 @@ func (r *ScyllaCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:verbs=create;update,path=/validate-scylla-scylladb-com-v1-scyllacluster,mutating=false,failurePolicy=fail,groups=scylla.scylladb.com,resources=scyllaclusters,versions=v1,name=webhook.scylla.scylladb.com
+// +kubebuilder:webhook:verbs=create;update,path=/validate-scylla-scylladb-com-v1-scyllacluster,mutating=false,failurePolicy=fail,groups=scylla.scylladb.com,resources=scyllaclusters,versions=v1,name=webhook.scylla.scylladb.com,sideEffects=None,admissionReviewVersions=v1
 
 var _ webhook.Validator = &ScyllaCluster{}
 

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: scylla-manager
+  name: scylla-manager
+  namespace: scylla-manager
+spec:
+  ports:
+  - name: api
+    port: 80
+    protocol: TCP
+    targetPort: 5080
+  - name: metrics
+    port: 5090
+    protocol: TCP
+    targetPort: 5090
+  selector:
+    app.kubernetes.io/name: scylla-manager

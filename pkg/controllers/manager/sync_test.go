@@ -107,12 +107,15 @@ func TestManagerSynchronization(t *testing.T) {
 				Repairs: []v1.RepairTaskSpec{
 					{
 						SchedulerTaskSpec: v1.SchedulerTaskSpec{
-							Name: "my-repair",
+							Name:      "my-repair",
+							StartDate: "now",
+							Interval:  "0",
 						},
-						DC:        []string{"dc1"},
-						FailFast:  pointer.BoolPtr(false),
-						Intensity: pointer.StringPtr("0.5"),
-						Keyspace:  []string{"keyspace1"},
+						SmallTableThreshold: "1GiB",
+						DC:                  []string{"dc1"},
+						FailFast:            false,
+						Intensity:           "0.5",
+						Keyspace:            []string{"keyspace1"},
 					},
 				},
 			},
@@ -135,13 +138,15 @@ func TestManagerSynchronization(t *testing.T) {
 				Backups: []v1.BackupTaskSpec{
 					{
 						SchedulerTaskSpec: v1.SchedulerTaskSpec{
-							Name: "my-backup",
+							Name:      "my-backup",
+							StartDate: "now",
+							Interval:  "0",
 						},
 						DC:               []string{"dc1"},
 						Keyspace:         []string{"keyspace1"},
 						Location:         []string{"s3:abc"},
 						RateLimit:        []string{"dc1:1"},
-						Retention:        pointer.Int64Ptr(3),
+						Retention:        3,
 						SnapshotParallel: []string{"dc1:1"},
 						UploadParallel:   []string{"dc1:1"},
 					},
@@ -166,8 +171,12 @@ func TestManagerSynchronization(t *testing.T) {
 				Repairs: []v1.RepairTaskSpec{
 					{
 						SchedulerTaskSpec: v1.SchedulerTaskSpec{
-							Name: "repair",
+							Name:      "repair",
+							StartDate: "now",
+							Interval:  "0",
 						},
+						SmallTableThreshold: "1GiB",
+						Intensity:           "0",
 					},
 				},
 			},
@@ -178,9 +187,12 @@ func TestManagerSynchronization(t *testing.T) {
 						ID: "repair-id",
 						RepairTaskSpec: v1.RepairTaskSpec{
 							SchedulerTaskSpec: v1.SchedulerTaskSpec{
-								Name: "repair",
+								Name:      "repair",
+								StartDate: "now",
+								Interval:  "0",
 							},
-							Intensity: pointer.StringPtr("666"),
+							Intensity:           "666",
+							SmallTableThreshold: "1GiB",
 						},
 					},
 				},
@@ -195,9 +207,12 @@ func TestManagerSynchronization(t *testing.T) {
 					{
 						RepairTaskSpec: v1.RepairTaskSpec{
 							SchedulerTaskSpec: v1.SchedulerTaskSpec{
-								Name: "repair",
+								Name:      "repair",
+								StartDate: "now",
+								Interval:  "0",
 							},
-							Intensity: pointer.StringPtr("123"),
+							Intensity:           "123",
+							SmallTableThreshold: "1GiB",
 						},
 						ID: "repair-id",
 					},
@@ -212,9 +227,12 @@ func TestManagerSynchronization(t *testing.T) {
 				Repairs: []v1.RepairTaskSpec{
 					{
 						SchedulerTaskSpec: v1.SchedulerTaskSpec{
-							Name: "repair",
+							Name:      "repair",
+							StartDate: "now",
+							Interval:  "0",
 						},
-						Intensity: pointer.StringPtr("666"),
+						Intensity:           "666",
+						SmallTableThreshold: "1GiB",
 					},
 				},
 			},
@@ -225,9 +243,12 @@ func TestManagerSynchronization(t *testing.T) {
 						ID: "repair-id",
 						RepairTaskSpec: v1.RepairTaskSpec{
 							SchedulerTaskSpec: v1.SchedulerTaskSpec{
-								Name: "repair",
+								Name:      "repair",
+								StartDate: "now",
+								Interval:  "0",
 							},
-							Intensity: pointer.StringPtr("666"),
+							Intensity:           "666",
+							SmallTableThreshold: "1GiB",
 						},
 					},
 				},
@@ -242,9 +263,12 @@ func TestManagerSynchronization(t *testing.T) {
 					{
 						RepairTaskSpec: v1.RepairTaskSpec{
 							SchedulerTaskSpec: v1.SchedulerTaskSpec{
-								Name: "repair",
+								Name:      "repair",
+								StartDate: "now",
+								Interval:  "0",
 							},
-							Intensity: pointer.StringPtr("666"),
+							Intensity:           "666",
+							SmallTableThreshold: "1GiB",
 						},
 						ID: "repair-id",
 					},
@@ -269,7 +293,9 @@ func TestManagerSynchronization(t *testing.T) {
 					{
 						RepairTaskSpec: v1.RepairTaskSpec{
 							SchedulerTaskSpec: v1.SchedulerTaskSpec{
-								Name: "other-repair",
+								Name:      "other-repair",
+								StartDate: "now",
+								Interval:  "0",
 							},
 						},
 						ID: "other-repair-id",

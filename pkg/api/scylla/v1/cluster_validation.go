@@ -93,11 +93,9 @@ func checkValues(c *ScyllaCluster) error {
 		}
 		managerTaskNames.Add(r.Name)
 
-		if r.Intensity != nil {
-			_, err := strconv.ParseFloat(*r.Intensity, 64)
-			if err != nil {
-				return errors.Errorf("invalid intensity %q in %q repair task, it must be a float value", *r.Intensity, r.Name)
-			}
+		_, err := strconv.ParseFloat(r.Intensity, 64)
+		if err != nil {
+			return errors.Errorf("invalid intensity %q in %q repair task, it must be a float value", r.Intensity, r.Name)
 		}
 	}
 
@@ -120,7 +118,7 @@ func checkValues(c *ScyllaCluster) error {
 func checkTransitions(old, new *ScyllaCluster) error {
 	// Check that repository remained the same
 	if !reflect.DeepEqual(old.Spec.Repository, new.Spec.Repository) {
-		return errors.Errorf("repository change is currently not supported, old=%v, new=%v", *old.Spec.Repository, *new.Spec.Repository)
+		return errors.Errorf("repository change is currently not supported, old=%v, new=%v", old.Spec.Repository, new.Spec.Repository)
 	}
 
 	// Check that the datacenter name didn't change

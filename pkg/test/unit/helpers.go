@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -26,7 +25,7 @@ func NewDetailedSingleRackCluster(name, namespace, repo, version, dc, rack strin
 			Namespace: namespace,
 		},
 		Spec: scyllav1.ClusterSpec{
-			Repository: util.RefFromString(repo),
+			Repository: repo,
 			Version:    version,
 			Datacenter: scyllav1.DatacenterSpec{
 				Name: dc,
@@ -61,7 +60,7 @@ func NewDetailedMultiRackCluster(name, namespace, repo, version, dc string, memb
 			Namespace: namespace,
 		},
 		Spec: scyllav1.ClusterSpec{
-			Repository: util.RefFromString(repo),
+			Repository: repo,
 			Version:    version,
 			Datacenter: scyllav1.DatacenterSpec{
 				Name:  dc,

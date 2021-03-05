@@ -16,7 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -294,7 +293,7 @@ func singleNodeCluster(ns *corev1.Namespace) *scyllav1.ScyllaCluster {
 		},
 		Spec: scyllav1.ClusterSpec{
 			Version:       "4.2.0",
-			AgentVersion:  pointer.StringPtr("2.2.0"),
+			AgentVersion:  "2.2.0",
 			DeveloperMode: true,
 			Datacenter: scyllav1.DatacenterSpec{
 				Name: "dc1",

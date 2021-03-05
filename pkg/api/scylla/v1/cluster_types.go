@@ -32,36 +32,53 @@ type ClusterSpec struct {
 
 	// Version of Scylla to use.
 	Version string `json:"version"`
-	// Repository to pull the image from.
-	Repository *string `json:"repository,omitempty"`
+	// Repository to pull the Scylla image from.
+	// +kubebuilder:default:="docker.io/scylladb/scylla"
+	// +optional
+	Repository string `json:"repository,omitempty"`
 	// Alternator designates this cluster an Alternator cluster
+	// +optional
 	Alternator *AlternatorSpec `json:"alternator,omitempty"`
-	// Version of Scylla Manager Agent to use. Defaults to "latest".
-	AgentVersion *string `json:"agentVersion"`
-	// Repository to pull the agent image from. Defaults to "scylladb/scylla-manager-agent".
-	AgentRepository *string `json:"agentRepository,omitempty"`
+	// Version of Scylla Manager Agent to use.
+	// +kubebuilder:default:="latest"
+	// +optional
+	AgentVersion string `json:"agentVersion"`
+	// Repository to pull the agent image from.
+	// +kubebuilder:default:="docker.io/scylladb/scylla-manager-agent"
+	// +optional
+	AgentRepository string `json:"agentRepository,omitempty"`
 	// DeveloperMode determines if the cluster runs in developer-mode.
+	// +optional
 	DeveloperMode bool `json:"developerMode,omitempty"`
 	// CpuSet determines if the cluster will use cpu-pinning for max performance.
+	// +optional
 	CpuSet bool `json:"cpuset,omitempty"`
 	// AutomaticOrphanedNodeCleanup controls if automatic orphan node cleanup should be performed.
 	AutomaticOrphanedNodeCleanup bool `json:"automaticOrphanedNodeCleanup,omitempty"`
 	// GenericUpgrade allows to configure behavior of generic upgrade logic.
+	// +optional
 	GenericUpgrade *GenericUpgradeSpec `json:"genericUpgrade,omitempty"`
 	// Datacenter that will make up this cluster.
 	Datacenter DatacenterSpec `json:"datacenter"`
 	// Sysctl properties to be applied during initialization
 	// given as a list of key=value pairs.
 	// Example: fs.aio-max-nr=232323
-	Sysctls    []string `json:"sysctls,omitempty"`
-	ScyllaArgs string   `json:"scyllaArgs,omitempty"`
+	// +optional
+	Sysctls []string `json:"sysctls,omitempty"`
+	// ScyllaArgs will be appended to Scylla binary during startup.
+	// This is supported from 4.2.0 Scylla version.
+	// +optional
+	ScyllaArgs string `json:"scyllaArgs,omitempty"`
 	// Networking config
+	// +optional
 	Network Network `json:"network,omitempty"`
 	// Repairs specifies repair task in Scylla Manager.
 	// When Scylla Manager is not installed, these will be ignored.
+	// +optional
 	Repairs []RepairTaskSpec `json:"repairs,omitempty"`
 	// Backups specifies backup task in Scylla Manager.
 	// When Scylla Manager is not installed, these will be ignored.
+	// +optional
 	Backups []BackupTaskSpec `json:"backups,omitempty"`
 }
 
@@ -77,22 +94,32 @@ const (
 type GenericUpgradeSpec struct {
 	// FailureStrategy specifies which logic is executed when upgrade failure happens.
 	// Currently only Retry is supported.
+	// +kubebuilder:default:="Retry"
+	// +optional
 	FailureStrategy GenericUpgradeFailureStrategy `json:"failureStrategy,omitempty"`
 	// PollInterval specifies how often upgrade logic polls on state updates.
 	// Increasing this value should lower number of requests sent to apiserver, but it may affect
 	// overall time spent during upgrade.
-	PollInterval *metav1.Duration `json:"pollInterval,omitempty"`
+	// +kubebuilder:default:="1s"
+	// +optional
+	PollInterval metav1.Duration `json:"pollInterval,omitempty"`
 }
 
 type SchedulerTaskSpec struct {
 	// Name of a task, it must be unique across all tasks.
 	Name string `json:"name"`
 	// StartDate specifies the task start date expressed in the RFC3339 format or now[+duration],
-	// e.g. now+3d2h10m, valid units are d, h, m, s (default "now").
-	StartDate *string `json:"startDate,omitempty"`
-	// Interval task schedule interval e.g. 3d2h10m, valid units are d, h, m, s (default "0").
-	Interval *string `json:"interval,omitempty"`
-	// NumRetries the number of times a scheduled task will retry to run before failing (default 3).
+	// e.g. now+3d2h10m, valid units are d, h, m, s.
+	// +kubebuilder:default:="now"
+	// +optional
+	StartDate string `json:"startDate,omitempty"`
+	// Interval task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
+	// +optional
+	// +kubebuilder:default:="0"
+	Interval string `json:"interval,omitempty"`
+	// NumRetries the number of times a scheduled task will retry to run before failing.
+	// +kubebuilder:default:=3
+	// +optional
 	NumRetries *int64 `json:"numRetries,omitempty"`
 }
 
@@ -102,7 +129,8 @@ type RepairTaskSpec struct {
 	// to include or exclude from backup.
 	DC []string `json:"dc,omitempty" mapstructure:"dc,omitempty"`
 	// FailFast stop repair on first error.
-	FailFast *bool `json:"failFast,omitempty" mapstructure:"fail_fast,omitempty"`
+	// +optional
+	FailFast bool `json:"failFast,omitempty" mapstructure:"fail_fast,omitempty"`
 	// Intensity how many token ranges (per shard) to repair in a single Scylla repair job. By default this is 1.
 	// If you set it to 0 the number of token ranges is adjusted to the maximum supported by node (see max_repair_ranges_in_parallel in Scylla logs).
 	// Valid values are 0 and integers >= 1. Higher values will result in increased cluster load and slightly faster repairs.
@@ -110,18 +138,24 @@ type RepairTaskSpec struct {
 	// For Scylla clusters that *do not support row-level repair*, intensity can be a decimal between (0,1).
 	// In that case it specifies percent of shards that can be repaired in parallel on a repair master node.
 	// For Scylla clusters that are row-level repair enabled, setting intensity below 1 has the same effect as setting intensity 1.
-	Intensity *string `json:"intensity,omitempty" mapstructure:"intensity,omitempty"`
+	// +kubebuilder:default:="1"
+	// +optional
+	Intensity string `json:"intensity,omitempty" mapstructure:"intensity,omitempty"`
 	// Parallel the maximum number of Scylla repair jobs that can run at the same time (on different token ranges and replicas).
 	// Each node can take part in at most one repair at any given moment. By default the maximum possible parallelism is used.
 	// The effective parallelism depends on a keyspace replication factor (RF) and the number of nodes.
 	// The formula to calculate it is as follows: number of nodes / RF, ex. for 6 node cluster with RF=3 the maximum parallelism is 2.
-	Parallel *int64 `json:"parallel,omitempty" mapstructure:"parallel,omitempty"`
+	// +kubebuilder:default:=0
+	// +optional
+	Parallel int64 `json:"parallel,omitempty" mapstructure:"parallel,omitempty"`
 	// Keyspace a list of keyspace/tables glob patterns, e.g. 'keyspace,!keyspace.table_prefix_*'
 	// used to include or exclude keyspaces from repair.
 	Keyspace []string `json:"keyspace,omitempty" mapstructure:"keyspace,omitempty"`
 	// SmallTableThreshold enable small table optimization for tables of size lower than given threshold.
-	// Supported units [B, MiB, GiB, TiB] (default "1GiB").
-	SmallTableThreshold *string `json:"smallTableThreshold,omitempty" mapstructure:"small_table_threshold,omitempty"`
+	// Supported units [B, MiB, GiB, TiB].
+	// +kubebuilder:default:="1GiB"
+	// +optional
+	SmallTableThreshold string `json:"smallTableThreshold,omitempty" mapstructure:"small_table_threshold,omitempty"`
 	// Host to repair, by default all hosts are repaired
 	Host *string `json:"host,omitempty" mapstructure:"host,omitempty"`
 }
@@ -130,9 +164,11 @@ type BackupTaskSpec struct {
 	SchedulerTaskSpec `json:",inline"`
 	// DC a list of datacenter glob patterns, e.g. 'dc1,!otherdc*' used to specify the DCs
 	// to include or exclude from backup.
+	// +optional
 	DC []string `json:"dc,omitempty" mapstructure:"dc,omitempty"`
 	// Keyspace a list of keyspace/tables glob patterns,
 	// e.g. 'keyspace,!keyspace.table_prefix_*' used to include or exclude keyspaces from repair.
+	// +optional
 	Keyspace []string `json:"keyspace,omitempty" mapstructure:"keyspace,omitempty"`
 	// Location a list of backup locations in the format [<dc>:]<provider>:<name> ex. s3:my-bucket.
 	// The <dc>: part is optional and is only needed when different datacenters are being used to upload data
@@ -143,18 +179,23 @@ type BackupTaskSpec struct {
 	// RateLimit a list of megabytes (MiB) per second rate limits expressed in the format [<dc>:]<limit>.
 	// The <dc>: part is optional and only needed when different datacenters need different upload limits.
 	// Set to 0 for no limit (default 100).
+	// +optional
 	RateLimit []string `json:"rateLimit,omitempty" mapstructure:"rate_limit,omitempty"`
-	// Retention The number of backups which are to be stored (default 3).
-	Retention *int64 `json:"retention,omitempty" mapstructure:"retention,omitempty"`
+	// Retention The number of backups which are to be stored.
+	// +kubebuilder:default:=3
+	// +optional
+	Retention int64 `json:"retention,omitempty" mapstructure:"retention,omitempty"`
 	// SnapshotParallel a list of snapshot parallelism limits in the format [<dc>:]<limit>.
 	// The <dc>: part is optional and allows for specifying different limits in selected datacenters.
 	// If The <dc>: part is not set, the limit is global (e.g. 'dc1:2,5') the runs are parallel in n nodes (2 in dc1)
 	// and n nodes in all the other datacenters.
+	// +optional
 	SnapshotParallel []string `json:"snapshotParallel,omitempty" mapstructure:"snapshot_parallel,omitempty"`
 	// UploadParallel a list of upload parallelism limits in the format [<dc>:]<limit>.
 	// The <dc>: part is optional and allows for specifying different limits in selected datacenters.
 	// If The <dc>: part is not set the limit is global (e.g. 'dc1:2,5') the runs are parallel in n nodes (2 in dc1)
 	// and n nodes in all the other datacenters.
+	// +optional
 	UploadParallel []string `json:"uploadParallel,omitempty" mapstructure:"upload_parallel,omitempty"`
 }
 
@@ -190,14 +231,19 @@ type RackSpec struct {
 	// Storage describes the underlying storage that Scylla will consume.
 	Storage StorageSpec `json:"storage"`
 	// Placement describes restrictions for the nodes Scylla is scheduled on.
+	// +optional
 	Placement *PlacementSpec `json:"placement,omitempty"`
 	// Resources the Scylla container will use.
 	Resources corev1.ResourceRequirements `json:"resources"`
 	// AgentResources which Agent container will use.
+	// +kubebuilder:default:={requests: {cpu: "50m", memory: "10M"}, limits: {cpu: "1", memory: "200M"}}
+	// +optional
 	AgentResources corev1.ResourceRequirements `json:"agentResources,omitempty"`
 	// Volumes added to Scylla Pod.
+	// +optional
 	Volumes []corev1.Volume `json:"volumes,omitempty" patchStrategy:"merge,retainKeys" patchMergeKey:"name"`
 	// VolumeMounts to be added to Scylla container.
+	// +optional
 	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty" patchStrategy:"merge" patchMergeKey:"mountPath"`
 	// AgentVolumeMounts to be added to Agent container.
 	AgentVolumeMounts []corev1.VolumeMount `json:"agentVolumeMounts,omitempty" patchStrategy:"merge" patchMergeKey:"mountPath"`
@@ -208,10 +254,14 @@ type RackSpec struct {
 }
 
 type PlacementSpec struct {
-	NodeAffinity    *corev1.NodeAffinity    `json:"nodeAffinity,omitempty"`
-	PodAffinity     *corev1.PodAffinity     `json:"podAffinity,omitempty"`
+	// +optional
+	NodeAffinity *corev1.NodeAffinity `json:"nodeAffinity,omitempty"`
+	// +optional
+	PodAffinity *corev1.PodAffinity `json:"podAffinity,omitempty"`
+	// +optional
 	PodAntiAffinity *corev1.PodAntiAffinity `json:"podAntiAffinity,omitempty"`
-	Tolerations     []corev1.Toleration     `json:"tolerations,omitempty"`
+	// +optional
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
 // ImageSpec is the desired state for a container image.
@@ -226,6 +276,7 @@ type StorageSpec struct {
 	// Capacity of each member's volume
 	Capacity string `json:"capacity"`
 	// Name of storageClass to request
+	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 }
 

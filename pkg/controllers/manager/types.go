@@ -27,20 +27,16 @@ func (r RepairTask) ToManager() (*mermaidclient.Task, error) {
 
 	props := t.Properties.(map[string]interface{})
 
-	if r.StartDate != nil {
-		startDate, err := mermaidclient.ParseStartDate(*r.StartDate)
-		if err != nil {
-			return nil, errors.Wrap(err, "parse start date")
-		}
-		t.Schedule.StartDate = startDate
+	startDate, err := mermaidclient.ParseStartDate(r.StartDate)
+	if err != nil {
+		return nil, errors.Wrap(err, "parse start date")
 	}
+	t.Schedule.StartDate = startDate
 
-	if r.Interval != nil {
-		if _, err := duration.ParseDuration(*r.Interval); err != nil {
-			return nil, errors.Wrap(err, "parse interval")
-		}
-		t.Schedule.Interval = *r.Interval
+	if _, err := duration.ParseDuration(r.Interval); err != nil {
+		return nil, errors.Wrap(err, "parse interval")
 	}
+	t.Schedule.Interval = r.Interval
 
 	if r.NumRetries != nil {
 		t.Schedule.NumRetries = int64(*r.NumRetries)
@@ -52,30 +48,22 @@ func (r RepairTask) ToManager() (*mermaidclient.Task, error) {
 	if r.DC != nil {
 		props["dc"] = unescapeFilters(r.DC)
 	}
-	if r.FailFast != nil {
-		if *r.FailFast {
-			t.Schedule.NumRetries = 0
-			props["fail_fast"] = true
-		}
+	if r.FailFast {
+		t.Schedule.NumRetries = 0
+		props["fail_fast"] = true
 	}
 
-	if r.Intensity != nil {
-		intensity, err := strconv.ParseFloat(*r.Intensity, 64)
-		if err != nil {
-			return nil, errors.Wrap(err, "parse intensity")
-		}
-		props["intensity"] = intensity
+	intensity, err := strconv.ParseFloat(r.Intensity, 64)
+	if err != nil {
+		return nil, errors.Wrap(err, "parse intensity")
 	}
-	if r.Parallel != nil {
-		props["parallel"] = *r.Parallel
+	props["intensity"] = intensity
+	props["parallel"] = r.Parallel
+	threshold, err := mermaidclient.ParseByteCount(r.SmallTableThreshold)
+	if err != nil {
+		return nil, errors.Wrap(err, "parse small table threshold")
 	}
-	if r.SmallTableThreshold != nil {
-		threshold, err := mermaidclient.ParseByteCount(*r.SmallTableThreshold)
-		if err != nil {
-			return nil, errors.Wrap(err, "parse small table threshold")
-		}
-		props["small_table_threshold"] = threshold
-	}
+	props["small_table_threshold"] = threshold
 
 	t.Name = r.Name
 	t.Properties = props
@@ -86,8 +74,8 @@ func (r RepairTask) ToManager() (*mermaidclient.Task, error) {
 func (r *RepairTask) FromManager(t *mermaidclient.ExtendedTask) error {
 	r.ID = t.ID
 	r.Name = t.Name
-	r.Interval = pointer.StringPtr(t.Schedule.Interval)
-	r.StartDate = pointer.StringPtr(t.Schedule.StartDate.String())
+	r.Interval = t.Schedule.Interval
+	r.StartDate = t.Schedule.StartDate.String()
 	r.NumRetries = pointer.Int64Ptr(t.Schedule.NumRetries)
 
 	props := t.Properties.(map[string]interface{})
@@ -111,20 +99,16 @@ func (b BackupTask) ToManager() (*mermaidclient.Task, error) {
 
 	props := t.Properties.(map[string]interface{})
 
-	if b.StartDate != nil {
-		startDate, err := mermaidclient.ParseStartDate(*b.StartDate)
-		if err != nil {
-			return nil, errors.Wrap(err, "parse start date")
-		}
-		t.Schedule.StartDate = startDate
+	startDate, err := mermaidclient.ParseStartDate(b.StartDate)
+	if err != nil {
+		return nil, errors.Wrap(err, "parse start date")
 	}
+	t.Schedule.StartDate = startDate
 
-	if b.Interval != nil {
-		if _, err := duration.ParseDuration(*b.Interval); err != nil {
-			return nil, errors.Wrap(err, "parse interval")
-		}
-		t.Schedule.Interval = *b.Interval
+	if _, err := duration.ParseDuration(b.Interval); err != nil {
+		return nil, errors.Wrap(err, "parse interval")
 	}
+	t.Schedule.Interval = b.Interval
 
 	if b.NumRetries != nil {
 		t.Schedule.NumRetries = int64(*b.NumRetries)
@@ -136,9 +120,7 @@ func (b BackupTask) ToManager() (*mermaidclient.Task, error) {
 	if b.DC != nil {
 		props["dc"] = unescapeFilters(b.DC)
 	}
-	if b.Retention != nil {
-		props["retention"] = *b.Retention
-	}
+	props["retention"] = b.Retention
 	if b.RateLimit != nil {
 		props["rate_limit"] = b.RateLimit
 	}
@@ -159,8 +141,8 @@ func (b BackupTask) ToManager() (*mermaidclient.Task, error) {
 func (b *BackupTask) FromManager(t *mermaidclient.ExtendedTask) error {
 	b.ID = t.ID
 	b.Name = t.Name
-	b.Interval = pointer.StringPtr(t.Schedule.Interval)
-	b.StartDate = pointer.StringPtr(t.Schedule.StartDate.String())
+	b.Interval = t.Schedule.Interval
+	b.StartDate = t.Schedule.StartDate.String()
 	b.NumRetries = pointer.Int64Ptr(t.Schedule.NumRetries)
 
 	props := t.Properties.(map[string]interface{})

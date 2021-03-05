@@ -1,56 +1,13 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: scylla-manager-system
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: scylla-manager-cluster-member
-  namespace: scylla-manager-system
+  name: scylla-manager
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: scylla-manager-cluster-member
-  namespace: scylla-manager-system
-rules:
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - get
-- apiGroups:
-  - ""
-  resources:
-  - services
-  verbs:
-  - get
-  - list
-  - patch
-  - watch
-- apiGroups:
-  - apps
-  resources:
-  - statefulsets
-  verbs:
-  - get
-  - list
-  - patch
-  - watch
-- apiGroups:
-  - scylla.scylladb.com
-  resources:
-  - scyllaclusters
-  verbs:
-  - get
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  creationTimestamp: null
-  name: scylla-manager-manager-role
+  name: scylla-manager-controller
 rules:
 - apiGroups:
   - ""
@@ -100,53 +57,87 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: scylla-manager-member-rolebinding
-  namespace: scylla-manager-system
+  name: scylla-manager-controller
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: scylla-manager-cluster-member
+  name: scylla-manager-controller
 subjects:
 - kind: ServiceAccount
-  name: scylla-manager-cluster-member
-  namespace: scylla-manager-system
+  name: scylla-manager-controller
+  namespace: scylla-manager
+
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
 metadata:
-  name: scylla-manager-rolebinding
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: scylla-manager-manager-role
-subjects:
-- kind: ServiceAccount
-  name: default
-  namespace: scylla-manager-system
+  name: scylla-manager-controller
+  namespace: scylla-manager
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: scylla-manager-controller
+
 ---
 apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: scylla-manager-controller
+  namespace: scylla-manager
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scylla-manager-config
+  namespace: scylla-manager
 data:
   scylla-manager.yaml: |-
     http: :5080
+    logger:
+      level: info
     database:
       hosts:
-        - scylla-manager-cluster-manager-dc-manager-rack-0.scylla-manager-system.svc
-kind: ConfigMap
-metadata:
-  name: scylla-manager-manager-config-2tfggm9842
-  namespace: scylla-manager-system
+      - scylla-manager-cluster-manager-dc-manager-rack-0
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: scylla-manager
-  name: scylla-manager-manager-service
-  namespace: scylla-manager-system
+    app.kubernetes.io/name: scylla-manager
+  name: scylla-manager
+  namespace: scylla-manager
 spec:
   ports:
   - name: api
@@ -158,104 +149,29 @@ spec:
     protocol: TCP
     targetPort: 5090
   selector:
-    app: scylla-manager
+    app.kubernetes.io/name: scylla-manager
+
 ---
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
 metadata:
-  name: scylla-manager-scylla-manager
-  namespace: scylla-manager-system
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: scylla-manager
-  strategy:
-    type: Recreate
-  template:
-    metadata:
-      labels:
-        app: scylla-manager
-    spec:
-      containers:
-      - args:
-        - --config-file=/mnt/etc/scylla-manager/scylla-manager.yaml
-        command:
-        - /usr/bin/scylla-manager
-        env:
-        - name: POD_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        image: scylladb/scylla-manager:2.2.0
-        imagePullPolicy: IfNotPresent
-        name: scylla-manager
-        resources:
-          limits:
-            cpu: 500m
-            memory: 500Mi
-          requests:
-            cpu: 500m
-            memory: 500Mi
-        volumeMounts:
-        - mountPath: /mnt/etc/scylla-manager
-          name: scylla-manager-config-volume
-      volumes:
-      - configMap:
-          name: scylla-manager-manager-config-2tfggm9842
-        name: scylla-manager-config-volume
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  labels:
-    control-plane: scylla-manager-controller
-  name: scylla-manager-controller
-  namespace: scylla-manager-system
-spec:
-  selector:
-    matchLabels:
-      control-plane: scylla-manager-controller
-  serviceName: controller-service
-  template:
-    metadata:
-      labels:
-        control-plane: scylla-manager-controller
-    spec:
-      containers:
-      - args:
-        - manager-controller
-        - --log-level=debug
-        env:
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
-        - name: POD_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        image: docker.io/scylladb/scylla-operator:latest
-        imagePullPolicy: IfNotPresent
-        name: scylla-manager-controller
-        resources:
-          limits:
-            cpu: 100m
-            memory: 30Mi
-          requests:
-            cpu: 100m
-            memory: 20Mi
-      terminationGracePeriodSeconds: 10
-      volumes:
-      - configMap:
-          name: scylla-manager-manager-config-2tfggm9842
-        name: scylla-manager-config-volume
+  name: scylla-manager-cluster
+  namespace: scylla-manager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: scyllacluster-member
+subjects:
+- kind: ServiceAccount
+  name: scylla-manager-cluster-member
+  namespace: scylla-manager
+
 ---
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
 metadata:
   name: scylla-manager-cluster
-  namespace: scylla-manager-system
+  namespace: scylla-manager
 spec:
   agentVersion: 2.2.0
   datacenter:
@@ -266,13 +182,104 @@ spec:
       resources:
         limits:
           cpu: 1
-          memory: 1Gi
+          memory: 200Mi
         requests:
           cpu: 1
-          memory: 1Gi
+          memory: 200Mi
       scyllaAgentConfig: scylla-agent-config
       scyllaConfig: scylla-config
       storage:
         capacity: 5Gi
   developerMode: true
+  cpuset: true
   version: 4.2.0
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: scylla-manager-cluster-member
+  namespace: scylla-manager
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: scylla-manager-controller
+  name: scylla-manager-controller
+  namespace: scylla-manager
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: scylla-manager-controller
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: scylla-manager-controller
+    spec:
+      serviceAccountName: scylla-manager-controller
+      containers:
+      - name: scylla-manager-controller
+        image: docker.io/scylladb/scylla-operator:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        args:
+        - manager-controller
+        - --log-level=debug
+        resources:
+          requests:
+            cpu: 10m
+            memory: 20Mi
+      terminationGracePeriodSeconds: 10
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scylla-manager
+  namespace: scylla-manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: scylla-manager
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: scylla-manager
+    spec:
+      containers:
+      - name: scylla-manager
+        image: docker.io/scylladb/scylla-manager:2.2.0
+        imagePullPolicy: IfNotPresent
+        command:
+        - /usr/bin/scylla-manager
+        args:
+        - --config-file=/mnt/etc/scylla-manager/scylla-manager.yaml
+        resources:
+          requests:
+            cpu: 10m
+            memory: 20Mi
+        volumeMounts:
+        - mountPath: /mnt/etc/scylla-manager
+          name: scylla-manager-config
+      volumes:
+      - configMap:
+          name: scylla-manager-config
+        name: scylla-manager-config
+
+---

@@ -8,6 +8,6 @@ metadata:
 spec:
   ports:
     - port: 443
-      targetPort: 443
+      targetPort: 9443
   selector:
   {{- include "scylla-operator.selectorLabels" . | nindent 4 }}

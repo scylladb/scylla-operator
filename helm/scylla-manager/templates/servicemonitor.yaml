@@ -2,13 +2,13 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ printf "%s-service-monitor" (include "scylla-manager.fullname" .) }}
+  name: {{ include "scylla-manager.fullname" . }}
   namespace: {{ .Release.Namespace }}
 spec:
   jobLabel: "app"
   selector:
     matchLabels:
-      app: scylla-manager
+      app.kubernetes.io/name: {{ include "scylla-manager.name" . }}
   endpoints:
     - port: metrics
       metricRelabelings:

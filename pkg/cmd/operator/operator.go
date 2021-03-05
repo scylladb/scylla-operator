@@ -41,9 +41,12 @@ func NewOperatorCmd(ctx context.Context, logger log.Logger, level zap.AtomicLeve
 			cfg := ctrl.GetConfigOrDie()
 			// Create a new Cmd to provide shared dependencies and start components
 			mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-				Scheme:                 scheme,
-				HealthProbeBindAddress: fmt.Sprintf(":%d", naming.ProbePort),
-				MetricsBindAddress:     fmt.Sprintf(":%d", naming.MetricsPort),
+				Scheme:                  scheme,
+				HealthProbeBindAddress:  fmt.Sprintf(":%d", naming.ProbePort),
+				MetricsBindAddress:      fmt.Sprintf(":%d", naming.MetricsPort),
+				LeaderElection:          true,
+				LeaderElectionID:        "scylla-operator-lock",
+				LeaderElectionNamespace: opts.Namespace,
 			})
 			if err != nil {
 				logger.Fatal(ctx, "unable to create manager", "error", err)

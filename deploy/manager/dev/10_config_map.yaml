@@ -1,0 +1,11 @@
+apiVersion: v1
+data:
+  scylla-manager.yaml: |-
+    http: :5080
+    database:
+      hosts:
+      - scylla-manager-cluster-manager-dc-manager-rack-0.scylla-manager.svc
+kind: ConfigMap
+metadata:
+  name: scylla-manager-config
+  namespace: scylla-manager

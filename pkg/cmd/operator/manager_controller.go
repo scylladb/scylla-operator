@@ -37,7 +37,10 @@ func NewManagerControllerCmd(ctx context.Context, logger log.Logger, level zap.A
 			cfg := ctrl.GetConfigOrDie()
 			// Create a new Cmd to provide shared dependencies and start components
 			mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-				Scheme: scheme,
+				Scheme:                  scheme,
+				LeaderElection:          true,
+				LeaderElectionID:        "scylla-manager-controller-lock",
+				LeaderElectionNamespace: opts.Namespace,
 			})
 			if err != nil {
 				logger.Fatal(ctx, "unable to create manager", "error", err)
@@ -46,7 +49,7 @@ func NewManagerControllerCmd(ctx context.Context, logger log.Logger, level zap.A
 			logger.Info(ctx, "Registering Components.")
 
 			ctx := log.WithNewTraceID(context.Background())
-			mc, err := manager.New(ctx, mgr, opts.Namespace, logger.Named("scylla-manager-controller"))
+			mc, err := manager.New(ctx, mgr, opts.Namespace, opts.Namespace, logger.Named("scylla-manager-controller"))
 			if err != nil {
 				logger.Fatal(ctx, "unable to create manager controller", "error", err)
 			}

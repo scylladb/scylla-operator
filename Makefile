@@ -5,9 +5,6 @@ SHELL :=/bin/bash -euEo pipefail
 IMAGE_TAG ?= latest
 IMAGE_REF ?= docker.io/scylladb/scylla-operator:$(IMAGE_TAG)
 
-# Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS 	?= "crd:trivialVersions=true"
-
 CODEGEN_PKG ?=./vendor/k8s.io/code-generator
 CODEGEN_HEADER_FILE ?=/dev/null
 CODEGEN_APIS_PACKAGE ?=$(GO_PACKAGE)/pkg/api
@@ -55,6 +52,8 @@ HELM_CHART_VERSION_SUFFIX ?=
 HELM_CHART_VERSION ?=$(GIT_TAG)$(HELM_CHART_VERSION_SUFFIX)
 HELM_BUCKET ?=gs://scylla-operator-charts/$(HELM_CHANNEL)
 HELM_REPOSITORY ?=https://scylla-operator-charts.storage.googleapis.com/$(HELM_CHANNEL)
+
+CONTROLLER_GEN ?=$(GO) run ./vendor/sigs.k8s.io/controller-tools/cmd/controller-gen --
 
 define version-ldflags
 -X $(1).versionFromGit="$(GIT_TAG)" \
@@ -112,6 +111,20 @@ endef
 define lint-helm
 	helm lint helm/$(1)
 
+endef
+
+# $1 - manifest
+# $2 - output
+define append-manifest
+	echo -e '\n---' | cat '$(1)' - >> '$(2)'
+
+endef
+
+# $1 - manifest files list
+# $2 - output
+define concat-manifests
+	true > '$(2)'
+	$(foreach file,$(1), $(call append-manifest,$(file),$(2)))
 endef
 
 # We need to build each package separately so go build creates appropriate binaries
@@ -213,6 +226,32 @@ update-codegen:
 	$(call run-informer-gen,)
 .PHONY: update-codegen
 
+update-crd:
+	$(CONTROLLER_GEN) crd paths="$(GO_PACKAGES)" output:crd:stdout > ./deploy/operator/00_scylla.scylladb.com_scyllaclusters.yaml
+.PHONY: update-crd
+
+update-dev-deploy:
+	mkdir -p deploy/manager/dev
+	cp deploy/manager/*.yaml deploy/manager/dev/
+	yq eval 'select(.apiVersion=="scylla.scylladb.com/v1" and .kind=="ScyllaCluster" and .metadata.name=="scylla-manager-cluster") | .spec.cpuset=false | .spec.datacenter.racks[0].resources.limits.cpu="200m" | .spec.datacenter.racks[0].resources.limits.memory="200Mi" | .spec.datacenter.racks[0].resources.requests.cpu="10m" | .spec.datacenter.racks[0].resources.requests.memory="100Mi"' deploy/manager/10_scylla_cluster.yaml > deploy/manager/dev/10_scylla_cluster.yaml
+.PHONY: update-dev-deploy
+
+verify-dev-deploy:
+	@$(MAKE) update-dev-deploy
+	@git diff --quiet deploy/manager/dev || echo 'Development deployment dir was not updated, make sure to regenerate it' && false
+.PHONY: verify-dev-deploy
+
+update-example-operator:
+	$(call concat-manifests,$(sort $(wildcard deploy/operator/*.yaml)),examples/common/operator.yaml)
+.PHONY: update-example-operator
+
+update-example-manager:
+	$(call concat-manifests,$(sort $(wildcard deploy/manager/*.yaml)),examples/common/manager.yaml)
+.PHONY: update-example-manager
+
+update-examples: update-example-manager update-example-operator
+.PHONY: update-examples
+
 verify-codegen:
 	$(call run-deepcopy-gen,--verify-only)
 	$(call run-client-gen,--verify-only)
@@ -220,10 +259,10 @@ verify-codegen:
 	$(call run-informer-gen,--verify-only)
 .PHONY: verify-codegen
 
-verify: verify-govet verify-gofmt verify-helm verify-codegen
+verify: verify-govet verify-gofmt verify-helm verify-codegen verify-dev-deploy
 .PHONY: verify
 
-update: update-gofmt update-codegen
+update: update-gofmt update-codegen update-crd update-examples update-dev-deploy
 .PHONY: update
 
 test-unit:
@@ -255,52 +294,16 @@ help:
 	awk '/^[^.%][-A-Za-z0-9_]*:/	{ print substr($$1, 1, length($$1)-1) }' | sort -u
 .PHONY: help
 
-# Install CRDs into a cluster
-install: manifests cert-manager
-	kustomize build config/operator/crd | kubectl apply -f -
-.PHONY: install
-
-# Uninstall CRDs from a cluster
-uninstall: manifests
-	kustomize build config/operator/crd | kubectl delete -f -
-	kubectl delete -f examples/common/cert-manager.yaml
-.PHONY: uninstall
-
 cert-manager:
-	cat config/operator/certmanager/cert-manager.yaml > examples/common/cert-manager.yaml
 	kubectl apply -f examples/common/cert-manager.yaml
 	kubectl -n cert-manager wait --for=condition=ready pod -l app=cert-manager --timeout=60s
 	kubectl -n cert-manager wait --for=condition=ready pod -l app=cainjector --timeout=60s
 	kubectl -n cert-manager wait --for=condition=ready pod -l app=webhook --timeout=60s
 .PHONY: cert-manager
 
-# Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests cert-manager
-	kubectl apply -f examples/common/operator.yaml
-.PHONY: deploy
-
-# Generate manifests e.g. CRD, RBAC etc.
-manifests:
-	cd config/operator/operator && kustomize edit set image controller=$(IMAGE_REF)
-	cd config/manager/manager && kustomize edit set image operator=$(IMAGE_REF)
-
-	controller-gen $(CRD_OPTIONS) paths="$(GO_PACKAGES)" output:crd:dir=config/operator/crd/bases \
-	rbac:roleName=manager-role output:rbac:artifacts:config=config/operator/rbac \
-	webhook output:webhook:artifacts:config=config/operator/webhook
-
-	controller-gen $(CRD_OPTIONS) paths="./pkg/controllers/manager" rbac:roleName=manager-role output:rbac:artifacts:config=config/manager/rbac
-	kustomize build config/operator/default > examples/common/operator.yaml
-	kustomize build config/manager/default > examples/common/manager.yaml
-.PHONY: manifests
-
 image:
 	docker build . -t $(IMAGE_REF)
 .PHONY: image
-
-# Generate code
-generate:
-	controller-gen object:headerFile="hack/boilerplate.go.txt" paths="$(GO_PACKAGES)"
-.PHONY: generate
 
 # Build Helm charts and publish them in Development GCS repo
 helm-publish-dev: HELM_REPOSITORY=https://scylla-operator-charts-dev.storage.googleapis.com/$(HELM_CHANNEL)

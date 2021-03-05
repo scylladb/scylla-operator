@@ -13,5 +13,5 @@ data:
         {{- end }}
 kind: ConfigMap
 metadata:
-  name: scylla-manager-manager-config
+  name: scylla-manager-config
   namespace: {{ .Release.Namespace }}

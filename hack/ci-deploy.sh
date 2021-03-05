@@ -22,12 +22,13 @@ ARTIFACTS_DIR=${ARTIFACTS_DIR:-$( mktemp -d )}
 OPERATOR_IMAGE_REF=${1}
 
 deploy_dir=${ARTIFACTS_DIR}/deploy
-mkdir -p "${deploy_dir}"
+mkdir -p "${deploy_dir}/"{operator,manager}
 
-cp ./examples/common/{manager,operator,cert-manager}.yaml "${deploy_dir}/"
-yq eval 'select(.apiVersion=="rbac.authorization.k8s.io/v1" and .kind=="ClusterRole" and .metadata.name=="simple-cluster-member") | del(.metadata.namespace) | .metadata.name="scylla-operator-member"' examples/generic/cluster.yaml > "${deploy_dir}/scylla-operator-member.clusterrole.yaml"
+cp ./deploy/manager/dev/*.yaml "${deploy_dir}/manager"
+cp ./deploy/operator/*.yaml "${deploy_dir}/operator"
+cp ./examples/common/cert-manager.yaml "${deploy_dir}/"
 
-for f in "${deploy_dir}"/*; do
+for f in $(find "${deploy_dir}"/ -type f -name "*.yaml"); do
     sed -i -E -e "s~docker.io/scylladb/scylla-operator(:|@sha256:)[^ ]*~${OPERATOR_IMAGE_REF}~" "${f}"
 done
 
@@ -38,66 +39,16 @@ kubectl wait --for condition=established --timeout=60s crd/certificates.cert-man
 wait-for-object-creation cert-manager deployment.apps/cert-manager-webhook
 kubectl -n cert-manager rollout status --timeout=5m deployment.apps/cert-manager-webhook
 
-kubectl apply -f"${deploy_dir}"/operator.yaml
-kubectl apply -f"${deploy_dir}"/scylla-operator-member.clusterrole.yaml
+kubectl apply -f"${deploy_dir}"/operator
 
 # Manager needs scylla CRD registered and the webhook running
 kubectl wait --for condition=established crd/scyllaclusters.scylla.scylladb.com
-kubectl -n scylla-operator-system rollout status --timeout=5m statefulset.apps/scylla-operator-controller-manager
+kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/scylla-operator
 
 # ScyllaCluster doesn't support changes and is immutable so we always have to delete/create it.
-kubectl delete --ignore-not-found=true --grace-period=0 --cascade=foreground -f"${deploy_dir}"/manager.yaml
-kubectl create -f"${deploy_dir}"/manager.yaml
-object=$( kubectl -n scylla-manager-system get scyllacluster/scylla-manager-cluster -o json | jq '.metadata.uid = "" | .metadata.resourceVersion = "" | .metadata.generation = 0 | .spec.datacenter.racks[0].resources = {"requests":{"cpu":"10m","memory":"100Mi"},"limits":{"cpu":"200m","memory":"500Mi"}}')
-kubectl delete --grace-period=0 --cascade=foreground -f <( echo "${object}" )
-kubectl delete --ignore-not-found=true pvc/data-scylla-manager-cluster-manager-dc-manager-rack-0
-kubectl create -f <( echo "${object}" )
-kubectl patch -n scylla-manager-system deployment/scylla-manager-scylla-manager --type=strategic -p='{"spec":{"template":{"spec":{"containers":[{"name":"scylla-manager","resources":{"requests":{"cpu":"10m","memory":"100Mi"},"limits":null}}]}}}}'
-# initContainers patch is broken
-wait-for-object-creation scylla-manager-system statefulset.apps/scylla-manager-cluster-manager-dc-manager-rack
-kubectl -n scylla-manager-system get statefulset.apps/scylla-manager-cluster-manager-dc-manager-rack -o json | jq '.spec.template.spec.initContainers[0].resources = {"requests":{"cpu":"10m","memory":"100Mi"}} | .metadata.managedFields = null' | kubectl -n scylla-manager-system apply --server-side --force-conflicts -f -
+kubectl delete --ignore-not-found=true --grace-period=0 --cascade=foreground -f"${deploy_dir}"/manager
+kubectl create -f"${deploy_dir}"/manager
 
-# Wait for the rest to be ready and running
-kubectl -n scylla-manager-system rollout status --timeout=5m statefulset.apps/scylla-manager-controller
-kubectl -n scylla-manager-system rollout status --timeout=5m statefulset.apps/scylla-manager-cluster-manager-dc-manager-rack
-
-# Allow users to use scyllacluster CRs
-kubectl apply --server-side -f - <<EOF
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: scylla-view
-  labels:
-    rbac.authorization.k8s.io/aggregate-to-admin: "true"
-    rbac.authorization.k8s.io/aggregate-to-edit: "true"
-    rbac.authorization.k8s.io/aggregate-to-view: "true"
-rules:
-- apiGroups:
-  - scylla.scylladb.com
-  resources:
-  - scyllaclusters
-  verbs:
-  - get
-  - list
-  - watch
-EOF
-kubectl apply --server-side -f - <<EOF
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: scylla-edit
-  labels:
-    rbac.authorization.k8s.io/aggregate-to-admin: "true"
-    rbac.authorization.k8s.io/aggregate-to-edit: "true"
-rules:
-- apiGroups:
-  - scylla.scylladb.com
-  resources:
-  - scyllaclusters
-  verbs:
-  - create
-  - patch
-  - update
-  - delete
-  - deletecollection
-EOF
+wait-for-object-creation scylla-manager statefulset.apps/scylla-manager-cluster-manager-dc-manager-rack
+kubectl -n scylla-manager rollout status --timeout=5m statefulset.apps/scylla-manager-cluster-manager-dc-manager-rack
+kubectl -n scylla-manager rollout status --timeout=5m deployment.apps/scylla-manager-controller

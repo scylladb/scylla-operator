@@ -142,7 +142,7 @@ func SetupScyllaClusterSA(ctx context.Context, coreClient corev1client.CoreV1Int
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: rbacv1.GroupName,
 			Kind:     "ClusterRole",
-			Name:     "scylla-operator-member",
+			Name:     "scylla-cluster-member",
 		},
 	}, metav1.CreateOptions{})
 	if err != nil {

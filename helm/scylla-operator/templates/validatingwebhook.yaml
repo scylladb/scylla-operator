@@ -3,8 +3,7 @@ kind: ValidatingWebhookConfiguration
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ include "scylla-operator.certificateName" . }}
-  creationTimestamp: null
-  name: scylla-operator-validating-webhook-configuration
+  name: scylla-operator
 webhooks:
 - clientConfig:
     caBundle: Cg==

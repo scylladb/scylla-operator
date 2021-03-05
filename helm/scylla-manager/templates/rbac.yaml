@@ -16,8 +16,7 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
-  name: scylla-manager-manager-role
+  name: scylla-manager
   namespace: {{ .Release.Namespace }}
 rules:
   - apiGroups:
@@ -68,15 +67,27 @@ rules:
       - patch
       - update
       - watch
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: scylla-manager-rolebinding
+  name: scylla-manager
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: scylla-manager-manager-role
+  name: scylla-manager
 subjects:
   - kind: ServiceAccount
     name: default

@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/utils/pointer"
 )
 
 func TestCheckValues(t *testing.T) {
@@ -25,7 +24,7 @@ func TestCheckValues(t *testing.T) {
 
 	invalidIntensity := validCluster.DeepCopy()
 	invalidIntensity.Spec.Repairs = append(invalidIntensity.Spec.Repairs, v1.RepairTaskSpec{
-		Intensity: pointer.StringPtr("100Mib"),
+		Intensity: "100Mib",
 	})
 
 	nonUniqueManagerTaskNames := validCluster.DeepCopy()

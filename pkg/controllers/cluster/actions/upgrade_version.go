@@ -145,9 +145,7 @@ func (a *ClusterVersionUpgrade) Execute(ctx context.Context, s *State) error {
 	a.pollInterval = scyllav1.DefaultGenericUpgradePollInterval
 
 	if a.Cluster.Spec.GenericUpgrade != nil {
-		if a.Cluster.Spec.GenericUpgrade.PollInterval != nil {
-			a.pollInterval = a.Cluster.Spec.GenericUpgrade.PollInterval.Duration
-		}
+		a.pollInterval = a.Cluster.Spec.GenericUpgrade.PollInterval.Duration
 	}
 
 	switch a.upgradeProcedure(ctx) {

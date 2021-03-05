@@ -82,7 +82,7 @@ func (cc *ClusterReconciler) updateStatus(ctx context.Context, cluster *scyllav1
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			rackStatus.Version, err = naming.ScyllaVersion(sts.Spec.Template.Spec.Containers)
+			rackStatus.Version, err = naming.ScyllaVersion(firstRackMember.Spec.Containers)
 			if err != nil {
 				return errors.WithStack(err)
 			}

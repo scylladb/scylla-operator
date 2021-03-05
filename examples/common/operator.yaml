@@ -1,9 +1,10 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  labels:
-    control-plane: controller-manager
-  name: scylla-operator-system
+  name: scylla-operator
+
+---
+
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -131,9 +132,6 @@ spec:
                       properties:
                         agentResources:
                           default:
-                            limits:
-                              cpu: "1"
-                              memory: 200M
                             requests:
                               cpu: 50m
                               memory: 10M
@@ -1812,12 +1810,93 @@ status:
     plural: ""
   conditions: []
   storedVersions: []
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: scylla-operator-serving-cert
+  namespace: scylla-operator
+spec:
+  dnsNames:
+  - scylla-operator-webhook.scylla-operator.svc
+  - scylla-operator-webhook.scylla-operator.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: scylla-operator-selfsigned-issuer
+  secretName: webhook-server-cert
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
-  name: scylla-operator-manager-role
+  name: scylla-cluster-member
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - get
+  - list
+  - patch
+  - watch
+- apiGroups:
+  - "apps"
+  resources:
+  - statefulsets
+  verbs:
+  - get
+  - list
+  - patch
+  - watch
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - scyllaclusters
+  verbs:
+  - get
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: scylla-edit
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+rules:
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - scyllaclusters
+  verbs:
+  - create
+  - patch
+  - update
+  - delete
+  - deletecollection
+
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: scylla-operator-selfsigned-issuer
+  namespace: scylla-operator
+spec:
+  selfSigned: { }
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scylla-operator
 rules:
 - apiGroups:
   - ""
@@ -1846,6 +1925,7 @@ rules:
   - patch
   - update
   - watch
+  - patch
 - apiGroups:
   - ""
   resources:
@@ -1917,133 +1997,114 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+
+---
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: scylla-operator
+  namespace: scylla-operator
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: scylla-operator
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: scylla-operator-manager-rolebinding
+  name: scylla-operator
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: scylla-operator-manager-role
+  name: scylla-operator
 subjects:
 - kind: ServiceAccount
-  name: default
-  namespace: scylla-operator-system
+  name: scylla-operator
+  namespace: scylla-operator
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: scylla-operator-webhook-service
-  namespace: scylla-operator-system
+  name: scylla-operator-webhook
+  namespace: scylla-operator
 spec:
   ports:
   - port: 443
     targetPort: 9443
+    name: webhook
   selector:
-    control-plane: controller-manager
+    app.kubernetes.io/name: scylla-operator
+
 ---
-apiVersion: apps/v1
-kind: StatefulSet
+apiVersion: v1
+kind: ServiceAccount
 metadata:
+  name: scylla-operator
+  namespace: scylla-operator
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: scylla-view
   labels:
-    control-plane: controller-manager
-  name: scylla-operator-controller-manager
-  namespace: scylla-operator-system
-spec:
-  selector:
-    matchLabels:
-      control-plane: controller-manager
-  serviceName: controller-manager-service
-  template:
-    metadata:
-      labels:
-        control-plane: controller-manager
-    spec:
-      containers:
-      - args:
-        - operator
-        - --log-level=debug
-        env:
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
-        - name: POD_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        image: docker.io/scylladb/scylla-operator:latest
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8080
-            scheme: HTTP
-        name: manager
-        ports:
-        - containerPort: 443
-          name: webhook-server
-          protocol: TCP
-        readinessProbe:
-          httpGet:
-            path: /readyz
-            port: 8080
-            scheme: HTTP
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        resources:
-          requests:
-            cpu: 100m
-            memory: 20Mi
-        volumeMounts:
-        - mountPath: /tmp/k8s-webhook-server/serving-certs
-          name: cert
-          readOnly: true
-      terminationGracePeriodSeconds: 10
-      volumes:
-      - name: cert
-        secret:
-          defaultMode: 420
-          secretName: webhook-server-cert
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: scylla-operator-serving-cert
-  namespace: scylla-operator-system
-spec:
-  dnsNames:
-  - scylla-operator-webhook-service.scylla-operator-system.svc
-  - scylla-operator-webhook-service.scylla-operator-system.svc.cluster.local
-  issuerRef:
-    kind: Issuer
-    name: scylla-operator-selfsigned-issuer
-  secretName: webhook-server-cert
----
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  name: scylla-operator-selfsigned-issuer
-  namespace: scylla-operator-system
-spec:
-  selfSigned: {}
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+rules:
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - scyllaclusters
+  verbs:
+  - get
+  - list
+  - watch
+
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   annotations:
-    cert-manager.io/inject-ca-from: scylla-operator-system/scylla-operator-serving-cert
-  creationTimestamp: null
-  name: scylla-operator-validating-webhook-configuration
+    cert-manager.io/inject-ca-from: scylla-operator/scylla-operator-serving-cert
+  name: scylla-operator
 webhooks:
-- admissionReviewVersions:
-  - v1
-  clientConfig:
+- clientConfig:
+    caBundle: Cg==
     service:
-      name: scylla-operator-webhook-service
-      namespace: scylla-operator-system
+      name: scylla-operator-webhook
+      namespace: scylla-operator
       path: /validate-scylla-scylladb-com-v1-scyllacluster
+  admissionReviewVersions:
+  - v1
+  sideEffects: None
   failurePolicy: Fail
   name: webhook.scylla.scylladb.com
   rules:
@@ -2056,4 +2117,73 @@ webhooks:
     - UPDATE
     resources:
     - scyllaclusters
-  sideEffects: None
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: scylla-operator
+  name: scylla-operator
+  namespace: scylla-operator
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: scylla-operator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: scylla-operator
+    spec:
+      serviceAccountName: scylla-operator
+      containers:
+      - name: scylla-operator
+        image: docker.io/scylladb/scylla-operator:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        args:
+        - operator
+        - --log-level=debug
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+            scheme: HTTP
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        ports:
+        - containerPort: 9443
+          name: webhook-server
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 10m
+            memory: 20Mi
+        volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: cert
+          readOnly: true
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: webhook-server-cert
+
+---

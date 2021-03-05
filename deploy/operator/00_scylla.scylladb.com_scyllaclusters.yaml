@@ -126,9 +126,6 @@ spec:
                       properties:
                         agentResources:
                           default:
-                            limits:
-                              cpu: "1"
-                              memory: 200M
                             requests:
                               cpu: 50m
                               memory: 10M

@@ -89,6 +89,14 @@ func memberServicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 			Port: 7199,
 		},
 		{
+			Name: "cql",
+			Port: 9042,
+		},
+		{
+			Name: "cql-ssl",
+			Port: 9142,
+		},
+		{
 			Name: "agent-api",
 			Port: 10001,
 		},
@@ -100,12 +108,6 @@ func memberServicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 		})
 	} else {
 		ports = append(ports, corev1.ServicePort{
-			Name: "cql",
-			Port: 9042,
-		}, corev1.ServicePort{
-			Name: "cql-ssl",
-			Port: 9142,
-		}, corev1.ServicePort{
 			Name: "thrift",
 			Port: 9160,
 		})

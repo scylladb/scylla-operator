@@ -11,7 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"go.uber.org/multierr"

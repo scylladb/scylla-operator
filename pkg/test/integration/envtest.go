@@ -17,7 +17,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	utilyaml "github.com/scylladb/scylla-operator/pkg/util/yaml"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

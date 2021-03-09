@@ -3,7 +3,7 @@ package v1_test
 import (
 	"testing"
 
-	"github.com/scylladb/scylla-operator/pkg/api/v1"
+	v1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"

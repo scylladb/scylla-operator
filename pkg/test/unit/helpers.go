@@ -3,7 +3,7 @@ package unit
 import (
 	"fmt"
 
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/v1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

@@ -9,6 +9,10 @@ IMAGE_REF ?= docker.io/scylladb/scylla-operator:$(IMAGE_TAG)
 CRD_OPTIONS 	?= "crd:trivialVersions=true"
 
 GO_REQUIRED_MIN_VERSION ?=1.15.7
+CODEGEN_PKG ?=./vendor/k8s.io/code-generator
+CODEGEN_HEADER_FILE ?=/dev/null
+CODEGEN_APIS_PACKAGE ?=$(GO_PACKAGE)/pkg/api
+CODEGEN_GROUPS_VERSIONS ?="scyllaclusters/v1"
 
 GIT_TAG ?=$(shell git describe --long --tags --abbrev=7 --match 'v[0-9]*' || echo 'v0.0.0-unknown')
 GIT_COMMIT ?=$(shell git rev-parse --short "HEAD^{commit}" 2>/dev/null)
@@ -175,10 +179,49 @@ verify-helm:
 	@$(foreach chart,$(HELM_CHARTS),$(call lint-helm,$(chart)))
 .PHONY: verify-helm
 
-verify: verify-govet verify-gofmt verify-helm
+define run-codegen
+	GOPATH=$(GOPATH) $(GO) run "$(CODEGEN_PKG)/cmd/$(1)" --go-header-file='$(CODEGEN_HEADER_FILE)' $(2)
+
+endef
+
+define run-deepcopy-gen
+	$(call run-codegen,deepcopy-gen,--input-dirs='github.com/scylladb/scylla-operator/pkg/api/scylla/v1' --output-file-base='zz_generated.deepcopy' --bounding-dirs='github.com/scylladb/scylla-operator/pkg/api/' $(1))
+
+endef
+
+define run-client-gen
+	$(call run-codegen,client-gen,--clientset-name=versioned --input-base="./" --input='github.com/scylladb/scylla-operator/pkg/api/scylla/v1' --output-package='github.com/scylladb/scylla-operator/pkg/client/scylla/clientset' $(1))
+
+endef
+
+define run-lister-gen
+	$(call run-codegen,lister-gen,--input-dirs='github.com/scylladb/scylla-operator/pkg/api/scylla/v1' --output-package='github.com/scylladb/scylla-operator/pkg/client/scylla/listers' $(1))
+
+endef
+
+define run-informer-gen
+	$(call run-codegen,informer-gen,--input-dirs='github.com/scylladb/scylla-operator/pkg/api/scylla/v1' --output-package='github.com/scylladb/scylla-operator/pkg/client/scylla/informers' --versioned-clientset-package "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned" --listers-package="github.com/scylladb/scylla-operator/pkg/client/scylla/listers" $(1))
+
+endef
+
+update-codegen:
+	$(call run-deepcopy-gen,)
+	$(call run-client-gen,)
+	$(call run-lister-gen,)
+	$(call run-informer-gen,)
+.PHONY: update-codegen
+
+verify-codegen:
+	$(call run-deepcopy-gen,--verify-only)
+	$(call run-client-gen,--verify-only)
+	$(call run-lister-gen,--verify-only)
+	$(call run-informer-gen,--verify-only)
+.PHONY: verify-codegen
+
+verify: verify-govet verify-gofmt verify-helm verify-codegen
 .PHONY: verify
 
-update: update-gofmt
+update: update-gofmt update-codegen
 .PHONY: update
 
 test-unit:

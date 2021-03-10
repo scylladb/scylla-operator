@@ -14,20 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package signals contains libraries for handling signals to gracefully
-// shutdown the manager in combination with Kubernetes pod graceful termination
-// policy.
-//
-// Deprecated: use pkg/manager/signals instead.
-package signals
+// +k8s:deepcopy-gen=package
+// +k8s:protobuf-gen=package
+// +k8s:openapi-gen=false
 
-import (
-	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
-)
+// +groupName=admission.k8s.io
 
-var (
-	// SetupSignalHandler registers for SIGTERM and SIGINT. A stop channel is returned
-	// which is closed on one of these signals. If a second signal is caught, the program
-	// is terminated with exit code 1.
-	SetupSignalHandler = signals.SetupSignalHandler
-)
+package v1 // import "k8s.io/api/admission/v1"

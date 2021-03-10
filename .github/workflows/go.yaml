@@ -253,6 +253,10 @@ jobs:
         path: ${{ env.git_repo_path }}
         # Helm Chart version needs to be semantic, we need tags in checked out repo to determine latest one.
         fetch-depth: 0
+    - name: Setup go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.go_version }}
     - name: Determine promotion tag
       if: ${{ github.event_name != 'schedule' }}
       run: |

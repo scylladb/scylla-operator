@@ -282,12 +282,23 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, sidecarI
 									Add: []corev1.Capability{"SYS_NICE"},
 								},
 							},
-							LivenessProbe: &corev1.Probe{
+							StartupProbe: &corev1.Probe{
 								// Initial delay should be big, because scylla runs benchmarks
 								// to tune the IO settings.
-								InitialDelaySeconds: int32(400),
-								TimeoutSeconds:      int32(5),
-								PeriodSeconds:       int32(10),
+								TimeoutSeconds:   int32(5),
+								FailureThreshold: int32(40),
+								PeriodSeconds:    int32(10),
+								Handler: corev1.Handler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Port: intstr.FromInt(naming.ProbePort),
+										Path: naming.LivenessProbePath,
+									},
+								},
+							},
+							LivenessProbe: &corev1.Probe{
+								TimeoutSeconds:   int32(5),
+								FailureThreshold: int32(3),
+								PeriodSeconds:    int32(10),
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Port: intstr.FromInt(naming.ProbePort),
@@ -296,11 +307,8 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, sidecarI
 								},
 							},
 							ReadinessProbe: &corev1.Probe{
-								InitialDelaySeconds: int32(30),
-								TimeoutSeconds:      int32(5),
-								// TODO: Investigate if it's optimal to call status every 10 seconds
-								PeriodSeconds:    int32(10),
-								SuccessThreshold: int32(3),
+								TimeoutSeconds: int32(5),
+								PeriodSeconds:  int32(10),
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Port: intstr.FromInt(naming.ProbePort),

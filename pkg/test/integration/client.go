@@ -9,7 +9,6 @@ import (
 	"github.com/pkg/errors"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -44,10 +43,7 @@ func (c *Client) UpdateScyllaCluster(ctx context.Context, cluster *scyllav1.Scyl
 	})
 }
 
-func (c *Client) Refresh(ctx context.Context, obj runtime.Object) error {
-	key, err := client.ObjectKeyFromObject(obj)
-	if err != nil {
-		return err
-	}
+func (c *Client) Refresh(ctx context.Context, obj client.Object) error {
+	key := client.ObjectKeyFromObject(obj)
 	return c.Client.Get(ctx, key, obj)
 }

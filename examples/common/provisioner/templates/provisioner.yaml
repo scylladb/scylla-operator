@@ -68,6 +68,10 @@ spec:
       nodeSelector:
 {{ .Values.daemonset.nodeSelector | toYaml | trim | indent 8 }}
 {{- end }}
+{{- if .Values.affinity }}
+      affinity:
+{{ .Values.affinity | toYaml | trim | indent 8 }}
+{{- end }}
 {{- if .Values.daemonset.tolerations }}
       tolerations:
 {{ .Values.daemonset.tolerations | toYaml | trim | indent 8 }}

@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
 	// TODO: What is this package for?
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )

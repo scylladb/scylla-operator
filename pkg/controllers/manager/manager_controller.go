@@ -112,8 +112,7 @@ func discoverManager(ctx context.Context, mgr mgr.Manager) (*mermaidclient.Clien
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list
 
-func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
+func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := r.Logger.With("cluster", req.NamespacedName)
 
 	if req.Namespace == r.IgnoredNamespace {

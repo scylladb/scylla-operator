@@ -15,7 +15,7 @@ import (
 
 	"go.uber.org/zap"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
+	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
 
 func NewOperatorCmd(ctx context.Context, logger log.Logger, level zap.AtomicLevel) *cobra.Command {

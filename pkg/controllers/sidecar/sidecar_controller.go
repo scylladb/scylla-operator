@@ -60,8 +60,8 @@ type MemberReconciler struct {
 }
 
 // Reconcile observes the state of a Scylla Member
-func (mc *MemberReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	ctx := log.WithNewTraceID(context.Background())
+func (mc *MemberReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+	ctx = log.WithNewTraceID(ctx)
 	memberService := &corev1.Service{}
 	err := mc.Get(ctx, naming.NamespacedName(request.Name, request.Namespace), memberService)
 	if err != nil {
@@ -160,9 +160,9 @@ func (mc *MemberReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	)
 
 	// Instruct the manager to start the informers
-	err = mgr.Add(manager.RunnableFunc(func(s <-chan struct{}) error {
-		kubeInformerFactory.Start(s)
-		<-s
+	err = mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
+		kubeInformerFactory.Start(ctx.Done())
+		<-ctx.Done()
 		return nil
 	}))
 	if err != nil {

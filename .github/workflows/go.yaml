@@ -299,3 +299,23 @@ jobs:
         HELM_CHANNEL: latest
         HELM_APP_VERSION: ${{ env.IMAGE_TAG }}
       run: make helm-publish
+
+  failure-notifications:
+    runs-on: ubuntu-20.04
+    needs:
+    - success
+    - promote
+    if: ${{ failure() && github.event_name != 'pull_request' }}
+    steps:
+    - name: Report failures to Slack
+      if: ${{ always() }}
+      working-directory: .
+      run: |
+        # We have to avoid printing the secret to logs.
+        set +x
+        curl -X POST -H 'Content-type: application/json' --data @<( cat <<-EOF
+        {
+          "text": ":warning: CI workflow \"${{ github.workflow }}\" triggered on \"${{ github.event_name }}\" event from ${{ github.ref }} (${{ github.sha }}) failed!\n:fire_extinguisher: See https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }} for details.:fire\ncc: <@U01L8R3RYFN> <@UN90LVATC>"
+        }
+        EOF
+        ) '${{ secrets.SLACK_WEBHOOK_URL }}'

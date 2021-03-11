@@ -62,7 +62,7 @@ then
 fi
 
 go install sigs.k8s.io/kustomize/kustomize/v3@v3.5.1
-go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.3.0
+go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1
 
 mkdir -p tmp
 cd tmp

@@ -40,7 +40,7 @@ spec:
         scyllaAgentConfig: {{ default "scylla-agent-config" .scyllaAgentConfig }}
         members: {{ .members }}
         storage:
-          storageClassName: {{ .storage.className }}
+          storageClassName: {{ .storage.storageClassName }}
           capacity: {{ .storage.capacity }}
         resources:
           {{- toYaml .resources | nindent 10 }}

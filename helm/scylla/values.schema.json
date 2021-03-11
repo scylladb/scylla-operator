@@ -213,6 +213,9 @@
                         "properties": {
                             "capacity": {
                                 "type": "string"
+                            },
+                            "storageClassName": {
+                                "type": "string"
                             }
                         }
                     }

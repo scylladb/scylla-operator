@@ -26,6 +26,9 @@ mkdir -p "${deploy_dir}"
 
 cp ./examples/common/{manager,operator,cert-manager}.yaml "${deploy_dir}/"
 yq eval 'select(.apiVersion=="rbac.authorization.k8s.io/v1" and .kind=="ClusterRole" and .metadata.name=="simple-cluster-member") | del(.metadata.namespace) | .metadata.name="scylla-operator-member"' examples/generic/cluster.yaml > "${deploy_dir}/scylla-operator-member.clusterrole.yaml"
+yq eval 'select(.apiVersion=="v1" and .kind=="Service" and .metadata.name=="scylla-operator-webhook-service")' examples/common/operator.yaml > "${deploy_dir}/scylla-operator-webhook.service.yaml"
+yq eval 'select(.apiVersion=="admissionregistration.k8s.io/v1beta1" and .kind=="ValidatingWebhookConfiguration" and .metadata.name=="scylla-operator-validating-webhook-configuration")' examples/common/operator.yaml > "${deploy_dir}/scylla-operator.validatingwebhookconfiguration.yaml"
+
 
 for f in "${deploy_dir}"/*; do
     sed -i -E -e "s~docker.io/scylladb/scylla-operator(:|@sha256:)[^ ]*~${OPERATOR_IMAGE_REF}~" "${f}"
@@ -38,8 +41,7 @@ kubectl wait --for condition=established --timeout=60s crd/certificates.cert-man
 wait-for-object-creation cert-manager deployment.apps/cert-manager-webhook
 kubectl -n cert-manager rollout status --timeout=5m deployment.apps/cert-manager-webhook
 
-kubectl apply -f"${deploy_dir}"/operator.yaml
-kubectl apply -f"${deploy_dir}"/scylla-operator-member.clusterrole.yaml
+kubectl apply -f"${deploy_dir}"/{operator,scylla-operator-webhook.service,scylla-operator.validatingwebhookconfiguration}.yaml
 
 # Manager needs scylla CRD registered and the webhook running
 kubectl wait --for condition=established crd/scyllaclusters.scylla.scylladb.com

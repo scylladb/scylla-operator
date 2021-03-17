@@ -12,24 +12,24 @@ spec:
     matchLabels:
       app: scylla
   endpoints:
-    - port: agent-prometheus
-      metricRelabelings:
-        # rename job label to 'manager_agent' due to hardcoded name
-        # in Scylla Monitoring.
-        - sourceLabels: [ endpoint ]
-          targetLabel: job
-          regex: agent-prometheus
-          replacement: manager_agent
-    - port: prometheus
-      metricRelabelings:
-        - sourceLabels: [ scylla_cluster ]
-          targetLabel: cluster
-          regex: (.*)
-          replacement: ${1}
-          action: replace
-        - sourceLabels: [ scylla_datacenter ]
-          targetLabel: dc
-          regex: (.*)
-          replacement: ${1}
-          action: replace
+  - port: agent-prometheus
+    metricRelabelings:
+    # rename job label to 'manager_agent' due to hardcoded name
+    # in Scylla Monitoring.
+    - sourceLabels: [ endpoint ]
+      targetLabel: job
+      regex: agent-prometheus
+      replacement: manager_agent
+  - port: prometheus
+    metricRelabelings:
+    - sourceLabels: [ scylla_cluster ]
+      targetLabel: cluster
+      regex: (.*)
+      replacement: ${1}
+      action: replace
+    - sourceLabels: [ scylla_datacenter ]
+      targetLabel: dc
+      regex: (.*)
+      replacement: ${1}
+      action: replace
 {{ end }}

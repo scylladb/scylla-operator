@@ -69,12 +69,11 @@ func recommendedLabels() map[string]string {
 
 func ManagerSelector() labels.Selector {
 	return labels.SelectorFromSet(map[string]string{
-		"app": ManagerAppName,
+		"app.kubernetes.io/name": ManagerAppName,
 	})
 }
 
 func mergeLabels(l1, l2 map[string]string) map[string]string {
-
 	res := make(map[string]string)
 	for k, v := range l1 {
 		res[k] = v

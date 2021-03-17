@@ -23,6 +23,10 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 {{- end }}
 
+{{- define "scylla-manager.controllerName" -}}
+{{- printf "%s-controller" ( include "scylla-manager.fullname" . ) }}
+{{- end }}
+
 {{/*
 Create chart name and version as used by the chart label.
 */}}
@@ -47,6 +51,11 @@ Selector labels
 */}}
 {{- define "scylla-manager.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "scylla-manager.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{- define "scylla-manager.controllerSelectorLabels" -}}
+app.kubernetes.io/name: {{ include "scylla-manager.name" . }}-controller
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 

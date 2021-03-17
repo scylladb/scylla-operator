@@ -14,12 +14,9 @@ image:
 logLevel: debug
 # Resources allocated to Scylla Operator pods
 resources:
-  limits:
-    cpu: 100m
-    memory: 128Mi
   requests:
     cpu: 100m
-    memory: 32Mi
+    memory: 20Mi
 # Node selector for Scylla Operator pods
 nodeSelector: { }
 

@@ -1,19 +1,21 @@
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ include "scylla-operator.certificateName" . }}
-  creationTimestamp: null
-  name: scylla-operator-validating-webhook-configuration
+  name: scylla-operator
 webhooks:
-- clientConfig:
+- name: webhook.scylla.scylladb.com
+  admissionReviewVersions:
+  - v1
+  clientConfig:
     caBundle: Cg==
     service:
       name: {{ include "scylla-operator.fullname" . }}
       namespace: {{ .Release.Namespace }}
       path: /validate-scylla-scylladb-com-v1-scyllacluster
   failurePolicy: Fail
-  name: webhook.scylla.scylladb.com
+  sideEffects: None
   rules:
     - apiGroups:
         - scylla.scylladb.com

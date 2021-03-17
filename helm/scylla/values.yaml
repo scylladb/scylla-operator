@@ -46,24 +46,24 @@ repairs: []
 datacenter: "us-east-1"
 # List of racks
 racks:
-  - name: "us-east-1a"
-    # Name of additional scylla config configMap
-    scyllaConfig: "scylla-config"
-    # Name of additional scylla manager agent config stored as secret
-    scyllaAgentConfig: "scylla-agent-config"
-    # Number of rack members (nodes)
-    members: 3
-    # Storage definition
-    storage:
-      capacity: 10Gi
-    # Scylla container resource definition
-    resources:
-       limits:
-         cpu: 1
-         memory: 4Gi
-       requests:
-         cpu: 1
-         memory: 4Gi
+- name: "us-east-1a"
+  # Name of additional scylla config configMap
+  scyllaConfig: "scylla-config"
+  # Name of additional scylla manager agent config stored as secret
+  scyllaAgentConfig: "scylla-agent-config"
+  # Number of rack members (nodes)
+  members: 3
+  # Storage definition
+  storage:
+    capacity: 10Gi
+  # Scylla container resource definition
+  resources:
+     limits:
+       cpu: 1
+       memory: 4Gi
+     requests:
+       cpu: 1
+       memory: 4Gi
 
 # Whether to create Prometheus ServiceMonitor
 serviceMonitor:

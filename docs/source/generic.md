@@ -302,14 +302,14 @@ After deploying our cluster along with the monitoring, we can benchmark it using
 
 # Run a benchmark with 10 jobs, with 6 cpus and 50.000.000 operations each.
 # Each Job will throttle throughput to 30.000 ops/sec for a total of 300.000 ops/sec.
-scripts/cass-stress-gen.py --num-jobs=10 --cpu=6 --memory=20G --ops=50000000 --limit=30000
+hack/cass-stress-gen.py --num-jobs=10 --cpu=6 --memory=20G --ops=50000000 --limit=30000
 kubectl apply -f scripts/cassandra-stress.yaml
 ```
 
 Make sure you set the proper arguments in case you have altered things such as _name_ or _namespace_.
 
 ```bash
-./scripts/cass-stress-gen.py -h
+./hack/cass-stress-gen.py -h
 usage: cass-stress-gen.py [-h] [--num-jobs NUM_JOBS] [--name NAME] [--namespace NAMESPACE] [--scylla-version SCYLLA_VERSION] [--host HOST] [--cpu CPU] [--memory MEMORY] [--ops OPS] [--threads THREADS] [--limit LIMIT]
                           [--connections-per-host CONNECTIONS_PER_HOST] [--print-to-stdout] [--nodeselector NODESELECTOR]
 

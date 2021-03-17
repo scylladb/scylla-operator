@@ -6,46 +6,6 @@ metadata:
 
 ---
 
-# Role for scylla members.
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: simple-cluster-member
-  namespace: scylla
-rules:
-  - apiGroups:
-      - ""
-    resources:
-      - pods
-    verbs:
-      - get
-  - apiGroups:
-      - ""
-    resources:
-      - services
-    verbs:
-      - get
-      - list
-      - patch
-      - watch
-  - apiGroups:
-      - "apps"
-    resources:
-      - statefulsets
-    verbs:
-      - get
-      - list
-      - patch
-      - watch
-  - apiGroups:
-      - scylla.scylladb.com
-    resources:
-      - scyllaclusters
-    verbs:
-      - get
-
----
-
 # ServiceAccount for scylla members.
 apiVersion: v1
 kind: ServiceAccount
@@ -64,7 +24,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: simple-cluster-member
+  name: scylla-cluster-member
 subjects:
   - kind: ServiceAccount
     name: simple-cluster-member

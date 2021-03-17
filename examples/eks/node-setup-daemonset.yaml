@@ -93,7 +93,7 @@ spec:
       serviceAccountName: node-setup-daemonset
       containers:
       - name: node-setup
-        image: scyllazimnx/scylla-machine-image-k8s-aws:666.development-20201001.eea319c
+        image: scylladb/scylla-machine-image:k8s-aws-666.development-20201023.0c4dfa1
         imagePullPolicy: Always
         args:
           - --all
@@ -155,7 +155,7 @@ spec:
       serviceAccountName: node-setup-daemonset
       containers:
         - name: node-setup
-          image: scyllazimnx/scylla-machine-image-k8s-aws:666.development-20201001.eea319c
+          image: scylladb/scylla-machine-image:k8s-aws-666.development-20201023.0c4dfa1
           imagePullPolicy: Always
           args:
             - --setup-disks
@@ -172,4 +172,3 @@ spec:
         - name: hostfs
           hostPath:
             path: /
-

@@ -106,11 +106,17 @@ until [[ "$(gcloud container clusters list --zone=${GCP_ZONE} | grep ${CLUSTER_N
   if [[  "$(gcloud container operations list --sort-by=START_TIME --filter="${CLUSTER_NAME} AND UPGRADE_MASTER" | grep RUNNING)" != "" ]]; then
     gcloud container operations list --sort-by=START_TIME --filter="${CLUSTER_NAME} AND UPGRADE_MASTER"
     gcloud container operations wait $(gcloud container operations list --sort-by=START_TIME --filter="${CLUSTER_NAME} AND UPGRADE_MASTER" | tail -1 | awk '{print $1}') --zone="${GCP_ZONE}"
-  else 
+  else
     gcloud container operations list --sort-by=START_TIME --filter="${CLUSTER_NAME} AND UPGRADE_MASTER" | tail -1
   fi
 done
 gcloud container clusters list --zone="${GCP_ZONE}" | grep ${CLUSTER_NAME}
+}
+
+function wait-for-object-creation {
+    for i in {1..30}; do
+        { kubectl -n "${1}" get "${2}" && break; } || sleep 1
+    done
 }
 
 # Check if the environment has the prerequisites installed
@@ -130,9 +136,11 @@ clusters create "${CLUSTER_NAME}" --username "admin" \
 --disk-type "pd-ssd" --disk-size "20" \
 --local-ssd-count "8" \
 --node-taints role=scylla-clusters:NoSchedule \
---image-type "UBUNTU" \
---enable-cloud-logging --enable-stackdriver-kubernetes \
---no-enable-autoupgrade --no-enable-autorepair
+--image-type "UBUNTU_CONTAINERD" \
+--system-config-from-file=systemconfig.yaml \
+--enable-stackdriver-kubernetes \
+--no-enable-autoupgrade \
+--no-enable-autorepair
 
 # Nodepool for cassandra-stress pods
 gcloud container --project "${GCP_PROJECT}" \
@@ -144,8 +152,9 @@ node-pools create "cassandra-stress-pool" \
 --num-nodes "2" \
 --disk-type "pd-ssd" --disk-size "20" \
 --node-taints role=cassandra-stress:NoSchedule \
---image-type "UBUNTU" \
---no-enable-autoupgrade --no-enable-autorepair
+--image-type "UBUNTU_CONTAINERD" \
+--no-enable-autoupgrade \
+--no-enable-autorepair
 
 # Nodepool for scylla operator and monitoring
 gcloud container --project "${GCP_PROJECT}" \
@@ -156,16 +165,14 @@ node-pools create "operator-pool" \
 --machine-type "n1-standard-8" \
 --num-nodes "1" \
 --disk-type "pd-ssd" --disk-size "20" \
---image-type "UBUNTU" \
---no-enable-autoupgrade --no-enable-autorepair
+--image-type "UBUNTU_CONTAINERD" \
+--no-enable-autoupgrade \
+--no-enable-autorepair
 
 # After gcloud returns, it's going to upgrade the master
 # making the cluster unavailable for a while.
 # We deal with this by waiting a while for the unavailability
 # to start and then polling with kubectl to detect when it ends.
-
-# Is this command needed ???
-gcloud container operations list --sort-by START_TIME | tail
 
 echo "Waiting GKE to UPGRADE_MASTER"
 sleep 120
@@ -174,22 +181,15 @@ check_cluster_readiness
 echo "Getting credentials for newly created cluster..."
 gcloud container clusters get-credentials "${CLUSTER_NAME}" --zone="${GCP_ZONE}"
 
-sleep 60
-check_cluster_readiness
 # Setup GKE RBAC
 echo "Setting up GKE RBAC..."
 kubectl create clusterrolebinding cluster-admin-binding --clusterrole cluster-admin --user "${GCP_USER}"
 
-check_cluster_readiness
 # Install RAID Daemonset
 echo "Installing RAID Daemonset..."
 kubectl apply -f raid-daemonset.yaml
-
-check_cluster_readiness
-# Install cpu-policy Daemonset
-echo "Installing cpu-policy Daemonset..."
-sleep 5
-kubectl apply -f cpu-policy-daemonset.yaml
+wait-for-object-creation default daemonset.apps/raid-local-disks
+kubectl rollout status --timeout=5m daemonset.apps/raid-local-disks
 
 # Install local volume provisioner
 echo "Installing local volume provisioner..."
@@ -198,9 +198,17 @@ echo "Your disks are ready to use."
 
 echo "Starting the cert manger..."
 kubectl apply -f ../common/cert-manager.yaml
-sleep 30
+kubectl wait --for condition=established --timeout=60s crd/certificates.cert-manager.io crd/issuers.cert-manager.io
+
+wait-for-object-creation cert-manager deployment.apps/cert-manager-webhook
+kubectl -n cert-manager rollout status --timeout=5m deployment.apps/cert-manager-webhook
+
 echo "Starting the scylla operator..."
 kubectl apply -f ../common/operator.yaml
-sleep 30
+
+kubectl wait --for condition=established crd/scyllaclusters.scylla.scylladb.com
+wait-for-object-creation scylla-operator deployment.apps/scylla-operator
+kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/scylla-operator
+
 echo "Starting the scylla cluster..."
 sed "s/<gcp_region>/${GCP_REGION}/g;s/<gcp_zone>/${GCP_ZONE}/g" cluster.yaml | kubectl apply -f -

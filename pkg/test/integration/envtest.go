@@ -49,7 +49,7 @@ func init() {
 	env = &envtest.Environment{
 		ErrorIfCRDPathMissing: true,
 		CRDDirectoryPaths: []string{
-			filepath.Join(root, "config", "operator", "crd", "bases"),
+			filepath.Join(root, "deploy", "operator", "00_scylla.scylladb.com_scyllaclusters.yaml"),
 		},
 	}
 }
@@ -162,7 +162,7 @@ func initializeWebhookInEnvironment() error {
 	var validatingWebhooks, mutatingWebhooks []client.Object
 
 	root := rootPath()
-	configyamlFile, err := ioutil.ReadFile(filepath.Join(root, "config", "operator", "webhook", "manifests.yaml"))
+	configyamlFile, err := ioutil.ReadFile(filepath.Join(root, "deploy", "operator", "10_webhook.yaml"))
 	if err != nil {
 		return errors.Wrap(err, "read core webhook configuration file")
 	}

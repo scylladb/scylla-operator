@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "scylla-manager.controllerName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "scylla-manager.labels" . | nindent 4 }}
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      {{- include "scylla-manager.controllerSelectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        {{- include "scylla-manager.controllerSelectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "scylla-manager.serviceAccountName" . }}
+      containers:
+      - name: {{ include "scylla-manager.controllerName" . }}
+        image: "{{ .Values.controllerImage.repository }}/scylla-operator:{{ .Values.controllerImage.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.controllerImage.pullPolicy }}
+        command:
+        - /usr/bin/scylla-operator
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        args:
+        - manager-controller
+        - --log-level={{ .Values.logLevel }}
+        resources:
+  {{- toYaml .Values.controllerResources | nindent 12 }}

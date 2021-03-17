@@ -39,7 +39,7 @@ type Reconciler struct {
 	Logger log.Logger
 }
 
-func New(ctx context.Context, mgr mgr.Manager, ignoredNamespace string, logger log.Logger) (*Reconciler, error) {
+func New(ctx context.Context, mgr mgr.Manager, ignoredNamespace, namespace string, logger log.Logger) (*Reconciler, error) {
 	c, err := client.New(mgr.GetConfig(), client.Options{
 		Scheme: mgr.GetScheme(),
 	})
@@ -47,7 +47,7 @@ func New(ctx context.Context, mgr mgr.Manager, ignoredNamespace string, logger l
 		return nil, errors.Wrap(err, "get dynamic client")
 	}
 
-	manager, err := discoverManager(ctx, mgr)
+	manager, err := discoverManager(ctx, mgr, namespace)
 	if err != nil {
 		return nil, errors.Wrap(err, "discover manager")
 	}
@@ -71,7 +71,7 @@ func New(ctx context.Context, mgr mgr.Manager, ignoredNamespace string, logger l
 	}, nil
 }
 
-func discoverManager(ctx context.Context, mgr mgr.Manager) (*mermaidclient.Client, error) {
+func discoverManager(ctx context.Context, mgr mgr.Manager, namespace string) (*mermaidclient.Client, error) {
 	cl, err := client.New(mgr.GetConfig(), client.Options{
 		Scheme: mgr.GetScheme(),
 	})
@@ -82,6 +82,7 @@ func discoverManager(ctx context.Context, mgr mgr.Manager) (*mermaidclient.Clien
 	svcList := &corev1.ServiceList{}
 	err = cl.List(ctx, svcList, &client.ListOptions{
 		LabelSelector: naming.ManagerSelector(),
+		Namespace:     namespace,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list member services")
@@ -104,13 +105,6 @@ func discoverManager(ctx context.Context, mgr mgr.Manager) (*mermaidclient.Clien
 
 	return &manager, nil
 }
-
-// +kubebuilder:rbac:groups="",resources=events,verbs=create;update;patch
-// +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list
-// +kubebuilder:rbac:groups=scylla.scylladb.com,resources=scyllaclusters,verbs=get;list;watch
-// +kubebuilder:rbac:groups=scylla.scylladb.com,resources=scyllaclusters/status,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
-// +kubebuilder:rbac:groups="",resources=services,verbs=get;list
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := r.Logger.With("cluster", req.NamespacedName)

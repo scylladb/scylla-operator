@@ -234,7 +234,7 @@ type RackSpec struct {
 	// Resources the Scylla container will use.
 	Resources corev1.ResourceRequirements `json:"resources"`
 	// AgentResources which Agent container will use.
-	// +kubebuilder:default:={requests: {cpu: "50m", memory: "10M"}, limits: {cpu: "1", memory: "200M"}}
+	// +kubebuilder:default:={requests: {cpu: "50m", memory: "10M"}}
 	// +optional
 	AgentResources corev1.ResourceRequirements `json:"agentResources,omitempty"`
 	// Volumes added to Scylla Pod.

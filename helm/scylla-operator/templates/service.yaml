@@ -7,7 +7,8 @@ metadata:
     {{- include "scylla-operator.labels" . | nindent 4 }}
 spec:
   ports:
-    - port: 443
-      targetPort: 443
+  - port: 443
+    targetPort: 9443
+    name: webhook
   selector:
   {{- include "scylla-operator.selectorLabels" . | nindent 4 }}

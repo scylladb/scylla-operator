@@ -75,6 +75,12 @@ check_prerequisites() {
     fi
 }
 
+function wait-for-object-creation {
+    for i in {1..30}; do
+        { kubectl -n "${1}" get "${2}" && break; } || sleep 1
+    done
+}
+
 # Check if the environment has the prerequisites installed
 check_prerequisites
 
@@ -84,7 +90,8 @@ sed "s/<eks_region>/${EKS_REGION}/g;s/<eks_cluster_name>/${CLUSTER_NAME}/g;s/<ek
 
 # Configure node disks and network
 kubectl apply -f node-setup-daemonset.yaml
-sleep 60
+wait-for-object-creation default daemonset.apps/raid-local-disks
+kubectl rollout status --timeout=5m daemonset.apps/raid-local-disks
 
 # Install local volume provisioner
 echo "Installing local volume provisioner..."
@@ -93,11 +100,15 @@ echo "Your disks are ready to use."
 
 echo "Starting the cert manger..."
 kubectl apply -f ../common/cert-manager.yaml
-kubectl -n cert-manager wait --for=condition=ready pod -l app=webhook --timeout=60s
+kubectl wait --for condition=established --timeout=60s crd/certificates.cert-manager.io crd/issuers.cert-manager.io
+wait-for-object-creation cert-manager deployment.apps/cert-manager-webhook
+kubectl -n cert-manager rollout status --timeout=5m deployment.apps/cert-manager-webhook
 
 echo "Starting the scylla operator..."
 kubectl apply -f ../common/operator.yaml
-kubectl -n scylla-operator-system wait --for=condition=ready pod -l control-plane=controller-manager --timeout=60s
+kubectl wait --for condition=established crd/scyllaclusters.scylla.scylladb.com
+wait-for-object-creation scylla-operator deployment.apps/scylla-operator
+kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/scylla-operator
 
 echo "Starting the scylla cluster..."
 sed "s/<eks_region>/${EKS_REGION}/g;s/<eks_zone>/${EKS_ZONE}/g" cluster.yaml | kubectl apply -f -

@@ -3,6 +3,7 @@
 
 [![LICENSE](https://img.shields.io/github/license/scylladb/scylla-operator.svg)](https://github.com/scylladb/scylla-operator/blob/master/LICENSE)
 [![Language](https://img.shields.io/badge/Language-Go-blue.svg)](https://golang.org/)
+[![Go](https://github.com/scylladb/scylla-operator/actions/workflows/go.yaml/badge.svg?branch=master)](https://github.com/scylladb/scylla-operator/actions/workflows/go.yaml?query=branch%3Amaster)
 [![Go Report Card](https://goreportcard.com/badge/github.com/scylladb/scylla-operator)](https://goreportcard.com/report/github.com/scylladb/scylla-operator)
 [![GitHub release](https://img.shields.io/github/tag/scylladb/scylla-operator.svg?label=release)](https://github.com/scylladb/scylla-operator/releases)
 

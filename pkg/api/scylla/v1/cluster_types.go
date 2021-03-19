@@ -205,13 +205,11 @@ type Network struct {
 }
 
 func (s Network) GetDNSPolicy() corev1.DNSPolicy {
-	if s.DNSPolicy == "" {
-		if s.HostNetworking {
-			return corev1.DNSClusterFirstWithHostNet
-		}
-		return corev1.DNSDefault
+	if len(s.DNSPolicy) != 0 {
+		return s.DNSPolicy
 	}
-	return s.DNSPolicy
+
+	return corev1.DNSClusterFirstWithHostNet
 }
 
 // DatacenterSpec is the desired state for a Scylla Datacenter.

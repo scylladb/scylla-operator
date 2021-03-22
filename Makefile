@@ -52,6 +52,7 @@ HELM_CHART_VERSION_SUFFIX ?=
 HELM_CHART_VERSION ?=$(GIT_TAG)$(HELM_CHART_VERSION_SUFFIX)
 HELM_BUCKET ?=gs://scylla-operator-charts/$(HELM_CHANNEL)
 HELM_REPOSITORY ?=https://scylla-operator-charts.storage.googleapis.com/$(HELM_CHANNEL)
+HELM_MANIFEST_CACHE_CONTROL ?=public, max-age=600
 
 CONTROLLER_GEN ?=$(GO) run ./vendor/sigs.k8s.io/controller-tools/cmd/controller-gen --
 CRD_PATH ?= pkg/api/scylla/v1/scylla.scylladb.com_scyllaclusters.yaml
@@ -342,6 +343,7 @@ image:
 # Build Helm charts and publish them in Development GCS repo
 helm-publish-dev: HELM_REPOSITORY=https://scylla-operator-charts-dev.storage.googleapis.com/$(HELM_CHANNEL)
 helm-publish-dev: HELM_BUCKET=gs://scylla-operator-charts-dev/$(HELM_CHANNEL)
+helm-publish-dev: HELM_MANIFEST_CACHE_CONTROL :=no-cache, no-store, must-revalidate
 helm-publish-dev: helm-publish
 .PHONY: helm-publish-dev
 
@@ -354,4 +356,6 @@ helm-publish:
 
 	helm repo index $(HELM_LOCAL_REPO) --url $(HELM_REPOSITORY) --merge $(HELM_LOCAL_REPO)/index.yaml
 	gsutil rsync -d $(HELM_LOCAL_REPO) $(HELM_BUCKET)
+
+	gsutil setmeta -h 'Content-Type:text/yaml' -h 'Cache-Control: $(HELM_MANIFEST_CACHE_CONTROL)' '$(HELM_BUCKET)/index.yaml'
 .PHONY: helm-publish

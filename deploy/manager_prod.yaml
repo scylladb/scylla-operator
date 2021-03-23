@@ -1,0 +1,46 @@
+# Scylla Manager image
+image:
+  repository: docker.io/scylladb
+  tag: 2.2.4
+
+controllerImage:
+  repository: docker.io/scylladb
+  tag: latest
+
+logLevel: debug
+
+# Resources allocated to Scylla Manager pods
+resources:
+  requests:
+    cpu: 10m
+    memory: 20Mi
+# Resources allocated to Scylla Manager Controller pods
+controllerResources:
+  requests:
+    cpu: 10m
+    memory: 20Mi
+
+# Scylla instance for Manager
+scylla:
+  fullnameOverride: scylla-manager-cluster
+  scyllaImage:
+    repository: docker.io/scylladb/scylla
+    tag: 4.3.2
+  agentImage:
+    tag: 2.2.4
+    repository: docker.io/scylladb/scylla-manager-agent
+  developerMode: true
+  cpuset: true
+  datacenter: manager-dc
+  racks:
+  - name: manager-rack
+    members: 1
+    storage:
+      capacity: 5Gi
+    resources:
+      limits:
+        cpu: 1
+        memory: 200Mi
+      requests:
+        cpu: 1
+        memory: 200Mi

@@ -243,21 +243,43 @@ verify-crd:
 	$(diff) '$(tmp_file)' '$(CRD_PATH)' || (echo 'File $(CRD_PATH) is not up-to date. Please run `make update-crd` to update it.' && false)
 .PHONY: verify-crd
 
-# $1 - target dir
-define generate-dev-manifests
-	mkdir -p '$(1)' && \
-	cp deploy/manager/prod/*.yaml '$(1)' && \
-	yq eval '.spec.cpuset=false | .spec.datacenter.racks[] = (.spec.datacenter.racks[] | .resources.limits.cpu="200m" | .resources.limits.memory="200Mi" | .resources.requests.cpu="10m" | .resources.requests.memory="100Mi" )' -i '$(1)'/10_scylla_scyllacluster.yaml
+# $1 - name
+define generate-namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: $(1)
+endef
+export generate-namespace
+
+# $1 - name
+# $2 - chart path
+# $3 - values path
+# $4 - target dir
+define generate-manifests
+	mkdir -p '$(4)'
+	$(file > $(4)/00_namespace.yaml,$(generate-namespace))
+	helm template '$(1)' '$(2)' --namespace '$(1)' --values '$(3)' | ./hack/split-helm.sh '$(4)'
 endef
 
-update-deploy-dev:
-	$(call generate-dev-manifests,deploy/manager/dev)
-.PHONY: update-deploy-dev
+update-deploy:
+	$(call generate-manifests,scylla-manager,helm/scylla-manager,deploy/manager_prod.yaml,deploy/manager/prod)
+	$(call generate-manifests,scylla-manager,helm/scylla-manager,deploy/manager_dev.yaml,deploy/manager/dev)
+	$(call generate-manifests,scylla-operator,helm/scylla-operator,deploy/operator.yaml,deploy/operator)
+	ln -sf ../../$(CRD_PATH) deploy/operator/00_scylla.scylladb.com_scyllaclusters.yaml
 
-verify-deploy-dev: tmp_dir :=$(shell mktemp -d)
-verify-deploy-dev:
-	$(call generate-dev-manifests,$(tmp_dir))
-	$(diff_dir) '$(tmp_dir)' deploy/manager/dev || ( echo 'Deploy manifests are not up-to date. Please run `make update-deploy-dev` to update them.' && false )
+.PHONY: update-deploy
+
+verify-deploy: tmp_dir :=$(shell mktemp -d)
+verify-deploy:
+	$(call generate-manifests,scylla-manager,helm/scylla-manager,deploy/manager_prod.yaml,'$(tmp_dir)'/manager/prod)
+	$(call generate-manifests,scylla-manager,helm/scylla-manager,deploy/manager_dev.yaml,'$(tmp_dir)'/manager/dev)
+	$(call generate-manifests,scylla-operator,helm/scylla-operator,deploy/operator.yaml,'$(tmp_dir)'/operator)
+	ln -sf $(abspath ./)/$(CRD_PATH) '$(tmp_dir)'/operator/00_scylla.scylladb.com_scyllaclusters.yaml
+
+	$(diff_dir) '$(tmp_dir)'/manager/prod deploy/manager/prod || ( echo 'Deploy manifests are not up-to date. Please run `make update-deploy` to update them.' && false )
+	$(diff_dir) '$(tmp_dir)'/manager/dev deploy/manager/dev || ( echo 'Deploy manifests are not up-to date. Please run `make update-deploy` to update them.' && false )
+	$(diff_dir) '$(tmp_dir)'/operator deploy/operator || ( echo 'Deploy manifests are not up-to date. Please run `make update-deploy` to update them.' && false )
 .PHONY: verify-deploy-dev
 
 update-examples-operator:
@@ -293,10 +315,10 @@ verify-codegen:
 	$(call run-informer-gen,--verify-only)
 .PHONY: verify-codegen
 
-verify: verify-gofmt verify-codegen verify-crd verify-examples verify-deploy-dev verify-govet verify-helm
+verify: verify-gofmt verify-codegen verify-crd verify-examples verify-deploy verify-govet verify-helm
 .PHONY: verify
 
-update: update-gofmt update-codegen update-crd update-examples update-deploy-dev
+update: update-gofmt update-codegen update-crd update-examples update-deploy
 .PHONY: update
 
 test-unit:

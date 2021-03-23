@@ -12,6 +12,6 @@ data:
       hosts:
     {{- range $rack := .Values.scylla.racks }}
     {{- range $idx, $e := until ($rack.members | int) }}
-      - {{ printf "%s-%s-%s-%d.%s.svc" ( include "call-nested" (list $ "scylla" "scylla.fullname")) $.Values.scylla.datacenter $rack.name $idx $.Release.Namespace }}
+      - {{ printf "%s-%s-%s-%d" ( include "call-nested" (list $ "scylla" "scylla.fullname")) $.Values.scylla.datacenter $rack.name $idx }}
     {{- end }}
     {{- end }}

@@ -10,4 +10,4 @@ spec:
   issuerRef:
     kind: Issuer
     name: scylla-operator-selfsigned-issuer
-  secretName: webhook-server-cert
+  secretName: scylla-operator-serving-cert

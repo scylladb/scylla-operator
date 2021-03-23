@@ -1,0 +1,95 @@
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: {{ include "scylla.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  version: {{ .Values.scyllaImage.tag }}
+  agentVersion: {{ .Values.agentImage.tag }}
+  {{- if .Values.scyllaImage.repository }}
+  repository: {{ .Values.scyllaImage.repository }}
+  {{- end }}
+  {{- if .Values.agentImage.repository }}
+  agentRepository: {{ .Values.agentImage.repository }}
+  {{- end }}
+  {{- if .Values.alternator.enabled }}
+  alternator:
+    port: {{ .Values.alternator.port }}
+    writeIsolation: {{ .Values.alternator.writeIsolation }}
+  {{- end }}
+  {{- if .Values.developerMode }}
+  developerMode: {{ .Values.developerMode }}
+  {{- end }}
+  {{- if .Values.cpuset }}
+  cpuset: {{ .Values.cpuset }}
+  {{- end }}
+  {{- if .Values.automaticOrphanedNodeCleanup }}
+  automaticOrphanedNodeCleanup: {{ .Values.automaticOrphanedNodeCleanup }}
+  {{- end }}
+  {{- with .Values.sysctls }}
+  sysctls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if .Values.hostNetworking}}
+  network:
+    hostNetworking: {{ .Values.hostNetworking }}
+  {{- end }}
+  {{- with .Values.backups }}
+  backups:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.repairs }}
+  repairs:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  datacenter:
+    name: {{ .Values.datacenter }}
+    racks:
+    {{- range .Values.racks }}
+    - name: {{ .name }}
+      scyllaConfig: {{ default "scylla-config" .scyllaConfig }}
+      scyllaAgentConfig: {{ default "scylla-agent-config" .scyllaAgentConfig }}
+      members: {{ .members }}
+      storage:
+        {{- if .storage.storageClassName }}
+        storageClassName: {{ .storage.storageClassName }}
+        {{- end }}
+        capacity: {{ .storage.capacity }}
+      resources:
+        {{- toYaml .resources | nindent 8 }}
+      {{- if .agentResources }}
+      agentResources:
+        {{- toYaml .agentResources | nindent 8 }}
+      {{- end }}
+      {{- if .volumes }}
+      volumes:
+        {{- toYaml .volumes | nindent 8 }}
+      {{- end }}
+      {{- if .volumeMounts }}
+      volumeMounts:
+        {{- toYaml .volumeMounts | nindent 8 }}
+      {{- end }}
+      {{- if .agentVolumeMounts }}
+      agentVolumeMounts:
+        {{- toYaml .agentVolumeMounts | nindent 8 }}
+      {{- end }}
+      {{- if .placement }}
+      placement:
+        {{- if .placement.podAffinity }}
+        podAffinity:
+          {{- toYaml .placement.podAffinity | nindent 10 }}
+        {{- end }}
+        {{- if .placement.podAntiAffinity }}
+        podAntiAffinity:
+          {{- toYaml .placement.podAntiAffinity | nindent 10 }}
+        {{- end }}
+        {{- if .placement.nodeAffinity }}
+        nodeAffinity:
+          {{- toYaml .placement.nodeAffinity | nindent 10 }}
+        {{- end }}
+        {{- if .placement.tolerations }}
+        tolerations:
+          {{- toYaml .placement.tolerations | nindent 10 }}
+        {{- end }}
+      {{- end }}
+    {{- end }}

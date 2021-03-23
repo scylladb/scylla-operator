@@ -4,7 +4,7 @@ metadata:
   name: {{ include "scylla-operator.fullname" . }}
   namespace: {{ .Release.Namespace }}
 spec:
-  minAvailable: 1
+  maxUnavailable: 1
   selector:
     matchLabels:
       {{- include "scylla-operator.selectorLabels" . | nindent 6 }}

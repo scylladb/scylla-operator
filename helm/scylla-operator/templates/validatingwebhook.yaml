@@ -6,23 +6,23 @@ metadata:
   name: scylla-operator
 webhooks:
 - name: webhook.scylla.scylladb.com
-  admissionReviewVersions:
-  - v1
   clientConfig:
     caBundle: Cg==
     service:
-      name: {{ include "scylla-operator.fullname" . }}
+      name: {{ include "scylla-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
       path: /validate-scylla-scylladb-com-v1-scyllacluster
-  failurePolicy: Fail
+  admissionReviewVersions:
+  - v1
   sideEffects: None
+  failurePolicy: Fail
   rules:
-    - apiGroups:
-        - scylla.scylladb.com
-      apiVersions:
-        - v1
-      operations:
-        - CREATE
-        - UPDATE
-      resources:
-        - scyllaclusters
+  - apiGroups:
+    - scylla.scylladb.com
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - scyllaclusters

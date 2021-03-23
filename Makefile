@@ -43,6 +43,9 @@ GO_TEST_ARGS ?=
 GO_TEST_EXTRA_ARGS ?=
 GO_TEST_E2E_EXTRA_ARGS ?=
 
+YQ ?=yq
+
+HELM ?=helm
 HELM_CHANNEL ?=latest
 HELM_CHARTS ?=scylla-operator scylla-manager scylla
 HELM_CHARTS_DIR ?=helm
@@ -160,7 +163,6 @@ update-gofmt:
 
 # We need to force localle so different envs sort files the same way for recursive traversals
 diff :=LC_COLLATE=C diff --no-dereference -N
-diff_dir :=LC_COLLATE=C diff -rq -N
 
 # $1 - temporary directory
 define restore-deps
@@ -244,22 +246,96 @@ verify-crd:
 	$(diff) '$(tmp_file)' '$(CRD_PATH)' || (echo 'File $(CRD_PATH) is not up-to date. Please run `make update-crd` to update it.' && false)
 .PHONY: verify-crd
 
-# $1 - target dir
-define generate-dev-manifests
-	mkdir -p '$(1)' && \
-	cp deploy/manager/prod/*.yaml '$(1)' && \
-	yq eval '.spec.cpuset=false | .spec.datacenter.racks[] = (.spec.datacenter.racks[] | .resources.limits.cpu="200m" | .resources.limits.memory="200Mi" | .resources.requests.cpu="10m" | .resources.requests.memory="100Mi" )' -i '$(1)'/10_scylla_scyllacluster.yaml
+# $1 - name
+# $2 - chart path
+# $3 - values path
+# $4 - target dir
+define generate-manifests-from-helm
+	$(HELM) template '$(1)' '$(2)' --namespace='$(1)' --values='$(3)' --output-dir='$(4)'
+	find '$(4)' -name '*.yaml' -exec sed -i -e '/^---$$/d' -e '/^# Source: /d' {} \;
 endef
 
-update-deploy-dev:
-	$(call generate-dev-manifests,deploy/manager/dev)
-.PHONY: update-deploy-dev
+# $1 - Helm values file
+# $2 - output_dir
+# $3 - tmp_dir
+define generate-operator-manifests
+	$(call generate-manifests-from-helm,scylla-operator,helm/scylla-operator,$(1),$(3))
 
-verify-deploy-dev: tmp_dir :=$(shell mktemp -d)
-verify-deploy-dev:
-	$(call generate-dev-manifests,$(tmp_dir))
-	$(diff_dir) '$(tmp_dir)' deploy/manager/dev || ( echo 'Deploy manifests are not up-to date. Please run `make update-deploy-dev` to update them.' && false )
-.PHONY: verify-deploy-dev
+	mv '$(3)'/scylla-operator/templates/clusterrole.yaml '$(2)'/00_clusterrole.yaml
+	mv '$(3)'/scylla-operator/templates/view_clusterrole.yaml '$(2)'/00_scyllacluster_clusterrole_view.yaml
+	mv '$(3)'/scylla-operator/templates/edit_clusterrole.yaml '$(2)'/00_scyllacluster_clusterrole_edit.yaml
+	mv '$(3)'/scylla-operator/templates/scyllacluster_member_clusterrole.yaml '$(2)'/00_scyllacluster_member_clusterrole.yaml
+
+	mv '$(3)'/scylla-operator/templates/issuer.yaml '$(2)'/10_issuer.yaml
+	mv '$(3)'/scylla-operator/templates/certificate.yaml '$(2)'/10_certificate.yaml
+	mv '$(3)'/scylla-operator/templates/validatingwebhook.yaml '$(2)'/10_validatingwebhook.yaml
+	mv '$(3)'/scylla-operator/templates/service.yaml '$(2)'/10_service.yaml
+	mv '$(3)'/scylla-operator/templates/serviceaccount.yaml '$(2)'/10_serviceaccount.yaml
+	mv '$(3)'/scylla-operator/templates/pdb.yaml '$(2)'/10_pdb.yaml
+
+	mv '$(3)'/scylla-operator/templates/clusterrolebinding.yaml '$(2)'/20_clusterrolebinding.yaml
+
+	mv '$(3)'/scylla-operator/templates/deployment.yaml '$(2)'/50_deployment.yaml
+
+	@leftovers=$$( find '$(3)'/scylla-operator/ -mindepth 1 -type f ) && [[ "$${leftovers}" == "" ]] || \
+	( echo -e "Internal error: Unhandled helm files: \n$${leftovers}" && false )
+endef
+
+# $1 - Helm values file
+# $2 - output_dir
+# $3 - tmp_dir
+define generate-manager-manifests-prod
+	$(call generate-manifests-from-helm,scylla-manager,helm/scylla-manager,$(1),$(3))
+
+	mv '$(3)'/scylla-manager/templates/controller_clusterrole.yaml '$(2)'/00_controller_clusterrole.yaml
+
+	mv '$(3)'/scylla-manager/templates/controller_serviceaccount.yaml '$(2)'/10_controller_serviceaccount.yaml
+	mv '$(3)'/scylla-manager/templates/controller_pdb.yaml '$(2)'/10_controller_pdb.yaml
+	mv '$(3)'/scylla-manager/templates/manager_service.yaml '$(2)'/10_manager_service.yaml
+	mv '$(3)'/scylla-manager/templates/manager_configmap.yaml '$(2)'/10_manager_configmap.yaml
+	mv '$(3)'/scylla-manager/charts/scylla/templates/serviceaccount.yaml '$(2)'/10_scyllacluster_serviceaccount.yaml
+
+	mv '$(3)'/scylla-manager/templates/controller_clusterrolebinding.yaml '$(2)'/20_controller_clusterrolebinding.yaml
+	mv '$(3)'/scylla-manager/charts/scylla/templates/rolebinding.yaml '$(2)'/20_scyllacluster_rolebinding.yaml
+
+	mv '$(3)'/scylla-manager/charts/scylla/templates/scyllacluster.yaml '$(2)'/50_scyllacluster.yaml
+	mv '$(3)'/scylla-manager/templates/controller_deployment.yaml '$(2)'/50_controller_deployment.yaml
+	mv '$(3)'/scylla-manager/templates/manager_deployment.yaml '$(2)'/50_manager_deployment.yaml
+
+	@leftovers=$$( find '$(3)'/scylla-manager/ -mindepth 1 -type f ) && [[ "$${leftovers}" == "" ]] || \
+	( echo -e "Internal error: Unhandled helm files: \n$${leftovers}" && false )
+endef
+
+# $1 - output_dir
+define generate-manager-manifests-dev
+	cp -r deploy/manager/prod/. '$(1)'/.
+	$(YQ) eval -i -P '.spec.cpuset = false | .spec.datacenter.racks[0].resources = {"limits": {"cpu": "200m", "memory": "200Mi"}, "requests": {"cpu": "10m", "memory": "100Mi"}}' '$(1)'/50_scyllacluster.yaml
+endef
+
+update-deploy: tmp_dir:=$(shell mktemp -d)
+update-deploy:
+	$(call generate-operator-manifests,helm/deploy/operator.yaml,deploy/operator,$(tmp_dir))
+	$(call generate-manager-manifests-prod,helm/deploy/manager_prod.yaml,deploy/manager/prod,$(tmp_dir))
+	$(call generate-manager-manifests-dev,deploy/manager/dev)
+.PHONY: update-deploy
+
+verify-deploy: tmp_dir :=$(shell mktemp -d)
+verify-deploy: tmp_dir_generate :=$(shell mktemp -d)
+verify-deploy:
+	mkdir -p $(tmp_dir)/{operator,manager/{prod,dev}}
+
+	cp -r deploy/operator/. $(tmp_dir)/operator/.
+	$(call generate-operator-manifests,helm/deploy/operator.yaml,$(tmp_dir)/operator,$(tmp_dir_generate))
+	$(diff) -r '$(tmp_dir)'/operator deploy/operator
+
+	cp -r deploy/manager/prod/. $(tmp_dir)/manager/prod/.
+	$(call generate-manager-manifests-prod,helm/deploy/manager_prod.yaml,$(tmp_dir)/manager/prod,$(tmp_dir_generate))
+	$(diff) -r '$(tmp_dir)'/manager/prod deploy/manager/prod
+
+	$(call generate-manager-manifests-dev,$(tmp_dir)/manager/dev)
+	$(diff) -r '$(tmp_dir)'/manager/dev deploy/manager/dev
+
+.PHONY: verify-deploy
 
 update-examples-operator:
 	$(call concat-manifests,$(sort $(wildcard deploy/operator/*.yaml)),examples/common/operator.yaml)
@@ -294,10 +370,10 @@ verify-codegen:
 	$(call run-informer-gen,--verify-only)
 .PHONY: verify-codegen
 
-verify: verify-gofmt verify-codegen verify-crd verify-examples verify-deploy-dev verify-govet verify-helm
+verify: verify-gofmt verify-codegen verify-crd verify-examples verify-deploy verify-govet verify-helm
 .PHONY: verify
 
-update: update-gofmt update-codegen update-crd update-examples update-deploy-dev
+update: update-gofmt update-codegen update-crd update-examples update-deploy
 .PHONY: update
 
 test-unit:

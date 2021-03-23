@@ -31,23 +31,18 @@ Create chart name and version as used by the chart label.
 {{- end }}
 
 {{/*
-Common labels
-*/}}
-{{- define "scylla-operator.labels" -}}
-helm.sh/chart: {{ include "scylla-operator.chart" . }}
-{{ include "scylla-operator.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- end }}
-
-{{/*
 Selector labels
 */}}
 {{- define "scylla-operator.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "scylla-operator.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
+Common labels
+*/}}
+{{- define "scylla-operator.labels" -}}
+{{ include "scylla-operator.selectorLabels" . }}
 {{- end }}
 
 {{/*
@@ -66,7 +61,7 @@ Create the name of the webhook cerfiticate
 */}}
 {{- define "scylla-operator.certificateName" -}}
 {{- if .Values.webhook.createSelfSignedCertificate }}
-{{- printf "%s-%s" .Chart.Name "selfsigned-certificate" }}
+{{- printf "%s-serving-cert" .Chart.Name }}
 {{- end }}
 {{- end }}
 
@@ -80,4 +75,8 @@ Create the name of the webhook cerfiticate secret
 {{- else }}
 {{- .Values.webhook.certificateSecretName }}
 {{- end }}
+{{- end }}
+
+{{- define "scylla-operator.webhookServiceName" -}}
+{{- printf "%s-webhook" ( include "scylla-operator.fullname" .) }}
 {{- end }}

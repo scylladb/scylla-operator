@@ -8,5 +8,5 @@ roleRef:
   name: scylla-manager-controller
 subjects:
 - kind: ServiceAccount
-  name: {{ include "scylla-manager.serviceAccountName" . }}
+  name: {{ include "scylla-manager.controllerServiceAccountName" . }}
   namespace: {{ .Release.Namespace }}

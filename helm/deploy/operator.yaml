@@ -1,0 +1,8 @@
+image:
+  repository: docker.io/scylladb
+  tag: latest
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 20Mi

@@ -16,4 +16,4 @@ spec:
     protocol: TCP
     targetPort: 5090
   selector:
-    {{ include "scylla-manager.selectorLabels" . | nindent 4 }}
+    {{- include "scylla-manager.selectorLabels" . | nindent 4 }}

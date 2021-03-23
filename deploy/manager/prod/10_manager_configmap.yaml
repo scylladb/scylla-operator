@@ -7,7 +7,7 @@ data:
   scylla-manager.yaml: |-
     http: :5080
     logger:
-      level: info
+      level: debug
     database:
       hosts:
       - scylla-manager-cluster-manager-dc-manager-rack-0

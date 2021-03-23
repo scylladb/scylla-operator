@@ -3,21 +3,26 @@ kind: Deployment
 metadata:
   name: scylla-manager
   namespace: scylla-manager
+  labels:
+    app.kubernetes.io/name: scylla-manager
+    app.kubernetes.io/instance: scylla-manager
 spec:
   replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: scylla-manager
+      app.kubernetes.io/instance: scylla-manager
   strategy:
     type: RollingUpdate
   template:
     metadata:
       labels:
         app.kubernetes.io/name: scylla-manager
+        app.kubernetes.io/instance: scylla-manager
     spec:
       containers:
       - name: scylla-manager
-        image: docker.io/scylladb/scylla-manager:2.2.0
+        image: docker.io/scylladb/scylla-manager:2.2.4
         imagePullPolicy: IfNotPresent
         command:
         - /usr/bin/scylla-manager
@@ -25,8 +30,8 @@ spec:
         - --config-file=/mnt/etc/scylla-manager/scylla-manager.yaml
         resources:
           requests:
-            cpu: 10m
-            memory: 20Mi
+            cpu: 200m
+            memory: 200Mi
         volumeMounts:
         - mountPath: /mnt/etc/scylla-manager
           name: scylla-manager-config

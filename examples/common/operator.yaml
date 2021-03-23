@@ -1815,7 +1815,7 @@ status:
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: scylla-operator-serving-cert
+  name: scylla-operator-selfsigned
   namespace: scylla-operator
 spec:
   dnsNames:
@@ -1824,44 +1824,7 @@ spec:
   issuerRef:
     kind: Issuer
     name: scylla-operator-selfsigned-issuer
-  secretName: webhook-server-cert
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: scyllacluster-member
-rules:
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - get
-- apiGroups:
-  - ""
-  resources:
-  - services
-  verbs:
-  - get
-  - list
-  - patch
-  - watch
-- apiGroups:
-  - "apps"
-  resources:
-  - statefulsets
-  verbs:
-  - get
-  - list
-  - patch
-  - watch
-- apiGroups:
-  - scylla.scylladb.com
-  resources:
-  - scyllaclusters
-  verbs:
-  - get
+  secretName: scylla-operator-serving-cert
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -2008,124 +1971,14 @@ subjects:
   namespace: scylla-operator
 
 ---
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: scyllacluster-edit
-  labels:
-    rbac.authorization.k8s.io/aggregate-to-admin: "true"
-    rbac.authorization.k8s.io/aggregate-to-edit: "true"
-rules:
-- apiGroups:
-  - scylla.scylladb.com
-  resources:
-  - scyllaclusters
-  verbs:
-  - create
-  - patch
-  - update
-  - delete
-  - deletecollection
-
----
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  name: scylla-operator-selfsigned-issuer
-  namespace: scylla-operator
-spec:
-  selfSigned: { }
-
----
-apiVersion: policy/v1beta1
-kind: PodDisruptionBudget
-metadata:
-  name: scylla-operator
-  namespace: scylla-operator
-spec:
-  maxUnavailable: 1
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: scylla-operator
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: scylla-operator-webhook
-  namespace: scylla-operator
-spec:
-  ports:
-  - port: 443
-    targetPort: 9443
-    name: webhook
-  selector:
-    app.kubernetes.io/name: scylla-operator
-
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: scylla-operator
-  namespace: scylla-operator
-
----
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: scyllacluster-view
-  labels:
-    rbac.authorization.k8s.io/aggregate-to-admin: "true"
-    rbac.authorization.k8s.io/aggregate-to-edit: "true"
-    rbac.authorization.k8s.io/aggregate-to-view: "true"
-rules:
-- apiGroups:
-  - scylla.scylladb.com
-  resources:
-  - scyllaclusters
-  verbs:
-  - get
-  - list
-  - watch
-
----
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingWebhookConfiguration
-metadata:
-  annotations:
-    cert-manager.io/inject-ca-from: scylla-operator/scylla-operator-serving-cert
-  name: scylla-operator
-webhooks:
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: scylla-operator-webhook
-      namespace: scylla-operator
-      path: /validate-scylla-scylladb-com-v1-scyllacluster
-  admissionReviewVersions:
-  - v1
-  sideEffects: None
-  failurePolicy: Fail
-  name: webhook.scylla.scylladb.com
-  rules:
-  - apiGroups:
-    - scylla.scylladb.com
-    apiVersions:
-    - v1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - scyllaclusters
-
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  labels:
-    app.kubernetes.io/name: scylla-operator
   name: scylla-operator
   namespace: scylla-operator
+  labels:
+    app.kubernetes.io/name: scylla-operator
+    app.kubernetes.io/instance: scylla-operator
 spec:
   replicas: 2
   strategy:
@@ -2133,10 +1986,12 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: scylla-operator
+      app.kubernetes.io/instance: scylla-operator
   template:
     metadata:
       labels:
         app.kubernetes.io/name: scylla-operator
+        app.kubernetes.io/instance: scylla-operator
     spec:
       serviceAccountName: scylla-operator
       containers:
@@ -2184,6 +2039,162 @@ spec:
       - name: cert
         secret:
           defaultMode: 420
-          secretName: webhook-server-cert
+          secretName: scylla-operator-serving-cert
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: scyllacluster-edit
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+rules:
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - scyllaclusters
+  verbs:
+  - create
+  - patch
+  - update
+  - delete
+  - deletecollection
+
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: scylla-operator-selfsigned-issuer
+  namespace: scylla-operator
+spec:
+  selfSigned: {}
+
+---
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: scylla-operator
+  namespace: scylla-operator
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: scylla-operator
+      app.kubernetes.io/instance: scylla-operator
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scyllacluster-member
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - get
+  - list
+  - patch
+  - watch
+- apiGroups:
+  - "apps"
+  resources:
+  - statefulsets
+  verbs:
+  - get
+  - list
+  - patch
+  - watch
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - scyllaclusters
+  verbs:
+  - get
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scylla-operator-webhook
+  namespace: scylla-operator
+  labels:
+    app.kubernetes.io/name: scylla-operator
+    app.kubernetes.io/instance: scylla-operator
+spec:
+  ports:
+  - port: 443
+    targetPort: 9443
+    name: webhook
+  selector:
+    app.kubernetes.io/name: scylla-operator
+    app.kubernetes.io/instance: scylla-operator
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: scylla-operator
+  namespace: scylla-operator
+  labels:
+    app.kubernetes.io/name: scylla-operator
+    app.kubernetes.io/instance: scylla-operator
+
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: scylla-operator/scylla-operator-selfsigned
+  name: scylla-operator
+webhooks:
+- name: webhook.scylla.scylladb.com
+  clientConfig:
+    caBundle: Cg==
+    service:
+      name: scylla-operator-webhook
+      namespace: scylla-operator
+      path: /validate-scylla-scylladb-com-v1-scyllacluster
+  admissionReviewVersions:
+  - v1
+  sideEffects: None
+  failurePolicy: Fail
+  rules:
+  - apiGroups:
+    - scylla.scylladb.com
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - scyllaclusters
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: scyllacluster-view
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+rules:
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - scyllaclusters
+  verbs:
+  - get
+  - list
+  - watch
 
 ---

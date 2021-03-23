@@ -3,6 +3,9 @@ kind: Service
 metadata:
   name: scylla-operator-webhook
   namespace: scylla-operator
+  labels:
+    app.kubernetes.io/name: scylla-operator
+    app.kubernetes.io/instance: scylla-operator
 spec:
   ports:
   - port: 443
@@ -10,3 +13,4 @@ spec:
     name: webhook
   selector:
     app.kubernetes.io/name: scylla-operator
+    app.kubernetes.io/instance: scylla-operator

@@ -3,6 +3,7 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/name: scylla-manager
+    app.kubernetes.io/instance: scylla-manager
   name: scylla-manager
   namespace: scylla-manager
 spec:
@@ -17,3 +18,4 @@ spec:
     targetPort: 5090
   selector:
     app.kubernetes.io/name: scylla-manager
+    app.kubernetes.io/instance: scylla-manager

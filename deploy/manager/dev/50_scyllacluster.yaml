@@ -1,0 +1,28 @@
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: scylla-manager-cluster
+  namespace: scylla-manager
+spec:
+  version: 4.3.2
+  agentVersion: 2.2.4
+  repository: docker.io/scylladb/scylla
+  agentRepository: docker.io/scylladb/scylla-manager-agent
+  developerMode: true
+  cpuset: false
+  datacenter:
+    name: manager-dc
+    racks:
+      - name: manager-rack
+        scyllaConfig: scylla-config
+        scyllaAgentConfig: scylla-agent-config
+        members: 1
+        storage:
+          capacity: 5Gi
+        resources:
+          limits:
+            cpu: 200m
+            memory: 200Mi
+          requests:
+            cpu: 10m
+            memory: 100Mi

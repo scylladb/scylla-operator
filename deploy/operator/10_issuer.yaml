@@ -4,4 +4,4 @@ metadata:
   name: scylla-operator-selfsigned-issuer
   namespace: scylla-operator
 spec:
-  selfSigned: { }
+  selfSigned: {}

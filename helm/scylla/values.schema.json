@@ -123,26 +123,22 @@
                         "type": "object",
                         "properties": {
                             "limits": {
-                                "type": "object",
-                                "properties": {
-                                    "cpu": {
-                                        "type": "integer"
-                                    },
-                                    "memory": {
-                                        "type": "string"
-                                    }
-                                }
+                                "additionalProperties": {
+                                    "anyOf": [
+                                        {"type": "string"},
+                                        {"type": "integer"}
+                                    ]
+                                },
+                                "type": "object"
                             },
                             "requests": {
-                                "type": "object",
-                                "properties": {
-                                    "cpu": {
-                                        "type": "integer"
-                                    },
-                                    "memory": {
-                                        "type": "string"
-                                    }
-                                }
+                                "additionalProperties": {
+                                    "anyOf": [
+                                        {"type": "string"},
+                                        {"type": "integer"}
+                                    ]
+                                },
+                                "type": "object"
                             }
                         }
                     },
@@ -150,26 +146,22 @@
                         "type": "object",
                         "properties": {
                             "limits": {
-                                "type": "object",
-                                "properties": {
-                                    "cpu": {
-                                        "type": "integer"
-                                    },
-                                    "memory": {
-                                        "type": "string"
-                                    }
-                                }
+                                "additionalProperties": {
+                                    "anyOf": [
+                                        {"type": "string"},
+                                        {"type": "integer"}
+                                    ]
+                                },
+                                "type": "object"
                             },
                             "requests": {
-                                "type": "object",
-                                "properties": {
-                                    "cpu": {
-                                        "type": "integer"
-                                    },
-                                    "memory": {
-                                        "type": "string"
-                                    }
-                                }
+                                "additionalProperties": {
+                                    "anyOf": [
+                                        {"type": "string"},
+                                        {"type": "integer"}
+                                    ]
+                                },
+                                "type": "object"
                             }
                         }
                     },

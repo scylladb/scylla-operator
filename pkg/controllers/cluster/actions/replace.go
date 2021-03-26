@@ -213,6 +213,9 @@ func (a *RackReplaceNode) replaceNode(ctx context.Context, state *State, member 
 		fmt.Sprintf("Rack %q removed %q Service", r.Name, member.Name),
 	)
 
+	// Give StatefulSet controller a chance to see the PVC was deleted before deleting the pod.
+	time.Sleep(10 * time.Second)
+
 	a.Logger.Info(ctx, "Deleting member Pod", "member", member.Name)
 	if err := cc.Delete(ctx, pod, client.GracePeriodSeconds(0)); err != nil {
 		return errors.Wrap(err, "delete pod")

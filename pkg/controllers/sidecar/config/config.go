@@ -210,8 +210,10 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		return nil, errors.WithStack(err)
 	}
 
+	// Listen on all interfaces so users or a service mesh can use localhost.
+	listenAddress := "0.0.0.0"
 	args := map[string]*string{
-		"listen-address":        &m.IP,
+		"listen-address":        &listenAddress,
 		"broadcast-address":     &m.StaticIP,
 		"broadcast-rpc-address": &m.StaticIP,
 		"seeds":                 pointer.StringPtr(strings.Join(seeds, ",")),

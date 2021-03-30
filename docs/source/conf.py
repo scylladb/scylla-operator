@@ -25,7 +25,8 @@ extensions = [
     'sphinx.ext.extlinks',
     'sphinx_scylladb_theme',
     'sphinx_multiversion',
-    'recommonmark'
+    'recommonmark',
+    'sphinx_markdown_tables'
 ]
 
 # The suffix(es) of source filenames.

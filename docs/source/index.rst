@@ -14,6 +14,7 @@ Scylla Operator Documentation
    monitoring
    node_operations
    upgrade
+   releases
    scylla_cluster_crd
    contributing
 
@@ -51,5 +52,6 @@ Currently it supports:
 * :doc:`Setting up Monitoring using Prometheus and Grafana <monitoring>`
 * :doc:`Node operations <node_operations>`
 * :doc:`Upgrade procedures <upgrade>`
+* :doc:`Releases <releases>`
 * :doc:`Scylla Cluster Custom Resource Definition (CRD) <scylla_cluster_crd>`
 * :doc:`Contributing to the Scylla Operator Project <contributing>`

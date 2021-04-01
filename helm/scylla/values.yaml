@@ -19,6 +19,8 @@ serviceAccount:
   create: true
   # Annotations to add to the service account
   annotations: {}
+  # Map of secrets used to pull images from secured docker registry
+  imagePullSecrets: {}
 
 alternator:
   # Allows to enable Alternator (DynamoDB compatible API) frontend

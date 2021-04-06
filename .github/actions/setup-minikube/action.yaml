@@ -28,9 +28,3 @@ runs:
       sudo cat /root/.kube/config > ~/.kube/config
       sudo minikube version
       kubectl version
-  - name: Install dynamic volume provisioner
-    shell: bash
-    run: |
-      set -x
-      kubectl apply -n default -fhttps://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/raw/0b6059d/deployment/kubernetes/example/default_example_{provisioner_generated,service,storageclass}.yaml
-      kubectl -n default rollout status ds/local-volume-provisioner

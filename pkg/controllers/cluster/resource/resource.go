@@ -355,7 +355,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, sidecarI
 		},
 	}
 
-	sysctlContainer := sysctlInitContainer(c.Spec.Sysctls)
+	sysctlContainer := sysctlInitContainer(c.Spec.Sysctls, sidecarImage)
 	if sysctlContainer != nil {
 		sts.Spec.Template.Spec.InitContainers = append(sts.Spec.Template.Spec.InitContainers, *sysctlContainer)
 	}
@@ -412,14 +412,14 @@ func containerPorts(c *scyllav1.ScyllaCluster) []corev1.ContainerPort {
 	return ports
 }
 
-func sysctlInitContainer(sysctls []string) *corev1.Container {
+func sysctlInitContainer(sysctls []string, image string) *corev1.Container {
 	if len(sysctls) == 0 {
 		return nil
 	}
 	opt := true
 	return &corev1.Container{
 		Name:            "sysctl-buddy",
-		Image:           "busybox:1.31.1",
+		Image:           image,
 		ImagePullPolicy: "IfNotPresent",
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &opt,

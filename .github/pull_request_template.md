@@ -6,7 +6,3 @@ Thank you for contributing to the Scylla Operator! -->
 
 **Which issue is resolved by this Pull Request:**
 Resolves #
-
-**Checklist:**
-- [ ] Documentation has been updated, if necessary.
-- [ ] Image has been built (`make docker-build`) on the last commit.

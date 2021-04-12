@@ -18,7 +18,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllers/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/util/slices"
-	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
@@ -127,7 +126,9 @@ func TestMergeYAMLs(t *testing.T) {
 
 func TestAllowedCPUs(t *testing.T) {
 	cpusAllowed, err := getCPUsAllowedList("./procstatus")
-	require.Equal(t, err, nil)
+	if err != nil {
+		t.Error(err)
+	}
 	t.Log(cpusAllowed)
 }
 

@@ -5,7 +5,6 @@ import (
 
 	v1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -70,9 +69,13 @@ func TestCheckValues(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			err := v1.CheckValues(test.obj)
 			if test.allowed {
-				require.NoError(t, err, "Wrong value returned from checkValues function. Message: '%s'", err)
+				if err != nil {
+					t.Errorf("Wrong value returned from checkValues function. Message: '%s'", err)
+				}
 			} else {
-				require.Error(t, err, "Wrong value returned from checkValues function. Message: '%s'", err)
+				if err == nil {
+					t.Errorf("Wrong value returned from checkValues function. Message: '%s'", err)
+				}
 			}
 		})
 	}
@@ -152,9 +155,13 @@ func TestCheckTransitions(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			err := v1.CheckTransitions(test.old, test.new)
 			if test.allowed {
-				require.NoError(t, err, "Wrong value returned from checkTransitions function. Message: '%s'", err)
+				if err != nil {
+					t.Errorf("Wrong value returned from checkTransitions function. Message: '%s'", err)
+				}
 			} else {
-				require.Error(t, err, "Wrong value returned from checkTransitions function. Message: '%s'", err)
+				if err == nil {
+					t.Errorf("Wrong value returned from checkTransitions function. Message: '%s'", err)
+				}
 			}
 		})
 	}

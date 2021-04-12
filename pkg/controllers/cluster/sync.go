@@ -167,7 +167,11 @@ func (cc *ClusterReconciler) nextAction(ctx context.Context, cluster *scyllav1.S
 }
 
 func (cc *ClusterReconciler) sidecarUpdateNeeded(ctx context.Context, rack scyllav1.RackSpec, cluster *scyllav1.ScyllaCluster) (bool, corev1.Container, error) {
-	desiredSts := resource.StatefulSetForRack(rack, cluster, cc.OperatorImage)
+	desiredSts, err := resource.StatefulSetForRack(rack, cluster, cc.OperatorImage)
+	if err != nil {
+		return false, corev1.Container{}, err
+	}
+
 	desiredIdx, err := naming.FindSidecarInjectorContainer(desiredSts.Spec.Template.Spec.InitContainers)
 	if err != nil {
 		return false, corev1.Container{}, errors.Wrap(err, "find sidecar container in desired sts")

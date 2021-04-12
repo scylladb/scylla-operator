@@ -16,7 +16,10 @@ func TestUpgradeStatefulSetScyllaImage(t *testing.T) {
 	ctx := context.Background()
 	cluster := unit.NewSingleRackCluster(3)
 	rack := cluster.Spec.Datacenter.Racks[0]
-	sts := resource.StatefulSetForRack(rack, cluster, "sidecar")
+	sts, err := resource.StatefulSetForRack(rack, cluster, "sidecar")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	tests := []struct {
 		name          string

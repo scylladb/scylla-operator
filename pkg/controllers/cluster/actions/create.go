@@ -39,9 +39,13 @@ func (a *RackCreate) Name() string {
 
 func (a *RackCreate) Execute(ctx context.Context, s *State) error {
 	r, c := a.Rack, a.Cluster
-	newSts := resource.StatefulSetForRack(r, c, a.OperatorImage)
+	newSts, err := resource.StatefulSetForRack(r, c, a.OperatorImage)
+	if err != nil {
+		return err
+	}
+
 	existingSts := &appsv1.StatefulSet{}
-	err := s.Get(ctx, naming.NamespacedNameForObject(newSts), existingSts)
+	err = s.Get(ctx, naming.NamespacedNameForObject(newSts), existingSts)
 	// Check if StatefulSet already exists
 	// TODO: Check this logic
 	if err == nil {

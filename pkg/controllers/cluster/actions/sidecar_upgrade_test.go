@@ -35,7 +35,10 @@ func TestSidecarUpgradeAction(t *testing.T) {
 
 	cluster := unit.NewMultiRackCluster(1)
 	rack := cluster.Spec.Datacenter.Racks[0]
-	rackSts := resource.StatefulSetForRack(rack, cluster, preUpdateImage)
+	rackSts, err := resource.StatefulSetForRack(rack, cluster, preUpdateImage)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	updatedContainer := corev1.Container{
 		Name:    naming.SidecarInjectorContainerName,

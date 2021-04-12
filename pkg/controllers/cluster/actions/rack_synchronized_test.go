@@ -48,7 +48,10 @@ func TestRackSynchronizedAction_SubActionUpdatesRack(t *testing.T) {
 	})
 
 	cluster := unit.NewMultiRackCluster(1)
-	firstRack := resource.StatefulSetForRack(cluster.Spec.Datacenter.Racks[0], cluster, "image")
+	firstRack, err := resource.StatefulSetForRack(cluster.Spec.Datacenter.Racks[0], cluster, "image")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	objects := []runtime.Object{firstRack}
 	kubeClient := fake.NewSimpleClientset(objects...)
@@ -94,11 +97,18 @@ func TestRackSynchronizedAction_RackAreUpgradedInSequence(t *testing.T) {
 	})
 
 	cluster := unit.NewMultiRackCluster(1, 1)
-	firstRack := resource.StatefulSetForRack(cluster.Spec.Datacenter.Racks[0], cluster, "image")
+	firstRack, err := resource.StatefulSetForRack(cluster.Spec.Datacenter.Racks[0], cluster, "image")
+	if err != nil {
+		t.Fatal(err)
+	}
 	firstRackReady := firstRack.DeepCopy()
 	firstRackReady.Status.ObservedGeneration = firstRackReady.Generation
 	firstRackReady.Status.ReadyReplicas = cluster.Spec.Datacenter.Racks[0].Members
-	secondRack := resource.StatefulSetForRack(cluster.Spec.Datacenter.Racks[1], cluster, "image")
+
+	secondRack, err := resource.StatefulSetForRack(cluster.Spec.Datacenter.Racks[1], cluster, "image")
+	if err != nil {
+		t.Fatal(err)
+	}
 	secondRackReady := secondRack.DeepCopy()
 	secondRackReady.Status.ObservedGeneration = secondRackReady.Generation
 	secondRackReady.Status.ReadyReplicas = cluster.Spec.Datacenter.Racks[1].Members

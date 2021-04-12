@@ -68,7 +68,10 @@ func TestClusterStatus_SourceOfRackStatus(t *testing.T) {
 		},
 	}
 
-	rackSts := resource.StatefulSetForRack(rack, cluster, "image")
+	rackSts, err := resource.StatefulSetForRack(rack, cluster, "image")
+	if err != nil {
+		t.Fatal(err)
+	}
 	rackSts.Spec.Replicas = pointer.Int32Ptr(123)
 	rackSts.Status = appsv1.StatefulSetStatus{
 		Replicas:      2,

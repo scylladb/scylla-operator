@@ -111,13 +111,19 @@ func memberServicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 	return ports
 }
 
-func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, sidecarImage string) *appsv1.StatefulSet {
+func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, sidecarImage string) (*appsv1.StatefulSet, error) {
 	rackLabels := naming.RackLabels(r, c)
 	placement := r.Placement
 	if placement == nil {
 		placement = &scyllav1.PlacementSpec{}
 	}
 	opt := true
+
+	storageCapacity, err := resource.ParseQuantity(r.Storage.Capacity)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse '%v': %v", r.Storage.Capacity, err)
+	}
+
 	sts := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            naming.StatefulSetNameForRack(r, c),
@@ -346,7 +352,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, sidecarI
 						StorageClassName: r.Storage.StorageClassName,
 						Resources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{
-								corev1.ResourceStorage: resource.MustParse(r.Storage.Capacity),
+								corev1.ResourceStorage: storageCapacity,
 							},
 						},
 					},
@@ -368,7 +374,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, sidecarI
 			sts.Spec.Template.Spec.Volumes, *Volume.DeepCopy())
 	}
 	sts.Spec.Template.Spec.Containers = append(sts.Spec.Template.Spec.Containers, agentContainer(r, c))
-	return sts
+	return sts, nil
 }
 
 func containerPorts(c *scyllav1.ScyllaCluster) []corev1.ContainerPort {

@@ -23,7 +23,10 @@ func TestNextAction(t *testing.T) {
 
 	members := int32(3)
 	cluster := unit.NewSingleRackCluster(members)
-	rack := resource.StatefulSetForRack(cluster.Spec.Datacenter.Racks[0], cluster, operatorImage)
+	rack, err := resource.StatefulSetForRack(cluster.Spec.Datacenter.Racks[0], cluster, operatorImage)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	clusterNewRackCreate := cluster.DeepCopy()
 	clusterNewRackCreate.Spec.Datacenter.Racks = append(

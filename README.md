@@ -14,6 +14,8 @@
 ![](logo.png)
 
 ## Deploying the Operator
+The current version of scylla-operator requires Kubernetes >= 1.19.
+
 ### GitOps
 Kubernetes manifests are located in the `deploy/` folder. To deploy the operator manually using Kubernetes manifests or to integrate it into your GitOps flow please follow [these instructions](./deploy/README.md). 
 

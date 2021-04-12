@@ -161,7 +161,7 @@ func loadProperties(fileName string, logger log.Logger) *properties.Properties {
 	return p
 }
 
-var scyllaArgumentsRegexp = regexp.MustCompile(`--([^= ]+)(="[^"]+"|=[^ ]+|[ \t]+"[^"]+"|[ \t]+[^-][^-]?[^ ]*|)`)
+var scyllaArgumentsRegexp = regexp.MustCompile(`--([^= ]+)(="[^"]+"|=[^ ]+|[ \t]+"[^"]+"|[ \t]+[^ -]+|[ \t]+-?\d*\.?\d+[^ -]+|)`)
 
 func convertScyllaArguments(scyllaArguments string) map[string]string {
 	output := make(map[string]string)

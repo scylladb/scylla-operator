@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -201,72 +202,111 @@ func writeTempFile(t *testing.T, namePattern, content string) string {
 	return tmp.Name()
 }
 
-func TestScyllaArgumentsAllTypesInOne(t *testing.T) {
-	argumentsMap := convertScyllaArguments("--arg1 --arg2 val --arg3=val --arg4 --arg5 \"val\" --arg6=\"val\" --arg7")
-	require.Equal(t, "", argumentsMap["arg1"])
-	require.Equal(t, "val", argumentsMap["arg2"])
-	require.Equal(t, "val", argumentsMap["arg3"])
-	require.Equal(t, "", argumentsMap["arg4"])
-	require.Equal(t, "\"val\"", argumentsMap["arg5"])
-	require.Equal(t, "\"val\"", argumentsMap["arg6"])
-	require.Equal(t, "", argumentsMap["arg7"])
-	require.Equal(t, "", argumentsMap["not_existing_key"])
-	require.Equal(t, 7, len(argumentsMap))
-}
+func TestScyllaArguments(t *testing.T) {
+	ts := []struct {
+		Name         string
+		Args         string
+		ExpectedArgs map[string]string
+	}{
+		{
+			Name: "all combinations in one",
+			Args: "--arg1 --arg2=val2 --arg3 \"val3\" --arg4=\"val4\" --arg5=-1.23 --arg6 -123 --arg7 123",
+			ExpectedArgs: map[string]string{
+				"arg1": "",
+				"arg2": "val2",
+				"arg3": "\"val3\"",
+				"arg4": "\"val4\"",
+				"arg5": "-1.23",
+				"arg6": "-123",
+				"arg7": "123",
+			},
+		},
+		{
+			Name:         "single empty flag",
+			Args:         "--arg",
+			ExpectedArgs: map[string]string{"arg": ""},
+		},
+		{
+			Name:         "single flag",
+			Args:         "--arg val",
+			ExpectedArgs: map[string]string{"arg": "val"},
+		},
+		{
+			Name:         "integer value",
+			Args:         "--arg 123",
+			ExpectedArgs: map[string]string{"arg": "123"},
+		},
+		{
+			Name:         "negative integer value",
+			Args:         "--arg -123",
+			ExpectedArgs: map[string]string{"arg": "-123"},
+		},
+		{
+			Name:         "float value",
+			Args:         "--arg 1.23",
+			ExpectedArgs: map[string]string{"arg": "1.23"},
+		},
+		{
+			Name:         "negative float value",
+			Args:         "--arg -1.23",
+			ExpectedArgs: map[string]string{"arg": "-1.23"},
+		},
+		{
+			Name:         "negative float value and string parameter",
+			Args:         "--arg1 -1.23 --arg2 val",
+			ExpectedArgs: map[string]string{"arg1": "-1.23", "arg2": "val"},
+		},
+		{
+			Name:         "bool value",
+			Args:         "--arg true",
+			ExpectedArgs: map[string]string{"arg": "true"},
+		},
+		{
+			Name:         "flag quoted",
+			Args:         "--arg \"val\"",
+			ExpectedArgs: map[string]string{"arg": "\"val\""},
+		},
+		{
+			Name:         "flag quoted with equal sign",
+			Args:         "--arg=\"val\"",
+			ExpectedArgs: map[string]string{"arg": "\"val\""},
+		},
+		{
+			Name:         "empty",
+			Args:         "",
+			ExpectedArgs: map[string]string{},
+		},
+		{
+			Name: "garbage inside",
+			Args: "--arg1 val asdasdasdas --arg2=val",
+			ExpectedArgs: map[string]string{
+				"arg1": "val",
+				"arg2": "val",
+			},
+		},
+		{
+			Name: "mixed types",
+			Args: "--skip-wait-for-gossip-to-settle 0 --ring-delay-ms 5000 --compaction-enforce-min-threshold true --shadow-round-ms 1",
+			ExpectedArgs: map[string]string{
+				"skip-wait-for-gossip-to-settle":   "0",
+				"ring-delay-ms":                    "5000",
+				"compaction-enforce-min-threshold": "true",
+				"shadow-round-ms":                  "1",
+			},
+		},
+	}
 
-func TestScyllaArgumentsAllTypesInOneWithGarbage(t *testing.T) {
-	argumentsMap := convertScyllaArguments("--arg1 --arg2 val --arg3=val asdasdasdas --arg4 --arg5 \"val\" --arg6=\"val\" --arg7")
-	require.Equal(t, "", argumentsMap["arg1"])
-	require.Equal(t, "val", argumentsMap["arg2"])
-	require.Equal(t, "val", argumentsMap["arg3"])
-	require.Equal(t, "", argumentsMap["arg4"])
-	require.Equal(t, "\"val\"", argumentsMap["arg5"])
-	require.Equal(t, "\"val\"", argumentsMap["arg6"])
-	require.Equal(t, "", argumentsMap["arg7"])
-	require.Equal(t, "", argumentsMap["not_existing_key"])
-	require.Equal(t, 7, len(argumentsMap))
-}
+	for i := range ts {
+		test := ts[i]
+		t.Run(test.Name, func(t *testing.T) {
+			t.Parallel()
 
-func TestScyllaArgumentsSingleFlag(t *testing.T) {
-	t.Log("Single flag - test started")
-	argumentsMap := convertScyllaArguments("--arg1")
-	require.Equal(t, "", argumentsMap["arg1"])
-	require.Equal(t, "", argumentsMap["not_existing_key"])
-	require.Equal(t, 1, len(argumentsMap))
-}
-
-func TestScyllaArgumentsSingleArgument(t *testing.T) {
-	argumentsMap := convertScyllaArguments("--arg1 val")
-	require.Equal(t, "val", argumentsMap["arg1"])
-	require.Equal(t, "", argumentsMap["not_existing_key"])
-	require.Equal(t, 1, len(argumentsMap))
-}
-
-func TestScyllaArgumentsSingleArgumemt2(t *testing.T) {
-	argumentsMap := convertScyllaArguments("--arg1=val")
-	require.Equal(t, "val", argumentsMap["arg1"])
-	require.Equal(t, "", argumentsMap["not_existing_key"])
-	require.Equal(t, 1, len(argumentsMap))
-}
-
-func TestScyllaArgumentsSingleArgumemtQuoted(t *testing.T) {
-	argumentsMap := convertScyllaArguments("--arg1 \"val\"")
-	require.Equal(t, "\"val\"", argumentsMap["arg1"])
-	require.Equal(t, "", argumentsMap["not_existing_key"])
-	require.Equal(t, 1, len(argumentsMap))
-}
-
-func TestScyllaArgumentsSingleArgumemt2Quoted(t *testing.T) {
-	argumentsMap := convertScyllaArguments("--arg1=\"val\"")
-	require.Equal(t, "\"val\"", argumentsMap["arg1"])
-	require.Equal(t, "", argumentsMap["not_existing_key"])
-	require.Equal(t, 1, len(argumentsMap))
-}
-
-func TestScyllaArgumentsEmpty(t *testing.T) {
-	argumentsMap := convertScyllaArguments("")
-	require.Equal(t, "", argumentsMap["not_existing_key"])
-	require.Equal(t, 0, len(argumentsMap))
+			argumentsMap := convertScyllaArguments(test.Args)
+			if !reflect.DeepEqual(test.ExpectedArgs, argumentsMap) {
+				t.Errorf("expected %+v, got %+v", test.ExpectedArgs, argumentsMap)
+			}
+		})
+	}
 }
 
 func TestReplaceNodeLabelInMemberService(t *testing.T) {

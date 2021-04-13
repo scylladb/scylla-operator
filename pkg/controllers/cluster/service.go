@@ -42,17 +42,30 @@ func (cc *ClusterReconciler) syncMemberServices(ctx context.Context, c *scyllav1
 		if err != nil {
 			return errors.Wrapf(err, "listing pods for rack %s failed", r.Name)
 		}
+
+		memberCount := r.Members
+		maxIndex := memberCount - 1
+
 		for _, pod := range podlist.Items {
 			memberService := resource.MemberServiceForPod(&pod, c)
-			op, err := controllerutil.CreateOrUpdate(ctx, cc.Client, memberService, serviceMutateFn(ctx, memberService, cc.Client))
+			svcIndex, err := naming.IndexFromName(memberService.Name)
 			if err != nil {
-				return errors.Wrapf(err, "error syncing member service %s", memberService.Name)
+				return errors.WithStack(err)
 			}
-			switch op {
-			case controllerutil.OperationResultCreated:
-				cc.Logger.Info(ctx, "Member service created", "member", memberService.Name, "labels", memberService.Labels)
-			case controllerutil.OperationResultUpdated:
-				cc.Logger.Info(ctx, "Member service updated", "member", memberService.Name, "labels", memberService.Labels)
+
+			if svcIndex <= maxIndex {
+				op, err := controllerutil.CreateOrUpdate(ctx, cc.Client, memberService, serviceMutateFn(ctx, memberService, cc.Client))
+				if err != nil {
+					return errors.Wrapf(err, "error syncing member service %s", memberService.Name)
+				}
+				switch op {
+				case controllerutil.OperationResultCreated:
+					cc.Logger.Info(ctx, "Member service created", "member", memberService.Name, "labels", memberService.Labels)
+				case controllerutil.OperationResultUpdated:
+					cc.Logger.Info(ctx, "Member service updated", "member", memberService.Name, "labels", memberService.Labels)
+				}
+			} else {
+				cc.Logger.Debug(ctx, "Member service not created as index greater than max members", "svcIndex", svcIndex, "rackName", r.Name, "podName", pod.Name)
 			}
 		}
 	}

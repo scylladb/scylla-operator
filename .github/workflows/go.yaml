@@ -144,9 +144,10 @@ jobs:
     - name: Build image
       run: |
         set -x
-        podman build --squash -f ./Dockerfile -t '${{ env.image_repo_ref }}:ci' .
-        podman images '${{ env.image_repo_ref }}:ci'
-        podman save '${{ env.image_repo_ref }}:ci' | lz4 - ~/operatorimage.tar.lz4
+        # Avoid podman permission error on Ubuntu 20.04 by using it as root, although it shouldn't be needed.
+        sudo podman build --squash -f ./Dockerfile -t '${{ env.image_repo_ref }}:ci' .
+        sudo podman images '${{ env.image_repo_ref }}:ci'
+        sudo podman save '${{ env.image_repo_ref }}:ci' | lz4 - ~/operatorimage.tar.lz4
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:

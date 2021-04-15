@@ -22,13 +22,11 @@ set -euExo pipefail
 
 debian_packages=(
     ca-certificates
-    etcd
     git
     make
 )
 
 fedora_packages=(
-    etcd
     git-core
     golang-bin
     make
@@ -39,9 +37,20 @@ fedora_packages=(
     moby-engine
 )
 
+arch_packages=(
+    git
+    make
+    go
+)
+
 if [ "$ID" = "fedora" ]
 then
     sudo dnf install -y "${fedora_packages[@]}"
+fi
+
+if [ "$ID" = "arch" ]
+then
+    sudo pacman -S --noconfirm --needed "${arch_packages[@]}"
 fi
 
 if [ "$ID" = "ubuntu" ] || [ "$ID" = "debian" ]
@@ -63,8 +72,11 @@ fi
 
 go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1
 
-mkdir -p tmp
-cd tmp
+GOPATH="$(go env GOPATH)"
+TMPDIR="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR"' EXIT
+
+cd "$TMPDIR"
 
 # Kubernetes commands don't work with "go get"
 # https://github.com/kubernetes/kubernetes/issues/79384
@@ -73,11 +85,13 @@ cd kubernetes
 # v1.19.x requires go 1.15.0
 git checkout v1.18.9
 make WHAT=cmd/kube-apiserver
-cp _output/bin/kube-apiserver $(go env GOPATH)/bin
+cp _output/bin/kube-apiserver "$GOPATH"/bin
 cd ..
 
-cd ..
-rm -rf tmp
-
-# KUBEBUILDER_ASSETS has to be a single directory
-cp /usr/bin/etcd $(go env GOPATH)/bin
+# Build etcd
+git clone https://github.com/etcd-io/etcd.git
+cd etcd
+git checkout v3.4.15
+go mod vendor
+./build
+cp ./bin/etcd "$GOPATH"/bin

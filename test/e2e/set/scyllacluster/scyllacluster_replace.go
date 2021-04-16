@@ -26,7 +26,7 @@ var _ = g.Describe("ScyllaCluster replace", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimout)
 		defer cancel()
 
-		sc := scyllaclusterfixture.BasicScyllaCluster.ReadOrFail()
+		sc := scyllaclusterfixture.BasicFastScyllaCluster.ReadOrFail()
 		sc.Spec.Datacenter.Racks[0].Members = 3
 
 		framework.By("Creating a ScyllaCluster")

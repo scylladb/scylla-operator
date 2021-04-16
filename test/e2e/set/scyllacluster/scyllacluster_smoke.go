@@ -4,31 +4,24 @@ package scyllacluster
 
 import (
 	"context"
-	"fmt"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
-	"github.com/scylladb/scylla-operator/pkg/naming"
 	scyllaclusterfixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scyllacluster"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
-	"github.com/scylladb/scylla-operator/test/e2e/tools"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var _ = g.Describe("ScyllaCluster sysctl", func() {
+var _ = g.Describe("ScyllaCluster smoke tests", func() {
 	defer g.GinkgoRecover()
 
 	f := framework.NewFramework("scyllacluster")
 
-	g.It("should set container sysctl", func() {
+	g.It("basic ScyllaCluster deployment", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimout)
 		defer cancel()
 
-		sc := scyllaclusterfixture.BasicFastScyllaCluster.ReadOrFail()
-		fsAIOMaxNRKey := "fs.aio-max-nr"
-		fsAIOMaxNRValue := 2424242 // A unique value.
-		o.Expect(sc.Spec.Sysctls).To(o.BeEmpty())
-		sc.Spec.Sysctls = []string{fmt.Sprintf("%s=%d", fsAIOMaxNRKey, fsAIOMaxNRValue)}
+		sc := scyllaclusterfixture.BasicScyllaCluster.ReadOrFail()
 
 		framework.By("Creating a ScyllaCluster")
 		err := framework.SetupScyllaClusterSA(ctx, f.KubeClient().CoreV1(), f.KubeClient().RbacV1(), f.Namespace(), sc.Name)
@@ -44,20 +37,5 @@ var _ = g.Describe("ScyllaCluster sysctl", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
-
-		framework.By("Checking the sysctl value")
-		podName := fmt.Sprintf("%s-0", naming.StatefulSetNameForRack(sc.Spec.Datacenter.Racks[0], sc))
-		stdout, stderr, err := tools.PodExec(
-			f.KubeClient().CoreV1().RESTClient(),
-			f.ClientConfig(),
-			f.Namespace(),
-			podName,
-			"scylla",
-			[]string{"/usr/sbin/sysctl", "--values", fsAIOMaxNRKey},
-			nil,
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(stderr).To(o.BeEmpty())
-		o.Expect(stdout).To(o.Equal(fmt.Sprintf("%d\n", fsAIOMaxNRValue)))
 	})
 })

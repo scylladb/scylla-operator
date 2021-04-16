@@ -11,6 +11,10 @@ import (
 var (
 	//go:embed "basic.scyllacluster.yaml"
 	BasicScyllaCluster ScyllaCluster
+
+	// BasicFastScyllaCluster contain several Scylla parameters which speed up Scylla bootstrapping.
+	//go:embed "basic-fast.scyllacluster.yaml"
+	BasicFastScyllaCluster ScyllaCluster
 )
 
 type ScyllaCluster []byte

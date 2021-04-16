@@ -22,7 +22,7 @@ var _ = g.Describe("ScyllaCluster evictions", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimout)
 		defer cancel()
 
-		sc := scyllaclusterfixture.BasicScyllaCluster.ReadOrFail()
+		sc := scyllaclusterfixture.BasicFastScyllaCluster.ReadOrFail()
 		sc.Spec.Datacenter.Racks[0].Members = 2
 
 		framework.By("Creating a ScyllaCluster")

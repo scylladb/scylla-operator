@@ -195,9 +195,9 @@ update-deps-overrides:
 	cp "$(tmp_dir)"/{updated,current}/deps.diff
 .PHONY: update-deps-overrides
 
-verify-helm:
+verify-helm-lint:
 	@$(foreach chart,$(HELM_CHARTS),$(call lint-helm,$(chart)))
-.PHONY: verify-helm
+.PHONY: verify-helm-lint
 
 define run-codegen
 	GOPATH=$(GOPATH) $(GO) run "$(CODEGEN_PKG)/cmd/$(1)" --go-header-file='$(CODEGEN_HEADER_FILE)' $(2)
@@ -312,6 +312,28 @@ define generate-manager-manifests-dev
 	$(YQ) eval -i -P '.spec.cpuset = false | .spec.datacenter.racks[0].resources = {"limits": {"cpu": "200m", "memory": "200Mi"}, "requests": {"cpu": "10m", "memory": "100Mi"}}' '$(1)'/50_scyllacluster.yaml
 endef
 
+# $1 - chart dir
+# $2 - default app version
+define set-default-app-version
+	$(YQ) eval -i -P '.appVersion = "$(2)"' '$(1)'/Chart.yaml
+endef
+
+update-helm-charts:
+	$(call set-default-app-version,helm/scylla-operator,$(IMAGE_TAG))
+	$(call set-default-app-version,helm/scylla-manager,$(IMAGE_TAG))
+.PHONY: update-helm-charts
+
+verify-helm-charts: tmp_dir:=$(shell mktemp -d)
+verify-helm-charts:
+	cp -r helm/scylla-{operator,manager} '$(tmp_dir)'
+
+	$(call set-default-app-version,$(tmp_dir)/scylla-operator,$(IMAGE_TAG))
+	$(diff) -r '$(tmp_dir)'/scylla-operator helm/scylla-operator
+
+	$(call set-default-app-version,$(tmp_dir)/scylla-manager,$(IMAGE_TAG))
+	$(diff) -r '$(tmp_dir)'/scylla-manager helm/scylla-manager
+.PHONY: verify-helm-charts
+
 update-deploy: tmp_dir:=$(shell mktemp -d)
 update-deploy:
 	$(call generate-operator-manifests,helm/deploy/operator.yaml,deploy/operator,$(tmp_dir))
@@ -370,10 +392,10 @@ verify-codegen:
 	$(call run-informer-gen,--verify-only)
 .PHONY: verify-codegen
 
-verify: verify-gofmt verify-codegen verify-crd verify-examples verify-deploy verify-govet verify-helm
+verify: verify-gofmt verify-codegen verify-crd verify-helm-charts verify-deploy verify-examples verify-govet verify-helm-lint
 .PHONY: verify
 
-update: update-gofmt update-codegen update-crd update-examples update-deploy
+update: update-gofmt update-codegen update-crd update-helm-charts update-deploy update-examples
 .PHONY: update
 
 test-unit:

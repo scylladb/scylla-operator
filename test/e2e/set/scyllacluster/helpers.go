@@ -3,11 +3,14 @@ package scyllacluster
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/scylladb/go-log"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"go.uber.org/zap"
@@ -38,6 +41,15 @@ func contextForRollout(parent context.Context, sc *scyllav1.ScyllaCluster) (cont
 	return context.WithTimeout(parent, rolloutTimeoutForScyllaCluster(sc))
 }
 
+func syncTimeoutForScyllaCluster(sc *scyllav1.ScyllaCluster) time.Duration {
+	tasks := int64(len(sc.Spec.Repairs) + len(sc.Spec.Backups))
+	return baseManagerSyncTimeout + time.Duration(tasks)*managerTaskSyncTimeout
+}
+
+func contextForManagerSync(parent context.Context, sc *scyllav1.ScyllaCluster) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(parent, syncTimeoutForScyllaCluster(sc))
+}
+
 func scyllaClusterRolledOut(sc *scyllav1.ScyllaCluster) (bool, error) {
 	// TODO: check observed generation when it's added.
 	// TODO: this should be more straight forward - we need better status (conditions, aggregated state, ...)
@@ -59,7 +71,7 @@ func scyllaClusterRolledOut(sc *scyllav1.ScyllaCluster) (bool, error) {
 	return true, nil
 }
 
-func waitForScyllaClusterState(ctx context.Context, client scyllav1client.ScyllaV1Interface, namespace string, name string, condition func(sc *scyllav1.ScyllaCluster) (bool, error)) (*scyllav1.ScyllaCluster, error) {
+func waitForScyllaClusterState(ctx context.Context, client scyllav1client.ScyllaV1Interface, namespace string, name string, conditions ...func(sc *scyllav1.ScyllaCluster) (bool, error)) (*scyllav1.ScyllaCluster, error) {
 	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
 	lw := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
@@ -74,7 +86,16 @@ func waitForScyllaClusterState(ctx context.Context, client scyllav1client.Scylla
 	event, err := watchtools.UntilWithSync(ctx, lw, &scyllav1.ScyllaCluster{}, nil, func(event watch.Event) (bool, error) {
 		switch event.Type {
 		case watch.Added, watch.Modified:
-			return condition(event.Object.(*scyllav1.ScyllaCluster))
+			for _, condition := range conditions {
+				done, err := condition(event.Object.(*scyllav1.ScyllaCluster))
+				if err != nil {
+					return false, err
+				}
+				if !done {
+					return false, nil
+				}
+			}
+			return true, nil
 		default:
 			return true, fmt.Errorf("unexpected event: %#v", event)
 		}
@@ -193,6 +214,29 @@ func getScyllaClient(ctx context.Context, client corev1client.CoreV1Interface, s
 	}
 
 	return scyllaClient, hosts, nil
+}
+
+func getManagerClient(ctx context.Context, client corev1client.CoreV1Interface) (*mermaidclient.Client, error) {
+	managerService, err := client.Services(managerNamespace).Get(ctx, "scylla-manager", metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	if managerService.Spec.ClusterIP == corev1.ClusterIPNone {
+		return nil, fmt.Errorf("service %s/%s doesn't have a ClusterIP", managerService.Namespace, managerService.Name)
+	}
+	apiAddress := (&url.URL{
+		Scheme: "http",
+		Host:   managerService.Spec.ClusterIP,
+		Path:   "/api/v1",
+	}).String()
+
+	manager, err := mermaidclient.NewClient(apiAddress, &http.Transport{})
+	if err != nil {
+		return nil, fmt.Errorf("create manager client, %w", err)
+	}
+
+	return &manager, nil
 }
 
 func getFirstNonSeedNodeName(sc *scyllav1.ScyllaCluster) string {

@@ -1,8 +1,8 @@
 apiVersion: v2
 name: scylla-manager
 description: Scylla Manager automates database operations.
-version: "0.0.0" # overwritten during publishing
-appVersion: "0.0.0" # overwritten during publishing
+version: 0.0.0 # overwritten during publishing
+appVersion: latest # overwritten during publishing
 dependencies:
   - name: scylla
     version: 1.0.0

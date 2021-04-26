@@ -5,7 +5,6 @@ image:
 
 controllerImage:
   repository: docker.io/scylladb
-  tag: latest
 
 logLevel: info
 

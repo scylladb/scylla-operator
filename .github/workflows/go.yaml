@@ -32,7 +32,7 @@ env:
   GOPATH: ${{ github.workspace }}/go
   git_repo_path: ${{ github.workspace }}/go/src/github.com/scylladb/scylla-operator
   image_repo_ref: docker.io/scylladb/scylla-operator
-  retention_days: 3
+  retention_days: 90
 
 defaults:
   run:
@@ -170,6 +170,13 @@ jobs:
       with:
         path: ${{ env.git_repo_path }}
         fetch-depth: 0  # also fetch tags
+    - name: Create artifacts dir
+      env:
+        ARTIFACTS_DIR: ${{ runner.temp }}/e2e-artifacts
+      run: |
+        set -x
+        mkdir "${ARTIFACTS_DIR}"
+        echo "ARTIFACTS_DIR=${ARTIFACTS_DIR}" | tee -a ${GITHUB_ENV}
     - uses: actions/download-artifact@v2
       with:
         name: operatorimage.tar.lz4
@@ -192,8 +199,6 @@ jobs:
         set -x
         go install github.com/mikefarah/yq/v4@v4.6.1
     - name: Deploy scylla-operator
-      env:
-        ARTIFACTS_DIR: ${{ runner.temp }}/e2e-artifacts
       run: |
         set -x
         timeout 10m ./hack/ci-deploy.sh '${{ env.image_repo_ref }}:ci'
@@ -203,15 +208,11 @@ jobs:
       run: |
         echo "SCYLLA_OPERATOR_TESTS_FLAKE_ATTEMPTS=5" | tee -a ${GITHUB_ENV}
     - name: Run e2e
-      env:
-        ARTIFACTS_DIR: ${{ runner.temp }}/e2e-artifacts
       run: |
         set -x
-        timeout 45m docker run --rm --entrypoint=/usr/bin/scylla-operator-tests -v "/root/.kube/config:/root/.kube/config" '${{ env.image_repo_ref }}:ci' run
+        timeout 45m docker run --user="$( id -u ):$( id -g )" --rm --entrypoint=/usr/bin/scylla-operator-tests -v="${HOME}/.kube/config:/kubeconfig:ro" -e='KUBECONFIG=/kubeconfig' -v="${ARTIFACTS_DIR}:${ARTIFACTS_DIR}:rw" '${{ env.image_repo_ref }}:ci' run --artifacts-dir="${ARTIFACTS_DIR}"
     - name: Dump cluster state
       if: ${{ always() }}
-      env:
-        ARTIFACTS_DIR: ${{ runner.temp }}/e2e-artifacts
       working-directory: ${{ runner.temp }}
       run: timeout 10m ${{ env.git_repo_path }}/hack/ci-gather-artifacts.sh
     - name: Get machine logs and info
@@ -227,7 +228,9 @@ jobs:
     - name: Compress artifacts
       if: ${{ always() }}
       working-directory: ${{ runner.temp }}
-      run: tar -c --use-compress-program=lz4 -f ./e2e-artifacts.tar.lz4 "e2e-artifacts/"
+      run: |
+        set -x
+        tar -c --use-compress-program=lz4 -f ./e2e-artifacts.tar.lz4 "e2e-artifacts/"
     - name: Upload artifacts
       if: ${{ always() }}
       uses: actions/upload-artifact@v2

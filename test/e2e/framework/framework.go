@@ -5,6 +5,8 @@ package framework
 import (
 	"context"
 	"fmt"
+	"os"
+	"path"
 	"time"
 
 	g "github.com/onsi/ginkgo"
@@ -279,5 +281,22 @@ func (f *Framework) afterEach() {
 	if g.CurrentGinkgoTestDescription().Failed {
 		By(fmt.Sprintf("Collecting events from namespace %q.", f.namespace.Name))
 		DumpEventsInNamespace(ctx, f.KubeAdminClient(), f.namespace.Name)
+	}
+
+	// CI can't keep namespaces alive because it could get out of resources for the other tests
+	// so we need to collect the namespaced dump before destroying the namespace.
+	// Collecting artifacts even for successful runs helps to verify if it went
+	// as expected and the amount of data is bearable.
+	if len(TestContext.ArtifactsDir) != 0 {
+		By(fmt.Sprintf("Collecting dumps from namespace %q.", f.namespace.Name))
+
+		d := path.Join(TestContext.ArtifactsDir, "e2e-namespaces")
+		err := os.Mkdir(d, 0777)
+		if err != nil && !os.IsExist(err) {
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		err = DumpNamespace(ctx, f.KubeClient().Discovery(), f.DynamicAdminClient(), f.KubeClient().CoreV1(), d, f.Namespace())
+		o.Expect(err).NotTo(o.HaveOccurred())
 	}
 }

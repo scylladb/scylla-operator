@@ -1,6 +1,5 @@
 image:
   repository: docker.io/scylladb
-  tag: latest
 
 resources:
   requests:

@@ -162,7 +162,7 @@ func initializeWebhookInEnvironment() error {
 	var validatingWebhooks, mutatingWebhooks []client.Object
 
 	root := rootPath()
-	configyamlFile, err := ioutil.ReadFile(filepath.Join(root, "deploy", "operator", "10_webhook.yaml"))
+	configyamlFile, err := ioutil.ReadFile(filepath.Join(root, "deploy", "operator", "10_validatingwebhook.yaml"))
 	if err != nil {
 		return errors.Wrap(err, "read core webhook configuration file")
 	}

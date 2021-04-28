@@ -1,12 +1,12 @@
 # Deploying Scylla Manager on a Kubernetes Cluster
 
-Scylla Manager is a product for database operations automation, 
-it can schedule tasks such as repairs and backups. 
-Scylla Manager can manage multiple Scylla clusters and run cluster-wide tasks 
+Scylla Manager is a product for database operations automation,
+it can schedule tasks such as repairs and backups.
+Scylla Manager can manage multiple Scylla clusters and run cluster-wide tasks
 in a controlled and predictable way.
 
-Scylla Manager is available for Scylla Enterprise customers and Scylla Open Source users. 
-With Scylla Open Source, Scylla Manager is limited to 5 nodes. 
+Scylla Manager is available for Scylla Enterprise customers and Scylla Open Source users.
+With Scylla Open Source, Scylla Manager is limited to 5 nodes.
 See the Scylla Manager [Proprietary Software License Agreement](https://www.scylladb.com/scylla-manager-software-license-agreement/) for details.
 
 ## Prerequisites
@@ -19,16 +19,16 @@ See the Scylla Manager [Proprietary Software License Agreement](https://www.scyl
 Scylla Manager in K8s consist of:
 - Dedicated Scylla Cluster
 
-  Scylla Manager persists its state to a Scylla cluster. 
-Additional small single node cluster is spawned in the Manager namespace.  
+  Scylla Manager persists its state to a Scylla cluster.
+Additional small single node cluster is spawned in the Manager namespace.
 
-- Scylla Manager Controller 
+- Scylla Manager Controller
 
   Main mission of Controller is to watch changes of Scylla Clusters, and synchronize three states.
   1. What user wants - task definition in CRD.
   2. What Controller registered - Task name to Task ID mapping - CRD status.
   3. Scylla Manager task listing - internal state of Scylla Manager.
-  
+
   When Scylla Cluster CRD is being deployed Controller will register it in Scylla Manager once cluster reaches desired node count.
 Once Cluster is fully up and running it will schedule all tasks defined in Cluster CRD.
 Controller also supports task updates and unscheduling.
@@ -37,7 +37,7 @@ Controller also supports task updates and unscheduling.
 
   Regular Scylla Manager, the same used in cloud and bare metal deployments.
 
-   
+
 
 ## Deploy Scylla Manager
 
@@ -49,25 +49,25 @@ kubectl apply -f examples/common/manager.yaml
 
 This will install the Scylla Manager in the `scylla-manager-system` namespace.
 You can check if the Scylla Manager is up and running with:
- 
+
 ```console
-kubectl -n scylla-manager-system get pods                                              
+kubectl -n scylla-manager-system get pods
 NAME                                               READY   STATUS    RESTARTS   AGE
 scylla-manager-cluster-manager-dc-manager-rack-0   2/2     Running   0          37m
 scylla-manager-controller-0                        1/1     Running   0          28m
 scylla-manager-scylla-manager-7bd9f968b9-w25jw     1/1     Running   0          37m
 ```
- 
+
 As you can see there are three pods:
 * `scylla-manager-cluster-manager-dc-manager-rack-0` - is a single node Scylla cluster.
 * `scylla-manager-controller-0` - Scylla Manager Controller.
 * `scylla-manager-scylla-manager-7bd9f968b9-w25jw` - Scylla Manager.
- 
+
 To see if Scylla Manager is fully up and running we can check their logs.
 To do this, execute following command:
- 
+
  ```console
-kubectl -n scylla-manager-system logs scylla-manager-controller-0 
+kubectl -n scylla-manager-system logs scylla-manager-controller-0
 ```
 
 The output should be something like:
@@ -94,11 +94,11 @@ If there are no errors in the logs, let's spin a Scylla Cluster.
 ## Cluster registration
 
 
-When the Scylla Manager is fully up and running, lets create a regular instance of Scylla cluster. 
+When the Scylla Manager is fully up and running, lets create a regular instance of Scylla cluster.
 
 See [generic tutorial](generic.md) to spawn your cluster.
 
-Note: If you already have some Scylla Clusters, after installing Manager they should be 
+Note: If you already have some Scylla Clusters, after installing Manager they should be
 automatically registered in Scylla Manager.
 
 Once cluster reaches desired node count, cluster status will be updated with ID under which it was registered in Manager.
@@ -140,8 +140,8 @@ In this task listing we can see CQL and REST healthchecks.
 You can either define tasks prior Cluster creation, or for existing Cluster.
 Let's edit already running cluster definition to add repair and backup task.
 ```console
-kubectl -n scylla edit Cluster simple-cluster                            
-``` 
+kubectl -n scylla edit Cluster simple-cluster
+```
 
 Add following task definition to Cluster spec:
 ```
@@ -157,13 +157,13 @@ Add following task definition to Cluster spec:
     - name: "daily backup"
       location: ["s3:cluster-backups"]
       retention: 7
-      interval: "1d" 
+      interval: "1d"
 ```
 
 For full task definition configuration consult [Scylla Cluster CRD](scylla_cluster_crd.md).
 
 **Note**: Scylla Manager Agent must have access to above bucket prior the update in order to schedule backup task.
-Consult Scylla Manager documentation for details on how to set it up.  
+Consult Scylla Manager documentation for details on how to set it up.
 
 Scylla Manager Controller will spot this change and will schedule tasks in Scylla Manager.
 
@@ -182,7 +182,7 @@ Cluster: scylla/simple-cluster (d1d532cd-49f2-4c97-9263-25126532803b)
 
 ```
 
-As you can see, we have two new tasks, weekly recurring backup, and one repair which should start shortly. 
+As you can see, we have two new tasks, weekly recurring backup, and one repair which should start shortly.
 
 To check progress of run you can use following command:
 
@@ -205,7 +205,7 @@ Other tasks can be also tracked using the same command, but using different task
 Task IDs are present in Cluster Status as well as in task listing.
 
 ## Clean Up
- 
+
 To clean up all resources associated with Scylla Manager, you can run the commands below.
 
 **NOTE:** this will destroy your Scylla Manager database and delete all of its associated data.

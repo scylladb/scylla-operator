@@ -1,6 +1,6 @@
 # Deploying Scylla on EKS
 
-This guide is focused on deploying Scylla on EKS with improved performance. 
+This guide is focused on deploying Scylla on EKS with improved performance.
 Performance tricks used by the script won't work with different machine tiers.
 It sets up the kubelets on EKS nodes to run with [static cpu policy](https://kubernetes.io/blog/2018/07/24/feature-highlight-cpu-manager/) and uses [local sdd disks](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/local-ssd) in RAID0 for maximum performance.
 
@@ -41,7 +41,7 @@ CLUSTER_NAME=scylla-demo
 
 For this guide, we'll create a EKS cluster with the following:
 
-* A NodeGroup of 3 `i3-2xlarge` Nodes, where the Scylla Pods will be deployed. These nodes will only accept pods having `scylla-clusters` toleration. 
+* A NodeGroup of 3 `i3-2xlarge` Nodes, where the Scylla Pods will be deployed. These nodes will only accept pods having `scylla-clusters` toleration.
 
 ```
   - name: scylla-pool
@@ -82,7 +82,7 @@ For this guide, we'll create a EKS cluster with the following:
       allow: true
 ```
 
-### Installing Required Tools 
+### Installing Required Tools
 
 #### Installing script third party dependencies
 

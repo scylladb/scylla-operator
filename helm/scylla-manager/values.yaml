@@ -28,14 +28,24 @@ controllerResources:
   requests:
     cpu: 10m
     memory: 20Mi
-# Node selector for Scylla Manager pods
+# Node selector for Scylla Manager pod
 nodeSelector: { }
 
-# Tolerations for Scylla Manager pods
+# Tolerations for Scylla Manager pod
 tolerations: [ ]
 
-# Affinity for Scylla Manager pods
+# Affinity for Scylla Manager pod
 affinity: { }
+
+# Node selector for Scylla Manager Controller pod
+controllerNodeSelector: { }
+
+# Tolerations for Scylla Manager Controller pod
+controllerTolerations: [ ]
+
+# Affinity for Scylla Manager Controller pod
+controllerAffinity: { }
+
 
 serviceAccount:
   # Specifies whether a service account should be created

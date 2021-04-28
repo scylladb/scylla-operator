@@ -5,6 +5,9 @@
         "affinity": {
             "type": "object"
         },
+        "controllerAffinity": {
+            "type": "object"
+        },
         "controllerImage": {
             "type": "object",
             "properties": {
@@ -69,6 +72,9 @@
             "type": "string"
         },
         "nodeSelector": {
+            "type": "object"
+        },
+        "controllerNodeSelector": {
             "type": "object"
         },
         "resources": {
@@ -184,6 +190,9 @@
             }
         },
         "tolerations": {
+            "type": "array"
+        },
+        "controllerTolerations": {
             "type": "array"
         },
         "serviceMonitor": {

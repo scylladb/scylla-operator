@@ -56,11 +56,11 @@ spec:
                 - matchExpressions:
                   - key: failure-domain.beta.kubernetes.io/region
                     operator: In
-                    values: 
+                    values:
                       - us-east-1
                   - key: failure-domain.beta.kubernetes.io/zone
                     operator: In
-                    values: 
+                    values:
                       - us-east-1a
           tolerations:
             - key: role
@@ -79,13 +79,13 @@ spec:
 * `agentRepository`: Optional field. Specifies a custom Scylla Manager Agent image repo. If left unset, the official docker hub repo is used (scylladb/scylla).
 * `developerMode`: Optional field. If it's true, then Scylla is started in [developer mode](https://www.scylladb.com/2016/09/13/test-dev-env/). This setting is for shared test/dev environments.
 * `cpuset`: Optional field. If it's true, then the operator will start Scylla with cpu pinning for maximum performance. For this to work, you need to set the kubelet to use the [static cpu policy](https://kubernetes.io/blog/2018/07/24/feature-highlight-cpu-manager/) and only specify limits in resources.
-* `automaticOrphanedNodeCleanup`: Optional field. Controls if automatic orphan node cleanup should be performed. 
+* `automaticOrphanedNodeCleanup`: Optional field. Controls if automatic orphan node cleanup should be performed.
 * `alternator`: Optional field. Defines Alternator configuration.
      * `port`: Port on which to bind to Alternator API.
      * `writeIsolation`: *required* Desired write isolation.
 * `genericUpgrade`: Optional field. Defines GenericUpgrade configuration.
      * `failureStrategy`: specifies which logic is executed when upgrade failure happens. Currently only `Retry` is supported.
-     * `pollInterval`: specifies how often upgrade logic polls on state updates. 
+     * `pollInterval`: specifies how often upgrade logic polls on state updates.
        Increasing this value should lower number of requests sent to the kube-apiserver, but it may affect
        overall time spent during upgrade.
 * `datacenter`: Datacenter definition.
@@ -106,7 +106,7 @@ Tasks are scheduled only when Scylla Manager is deployed in K8s cluster.
 
 Repairs:
 * `name` - **required** - human readable name of the task. It must be unique across all tasks.
-* `startDate` - specifies the task start date expressed in the RFC3339 format or `now[+duration]`, e.g. `now+3d2h10m`, 
+* `startDate` - specifies the task start date expressed in the RFC3339 format or `now[+duration]`, e.g. `now+3d2h10m`,
 valid units are d, h, m, s (default "now").
 * `interval` - Optional field. Task schedule interval e.g. `3d2h10m`, valid units are d, h, m, s (default "0").
 * `numRetries` - Optional field. The number of times a scheduled task will retry to run before failing (default 3).
@@ -132,14 +132,14 @@ Supported units `[B, MiB, GiB, TiB]` (default `"1GiB"`).
 Backups:
 
 * `name` - **required** - human readable name of the task. It must be unique across all tasks.
-* `startDate` - Optional field. Specifies the task start date expressed in the RFC3339 format or `now[+duration]`, e.g. `now+3d2h10m`, 
+* `startDate` - Optional field. Specifies the task start date expressed in the RFC3339 format or `now[+duration]`, e.g. `now+3d2h10m`,
 valid units are d, h, m, s (default "now").
 * `interval` - Optional field. task schedule interval e.g. `3d2h10m`, valid units are d, h, m, s (default "0").
 * `numRetries` - Optional field. the number of times a scheduled task will retry to run before failing (default 3).
 * `dc` - Optional field. A list of datacenter glob patterns, e.g. `["dc1","!otherdc*"]` used to specify the DCs to include or exclude from backup.
 * `keyspace` - Optional field. A list of keyspace/tables glob patterns, e.g. `["keyspace","!keyspace.table_prefix_*"]` used to include or exclude keyspaces from backup.
-* `location` - Optional field. A list of backup locations in the format `[<dc>:]<provider>:<name>` ex. `s3:my-bucket`. 
-The `<dc>:` part is optional and is only needed when different datacenters are being used to upload data to different locations. 
+* `location` - Optional field. A list of backup locations in the format `[<dc>:]<provider>:<name>` ex. `s3:my-bucket`.
+The `<dc>:` part is optional and is only needed when different datacenters are being used to upload data to different locations.
 `<name>` Optional field. must be an alphanumeric string and may contain a dash and or a dot, but other characters are forbidden.
 The only supported storage <provider> at the moment are `s3` and `gcs`.
 * `rateLimit` - Optional field. A list of megabytes (MiB) per second rate limits expressed in the format `[<dc>:]<limit>`.

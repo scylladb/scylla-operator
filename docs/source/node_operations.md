@@ -104,9 +104,9 @@ kubectl -n scylla-operator-system scale sts scylla-operator-controller-manager -
 Operator should continue upgrade process from where it left off.
 
 ### Replacing a Scylla node
-In the case of a host failure, it may not be possible to bring back the node to life. 
+In the case of a host failure, it may not be possible to bring back the node to life.
 
-Replace dead node operation will cause the other nodes in the cluster to stream data to the node that was replaced. 
+Replace dead node operation will cause the other nodes in the cluster to stream data to the node that was replaced.
 This operation can take some time (depending on the data size and network bandwidth).
 
 _This procedure is for replacing one dead node. To replace more than one dead node, run the full procedure to completion one node at a time_
@@ -127,7 +127,7 @@ _This procedure is for replacing one dead node. To replace more than one dead no
     ```
 1. Identify service which is bound to down node by checking IP address
     ```bash
-    kubectl -n scylla get svc 
+    kubectl -n scylla get svc
     NAME                                    TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                                                           AGE
     simple-cluster-client                   ClusterIP   None            <none>        9180/TCP                                                          3h12m
     simple-cluster-us-east-1-us-east-1a-0   ClusterIP   10.43.231.189   <none>        7000/TCP,7001/TCP,7199/TCP,10001/TCP,9042/TCP,9142/TCP,9160/TCP   3h12m
@@ -136,24 +136,24 @@ _This procedure is for replacing one dead node. To replace more than one dead no
     ```
 1. Drain node which we would like to replace using. **This command may delete your data from local disks attached to given node!**
     ```bash
-    kubectl drain gke-scylla-demo-default-pool-b4b390a1-6j12 --ignore-daemonsets --delete-local-data 
+    kubectl drain gke-scylla-demo-default-pool-b4b390a1-6j12 --ignore-daemonsets --delete-local-data
     ```
 
     Pod which will be replaced should enter the `Pending` state
     ```bash
-    kubectl -n scylla get pods        
+    kubectl -n scylla get pods
     NAME                                    READY   STATUS    RESTARTS   AGE
     simple-cluster-us-east-1-us-east-1a-0   2/2     Running   0          3h21m
     simple-cluster-us-east-1-us-east-1a-1   2/2     Running   0          3h19m
     simple-cluster-us-east-1-us-east-1a-2   0/2     Pending   0          8m14s
     ```
-1. To being node replacing, add `scylla/replace=""` label to service bound to pod we are replacing. 
+1. To being node replacing, add `scylla/replace=""` label to service bound to pod we are replacing.
     ```bash
     kubectl -n scylla label svc simple-cluster-us-east-1-us-east-1a-2 scylla/replace=""
     ```
     Your failed Pod should be recreated on available k8s node
     ```bash
-    kubectl -n scylla get pods        
+    kubectl -n scylla get pods
     NAME                                    READY   STATUS    RESTARTS   AGE
     simple-cluster-us-east-1-us-east-1a-0   2/2     Running   0          3h27m
     simple-cluster-us-east-1-us-east-1a-1   2/2     Running   0          3h25m
@@ -179,7 +179,7 @@ _This procedure is for replacing one dead node. To replace more than one dead no
 
 In case when your k8s cluster loses one of the nodes due to incident or explicit removal, Scylla Pods may become unschedulable due to PVC node affinity.
 
-When `automaticOrphanedNodeCleanup` flag is enabled in your ScyllaCluster, Scylla Operator will perform automatic 
+When `automaticOrphanedNodeCleanup` flag is enabled in your ScyllaCluster, Scylla Operator will perform automatic
 node replacement of a Pod which lost his bound resources.
 
 ### Maintenance mode

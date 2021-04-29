@@ -37,3 +37,15 @@ spec:
         resources:
           {{- toYaml .Values.controllerResources | nindent 10 }}
       terminationGracePeriodSeconds: 10
+      {{- with .Values.controllerNodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.controllerAffinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.controllerTolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -18,6 +18,9 @@ spec:
         {{- include "scylla-manager.controllerLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "scylla-manager.controllerServiceAccountName" . }}
+      {{- with .Values.controllerSecurityContext }}
+      securityContext: {{ toYaml . | nindent 8 }}
+      {{- end }}
       containers:
       - name: {{ include "scylla-manager.controllerName" . }}
         image: {{ .Values.controllerImage.repository }}/scylla-operator:{{ .Values.controllerImage.tag | default .Chart.AppVersion }}

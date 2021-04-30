@@ -1,11 +1,11 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ include "scylla-operator.fullname" . }}
+  name: scylladb:controller:operator
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ include "scylla-operator.fullname" . }}
+  name: scylladb:controller:operator
 subjects:
 - kind: ServiceAccount
   name: {{ include "scylla-operator.serviceAccountName" . }}

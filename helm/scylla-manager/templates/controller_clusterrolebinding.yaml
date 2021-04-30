@@ -1,11 +1,11 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: scylla-manager-controller
+  name: scylladb:controller:manager-controller
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: scylla-manager-controller
+  name: scylladb:controller:manager-controller
 subjects:
 - kind: ServiceAccount
   name: {{ include "scylla-manager.controllerServiceAccountName" . }}

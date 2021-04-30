@@ -37,61 +37,75 @@ First of all, we export all the configuration options as environment variables.
 Edit according to your own environment.
 
 ```
-GCP_USER=$(gcloud config list account --format "value(core.account)")
-GCP_PROJECT=$(gcloud config list project --format "value(core.project)")
+GCP_USER=$( gcloud config list account --format "value(core.account)" )
+GCP_PROJECT=$( gcloud config list project --format "value(core.project)" )
 GCP_REGION=us-west1
 GCP_ZONE=us-west1-b
 CLUSTER_NAME=scylla-demo
+CLUSTER_VERSION=$( gcloud container get-server-config --zone ${GCP_ZONE} --format "value(validMasterVersions[0])" )
 ```
 
 #### Creating a GKE cluster
 
-For this guide, we'll create a GKE cluster with the following:
-
-1. A NodePool of 3 `n1-standard-32` Nodes, where the Scylla Pods will be deployed. Each of these Nodes has 8 local SSDs attached, which will later be combined into a RAID0 array. It is important to disable `autoupgrade` and `autorepair`, since they increase the frequency of loss of data on local SSDs. 
-
+First we need to change kubelet CPU Manager policy to static by providing a config file. Create file called `systemconfig.yaml` with the following content:
 ```
-gcloud beta container --project "${GCP_PROJECT}" \
-clusters create "${CLUSTER_NAME}" --username "admin" \
---zone "${GCP_ZONE}" \
---cluster-version "1.15.11-gke.3" \
---machine-type "n1-standard-32" \
---num-nodes "3" \
---disk-type "pd-ssd" --disk-size "20" \
---local-ssd-count "8" \
---node-taints role=scylla-clusters:NoSchedule \
---image-type "UBUNTU" \
---enable-stackdriver-kubernetes \
---no-enable-autoupgrade --no-enable-autorepair
+kubeletConfig:
+  cpuManagerPolicy: static
 ```
+
+Then we'll create a GKE cluster with the following:
+
+1. A NodePool of 4 `n1-standard-32` Nodes, where the Scylla Pods will be deployed. Each of these Nodes has 8 local SSDs attached, which will later be combined into a RAID0 array. It is important to disable `autoupgrade` and `autorepair`, since they increase the frequency of loss of data on local SSDs.
+
+    ```
+    gcloud container --project "${GCP_PROJECT}" \
+    clusters create "${CLUSTER_NAME}" --username "admin" \
+    --zone "${GCP_ZONE}" \
+    --cluster-version "${CLUSTER_VERSION}" \
+    --node-version "${CLUSTER_VERSION}" \
+    --machine-type "n1-standard-32" \
+    --num-nodes "4" \
+    --disk-type "pd-ssd" --disk-size "20" \
+    --local-ssd-count "8" \
+    --node-taints role=scylla-clusters:NoSchedule \
+    --image-type "UBUNTU_CONTAINERD" \
+    --system-config-from-file=systemconfig.yaml \
+    --enable-stackdriver-kubernetes \
+    --no-enable-autoupgrade \
+    --no-enable-autorepair
+    ```
 
 2. A NodePool of 2 `n1-standard-32` Nodes to deploy `cassandra-stress` later on.
 
-```
-gcloud beta container --project "${GCP_PROJECT}" \
-node-pools create "cassandra-stress-pool" \
---cluster "${CLUSTER_NAME}" \
---zone "${GCP_ZONE}" \
---machine-type "n1-standard-32" \
---num-nodes "2" \
---disk-type "pd-ssd" --disk-size "20" \
---node-taints role=cassandra-stress:NoSchedule \
---image-type "UBUNTU" \
---no-enable-autoupgrade --no-enable-autorepair
-```
+    ```
+    gcloud container --project "${GCP_PROJECT}" \
+    node-pools create "cassandra-stress-pool" \
+    --cluster "${CLUSTER_NAME}" \
+    --zone "${GCP_ZONE}" \
+    --node-version "${CLUSTER_VERSION}" \
+    --machine-type "n1-standard-32" \
+    --num-nodes "2" \
+    --disk-type "pd-ssd" --disk-size "20" \
+    --node-taints role=cassandra-stress:NoSchedule \
+    --image-type "UBUNTU_CONTAINERD" \
+    --no-enable-autoupgrade \
+    --no-enable-autorepair
+    ```
 
 3. A NodePool of 1 `n1-standard-8` Node, where the operator and the monitoring stack will be deployed.
-```
-gcloud beta container --project "${GCP_PROJECT}" \
-node-pools create "operator-pool" \
---cluster "${CLUSTER_NAME}" \
---zone "${GCP_ZONE}" \
---machine-type "n1-standard-8 \
---num-nodes "1" \
---disk-type "pd-ssd" --disk-size "20" \
---image-type "UBUNTU" \
---no-enable-autoupgrade --no-enable-autorepair
-```
+    ```
+    gcloud container --project "${GCP_PROJECT}" \
+    node-pools create "operator-pool" \
+    --cluster "${CLUSTER_NAME}" \
+    --zone "${GCP_ZONE}" \
+    --node-version "${CLUSTER_VERSION}" \
+    --machine-type "n1-standard-8" \
+    --num-nodes "1" \
+    --disk-type "pd-ssd" --disk-size "20" \
+    --image-type "UBUNTU_CONTAINERD" \
+    --no-enable-autoupgrade \
+    --no-enable-autorepair
+    ```
 
 #### Setting Yourself as `cluster-admin`
 > (By default GKE doesn't give you the necessary RBAC permissions)
@@ -109,7 +123,7 @@ kubectl create clusterrolebinding cluster-admin-binding --clusterrole cluster-ad
 ```
 
 
-### Installing Required Tools 
+### Installing Required Tools
 
 #### Installing Helm
 
@@ -130,32 +144,7 @@ After combining the local SSDs into RAID0 arrays, we deploy the local volume pro
 helm install local-provisioner examples/common/provisioner
 ```
 
-#### Install `cpu-policy` Daemonset
-
-Scylla achieves top-notch performance by pinning the CPUs it uses. To enable this behaviour in Kubernetes, the kubelet must be configured with the [static CPU policy](https://kubernetes.io/blog/2018/07/24/feature-highlight-cpu-manager/). To configure the kubelets in the `scylla` and `cassandra-stress` NodePools, we deploy a DaemonSet to do the work for us. You'll notice the Nodes getting cordoned for a little while, but then everything will come back to normal.
-```
-kubectl apply -f examples/gke/cpu-policy-daemonset.yaml
-```
-
-### Deploy Cert Manager
-
-You can either follow [upsteam instructions](https://cert-manager.io/docs/installation/kubernetes/) or use following command:
-
-```console
-kubectl apply -f examples/common/cert-manager.yaml
-```
-
-This will install Cert Manager with self signed certificate.  
-
-Once it's deployed, wait until all Cert Manager pods will enter into Running state:
-
-```console
-kubectl wait -n cert-manager --for=condition=ready pod -l app=cert-manager --timeout=60s
-```
-
-
-### Installing the Scylla Operator
-
+### Deploy Scylla cluster
 In order for the example to work you need to modify the cluster definition in the following way:
 
 ```

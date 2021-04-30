@@ -118,17 +118,17 @@ Once your commit history is clean, ensure you have based on the [latest upstream
 
 ### Commit messages
 
-Please make the first line of your commit message a summary of the change that a user (not a developer) of Operator would like to read, 
-and prefix it with the most relevant directory of the change followed by a colon. 
+Please make the first line of your commit message a summary of the change that a user (not a developer) of Operator would like to read,
+and prefix it with the most relevant directory of the change followed by a colon.
 The changelog gets made by looking at just these first lines so make it good!
 
-If you have more to say about the commit, then enter a blank line and carry on the description. 
+If you have more to say about the commit, then enter a blank line and carry on the description.
 Remember to say why the change was needed - the commit itself shows what was changed.
 
-Writing more is better than less. Comparing the behaviour before the change to that after the change is very useful. 
+Writing more is better than less. Comparing the behaviour before the change to that after the change is very useful.
 Imagine you are writing to yourself in 12 months time when you've forgotten everything about what you just did, and you need to get up to speed quickly.
 
-If the change fixes an issue then write Fixes #1234 in the commit message. 
+If the change fixes an issue then write Fixes #1234 in the commit message.
 This can be on the subject line if it will fit. If you don't want to close the associated issue just put #1234 and the change will get linked into the issue.
 
 Here is an example of a short commit message:

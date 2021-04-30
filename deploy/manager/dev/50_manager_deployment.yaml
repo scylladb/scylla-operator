@@ -20,6 +20,7 @@ spec:
         app.kubernetes.io/name: scylla-manager
         app.kubernetes.io/instance: scylla-manager
     spec:
+      serviceAccountName: scylla-manager
       containers:
       - name: scylla-manager
         image: docker.io/scylladb/scylla-manager:2.2.4

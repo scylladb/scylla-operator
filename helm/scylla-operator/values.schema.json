@@ -71,6 +71,9 @@
                 }
             }
         },
+        "securityContext": {
+            "type": "object"
+        },
         "tolerations": {
             "type": "array"
         },

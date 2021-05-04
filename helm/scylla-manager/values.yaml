@@ -37,6 +37,9 @@ tolerations: [ ]
 # Affinity for Scylla Manager pod
 affinity: { }
 
+## SecurityContext holds pod-level security attributes
+securityContext: {}
+
 # Node selector for Scylla Manager Controller pod
 controllerNodeSelector: { }
 
@@ -46,6 +49,8 @@ controllerTolerations: [ ]
 # Affinity for Scylla Manager Controller pod
 controllerAffinity: { }
 
+## ControllerSecurityContext holds pod-level security attributes
+controllerSecurityContext: {}
 
 serviceAccount:
   # Specifies whether a service account should be created

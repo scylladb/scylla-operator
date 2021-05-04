@@ -45,6 +45,9 @@
                 }
             }
         },
+        "controllerSecurityContext": {
+            "type": "object"
+        },
         "fullnameOverride": {
             "type": "string"
         },
@@ -188,6 +191,9 @@
                     "type": "string"
                 }
             }
+        },
+        "securityContext": {
+            "type": "object"
         },
         "tolerations": {
             "type": "array"

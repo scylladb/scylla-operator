@@ -77,19 +77,22 @@
 
 1. Tag the final release from the last RC that was approved by QA team using an **annotated** tag:
    ```
-   git tag -a vX.Y.Z tags/vX.Y.Z-rc.I -m 'vX.Y.Z'
+   git tag -a vX.Y.Z tags/vX.Y.Z-rc.I^{} -m 'vX.Y.Z'
    git push upstream vX.Y.Z
    ```
 
-1. Retag the image from the latest RC approved by QA team.
-   ```
-   docker tag docker.io/scylladb/scylla-operator:X.Y.Z-rc.I docker.io/scylladb/scylla-operator:X.Y.Z
-   ```
-
-1. Push the new image to the registry.
-   ```
-   docker push docker.io/scylladb/scylla-operator:X.Y.Z
-   ```
+1. Promote the container image from the latest RC approved by QA team.
+   - `docker`
+      ```
+      docker pull docker.io/scylladb/scylla-operator:X.Y.Z-rc.I
+      docker tag docker.io/scylladb/scylla-operator:X.Y.Z-rc.I docker.io/scylladb/scylla-operator:X.Y.Z
+      docker push docker.io/scylladb/scylla-operator:X.Y.Z
+      ```
+   
+   - `skopeo`
+      ```
+      skopeo copy docker://docker.io/scylladb/scylla-operator:X.Y.Z-rc.I docker://docker.io/scylladb/scylla-operator:X.Y.Z
+      ```
 
 1. Mark docs as latest in `docs/source/conf.py` in the master branch:
    ```

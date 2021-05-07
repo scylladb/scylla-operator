@@ -66,7 +66,7 @@ Once the schema is recreated we can proceed to downloading data files.
 First let's save a list of snapshot files to file called `backup_files.out`:
 
 ```bash
-kubectl -n scylla-manager-system exec scylla-manager-controller-0 -- sctool backup files -c simple-cluster -L s3:backups -T sm_20201228145917UTC > backup_files.out
+kubectl -n scylla-manager exec deployment.apps/scylla-manager-controller -- sctool backup files -c simple-cluster -L s3:backups -T sm_20201228145917UTC > backup_files.out
 ```
 
 We will be using `sstableloader` to restore data. `sstableloader` needs a specific directory structure to work namely: `<keyspace>/<table>/<contents>`

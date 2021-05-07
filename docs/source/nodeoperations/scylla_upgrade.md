@@ -89,14 +89,14 @@ Upgrade may get stuck on `validate_upgrade` stage. This happens when Scylla Pod 
 
 To continue with upgrade, first turn off operator by scaling Operator replicas to zero:
 ```bash
-kubectl -n scylla-operator-system scale sts scylla-operator-controller-manager --replicas=0
+kubectl -n scylla-operator scale deployment.apps/scylla-operator --replicas=0
 ```
 Then user have to manually resolve issue with Scylla by checking what is the root cause of a failure in Scylla container logs.
 If needed data and system keyspaces SSTable snapshots are available on the node. You can check ScyllaCluster status for their names.
 
-Once issue is resolved and Scylla Pod is up and running (Pod is in Ready state), scale Operator back to one replica:
+Once issue is resolved and Scylla Pod is up and running (Pod is in Ready state), scale Operator back to two replicas:
 ```bash
-kubectl -n scylla-operator-system scale sts scylla-operator-controller-manager --replicas=1
+kubectl -n scylla-operator scale deployment.apps/scylla-operator --replicas=2
 ```
 
 Operator should continue upgrade process from where it left off.

@@ -17,7 +17,7 @@ We support the latest 2 releases of the operator to give everyone time to upgrad
 
 ### Backport policy
 Usually, only important bug fixes are eligible for being backported.
-This may depend on the situation and assessment of the maintainers. 
+This may depend on the situation and assessment of the maintainers.
 
 ## CI/CD
 We use [GitHub actions](https://github.com/scylladb/scylla-operator/actions/workflows/go.yaml?query=branch%3Amaster+event%3Apush) for our CI/CD. Every merge to a supported branch, or a creation of a tag will automatically trigger a job to build, test and publish the container image and other artifacts like helm charts. Before we publish any image, it must pass the e2e suite.

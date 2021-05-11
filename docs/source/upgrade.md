@@ -2,6 +2,31 @@
 
 This pages describes Scylla Operator upgrade procedures.
 
+## `v1.1.0` -> `v1.2.0`
+
+1.2.0 release brought a lot of changes to the Scylla Operator deployment process.
+To properly update Scylla Operator one must delete old objects and install updated ones.
+
+Sidecar image is going to be upgraded automatically, so a rolling restart of your Scylla clusters is expected during the upgrade procedure.
+
+1. Checkout source code of v1.2.0:
+   ```
+   git checkout v1.2.0
+   ```
+1. Remove old scylla operator namespace - in our case it's called `scylla-operator-system`:
+    ```
+    kubectl delete namespace scylla-operator-system --wait=true
+    ```
+1. Install Scylla Operator from deploy directory:
+    ```
+    kubectl -n scylla-operator apply -f deploy/operator
+    ```
+1. Wait until Scylla Operator is up and running:
+    ```
+    kubectl wait --for condition=established crd/scyllaclusters.scylla.scylladb.com
+    kubectl -n scylla-operator rollout status deployment.apps/scylla-operator
+    ```
+
 ## `v1.0.0` -> `v1.1.0`
 
 During this update we will change probes and image for Scylla Operator.

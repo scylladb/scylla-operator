@@ -35,40 +35,35 @@ First deploy Cert Manager, you can either follow [upsteam instructions](https://
 ```console
 kubectl apply -f examples/common/cert-manager.yaml
 ```
-This will install Cert Manager with self signed certificate. 
+This will install Cert Manager to provision a self-signed certificate.
 
-Once it's deployed, wait until all Cert Manager pods will enter into Running state:
+Once it's deployed, wait until Cert Manager is ready:
 
 ```console
-kubectl wait -n cert-manager --for=condition=ready pod -l app=cert-manager --timeout=60s
+kubectl wait --for condition=established crd/certificates.cert-manager.io crd/issuers.cert-manager.io
+kubectl -n cert-manager rollout status deployment.apps/cert-manager-webhook
 ```
 
 ## Deploy Scylla Operator
 
-Deploy the  Scylla Operator using the following commands:
+Deploy the Scylla Operator using the following commands:
 
 ```console
 kubectl apply -f examples/common/operator.yaml
 ```
 
-This will install the operator StatefulSet in namespace scylla-operator-system.
-You can check if the operator is up and running with:
- 
+This will install the operator in namespace `scylla-operator`.
+Wait until it's ready:
+
 ```console
-kubectl -n scylla-operator-system get pod
-```
- 
-If you want to check the logs of the operator you can do so with:
- 
- ```console
-kubectl -n scylla-operator-system logs scylla-operator-controller-manager-0
+kubectl wait --for condition=established crd/scyllaclusters.scylla.scylladb.com
+kubectl -n scylla-operator rollout status deployment.apps/scylla-operator
 ```
 
-The output should be something like:
-```console
-{"L":"INFO","T":"2020-04-28T08:49:17.065Z","M":"Operator started","version":"0.1.6","build_date":"2020-04-14T12:58:26Z","commit":"416da6008d2165752bfef51ed65145a77c25d3a3","go_version":"go version go1.14.2 linux/amd64","options":{"Name":"scylla-operator-controller-manager-0","Namespace":"scylla-operator-system","LogLevel":"info","Image":"","EnableAdmissionWebhook":true},"_trace_id":"ZcptKkJHQh6MYQOxLSWXlw"}
-{"L":"INFO","T":"2020-04-28T08:49:17.180Z","M":"Registering Components.","_trace_id":"ZcptKkJHQh6MYQOxLSWXlw"}
-{"L":"INFO","T":"2020-04-28T08:49:17.665Z","M":"Starting the operator...","_trace_id":"ZcptKkJHQh6MYQOxLSWXlw"}
+If you want to check the logs of the operator you can do so with:
+
+ ```console
+kubectl -n scylla-operator logs deployment.apps/scylla-operator
 ```
 
 ## Create and Initialize a Scylla Cluster
@@ -212,7 +207,7 @@ kubectl exec -n scylla -it simple-cluster-us-east-1-us-east-1a-0 -- cqlsh
 * From inside a Pod:
 
 When you create a new Cluster,  automatically creates a Service for the clients to use in order to access the Cluster.
-The service's name follows the convention `<cluster-name>-client`. 
+The service's name follows the convention `<cluster-name>-client`.
 You can see this Service in your cluster by running:
 ```console
 kubectl -n scylla describe service simple-cluster-client
@@ -233,7 +228,7 @@ If you are running the Alternator you can access the API on the port you specifi
 The operator can take a ConfigMap and apply it to the scylla.yaml configuration file.
 This is done by adding a ConfigMap to Kubernetes and refering to this in the Rack specification.
 The ConfigMap is just a file called `scylla.yaml` that has the properties you want to change in it.
-The operator will take the default properties for the rest of the configuration. 
+The operator will take the default properties for the rest of the configuration.
 
 * Create a ConfigMap the default name that the operator uses is `scylla-config`:
 ```console
@@ -276,7 +271,7 @@ kubectl create secret -n scylla generic scylla-client-config-secret --from-file 
 After a restart the operator will use the security token when it interacts with scylla via the agent.
 
  ### Set up monitoring
- 
+
 To set up monitoring using Prometheus and Grafana follow [this guide](monitoring.md).
 
 ## Scale Up
@@ -287,7 +282,7 @@ kubectl -n scylla edit ScyllaCluster simple-cluster
 ```
 * To scale up a rack, change the `Spec.Members` field of the rack to the desired value.
 * To add a new rack, append the `racks` list with a new rack. Remember to choose a different rack name for the new rack.
-* After editing and saving the yaml, check your cluster's Status and Events for information on what's happening:  
+* After editing and saving the yaml, check your cluster's Status and Events for information on what's happening:
 ```console
 kubectl -n scylla describe ScyllaCluster simple-cluster
 ```
@@ -341,7 +336,7 @@ After the Jobs finish, clean them up with:
 ```bash
 kubectl delete -f scripts/cassandra-stress.yaml
 ```
- 
+
 ## Scale Down
 
 The operator supports scale down of a rack. To make the changes, you can use:
@@ -355,7 +350,7 @@ kubectl -n scylla describe ScyllaCluster simple-cluster
 ```
 
 ## Clean Up
- 
+
 To clean up all resources associated with this walk-through, you can run the commands below.
 
 **NOTE:** this will destroy your database and delete all of its associated data.
@@ -371,7 +366,7 @@ kubectl delete -f examples/common/cert-manager.yaml
 If the cluster does not come up, the first step would be to examine the operator's logs:
 
 ```console
-kubectl -n scylla-operator-system logs -l app=scylla-operator
+kubectl -n scylla-operator logs deployment.apps/scylla-operator
 ```
 
 If everything looks OK in the operator logs, you can also look in the logs for one of the Scylla instances:

@@ -1,4 +1,4 @@
-# Deploying Scylla on EKS (experimental)
+# Deploying Scylla on EKS
 
 This guide is focused on deploying Scylla on EKS with improved performance. 
 Performance tricks used by the script won't work with different machine tiers.

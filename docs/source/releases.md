@@ -5,15 +5,16 @@ We are aiming to ship a new release approximately every 6 weeks. The following r
 
 | Release | Code freeze | General availability |
 | :-----: | :---------: | :------------------: |
-| 1.2     | 2021-04-15  | 2021-05-06           |
+| 1.3     | 2021-05-27  | 2021-06-17           |
 
 ## Supported releases
 We support the latest 2 releases of the operator to give everyone time to upgrade.
 
 | Release | General availability      | Support ends   |
 | :-----: | :-----------------------: | :------------: |
+| 1.2     | 2021-05-06                | Release of 1.4 |
 | 1.1     | 2021-03-22                | Release of 1.3 |
-| 1.0     | 2021-01-21                | Release of 1.2 |
+| 1.0     | 2021-01-21                | 2021-05-06     |
 
 ### Backport policy
 Usually, only important bug fixes are eligible for being backported.
@@ -24,11 +25,14 @@ We use [GitHub actions](https://github.com/scylladb/scylla-operator/actions/work
 
 ### Automated promotions
 
-| Git reference   | Type   | Container image                                   |
-| :-------------: | :----: | :-----------------------------------------------: |
-| **master**      | branch | docker.io/scylladb/scylla-operator:**latest**     |
-| **v1.1**        | branch | docker.io/scylladb/scylla-operator:**1.1**        |
-| **v1.1.0-rc.5** | tag    | docker.io/scylladb/scylla-operator:**1.1.0-rc.5** |
+| Git reference      | Type   | Container image                                      |
+| :----------------: | :----: | :--------------------------------------------------: |
+| **master**         | branch | docker.io/scylladb/scylla-operator:**latest**        |
+| **vX.Y**           | branch | docker.io/scylladb/scylla-operator:**X.Y**           |
+| **vX.Y.Z**         | tag    | docker.io/scylladb/scylla-operator:**X.Y.Z**         |
+| **vX.Y.Z-alpha.N** | tag    | docker.io/scylladb/scylla-operator:**X.Y.Z-alpha.N** |
+| **vX.Y.Z-beta.N**  | tag    | docker.io/scylladb/scylla-operator:**X.Y.Z-beta.N**  |
+| **vX.Y.Z-rc.N**    | tag    | docker.io/scylladb/scylla-operator:**X.Y.Z-rc.N**    |
 
 ### Generally available
 GA images aren't build from scratch but rather promoted from an existing release candidates. When we decide a release candidate has the acceptable quality and QA sings it off, the release candidate is promoted to become the GA release. This makes sure the image has exactly the same content and SHA as the tested release candidate.

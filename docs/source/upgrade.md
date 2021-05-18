@@ -17,6 +17,11 @@ Sidecar image is going to be upgraded automatically, so a rolling restart of you
     ```
     kubectl delete namespace scylla-operator-system --wait=true
     ```
+1. Remove old webhooks:
+    ```
+    kubectl delete MutatingWebhookConfiguration scylla-operator-mutating-webhook-configuration
+    kubectl delete ValidatingWebhookConfiguration scylla-operator-validating-webhook-configuration
+    ```
 1. Install Scylla Operator from deploy directory:
     ```
     kubectl -n scylla-operator apply -f deploy/operator

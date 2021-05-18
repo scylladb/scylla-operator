@@ -94,6 +94,13 @@
       skopeo copy docker://docker.io/scylladb/scylla-operator:X.Y.Z-rc.I docker://docker.io/scylladb/scylla-operator:X.Y.Z
       ```
 
+1. Publish the Helm charts.
+    ```
+    git checkout vX.Y.Z
+    gcloud auth login
+    make helm-publish HELM_CHANNEL=stable HELM_APP_VERSION=X.Y.Z HELM_CHART_VERSION=vX.Y.Z
+    ```
+
 1. Mark docs as latest in `docs/source/conf.py` in the master branch:
    ```
    smv_latest_version = 'vX.Y'

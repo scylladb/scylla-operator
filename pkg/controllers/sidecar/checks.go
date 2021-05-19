@@ -21,7 +21,7 @@ func (mc *MemberReconciler) setupHTTPChecks(ctx context.Context) {
 	http.HandleFunc(naming.LivenessProbePath, livenessCheck(mc))
 	http.HandleFunc(naming.ReadinessProbePath, readinessCheck(mc))
 
-	if err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", naming.ProbePort), nil); err != nil {
+	if err := http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", naming.ProbePort), nil); err != nil {
 		mc.logger.Fatal(ctx, "Error in HTTP checks", "error", errors.WithStack(err))
 	}
 }

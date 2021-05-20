@@ -5,15 +5,12 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/blang/semver"
-	"github.com/gocql/gocql"
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
 	"github.com/scylladb/go-set/strset"
-	"github.com/scylladb/gocqlx/v2"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/resource"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
@@ -39,9 +36,8 @@ const (
 )
 
 type ClusterVersionUpgrade struct {
-	Cluster        *scyllav1.ScyllaCluster
-	ScyllaClient   *scyllaclient.Client
-	ClusterSession CQLSession
+	Cluster      *scyllav1.ScyllaCluster
+	ScyllaClient *scyllaclient.Client
 
 	ipMapping    map[string]string
 	pollInterval time.Duration
@@ -70,15 +66,6 @@ func (a *ClusterVersionUpgrade) Name() string {
 var ScyllaClientForClusterFunc = func(ctx context.Context, cc client.Client, hosts []string, logger log.Logger) (*scyllaclient.Client, error) {
 	cfg := scyllaclient.DefaultConfig(hosts...)
 	return scyllaclient.NewClient(cfg, logger)
-}
-
-type CQLSession interface {
-	AwaitSchemaAgreement(ctx context.Context) error
-}
-
-var NewSessionFunc = func(hosts []string) (CQLSession, error) {
-	cluster := gocql.NewCluster(hosts...)
-	return gocqlx.WrapSession(cluster.CreateSession())
 }
 
 func (a *ClusterVersionUpgrade) nonMaintenanceHosts(ctx context.Context) ([]string, error) {
@@ -169,11 +156,6 @@ func (a *ClusterVersionUpgrade) genericUpgrade(ctx context.Context) error {
 	a.ScyllaClient, err = ScyllaClientForClusterFunc(ctx, a.cc, hosts, a.logger)
 	if err != nil {
 		return errors.Wrap(err, "create scylla client")
-	}
-
-	a.ClusterSession, err = NewSessionFunc(hosts)
-	if err != nil {
-		return errors.Wrap(err, "create scylla session")
 	}
 
 	if err := a.fsm().Transition(ctx); err != nil {
@@ -391,13 +373,7 @@ func (a *ClusterVersionUpgrade) beginUpgrade(ctx context.Context) (fsm.Event, er
 
 func (a *ClusterVersionUpgrade) checkSchemaAgreement(ctx context.Context) (fsm.Event, error) {
 	if err := wait.PollImmediate(a.pollInterval, actionTimeout, func() (bool, error) {
-		if err := a.ClusterSession.AwaitSchemaAgreement(ctx); err != nil {
-			if strings.Contains(err.Error(), "cluster schema versions not consistent") {
-				return false, nil
-			}
-			return false, err
-		}
-		return true, nil
+		return a.ScyllaClient.HasSchemaAgreement(ctx)
 	}); err != nil {
 		return ActionFailure, errors.Wrap(err, "await schema agreement")
 	}

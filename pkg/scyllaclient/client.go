@@ -288,6 +288,19 @@ func (c *Client) IsNativeTransportEnabled(ctx context.Context, host string) (boo
 	return resp.Payload, nil
 }
 
+func (c *Client) HasSchemaAgreement(ctx context.Context) (bool, error) {
+	resp, err := c.scyllaOps.StorageProxySchemaVersionsGet(&scyllaOperations.StorageProxySchemaVersionsGetParams{Context: ctx})
+	if err != nil {
+		return false, err
+	}
+	versions := map[string]struct{}{}
+	for _, kv := range resp.Payload {
+		versions[kv.Key] = struct{}{}
+	}
+
+	return len(versions) == 1, nil
+}
+
 func DefaultTransport() *http.Transport {
 	return &http.Transport{
 		Proxy: http.ProxyFromEnvironment,

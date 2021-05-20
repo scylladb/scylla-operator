@@ -109,7 +109,6 @@ var _ = Describe("Cluster controller", func() {
 			scylla  *scyllav1.ScyllaCluster
 			sstStub *integration.StatefulSetOperatorStub
 
-			originalActionsNewSessionFunc             func(hosts []string) (actions.CQLSession, error)
 			originalActionsScyllaClientForClusterFunc func(ctx context.Context, cc client.Client, hosts []string, logger log.Logger) (*scyllaclient.Client, error)
 		)
 
@@ -132,12 +131,10 @@ var _ = Describe("Cluster controller", func() {
 				Expect(sstStub.CreatePods(ctx, scylla)).To(Succeed())
 			}
 
-			originalActionsNewSessionFunc = actions.NewSessionFunc
 			originalActionsScyllaClientForClusterFunc = actions.ScyllaClientForClusterFunc
 		})
 
 		AfterEach(func() {
-			actions.NewSessionFunc = originalActionsNewSessionFunc
 			actions.ScyllaClientForClusterFunc = originalActionsScyllaClientForClusterFunc
 			Expect(testEnv.Delete(ctx, scylla)).To(Succeed())
 		})
@@ -181,10 +178,6 @@ var _ = Describe("Cluster controller", func() {
 				}
 				return http.DefaultClient.Do(req)
 			}))
-
-			actions.NewSessionFunc = func(hosts []string) (actions.CQLSession, error) {
-				return cqlSessionStub{}, nil
-			}
 
 			actions.ScyllaClientForClusterFunc = func(ctx context.Context, cc client.Client, hosts []string, logger log.Logger) (*scyllaclient.Client, error) {
 				cfg := scyllaclient.DefaultConfig(scyllaAddr)
@@ -330,13 +323,5 @@ func markPodReady(pods *corev1.PodList, idx int) error {
 		}
 	}
 
-	return nil
-}
-
-type cqlSessionStub struct {
-}
-
-func (c cqlSessionStub) AwaitSchemaAgreement(ctx context.Context) error {
-	// Always succeed
 	return nil
 }

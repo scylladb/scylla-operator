@@ -73,6 +73,8 @@ func (s *ScyllaFake) handler(w http.ResponseWriter, r *http.Request) {
 		s.drainRequests++
 	case r.URL.Path == "/storage_service/operation_mode" && r.Method == http.MethodGet:
 		fmt.Fprintf(w, "%q", s.operationalMode)
+	case r.URL.Path == "/storage_proxy/schema_versions" && r.Method == http.MethodGet:
+		fmt.Fprintf(w, `[{"key": "e478e0ca-08f6-39ac-bc9d-a50283aaf200", "value": ["1.1.1.1", "2.2.2.2"]}]`)
 	}
 }
 

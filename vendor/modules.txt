@@ -170,6 +170,7 @@ github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/timestamp
 # github.com/golang/snappy v0.0.1
+## explicit
 github.com/golang/snappy
 # github.com/google/go-cmp v0.5.2
 ## explicit
@@ -302,14 +303,9 @@ github.com/russross/blackfriday
 # github.com/scylladb/go-log v0.0.4
 ## explicit
 github.com/scylladb/go-log
-# github.com/scylladb/go-reflectx v1.0.1
-github.com/scylladb/go-reflectx
 # github.com/scylladb/go-set v1.0.2
 ## explicit
 github.com/scylladb/go-set/strset
-# github.com/scylladb/gocqlx/v2 v2.2.0
-## explicit
-github.com/scylladb/gocqlx/v2
 # github.com/sergi/go-diff v1.1.0
 github.com/sergi/go-diff/diffmatchpatch
 # github.com/shurcooL/githubv4 v0.0.0-20201206200315-234843c633fa

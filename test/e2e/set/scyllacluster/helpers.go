@@ -10,9 +10,11 @@ import (
 	"github.com/scylladb/go-log"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/controllers/helpers"
 	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
+	"github.com/scylladb/scylla-operator/test/e2e/scheme"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
@@ -21,6 +23,8 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
 	appv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -104,6 +108,35 @@ func waitForScyllaClusterState(ctx context.Context, client scyllav1client.Scylla
 		return nil, err
 	}
 	return event.Object.(*scyllav1.ScyllaCluster), nil
+}
+
+func waitForStatefulSetRollout(ctx context.Context, client appv1client.AppsV1Interface, namespace, name string) (*appsv1.StatefulSet, error) {
+	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
+	lw := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			options.FieldSelector = fieldSelector
+			return client.StatefulSets(namespace).List(ctx, options)
+		},
+		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
+			options.FieldSelector = fieldSelector
+			return client.StatefulSets(namespace).Watch(ctx, options)
+		},
+	}
+	event, err := watchtools.UntilWithSync(ctx, lw, &appsv1.StatefulSet{}, nil, func(event watch.Event) (bool, error) {
+		switch event.Type {
+		case watch.Added, watch.Modified:
+			sts := event.Object.(*appsv1.StatefulSet)
+			return sts.Status.ObservedGeneration >= sts.Generation &&
+				sts.Status.CurrentRevision == sts.Status.UpdateRevision &&
+				sts.Status.ReadyReplicas == *sts.Spec.Replicas, nil
+		default:
+			return true, fmt.Errorf("unexpected event: %#v", event)
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	return event.Object.(*appsv1.StatefulSet), nil
 }
 
 type waitForStateOptions struct {
@@ -201,14 +234,18 @@ func getScyllaClient(ctx context.Context, client corev1client.CoreV1Interface, s
 		return nil, nil, fmt.Errorf("no services found")
 	}
 
+	authToken, err := helpers.GetAgentAuthToken(ctx, client, sc.Name, sc.Namespace)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get auth token: %w", err)
+	}
+
 	// TODO: unify logging
 	logger, _ := log.NewProduction(log.Config{
 		Level: zap.NewAtomicLevelAt(zapcore.InfoLevel),
 	})
-	scyllaClient, err := scyllaclient.NewClient(
-		scyllaclient.DefaultConfig(hosts...),
-		logger.Named("scylla_client"),
-	)
+	cfg := scyllaclient.DefaultConfig(authToken, hosts...)
+
+	scyllaClient, err := scyllaclient.NewClient(cfg, logger.Named("scylla_client"))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -251,4 +288,37 @@ func getNodeName(sc *scyllav1.ScyllaCluster, idx int) string {
 		sc.Spec.Datacenter.Racks[0].Name,
 		idx,
 	)
+}
+
+func restartRack(ctx context.Context, client appv1client.AppsV1Interface, r scyllav1.RackSpec, sc *scyllav1.ScyllaCluster) error {
+	sts, err := client.StatefulSets(sc.Namespace).Get(ctx, naming.StatefulSetNameForRack(r, sc), metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	before, err := runtime.Encode(scheme.DefaultJSONEncoder(), sts)
+	if err != nil {
+		return err
+	}
+
+	if sts.Spec.Template.ObjectMeta.Annotations == nil {
+		sts.Spec.Template.ObjectMeta.Annotations = make(map[string]string)
+	}
+	sts.Spec.Template.ObjectMeta.Annotations["e2e.scylladb.com/restartedAt"] = time.Now().Format(time.RFC3339)
+
+	after, err := runtime.Encode(scheme.DefaultJSONEncoder(), sts)
+	if err != nil {
+		return err
+	}
+	patch, err := strategicpatch.CreateTwoWayMergePatch(before, after, sts)
+	if err != nil {
+		return err
+	}
+
+	_, err = client.StatefulSets(sc.Namespace).Patch(ctx, sts.Name, types.StrategicMergePatchType, patch, metav1.PatchOptions{})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

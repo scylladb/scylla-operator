@@ -35,6 +35,10 @@ func ServiceNameFromPod(pod *corev1.Pod) string {
 	return pod.Name
 }
 
+func AgentAuthTokenSecretName(clusterName string) string {
+	return fmt.Sprintf("%s-auth-token", clusterName)
+}
+
 func MemberServiceName(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, idx int) string {
 	return fmt.Sprintf("%s-%d", StatefulSetNameForRack(r, c), idx)
 }

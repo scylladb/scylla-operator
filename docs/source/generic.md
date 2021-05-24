@@ -249,8 +249,8 @@ The operator will then apply the overridable properties `prefer_local` and `dc_s
 ## Configure Scylla Manager Agent
 
 The operator creates a second container for each scylla instance that runs [Scylla Manager Agent](https://hub.docker.com/r/scylladb/scylla-manager-agent).
-This container serves as a sidecar and it's the main endpoint for [Scylla Manager](https://hub.docker.com/r/scylladb/scylla-manager) when interacting with Scylla.
-The Scylla Manager Agent can be configured with various things such as the security token used to allow access to it's API.
+This container serves as a sidecar and it's the main endpoint for interacting with Scylla API.
+The Scylla Manager Agent can be configured with various things such as the security token used to allow access to Scylla API and storage providers for backups.
 
 To configure the agent you just create a new secret called _scylla-agent-config-secret_ and populate it with the contents in the `scylla-manager-agent.yaml` file like this:
 ```console
@@ -259,18 +259,13 @@ kubectl create secret -n scylla generic scylla-agent-config-secret --from-file s
 
 See [Scylla Manager Agent configuration](https://docs.scylladb.com/operating-scylla/manager/2.0/agent-configuration-file/) for a complete reference of the Scylla Manager agent config file.
 
-In order for the operator to be able to use the agent it may need to be configured accordingly. For example it needs a matching security token.
-The operator uses a file called `scylla-client.yaml` for this and the content is today limited to two properties:
-```yaml
-auth_token: the_token
-```
-To configure the operator you just create a new config-map called _scylla-client-config-secret_ and populate it with the contents in the `scylla-client.yaml` file like this:
-```console
-kubectl create secret -n scylla generic scylla-client-config-secret --from-file scylla-client.yaml
-```
-After a restart the operator will use the security token when it interacts with scylla via the agent.
+### Scylla Manager Agent auth token
 
- ### Set up monitoring
+Operator provisions Agent auth token by copying value from user provided config secret or auto generates it if it's empty.
+To check which value is being used, decode content of `<cluster-name>-auth-token` secret. 
+To change it simply remove the secret. Operator will create a new one. To pick up the change in the cluster, initiate a rolling restart.
+
+## Set up monitoring
 
 To set up monitoring using Prometheus and Grafana follow [this guide](monitoring.md).
 

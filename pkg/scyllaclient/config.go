@@ -47,12 +47,13 @@ type BackoffConfig struct {
 }
 
 // DefaultConfig returns a Config initialized with default values.
-func DefaultConfig(hosts ...string) Config {
+func DefaultConfig(authToken string, hosts ...string) Config {
 	return Config{
-		Hosts:   hosts,
-		Port:    "10001",
-		Scheme:  "https",
-		Timeout: 15 * time.Second,
+		AuthToken: authToken,
+		Hosts:     hosts,
+		Port:      "10001",
+		Scheme:    "https",
+		Timeout:   15 * time.Second,
 		Backoff: BackoffConfig{
 			WaitMin:    1 * time.Second,
 			WaitMax:    30 * time.Second,

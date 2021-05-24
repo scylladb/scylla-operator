@@ -7,7 +7,9 @@ import (
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
+	"github.com/scylladb/scylla-operator/pkg/controllers/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/api/policy/v1beta1"
@@ -15,6 +17,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
+)
+
+const (
+	scyllaAgentConfigVolumeName    = "scylla-agent-config-volume"
+	scyllaAgentAuthTokenVolumeName = "scylla-agent-auth-token-volume"
 )
 
 func HeadlessServiceForCluster(c *scyllav1.ScyllaCluster) *corev1.Service {
@@ -174,7 +181,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, sidecarI
 							},
 						},
 						{
-							Name: "scylla-agent-config-volume",
+							Name: scyllaAgentConfigVolumeName,
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
 									SecretName: stringOrDefault(r.ScyllaAgentConfig, "scylla-agent-config-secret"),
@@ -188,6 +195,14 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, sidecarI
 								Secret: &corev1.SecretVolumeSource{
 									SecretName: "scylla-client-config-secret",
 									Optional:   &opt,
+								},
+							},
+						},
+						{
+							Name: scyllaAgentAuthTokenVolumeName,
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: naming.AgentAuthTokenSecretName(c.Name),
 								},
 							},
 						},
@@ -454,7 +469,9 @@ func agentContainer(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) corev1.Conta
 			"-c",
 			naming.ScyllaAgentConfigDefaultFile,
 			"-c",
-			naming.ScyllaAgentConfigDirName + "/scylla-manager-agent.yaml",
+			path.Join(naming.ScyllaAgentConfigDirName, naming.ScyllaAgentConfigFileName),
+			"-c",
+			path.Join(naming.ScyllaAgentConfigDirName, naming.ScyllaAgentAuthTokenFileName),
 		},
 		Ports: []corev1.ContainerPort{
 			{
@@ -468,8 +485,15 @@ func agentContainer(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) corev1.Conta
 				MountPath: naming.DataDir,
 			},
 			{
-				Name:      "scylla-agent-config-volume",
-				MountPath: naming.ScyllaAgentConfigDirName,
+				Name:      scyllaAgentConfigVolumeName,
+				MountPath: path.Join(naming.ScyllaAgentConfigDirName, naming.ScyllaAgentConfigFileName),
+				SubPath:   naming.ScyllaAgentConfigFileName,
+				ReadOnly:  true,
+			},
+			{
+				Name:      scyllaAgentAuthTokenVolumeName,
+				MountPath: path.Join(naming.ScyllaAgentConfigDirName, naming.ScyllaAgentAuthTokenFileName),
+				SubPath:   naming.ScyllaAgentAuthTokenFileName,
 				ReadOnly:  true,
 			},
 		},
@@ -496,6 +520,25 @@ func MakePodDisruptionBudget(c *scyllav1.ScyllaCluster) *v1beta1.PodDisruptionBu
 			Selector:       metav1.SetAsLabelSelector(naming.ClusterLabels(c)),
 		},
 	}
+}
+
+func MakeAgentAuthTokenSecret(c *scyllav1.ScyllaCluster, authToken string) (*corev1.Secret, error) {
+	data, err := yaml.Marshal(&helpers.AgentAuthTokenSecret{AuthToken: authToken})
+	if err != nil {
+		return nil, fmt.Errorf("marshal auth token: %w", err)
+	}
+
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            naming.AgentAuthTokenSecretName(c.Name),
+			Namespace:       c.Namespace,
+			OwnerReferences: []metav1.OwnerReference{util.NewControllerRef(c)},
+		},
+		Type: corev1.SecretTypeOpaque,
+		Data: map[string][]byte{
+			naming.ScyllaAgentAuthTokenFileName: data,
+		},
+	}, nil
 }
 
 func ImageForCluster(c *scyllav1.ScyllaCluster) string {

@@ -18,6 +18,7 @@ const (
 	// Messages to display when experiencing an error.
 	MessageHeadlessServiceSyncFailed     = "Failed to sync Headless Service for cluster"
 	MessagePodDisruptionBudgetSyncFailed = "Failed to sync Pod Disruption Budget for cluster"
+	MessageAgentTokenSyncFailed          = "Failed to sync Agent token for cluster"
 	MessageMemberServicesSyncFailed      = "Failed to sync MemberServices for cluster"
 	MessageUpdateStatusFailed            = "Failed to update status for cluster: %+v"
 	MessageCleanupFailed                 = "Failed to clean up cluster resources"
@@ -58,6 +59,12 @@ func (cc *ClusterReconciler) sync(c *scyllav1.ScyllaCluster) error {
 	if err := cc.syncPodDisruptionBudget(ctx, c); err != nil {
 		cc.Recorder.Event(c, corev1.EventTypeWarning, naming.ErrSyncFailed, MessagePodDisruptionBudgetSyncFailed)
 		return errors.Wrap(err, "failed to sync pod disruption budget")
+	}
+
+	// Sync Agent auth token
+	if err := cc.syncAgentAuthToken(ctx, c); err != nil {
+		cc.Recorder.Event(c, corev1.EventTypeWarning, naming.ErrSyncFailed, MessageAgentTokenSyncFailed)
+		return errors.Wrap(err, "failed to sync agent auth token")
 	}
 
 	// Sync Cluster Member Services

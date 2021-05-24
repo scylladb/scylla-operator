@@ -14,6 +14,7 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/resource"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
+	"github.com/scylladb/scylla-operator/pkg/controllers/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/pkg/util/fsm"
@@ -25,6 +26,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -63,8 +65,12 @@ func (a *ClusterVersionUpgrade) Name() string {
 	return ClusterVersionUpgradeAction
 }
 
-var ScyllaClientForClusterFunc = func(ctx context.Context, cc client.Client, hosts []string, logger log.Logger) (*scyllaclient.Client, error) {
-	cfg := scyllaclient.DefaultConfig(hosts...)
+var ScyllaClientForClusterFunc = func(ctx context.Context, client corev1client.CoreV1Interface, cluster *scyllav1.ScyllaCluster, hosts []string, logger log.Logger) (*scyllaclient.Client, error) {
+	authToken, err := helpers.GetAgentAuthToken(ctx, client, cluster.Name, cluster.Namespace)
+	if err != nil {
+		return nil, fmt.Errorf("get auth token: %w", err)
+	}
+	cfg := scyllaclient.DefaultConfig(authToken, hosts...)
 	return scyllaclient.NewClient(cfg, logger)
 }
 
@@ -153,7 +159,7 @@ func (a *ClusterVersionUpgrade) genericUpgrade(ctx context.Context) error {
 		return errors.Wrap(err, "host discovery")
 	}
 
-	a.ScyllaClient, err = ScyllaClientForClusterFunc(ctx, a.cc, hosts, a.logger)
+	a.ScyllaClient, err = ScyllaClientForClusterFunc(ctx, a.kubeClient.CoreV1(), a.Cluster, hosts, a.logger)
 	if err != nil {
 		return errors.Wrap(err, "create scylla client")
 	}

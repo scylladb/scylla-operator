@@ -7,16 +7,25 @@ set -euo pipefail
 
 display_usage() {
 	echo "End-to-end deployment script for scylla on EKS."
-	echo "usage: $0 -z|--eks-zone [EKS zone] -c|--k8s-cluster-name [cluster name (optional)]"
+	echo "usage: $0 -r|--eks-region [EKS region] -z|--eks-zones [comma separated list of zones] -c|--k8s-cluster-name [cluster name (optional)]"
 }
 
 CLUSTER_NAME=scylla-demo
 
 while (( "$#" )); do
   case "$1" in
-    -z|--eks-zone)
+    -r|--eks-region)
       if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
-        EKS_ZONE=$2
+        EKS_REGION=$2
+        shift 2
+      else
+        echo "Error: Argument for $1 is missing" >&2
+        exit 1
+      fi
+      ;;
+    -z|--eks-zones)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        IFS=', ' read -r -a EKS_ZONES <<< "$2"
         shift 2
       else
         echo "Error: Argument for $1 is missing" >&2
@@ -47,13 +56,21 @@ while (( "$#" )); do
   esac
 done
 
-if [ -z "$EKS_ZONE" ]
+if [ -z "$EKS_REGION" ] || [ -z "$EKS_ZONES" ]
 then
   display_usage
   exit 1
 fi
 
-EKS_REGION=${EKS_ZONE:0:$((${#EKS_ZONE}-1))}
+function check_input() {
+  for zone in "${EKS_ZONES[@]}"
+  do
+    if ! aws ec2 describe-availability-zones --region $EKS_REGION | jq -e ".AvailabilityZones[] | select(.ZoneName==\"$zone\")" > /dev/null; then
+      echo "Availability zone $zone not found in $EKS_REGION"
+      exit 1
+    fi
+  done
+}
 
 check_prerequisites() {
   echo "Checking if eksctl is present on the machine..."
@@ -73,6 +90,18 @@ check_prerequisites() {
         echo "You need to install helm. See: https://docs.helm.sh/using_helm/#installing-helm"
         exit 1
     fi
+
+    echo "Checking if aws is present on the machine..."
+    if ! hash aws 2>/dev/null; then
+        echo "You need to install AWS CLI. See: https://aws.amazon.com/cli/"
+        exit 1
+    fi
+
+    echo "Checking if yq is present on the machine..."
+    if ! hash yq 2>/dev/null; then
+        echo "You need to install yq. See: https://github.com/mikefarah/yq"
+        exit 1
+    fi
 }
 
 function wait-for-object-creation {
@@ -81,17 +110,22 @@ function wait-for-object-creation {
     done
 }
 
+# Check if user provided values makes sense
+check_input
+
 # Check if the environment has the prerequisites installed
 check_prerequisites
 
 # Create EKS cluster
 
-sed "s/<eks_region>/${EKS_REGION}/g;s/<eks_cluster_name>/${CLUSTER_NAME}/g;s/<eks_zone>/${EKS_ZONE}/g" eks-cluster.yaml | eksctl create cluster -f -
+EKS_ZONES_QUOTED=$(printf ',"%s"' "${EKS_ZONES[@]}")
+EKS_ZONES_QUOTED="${EKS_ZONES_QUOTED:1}"
+yq eval -P ".metadata.region = \"${EKS_REGION}\" | .metadata.name = \"${CLUSTER_NAME}\" | .availabilityZones |= [${EKS_ZONES_QUOTED}] | (.nodeGroups[] | select(.name==\"scylla-pool\") | .availabilityZones) |= [${EKS_ZONES_QUOTED}]" eks-cluster.yaml | eksctl create cluster -f -
 
 # Configure node disks and network
 kubectl apply -f node-setup-daemonset.yaml
-wait-for-object-creation default daemonset.apps/raid-local-disks
-kubectl rollout status --timeout=5m daemonset.apps/raid-local-disks
+wait-for-object-creation default daemonset.apps/node-setup
+kubectl rollout status --timeout=5m daemonset.apps/node-setup
 
 # Install local volume provisioner
 echo "Installing local volume provisioner..."
@@ -111,4 +145,4 @@ wait-for-object-creation scylla-operator deployment.apps/scylla-operator
 kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/scylla-operator
 
 echo "Starting the scylla cluster..."
-sed "s/<eks_region>/${EKS_REGION}/g;s/<eks_zone>/${EKS_ZONE}/g" cluster.yaml | kubectl apply -f -
+kubectl apply -f cluster.yaml

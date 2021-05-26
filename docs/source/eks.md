@@ -12,14 +12,13 @@ As such we have tried to keep them separate in the [general guide](generic.md).
 If you don't want to run the commands step-by-step, you can just run a script that will set everything up for you:
 ```bash
 # Edit according to your preference
-EKS_ZONE=us-east-1a
+EKS_REGION=us-east-1
+EKS_ZONES=us-east-1a,us-east-1b,us-east-1c
 
 # From inside the examples/eks folder
 cd examples/eks
-./eks.sh -z "$EKS_ZONE"
+./eks.sh -z "$EKS_ZONES" -r "$EKS_REGION"
 ```
-
-:warning: Make sure to pass a ZONE (ex.: eu-central-1a) and not a REGION (ex.: eu-central-1).
 
 After you deploy, see how you can [benchmark your cluster with cassandra-stress](#benchmark-with-cassandra-stress).
 
@@ -33,7 +32,8 @@ First of all, we export all the configuration options as environment variables.
 Edit according to your own environment.
 
 ```
-EKS_ZONE=us-east-1a
+EKS_REGION=us-east-1
+EKS_ZONES=us-east-1a,us-east-1b,us-east-1c
 CLUSTER_NAME=scylla-demo
 ```
 
@@ -97,6 +97,13 @@ Script requires several dependencies:
 We deploy the local volume provisioner, which will discover their mount points and make them available as PersistentVolumes.
 ```
 helm install local-provisioner examples/common/provisioner
+```
+
+#### Deploy tuning DaemonSet
+
+Deploy tuning DaemonSet, this will configure your disks and apply several optimizations
+```
+kubectl apply -f node-setup-daemonset.yaml
 ```
 
 ### Installing the Scylla Operator and Scylla

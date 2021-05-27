@@ -48,7 +48,7 @@ func (o *GenerateOptions) Run(ctx context.Context) error {
 
 	var filteredPRs []PullRequest
 	var errs []error
-	for prNumber := range requiredPullRequestsNumbers {
+	for _, prNumber := range requiredPullRequestsNumbers {
 		pr, found := numberToPR[prNumber]
 		if !found {
 			errs = append(errs, fmt.Errorf("PR #%d not found in GitHub", prNumber))

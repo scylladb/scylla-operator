@@ -18,11 +18,13 @@ package sidecar
 import (
 	"context"
 	"fmt"
+	"path"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
 	"github.com/scylladb/scylla-operator/pkg/cmd/operator/options"
+	"github.com/scylladb/scylla-operator/pkg/controllers/helpers"
 	"github.com/scylladb/scylla-operator/pkg/controllers/sidecar/config"
 	"github.com/scylladb/scylla-operator/pkg/controllers/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -106,10 +108,18 @@ func New(ctx context.Context, mgr manager.Manager, logger log.Logger) (*MemberRe
 		return nil, errors.Wrap(err, "get scylla address")
 	}
 
-	cfg := scyllaclient.DefaultConfig(host.String())
-	if err := cfgutil.ParseYAML(&cfg, naming.ScyllaClientConfigDirName+"/"+naming.ScyllaClientConfigFileName); err != nil {
+	authToken, err := helpers.GetAgentAuthToken(ctx, kubeClient.CoreV1(), member.Cluster, member.Namespace)
+	if err != nil {
+		return nil, errors.Wrap(err, "get auth token")
+	}
+
+	cfg := scyllaclient.DefaultConfig(authToken, host.String())
+	if err := cfgutil.ParseYAML(&cfg, path.Join(naming.ScyllaClientConfigDirName, naming.ScyllaClientConfigFileName)); err != nil {
 		return nil, errors.Wrap(err, "parse scylla agent config")
 	}
+	// Auth token from secret is preferred.
+	cfg.AuthToken = authToken
+
 	scyllaClient, err := scyllaclient.NewClient(cfg, logger.Named("scylla_client"))
 	if err != nil {
 		return nil, errors.Wrap(err, "create scylla client")

@@ -58,6 +58,8 @@ rules:
   - get
   - list
   - watch
+  - create
+  - update
 - apiGroups:
   - ""
   resources:

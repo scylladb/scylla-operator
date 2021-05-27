@@ -214,6 +214,19 @@ func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return errors.Wrap(err, "pod disruption budget watch setup")
 	}
 
+	// Watch Secrets created for ScyllaCluster
+	err = c.Watch(
+		&source.Kind{Type: &corev1.Secret{}},
+		&handler.EnqueueRequestForOwner{
+			IsController: true,
+			OwnerType:    &scyllav1.ScyllaCluster{},
+		},
+		predicate.ResourceVersionChangedPredicate{},
+	)
+	if err != nil {
+		return errors.Wrap(err, "secret watch setup")
+	}
+
 	return nil
 }
 

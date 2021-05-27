@@ -12,14 +12,15 @@ import (
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/controllers/helpers"
 	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"go.uber.org/multierr"
-	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	mgr "sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -30,6 +31,7 @@ import (
 // Reconciler reconciles a Cluster object
 type Reconciler struct {
 	client.Client
+	KubeClient     kubernetes.Interface
 	UncachedClient client.Client
 	ManagerClient  *mermaidclient.Client
 
@@ -40,6 +42,7 @@ type Reconciler struct {
 }
 
 func New(ctx context.Context, mgr mgr.Manager, ignoredNamespace, namespace string, logger log.Logger) (*Reconciler, error) {
+	kubeClient := kubernetes.NewForConfigOrDie(mgr.GetConfig())
 	c, err := client.New(mgr.GetConfig(), client.Options{
 		Scheme: mgr.GetScheme(),
 	})
@@ -63,6 +66,7 @@ func New(ctx context.Context, mgr mgr.Manager, ignoredNamespace, namespace strin
 
 	return &Reconciler{
 		Client:           mgr.GetClient(),
+		KubeClient:       kubeClient,
 		UncachedClient:   c,
 		ManagerClient:    manager,
 		IgnoredNamespace: ignoredNamespace,
@@ -153,7 +157,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 	r.Logger.Debug(ctx, "Manager state", "state", managerState)
 
-	authToken, err := r.getAuthToken(ctx, &cluster)
+	authToken, err := helpers.GetAgentAuthToken(ctx, r.KubeClient.CoreV1(), cluster.Name, cluster.Namespace)
 	if err != nil {
 		logger.Error(ctx, "Failed to fetch cluster auth token", "error", err)
 		return reconcile.Result{}, err
@@ -248,31 +252,6 @@ func (r *Reconciler) managerState(ctx context.Context, clusterID string) (*state
 		BackupTasks: backupTasks,
 		RepairTasks: repairTasks,
 	}, nil
-}
-
-func (r *Reconciler) getAuthToken(ctx context.Context, cluster *scyllav1.ScyllaCluster) (string, error) {
-	const agentConfigKey = "scylla-manager-agent.yaml"
-	secret := &corev1.Secret{}
-	agentSecretName := cluster.Spec.Datacenter.Racks[0].ScyllaAgentConfig
-	secretKey := client.ObjectKey{
-		Name:      agentSecretName,
-		Namespace: cluster.Namespace,
-	}
-	err := r.Client.Get(ctx, secretKey, secret)
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return "", nil
-		}
-		return "", errors.Wrapf(err, "get %s secret", agentSecretName)
-	}
-	agentConfig := struct {
-		AuthToken string `yaml:"auth_token"`
-	}{}
-	if err := yaml.Unmarshal(secret.Data[agentConfigKey], &agentConfig); err != nil {
-		return "", errors.Wrap(err, "cannot parse agent config")
-	}
-
-	return agentConfig.AuthToken, nil
 }
 
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {

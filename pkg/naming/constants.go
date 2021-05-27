@@ -74,6 +74,8 @@ const (
 
 	ScyllaConfigDirName          = "/mnt/scylla-config"
 	ScyllaAgentConfigDirName     = "/mnt/scylla-agent-config"
+	ScyllaAgentConfigFileName    = "scylla-manager-agent.yaml"
+	ScyllaAgentAuthTokenFileName = "auth-token.yaml"
 	ScyllaAgentConfigDefaultFile = "/etc/scylla-manager-agent/scylla-manager-agent.yaml"
 	ScyllaClientConfigDirName    = "/mnt/scylla-client-config"
 	ScyllaClientConfigFileName   = "scylla-client.yaml"

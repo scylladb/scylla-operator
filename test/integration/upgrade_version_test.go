@@ -20,6 +20,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/util/httpx"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
@@ -109,7 +110,7 @@ var _ = Describe("Cluster controller", func() {
 			scylla  *scyllav1.ScyllaCluster
 			sstStub *integration.StatefulSetOperatorStub
 
-			originalActionsScyllaClientForClusterFunc func(ctx context.Context, cc client.Client, hosts []string, logger log.Logger) (*scyllaclient.Client, error)
+			originalActionsScyllaClientForClusterFunc func(ctx context.Context, client corev1client.CoreV1Interface, cluster *scyllav1.ScyllaCluster, hosts []string, logger log.Logger) (*scyllaclient.Client, error)
 		)
 
 		BeforeEach(func() {
@@ -179,8 +180,8 @@ var _ = Describe("Cluster controller", func() {
 				return http.DefaultClient.Do(req)
 			}))
 
-			actions.ScyllaClientForClusterFunc = func(ctx context.Context, cc client.Client, hosts []string, logger log.Logger) (*scyllaclient.Client, error) {
-				cfg := scyllaclient.DefaultConfig(scyllaAddr)
+			actions.ScyllaClientForClusterFunc = func(ctx context.Context, client corev1client.CoreV1Interface, cluster *scyllav1.ScyllaCluster, hosts []string, logger log.Logger) (*scyllaclient.Client, error) {
+				cfg := scyllaclient.DefaultConfig("", scyllaAddr)
 				cfg.Transport = hrt
 				return scyllaclient.NewClient(cfg, logger)
 			}

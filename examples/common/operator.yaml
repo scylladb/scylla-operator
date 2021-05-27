@@ -69,6 +69,8 @@ rules:
   - get
   - list
   - watch
+  - create
+  - update
 - apiGroups:
   - ""
   resources:
@@ -2028,6 +2030,12 @@ rules:
   - ""
   resources:
   - pods
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - secrets
   verbs:
   - get
 - apiGroups:

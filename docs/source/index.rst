@@ -15,6 +15,7 @@ Scylla Operator Documentation
    node_operations
    upgrade
    releases
+   known_issues
    scylla_cluster_crd
    contributing
 
@@ -53,5 +54,6 @@ Currently it supports:
 * :doc:`Node operations <node_operations>`
 * :doc:`Upgrade procedures <upgrade>`
 * :doc:`Releases <releases>`
+* :doc:`Known issues <known_issues>`
 * :doc:`Scylla Cluster Custom Resource Definition (CRD) <scylla_cluster_crd>`
 * :doc:`Contributing to the Scylla Operator Project <contributing>`

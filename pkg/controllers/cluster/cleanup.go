@@ -87,6 +87,11 @@ func (cc *ClusterReconciler) orphanedCleanup(ctx context.Context, c *scyllav1.Sc
 			return errors.Wrap(err, "get pv")
 		}
 
+		if pv.Spec.NodeAffinity == nil {
+			cc.Logger.Debug(ctx, "PV doesn't have node affinity", "pv", pv.Name)
+			continue
+		}
+
 		ns, err := nodeaffinity.NewNodeSelector(pv.Spec.NodeAffinity.Required)
 		if err != nil {
 			return errors.Wrap(err, "new node selector")

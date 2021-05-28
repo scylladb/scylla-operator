@@ -39,36 +39,79 @@ metadata:
   name: scylla-cluster
   namespace: scylla
 spec:
-  version: 4.2.0
-  agentVersion: 2.2.0
+  version: 4.4.2
+  agentVersion: 2.3.0
   cpuset: true
   network:
     hostNetworking: true
+  sysctls:
+  - "fs.aio-max-nr=2097152"
   datacenter:
-    name: <eks_zone>
+    name: us-east-1
     racks:
-      - name: <eks_region>
-        scyllaConfig: "scylla-config"
-        scyllaAgentConfig: "scylla-agent-config"
-        members: 3
-        storage:
-          storageClassName: local-raid-disks
-          capacity: 1800G
-        resources:
-          limits:
-            cpu: 5
-            memory: 58G
-        placement:
-          nodeAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              nodeSelectorTerms:
-                - matchExpressions:
-                  - key: failure-domain.beta.kubernetes.io/zone
-                    operator: In
-                    values:
-                      - <eks_zone>
-          tolerations:
-            - key: role
-              operator: Equal
-              value: scylla-clusters
-              effect: NoSchedule
+    - name: a
+      members: 1
+      storage:
+        capacity: 1800G
+      resources:
+        limits:
+          cpu: 7
+          memory: 56G
+      placement:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: topology.kubernetes.io/zone
+                  operator: In
+                  values:
+                    - us-east-1a
+        tolerations:
+          - key: role
+            operator: Equal
+            value: scylla-clusters
+            effect: NoSchedule
+    - name: b
+      members: 1
+      storage:
+        capacity: 1800G
+      resources:
+        limits:
+          cpu: 7
+          memory: 56G
+      placement:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values:
+                - us-east-1b
+        tolerations:
+        - key: role
+          operator: Equal
+          value: scylla-clusters
+          effect: NoSchedule
+    - name: c
+      members: 1
+      storage:
+        capacity: 1800G
+      resources:
+        limits:
+          cpu: 7
+          memory: 56G
+      placement:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values:
+                - us-east-1c
+        tolerations:
+        - key: role
+          operator: Equal
+          value: scylla-clusters
+          effect: NoSchedule

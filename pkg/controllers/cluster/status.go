@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/resource"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
@@ -121,7 +122,11 @@ func (cc *ClusterReconciler) updateStatus(ctx context.Context, cluster *scyllav1
 					return errors.New("seed node replace is not supported")
 				}
 				if replaceAddr == "" {
-					rackStatus.ReplaceAddressFirstBoot[svc.Name] = svc.Spec.ClusterIP
+					memberIp, err := resource.GetIpFromService(&svc, cluster)
+					if err != nil {
+						return err
+					}
+					rackStatus.ReplaceAddressFirstBoot[svc.Name] = memberIp
 				}
 				cc.Logger.Info(ctx, "Rack member is being replaced", "rack", rack.Name, "member", svc.Name)
 				scyllav1.SetRackCondition(&rackStatus, scyllav1.RackConditionTypeMemberReplacing)

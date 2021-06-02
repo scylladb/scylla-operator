@@ -42,9 +42,10 @@ func (cc *ClusterReconciler) syncMemberServices(ctx context.Context, c *scyllav1
 		if err != nil {
 			return errors.Wrapf(err, "listing pods for rack %s failed", r.Name)
 		}
+
 		for _, pod := range podlist.Items {
 			memberService := resource.MemberServiceForPod(&pod, c)
-			op, err := controllerutil.CreateOrUpdate(ctx, cc.Client, memberService, serviceMutateFn(ctx, memberService, cc.Client))
+			op, err := controllerutil.CreateOrUpdate(ctx, cc.Client, memberService, serviceMemberMutateFn(memberService, memberService.DeepCopy()))
 			if err != nil {
 				return errors.Wrapf(err, "error syncing member service %s", memberService.Name)
 			}
@@ -57,6 +58,17 @@ func (cc *ClusterReconciler) syncMemberServices(ctx context.Context, c *scyllav1
 		}
 	}
 	return nil
+}
+
+func serviceMemberMutateFn(service *corev1.Service, newService *corev1.Service) func() error {
+	return func() error {
+		// Ensure scylla/ip label is well updated
+		if ip, ok := newService.ObjectMeta.Labels[naming.IpLabel]; ok && ip != "" {
+			service.ObjectMeta.Labels[naming.IpLabel] = ip
+		}
+
+		return nil
+	}
 }
 
 // syncService checks if the given Service exists and creates it if it doesn't

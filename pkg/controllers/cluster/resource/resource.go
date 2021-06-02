@@ -5,6 +5,8 @@ import (
 	"path"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
 	"github.com/scylladb/scylla-operator/pkg/controllers/helpers"
@@ -62,7 +64,16 @@ func MemberServiceForPod(pod *corev1.Pod, cluster *scyllav1.ScyllaCluster) *core
 	if replaceAddr, ok := cluster.Status.Racks[rackName].ReplaceAddressFirstBoot[pod.Name]; ok && replaceAddr != "" {
 		labels[naming.ReplaceLabel] = replaceAddr
 	}
-	return &corev1.Service{
+
+	// When cluster use hostNetworking we rely on pod IP
+	// The pod IP is only available when pod is running
+	if cluster.Spec.Network.HostNetworking {
+		if pod.Status.PodIP != "" {
+			labels[naming.IpLabel] = pod.Status.PodIP
+		}
+	}
+
+	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            pod.Name,
 			Namespace:       pod.Namespace,
@@ -76,6 +87,12 @@ func MemberServiceForPod(pod *corev1.Pod, cluster *scyllav1.ScyllaCluster) *core
 			PublishNotReadyAddresses: true,
 		},
 	}
+
+	if cluster.Spec.Network.HostNetworking {
+		service.Spec.ClusterIP = corev1.ClusterIPNone
+	}
+
+	return service
 }
 
 func memberServicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
@@ -554,4 +571,15 @@ func stringOrDefault(str, def string) string {
 		return str
 	}
 	return def
+}
+
+func GetIpFromService(svc *corev1.Service, c *scyllav1.ScyllaCluster) (string, error) {
+	ip := svc.Spec.ClusterIP
+	if c.Spec.Network.HostNetworking {
+		var ok bool
+		if ip, ok = svc.ObjectMeta.Labels[naming.IpLabel]; !ok {
+			return "", errors.Errorf("%s label not found on member service %s", naming.IpLabel, svc.Name)
+		}
+	}
+	return ip, nil
 }

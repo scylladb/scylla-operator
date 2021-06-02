@@ -88,20 +88,20 @@ func (mc *MemberReconciler) Reconcile(ctx context.Context, request reconcile.Req
 
 // newReconciler returns a new reconcile.Reconciler
 func New(ctx context.Context, mgr manager.Manager, logger log.Logger) (*MemberReconciler, error) {
-	opts := options.GetSidecarOptions()
-	kubeClient := kubernetes.NewForConfigOrDie(mgr.GetConfig())
-	member, err := identity.Retrieve(ctx, opts.Name, opts.Namespace, kubeClient)
-	if err != nil {
-		return nil, errors.Wrap(err, "get member")
-	}
-	logger.Info(ctx, "Member loaded", "member", member)
-
 	c, err := client.New(mgr.GetConfig(), client.Options{
 		Scheme: mgr.GetScheme(),
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "get dynamic client")
 	}
+
+	opts := options.GetSidecarOptions()
+	kubeClient := kubernetes.NewForConfigOrDie(mgr.GetConfig())
+	member, err := identity.Retrieve(ctx, opts.Name, opts.Namespace, kubeClient, c)
+	if err != nil {
+		return nil, errors.Wrap(err, "get member")
+	}
+	logger.Info(ctx, "Member loaded", "member", member)
 
 	host, err := network.FindFirstNonLocalIP()
 	if err != nil {

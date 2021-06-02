@@ -12,6 +12,10 @@ const (
 	// SeedLabel determines if a member is a seed or not.
 	SeedLabel = "scylla/seed"
 
+	// IpLabel determines ip of pod when using hostNetwork
+	// Used for pod replacement, seed ip and listen/broadcast ip
+	IpLabel = "scylla/ip"
+
 	// DecommissionLabel expresses the intent to decommission
 	// the specific member. The presence of the label expresses
 	// the intent to decommission. If the value is true, it means

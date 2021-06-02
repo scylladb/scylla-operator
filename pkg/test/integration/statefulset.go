@@ -49,11 +49,11 @@ func WithPodCondition(condition corev1.PodCondition) func(pod *corev1.Pod) {
 
 type PodOption func(pod *corev1.Pod)
 
-func (s *StatefulSetOperatorStub) CreatePods(ctx context.Context, cluster *scyllav1.ScyllaCluster, options ...PodOption) error {
-	return s.CreatePodsPartition(ctx, cluster, 0, options...)
+func (s *StatefulSetOperatorStub) CreatePods(ctx context.Context, cluster *scyllav1.ScyllaCluster, podRunning bool, options ...PodOption) error {
+	return s.CreatePodsPartition(ctx, cluster, 0, podRunning, options...)
 }
 
-func (s *StatefulSetOperatorStub) CreatePodsPartition(ctx context.Context, cluster *scyllav1.ScyllaCluster, partition int, options ...PodOption) error {
+func (s *StatefulSetOperatorStub) CreatePodsPartition(ctx context.Context, cluster *scyllav1.ScyllaCluster, partition int, podRunning bool, options ...PodOption) error {
 	for _, rack := range cluster.Spec.Datacenter.Racks {
 		sts := &appsv1.StatefulSet{}
 
@@ -116,6 +116,13 @@ func (s *StatefulSetOperatorStub) CreatePodsPartition(ctx context.Context, clust
 						s.logger.Info(ctx, "Spawned fake Pod", "sts", sts.Name, "pod", pod.Name)
 					case controllerutil.OperationResultUpdated:
 						s.logger.Info(ctx, "Updated fake Pod", "sts", sts.Name, "pod", pod.Name)
+					}
+				}
+
+				if podRunning {
+					pod.Status.Phase = corev1.PodRunning
+					if err := s.env.Status().Update(ctx, pod); err != nil {
+						return err
 					}
 				}
 			}

@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/resource"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
@@ -136,8 +137,12 @@ func (a *RackReplaceNode) replaceNode(ctx context.Context, state *State, member 
 
 	// Save replace address in RackStatus
 	rackStatus := c.Status.Racks[r.Name]
-	rackStatus.ReplaceAddressFirstBoot[member.Name] = member.Spec.ClusterIP
-	a.Logger.Debug(ctx, "Adding member address to replace address list", "member", member.Name, "ip", member.Spec.ClusterIP, "replace_addresses", rackStatus.ReplaceAddressFirstBoot)
+	memberIp, err := resource.GetIpFromService(member, c)
+	if err != nil {
+		return errors.Wrap(err, "failed to get IP from member service")
+	}
+	rackStatus.ReplaceAddressFirstBoot[member.Name] = memberIp
+	a.Logger.Debug(ctx, "Adding member address to replace address list", "member", member.Name, "ip", memberIp, "replace_addresses", rackStatus.ReplaceAddressFirstBoot)
 
 	// Proceed to destructive operations only when IP address is saved in cluster Status.
 	if err := cc.Status().Update(ctx, c); err != nil {

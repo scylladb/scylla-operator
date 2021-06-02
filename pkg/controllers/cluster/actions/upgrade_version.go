@@ -83,9 +83,13 @@ func (a *ClusterVersionUpgrade) nonMaintenanceHosts(ctx context.Context) ([]stri
 		}
 
 		for _, s := range services {
-			a.ipMapping[s.Name] = s.Spec.ClusterIP
+			ip, err := resource.GetIpFromService(&s, a.Cluster)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to get IP from member service")
+			}
+			a.ipMapping[s.Name] = ip
 			if _, ok := s.Labels[naming.NodeMaintenanceLabel]; !ok {
-				hosts = append(hosts, s.Spec.ClusterIP)
+				hosts = append(hosts, ip)
 			}
 		}
 	}

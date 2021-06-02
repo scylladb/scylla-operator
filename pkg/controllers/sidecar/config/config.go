@@ -188,19 +188,12 @@ func appendScyllaArguments(ctx context.Context, s *ScyllaConfig, scyllaArgs stri
 }
 
 func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
-	m := s.member
-	// Get seeds
-	seeds, err := m.GetSeeds(ctx, s.kubeClient)
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting seeds")
-	}
-
 	// Check if we need to run in developer mode
 	devMode := "0"
 	cluster := &v1.ScyllaCluster{}
-	err = s.Get(ctx, naming.NamespacedName(s.member.Cluster, s.member.Namespace), cluster)
+	err := s.Get(ctx, naming.NamespacedName(s.member.Cluster, s.member.Namespace), cluster)
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting cluster")
+		return nil, errors.Wrapf(err, "error getting cluster %s", s.member.Cluster)
 	}
 	if cluster.Spec.DeveloperMode {
 		devMode = "1"
@@ -208,6 +201,13 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	shards, err := strconv.Atoi(options.GetSidecarOptions().CPU)
 	if err != nil {
 		return nil, errors.WithStack(err)
+	}
+
+	m := s.member
+	// Get seeds
+	seeds, err := m.GetSeeds(ctx, s.kubeClient, cluster)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting seeds for cluster %s", s.member.Cluster)
 	}
 
 	// Listen on all interfaces so users or a service mesh can use localhost.

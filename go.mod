@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/bitly/go-hostpool v0.1.0 // indirect
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/elazarl/goproxy v0.0.0-20191011121108-aa519ddbe484 // indirect

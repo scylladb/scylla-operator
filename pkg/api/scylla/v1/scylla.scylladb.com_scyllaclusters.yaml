@@ -1607,6 +1607,9 @@ spec:
                 items:
                   type: string
                 type: array
+              tuneNode:
+                description: TuneNode determines if sidecar should perform node network and disk tuning for max performance. Node optimizations require running Scylla as a privileged container.
+                type: boolean
               version:
                 description: Version of Scylla to use.
                 type: string

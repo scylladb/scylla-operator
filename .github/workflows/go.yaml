@@ -193,12 +193,12 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ env.go_version }}
-    - name: Setup minikube
-      uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/setup-minikube
     - name: Install tools
       run: |
         set -x
         go install github.com/mikefarah/yq/v4@v4.6.1
+    - name: Setup minikube
+      uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/setup-minikube
     - name: Deploy scylla-operator
       run: |
         set -x
@@ -226,6 +226,13 @@ jobs:
         docker stats -a --no-stream --no-trunc > docker.stats
         free -h > free
         journalctl -u kubelet > kubelet.log
+    - name: Collect audit logs
+      if: ${{ always() }}
+      working-directory: ${{ runner.temp }}/e2e-artifacts
+      run: |
+        set -x
+        sudo cat /var/log/minikube/kube-apiserver-audit.log > ./kube-apiserver-audit.log
+        jq -s 'group_by(.user.username) | map({"user": .[0].user.username, "total": length, "verbs": (group_by(.verb) | map({"key":.[0].verb, "value": length}) | from_entries)}) | sort_by(.total) | reverse' ./kube-apiserver-audit.log > ./api-call-stats.json
     - name: Compress artifacts
       if: ${{ always() }}
       working-directory: ${{ runner.temp }}

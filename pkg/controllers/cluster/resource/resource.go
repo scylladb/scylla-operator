@@ -219,9 +219,9 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, sidecarI
 								fmt.Sprintf("cp -a /usr/bin/scylla-operator %s", naming.SharedDirName),
 							},
 							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("10m"),
-									corev1.ResourceMemory: resource.MustParse("10Mi"),
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("100m"),
+									corev1.ResourceMemory: resource.MustParse("100Mi"),
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{
@@ -528,9 +528,9 @@ func sysctlInitContainer(sysctls []string, image string) *corev1.Container {
 			Privileged: &opt,
 		},
 		Resources: corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("10m"),
-				corev1.ResourceMemory: resource.MustParse("10Mi"),
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("100m"),
+				corev1.ResourceMemory: resource.MustParse("100Mi"),
 			},
 		},
 		Command: []string{

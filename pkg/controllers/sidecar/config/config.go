@@ -210,6 +210,11 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		return nil, errors.WithStack(err)
 	}
 
+	overprovisioned := "0"
+	if m.Overprovisioned {
+		overprovisioned = "1"
+	}
+
 	// Listen on all interfaces so users or a service mesh can use localhost.
 	listenAddress := "0.0.0.0"
 	args := map[string]*string{
@@ -218,7 +223,7 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		"broadcast-rpc-address": &m.StaticIP,
 		"seeds":                 pointer.StringPtr(strings.Join(seeds, ",")),
 		"developer-mode":        &devMode,
-		"overprovisioned":       pointer.StringPtr("0"),
+		"overprovisioned":       pointer.StringPtr(overprovisioned),
 		"smp":                   pointer.StringPtr(strconv.Itoa(shards)),
 	}
 	if cluster.Spec.Alternator.Enabled() {

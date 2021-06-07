@@ -26,6 +26,7 @@ import (
 	"github.com/scylladb/go-log"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/cmd/operator/options"
+	"github.com/scylladb/scylla-operator/pkg/controllers/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -34,6 +35,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -60,6 +62,7 @@ type ClusterReconciler struct {
 	UncachedClient client.Client
 	Recorder       record.EventRecorder
 	OperatorImage  string
+	CloudPlatform  helpers.CloudPlatform
 
 	Scheme *runtime.Scheme
 	Logger log.Logger
@@ -76,9 +79,15 @@ func New(ctx context.Context, mgr ctrl.Manager, logger log.Logger) (*ClusterReco
 		return nil, errors.Wrap(err, "get dynamic uncached client")
 	}
 
-	operatorImage, err := GetOperatorImage(ctx, kubeClient, options.GetOperatorOptions())
+	opts := options.GetOperatorOptions()
+	operatorImage, err := GetOperatorImage(ctx, kubeClient, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "get operator image")
+	}
+
+	cloudPlatform, err := getCloudPlatform(ctx, kubeClient.CoreV1(), opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "get cloud platform")
 	}
 
 	return &ClusterReconciler{
@@ -87,6 +96,7 @@ func New(ctx context.Context, mgr ctrl.Manager, logger log.Logger) (*ClusterReco
 		KubeClient:     kubeClient,
 		Recorder:       mgr.GetEventRecorderFor("scylla-cluster-controller"),
 		OperatorImage:  operatorImage,
+		CloudPlatform:  cloudPlatform,
 		Scheme:         mgr.GetScheme(),
 		Logger:         logger,
 	}, nil
@@ -249,4 +259,18 @@ func GetOperatorImage(ctx context.Context, kubeClient kubernetes.Interface, opts
 	}
 
 	return "", errors.New("cannot find scylla operator container in pod spec")
+}
+
+func getCloudPlatform(ctx context.Context, client corev1client.CoreV1Interface, opts *options.OperatorOptions) (helpers.CloudPlatform, error) {
+	pod, err := client.Pods(opts.Namespace).Get(ctx, opts.Name, metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("get operator pod: %w", err)
+	}
+
+	node, err := client.Nodes().Get(ctx, pod.Spec.NodeName, metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("get operator node: %w", err)
+	}
+
+	return helpers.GetCloudPlatform(node), nil
 }

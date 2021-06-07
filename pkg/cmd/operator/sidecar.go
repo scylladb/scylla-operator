@@ -6,6 +6,7 @@ import (
 	"github.com/scylladb/go-log"
 	"github.com/scylladb/scylla-operator/pkg/cmd/operator/options"
 	"github.com/scylladb/scylla-operator/pkg/controllers/sidecar"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -41,6 +42,18 @@ func NewSidecarCmd(ctx context.Context, logger log.Logger, level zap.AtomicLevel
 			})
 			if err != nil {
 				logger.Fatal(ctx, "unable to create manager", "error", err)
+			}
+
+			if opts.RunPerftune {
+				if err := runPerftune(ctx, logger); err != nil {
+					logger.Error(ctx, "unable to optimize node", "error", err)
+				}
+			}
+
+			if opts.DisableWriteCache {
+				if err := setWriteCache(ctx, logger, naming.DataDir, "write through"); err != nil {
+					logger.Error(ctx, "unable to set write cache", "error", err)
+				}
 			}
 
 			logger.Info(ctx, "Registering Components.")

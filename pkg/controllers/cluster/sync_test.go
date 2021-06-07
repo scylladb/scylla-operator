@@ -9,6 +9,7 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/actions"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/resource"
+	"github.com/scylladb/scylla-operator/pkg/controllers/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,7 +24,7 @@ func TestNextAction(t *testing.T) {
 
 	members := int32(3)
 	cluster := unit.NewSingleRackCluster(members)
-	rack, err := resource.StatefulSetForRack(cluster.Spec.Datacenter.Racks[0], cluster, operatorImage)
+	rack, err := resource.StatefulSetForRack(cluster.Spec.Datacenter.Racks[0], cluster, operatorImage, helpers.UnknownPlatform)
 	if err != nil {
 		t.Fatal(err)
 	}

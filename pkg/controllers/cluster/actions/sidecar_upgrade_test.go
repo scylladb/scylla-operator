@@ -9,6 +9,7 @@ import (
 
 	"github.com/scylladb/go-log"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/resource"
+	"github.com/scylladb/scylla-operator/pkg/controllers/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	"go.uber.org/zap"
@@ -35,7 +36,7 @@ func TestSidecarUpgradeAction(t *testing.T) {
 
 	cluster := unit.NewMultiRackCluster(1)
 	rack := cluster.Spec.Datacenter.Racks[0]
-	rackSts, err := resource.StatefulSetForRack(rack, cluster, preUpdateImage)
+	rackSts, err := resource.StatefulSetForRack(rack, cluster, preUpdateImage, helpers.UnknownPlatform)
 	if err != nil {
 		t.Fatal(err)
 	}

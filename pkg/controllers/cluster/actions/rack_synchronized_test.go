@@ -9,6 +9,7 @@ import (
 
 	"github.com/scylladb/go-log"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/resource"
+	"github.com/scylladb/scylla-operator/pkg/controllers/helpers"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -48,7 +49,7 @@ func TestRackSynchronizedAction_SubActionUpdatesRack(t *testing.T) {
 	})
 
 	cluster := unit.NewMultiRackCluster(1)
-	firstRack, err := resource.StatefulSetForRack(cluster.Spec.Datacenter.Racks[0], cluster, "image")
+	firstRack, err := resource.StatefulSetForRack(cluster.Spec.Datacenter.Racks[0], cluster, "image", helpers.UnknownPlatform)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +98,7 @@ func TestRackSynchronizedAction_RackAreUpgradedInSequence(t *testing.T) {
 	})
 
 	cluster := unit.NewMultiRackCluster(1, 1)
-	firstRack, err := resource.StatefulSetForRack(cluster.Spec.Datacenter.Racks[0], cluster, "image")
+	firstRack, err := resource.StatefulSetForRack(cluster.Spec.Datacenter.Racks[0], cluster, "image", helpers.UnknownPlatform)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +106,7 @@ func TestRackSynchronizedAction_RackAreUpgradedInSequence(t *testing.T) {
 	firstRackReady.Status.ObservedGeneration = firstRackReady.Generation
 	firstRackReady.Status.ReadyReplicas = cluster.Spec.Datacenter.Racks[0].Members
 
-	secondRack, err := resource.StatefulSetForRack(cluster.Spec.Datacenter.Racks[1], cluster, "image")
+	secondRack, err := resource.StatefulSetForRack(cluster.Spec.Datacenter.Racks[1], cluster, "image", helpers.UnknownPlatform)
 	if err != nil {
 		t.Fatal(err)
 	}

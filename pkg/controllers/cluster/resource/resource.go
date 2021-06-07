@@ -119,7 +119,7 @@ func memberServicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 	return ports
 }
 
-func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, sidecarImage string) (*appsv1.StatefulSet, error) {
+func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, sidecarImage string, platform helpers.CloudPlatform) (*appsv1.StatefulSet, error) {
 	rackLabels := naming.RackLabels(r, c)
 	placement := r.Placement
 	if placement == nil {
@@ -212,7 +212,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, sidecarI
 						{
 							Name:            naming.SidecarInjectorContainerName,
 							Image:           sidecarImage,
-							ImagePullPolicy: "IfNotPresent",
+							ImagePullPolicy: corev1.PullIfNotPresent,
 							Command: []string{
 								"/bin/sh",
 								"-c",
@@ -237,7 +237,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, sidecarI
 						{
 							Name:            naming.ScyllaContainerName,
 							Image:           ImageForCluster(c),
-							ImagePullPolicy: "IfNotPresent",
+							ImagePullPolicy: corev1.PullIfNotPresent,
 							Ports:           containerPorts(c),
 							// TODO: unprivileged entrypoint
 							Command: []string{
@@ -381,6 +381,65 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, sidecarI
 	if sysctlContainer != nil {
 		sts.Spec.Template.Spec.InitContainers = append(sts.Spec.Template.Spec.InitContainers, *sysctlContainer)
 	}
+
+	if c.Spec.TuneNode {
+		sts.Spec.Template.Spec.HostPID = true
+		sts.Spec.Template.Spec.Containers[0].SecurityContext.Privileged = pointer.BoolPtr(true)
+		sts.Spec.Template.Spec.Containers[0].Args = append(sts.Spec.Template.Spec.Containers[0].Args, "--run-perftune")
+		sts.Spec.Template.Spec.Containers[0].VolumeMounts = append(sts.Spec.Template.Spec.Containers[0].VolumeMounts, []corev1.VolumeMount{
+			{
+				MountPath: "/etc/systemd",
+				Name:      "etc-systemd",
+			},
+			{
+				MountPath: "/sys/class",
+				Name:      "sys-class",
+			},
+			{
+				MountPath: "/sys/devices",
+				Name:      "sys-devices",
+			},
+			{
+				MountPath: "/lib/systemd/system",
+				Name:      "lib-systemd-system",
+				ReadOnly:  true,
+			},
+			{
+				MountPath: "/var/run/dbus",
+				Name:      "var-run-dbus",
+				ReadOnly:  true,
+			},
+			{
+				MountPath: "/run/systemd/system",
+				Name:      "run-systemd-system",
+				ReadOnly:  true,
+			},
+		}...)
+		sts.Spec.Template.Spec.Volumes = append(sts.Spec.Template.Spec.Volumes, []corev1.Volume{
+			hostDirVolume("etc-systemd", "/etc/systemd"),
+			hostDirVolume("sys-class", "/sys/class"),
+			hostDirVolume("sys-devices", "/sys/devices"),
+			hostDirVolume("lib-systemd-system", "/lib/systemd/system"),
+			hostDirVolume("var-run-dbus", "/var/run/dbus"),
+			hostDirVolume("run-systemd-system", "/run/systemd/system"),
+		}...)
+
+		if platform == helpers.EKSPlatform {
+			sts.Spec.Template.Spec.Volumes = append(sts.Spec.Template.Spec.Volumes,
+				hostFileVolume("etc-sysconfig-irqbalance", "/etc/sysconfig/irqbalance"),
+			)
+			sts.Spec.Template.Spec.Containers[0].VolumeMounts = append(sts.Spec.Template.Spec.Containers[0].VolumeMounts,
+				corev1.VolumeMount{
+					MountPath: "/etc/sysconfig/irqbalance",
+					Name:      "etc-sysconfig-irqbalance",
+				},
+			)
+		}
+		if platform == helpers.GKEPlatform {
+			sts.Spec.Template.Spec.Containers[0].Args = append(sts.Spec.Template.Spec.Containers[0].Args, "--disable-write-cache")
+		}
+	}
+
 	for _, VolumeMount := range r.VolumeMounts {
 		sts.Spec.Template.Spec.Containers[0].VolumeMounts = append(
 			sts.Spec.Template.Spec.Containers[0].VolumeMounts, *VolumeMount.DeepCopy())
@@ -434,6 +493,28 @@ func containerPorts(c *scyllav1.ScyllaCluster) []corev1.ContainerPort {
 	return ports
 }
 
+func hostVolume(name, hostPath string, volumeType *corev1.HostPathType) corev1.Volume {
+	return corev1.Volume{
+		Name: name,
+		VolumeSource: corev1.VolumeSource{
+			HostPath: &corev1.HostPathVolumeSource{
+				Path: hostPath,
+				Type: volumeType,
+			},
+		},
+	}
+}
+
+func hostDirVolume(name, hostPath string) corev1.Volume {
+	volumeType := corev1.HostPathDirectory
+	return hostVolume(name, hostPath, &volumeType)
+}
+
+func hostFileVolume(name, hostPath string) corev1.Volume {
+	volumeType := corev1.HostPathFile
+	return hostVolume(name, hostPath, &volumeType)
+}
+
 func sysctlInitContainer(sysctls []string, image string) *corev1.Container {
 	if len(sysctls) == 0 {
 		return nil
@@ -442,7 +523,7 @@ func sysctlInitContainer(sysctls []string, image string) *corev1.Container {
 	return &corev1.Container{
 		Name:            "sysctl-buddy",
 		Image:           image,
-		ImagePullPolicy: "IfNotPresent",
+		ImagePullPolicy: corev1.PullIfNotPresent,
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &opt,
 		},
@@ -464,7 +545,7 @@ func agentContainer(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) corev1.Conta
 	cnt := corev1.Container{
 		Name:            "scylla-manager-agent",
 		Image:           agentImageForCluster(c),
-		ImagePullPolicy: "IfNotPresent",
+		ImagePullPolicy: corev1.PullIfNotPresent,
 		Args: []string{
 			"-c",
 			naming.ScyllaAgentConfigDefaultFile,

@@ -53,6 +53,10 @@ type ClusterSpec struct {
 	// CpuSet determines if the cluster will use cpu-pinning for max performance.
 	// +optional
 	CpuSet bool `json:"cpuset,omitempty"`
+	// TuneNode determines if sidecar should perform node network and disk tuning for max performance.
+	// Node optimizations require running Scylla as a privileged container.
+	// +optional
+	TuneNode bool `json:"tuneNode,omitempty"`
 	// AutomaticOrphanedNodeCleanup controls if automatic orphan node cleanup should be performed.
 	AutomaticOrphanedNodeCleanup bool `json:"automaticOrphanedNodeCleanup,omitempty"`
 	// GenericUpgrade allows to configure behavior of generic upgrade logic.

@@ -6,6 +6,7 @@ import (
 
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/resource"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
+	"github.com/scylladb/scylla-operator/pkg/controllers/helpers"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,7 +17,7 @@ func TestUpgradeStatefulSetScyllaImage(t *testing.T) {
 	ctx := context.Background()
 	cluster := unit.NewSingleRackCluster(3)
 	rack := cluster.Spec.Datacenter.Racks[0]
-	sts, err := resource.StatefulSetForRack(rack, cluster, "sidecar")
+	sts, err := resource.StatefulSetForRack(rack, cluster, "sidecar", helpers.UnknownPlatform)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/resource"
+	"github.com/scylladb/scylla-operator/pkg/controllers/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	appsv1 "k8s.io/api/apps/v1"
@@ -68,7 +69,7 @@ func TestClusterStatus_SourceOfRackStatus(t *testing.T) {
 		},
 	}
 
-	rackSts, err := resource.StatefulSetForRack(rack, cluster, "image")
+	rackSts, err := resource.StatefulSetForRack(rack, cluster, "image", helpers.UnknownPlatform)
 	if err != nil {
 		t.Fatal(err)
 	}

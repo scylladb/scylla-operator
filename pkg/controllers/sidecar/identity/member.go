@@ -52,14 +52,14 @@ func Retrieve(ctx context.Context, name, namespace string, kubeclient kubernetes
 	}
 
 	return &Member{
-		Name:          name,
-		Namespace:     namespace,
-		IP:            pod.Status.PodIP,
-		StaticIP:      memberService.Spec.ClusterIP,
-		Rack:          pod.Labels[naming.RackNameLabel],
-		Datacenter:    pod.Labels[naming.DatacenterNameLabel],
-		Cluster:       pod.Labels[naming.ClusterNameLabel],
-		ServiceLabels: memberService.Labels,
+		Name:            name,
+		Namespace:       namespace,
+		IP:              pod.Status.PodIP,
+		StaticIP:        memberService.Spec.ClusterIP,
+		Rack:            pod.Labels[naming.RackNameLabel],
+		Datacenter:      pod.Labels[naming.DatacenterNameLabel],
+		Cluster:         pod.Labels[naming.ClusterNameLabel],
+		ServiceLabels:   memberService.Labels,
 	}, nil
 }
 

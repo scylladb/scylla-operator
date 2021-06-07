@@ -104,7 +104,7 @@ func (cc *ClusterReconciler) nextAction(ctx context.Context, cluster *scyllav1.S
 		// For each rack, check if a status entry exists
 		if _, ok := cluster.Status.Racks[rack.Name]; !ok {
 			logger.Info(ctx, "Next Action: Create rack", "name", rack.Name)
-			return actions.NewRackCreateAction(rack, cluster, cc.OperatorImage), nil
+			return actions.NewRackCreateAction(rack, cluster, cc.OperatorImage, cc.CloudPlatform), nil
 		}
 	}
 
@@ -181,7 +181,7 @@ func (cc *ClusterReconciler) nextAction(ctx context.Context, cluster *scyllav1.S
 }
 
 func (cc *ClusterReconciler) sidecarUpdateNeeded(ctx context.Context, rack scyllav1.RackSpec, cluster *scyllav1.ScyllaCluster) (bool, corev1.Container, error) {
-	desiredSts, err := resource.StatefulSetForRack(rack, cluster, cc.OperatorImage)
+	desiredSts, err := resource.StatefulSetForRack(rack, cluster, cc.OperatorImage, cc.CloudPlatform)
 	if err != nil {
 		return false, corev1.Container{}, err
 	}

@@ -8,6 +8,7 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/resource"
 	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
+	"github.com/scylladb/scylla-operator/pkg/controllers/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -23,13 +24,15 @@ type RackCreate struct {
 	Rack          scyllav1.RackSpec
 	Cluster       *scyllav1.ScyllaCluster
 	OperatorImage string
+	CloudPlatform helpers.CloudPlatform
 }
 
-func NewRackCreateAction(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, image string) *RackCreate {
+func NewRackCreateAction(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, image string, platform helpers.CloudPlatform) *RackCreate {
 	return &RackCreate{
 		Rack:          r,
 		Cluster:       c,
 		OperatorImage: image,
+		CloudPlatform: platform,
 	}
 }
 
@@ -39,7 +42,7 @@ func (a *RackCreate) Name() string {
 
 func (a *RackCreate) Execute(ctx context.Context, s *State) error {
 	r, c := a.Rack, a.Cluster
-	newSts, err := resource.StatefulSetForRack(r, c, a.OperatorImage)
+	newSts, err := resource.StatefulSetForRack(r, c, a.OperatorImage, a.CloudPlatform)
 	if err != nil {
 		return err
 	}

@@ -40,6 +40,7 @@ for d in cert-manager{,-cainjector,-webhook}; do
     wait-for-object-creation cert-manager deployment.apps/"${d}"
     kubectl -n cert-manager rollout status --timeout=5m deployment.apps/"${d}"
 done
+wait-for-object-creation cert-manager secret/cert-manager-webhook-ca
 
 kubectl apply -f "${deploy_dir}"/operator
 

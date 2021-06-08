@@ -127,7 +127,7 @@ check_prerequisites
 # Nodepool for scylla clusters
 # Do NOT use gcloud beta
 gcloud container --project "${GCP_PROJECT}" \
-clusters create "${CLUSTER_NAME}" --username "admin" \
+clusters create "${CLUSTER_NAME}" \
 --zone "${GCP_ZONE}" \
 --cluster-version "${CLUSTER_VERSION}" \
 --node-version "${CLUSTER_VERSION}" \

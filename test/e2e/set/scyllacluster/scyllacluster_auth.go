@@ -25,7 +25,6 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 	defer g.GinkgoRecover()
 
 	f := framework.NewFramework("scyllacluster")
-
 	g.It("agent requires authentication", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimout)
 		defer cancel()
@@ -111,7 +110,7 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 
 		waitCtx2, waitCtx2Cancel := contextForRollout(ctx, sc)
 		defer waitCtx2Cancel()
-		_, err = waitForStatefulSetRollout(waitCtx2, f.KubeClient().AppsV1(), rackSts.Namespace, rackSts.Name)
+		_, err = waitForStatefulSetState(waitCtx2, f.KubeClient().AppsV1(), rackSts.Namespace, rackSts.Name, statefulSetRolloutFinished)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Accepting requests authorized using token from user agent config")
@@ -136,13 +135,14 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 
 		waitCtx3, waitCtx3Cancel := contextForRollout(ctx, sc)
 		defer waitCtx3Cancel()
-		_, err = waitForStatefulSetRollout(waitCtx3, f.KubeClient().AppsV1(), rackSts.Namespace, rackSts.Name)
+		_, err = waitForStatefulSetState(waitCtx3, f.KubeClient().AppsV1(), rackSts.Namespace, rackSts.Name, statefulSetRolloutFinished)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Accepting requests authorized using token from user agent config")
 		_, err = getScyllaClientStatus(ctx, hosts, agentConfig.AuthToken)
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
+
 })
 
 func getScyllaClientStatus(ctx context.Context, hosts []string, authToken string) (scyllaclient.NodeStatusInfoSlice, error) {

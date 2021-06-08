@@ -114,7 +114,13 @@ func waitForScyllaClusterState(ctx context.Context, client scyllav1client.Scylla
 	return event.Object.(*scyllav1.ScyllaCluster), nil
 }
 
-func waitForStatefulSetRollout(ctx context.Context, client appv1client.AppsV1Interface, namespace, name string) (*appsv1.StatefulSet, error) {
+func statefulSetRolloutFinished(sts *appsv1.StatefulSet) (bool, error) {
+	return sts.Status.ObservedGeneration >= sts.Generation &&
+		sts.Status.CurrentRevision == sts.Status.UpdateRevision &&
+		sts.Status.ReadyReplicas == *sts.Spec.Replicas, nil
+}
+
+func waitForStatefulSetState(ctx context.Context, client appv1client.AppsV1Interface, namespace, name string, conditions ...func(sts *appsv1.StatefulSet) (bool, error)) (*appsv1.StatefulSet, error) {
 	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
 	lw := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
@@ -129,10 +135,16 @@ func waitForStatefulSetRollout(ctx context.Context, client appv1client.AppsV1Int
 	event, err := watchtools.UntilWithSync(ctx, lw, &appsv1.StatefulSet{}, nil, func(event watch.Event) (bool, error) {
 		switch event.Type {
 		case watch.Added, watch.Modified:
-			sts := event.Object.(*appsv1.StatefulSet)
-			return sts.Status.ObservedGeneration >= sts.Generation &&
-				sts.Status.CurrentRevision == sts.Status.UpdateRevision &&
-				sts.Status.ReadyReplicas == *sts.Spec.Replicas, nil
+			for _, condition := range conditions {
+				done, err := condition(event.Object.(*appsv1.StatefulSet))
+				if err != nil {
+					return false, err
+				}
+				if !done {
+					return false, nil
+				}
+			}
+			return true, nil
 		default:
 			return true, fmt.Errorf("unexpected event: %#v", event)
 		}
@@ -325,8 +337,8 @@ func getNodeName(sc *scyllav1.ScyllaCluster, idx int) string {
 	)
 }
 
-func restartRack(ctx context.Context, client appv1client.AppsV1Interface, r scyllav1.RackSpec, sc *scyllav1.ScyllaCluster) error {
-	sts, err := client.StatefulSets(sc.Namespace).Get(ctx, naming.StatefulSetNameForRack(r, sc), metav1.GetOptions{})
+func restartRack(ctx context.Context, appsClient appv1client.AppsV1Interface, r scyllav1.RackSpec, sc *scyllav1.ScyllaCluster) error {
+	sts, err := appsClient.StatefulSets(sc.Namespace).Get(ctx, naming.StatefulSetNameForRack(r, sc), metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -339,7 +351,9 @@ func restartRack(ctx context.Context, client appv1client.AppsV1Interface, r scyl
 	if sts.Spec.Template.ObjectMeta.Annotations == nil {
 		sts.Spec.Template.ObjectMeta.Annotations = make(map[string]string)
 	}
-	sts.Spec.Template.ObjectMeta.Annotations["e2e.scylladb.com/restartedAt"] = time.Now().Format(time.RFC3339)
+	now := time.Now().Format(time.RFC3339)
+	restartedAtLabel := "e2e.scylladb.com/restartedAt"
+	sts.Spec.Template.ObjectMeta.Annotations[restartedAtLabel] = now
 
 	after, err := runtime.Encode(scheme.DefaultJSONEncoder(), sts)
 	if err != nil {
@@ -350,7 +364,15 @@ func restartRack(ctx context.Context, client appv1client.AppsV1Interface, r scyl
 		return err
 	}
 
-	_, err = client.StatefulSets(sc.Namespace).Patch(ctx, sts.Name, types.StrategicMergePatchType, patch, metav1.PatchOptions{})
+	_, err = appsClient.StatefulSets(sc.Namespace).Patch(ctx, sts.Name, types.StrategicMergePatchType, patch, metav1.PatchOptions{})
+	if err != nil {
+		return err
+	}
+
+	_, err = waitForStatefulSetState(ctx, appsClient, sts.Namespace, sts.Name, func(sts *appsv1.StatefulSet) (bool, error) {
+		rollOutFinished, err := statefulSetRolloutFinished(sts)
+		return !rollOutFinished, err
+	})
 	if err != nil {
 		return err
 	}

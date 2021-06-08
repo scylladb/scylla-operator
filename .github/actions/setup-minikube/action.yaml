@@ -22,9 +22,33 @@ runs:
   - name: Start minikube
     shell: bash
     run: |
-      set -x
-      sudo minikube start --wait=all
+      set -euEx -o pipefail
+
+      # Hack /etc/ssl/certs/ as it's passed down to the KAS static pod.
+      cat << EOF | sudo tee /etc/ssl/certs/audit-policy.yaml > /dev/null
+      apiVersion: audit.k8s.io/v1
+      kind: Policy
+      rules:
+      - level: Request
+      EOF
+
+      sudo minikube start --wait=all --extra-config=apiserver.audit-policy-file=/etc/ssl/certs/audit-policy.yaml --extra-config=apiserver.audit-log-path=/var/log/minikube/kube-apiserver-audit.log
+
       mkdir -p ~/.kube/
       sudo cat /root/.kube/config > ~/.kube/config
       sudo minikube version
       kubectl version
+
+      # We can't hack an existing dir for logs because they are read only.
+      sudo $( which yq ) -i e '.spec.volumes += {"name": "logs","hostPath": {"path": "/var/log/minikube"}} | .spec.containers[0].volumeMounts += {"name": "logs", "mountPath": "/var/log/minikube"}' /etc/kubernetes/manifests/kube-apiserver.yaml
+
+      # We need to wait for the apiserver to be restarted.
+      until sudo test -f /var/log/minikube/kube-apiserver-audit.log; do
+        echo 'Waiting for /var/log/minikube/kube-apiserver-audit.log to be created.'
+        sleep 1;
+      done
+
+      until kubectl get namespace kube-system 2>/dev/null 1>&2; do
+        echo 'Waiting for apiserver to come up.'
+        sleep 1
+      done

@@ -230,8 +230,8 @@ jobs:
       if: ${{ always() }}
       working-directory: ${{ runner.temp }}/e2e-artifacts
       run: |
-        set -x
-        sudo cat /var/log/minikube/kube-apiserver-audit.log > ./kube-apiserver-audit.log
+        set -euEx -o pipefail
+        sudo cat $( ls /var/log/minikube/kube-apiserver-audit*.log | sort -n ) > ./kube-apiserver-audit.log
         jq -s 'group_by(.user.username) | map({"user": .[0].user.username, "total": length, "verbs": (group_by(.verb) | map({"key":.[0].verb, "value": length}) | from_entries)}) | sort_by(.total) | reverse' ./kube-apiserver-audit.log > ./api-call-stats.json
     - name: Compress artifacts
       if: ${{ always() }}

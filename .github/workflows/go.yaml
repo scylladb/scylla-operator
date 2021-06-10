@@ -93,42 +93,6 @@ jobs:
     - name: Test
       run: make test --warn-undefined-variables
 
-  test-integration:
-    name: Test integration
-    runs-on: ubuntu-20.04
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        path: ${{ env.git_repo_path }}
-    - name: Setup go
-      uses: actions/setup-go@v2
-      with:
-        go-version: ${{ env.go_version }}
-    - name: Export GOPATH
-      run: echo "GOPATH=$( go env GOPATH )" | tee -a ${GITHUB_ENV}
-    - name: Install python3 deps
-      run: pip3 install requests
-#   TODO: Consider cache removal. Caching means that jobs and periodis won't be able to verify that external depepndencies are still present and working.
-    - name: Cache tools
-      id: cache-tools
-      uses: actions/cache@v2
-      with:
-        path: ${{ format('{0}/bin', env.GOPATH) }}
-        key: ${{ runner.os }}-${{ hashFiles('./install-dependencies.sh') }}
-    - name: Install deps
-      if: ${{ steps['cache-tools'].outputs['cache-hit'] != 'true' }}
-      run: ./install-dependencies.sh
-    - name: Tolerate flakes on promotion jobs
-      if: ${{ github.event_name != 'pull_request' }}
-      run: |
-        echo "GO_TEST_EXTRA_ARGS=-ginkgo.flakeAttempts=5" | tee -a ${GITHUB_ENV}
-    # Integration tests are currently too flaky so we just make sure they compile but the actual run won't fail the suite.
-    - name: Make sure integration tests compile
-      run: make test-integration GO_TEST_EXTRA_FLAGS=-c --warn-undefined-variables
-    - name: Test integration
-      continue-on-error: true
-      run: make test-integration --warn-undefined-variables
-
   images:
     name: Build images
     runs-on: ubuntu-20.04

@@ -36,7 +36,7 @@ spec:
               fieldPath: metadata.namespace
         args:
         - manager-controller
-        - --log-level=info
+        - --loglevel=2
         resources:
           requests:
             cpu: 10m

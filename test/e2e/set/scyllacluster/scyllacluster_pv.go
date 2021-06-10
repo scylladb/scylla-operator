@@ -28,6 +28,7 @@ var _ = g.Describe("ScyllaCluster Orphaned PV", func() {
 
 		sc := scyllaclusterfixture.BasicScyllaCluster.ReadOrFail()
 		sc.Spec.Datacenter.Racks[0].Members = 3
+		sc.Spec.AutomaticOrphanedNodeCleanup = true
 
 		framework.By("Creating a ScyllaCluster")
 		err := framework.SetupScyllaClusterSA(ctx, f.KubeClient().CoreV1(), f.KubeClient().RbacV1(), f.Namespace(), sc.Name)

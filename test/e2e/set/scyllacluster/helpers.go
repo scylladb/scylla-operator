@@ -59,6 +59,10 @@ func scyllaClusterRolledOut(sc *scyllav1.ScyllaCluster) (bool, error) {
 	// TODO: this should be more straight forward - we need better status (conditions, aggregated state, ...)
 
 	for _, r := range sc.Spec.Datacenter.Racks {
+		if sc.Status.Racks[r.Name].Members != r.Members {
+			return false, nil
+		}
+
 		if sc.Status.Racks[r.Name].ReadyMembers != r.Members {
 			return false, nil
 		}

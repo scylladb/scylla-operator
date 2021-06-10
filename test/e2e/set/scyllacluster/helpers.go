@@ -178,6 +178,37 @@ func waitForPodState(ctx context.Context, client corev1client.CoreV1Interface, n
 	return event.Object.(*corev1.Pod), nil
 }
 
+func waitForPVCState(ctx context.Context, client corev1client.CoreV1Interface, namespace string, name string, condition func(sc *corev1.PersistentVolumeClaim) (bool, error), o waitForStateOptions) (*corev1.PersistentVolumeClaim, error) {
+	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
+	lw := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			options.FieldSelector = fieldSelector
+			return client.PersistentVolumeClaims(namespace).List(ctx, options)
+		},
+		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
+			options.FieldSelector = fieldSelector
+			return client.PersistentVolumeClaims(namespace).Watch(ctx, options)
+		},
+	}
+	event, err := watchtools.UntilWithSync(ctx, lw, &corev1.PersistentVolumeClaim{}, nil, func(event watch.Event) (bool, error) {
+		switch event.Type {
+		case watch.Added, watch.Modified:
+			return condition(event.Object.(*corev1.PersistentVolumeClaim))
+		case watch.Deleted:
+			if o.tolerateDelete {
+				return condition(event.Object.(*corev1.PersistentVolumeClaim))
+			}
+			fallthrough
+		default:
+			return true, fmt.Errorf("unexpected event: %#v", event)
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	return event.Object.(*corev1.PersistentVolumeClaim), nil
+}
+
 func getStatefulSetsForScyllaCluster(ctx context.Context, client appv1client.AppsV1Interface, sc *scyllav1.ScyllaCluster) (map[string]*appsv1.StatefulSet, error) {
 	statefulsetList, err := client.StatefulSets(sc.Namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: labels.Set{

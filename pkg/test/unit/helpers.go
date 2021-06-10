@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -24,7 +26,7 @@ func NewDetailedSingleRackCluster(name, namespace, repo, version, dc, rack strin
 			Name:      name,
 			Namespace: namespace,
 		},
-		Spec: scyllav1.ClusterSpec{
+		Spec: scyllav1.ScyllaClusterSpec{
 			Repository: repo,
 			Version:    version,
 			Datacenter: scyllav1.DatacenterSpec{
@@ -36,11 +38,17 @@ func NewDetailedSingleRackCluster(name, namespace, repo, version, dc, rack strin
 						Storage: scyllav1.StorageSpec{
 							Capacity: "5Gi",
 						},
+						Resources: corev1.ResourceRequirements{
+							Limits: map[corev1.ResourceName]resource.Quantity{
+								corev1.ResourceCPU:    resource.MustParse("2"),
+								corev1.ResourceMemory: resource.MustParse("2Gi"),
+							},
+						},
 					},
 				},
 			},
 		},
-		Status: scyllav1.ClusterStatus{
+		Status: scyllav1.ScyllaClusterStatus{
 			Racks: map[string]scyllav1.RackStatus{
 				rack: {
 					Version:      version,
@@ -59,7 +67,7 @@ func NewDetailedMultiRackCluster(name, namespace, repo, version, dc string, memb
 			Name:      name,
 			Namespace: namespace,
 		},
-		Spec: scyllav1.ClusterSpec{
+		Spec: scyllav1.ScyllaClusterSpec{
 			Repository: repo,
 			Version:    version,
 			Datacenter: scyllav1.DatacenterSpec{
@@ -67,7 +75,7 @@ func NewDetailedMultiRackCluster(name, namespace, repo, version, dc string, memb
 				Racks: []scyllav1.RackSpec{},
 			},
 		},
-		Status: scyllav1.ClusterStatus{
+		Status: scyllav1.ScyllaClusterStatus{
 			Racks: map[string]scyllav1.RackStatus{},
 		},
 	}

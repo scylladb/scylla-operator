@@ -2,88 +2,217 @@ package operator
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sync"
+	"time"
 
-	"github.com/scylladb/go-log"
-	"github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	"github.com/scylladb/scylla-operator/pkg/cmd/operator/options"
-	"github.com/scylladb/scylla-operator/pkg/controllers/cluster"
-	"github.com/scylladb/scylla-operator/pkg/naming"
+	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
+	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
+	"github.com/scylladb/scylla-operator/pkg/cmdutil"
+	"github.com/scylladb/scylla-operator/pkg/controller/orphanedpv"
+	"github.com/scylladb/scylla-operator/pkg/controller/scyllacluster"
+	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
+	"github.com/scylladb/scylla-operator/pkg/leaderelection"
+	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
-	"sigs.k8s.io/controller-runtime/pkg/healthz"
-
-	"go.uber.org/zap"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+	apierrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog/v2"
 )
 
-func NewOperatorCmd(ctx context.Context, logger log.Logger, level zap.AtomicLevel) *cobra.Command {
-	var operatorCmd = &cobra.Command{
-		Use:   "operator",
-		Short: "Start the scylla operator.",
-		Long:  `operator is for starting the scylla operator. It is meant to run as a standalone binary.`,
-		Run: func(cmd *cobra.Command, args []string) {
-			opts := options.GetOperatorOptions()
-			if err := opts.Validate(); err != nil {
-				logger.Fatal(ctx, "invalid options", "error", err)
-			}
-			v := version.Get()
-			logger.Info(ctx, "Operator started", "version", v.GitVersion, "build_date", v.BuildDate,
-				"commit", v.GitCommit, "go_version", v.GoVersion, "options", opts)
+type OperatorOptions struct {
+	genericclioptions.ClientConfig
+	genericclioptions.InClusterReflection
+	genericclioptions.LeaderElection
 
-			// Set log level
-			if err := level.UnmarshalText([]byte(opts.LogLevel)); err != nil {
-				logger.Error(ctx, "unable to change log level",
-					"level", opts.LogLevel, "error", err)
-			}
+	kubeClient   kubernetes.Interface
+	scyllaClient scyllaversionedclient.Interface
 
-			cfg := ctrl.GetConfigOrDie()
-			// Create a new Cmd to provide shared dependencies and start components
-			mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-				Scheme:                  scheme,
-				HealthProbeBindAddress:  fmt.Sprintf(":%d", naming.ProbePort),
-				MetricsBindAddress:      fmt.Sprintf(":%d", naming.MetricsPort),
-				LeaderElection:          true,
-				LeaderElectionID:        "scylla-operator-lock",
-				LeaderElectionNamespace: opts.Namespace,
-			})
-			if err != nil {
-				logger.Fatal(ctx, "unable to create manager", "error", err)
-			}
+	ConcurrentSyncs int
+	OperatorImage   string
+}
 
-			if err := mgr.AddHealthzCheck("ping", healthz.Ping); err != nil {
-				logger.Fatal(ctx, "unable to set up liveness probe", "error", err)
-			}
+func NewOperatorOptions(streams genericclioptions.IOStreams) *OperatorOptions {
+	return &OperatorOptions{
+		ClientConfig:        genericclioptions.NewClientConfig("scylla-operator"),
+		InClusterReflection: genericclioptions.InClusterReflection{},
+		LeaderElection:      genericclioptions.NewLeaderElection(),
 
-			if err := mgr.AddReadyzCheck("ping", healthz.Ping); err != nil {
-				logger.Fatal(ctx, "unable to set up readiness probe", "error", err)
-			}
-
-			logger.Info(ctx, "Registering Components.")
-
-			ctx := log.WithNewTraceID(context.Background())
-			cc, err := cluster.New(ctx, mgr, logger.Named("cluster-controller"))
-			if err != nil {
-				logger.Fatal(ctx, "unable to create cluster controller", "error", err)
-			}
-			if err := cc.SetupWithManager(mgr); err != nil {
-				logger.Fatal(ctx, "unable to setup cluster manager", "error", err)
-			}
-
-			// Enable webhook if requested
-			if opts.EnableAdmissionWebhook {
-				if err = (&v1.ScyllaCluster{}).SetupWebhookWithManager(mgr); err != nil {
-					logger.Fatal(ctx, "unable to add web hook to manager", "error", err)
-				}
-			}
-
-			logger.Info(ctx, "Starting the operator...")
-			if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
-				logger.Fatal(ctx, "error launching manager", "mode", "operator", "error", err)
-			}
-		},
+		ConcurrentSyncs: 5,
+		OperatorImage:   "",
 	}
-	options.GetOperatorOptions().AddFlags(operatorCmd)
-	return operatorCmd
+}
+
+func NewOperatorCmd(streams genericclioptions.IOStreams) *cobra.Command {
+	o := NewOperatorOptions(streams)
+
+	cmd := &cobra.Command{
+		Use:   "operator",
+		Short: "Run the scylla operator.",
+		Long:  `Run the scylla operator.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			err := o.Validate()
+			if err != nil {
+				return err
+			}
+
+			err = o.Complete()
+			if err != nil {
+				return err
+			}
+
+			err = o.Run(streams, cmd.Name())
+			if err != nil {
+				return err
+			}
+
+			return nil
+		},
+
+		SilenceErrors: true,
+		SilenceUsage:  true,
+	}
+
+	o.ClientConfig.AddFlags(cmd)
+	o.InClusterReflection.AddFlags(cmd)
+	o.LeaderElection.AddFlags(cmd)
+
+	cmd.Flags().IntVarP(&o.ConcurrentSyncs, "concurrent-syncs", "", o.ConcurrentSyncs, "The number of ScyllaCluster objects that are allowed to sync concurrently.")
+	cmd.Flags().StringVarP(&o.OperatorImage, "image", "", o.OperatorImage, "Image of the operator used.")
+
+	return cmd
+}
+
+func (o *OperatorOptions) Validate() error {
+	var errs []error
+
+	errs = append(errs, o.ClientConfig.Validate())
+	errs = append(errs, o.InClusterReflection.Validate())
+	errs = append(errs, o.LeaderElection.Validate())
+
+	if len(o.OperatorImage) == 0 {
+		return errors.New("operator image can't be empty")
+	}
+
+	return apierrors.NewAggregate(errs)
+}
+
+func (o *OperatorOptions) Complete() error {
+	err := o.ClientConfig.Complete()
+	if err != nil {
+		return err
+	}
+
+	err = o.InClusterReflection.Complete()
+	if err != nil {
+		return err
+	}
+
+	err = o.LeaderElection.Complete()
+	if err != nil {
+		return err
+	}
+
+	o.kubeClient, err = kubernetes.NewForConfig(o.ProtoConfig)
+	if err != nil {
+		return fmt.Errorf("can't build kubernetes clientset: %w", err)
+	}
+
+	o.scyllaClient, err = scyllaversionedclient.NewForConfig(o.RestConfig)
+	if err != nil {
+		return fmt.Errorf("can't build scylla clientset: %w", err)
+	}
+
+	return nil
+}
+
+func (o *OperatorOptions) Run(streams genericclioptions.IOStreams, commandName string) error {
+	klog.Infof("%s version %s", commandName, version.Get())
+	klog.Infof("loglevel is set to %q", cmdutil.GetLoglevel())
+
+	stopCh := signals.StopChannel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		<-stopCh
+		cancel()
+	}()
+
+	return leaderelection.Run(
+		ctx,
+		commandName,
+		commandName+"-locks",
+		o.Namespace,
+		o.kubeClient,
+		o.LeaderElectionLeaseDuration,
+		o.LeaderElectionRenewDeadline,
+		o.LeaderElectionRetryPeriod,
+		func(ctx context.Context) error {
+			return o.run(ctx, streams)
+		},
+	)
+}
+
+func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOStreams) error {
+	kubeInformers := informers.NewSharedInformerFactory(o.kubeClient, 12*time.Hour)
+	scyllaInformers := scyllainformers.NewSharedInformerFactory(o.scyllaClient, 12*time.Hour)
+
+	scc, err := scyllacluster.NewController(
+		o.kubeClient,
+		o.scyllaClient.ScyllaV1(),
+		kubeInformers.Core().V1().Pods(),
+		kubeInformers.Core().V1().Services(),
+		kubeInformers.Core().V1().Secrets(),
+		kubeInformers.Apps().V1().StatefulSets(),
+		kubeInformers.Policy().V1beta1().PodDisruptionBudgets(),
+		scyllaInformers.Scylla().V1().ScyllaClusters(),
+		o.OperatorImage,
+	)
+	if err != nil {
+		return err
+	}
+
+	opc, err := orphanedpv.NewController(
+		o.kubeClient,
+		kubeInformers.Core().V1().PersistentVolumes(),
+		kubeInformers.Core().V1().PersistentVolumeClaims(),
+		kubeInformers.Core().V1().Nodes(),
+		scyllaInformers.Scylla().V1().ScyllaClusters(),
+	)
+	if err != nil {
+		return err
+	}
+
+	var wg sync.WaitGroup
+	defer wg.Wait()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		kubeInformers.Start(ctx.Done())
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		scyllaInformers.Start(ctx.Done())
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		scc.Run(ctx, o.ConcurrentSyncs)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		opc.Run(ctx, o.ConcurrentSyncs)
+	}()
+
+	<-ctx.Done()
+
+	return nil
 }

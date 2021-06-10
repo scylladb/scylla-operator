@@ -12,12 +12,12 @@ const (
 	// SeedLabel determines if a member is a seed or not.
 	SeedLabel = "scylla/seed"
 
-	// DecommissionLabel expresses the intent to decommission
+	// DecommissionedLabel expresses the intent to decommission
 	// the specific member. The presence of the label expresses
 	// the intent to decommission. If the value is true, it means
 	// the member has finished decommissioning.
 	// Values: {true, false}
-	DecommissionLabel = "scylla/decommissioned"
+	DecommissionedLabel = "scylla/decommissioned"
 
 	// ReplaceLabel express the intent to replace pod under the specific member.
 	ReplaceLabel = "scylla/replace"
@@ -35,6 +35,7 @@ const (
 	ClusterNameLabel    = "scylla/cluster"
 	DatacenterNameLabel = "scylla/datacenter"
 	RackNameLabel       = "scylla/rack"
+	ScyllaVersionLabel  = "scylla/scylla-version"
 	ManagedHash         = "scylla-operator.scylladb.com/managed-hash"
 
 	AppName         = "scylla"
@@ -43,24 +44,6 @@ const (
 
 	PrometheusScrapeAnnotation = "prometheus.io/scrape"
 	PrometheusPortAnnotation   = "prometheus.io/port"
-)
-
-// Environment Variables
-const (
-	EnvVarEnvVarPodName = "POD_NAME"
-	EnvVarPodNamespace  = "POD_NAMESPACE"
-	EnvVarCPU           = "CPU"
-)
-
-// Recorder Values
-const (
-	// SuccessSynced is used as part of the Event 'reason' when a Cluster is
-	// synced.
-	SuccessSynced = "Synced"
-	// ErrResourceExists is used as part of the Event 'reason' when a
-	// Cluster fails to sync due to a resource of the same name already
-	// existing.
-	ErrSyncFailed = "ErrSyncFailed"
 )
 
 // Configuration Values
@@ -89,4 +72,6 @@ const (
 	LivenessProbePath  = "/healthz"
 	ProbePort          = 8080
 	MetricsPort        = 8081
+
+	OperatorEnvVarPrefix = "SCYLLA_OPERATOR_"
 )

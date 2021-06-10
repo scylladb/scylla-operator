@@ -10,7 +10,7 @@ import (
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	"github.com/scylladb/go-log"
-	"github.com/scylladb/scylla-operator/pkg/controllers/helpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	scyllaclusterfixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scyllacluster"
@@ -59,7 +59,10 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 
 		framework.By("Accepting requests authorized using token from provisioned secret")
 
-		token, err := helpers.GetAgentAuthToken(ctx, f.KubeClient().CoreV1(), sc.Name, sc.Namespace)
+		tokenSecret, err := f.KubeClient().CoreV1().Secrets(sc.Namespace).Get(ctx, naming.AgentAuthTokenSecretName(sc.Name), metav1.GetOptions{})
+		o.Expect(err).ToNot(o.HaveOccurred())
+
+		token, err := helpers.GetAgentAuthTokenFromSecret(tokenSecret)
 		o.Expect(err).ToNot(o.HaveOccurred())
 
 		_, err = getScyllaClientStatus(ctx, hosts, token)

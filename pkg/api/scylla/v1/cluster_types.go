@@ -24,8 +24,8 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// ClusterSpec defines the desired state of Cluster
-type ClusterSpec struct {
+// ScyllaClusterSpec defines the desired state of Cluster
+type ScyllaClusterSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	//TODO: add validation tags
@@ -102,6 +102,7 @@ type GenericUpgradeSpec struct {
 	// overall time spent during upgrade.
 	// +kubebuilder:default:="1s"
 	// +optional
+	// DEPRECATED.
 	PollInterval metav1.Duration `json:"pollInterval,omitempty"`
 }
 
@@ -300,8 +301,8 @@ type BackupTaskStatus struct {
 	Error          string `json:"error"`
 }
 
-// ClusterStatus defines the observed state of ScyllaCluster
-type ClusterStatus struct {
+// ScyllaClusterStatus defines the observed state of ScyllaCluster
+type ScyllaClusterStatus struct {
 	// Racks reflect status of cluster racks.
 	Racks map[string]RackStatus `json:"racks,omitempty"`
 	// ManagerID contains ID under which cluster was registered in Scylla Manager.
@@ -314,13 +315,17 @@ type ClusterStatus struct {
 	Upgrade *UpgradeStatus `json:"upgrade,omitempty"`
 }
 
-// UpgradeStatus contains state of ongoing upgrade procedure.
+// UpgradeStatus contains the internal state of an ongoing upgrade procedure.
+// Do not rely on these internal values externally. They are meant for keeping an internal state
+// and their values are subject to change within the limits of API compatibility.
 type UpgradeStatus struct {
 	// State reflects current upgrade state.
 	State string `json:"state"`
 	// CurrentNode node under upgrade.
+	// DEPRECATED.
 	CurrentNode string `json:"currentNode,omitempty"`
 	// CurrentRack rack under upgrade.
+	// DEPRECATED.
 	CurrentRack string `json:"currentRack,omitempty"`
 	// FromVersion reflects from which version ScyllaCluster is being upgraded.
 	FromVersion string `json:"fromVersion"`
@@ -355,9 +360,10 @@ type RackCondition struct {
 type RackConditionType string
 
 const (
-	RackConditionTypeMemberLeaving   RackConditionType = "MemberLeaving"
-	RackConditionTypeUpgrading       RackConditionType = "RackUpgrading"
-	RackConditionTypeMemberReplacing RackConditionType = "MemberReplacing"
+	RackConditionTypeMemberLeaving         RackConditionType = "MemberLeaving"
+	RackConditionTypeUpgrading             RackConditionType = "RackUpgrading"
+	RackConditionTypeMemberReplacing       RackConditionType = "MemberReplacing"
+	RackConditionTypeMemberDecommissioning RackConditionType = "MemberDecommissioning"
 )
 
 // +kubebuilder:object:root=true
@@ -371,8 +377,8 @@ type ScyllaCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ClusterSpec   `json:"spec,omitempty"`
-	Status ClusterStatus `json:"status,omitempty"`
+	Spec   ScyllaClusterSpec   `json:"spec,omitempty"`
+	Status ScyllaClusterStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -383,8 +389,4 @@ type ScyllaClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ScyllaCluster `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&ScyllaCluster{}, &ScyllaClusterList{})
 }

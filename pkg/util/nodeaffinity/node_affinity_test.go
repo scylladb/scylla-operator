@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	apierrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 func TestNodeSelectorMatch(t *testing.T) {
@@ -71,7 +72,14 @@ func TestNodeSelectorMatch(t *testing.T) {
 			}},
 			wantErr: apierrors.NewAggregate([]error{
 				errors.New(`unexpected number of value (2) for node field selector operator "In"`),
-				errors.New(`invalid label key "invalid key": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`),
+				apierrors.NewAggregate([]error{
+					&field.Error{
+						Type:     field.ErrorTypeInvalid,
+						Field:    "key",
+						BadValue: "invalid key",
+						Detail:   "name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')",
+					},
+				}),
 			}),
 		},
 		{
@@ -199,7 +207,14 @@ func TestPreferredSchedulingTermsScore(t *testing.T) {
 			},
 			wantErr: apierrors.NewAggregate([]error{
 				errors.New(`unexpected number of value (2) for node field selector operator "In"`),
-				errors.New(`invalid label key "invalid key": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`),
+				apierrors.NewAggregate([]error{
+					&field.Error{
+						Type:     field.ErrorTypeInvalid,
+						Field:    "key",
+						BadValue: "invalid key",
+						Detail:   "name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')",
+					},
+				}),
 			}),
 		},
 		{

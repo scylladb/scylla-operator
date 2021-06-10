@@ -23,7 +23,7 @@
             }
         },
         "logLevel": {
-            "type": "string"
+            "type": "integer"
         },
         "nameOverride": {
             "type": "string"

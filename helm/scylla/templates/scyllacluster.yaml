@@ -47,8 +47,12 @@ spec:
     racks:
     {{- range .Values.racks }}
     - name: {{ .name }}
-      scyllaConfig: {{ default "scylla-config" .scyllaConfig }}
-      scyllaAgentConfig: {{ default "scylla-agent-config" .scyllaAgentConfig }}
+      {{- with .scyllaConfig }}
+      scyllaConfig: {{ . }}
+      {{- end }}
+      {{- with .scyllaAgentConfig }}
+      scyllaAgentConfig: {{ . }}
+      {{- end }}
       members: {{ .members }}
       storage:
         {{- if .storage.storageClassName }}

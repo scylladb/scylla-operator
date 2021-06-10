@@ -13,7 +13,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/storer"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 func isMergeCommit(commit *object.Commit) bool {

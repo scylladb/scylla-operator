@@ -1,35 +1,42 @@
+// Copyright (C) 2021 ScyllaDB
+
 package main
 
 import (
-	"context"
+	"flag"
+	"fmt"
+	"math/rand"
+	"os"
+	"runtime"
+	"time"
 
-	"github.com/scylladb/go-log"
 	cmd "github.com/scylladb/scylla-operator/pkg/cmd/operator"
-	"github.com/spf13/cobra"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-
-	// TODO: What is this package for?
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
+	"k8s.io/klog/v2"
 )
 
-// Basic structure for a simple cobra cli application
-// For more info on the structure of the code in package main,
-// see: https://github.com/spf13/cobra
 func main() {
-	ctx := log.WithNewTraceID(context.Background())
-	atom := zap.NewAtomicLevelAt(zapcore.InfoLevel)
-	logger, _ := log.NewProduction(log.Config{
-		Level: atom,
-	})
+	rand.Seed(time.Now().UTC().UnixNano())
 
-	var rootCmd = &cobra.Command{}
-	rootCmd.AddCommand(
-		cmd.NewOperatorCmd(ctx, logger, atom),
-		cmd.NewSidecarCmd(ctx, logger, atom),
-		cmd.NewManagerControllerCmd(ctx, logger, atom),
-	)
-	if err := rootCmd.Execute(); err != nil {
-		logger.Error(context.Background(), "Root command: a fatal error occured", "error", err)
+	klog.InitFlags(flag.CommandLine)
+	err := flag.Set("logtostderr", "true")
+	if err != nil {
+		panic(err)
+	}
+	defer klog.Flush()
+
+	if len(os.Getenv("GOMAXPROCS")) == 0 {
+		runtime.GOMAXPROCS(runtime.NumCPU())
+	}
+
+	command := cmd.NewOperatorCommand(genericclioptions.IOStreams{
+		In:     os.Stdin,
+		Out:    os.Stdout,
+		ErrOut: os.Stderr,
+	})
+	err = command.Execute()
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		os.Exit(1)
 	}
 }

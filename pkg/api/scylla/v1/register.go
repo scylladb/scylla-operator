@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	GroupName = "scylla.scylladb.com"
-	// GroupVersion  = schema.GroupVersion{Group: GroupName, Version: "v1"}
+	GroupName     = "scylla.scylladb.com"
+	GroupVersion  = schema.GroupVersion{Group: GroupName, Version: "v1"}
 	schemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
 	// Install is a function which adds this version to a scheme
 	Install = schemeBuilder.AddToScheme
@@ -18,7 +18,7 @@ var (
 	SchemeGroupVersion = GroupVersion
 	// AddToScheme exists solely to keep the old generators creating valid code
 	// DEPRECATED
-	// AddToScheme = schemeBuilder.AddToScheme
+	AddToScheme = schemeBuilder.AddToScheme
 )
 
 // Resource generated code relies on this being here, but it logically belongs to the group

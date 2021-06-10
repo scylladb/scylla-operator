@@ -11,12 +11,15 @@ rules:
   - pods
   verbs:
   - get
+  - list
 - apiGroups:
   - ""
   resources:
   - secrets
   verbs:
   - get
+  - list
+  - watch
 - apiGroups:
   - ""
   resources:
@@ -25,6 +28,7 @@ rules:
   - get
   - list
   - patch
+  - update
   - watch
 - apiGroups:
   - "apps"

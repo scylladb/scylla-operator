@@ -43,7 +43,7 @@ type RunOptions struct {
 
 func NewRunOptions(streams genericclioptions.IOStreams) *RunOptions {
 	return &RunOptions{
-		ClientConfig:         genericclioptions.NewClientConfig(),
+		ClientConfig:         genericclioptions.NewClientConfig("scylla-operator-e2e"),
 		TestFrameworkOptions: NewTestFrameworkOptions(),
 
 		Quiet:            false,

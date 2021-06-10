@@ -66,6 +66,12 @@ func InstallKlog(cmd *cobra.Command) {
 		cmd.PersistentFlags().Int32Var(levelPtr, "v", *levelPtr, "Set the level of log output (0-10)")
 	}
 	cmd.PersistentFlags().Lookup("v").Hidden = true
+
+	// Enable directory prefix.
+	err := flag.CommandLine.Lookup("add_dir_header").Value.Set("true")
+	if err != nil {
+		panic(err)
+	}
 }
 
 func GetLoglevel() string {

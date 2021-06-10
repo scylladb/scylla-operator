@@ -28,7 +28,7 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 	}
 
 	describeEntry := func(e *entry) string {
-		return fmt.Sprintf("with %d member(s) from %q to %q", e.rackSize, e.initialVersion, e.updatedVersion)
+		return fmt.Sprintf("with %d member(s) from %s to %s", e.rackSize, e.initialVersion, e.updatedVersion)
 	}
 
 	gt.DescribeTable("should deploy and update",

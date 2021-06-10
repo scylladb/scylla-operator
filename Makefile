@@ -271,13 +271,15 @@ define generate-operator-manifests
 	mv '$(3)'/scylla-operator/templates/issuer.yaml '$(2)'/10_issuer.yaml
 	mv '$(3)'/scylla-operator/templates/certificate.yaml '$(2)'/10_certificate.yaml
 	mv '$(3)'/scylla-operator/templates/validatingwebhook.yaml '$(2)'/10_validatingwebhook.yaml
-	mv '$(3)'/scylla-operator/templates/service.yaml '$(2)'/10_service.yaml
-	mv '$(3)'/scylla-operator/templates/serviceaccount.yaml '$(2)'/10_serviceaccount.yaml
+	mv '$(3)'/scylla-operator/templates/webhookserver.service.yaml '$(2)'/10_webhookserver.service.yaml
+	mv '$(3)'/scylla-operator/templates/webhookserver.serviceaccount.yaml '$(2)'/10_webhookserver.serviceaccount.yaml
+	mv '$(3)'/scylla-operator/templates/operator.serviceaccount.yaml '$(2)'/10_operator.serviceaccount.yaml
 	mv '$(3)'/scylla-operator/templates/pdb.yaml '$(2)'/10_pdb.yaml
 
 	mv '$(3)'/scylla-operator/templates/clusterrolebinding.yaml '$(2)'/20_clusterrolebinding.yaml
 
-	mv '$(3)'/scylla-operator/templates/deployment.yaml '$(2)'/50_deployment.yaml
+	mv '$(3)'/scylla-operator/templates/operator.deployment.yaml '$(2)'/50_operator.deployment.yaml
+	mv '$(3)'/scylla-operator/templates/webhookserver.deployment.yaml '$(2)'/50_webhookserver.deployment.yaml
 
 	@leftovers=$$( find '$(3)'/scylla-operator/ -mindepth 1 -type f ) && [[ "$${leftovers}" == "" ]] || \
 	( echo -e "Internal error: Unhandled helm files: \n$${leftovers}" && false )

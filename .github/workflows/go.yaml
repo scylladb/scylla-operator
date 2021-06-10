@@ -211,7 +211,7 @@ jobs:
     - name: Run e2e
       run: |
         set -x
-        timeout 45m docker run --user="$( id -u ):$( id -g )" --rm --entrypoint=/usr/bin/scylla-operator-tests -v="${HOME}/.kube/config:/kubeconfig:ro" -e='KUBECONFIG=/kubeconfig' -v="${ARTIFACTS_DIR}:${ARTIFACTS_DIR}:rw" '${{ env.image_repo_ref }}:ci' run --artifacts-dir="${ARTIFACTS_DIR}"
+        timeout 60m docker run --user="$( id -u ):$( id -g )" --rm --entrypoint=/usr/bin/scylla-operator-tests -v="${HOME}/.kube/config:/kubeconfig:ro" -e='KUBECONFIG=/kubeconfig' -v="${ARTIFACTS_DIR}:${ARTIFACTS_DIR}:rw" '${{ env.image_repo_ref }}:ci' run --artifacts-dir="${ARTIFACTS_DIR}"
     - name: Dump cluster state
       if: ${{ always() }}
       working-directory: ${{ runner.temp }}

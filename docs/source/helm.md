@@ -249,14 +249,19 @@ Scylla Operator:
 ```shell
 $ kubectl -n scylla-operator get all
 
-NAME                    READY   STATUS    RESTARTS   AGE
-pod/scylla-operator-0   1/1     Running   0          4m48s
+NAME                                   READY   STATUS    RESTARTS   AGE
+pod/scylla-operator-5dbcb54f5c-vjm4m   1/1     Running   0          51s
+pod/scylla-operator-5dbcb54f5c-wfjbw   1/1     Running   0          51s
 
-NAME                      TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE
-service/scylla-operator   ClusterIP   10.43.231.78   <none>        443/TCP   4m48s
+NAME                              TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)   AGE
+service/scylla-operator-webhook   ClusterIP   10.105.207.130   <none>        443/TCP   51s
 
-NAME                               READY   AGE
-statefulset.apps/scylla-operator   1/1     4m48s
+NAME                              READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/scylla-operator   2/2     2            2           51s
+
+NAME                                         DESIRED   CURRENT   READY   AGE
+replicaset.apps/scylla-operator-5dbcb54f5c   2         2         2       51s
+
 ```
 
 Operator is running!
@@ -265,25 +270,23 @@ Scylla Manager:
 ```shell
 $ kubectl -n scylla-manager get all 
 
-NAME                                           READY   STATUS    RESTARTS   AGE
-pod/scylla-manager-767b875bcf-7cppw            1/1     Running   0          7m
-pod/scylla-manager-0                           1/1     Running   0          7m
-pod/scylla-manager-manager-dc-manager-rack-0   2/2     Running   0          6m59s
+NAME                                             READY   STATUS    RESTARTS   AGE
+pod/scylla-manager-669db64dd-bcm4v               1/1     Running   0          89s
+pod/scylla-manager-controller-844ccc56c4-drbth   1/1     Running   0          89s
+pod/scylla-manager-controller-844ccc56c4-rhwqx   1/1     Running   0          89s
 
-NAME                                               TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                                                           AGE
-service/scylla-manager-manager-service             ClusterIP   10.43.211.89    <none>        80/TCP                                                            7m1s
-service/scylla-manager-client                      ClusterIP   None            <none>        9180/TCP,5090/TCP                                                 7m
-service/scylla-manager-manager-dc-manager-rack-0   ClusterIP   10.43.239.136   <none>        7000/TCP,7001/TCP,7199/TCP,10001/TCP,9042/TCP,9142/TCP,9160/TCP   6m59s
+NAME                            TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)             AGE
+service/scylla-manager          ClusterIP   10.105.231.53   <none>        80/TCP,5090/TCP     89s
+service/scylla-manager-client   ClusterIP   None            <none>        9180/TCP,5090/TCP   89s
 
-NAME                             READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/scylla-manager   1/1     1            1           7m1s
+NAME                                        READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/scylla-manager              1/1     1            1           89s
+deployment.apps/scylla-manager-controller   2/2     2            2           89s
 
-NAME                                        DESIRED   CURRENT   READY   AGE
-replicaset.apps/scylla-manager-767b875bcf   1         1         1       7m
+NAME                                                   DESIRED   CURRENT   READY   AGE
+replicaset.apps/scylla-manager-669db64dd               1         1         1       89s
+replicaset.apps/scylla-manager-controller-844ccc56c4   2         2         2       89s
 
-NAME                                                      READY   AGE
-statefulset.apps/scylla-manager                           1/1     7m1s
-statefulset.apps/scylla-manager-manager-dc-manager-rack   1/1     7m
 
 ```
 

@@ -17,10 +17,10 @@ GCP_ZONE=us-west1-b
 
 # From inside the examples/gke folder
 cd examples/gke
-./gke.sh "$GCP_USER" "$GCP_PROJECT" "$GCP_ZONE"
+./gke.sh -u "$GCP_USER" -p "$GCP_PROJECT" -z "$GCP_ZONE"
 
 # Example:
-# ./gke.sh yanniszark@arrikto.com gke-demo-226716 us-west1-b
+# ./gke.sh -u yanniszark@arrikto.com -p gke-demo-226716 -z us-west1-b
 ```
 
 :warning: Make sure to pass a ZONE (ex.: us-west1-b) and not a REGION (ex.: us-west1) or it will deploy nodes in each ZONE available in the region.

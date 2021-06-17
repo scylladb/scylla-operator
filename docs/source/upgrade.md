@@ -2,6 +2,24 @@
 
 This pages describes Scylla Operator upgrade procedures.
 
+## `v1.2.0` -> `v1.3.0`
+
+Sidecar image is going to be upgraded automatically, so a rolling restart of your Scylla clusters is expected during the upgrade procedure.
+
+1. Checkout source code of v1.3.0:
+   ```
+   git checkout v1.3.0
+   ```
+1. Update Scylla Operator from deploy directory:
+    ```
+    kubectl -n scylla-operator apply -f deploy/operator
+    ```
+1. Wait until Scylla Operator is up and running:
+    ```
+    kubectl wait --for condition=established crd/scyllaclusters.scylla.scylladb.com
+    kubectl -n scylla-operator rollout status deployment.apps/scylla-operator
+    ```
+
 ## `v1.1.0` -> `v1.2.0`
 
 1.2.0 release brought a lot of changes to the Scylla Operator deployment process.

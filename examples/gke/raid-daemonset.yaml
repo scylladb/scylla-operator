@@ -22,24 +22,26 @@ spec:
       - name: raid-local-disks
         image: scylladb/raid-setup:0.1
         env:
-          - name: RAID_DIR
-            value: "/mnt/hostfs/mnt/raid-disks/disk0"
-          - name: DISK_MNT_DIR_PREFIX
-            value: "/mnt/hostfs/mnt/disks/ssd"
-          - name: DISK_DEV_PREFIX
-            value: "/dev/sd"  
+          - name: READYZ_FILE
+            value: "/tmp/readyz"
         command:
           - "/bin/bash"
           - "-c"
-          - "--"
         args:
           - |
-            set -e
-            set -x
+            set -euExo pipefail
+
+            RAID_DEVICE="/dev/md42"
+            RAID_DIR="/mnt/hostfs/mnt/raid-disks/disk0"
+            DISK_DEV_PREFIX="/dev/sd"
+
+            ls -l /dev/md*
+            cat /proc/mdstat
 
             # If the disk has already been created, sleep indefinitely
-            if [ -b "/dev/md0" ]; then
+            if [ -b "${RAID_DEVICE}" && -d "${RAID_DIR}" ]; then
                 echo "raid array already created!"
+                touch "${READYZ_FILE}"
                 sleep infinity
             fi
 
@@ -60,6 +62,7 @@ spec:
 
             if [ $NUM_DISKS -eq 0 ]; then
               echo "no local disks detected!"
+              touch "${READYZ_FILE}"
               sleep infinity
             fi
 
@@ -76,15 +79,28 @@ spec:
             # Waits till udev reread device data
             udevadm settle
             # Create a raid array
-            yes | mdadm --create /dev/md0 --force --level=0 -c1024 --raid-devices="$NUM_DISKS" "${DISKS[@]}"
+            mdadm --create "${RAID_DEVICE}" --force --level=0 -c1024 --raid-devices="${NUM_DISKS}" "${DISKS[@]}"
             # Waits till udev reread md0 device data
             udevadm settle
             # Format the raid array as xfs
-            mkfs.xfs /dev/md0
+            mkfs.xfs "${RAID_DEVICE}"
 
             # Mount the raid array in a predefined location
-            mkdir -p $RAID_DIR
-            mount -o noatime /dev/md0 $RAID_DIR
+            mkdir -p "${RAID_DIR}"
+            mount -o noatime "${RAID_DEVICE}" "${RAID_DIR}"
+
+            ls -l /dev/md*
+            cat /proc/mdstat
+
+            touch "${READYZ_FILE}"
+            sleep infinity
+        readinessProbe:
+          exec:
+            command:
+              - test
+              - -f
+              - $(READYZ_FILE)
+          periodSeconds: 10
         securityContext:
           privileged: true
         volumeMounts:

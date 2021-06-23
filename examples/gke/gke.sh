@@ -79,9 +79,12 @@ then
   exit 1
 fi
 
-GCP_REGION=${GCP_ZONE:0:$((${#GCP_ZONE}-2))}
+gcloud() {
+  command gcloud "$@" --project "${GCP_PROJECT}" --zone "${GCP_ZONE}"
+}
 
-CLUSTER_VERSION="$(gcloud container get-server-config --zone ${GCP_ZONE} --format "value(validMasterVersions[0])")"
+GCP_REGION="${GCP_ZONE:0:$((${#GCP_ZONE}-2))}"
+CLUSTER_VERSION=$(gcloud container get-server-config --format "value(validMasterVersions[0])")
 
 check_prerequisites() {
     echo "Checking if kubectl is present on the machine..."
@@ -98,19 +101,19 @@ check_prerequisites() {
 }
 
 check_cluster_readiness() {
-until [[ "$(gcloud container clusters list --zone=${GCP_ZONE} | grep ${CLUSTER_NAME} | awk '{ print $8 }')" == "RUNNING" ]]; do
+until [[ "$(gcloud container clusters list | grep ${CLUSTER_NAME} | awk '{ print $8 }')" == "RUNNING" ]]; do
   echo "Waiting for cluster readiness... "
-  echo $(gcloud container clusters list --zone=${GCP_ZONE} | grep ${CLUSTER_NAME})
+  echo $(gcloud container clusters list | grep ${CLUSTER_NAME})
   sleep 10
   WAIT_TIME=$((WAIT_TIME+10))
   if [[  "$(gcloud container operations list --sort-by=START_TIME --filter="${CLUSTER_NAME} AND UPGRADE_MASTER" | grep RUNNING)" != "" ]]; then
     gcloud container operations list --sort-by=START_TIME --filter="${CLUSTER_NAME} AND UPGRADE_MASTER"
-    gcloud container operations wait $(gcloud container operations list --sort-by=START_TIME --filter="${CLUSTER_NAME} AND UPGRADE_MASTER" | tail -1 | awk '{print $1}') --zone="${GCP_ZONE}"
+    gcloud container operations wait $(gcloud container operations list --sort-by=START_TIME --filter="${CLUSTER_NAME} AND UPGRADE_MASTER" | tail -1 | awk '{print $1}')
   else
     gcloud container operations list --sort-by=START_TIME --filter="${CLUSTER_NAME} AND UPGRADE_MASTER" | tail -1
   fi
 done
-gcloud container clusters list --zone="${GCP_ZONE}" | grep ${CLUSTER_NAME}
+gcloud container clusters list | grep "${CLUSTER_NAME}"
 }
 
 function wait-for-object-creation {
@@ -126,9 +129,8 @@ check_prerequisites
 
 # Nodepool for scylla clusters
 # Do NOT use gcloud beta
-gcloud container --project "${GCP_PROJECT}" \
+gcloud container \
 clusters create "${CLUSTER_NAME}" \
---zone "${GCP_ZONE}" \
 --cluster-version "${CLUSTER_VERSION}" \
 --node-version "${CLUSTER_VERSION}" \
 --machine-type "n1-standard-32" \
@@ -143,10 +145,9 @@ clusters create "${CLUSTER_NAME}" \
 --no-enable-autorepair
 
 # Nodepool for cassandra-stress pods
-gcloud container --project "${GCP_PROJECT}" \
+gcloud container \
 node-pools create "cassandra-stress-pool" \
 --cluster "${CLUSTER_NAME}" \
---zone "${GCP_ZONE}" \
 --node-version "${CLUSTER_VERSION}" \
 --machine-type "n1-standard-32" \
 --num-nodes "2" \
@@ -157,10 +158,9 @@ node-pools create "cassandra-stress-pool" \
 --no-enable-autorepair
 
 # Nodepool for scylla operator and monitoring
-gcloud container --project "${GCP_PROJECT}" \
+gcloud container \
 node-pools create "operator-pool" \
 --cluster "${CLUSTER_NAME}" \
---zone "${GCP_ZONE}" \
 --node-version "${CLUSTER_VERSION}" \
 --machine-type "n1-standard-8" \
 --num-nodes "1" \
@@ -179,7 +179,7 @@ sleep 120
 check_cluster_readiness
 # gcloud: Get credentials for new cluster
 echo "Getting credentials for newly created cluster..."
-gcloud container clusters get-credentials "${CLUSTER_NAME}" --zone="${GCP_ZONE}"
+gcloud container clusters get-credentials "${CLUSTER_NAME}"
 
 # Setup GKE RBAC
 echo "Setting up GKE RBAC..."

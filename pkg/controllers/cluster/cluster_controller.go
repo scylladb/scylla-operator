@@ -214,6 +214,40 @@ func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return errors.Wrap(err, "pod disruption budget watch setup")
 	}
 
+	// Watch Pods created by a STS
+	scyllaOnlyPods := func(meta metav1.Object) bool {
+		if meta.GetLabels()["app.kubernetes.io/managed-by"] != "scylla-operator" {
+			return false
+		}
+		return true
+	}
+	scyllaOnlyPodsPredicate := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return scyllaOnlyPods(e.Object.(metav1.Object))
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return scyllaOnlyPods(e.ObjectNew.(metav1.Object))
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return scyllaOnlyPods(e.Object.(metav1.Object))
+		},
+		GenericFunc: func(e event.GenericEvent) bool {
+			return scyllaOnlyPods(e.Object.(metav1.Object))
+		},
+	}
+
+	err = c.Watch(
+		&source.Kind{Type: &corev1.Pod{}},
+		&EnqueueRequestForPod{
+			KubeClient: r.KubeClient,
+		},
+		predicate.ResourceVersionChangedPredicate{},
+		scyllaOnlyPodsPredicate,
+	)
+	if err != nil {
+		return errors.Wrap(err, "pods watch setup failed")
+	}
+
 	// Watch Secrets created for ScyllaCluster
 	err = c.Watch(
 		&source.Kind{Type: &corev1.Secret{}},

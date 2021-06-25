@@ -58,9 +58,9 @@ var _ = Describe("Cluster controller", func() {
 		// Cluster should be scaled sequentially up to member count
 		for _, rack := range scylla.Spec.Datacenter.Racks {
 			for _, replicas := range testEnv.ClusterScaleSteps(rack.Members) {
-				Expect(sstStub.CreatePods(ctx, scylla)).To(Succeed())
+				Expect(sstStub.CreatePods(ctx, scylla, false)).To(Succeed())
 				Expect(testEnv.AssertRackScaled(ctx, rack, scylla, replicas)).To(Succeed())
-				Expect(sstStub.CreatePods(ctx, scylla)).To(Succeed())
+				Expect(sstStub.CreatePods(ctx, scylla, false)).To(Succeed())
 			}
 		}
 
@@ -129,7 +129,7 @@ var _ = Describe("Cluster controller", func() {
 			rack := scylla.Spec.Datacenter.Racks[0]
 			for _, replicas := range testEnv.ClusterScaleSteps(rack.Members) {
 				Expect(testEnv.AssertRackScaled(ctx, rack, scylla, replicas)).To(Succeed())
-				Expect(sstStub.CreatePods(ctx, scylla)).To(Succeed())
+				Expect(sstStub.CreatePods(ctx, scylla, false)).To(Succeed())
 			}
 
 			originalActionsScyllaClientForClusterFunc = actions.ScyllaClientForClusterFunc
@@ -260,7 +260,7 @@ var _ = Describe("Cluster controller", func() {
 				}, shortWait).Should(Equal(int(rack.Members - 1)))
 
 				By("When: node pod comes up")
-				Expect(sstStub.CreatePodsPartition(ctx, scylla, nodeUnderUpgradeIdx)).To(Succeed())
+				Expect(sstStub.CreatePodsPartition(ctx, scylla, nodeUnderUpgradeIdx, false)).To(Succeed())
 
 				podList := &corev1.PodList{}
 				Expect(testEnv.List(ctx, podList, &client.ListOptions{LabelSelector: naming.RackSelector(rack, scylla)})).To(Succeed())

@@ -27,7 +27,7 @@ func (mc *MemberReconciler) setupHTTPChecks(ctx context.Context) {
 }
 
 func nodeUnderMaintenance(ctx context.Context, mc *MemberReconciler) (bool, error) {
-	member, err := identity.Retrieve(ctx, mc.member.Name, mc.member.Namespace, mc.kubeClient)
+	member, err := identity.Retrieve(ctx, mc.member.Name, mc.member.Namespace, mc.kubeClient, mc.Client)
 	if err != nil {
 		return false, errors.Wrap(err, "get member service")
 	}

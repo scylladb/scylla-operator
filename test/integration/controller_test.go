@@ -4,6 +4,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	. "github.com/onsi/ginkgo"
@@ -50,7 +51,7 @@ var _ = Describe("Cluster controller", func() {
 			for _, rack := range scylla.Spec.Datacenter.Racks {
 				for _, replicas := range testEnv.ClusterScaleSteps(rack.Members) {
 					Expect(testEnv.AssertRackScaled(ctx, rack, scylla, replicas)).To(Succeed())
-					Expect(sst.CreatePods(ctx, scylla)).To(Succeed())
+					Expect(sst.CreatePods(ctx, scylla, false)).To(Succeed())
 				}
 			}
 
@@ -83,7 +84,7 @@ var _ = Describe("Cluster controller", func() {
 		// Cluster should be scaled sequentially up to member count
 		for _, replicas := range testEnv.ClusterScaleSteps(rack.Members) {
 			Expect(testEnv.AssertRackScaled(ctx, rack, scylla, replicas)).To(Succeed())
-			Expect(sstStub.CreatePods(ctx, scylla)).To(Succeed())
+			Expect(sstStub.CreatePods(ctx, scylla, false)).To(Succeed())
 			Expect(sstStub.CreatePVCs(ctx, scylla, pvOption)).To(Succeed())
 		}
 
@@ -106,6 +107,41 @@ var _ = Describe("Cluster controller", func() {
 		}).Should(HaveKeyWithValue(naming.ReplaceLabel, ""))
 	})
 
+	It("Set pod ip in scylla/ip member service label with hostNetwork enbaled", func() {
+		scylla := singleNodeCluster(ns)
+		scylla.Spec.Network.HostNetworking = true
+
+		Expect(testEnv.Create(ctx, scylla)).To(Succeed())
+		defer func() {
+			Expect(testEnv.Delete(ctx, scylla)).To(Succeed())
+		}()
+
+		Expect(testEnv.WaitForCluster(ctx, scylla)).To(Succeed())
+		Expect(testEnv.Refresh(ctx, scylla)).To(Succeed())
+
+		sstStub := integration.NewStatefulSetOperatorStub(testEnv)
+		rack := scylla.Spec.Datacenter.Racks[0]
+
+		for _, replicas := range testEnv.ClusterScaleSteps(rack.Members) {
+			Expect(testEnv.AssertRackScaled(ctx, rack, scylla, replicas)).To(Succeed())
+			Expect(sstStub.CreatePods(ctx, scylla, true, func(pod *corev1.Pod) {
+				pod.Status.PodIP = fmt.Sprintf("20.20.20.20")
+			})).To(Succeed())
+		}
+
+		services, err := rackMemberService(ns.Namespace, rack, scylla)
+		Expect(err).To(BeNil())
+		Expect(services).To(Not(BeEmpty()))
+
+		service := services[0]
+
+		Eventually(func() map[string]string {
+			Expect(testEnv.Refresh(ctx, &service)).To(Succeed())
+
+			return service.Labels
+		}).Should(HaveKeyWithValue(naming.IpLabel, "20.20.20.20"))
+	})
+
 	Context("Node replace", func() {
 		var (
 			scylla  *scyllav1.ScyllaCluster
@@ -125,7 +161,7 @@ var _ = Describe("Cluster controller", func() {
 			rack := scylla.Spec.Datacenter.Racks[0]
 			for _, replicas := range testEnv.ClusterScaleSteps(rack.Members) {
 				Expect(testEnv.AssertRackScaled(ctx, rack, scylla, replicas)).To(Succeed())
-				Expect(sstStub.CreatePods(ctx, scylla)).To(Succeed())
+				Expect(sstStub.CreatePods(ctx, scylla, false)).To(Succeed())
 				Expect(sstStub.CreatePVCs(ctx, scylla)).To(Succeed())
 			}
 		})
@@ -154,7 +190,7 @@ var _ = Describe("Cluster controller", func() {
 				}
 
 				return scylla.Status.Racks[rack.Name].ReplaceAddressFirstBoot, nil
-			}).Should(HaveKeyWithValue(serviceToReplace.Name, replacedServiceIP))
+			}, shortWait).Should(HaveKeyWithValue(serviceToReplace.Name, replacedServiceIP))
 
 			By("Old PVC should be removed")
 			Eventually(func() []corev1.PersistentVolumeClaim {
@@ -179,7 +215,7 @@ var _ = Describe("Cluster controller", func() {
 			}, shortWait).Should(HaveLen(int(rack.Members - 1)))
 
 			By("When new pod is scheduled")
-			Expect(sstStub.CreatePods(ctx, scylla)).To(Succeed())
+			Expect(sstStub.CreatePods(ctx, scylla, false)).To(Succeed())
 
 			By("New service should be created with replace label pointing to old one")
 			Eventually(func() (map[string]string, error) {

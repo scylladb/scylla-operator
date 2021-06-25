@@ -38,6 +38,8 @@ serviceAccount:
   create: true
   # Annotations to add to the service account
   annotations: {}
+  # Map of secrets used to pull images from secured docker registry
+  imagePullSecrets: {}
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: ""

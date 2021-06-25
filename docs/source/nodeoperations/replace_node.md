@@ -71,7 +71,7 @@ _This procedure is for replacing one dead node. To replace more than one dead no
    UN  10.43.191.172  74.77 KB   256          ?       1ffa7a82-c41c-4706-8f5f-4d45a39c7003  us-east-1a
    ```
 1. Run the repair on the cluster to make sure that the data is synced with the other nodes in the cluster. 
-   You can use [Scylla Manager](manager.md) to run the repair.
+   You can use [Scylla Manager](../manager.md) to run the repair.
 
 ### Replacing a dead seed node
 

@@ -41,7 +41,7 @@ To quickly deploy a ScyllaCluster, you can choose one of the following options:
 * [EKS](docs/source/eks.md): An advanced guide for deploying Scylla with the **best performance settings** on [Amazon Elastic Kubernetes Service](https://aws.amazon.com/eks/).
 
 ## Releases
-To find out more about our releases and how our CI/CD is setup there is a [dedicated docs page](./docs/source/releases.md).
+To find out more about our releases, support matrix and how our CI/CD is set up there is a [dedicated docs page](./docs/source/releases.md).
 
 ## Documentation
 Scylla Operator documentation is available on https://operator.docs.scylladb.com

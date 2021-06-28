@@ -54,11 +54,6 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 	labels[naming.DatacenterNameLabel] = sc.Spec.Datacenter.Name
 	labels[naming.RackNameLabel] = rackName
 
-	// If Member is seed, add the appropriate label
-	if strings.HasSuffix(name, "-0") || strings.HasSuffix(name, "-1") {
-		labels[naming.SeedLabel] = ""
-	}
-
 	// Copy the old replace label, if present.
 	var replaceAddr string
 	var hasReplaceLabel bool

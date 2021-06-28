@@ -319,10 +319,6 @@ func getManagerClient(ctx context.Context, client corev1client.CoreV1Interface) 
 	return &manager, nil
 }
 
-func getFirstNonSeedNodeName(sc *scyllav1.ScyllaCluster) string {
-	return getNodeName(sc, 2)
-}
-
 func getNodeName(sc *scyllav1.ScyllaCluster, idx int) string {
 	return fmt.Sprintf(
 		"%s-%s-%s-%d",

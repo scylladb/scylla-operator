@@ -138,15 +138,6 @@ func (scc *Controller) syncServices(
 			continue
 		}
 
-		_, isSeed := svc.Labels[naming.SeedLabel]
-		if isSeed {
-			klog.ErrorS(nil, "Seed node replace is not supported",
-				"ScyllaCluster", klog.KObj(sc),
-				"Service", klog.KObj(svc),
-			)
-			continue
-		}
-
 		rackName, ok := svc.Labels[naming.RackNameLabel]
 		if !ok {
 			return status, fmt.Errorf("service %s/%s is missing %q label", svc.Namespace, svc.Name, naming.RackNameLabel)

@@ -22,12 +22,12 @@ var _ = g.Describe("ScyllaCluster replace", func() {
 
 	f := framework.NewFramework("scyllacluster")
 
-	g.It("should replace a non-seed node", func() {
+	g.It("should replace a node", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimout)
 		defer cancel()
 
 		sc := scyllaclusterfixture.BasicScyllaCluster.ReadOrFail()
-		sc.Spec.Datacenter.Racks[0].Members = 3
+		sc.Spec.Datacenter.Racks[0].Members = 2
 
 		framework.By("Creating a ScyllaCluster")
 		err := framework.SetupScyllaClusterSA(ctx, f.KubeClient().CoreV1(), f.KubeClient().RbacV1(), f.Namespace(), sc.Name)
@@ -44,10 +44,10 @@ var _ = g.Describe("ScyllaCluster replace", func() {
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
 
-		framework.By("Replacing a non-seed node")
+		framework.By("Replacing a node #0")
 		pod, err := f.KubeClient().CoreV1().Pods(f.Namespace()).Get(
 			ctx,
-			getFirstNonSeedNodeName(sc),
+			getNodeName(sc, 0),
 			metav1.GetOptions{},
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())

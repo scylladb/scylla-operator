@@ -3,117 +3,110 @@
 package parallel
 
 import (
-	"errors"
+	"fmt"
+	"reflect"
+	"sort"
 	"testing"
-	"time"
 
-	"github.com/scylladb/scylla-operator/pkg/util/timeutc"
-	"go.uber.org/atomic"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
-func TestRun(t *testing.T) {
-	t.Parallel()
+func TestForEach(t *testing.T) {
+	anError := func(i int) error {
+		return fmt.Errorf("test error #%d", i)
+	}
 
-	const (
-		n    = 50
-		wait = 5 * time.Millisecond
-	)
-
-	table := []struct {
-		Name     string
-		Limit    int
-		Duration time.Duration
+	tt := []struct {
+		name        string
+		length      int
+		f           func(i int) error
+		expectedErr error
 	}{
-		// This test is flaky under race
-		//{
-		//	Name:     "No limit",
-		//	Duration: wait,
-		//},
 		{
-			Name:     "One by one",
-			Limit:    1,
-			Duration: n * wait,
+			name:   "single nil",
+			length: 1,
+			f: func(i int) error {
+				switch i {
+				case 0:
+					return nil
+				default:
+					panic("out of range")
+				}
+			},
+			expectedErr: nil,
 		},
 		{
-			Name:     "Five by five",
-			Limit:    5,
-			Duration: n / 5 * wait,
+			name:   "two nils",
+			length: 2,
+			f: func(i int) error {
+				switch i {
+				case 0, 1:
+					return nil
+				default:
+					panic("out of range")
+				}
+			},
+			expectedErr: nil,
+		},
+		{
+			name:   "single error",
+			length: 1,
+			f: func(i int) error {
+				switch i {
+				case 0:
+					return anError(i)
+				default:
+					panic("out of range")
+				}
+			},
+			expectedErr: utilerrors.NewAggregate([]error{anError(0)}),
+		},
+		{
+			name:   "two errors",
+			length: 2,
+			f: func(i int) error {
+				switch i {
+				case 0, 1:
+					return anError(i)
+				default:
+					panic("out of range")
+				}
+			},
+			expectedErr: utilerrors.NewAggregate([]error{anError(0), anError(1)}),
+		},
+		{
+			name:   "mixed",
+			length: 5,
+			f: func(i int) error {
+				switch i {
+				case 0, 2, 4:
+					return nil
+				case 1, 3:
+					return anError(i)
+				default:
+					panic("out of range")
+				}
+			},
+			expectedErr: utilerrors.NewAggregate([]error{nil, anError(1), nil, anError(3), nil}),
 		},
 	}
 
-	for i := range table {
-		test := table[i]
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			gotErr := ForEach(tc.length, tc.f)
 
-		t.Run(test.Name, func(t *testing.T) {
-			t.Parallel()
-
-			active := atomic.NewInt32(0)
-			f := func(i int) error {
-				v := active.Inc()
-				if test.Limit != NoLimit {
-					if v > int32(test.Limit) {
-						t.Errorf("limit exeded, got %d", v)
-					}
-				}
-				time.Sleep(wait)
-				active.Dec()
-				return nil
+			// Sort the errors to avoid random ordering from parallelism.
+			if gotErr != nil {
+				errs := gotErr.(utilerrors.Aggregate).Errors()
+				sort.Slice(errs, func(i, j int) bool {
+					return errs[i].Error() < errs[j].Error()
+				})
 			}
 
-			start := timeutc.Now()
-			if err := Run(n, test.Limit, f); err != nil {
-				t.Error("Run() error", err)
-			}
-			d := timeutc.Since(start)
-			if a, b := epsilonRange(test.Duration); d < a || d > b {
-				t.Errorf("Run() not within expected time margin %v got %v", test.Duration, d)
+			if !reflect.DeepEqual(gotErr, tc.expectedErr) {
+				t.Errorf("expected %v, got %v", tc.expectedErr, gotErr)
 			}
 		})
+
 	}
-}
-
-func TestIsErrAbort(t *testing.T) {
-	t.Parallel()
-
-	t.Run("nil", func(t *testing.T) {
-		t.Parallel()
-
-		if ok, err := isErrAbort(Abort(nil)); !ok || err != nil {
-			t.Errorf("isErrAbort() = (%v, %v), expected (%v, %v))", ok, err, true, nil)
-		}
-	})
-
-	t.Run("not nil", func(t *testing.T) {
-		t.Parallel()
-
-		err := errors.New("too")
-
-		if ok, inner := isErrAbort(Abort(err)); !ok || inner != err {
-			t.Errorf("isErrAbort() = (%v, %v), expected (%v, %v))", ok, inner, true, err)
-		}
-	})
-}
-
-func TestAbort(t *testing.T) {
-	t.Parallel()
-
-	called := atomic.NewInt32(0)
-	f := func(i int) error {
-		called.Inc()
-		return Abort(errors.New("boo"))
-	}
-
-	if err := Run(10, 1, f); err == nil {
-		t.Error("Run() expected error")
-	}
-
-	if c := called.Load(); c != 1 {
-		t.Errorf("Called %d times expected 1", c)
-	}
-}
-
-// EpsilonRange returns start and end of range 5% close to provided value.
-func epsilonRange(d time.Duration) (a, b time.Duration) {
-	e := time.Duration(float64(d) * 1.05)
-	return d - e, d + e
 }

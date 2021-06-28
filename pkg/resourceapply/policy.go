@@ -1,0 +1,79 @@
+// Copyright (C) 2021 ScyllaDB
+
+package resourceapply
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/scylladb/scylla-operator/pkg/naming"
+	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	"k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	policyv1beta1client "k8s.io/client-go/kubernetes/typed/policy/v1beta1"
+	policyv1beta1listers "k8s.io/client-go/listers/policy/v1beta1"
+	"k8s.io/client-go/tools/record"
+	"k8s.io/klog/v2"
+)
+
+// ApplyPodDisruptionBudget creates or updates PDB. If desired object is equal (based on calculated hash)
+// to existing one update is not called.
+func ApplyPodDisruptionBudget(
+	ctx context.Context,
+	client policyv1beta1client.PodDisruptionBudgetsGetter,
+	lister policyv1beta1listers.PodDisruptionBudgetLister,
+	recorder record.EventRecorder,
+	required *policyv1beta1.PodDisruptionBudget,
+) (*policyv1beta1.PodDisruptionBudget, bool, error) {
+	requiredControllerRef := metav1.GetControllerOfNoCopy(required)
+	if requiredControllerRef == nil {
+		return nil, false, fmt.Errorf("poddisruptionbudget %q is missing controllerRef", naming.ObjRef(required))
+	}
+
+	requiredCopy := required.DeepCopy()
+	err := SetHashAnnotation(requiredCopy)
+	if err != nil {
+		return nil, false, err
+	}
+
+	existing, err := lister.PodDisruptionBudgets(requiredCopy.Namespace).Get(requiredCopy.Name)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, false, err
+		}
+
+		actual, err := client.PodDisruptionBudgets(requiredCopy.Namespace).Create(ctx, requiredCopy, metav1.CreateOptions{})
+		if apierrors.IsAlreadyExists(err) {
+			klog.V(2).InfoS("Already exists (stale cache)", "PodDisruptionBudget", klog.KObj(requiredCopy))
+		} else {
+			ReportCreateEvent(recorder, requiredCopy, err)
+		}
+		return actual, true, err
+	}
+
+	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
+	if !equality.Semantic.DeepEqual(existingControllerRef, requiredControllerRef) {
+		// This is not the place to handle adoption.
+		err := fmt.Errorf("poddisruptionbudget %q isn't controlled by us", naming.ObjRef(requiredCopy))
+		ReportUpdateEvent(recorder, requiredCopy, err)
+		return nil, false, err
+	}
+
+	// If they are the same do nothing.
+	if existing.Annotations[naming.ManagedHash] == requiredCopy.Annotations[naming.ManagedHash] {
+		return existing, false, nil
+	}
+
+	requiredCopy.ResourceVersion = existing.ResourceVersion
+	actual, err := client.PodDisruptionBudgets(requiredCopy.Namespace).Update(ctx, requiredCopy, metav1.UpdateOptions{})
+	if apierrors.IsConflict(err) {
+		klog.V(2).InfoS("Hit update conflict, will retry.", "PodDisruptionBudget", klog.KObj(requiredCopy))
+	} else {
+		ReportUpdateEvent(recorder, requiredCopy, err)
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("can't update pdb: %w", err)
+	}
+	return actual, true, nil
+}

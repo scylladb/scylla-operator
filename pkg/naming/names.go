@@ -9,21 +9,15 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NamespacedName(name, namespace string) client.ObjectKey {
-	return client.ObjectKey{
-		Name:      name,
-		Namespace: namespace,
+func ObjRef(obj metav1.Object) string {
+	namespace := obj.GetNamespace()
+	if len(namespace) == 0 {
+		return obj.GetName()
 	}
-}
 
-func NamespacedNameForObject(obj metav1.Object) client.ObjectKey {
-	return client.ObjectKey{
-		Name:      obj.GetName(),
-		Namespace: obj.GetNamespace(),
-	}
+	return fmt.Sprintf("%s/%s", obj.GetNamespace(), obj.GetName())
 }
 
 func StatefulSetNameForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) string {

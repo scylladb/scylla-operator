@@ -5,7 +5,7 @@ import (
 
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	"github.com/scylladb/scylla-operator/pkg/controllers/cluster/util"
+	"github.com/scylladb/scylla-operator/pkg/controller/scyllacluster/util"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	appsv1 "k8s.io/api/apps/v1"
@@ -58,8 +58,9 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 	verifyPodDisruptionBudget(sc, pdb)
 
 	// TODO: Use scylla client to check at least "UN"
-	scyllaClient, _, err := getScyllaClient(ctx, kubeClient.CoreV1(), sc)
+	scyllaClient, hosts, err := getScyllaClient(ctx, kubeClient.CoreV1(), sc)
 	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(hosts).To(o.HaveLen(memberCount))
 
 	status, err := scyllaClient.Status(ctx, "")
 	o.Expect(err).NotTo(o.HaveOccurred())

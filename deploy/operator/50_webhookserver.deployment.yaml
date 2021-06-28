@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: scylla-operator
+  name: webhook-server
+  labels:
+    app.kubernetes.io/name: webhook-server
+    app.kubernetes.io/instance: webhook-server
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: webhook-server
+      app.kubernetes.io/instance: webhook-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: webhook-server
+        app.kubernetes.io/instance: webhook-server
+    spec:
+      serviceAccountName: "webhook-server"
+      containers:
+      - name: webhook-server
+        image: docker.io/scylladb/scylla-operator:latest
+        imagePullPolicy: IfNotPresent
+        args:
+        - run-webhook-server
+        - --loglevel=2
+        - --tls-cert-file=/tmp/serving-certs/tls.crt
+        - --tls-private-key-file=/tmp/serving-certs/tls.key
+        livenessProbe:
+          httpGet:
+            path: /readyz
+            port: 5000
+            scheme: HTTPS
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 5000
+            scheme: HTTPS
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        ports:
+        - containerPort: 5000
+          name: webhook-server
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 10m
+            memory: 20Mi
+        volumeMounts:
+        - mountPath: /tmp/serving-certs
+          name: cert
+          readOnly: true
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: scylla-operator-serving-cert

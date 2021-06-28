@@ -1,0 +1,123 @@
+package admissionreview
+
+import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+
+	admissionv1 "k8s.io/api/admission/v1"
+	v1 "k8s.io/api/admission/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/klog/v2"
+)
+
+var (
+	scheme = runtime.NewScheme()
+	codecs serializer.CodecFactory
+)
+
+func init() {
+	utilruntime.Must(admissionv1.AddToScheme(scheme))
+
+	codecs = serializer.NewCodecFactory(scheme)
+}
+
+type HandleFunc func(*v1.AdmissionReview) error
+
+type handler struct {
+	f HandleFunc
+}
+
+var _ http.Handler = &handler{}
+
+func NewHandler(f HandleFunc) *handler {
+	return &handler{
+		f: f,
+	}
+}
+
+func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	var body []byte
+	if req.Body != nil {
+		data, err := ioutil.ReadAll(req.Body)
+		if err == nil {
+			body = data
+		}
+	}
+
+	contentType := req.Header.Get("Content-Type")
+	if contentType != "application/json" {
+		msg := fmt.Sprintf("unsupported contentType %q", contentType)
+		klog.Error(msg)
+		http.Error(w, msg, http.StatusBadRequest)
+		return
+	}
+
+	klog.V(4).Info(fmt.Sprintf("handling request: %s", body))
+
+	deserializer := codecs.UniversalDeserializer()
+	obj, gvk, err := deserializer.Decode(body, nil, nil)
+	if err != nil {
+		msg := fmt.Sprintf("Request could not be decoded: %v", err)
+		klog.Error(msg)
+		http.Error(w, msg, http.StatusBadRequest)
+		return
+	}
+
+	var responseObj runtime.Object
+	switch *gvk {
+	case v1.SchemeGroupVersion.WithKind("AdmissionReview"):
+		requestedAdmissionReview, ok := obj.(*v1.AdmissionReview)
+		if !ok {
+			msg := fmt.Sprintf("Expected v1.AdmissionReview but got: %T", obj)
+			klog.Error(msg)
+			http.Error(w, msg, http.StatusBadRequest)
+			return
+		}
+
+		funcErr := h.f(requestedAdmissionReview)
+		if funcErr != nil {
+			klog.V(2).InfoS("Review failed", "Error", err)
+		}
+
+		responseAdmissionReview := &v1.AdmissionReview{}
+		responseAdmissionReview.SetGroupVersionKind(*gvk)
+		responseAdmissionReview.Response = &v1.AdmissionResponse{
+			UID:     requestedAdmissionReview.Request.UID,
+			Allowed: funcErr == nil,
+			Result: &metav1.Status{
+				Message: func() string {
+					if funcErr == nil {
+						return ""
+					}
+					return funcErr.Error()
+				}(),
+			},
+		}
+		responseObj = responseAdmissionReview
+
+	default:
+		msg := fmt.Sprintf("Unsupported GVK: %v", gvk)
+		klog.Error(msg)
+		http.Error(w, msg, http.StatusBadRequest)
+		return
+	}
+
+	respBytes, err := json.Marshal(responseObj)
+	if err != nil {
+		klog.Error(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	klog.V(4).Infof("sending response: %v", responseObj)
+	_, err = w.Write(respBytes)
+	if err != nil {
+		klog.Error(err)
+	}
+}

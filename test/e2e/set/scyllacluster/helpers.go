@@ -10,7 +10,7 @@ import (
 	"github.com/scylladb/go-log"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1"
-	"github.com/scylladb/scylla-operator/pkg/controllers/helpers"
+	helpers2 "github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
@@ -269,9 +269,14 @@ func getScyllaClient(ctx context.Context, client corev1client.CoreV1Interface, s
 		return nil, nil, fmt.Errorf("no services found")
 	}
 
-	authToken, err := helpers.GetAgentAuthToken(ctx, client, sc.Name, sc.Namespace)
+	tokenSecret, err := client.Secrets(sc.Namespace).Get(ctx, naming.AgentAuthTokenSecretName(sc.Name), metav1.GetOptions{})
 	if err != nil {
-		return nil, nil, fmt.Errorf("get auth token: %w", err)
+		return nil, nil, err
+	}
+
+	authToken, err := helpers2.GetAgentAuthTokenFromSecret(tokenSecret)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can't get auth token: %w", err)
 	}
 
 	// TODO: unify logging

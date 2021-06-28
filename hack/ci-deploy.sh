@@ -47,6 +47,7 @@ kubectl apply -f "${deploy_dir}"/operator
 # Manager needs scylla CRD registered and the webhook running
 kubectl wait --for condition=established crd/scyllaclusters.scylla.scylladb.com
 kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/scylla-operator
+kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/webhook-server
 
 kubectl apply -f "${deploy_dir}"/manager
 

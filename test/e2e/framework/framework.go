@@ -23,6 +23,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	watchtools "k8s.io/client-go/tools/watch"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -240,6 +241,7 @@ func (f *Framework) deleteNamespace(ctx context.Context, ns *corev1.Namespace) {
 	By("Waiting for namespace %q to be removed.", ns.Name)
 	err = WaitForObjectDeletion(ctx, f.DynamicAdminClient(), corev1.SchemeGroupVersion.WithResource("namespaces"), "", ns.Name, ns.UID)
 	o.Expect(err).NotTo(o.HaveOccurred())
+	klog.InfoS("Namespace removed.", "Namespace", ns.Name)
 }
 
 func (f *Framework) beforeEach() {

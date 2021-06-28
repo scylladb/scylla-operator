@@ -2,67 +2,197 @@ package operator
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	"sync"
+	"time"
 
-	"github.com/scylladb/go-log"
-	"github.com/scylladb/scylla-operator/pkg/cmd/operator/options"
-	"github.com/scylladb/scylla-operator/pkg/controllers/manager"
+	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
+	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
+	"github.com/scylladb/scylla-operator/pkg/cmdutil"
+	"github.com/scylladb/scylla-operator/pkg/controller/manager"
+	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
+	"github.com/scylladb/scylla-operator/pkg/leaderelection"
+	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
+	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
-
-	"go.uber.org/zap"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+	apierrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog/v2"
 )
 
-func NewManagerControllerCmd(ctx context.Context, logger log.Logger, level zap.AtomicLevel) *cobra.Command {
-	var managerControllerCmd = &cobra.Command{
-		Use:   "manager-controller",
-		Short: "Start the scylla manager controller.",
-		Long:  `manager-controller is for starting the scylla manager controller.`,
-		Run: func(cmd *cobra.Command, args []string) {
-			opts := options.GetManagerOptions()
-			if err := opts.Validate(); err != nil {
-				logger.Fatal(ctx, "invalid options", "error", err)
-			}
-			v := version.Get()
-			logger.Info(ctx, "Scylla Manager Controller started", "version", v.GitVersion, "build_date", v.BuildDate,
-				"commit", v.GitCommit, "go_version", v.GoVersion, "options", opts)
+type ManagerControllerOptions struct {
+	genericclioptions.ClientConfig
+	genericclioptions.InClusterReflection
+	genericclioptions.LeaderElection
 
-			// Set log level
-			if err := level.UnmarshalText([]byte(opts.LogLevel)); err != nil {
-				logger.Error(ctx, "unable to change log level",
-					"level", opts.LogLevel, "error", err)
-			}
+	kubeClient    kubernetes.Interface
+	scyllaClient  scyllaversionedclient.Interface
+	managerClient *mermaidclient.Client
 
-			cfg := ctrl.GetConfigOrDie()
-			// Create a new Cmd to provide shared dependencies and start components
-			mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-				Scheme:                  scheme,
-				LeaderElection:          true,
-				LeaderElectionID:        "scylla-manager-controller-lock",
-				LeaderElectionNamespace: opts.Namespace,
-			})
-			if err != nil {
-				logger.Fatal(ctx, "unable to create manager", "error", err)
-			}
+	ConcurrentSyncs int
+}
 
-			logger.Info(ctx, "Registering Components.")
+func NewManagerControllerOptions(streams genericclioptions.IOStreams) *ManagerControllerOptions {
+	return &ManagerControllerOptions{
+		ClientConfig:        genericclioptions.NewClientConfig("scylla-manager-controller"),
+		InClusterReflection: genericclioptions.InClusterReflection{},
+		LeaderElection:      genericclioptions.NewLeaderElection(),
 
-			ctx := log.WithNewTraceID(context.Background())
-			mc, err := manager.New(ctx, mgr, opts.Namespace, opts.Namespace, logger.Named("scylla-manager-controller"))
-			if err != nil {
-				logger.Fatal(ctx, "unable to create manager controller", "error", err)
-			}
-			if err := mc.SetupWithManager(mgr); err != nil {
-				logger.Fatal(ctx, "unable to setup manager controller", "error", err)
-			}
-
-			logger.Info(ctx, "Starting the controller...")
-			if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
-				logger.Fatal(ctx, "error launching manager", "mode", "operator", "error", err)
-			}
-		},
+		ConcurrentSyncs: 5,
 	}
-	options.GetManagerOptions().AddFlags(managerControllerCmd)
-	return managerControllerCmd
+}
+
+func NewManagerControllerCmd(streams genericclioptions.IOStreams) *cobra.Command {
+	o := NewManagerControllerOptions(streams)
+
+	cmd := &cobra.Command{
+		Use:   "manager-controller",
+		Short: "Run the scylla manager controller.",
+		Long:  "Run the scylla manager controller.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			err := o.Validate()
+			if err != nil {
+				return err
+			}
+
+			err = o.Complete()
+			if err != nil {
+				return err
+			}
+
+			err = o.Run(streams, cmd.Name())
+			if err != nil {
+				return err
+			}
+
+			return nil
+		},
+
+		SilenceErrors: true,
+		SilenceUsage:  true,
+	}
+
+	o.ClientConfig.AddFlags(cmd)
+	o.InClusterReflection.AddFlags(cmd)
+	o.LeaderElection.AddFlags(cmd)
+
+	cmd.Flags().IntVarP(&o.ConcurrentSyncs, "concurrent-syncs", "", o.ConcurrentSyncs, "The number of ScyllaCluster objects that are allowed to sync concurrently.")
+
+	return cmd
+}
+
+func (o *ManagerControllerOptions) Validate() error {
+	var errs []error
+
+	errs = append(errs, o.ClientConfig.Validate())
+	errs = append(errs, o.InClusterReflection.Validate())
+	errs = append(errs, o.LeaderElection.Validate())
+
+	return apierrors.NewAggregate(errs)
+}
+
+func (o *ManagerControllerOptions) Complete() error {
+	err := o.ClientConfig.Complete()
+	if err != nil {
+		return err
+	}
+
+	err = o.InClusterReflection.Complete()
+	if err != nil {
+		return err
+	}
+
+	err = o.LeaderElection.Complete()
+	if err != nil {
+		return err
+	}
+
+	o.kubeClient, err = kubernetes.NewForConfig(o.ProtoConfig)
+	if err != nil {
+		return fmt.Errorf("can't build kubernetes clientset: %w", err)
+	}
+
+	o.scyllaClient, err = scyllaversionedclient.NewForConfig(o.RestConfig)
+	if err != nil {
+		return fmt.Errorf("can't build scylla clientset: %w", err)
+	}
+
+	// TODO: Use https and wire certs.
+	managerClient, err := mermaidclient.NewClient("http://scylla-manager.scylla-manager.svc/api/v1", &http.Transport{})
+	if err != nil {
+		return fmt.Errorf("can't build manager client: %w", err)
+	}
+	o.managerClient = &managerClient
+
+	return nil
+}
+
+func (o *ManagerControllerOptions) Run(streams genericclioptions.IOStreams, commandName string) error {
+	klog.Infof("%s version %s", commandName, version.Get())
+	klog.Infof("loglevel is set to %q", cmdutil.GetLoglevel())
+
+	stopCh := signals.StopChannel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		<-stopCh
+		cancel()
+	}()
+
+	return leaderelection.Run(
+		ctx,
+		commandName,
+		commandName+"-locks",
+		o.Namespace,
+		o.kubeClient,
+		o.LeaderElectionLeaseDuration,
+		o.LeaderElectionRenewDeadline,
+		o.LeaderElectionRetryPeriod,
+		func(ctx context.Context) error {
+			return o.run(ctx, streams)
+		},
+	)
+}
+
+func (o *ManagerControllerOptions) run(ctx context.Context, streams genericclioptions.IOStreams) error {
+	kubeInformers := informers.NewSharedInformerFactory(o.kubeClient, 12*time.Hour)
+	scyllaInformers := scyllainformers.NewSharedInformerFactory(o.scyllaClient, 12*time.Hour)
+
+	scc, err := manager.NewController(
+		o.kubeClient,
+		o.scyllaClient.ScyllaV1(),
+		kubeInformers.Core().V1().Secrets(),
+		scyllaInformers.Scylla().V1().ScyllaClusters(),
+		o.managerClient,
+	)
+	if err != nil {
+		return err
+	}
+
+	var wg sync.WaitGroup
+	defer wg.Wait()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		kubeInformers.Start(ctx.Done())
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		scyllaInformers.Start(ctx.Done())
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		scc.Run(ctx, o.ConcurrentSyncs)
+	}()
+
+	<-ctx.Done()
+
+	return nil
 }

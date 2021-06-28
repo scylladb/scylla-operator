@@ -10,8 +10,8 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
-# Scylla Operator log level, allowed values are: error,warn,info,debug,trace
-logLevel: debug
+# Scylla Operator log level, 0-9 (higher number means more detailed logs)
+logLevel: 2
 # Resources allocated to Scylla Operator pods
 resources:
   requests:

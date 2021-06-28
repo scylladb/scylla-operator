@@ -6,26 +6,23 @@ require (
 	github.com/bitly/go-hostpool v0.1.0 // indirect
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cenkalti/backoff v2.2.1+incompatible
-	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/elazarl/goproxy v0.0.0-20191011121108-aa519ddbe484 // indirect
 	github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-git/go-git/v5 v5.3.0
-	github.com/go-logr/logr v0.4.0 // indirect
-	github.com/go-logr/zapr v0.2.0
 	github.com/go-openapi/errors v0.19.2
 	github.com/go-openapi/runtime v0.19.4
-	github.com/go-openapi/spec v0.19.5 // indirect
 	github.com/go-openapi/strfmt v0.19.5
 	github.com/go-openapi/swag v0.19.5
 	github.com/go-openapi/validate v0.19.8
 	github.com/gocql/gocql v0.0.0-20200815110948-5378c8f664e9
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/go-cmp v0.5.2
+	github.com/googleapis/gnostic v0.5.1 // indirect
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed
 	github.com/hashicorp/go-version v1.2.1
+	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/magiconair/properties v1.8.1
-	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/onsi/ginkgo v1.15.0
 	github.com/onsi/gomega v1.10.2
@@ -41,17 +38,17 @@ require (
 	go.uber.org/multierr v1.5.0
 	go.uber.org/zap v1.15.0
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
-	gopkg.in/yaml.v2 v2.3.0
-	k8s.io/api v0.20.4
-	k8s.io/apimachinery v0.20.4
-	k8s.io/apiserver v0.20.4
-	k8s.io/client-go v0.20.4
-	k8s.io/code-generator v0.20.4
-	k8s.io/klog v1.0.0
-	k8s.io/klog/v2 v2.4.0
-	k8s.io/kubectl v0.20.4
+	google.golang.org/appengine v1.6.6 // indirect
+	gopkg.in/yaml.v2 v2.4.0
+	k8s.io/api v0.21.1
+	k8s.io/apimachinery v0.21.1
+	k8s.io/apiserver v0.21.1
+	k8s.io/client-go v0.21.1
+	k8s.io/code-generator v0.21.1
+	k8s.io/component-base v0.21.1
+	k8s.io/klog/v2 v2.9.0
+	k8s.io/kubectl v0.21.1
 	k8s.io/utils v0.0.0-20210111153108-fddb29f9d009
-	sigs.k8s.io/controller-runtime v0.8.3
-	sigs.k8s.io/controller-tools v0.4.1
+	sigs.k8s.io/controller-tools v0.5.0
 	sigs.k8s.io/yaml v1.2.0
 )

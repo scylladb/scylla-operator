@@ -37,3 +37,15 @@ We use [GitHub actions](https://github.com/scylladb/scylla-operator/actions/work
 
 ### Generally available
 GA images aren't build from scratch but rather promoted from an existing release candidates. When we decide a release candidate has the acceptable quality and QA sings it off, the release candidate is promoted to become the GA release. This makes sure the image has exactly the same content and SHA as the tested release candidate.
+
+## Support matrix
+
+Support matrix table shows the version requirements for a particular **scylla-operator** version. Be sure to match these requirements, otherwise some functionality will not work.
+
+|                    | v1.4        | v1.3        | v1.2        | v1.1        | v1.0        |
+| :----------------: | :------:    | :------:    | :------:    | :------:    | :------:    |
+| Kubernetes         | `>=1.19`    | `>=1.19`    | `>=1.19`    | `>=1.11`    | `>=1.11`    |
+| Scylla OS          | `>=4.3`     | `>=4.2`     | `>=4.2`     | `>=4.0`     | `>=4.0`     |
+| Scylla Enterprise  | `>=2021.1`  | `>=2020.1`  | `>=2020.1`  | `>=2020.1`  | `>=2020.1`  |
+| Scylla Manager     | `>=2.2`     | `>=2.2`     | `>=2.2`     | `>=2.2`     | `>=2.2`     |
+| Scylla Monitoring  | `>=1.0`     | `>=1.0`     | `>=1.0`     | `>=1.0`     | `>=1.0`     |

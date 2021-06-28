@@ -1,6 +1,6 @@
 ### Restore from backup
 
-This procedure will describe how to restore from backup taken using [Scylla Manager](manager.md) to a fresh **empty** cluster of any size.
+This procedure will describe how to restore from backup taken using [Scylla Manager](../manager.md) to a fresh **empty** cluster of any size.
 
 First identify to which snapshot you want to restore. To get list of available snapshot execute following command on Scylla Manager Pod.
 ```bash

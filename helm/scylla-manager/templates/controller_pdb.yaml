@@ -1,8 +1,8 @@
 apiVersion: policy/v1beta1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "scylla-manager.controllerName" . }}
-  namespace: {{ .Release.Namespace }}
+  name: scylla-manager-controller
+  namespace: scylla-manager
 spec:
   minAvailable: 1
   selector:

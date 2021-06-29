@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: scylla-operator
   name: webhook-server
   labels:
     app.kubernetes.io/name: webhook-server

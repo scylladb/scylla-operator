@@ -2,8 +2,8 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "scylla-manager.fullname" . }}
-  namespace: {{ .Release.Namespace }}
+  name: scylla-manager
+  namespace: scylla-manager
 spec:
   jobLabel: "app"
   selector:

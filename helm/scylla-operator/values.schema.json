@@ -5,9 +5,6 @@
         "affinity": {
             "type": "object"
         },
-        "fullnameOverride": {
-            "type": "string"
-        },
         "image": {
             "type": "object",
             "properties": {
@@ -24,12 +21,6 @@
         },
         "logLevel": {
             "type": "integer"
-        },
-        "nameOverride": {
-            "type": "string"
-        },
-        "namespace": {
-            "type": "string"
         },
         "nodeSelector": {
             "type": "object"

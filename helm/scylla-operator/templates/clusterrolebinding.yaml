@@ -9,4 +9,4 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: {{ include "scylla-operator.serviceAccountName" . }}
-  namespace: {{ .Release.Namespace }}
+  namespace: scylla-operator

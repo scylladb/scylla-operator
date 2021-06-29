@@ -48,9 +48,6 @@
         "controllerSecurityContext": {
             "type": "object"
         },
-        "fullnameOverride": {
-            "type": "string"
-        },
         "image": {
             "type": "object",
             "properties": {
@@ -66,12 +63,6 @@
             }
         },
         "logLevel": {
-            "type": "string"
-        },
-        "nameOverride": {
-            "type": "string"
-        },
-        "namespace": {
             "type": "string"
         },
         "nodeSelector": {

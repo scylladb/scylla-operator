@@ -1,8 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "scylla-manager.fullname" . }}
-  namespace: {{ .Release.Namespace }}
+  name: scylla-manager
+  namespace: scylla-manager
   labels:
     {{- include "scylla-manager.labels" . | nindent 4 }}
 spec:

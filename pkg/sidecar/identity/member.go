@@ -31,6 +31,8 @@ type Member struct {
 	Datacenter    string
 	Cluster       string
 	ServiceLabels map[string]string
+
+	Overprovisioned bool
 }
 
 func Retrieve(ctx context.Context, name, namespace string, kubeclient kubernetes.Interface) (*Member, error) {
@@ -56,14 +58,15 @@ func Retrieve(ctx context.Context, name, namespace string, kubeclient kubernetes
 	}
 
 	return &Member{
-		Name:          name,
-		Namespace:     namespace,
-		IP:            pod.Status.PodIP,
-		StaticIP:      memberService.Spec.ClusterIP,
-		Rack:          pod.Labels[naming.RackNameLabel],
-		Datacenter:    pod.Labels[naming.DatacenterNameLabel],
-		Cluster:       pod.Labels[naming.ClusterNameLabel],
-		ServiceLabels: memberService.Labels,
+		Name:            name,
+		Namespace:       namespace,
+		IP:              pod.Status.PodIP,
+		StaticIP:        memberService.Spec.ClusterIP,
+		Rack:            pod.Labels[naming.RackNameLabel],
+		Datacenter:      pod.Labels[naming.DatacenterNameLabel],
+		Cluster:         pod.Labels[naming.ClusterNameLabel],
+		ServiceLabels:   memberService.Labels,
+		Overprovisioned: pod.Status.QOSClass != corev1.PodQOSGuaranteed,
 	}, nil
 }
 

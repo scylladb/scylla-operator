@@ -244,16 +244,20 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 						{
 							Name:            naming.SidecarInjectorContainerName,
 							Image:           sidecarImage,
-							ImagePullPolicy: "IfNotPresent",
+							ImagePullPolicy: corev1.PullIfNotPresent,
 							Command: []string{
 								"/bin/sh",
 								"-c",
 								fmt.Sprintf("cp -a /usr/bin/scylla-operator %s", naming.SharedDirName),
 							},
 							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("50Mi"),
+								},
 								Requests: corev1.ResourceList{
 									corev1.ResourceCPU:    resource.MustParse("10m"),
-									corev1.ResourceMemory: resource.MustParse("10Mi"),
+									corev1.ResourceMemory: resource.MustParse("50Mi"),
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{
@@ -269,7 +273,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 						{
 							Name:            naming.ScyllaContainerName,
 							Image:           ImageForCluster(c),
-							ImagePullPolicy: "IfNotPresent",
+							ImagePullPolicy: corev1.PullIfNotPresent,
 							Ports:           containerPorts(c),
 							// TODO: unprivileged entrypoint
 							Command: []string{
@@ -484,14 +488,18 @@ func sysctlInitContainer(sysctls []string, image string) *corev1.Container {
 	return &corev1.Container{
 		Name:            "sysctl-buddy",
 		Image:           image,
-		ImagePullPolicy: "IfNotPresent",
+		ImagePullPolicy: corev1.PullIfNotPresent,
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &opt,
 		},
 		Resources: corev1.ResourceRequirements{
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceMemory: resource.MustParse("50Mi"),
+			},
 			Requests: corev1.ResourceList{
 				corev1.ResourceCPU:    resource.MustParse("10m"),
-				corev1.ResourceMemory: resource.MustParse("10Mi"),
+				corev1.ResourceMemory: resource.MustParse("50Mi"),
 			},
 		},
 		Command: []string{
@@ -506,7 +514,7 @@ func agentContainer(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) corev1.Conta
 	cnt := corev1.Container{
 		Name:            "scylla-manager-agent",
 		Image:           agentImageForCluster(c),
-		ImagePullPolicy: "IfNotPresent",
+		ImagePullPolicy: corev1.PullIfNotPresent,
 		Args: []string{
 			"-c",
 			naming.ScyllaAgentConfigDefaultFile,

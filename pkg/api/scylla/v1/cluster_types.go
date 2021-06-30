@@ -345,6 +345,11 @@ type BackupTaskStatus struct {
 
 // ScyllaClusterStatus defines the observed state of ScyllaCluster
 type ScyllaClusterStatus struct {
+	// observedGeneration is the most recent generation observed for this ScyllaCluster. It corresponds to the
+	// ScyllaCluster's generation, which is updated on mutation by the API Server.
+	// +optional
+	ObservedGeneration *int64 `json:"observedGeneration,omitempty"`
+
 	// racks reflect status of cluster racks.
 	Racks map[string]RackStatus `json:"racks,omitempty"`
 

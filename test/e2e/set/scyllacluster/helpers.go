@@ -55,7 +55,10 @@ func contextForManagerSync(parent context.Context, sc *scyllav1.ScyllaCluster) (
 }
 
 func scyllaClusterRolledOut(sc *scyllav1.ScyllaCluster) (bool, error) {
-	// TODO: check observed generation when it's added.
+	if sc.Status.ObservedGeneration != nil && *sc.Status.ObservedGeneration < sc.Generation {
+		return false, nil
+	}
+
 	// TODO: this should be more straight forward - we need better status (conditions, aggregated state, ...)
 
 	for _, r := range sc.Spec.Datacenter.Racks {

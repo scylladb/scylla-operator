@@ -12,6 +12,7 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/pointer"
 )
 
 func (scc *Controller) updateStatus(ctx context.Context, currentSC *scyllav1.ScyllaCluster, status *scyllav1.ScyllaClusterStatus) error {
@@ -50,6 +51,8 @@ func (scc *Controller) getScyllaVersion(sc *scyllav1.ScyllaCluster, rack *scylla
 // If a particular object can be missing, it should be reflected in the value itself, like "Unknown" or "".
 func (scc *Controller) calculateStatus(sc *scyllav1.ScyllaCluster, statefulSetMap map[string]*appsv1.StatefulSet, serviceMap map[string]*corev1.Service) *scyllav1.ScyllaClusterStatus {
 	status := sc.Status.DeepCopy()
+
+	status.ObservedGeneration = pointer.Int64Ptr(sc.Generation)
 
 	if status.Racks == nil {
 		status.Racks = map[string]scyllav1.RackStatus{}

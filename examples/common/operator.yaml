@@ -195,7 +195,7 @@ spec:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: Cluster is the Schema for the clusters API
+        description: ScyllaCluster defines a Scylla cluster.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -210,38 +210,42 @@ spec:
           metadata:
             type: object
           spec:
-            description: ScyllaClusterSpec defines the desired state of Cluster
+            description: ScyllaClusterSpec defines the desired state of Cluster.
             properties:
               agentRepository:
                 default: docker.io/scylladb/scylla-manager-agent
-                description: Repository to pull the agent image from.
+                description: agentRepository is the repository to pull the agent image
+                  from.
                 type: string
               agentVersion:
                 default: latest
-                description: Version of Scylla Manager Agent to use.
+                description: agentVersion indicates the version of Scylla Manager
+                  Agent to use.
                 type: string
               alternator:
-                description: Alternator designates this cluster an Alternator cluster
+                description: alternator designates this cluster an Alternator cluster.
                 properties:
                   port:
                     description: Port on which to bind the Alternator API
                     format: int32
                     type: integer
                   writeIsolation:
+                    description: writeIsolation indicates the isolation level.
                     type: string
                 type: object
               automaticOrphanedNodeCleanup:
-                description: AutomaticOrphanedNodeCleanup controls if automatic orphan
+                description: automaticOrphanedNodeCleanup controls if automatic orphan
                   node cleanup should be performed.
                 type: boolean
               backups:
-                description: Backups specifies backup task in Scylla Manager. When
+                description: backups specifies backup tasks in Scylla Manager. When
                   Scylla Manager is not installed, these will be ignored.
                 items:
                   properties:
                     dc:
-                      description: DC a list of datacenter glob patterns, e.g. 'dc1,!otherdc*'
-                        used to specify the DCs to include or exclude from backup.
+                      description: dc is a list of datacenter glob patterns, e.g.
+                        'dc1,!otherdc*' used to specify the DCs to include or exclude
+                        from backup.
                       items:
                         type: string
                       type: array
@@ -251,16 +255,16 @@ spec:
                         units are d, h, m, s.
                       type: string
                     keyspace:
-                      description: Keyspace a list of keyspace/tables glob patterns,
+                      description: keyspace is a list of keyspace/tables glob patterns,
                         e.g. 'keyspace,!keyspace.table_prefix_*' used to include or
                         exclude keyspaces from repair.
                       items:
                         type: string
                       type: array
                     location:
-                      description: 'Location a list of backup locations in the format
-                        [<dc>:]<provider>:<name> ex. s3:my-bucket. The <dc>: part
-                        is optional and is only needed when different datacenters
+                      description: 'location is a list of backup locations in the
+                        format [<dc>:]<provider>:<name> ex. s3:my-bucket. The <dc>:
+                        part is optional and is only needed when different datacenters
                         are being used to upload data to different locations. <name>
                         must be an alphanumeric string and may contain a dash and
                         or a dot, but other characters are forbidden. The only supported
@@ -269,16 +273,16 @@ spec:
                         type: string
                       type: array
                     name:
-                      description: Name of a task, it must be unique across all tasks.
+                      description: Name of a task that must be unique across all tasks.
                       type: string
                     numRetries:
                       default: 3
-                      description: NumRetries the number of times a scheduled task
-                        will retry to run before failing.
+                      description: numRetries indicated how many time a scheduled
+                        task will be retried before failing.
                       format: int64
                       type: integer
                     rateLimit:
-                      description: 'RateLimit a list of megabytes (MiB) per second
+                      description: 'rateLimit is a list of megabytes (MiB) per second
                         rate limits expressed in the format [<dc>:]<limit>. The <dc>:
                         part is optional and only needed when different datacenters
                         need different upload limits. Set to 0 for no limit (default
@@ -288,12 +292,12 @@ spec:
                       type: array
                     retention:
                       default: 3
-                      description: Retention The number of backups which are to be
-                        stored.
+                      description: retention is the number of backups which are to
+                        be stored.
                       format: int64
                       type: integer
                     snapshotParallel:
-                      description: 'SnapshotParallel a list of snapshot parallelism
+                      description: 'snapshotParallel is a list of snapshot parallelism
                         limits in the format [<dc>:]<limit>. The <dc>: part is optional
                         and allows for specifying different limits in selected datacenters.
                         If The <dc>: part is not set, the limit is global (e.g. ''dc1:2,5'')
@@ -304,14 +308,14 @@ spec:
                       type: array
                     startDate:
                       default: now
-                      description: StartDate specifies the task start date expressed
+                      description: startDate specifies the task start date expressed
                         in the RFC3339 format or now[+duration], e.g. now+3d2h10m,
                         valid units are d, h, m, s.
                       type: string
                     uploadParallel:
-                      description: 'UploadParallel a list of upload parallelism limits
-                        in the format [<dc>:]<limit>. The <dc>: part is optional and
-                        allows for specifying different limits in selected datacenters.
+                      description: 'uploadParallel is a list of upload parallelism
+                        limits in the format [<dc>:]<limit>. The <dc>: part is optional
+                        and allows for specifying different limits in selected datacenters.
                         If The <dc>: part is not set the limit is global (e.g. ''dc1:2,5'')
                         the runs are parallel in n nodes (2 in dc1) and n nodes in
                         all the other datacenters.'
@@ -321,7 +325,7 @@ spec:
                   type: object
                 type: array
               cpuset:
-                description: CpuSet determines if the cluster will use cpu-pinning
+                description: cpuset determines if the cluster will use cpu-pinning
                   for max performance.
                 type: boolean
               datacenter:
@@ -3060,27 +3064,27 @@ spec:
                     type: array
                 type: object
               developerMode:
-                description: DeveloperMode determines if the cluster runs in developer-mode.
+                description: developerMode determines if the cluster runs in developer-mode.
                 type: boolean
               genericUpgrade:
-                description: GenericUpgrade allows to configure behavior of generic
+                description: genericUpgrade allows to configure behavior of generic
                   upgrade logic.
                 properties:
                   failureStrategy:
                     default: Retry
-                    description: FailureStrategy specifies which logic is executed
+                    description: failureStrategy specifies which logic is executed
                       when upgrade failure happens. Currently only Retry is supported.
                     type: string
                   pollInterval:
                     default: 1s
-                    description: PollInterval specifies how often upgrade logic polls
+                    description: pollInterval specifies how often upgrade logic polls
                       on state updates. Increasing this value should lower number
                       of requests sent to apiserver, but it may affect overall time
                       spent during upgrade. DEPRECATED.
                     type: string
                 type: object
               network:
-                description: Networking config
+                description: network holds the networking config.
                 properties:
                   dnsPolicy:
                     description: DNSPolicy defines how a pod's DNS will be configured.
@@ -3089,29 +3093,30 @@ spec:
                     type: boolean
                 type: object
               repairs:
-                description: Repairs specifies repair task in Scylla Manager. When
+                description: repairs specify repair tasks in Scylla Manager. When
                   Scylla Manager is not installed, these will be ignored.
                 items:
                   properties:
                     dc:
-                      description: DC list of datacenter glob patterns, e.g. 'dc1',
-                        '!otherdc*' used to specify the DCs to include or exclude
+                      description: dc is a list of datacenter glob patterns, e.g.
+                        'dc1', '!otherdc*' used to specify the DCs to include or exclude
                         from backup.
                       items:
                         type: string
                       type: array
                     failFast:
-                      description: FailFast stop repair on first error.
+                      description: failFast indicates if a repair should be stopped
+                        on first error.
                       type: boolean
                     host:
                       description: Host to repair, by default all hosts are repaired
                       type: string
                     intensity:
                       default: "1"
-                      description: Intensity how many token ranges (per shard) to
-                        repair in a single Scylla repair job. By default this is 1.
-                        If you set it to 0 the number of token ranges is adjusted
-                        to the maximum supported by node (see max_repair_ranges_in_parallel
+                      description: intensity indicates how many token ranges (per
+                        shard) to repair in a single Scylla repair job. By default
+                        this is 1. If you set it to 0 the number of token ranges is
+                        adjusted to the maximum supported by node (see max_repair_ranges_in_parallel
                         in Scylla logs). Valid values are 0 and integers >= 1. Higher
                         values will result in increased cluster load and slightly
                         faster repairs. Changing the intensity impacts repair granularity
@@ -3129,27 +3134,27 @@ spec:
                         units are d, h, m, s.
                       type: string
                     keyspace:
-                      description: Keyspace a list of keyspace/tables glob patterns,
+                      description: keyspace is a list of keyspace/tables glob patterns,
                         e.g. 'keyspace,!keyspace.table_prefix_*' used to include or
                         exclude keyspaces from repair.
                       items:
                         type: string
                       type: array
                     name:
-                      description: Name of a task, it must be unique across all tasks.
+                      description: Name of a task that must be unique across all tasks.
                       type: string
                     numRetries:
                       default: 3
-                      description: NumRetries the number of times a scheduled task
-                        will retry to run before failing.
+                      description: numRetries indicated how many time a scheduled
+                        task will be retried before failing.
                       format: int64
                       type: integer
                     parallel:
                       default: 0
-                      description: 'Parallel the maximum number of Scylla repair jobs
-                        that can run at the same time (on different token ranges and
-                        replicas). Each node can take part in at most one repair at
-                        any given moment. By default the maximum possible parallelism
+                      description: 'parallel is the maximum number of Scylla repair
+                        jobs that can run at the same time (on different token ranges
+                        and replicas). Each node can take part in at most one repair
+                        at any given moment. By default the maximum possible parallelism
                         is used. The effective parallelism depends on a keyspace replication
                         factor (RF) and the number of nodes. The formula to calculate
                         it is as follows: number of nodes / RF, ex. for 6 node cluster
@@ -3158,13 +3163,13 @@ spec:
                       type: integer
                     smallTableThreshold:
                       default: 1GiB
-                      description: SmallTableThreshold enable small table optimization
+                      description: smallTableThreshold enable small table optimization
                         for tables of size lower than given threshold. Supported units
                         [B, MiB, GiB, TiB].
                       type: string
                     startDate:
                       default: now
-                      description: StartDate specifies the task start date expressed
+                      description: startDate specifies the task start date expressed
                         in the RFC3339 format or now[+duration], e.g. now+3d2h10m,
                         valid units are d, h, m, s.
                       type: string
@@ -3175,12 +3180,12 @@ spec:
                 description: Repository to pull the Scylla image from.
                 type: string
               scyllaArgs:
-                description: ScyllaArgs will be appended to Scylla binary during startup.
+                description: scyllaArgs will be appended to Scylla binary during startup.
                   This is supported from 4.2.0 Scylla version.
                 type: string
               sysctls:
-                description: 'Sysctl properties to be applied during initialization
-                  given as a list of key=value pairs. Example: fs.aio-max-nr=232323'
+                description: 'sysctls holds the sysctl properties to be applied during
+                  initialization given as a list of key=value pairs. Example: fs.aio-max-nr=232323'
                 items:
                   type: string
                 type: array
@@ -3192,12 +3197,13 @@ spec:
             description: ScyllaClusterStatus defines the observed state of ScyllaCluster
             properties:
               backups:
-                description: Backups reflects status of backup tasks.
+                description: backups reflects status of backup tasks.
                 items:
                   properties:
                     dc:
-                      description: DC a list of datacenter glob patterns, e.g. 'dc1,!otherdc*'
-                        used to specify the DCs to include or exclude from backup.
+                      description: dc is a list of datacenter glob patterns, e.g.
+                        'dc1,!otherdc*' used to specify the DCs to include or exclude
+                        from backup.
                       items:
                         type: string
                       type: array
@@ -3211,16 +3217,16 @@ spec:
                         units are d, h, m, s.
                       type: string
                     keyspace:
-                      description: Keyspace a list of keyspace/tables glob patterns,
+                      description: keyspace is a list of keyspace/tables glob patterns,
                         e.g. 'keyspace,!keyspace.table_prefix_*' used to include or
                         exclude keyspaces from repair.
                       items:
                         type: string
                       type: array
                     location:
-                      description: 'Location a list of backup locations in the format
-                        [<dc>:]<provider>:<name> ex. s3:my-bucket. The <dc>: part
-                        is optional and is only needed when different datacenters
+                      description: 'location is a list of backup locations in the
+                        format [<dc>:]<provider>:<name> ex. s3:my-bucket. The <dc>:
+                        part is optional and is only needed when different datacenters
                         are being used to upload data to different locations. <name>
                         must be an alphanumeric string and may contain a dash and
                         or a dot, but other characters are forbidden. The only supported
@@ -3229,16 +3235,16 @@ spec:
                         type: string
                       type: array
                     name:
-                      description: Name of a task, it must be unique across all tasks.
+                      description: Name of a task that must be unique across all tasks.
                       type: string
                     numRetries:
                       default: 3
-                      description: NumRetries the number of times a scheduled task
-                        will retry to run before failing.
+                      description: numRetries indicated how many time a scheduled
+                        task will be retried before failing.
                       format: int64
                       type: integer
                     rateLimit:
-                      description: 'RateLimit a list of megabytes (MiB) per second
+                      description: 'rateLimit is a list of megabytes (MiB) per second
                         rate limits expressed in the format [<dc>:]<limit>. The <dc>:
                         part is optional and only needed when different datacenters
                         need different upload limits. Set to 0 for no limit (default
@@ -3248,12 +3254,12 @@ spec:
                       type: array
                     retention:
                       default: 3
-                      description: Retention The number of backups which are to be
-                        stored.
+                      description: retention is the number of backups which are to
+                        be stored.
                       format: int64
                       type: integer
                     snapshotParallel:
-                      description: 'SnapshotParallel a list of snapshot parallelism
+                      description: 'snapshotParallel is a list of snapshot parallelism
                         limits in the format [<dc>:]<limit>. The <dc>: part is optional
                         and allows for specifying different limits in selected datacenters.
                         If The <dc>: part is not set, the limit is global (e.g. ''dc1:2,5'')
@@ -3264,14 +3270,14 @@ spec:
                       type: array
                     startDate:
                       default: now
-                      description: StartDate specifies the task start date expressed
+                      description: startDate specifies the task start date expressed
                         in the RFC3339 format or now[+duration], e.g. now+3d2h10m,
                         valid units are d, h, m, s.
                       type: string
                     uploadParallel:
-                      description: 'UploadParallel a list of upload parallelism limits
-                        in the format [<dc>:]<limit>. The <dc>: part is optional and
-                        allows for specifying different limits in selected datacenters.
+                      description: 'uploadParallel is a list of upload parallelism
+                        limits in the format [<dc>:]<limit>. The <dc>: part is optional
+                        and allows for specifying different limits in selected datacenters.
                         If The <dc>: part is not set the limit is global (e.g. ''dc1:2,5'')
                         the runs are parallel in n nodes (2 in dc1) and n nodes in
                         all the other datacenters.'
@@ -3281,15 +3287,21 @@ spec:
                   type: object
                 type: array
               managerId:
-                description: ManagerID contains ID under which cluster was registered
+                description: managerId contains ID under which cluster was registered
                   in Scylla Manager.
                 type: string
+              observedGeneration:
+                description: observedGeneration is the most recent generation observed
+                  for this ScyllaCluster. It corresponds to the ScyllaCluster's generation,
+                  which is updated on mutation by the API Server.
+                format: int64
+                type: integer
               racks:
                 additionalProperties:
                   description: RackStatus is the status of a Scylla Rack
                   properties:
                     conditions:
-                      description: Conditions are the latest available observations
+                      description: conditions are the latest available observations
                         of a rack's state.
                       items:
                         description: RackCondition is an observation about the state
@@ -3302,34 +3314,36 @@ spec:
                         type: object
                       type: array
                     members:
-                      description: Members is the current number of members requested
+                      description: members is the current number of members requested
                         in the specific Rack
                       format: int32
                       type: integer
                     readyMembers:
-                      description: ReadyMembers is the number of ready members in
+                      description: readyMembers is the number of ready members in
                         the specific Rack
                       format: int32
                       type: integer
                     replace_address_first_boot:
                       additionalProperties:
                         type: string
-                      description: Pool of addresses which should be replaced by new
-                        nodes.
+                      description: 'FIXME: The json value should have been a camelCase
+                        string.        We need to deprecate this value and introduce
+                        a new one. replace_address_first_boot holds addresses which
+                        should be replaced by new nodes.'
                       type: object
                     version:
-                      description: Version is the current version of Scylla in use.
+                      description: version is the current version of Scylla in use.
                       type: string
                   type: object
-                description: Racks reflect status of cluster racks.
+                description: racks reflect status of cluster racks.
                 type: object
               repairs:
-                description: Repairs reflects status of repair tasks.
+                description: repairs reflects status of repair tasks.
                 items:
                   properties:
                     dc:
-                      description: DC list of datacenter glob patterns, e.g. 'dc1',
-                        '!otherdc*' used to specify the DCs to include or exclude
+                      description: dc is a list of datacenter glob patterns, e.g.
+                        'dc1', '!otherdc*' used to specify the DCs to include or exclude
                         from backup.
                       items:
                         type: string
@@ -3337,7 +3351,8 @@ spec:
                     error:
                       type: string
                     failFast:
-                      description: FailFast stop repair on first error.
+                      description: failFast indicates if a repair should be stopped
+                        on first error.
                       type: boolean
                     host:
                       description: Host to repair, by default all hosts are repaired
@@ -3346,10 +3361,10 @@ spec:
                       type: string
                     intensity:
                       default: "1"
-                      description: Intensity how many token ranges (per shard) to
-                        repair in a single Scylla repair job. By default this is 1.
-                        If you set it to 0 the number of token ranges is adjusted
-                        to the maximum supported by node (see max_repair_ranges_in_parallel
+                      description: intensity indicates how many token ranges (per
+                        shard) to repair in a single Scylla repair job. By default
+                        this is 1. If you set it to 0 the number of token ranges is
+                        adjusted to the maximum supported by node (see max_repair_ranges_in_parallel
                         in Scylla logs). Valid values are 0 and integers >= 1. Higher
                         values will result in increased cluster load and slightly
                         faster repairs. Changing the intensity impacts repair granularity
@@ -3367,27 +3382,27 @@ spec:
                         units are d, h, m, s.
                       type: string
                     keyspace:
-                      description: Keyspace a list of keyspace/tables glob patterns,
+                      description: keyspace is a list of keyspace/tables glob patterns,
                         e.g. 'keyspace,!keyspace.table_prefix_*' used to include or
                         exclude keyspaces from repair.
                       items:
                         type: string
                       type: array
                     name:
-                      description: Name of a task, it must be unique across all tasks.
+                      description: Name of a task that must be unique across all tasks.
                       type: string
                     numRetries:
                       default: 3
-                      description: NumRetries the number of times a scheduled task
-                        will retry to run before failing.
+                      description: numRetries indicated how many time a scheduled
+                        task will be retried before failing.
                       format: int64
                       type: integer
                     parallel:
                       default: 0
-                      description: 'Parallel the maximum number of Scylla repair jobs
-                        that can run at the same time (on different token ranges and
-                        replicas). Each node can take part in at most one repair at
-                        any given moment. By default the maximum possible parallelism
+                      description: 'parallel is the maximum number of Scylla repair
+                        jobs that can run at the same time (on different token ranges
+                        and replicas). Each node can take part in at most one repair
+                        at any given moment. By default the maximum possible parallelism
                         is used. The effective parallelism depends on a keyspace replication
                         factor (RF) and the number of nodes. The formula to calculate
                         it is as follows: number of nodes / RF, ex. for 6 node cluster
@@ -3396,42 +3411,42 @@ spec:
                       type: integer
                     smallTableThreshold:
                       default: 1GiB
-                      description: SmallTableThreshold enable small table optimization
+                      description: smallTableThreshold enable small table optimization
                         for tables of size lower than given threshold. Supported units
                         [B, MiB, GiB, TiB].
                       type: string
                     startDate:
                       default: now
-                      description: StartDate specifies the task start date expressed
+                      description: startDate specifies the task start date expressed
                         in the RFC3339 format or now[+duration], e.g. now+3d2h10m,
                         valid units are d, h, m, s.
                       type: string
                   type: object
                 type: array
               upgrade:
-                description: Upgrade reflects state of ongoing upgrade procedure.
+                description: upgrade reflects state of ongoing upgrade procedure.
                 properties:
                   currentNode:
-                    description: CurrentNode node under upgrade. DEPRECATED.
+                    description: currentNode node under upgrade. DEPRECATED.
                     type: string
                   currentRack:
-                    description: CurrentRack rack under upgrade. DEPRECATED.
+                    description: currentRack rack under upgrade. DEPRECATED.
                     type: string
                   dataSnapshotTag:
-                    description: DataSnapshotTag snapshot tag of data keyspaces.
+                    description: dataSnapshotTag is the snapshot tag of data keyspaces.
                     type: string
                   fromVersion:
-                    description: FromVersion reflects from which version ScyllaCluster
+                    description: fromVersion reflects from which version ScyllaCluster
                       is being upgraded.
                     type: string
                   state:
-                    description: State reflects current upgrade state.
+                    description: state reflects current upgrade state.
                     type: string
                   systemSnapshotTag:
-                    description: SystemSnapshotTag snapshot tag of system keyspaces.
+                    description: systemSnapshotTag is the snapshot tag of system keyspaces.
                     type: string
                   toVersion:
-                    description: ToVersion reflects to which version ScyllaCluster
+                    description: toVersion reflects to which version ScyllaCluster
                       is being upgraded.
                     type: string
                 type: object

@@ -65,7 +65,8 @@ func (scc *Controller) syncAgentToken(
 		return status, fmt.Errorf("can't make auth token secret: %w", err)
 	}
 
-	_, _, err = resourceapply.ApplySecret(ctx, scc.kubeClient.CoreV1(), scc.secretLister, scc.eventRecorder, secret)
+	// TODO: Remove forced ownership in v1.5 (#672)
+	_, _, err = resourceapply.ApplySecret(ctx, scc.kubeClient.CoreV1(), scc.secretLister, scc.eventRecorder, secret, true)
 	if err != nil {
 		return status, fmt.Errorf("can't apply secret %q: %w", naming.ObjRef(secret), err)
 	}

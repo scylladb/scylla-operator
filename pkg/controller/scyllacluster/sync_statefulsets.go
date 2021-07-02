@@ -353,7 +353,7 @@ func (scc *Controller) createMissingStatefulSets(
 		_, found := statefulSets[sts.Name]
 		if !found {
 			klog.V(2).InfoS("Creating missing StatefulSet", "StatefulSet", klog.KObj(sts))
-			_, changed, err := resourceapply.ApplyStatefulSet(ctx, scc.kubeClient.AppsV1(), scc.statefulSetLister, scc.eventRecorder, sts)
+			_, changed, err := resourceapply.ApplyStatefulSet(ctx, scc.kubeClient.AppsV1(), scc.statefulSetLister, scc.eventRecorder, sts, false)
 			if err != nil {
 				errs = append(errs, fmt.Errorf("can't create missing statefulset: %w", err))
 				continue
@@ -550,7 +550,7 @@ func (scc *Controller) syncStatefulSets(
 				required.Spec.Replicas = pointer.Int32Ptr(*existing.Spec.Replicas)
 				required.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(*existing.Spec.Replicas)
 				// Use apply to also update the spec.template
-				_, _, err := resourceapply.ApplyStatefulSet(ctx, scc.kubeClient.AppsV1(), scc.statefulSetLister, scc.eventRecorder, required)
+				_, _, err := resourceapply.ApplyStatefulSet(ctx, scc.kubeClient.AppsV1(), scc.statefulSetLister, scc.eventRecorder, required, false)
 				if err != nil {
 					errs = append(errs, fmt.Errorf("can't apply statefulset to set partition: %w", err))
 				}
@@ -708,7 +708,7 @@ func (scc *Controller) syncStatefulSets(
 			}
 		}
 
-		sts, _, err := resourceapply.ApplyStatefulSet(ctx, scc.kubeClient.AppsV1(), scc.statefulSetLister, scc.eventRecorder, required)
+		sts, _, err := resourceapply.ApplyStatefulSet(ctx, scc.kubeClient.AppsV1(), scc.statefulSetLister, scc.eventRecorder, required, false)
 		if err != nil {
 			return status, fmt.Errorf("can't apply statefulset update: %w", err)
 		}

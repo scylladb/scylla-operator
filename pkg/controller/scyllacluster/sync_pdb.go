@@ -48,7 +48,8 @@ func (scc *Controller) syncPodDisruptionBudgets(
 		return status, fmt.Errorf("can't delete pdb(s): %w", err)
 	}
 
-	_, _, err = resourceapply.ApplyPodDisruptionBudget(ctx, scc.kubeClient.PolicyV1beta1(), scc.pdbLister, scc.eventRecorder, requiredPDB)
+	// TODO: Remove forced ownership in v1.5 (#672)
+	_, _, err = resourceapply.ApplyPodDisruptionBudget(ctx, scc.kubeClient.PolicyV1beta1(), scc.pdbLister, scc.eventRecorder, requiredPDB, true)
 	if err != nil {
 		return status, fmt.Errorf("can't apply pdb: %w", err)
 	}

@@ -72,6 +72,7 @@ func TestApplyStatefulSet(t *testing.T) {
 		existing        []runtime.Object
 		cache           []runtime.Object // nil cache means autofill from the client
 		required        *appsv1.StatefulSet
+		forceOwnership  bool
 		expectedSts     *appsv1.StatefulSet
 		expectedChanged bool
 		expectedErr     error
@@ -257,6 +258,52 @@ func TestApplyStatefulSet(t *testing.T) {
 			expectedEvents:  []string{`Warning UpdateStatefulSetFailed Failed to update StatefulSet default/test: statefulsets.apps "test" not found`},
 		},
 		{
+			name: "update fails if the existing object has no ownerRef",
+			existing: []runtime.Object{
+				func() *appsv1.StatefulSet {
+					sts := newSts()
+					sts.OwnerReferences = nil
+					utilruntime.Must(SetHashAnnotation(sts))
+					return sts
+				}(),
+			},
+			required: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.Template.Spec.Containers[0].Image += "-rc.0"
+				return sts
+			}(),
+			expectedSts:     nil,
+			expectedChanged: false,
+			expectedErr:     fmt.Errorf(`statefulset "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateStatefulSetFailed Failed to update StatefulSet default/test: statefulset "default/test" isn't controlled by us`},
+		},
+		{
+			name: "forced update succeeds if the existing object has no ownerRef",
+			existing: []runtime.Object{
+				func() *appsv1.StatefulSet {
+					sts := newSts()
+					sts.OwnerReferences = nil
+					utilruntime.Must(SetHashAnnotation(sts))
+					return sts
+				}(),
+			},
+			required: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.Template.Spec.Containers[0].Image += "-rc.0"
+				return sts
+			}(),
+			forceOwnership: true,
+			expectedSts: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.Template.Spec.Containers[0].Image += "-rc.0"
+				utilruntime.Must(SetHashAnnotation(sts))
+				return sts
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal StatefulSetUpdated StatefulSet default/test updated"},
+		},
+		{
 			name: "update fails if the existing object is owned by someone else",
 			existing: []runtime.Object{
 				func() *appsv1.StatefulSet {
@@ -271,6 +318,27 @@ func TestApplyStatefulSet(t *testing.T) {
 				sts.Spec.Template.Spec.Containers[0].Image += "-rc.0"
 				return sts
 			}(),
+			expectedSts:     nil,
+			expectedChanged: false,
+			expectedErr:     fmt.Errorf(`statefulset "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateStatefulSetFailed Failed to update StatefulSet default/test: statefulset "default/test" isn't controlled by us`},
+		},
+		{
+			name: "forced update fails if the existing object is owned by someone else",
+			existing: []runtime.Object{
+				func() *appsv1.StatefulSet {
+					sts := newSts()
+					sts.OwnerReferences[0].UID = "42"
+					utilruntime.Must(SetHashAnnotation(sts))
+					return sts
+				}(),
+			},
+			required: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.Template.Spec.Containers[0].Image += "-rc.0"
+				return sts
+			}(),
+			forceOwnership:  true,
 			expectedSts:     nil,
 			expectedChanged: false,
 			expectedErr:     fmt.Errorf(`statefulset "default/test" isn't controlled by us`),
@@ -325,7 +393,7 @@ func TestApplyStatefulSet(t *testing.T) {
 						}
 					}
 
-					gotSts, gotChanged, gotErr := ApplyStatefulSet(ctx, client.AppsV1(), stsLister, recorder, tc.required)
+					gotSts, gotChanged, gotErr := ApplyStatefulSet(ctx, client.AppsV1(), stsLister, recorder, tc.required, tc.forceOwnership)
 					if !reflect.DeepEqual(gotErr, tc.expectedErr) {
 						t.Fatalf("expected %v, got %v", tc.expectedErr, gotErr)
 					}

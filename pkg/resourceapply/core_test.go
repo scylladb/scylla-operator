@@ -56,6 +56,7 @@ func TestApplyService(t *testing.T) {
 		existing        []runtime.Object
 		cache           []runtime.Object // nil cache means autofill from the client
 		required        *corev1.Service
+		forceOwnership  bool
 		expectedService *corev1.Service
 		expectedChanged bool
 		expectedErr     error
@@ -229,6 +230,52 @@ func TestApplyService(t *testing.T) {
 			expectedEvents:  []string{`Warning UpdateServiceFailed Failed to update Service default/test: services "test" not found`},
 		},
 		{
+			name: "update fails if the existing object has no ownerRef",
+			existing: []runtime.Object{
+				func() *corev1.Service {
+					svc := newService()
+					svc.OwnerReferences = nil
+					utilruntime.Must(SetHashAnnotation(svc))
+					return svc
+				}(),
+			},
+			required: func() *corev1.Service {
+				svc := newService()
+				svc.Labels["foo"] = "bar"
+				return svc
+			}(),
+			expectedService: nil,
+			expectedChanged: false,
+			expectedErr:     fmt.Errorf(`service "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateServiceFailed Failed to update Service default/test: service "default/test" isn't controlled by us`},
+		},
+		{
+			name: "forced update succeeds if the existing object has no ownerRef",
+			existing: []runtime.Object{
+				func() *corev1.Service {
+					svc := newService()
+					svc.OwnerReferences = nil
+					utilruntime.Must(SetHashAnnotation(svc))
+					return svc
+				}(),
+			},
+			required: func() *corev1.Service {
+				svc := newService()
+				svc.Labels["foo"] = "bar"
+				return svc
+			}(),
+			forceOwnership: true,
+			expectedService: func() *corev1.Service {
+				svc := newService()
+				svc.Labels["foo"] = "bar"
+				utilruntime.Must(SetHashAnnotation(svc))
+				return svc
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal ServiceUpdated Service default/test updated"},
+		},
+		{
 			name: "update fails if the existing object is owned by someone else",
 			existing: []runtime.Object{
 				func() *corev1.Service {
@@ -243,6 +290,27 @@ func TestApplyService(t *testing.T) {
 				svc.Labels["foo"] = "bar"
 				return svc
 			}(),
+			expectedService: nil,
+			expectedChanged: false,
+			expectedErr:     fmt.Errorf(`service "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateServiceFailed Failed to update Service default/test: service "default/test" isn't controlled by us`},
+		},
+		{
+			name: "forced update fails if the existing object is owned by someone else",
+			existing: []runtime.Object{
+				func() *corev1.Service {
+					svc := newService()
+					svc.OwnerReferences[0].UID = "42"
+					utilruntime.Must(SetHashAnnotation(svc))
+					return svc
+				}(),
+			},
+			required: func() *corev1.Service {
+				svc := newService()
+				svc.Labels["foo"] = "bar"
+				return svc
+			}(),
+			forceOwnership:  true,
 			expectedService: nil,
 			expectedChanged: false,
 			expectedErr:     fmt.Errorf(`service "default/test" isn't controlled by us`),
@@ -297,7 +365,7 @@ func TestApplyService(t *testing.T) {
 						}
 					}
 
-					gotSts, gotChanged, gotErr := ApplyService(ctx, client.CoreV1(), svcLister, recorder, tc.required)
+					gotSts, gotChanged, gotErr := ApplyService(ctx, client.CoreV1(), svcLister, recorder, tc.required, tc.forceOwnership)
 					if !reflect.DeepEqual(gotErr, tc.expectedErr) {
 						t.Fatalf("expected %v, got %v", tc.expectedErr, gotErr)
 					}
@@ -381,6 +449,7 @@ func TestApplySecret(t *testing.T) {
 		existing        []runtime.Object
 		cache           []runtime.Object // nil cache means autofill from the client
 		required        *corev1.Secret
+		forceOwnership  bool
 		expectedSecret  *corev1.Secret
 		expectedChanged bool
 		expectedErr     error
@@ -546,6 +615,52 @@ func TestApplySecret(t *testing.T) {
 			expectedEvents:  []string{`Warning UpdateSecretFailed Failed to update Secret default/test: secrets "test" not found`},
 		},
 		{
+			name: "update fails if the existing object has no ownerRef",
+			existing: []runtime.Object{
+				func() *corev1.Secret {
+					sts := newSecret()
+					sts.OwnerReferences = nil
+					utilruntime.Must(SetHashAnnotation(sts))
+					return sts
+				}(),
+			},
+			required: func() *corev1.Secret {
+				secret := newSecret()
+				secret.Labels["foo"] = "bar"
+				return secret
+			}(),
+			expectedSecret:  nil,
+			expectedChanged: false,
+			expectedErr:     fmt.Errorf(`secret "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateSecretFailed Failed to update Secret default/test: secret "default/test" isn't controlled by us`},
+		},
+		{
+			name: "forced update succeeds if the existing object has no ownerRef",
+			existing: []runtime.Object{
+				func() *corev1.Secret {
+					sts := newSecret()
+					sts.OwnerReferences = nil
+					utilruntime.Must(SetHashAnnotation(sts))
+					return sts
+				}(),
+			},
+			required: func() *corev1.Secret {
+				secret := newSecret()
+				secret.Labels["foo"] = "bar"
+				return secret
+			}(),
+			forceOwnership: true,
+			expectedSecret: func() *corev1.Secret {
+				secret := newSecret()
+				secret.Labels["foo"] = "bar"
+				utilruntime.Must(SetHashAnnotation(secret))
+				return secret
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal SecretUpdated Secret default/test updated"},
+		},
+		{
 			name: "update fails if the existing object is owned by someone else",
 			existing: []runtime.Object{
 				func() *corev1.Secret {
@@ -560,6 +675,27 @@ func TestApplySecret(t *testing.T) {
 				secret.Labels["foo"] = "bar"
 				return secret
 			}(),
+			expectedSecret:  nil,
+			expectedChanged: false,
+			expectedErr:     fmt.Errorf(`secret "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateSecretFailed Failed to update Secret default/test: secret "default/test" isn't controlled by us`},
+		},
+		{
+			name: "forced update fails if the existing object is owned by someone else",
+			existing: []runtime.Object{
+				func() *corev1.Secret {
+					secret := newSecret()
+					secret.OwnerReferences[0].UID = "42"
+					utilruntime.Must(SetHashAnnotation(secret))
+					return secret
+				}(),
+			},
+			required: func() *corev1.Secret {
+				secret := newSecret()
+				secret.Labels["foo"] = "bar"
+				return secret
+			}(),
+			forceOwnership:  true,
 			expectedSecret:  nil,
 			expectedChanged: false,
 			expectedErr:     fmt.Errorf(`secret "default/test" isn't controlled by us`),
@@ -614,7 +750,7 @@ func TestApplySecret(t *testing.T) {
 						}
 					}
 
-					gotSts, gotChanged, gotErr := ApplySecret(ctx, client.CoreV1(), secretLister, recorder, tc.required)
+					gotSts, gotChanged, gotErr := ApplySecret(ctx, client.CoreV1(), secretLister, recorder, tc.required, tc.forceOwnership)
 					if !reflect.DeepEqual(gotErr, tc.expectedErr) {
 						t.Fatalf("expected %v, got %v", tc.expectedErr, gotErr)
 					}

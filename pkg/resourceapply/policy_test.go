@@ -60,6 +60,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 		existing        []runtime.Object
 		cache           []runtime.Object // nil cache means autofill from the client
 		required        *policyv1beta1.PodDisruptionBudget
+		forceOwnership  bool
 		expectedPDB     *policyv1beta1.PodDisruptionBudget
 		expectedChanged bool
 		expectedErr     error
@@ -225,6 +226,52 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 			expectedEvents:  []string{`Warning UpdatePodDisruptionBudgetFailed Failed to update PodDisruptionBudget default/test: poddisruptionbudgets.policy "test" not found`},
 		},
 		{
+			name: "update fails if the existing object has no ownerRef",
+			existing: []runtime.Object{
+				func() *policyv1beta1.PodDisruptionBudget {
+					pdb := newPDB()
+					pdb.OwnerReferences = nil
+					utilruntime.Must(SetHashAnnotation(pdb))
+					return pdb
+				}(),
+			},
+			required: func() *policyv1beta1.PodDisruptionBudget {
+				pdb := newPDB()
+				pdb.Labels["foo"] = "bar"
+				return pdb
+			}(),
+			expectedPDB:     nil,
+			expectedChanged: false,
+			expectedErr:     fmt.Errorf(`poddisruptionbudget "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdatePodDisruptionBudgetFailed Failed to update PodDisruptionBudget default/test: poddisruptionbudget "default/test" isn't controlled by us`},
+		},
+		{
+			name: "forced update succeeds if the existing object has no ownerRef",
+			existing: []runtime.Object{
+				func() *policyv1beta1.PodDisruptionBudget {
+					pdb := newPDB()
+					pdb.OwnerReferences = nil
+					utilruntime.Must(SetHashAnnotation(pdb))
+					return pdb
+				}(),
+			},
+			required: func() *policyv1beta1.PodDisruptionBudget {
+				pdb := newPDB()
+				pdb.Labels["foo"] = "bar"
+				return pdb
+			}(),
+			forceOwnership: true,
+			expectedPDB: func() *policyv1beta1.PodDisruptionBudget {
+				pdb := newPDB()
+				pdb.Labels["foo"] = "bar"
+				utilruntime.Must(SetHashAnnotation(pdb))
+				return pdb
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal PodDisruptionBudgetUpdated PodDisruptionBudget default/test updated"},
+		},
+		{
 			name: "update fails if the existing object is owned by someone else",
 			existing: []runtime.Object{
 				func() *policyv1beta1.PodDisruptionBudget {
@@ -239,6 +286,27 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 				pdb.Labels["foo"] = "bar"
 				return pdb
 			}(),
+			expectedPDB:     nil,
+			expectedChanged: false,
+			expectedErr:     fmt.Errorf(`poddisruptionbudget "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdatePodDisruptionBudgetFailed Failed to update PodDisruptionBudget default/test: poddisruptionbudget "default/test" isn't controlled by us`},
+		},
+		{
+			name: "forced update fails if the existing object is owned by someone else",
+			existing: []runtime.Object{
+				func() *policyv1beta1.PodDisruptionBudget {
+					pdb := newPDB()
+					pdb.OwnerReferences[0].UID = "42"
+					utilruntime.Must(SetHashAnnotation(pdb))
+					return pdb
+				}(),
+			},
+			required: func() *policyv1beta1.PodDisruptionBudget {
+				pdb := newPDB()
+				pdb.Labels["foo"] = "bar"
+				return pdb
+			}(),
+			forceOwnership:  true,
 			expectedPDB:     nil,
 			expectedChanged: false,
 			expectedErr:     fmt.Errorf(`poddisruptionbudget "default/test" isn't controlled by us`),
@@ -293,7 +361,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 						}
 					}
 
-					gotSts, gotChanged, gotErr := ApplyPodDisruptionBudget(ctx, client.PolicyV1beta1(), pdbLister, recorder, tc.required)
+					gotSts, gotChanged, gotErr := ApplyPodDisruptionBudget(ctx, client.PolicyV1beta1(), pdbLister, recorder, tc.required, tc.forceOwnership)
 					if !reflect.DeepEqual(gotErr, tc.expectedErr) {
 						t.Fatalf("expected %v, got %v", tc.expectedErr, gotErr)
 					}

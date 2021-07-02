@@ -17,14 +17,16 @@ import (
 	"k8s.io/klog/v2"
 )
 
-// ApplyPodDisruptionBudget creates or updates PDB. If desired object is equal (based on calculated hash)
-// to existing one update is not called.
+// ApplyPodDisruptionBudget will apply the PodDisruptionBudget to match the required object.
+// forceOwnership allows to apply objects without an ownerReference. Normally such objects
+// would be adopted but the old objects may not have correct labels that we need to fix in the new version.
 func ApplyPodDisruptionBudget(
 	ctx context.Context,
 	client policyv1beta1client.PodDisruptionBudgetsGetter,
 	lister policyv1beta1listers.PodDisruptionBudgetLister,
 	recorder record.EventRecorder,
 	required *policyv1beta1.PodDisruptionBudget,
+	forceOwnership bool,
 ) (*policyv1beta1.PodDisruptionBudget, bool, error) {
 	requiredControllerRef := metav1.GetControllerOfNoCopy(required)
 	if requiredControllerRef == nil {
@@ -54,10 +56,14 @@ func ApplyPodDisruptionBudget(
 
 	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
 	if !equality.Semantic.DeepEqual(existingControllerRef, requiredControllerRef) {
-		// This is not the place to handle adoption.
-		err := fmt.Errorf("poddisruptionbudget %q isn't controlled by us", naming.ObjRef(requiredCopy))
-		ReportUpdateEvent(recorder, requiredCopy, err)
-		return nil, false, err
+		if existingControllerRef == nil && forceOwnership {
+			klog.V(2).InfoS("Forcing apply to claim the PodDisruptionBudget", "PodDisruptionBudget", naming.ObjRef(requiredCopy))
+		} else {
+			// This is not the place to handle adoption.
+			err := fmt.Errorf("poddisruptionbudget %q isn't controlled by us", naming.ObjRef(requiredCopy))
+			ReportUpdateEvent(recorder, requiredCopy, err)
+			return nil, false, err
+		}
 	}
 
 	// If they are the same do nothing.

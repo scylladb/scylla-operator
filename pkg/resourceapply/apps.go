@@ -15,12 +15,16 @@ import (
 	"k8s.io/klog/v2"
 )
 
+// ApplyStatefulSet will apply the StatefulSet to match the required object.
+// forceOwnership allows to apply objects without an ownerReference. Normally such objects
+// would be adopted but the old objects may not have correct labels that we need to fix in the new version.
 func ApplyStatefulSet(
 	ctx context.Context,
 	client appv1client.StatefulSetsGetter,
 	lister appv1listers.StatefulSetLister,
 	recorder record.EventRecorder,
 	required *appsv1.StatefulSet,
+	forceOwnership bool,
 ) (*appsv1.StatefulSet, bool, error) {
 	requiredControllerRef := metav1.GetControllerOfNoCopy(required)
 	if requiredControllerRef == nil {
@@ -50,10 +54,14 @@ func ApplyStatefulSet(
 
 	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
 	if !equality.Semantic.DeepEqual(existingControllerRef, requiredControllerRef) {
-		// This is not the place to handle adoption.
-		err := fmt.Errorf("statefulset %q isn't controlled by us", naming.ObjRef(requiredCopy))
-		ReportUpdateEvent(recorder, requiredCopy, err)
-		return nil, false, err
+		if existingControllerRef == nil && forceOwnership {
+			klog.V(2).InfoS("Forcing apply to claim the StatefulSet", "StatefulSet", naming.ObjRef(requiredCopy))
+		} else {
+			// This is not the place to handle adoption.
+			err := fmt.Errorf("statefulset %q isn't controlled by us", naming.ObjRef(requiredCopy))
+			ReportUpdateEvent(recorder, requiredCopy, err)
+			return nil, false, err
+		}
 	}
 
 	existingHash := existing.Annotations[naming.ManagedHash]

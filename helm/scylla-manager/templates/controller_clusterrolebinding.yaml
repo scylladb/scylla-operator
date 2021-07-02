@@ -9,4 +9,4 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: {{ include "scylla-manager.controllerServiceAccountName" . }}
-  namespace: {{ .Release.Namespace }}
+  namespace: scylla-manager

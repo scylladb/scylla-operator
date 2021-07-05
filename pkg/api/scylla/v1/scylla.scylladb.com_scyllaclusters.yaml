@@ -2911,6 +2911,20 @@ spec:
                       spent during upgrade. DEPRECATED.
                     type: string
                 type: object
+              imagePullSecrets:
+                description: ImagePullSecrets is an optional list of references to
+                  secrets in the same namespace used for pulling Scylla and Agent
+                  images.
+                items:
+                  description: LocalObjectReference contains enough information to
+                    let you locate the referenced object inside the same namespace.
+                  properties:
+                    name:
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        TODO: Add other useful fields. apiVersion, kind, uid?'
+                      type: string
+                  type: object
+                type: array
               network:
                 description: network holds the networking config.
                 properties:

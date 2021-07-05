@@ -1,11 +1,13 @@
 package resource
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -310,6 +312,94 @@ func TestMemberService(t *testing.T) {
 
 			if !apiequality.Semantic.DeepEqual(got, tc.expectedService) {
 				t.Errorf("expected and actual services differ: %s", cmp.Diff(tc.expectedService, got))
+			}
+		})
+	}
+}
+
+func TestStatefulSetForRack(t *testing.T) {
+	basicRack := scyllav1.RackSpec{
+		Name: "rack",
+		Storage: scyllav1.StorageSpec{
+			Capacity: "1Gi",
+		},
+	}
+	var basicExistingStatefulSet *appsv1.StatefulSet = nil
+	basicSidecarImage := ""
+
+	newBasicScyllaCluster := func() *scyllav1.ScyllaCluster {
+		return &scyllav1.ScyllaCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "basic",
+				UID:  "the-uid",
+			},
+			Spec: scyllav1.ScyllaClusterSpec{
+				Datacenter: scyllav1.DatacenterSpec{
+					Name: "dc",
+					Racks: []scyllav1.RackSpec{
+						basicRack,
+					},
+				},
+			},
+			Status: scyllav1.ScyllaClusterStatus{
+				Racks: map[string]scyllav1.RackStatus{},
+			},
+		}
+	}
+
+	newExpectedStatefulSet := func() *appsv1.StatefulSet {
+		sts, _ := StatefulSetForRack(basicRack, newBasicScyllaCluster(), basicExistingStatefulSet, basicSidecarImage)
+		return sts
+	}
+
+	newNonNilImagePullSecrets := func() []corev1.LocalObjectReference {
+		return []corev1.LocalObjectReference{
+			{
+				Name: "basic-secrets",
+			},
+		}
+	}
+
+	tt := []struct {
+		name                string
+		rack                scyllav1.RackSpec
+		scyllaCluster       *scyllav1.ScyllaCluster
+		existingStatefulSet *appsv1.StatefulSet
+		sidecarImage        string
+		expectedStatefulSet *appsv1.StatefulSet
+		expectedError       error
+	}{
+		{
+			name: "non-nil ImagePullSecrets",
+			rack: basicRack,
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := newBasicScyllaCluster()
+				sc.Spec.ImagePullSecrets = newNonNilImagePullSecrets()
+				return sc
+			}(),
+			existingStatefulSet: basicExistingStatefulSet,
+			sidecarImage:        basicSidecarImage,
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newExpectedStatefulSet()
+				sts.Spec.Template.Spec.ImagePullSecrets = newNonNilImagePullSecrets()
+				return sts
+			}(),
+			expectedError: nil,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := StatefulSetForRack(tc.rack, tc.scyllaCluster, tc.existingStatefulSet, tc.sidecarImage)
+
+			if !reflect.DeepEqual(err, tc.expectedError) {
+				t.Errorf("expected and actual errors differ: %s",
+					cmp.Diff(tc.expectedError, err))
+			}
+
+			if !apiequality.Semantic.DeepEqual(got, tc.expectedStatefulSet) {
+				t.Errorf("expected and actual StatefulSets differ: %s",
+					cmp.Diff(tc.expectedStatefulSet, got))
 			}
 		})
 	}

@@ -90,6 +90,11 @@ type ScyllaClusterSpec struct {
 	// forceRedeploymentReason can be used to force a rolling update of all racks by providing a unique string.
 	// +optional
 	ForceRedeploymentReason string `json:"forceRedeploymentReason,omitempty"`
+
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace
+	// used for pulling Scylla and Agent images.
+	// +optional
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 }
 
 // GenericUpgradeFailureStrategy allows to specify how upgrade logic should handle failures.

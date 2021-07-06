@@ -15,12 +15,16 @@ import (
 	"k8s.io/klog/v2"
 )
 
+// ApplyService will apply the Service to match the required object.
+// forceOwnership allows to apply objects without an ownerReference. Normally such objects
+// would be adopted but the old objects may not have correct labels that we need to fix in the new version.
 func ApplyService(
 	ctx context.Context,
 	client appv1client.ServicesGetter,
 	lister appv1listers.ServiceLister,
 	recorder record.EventRecorder,
 	required *corev1.Service,
+	forceOwnership bool,
 ) (*corev1.Service, bool, error) {
 	requiredControllerRef := metav1.GetControllerOfNoCopy(required)
 	if requiredControllerRef == nil {
@@ -50,10 +54,14 @@ func ApplyService(
 
 	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
 	if !equality.Semantic.DeepEqual(existingControllerRef, requiredControllerRef) {
-		// This is not the place to handle adoption.
-		err := fmt.Errorf("service %q isn't controlled by us", naming.ObjRef(requiredCopy))
-		ReportUpdateEvent(recorder, requiredCopy, err)
-		return nil, false, err
+		if existingControllerRef == nil && forceOwnership {
+			klog.V(2).InfoS("Forcing apply to claim the Service", "Service", naming.ObjRef(requiredCopy))
+		} else {
+			// This is not the place to handle adoption.
+			err := fmt.Errorf("service %q isn't controlled by us", naming.ObjRef(requiredCopy))
+			ReportUpdateEvent(recorder, requiredCopy, err)
+			return nil, false, err
+		}
 	}
 
 	// If they are the same do nothing.
@@ -78,12 +86,16 @@ func ApplyService(
 	return actual, true, nil
 }
 
+// ApplySecret will apply the Secret to match the required object.
+// forceOwnership allows to apply objects without an ownerReference. Normally such objects
+// would be adopted but the old objects may not have correct labels that we need to fix in the new version.
 func ApplySecret(
 	ctx context.Context,
 	client appv1client.SecretsGetter,
 	lister appv1listers.SecretLister,
 	recorder record.EventRecorder,
 	required *corev1.Secret,
+	forceOwnership bool,
 ) (*corev1.Secret, bool, error) {
 	requiredControllerRef := metav1.GetControllerOfNoCopy(required)
 	if requiredControllerRef == nil {
@@ -113,10 +125,14 @@ func ApplySecret(
 
 	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
 	if !equality.Semantic.DeepEqual(existingControllerRef, requiredControllerRef) {
-		// This is not the place to handle adoption.
-		err := fmt.Errorf("secret %q isn't controlled by us", naming.ObjRef(requiredCopy))
-		ReportUpdateEvent(recorder, requiredCopy, err)
-		return nil, false, err
+		if existingControllerRef == nil && forceOwnership {
+			klog.V(2).InfoS("Forcing apply to claim the Secret", "Secret", naming.ObjRef(requiredCopy))
+		} else {
+			// This is not the place to handle adoption.
+			err := fmt.Errorf("secret %q isn't controlled by us", naming.ObjRef(requiredCopy))
+			ReportUpdateEvent(recorder, requiredCopy, err)
+			return nil, false, err
+		}
 	}
 
 	// If they are the same do nothing.

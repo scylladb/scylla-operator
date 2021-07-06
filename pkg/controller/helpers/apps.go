@@ -16,11 +16,6 @@ func IsStatefulSetRolledOut(sts *appsv1.StatefulSet) (bool, error) {
 		return false, fmt.Errorf("statefulset.spec.replicas can't be nil")
 	}
 
-	if sts.Spec.UpdateStrategy.RollingUpdate == nil {
-		// This should never happen, but better safe then sorry.
-		return false, fmt.Errorf("statefulset.spec.updatestrategy.rollingupdate can't be nil")
-	}
-
 	if sts.Status.ObservedGeneration == 0 || sts.Generation > sts.Status.ObservedGeneration {
 		return false, nil
 	}
@@ -29,7 +24,7 @@ func IsStatefulSetRolledOut(sts *appsv1.StatefulSet) (bool, error) {
 		return false, nil
 	}
 
-	if sts.Spec.UpdateStrategy.RollingUpdate.Partition != nil {
+	if sts.Spec.UpdateStrategy.RollingUpdate != nil && sts.Spec.UpdateStrategy.RollingUpdate.Partition != nil {
 		return sts.Status.UpdatedReplicas == (*sts.Spec.Replicas - *sts.Spec.UpdateStrategy.RollingUpdate.Partition), nil
 	} else {
 		return sts.Status.UpdateRevision == sts.Status.CurrentRevision, nil

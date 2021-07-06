@@ -413,8 +413,10 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 	if existingSts != nil {
 		sts.ResourceVersion = existingSts.ResourceVersion
 		if sts.Spec.UpdateStrategy.Type == appsv1.RollingUpdateStatefulSetStrategyType &&
-			existingSts.Spec.UpdateStrategy.Type == appsv1.RollingUpdateStatefulSetStrategyType {
-			sts.Spec.UpdateStrategy.RollingUpdate.Partition = existingSts.Spec.UpdateStrategy.RollingUpdate.Partition
+			existingSts.Spec.UpdateStrategy.Type == appsv1.RollingUpdateStatefulSetStrategyType &&
+			existingSts.Spec.UpdateStrategy.RollingUpdate != nil &&
+			existingSts.Spec.UpdateStrategy.RollingUpdate.Partition != nil {
+			*sts.Spec.UpdateStrategy.RollingUpdate.Partition = *existingSts.Spec.UpdateStrategy.RollingUpdate.Partition
 		}
 	}
 

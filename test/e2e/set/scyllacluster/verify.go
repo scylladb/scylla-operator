@@ -31,6 +31,7 @@ func verifyPodDisruptionBudget(sc *scyllav1.ScyllaCluster, pdb *policyv1beta1.Po
 func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, sc *scyllav1.ScyllaCluster) {
 	framework.By("Verifying the ScyllaCluster")
 
+	o.Expect(sc.Status.ObservedGeneration).NotTo(o.BeNil())
 	o.Expect(sc.Status.Racks).To(o.HaveLen(len(sc.Spec.Datacenter.Racks)))
 
 	statefulsets, err := getStatefulSetsForScyllaCluster(ctx, kubeClient.AppsV1(), sc)

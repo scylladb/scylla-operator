@@ -2,6 +2,8 @@ package scyllacluster
 
 import (
 	"context"
+	"sort"
+	"strings"
 
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
@@ -12,14 +14,52 @@ import (
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
-func verifyStatefulset(ctx context.Context, s *appsv1.StatefulSet) {
-	o.Expect(s.DeletionTimestamp).To(o.BeNil())
-	o.Expect(s.Status.ObservedGeneration).To(o.Equal(s.Generation))
-	o.Expect(s.Spec.Replicas).NotTo(o.BeNil())
-	o.Expect(s.Status.ReadyReplicas).To(o.Equal(*s.Spec.Replicas))
-	o.Expect(s.Status.CurrentRevision).To(o.Equal(s.Status.UpdateRevision))
+func verifyPersistentVolumeClaims(ctx context.Context, coreClient corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) {
+	pvcList, err := coreClient.PersistentVolumeClaims(sc.Namespace).List(ctx, metav1.ListOptions{})
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	framework.Infof("Found %d pvc(s) in namespace %q", len(pvcList.Items), sc.Namespace)
+
+	pvcNamePrefix := naming.PVCNamePrefixForScyllaCluster(sc.Name)
+
+	var scPVCNames []string
+	for _, pvc := range pvcList.Items {
+		if pvc.DeletionTimestamp != nil {
+			framework.Infof("pvc %s is being deleted", naming.ObjRef(&pvc))
+			continue
+		}
+
+		if !strings.HasPrefix(pvc.Name, pvcNamePrefix) {
+			framework.Infof("pvc %s doesn't match the prefix %q", naming.ObjRef(&pvc), pvcNamePrefix)
+			continue
+		}
+
+		scPVCNames = append(scPVCNames, pvc.Name)
+	}
+	framework.Infof("Found %d pvc(s) for ScyllaCluster %q", len(scPVCNames), naming.ObjRef(sc))
+
+	var expectedPvcNames []string
+	for _, rack := range sc.Spec.Datacenter.Racks {
+		for ord := int32(0); ord < rack.Members; ord++ {
+			stsName := naming.StatefulSetNameForRack(rack, sc)
+			expectedPvcNames = append(expectedPvcNames, naming.PVCNameForStatefulSet(stsName, ord))
+		}
+	}
+
+	sort.Strings(scPVCNames)
+	sort.Strings(expectedPvcNames)
+	o.Expect(scPVCNames).To(o.BeEquivalentTo(expectedPvcNames))
+}
+
+func verifyStatefulset(sts *appsv1.StatefulSet) {
+	o.Expect(sts.DeletionTimestamp).To(o.BeNil())
+	o.Expect(sts.Status.ObservedGeneration).To(o.Equal(sts.Generation))
+	o.Expect(sts.Spec.Replicas).NotTo(o.BeNil())
+	o.Expect(sts.Status.ReadyReplicas).To(o.Equal(*sts.Spec.Replicas))
+	o.Expect(sts.Status.CurrentRevision).To(o.Equal(sts.Status.UpdateRevision))
 }
 
 func verifyPodDisruptionBudget(sc *scyllav1.ScyllaCluster, pdb *policyv1beta1.PodDisruptionBudget) {
@@ -44,7 +84,7 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 
 		s := statefulsets[r.Name]
 
-		verifyStatefulset(ctx, s)
+		verifyStatefulset(s)
 
 		o.Expect(sc.Status.Racks[r.Name].ReadyMembers).To(o.Equal(r.Members))
 		o.Expect(sc.Status.Racks[r.Name].ReadyMembers).To(o.Equal(s.Status.ReadyReplicas))
@@ -57,6 +97,8 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 	pdb, err := kubeClient.PolicyV1beta1().PodDisruptionBudgets(sc.Namespace).Get(ctx, naming.PodDisruptionBudgetName(sc), metav1.GetOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
 	verifyPodDisruptionBudget(sc, pdb)
+
+	verifyPersistentVolumeClaims(ctx, kubeClient.CoreV1(), sc)
 
 	// TODO: Use scylla client to check at least "UN"
 	scyllaClient, hosts, err := getScyllaClient(ctx, kubeClient.CoreV1(), sc)

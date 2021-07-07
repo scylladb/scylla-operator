@@ -75,5 +75,24 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+
+		framework.By("Scaling the ScyllaCluster back to 2 replicas to make sure there isn't an old (decommissioned) storage in place")
+		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
+			ctx,
+			sc.Name,
+			types.JSONPatchType,
+			[]byte(`[{"op": "replace", "path": "/spec/datacenter/racks/0/members", "value": 2}]`),
+			metav1.PatchOptions{},
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(sc.Spec.Datacenter.Racks[0].Members).To(o.BeEquivalentTo(2))
+
+		framework.By("Waiting for the ScyllaCluster to rollout")
+		waitCtx4, waitCtx4Cancel := contextForRollout(ctx, sc)
+		defer waitCtx4Cancel()
+		sc, err = waitForScyllaClusterState(waitCtx4, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, scyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		verifyScyllaCluster(ctx, f.KubeClient(), sc)
 	})
 })

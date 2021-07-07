@@ -65,6 +65,18 @@ func PVCNameForPod(podName string) string {
 	return fmt.Sprintf("%s-%s", PVCTemplateName, podName)
 }
 
+func PVCNameForService(svcName string) string {
+	return PVCNameForPod(svcName)
+}
+
+func PVCNamePrefixForScyllaCluster(scName string) string {
+	return fmt.Sprintf("%s-%s-", PVCTemplateName, scName)
+}
+
+func PVCNameForStatefulSet(stsName string, ordinal int32) string {
+	return fmt.Sprintf("%s-%s-%d", PVCTemplateName, stsName, ordinal)
+}
+
 // IndexFromName attempts to get the index from a name using the
 // naming convention <name>-<index>.
 func IndexFromName(n string) (int32, error) {

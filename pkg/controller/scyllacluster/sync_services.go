@@ -47,7 +47,7 @@ func (scc *Controller) pruneServices(
 	services map[string]*corev1.Service,
 	statefulSets map[string]*appsv1.StatefulSet,
 ) error {
-	var deletionErrors []error
+	var errs []error
 	for _, svc := range services {
 		if svc.DeletionTimestamp != nil {
 			continue
@@ -66,22 +66,26 @@ func (scc *Controller) pruneServices(
 		// Do not delete services for scale down.
 		rackName, ok := svc.Labels[naming.RackNameLabel]
 		if !ok {
-			return fmt.Errorf("service %s/%s is missing %q label", svc.Namespace, svc.Name, naming.RackNameLabel)
+			errs = append(errs, fmt.Errorf("service %s/%s is missing %q label", svc.Namespace, svc.Name, naming.RackNameLabel))
+			continue
 		}
 		stsName := fmt.Sprintf("%s-%s-%s", sc.Name, sc.Spec.Datacenter.Name, rackName)
 		sts, ok := statefulSets[stsName]
 		if !ok {
-			return fmt.Errorf("statefulset %s/%s is missing", sts.Namespace, sts.Name)
+			errs = append(errs, fmt.Errorf("statefulset %s/%s is missing", sts.Namespace, sts.Name))
+			continue
 		}
 		// TODO: Label services with the ordinal instead of parsing.
 		// TODO: Move it to a function and unit test it.
 		svcOrdinalStrings := serviceOrdinalRegex.FindStringSubmatch(svc.Name)
 		if len(svcOrdinalStrings) != 2 {
-			return fmt.Errorf("can't parse ordinal from service %s/%s", svc.Namespace, svc.Name)
+			errs = append(errs, fmt.Errorf("can't parse ordinal from service %s/%s", svc.Namespace, svc.Name))
+			continue
 		}
 		svcOrdinal, err := strconv.Atoi(svcOrdinalStrings[1])
 		if err != nil {
-			return err
+			errs = append(errs, err)
+			continue
 		}
 		if int32(svcOrdinal) < *sts.Spec.Replicas {
 			continue
@@ -93,16 +97,50 @@ func (scc *Controller) pruneServices(
 			continue
 		}
 
-		propagationPolicy := metav1.DeletePropagationBackground
+		// Because we also delete the PVC, we need to recheck the service state with a live call.
+		// We can't delete the PVC after the service because the deletion wouldn't be retried.
+		{
+			freshSvc, err := scc.kubeClient.CoreV1().Services(svc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{})
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
+
+			if freshSvc.UID != svc.UID {
+				klog.V(2).InfoS("Stale caches, won't delete the pvc because the service UIDs don't match.", "Service", klog.KObj(svc))
+				continue
+			}
+
+			if freshSvc.Labels[naming.DecommissionedLabel] != naming.LabelValueTrue {
+				klog.V(2).InfoS("Stale caches, won't delete the pvc because the service is no longer decommissioned.", "Service", klog.KObj(svc))
+				continue
+			}
+		}
+
+		backgroundPropagationPolicy := metav1.DeletePropagationBackground
+
+		pvcName := naming.PVCNameForService(svc.Name)
+		err = scc.kubeClient.CoreV1().PersistentVolumeClaims(svc.Namespace).Delete(ctx, pvcName, metav1.DeleteOptions{
+			PropagationPolicy: &backgroundPropagationPolicy,
+		})
+		if err != nil && !apierrors.IsNotFound(err) {
+			errs = append(errs, err)
+			continue
+		}
+
 		err = scc.kubeClient.CoreV1().Services(svc.Namespace).Delete(ctx, svc.Name, metav1.DeleteOptions{
 			Preconditions: &metav1.Preconditions{
-				UID: &svc.UID,
+				UID:             &svc.UID,
+				ResourceVersion: &svc.ResourceVersion,
 			},
-			PropagationPolicy: &propagationPolicy,
+			PropagationPolicy: &backgroundPropagationPolicy,
 		})
-		deletionErrors = append(deletionErrors, err)
+		if err != nil && !apierrors.IsNotFound(err) {
+			errs = append(errs, err)
+			continue
+		}
 	}
-	return utilerrors.NewAggregate(deletionErrors)
+	return utilerrors.NewAggregate(errs)
 }
 
 func (scc *Controller) syncServices(

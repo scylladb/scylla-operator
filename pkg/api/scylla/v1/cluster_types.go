@@ -405,6 +405,15 @@ type RackStatus struct {
 	// readyMembers is the number of ready members in the specific Rack
 	ReadyMembers int32 `json:"readyMembers"`
 
+	// updatedMembers is the number of members matching the current spec.
+	// +optional
+	UpdatedMembers *int32 `json:"updatedMembers,omitempty"`
+
+	// stale indicates if the current rack status is collected for a previous generation.
+	// stale should eventually become false when the appropriate controller writes a fresh status.
+	// +optional
+	Stale *bool `json:"stale,omitempty"`
+
 	// conditions are the latest available observations of a rack's state.
 	Conditions []RackCondition `json:"conditions,omitempty"`
 

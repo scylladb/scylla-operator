@@ -75,3 +75,8 @@ const (
 
 	OperatorEnvVarPrefix = "SCYLLA_OPERATOR_"
 )
+
+const (
+	ScyllaManagerNamespace   = "scylla-manager"
+	ScyllaManagerServiceName = "scylla-manager"
+)

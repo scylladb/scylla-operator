@@ -17,6 +17,4 @@ const (
 
 	baseManagerSyncTimeout = 30 * time.Second
 	managerTaskSyncTimeout = 2 * time.Second
-
-	managerNamespace = "scylla-manager"
 )

@@ -14,6 +14,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/leaderelection"
 	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
@@ -121,7 +122,8 @@ func (o *ManagerControllerOptions) Complete() error {
 	}
 
 	// TODO: Use https and wire certs.
-	managerClient, err := mermaidclient.NewClient("http://scylla-manager.scylla-manager.svc/api/v1", &http.Transport{})
+	url := fmt.Sprintf("http://%s/api/v1", naming.ScyllaManagerServiceName)
+	managerClient, err := mermaidclient.NewClient(url, &http.Transport{})
 	if err != nil {
 		return fmt.Errorf("can't build manager client: %w", err)
 	}

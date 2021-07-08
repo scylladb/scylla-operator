@@ -17,7 +17,7 @@ runs:
     run: |
       set -x
       sudo minikube config set driver none
-      sudo minikube config set embed-certs true
+      sudo minikube config set EmbedCerts true
       sudo ip link set docker0 promisc on
   - name: Start minikube
     shell: bash

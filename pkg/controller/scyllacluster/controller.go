@@ -41,6 +41,8 @@ const (
 	// maxSyncDuration enforces preemption. Do not raise the value! Controllers shouldn't actively wait,
 	// but rather use the queue.
 	maxSyncDuration = 30 * time.Second
+
+	artificialDelayForCachesToCatchUp = 10 * time.Second
 )
 
 var (
@@ -458,7 +460,7 @@ func (scc *Controller) updatePod(old, cur interface{}) {
 
 func (scc *Controller) addStatefulSet(obj interface{}) {
 	sts := obj.(*appsv1.StatefulSet)
-	klog.V(4).InfoS("Observed addition of StatefulSet", "StatefulSet", klog.KObj(sts))
+	klog.V(4).InfoS("Observed addition of StatefulSet", "StatefulSet", klog.KObj(sts), "RV", sts.ResourceVersion)
 	scc.enqueueOwner(sts)
 }
 
@@ -478,7 +480,7 @@ func (scc *Controller) updateStatefulSet(old, cur interface{}) {
 		})
 	}
 
-	klog.V(4).InfoS("Observed update of StatefulSet", "StatefulSet", klog.KObj(oldSts))
+	klog.V(4).InfoS("Observed update of StatefulSet", "StatefulSet", klog.KObj(oldSts), "NewRV", currentSts.ResourceVersion)
 	scc.enqueueOwner(currentSts)
 }
 
@@ -496,7 +498,7 @@ func (scc *Controller) deleteStatefulSet(obj interface{}) {
 			return
 		}
 	}
-	klog.V(4).InfoS("Observed deletion of StatefulSet", "StatefulSet", klog.KObj(sts))
+	klog.V(4).InfoS("Observed deletion of StatefulSet", "StatefulSet", klog.KObj(sts), "RV", sts.ResourceVersion)
 	scc.enqueueOwner(sts)
 }
 

@@ -2,6 +2,7 @@ package scyllacluster
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -306,9 +307,10 @@ func (scc *Controller) afterNodeUpgrade(ctx context.Context, sc *scyllav1.Scylla
 
 func (scc *Controller) pruneStatefulSets(
 	ctx context.Context,
+	status *scyllav1.ScyllaClusterStatus,
 	requiredStatefulSets []*appsv1.StatefulSet,
 	statefulSets map[string]*appsv1.StatefulSet,
-) error {
+) (*scyllav1.ScyllaClusterStatus, error) {
 	var errs []error
 	for _, sts := range statefulSets {
 		if sts.DeletionTimestamp != nil {
@@ -334,17 +336,33 @@ func (scc *Controller) pruneStatefulSets(
 			},
 			PropagationPolicy: &propagationPolicy,
 		})
-		errs = append(errs, err)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+
+		rackName, found := sts.Labels[naming.RackNameLabel]
+		if !found {
+			klog.ErrorS(errors.New("statefulset is missing a rack label"),
+				"Can't clean rack status for deleted StatefulSet",
+				"StatefulSet", klog.KObj(sts))
+			continue
+		}
+
+		delete(status.Racks, rackName)
 	}
-	return utilerrors.NewAggregate(errs)
+	return status, utilerrors.NewAggregate(errs)
 }
 
 // createMissingStatefulSets creates missing StatefulSets.
 // It return true if a statefulSet was created and an error.
 func (scc *Controller) createMissingStatefulSets(
 	ctx context.Context,
+	sc *scyllav1.ScyllaCluster,
+	status *scyllav1.ScyllaClusterStatus,
 	requiredStatefulSets []*appsv1.StatefulSet,
 	statefulSets map[string]*appsv1.StatefulSet,
+	services map[string]*corev1.Service,
 ) (bool, error) {
 	var errs []error
 	stsCreated := false
@@ -353,13 +371,28 @@ func (scc *Controller) createMissingStatefulSets(
 		_, found := statefulSets[sts.Name]
 		if !found {
 			klog.V(2).InfoS("Creating missing StatefulSet", "StatefulSet", klog.KObj(sts))
-			_, changed, err := resourceapply.ApplyStatefulSet(ctx, scc.kubeClient.AppsV1(), scc.statefulSetLister, scc.eventRecorder, sts, false)
+			updatedSts, changed, err := resourceapply.ApplyStatefulSet(ctx, scc.kubeClient.AppsV1(), scc.statefulSetLister, scc.eventRecorder, sts, false)
 			if err != nil {
 				errs = append(errs, fmt.Errorf("can't create missing statefulset: %w", err))
 				continue
 			}
 			if changed {
 				stsCreated = true
+
+				rackName, ok := updatedSts.Labels[naming.RackNameLabel]
+				if !ok {
+					errs = append(errs, fmt.Errorf(
+						"can't determine rack name: statefulset %s is missing label %q",
+						naming.ObjRef(updatedSts),
+						naming.RackNameLabel),
+					)
+					continue
+				}
+				oldRackStatus := sc.Status.Racks[rackName]
+				status.Racks[rackName] = *scc.calculateRackStatus(sc, rackName, updatedSts, &oldRackStatus, services)
+
+				// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
+				time.Sleep(artificialDelayForCachesToCatchUp)
 			}
 		}
 	}
@@ -382,15 +415,15 @@ func (scc *Controller) syncStatefulSets(
 	}
 
 	// Delete any excessive StatefulSets.
-	// Delete has to be the fist action to avoid getting stuck on quota.
-	err = scc.pruneStatefulSets(ctx, requiredStatefulSets, statefulSets)
+	// Delete has to be the first action to avoid getting stuck on quota.
+	status, err = scc.pruneStatefulSets(ctx, status, requiredStatefulSets, statefulSets)
 	if err != nil {
 		return status, fmt.Errorf("can't delete StatefulSet(s): %w", err)
 	}
 
 	// Before any update, make sure all StatefulSets are present.
 	// Create any that are missing.
-	stsCreated, err := scc.createMissingStatefulSets(ctx, requiredStatefulSets, statefulSets)
+	stsCreated, err := scc.createMissingStatefulSets(ctx, sc, status, requiredStatefulSets, statefulSets, services)
 	if err != nil {
 		return status, fmt.Errorf("can't create StatefulSet(s): %w", err)
 	}
@@ -550,9 +583,26 @@ func (scc *Controller) syncStatefulSets(
 				required.Spec.Replicas = pointer.Int32Ptr(*existing.Spec.Replicas)
 				required.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(*existing.Spec.Replicas)
 				// Use apply to also update the spec.template
-				_, _, err := resourceapply.ApplyStatefulSet(ctx, scc.kubeClient.AppsV1(), scc.statefulSetLister, scc.eventRecorder, required, false)
+				updatedSts, changed, err := resourceapply.ApplyStatefulSet(ctx, scc.kubeClient.AppsV1(), scc.statefulSetLister, scc.eventRecorder, required, false)
 				if err != nil {
 					errs = append(errs, fmt.Errorf("can't apply statefulset to set partition: %w", err))
+				}
+
+				if changed {
+					rackName, ok := updatedSts.Labels[naming.RackNameLabel]
+					if !ok {
+						errs = append(errs, fmt.Errorf(
+							"can't determine rack name: statefulset %s is missing label %q",
+							naming.ObjRef(updatedSts),
+							naming.RackNameLabel),
+						)
+						continue
+					}
+					oldRackStatus := sc.Status.Racks[rackName]
+					status.Racks[rackName] = *scc.calculateRackStatus(sc, rackName, updatedSts, &oldRackStatus, services)
+
+					// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
+					time.Sleep(artificialDelayForCachesToCatchUp)
 				}
 			}
 			err = utilerrors.NewAggregate(errs)
@@ -708,15 +758,31 @@ func (scc *Controller) syncStatefulSets(
 			}
 		}
 
-		sts, _, err := resourceapply.ApplyStatefulSet(ctx, scc.kubeClient.AppsV1(), scc.statefulSetLister, scc.eventRecorder, required, false)
+		updatedSts, changed, err := resourceapply.ApplyStatefulSet(ctx, scc.kubeClient.AppsV1(), scc.statefulSetLister, scc.eventRecorder, required, false)
 		if err != nil {
 			return status, fmt.Errorf("can't apply statefulset update: %w", err)
 		}
 
+		if changed {
+			rackName, ok := updatedSts.Labels[naming.RackNameLabel]
+			if !ok {
+				return status, fmt.Errorf(
+					"can't determine rack name: statefulset %s is missing label %q",
+					naming.ObjRef(updatedSts),
+					naming.RackNameLabel,
+				)
+			}
+			oldRackStatus := sc.Status.Racks[rackName]
+			status.Racks[rackName] = *scc.calculateRackStatus(sc, rackName, updatedSts, &oldRackStatus, services)
+
+			// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
+			time.Sleep(artificialDelayForCachesToCatchUp)
+		}
+
 		// Wait for the StatefulSet to rollout.
-		rolledOut, err := controllerhelpers.IsStatefulSetRolledOut(sts)
+		rolledOut, err := controllerhelpers.IsStatefulSetRolledOut(updatedSts)
 		if err != nil {
-			klog.V(4).InfoS("Waiting for StatefulSet rollout", "ScyllaCluster", klog.KObj(sc), "StatefulSet", klog.KObj(sts))
+			klog.V(4).InfoS("Waiting for StatefulSet rollout", "ScyllaCluster", klog.KObj(sc), "StatefulSet", klog.KObj(updatedSts))
 			return status, err
 		}
 

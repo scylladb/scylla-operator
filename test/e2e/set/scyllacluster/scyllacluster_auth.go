@@ -103,19 +103,22 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 		// TODO: restart should be triggered by the Operator
 		framework.By("Initiating a rolling restart")
 
-		err = restartRack(ctx, f.KubeClient().AppsV1(), sc.Spec.Datacenter.Racks[0], sc)
+		_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
+			ctx,
+			sc.Name,
+			types.MergePatchType,
+			[]byte(fmt.Sprintf(`{"spec": {"forceRedeploymentReason": "%s"}}`, "scyllaAgenConfig was updated to contain a token")),
+			metav1.PatchOptions{},
+		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the ScyllaCluster to pick up token change")
-
-		stss, err := getStatefulSetsForScyllaCluster(ctx, f.KubeClient().AppsV1(), sc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		rackSts := stss[sc.Spec.Datacenter.Racks[0].Name]
-
 		waitCtx2, waitCtx2Cancel := contextForRollout(ctx, sc)
 		defer waitCtx2Cancel()
-		_, err = waitForStatefulSetRollout(waitCtx2, f.KubeClient().AppsV1(), rackSts.Namespace, rackSts.Name)
+		sc, err = waitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, scyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
+
+		verifyScyllaCluster(ctx, f.KubeClient(), sc)
 
 		framework.By("Accepting requests authorized using token from user agent config")
 		_, err = getScyllaClientStatus(ctx, hosts, agentConfig.AuthToken)
@@ -132,15 +135,23 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 
 		framework.By("Initiating a rolling restart")
 
-		err = restartRack(ctx, f.KubeClient().AppsV1(), sc.Spec.Datacenter.Racks[0], sc)
+		_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
+			ctx,
+			sc.Name,
+			types.MergePatchType,
+			[]byte(fmt.Sprintf(`{"spec": {"forceRedeploymentReason": "%s"}}`, "scyllaAgenConfig token was changed")),
+			metav1.PatchOptions{},
+		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the ScyllaCluster to pick up token change")
 
 		waitCtx3, waitCtx3Cancel := contextForRollout(ctx, sc)
 		defer waitCtx3Cancel()
-		_, err = waitForStatefulSetRollout(waitCtx3, f.KubeClient().AppsV1(), rackSts.Namespace, rackSts.Name)
+		sc, err = waitForScyllaClusterState(waitCtx3, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, scyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
+
+		verifyScyllaCluster(ctx, f.KubeClient(), sc)
 
 		framework.By("Accepting requests authorized using token from user agent config")
 		_, err = getScyllaClientStatus(ctx, hosts, agentConfig.AuthToken)

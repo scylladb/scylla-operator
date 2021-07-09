@@ -3331,6 +3331,16 @@ spec:
                         a new one. replace_address_first_boot holds addresses which
                         should be replaced by new nodes.'
                       type: object
+                    stale:
+                      description: stale indicates if the current rack status is collected
+                        for a previous generation. stale should eventually become
+                        false when the appropriate controller writes a fresh status.
+                      type: boolean
+                    updatedMembers:
+                      description: updatedMembers is the number of members matching
+                        the current spec.
+                      format: int32
+                      type: integer
                     version:
                       description: version is the current version of Scylla in use.
                       type: string

@@ -14,6 +14,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
+	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/scheme"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -30,6 +31,7 @@ import (
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
+	"k8s.io/klog/v2"
 )
 
 func rolloutTimeoutForScyllaCluster(sc *scyllav1.ScyllaCluster) time.Duration {
@@ -55,22 +57,45 @@ func contextForManagerSync(parent context.Context, sc *scyllav1.ScyllaCluster) (
 }
 
 func scyllaClusterRolledOut(sc *scyllav1.ScyllaCluster) (bool, error) {
-	if sc.Status.ObservedGeneration != nil && *sc.Status.ObservedGeneration < sc.Generation {
+	// ObservedGeneration == nil will filter out the case when the object is initially created
+	// so no other optional (but required) field should be nil after this point and we should error out.
+	if sc.Status.ObservedGeneration == nil || *sc.Status.ObservedGeneration < sc.Generation {
 		return false, nil
 	}
 
 	// TODO: this should be more straight forward - we need better status (conditions, aggregated state, ...)
 
 	for _, r := range sc.Spec.Datacenter.Racks {
-		if sc.Status.Racks[r.Name].Members != r.Members {
+		rackStatus, found := sc.Status.Racks[r.Name]
+		if !found {
 			return false, nil
 		}
 
-		if sc.Status.Racks[r.Name].ReadyMembers != r.Members {
+		if rackStatus.Stale == nil {
+			return true, fmt.Errorf("stale shouldn't be nil")
+		}
+
+		if *rackStatus.Stale {
 			return false, nil
 		}
 
-		if sc.Status.Racks[r.Name].Version != sc.Spec.Version {
+		if rackStatus.Members != r.Members {
+			return false, nil
+		}
+
+		if rackStatus.ReadyMembers != r.Members {
+			return false, nil
+		}
+
+		if rackStatus.UpdatedMembers == nil {
+			return true, fmt.Errorf("updatedMembers shouldn't be nil")
+		}
+
+		if *rackStatus.UpdatedMembers != r.Members {
+			return false, nil
+		}
+
+		if rackStatus.Version != sc.Spec.Version {
 			return false, nil
 		}
 	}
@@ -78,6 +103,8 @@ func scyllaClusterRolledOut(sc *scyllav1.ScyllaCluster) (bool, error) {
 	if sc.Status.Upgrade != nil && sc.Status.Upgrade.FromVersion != sc.Status.Upgrade.ToVersion {
 		return false, nil
 	}
+
+	framework.Infof("ScyllaCluster %s (RV=%s) is rolled out", klog.KObj(sc), sc.ResourceVersion)
 
 	return true, nil
 }

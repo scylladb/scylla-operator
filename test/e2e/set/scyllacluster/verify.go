@@ -86,8 +86,12 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 
 		verifyStatefulset(s)
 
+		o.Expect(sc.Status.Racks[r.Name].Stale).NotTo(o.BeNil())
+		o.Expect(*sc.Status.Racks[r.Name].Stale).To(o.BeFalse())
 		o.Expect(sc.Status.Racks[r.Name].ReadyMembers).To(o.Equal(r.Members))
 		o.Expect(sc.Status.Racks[r.Name].ReadyMembers).To(o.Equal(s.Status.ReadyReplicas))
+		o.Expect(sc.Status.Racks[r.Name].UpdatedMembers).NotTo(o.BeNil())
+		o.Expect(*sc.Status.Racks[r.Name].UpdatedMembers).To(o.Equal(s.Status.UpdatedReplicas))
 	}
 
 	if sc.Status.Upgrade != nil {

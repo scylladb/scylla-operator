@@ -390,12 +390,10 @@ func (scc *Controller) createMissingStatefulSets(
 				}
 				oldRackStatus := sc.Status.Racks[rackName]
 				status.Racks[rackName] = *scc.calculateRackStatus(sc, rackName, updatedSts, &oldRackStatus, services)
-
-				// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
-				time.Sleep(artificialDelayForCachesToCatchUp)
 			}
 		}
 	}
+
 	return stsCreated, utilerrors.NewAggregate(errs)
 }
 
@@ -429,7 +427,8 @@ func (scc *Controller) syncStatefulSets(
 	}
 	if stsCreated {
 		// Wait for the informers to catch up.
-		// TODO: Protect premature requeues with expectations.
+		// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
+		time.Sleep(artificialDelayForCachesToCatchUp)
 		return status, nil
 	}
 
@@ -569,6 +568,7 @@ func (scc *Controller) syncStatefulSets(
 		case string(RolloutInitUpgradePhase):
 			// Partition all StatefulSet at once to block changes but no Pod update is done yet.
 			var errs []error
+			anyStsChanged := false
 			for _, required := range requiredStatefulSets {
 				existing, ok := statefulSets[required.Name]
 				if !ok {
@@ -589,6 +589,8 @@ func (scc *Controller) syncStatefulSets(
 				}
 
 				if changed {
+					anyStsChanged = true
+
 					rackName, ok := updatedSts.Labels[naming.RackNameLabel]
 					if !ok {
 						errs = append(errs, fmt.Errorf(
@@ -600,10 +602,11 @@ func (scc *Controller) syncStatefulSets(
 					}
 					oldRackStatus := sc.Status.Racks[rackName]
 					status.Racks[rackName] = *scc.calculateRackStatus(sc, rackName, updatedSts, &oldRackStatus, services)
-
-					// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
-					time.Sleep(artificialDelayForCachesToCatchUp)
 				}
+			}
+			if anyStsChanged {
+				// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
+				time.Sleep(artificialDelayForCachesToCatchUp)
 			}
 			err = utilerrors.NewAggregate(errs)
 			if err != nil {
@@ -722,6 +725,13 @@ func (scc *Controller) syncStatefulSets(
 	}
 
 	// Begin the update.
+	anyStsChanged := false
+	defer func() {
+		if anyStsChanged {
+			// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
+			time.Sleep(artificialDelayForCachesToCatchUp)
+		}
+	}()
 	for _, required := range requiredStatefulSets {
 		// Check for version upgrades first.
 		existing, existingFound := statefulSets[required.Name]
@@ -764,6 +774,8 @@ func (scc *Controller) syncStatefulSets(
 		}
 
 		if changed {
+			anyStsChanged = true
+
 			rackName, ok := updatedSts.Labels[naming.RackNameLabel]
 			if !ok {
 				return status, fmt.Errorf(
@@ -774,9 +786,6 @@ func (scc *Controller) syncStatefulSets(
 			}
 			oldRackStatus := sc.Status.Racks[rackName]
 			status.Racks[rackName] = *scc.calculateRackStatus(sc, rackName, updatedSts, &oldRackStatus, services)
-
-			// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
-			time.Sleep(artificialDelayForCachesToCatchUp)
 		}
 
 		// Wait for the StatefulSet to rollout.

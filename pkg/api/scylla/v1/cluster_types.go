@@ -86,6 +86,10 @@ type ScyllaClusterSpec struct {
 	// When Scylla Manager is not installed, these will be ignored.
 	// +optional
 	Backups []BackupTaskSpec `json:"backups,omitempty"`
+
+	// forceRedeploymentReason can be used to force a rolling update of all racks by providing a unique string.
+	// +optional
+	ForceRedeploymentReason string `json:"forceRedeploymentReason,omitempty"`
 }
 
 // GenericUpgradeFailureStrategy allows to specify how upgrade logic should handle failures.

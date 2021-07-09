@@ -141,10 +141,13 @@ func (o *OperatorOptions) Run(streams genericclioptions.IOStreams, commandName s
 		cancel()
 	}()
 
+	// Lock names cannot be changed, because it may lead to two leaders during rolling upgrades.
+	const lockName = "scylla-operator-lock"
+
 	return leaderelection.Run(
 		ctx,
 		commandName,
-		commandName+"-locks",
+		lockName,
 		o.Namespace,
 		o.kubeClient,
 		o.LeaderElectionLeaseDuration,

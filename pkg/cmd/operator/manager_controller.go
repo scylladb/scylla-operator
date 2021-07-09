@@ -142,10 +142,13 @@ func (o *ManagerControllerOptions) Run(streams genericclioptions.IOStreams, comm
 		cancel()
 	}()
 
+	// Lock names cannot be changed, because it may lead to two leaders during rolling upgrades.
+	const lockName = "scylla-manager-controller-lock"
+
 	return leaderelection.Run(
 		ctx,
 		commandName,
-		commandName+"-locks",
+		lockName,
 		o.Namespace,
 		o.kubeClient,
 		o.LeaderElectionLeaseDuration,

@@ -323,8 +323,9 @@ func getScyllaClient(ctx context.Context, client corev1client.CoreV1Interface, s
 	return scyllaClient, hosts, nil
 }
 
+// getManagerClient gets managerClient using IP address. E2E tests shouldn't rely on InCluster DNS.
 func getManagerClient(ctx context.Context, client corev1client.CoreV1Interface) (*mermaidclient.Client, error) {
-	managerService, err := client.Services(managerNamespace).Get(ctx, "scylla-manager", metav1.GetOptions{})
+	managerService, err := client.Services(naming.ScyllaManagerNamespace).Get(ctx, naming.ScyllaManagerServiceName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}

@@ -71,13 +71,9 @@ func (scc *Controller) calculateRackStatus(sc *scyllav1.ScyllaCluster, rackName 
 		return status
 	}
 
-	// Update Members
 	status.Members = *sts.Spec.Replicas
-	// Update ReadyMembers
 	status.ReadyMembers = sts.Status.ReadyReplicas
-	// Update UpdatedMembers
 	status.UpdatedMembers = pointer.Int32Ptr(sts.Status.UpdatedReplicas)
-	// Update Stale
 	status.Stale = pointer.BoolPtr(sts.Status.ObservedGeneration < sts.Generation)
 
 	// Update Rack Version

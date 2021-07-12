@@ -171,11 +171,21 @@ jobs:
     - name: Tolerate flakes on promotion jobs
       if: ${{ github.event_name != 'pull_request' }}
       run: |
-        echo "SCYLLA_OPERATOR_TESTS_FLAKE_ATTEMPTS=5" | tee -a ${GITHUB_ENV}
+        echo "FLAKE_ATTEMPTS=5" | tee -a ${GITHUB_ENV}
     - name: Run e2e
       run: |
-        set -x
-        timeout 60m docker run --user="$( id -u ):$( id -g )" --rm --entrypoint=/usr/bin/scylla-operator-tests -v="${HOME}/.kube/config:/kubeconfig:ro" -e='KUBECONFIG=/kubeconfig' -v="${ARTIFACTS_DIR}:${ARTIFACTS_DIR}:rw" '${{ env.image_repo_ref }}:ci' run --artifacts-dir="${ARTIFACTS_DIR}"
+        set -euExo pipefail
+
+        flake_attempts=0
+        if [[ -v 'FLAKE_ATTEMPTS' ]]; then
+          flake_attempts="${FLAKE_ATTEMPTS}"
+        fi
+
+        timeout 60m docker run --user="$( id -u ):$( id -g )" --rm \
+        --entrypoint=/usr/bin/scylla-operator-tests \
+        -v="${ARTIFACTS_DIR}:${ARTIFACTS_DIR}:rw" \
+        -v="${HOME}/.kube/config:/kubeconfig:ro" -e='KUBECONFIG=/kubeconfig' \
+        '${{ env.image_repo_ref }}:ci' run --artifacts-dir="${ARTIFACTS_DIR}" --flake-attempts="${flake_attempts}"
     - name: Dump cluster state
       if: ${{ always() }}
       working-directory: ${{ runner.temp }}

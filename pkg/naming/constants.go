@@ -44,6 +44,8 @@ const (
 
 	PrometheusScrapeAnnotation = "prometheus.io/scrape"
 	PrometheusPortAnnotation   = "prometheus.io/port"
+
+	ForceRedeploymentReasonAnnotation = "scylla-operator.scylladb.com/force-redeployment-reason"
 )
 
 // Configuration Values

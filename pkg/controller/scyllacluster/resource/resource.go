@@ -405,6 +405,10 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 		},
 	}
 
+	if len(c.Spec.ForceRedeploymentReason) != 0 {
+		sts.Spec.Template.Annotations[naming.ForceRedeploymentReasonAnnotation] = c.Spec.ForceRedeploymentReason
+	}
+
 	if existingSts != nil {
 		sts.ResourceVersion = existingSts.ResourceVersion
 		if sts.Spec.UpdateStrategy.Type == appsv1.RollingUpdateStatefulSetStrategyType &&

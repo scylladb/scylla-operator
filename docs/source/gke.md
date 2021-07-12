@@ -153,4 +153,18 @@ sed -i "s/<gcp_region>/${GCP_REGION}/g;s/<gcp_zone>/${GCP_ZONE}/g" examples/gke/
 
 This will inject your region and zone into the cluster definition so that it matches the kubernetes cluster you just created.
 
+### Installing the Scylla Operator and Scylla
+
 Now you can follow the [generic guide](generic.md) to install the operator and launch your Scylla cluster in a highly performant environment.
+
+#### Accessing the database
+
+Instructions on how to access the database can also be found in the [generic guide](generic.md).
+
+### Deleting a GKE cluster
+
+Once you are done with your experiments delete your cluster using the following command:
+
+```
+gcloud container --project "${GCP_PROJECT}" clusters delete --zone "${GCP_ZONE}" "${CLUSTER_NAME}"
+```

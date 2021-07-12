@@ -23,9 +23,9 @@ type PVItem struct {
 	ServiceName string
 }
 
-func (opc *Controller) getPVsForScyllaCluster(ctx context.Context, sc *scyllav1.ScyllaCluster) ([]*PVItem, bool, error) {
+func (opc *Controller) getPVsForScyllaCluster(ctx context.Context, sc *scyllav1.ScyllaCluster) ([]*PVItem, []string, error) {
 	var errs []error
-	requeue := false
+	var requeueReasons []string
 	var pis []*PVItem
 	for _, rack := range sc.Spec.Datacenter.Racks {
 		stsName := naming.StatefulSetNameForRack(rack, sc)
@@ -37,7 +37,7 @@ func (opc *Controller) getPVsForScyllaCluster(ctx context.Context, sc *scyllav1.
 				if apierrors.IsNotFound(err) {
 					klog.V(2).InfoS("PVC not found", "PVC", fmt.Sprintf("%s/%s", sc.Namespace, pvcName))
 					// We aren't watching PVCs so we need to requeue manually
-					requeue = true
+					requeueReasons = append(requeueReasons, "PVC not found")
 					continue
 				}
 				errs = append(errs, err)
@@ -46,7 +46,7 @@ func (opc *Controller) getPVsForScyllaCluster(ctx context.Context, sc *scyllav1.
 
 			if len(pvc.Spec.VolumeName) == 0 {
 				klog.V(2).InfoS("PVC not bound yet", "PVC", klog.KObj(pvc))
-				requeue = true
+				requeueReasons = append(requeueReasons, "PVC not bound yet")
 				continue
 			}
 
@@ -63,7 +63,7 @@ func (opc *Controller) getPVsForScyllaCluster(ctx context.Context, sc *scyllav1.
 		}
 	}
 
-	return pis, requeue, utilerrors.NewAggregate(errs)
+	return pis, requeueReasons, utilerrors.NewAggregate(errs)
 }
 
 func (opc *Controller) sync(ctx context.Context, key string) error {
@@ -104,7 +104,7 @@ func (opc *Controller) sync(ctx context.Context, key string) error {
 
 	var errs []error
 
-	pis, requeue, err := opc.getPVsForScyllaCluster(ctx, sc)
+	pis, requeueReasons, err := opc.getPVsForScyllaCluster(ctx, sc)
 	// Process at least some PVs even if there were errors retrieving the rest
 	if err != nil {
 		errs = append(errs, err)
@@ -120,6 +120,8 @@ func (opc *Controller) sync(ctx context.Context, key string) error {
 		if !orphaned {
 			continue
 		}
+
+		klog.V(2).InfoS("PV is orphaned", "ScyllaCluster", sc, "PV", klog.KObj(pi.PV))
 
 		// Verify that the node doesn't exist with a live call.
 		freshNodes, err := opc.kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{
@@ -140,6 +142,8 @@ func (opc *Controller) sync(ctx context.Context, key string) error {
 			continue
 		}
 
+		klog.V(2).InfoS("PV is verified as orphaned.", "ScyllaCluster", sc, "PV", klog.KObj(pi.PV))
+
 		_, err = opc.kubeClient.CoreV1().Services(sc.Namespace).Patch(
 			ctx,
 			pi.ServiceName,
@@ -151,6 +155,8 @@ func (opc *Controller) sync(ctx context.Context, key string) error {
 			errs = append(errs, err)
 			continue
 		}
+
+		klog.V(2).InfoS("Marked service for replacement", "ScyllaCluster", sc, "Service", pi.ServiceName)
 	}
 
 	err = utilerrors.NewAggregate(errs)
@@ -158,9 +164,8 @@ func (opc *Controller) sync(ctx context.Context, key string) error {
 		return err
 	}
 
-	if requeue {
-		// TODO: should be exponential backoff (synthetic error)
-		opc.queue.AddAfter(key, 30*time.Second)
+	if len(requeueReasons) > 0 {
+		return helpers.NewRequeueError(requeueReasons...)
 	}
 
 	return nil

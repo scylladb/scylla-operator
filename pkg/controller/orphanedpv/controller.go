@@ -2,6 +2,7 @@ package orphanedpv
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -9,6 +10,7 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1"
 	scyllav1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/controller/helpers"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -129,21 +131,33 @@ func (opc *Controller) processNextItem(ctx context.Context) bool {
 
 	ctx, cancel := context.WithTimeout(ctx, maxSyncDuration)
 	defer cancel()
-	err := opc.sync(ctx, key.(string))
-	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
-	err = utilerrors.Reduce(err)
-	switch {
-	case err == nil:
+	syncErr := opc.sync(ctx, key.(string))
+	if syncErr == nil {
 		opc.queue.Forget(key)
 		return true
+	}
 
-	case apierrors.IsConflict(err):
-		klog.V(2).InfoS("Hit conflict, will retry in a bit", "Key", key, "Error", err)
+	// Make sure we always have an aggregate to process and all nested errors are flattened.
+	allErrors := utilerrors.Flatten(utilerrors.NewAggregate([]error{syncErr}))
+	var remainingErrors []error
+	for _, err := range allErrors.Errors() {
+		switch {
+		case errors.Is(err, &helpers.RequeueError{}):
+			klog.V(2).InfoS("Re-queuing for recheck", "Key", key, "Reason", err)
 
-	case apierrors.IsAlreadyExists(err):
-		klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", key, "Error", err)
+		case apierrors.IsConflict(err):
+			klog.V(2).InfoS("Hit conflict, will retry in a bit", "Key", key, "Error", err)
 
-	default:
+		case apierrors.IsAlreadyExists(err):
+			klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", key, "Error", err)
+
+		default:
+			remainingErrors = append(remainingErrors, err)
+		}
+	}
+
+	err := utilerrors.NewAggregate(remainingErrors)
+	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
 	}
 

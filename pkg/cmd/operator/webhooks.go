@@ -230,10 +230,10 @@ func validate(ar *admissionv1.AdmissionReview) error {
 	case scyllav1.GroupVersion.WithResource("scyllaclusters"):
 		switch ar.Request.Operation {
 		case admissionv1.Create:
-			return validation.ValidateScyllaCluster(obj.(*scyllav1.ScyllaCluster))
+			return validation.ValidateScyllaCluster(obj.(*scyllav1.ScyllaCluster)).ToAggregate()
 
 		case admissionv1.Update:
-			return validation.ValidateScyllaClusterUpdate(obj.(*scyllav1.ScyllaCluster), oldObj.(*scyllav1.ScyllaCluster))
+			return validation.ValidateScyllaClusterUpdate(obj.(*scyllav1.ScyllaCluster), oldObj.(*scyllav1.ScyllaCluster)).ToAggregate()
 
 		default:
 			return nil

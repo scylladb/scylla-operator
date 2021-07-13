@@ -37,9 +37,9 @@ EKS_ZONES=us-east-1a,us-east-1b,us-east-1c
 CLUSTER_NAME=scylla-demo
 ```
 
-#### Creating a EKS cluster
+#### Creating an EKS cluster
 
-For this guide, we'll create a EKS cluster with the following:
+For this guide, we'll create an EKS cluster with the following:
 
 * A NodeGroup of 3 `i3-2xlarge` Nodes, where the Scylla Pods will be deployed. These nodes will only accept pods having `scylla-clusters` toleration.
 
@@ -110,10 +110,14 @@ kubectl apply -f node-setup-daemonset.yaml
 
 Now you can follow the [generic guide](generic.md) to launch your Scylla cluster in a highly performant environment.
 
-#### Deleting a EKS cluster
+#### Accessing the database
 
-Once you are done with your experiments delete your cluster using following command:
+Instructions on how to access the database can also be found in the [generic guide](generic.md).
+
+### Deleting an EKS cluster
+
+Once you are done with your experiments delete your cluster using the following command:
 
 ```
-eksctl delete cluster <cluster_name>
+eksctl delete cluster "${CLUSTER_NAME}"
 ```

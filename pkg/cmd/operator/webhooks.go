@@ -22,9 +22,11 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	admissionv1 "k8s.io/api/admission/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	apierrors "k8s.io/apimachinery/pkg/util/errors"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/klog/v2"
 )
 
@@ -95,7 +97,7 @@ func (o *WebhookOptions) Validate() error {
 		return errors.New("port can't be zero")
 	}
 
-	return apierrors.NewAggregate(errs)
+	return utilerrors.NewAggregate(errs)
 }
 
 func (o *WebhookOptions) Complete() error {
@@ -228,17 +230,18 @@ func validate(ar *admissionv1.AdmissionReview) error {
 
 	switch gvr {
 	case scyllav1.GroupVersion.WithResource("scyllaclusters"):
+		var errList field.ErrorList
 		switch ar.Request.Operation {
 		case admissionv1.Create:
-			return validation.ValidateScyllaCluster(obj.(*scyllav1.ScyllaCluster))
-
+			errList = validation.ValidateScyllaCluster(obj.(*scyllav1.ScyllaCluster))
 		case admissionv1.Update:
-			return validation.ValidateScyllaClusterUpdate(obj.(*scyllav1.ScyllaCluster), oldObj.(*scyllav1.ScyllaCluster))
-
-		default:
-			return nil
+			errList = validation.ValidateScyllaClusterUpdate(obj.(*scyllav1.ScyllaCluster), oldObj.(*scyllav1.ScyllaCluster))
 		}
 
+		if len(errList) > 0 {
+			return apierrors.NewInvalid(obj.(*scyllav1.ScyllaCluster).GroupVersionKind().GroupKind(), obj.(*scyllav1.ScyllaCluster).Name, errList)
+		}
+		return nil
 	default:
 		return fmt.Errorf("unsupported GVR %q", gvr)
 	}

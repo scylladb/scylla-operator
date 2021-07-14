@@ -153,7 +153,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 
 	storageCapacity, err := resource.ParseQuantity(r.Storage.Capacity)
 	if err != nil {
-		return nil, fmt.Errorf("cannot parse '%v': %v", r.Storage.Capacity, err)
+		return nil, fmt.Errorf("cannot parse %q: %v", r.Storage.Capacity, err)
 	}
 
 	sts := &appsv1.StatefulSet{

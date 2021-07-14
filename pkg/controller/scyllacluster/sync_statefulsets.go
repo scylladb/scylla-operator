@@ -409,7 +409,13 @@ func (scc *Controller) syncStatefulSets(
 
 	requiredStatefulSets, err := scc.makeRacks(sc, statefulSets)
 	if err != nil {
-		return status, nil
+		scc.eventRecorder.Eventf(
+			sc,
+			corev1.EventTypeWarning,
+			"InvalidRack",
+			fmt.Sprintf("Failed to make rack: %v", err),
+		)
+		return status, err
 	}
 
 	// Delete any excessive StatefulSets.

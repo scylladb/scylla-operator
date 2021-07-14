@@ -40,7 +40,7 @@ const (
 	ControllerName = "ScyllaClusterController"
 	// maxSyncDuration enforces preemption. Do not raise the value! Controllers shouldn't actively wait,
 	// but rather use the queue.
-	maxSyncDuration = 30 * time.Second
+	maxSyncDuration = 40 * time.Second
 
 	artificialDelayForCachesToCatchUp = 10 * time.Second
 )

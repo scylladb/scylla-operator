@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"time"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	controllerhelpers "github.com/scylladb/scylla-operator/pkg/controller/helpers"
@@ -228,6 +229,13 @@ func (scc *Controller) syncServices(
 				}
 			}
 			resourceapply.ReportDeleteEvent(scc.eventRecorder, pvcMeta, nil)
+
+			// Hack: Sleeps are terrible thing to in sync logic but this compensates for a broken
+			// StatefulSet controller in Kubernetes. StatefulSet doesn't reconcile PVCs and decides
+			// it's presence only from its cache, and never recreates it if it's missing, only when it
+			// creates the pod. This gives StatefulSet controller a chance to see the PVC was deleted
+			// before deleting the pod.
+			time.Sleep(10 * time.Second)
 
 			// Evict the Pod if it exists.
 			podMeta := &corev1.PersistentVolumeClaim{

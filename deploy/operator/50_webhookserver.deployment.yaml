@@ -60,3 +60,13 @@ spec:
         secret:
           defaultMode: 420
           secretName: scylla-operator-serving-cert
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: scylla-operator
+                  app.kubernetes.io/name: scylla-operator
+              topologyKey: kubernetes.io/hostname
+            weight: 1

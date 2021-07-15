@@ -54,6 +54,15 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 	labels[naming.DatacenterNameLabel] = sc.Spec.Datacenter.Name
 	labels[naming.RackNameLabel] = rackName
 
+	// TODO: Remove seed label in v1.5. (#704)
+	//       We need to keep this for v1.3 compatibility, so a ScyllaCluster that is rolling out during
+	//       the operator upgrade, has a pod that restarts or gets evicted in the meantime can become ready
+	//       as the label is still used by v1.3 sidecar before the new cluster version rolls out.
+	// If Member is seed, add the appropriate label
+	if strings.HasSuffix(name, "-0") || strings.HasSuffix(name, "-1") {
+		labels[naming.SeedLabel] = ""
+	}
+
 	// Copy the old replace label, if present.
 	var replaceAddr string
 	var hasReplaceLabel bool

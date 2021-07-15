@@ -36,3 +36,13 @@ spec:
             cpu: 10m
             memory: 20Mi
       terminationGracePeriodSeconds: 10
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: webhook-server
+                  app.kubernetes.io/name: webhook-server
+              topologyKey: kubernetes.io/hostname
+            weight: 1

@@ -34,8 +34,8 @@ Create chart name and version as used by the chart label.
 Selector labels
 */}}
 {{- define "scylla-operator.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "scylla-operator.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/name: scylla-operator
+app.kubernetes.io/instance: scylla-operator
 {{- end }}
 
 {{/*

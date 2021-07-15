@@ -19,7 +19,16 @@ nodeSelector: { }
 tolerations: [ ]
 
 # Affinity for Scylla Operator pods
-affinity: { }
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 1
+      podAffinityTerm:
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: webhook-server
+            app.kubernetes.io/instance: webhook-server
+        topologyKey: kubernetes.io/hostname
 
 webhook:
   # Specifies whether a self signed certificate should be created using cert-manager
@@ -39,3 +48,21 @@ serviceAccount:
 
 ## SecurityContext holds pod-level security attributes and common container settings.
 securityContext: {}
+
+# Node selector for Webhook Server pods
+webhookServerNodeSelector: { }
+
+# Tolerations for Webhook Server pods
+webhookServerTolerations: [ ]
+
+# Affinity for Webhook Server pods
+webhookServerAffinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 1
+      podAffinityTerm:
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: scylla-operator
+            app.kubernetes.io/instance: scylla-operator
+        topologyKey: kubernetes.io/hostname

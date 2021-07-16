@@ -67,15 +67,15 @@ spec:
         secret:
           defaultMode: 420
           secretName: {{ include "scylla-operator.certificateSecretName" . }}
-      {{- with .Values.nodeSelector }}
+      {{- with .Values.webhookServerNodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.affinity }}
+      {{- with .Values.webhookServerAffinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.tolerations }}
+      {{- with .Values.webhookServerTolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}

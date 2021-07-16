@@ -35,7 +35,7 @@ Selector labels
 */}}
 {{- define "scylla-operator.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "scylla-operator.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/instance: {{ include "scylla-operator.name" . }}
 {{- end }}
 
 {{/*

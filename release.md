@@ -117,16 +117,13 @@
    - users mailing list (https://groups.google.com/g/scylladb-users)
 
 ## Release notes
-1. Prepare release notes using the new and previous release tag.
-   Examples of corresponding tags:
+1. Release notes are now published by CI for every release and beta+rc prereleases. The release notes contain changes since the last corresponding release in the same category, according to this table  
 
    | Current        | Previous      |
    | :------------- | :------------ |
+   | v1.2.0-beta.0  | v1.1.0        |
+   | v1.2.0-beta.1  | v1.2.0-beta.0 |
    | v1.2.0-rc.0    | v1.1.0        |
    | v1.2.0-rc.1    | v1.2.0-rc.0   |
    | v1.1.2         | v1.1.1        |
    | v1.2.0         | v1.1.0        |
-
-   ```
-   make build && ./gen-release-notes --start-ref=$( git merge-base <new> <previous> ) --end-ref=<new> --release-name=<new>
-   ```

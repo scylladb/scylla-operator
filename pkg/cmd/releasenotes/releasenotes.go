@@ -61,7 +61,7 @@ func (o *GenerateOptions) Run(ctx context.Context) error {
 		return errors.NewAggregate(errs)
 	}
 
-	if err := renderReleaseNotes(o.Out, o.ReleaseName, filteredPRs); err != nil {
+	if err := renderReleaseNotes(o.Out, o.ReleaseName, o.PreviousReleaseName, filteredPRs); err != nil {
 		return err
 	}
 

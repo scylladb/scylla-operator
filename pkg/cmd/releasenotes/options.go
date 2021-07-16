@@ -22,9 +22,10 @@ type GenerateOptions struct {
 
 	GithubToken string
 
-	ReleaseName string
-	StartRef    string
-	EndRef      string
+	ReleaseName         string
+	PreviousReleaseName string
+	StartRef            string
+	EndRef              string
 
 	ghClient *githubql.Client
 }
@@ -43,6 +44,10 @@ func (o *GenerateOptions) Validate() error {
 
 	if o.ReleaseName == "" {
 		errs = append(errs, fmt.Errorf("release name can't be empty"))
+	}
+
+	if len(o.PreviousReleaseName) == 0 {
+		errs = append(errs, fmt.Errorf("previous release name can't be empty"))
 	}
 
 	if strings.HasPrefix(o.ReleaseName, "v") {

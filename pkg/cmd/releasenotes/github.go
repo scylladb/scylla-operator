@@ -58,12 +58,14 @@ func dateToken(start, end time.Time) string {
 	// Dates before 1970 (unix epoch) are considered invalid.
 	startString, endString := "*", "*"
 	if start.Year() >= 1970 {
-		startString = start.UTC().Format(time.RFC3339)
+		// Make sure we list all the PR, GitHub ranges are exclusive.
+		startString = start.Add(-1 * time.Second).UTC().Format(time.RFC3339Nano)
 	} else {
 		klog.Warningf("Search start date is before year 1970, using 'any' filter instead")
 	}
 	if end.Year() >= 1970 {
-		endString = end.UTC().Format(time.RFC3339)
+		// Make sure we list all the PR, GitHub ranges are exclusive.
+		endString = end.Add(1 * time.Second).UTC().Format(time.RFC3339Nano)
 	} else {
 		klog.Warningf("Search end date is before year 1970, using 'any' filter instead")
 	}
@@ -86,6 +88,7 @@ func listPullRequests(ctx context.Context, ghClient *githubql.Client, owner, rep
 	}
 	var pullRequests []PullRequest
 	for {
+		klog.V(2).InfoS("Listing pull requests", "Vars", vars)
 		if err := ghClient.Query(ctx, &sq, vars); err != nil {
 			return nil, err
 		}

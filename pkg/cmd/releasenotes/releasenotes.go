@@ -25,7 +25,7 @@ func (o *GenerateOptions) Run(ctx context.Context) error {
 
 		n, ok := parsePullRequestNumber(c.Message)
 		if !ok {
-			klog.Infof("Can't parse pull request number from %q commit", c.Hash)
+			klog.Errorf("Can't parse pull request number from %q commit", c.Hash)
 			continue
 		}
 

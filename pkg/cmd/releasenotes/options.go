@@ -39,7 +39,7 @@ func NewGitGenerateOptions(streams genericclioptions.IOStreams) *GenerateOptions
 	}
 }
 
-func (o GenerateOptions) Validate() error {
+func (o *GenerateOptions) Validate() error {
 	var errs []error
 	if o.ReleaseName == "" {
 		errs = append(errs, fmt.Errorf("release name can't be empty"))

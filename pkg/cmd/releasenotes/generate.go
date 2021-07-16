@@ -52,5 +52,7 @@ func NewGenGitReleaseNotesCommand(ctx context.Context, streams genericclioptions
 	cmd.Flags().StringVar(&o.EndRef, "end-ref", o.EndRef, "Last commit reference, pull requests merged before (including this ref) this ref will be part of the release notes.")
 	cmd.Flags().StringVar(&o.GithubToken, "github-token", o.GithubToken, "GitHub token used to authenticate requests.")
 
+	cmdutil.InstallKlog(cmd)
+
 	return cmd
 }

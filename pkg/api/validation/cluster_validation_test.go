@@ -68,7 +68,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := validation.ValidateScyllaCluster(test.obj)
+			err := validation.ValidateScyllaCluster(test.obj).ToAggregate()
 			if test.allowed {
 				if err != nil {
 					t.Errorf("Wrong value returned from checkValues function. Message: '%s'", err)
@@ -154,7 +154,7 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := validation.ValidateScyllaClusterUpdate(test.new, test.old)
+			err := validation.ValidateScyllaClusterUpdate(test.new, test.old).ToAggregate()
 			if test.allowed {
 				if err != nil {
 					t.Errorf("Wrong value returned from checkTransitions function. Message: '%s'", err)

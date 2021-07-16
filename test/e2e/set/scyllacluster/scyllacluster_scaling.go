@@ -9,6 +9,7 @@ import (
 	o "github.com/onsi/gomega"
 	scyllaclusterfixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scyllacluster"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
+	"github.com/scylladb/scylla-operator/test/e2e/load"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -38,6 +39,17 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = waitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, scyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
+		framework.By("Writing data")
+		hosts, err := getHosts(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		l, err := load.NewLoad(hosts...)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer l.Close()
+
+		err = l.Write(10, int(sc.Spec.Datacenter.Racks[0].Members))
+		o.Expect(err).NotTo(o.HaveOccurred())
+
 		framework.By("Scaling the ScyllaCluster to 2 replicas")
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
 			ctx,
@@ -56,6 +68,10 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+
+		framework.By("Updating data")
+		err = l.Update()
+		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Scaling the ScyllaCluster back to 1 replica")
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
@@ -94,5 +110,15 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+
+		framework.By("Verifying data consistency")
+		hosts, err = getHosts(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		err = l.Reset(hosts...)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		err = l.VerifyRead()
+		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 })

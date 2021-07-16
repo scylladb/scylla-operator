@@ -12,6 +12,7 @@ import (
 	o "github.com/onsi/gomega"
 	scyllaclusterfixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scyllacluster"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
+	"github.com/scylladb/scylla-operator/test/e2e/load"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -56,6 +57,17 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 
 			verifyScyllaCluster(ctx, f.KubeClient(), sc)
 
+			framework.By("Writing data")
+			hosts, err := getHosts(ctx, f.KubeClient().CoreV1(), sc)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			l, err := load.NewLoad(hosts...)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			defer l.Close()
+
+			err = l.Write(10, int(e.rackSize))
+			o.Expect(err).NotTo(o.HaveOccurred())
+
 			framework.By("triggering and update")
 			sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
 				ctx,
@@ -81,6 +93,10 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			verifyScyllaCluster(ctx, f.KubeClient(), sc)
+
+			framework.By("Verifying data consistency")
+			err = l.VerifyRead()
+			o.Expect(err).NotTo(o.HaveOccurred())
 		},
 		// Test 1 and 3 member rack to cover e.g. handling PDBs correctly.
 		gt.Entry(describeEntry, &entry{

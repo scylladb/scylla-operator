@@ -12,6 +12,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	scyllaclusterfixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scyllacluster"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
+	"github.com/scylladb/scylla-operator/test/e2e/load"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -44,6 +45,17 @@ var _ = g.Describe("ScyllaCluster Orphaned PV", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+
+		framework.By("Writing data")
+		hosts, err := getHosts(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		l, err := load.NewLoad(hosts...)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer l.Close()
+
+		err = l.Write(10, int(sc.Spec.Datacenter.Racks[0].Members))
+		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Simulating a PV on node that's gone")
 		stsName := naming.StatefulSetNameForRack(sc.Spec.Datacenter.Racks[0], sc)
@@ -108,5 +120,9 @@ var _ = g.Describe("ScyllaCluster Orphaned PV", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+
+		framework.By("Verifying data consistency")
+		err = l.VerifyRead()
+		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 })

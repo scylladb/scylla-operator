@@ -35,11 +35,19 @@ func (o *GenerateOptions) Run(ctx context.Context) error {
 	sort.Slice(commits, func(i, j int) bool {
 		return commits[i].Committer.When.Before(commits[j].Committer.When)
 	})
-	startDate, endDate := commits[0].Committer.When, commits[len(commits)-1].Committer.When
 
-	prs, err := listPullRequests(ctx, o.ghClient, o.OrganizationName, o.RepositoryName, startDate, endDate)
-	if err != nil {
-		return err
+	var prs []PullRequest
+	if len(requiredPullRequestsNumbers) == 0 {
+		// Technically, someone could tag the same commit as -alpha.0 and -alpha.1.
+		// The tag mess is already done but we shouldn't fail.
+		klog.Warningf("No pull requests found, nothing to list.")
+	} else {
+		startDate, endDate := commits[0].Committer.When, commits[len(commits)-1].Committer.When
+
+		prs, err = listPullRequests(ctx, o.ghClient, o.OrganizationName, o.RepositoryName, startDate, endDate)
+		if err != nil {
+			return err
+		}
 	}
 	numberToPR := map[int]*PullRequest{}
 	for i := range prs {

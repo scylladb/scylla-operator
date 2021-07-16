@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: local-volume-provisioner
+  namespace: default
+  labels:
+    app: local-volume-provisioner
+spec:
+  selector:
+    matchLabels:
+      app: local-volume-provisioner 
+  template:
+    metadata:
+      labels:
+        app: local-volume-provisioner
+    spec:
+      serviceAccountName: local-storage-admin
+      containers:
+      - image: "k8s.gcr.io/sig-storage/local-volume-provisioner:v2.4.0"
+        imagePullPolicy: "Always"
+        name: provisioner
+        securityContext:
+          privileged: true
+        env:
+        - name: MY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - mountPath: /etc/provisioner/config
+          name: provisioner-config
+          readOnly: true
+        - mountPath:  /var/lib/k8s-local-pvs
+          name: k8s-local-pvs
+          mountPropagation: "HostToContainer"
+      volumes:
+      - name: provisioner-config
+        configMap:
+          name: local-provisioner-config
+      - name: k8s-local-pvs
+        hostPath:
+          path: /var/lib/k8s-local-pvs
+

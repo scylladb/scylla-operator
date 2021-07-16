@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: local-provisioner-config 
+  namespace: default 
+data:
+  storageClassMap: |     
+    local-dirs:
+       hostDir: /var/lib/k8s-local-pvs/local-dirs/
+       mountDir: /var/lib/k8s-local-pvs/local-dirs/
+       blockCleanerCommand:
+         - "/scripts/shred.sh"
+         - "2"
+       volumeMode: Filesystem
+       fsType: xfs
+       namePattern: "*"
+

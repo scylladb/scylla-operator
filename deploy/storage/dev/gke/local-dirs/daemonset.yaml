@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-dirs
+  namespace: default
+  labels:
+    app: node-dirs
+spec:
+  selector:
+    matchLabels:
+      app: node-dirs
+  template:
+    metadata:
+      labels:
+        app: node-dirs
+    spec:
+      serviceAccountName: node-dirs
+      containers:
+      - image: "registry.access.redhat.com/ubi8/ubi:latest"
+        imagePullPolicy: "Always"
+        command:
+        - "/bin/bash"
+        - "-euExo"
+        - "pipefail"
+        - "-c"
+        args:
+        - |
+          while true; do
+            for d in $(seq -f "pv-%05g" 1 10); do
+              if [[ ! -d "/var/lib/k8s-local-pvs/local-dirs/${d}" ]]; then
+                mkdir "/var/lib/k8s-local-pvs/local-dirs/${d}"
+              fi
+
+              ( mount | grep " /var/lib/k8s-local-pvs/local-dirs/${d} " 2>/dev/null 1>&2 ) || \
+              mount --bind "/var/lib/k8s-local-pvs/local-dirs/${d}"{,}
+            done
+
+            sleep 30
+          done
+        name: node-dirs
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /var/lib/k8s-local-pvs/local-dirs/
+          name: local-dirs
+          mountPropagation: "Bidirectional"
+      volumes:
+      - name: local-dirs
+        hostPath:
+          path: /var/lib/k8s-local-pvs/local-dirs/
+

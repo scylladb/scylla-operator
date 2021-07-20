@@ -50,7 +50,7 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 
 		framework.By("Rejecting an unauthorized request")
 
-		_, hosts, err := getScyllaClient(ctx, f.KubeClient().CoreV1(), sc)
+		_, hosts, err := scyllaclient.GetScyllaClientForScyllaCluster(ctx, f.KubeClient().CoreV1(), sc)
 
 		emptyAuthToken := ""
 		_, err = getScyllaClientStatus(ctx, hosts, emptyAuthToken)

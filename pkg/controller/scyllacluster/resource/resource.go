@@ -21,6 +21,7 @@ import (
 const (
 	scyllaAgentConfigVolumeName    = "scylla-agent-config-volume"
 	scyllaAgentAuthTokenVolumeName = "scylla-agent-auth-token-volume"
+	scyllaReplaceAddressVolumeName = "scylla-replace-address-volume"
 )
 
 func HeadlessServiceForCluster(c *scyllav1.ScyllaCluster) *corev1.Service {
@@ -242,6 +243,12 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								},
 							},
 						},
+						{
+							Name: scyllaReplaceAddressVolumeName,
+							VolumeSource: corev1.VolumeSource{
+								EmptyDir: &corev1.EmptyDirVolumeSource{},
+							},
+						},
 					},
 					Tolerations: placement.Tolerations,
 					InitContainers: []corev1.Container{
@@ -268,6 +275,50 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								{
 									Name:      "shared",
 									MountPath: naming.SharedDirName,
+									ReadOnly:  false,
+								},
+							},
+						},
+						{
+							Name:            naming.AutoReplaceContainerName,
+							Image:           sidecarImage,
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Command: []string{
+								path.Join(naming.SharedDirName, "scylla-operator"),
+								"auto-replace",
+								"--service-name=$(SERVICE_NAME)",
+								// TODO: make it configurable
+								"--loglevel=2",
+							},
+							Env: []corev1.EnvVar{
+								{
+									Name: "SERVICE_NAME",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
+										},
+									},
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("50Mi"),
+								},
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("50Mi"),
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "shared",
+									MountPath: naming.SharedDirName,
+									ReadOnly:  true,
+								},
+								{
+									Name:      scyllaReplaceAddressVolumeName,
+									MountPath: naming.ScyllaReplaceAddressDirName,
 									ReadOnly:  false,
 								},
 							},
@@ -328,6 +379,11 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								{
 									Name:      "scylla-client-config-volume",
 									MountPath: naming.ScyllaClientConfigDirName,
+									ReadOnly:  true,
+								},
+								{
+									Name:      scyllaReplaceAddressVolumeName,
+									MountPath: naming.ScyllaReplaceAddressDirName,
 									ReadOnly:  true,
 								},
 							},

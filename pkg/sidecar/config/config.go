@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -226,10 +227,14 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 			args["alternator-write-isolation"] = pointer.StringPtr(cluster.Spec.Alternator.WriteIsolation)
 		}
 	}
+
 	// If node is being replaced
 	if addr, ok := m.ServiceLabels[naming.ReplaceLabel]; ok {
 		args["replace-address-first-boot"] = pointer.StringPtr(addr)
+	} else if _, err = ioutil.ReadFile(path.Join(naming.ScyllaReplaceAddressDirName, naming.ScyllaReplaceAddressFileName)); err == nil {
+		args["replace-address-first-boot"] = pointer.StringPtr(m.StaticIP)
 	}
+
 	// See if we need to use cpu-pinning
 	// TODO: Add more checks to make sure this is valid.
 	// eg. parse the cpuset and check the number of cpus is the same as cpu limits

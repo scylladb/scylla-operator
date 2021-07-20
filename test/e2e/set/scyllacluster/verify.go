@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
+
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controller/scyllacluster/util"
@@ -105,7 +107,7 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 	verifyPersistentVolumeClaims(ctx, kubeClient.CoreV1(), sc)
 
 	// TODO: Use scylla client to check at least "UN"
-	scyllaClient, hosts, err := getScyllaClient(ctx, kubeClient.CoreV1(), sc)
+	scyllaClient, hosts, err := scyllaclient.GetScyllaClientForScyllaCluster(ctx, kubeClient.CoreV1(), sc)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(hosts).To(o.HaveLen(memberCount))
 

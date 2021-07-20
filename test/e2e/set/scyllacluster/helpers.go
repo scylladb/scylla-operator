@@ -7,17 +7,12 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/scylladb/go-log"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1"
-	helpers2 "github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/scheme"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -265,62 +260,6 @@ func getStatefulSetsForScyllaCluster(ctx context.Context, client appv1client.App
 	}
 
 	return res, nil
-}
-
-func getScyllaClient(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) (*scyllaclient.Client, []string, error) {
-	serviceList, err := client.Services(sc.Namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: labels.Set{
-			naming.ClusterNameLabel: sc.Name,
-		}.AsSelector().String(),
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var hosts []string
-	for _, s := range serviceList.Items {
-		if s.Spec.Type != corev1.ServiceTypeClusterIP {
-			return nil, nil, fmt.Errorf("service %s/%s is of type %q instead of %q", s.Namespace, s.Name, s.Spec.Type, corev1.ServiceTypeClusterIP)
-		}
-
-		// TODO: Fix labeling in the operator so it can be selected.
-		if s.Name == naming.HeadlessServiceNameForCluster(sc) {
-			continue
-		}
-
-		if s.Spec.ClusterIP == corev1.ClusterIPNone {
-			return nil, nil, fmt.Errorf("service %s/%s doesn't have a ClusterIP", s.Namespace, s.Name)
-		}
-
-		hosts = append(hosts, s.Spec.ClusterIP)
-	}
-
-	if len(hosts) < 1 {
-		return nil, nil, fmt.Errorf("no services found")
-	}
-
-	tokenSecret, err := client.Secrets(sc.Namespace).Get(ctx, naming.AgentAuthTokenSecretName(sc.Name), metav1.GetOptions{})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	authToken, err := helpers2.GetAgentAuthTokenFromSecret(tokenSecret)
-	if err != nil {
-		return nil, nil, fmt.Errorf("can't get auth token: %w", err)
-	}
-
-	// TODO: unify logging
-	logger, _ := log.NewProduction(log.Config{
-		Level: zap.NewAtomicLevelAt(zapcore.InfoLevel),
-	})
-	cfg := scyllaclient.DefaultConfig(authToken, hosts...)
-
-	scyllaClient, err := scyllaclient.NewClient(cfg, logger.Named("scylla_client"))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return scyllaClient, hosts, nil
 }
 
 // getManagerClient gets managerClient using IP address. E2E tests shouldn't rely on InCluster DNS.

@@ -274,7 +274,8 @@ define generate-operator-manifests
 	mv '$(3)'/scylla-operator/templates/webhookserver.service.yaml '$(2)'/10_webhookserver.service.yaml
 	mv '$(3)'/scylla-operator/templates/webhookserver.serviceaccount.yaml '$(2)'/10_webhookserver.serviceaccount.yaml
 	mv '$(3)'/scylla-operator/templates/operator.serviceaccount.yaml '$(2)'/10_operator.serviceaccount.yaml
-	mv '$(3)'/scylla-operator/templates/pdb.yaml '$(2)'/10_pdb.yaml
+	mv '$(3)'/scylla-operator/templates/operator.pdb.yaml '$(2)'/10_operator.pdb.yaml
+	mv '$(3)'/scylla-operator/templates/webhookserver.pdb.yaml '$(2)'/10_webhookserver.pdb.yaml
 
 	mv '$(3)'/scylla-operator/templates/clusterrolebinding.yaml '$(2)'/20_clusterrolebinding.yaml
 

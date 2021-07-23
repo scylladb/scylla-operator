@@ -47,9 +47,9 @@ spec:
   network:
     hostNetworking: true
   datacenter:
-    name: <gcp_zone>
+    name: <gcp_region>
     racks:
-      - name: <gcp_region>
+      - name: <gcp_zone>
         scyllaConfig: "scylla-config"
         scyllaAgentConfig: "scylla-agent-config"
         members: 2

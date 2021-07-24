@@ -9,9 +9,6 @@ package naming
 //
 // See the sidecar design doc for more details.
 const (
-	// SeedLabel determines if a member is a seed or not.
-	SeedLabel = "scylla/seed"
-
 	// DecommissionedLabel expresses the intent to decommission
 	// the specific member. The presence of the label expresses
 	// the intent to decommission. If the value is true, it means

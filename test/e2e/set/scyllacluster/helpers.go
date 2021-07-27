@@ -35,12 +35,16 @@ import (
 )
 
 func rolloutTimeoutForScyllaCluster(sc *scyllav1.ScyllaCluster) time.Duration {
-	members := int64(0)
+	return baseRolloutTimout + time.Duration(getMemberCount(sc))*memberRolloutTimeout
+}
+
+func getMemberCount(sc *scyllav1.ScyllaCluster) int32 {
+	members := int32(0)
 	for _, r := range sc.Spec.Datacenter.Racks {
-		members += int64(r.Members)
+		members += r.Members
 	}
 
-	return baseRolloutTimout + time.Duration(members)*memberRolloutTimeout
+	return members
 }
 
 func contextForRollout(parent context.Context, sc *scyllav1.ScyllaCluster) (context.Context, context.CancelFunc) {
@@ -268,31 +272,9 @@ func getStatefulSetsForScyllaCluster(ctx context.Context, client appv1client.App
 }
 
 func getScyllaClient(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) (*scyllaclient.Client, []string, error) {
-	serviceList, err := client.Services(sc.Namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: labels.Set{
-			naming.ClusterNameLabel: sc.Name,
-		}.AsSelector().String(),
-	})
+	hosts, err := getHosts(ctx, client, sc)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	var hosts []string
-	for _, s := range serviceList.Items {
-		if s.Spec.Type != corev1.ServiceTypeClusterIP {
-			return nil, nil, fmt.Errorf("service %s/%s is of type %q instead of %q", s.Namespace, s.Name, s.Spec.Type, corev1.ServiceTypeClusterIP)
-		}
-
-		// TODO: Fix labeling in the operator so it can be selected.
-		if s.Name == naming.HeadlessServiceNameForCluster(sc) {
-			continue
-		}
-
-		if s.Spec.ClusterIP == corev1.ClusterIPNone {
-			return nil, nil, fmt.Errorf("service %s/%s doesn't have a ClusterIP", s.Namespace, s.Name)
-		}
-
-		hosts = append(hosts, s.Spec.ClusterIP)
 	}
 
 	if len(hosts) < 1 {
@@ -321,6 +303,37 @@ func getScyllaClient(ctx context.Context, client corev1client.CoreV1Interface, s
 	}
 
 	return scyllaClient, hosts, nil
+}
+
+func getHosts(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
+	serviceList, err := client.Services(sc.Namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: labels.Set{
+			naming.ClusterNameLabel: sc.Name,
+		}.AsSelector().String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var hosts []string
+	for _, s := range serviceList.Items {
+		if s.Spec.Type != corev1.ServiceTypeClusterIP {
+			return nil, fmt.Errorf("service %s/%s is of type %q instead of %q", s.Namespace, s.Name, s.Spec.Type, corev1.ServiceTypeClusterIP)
+		}
+
+		// TODO: Fix labeling in the operator so it can be selected.
+		if s.Name == naming.HeadlessServiceNameForCluster(sc) {
+			continue
+		}
+
+		if s.Spec.ClusterIP == corev1.ClusterIPNone {
+			return nil, fmt.Errorf("service %s/%s doesn't have a ClusterIP", s.Namespace, s.Name)
+		}
+
+		hosts = append(hosts, s.Spec.ClusterIP)
+	}
+
+	return hosts, nil
 }
 
 // getManagerClient gets managerClient using IP address. E2E tests shouldn't rely on InCluster DNS.

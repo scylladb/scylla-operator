@@ -38,6 +38,15 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = waitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, scyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
+		di, err := NewDataInserter(ctx, f.KubeClient().CoreV1(), sc, 1)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer di.Close()
+
+		err = di.Insert()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		verifyScyllaCluster(ctx, f.KubeClient(), sc, di)
+
 		framework.By("Scaling the ScyllaCluster to 2 replicas")
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
 			ctx,
@@ -55,7 +64,14 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = waitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, scyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		verifyScyllaCluster(ctx, f.KubeClient(), sc, di)
+
+		di, err = NewDataInserter(ctx, f.KubeClient().CoreV1(), sc, 1)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer di.Close()
+
+		err = di.Insert()
+		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Scaling the ScyllaCluster back to 1 replica")
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
@@ -74,7 +90,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = waitForScyllaClusterState(waitCtx3, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, scyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		verifyScyllaCluster(ctx, f.KubeClient(), sc, di)
 
 		framework.By("Scaling the ScyllaCluster back to 2 replicas to make sure there isn't an old (decommissioned) storage in place")
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
@@ -93,6 +109,6 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = waitForScyllaClusterState(waitCtx4, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, scyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		verifyScyllaCluster(ctx, f.KubeClient(), sc, di)
 	})
 })

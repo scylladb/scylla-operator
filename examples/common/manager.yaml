@@ -290,6 +290,12 @@ spec:
         volumeMounts:
         - mountPath: /mnt/etc/scylla-manager
           name: scylla-manager-config
+        readinessProbe:
+          httpGet:
+            path: /api/v1/clusters
+            port: 5080
+          periodSeconds: 10
+          timeoutSeconds: 3
       volumes:
       - configMap:
           name: scylla-manager-config

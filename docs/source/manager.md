@@ -47,11 +47,11 @@ Deploy the Scylla Manager using the following commands:
 kubectl apply -f examples/common/manager.yaml
 ```
 
-This will install the Scylla Manager in the `scylla-manager-system` namespace.
+This will install the Scylla Manager in the `scylla-manager` namespace.
 You can check if the Scylla Manager is up and running with:
 
 ```console
-kubectl -n scylla-manager-system get pods
+kubectl -n scylla-manager get pods
 NAME                                               READY   STATUS    RESTARTS   AGE
 scylla-manager-cluster-manager-dc-manager-rack-0   2/2     Running   0          37m
 scylla-manager-controller-0                        1/1     Running   0          28m
@@ -67,25 +67,25 @@ To see if Scylla Manager is fully up and running we can check their logs.
 To do this, execute following command:
 
  ```console
-kubectl -n scylla-manager-system logs scylla-manager-controller-0
+kubectl -n scylla-manager logs scylla-manager-controller-0
 ```
 
 The output should be something like:
 ```console
-{"L":"INFO","T":"2020-09-23T11:25:27.882Z","M":"Scylla Manager Controller started","version":"","build_date":"","commit":"","built_by":"","go_version":"","options":{"Name":"scylla-manager-controller-0","Namespace":"scylla-manager-system","LogLevel":"debug","ApiAddress":"http://127.0.0.1:5080/api/v1"},"_trace_id":"LQEJV3kDR5Gx9M3XQ2YnnQ"}
+{"L":"INFO","T":"2020-09-23T11:25:27.882Z","M":"Scylla Manager Controller started","version":"","build_date":"","commit":"","built_by":"","go_version":"","options":{"Name":"scylla-manager-controller-0","Namespace":"scylla-manager","LogLevel":"debug","ApiAddress":"http://127.0.0.1:5080/api/v1"},"_trace_id":"LQEJV3kDR5Gx9M3XQ2YnnQ"}
 {"L":"INFO","T":"2020-09-23T11:25:28.435Z","M":"Registering Components.","_trace_id":"LQEJV3kDR5Gx9M3XQ2YnnQ"}
 ```
 
 To check logs of Scylla Manager itself, use following command:
 ```console
-kubectl -n scylla-manager-system logs scylla-manager-scylla-manager-7bd9f968b9-w25jw
+kubectl -n scylla-manager logs scylla-manager-scylla-manager-7bd9f968b9-w25jw
 ```
 
 The output should be something like:
 
 ```console
 {"L":"INFO","T":"2020-09-23T11:26:53.238Z","M":"Scylla Manager Server","version":"2.1.2-0.20200816.76cc4dcc","pid":1,"_trace_id":"xQhkJ0OuR8e6iMDEpM62Hg"}
-{"L":"INFO","T":"2020-09-23T11:26:54.519Z","M":"Using config","config":{"HTTP":"127.0.0.1:5080","HTTPS":"","TLSCertFile":"/var/lib/scylla-manager/scylla_manager.crt","TLSKeyFile":"/var/lib/scylla-manager/scylla_manager.key","TLSCAFile":"","Prometheus":":56090","PrometheusScrapeInterval":5000000000,"debug":"127.0.0.1:56112","Logger":{"Mode":"stderr","Level":"info","Development":false},"Database":{"Hosts":["scylla-manager-cluster-manager-dc-manager-rack-0.scylla-manager-system.svc"],"SSL":false,"User":"","Password":"","LocalDC":"","Keyspace":"scylla_manager","MigrateDir":"/etc/scylla-manager/cql","MigrateTimeout":30000000000,"MigrateMaxWaitSchemaAgreement":300000000000,"ReplicationFactor":1,"Timeout":600000000,"TokenAware":true},"SSL":{"CertFile":"","Validate":true,"UserCertFile":"","UserKeyFile":""},"Healthcheck":{"Timeout":250000000,"SSLTimeout":750000000},"Backup":{"DiskSpaceFreeMinPercent":10,"AgeMax":43200000000000},"Repair":{"SegmentsPerRepair":1,"ShardParallelMax":0,"ShardFailedSegmentsMax":100,"PollInterval":200000000,"ErrorBackoff":300000000000,"AgeMax":0,"ShardingIgnoreMsbBits":12}},"config_files":["/mnt/etc/scylla-manager/scylla-manager.yaml"],"_trace_id":"xQhkJ0OuR8e6iMDEpM62Hg"}
+{"L":"INFO","T":"2020-09-23T11:26:54.519Z","M":"Using config","config":{"HTTP":"127.0.0.1:5080","HTTPS":"","TLSCertFile":"/var/lib/scylla-manager/scylla_manager.crt","TLSKeyFile":"/var/lib/scylla-manager/scylla_manager.key","TLSCAFile":"","Prometheus":":56090","PrometheusScrapeInterval":5000000000,"debug":"127.0.0.1:56112","Logger":{"Mode":"stderr","Level":"info","Development":false},"Database":{"Hosts":["scylla-manager-cluster-manager-dc-manager-rack-0.scylla-manager.svc"],"SSL":false,"User":"","Password":"","LocalDC":"","Keyspace":"scylla_manager","MigrateDir":"/etc/scylla-manager/cql","MigrateTimeout":30000000000,"MigrateMaxWaitSchemaAgreement":300000000000,"ReplicationFactor":1,"Timeout":600000000,"TokenAware":true},"SSL":{"CertFile":"","Validate":true,"UserCertFile":"","UserKeyFile":""},"Healthcheck":{"Timeout":250000000,"SSLTimeout":750000000},"Backup":{"DiskSpaceFreeMinPercent":10,"AgeMax":43200000000000},"Repair":{"SegmentsPerRepair":1,"ShardParallelMax":0,"ShardFailedSegmentsMax":100,"PollInterval":200000000,"ErrorBackoff":300000000000,"AgeMax":0,"ShardingIgnoreMsbBits":12}},"config_files":["/mnt/etc/scylla-manager/scylla-manager.yaml"],"_trace_id":"xQhkJ0OuR8e6iMDEpM62Hg"}
 {"L":"INFO","T":"2020-09-23T11:26:54.519Z","M":"Checking database connectivity...","_trace_id":"xQhkJ0OuR8e6iMDEpM62Hg"}
 ```
 
@@ -119,7 +119,7 @@ You can use this ID to talk to Scylla Manager using `sctool` CLI installed in Sc
 You can also use Cluster name in `namespace/cluster-name` format.
 
 ```console
-kubectl -n scylla-manager-system exec -ti scylla-manager-scylla-manager-7bd9f968b9-w25jw -- sctool task list
+kubectl -n scylla-manager exec -ti scylla-manager-scylla-manager-7bd9f968b9-w25jw -- sctool task list
 
 Cluster: scylla/simple-cluster (d1d532cd-49f2-4c97-9263-25126532803b)
 ╭─────────────────────────────────────────────────────────────┬──────────────────────────────────────┬────────────────────────────────┬────────╮
@@ -168,7 +168,7 @@ Consult Scylla Manager documentation for details on how to set it up.
 Scylla Manager Controller will spot this change and will schedule tasks in Scylla Manager.
 
 ```console
-kubectl -n scylla-manager-system exec -ti scylla-manager-scylla-manager-7bd9f968b9-w25jw -- sctool task list
+kubectl -n scylla-manager exec -ti scylla-manager-scylla-manager-7bd9f968b9-w25jw -- sctool task list
 
 Cluster: scylla/simple-cluster (d1d532cd-49f2-4c97-9263-25126532803b)
 ╭─────────────────────────────────────────────────────────────┬──────────────────────────────────────┬────────────────────────────────┬────────╮
@@ -187,7 +187,7 @@ As you can see, we have two new tasks, weekly recurring backup, and one repair w
 To check progress of run you can use following command:
 
 ```console
-kubectl -n scylla-manager-system exec -ti scylla-manager-scylla-manager-7bd9f968b9-w25jw -- sctool task progress --cluster d1d532cd-49f2-4c97-9263-25126532803b repair/d4946360-c29d-4bb4-8b9d-619ada495c2a
+kubectl -n scylla-manager exec -ti scylla-manager-scylla-manager-7bd9f968b9-w25jw -- sctool task progress --cluster d1d532cd-49f2-4c97-9263-25126532803b repair/d4946360-c29d-4bb4-8b9d-619ada495c2a
 Status:         RUNNING
 Start time:     23 Sep 20 14:38:42 UTC
 Duration:       13s
@@ -221,8 +221,8 @@ kubectl delete -f examples/common/manager.yaml
 If the Scylla Manager does not come up, the first step would be to examine the Manager and Controller logs:
 
 ```console
-kubectl -n scylla-manager-system logs -f scylla-manager-controller-0 scylla-manager-controller
-kubectl -n scylla-manager-system logs -f scylla-manager-controller-0 scylla-manager-scylla-manager-7bd9f968b9-w25jw
+kubectl -n scylla-manager logs -f scylla-manager-controller-0 scylla-manager-controller
+kubectl -n scylla-manager logs -f scylla-manager-controller-0 scylla-manager-scylla-manager-7bd9f968b9-w25jw
 ```
 
 

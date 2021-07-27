@@ -16,7 +16,6 @@ require (
 	github.com/go-openapi/swag v0.19.5
 	github.com/go-openapi/validate v0.19.8
 	github.com/gocql/gocql v0.0.0-20200815110948-5378c8f664e9
-	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/go-cmp v0.5.6
 	github.com/googleapis/gnostic v0.5.1 // indirect
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed
@@ -29,6 +28,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/scylladb/go-log v0.0.4
 	github.com/scylladb/go-set v1.0.2
+	github.com/scylladb/gocqlx/v2 v2.4.0
 	github.com/shurcooL/githubv4 v0.0.0-20201206200315-234843c633fa
 	github.com/shurcooL/graphql v0.0.0-20200928012149-18c5c3165e3a // indirect
 	github.com/spf13/cobra v1.1.1

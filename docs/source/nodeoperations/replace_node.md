@@ -1,6 +1,6 @@
 # Replacing a Scylla node
 
-### Replacing a dead non-seed node
+### Replacing a dead node
 In the case of a host failure, it may not be possible to bring back the node to life.
 
 Replace dead node operation will cause the other nodes in the cluster to stream data to the node that was replaced.
@@ -72,35 +72,3 @@ _This procedure is for replacing one dead node. To replace more than one dead no
    ```
 1. Run the repair on the cluster to make sure that the data is synced with the other nodes in the cluster. 
    You can use [Scylla Manager](../manager.md) to run the repair.
-
-### Replacing a dead seed node
-
-1. Degrade the seed node (you lost) to a non-seed node. This really doesn't do anything at this point, except Operator will treat this pod differently.
-    ```
-    kubectl -n scylla label svc <svc-name> scylla/seed-
-    ```
-
-1. Mark Service with replace label to tell Operator that this node must be replaced.
-    ```
-    kubectl -n scylla label svc <svc-name> scylla/replace=""
-    ```
-   Operator will recreate the corresponding Pod, Service and PVC. Seed nodes are always the first 2 pods in a rack, 
-   so the recreated service will again be a seed node.
-   This causes Scylla to fail to start because seed nodes cannot be replaced.
-
-1. Remove the seed label again, and manually delete the pod, in order to allow the sidecar to pick up the state we want.
-    ```   
-    kubectl -n scylla label svc <svc-name> scylla/seed-
-    kubectl -n scylla delete pod <pod-name>
-    ```
-
-1. Scylla will start with non-seed mode, and it will start replacing the old node.
-
-1. Once pod become ready, mark pod as a seed again:
-    ```   
-    kubectl -n scylla label svc <svc-name> scylla/seed=""
-    ```
-1. Initiate a rolling restart of rack to pick up seed changes on other nodes.
-    ```
-    kubectl -n scylla rollout restart statefulset.apps/<rack-sts-name>
-    ```

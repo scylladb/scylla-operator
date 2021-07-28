@@ -14,7 +14,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -244,18 +243,15 @@ func (scc *Controller) syncServices(
 					Name:      svc.Name,
 				},
 			}
-			klog.V(2).InfoS("Evicting the Pod to replace member",
+			klog.V(2).InfoS("Deleting the Pod to replace member",
 				"ScyllaCluster", klog.KObj(sc),
 				"Service", klog.KObj(svc),
 				"Pod", klog.KObj(podMeta),
 			)
-			err = scc.kubeClient.CoreV1().Pods(podMeta.Namespace).Evict(ctx, &policyv1beta1.Eviction{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: podMeta.Name,
-				},
-				DeleteOptions: &metav1.DeleteOptions{
-					PropagationPolicy: &backgroundPropagationPolicy,
-				},
+			// TODO: Revert back to eviction when it's fixed in kubernetes 1.19.z (#732)
+			//       (https://github.com/kubernetes/kubernetes/issues/103970)
+			err = scc.kubeClient.CoreV1().Pods(podMeta.Namespace).Delete(ctx, podMeta.Name, metav1.DeleteOptions{
+				PropagationPolicy: &backgroundPropagationPolicy,
 			})
 			if err != nil {
 				if apierrors.IsNotFound(err) {

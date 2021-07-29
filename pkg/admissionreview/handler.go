@@ -8,6 +8,7 @@ import (
 
 	admissionv1 "k8s.io/api/admission/v1"
 	v1 "k8s.io/api/admission/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -89,14 +90,22 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		responseAdmissionReview.Response = &v1.AdmissionResponse{
 			UID:     requestedAdmissionReview.Request.UID,
 			Allowed: funcErr == nil,
-			Result: &metav1.Status{
-				Message: func() string {
-					if funcErr == nil {
-						return ""
-					}
-					return funcErr.Error()
-				}(),
-			},
+			Result: func() *metav1.Status {
+				s, ok := funcErr.(apierrors.APIStatus)
+				if ok {
+					sts := s.Status()
+					return &sts
+				}
+
+				return &metav1.Status{
+					Message: func() string {
+						if funcErr == nil {
+							return ""
+						}
+						return funcErr.Error()
+					}(),
+				}
+			}(),
 		}
 		responseObj = responseAdmissionReview
 

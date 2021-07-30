@@ -34,8 +34,8 @@ OPERATOR_IMAGE_REF=${1}
 deploy_dir=${ARTIFACTS_DIR}/deploy
 mkdir -p "${deploy_dir}/"{operator,manager}
 
-cp ./deploy/manager/dev/*.yaml "${deploy_dir}/manager"
-cp ./deploy/operator/*.yaml "${deploy_dir}/operator"
+cp ./deploy/manifests/manager/dev/*.yaml "${deploy_dir}/manager"
+cp ./deploy/manifests/operator/*.yaml "${deploy_dir}/operator"
 cp ./examples/common/cert-manager.yaml "${deploy_dir}/"
 
 for f in $( find "${deploy_dir}"/ -type f -name '*.yaml' ); do

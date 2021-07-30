@@ -110,7 +110,7 @@ jobs:
         curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key | sudo apt-key add -
         sudo apt-get update
         sudo apt-get -y install podman
-    - name: Build image
+    - name: Build operator image
       run: |
         set -x
         # Avoid podman permission error on Ubuntu 20.04 by using it as root, although it shouldn't be needed.
@@ -118,11 +118,24 @@ jobs:
         sudo podman build --format=docker --squash -f ./Dockerfile -t '${{ env.image_repo_ref }}:ci' .
         sudo podman images '${{ env.image_repo_ref }}:ci'
         sudo podman save '${{ env.image_repo_ref }}:ci' | lz4 - ~/operatorimage.tar.lz4
-    - name: Upload artifact
+    - name: Build operator bundle image
+      run: |
+        set -x
+        sudo podman build --squash -f ./deploy/olm/bundle.Dockerfile -t '${{ env.image_repo_ref }}:bundle-ci' ./deploy/olm/
+        sudo podman images '${{ env.image_repo_ref }}:bundle-ci'
+        sudo podman save '${{ env.image_repo_ref }}:bundle-ci' | lz4 - ~/bundleimage.tar.lz4
+    - name: Upload operator image artifact
       uses: actions/upload-artifact@v2
       with:
         name: operatorimage.tar.lz4
         path: ~/operatorimage.tar.lz4
+        if-no-files-found: error
+        retention-days: ${{ env.retention_days }}
+    - name: Upload operator bundle image artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: bundleimage.tar.lz4
+        path: ~/bundleimage.tar.lz4
         if-no-files-found: error
         retention-days: ${{ env.retention_days }}
 
@@ -222,6 +235,116 @@ jobs:
         if-no-files-found: error
         retention-days: ${{ env.retention_days }}
 
+  test-e2e-olm:
+    name: Test e2e (OLM)
+    runs-on: ubuntu-20.04
+    needs: images
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: ${{ env.git_repo_path }}
+        fetch-depth: 0  # also fetch tags
+    - name: Create artifacts dir
+      env:
+        ARTIFACTS_DIR: ${{ runner.temp }}/e2e-artifacts
+      run: |
+        set -x
+        mkdir "${ARTIFACTS_DIR}"
+        echo "ARTIFACTS_DIR=${ARTIFACTS_DIR}" | tee -a ${GITHUB_ENV}
+    - uses: actions/download-artifact@v2
+      with:
+        name: operatorimage.tar.lz4
+        path: ~/
+    - uses: actions/download-artifact@v2
+      with:
+        name: bundleimage.tar.lz4
+        path: ~/
+    - name: Load images
+      run: |
+        set -x
+        unlz4 ~/operatorimage.tar.lz4 - | docker load
+        unlz4 ~/bundleimage.tar.lz4 - | docker load
+        # docker looses the registry part on save/load
+        docker tag "$( echo "${image_repo_ref}:ci" | sed -E -e 's~[^/]+/(.*)~\1~' )" "${image_repo_ref}:ci"
+        docker tag "$( echo "${image_repo_ref}:bundle-ci" | sed -E -e 's~[^/]+/(.*)~\1~' )" "${image_repo_ref}:bundle-ci"
+        docker images '${{ env.image_repo_ref }}:ci'
+        docker images '${{ env.image_repo_ref }}:bundle-ci'
+    - name: Setup go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.go_version }}
+    - name: Install tools
+      run: |
+        set -euExo pipefail
+
+        go install github.com/mikefarah/yq/v4@v4.6.1
+
+        # opm can't be installed with `go install` because it uses replace directives that are not supported yet.
+        curl --fail -L "https://github.com/operator-framework/operator-registry/releases/download/$( curl -s -L https://api.github.com/repos/operator-framework/operator-registry/releases/latest | jq -r '.tag_name' )/linux-amd64-opm" -o ~/go/bin/opm && chmod +x ~/go/bin/opm
+        opm version
+    - name: Setup minikube
+      uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/setup-minikube
+    - name: Deploy scylla-operator
+      run: |
+        set -euExo pipefail
+
+        #timeout 10m ./hack/ci-deploy.sh '${{ env.image_repo_ref }}:ci'
+
+        kubectl get pods -A
+    - name: Tolerate flakes on promotion jobs
+      if: ${{ github.event_name != 'pull_request' }}
+      run: |
+        echo "FLAKE_ATTEMPTS=5" | tee -a ${GITHUB_ENV}
+    - name: Run e2e
+      run: |
+        set -euExo pipefail
+
+        flake_attempts=0
+        if [[ -v 'FLAKE_ATTEMPTS' ]]; then
+          flake_attempts="${FLAKE_ATTEMPTS}"
+        fi
+
+        timeout 60m docker run --user="$( id -u ):$( id -g )" --rm \
+        --entrypoint=/usr/bin/scylla-operator-tests \
+        -v="${ARTIFACTS_DIR}:${ARTIFACTS_DIR}:rw" \
+        -v="${HOME}/.kube/config:/kubeconfig:ro" -e='KUBECONFIG=/kubeconfig' \
+        '${{ env.image_repo_ref }}:ci' run --artifacts-dir="${ARTIFACTS_DIR}" --flake-attempts="${flake_attempts}"
+    - name: Dump cluster state
+      if: ${{ always() }}
+      working-directory: ${{ runner.temp }}
+      run: timeout 10m ${{ env.git_repo_path }}/hack/ci-gather-artifacts.sh
+    - name: Get machine logs and info
+      if: ${{ always() }}
+      working-directory: ${{ runner.temp }}/e2e-artifacts
+      run: |
+        set -x
+        docker info > docker.info
+        docker images -a > docker.images
+        docker stats -a --no-stream --no-trunc > docker.stats
+        free -h > free
+        journalctl -u kubelet > kubelet.log
+    - name: Collect audit logs
+      if: ${{ always() }}
+      working-directory: ${{ runner.temp }}/e2e-artifacts
+      run: |
+        set -euEx -o pipefail
+        sudo cat $( ls /var/log/minikube/kube-apiserver-audit*.log | sort -n ) > ./kube-apiserver-audit.log
+        jq -s 'group_by(.user.username) | map({"user": .[0].user.username, "total": length, "verbs": (group_by(.verb) | map({"key":.[0].verb, "value": length}) | from_entries)}) | sort_by(.total) | reverse' ./kube-apiserver-audit.log > ./api-call-stats.json
+    - name: Compress artifacts
+      if: ${{ always() }}
+      working-directory: ${{ runner.temp }}
+      run: |
+        set -x
+        tar -c --use-compress-program=lz4 -f ./e2e-artifacts.tar.lz4 "e2e-artifacts/"
+    - name: Upload artifacts
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: e2e-artifacts.tar.lz4
+        path: ${{ runner.temp }}/e2e-artifacts.tar.lz4
+        if-no-files-found: error
+        retention-days: ${{ env.retention_days }}
+
   # TODO: Add upgrade-e2e - use the same image sha from images step
 
   # Dummy step for different promotion jobs to depend on
@@ -232,9 +355,9 @@ jobs:
     - verify
     - verify-deps
     - build-and-test
-#    - test-integration  # flaky
     - images
     - test-e2e
+    - test-e2e-olm
     # TODO: Depend on upgrade-e2e when available
     steps:
     - name: Always succeed
@@ -272,13 +395,20 @@ jobs:
       with:
         name: operatorimage.tar.lz4
         path: ~/
-    - name: Load image
+    - uses: actions/download-artifact@v2
+      with:
+        name: bundleimage.tar.lz4
+        path: ~/
+    - name: Load images
       run: |
         set -x
         unlz4 ~/operatorimage.tar.lz4 - | docker load
+        unlz4 ~/bundleimage.tar.lz4 - | docker load
         # docker looses the registry part on save/load
         docker tag "$( echo "${image_repo_ref}:ci" | sed -E -e 's~[^/]+/(.*)~\1~' )" "${image_repo_ref}:ci"
+        docker tag "$( echo "${image_repo_ref}:bundle-ci" | sed -E -e 's~[^/]+/(.*)~\1~' )" "${image_repo_ref}:bundle-ci"
         docker images '${{ env.image_repo_ref }}:ci'
+        docker images '${{ env.image_repo_ref }}:bundle-ci'
     - name: Login to DockerHub
       uses: docker/login-action@v1
       with:
@@ -288,7 +418,9 @@ jobs:
       run: |
         set -x
         docker tag '${{ env.image_repo_ref }}:ci' '${{ env.image_repo_ref }}:${{ env.IMAGE_TAG }}'
+        docker tag '${{ env.image_repo_ref }}:bundle-ci' '${{ env.image_repo_ref }}:bundle-${{ env.IMAGE_TAG }}'
         docker push '${{ env.image_repo_ref }}:${{ env.IMAGE_TAG }}'
+        docker push '${{ env.image_repo_ref }}:bundle-${{ env.IMAGE_TAG }}'
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@master
       with:

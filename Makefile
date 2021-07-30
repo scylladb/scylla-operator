@@ -1,15 +1,17 @@
 all: build
 
-SHELL :=/bin/bash -euEo pipefail
+SHELL :=/bin/bash -euEo pipefail -O inherit_errexit
 
-IMAGE_TAG ?= latest
-IMAGE_REF ?= docker.io/scylladb/scylla-operator:$(IMAGE_TAG)
+IMAGE_TAG ?=latest
+OLM_VERSION ?=0.0.2-latest
+IMAGE_REF ?=docker.io/scylladb/scylla-operator:$(IMAGE_TAG)
 
 CODEGEN_PKG ?=./vendor/k8s.io/code-generator
 CODEGEN_HEADER_FILE ?=/dev/null
 CODEGEN_APIS_PACKAGE ?=$(GO_PACKAGE)/pkg/api
 CODEGEN_GROUPS_VERSIONS ?="scyllaclusters/v1"
 
+MAKE_REQUIRED_MIN_VERSION:=4.2 # for SHELLSTATUS
 GO_REQUIRED_MIN_VERSION ?=1.16
 
 GIT_TAG ?=$(shell git describe --long --tags --abbrev=7 --match 'v[0-9]*' || echo 'v0.0.0-unknown')
@@ -44,12 +46,12 @@ GO_TEST_ARGS ?=
 GO_TEST_EXTRA_ARGS ?=
 GO_TEST_E2E_EXTRA_ARGS ?=
 
-YQ ?=yq
+YQ ?=yq -e
 
 HELM ?=helm
 HELM_CHANNEL ?=latest
 HELM_CHARTS ?=scylla-operator scylla-manager scylla
-HELM_CHARTS_DIR ?=helm
+HELM_CHARTS_DIR ?=deploy/helm
 HELM_LOCAL_REPO ?=$(HELM_CHARTS_DIR)/repo/$(HELM_CHANNEL)
 HELM_APP_VERSION ?=$(IMAGE_TAG)
 HELM_CHART_VERSION_SUFFIX ?=
@@ -59,7 +61,6 @@ HELM_REPOSITORY ?=https://scylla-operator-charts.storage.googleapis.com/$(HELM_C
 HELM_MANIFEST_CACHE_CONTROL ?=public, max-age=600
 
 CONTROLLER_GEN ?=$(GO) run ./vendor/sigs.k8s.io/controller-tools/cmd/controller-gen --
-CRD_PATH ?= pkg/api/scylla/v1/scylla.scylladb.com_scyllaclusters.yaml
 
 define version-ldflags
 -X $(1).versionFromGit="$(GIT_TAG)" \
@@ -90,6 +91,8 @@ $(if $(strip $(call is_equal_or_higher_version,$($(2)),$(3))),,$(error `$(1)` is
 )
 endef
 
+$(call require_minimal_version,make,MAKE_REQUIRED_MIN_VERSION,$(MAKE_VERSION))
+
 ifneq "$(GO_REQUIRED_MIN_VERSION)" ""
 $(call require_minimal_version,$(GO),GO_REQUIRED_MIN_VERSION,$(GO_VERSION))
 endif
@@ -115,7 +118,7 @@ endef
 
 # $1 - chart name
 define lint-helm
-	helm lint helm/$(1)
+	helm lint deploy/helm/$(1)
 
 endef
 
@@ -164,7 +167,7 @@ update-gofmt:
 
 # We need to force localle so different envs sort files the same way for recursive traversals
 diff :=LC_COLLATE=C diff --no-dereference -N
-
+diff_dereferenced :=LC_COLLATE=C diff -N
 # $1 - temporary directory
 define restore-deps
 	ln -s $(abspath ./) "$(1)"/current
@@ -232,27 +235,36 @@ update-codegen:
 	$(call run-informer-gen,)
 .PHONY: update-codegen
 
-# $1 - target file
-define generate-crd
-	$(CONTROLLER_GEN) crd paths="$(GO_PACKAGES)" output:crd:stdout > '$(1)'
+# $1 - api package (versioned dir, like ./pkg/api/scylla/v1)
+# $2 - output dir
+# We need to cleanup `---` in the yaml output manually because it shouldn't be there and it breaks opm.
+define run-crd-gen
+	$(CONTROLLER_GEN) crd paths='$(1)' output:dir='$(2)'
+	find '$(2)' -mindepth 1 -maxdepth 1 -type f -name '*.yaml' -exec $(YQ) -i e '.' {} \;
+
 endef
 
-update-crd:
-	$(call generate-crd,$(CRD_PATH))
-.PHONY: update-crd
+update-crds:
+	$(call run-crd-gen,./pkg/api/scylla/v1,./pkg/api/scylla/v1)
+.PHONY: update-crds
 
-verify-crd: tmp_file :=$(shell mktemp)
-verify-crd:
-	$(call generate-crd,$(tmp_file))
-	$(diff) '$(tmp_file)' '$(CRD_PATH)' || (echo 'File $(CRD_PATH) is not up-to date. Please run `make update-crd` to update it.' && false)
-.PHONY: verify-crd
+verify-crds: tmp_dir :=$(shell mktemp -d)
+verify-crds:
+	mkdir '$(tmp_dir)'/{original,generated}
+
+	cd pkg/api && find ./ -type f -name '*.yaml' -exec cp --parent {} '$(tmp_dir)'/original \;
+
+	$(call run-crd-gen,./pkg/api/scylla/v1,$(tmp_dir)/generated/scylla/v1)
+
+	$(diff) -r '$(tmp_dir)'/{original,generated} || (echo 'CRD definitions are not up-to date. Please run `make update-crds` to update it or manually remove the ones that should no longer be generated.' && false)
+.PHONY: verify-crds
 
 # $1 - target file
 define generate-helm-schema-scylla
 	$(YQ) eval -j '{"$$schema": "http://json-schema.org/schema#"} * (.spec.versions[] | select(.name == "v1") | \
 	 .schema.openAPIV3Schema.properties.spec) | \
 	 .properties.racks=.properties.datacenter.properties.racks | \
-	 .properties.datacenter={"type": "string"}' $(CRD_PATH) > '$(1)'
+	 .properties.datacenter={"type": "string"}' ./pkg/api/scylla/v1/scylla.scylladb.com_scyllaclusters.yaml > '$(1)'
 endef
 
 # $1 - Scylla schema
@@ -264,8 +276,8 @@ define generate-helm-schema-scylla-manager
 endef
 
 update-helm-schemas:
-	$(call generate-helm-schema-scylla,'$(HELM_CHARTS_DIR)/scylla/values.schema.json')
-	$(call generate-helm-schema-scylla-manager,'$(HELM_CHARTS_DIR)/scylla/values.schema.json','$(HELM_CHARTS_DIR)/scylla-manager/values.schema.json')
+	$(call generate-helm-schema-scylla,$(HELM_CHARTS_DIR)/scylla/values.schema.json)
+	$(call generate-helm-schema-scylla-manager,$(HELM_CHARTS_DIR)/scylla/values.schema.json,$(HELM_CHARTS_DIR)/scylla-manager/values.schema.json)
 .PHONY: update-helm-schemas
 
 verify-helm-schemas: tmp_dir:=$(shell mktemp -d)
@@ -292,7 +304,9 @@ endef
 # $2 - output_dir
 # $3 - tmp_dir
 define generate-operator-manifests
-	$(call generate-manifests-from-helm,scylla-operator,helm/scylla-operator,$(1),$(3))
+	cp -f ./pkg/api/scylla/v1/scylla.scylladb.com_scyllaclusters.yaml '$(2)'/00_scyllaclusters.crd.yaml
+
+	$(call generate-manifests-from-helm,scylla-operator,deploy/helm/scylla-operator,$(1),$(3))
 
 	mv '$(3)'/scylla-operator/templates/clusterrole.yaml '$(2)'/00_clusterrole.yaml
 	mv '$(3)'/scylla-operator/templates/clusterrole_def.yaml '$(2)'/00_clusterrole_def.yaml
@@ -323,7 +337,7 @@ endef
 # $2 - output_dir
 # $3 - tmp_dir
 define generate-manager-manifests-prod
-	$(call generate-manifests-from-helm,scylla-manager,helm/scylla-manager,$(1),$(3))
+	$(call generate-manifests-from-helm,scylla-manager,deploy/helm/scylla-manager,$(1),$(3))
 
 	mv '$(3)'/scylla-manager/templates/controller_clusterrole.yaml '$(2)'/00_controller_clusterrole.yaml
 	mv '$(3)'/scylla-manager/templates/controller_clusterrole_def.yaml '$(2)'/00_controller_clusterrole_def.yaml
@@ -348,7 +362,7 @@ endef
 
 # $1 - output_dir
 define generate-manager-manifests-dev
-	cp -r deploy/manager/prod/. '$(1)'/.
+	cp -r deploy/manifests/manager/prod/. '$(1)'/.
 	$(YQ) eval -i -P '.spec.cpuset = false | .spec.datacenter.racks[0].resources = {"limits": {"cpu": "200m", "memory": "200Mi"}, "requests": {"cpu": "10m", "memory": "100Mi"}}' '$(1)'/50_scyllacluster.yaml
 endef
 
@@ -359,70 +373,194 @@ define set-default-app-version
 endef
 
 update-helm-charts:
-	$(call set-default-app-version,helm/scylla-operator,$(IMAGE_TAG))
-	$(call set-default-app-version,helm/scylla-manager,$(IMAGE_TAG))
+	$(call set-default-app-version,deploy/helm/scylla-operator,$(IMAGE_TAG))
+	$(call set-default-app-version,deploy/helm/scylla-manager,$(IMAGE_TAG))
 .PHONY: update-helm-charts
 
 verify-helm-charts: tmp_dir:=$(shell mktemp -d)
 verify-helm-charts:
-	cp -r helm/scylla-{operator,manager} '$(tmp_dir)'
+	cp -r deploy/helm/scylla-{operator,manager} '$(tmp_dir)'
 
 	$(call set-default-app-version,$(tmp_dir)/scylla-operator,$(IMAGE_TAG))
-	$(diff) -r '$(tmp_dir)'/scylla-operator helm/scylla-operator
+	$(diff) -r '$(tmp_dir)'/scylla-operator deploy/helm/scylla-operator
 
 	$(call set-default-app-version,$(tmp_dir)/scylla-manager,$(IMAGE_TAG))
-	$(diff) -r '$(tmp_dir)'/scylla-manager helm/scylla-manager
+	$(diff) -r '$(tmp_dir)'/scylla-manager deploy/helm/scylla-manager
 .PHONY: verify-helm-charts
 
-update-deploy: tmp_dir:=$(shell mktemp -d)
-update-deploy:
-	$(call generate-operator-manifests,helm/deploy/operator.yaml,deploy/operator,$(tmp_dir))
-	$(call generate-manager-manifests-prod,helm/deploy/manager_prod.yaml,deploy/manager/prod,$(tmp_dir))
-	$(call generate-manager-manifests-dev,deploy/manager/dev)
-.PHONY: update-deploy
+update-deploy-manifests: tmp_dir:=$(shell mktemp -d)
+update-deploy-manifests:
+	$(call generate-operator-manifests,deploy/helm/deploy/operator.yaml,deploy/manifests/operator,$(tmp_dir))
+	$(call generate-manager-manifests-prod,deploy/helm/deploy/manager_prod.yaml,deploy/manifests/manager/prod,$(tmp_dir))
+	$(call generate-manager-manifests-dev,deploy/manifests/manager/dev)
+.PHONY: update-deploy-manifests
 
-verify-deploy: tmp_dir :=$(shell mktemp -d)
-verify-deploy: tmp_dir_generate :=$(shell mktemp -d)
-verify-deploy:
+verify-deploy-manifests: tmp_dir :=$(shell mktemp -d)
+verify-deploy-manifests: tmp_dir_generate :=$(shell mktemp -d)
+verify-deploy-manifests:
 	mkdir -p $(tmp_dir)/{operator,manager/{prod,dev}}
 
-	cp -r deploy/operator/. $(tmp_dir)/operator/.
-	$(call generate-operator-manifests,helm/deploy/operator.yaml,$(tmp_dir)/operator,$(tmp_dir_generate))
-	$(diff) -r '$(tmp_dir)'/operator deploy/operator
+	cp -r deploy/manifests/operator/. $(tmp_dir)/operator/.
+	$(call generate-operator-manifests,deploy/helm/deploy/operator.yaml,$(tmp_dir)/operator,$(tmp_dir_generate))
+	$(diff) -r '$(tmp_dir)'/operator deploy/manifests/operator
 
-	cp -r deploy/manager/prod/. $(tmp_dir)/manager/prod/.
-	$(call generate-manager-manifests-prod,helm/deploy/manager_prod.yaml,$(tmp_dir)/manager/prod,$(tmp_dir_generate))
-	$(diff) -r '$(tmp_dir)'/manager/prod deploy/manager/prod
+	cp -r deploy/manifests/manager/prod/. $(tmp_dir)/manager/prod/.
+	$(call generate-manager-manifests-prod,deploy/helm/deploy/manager_prod.yaml,$(tmp_dir)/manager/prod,$(tmp_dir_generate))
+	$(diff) -r '$(tmp_dir)'/manager/prod deploy/manifests/manager/prod
 
 	$(call generate-manager-manifests-dev,$(tmp_dir)/manager/dev)
-	$(diff) -r '$(tmp_dir)'/manager/dev deploy/manager/dev
+	$(diff) -r '$(tmp_dir)'/manager/dev deploy/manifests/manager/dev
 
-.PHONY: verify-deploy
+.PHONY: verify-deploy-manifests
+
+olm_manifests :=$(wildcard ./deploy/manifests/operator/*.yaml)
+
+olm_manifests_embedded :=$(shell $(YQ) eval-all ' \
+	select( \
+		(.apiVersion == "apps/v1" and .kind == "Deployment") or \
+		( \
+			.apiVersion == "admissionregistration.k8s.io/v1" and \
+			(.kind == "ValidatingWebhookConfiguration" or .kind == "MutatingWebhookConfiguration") \
+		) \
+	) | filename | . as $$item ireduce ([]; . + $$item ) | \
+	 .[] ' $(olm_manifests) \
+)
+ifneq ($(.SHELLSTATUS),0)
+  $(error shell command failed! output was $(olm_manifests_embedded))
+endif
+
+olm_manifests_unused :=$(shell $(YQ) eval-all ' \
+	select( \
+		(.apiVersion == "cert-manager.io/v1") or \
+		(.apiVersion == "v1" and .kind == "Namespace") \
+	) | filename | . as $$item ireduce ([]; . + $$item ) | \
+	 .[] ' $(olm_manifests) \
+)
+ifneq ($(.SHELLSTATUS),0)
+  $(error shell command failed! output was $(olm_manifests_unused))
+endif
+
+olm_manifests_bundle_files :=$(filter-out $(olm_manifests_embedded) $(olm_manifests_unused),$(olm_manifests))
+
+#	.spec.install.spec.clusterPermissions += { \
+#		"serviceAccountName": "scylla-operator", \
+#		"rules": env(scylla_operator_cluster_permissions) \
+#	} | \
+#	.spec.install.spec.clusterPermissions += { \
+#		"serviceAccountName": "scylla-operator", \
+#		"rules": env(scylla_operator_cluster_permissions) \
+#	} | \
+#	.spec.install.spec.permissions = [] | \
+#	.spec.install.spec.clusterPermissions = [] | \
+#	.spec.install.spec.deployments = [] | \
+#	scylla_operator_cluster_permissions=$$( $(YQ) eval '.rules' ./deploy/manifests/operator/00_clusterrole_def.yaml ); \
+#	export scylla_operator_cluster_permissions; \
+# $1 - olm_dir
+#define update-olm-files
+#	cp -f -t '$(1)'/manifests $(olm_manifests_bundle_files)
+#
+#	examples=$$( $(YQ) eval-all -o=json '[.]' '$(1)'/examples/*.yaml ); \
+#	export examples; \
+#	icon=$$( base64 --wrap 0 '$(1)'/icon ); \
+#	export icon; \
+#	icon_mime=$$( file -b --mime-type '$(shell realpath --relative-to ./ '$(1)'/icon)' ); \
+#	export icon_mime; \
+#	$(YQ) eval-all -i -P ' \
+#	select(.apiVersion == "apps/v1" and .kind == "Deployment") as $$deployments | \
+#	select( \
+#		.apiVersion == "admissionregistration.k8s.io/v1" and \
+#		(.kind == "ValidatingWebhookConfiguration" or .kind == "MutatingWebhookConfiguration") \
+#	) as $$webhookconfigs | \
+#	select(.apiVersion == "apiextensions.k8s.io/v1" and .kind == "CustomResourceDefinition" and .metadata.name == "scyllaclusters.scylla.scylladb.com") as $$crd | \
+#	select(fi == 0) | \
+#	.metadata.annotations.alm-examples = strenv(examples) | \
+#	.metadata.name = "scyllaoperator.$(OLM_VERSION)" | \
+#	.spec.version = "$(OLM_VERSION)" | \
+#	.spec.icon = [{"base64data": strenv(icon), "mediatype": strenv(icon_mime)}] | \
+#	.spec.customresourcedefinitions.owned = [] | \
+#	.spec.customresourcedefinitions.owned += { \
+#		"name": $$crd.metadata.name, \
+#		"version": "v1", \
+#		"kind": $$crd.spec.names.kind, \
+#		"displayName": $$crd.spec.names.kind, \
+#		"description": $$crd.spec.versions[] | select(.name == "v1") | .schema.openAPIV3Schema.description \
+#	} | \
+#	.spec.webhookdefinitions = [] | \
+#	.spec.webhookdefinitions += ( \
+#		$$webhookconfigs as $$webhookconfig ireduce ([]; . + ( $$webhookconfig.webhooks[] as $$webhook ireduce ([]; . + { \
+#			"type": $$webhookconfig.kind, \
+#			"generateName": $$webhookconfig.metadata.name, \
+#			"deploymentName": "$$webhook.clientConfig.service.name", \
+#			"containerPort": 0, \
+#			"targetPort": 0, \
+#			"rules": $$webhook.rules // null, \
+#			"failurePolicy": $$webhook.failurePolicy // null, \
+#			"matchPolicy": $$webhook.matchPolicy // null, \
+#			"objectSelector": "" // null, \
+#			"sideEffects": $$webhook.sideEffects // null, \
+#			"timeoutSeconds": $$webhook.timeoutSeconds // null, \
+#			"admissionReviewVersions": $$webhook.admissionReviewVersions // null, \
+#			"reinvocationPolicy": $$webhook.reinvocationPolicy // null, \
+#			"webhookPath": $$webhook.clientConfig.service.webhookPath // null, \
+#			"conversionCRDs": $$webhook.conversionCRDs // null \
+#		}))) \
+#	) | \
+#	.spec.install.spec.deployments = ( $$deployments as $$item ireduce([]; . + {"name": $$item.metadata.name, "spec": $$item.spec}) ) | \
+#	.' '$(1)'/manifests/scyllaoperator.clusterserviceversion.yaml \
+#	$(olm_manifests_embedded) \
+#	./pkg/api/scylla/v1/scylla.scylladb.com_scyllaclusters.yaml
+#
+#endef
+
+define update-olm-files
+	$(GO) run ./cmd/helpers generate-olm-bundle \
+	--version=0.0.4-latest \
+	--csv-file=./deploy/olm/latest/manifests/scyllaoperator.clusterserviceversion.yaml \
+	--icon-file ./deploy/olm/latest/icon.svg \
+	--output-dir=./deploy/olm/latest/ \
+	$$( find ./deploy/olm/latest/examples/ -name '*.yaml' -printf '--example-file=%p ' ) \
+	--loglevel=2 \
+	-- \
+	./deploy/manifests/operator/*.yaml
+
+endef
+
+update-deploy-olm:
+	$(call update-olm-files,deploy/olm/latest)
+.PHONY: update-deploy-olm
+
+verify-deploy-olm: tmp_dir :=$(shell mktemp -d)
+verify-deploy-olm:
+	cp -RL deploy/olm/latest/. $(tmp_dir)/.
+	$(RM) $$( $(YQ) eval-all 'select(.apiVersion != "operators.coreos.com/v1alpha1" and .kind != "ClusterServiceVersion") | filename | . as $$item ireduce ([]; . + $$item) | .[] ' $(tmp_dir)/manifests/*.yaml )
+	$(call update-olm-files,$(tmp_dir)/)
+	$(diff_dereferenced) -r deploy/olm/latest '$(tmp_dir)/'
+.PHONY: verify-deploy-olm
 
 update-examples-operator:
-	$(call concat-manifests,$(sort $(wildcard deploy/operator/*.yaml)),examples/common/operator.yaml)
+	$(call concat-manifests,$(sort $(wildcard deploy/manifests/operator/*.yaml)),examples/common/operator.yaml)
 .PHONY: update-examples-operator
 
-verify-example-operator: tmp_file := $(shell mktemp)
-verify-example-operator:
-	$(call concat-manifests,$(sort $(wildcard deploy/operator/*.yaml)),$(tmp_file))
+verify-examples-operator: tmp_file := $(shell mktemp)
+verify-examples-operator:
+	$(call concat-manifests,$(sort $(wildcard deploy/manifests/operator/*.yaml)),$(tmp_file))
 	$(diff) '$(tmp_file)' examples/common/operator.yaml || (echo 'Operator example is not up-to date. Please run `make update-examples-operator` to update it.' && false)
-.PHONY: verify-example-operator
+.PHONY: verify-examples-operator
 
 update-examples-manager:
-	$(call concat-manifests,$(sort $(wildcard deploy/manager/prod/*.yaml)),examples/common/manager.yaml)
+	$(call concat-manifests,$(sort $(wildcard deploy/manifests/manager/prod/*.yaml)),examples/common/manager.yaml)
 .PHONY: update-examples-manager
 
-verify-example-manager: tmp_file :=$(shell mktemp)
-verify-example-manager:
-	$(call concat-manifests,$(sort $(wildcard deploy/manager/prod/*.yaml)),$(tmp_file))
+verify-examples-manager: tmp_file :=$(shell mktemp)
+verify-examples-manager:
+	$(call concat-manifests,$(sort $(wildcard deploy/manifests/manager/prod/*.yaml)),$(tmp_file))
 	$(diff) '$(tmp_file)' examples/common/manager.yaml || (echo 'Manager example is not up-to date. Please run `make update-examples-manager` to update it.' && false)
-.PHONY: verify-example-manager
+.PHONY: verify-examples-manager
 
 update-examples: update-examples-manager update-examples-operator
 .PHONY: update-examples
 
-verify-examples: verify-example-manager verify-example-operator
+verify-examples: verify-examples-manager verify-examples-operator
 .PHONY: verify-examples
 
 verify-codegen:
@@ -432,10 +570,19 @@ verify-codegen:
 	$(call run-informer-gen,--verify-only)
 .PHONY: verify-codegen
 
-verify: verify-gofmt verify-codegen verify-crd verify-helm-schemas verify-helm-charts verify-deploy verify-examples verify-govet verify-helm-lint
+verify-links:
+	@set -euEo pipefail; broken_links=( $$( find . -type l ! -exec test -e {} \; -print ) ); \
+	if [[ -n "$${broken_links[@]}" ]]; then \
+		echo "The following links are broken:" > /dev/stderr; \
+		ls -l --color=auto $${broken_links[@]}; \
+		exit 1; \
+	fi;
+.PHONY: verify-links
+
+verify: verify-gofmt verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy-manifests verify-examples verify-govet verify-helm-lint verify-links verify-deploy-olm
 .PHONY: verify
 
-update: update-gofmt update-codegen update-crd update-helm-schemas update-helm-charts update-deploy update-examples
+update: update-gofmt update-codegen update-crds update-helm-schemas update-helm-charts update-deploy-manifests update-examples update-deploy-olm
 .PHONY: update
 
 test-unit:

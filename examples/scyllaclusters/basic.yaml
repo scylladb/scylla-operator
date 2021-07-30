@@ -1,0 +1,39 @@
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: basic
+spec:
+  version: 4.4.2
+  agentVersion: 2.3.0
+  developerMode: true
+  datacenter:
+    name: us-east-1
+    racks:
+    - name: us-east-1a
+      members: 3
+      storage:
+        capacity: 100Mi
+      resources:
+        requests:
+          cpu: 10m
+          memory: 100Mi
+        limits:
+          cpu: 1
+          memory: 1Gi
+      placement:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            podAffinityTerm:
+              topologyKey: "kubernetes.io/hostname"
+              labelSelector:
+                matchExpressions:
+                - key: "scylla/cluster"
+                  operator: In
+                  values: ["basic"]
+                - key: "scylla/datacenter"
+                  operator: In
+                  values: ["us-east-1"]
+                - key: "scylla/rack"
+                  operator: In
+                  values: ["us-east-1a"]

@@ -1,0 +1,222 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: |
+      - apiVersion: scylla.scylladb.com/v1
+        kind: ScyllaCluster
+        metadata:
+          creationTimestamp: null
+          name: basic
+        spec:
+          agentVersion: 2.3.0
+          datacenter:
+            name: us-east-1
+            racks:
+            - agentResources: {}
+              members: 3
+              name: us-east-1a
+              placement:
+                podAntiAffinity:
+                  preferredDuringSchedulingIgnoredDuringExecution:
+                  - podAffinityTerm:
+                      labelSelector:
+                        matchExpressions:
+                        - key: scylla/cluster
+                          operator: In
+                          values:
+                          - basic
+                        - key: scylla/datacenter
+                          operator: In
+                          values:
+                          - us-east-1
+                        - key: scylla/rack
+                          operator: In
+                          values:
+                          - us-east-1a
+                      topologyKey: kubernetes.io/hostname
+                    weight: 1
+              resources:
+                limits:
+                  cpu: "1"
+                  memory: 1Gi
+                requests:
+                  cpu: 10m
+                  memory: 100Mi
+              scyllaAgentConfig: ""
+              scyllaConfig: ""
+              storage:
+                capacity: 100Mi
+          developerMode: true
+          network: {}
+          version: 4.4.2
+        status: {}
+  creationTimestamp: null
+  name: scyllaoperator.0.0.4-latest
+spec:
+  apiservicedefinitions: {}
+  cleanup:
+    enabled: false
+  customresourcedefinitions:
+    owned:
+    - description: ScyllaCluster defines a Scylla cluster.
+      displayName: ScyllaCluster
+      kind: ScyllaCluster
+      name: scyllaclusters.scylla.scylladb.com
+      version: v1
+  displayName: ScyllaDB
+  icon:
+  - base64data: PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDI0LjAuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDYuMDAgQnVpbGQgMCkgIC0tPgo8c3ZnIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgeD0iMHB4IiB5PSIwcHgiCgkgdmlld0JveD0iMCAwIDY1MCA0ODUuOSIgc3R5bGU9ImVuYWJsZS1iYWNrZ3JvdW5kOm5ldyAwIDAgNjUwIDQ4NS45OyIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+CjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+Cgkuc3Qwe2ZpbGw6IzNBMkQ1NTt9Cgkuc3Qxe2ZpbGw6IzU3RDFFNTt9Cgkuc3Qye2ZpbGw6I0ZGRkZGRjt9Cjwvc3R5bGU+CjxnIGlkPSJMYXllcl8yIj4KPC9nPgo8ZyBpZD0iTGF5ZXJfMSI+Cgk8cGF0aCBjbGFzcz0ic3QwIiBkPSJNNDUuMywzOTIuNWMwLTYuNCw3LjQtOC44LDEyLjctOC44YzQuNiwwLDEwLjYsMS44LDEzLjYsNS43bDEyLjktMTQuMWMtNy4yLTYuNC0xNi41LTguOS0yNi4yLTguOQoJCWMtMTYuOCwwLTMyLjYsOS41LTMyLjYsMjcuOGMwLDI4LjUsNDAuMSwyMCw0MC4xLDM1LjdjMCw2LTYuOSw4LjktMTMsOC45Yy02LjMsMC0xMi41LTMtMTYuNC04LjFMMjMsNDQ1LjMKCQljOC4xLDcuNSwxNy43LDEwLjcsMjguNywxMC43YzE3LjYsMCwzMy05LDMzLTI4LjFDODQuNywzOTgsNDUuMyw0MDgsNDUuMywzOTIuNSIvPgoJPHBhdGggY2xhc3M9InN0MCIgZD0iTTE0NSw0MTEuMmMwLTE1LjksMTAuNS0yNy41LDI0LjctMjcuNWM3LDAsMTIuNCwyLjUsMTYuMiw3bDE0LjUtMTEuOGMtNy4yLTkuMy0xOS4zLTEyLjYtMjguOS0xMi42CgkJYy0yNi43LDAtNDYuMSwxNy41LTQ2LjEsNDQuOWMwLDI3LjQsMTkuNCw0NC45LDQ2LjEsNDQuOWMxMS43LDAsMjMuOC00LjcsMzAuOS0xNC44bC0xNS43LTExLjdjLTMuOSw1LjgtMTAsOS4yLTE3LjYsOS4yCgkJQzE1NS41LDQzOC43LDE0NSw0MjcuMSwxNDUsNDExLjIiLz4KCTxwb2x5Z29uIGNsYXNzPSJzdDAiIHBvaW50cz0iMjg0LDQxNy40IDMxNi4xLDM2OC41IDI5My43LDM2OC41IDI3NC41LDQwMC40IDI1Ni40LDM2OC41IDIzMywzNjguNSAyNjUuMSw0MTcuNCAyNjUuMSw0NTMuOSAKCQkyODQsNDUzLjkgCSIvPgoJPHBvbHlnb24gY2xhc3M9InN0MCIgcG9pbnRzPSIzNTQuNCw0NTMuOSA0MDguMiw0NTMuOSA0MDguMiw0MzYuNSAzNzMuMyw0MzYuNSAzNzMuMywzNjguNSAzNTQuNCwzNjguNSAJIi8+Cgk8cG9seWdvbiBjbGFzcz0ic3QwIiBwb2ludHM9IjQ1MC42LDQ1My45IDUwNC4zLDQ1My45IDUwNC4zLDQzNi41IDQ2OS41LDQzNi41IDQ2OS41LDM2OC41IDQ1MC42LDM2OC41IAkiLz4KCTxwb2x5Z29uIGNsYXNzPSJzdDAiIHBvaW50cz0iNjI3LDQ1My45IDU4OS44LDM2OC41IDU3NC4yLDM2OC41IDUzNy4zLDQ1My45IDU1OC4xLDQ1My45IDU2NS4yLDQzNS44IDU3MS4xLDQxOS45IDU4MS41LDM5My4zIAoJCTU5Miw0MTkuOSA1OTguNCw0MzUuOCA2MDUuNyw0NTMuOSAJIi8+Cgk8Zz4KCQk8cGF0aCBjbGFzcz0ic3QxIiBkPSJNMzIzLjQsMzIuM2MtNjIuNywwLTEwNy4zLDM5LjYtMTA3LjMsOTUuN2MwLDI2LjksMjgsMTU4LDI4LDE1OGMxLjgsNy44LDkuNCwxMy4xLDE3LjQsMTEuOAoJCQljMS44LTAuMywzLjQtMC45LDQuOS0xLjdsMS4yLTAuMWMyLjgsMS42LDYsMi40LDkuNSwyYzIuOC0wLjMsNS4zLTEuNCw3LjQtM2wzLjQtMC4yYzIuOCwyLjIsNi40LDMuNCwxMC4yLDMuMgoJCQljMy45LTAuMiw3LjMtMS45LDkuOS00LjRsNi0wLjRjMi43LDIuOCw2LjQsNC43LDEwLjYsNC44YzQuNSwwLjEsOC41LTEuNywxMS40LTQuN2w2LjIsMC40YzIuMywyLjMsNS40LDMuOCw4LjksNC4yCgkJCWM0LjEsMC41LDgtMC43LDExLTMuMWwzLjgsMC4yYzEuOCwxLjMsMy45LDIuMyw2LjIsMi43YzMuMywwLjYsNi41LDAuMSw5LjMtMS4zYzEuMiwwLjYsMi42LDEsNCwxLjJjOCwxLjMsMTUuNi0zLjksMTcuNC0xMS44CgkJCWMwLDAsMjgtMTMxLjIsMjgtMTU4QzQzMC42LDcyLDM4Ni4xLDMyLjMsMzIzLjQsMzIuM3oiLz4KCQk8Zz4KCQkJPGNpcmNsZSBjbGFzcz0ic3QyIiBjeD0iMjg4LjciIGN5PSIxMTguMyIgcj0iNDcuOSIvPgoJCQk8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMjg4LjcsMTY4LjdjLTI3LjgsMC01MC41LTIyLjYtNTAuNS01MC41czIyLjYtNTAuNSw1MC41LTUwLjVjMjcuOCwwLDUwLjUsMjIuNiw1MC41LDUwLjUKCQkJCVMzMTYuNSwxNjguNywyODguNywxNjguN3ogTTI4OC43LDczYy0yNSwwLTQ1LjMsMjAuMy00NS4zLDQ1LjNzMjAuMyw0NS4zLDQ1LjMsNDUuM2MyNSwwLDQ1LjMtMjAuMyw0NS4zLTQ1LjNTMzEzLjYsNzMsMjg4LjcsNzMKCQkJCXoiLz4KCQk8L2c+CgkJPHBhdGggY2xhc3M9InN0MCIgZD0iTTI5OC42LDg2LjljLTguMywxLjctOS45LDE5LjgtNSwyNC44YzMuMywzLjMsOS45LDQuMyw5LjksNi42YzAsMi4zLTYuNiwzLjMtOS45LDYuNmMtNSw1LTMuMywyMy4xLDUsMjQuOAoJCQljOS44LDIsMjQuOC05LjksMjQuOC0zMS40UzMwOC40LDg0LjksMjk4LjYsODYuOXoiLz4KCQk8cGF0aCBjbGFzcz0ic3QyIiBkPSJNMjY1LjIsMTgzLjVjMS43LDUsNywxNC40LDEzLjYsMTIuN2MzLjItMC44LDUtNSw1LTExLjYiLz4KCQk8cGF0aCBjbGFzcz0ic3QyIiBkPSJNMzA4LjUsMTc5LjNjMS43LDYuNiwzLjMsMTEuNiw4LjMsMTEuNnMxMS42LTYuNiw5LjktMTguMiIvPgoJCTxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik0zNTAuMSwxNTYuNWMtMi4xLTIuMy01LTQtOC4yLTQuNmwtMC4xLDBjLTAuMSwwLTAuMiwwLTAuMywwYy0xLjQtMC4xLTIuNywxLTIuOCwyLjRjLTAuMSwxLjQsMSwyLjcsMi40LDIuOAoJCQljMS40LDAuMSwyLjgsMC41LDQsMS4yYy0xMi43LDguNi0yNi45LDE0LjgtNDEuOCwxOC4zYy0xNS41LDMuNy0zMS42LDQuNC00Ny40LDIuMWMtMS4yLTAuMi0yLjMsMC42LTIuNSwxLjgKCQkJYy0wLjIsMS4yLDAuNiwyLjMsMS44LDIuNWMyLjQsMC40LDQuOSwwLjcsNy4zLDAuOWMwLDAuMSwwLDAuMiwwLjEsMC4zYzIuMSw2LjMsNy41LDE0LjcsMTQuNSwxNC43YzAuNywwLDEuNC0wLjEsMi4yLTAuMwoJCQljMi42LTAuNiw2LjktMy4zLDYuOS0xNC4xYzAtMC4yLTAuMS0wLjMtMC4xLTAuNWM2LjEtMC41LDEyLjItMS41LDE4LjItMi44YzAuNi0wLjEsMS4yLTAuMywxLjctMC40YzEuNCw1LjYsMy41LDEyLjYsMTAuNSwxMi42CgkJCWMyLjksMCw2LTEuNiw4LjQtNC4zYzItMi4zLDUuMi03LjUsNC4yLTE2LjJjNi45LTMuMSwxMy41LTYuOCwxOS43LTExYzAuNiwxLDEuMSwyLjEsMS4zLDMuM2wwLDBjMC4yLDAuOSwxLDEuNSwxLjksMS40CgkJCWMxLTAuMSwxLjctMC45LDEuNi0xLjlDMzUzLjUsMTYxLjgsMzUyLjIsMTU4LjksMzUwLjEsMTU2LjV6IE0yODEuMSwxODQuNmMwLDUtMS4yLDguNi0zLDljLTMuOSwxLTcuOS00LjgtOS44LTkuMgoJCQljNC4zLDAuMiw4LjUsMC4yLDEyLjgsMEMyODEuMiwxODQuNSwyODEuMSwxODQuNiwyODEuMSwxODQuNnogTTMyMS4yLDE4NS44Yy0xLjMsMS41LTMsMi41LTQuNCwyLjVjLTIuNCwwLTMuOC0yLjEtNS41LTguNwoJCQljNC40LTEuMyw4LjgtMi44LDEzLTQuNUMzMjQuNSwxNzkuNCwzMjMuNCwxODMuMiwzMjEuMiwxODUuOHoiLz4KCQk8Zz4KCQkJPHBhdGggY2xhc3M9InN0MCIgZD0iTTQwMy4yLDU3LjVjLTE5LjktMTcuNy00Ny45LTI3LjUtNzguOS0yNy41Yy0zMSwwLTU5LDkuOC03OC45LDI3LjVjLTIwLDE3LjgtMzEsNDMtMzEsNzAuOAoJCQkJYzAsMjYuOCwyNi45LDE1My4yLDI4LDE1OC42YzEuOSw4LjMsOS4yLDE0LDE3LjQsMTRjMSwwLDEuOS0wLjEsMi45LTAuMmMxLjctMC4zLDMuMy0wLjgsNC45LTEuNmMzLjQsMS41LDcuMiwyLjEsMTAuOSwxLjQKCQkJCWMyLjgtMC41LDUuNC0xLjcsNy42LTMuNWMxLjksMS41LDQuMiwyLjcsNi42LDMuM2MzLjksMSw4LjEsMC43LDExLjgtMWMyLjYtMS4yLDQuOC0zLDYuNS01LjFjMS4zLDEuNiwyLjgsMyw0LjYsNC4xCgkJCQljMS40LDAuOSwyLjksMS41LDQuNSwyYzEuNiwwLjUsMy4yLDAuNyw0LjgsMC43YzEuNiwwLDMuMy0wLjMsNC44LTAuN2MxLjYtMC41LDMuMS0xLjEsNC41LTJjMS40LTAuOSwyLjctMS45LDMuOC0zLjEKCQkJCWMwLjMtMC4zLDAuNi0wLjYsMC44LTAuOWMwLDAsMCwwLDAsMGMyLjgsMy40LDYuOSw1LjgsMTEuMyw2LjRjNC40LDAuNyw5LTAuNCwxMi42LTIuOWMwLjQtMC4yLDAuNy0wLjUsMS0wLjgKCQkJCWMyLjEsMS43LDQuNiwyLjksNy4yLDMuNGMxLjksMC40LDMuOCwwLjUsNS43LDAuM2MxLjctMC4yLDMuMy0wLjYsNC45LTEuM2MxLjQsMC42LDIuOCwxLDQuMywxLjNjOS4zLDEuNSwxOC4zLTQuNSwyMC4zLTEzLjgKCQkJCWMxLjEtNS40LDI4LTEzMS43LDI4LTE1OC42QzQzNC4yLDEwMC41LDQyMy4yLDc1LjQsNDAzLjIsNTcuNXogTTQwMS4xLDI4NS44Yy0xLjQsNi4zLTcuNCwxMC41LTEzLjgsOS44CgkJCQljMS4yLTEuMiwyLjMtMi42LDMuMS00LjFjMC45LTEuNywxLjYtMy41LDEuOS01LjNsMC44LTQuOGwzLjEtMTkuMWMxLTYuNCwyLTEyLjgsMi44LTE5LjJjMC4xLTAuOS0wLjUtMS43LTEuMy0xLjkKCQkJCWMtMC45LTAuMi0xLjksMC40LTIuMSwxLjNjLTEuNCw2LjMtMi43LDEyLjctNCwxOWwtMy43LDE5bC0wLjksNC43Yy0wLjMsMS4zLTAuOCwyLjYtMS40LDMuN2MtMC42LDEuMi0xLjUsMi4yLTIuNSwzLjEKCQkJCWMtMSwwLjktMi4xLDEuNy0zLjMsMi4yYy0xLjIsMC41LTIuNSwwLjktMy44LDEuMWMtMS4zLDAuMi0yLjcsMC00LTAuMmMtMS43LTAuMy0zLjMtMS4xLTQuNy0yYzEuMi0xLjgsMi4yLTMuOCwyLjctNgoJCQkJYzAuMi0wLjUsMC4yLTEuMSwwLjMtMS42YzAtMC4zLDAuMS0wLjYsMC4xLTAuOGwwLjEtMC43bDAuMy0yLjhsMC42LTUuNmwxLjEtMTEuMmMwLjctNy41LDEuNC0xNSwxLjktMjIuNQoJCQkJYzAuMS0wLjktMC42LTEuNy0xLjUtMS44Yy0wLjktMC4xLTEuOCwwLjUtMiwxLjVjLTEuMSw3LjQtMi4xLDE0LjktMy4xLDIyLjNsLTEuNCwxMS4ybC0wLjcsNS42Yy0wLjIsMS44LTAuNCwzLjktMC44LDUuMgoJCQkJYy0wLjcsMy0yLjcsNS43LTUuMyw3LjRjLTIuNiwxLjctNS44LDIuNC04LjgsMS45Yy0zLjEtMC40LTUuOS0yLjEtNy45LTQuNWMtMC41LTAuNi0wLjktMS4yLTEuMy0xLjljMC4zLTAuOCwwLjUtMS42LDAuNy0yLjMKCQkJCWMwLjQtMS42LDAuNC0zLjMsMC40LTQuNmwwLjEtOC4zYzAuMS01LjUsMC4yLTExLjEsMC4yLTE2LjZjMC4xLTUuNSwwLjEtMTEuMSwwLTE2LjZjMC0wLjktMC43LTEuNy0xLjYtMS43CgkJCQljLTEtMC4xLTEuOCwwLjctMS44LDEuNmMtMC4zLDUuNS0wLjcsMTEuMS0wLjksMTYuNmMtMC4zLDUuNS0wLjUsMTEuMS0wLjgsMTYuNmwtMC40LDguM2MwLDAuNywwLDEuNC0wLjEsMgoJCQkJYzAsMC42LTAuMSwxLjEtMC4yLDEuN2MtMC4zLDEuMS0wLjYsMi4yLTEuMiwzLjJjLTIuMSw0LjEtNi42LDYuOC0xMS4yLDYuN2MtMS4xLDAtMi4zLTAuMS0zLjQtMC41Yy0xLjEtMC4zLTIuMS0wLjgtMy4xLTEuMwoJCQkJYy0yLTEuMi0zLjYtMi45LTQuNy00LjljLTAuNi0xLTAuOS0yLjEtMS4yLTMuMmMtMC4zLTEuMS0wLjMtMi4yLTAuNC0zLjdsLTAuNC04LjNjLTAuMi01LjUtMC41LTExLjEtMC44LTE2LjYKCQkJCWMtMC4zLTUuNS0wLjYtMTEuMS0wLjktMTYuNmMtMC4xLTAuOS0wLjgtMS42LTEuNy0xLjZjLTEsMC0xLjcsMC44LTEuNywxLjdjMCw1LjUsMCwxMS4xLDAsMTYuNmMwLDUuNSwwLjEsMTEuMSwwLjIsMTYuNgoJCQkJbDAuMSw4LjNjMCwxLjMsMC4xLDMsMC40LDQuNmMwLjIsMC44LDAuNCwxLjYsMC43LDIuNGMtMS40LDIuMy0zLjQsNC4yLTUuOSw1LjNjLTIuNiwxLjItNS41LDEuNC04LjIsMC43CgkJCQljLTIuNy0wLjctNS4yLTIuMy02LjktNC42Yy0wLjktMS4xLTEuNi0yLjQtMi0zLjdjLTAuMi0wLjctMC40LTEuNC0wLjUtMi4xYy0wLjEtMC4zLTAuMS0wLjgtMC4yLTEuMmwtMC4yLTEuM2wtMi42LTIwLjMKCQkJCWMtMC45LTYuOC0xLjgtMTMuNi0yLjktMjAuM2MtMC4xLTAuOS0wLjktMS41LTEuOC0xLjVjLTEsMC4xLTEuNywwLjktMS42LDEuOWMwLjUsNi44LDEuMSwxMy42LDEuNywyMC40bDIsMjAuNGwwLjEsMS4zCgkJCQljMCwwLjQsMC4xLDAuOCwwLjIsMS40YzAuMSwxLDAuNCwyLDAuNywyLjljMC41LDEuNywxLjQsMy4zLDIuNCw0LjhjLTEuNSwxLTMuMiwxLjgtNSwyLjFjLTIuNiwwLjUtNS4zLDAuMS03LjctMQoJCQkJYy0yLjQtMS4yLTQuNC0zLTUuNy01LjRjLTAuNi0xLjItMS4xLTIuNC0xLjQtMy43bC0wLjktNC43bC0zLjctMTguOWMtMS4zLTYuMy0yLjYtMTIuNi00LTE4LjljLTAuMi0wLjktMS0xLjUtMS45LTEuMwoJCQkJYy0wLjksMC4xLTEuNiwxLTEuNSwyYzAuOSw2LjQsMS44LDEyLjcsMi44LDE5LjFsMy4xLDE5bDAuOCw0LjhjMC4zLDEuOSwxLDMuNywxLjgsNS4zYzAuOCwxLjUsMS44LDIuOSwzLjEsNC4xCgkJCQljLTAuMiwwLTAuMywwLjEtMC41LDAuMWMtNi42LDEuMS0xMi45LTMuMi0xNC40LTkuN2MtMC4zLTEuMy0yNy45LTEzMS4yLTI3LjktMTU3LjVjMC0yNi40LDEwLjQtNTAuMSwyOS4yLTY3CgkJCQljMTguOS0xNi45LDQ1LjctMjYuMiw3NS40LTI2LjJjMjkuNywwLDU2LjUsOS4zLDc1LjQsMjYuMmMxOC45LDE2LjgsMjkuMiw0MC42LDI5LjIsNjdDNDI5LDE1NC43LDQwMS40LDI4NC42LDQwMS4xLDI4NS44eiIvPgoJCTwvZz4KCTwvZz4KPC9nPgo8L3N2Zz4K
+    mediatype: image/svg+xml
+  install:
+    spec:
+      deployments:
+      - label:
+          app.kubernetes.io/instance: scylla-operator
+          app.kubernetes.io/name: scylla-operator
+        name: scylla-operator
+        spec:
+          replicas: 2
+          selector:
+            matchLabels:
+              app.kubernetes.io/instance: scylla-operator
+              app.kubernetes.io/name: scylla-operator
+          strategy:
+            type: RollingUpdate
+          template:
+            metadata:
+              creationTimestamp: null
+              labels:
+                app.kubernetes.io/instance: scylla-operator
+                app.kubernetes.io/name: scylla-operator
+            spec:
+              affinity:
+                podAntiAffinity:
+                  preferredDuringSchedulingIgnoredDuringExecution:
+                  - podAffinityTerm:
+                      labelSelector:
+                        matchLabels:
+                          app.kubernetes.io/instance: scylla-operator
+                          app.kubernetes.io/name: scylla-operator
+                      topologyKey: kubernetes.io/hostname
+                    weight: 1
+              containers:
+              - args:
+                - operator
+                - --loglevel=2
+                env:
+                - name: SCYLLA_OPERATOR_IMAGE
+                  value: docker.io/scylladb/scylla-operator:latest
+                image: docker.io/scylladb/scylla-operator:latest
+                imagePullPolicy: IfNotPresent
+                name: scylla-operator
+                resources:
+                  requests:
+                    cpu: 10m
+                    memory: 20Mi
+              serviceAccountName: scylla-operator
+              terminationGracePeriodSeconds: 10
+      - label:
+          app.kubernetes.io/instance: webhook-server
+          app.kubernetes.io/name: webhook-server
+        name: webhook-server
+        spec:
+          replicas: 2
+          selector:
+            matchLabels:
+              app.kubernetes.io/instance: webhook-server
+              app.kubernetes.io/name: webhook-server
+          strategy:
+            type: RollingUpdate
+          template:
+            metadata:
+              creationTimestamp: null
+              labels:
+                app.kubernetes.io/instance: webhook-server
+                app.kubernetes.io/name: webhook-server
+            spec:
+              affinity:
+                podAntiAffinity:
+                  preferredDuringSchedulingIgnoredDuringExecution:
+                  - podAffinityTerm:
+                      labelSelector:
+                        matchLabels:
+                          app.kubernetes.io/instance: webhook-server
+                          app.kubernetes.io/name: webhook-server
+                      topologyKey: kubernetes.io/hostname
+                    weight: 1
+              containers:
+              - args:
+                - run-webhook-server
+                - --loglevel=2
+                - --tls-cert-file=/tmp/serving-certs/tls.crt
+                - --tls-private-key-file=/tmp/serving-certs/tls.key
+                image: docker.io/scylladb/scylla-operator:latest
+                imagePullPolicy: IfNotPresent
+                livenessProbe:
+                  httpGet:
+                    path: /readyz
+                    port: 5000
+                    scheme: HTTPS
+                name: webhook-server
+                ports:
+                - containerPort: 5000
+                  name: webhook-server
+                  protocol: TCP
+                readinessProbe:
+                  httpGet:
+                    path: /readyz
+                    port: 5000
+                    scheme: HTTPS
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                resources:
+                  requests:
+                    cpu: 10m
+                    memory: 20Mi
+                volumeMounts:
+                - mountPath: /tmp/serving-certs
+                  name: webhook-cert
+                  readOnly: true
+              serviceAccountName: webhook-server
+              terminationGracePeriodSeconds: 10
+              volumes:
+              - name: webhook-cert
+                secret:
+                  defaultMode: 420
+                  secretName: scylla-operator-serving-cert
+    strategy: deployment
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  provider: {}
+  version: 0.0.4-latest
+  webhookdefinitions:
+  - admissionReviewVersions:
+    - v1
+    containerPort: 443
+    deploymentName: webhook-server
+    failurePolicy: Fail
+    generateName: webhook.scylla.scylladb.com
+    rules:
+    - apiGroups:
+      - scylla.scylladb.com
+      apiVersions:
+      - v1
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - scyllaclusters
+    sideEffects: None
+    targetPort: 5000
+    type: ValidatingAdmissionWebhook
+    webhookPath: /validate
+status:
+  cleanup: {}

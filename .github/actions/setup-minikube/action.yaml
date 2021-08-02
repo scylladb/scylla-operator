@@ -52,3 +52,6 @@ runs:
         echo 'Waiting for apiserver to come up.'
         sleep 1
       done
+
+      kubectl -n kube-system rollout status --timeout=5m deployment.apps/coredns
+

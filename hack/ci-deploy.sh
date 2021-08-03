@@ -18,6 +18,16 @@ if [[ -z ${1+x} ]]; then
     exit 1
 fi
 
+function kubectl_create {
+    if [[ -z ${REENTRANT+x} ]]; then
+        # In an actual CI run we have to enforce that no two objects have the same name.
+        kubectl create "$@"
+    else
+        # For development iterations we want to update the objects.
+        kubectl apply "$@"
+    fi
+}
+
 ARTIFACTS_DIR=${ARTIFACTS_DIR:-$( mktemp -d )}
 OPERATOR_IMAGE_REF=${1}
 
@@ -32,7 +42,7 @@ for f in $( find "${deploy_dir}"/ -type f -name '*.yaml' ); do
     sed -i -E -e "s~docker.io/scylladb/scylla-operator(:|@sha256:)[^ ]*~${OPERATOR_IMAGE_REF}~" "${f}"
 done
 
-kubectl apply -f "${deploy_dir}"/cert-manager.yaml
+kubectl_create -f "${deploy_dir}"/cert-manager.yaml
 
 # Wait for cert-manager
 kubectl wait --for condition=established --timeout=60s crd/certificates.cert-manager.io crd/issuers.cert-manager.io
@@ -42,14 +52,14 @@ for d in cert-manager{,-cainjector,-webhook}; do
 done
 wait-for-object-creation cert-manager secret/cert-manager-webhook-ca
 
-kubectl apply -f "${deploy_dir}"/operator
+kubectl_create -f "${deploy_dir}"/operator
 
 # Manager needs scylla CRD registered and the webhook running
 kubectl wait --for condition=established crd/scyllaclusters.scylla.scylladb.com
 kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/scylla-operator
 kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/webhook-server
 
-kubectl apply -f "${deploy_dir}"/manager
+kubectl_create -f "${deploy_dir}"/manager
 
 wait-for-object-creation scylla-manager statefulset.apps/scylla-manager-cluster-manager-dc-manager-rack
 kubectl -n scylla-manager rollout status --timeout=5m statefulset.apps/scylla-manager-cluster-manager-dc-manager-rack

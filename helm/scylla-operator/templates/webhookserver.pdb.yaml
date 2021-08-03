@@ -1,7 +1,7 @@
 apiVersion: policy/v1beta1
 kind: PodDisruptionBudget
 metadata:
-  name: scylla-operator
+  name: webhook-server
   namespace: scylla-operator
 spec:
   minAvailable: 1

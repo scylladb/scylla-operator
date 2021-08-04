@@ -211,6 +211,7 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 
 	// Listen on all interfaces so users or a service mesh can use localhost.
 	listenAddress := "0.0.0.0"
+	prometheusAddress := "0.0.0.0"
 	args := map[string]*string{
 		"listen-address":        &listenAddress,
 		"broadcast-address":     &m.StaticIP,
@@ -219,6 +220,7 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		"developer-mode":        &devMode,
 		"overprovisioned":       &overprovisioned,
 		"smp":                   pointer.StringPtr(strconv.Itoa(s.cpuCount)),
+		"prometheus-address":    &prometheusAddress,
 	}
 	if cluster.Spec.Alternator.Enabled() {
 		args["alternator-port"] = pointer.StringPtr(strconv.Itoa(int(cluster.Spec.Alternator.Port)))

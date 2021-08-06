@@ -13,6 +13,7 @@ CODEGEN_GROUPS_VERSIONS ?="scyllaclusters/v1"
 GO_REQUIRED_MIN_VERSION ?=1.16
 
 GIT_TAG ?=$(shell git describe --long --tags --abbrev=7 --match 'v[0-9]*' || echo 'v0.0.0-unknown')
+GIT_TAG_SHORT ?=$(shell git describe --tags --abbrev=7 --match 'v[0-9]*' || echo 'v0.0.0-unknown')
 GIT_COMMIT ?=$(shell git rev-parse --short "HEAD^{commit}" 2>/dev/null)
 GIT_TREE_STATE ?=$(shell ( ( [ ! -d ".git/" ] || git diff --quiet ) && echo 'clean' ) || echo 'dirty')
 
@@ -52,7 +53,7 @@ HELM_CHARTS_DIR ?=helm
 HELM_LOCAL_REPO ?=$(HELM_CHARTS_DIR)/repo/$(HELM_CHANNEL)
 HELM_APP_VERSION ?=$(IMAGE_TAG)
 HELM_CHART_VERSION_SUFFIX ?=
-HELM_CHART_VERSION ?=$(GIT_TAG)$(HELM_CHART_VERSION_SUFFIX)
+HELM_CHART_VERSION ?=$(GIT_TAG_SHORT)$(HELM_CHART_VERSION_SUFFIX)
 HELM_BUCKET ?=gs://scylla-operator-charts/$(HELM_CHANNEL)
 HELM_REPOSITORY ?=https://scylla-operator-charts.storage.googleapis.com/$(HELM_CHANNEL)
 HELM_MANIFEST_CACHE_CONTROL ?=public, max-age=600

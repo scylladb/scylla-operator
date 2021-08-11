@@ -1,3 +1,8 @@
+# Operator replicas use leader election. Setting to 1 will disable pdb creation
+# and won't be HA; creations or updates of Scylla CRs will fail during operator
+# upgrades or disruptions
+replicas: 2
+
 # Allows to customize Scylla Operator image
 image:
   repository: scylladb
@@ -48,6 +53,10 @@ serviceAccount:
 
 ## SecurityContext holds pod-level security attributes and common container settings.
 securityContext: {}
+
+# Replicas for Webhook Server. Setting to 1 will disable pdb creation and
+# won't be HA; it won't react during operator upgrades or disruptions.
+webhookServerReplicas: 2
 
 # Node selector for Webhook Server pods
 webhookServerNodeSelector: { }

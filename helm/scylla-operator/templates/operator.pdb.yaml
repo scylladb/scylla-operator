@@ -1,3 +1,4 @@
+{{- if gt .Values.replicas 1.0 }}
 apiVersion: policy/v1beta1
 kind: PodDisruptionBudget
 metadata:
@@ -8,3 +9,4 @@ spec:
   selector:
     matchLabels:
       {{- include "scylla-operator.selectorLabels" . | nindent 6 }}
+{{- end }}

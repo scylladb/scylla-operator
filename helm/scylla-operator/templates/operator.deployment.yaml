@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "scylla-operator.labels" . | nindent 4 }}
 spec:
-  replicas: 2
+  replicas: {{ .Values.replicas }}
   strategy:
     type: RollingUpdate
   selector:

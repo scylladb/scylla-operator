@@ -54,7 +54,7 @@ func (o *GenerateOptions) Run(ctx context.Context) error {
 		numberToPR[int(prs[i].Number)] = &prs[i]
 	}
 
-	var filteredPRs []PullRequest
+	var filteredPRs []*PullRequest
 	var errs []error
 	for _, prNumber := range requiredPullRequestsNumbers {
 		pr, found := numberToPR[prNumber]
@@ -63,7 +63,7 @@ func (o *GenerateOptions) Run(ctx context.Context) error {
 			continue
 		}
 
-		filteredPRs = append(filteredPRs, *pr)
+		filteredPRs = append(filteredPRs, pr)
 	}
 	if errs != nil {
 		return errors.NewAggregate(errs)

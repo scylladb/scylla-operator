@@ -43,7 +43,14 @@ var _ = g.Describe("ScyllaCluster Orphaned PV", func() {
 		sc, err = waitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, scyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		di, err := NewDataInserter(ctx, f.KubeClient().CoreV1(), sc, getMemberCount(sc))
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer di.Close()
+
+		err = di.Insert()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		verifyScyllaCluster(ctx, f.KubeClient(), sc, di)
 
 		framework.By("Simulating a PV on node that's gone")
 		stsName := naming.StatefulSetNameForRack(sc.Spec.Datacenter.Racks[0], sc)
@@ -107,6 +114,6 @@ var _ = g.Describe("ScyllaCluster Orphaned PV", func() {
 		sc, err = waitForScyllaClusterState(waitCtx3, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, scyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		verifyScyllaCluster(ctx, f.KubeClient(), sc, di)
 	})
 })

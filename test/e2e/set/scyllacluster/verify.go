@@ -68,7 +68,7 @@ func verifyPodDisruptionBudget(sc *scyllav1.ScyllaCluster, pdb *policyv1beta1.Po
 	o.Expect(pdb.Spec.Selector).To(o.Equal(metav1.SetAsLabelSelector(naming.ClusterLabels(sc))))
 }
 
-func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, sc *scyllav1.ScyllaCluster) {
+func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, sc *scyllav1.ScyllaCluster, di *DataInserter) {
 	framework.By("Verifying the ScyllaCluster")
 
 	o.Expect(sc.Status.ObservedGeneration).NotTo(o.BeNil())
@@ -113,4 +113,12 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(status.DownHosts()).To(o.BeEmpty())
 	o.Expect(status.LiveHosts()).To(o.HaveLen(memberCount))
+
+	if di != nil {
+		read, err := di.Read()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Verifying data consistency")
+		o.Expect(read).To(o.Equal(di.GetExpected()))
+	}
 }

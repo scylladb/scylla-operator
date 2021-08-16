@@ -89,7 +89,14 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 		validSC, err = waitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), validSC.Namespace, validSC.Name, scyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), validSC)
+		di, err := NewDataInserter(ctx, f.KubeClient().CoreV1(), validSC, getMemberCount(validSC))
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer di.Close()
+
+		err = di.Insert()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		verifyScyllaCluster(ctx, f.KubeClient(), validSC, di)
 
 		framework.By("rejecting an update of ScyllaCluster's repo")
 		_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(validSC.Namespace).Patch(

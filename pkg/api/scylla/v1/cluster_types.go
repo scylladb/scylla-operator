@@ -23,10 +23,10 @@ import (
 
 // ScyllaClusterSpec defines the desired state of Cluster.
 type ScyllaClusterSpec struct {
-	// Version of Scylla to use.
+	// version is a version tag of Scylla to use.
 	Version string `json:"version"`
 
-	// Repository to pull the Scylla image from.
+	// repository is the image repository to pull the Scylla image from.
 	// +kubebuilder:default:="docker.io/scylladb/scylla"
 	// +optional
 	Repository string `json:"repository,omitempty"`
@@ -60,7 +60,7 @@ type ScyllaClusterSpec struct {
 	// +optional
 	GenericUpgrade *GenericUpgradeSpec `json:"genericUpgrade,omitempty"`
 
-	// Datacenter that will make up this cluster.
+	// datacenter holds a specification of a datacenter.
 	Datacenter DatacenterSpec `json:"datacenter"`
 
 	// sysctls holds the sysctl properties to be applied during initialization given as a list of key=value pairs.
@@ -91,7 +91,7 @@ type ScyllaClusterSpec struct {
 	// +optional
 	ForceRedeploymentReason string `json:"forceRedeploymentReason,omitempty"`
 
-	// ImagePullSecrets is an optional list of references to secrets in the same namespace
+	// imagePullSecrets is an optional list of references to secrets in the same namespace
 	// used for pulling Scylla and Agent images.
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
@@ -101,7 +101,7 @@ type ScyllaClusterSpec struct {
 type GenericUpgradeFailureStrategy string
 
 const (
-	// GenericUpgradeFailureStrategyRetry infinitely retry until node becomes ready.
+	// GenericUpgradeFailureStrategyRetry infinitely retries until node becomes ready.
 	GenericUpgradeFailureStrategyRetry GenericUpgradeFailureStrategy = "Retry"
 )
 
@@ -123,7 +123,7 @@ type GenericUpgradeSpec struct {
 }
 
 type SchedulerTaskSpec struct {
-	// Name of a task that must be unique across all tasks.
+	// name is a unique name of a task.
 	Name string `json:"name"`
 
 	// startDate specifies the task start date expressed in the RFC3339 format or now[+duration],
@@ -132,12 +132,12 @@ type SchedulerTaskSpec struct {
 	// +optional
 	StartDate string `json:"startDate,omitempty"`
 
-	// Interval task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
+	// interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
 	// +optional
 	// +kubebuilder:default:="0"
 	Interval string `json:"interval,omitempty"`
 
-	// numRetries indicated how many time a scheduled task will be retried before failing.
+	// numRetries indicates how many times a scheduled task will be retried before failing.
 	// +kubebuilder:default:=3
 	// +optional
 	NumRetries *int64 `json:"numRetries,omitempty"`
@@ -183,7 +183,7 @@ type RepairTaskSpec struct {
 	// +optional
 	SmallTableThreshold string `json:"smallTableThreshold,omitempty" mapstructure:"small_table_threshold,omitempty"`
 
-	// Host to repair, by default all hosts are repaired
+	// host specifies a host to repair. If empty, all hosts are repaired.
 	Host *string `json:"host,omitempty" mapstructure:"host,omitempty"`
 }
 
@@ -234,8 +234,12 @@ type BackupTaskSpec struct {
 }
 
 type Network struct {
-	HostNetworking bool             `json:"hostNetworking,omitempty"`
-	DNSPolicy      corev1.DNSPolicy `json:"dnsPolicy,omitempty"`
+	// hostNetworking determines if scylla uses the host's network namespace. Setting this option
+	// avoids going through Kubernetes SDN and exposes scylla on node's IP.
+	HostNetworking bool `json:"hostNetworking,omitempty"`
+
+	// dnsPolicy defines how a pod's DNS will be configured.
+	DNSPolicy corev1.DNSPolicy `json:"dnsPolicy,omitempty"`
 }
 
 func (s Network) GetDNSPolicy() corev1.DNSPolicy {
@@ -248,32 +252,32 @@ func (s Network) GetDNSPolicy() corev1.DNSPolicy {
 
 // DatacenterSpec is the desired state for a Scylla Datacenter.
 type DatacenterSpec struct {
-	// Name of the Scylla Datacenter. Used in the cassandra-rackdc.properties file.
+	// name is the name of the scylla datacenter. Used in the cassandra-rackdc.properties file.
 	Name string `json:"name"`
 
-	// Racks of the specific Datacenter.
+	// racks specify the racks in the datacenter.
 	Racks []RackSpec `json:"racks"`
 }
 
 // RackSpec is the desired state for a Scylla Rack.
 type RackSpec struct {
-	// Name of the Scylla Rack. Used in the cassandra-rackdc.properties file.
+	// name is the name of the Scylla Rack. Used in the cassandra-rackdc.properties file.
 	Name string `json:"name"`
 
-	// Members is the number of Scylla instances in this rack.
+	// members is the number of Scylla instances in this rack.
 	Members int32 `json:"members"`
 
-	// Storage describes the underlying storage that Scylla will consume.
+	// storage describes the underlying storage that Scylla will consume.
 	Storage StorageSpec `json:"storage"`
 
-	// Placement describes restrictions for the nodes Scylla is scheduled on.
+	// placement describes restrictions for the nodes Scylla is scheduled on.
 	// +optional
 	Placement *PlacementSpec `json:"placement,omitempty"`
 
-	// Resources the Scylla container will use.
+	// resources the Scylla container will use.
 	Resources corev1.ResourceRequirements `json:"resources"`
 
-	// AgentResources which Agent container will use.
+	// agentResources specify the resources for the Agent container.
 	// +kubebuilder:default:={requests: {cpu: "50m", memory: "10M"}}
 	// +optional
 	AgentResources corev1.ResourceRequirements `json:"agentResources,omitempty"`
@@ -297,30 +301,35 @@ type RackSpec struct {
 }
 
 type PlacementSpec struct {
+	// nodeAffinity describes node affinity scheduling rules for the pod.
 	// +optional
 	NodeAffinity *corev1.NodeAffinity `json:"nodeAffinity,omitempty"`
 
+	// podAffinity describes pod affinity scheduling rules.
 	// +optional
 	PodAffinity *corev1.PodAffinity `json:"podAffinity,omitempty"`
 
+	// podAntiAffinity describes pod anti-affinity scheduling rules.
 	// +optional
 	PodAntiAffinity *corev1.PodAntiAffinity `json:"podAntiAffinity,omitempty"`
 
+	// tolerations allow the pod to tolerate any taint that matches the triple <key,value,effect>
+	// using the matching operator.
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
 type StorageSpec struct {
-	// Capacity of each member's volume
+	// capacity describes the requested size of each persistent volume.
 	Capacity string `json:"capacity"`
 
-	// Name of storageClass to request
+	// storageClassName is the name of a storageClass to request.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 }
 
 type AlternatorSpec struct {
-	// Port on which to bind the Alternator API
+	// port is the port number used to bind the Alternator API.
 	Port int32 `json:"port,omitempty"`
 
 	// writeIsolation indicates the isolation level.
@@ -333,14 +342,22 @@ func (a *AlternatorSpec) Enabled() bool {
 
 type RepairTaskStatus struct {
 	RepairTaskSpec `json:",inline" mapstructure:",squash"`
-	ID             string `json:"id"`
-	Error          string `json:"error"`
+
+	// id is the identification number of the repair task.
+	ID string `json:"id"`
+
+	// error holds the repair task error, if any.
+	Error string `json:"error"`
 }
 
 type BackupTaskStatus struct {
 	BackupTaskSpec `json:",inline"`
-	ID             string `json:"id"`
-	Error          string `json:"error"`
+
+	// id is the identification number of the backup task.
+	ID string `json:"id"`
+
+	// error holds the backup task error, if any.
+	Error string `json:"error"`
 }
 
 // ScyllaClusterStatus defines the observed state of ScyllaCluster
@@ -425,7 +442,10 @@ type RackStatus struct {
 
 // RackCondition is an observation about the state of a rack.
 type RackCondition struct {
-	Type   RackConditionType      `json:"type"`
+	// type holds the condition type.
+	Type RackConditionType `json:"type"`
+
+	// status represent condition status.
 	Status corev1.ConditionStatus `json:"status"`
 }
 
@@ -449,7 +469,10 @@ type ScyllaCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ScyllaClusterSpec   `json:"spec,omitempty"`
+	// spec defines the desired state of this scylla cluster.
+	Spec ScyllaClusterSpec `json:"spec,omitempty"`
+
+	// status is the current status of this scylla cluster.
 	Status ScyllaClusterStatus `json:"status,omitempty"`
 }
 

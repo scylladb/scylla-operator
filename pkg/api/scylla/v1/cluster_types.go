@@ -310,15 +310,6 @@ type PlacementSpec struct {
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
-// ImageSpec is the desired state for a container image.
-type ImageSpec struct {
-	// Version of the image.
-	Version string `json:"version"`
-
-	// Repository to pull the image from.
-	Repository string `json:"repository"`
-}
-
 type StorageSpec struct {
 	// Capacity of each member's volume
 	Capacity string `json:"capacity"`

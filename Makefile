@@ -247,6 +247,38 @@ verify-crd:
 	$(diff) '$(tmp_file)' '$(CRD_PATH)' || (echo 'File $(CRD_PATH) is not up-to date. Please run `make update-crd` to update it.' && false)
 .PHONY: verify-crd
 
+# $1 - target file
+define generate-helm-schema-scylla
+	$(YQ) eval -j '{"$$schema": "http://json-schema.org/schema#"} * (.spec.versions[] | select(.name == "v1") | \
+	 .schema.openAPIV3Schema.properties.spec) | \
+	 .properties.racks=.properties.datacenter.properties.racks | \
+	 .properties.datacenter={"type": "string"}' $(CRD_PATH) > '$(1)'
+endef
+
+# $1 - Scylla schema
+# $2 - target file
+define generate-helm-schema-scylla-manager
+	$(YQ) eval-all -j 'select(fi==0).properties.scylla = ( \
+		select(fi==1) | del(.$$schema) \
+	) | select(fi==0)' '$(HELM_CHARTS_DIR)/scylla-manager/values.schema.template.json' '$(1)' > '$(2)'
+endef
+
+update-helm-schemas:
+	$(call generate-helm-schema-scylla,'$(HELM_CHARTS_DIR)/scylla/values.schema.json')
+	$(call generate-helm-schema-scylla-manager,'$(HELM_CHARTS_DIR)/scylla/values.schema.json','$(HELM_CHARTS_DIR)/scylla-manager/values.schema.json')
+.PHONY: update-helm-schemas
+
+verify-helm-schemas: tmp_dir:=$(shell mktemp -d)
+verify-helm-schemas:
+	mkdir -p $(tmp_dir)/{scylla,scylla-manager}
+
+	$(call generate-helm-schema-scylla,'$(tmp_dir)/scylla/values.schema.json')
+	$(diff) '$(tmp_dir)/scylla/values.schema.json' '$(HELM_CHARTS_DIR)/scylla/values.schema.json'
+
+	$(call generate-helm-schema-scylla-manager,'$(HELM_CHARTS_DIR)/scylla/values.schema.json','$(tmp_dir)/scylla-manager/values.schema.json')
+	$(diff) '$(tmp_dir)/scylla-manager/values.schema.json' '$(HELM_CHARTS_DIR)/scylla-manager/values.schema.json'
+.PHONY: verify-helm-schemas
+
 # $1 - name
 # $2 - chart path
 # $3 - values path
@@ -400,10 +432,10 @@ verify-codegen:
 	$(call run-informer-gen,--verify-only)
 .PHONY: verify-codegen
 
-verify: verify-gofmt verify-codegen verify-crd verify-helm-charts verify-deploy verify-examples verify-govet verify-helm-lint
+verify: verify-gofmt verify-codegen verify-crd verify-helm-schemas verify-helm-charts verify-deploy verify-examples verify-govet verify-helm-lint
 .PHONY: verify
 
-update: update-gofmt update-codegen update-crd update-helm-charts update-deploy update-examples
+update: update-gofmt update-codegen update-crd update-helm-schemas update-helm-charts update-deploy update-examples
 .PHONY: update
 
 test-unit:

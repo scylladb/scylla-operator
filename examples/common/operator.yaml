@@ -210,7 +210,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: ScyllaClusterSpec defines the desired state of Cluster.
+            description: spec defines the desired state of this scylla cluster.
             properties:
               agentRepository:
                 default: docker.io/scylladb/scylla-manager-agent
@@ -226,7 +226,8 @@ spec:
                 description: alternator designates this cluster an Alternator cluster.
                 properties:
                   port:
-                    description: Port on which to bind the Alternator API
+                    description: port is the port number used to bind the Alternator
+                      API.
                     format: int32
                     type: integer
                   writeIsolation:
@@ -251,8 +252,8 @@ spec:
                       type: array
                     interval:
                       default: "0"
-                      description: Interval task schedule interval e.g. 3d2h10m, valid
-                        units are d, h, m, s.
+                      description: interval represents a task schedule interval e.g.
+                        3d2h10m, valid units are d, h, m, s.
                       type: string
                     keyspace:
                       description: keyspace is a list of keyspace/tables glob patterns,
@@ -273,11 +274,11 @@ spec:
                         type: string
                       type: array
                     name:
-                      description: Name of a task that must be unique across all tasks.
+                      description: name is a unique name of a task.
                       type: string
                     numRetries:
                       default: 3
-                      description: numRetries indicated how many time a scheduled
+                      description: numRetries indicates how many times a scheduled
                         task will be retried before failing.
                       format: int64
                       type: integer
@@ -329,14 +330,14 @@ spec:
                   for max performance.
                 type: boolean
               datacenter:
-                description: Datacenter that will make up this cluster.
+                description: datacenter holds a specification of a datacenter.
                 properties:
                   name:
-                    description: Name of the Scylla Datacenter. Used in the cassandra-rackdc.properties
-                      file.
+                    description: name is the name of the scylla datacenter. Used in
+                      the cassandra-rackdc.properties file.
                     type: string
                   racks:
-                    description: Racks of the specific Datacenter.
+                    description: racks specify the racks in the datacenter.
                     items:
                       description: RackSpec is the desired state for a Scylla Rack.
                       properties:
@@ -345,7 +346,8 @@ spec:
                             requests:
                               cpu: 50m
                               memory: 10M
-                          description: AgentResources which Agent container will use.
+                          description: agentResources specify the resources for the
+                            Agent container.
                           properties:
                             limits:
                               additionalProperties:
@@ -413,21 +415,21 @@ spec:
                             type: object
                           type: array
                         members:
-                          description: Members is the number of Scylla instances in
+                          description: members is the number of Scylla instances in
                             this rack.
                           format: int32
                           type: integer
                         name:
-                          description: Name of the Scylla Rack. Used in the cassandra-rackdc.properties
-                            file.
+                          description: name is the name of the Scylla Rack. Used in
+                            the cassandra-rackdc.properties file.
                           type: string
                         placement:
-                          description: Placement describes restrictions for the nodes
+                          description: placement describes restrictions for the nodes
                             Scylla is scheduled on.
                           properties:
                             nodeAffinity:
-                              description: Node affinity is a group of node affinity
-                                scheduling rules.
+                              description: nodeAffinity describes node affinity scheduling
+                                rules for the pod.
                               properties:
                                 preferredDuringSchedulingIgnoredDuringExecution:
                                   description: The scheduler will prefer to schedule
@@ -650,8 +652,8 @@ spec:
                                   type: object
                               type: object
                             podAffinity:
-                              description: Pod affinity is a group of inter pod affinity
-                                scheduling rules.
+                              description: podAffinity describes pod affinity scheduling
+                                rules.
                               properties:
                                 preferredDuringSchedulingIgnoredDuringExecution:
                                   description: The scheduler will prefer to schedule
@@ -997,8 +999,8 @@ spec:
                                   type: array
                               type: object
                             podAntiAffinity:
-                              description: Pod anti affinity is a group of inter pod
-                                anti affinity scheduling rules.
+                              description: podAntiAffinity describes pod anti-affinity
+                                scheduling rules.
                               properties:
                                 preferredDuringSchedulingIgnoredDuringExecution:
                                   description: The scheduler will prefer to schedule
@@ -1345,6 +1347,9 @@ spec:
                                   type: array
                               type: object
                             tolerations:
+                              description: tolerations allow the pod to tolerate any
+                                taint that matches the triple <key,value,effect> using
+                                the matching operator.
                               items:
                                 description: The pod this Toleration is attached to
                                   tolerates any taint that matches the triple <key,value,effect>
@@ -1389,7 +1394,7 @@ spec:
                               type: array
                           type: object
                         resources:
-                          description: Resources the Scylla container will use.
+                          description: resources the Scylla container will use.
                           properties:
                             limits:
                               additionalProperties:
@@ -1423,14 +1428,16 @@ spec:
                           description: Scylla config map name to customize scylla.yaml
                           type: string
                         storage:
-                          description: Storage describes the underlying storage that
+                          description: storage describes the underlying storage that
                             Scylla will consume.
                           properties:
                             capacity:
-                              description: Capacity of each member's volume
+                              description: capacity describes the requested size of
+                                each persistent volume.
                               type: string
                             storageClassName:
-                              description: Name of storageClass to request
+                              description: storageClassName is the name of a storageClass
+                                to request.
                               type: string
                           type: object
                         volumeMounts:
@@ -3088,7 +3095,7 @@ spec:
                     type: string
                 type: object
               imagePullSecrets:
-                description: ImagePullSecrets is an optional list of references to
+                description: imagePullSecrets is an optional list of references to
                   secrets in the same namespace used for pulling Scylla and Agent
                   images.
                 items:
@@ -3105,9 +3112,12 @@ spec:
                 description: network holds the networking config.
                 properties:
                   dnsPolicy:
-                    description: DNSPolicy defines how a pod's DNS will be configured.
+                    description: dnsPolicy defines how a pod's DNS will be configured.
                     type: string
                   hostNetworking:
+                    description: hostNetworking determines if scylla uses the host's
+                      network namespace. Setting this option avoids going through
+                      Kubernetes SDN and exposes scylla on node's IP.
                     type: boolean
                 type: object
               repairs:
@@ -3127,7 +3137,8 @@ spec:
                         on first error.
                       type: boolean
                     host:
-                      description: Host to repair, by default all hosts are repaired
+                      description: host specifies a host to repair. If empty, all
+                        hosts are repaired.
                       type: string
                     intensity:
                       default: "1"
@@ -3148,8 +3159,8 @@ spec:
                       type: string
                     interval:
                       default: "0"
-                      description: Interval task schedule interval e.g. 3d2h10m, valid
-                        units are d, h, m, s.
+                      description: interval represents a task schedule interval e.g.
+                        3d2h10m, valid units are d, h, m, s.
                       type: string
                     keyspace:
                       description: keyspace is a list of keyspace/tables glob patterns,
@@ -3159,11 +3170,11 @@ spec:
                         type: string
                       type: array
                     name:
-                      description: Name of a task that must be unique across all tasks.
+                      description: name is a unique name of a task.
                       type: string
                     numRetries:
                       default: 3
-                      description: numRetries indicated how many time a scheduled
+                      description: numRetries indicates how many times a scheduled
                         task will be retried before failing.
                       format: int64
                       type: integer
@@ -3195,7 +3206,8 @@ spec:
                 type: array
               repository:
                 default: docker.io/scylladb/scylla
-                description: Repository to pull the Scylla image from.
+                description: repository is the image repository to pull the Scylla
+                  image from.
                 type: string
               scyllaArgs:
                 description: scyllaArgs will be appended to Scylla binary during startup.
@@ -3208,11 +3220,11 @@ spec:
                   type: string
                 type: array
               version:
-                description: Version of Scylla to use.
+                description: version is a version tag of Scylla to use.
                 type: string
             type: object
           status:
-            description: ScyllaClusterStatus defines the observed state of ScyllaCluster
+            description: status is the current status of this scylla cluster.
             properties:
               backups:
                 description: backups reflects status of backup tasks.
@@ -3226,13 +3238,15 @@ spec:
                         type: string
                       type: array
                     error:
+                      description: error holds the backup task error, if any.
                       type: string
                     id:
+                      description: id is the identification number of the backup task.
                       type: string
                     interval:
                       default: "0"
-                      description: Interval task schedule interval e.g. 3d2h10m, valid
-                        units are d, h, m, s.
+                      description: interval represents a task schedule interval e.g.
+                        3d2h10m, valid units are d, h, m, s.
                       type: string
                     keyspace:
                       description: keyspace is a list of keyspace/tables glob patterns,
@@ -3253,11 +3267,11 @@ spec:
                         type: string
                       type: array
                     name:
-                      description: Name of a task that must be unique across all tasks.
+                      description: name is a unique name of a task.
                       type: string
                     numRetries:
                       default: 3
-                      description: numRetries indicated how many time a scheduled
+                      description: numRetries indicates how many times a scheduled
                         task will be retried before failing.
                       format: int64
                       type: integer
@@ -3326,8 +3340,10 @@ spec:
                           of a rack.
                         properties:
                           status:
+                            description: status represent condition status.
                             type: string
                           type:
+                            description: type holds the condition type.
                             type: string
                         type: object
                       type: array
@@ -3377,15 +3393,18 @@ spec:
                         type: string
                       type: array
                     error:
+                      description: error holds the repair task error, if any.
                       type: string
                     failFast:
                       description: failFast indicates if a repair should be stopped
                         on first error.
                       type: boolean
                     host:
-                      description: Host to repair, by default all hosts are repaired
+                      description: host specifies a host to repair. If empty, all
+                        hosts are repaired.
                       type: string
                     id:
+                      description: id is the identification number of the repair task.
                       type: string
                     intensity:
                       default: "1"
@@ -3406,8 +3425,8 @@ spec:
                       type: string
                     interval:
                       default: "0"
-                      description: Interval task schedule interval e.g. 3d2h10m, valid
-                        units are d, h, m, s.
+                      description: interval represents a task schedule interval e.g.
+                        3d2h10m, valid units are d, h, m, s.
                       type: string
                     keyspace:
                       description: keyspace is a list of keyspace/tables glob patterns,
@@ -3417,11 +3436,11 @@ spec:
                         type: string
                       type: array
                     name:
-                      description: Name of a task that must be unique across all tasks.
+                      description: name is a unique name of a task.
                       type: string
                     numRetries:
                       default: 3
-                      description: numRetries indicated how many time a scheduled
+                      description: numRetries indicates how many times a scheduled
                         task will be retried before failing.
                       format: int64
                       type: integer

@@ -75,3 +75,7 @@ webhookServerAffinity:
             app.kubernetes.io/name: scylla-operator
             app.kubernetes.io/instance: scylla-operator
         topologyKey: kubernetes.io/hostname
+
+# PodSecurityPolicy management
+psp:
+  enabled: false

@@ -1,0 +1,36 @@
+{{- if dig "enabled" false .Values.psp }}
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: scylladb
+  annotations:
+    seccomp.security.alpha.kubernetes.io/allowedProfileNames: '*'
+    container.seccomp.security.alpha.kubernetes.io/allowedProfileNames: '*'
+spec:
+  allowPrivilegeEscalation: false
+  allowedCapabilities: ['SYS_NICE']
+  hostNetwork: false
+  hostIPC: false
+  hostPID: false
+  runAsUser:  # https://github.com/scylladb/scylla-operator/issues/424#issuecomment-875455026
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  fsGroup:
+    rule: MustRunAs
+    ranges:
+    - min: 1
+      max: 65535
+  supplementalGroups:
+    rule: MustRunAs
+    ranges:
+    - min: 1
+      max: 65535
+  volumes:
+  - projected
+  - configMap
+  - downwardAPI
+  - persistentVolumeClaim
+  - emptyDir
+  - secret
+{{- end }}

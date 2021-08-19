@@ -155,3 +155,11 @@ rules:
   - patch
   - update
   - watch
+{{- if dig "enabled" false .Values.psp }}
+- apiGroups:
+  - extensions
+  - policy
+  resources: ['podsecuritypolicies']
+  verbs: ['use']
+  resourceNames: ['scylladb']
+{{- end }}

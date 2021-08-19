@@ -45,3 +45,11 @@ rules:
   - scyllaclusters
   verbs:
   - get
+{{- if dig "enabled" false .Values.psp }}
+- apiGroups:
+  - extensions
+  - policy
+  resources: ['podsecuritypolicies']
+  verbs: ['use']
+  resourceNames: ['scylladb']
+{{- end }}

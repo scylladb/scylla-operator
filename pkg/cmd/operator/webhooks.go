@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -26,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/apiserver/pkg/server/dynamiccertificates"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
 )
@@ -35,12 +37,17 @@ type WebhookOptions struct {
 	Port                           int
 	InsecureGenerateLocalhostCerts bool
 
-	servingCertificate tls.Certificate
+	TLSConfig                 *tls.Config
+	dynamicCertKeyPairContent *dynamiccertificates.DynamicCertKeyPairContent
+
+	resolvedListenAddr   string
+	resolvedListenAddrCh chan struct{}
 }
 
 func NewWebhookOptions(streams genericclioptions.IOStreams) *WebhookOptions {
 	return &WebhookOptions{
-		Port: 5000,
+		Port:                 5000,
+		resolvedListenAddrCh: make(chan struct{}),
 	}
 }
 
@@ -111,8 +118,6 @@ func (o *WebhookOptions) Complete() error {
 			return err
 		}
 
-		o.servingCertificate.PrivateKey = privateKey
-
 		serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 		serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 		if err != nil {
@@ -138,12 +143,25 @@ func (o *WebhookOptions) Complete() error {
 			return err
 		}
 
-		o.servingCertificate.Certificate = [][]byte{derBytes}
-
+		o.TLSConfig = &tls.Config{
+			Certificates: []tls.Certificate{
+				{
+					Certificate: [][]byte{derBytes},
+					PrivateKey:  privateKey,
+				},
+			},
+		}
 	} else {
-		o.servingCertificate, err = tls.LoadX509KeyPair(o.TLSCertFile, o.TLSKeyFile)
+		o.dynamicCertKeyPairContent, err = dynamiccertificates.NewDynamicServingContentFromFiles("serving-certs", o.TLSCertFile, o.TLSKeyFile)
 		if err != nil {
-			return err
+			return fmt.Errorf("can't create DynamicServingContentFromFiles: %w", err)
+		}
+
+		o.TLSConfig = &tls.Config{
+			GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+				cert, err := tls.X509KeyPair(o.dynamicCertKeyPairContent.CurrentCertKeyContent())
+				return &cert, err
+			},
 		}
 	}
 
@@ -154,9 +172,6 @@ func (o *WebhookOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 	klog.Infof("%s version %s", cmd.Name(), version.Get())
 	cliflag.PrintFlags(cmd.Flags())
 
-	var wg sync.WaitGroup
-	defer wg.Wait()
-
 	stopCh := signals.StopChannel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -164,6 +179,16 @@ func (o *WebhookOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 		<-stopCh
 		cancel()
 	}()
+
+	return o.run(ctx, streams)
+}
+
+func (o *WebhookOptions) run(ctx context.Context, streams genericclioptions.IOStreams) error {
+	var wg sync.WaitGroup
+	defer wg.Wait()
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	handler := http.NewServeMux()
 	handler.HandleFunc("/readyz", func(w http.ResponseWriter, req *http.Request) {
@@ -176,12 +201,27 @@ func (o *WebhookOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 	handler.Handle("/validate", admissionreview.NewHandler(validate))
 
 	server := http.Server{
-		Handler: handler,
-		Addr:    fmt.Sprintf(":%d", o.Port),
-		TLSConfig: &tls.Config{
-			Certificates: []tls.Certificate{o.servingCertificate},
-		},
+		Handler:   handler,
+		TLSConfig: o.TLSConfig,
 	}
+
+	if o.dynamicCertKeyPairContent != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			o.dynamicCertKeyPairContent.Run(1, ctx.Done())
+		}()
+	}
+
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", o.Port))
+	if err != nil {
+		return fmt.Errorf("can't create listener: %w", err)
+	}
+	defer listener.Close()
+
+	o.resolvedListenAddr = listener.Addr().String()
+	// Notify anyone waiting for establishing the listen address by closing the channel.
+	close(o.resolvedListenAddrCh)
 
 	wg.Add(1)
 	go func() {
@@ -195,8 +235,8 @@ func (o *WebhookOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 		}
 	}()
 
-	klog.Infof("Starting HTTPS server on address %q.", server.Addr)
-	err := server.ListenAndServeTLS("", "")
+	klog.Infof("Starting HTTPS server on address %q.", o.resolvedListenAddr)
+	err = server.ServeTLS(listener, "", "")
 	if !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}

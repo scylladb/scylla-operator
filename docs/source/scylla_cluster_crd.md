@@ -26,12 +26,12 @@ spec:
     dc: ["us-east-1"]
   backups:
   - name: "daily users backup"
-    rateLimit: 50
+    rateLimit: ["50"]
     location: ["s3:cluster-backups"]
     interval: "1d"
     keyspace: ["users"]
   - name: "weekly full cluster backup"
-    rateLimit: 50
+    rateLimit: ["50"]
     location: ["s3:cluster-backups"]
     interval: "7d"
   datacenter:

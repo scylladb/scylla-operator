@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v2"
@@ -138,7 +139,11 @@ func (di *DataInserter) createSession(ctx context.Context, sc *scyllav1.ScyllaCl
 		return nil, fmt.Errorf("can't get hosts: %w", err)
 	}
 
-	session, err := gocqlx.WrapSession(gocql.NewCluster(hosts...).CreateSession())
+	clusterConfig := gocql.NewCluster(hosts...)
+	clusterConfig.Timeout = 3 * time.Second
+	clusterConfig.ConnectTimeout = 3 * time.Second
+
+	session, err := gocqlx.WrapSession(clusterConfig.CreateSession())
 	if err != nil {
 		return nil, fmt.Errorf("can't create gocqlx session: %w", err)
 	}

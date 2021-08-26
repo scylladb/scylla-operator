@@ -111,7 +111,7 @@
       }
     },
     "scylla": {
-      "description": "ScyllaClusterSpec defines the desired state of Cluster.",
+      "description": "spec defines the desired state of this scylla cluster.",
       "properties": {
         "agentRepository": {
           "default": "docker.io/scylladb/scylla-manager-agent",
@@ -127,7 +127,7 @@
           "description": "alternator designates this cluster an Alternator cluster.",
           "properties": {
             "port": {
-              "description": "Port on which to bind the Alternator API",
+              "description": "port is the port number used to bind the Alternator API.",
               "format": "int32",
               "type": "integer"
             },
@@ -155,7 +155,7 @@
               },
               "interval": {
                 "default": "0",
-                "description": "Interval task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.",
+                "description": "interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.",
                 "type": "string"
               },
               "keyspace": {
@@ -173,12 +173,12 @@
                 "type": "array"
               },
               "name": {
-                "description": "Name of a task that must be unique across all tasks.",
+                "description": "name is a unique name of a task.",
                 "type": "string"
               },
               "numRetries": {
                 "default": 3,
-                "description": "numRetries indicated how many time a scheduled task will be retried before failing.",
+                "description": "numRetries indicates how many times a scheduled task will be retried before failing.",
                 "format": "int64",
                 "type": "integer"
               },
@@ -251,7 +251,7 @@
           "type": "object"
         },
         "imagePullSecrets": {
-          "description": "ImagePullSecrets is an optional list of references to secrets in the same namespace used for pulling Scylla and Agent images.",
+          "description": "imagePullSecrets is an optional list of references to secrets in the same namespace used for pulling Scylla and Agent images.",
           "items": {
             "description": "LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.",
             "properties": {
@@ -268,10 +268,11 @@
           "description": "network holds the networking config.",
           "properties": {
             "dnsPolicy": {
-              "description": "DNSPolicy defines how a pod's DNS will be configured.",
+              "description": "dnsPolicy defines how a pod's DNS will be configured.",
               "type": "string"
             },
             "hostNetworking": {
+              "description": "hostNetworking determines if scylla uses the host's network namespace. Setting this option avoids going through Kubernetes SDN and exposes scylla on node's IP.",
               "type": "boolean"
             }
           },
@@ -293,7 +294,7 @@
                 "type": "boolean"
               },
               "host": {
-                "description": "Host to repair, by default all hosts are repaired",
+                "description": "host specifies a host to repair. If empty, all hosts are repaired.",
                 "type": "string"
               },
               "intensity": {
@@ -303,7 +304,7 @@
               },
               "interval": {
                 "default": "0",
-                "description": "Interval task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.",
+                "description": "interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.",
                 "type": "string"
               },
               "keyspace": {
@@ -314,12 +315,12 @@
                 "type": "array"
               },
               "name": {
-                "description": "Name of a task that must be unique across all tasks.",
+                "description": "name is a unique name of a task.",
                 "type": "string"
               },
               "numRetries": {
                 "default": 3,
-                "description": "numRetries indicated how many time a scheduled task will be retried before failing.",
+                "description": "numRetries indicates how many times a scheduled task will be retried before failing.",
                 "format": "int64",
                 "type": "integer"
               },
@@ -346,7 +347,7 @@
         },
         "repository": {
           "default": "docker.io/scylladb/scylla",
-          "description": "Repository to pull the Scylla image from.",
+          "description": "repository is the image repository to pull the Scylla image from.",
           "type": "string"
         },
         "scyllaArgs": {
@@ -361,11 +362,11 @@
           "type": "array"
         },
         "version": {
-          "description": "Version of Scylla to use.",
+          "description": "version is a version tag of Scylla to use.",
           "type": "string"
         },
         "racks": {
-          "description": "Racks of the specific Datacenter.",
+          "description": "racks specify the racks in the datacenter.",
           "items": {
             "description": "RackSpec is the desired state for a Scylla Rack.",
             "properties": {
@@ -376,7 +377,7 @@
                     "memory": "10M"
                   }
                 },
-                "description": "AgentResources which Agent container will use.",
+                "description": "agentResources specify the resources for the Agent container.",
                 "properties": {
                   "limits": {
                     "additionalProperties": {
@@ -452,19 +453,19 @@
                 "type": "array"
               },
               "members": {
-                "description": "Members is the number of Scylla instances in this rack.",
+                "description": "members is the number of Scylla instances in this rack.",
                 "format": "int32",
                 "type": "integer"
               },
               "name": {
-                "description": "Name of the Scylla Rack. Used in the cassandra-rackdc.properties file.",
+                "description": "name is the name of the Scylla Rack. Used in the cassandra-rackdc.properties file.",
                 "type": "string"
               },
               "placement": {
-                "description": "Placement describes restrictions for the nodes Scylla is scheduled on.",
+                "description": "placement describes restrictions for the nodes Scylla is scheduled on.",
                 "properties": {
                   "nodeAffinity": {
-                    "description": "Node affinity is a group of node affinity scheduling rules.",
+                    "description": "nodeAffinity describes node affinity scheduling rules for the pod.",
                     "properties": {
                       "preferredDuringSchedulingIgnoredDuringExecution": {
                         "description": "The scheduler will prefer to schedule pods to nodes that satisfy the affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding \"weight\" to the sum if the node matches the corresponding matchExpressions; the node(s) with the highest sum are the most preferred.",
@@ -630,7 +631,7 @@
                     "type": "object"
                   },
                   "podAffinity": {
-                    "description": "Pod affinity is a group of inter pod affinity scheduling rules.",
+                    "description": "podAffinity describes pod affinity scheduling rules.",
                     "properties": {
                       "preferredDuringSchedulingIgnoredDuringExecution": {
                         "description": "The scheduler will prefer to schedule pods to nodes that satisfy the affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding \"weight\" to the sum if the node has pods which matches the corresponding podAffinityTerm; the node(s) with the highest sum are the most preferred.",
@@ -867,7 +868,7 @@
                     "type": "object"
                   },
                   "podAntiAffinity": {
-                    "description": "Pod anti affinity is a group of inter pod anti affinity scheduling rules.",
+                    "description": "podAntiAffinity describes pod anti-affinity scheduling rules.",
                     "properties": {
                       "preferredDuringSchedulingIgnoredDuringExecution": {
                         "description": "The scheduler will prefer to schedule pods to nodes that satisfy the anti-affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling anti-affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding \"weight\" to the sum if the node has pods which matches the corresponding podAffinityTerm; the node(s) with the highest sum are the most preferred.",
@@ -1104,6 +1105,7 @@
                     "type": "object"
                   },
                   "tolerations": {
+                    "description": "tolerations allow the pod to tolerate any taint that matches the triple <key,value,effect> using the matching operator.",
                     "items": {
                       "description": "The pod this Toleration is attached to tolerates any taint that matches the triple <key,value,effect> using the matching operator <operator>.",
                       "properties": {
@@ -1137,7 +1139,7 @@
                 "type": "object"
               },
               "resources": {
-                "description": "Resources the Scylla container will use.",
+                "description": "resources the Scylla container will use.",
                 "properties": {
                   "limits": {
                     "additionalProperties": {
@@ -1183,14 +1185,14 @@
                 "type": "string"
               },
               "storage": {
-                "description": "Storage describes the underlying storage that Scylla will consume.",
+                "description": "storage describes the underlying storage that Scylla will consume.",
                 "properties": {
                   "capacity": {
-                    "description": "Capacity of each member's volume",
+                    "description": "capacity describes the requested size of each persistent volume.",
                     "type": "string"
                   },
                   "storageClassName": {
-                    "description": "Name of storageClass to request",
+                    "description": "storageClassName is the name of a storageClass to request.",
                     "type": "string"
                   }
                 },

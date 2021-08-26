@@ -798,6 +798,7 @@ k8s.io/apimachinery/third_party/forked/golang/netutil
 k8s.io/apimachinery/third_party/forked/golang/reflect
 # k8s.io/apiserver v0.22.2
 ## explicit; go 1.16
+k8s.io/apiserver/pkg/server/dynamiccertificates
 k8s.io/apiserver/pkg/storage/names
 # k8s.io/client-go v0.22.3
 ## explicit; go 1.16
@@ -1049,6 +1050,7 @@ k8s.io/client-go/tools/clientcmd
 k8s.io/client-go/tools/clientcmd/api
 k8s.io/client-go/tools/clientcmd/api/latest
 k8s.io/client-go/tools/clientcmd/api/v1
+k8s.io/client-go/tools/events
 k8s.io/client-go/tools/leaderelection
 k8s.io/client-go/tools/leaderelection/resourcelock
 k8s.io/client-go/tools/metrics

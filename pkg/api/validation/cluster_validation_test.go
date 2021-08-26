@@ -137,13 +137,11 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 			expectedErrorString: "",
 		},
 		{
-			name: "repo changed",
-			old:  unit.NewSingleRackCluster(3),
-			new:  unit.NewDetailedSingleRackCluster("test-cluster", "test-ns", "new-repo", "2.3.2", "test-dc", "test-rack", 3),
-			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.repository", BadValue: "", Detail: "repository change is currently not supported, old=repo, new=new-repo"},
-			},
-			expectedErrorString: "spec.repository: Forbidden: repository change is currently not supported, old=repo, new=new-repo",
+			name:                "repo changed",
+			old:                 unit.NewSingleRackCluster(3),
+			new:                 unit.NewDetailedSingleRackCluster("test-cluster", "test-ns", "new-repo", "2.3.2", "test-dc", "test-rack", 3),
+			expectedErrorList:   field.ErrorList{},
+			expectedErrorString: "",
 		},
 		{
 			name: "dcName changed",
@@ -155,13 +153,11 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 			expectedErrorString: "spec.datacenter.name: Forbidden: change of datacenter name is currently not supported",
 		},
 		{
-			name: "rackPlacement changed",
-			old:  unit.NewSingleRackCluster(3),
-			new:  placementChanged(unit.NewSingleRackCluster(3)),
-			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.datacenter.racks[0].placement", BadValue: "", Detail: "changes in placement are currently not supported"},
-			},
-			expectedErrorString: "spec.datacenter.racks[0].placement: Forbidden: changes in placement are currently not supported",
+			name:                "rackPlacement changed",
+			old:                 unit.NewSingleRackCluster(3),
+			new:                 placementChanged(unit.NewSingleRackCluster(3)),
+			expectedErrorList:   field.ErrorList{},
+			expectedErrorString: "",
 		},
 		{
 			name: "rackStorage changed",
@@ -173,13 +169,11 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 			expectedErrorString: "spec.datacenter.racks[0].storage: Forbidden: changes in storage are currently not supported",
 		},
 		{
-			name: "rackResources changed",
-			old:  unit.NewSingleRackCluster(3),
-			new:  resourceChanged(unit.NewSingleRackCluster(3)),
-			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.datacenter.racks[0].resources", BadValue: "", Detail: "changes in resources are currently not supported"},
-			},
-			expectedErrorString: "spec.datacenter.racks[0].resources: Forbidden: changes in resources are currently not supported",
+			name:                "rackResources changed",
+			old:                 unit.NewSingleRackCluster(3),
+			new:                 resourceChanged(unit.NewSingleRackCluster(3)),
+			expectedErrorList:   field.ErrorList{},
+			expectedErrorString: "",
 		},
 		{
 			name: "rack deleted",

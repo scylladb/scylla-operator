@@ -140,11 +140,6 @@ func ValidateScyllaClusterUpdate(new, old *scyllav1.ScyllaCluster) field.ErrorLi
 func ValidateScyllaClusterSpecUpdate(newSpec, oldSpec *scyllav1.ScyllaClusterSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	// Check that repository remained the same
-	if !reflect.DeepEqual(oldSpec.Repository, newSpec.Repository) {
-		allErrs = append(allErrs, field.Forbidden(fldPath.Child("repository"), fmt.Sprintf("repository change is currently not supported, old=%v, new=%v", oldSpec.Repository, newSpec.Repository)))
-	}
-
 	// Check that the datacenter name didn't change
 	if oldSpec.Datacenter.Name != newSpec.Datacenter.Name {
 		allErrs = append(allErrs, field.Forbidden(fldPath.Child("datacenter", "name"), "change of datacenter name is currently not supported"))
@@ -173,19 +168,10 @@ func ValidateScyllaClusterSpecUpdate(newSpec, oldSpec *scyllav1.ScyllaClusterSpe
 			continue
 		}
 
-		// Check that placement is the same as before
-		if !reflect.DeepEqual(oldRack.Placement, newRack.Placement) {
-			allErrs = append(allErrs, field.Forbidden(fldPath.Child("datacenter", "racks").Index(i).Child("placement"), "changes in placement are currently not supported"))
-		}
-
-		// Check that storage is the same as before
+		// Check that storage is the same as before.
+		// StatefulSet currently forbids the storage update.
 		if !reflect.DeepEqual(oldRack.Storage, newRack.Storage) {
 			allErrs = append(allErrs, field.Forbidden(fldPath.Child("datacenter", "racks").Index(i).Child("storage"), "changes in storage are currently not supported"))
-		}
-
-		// Check that resources are the same as before
-		if !reflect.DeepEqual(oldRack.Resources, newRack.Resources) {
-			allErrs = append(allErrs, field.Forbidden(fldPath.Child("datacenter", "racks").Index(i).Child("resources"), "changes in resources are currently not supported"))
 		}
 	}
 

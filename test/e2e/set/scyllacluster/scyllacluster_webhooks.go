@@ -103,12 +103,12 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 			ctx,
 			validSC.Name,
 			types.MergePatchType,
-			[]byte(fmt.Sprintf(`{"spec":{"repository": "%s-updated"}}`, validSC.Spec.Repository)),
+			[]byte(fmt.Sprintf(`{"spec": {"datacenter": {"name": "%s-updated"}}}`, validSC.Spec.Datacenter.Name)),
 			metav1.PatchOptions{},
 		)
 		o.Expect(err).To(o.Equal(&errors.StatusError{ErrStatus: metav1.Status{
 			Status:  "Failure",
-			Message: `admission webhook "webhook.scylla.scylladb.com" denied the request: ScyllaCluster.scylla.scylladb.com "basic" is invalid: spec.repository: Forbidden: repository change is currently not supported, old=docker.io/scylladb/scylla, new=docker.io/scylladb/scylla-updated`,
+			Message: `admission webhook "webhook.scylla.scylladb.com" denied the request: ScyllaCluster.scylla.scylladb.com "basic" is invalid: spec.datacenter.name: Forbidden: change of datacenter name is currently not supported`,
 			Reason:  "Invalid",
 			Details: &metav1.StatusDetails{
 				Name:  "basic",
@@ -118,8 +118,8 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 				Causes: []metav1.StatusCause{
 					{
 						Type:    "FieldValueForbidden",
-						Message: "Forbidden: repository change is currently not supported, old=docker.io/scylladb/scylla, new=docker.io/scylladb/scylla-updated",
-						Field:   "spec.repository",
+						Message: "Forbidden: change of datacenter name is currently not supported",
+						Field:   "spec.datacenter.name",
 					},
 				},
 			},

@@ -1,0 +1,95 @@
+# Daemonset that converts ephemeral-storage to xfs
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: xfs-formatter
+spec:
+  selector:
+    matchLabels:
+      app: xfs-formatter
+  template:
+    metadata:
+      labels:
+        app: xfs-formatter
+    spec:
+      hostPID: true
+      nodeSelector:
+        cloud.google.com/gke-ephemeral-storage-local-ssd: "true"
+        cloud.google.com/gke-nodepool: "scylla-pool"
+      tolerations:
+        - key: role
+          operator: Equal
+          value: scylla-clusters
+          effect: NoSchedule
+      containers:
+        - name: xfs-formatter
+          image: docker.io/scylladb/scylla-operator:latest
+          securityContext:
+            privileged: true
+          command:
+            - "/bin/bash"
+            - "-euExo"
+            - "pipefail"
+            - "-O"
+            - "inherit_errexit"
+            - "-c"
+            - |
+              cp -r /usr/local/lib/scylla-operator/gke/xfs-formatter /host/var/lib/
+
+              if [[ ! -d /host/usr/local/lib/systemd ]]; then
+                mkdir /host/usr/local/lib/systemd
+              fi
+
+              if [[ ! -d /host/usr/local/lib/systemd/system ]]; then
+                mkdir /host/usr/local/lib/systemd/system
+              fi
+
+              cp -r /usr/local/lib/scylla-operator/gke/systemd/. /host/usr/local/lib/systemd/system
+
+              if [[ ! -d /host/usr/local/lib/systemd/system/kube-node-configuration.service.d ]]; then
+                mkdir /host/usr/local/lib/systemd/system/kube-node-configuration.service.d
+              fi
+
+              cat<<-EOF > /host/usr/local/lib/systemd/system/kube-node-configuration.service.d/10-path.conf
+                [Service]
+                Environment="PATH=/var/lib/xfs-formatter/bin:$( chroot /host /bin/bash -c 'echo "${PATH}"' )"
+              EOF
+
+              if [[ ! -d /host/mnt/raid-disks ]]; then
+                mkdir /host/mnt/raid-disks
+              fi
+
+              if [[ ! -d /host/mnt/raid-disks/disk0 ]]; then
+                mkdir /host/mnt/raid-disks/disk0
+              fi
+              chmod a+w /host/mnt/raid-disks/disk0
+
+              chroot /host /bin/bash -euxo pipefail -O inherit_errexit -c '
+                  systemctl daemon-reload
+                  systemctl enable --now mnt-raid\\x2ddisks-disk0.mount
+                  systemctl start xfs-formatter.service
+                  journalctl -xeu xfs-formatter -f
+                  '
+          volumeMounts:
+            - name: hostfs
+              mountPath: /host
+              mountPropagation: Bidirectional
+          readinessProbe:
+            exec:
+              command:
+                - "chroot"
+                - "/host"
+                - "/bin/bash"
+                - "-euExo"
+                - "pipefail"
+                - "-O"
+                - "inherit_errexit"
+                - "-c"
+                - |
+                  xfs_info "$( { grep -E '/mnt/raid-disks/disk0($| )' /proc/mounts || test $? = 1; } | sed -E -e 's/([^ ]+) .+/\1/' )"
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: hostfs
+          hostPath:
+            path: /

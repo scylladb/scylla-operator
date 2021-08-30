@@ -126,18 +126,14 @@ function wait-for-object-creation {
 check_prerequisites
 
 # gcloud: Create GKE cluster
-
-# Nodepool for scylla clusters
-# Do NOT use gcloud beta
+# Nodepool for scylla operator and monitoring
 gcloud container \
 clusters create "${CLUSTER_NAME}" \
 --cluster-version "${CLUSTER_VERSION}" \
 --node-version "${CLUSTER_VERSION}" \
---machine-type "n1-standard-32" \
---num-nodes "4" \
+--machine-type "n1-standard-8" \
+--num-nodes "2" \
 --disk-type "pd-ssd" --disk-size "20" \
---local-ssd-count "8" \
---node-taints role=scylla-clusters:NoSchedule \
 --image-type "UBUNTU_CONTAINERD" \
 --system-config-from-file=systemconfig.yaml \
 --enable-stackdriver-kubernetes \
@@ -157,14 +153,16 @@ node-pools create "cassandra-stress-pool" \
 --no-enable-autoupgrade \
 --no-enable-autorepair
 
-# Nodepool for scylla operator and monitoring
-gcloud container \
-node-pools create "operator-pool" \
+# Nodepool for scylla clusters
+gcloud beta container \
+node-pools create "scylla-pool" \
 --cluster "${CLUSTER_NAME}" \
 --node-version "${CLUSTER_VERSION}" \
---machine-type "n1-standard-8" \
---num-nodes "1" \
+--machine-type "n1-standard-32" \
+--num-nodes "4" \
 --disk-type "pd-ssd" --disk-size "20" \
+--ephemeral-storage local-ssd-count="8" \
+--node-taints role=scylla-clusters:NoSchedule \
 --image-type "UBUNTU_CONTAINERD" \
 --no-enable-autoupgrade \
 --no-enable-autorepair
@@ -185,11 +183,11 @@ gcloud container clusters get-credentials "${CLUSTER_NAME}"
 echo "Setting up GKE RBAC..."
 kubectl create clusterrolebinding cluster-admin-binding --clusterrole cluster-admin --user "${GCP_USER}"
 
-# Install RAID Daemonset
-echo "Installing RAID Daemonset..."
-kubectl apply -f raid-daemonset.yaml
-wait-for-object-creation default daemonset.apps/raid-local-disks
-kubectl rollout status --timeout=5m daemonset.apps/raid-local-disks
+# Install xfs-formatter Daemonset
+echo "Installing xfs-format Daemonset..."
+kubectl apply -f xfs-formatter-daemonset.yaml
+wait-for-object-creation default daemonset.apps/xfs-formatter
+kubectl rollout status --timeout=5m daemonset.apps/xfs-formatter
 
 # Install local volume provisioner
 echo "Installing local volume provisioner..."

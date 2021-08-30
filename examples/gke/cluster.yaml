@@ -42,6 +42,7 @@ spec:
   version: 4.5.1
   agentVersion: 2.5.2
   cpuset: true
+  automaticOrphanedNodeCleanup: true
   sysctls:
     - "fs.aio-max-nr=2097152"
   network:

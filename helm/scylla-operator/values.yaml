@@ -31,8 +31,8 @@ affinity:
       podAffinityTerm:
         labelSelector:
           matchLabels:
-            app.kubernetes.io/name: webhook-server
-            app.kubernetes.io/instance: webhook-server
+            app.kubernetes.io/name: scylla-operator
+            app.kubernetes.io/instance: scylla-operator
         topologyKey: kubernetes.io/hostname
 
 webhook:
@@ -72,6 +72,6 @@ webhookServerAffinity:
       podAffinityTerm:
         labelSelector:
           matchLabels:
-            app.kubernetes.io/name: scylla-operator
-            app.kubernetes.io/instance: scylla-operator
+            app.kubernetes.io/name: webhook-server
+            app.kubernetes.io/instance: webhook-server
         topologyKey: kubernetes.io/hostname

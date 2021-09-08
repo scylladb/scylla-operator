@@ -13,7 +13,7 @@ import (
 	"sort"
 	"strings"
 
-	semver "github.com/blang/semver/v4"
+	"github.com/blang/semver/v4"
 	ofversion "github.com/operator-framework/api/pkg/lib/version"
 	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
@@ -58,19 +58,23 @@ func init() {
 }
 
 type GenerateOLMBundleOptions struct {
-	Version            string
-	CSVPath            string
-	IconPath           string
-	ExamplePaths       []string
-	InputManifestPaths []string
-	OutputDir          string
+	Version               string
+	CSVPath               string
+	IconPath              string
+	ExamplePaths          []string
+	ImageReplacementSpecs []string
+	InputManifestPaths    []string
+	OutputDir             string
 
-	operatorVersion ofversion.OperatorVersion
-	IconMIME        string
+	operatorVersion     ofversion.OperatorVersion
+	IconMIME            string
+	imageReplacementMap map[string]string
 }
 
 func NewGenerateOLMBundleOptions(streams genericclioptions.IOStreams) *GenerateOLMBundleOptions {
-	return &GenerateOLMBundleOptions{}
+	return &GenerateOLMBundleOptions{
+		imageReplacementMap: map[string]string{},
+	}
 }
 
 func NewGenerateOLMBundleCommand(streams genericclioptions.IOStreams) *cobra.Command {
@@ -119,6 +123,7 @@ func NewGenerateOLMBundleCommand(streams genericclioptions.IOStreams) *cobra.Com
 	cmd.Flags().StringVarP(&o.IconPath, "icon-file", "", o.IconPath, "Icon file.")
 	cmd.Flags().StringVarP(&o.IconMIME, "icon-mime", "", o.IconMIME, "Icon MIME type. Inferred from the icon file extension, if empty.")
 	cmd.Flags().StringArrayVarP(&o.ExamplePaths, "example-file", "", o.ExamplePaths, "A file containing the example to embed.")
+	cmd.Flags().StringArrayVarP(&o.ImageReplacementSpecs, "replace-image", "", o.ImageReplacementSpecs, "Replaces image reference in the manifests with a new one. Using `FROM=TO` replaces image reference `FROM` with `TO`. Exits non-zero if there wasn't any instance to be replaced. ")
 	cmd.Flags().StringVarP(&o.OutputDir, "output-dir", "", o.OutputDir, "Output directory for the OLM bundle.")
 
 	return cmd
@@ -184,6 +189,28 @@ func (o *GenerateOLMBundleOptions) Complete() error {
 		}
 	}
 
+	for _, irs := range o.ImageReplacementSpecs {
+		parts := strings.SplitN(irs, "=", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("can't parse --replace-image value %q: must be valid FROM=TO mapping", irs)
+		}
+		from := parts[0]
+		to := parts[1]
+		if len(from) == 0 {
+			return fmt.Errorf(`can't parse --replace-image value %q: "FROM" is empty`, irs)
+		}
+		if len(to) == 0 {
+			return fmt.Errorf(`can't parse --replace-image value %q: "TO" is empty`, irs)
+		}
+
+		_, found := o.imageReplacementMap[from]
+		if found {
+			return fmt.Errorf("duplicate image replacement %q: key %q already exists", irs, from)
+		}
+
+		o.imageReplacementMap[from] = to
+	}
+
 	return nil
 }
 
@@ -229,6 +256,10 @@ func (o *GenerateOLMBundleOptions) Run(streams genericclioptions.IOStreams, comm
 		manifestData, err := ioutil.ReadFile(manifestPath)
 		if err != nil {
 			return fmt.Errorf("can't read file %q: %w", manifestPath, err)
+		}
+
+		for from, to := range o.imageReplacementMap {
+			manifestData = []byte(strings.ReplaceAll(string(manifestData), from, to))
 		}
 
 		// YAML is a subset of JSON so this will be noop if it's JSON already.
@@ -334,7 +365,7 @@ func (o *GenerateOLMBundleOptions) Run(streams genericclioptions.IOStreams, comm
 	// Embed resources into the CSV. Sort arrays for consistent output.
 
 	// Embed version.
-	csv.Name = fmt.Sprintf("scyllaoperator.%s", o.operatorVersion)
+	csv.Name = fmt.Sprintf("scyllaoperator.v%s", o.operatorVersion)
 	csv.Spec.Version = o.operatorVersion
 
 	// Embed icon.
@@ -421,6 +452,7 @@ func (o *GenerateOLMBundleOptions) Run(streams genericclioptions.IOStreams, comm
 	})
 
 	// FIXME: embed image refs
+	// TODO: consider resolving into sha
 
 	csv.Spec.InstallStrategy.StrategyName = "deployment"
 	csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs = nil

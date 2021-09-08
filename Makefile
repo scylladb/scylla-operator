@@ -3,8 +3,9 @@ all: build
 SHELL :=/bin/bash -euEo pipefail -O inherit_errexit
 
 IMAGE_TAG ?=latest
-OLM_VERSION ?=0.0.2-latest
 IMAGE_REF ?=docker.io/scylladb/scylla-operator:$(IMAGE_TAG)
+
+OPERATOR_DEPLOY_MANIFESTS_DIR :=deploy/manifests/operator
 
 CODEGEN_PKG ?=./vendor/k8s.io/code-generator
 CODEGEN_HEADER_FILE ?=/dev/null
@@ -96,6 +97,8 @@ $(call require_minimal_version,make,MAKE_REQUIRED_MIN_VERSION,$(MAKE_VERSION))
 ifneq "$(GO_REQUIRED_MIN_VERSION)" ""
 $(call require_minimal_version,$(GO),GO_REQUIRED_MIN_VERSION,$(GO_VERSION))
 endif
+
+resolve-image =$(shell skopeo inspect --format "{{.Name}}@{{.Digest}}" docker://'$(1)')$(if $(filter $(.SHELLSTATUS),0),,$(error failed to resolve image))
 
 # $1 - package name
 define build-package
@@ -413,120 +416,33 @@ verify-deploy-manifests:
 
 .PHONY: verify-deploy-manifests
 
-olm_manifests :=$(wildcard ./deploy/manifests/operator/*.yaml)
-
-olm_manifests_embedded :=$(shell $(YQ) eval-all ' \
-	select( \
-		(.apiVersion == "apps/v1" and .kind == "Deployment") or \
-		( \
-			.apiVersion == "admissionregistration.k8s.io/v1" and \
-			(.kind == "ValidatingWebhookConfiguration" or .kind == "MutatingWebhookConfiguration") \
-		) \
-	) | filename | . as $$item ireduce ([]; . + $$item ) | \
-	 .[] ' $(olm_manifests) \
-)
-ifneq ($(.SHELLSTATUS),0)
-  $(error shell command failed! output was $(olm_manifests_embedded))
-endif
-
-olm_manifests_unused :=$(shell $(YQ) eval-all ' \
-	select( \
-		(.apiVersion == "cert-manager.io/v1") or \
-		(.apiVersion == "v1" and .kind == "Namespace") \
-	) | filename | . as $$item ireduce ([]; . + $$item ) | \
-	 .[] ' $(olm_manifests) \
-)
-ifneq ($(.SHELLSTATUS),0)
-  $(error shell command failed! output was $(olm_manifests_unused))
-endif
-
-olm_manifests_bundle_files :=$(filter-out $(olm_manifests_embedded) $(olm_manifests_unused),$(olm_manifests))
-
-#	.spec.install.spec.clusterPermissions += { \
-#		"serviceAccountName": "scylla-operator", \
-#		"rules": env(scylla_operator_cluster_permissions) \
-#	} | \
-#	.spec.install.spec.clusterPermissions += { \
-#		"serviceAccountName": "scylla-operator", \
-#		"rules": env(scylla_operator_cluster_permissions) \
-#	} | \
-#	.spec.install.spec.permissions = [] | \
-#	.spec.install.spec.clusterPermissions = [] | \
-#	.spec.install.spec.deployments = [] | \
-#	scylla_operator_cluster_permissions=$$( $(YQ) eval '.rules' ./deploy/manifests/operator/00_clusterrole_def.yaml ); \
-#	export scylla_operator_cluster_permissions; \
-# $1 - olm_dir
-#define update-olm-files
-#	cp -f -t '$(1)'/manifests $(olm_manifests_bundle_files)
-#
-#	examples=$$( $(YQ) eval-all -o=json '[.]' '$(1)'/examples/*.yaml ); \
-#	export examples; \
-#	icon=$$( base64 --wrap 0 '$(1)'/icon ); \
-#	export icon; \
-#	icon_mime=$$( file -b --mime-type '$(shell realpath --relative-to ./ '$(1)'/icon)' ); \
-#	export icon_mime; \
-#	$(YQ) eval-all -i -P ' \
-#	select(.apiVersion == "apps/v1" and .kind == "Deployment") as $$deployments | \
-#	select( \
-#		.apiVersion == "admissionregistration.k8s.io/v1" and \
-#		(.kind == "ValidatingWebhookConfiguration" or .kind == "MutatingWebhookConfiguration") \
-#	) as $$webhookconfigs | \
-#	select(.apiVersion == "apiextensions.k8s.io/v1" and .kind == "CustomResourceDefinition" and .metadata.name == "scyllaclusters.scylla.scylladb.com") as $$crd | \
-#	select(fi == 0) | \
-#	.metadata.annotations.alm-examples = strenv(examples) | \
-#	.metadata.name = "scyllaoperator.$(OLM_VERSION)" | \
-#	.spec.version = "$(OLM_VERSION)" | \
-#	.spec.icon = [{"base64data": strenv(icon), "mediatype": strenv(icon_mime)}] | \
-#	.spec.customresourcedefinitions.owned = [] | \
-#	.spec.customresourcedefinitions.owned += { \
-#		"name": $$crd.metadata.name, \
-#		"version": "v1", \
-#		"kind": $$crd.spec.names.kind, \
-#		"displayName": $$crd.spec.names.kind, \
-#		"description": $$crd.spec.versions[] | select(.name == "v1") | .schema.openAPIV3Schema.description \
-#	} | \
-#	.spec.webhookdefinitions = [] | \
-#	.spec.webhookdefinitions += ( \
-#		$$webhookconfigs as $$webhookconfig ireduce ([]; . + ( $$webhookconfig.webhooks[] as $$webhook ireduce ([]; . + { \
-#			"type": $$webhookconfig.kind, \
-#			"generateName": $$webhookconfig.metadata.name, \
-#			"deploymentName": "$$webhook.clientConfig.service.name", \
-#			"containerPort": 0, \
-#			"targetPort": 0, \
-#			"rules": $$webhook.rules // null, \
-#			"failurePolicy": $$webhook.failurePolicy // null, \
-#			"matchPolicy": $$webhook.matchPolicy // null, \
-#			"objectSelector": "" // null, \
-#			"sideEffects": $$webhook.sideEffects // null, \
-#			"timeoutSeconds": $$webhook.timeoutSeconds // null, \
-#			"admissionReviewVersions": $$webhook.admissionReviewVersions // null, \
-#			"reinvocationPolicy": $$webhook.reinvocationPolicy // null, \
-#			"webhookPath": $$webhook.clientConfig.service.webhookPath // null, \
-#			"conversionCRDs": $$webhook.conversionCRDs // null \
-#		}))) \
-#	) | \
-#	.spec.install.spec.deployments = ( $$deployments as $$item ireduce([]; . + {"name": $$item.metadata.name, "spec": $$item.spec}) ) | \
-#	.' '$(1)'/manifests/scyllaoperator.clusterserviceversion.yaml \
-#	$(olm_manifests_embedded) \
-#	./pkg/api/scylla/v1/scylla.scylladb.com_scyllaclusters.yaml
-#
-#endef
-
-define update-olm-files
+# $1 - version
+# $2 - input dir (containing CSV, icon, ...)
+# $3 - output dir
+# $4 - manifests
+# $5 - extra flags
+define generate-olm-files
 	$(GO) run ./cmd/helpers generate-olm-bundle \
-	--version=0.0.4-latest \
-	--csv-file=./deploy/olm/latest/manifests/scyllaoperator.clusterserviceversion.yaml \
-	--icon-file ./deploy/olm/latest/icon.svg \
-	--output-dir=./deploy/olm/latest/ \
-	$$( find ./deploy/olm/latest/examples/ -name '*.yaml' -printf '--example-file=%p ' ) \
+	--version='$(1)' \
+	--csv-file='$(2)'/manifests/scyllaoperator.clusterserviceversion.yaml \
+	--icon-file=$(2)/icon.svg \
+	--output-dir='$(3)' \
+	$$( find '$(2)'/examples/ -name '*.yaml' -printf '--example-file=%p ' ) \
 	--loglevel=2 \
+	$(5) \
 	-- \
-	./deploy/manifests/operator/*.yaml
+	$(4)
+
+endef
+
+# $1 - output dir
+define update-olm-files
+	$(call generate-olm-files,0.0.4-latest,./deploy/olm/latest/,$(1),$(OPERATOR_DEPLOY_MANIFESTS_DIR)/*.yaml)
 
 endef
 
 update-deploy-olm:
-	$(call update-olm-files,deploy/olm/latest)
+	$(call update-olm-files,$(tmp_dir)/)
 .PHONY: update-deploy-olm
 
 verify-deploy-olm: tmp_dir :=$(shell mktemp -d)
@@ -537,13 +453,35 @@ verify-deploy-olm:
 	$(diff_dereferenced) -r deploy/olm/latest '$(tmp_dir)/'
 .PHONY: verify-deploy-olm
 
+ifdef OLM_SNAPSHOT_VERSION
+ifeq "$(OLM_SNAPSHOT_GITREF)" ""
+OLM_SNAPSHOT_GITREF :=v$(OLM_SNAPSHOT_VERSION)
+endif
+endif
+
+olm_snapshot_image =$(subst :$(IMAGE_TAG),:$(OLM_SNAPSHOT_VERSION),$(IMAGE_REF))
+
+olm-snapshot: tmp_dir :=$(shell mktemp -d)
+olm-snapshot:
+	$(if $(OLM_SNAPSHOT_VERSION),,$(error You must specify OLM_SNAPSHOT_VERSION))
+	$(if $(OLM_SNAPSHOT_GITREF),,$(error You must specify OLM_SNAPSHOT_GITREF))
+
+	git archive --format=tar '$(OLM_SNAPSHOT_GITREF)':'$(OPERATOR_DEPLOY_MANIFESTS_DIR)' | tar -x -C '$(tmp_dir)'
+
+	dir=./deploy/olm/snapshots/'$(OLM_SNAPSHOT_VERSION)'; if [[ ! -d $${dir} ]]; then mkdir $${dir}; fi
+	$(call generate-olm-files,$(OLM_SNAPSHOT_VERSION),./deploy/olm/latest/,./deploy/olm/snapshots/$(OLM_SNAPSHOT_VERSION),'$(tmp_dir)'/*.yaml,--replace-image='$(IMAGE_REF)=$(call resolve-image,$(olm_snapshot_image))')
+
+	cp -r ./deploy/olm/latest/metadata/ ./deploy/olm/snapshots/$(OLM_SNAPSHOT_VERSION)/.
+	cp ./deploy/olm/latest/bundle.Dockerfile ./deploy/olm/snapshots/$(OLM_SNAPSHOT_VERSION)/.
+.PHONY: olm-snapshot
+
 update-examples-operator:
-	$(call concat-manifests,$(sort $(wildcard deploy/manifests/operator/*.yaml)),examples/common/operator.yaml)
+	$(call concat-manifests,$(sort $(wildcard '$(OPERATOR_DEPLOY_MANIFESTS_DIR)'/*.yaml)),examples/common/operator.yaml)
 .PHONY: update-examples-operator
 
 verify-examples-operator: tmp_file := $(shell mktemp)
 verify-examples-operator:
-	$(call concat-manifests,$(sort $(wildcard deploy/manifests/operator/*.yaml)),$(tmp_file))
+	$(call concat-manifests,$(sort $(wildcard '$(OPERATOR_DEPLOY_MANIFESTS_DIR)'/*.yaml)),$(tmp_file))
 	$(diff) '$(tmp_file)' examples/common/operator.yaml || (echo 'Operator example is not up-to date. Please run `make update-examples-operator` to update it.' && false)
 .PHONY: verify-examples-operator
 

@@ -52,7 +52,7 @@ metadata:
           version: 4.4.2
         status: {}
   creationTimestamp: null
-  name: scyllaoperator.0.0.4-latest
+  name: scyllaoperator.v0.0.4-latest
 spec:
   apiservicedefinitions: {}
   cleanup:

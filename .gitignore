@@ -1,6 +1,7 @@
 /scylla-operator
 /scylla-operator-tests
 /gen-release-notes
+/helpers
 
 # Test binary, build with `go test -c`
 *.test

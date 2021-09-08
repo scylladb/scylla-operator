@@ -442,7 +442,7 @@ define update-olm-files
 endef
 
 update-deploy-olm:
-	$(call update-olm-files,$(tmp_dir)/)
+	$(call update-olm-files,./deploy/olm/latest)
 .PHONY: update-deploy-olm
 
 verify-deploy-olm: tmp_dir :=$(shell mktemp -d)

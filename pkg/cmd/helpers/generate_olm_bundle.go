@@ -652,6 +652,9 @@ func (o *GenerateOLMBundleOptions) Run(streams genericclioptions.IOStreams, comm
 
 	// Marshal remaining manifests.
 	for filePath, unstructuredManifest := range unstructuredManifests {
+		// Namespace is determined by the CSV, strip it. We can't do it sooner because we need namespaced references.
+		unstructuredManifest.SetNamespace("")
+
 		jsonBytes, err := unstructuredManifest.MarshalJSON()
 		if err != nil {
 			return fmt.Errorf("can't marshal %q into json: %w", filePath, err)

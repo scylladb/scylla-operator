@@ -2,7 +2,7 @@ all: build
 
 SHELL :=/bin/bash -euEo pipefail
 
-IMAGE_TAG ?= latest
+IMAGE_TAG ?= 1.5
 IMAGE_REF ?= docker.io/scylladb/scylla-operator:$(IMAGE_TAG)
 
 CODEGEN_PKG ?=./vendor/k8s.io/code-generator

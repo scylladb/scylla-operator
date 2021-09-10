@@ -6,6 +6,8 @@ import (
 	clientset "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1"
 	fakescyllav1 "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1/fake"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1alpha1"
+	fakescyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -63,4 +65,9 @@ var _ clientset.Interface = &Clientset{}
 // ScyllaV1 retrieves the ScyllaV1Client
 func (c *Clientset) ScyllaV1() scyllav1.ScyllaV1Interface {
 	return &fakescyllav1.FakeScyllaV1{Fake: &c.Fake}
+}
+
+// ScyllaV1alpha1 retrieves the ScyllaV1alpha1Client
+func (c *Clientset) ScyllaV1alpha1() scyllav1alpha1.ScyllaV1alpha1Interface {
+	return &fakescyllav1alpha1.FakeScyllaV1alpha1{Fake: &c.Fake}
 }

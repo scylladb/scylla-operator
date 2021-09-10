@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	v1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	v1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -39,6 +40,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	// Group=scylla.scylladb.com, Version=v1
 	case v1.SchemeGroupVersion.WithResource("scyllaclusters"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Scylla().V1().ScyllaClusters().Informer()}, nil
+
+		// Group=scylla.scylladb.com, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithResource("scyllaclustermanagers"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Scylla().V1alpha1().ScyllaClusterManagers().Informer()}, nil
 
 	}
 

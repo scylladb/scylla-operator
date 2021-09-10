@@ -7,7 +7,7 @@ ENV GOPATH=/go \
     GODEBUG=madvdontneed=1
 ENV PATH=$PATH:$GOROOT/bin:$GOPATH/bin
 RUN apt-get update; \
-    apt-get install -y --no-install-recommends build-essential git curl gzip ca-certificates; \
+    apt-get install -y --no-install-recommends build-essential git curl gzip ca-certificates jq; \
     apt-get clean; \
     curl --fail -L https://storage.googleapis.com/golang/go1.16.4.linux-amd64.tar.gz | tar -C /usr/local -xzf -
 WORKDIR /go/src/github.com/scylladb/scylla-operator

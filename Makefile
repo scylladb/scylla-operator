@@ -1,6 +1,6 @@
 all: build
 
-SHELL :=/bin/bash -euEo pipefail
+SHELL :=/bin/bash -euEo pipefail -O inherit_errexit
 
 IMAGE_TAG ?= latest
 IMAGE_REF ?= docker.io/scylladb/scylla-operator:$(IMAGE_TAG)
@@ -10,11 +10,12 @@ CODEGEN_HEADER_FILE ?=/dev/null
 CODEGEN_APIS_PACKAGE ?=$(GO_PACKAGE)/pkg/api
 CODEGEN_GROUPS_VERSIONS ?="scyllaclusters/v1"
 
+MAKE_REQUIRED_MIN_VERSION:=4.2 # for SHELLSTATUS
 GO_REQUIRED_MIN_VERSION ?=1.16
 
-GIT_TAG ?=$(shell git describe --long --tags --abbrev=7 --match 'v[0-9]*' || echo 'v0.0.0-unknown')
-GIT_TAG_SHORT ?=$(shell git describe --tags --abbrev=7 --match 'v[0-9]*' || echo 'v0.0.0-unknown')
-GIT_COMMIT ?=$(shell git rev-parse --short "HEAD^{commit}" 2>/dev/null)
+GIT_TAG ?=$(shell git describe --long --tags --abbrev=7 --match 'v[0-9]*')$(if $(filter $(.SHELLSTATUS),0),,$(error git describe failed))
+GIT_TAG_SHORT ?=$(shell git describe --tags --abbrev=7 --match 'v[0-9]*')$(if $(filter $(.SHELLSTATUS),0),,$(error git describe failed))
+GIT_COMMIT ?=$(shell git rev-parse --short "HEAD^{commit}" 2>/dev/null)$(if $(filter $(.SHELLSTATUS),0),,$(error git rev-parse failed))
 GIT_TREE_STATE ?=$(shell ( ( [ ! -d ".git/" ] || git diff --quiet ) && echo 'clean' ) || echo 'dirty')
 
 GO ?=go
@@ -67,7 +68,7 @@ define version-ldflags
 -X $(1).gitTreeState="$(GIT_TREE_STATE)" \
 -X $(1).buildDate="$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')"
 endef
-GO_LD_FLAGS ?=-ldflags "$(call version-ldflags,$(GO_PACKAGE)/pkg/version) $(GO_LD_EXTRA_FLAGS)"
+GO_LD_FLAGS ?=-ldflags '$(strip $(call version-ldflags,$(GO_PACKAGE)/pkg/version) $(GO_LD_EXTRA_FLAGS))'
 
 # TODO: look into how to make these local to the targets
 export DOCKER_BUILDKIT :=1
@@ -90,6 +91,9 @@ $(if $(strip $(call is_equal_or_higher_version,$($(2)),$(3))),,$(error `$(1)` is
 )
 endef
 
+ifneq "$(GO_REQUIRED_MIN_VERSION)" ""
+$(call require_minimal_version,make,MAKE_REQUIRED_MIN_VERSION,$(MAKE_VERSION))
+endif
 ifneq "$(GO_REQUIRED_MIN_VERSION)" ""
 $(call require_minimal_version,$(GO),GO_REQUIRED_MIN_VERSION,$(GO_VERSION))
 endif

@@ -80,6 +80,9 @@ jobs:
       with:
         path: ${{ env.git_repo_path }}
         fetch-depth: 0
+    - name: Setup git tags
+      if: ${{ startsWith(github.ref, 'refs/tags/') }}
+      run: ./hack/ci-detect-tags.sh
     - name: Setup go
       uses: actions/setup-go@v2
       with:
@@ -101,6 +104,9 @@ jobs:
       with:
         path: ${{ env.git_repo_path }}
         fetch-depth: 0  # also fetch tags
+    - name: Setup git tags
+      if: ${{ startsWith(github.ref, 'refs/tags/') }}
+      run: ./hack/ci-detect-tags.sh
     - name: Install podman
       run: |
         set -x
@@ -135,6 +141,9 @@ jobs:
       with:
         path: ${{ env.git_repo_path }}
         fetch-depth: 0  # also fetch tags
+    - name: Setup git tags
+      if: ${{ startsWith(github.ref, 'refs/tags/') }}
+      run: ./hack/ci-detect-tags.sh
     - name: Create artifacts dir
       env:
         ARTIFACTS_DIR: ${{ runner.temp }}/e2e-artifacts
@@ -254,6 +263,9 @@ jobs:
         path: ${{ env.git_repo_path }}
         # Helm Chart version needs to be semantic, we need tags in checked out repo to determine latest one.
         fetch-depth: 0
+    - name: Setup git tags
+      if: ${{ startsWith(github.ref, 'refs/tags/') }}
+      run: ./hack/ci-detect-tags.sh
     - name: Setup go
       uses: actions/setup-go@v2
       with:
@@ -262,14 +274,14 @@ jobs:
       if: ${{ github.event_name != 'schedule' }}
       run: |
         source ./hack/lib/tag-from-gh-ref.sh
-        IMAGE_TAG=$( tag_from_gh_ref "${GITHUB_REF}" )
-        echo "IMAGE_TAG=${IMAGE_TAG}" | tee -a ${GITHUB_ENV}
+        CI_IMAGE_TAG=$( tag_from_gh_ref "${GITHUB_REF}" )
+        echo "CI_IMAGE_TAG=${CI_IMAGE_TAG}" | tee -a ${GITHUB_ENV}
     - name: Determine promotion tag for scheduled job
       if: ${{ github.event_name == 'schedule' }}
       run: |
-        IMAGE_TAG=nightly
-        echo "IMAGE_TAG=${IMAGE_TAG}" | tee -a ${GITHUB_ENV}
-        echo "HELM_CHART_VERSION_SUFFIX=-${IMAGE_TAG}" | tee -a ${GITHUB_ENV}
+        CI_IMAGE_TAG=nightly
+        echo "CI_IMAGE_TAG=${CI_IMAGE_TAG}" | tee -a ${GITHUB_ENV}
+        echo "HELM_CHART_VERSION_SUFFIX=-${CI_IMAGE_TAG}" | tee -a ${GITHUB_ENV}
     - uses: actions/download-artifact@v2
       with:
         name: operatorimage.tar.lz4
@@ -289,8 +301,8 @@ jobs:
     - name: Promote image
       run: |
         set -x
-        docker tag '${{ env.image_repo_ref }}:ci' '${{ env.image_repo_ref }}:${{ env.IMAGE_TAG }}'
-        docker push '${{ env.image_repo_ref }}:${{ env.IMAGE_TAG }}'
+        docker tag '${{ env.image_repo_ref }}:ci' '${{ env.image_repo_ref }}:${{ env.CI_IMAGE_TAG }}'
+        docker push '${{ env.image_repo_ref }}:${{ env.CI_IMAGE_TAG }}'
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@master
       with:
@@ -298,7 +310,7 @@ jobs:
     - name: Publish Helm Chart
       env:
         HELM_CHANNEL: latest
-        HELM_APP_VERSION: ${{ env.IMAGE_TAG }}
+        HELM_APP_VERSION: ${{ env.CI_IMAGE_TAG }}
       run: make helm-publish
 
   failure-notifications:

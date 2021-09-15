@@ -2,13 +2,10 @@ all: build
 
 SHELL :=/bin/bash -euEo pipefail -O inherit_errexit
 
+comma :=,
+
 IMAGE_TAG ?= latest
 IMAGE_REF ?= docker.io/scylladb/scylla-operator:$(IMAGE_TAG)
-
-CODEGEN_PKG ?=./vendor/k8s.io/code-generator
-CODEGEN_HEADER_FILE ?=/dev/null
-CODEGEN_APIS_PACKAGE ?=$(GO_PACKAGE)/pkg/api
-CODEGEN_GROUPS_VERSIONS ?="scyllaclusters/v1"
 
 MAKE_REQUIRED_MIN_VERSION:=4.2 # for SHELLSTATUS
 GO_REQUIRED_MIN_VERSION ?=1.16
@@ -19,6 +16,7 @@ GIT_COMMIT ?=$(shell git rev-parse --short "HEAD^{commit}" 2>/dev/null)$(if $(fi
 GIT_TREE_STATE ?=$(shell ( ( [ ! -d ".git/" ] || git diff --quiet ) && echo 'clean' ) || echo 'dirty')
 
 GO ?=go
+GO_MODULE ?=$(shell $(GO) list -m)$(if $(filter $(.SHELLSTATUS),0),,$(error failed to list go module name))
 GOPATH ?=$(shell $(GO) env GOPATH)
 GOOS ?=$(shell $(GO) env GOOS)
 GOEXE ?=$(shell $(GO) env GOEXE)
@@ -45,8 +43,21 @@ GO_TEST_ARGS ?=
 GO_TEST_EXTRA_ARGS ?=
 GO_TEST_E2E_EXTRA_ARGS ?=
 
-YQ ?=yq
+JQ ?=jq
+YQ ?=yq -e
 GSUTIL ?=gsutil -m -q
+
+CODEGEN_PKG ?=./vendor/k8s.io/code-generator
+CODEGEN_HEADER_FILE ?=/dev/null
+
+# API_PACKAGES is a list of comma separated full api package refs (like golang import strings)
+API_PACKAGES ?=$(shell $(GO) list -json ./pkg/api/scylla/... | $(JQ) -sr 'map(select(.Name | test("^v[0-9]+.*$$"))) | reduce .[] as $$item ([]; . + [$$item.ImportPath]) | join(",")')$(if $(filter $(.SHELLSTATUS),0),,$(error failed to list api packages))
+ifeq "$(API_PACKAGES)" ""
+	$(error "API_PACKAGES can't be empty")
+endif
+
+api_package_array :=$(subst $(comma), ,$(API_PACKAGES))
+api_package_dirs :=$(foreach p,$(api_package_array),$(subst $(GO_MODULE)/,,./$(p)))
 
 HELM ?=helm
 HELM_CHANNEL ?=latest
@@ -167,7 +178,7 @@ update-gofmt:
 	@$(GOFMT) $(GOFMT_FLAGS) -w $(go_packages_dirs)
 .PHONY: update-gofmt
 
-# We need to force localle so different envs sort files the same way for recursive traversals
+# We need to force locale so different envs sort files the same way for recursive traversals
 diff :=LC_COLLATE=C diff --no-dereference -N
 
 # $1 - temporary directory
@@ -211,22 +222,22 @@ define run-codegen
 endef
 
 define run-deepcopy-gen
-	$(call run-codegen,deepcopy-gen,--input-dirs='github.com/scylladb/scylla-operator/pkg/api/scylla/v1' --output-file-base='zz_generated.deepcopy' --bounding-dirs='github.com/scylladb/scylla-operator/pkg/api/' $(1))
+	$(call run-codegen,deepcopy-gen,--input-dirs='$(API_PACKAGES)' --output-file-base='zz_generated.deepcopy' --bounding-dirs='github.com/scylladb/scylla-operator/pkg/api/' $(1))
 
 endef
 
 define run-client-gen
-	$(call run-codegen,client-gen,--clientset-name=versioned --input-base="./" --input='github.com/scylladb/scylla-operator/pkg/api/scylla/v1' --output-package='github.com/scylladb/scylla-operator/pkg/client/scylla/clientset' $(1))
+	$(call run-codegen,client-gen,--clientset-name=versioned --input-base="./" --input='$(API_PACKAGES)' --output-package='github.com/scylladb/scylla-operator/pkg/client/scylla/clientset' $(1))
 
 endef
 
 define run-lister-gen
-	$(call run-codegen,lister-gen,--input-dirs='github.com/scylladb/scylla-operator/pkg/api/scylla/v1' --output-package='github.com/scylladb/scylla-operator/pkg/client/scylla/listers' $(1))
+	$(call run-codegen,lister-gen,--input-dirs='$(API_PACKAGES)' --output-package='github.com/scylladb/scylla-operator/pkg/client/scylla/listers' $(1))
 
 endef
 
 define run-informer-gen
-	$(call run-codegen,informer-gen,--input-dirs='github.com/scylladb/scylla-operator/pkg/api/scylla/v1' --output-package='github.com/scylladb/scylla-operator/pkg/client/scylla/informers' --versioned-clientset-package "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned" --listers-package="github.com/scylladb/scylla-operator/pkg/client/scylla/listers" $(1))
+	$(call run-codegen,informer-gen,--input-dirs='$(API_PACKAGES)' --output-package='github.com/scylladb/scylla-operator/pkg/client/scylla/informers' --versioned-clientset-package "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned" --listers-package="github.com/scylladb/scylla-operator/pkg/client/scylla/listers" $(1))
 
 endef
 
@@ -237,20 +248,42 @@ update-codegen:
 	$(call run-informer-gen,)
 .PHONY: update-codegen
 
-# $1 - target file
-define generate-crd
-	$(CONTROLLER_GEN) crd paths="$(GO_PACKAGES)" output:crd:stdout > '$(1)'
+verify-codegen:
+	$(call run-deepcopy-gen,--verify-only)
+	$(call run-client-gen,--verify-only)
+	$(call run-lister-gen,--verify-only)
+	$(call run-informer-gen,--verify-only)
+.PHONY: verify-codegen
+
+# $1 - api package
+# $2 - output dir
+# We need to cleanup `---` in the yaml output manually because it shouldn't be there and it breaks opm.
+define run-crd-gen
+	$(CONTROLLER_GEN) crd paths='$(1)' output:dir='$(2)'
+	find '$(2)' -mindepth 1 -maxdepth 1 -type f -name '*.yaml' -exec $(YQ) -i eval '.' {} \;
+
 endef
 
-update-crd:
-	$(call generate-crd,$(CRD_PATH))
-.PHONY: update-crd
+# $1 - dir prefix
+define generate-crds
+	$(foreach p,$(api_package_dirs),$(call run-crd-gen,$(p),$(1)$(p)))
 
-verify-crd: tmp_file :=$(shell mktemp)
-verify-crd:
-	$(call generate-crd,$(tmp_file))
-	$(diff) '$(tmp_file)' '$(CRD_PATH)' || (echo 'File $(CRD_PATH) is not up-to date. Please run `make update-crd` to update it.' && false)
-.PHONY: verify-crd
+endef
+
+update-crds:
+	$(call generate-crds,)
+.PHONY: update-crds
+
+verify-crds: tmp_dir :=$(shell mktemp -d)
+verify-crds:
+	mkdir '$(tmp_dir)'/{original,generated}
+
+	find $(api_package_dirs) -type f -name '*.yaml' -exec cp --parent {} '$(tmp_dir)'/original \;
+
+	$(call generate-crds,$(tmp_dir)/generated/)
+
+	$(diff) -r '$(tmp_dir)'/{original,generated} || (echo 'CRD definitions are not up-to date. Please run `make update-crds` to update it or manually remove the ones that should no longer be generated.' && false)
+.PHONY: verify-crds
 
 # $1 - target file
 define generate-helm-schema-scylla
@@ -430,17 +463,10 @@ update-examples: update-examples-manager update-examples-operator
 verify-examples: verify-example-manager verify-example-operator
 .PHONY: verify-examples
 
-verify-codegen:
-	$(call run-deepcopy-gen,--verify-only)
-	$(call run-client-gen,--verify-only)
-	$(call run-lister-gen,--verify-only)
-	$(call run-informer-gen,--verify-only)
-.PHONY: verify-codegen
-
-verify: verify-gofmt verify-codegen verify-crd verify-helm-schemas verify-helm-charts verify-deploy verify-examples verify-govet verify-helm-lint
+verify: verify-gofmt verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-examples verify-govet verify-helm-lint
 .PHONY: verify
 
-update: update-gofmt update-codegen update-crd update-helm-schemas update-helm-charts update-deploy update-examples
+update: update-gofmt update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples
 .PHONY: update
 
 test-unit:

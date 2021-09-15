@@ -32,7 +32,7 @@ runs:
       - level: Request
       EOF
 
-      sudo minikube start --wait=all --extra-config=apiserver.audit-policy-file=/etc/ssl/certs/audit-policy.yaml --extra-config=apiserver.audit-log-path=/var/log/minikube/kube-apiserver-audit.log
+      sudo minikube start --wait=all --extra-config='apiserver.event-ttl=24h' --extra-config='apiserver.audit-policy-file=/etc/ssl/certs/audit-policy.yaml' --extra-config='apiserver.audit-log-path=/var/log/minikube/kube-apiserver-audit.log'
 
       mkdir -p ~/.kube/
       sudo cat /root/.kube/config > ~/.kube/config

@@ -48,22 +48,14 @@ spec:
     name: us-east-1
     racks:
       - name: us-east-1a
-        scyllaConfig: "scylla-config"
-        scyllaAgentConfig: "scylla-agent-config"
-        members: 3
+        members: 1
         storage:
           capacity: 5Gi
+        agentResources:
+          limits:
+            cpu: 200m
+            memory: 200M
         resources:
-          requests:
-            cpu: 1
-            memory: 1Gi
           limits:
             cpu: 1
             memory: 1Gi
-        volumes:
-          - name: coredumpfs
-            hostPath:
-              path: /tmp/coredumps
-        volumeMounts:
-          - mountPath: /tmp/coredumps
-            name: coredumpfs

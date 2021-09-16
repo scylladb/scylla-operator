@@ -26,6 +26,7 @@ To wait for it use following commands:
 ```shell
 kubectl wait --for condition=established crd/scyllaclusters.scylla.scylladb.com
 kubectl -n scylla-operator rollout status deployment.apps/scylla-operator
+kubectl -n scylla-operator rollout status deployment.apps/webhook-server
 ```
 
 If you would like to customize Scylla Operator deployment, you can either edit manifests manually, 

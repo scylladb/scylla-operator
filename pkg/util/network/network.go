@@ -1,7 +1,9 @@
 package network
 
 import (
+	"fmt"
 	"net"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -19,4 +21,31 @@ func FindFirstNonLocalIP() (net.IP, error) {
 		}
 	}
 	return nil, errors.New("no local ip found")
+}
+
+var knownInterfaceNamesPrefixes = []string{"eth", "eno", "ens", "enp"}
+
+func FindEthernetInterface() (net.Interface, error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return net.Interface{}, err
+	}
+
+	// Return iface if it's one of the known.
+	for _, knownPrefix := range knownInterfaceNamesPrefixes {
+		for _, iface := range ifaces {
+			if strings.HasPrefix(iface.Name, knownPrefix) {
+				return iface, nil
+			}
+		}
+	}
+
+	// Fallback to non-loopback iface.
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagLoopback == 0 {
+			return iface, nil
+		}
+	}
+
+	return net.Interface{}, fmt.Errorf("local ethernet interface not found")
 }

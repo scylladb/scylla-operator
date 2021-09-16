@@ -11,6 +11,7 @@ import (
 	o "github.com/onsi/gomega"
 	scyllaclusterfixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scyllacluster"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
+	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,12 +48,12 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the ScyllaCluster to deploy")
-		waitCtx1, waitCtx1Cancel := contextForRollout(ctx, sc)
+		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx1Cancel()
-		sc, err = waitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, scyllaClusterRolledOut)
+		sc, err = utils.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.ScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		di, err := NewDataInserter(ctx, f.KubeClient().CoreV1(), sc, getMemberCount(sc))
+		di, err := NewDataInserter(ctx, f.KubeClient().CoreV1(), sc, utils.GetMemberCount(sc))
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer di.Close()
 
@@ -96,9 +97,9 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(sc.Spec.Datacenter.Racks[0].Resources).To(o.BeEquivalentTo(newResources))
 
 		framework.By("Waiting for the ScyllaCluster to redeploy")
-		waitCtx2, waitCtx2Cancel := contextForRollout(ctx, sc)
+		waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx2Cancel()
-		sc, err = waitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, scyllaClusterRolledOut)
+		sc, err = utils.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.ScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Scaling the ScyllaCluster up to create a new replica")
@@ -118,9 +119,9 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(sc.Spec.Datacenter.Racks[0].Members).To(o.Equal(newMebmers))
 
 		framework.By("Waiting for the ScyllaCluster to redeploy")
-		waitCtx4, waitCtx4Cancel := contextForRollout(ctx, sc)
+		waitCtx4, waitCtx4Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx4Cancel()
-		sc, err = waitForScyllaClusterState(waitCtx4, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, scyllaClusterRolledOut)
+		sc, err = utils.WaitForScyllaClusterState(waitCtx4, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.ScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 })

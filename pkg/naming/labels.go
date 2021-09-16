@@ -67,6 +67,10 @@ func ManagerSelector() labels.Selector {
 	})
 }
 
+func ScyllaSelector() labels.Selector {
+	return labels.SelectorFromSet(recommendedLabels())
+}
+
 func mergeLabels(l1, l2 map[string]string) map[string]string {
 	res := make(map[string]string)
 	for k, v := range l1 {

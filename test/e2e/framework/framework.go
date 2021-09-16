@@ -111,6 +111,11 @@ func (f *Framework) ScyllaClient() *scyllaclientset.Clientset {
 	o.Expect(err).NotTo(o.HaveOccurred())
 	return client
 }
+func (f *Framework) ScyllaAdminClient() *scyllaclientset.Clientset {
+	client, err := scyllaclientset.NewForConfig(f.AdminClientConfig())
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return client
+}
 
 func (f *Framework) setupNamespace(ctx context.Context) {
 	By("Creating a new namespace")
@@ -298,7 +303,7 @@ func (f *Framework) afterEach() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
 
-		err = DumpNamespace(ctx, f.KubeClient().Discovery(), f.DynamicAdminClient(), f.KubeClient().CoreV1(), d, f.Namespace())
+		err = DumpNamespace(ctx, f.KubeAdminClient().Discovery(), f.DynamicAdminClient(), f.KubeAdminClient().CoreV1(), d, f.Namespace())
 		o.Expect(err).NotTo(o.HaveOccurred())
 	}
 }

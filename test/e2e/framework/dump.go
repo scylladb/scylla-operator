@@ -193,8 +193,7 @@ func getContainedListableResources(apiResources []metav1.APIResource) []string {
 
 func DumpNamespace(ctx context.Context, discoveryClient discovery.DiscoveryInterface, dynamicClient dynamic.Interface, podClient corev1client.CoreV1Interface, artifactsDir, namespace string) error {
 	namespaceDir := path.Join(artifactsDir, namespace)
-	err := os.Mkdir(namespaceDir, 0777)
-	if err != nil {
+	if err := os.Mkdir(namespaceDir, 0777); err != nil {
 		return fmt.Errorf("can't make namesapce directory %q: %w", namespaceDir, err)
 	}
 
@@ -218,7 +217,7 @@ func DumpNamespace(ctx context.Context, discoveryClient discovery.DiscoveryInter
 
 		err = os.Mkdir(groupDir, 0777)
 		if err != nil {
-			return fmt.Errorf("can't make group directory %q: %w", namespaceDir, err)
+			return fmt.Errorf("can't make group directory %q: %w", groupDir, err)
 		}
 		resources := getContainedListableResources(list.APIResources)
 		for _, r := range resources {

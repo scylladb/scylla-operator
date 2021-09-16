@@ -21,13 +21,19 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/util/network"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	apierrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
+	watchtools "k8s.io/client-go/tools/watch"
 	"k8s.io/klog/v2"
 )
 
@@ -118,7 +124,7 @@ func (o *SidecarOptions) Validate() error {
 		}
 	}
 
-	return apierrors.NewAggregate(errs)
+	return utilerrors.NewAggregate(errs)
 }
 
 func (o *SidecarOptions) Complete() error {
@@ -167,13 +173,32 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, commandName st
 			},
 		),
 	)
-	singleServiceInformer := singleServiceKubeInformers.Core().V1().Services()
 
 	namespacedKubeInformers := informers.NewSharedInformerFactoryWithOptions(o.kubeClient, 12*time.Hour, informers.WithNamespace(o.Namespace))
+
+	singleServiceInformer := singleServiceKubeInformers.Core().V1().Services()
+	secretsInformer := namespacedKubeInformers.Core().V1().Secrets()
 
 	member, err := identity.Retrieve(ctx, o.ServiceName, o.Namespace, o.kubeClient)
 	if err != nil {
 		return fmt.Errorf("can't get member info: %w", err)
+	}
+
+	klog.InfoS("Waiting for optimizations")
+
+	// 400s - Startup probe
+	// 120s - default duration of iotune
+	// 30s - buffer
+	waitTimeout := (400 - 120 - 30) * time.Second
+	waitCtx, waitCtxCancel := context.WithTimeout(ctx, waitTimeout)
+	defer waitCtxCancel()
+
+	if _, err := waitForConfigMap(waitCtx, o.kubeClient.CoreV1(), member.Namespace, naming.PerftuneResultName(member.PodID)); err != nil {
+		if errors.Is(err, context.Canceled) {
+			klog.Warning("Waiting for optimizations timed out. Disk benchmark results and performance may be skewed.")
+		} else {
+			return fmt.Errorf("wait for Perftune: %w", err)
+		}
 	}
 
 	cfg := config.NewScyllaConfig(member, o.kubeClient, o.scyllaClient, o.CPUCount)
@@ -198,7 +223,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, commandName st
 		o.ServiceName,
 		o.SecretName,
 		singleServiceInformer.Lister(),
-		namespacedKubeInformers.Core().V1().Secrets().Lister(),
+		secretsInformer.Lister(),
 		hostAddr,
 	)
 
@@ -209,26 +234,11 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, commandName st
 		hostAddr,
 		o.kubeClient,
 		singleServiceInformer,
-		namespacedKubeInformers,
+		secretsInformer,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create sidecar controller: %w", err)
 	}
-
-	// Run scylla in a new process.
-	err = cmd.Start()
-	if err != nil {
-		return fmt.Errorf("can't start scylla: %w", err)
-	}
-	defer func() {
-		klog.InfoS("Waiting for scylla process to finish")
-		defer klog.InfoS("Scylla process finished")
-
-		err := cmd.Wait()
-		if err != nil {
-			klog.ErrorS(err, "Can't wait for scylla process to finish")
-		}
-	}()
 
 	// Start informers.
 	singleServiceKubeInformers.Start(ctx.Done())
@@ -236,22 +246,6 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, commandName st
 
 	var wg sync.WaitGroup
 	defer wg.Wait()
-
-	// Terminate the scylla process.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		<-ctx.Done()
-
-		klog.InfoS("Sending SIGTERM to the scylla process")
-		err := cmd.Process.Signal(syscall.SIGTERM)
-		if err != nil {
-			klog.ErrorS(err, "Can't send SIGTERM to the scylla process")
-			return
-		}
-		klog.InfoS("Sent SIGTERM to the scylla process")
-	}()
 
 	// Run probes.
 	server := &http.Server{
@@ -262,7 +256,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, commandName st
 	go func() {
 		defer wg.Done()
 
-		ok := cache.WaitForNamedCacheSync("Prober", ctx.Done(), namespacedKubeInformers.Core().V1().Secrets().Informer().HasSynced)
+		ok := cache.WaitForNamedCacheSync("Prober", ctx.Done(), secretsInformer.Informer().HasSynced)
 		if !ok {
 			return
 		}
@@ -302,7 +296,85 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, commandName st
 		sc.Run(ctx)
 	}()
 
+	// Run scylla in a new process.
+	err = cmd.Start()
+	if err != nil {
+		return fmt.Errorf("can't start scylla: %w", err)
+	}
+
+	defer func() {
+		klog.InfoS("Waiting for scylla process to finish")
+		defer klog.InfoS("Scylla process finished")
+
+		err := cmd.Wait()
+		if err != nil {
+			klog.ErrorS(err, "Can't wait for scylla process to finish")
+		}
+	}()
+
+	// Terminate the scylla process.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		<-ctx.Done()
+
+		klog.InfoS("Sending SIGTERM to the scylla process")
+		err := cmd.Process.Signal(syscall.SIGTERM)
+		if err != nil {
+			klog.ErrorS(err, "Can't send SIGTERM to the scylla process")
+			return
+		}
+		klog.InfoS("Sent SIGTERM to the scylla process")
+	}()
+
 	<-ctx.Done()
 
 	return nil
+}
+
+func waitForConfigMap(ctx context.Context, client corev1client.CoreV1Interface, namespace, configMapName string) (*corev1.ConfigMap, error) {
+	klog.Infof("Waiting for ConfigMap '%s/%s'", namespace, configMapName)
+	fieldSelector := fields.OneTermEqualSelector("metadata.name", configMapName).String()
+	lw := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			options.FieldSelector = fieldSelector
+			return client.ConfigMaps(namespace).List(ctx, options)
+		},
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			options.FieldSelector = fieldSelector
+			return client.ConfigMaps(namespace).Watch(ctx, options)
+		},
+	}
+
+	cm, err := watchtools.UntilWithSync(
+		ctx,
+		lw,
+		&corev1.ConfigMap{},
+		nil,
+		func(e watch.Event) (bool, error) {
+			switch t := e.Type; t {
+			case watch.Added, watch.Modified:
+				return true, nil
+			case watch.Error:
+				return true, apierrors.FromObject(e.Object)
+			default:
+				return true, fmt.Errorf("unexpected event type %v", t)
+			}
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return cm.Object.(*corev1.ConfigMap), nil
+}
+
+func contains(slice []string, s string) bool {
+	for _, elem := range slice {
+		if elem == s {
+			return true
+		}
+	}
+	return false
 }

@@ -29,15 +29,19 @@ const (
 
 // Generic Labels used on objects created by the operator.
 const (
-	ClusterNameLabel    = "scylla/cluster"
-	DatacenterNameLabel = "scylla/datacenter"
-	RackNameLabel       = "scylla/rack"
-	ScyllaVersionLabel  = "scylla/scylla-version"
-	ManagedHash         = "scylla-operator.scylladb.com/managed-hash"
+	ClusterNameLabel          = "scylla/cluster"
+	DatacenterNameLabel       = "scylla/datacenter"
+	RackNameLabel             = "scylla/rack"
+	ScyllaVersionLabel        = "scylla/scylla-version"
+	ManagedHash               = "scylla-operator.scylladb.com/managed-hash"
+	NodeConfigNameLabel       = "scylla-operator.scylladb.com/node-config-name"
+	NodeConfigControllerLabel = "scylla-operator.scylladb.com/node-config-controller"
+	NodePoolLabel             = "scylla-operator.scylladb.com/node-pool"
 
-	AppName         = "scylla"
-	OperatorAppName = "scylla-operator"
-	ManagerAppName  = "scylla-manager"
+	AppName           = "scylla"
+	OperatorAppName   = "scylla-operator"
+	ManagerAppName    = "scylla-manager"
+	NodeConfigAppName = "scylla-node-config"
 
 	PrometheusScrapeAnnotation = "prometheus.io/scrape"
 	PrometheusPortAnnotation   = "prometheus.io/port"
@@ -49,6 +53,7 @@ const (
 const (
 	ScyllaContainerName          = "scylla"
 	SidecarInjectorContainerName = "sidecar-injection"
+	PerftuneContainerName        = "perftune"
 
 	PVCTemplateName = "data"
 
@@ -64,6 +69,8 @@ const (
 	ScyllaConfigName             = "scylla.yaml"
 	ScyllaRackDCPropertiesName   = "cassandra-rackdc.properties"
 	ScyllaIOPropertiesName       = "io_properties.yaml"
+	PerftuneCommandName          = "perftune.cmd"
+	HostFilesystemDirName        = "/mnt/hostfs"
 
 	DataDir = "/var/lib/scylla"
 
@@ -78,4 +85,11 @@ const (
 const (
 	ScyllaManagerNamespace   = "scylla-manager"
 	ScyllaManagerServiceName = "scylla-manager"
+
+	ScyllaOperatorName      = "scylla-operator"
+	ScyllaOperatorNamespace = "scylla-operator"
+
+	ScyllaOperatorNodeTuningNamespace = "scylla-operator-node-tuning"
+
+	PerftuneJobPrefixName = "perftune"
 )

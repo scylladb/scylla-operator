@@ -11,6 +11,7 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllaclusterfixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scyllacluster"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
+	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -50,12 +51,12 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the ScyllaCluster to deploy")
-		waitCtx1, waitCtx1Cancel := contextForRollout(ctx, sc)
+		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx1Cancel()
-		sc, err = waitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, scyllaClusterRolledOut)
+		sc, err = utils.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.ScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		di, err := NewDataInserter(ctx, f.KubeClient().CoreV1(), sc, getMemberCount(sc))
+		di, err := NewDataInserter(ctx, f.KubeClient().CoreV1(), sc, utils.GetMemberCount(sc))
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer di.Close()
 
@@ -87,17 +88,17 @@ var _ = g.Describe("Scylla Manager integration", func() {
 			return false, nil
 		}
 
-		waitCtx2, waitCtx2Cancel := contextForManagerSync(ctx, sc)
+		waitCtx2, waitCtx2Cancel := utils.ContextForManagerSync(ctx, sc)
 		defer waitCtx2Cancel()
 		conditions := []func(cluster *scyllav1.ScyllaCluster) (bool, error){
 			registeredInManagerCond,
 			repairTaskScheduledCond,
 			backupTaskSyncFailedCond,
 		}
-		sc, err = waitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, conditions...)
+		sc, err = utils.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, conditions...)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		managerClient, err := getManagerClient(ctx, f.KubeAdminClient().CoreV1())
+		managerClient, err := utils.GetManagerClient(ctx, f.KubeAdminClient().CoreV1())
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Verifying that task properties were synchronized")

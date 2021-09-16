@@ -31,6 +31,7 @@ type Member struct {
 	Datacenter    string
 	Cluster       string
 	ServiceLabels map[string]string
+	PodID         string
 
 	Overprovisioned bool
 }
@@ -66,6 +67,7 @@ func Retrieve(ctx context.Context, name, namespace string, kubeclient kubernetes
 		Datacenter:      pod.Labels[naming.DatacenterNameLabel],
 		Cluster:         pod.Labels[naming.ClusterNameLabel],
 		ServiceLabels:   memberService.Labels,
+		PodID:           string(pod.UID),
 		Overprovisioned: pod.Status.QOSClass != corev1.PodQOSGuaranteed,
 	}, nil
 }

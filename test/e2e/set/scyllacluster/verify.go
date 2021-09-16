@@ -10,6 +10,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controller/scyllacluster/util"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
+	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -74,7 +75,7 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 	o.Expect(sc.Status.ObservedGeneration).NotTo(o.BeNil())
 	o.Expect(sc.Status.Racks).To(o.HaveLen(len(sc.Spec.Datacenter.Racks)))
 
-	statefulsets, err := getStatefulSetsForScyllaCluster(ctx, kubeClient.AppsV1(), sc)
+	statefulsets, err := utils.GetStatefulSetsForScyllaCluster(ctx, kubeClient.AppsV1(), sc)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(statefulsets).To(o.HaveLen(len(sc.Spec.Datacenter.Racks)))
 
@@ -105,7 +106,7 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 	verifyPersistentVolumeClaims(ctx, kubeClient.CoreV1(), sc)
 
 	// TODO: Use scylla client to check at least "UN"
-	scyllaClient, hosts, err := getScyllaClient(ctx, kubeClient.CoreV1(), sc)
+	scyllaClient, hosts, err := utils.GetScyllaClient(ctx, kubeClient.CoreV1(), sc)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(hosts).To(o.HaveLen(memberCount))
 

@@ -11,6 +11,7 @@ import (
 	o "github.com/onsi/gomega"
 	scyllaclusterfixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scyllacluster"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
+	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -48,12 +49,12 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			o.Expect(sc.Spec.Version).To(o.Equal(e.initialVersion))
 
 			framework.By("Waiting for the ScyllaCluster to deploy")
-			waitCtx1, waitCtx1Cancel := contextForRollout(ctx, sc)
+			waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
 			defer waitCtx1Cancel()
-			sc, err = waitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, scyllaClusterRolledOut)
+			sc, err = utils.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.ScyllaClusterRolledOut)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			di, err := NewDataInserter(ctx, f.KubeClient().CoreV1(), sc, getMemberCount(sc))
+			di, err := NewDataInserter(ctx, f.KubeClient().CoreV1(), sc, utils.GetMemberCount(sc))
 			o.Expect(err).NotTo(o.HaveOccurred())
 			defer di.Close()
 
@@ -78,9 +79,9 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			o.Expect(sc.Spec.Version).To(o.Equal(e.updatedVersion))
 
 			framework.By("Waiting for the ScyllaCluster to re-deploy")
-			waitCtx2, waitCtx2Cancel := contextForRollout(ctx, sc)
+			waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc)
 			defer waitCtx2Cancel()
-			sc, err = waitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, scyllaClusterRolledOut)
+			sc, err = utils.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.ScyllaClusterRolledOut)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			err = di.UpdateClientEndpoints(ctx, sc)

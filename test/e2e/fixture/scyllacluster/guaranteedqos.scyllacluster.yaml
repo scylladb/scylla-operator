@@ -1,0 +1,23 @@
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: guaranteed-qos
+spec:
+  version: 4.4.2
+  agentVersion: 2.3.0
+  developerMode: true
+  datacenter:
+    name: us-east-1
+    racks:
+    - name: us-east-1a
+      members: 1
+      storage:
+        capacity: 100Mi
+      resources:
+        limits:
+          cpu: 200m
+          memory: 1Gi
+      agentResources:
+        limits:
+          cpu: 200m
+          memory: 100Mi

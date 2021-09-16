@@ -205,12 +205,25 @@ jobs:
       if: ${{ always() }}
       working-directory: ${{ runner.temp }}/e2e-artifacts
       run: |
-        set -x
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
         docker info > docker.info
         docker images -a > docker.images
         docker stats -a --no-stream --no-trunc > docker.stats
         free -h > free
         journalctl -u kubelet > kubelet.log
+
+        sudo tar -c --use-compress-program=lz4 -f ./kubernetes.tar.lz4 "/etc/kubernetes"
+
+        mkdir container-logs
+        for ns in kube-system; do
+          mkdir "container-logs/${ns}"
+          for cid in $( sudo crictl ps --label="io.kubernetes.pod.namespace=${ns}" -a -q ); do
+            cname=$( sudo crictl inspect -o go-template --template='{{ .status.metadata.name }}' "${cid}" )
+            sudo crictl logs "${cid}" 1>"container-logs/${ns}/${cname}_${cid}.log" 2>&1
+          done
+        done
     - name: Collect audit logs
       if: ${{ always() }}
       working-directory: ${{ runner.temp }}/e2e-artifacts

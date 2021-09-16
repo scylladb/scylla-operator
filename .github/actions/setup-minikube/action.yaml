@@ -8,7 +8,7 @@ runs:
     run: |
       set -x
       sudo apt-get install -y --no-install-recommends conntrack
-      sudo curl --fail -L https://storage.googleapis.com/minikube/releases/v1.22.0/minikube-linux-amd64 -o /usr/local/bin/minikube
+      sudo curl -s --fail -L https://storage.googleapis.com/minikube/releases/v1.23.0/minikube-linux-amd64 -o /usr/local/bin/minikube
       sudo chmod +x /usr/local/bin/minikube
       sudo curl --fail -L "https://dl.k8s.io/release/$( curl --fail -L https://dl.k8s.io/release/stable.txt )/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl
       sudo chmod +x /usr/local/bin/kubectl
@@ -32,7 +32,7 @@ runs:
       - level: Request
       EOF
 
-      sudo minikube start --wait=all --extra-config='apiserver.event-ttl=24h' --extra-config='apiserver.audit-policy-file=/etc/ssl/certs/audit-policy.yaml' --extra-config='apiserver.audit-log-path=/var/log/minikube/kube-apiserver-audit.log'
+      sudo minikube start --wait=all --extra-config='apiserver.event-ttl=24h' --extra-config='apiserver.audit-policy-file=/etc/ssl/certs/audit-policy.yaml' --extra-config='apiserver.audit-log-path=/var/log/kube-apiserver-audit.log'
 
       mkdir -p ~/.kube/
       sudo cat /root/.kube/config > ~/.kube/config
@@ -40,11 +40,11 @@ runs:
       kubectl version
 
       # We can't hack an existing dir for logs because they are read only.
-      sudo $( which yq ) -i e '.spec.volumes += {"name": "logs","hostPath": {"path": "/var/log/minikube"}} | .spec.containers[0].volumeMounts += {"name": "logs", "mountPath": "/var/log/minikube"}' /etc/kubernetes/manifests/kube-apiserver.yaml
+      sudo $( which yq ) -i e '.spec.volumes += {"name": "logs","hostPath": {"path": "/var/log"}} | .spec.containers[0].volumeMounts += {"name": "logs", "mountPath": "/var/log"}' /etc/kubernetes/manifests/kube-apiserver.yaml
 
       # We need to wait for the apiserver to be restarted.
-      until sudo test -f /var/log/minikube/kube-apiserver-audit.log; do
-        echo 'Waiting for /var/log/minikube/kube-apiserver-audit.log to be created.'
+      until sudo test -f /var/log/kube-apiserver-audit.log; do
+        echo 'Waiting for /var/log/kube-apiserver-audit.log to be created.'
         sleep 1;
       done
 

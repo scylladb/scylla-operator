@@ -1,14 +1,12 @@
 package resourceapply
 
 import (
-	"crypto/sha512"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resource"
+	hash2 "github.com/scylladb/scylla-operator/pkg/util/hash"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -17,17 +15,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 )
-
-func HashObjects(objs ...interface{}) (string, error) {
-	hasher := sha512.New()
-	encoder := json.NewEncoder(hasher)
-	for _, obj := range objs {
-		if err := encoder.Encode(obj); err != nil {
-			return "", err
-		}
-	}
-	return base64.StdEncoding.EncodeToString(hasher.Sum(nil)), nil
-}
 
 func SetHashAnnotation(obj metav1.Object) error {
 	// Do not hash ResourceVersion.
@@ -43,7 +30,7 @@ func SetHashAnnotation(obj metav1.Object) error {
 	// Clear annotation to have consistent hashing for the same objects.
 	delete(annotations, naming.ManagedHash)
 
-	hash, err := HashObjects(obj)
+	hash, err := hash2.HashObjects(obj)
 	if err != nil {
 		return err
 	}

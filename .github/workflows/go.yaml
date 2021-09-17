@@ -185,7 +185,7 @@ jobs:
       run: |
         set -euExo pipefail
 
-        e2e_timeout_minutes=60
+        e2e_timeout_minutes=70
         flake_attempts=0
         if [[ -v 'FLAKE_ATTEMPTS' ]]; then
           flake_attempts="${FLAKE_ATTEMPTS}"

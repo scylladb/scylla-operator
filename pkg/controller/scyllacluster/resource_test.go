@@ -77,7 +77,16 @@ func TestMemberService(t *testing.T) {
 		{
 			Name: "cql-ssl",
 			Port: 9142,
-		}, {
+		},
+		{
+			Name: "cql-shard-aware",
+			Port: 19042,
+		},
+		{
+			Name: "cql-ssl-shard-aware",
+			Port: 19142,
+		},
+		{
 			Name: "agent-api",
 			Port: 10001,
 		},

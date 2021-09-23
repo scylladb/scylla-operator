@@ -148,7 +148,7 @@ func waitForScyllaClusterState(ctx context.Context, client scyllav1client.Scylla
 	return event.Object.(*scyllav1.ScyllaCluster), nil
 }
 
-func waitForStatefulSetRollout(ctx context.Context, client appv1client.AppsV1Interface, namespace, name string) (*appsv1.StatefulSet, error) {
+func waitForStatefulSetState(ctx context.Context, client appv1client.AppsV1Interface, namespace, name string, conditions ...func(sc *appsv1.StatefulSet) (bool, error)) (*appsv1.StatefulSet, error) {
 	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
 	lw := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
@@ -163,10 +163,16 @@ func waitForStatefulSetRollout(ctx context.Context, client appv1client.AppsV1Int
 	event, err := watchtools.UntilWithSync(ctx, lw, &appsv1.StatefulSet{}, nil, func(event watch.Event) (bool, error) {
 		switch event.Type {
 		case watch.Added, watch.Modified:
-			sts := event.Object.(*appsv1.StatefulSet)
-			return sts.Status.ObservedGeneration >= sts.Generation &&
-				sts.Status.CurrentRevision == sts.Status.UpdateRevision &&
-				sts.Status.ReadyReplicas == *sts.Spec.Replicas, nil
+			for _, condition := range conditions {
+				done, err := condition(event.Object.(*appsv1.StatefulSet))
+				if err != nil {
+					return false, err
+				}
+				if !done {
+					return false, nil
+				}
+			}
+			return true, nil
 		default:
 			return true, fmt.Errorf("unexpected event: %#v", event)
 		}

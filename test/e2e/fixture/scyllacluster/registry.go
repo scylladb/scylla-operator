@@ -11,6 +11,9 @@ import (
 var (
 	//go:embed "basic.scyllacluster.yaml"
 	BasicScyllaCluster ScyllaCluster
+
+	//go:embed "multi-rack.scyllacluster.yaml"
+	MultiRackScyllaCluster ScyllaCluster
 )
 
 type ScyllaCluster []byte

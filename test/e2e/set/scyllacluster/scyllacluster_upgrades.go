@@ -5,7 +5,6 @@ package scyllacluster
 import (
 	"context"
 	"fmt"
-	"time"
 
 	g "github.com/onsi/ginkgo"
 	gt "github.com/onsi/ginkgo/extensions/table"
@@ -77,9 +76,6 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(sc.Spec.Version).To(o.Equal(e.updatedVersion))
-
-			// FIXME: Remove when we have observedGeneration. Until then this is racy.
-			time.Sleep(10 * time.Second)
 
 			framework.By("Waiting for the ScyllaCluster to re-deploy")
 			waitCtx2, waitCtx2Cancel := contextForRollout(ctx, sc)

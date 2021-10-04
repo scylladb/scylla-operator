@@ -66,8 +66,7 @@
    git tag -a vX.Y.Z-rc.I upstream/vX.Y -m "vX.Y.Z-rc.I"
    git push upstream vX.Y.Z-rc.I
    ```
-
-1. Create a new pre-release in GitHub and publish the [release notes](#release-notes) there.
+   CI will automatically create a new release in GitHub and publish the [release notes](#release-notes) there.
 
 1. Announce the new RC with the link to the GitHub release on:
    - `#scylla-operator` channel in ScyllaDB-Users Slack
@@ -80,18 +79,19 @@
    git tag -a vX.Y.Z tags/vX.Y.Z-rc.I^{} -m 'vX.Y.Z'
    git push upstream vX.Y.Z
    ```
+   CI will automatically create a new release in GitHub and publish the [release notes](#release-notes) there.
 
 1. Promote the container image from the latest RC approved by QA team.
+   - `skopeo`
+      ```
+      skopeo copy docker://docker.io/scylladb/scylla-operator:X.Y.Z-rc.I docker://docker.io/scylladb/scylla-operator:X.Y.Z
+      ```
+   
    - `docker`
       ```
       docker pull docker.io/scylladb/scylla-operator:X.Y.Z-rc.I
       docker tag docker.io/scylladb/scylla-operator:X.Y.Z-rc.I docker.io/scylladb/scylla-operator:X.Y.Z
       docker push docker.io/scylladb/scylla-operator:X.Y.Z
-      ```
-   
-   - `skopeo`
-      ```
-      skopeo copy docker://docker.io/scylladb/scylla-operator:X.Y.Z-rc.I docker://docker.io/scylladb/scylla-operator:X.Y.Z
       ```
 
 1. Publish the Helm charts.
@@ -101,16 +101,19 @@
     make helm-publish HELM_CHANNEL=stable HELM_APP_VERSION=X.Y.Z HELM_CHART_VERSION=vX.Y.Z
     ```
 
+1. Ask QA to smoke test vX.Y.Z helm charts.
+
 1. Mark docs as latest in `docs/source/conf.py` in the master branch:
    ```
    smv_latest_version = 'vX.Y'
    ```
+1. Submit a PR using `master` as target branch.
 
 1. (optional) Update the release schedule in `docs/source/release.md`.
 
 1. Submit a PR using `master` as target branch.
 
-1. Create a new release in GitHub and publish the [release notes](#release-notes) there.
+1. Wait for QA to give you the green light.
 
 1. Announce the new release with the link to the GitHub release on:
    - `#scylla-operator` channel in ScyllaDB-Users Slack

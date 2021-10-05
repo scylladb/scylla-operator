@@ -70,7 +70,6 @@ type Unmarshaler interface {
 //  list, set                   | map[X]struct{}     |
 //  map                         | map[X]Y            |
 //  uuid, timeuuid              | gocql.UUID         |
-//  uuid, timeuuid              | [16]byte           | raw UUID bytes
 //  uuid, timeuuid              | []byte             | raw UUID bytes, length must be 16 bytes
 //  uuid, timeuuid              | string             | hex representation, see ParseUUID
 //  varint                      | integer types      |
@@ -343,15 +342,20 @@ func unmarshalVarchar(info TypeInfo, data []byte, value interface{}) error {
 	case k == reflect.String:
 		rv.SetString(string(data))
 		return nil
-	case k == reflect.Slice && t.Elem().Kind() == reflect.Uint8:
+	case k == reflect.Slice && t.Elem().Kind() == reflect.Uint8, k == reflect.Interface:
 		var dataCopy []byte
 		if data != nil {
 			dataCopy = make([]byte, len(data))
 			copy(dataCopy, data)
 		}
-		rv.SetBytes(dataCopy)
+		if k == reflect.Slice {
+			rv.SetBytes(dataCopy)
+		} else {
+			rv.Set(reflect.ValueOf(dataCopy))
+		}
 		return nil
 	}
+
 	return unmarshalErrorf("can not unmarshal %s into %T", info, value)
 }
 
@@ -1774,8 +1778,6 @@ func marshalUUID(info TypeInfo, value interface{}) ([]byte, error) {
 		return nil, nil
 	case UUID:
 		return val.Bytes(), nil
-	case [16]byte:
-		return val[:], nil
 	case []byte:
 		if len(val) != 16 {
 			return nil, marshalErrorf("can not marshal []byte %d bytes long into %s, must be exactly 16 bytes long", len(val), info)

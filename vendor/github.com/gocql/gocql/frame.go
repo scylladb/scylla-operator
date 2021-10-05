@@ -170,6 +170,9 @@ const (
 	flagBetaProtocol  byte = 0x10
 )
 
+// DEPRECATED use Consistency type, SerialConsistency is now an alias for backwards compatibility.
+type SerialConsistency = Consistency
+
 type Consistency uint16
 
 const (
@@ -181,6 +184,8 @@ const (
 	All         Consistency = 0x05
 	LocalQuorum Consistency = 0x06
 	EachQuorum  Consistency = 0x07
+	Serial      Consistency = 0x08
+	LocalSerial Consistency = 0x09
 	LocalOne    Consistency = 0x0A
 )
 
@@ -202,11 +207,19 @@ func (c Consistency) String() string {
 		return "LOCAL_QUORUM"
 	case EachQuorum:
 		return "EACH_QUORUM"
+	case Serial:
+		return "SERIAL"
+	case LocalSerial:
+		return "LOCAL_SERIAL"
 	case LocalOne:
 		return "LOCAL_ONE"
 	default:
 		return fmt.Sprintf("UNKNOWN_CONS_0x%x", uint16(c))
 	}
+}
+
+func (c Consistency) IsSerial() bool {
+	return c == Serial || c == LocalSerial
 }
 
 func (c Consistency) MarshalText() (text []byte, err error) {
@@ -231,6 +244,10 @@ func (c *Consistency) UnmarshalText(text []byte) error {
 		*c = LocalQuorum
 	case "EACH_QUORUM":
 		*c = EachQuorum
+	case "SERIAL":
+		*c = Serial
+	case "LOCAL_SERIAL":
+		*c = LocalSerial
 	case "LOCAL_ONE":
 		*c = LocalOne
 	default:
@@ -266,41 +283,6 @@ func MustParseConsistency(s string) (Consistency, error) {
 	return c, nil
 }
 
-type SerialConsistency uint16
-
-const (
-	Serial      SerialConsistency = 0x08
-	LocalSerial SerialConsistency = 0x09
-)
-
-func (s SerialConsistency) String() string {
-	switch s {
-	case Serial:
-		return "SERIAL"
-	case LocalSerial:
-		return "LOCAL_SERIAL"
-	default:
-		return fmt.Sprintf("UNKNOWN_SERIAL_CONS_0x%x", uint16(s))
-	}
-}
-
-func (s SerialConsistency) MarshalText() (text []byte, err error) {
-	return []byte(s.String()), nil
-}
-
-func (s *SerialConsistency) UnmarshalText(text []byte) error {
-	switch string(text) {
-	case "SERIAL":
-		*s = Serial
-	case "LOCAL_SERIAL":
-		*s = LocalSerial
-	default:
-		return fmt.Errorf("invalid consistency %q", string(text))
-	}
-
-	return nil
-}
-
 const (
 	apacheCassandraTypePrefix = "org.apache.cassandra.db.marshal."
 )
@@ -311,8 +293,24 @@ var (
 
 const maxFrameHeaderSize = 9
 
+func writeInt(p []byte, n int32) {
+	p[0] = byte(n >> 24)
+	p[1] = byte(n >> 16)
+	p[2] = byte(n >> 8)
+	p[3] = byte(n)
+}
+
 func readInt(p []byte) int32 {
 	return int32(p[0])<<24 | int32(p[1])<<16 | int32(p[2])<<8 | int32(p[3])
+}
+
+func writeShort(p []byte, n uint16) {
+	p[0] = byte(n >> 8)
+	p[1] = byte(n)
+}
+
+func readShort(p []byte) uint16 {
+	return uint16(p[0])<<8 | uint16(p[1])
 }
 
 type frameHeader struct {
@@ -386,6 +384,8 @@ type framer struct {
 	wbuf []byte
 
 	customPayload map[string][]byte
+
+	flagLWT int
 }
 
 func newFramer(r io.Reader, w io.Writer, compressor Compressor, version byte) *framer {
@@ -421,6 +421,25 @@ func newFramer(r io.Reader, w io.Writer, compressor Compressor, version byte) *f
 
 	f.header = nil
 	f.traceID = nil
+
+	return f
+}
+
+func newFramerWithExts(r io.Reader, w io.Writer, compressor Compressor, version byte,
+	cqlProtoExts []cqlProtocolExtension) *framer {
+
+	f := newFramer(r, w, compressor, version)
+
+	if lwtExt := findCQLProtoExtByName(cqlProtoExts, lwtAddMetadataMarkKey); lwtExt != nil {
+		castedExt, ok := lwtExt.(*lwtAddMetadataMarkExt)
+		if !ok {
+			Logger.Println(
+				fmt.Errorf("Failed to cast CQL protocol extension identified by name %s to type %T",
+					lwtAddMetadataMarkKey, lwtAddMetadataMarkExt{}))
+			return f
+		}
+		f.flagLWT = castedExt.lwtOptMetaBitMask
+	}
 
 	return f
 }
@@ -590,7 +609,7 @@ func (f *framer) parseErrorFrame() frame {
 	}
 
 	switch code {
-	case ErrCodeUnavailable:
+	case errUnavailable:
 		cl := f.readConsistency()
 		required := f.readInt()
 		alive := f.readInt()
@@ -600,7 +619,7 @@ func (f *framer) parseErrorFrame() frame {
 			Required:    required,
 			Alive:       alive,
 		}
-	case ErrCodeWriteTimeout:
+	case errWriteTimeout:
 		cl := f.readConsistency()
 		received := f.readInt()
 		blockfor := f.readInt()
@@ -612,7 +631,7 @@ func (f *framer) parseErrorFrame() frame {
 			BlockFor:    blockfor,
 			WriteType:   writeType,
 		}
-	case ErrCodeReadTimeout:
+	case errReadTimeout:
 		cl := f.readConsistency()
 		received := f.readInt()
 		blockfor := f.readInt()
@@ -624,7 +643,7 @@ func (f *framer) parseErrorFrame() frame {
 			BlockFor:    blockfor,
 			DataPresent: dataPresent,
 		}
-	case ErrCodeAlreadyExists:
+	case errAlreadyExists:
 		ks := f.readString()
 		table := f.readString()
 		return &RequestErrAlreadyExists{
@@ -632,13 +651,13 @@ func (f *framer) parseErrorFrame() frame {
 			Keyspace:   ks,
 			Table:      table,
 		}
-	case ErrCodeUnprepared:
+	case errUnprepared:
 		stmtId := f.readShortBytes()
 		return &RequestErrUnprepared{
 			errorFrame:  errD,
 			StatementId: copyBytes(stmtId), // defensively copy
 		}
-	case ErrCodeReadFailure:
+	case errReadFailure:
 		res := &RequestErrReadFailure{
 			errorFrame: errD,
 		}
@@ -654,7 +673,7 @@ func (f *framer) parseErrorFrame() frame {
 		res.DataPresent = f.readByte() != 0
 
 		return res
-	case ErrCodeWriteFailure:
+	case errWriteFailure:
 		res := &RequestErrWriteFailure{
 			errorFrame: errD,
 		}
@@ -669,7 +688,7 @@ func (f *framer) parseErrorFrame() frame {
 		}
 		res.WriteType = f.readString()
 		return res
-	case ErrCodeFunctionFailure:
+	case errFunctionFailure:
 		res := &RequestErrFunctionFailure{
 			errorFrame: errD,
 		}
@@ -678,21 +697,14 @@ func (f *framer) parseErrorFrame() frame {
 		res.ArgTypes = f.readStringList()
 		return res
 
-	case ErrCodeCDCWriteFailure:
+	case errCDCWriteFailure:
 		res := &RequestErrCDCWriteFailure{
 			errorFrame: errD,
 		}
 		return res
-	case ErrCodeCASWriteUnknown:
-		res := &RequestErrCASWriteUnknown{
-			errorFrame: errD,
-		}
-		res.Consistency = f.readConsistency()
-		res.Received = f.readInt()
-		res.BlockFor = f.readInt()
-		return res
-	case ErrCodeInvalid, ErrCodeBootstrapping, ErrCodeConfig, ErrCodeCredentials, ErrCodeOverloaded,
-		ErrCodeProtocol, ErrCodeServer, ErrCodeSyntax, ErrCodeTruncate, ErrCodeUnauthorized:
+
+	case errInvalid, errBootstrapping, errConfig, errCredentials, errOverloaded,
+		errProtocol, errServer, errSyntax, errTruncate, errUnauthorized:
 		// TODO(zariel): we should have some distinct types for these errors
 		return errD
 	default:
@@ -925,12 +937,16 @@ func (f *framer) readTypeInfo() TypeInfo {
 type preparedMetadata struct {
 	resultMetadata
 
+	// LWT query detected
+	lwt bool
+
 	// proto v4+
 	pkeyColumns []int
 }
 
 func (r preparedMetadata) String() string {
-	return fmt.Sprintf("[prepared flags=0x%x pkey=%v paging_state=% X columns=%v col_count=%d actual_col_count=%d]", r.flags, r.pkeyColumns, r.pagingState, r.columns, r.colCount, r.actualColCount)
+	return fmt.Sprintf("[prepared flags=0x%x pkey=%v paging_state=% X columns=%v col_count=%d actual_col_count=%d lwt=%t]",
+		r.flags, r.pkeyColumns, r.pagingState, r.columns, r.colCount, r.actualColCount, r.lwt)
 }
 
 func (f *framer) parsePreparedMetadata() preparedMetadata {
@@ -952,6 +968,8 @@ func (f *framer) parsePreparedMetadata() preparedMetadata {
 		}
 		meta.pkeyColumns = pkeys
 	}
+
+	meta.lwt = meta.flags&f.flagLWT == f.flagLWT
 
 	if meta.flags&flagHasMorePages == flagHasMorePages {
 		meta.pagingState = copyBytes(f.readBytes())
@@ -1438,7 +1456,7 @@ type queryParams struct {
 	values            []queryValues
 	pageSize          int
 	pagingState       []byte
-	serialConsistency SerialConsistency
+	serialConsistency Consistency
 	// v3+
 	defaultTimestamp      bool
 	defaultTimestampValue int64
@@ -1527,7 +1545,7 @@ func (f *framer) writeQueryParams(opts *queryParams) {
 	}
 
 	if opts.serialConsistency > 0 {
-		f.writeConsistency(Consistency(opts.serialConsistency))
+		f.writeConsistency(opts.serialConsistency)
 	}
 
 	if f.proto > protoVersion2 && opts.defaultTimestamp {
@@ -1639,7 +1657,7 @@ type writeBatchFrame struct {
 	consistency Consistency
 
 	// v3+
-	serialConsistency     SerialConsistency
+	serialConsistency     Consistency
 	defaultTimestamp      bool
 	defaultTimestampValue int64
 
@@ -1711,7 +1729,7 @@ func (f *framer) writeBatchFrame(streamID int, w *writeBatchFrame, customPayload
 		}
 
 		if w.serialConsistency > 0 {
-			f.writeConsistency(Consistency(w.serialConsistency))
+			f.writeConsistency(w.serialConsistency)
 		}
 
 		if w.defaultTimestamp {
@@ -1780,6 +1798,16 @@ func (f *framer) readShort() (n uint16) {
 	}
 	n = uint16(f.rbuf[0])<<8 | uint16(f.rbuf[1])
 	f.rbuf = f.rbuf[2:]
+	return
+}
+
+func (f *framer) readLong() (n int64) {
+	if len(f.rbuf) < 8 {
+		panic(fmt.Errorf("not enough bytes in buffer to read long require 8 got: %d", len(f.rbuf)))
+	}
+	n = int64(f.rbuf[0])<<56 | int64(f.rbuf[1])<<48 | int64(f.rbuf[2])<<40 | int64(f.rbuf[3])<<32 |
+		int64(f.rbuf[4])<<24 | int64(f.rbuf[5])<<16 | int64(f.rbuf[6])<<8 | int64(f.rbuf[7])
+	f.rbuf = f.rbuf[8:]
 	return
 }
 
@@ -1896,6 +1924,19 @@ func (f *framer) readConsistency() Consistency {
 	return Consistency(f.readShort())
 }
 
+func (f *framer) readStringMap() map[string]string {
+	size := f.readShort()
+	m := make(map[string]string, size)
+
+	for i := 0; i < int(size); i++ {
+		k := f.readString()
+		v := f.readString()
+		m[k] = v
+	}
+
+	return m
+}
+
 func (f *framer) readBytesMap() map[string][]byte {
 	size := f.readShort()
 	m := make(map[string][]byte, size)
@@ -2005,6 +2046,10 @@ func (f *framer) writeLongString(s string) {
 	f.wbuf = append(f.wbuf, s...)
 }
 
+func (f *framer) writeUUID(u *UUID) {
+	f.wbuf = append(f.wbuf, u[:]...)
+}
+
 func (f *framer) writeStringList(l []string) {
 	f.writeShort(uint16(len(l)))
 	for _, s := range l {
@@ -2037,6 +2082,18 @@ func (f *framer) writeShortBytes(p []byte) {
 	f.wbuf = append(f.wbuf, p...)
 }
 
+func (f *framer) writeInet(ip net.IP, port int) {
+	f.wbuf = append(f.wbuf,
+		byte(len(ip)),
+	)
+
+	f.wbuf = append(f.wbuf,
+		[]byte(ip)...,
+	)
+
+	f.writeInt(int32(port))
+}
+
 func (f *framer) writeConsistency(cons Consistency) {
 	f.writeShort(uint16(cons))
 }
@@ -2046,6 +2103,14 @@ func (f *framer) writeStringMap(m map[string]string) {
 	for k, v := range m {
 		f.writeString(k)
 		f.writeString(v)
+	}
+}
+
+func (f *framer) writeStringMultiMap(m map[string][]string) {
+	f.writeShort(uint16(len(m)))
+	for k, v := range m {
+		f.writeString(k)
+		f.writeStringList(v)
 	}
 }
 

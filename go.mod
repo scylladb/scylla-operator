@@ -143,3 +143,5 @@ require (
 	k8s.io/kube-openapi v0.0.0-20211021173138-95a400baf1a0 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.2 // indirect
 )
+
+replace github.com/gocql/gocql => github.com/scylladb/gocql v1.5.0

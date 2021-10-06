@@ -4,11 +4,21 @@ Scylla Operator Documentation
 
 .. toctree::
    :hidden:
-   :maxdepth: 2
-   :glob:
+   :maxdepth: 1
 
-   *
-   /nodeoperations/*
+   generic
+   eks
+   gke
+   helm
+   manager
+   monitoring
+   migration
+   nodeoperations/index
+   upgrade
+   releases
+   known_issues
+   scylla_cluster_crd
+   contributing
 
 
 Scylla Operator is an open source project which helps users of Scylla Open Source and Scylla Enterprise run Scylla on Kubernetes (K8s)

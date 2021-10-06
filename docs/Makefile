@@ -78,6 +78,7 @@ multiversion: setup
 multiversionpreview: multiversion
 	$(POETRY) run python3 -m http.server 5500 --directory $(BUILDDIR)/dirhtml
 
+# added with theme upgrade
 .PHONY: test
 test: setup
 	$(SPHINXBUILD) -b dirhtml $(TESTSPHINXOPTS) $(BUILDDIR)/dirhtml

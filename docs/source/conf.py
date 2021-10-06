@@ -103,13 +103,8 @@ html_style = ''
 # documentation.
 #
 html_theme_options = {
-    'header_links': [
-    ('Scylla Operator', 'https://scylladb.github.io/scylla-operator/'),
-    ('Scylla Cloud', 'https://docs.scylladb.com/scylla-cloud/'),
-    ('Scylla University', 'https://university.scylladb.com/'),
-    ('ScyllaDB Home', 'https://www.scylladb.com/')],
     'github_issues_repository': 'scylladb/scylla-operator',
-    'show_sidebar_index': True,
+    'hide_sidebar_index': False,
 }
 
 extlinks = {

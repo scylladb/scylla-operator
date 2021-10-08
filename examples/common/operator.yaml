@@ -2454,6 +2454,12 @@ spec:
             scheme: HTTPS
           initialDelaySeconds: 5
           periodSeconds: 10
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /usr/bin/sleep
+              - 15s
         ports:
         - containerPort: 5000
           name: webhook-server
@@ -2466,7 +2472,7 @@ spec:
         - mountPath: /tmp/serving-certs
           name: cert
           readOnly: true
-      terminationGracePeriodSeconds: 10
+      terminationGracePeriodSeconds: 75
       volumes:
       - name: cert
         secret:

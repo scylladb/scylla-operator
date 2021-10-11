@@ -1,6 +1,6 @@
 module github.com/scylladb/scylla-operator
 
-go 1.16
+go 1.17
 
 require (
 	github.com/bitly/go-hostpool v0.1.0 // indirect

@@ -16,6 +16,10 @@ func (c *FakeScyllaV1alpha1) ScyllaNodeConfigs() v1alpha1.ScyllaNodeConfigInterf
 	return &FakeScyllaNodeConfigs{c}
 }
 
+func (c *FakeScyllaV1alpha1) ScyllaOperatorConfigs() v1alpha1.ScyllaOperatorConfigInterface {
+	return &FakeScyllaOperatorConfigs{c}
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeScyllaV1alpha1) RESTClient() rest.Interface {

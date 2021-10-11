@@ -28,7 +28,7 @@ spec:
               type: object
             spec:
               properties:
-                optimizationsDisabled:
+                disableOptimizations:
                   description: optimizationsDisabled controls if nodes matching placement requirements are going to be optimized. Turning off optimizations on already optimized Nodes does not revert changes.
                   type: boolean
                 placement:
@@ -498,6 +498,8 @@ spec:
                     nodeSelector:
                       additionalProperties:
                         type: string
+                      default:
+                        scylla-operator.scylladb.com/node-pool: scylla-pool
                       description: nodeSelector is a selector which must be true for the ScyllaNodeConfig Pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node.
                       type: object
                     tolerations:
@@ -528,15 +530,15 @@ spec:
             status:
               properties:
                 conditions:
-                  description: conditions represents the latest available observations of a ScyllaNodeConfig's current state.
+                  description: conditions represents the latest available observations of current state.
                   items:
                     properties:
                       lastTransitionTime:
-                        description: lastTransitionTime last time the condition transitioned from one status to another.
+                        description: lastTransitionTime is last time the condition transitioned from one status to another.
                         format: date-time
                         type: string
                       message:
-                        description: message a human-readable message indicating details about the transition.
+                        description: message is a human-readable message indicating details about the transition.
                         type: string
                       reason:
                         description: reason for the condition's last transition.
@@ -549,22 +551,34 @@ spec:
                         type: string
                     type: object
                   type: array
-                numberDesired:
-                  description: numberDesired indicates the total number of nodes that should be running the ScyllaNodeConfig pod.
-                  format: int32
-                  type: integer
-                numberReady:
-                  description: numberReady indicates the number of nodes that should be running the ScyllaNodeConfig pod and pod is running and ready.
-                  format: int32
-                  type: integer
-                numberScheduled:
-                  description: numberScheduled indicates the number of nodes that should be running the ScyllaNodeConfig pod.
-                  format: int32
-                  type: integer
+                current:
+                  properties:
+                    actual:
+                      format: int32
+                      type: integer
+                    desired:
+                      format: int32
+                      type: integer
+                    ready:
+                      format: int32
+                      type: integer
+                  type: object
                 observedGeneration:
-                  description: observedGeneration indicates the most recent generation observed by the ScyllaNodeConfig controller.
+                  description: observedGeneration indicates the most recent generation observed by the controller.
                   format: int64
                   type: integer
+                updated:
+                  properties:
+                    actual:
+                      format: int32
+                      type: integer
+                    desired:
+                      format: int32
+                      type: integer
+                    ready:
+                      format: int32
+                      type: integer
+                  type: object
               type: object
           type: object
       served: true

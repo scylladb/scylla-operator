@@ -10,6 +10,8 @@ import (
 type Interface interface {
 	// ScyllaNodeConfigs returns a ScyllaNodeConfigInformer.
 	ScyllaNodeConfigs() ScyllaNodeConfigInformer
+	// ScyllaOperatorConfigs returns a ScyllaOperatorConfigInformer.
+	ScyllaOperatorConfigs() ScyllaOperatorConfigInformer
 }
 
 type version struct {
@@ -26,4 +28,9 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // ScyllaNodeConfigs returns a ScyllaNodeConfigInformer.
 func (v *version) ScyllaNodeConfigs() ScyllaNodeConfigInformer {
 	return &scyllaNodeConfigInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// ScyllaOperatorConfigs returns a ScyllaOperatorConfigInformer.
+func (v *version) ScyllaOperatorConfigs() ScyllaOperatorConfigInformer {
+	return &scyllaOperatorConfigInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }

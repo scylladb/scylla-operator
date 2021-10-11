@@ -5,3 +5,7 @@ package v1alpha1
 // ScyllaNodeConfigListerExpansion allows custom methods to be added to
 // ScyllaNodeConfigLister.
 type ScyllaNodeConfigListerExpansion interface{}
+
+// ScyllaOperatorConfigListerExpansion allows custom methods to be added to
+// ScyllaOperatorConfigLister.
+type ScyllaOperatorConfigListerExpansion interface{}

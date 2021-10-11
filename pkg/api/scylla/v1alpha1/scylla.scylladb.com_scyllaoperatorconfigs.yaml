@@ -28,8 +28,8 @@ spec:
               type: object
             spec:
               properties:
-                tuningContainerImage:
-                  description: tuningContainerImage is an image used in node tuning containers. Tuning scripts are taken from this image.
+                scyllaUtilsImage:
+                  description: scyllaUtilsImage is an Scylla image used in containers requiring running scripts from Scylla image.
                   type: string
               type: object
             status:

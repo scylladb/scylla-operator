@@ -251,3 +251,15 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - scyllaoperatorconfigs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch

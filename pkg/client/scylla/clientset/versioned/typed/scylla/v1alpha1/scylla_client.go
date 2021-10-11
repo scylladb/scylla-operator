@@ -11,6 +11,7 @@ import (
 type ScyllaV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	ScyllaNodeConfigsGetter
+	ScyllaOperatorConfigsGetter
 }
 
 // ScyllaV1alpha1Client is used to interact with features provided by the scylla.scylladb.com group.
@@ -20,6 +21,10 @@ type ScyllaV1alpha1Client struct {
 
 func (c *ScyllaV1alpha1Client) ScyllaNodeConfigs() ScyllaNodeConfigInterface {
 	return newScyllaNodeConfigs(c)
+}
+
+func (c *ScyllaV1alpha1Client) ScyllaOperatorConfigs() ScyllaOperatorConfigInterface {
+	return newScyllaOperatorConfigs(c)
 }
 
 // NewForConfig creates a new ScyllaV1alpha1Client for the given config.

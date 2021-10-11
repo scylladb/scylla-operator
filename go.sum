@@ -963,6 +963,7 @@ k8s.io/code-generator v0.21.1/go.mod h1:hUlps5+9QaTrKx+jiM4rmq7YmH8wPOIko64uZCHD
 k8s.io/component-base v0.20.2/go.mod h1:pzFtCiwe/ASD0iV7ySMu8SYVJjCapNM9bjvk7ptpKh0=
 k8s.io/component-base v0.21.1 h1:iLpj2btXbR326s/xNQWmPNGu0gaYSjzn7IN/5i28nQw=
 k8s.io/component-base v0.21.1/go.mod h1:NgzFZ2qu4m1juby4TnrmpR8adRk6ka62YdH5DkIIyKA=
+k8s.io/component-helpers v0.21.1 h1:jhi4lHGHOV6mbPqNfITVUoLC3kNFkBQQO1rDDpnThAw=
 k8s.io/component-helpers v0.21.1/go.mod h1:FtC1flbiQlosHQrLrRUulnKxE4ajgWCGy/67fT2GRlQ=
 k8s.io/cri-api v0.21.2 h1:76lDlh1EdY5zCZqmSJNyX+PrkPIqVJ/tx42qVzrKxNw=
 k8s.io/cri-api v0.21.2/go.mod h1:ukzeKnOkrG9/+ghKZA57WeZbQfRtqlGLF5GcF3RtHZ8=

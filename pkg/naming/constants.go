@@ -92,4 +92,6 @@ const (
 	ScyllaOperatorNodeTuningNamespace = "scylla-operator-node-tuning"
 
 	PerftuneJobPrefixName = "perftune"
+
+	DefaultScyllaUtilsImage = "docker.io/scylladb/scylla:4.4.0"
 )

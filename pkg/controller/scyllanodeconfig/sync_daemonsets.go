@@ -44,10 +44,11 @@ func (sncc *Controller) pruneDaemonSets(ctx context.Context, requiredDaemonSet *
 func (sncc *Controller) syncDaemonSets(
 	ctx context.Context,
 	snc *scyllav1alpha1.ScyllaNodeConfig,
+	soc *scyllav1alpha1.ScyllaOperatorConfig,
 	status *scyllav1alpha1.ScyllaNodeConfigStatus,
 	daemonSets map[string]*appsv1.DaemonSet,
 ) error {
-	requiredDaemonSet := resource.ScyllaNodeConfigDaemonSet(snc, sncc.operatorImage)
+	requiredDaemonSet := resource.ScyllaNodeConfigDaemonSet(snc, sncc.operatorImage, soc.Spec.ScyllaUtilsImage)
 
 	// Delete any excessive DaemonSets.
 	// Delete has to be the first action to avoid getting stuck on quota.

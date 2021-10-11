@@ -22,6 +22,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -29,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	appv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
+	batchv1client "k8s.io/client-go/kubernetes/typed/batch/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
@@ -439,4 +441,52 @@ func WaitForConfigMap(ctx context.Context, client corev1client.CoreV1Interface, 
 	}
 
 	return event.Object.(*corev1.ConfigMap), nil
+}
+
+func WaitForJob(ctx context.Context, client batchv1client.BatchV1Interface, namespace, name string, o WaitForStateOptions, conditions ...func(job *batchv1.Job) (bool, error)) (*batchv1.Job, error) {
+	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
+	lw := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			options.FieldSelector = fieldSelector
+			return client.Jobs(namespace).List(ctx, options)
+		},
+		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
+			options.FieldSelector = fieldSelector
+			return client.Jobs(namespace).Watch(ctx, options)
+		},
+	}
+
+	checkConditions := func(conditions ...func(*batchv1.Job) (bool, error)) func(*batchv1.Job) (bool, error) {
+		return func(job *batchv1.Job) (bool, error) {
+			for _, condition := range conditions {
+				done, err := condition(job)
+				if err != nil {
+					return false, err
+				}
+				if !done {
+					return false, nil
+				}
+			}
+			return true, nil
+		}
+	}
+
+	event, err := watchtools.UntilWithSync(ctx, lw, &batchv1.Job{}, nil, func(event watch.Event) (bool, error) {
+		switch event.Type {
+		case watch.Added, watch.Modified:
+			return checkConditions(conditions...)(event.Object.(*batchv1.Job))
+		case watch.Deleted:
+			if o.TolerateDelete {
+				return checkConditions(conditions...)(event.Object.(*batchv1.Job))
+			}
+			fallthrough
+		default:
+			return true, fmt.Errorf("unexpected event: %#v", event)
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return event.Object.(*batchv1.Job), nil
 }

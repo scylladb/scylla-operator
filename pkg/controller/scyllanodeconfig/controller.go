@@ -87,6 +87,7 @@ func NewController(
 	kubeClient kubernetes.Interface,
 	scyllaClient scyllav1alpha1client.ScyllaV1alpha1Interface,
 	scyllaNodeConfigInformer scyllav1alpha1informers.ScyllaNodeConfigInformer,
+	scyllaOperatorConfigInformer scyllav1alpha1informers.ScyllaOperatorConfigInformer,
 	clusterRoleInformer rbacv1informers.ClusterRoleInformer,
 	clusterRoleBindingInformer rbacv1informers.ClusterRoleBindingInformer,
 	daemonSetInformer appsv1informers.DaemonSetInformer,
@@ -130,6 +131,7 @@ func NewController(
 
 		cachesToSync: []cache.InformerSynced{
 			scyllaNodeConfigInformer.Informer().HasSynced,
+			scyllaOperatorConfigInformer.Informer().HasSynced,
 			clusterRoleInformer.Informer().HasSynced,
 			clusterRoleBindingInformer.Informer().HasSynced,
 			daemonSetInformer.Informer().HasSynced,
@@ -154,6 +156,12 @@ func NewController(
 		AddFunc:    sncc.addNodeConfig,
 		UpdateFunc: sncc.updateConfig,
 		DeleteFunc: sncc.deleteConfig,
+	})
+
+	scyllaOperatorConfigInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    sncc.addOperatorConfig,
+		UpdateFunc: sncc.updateOperatorConfig,
+		DeleteFunc: sncc.deleteOperatorConfig,
 	})
 
 	clusterRoleInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -421,6 +429,37 @@ func (sncc *Controller) deleteConfig(obj interface{}) {
 	sncc.enqueue(nodeConfig)
 }
 
+func (sncc *Controller) addOperatorConfig(obj interface{}) {
+	operatorConfig := obj.(*scyllav1alpha1.ScyllaOperatorConfig)
+	klog.V(4).InfoS("Observed addition of ScyllaOperatorConfig", "ScyllaOperatorConfig", klog.KObj(operatorConfig))
+	sncc.enqueueAll()
+}
+
+func (sncc *Controller) updateOperatorConfig(old, cur interface{}) {
+	oldOperatorConfig := old.(*scyllav1alpha1.ScyllaOperatorConfig)
+
+	klog.V(4).InfoS("Observed update of ScyllaOperatorConfig", "ScyllaOperatorConfig", klog.KObj(oldOperatorConfig))
+	sncc.enqueueAll()
+}
+
+func (sncc *Controller) deleteOperatorConfig(obj interface{}) {
+	operatorConfig, ok := obj.(*scyllav1alpha1.ScyllaOperatorConfig)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
+			return
+		}
+		operatorConfig, ok = tombstone.Obj.(*scyllav1alpha1.ScyllaOperatorConfig)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ScyllaOperatorConfig %#v", obj))
+			return
+		}
+	}
+	klog.V(4).InfoS("Observed deletion of ScyllaOperatorConfig", "ScyllaOperatorConfig", klog.KObj(operatorConfig))
+	sncc.enqueueAll()
+}
+
 func (c *Controller) resolveDaemonSetController(obj metav1.Object) *appsv1.DaemonSet {
 	controllerRef := metav1.GetControllerOf(obj)
 	if controllerRef == nil {
@@ -682,6 +721,18 @@ func (sncc *Controller) enqueue(soc *scyllav1alpha1.ScyllaNodeConfig) {
 
 	klog.V(4).InfoS("Enqueuing", "ScyllaNodeConfig", klog.KObj(soc))
 	sncc.queue.Add(key)
+}
+
+func (sncc *Controller) enqueueAll() {
+	socs, err := sncc.scyllaNodeConfigLister.List(labels.Everything())
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("couldn't list all ScyllaOperatorConfigs: %w", err))
+		return
+	}
+
+	for _, soc := range socs {
+		sncc.enqueue(soc)
+	}
 }
 
 func (sncc *Controller) processNextItem(ctx context.Context) bool {

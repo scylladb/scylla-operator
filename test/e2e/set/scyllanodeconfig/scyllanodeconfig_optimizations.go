@@ -5,6 +5,7 @@ package scyllanodeconfig
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	g "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/extensions/table"
@@ -16,8 +17,10 @@ import (
 	"github.com/scylladb/scylla-operator/test/e2e/fixture/scyllacluster"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -254,4 +257,68 @@ var _ = g.Describe("ScyllaNodeConfig Optimizations [Serial]", func() {
 			OptimizedConfigMapCondition: configMapDoesNotHaveBinaryKey(naming.PerftuneCommandName),
 		}),
 	)
+
+	g.It("Tuning image is controlled by default ScyllaOperatorConfig", func() {
+		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+		defer cancel()
+
+		sc := scyllacluster.GuaranteedQoSScyllaCluster.ReadOrFail()
+		sc.Spec.Datacenter.Racks[0].Members = 1
+
+		err := framework.SetupScyllaClusterSA(ctx, f.KubeClient().CoreV1(), f.KubeClient().RbacV1(), f.Namespace(), sc.Name)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to deploy")
+		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
+		defer waitCtx1Cancel()
+		sc, err = utils.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.ScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Checking tuning container image")
+		scyllaPods, err := f.KubeClient().CoreV1().Pods(sc.Namespace).List(ctx, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(naming.ClusterLabels(sc)).String()})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(scyllaPods.Items).To(o.HaveLen(1))
+		scyllaPod := scyllaPods.Items[0]
+
+		tuningJob, err := f.KubeAdminClient().BatchV1().Jobs(naming.ScyllaOperatorNodeTuningNamespace).Get(ctx, naming.PerftuneJobName(scyllaPod.Spec.NodeName), metav1.GetOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		soc, err := f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaOperatorConfigs().Get(ctx, naming.ScyllaOperatorName, metav1.GetOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		o.Expect(tuningJob.Spec.Template.Spec.Containers[0].Image).To(o.Equal(soc.Spec.ScyllaUtilsImage))
+
+		framework.By("Changing tuning container image")
+		// Rollback the change after test
+		defer func(img string) {
+			_, err = f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaOperatorConfigs().Patch(
+				ctx,
+				soc.Name,
+				types.JSONPatchType,
+				[]byte(fmt.Sprintf(`[{"op":"replace", "path": "/spec/tuningContainerImage", "value": "%s" }]`, img)),
+				metav1.PatchOptions{},
+			)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}(soc.Spec.ScyllaUtilsImage)
+
+		_, err = f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaOperatorConfigs().Patch(
+			ctx,
+			soc.Name,
+			types.JSONPatchType,
+			[]byte(fmt.Sprintf(`[{"op":"replace", "path": "/spec/tuningContainerImage", "value": "%s" }]`, strings.TrimPrefix(soc.Spec.ScyllaUtilsImage, "docker.io/"))),
+			metav1.PatchOptions{},
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Checking tuning container image")
+		waitCtx2, waitCtx2Cancel := utils.ContextForNodeConfigRollout(ctx)
+		defer waitCtx2Cancel()
+		_, err = utils.WaitForJob(waitCtx2, f.KubeAdminClient().BatchV1(), naming.ScyllaOperatorNodeTuningNamespace, naming.PerftuneJobName(scyllaPod.Spec.NodeName), utils.WaitForStateOptions{TolerateDelete: true}, func(job *batchv1.Job) (bool, error) {
+			return job.Spec.Template.Spec.Containers[0].Image == soc.Spec.ScyllaUtilsImage, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+	})
 })

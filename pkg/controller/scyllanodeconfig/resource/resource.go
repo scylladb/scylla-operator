@@ -125,7 +125,7 @@ func ScyllaNodeConfigClusterRoleBinding() *rbacv1.ClusterRoleBinding {
 	}
 }
 
-func ScyllaNodeConfigDaemonSet(snc *scyllav1alpha1.ScyllaNodeConfig, operatorImage string) *appsv1.DaemonSet {
+func ScyllaNodeConfigDaemonSet(snc *scyllav1alpha1.ScyllaNodeConfig, operatorImage, scyllaImage string) *appsv1.DaemonSet {
 	labels := map[string]string{
 		"app.kubernetes.io/name":   naming.NodeConfigAppName,
 		naming.NodeConfigNameLabel: snc.Name,
@@ -168,7 +168,6 @@ func ScyllaNodeConfigDaemonSet(snc *scyllav1alpha1.ScyllaNodeConfig, operatorIma
 								fmt.Sprintf("--scylla-image=%s", scyllaImage),
 								fmt.Sprintf("--disable-optimizations=%s", strconv.FormatBool(snc.Spec.DisableOptimizations)),
 								//TODO: add to Spec
-								fmt.Sprintf("--scylla-image=%s", "scylladb/scylla:4.4.0"),
 								fmt.Sprintf("--loglevel=%d", 4),
 							},
 							Env: []corev1.EnvVar{

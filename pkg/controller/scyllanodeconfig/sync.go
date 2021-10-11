@@ -40,6 +40,11 @@ func (sncc *Controller) sync(ctx context.Context, key string) error {
 		}
 	}
 
+	soc, err := sncc.scyllaOperatorConfigLister.Get(naming.ScyllaOperatorName)
+	if err != nil {
+		return fmt.Errorf("get ScyllaOperatorConfig: %w", err)
+	}
+
 	scyllaPods, err := sncc.podLister.Pods(corev1.NamespaceAll).List(naming.ScyllaSelector())
 	if err != nil {
 		return fmt.Errorf("get Scylla Pods: %w", err)
@@ -104,7 +109,7 @@ func (sncc *Controller) sync(ctx context.Context, key string) error {
 		errs = append(errs, fmt.Errorf("sync ClusterRoleBinding(s): %w", err))
 	}
 
-	if err := sncc.syncDaemonSets(ctx, snc, status, daemonSets); err != nil {
+	if err := sncc.syncDaemonSets(ctx, snc, soc, status, daemonSets); err != nil {
 		errs = append(errs, fmt.Errorf("sync DaemonSet(s): %w", err))
 	}
 

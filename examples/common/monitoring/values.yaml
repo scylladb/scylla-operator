@@ -53,7 +53,7 @@ prometheusOperator:
     enabled: false
 
   image:
-    tag: v0.45.0
+    tag: v0.51.2
 
   # This might need to be increased for bigger deployments.
   resources:

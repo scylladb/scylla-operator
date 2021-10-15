@@ -463,7 +463,16 @@ update-examples: update-examples-manager update-examples-operator
 verify-examples: verify-example-manager verify-example-operator
 .PHONY: verify-examples
 
-verify: verify-gofmt verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-examples verify-govet verify-helm-lint
+verify-links:
+	@set -euEo pipefail; broken_links=( $$( find . -type l ! -exec test -e {} \; -print ) ); \
+	if [[ -n "$${broken_links[@]}" ]]; then \
+		echo "The following links are broken:" > /dev/stderr; \
+		ls -l --color=auto $${broken_links[@]}; \
+		exit 1; \
+	fi;
+.PHONY: verify-links
+
+verify: verify-gofmt verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-examples verify-govet verify-helm-lint verify-links
 .PHONY: verify
 
 update: update-gofmt update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples

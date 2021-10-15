@@ -103,7 +103,7 @@ $(if $(strip $(call is_equal_or_higher_version,$($(2)),$(3))),,$(error `$(1)` is
 )
 endef
 
-ifneq "$(GO_REQUIRED_MIN_VERSION)" ""
+ifneq "$(MAKE_REQUIRED_MIN_VERSION)" ""
 $(call require_minimal_version,make,MAKE_REQUIRED_MIN_VERSION,$(MAKE_VERSION))
 endif
 

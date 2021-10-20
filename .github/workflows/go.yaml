@@ -28,7 +28,7 @@ on:
   - cron:  '0 23 * * *' # daily at 11pm
 
 env:
-  go_version: 1.16
+  go_version: 1.17.2
   GOPATH: ${{ github.workspace }}/go
   git_repo_path: ${{ github.workspace }}/go/src/github.com/scylladb/scylla-operator
   image_repo_ref: docker.io/scylladb/scylla-operator
@@ -205,18 +205,31 @@ jobs:
       if: ${{ always() }}
       working-directory: ${{ runner.temp }}/e2e-artifacts
       run: |
-        set -x
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
         docker info > docker.info
         docker images -a > docker.images
         docker stats -a --no-stream --no-trunc > docker.stats
         free -h > free
         journalctl -u kubelet > kubelet.log
+
+        sudo tar -c --use-compress-program=lz4 -f ./kubernetes.tar.lz4 "/etc/kubernetes"
+
+        mkdir container-logs
+        for ns in kube-system; do
+          mkdir "container-logs/${ns}"
+          for cid in $( sudo crictl ps --label="io.kubernetes.pod.namespace=${ns}" -a -q ); do
+            cname=$( sudo crictl inspect -o go-template --template='{{ .status.metadata.name }}' "${cid}" )
+            sudo crictl logs "${cid}" 1>"container-logs/${ns}/${cname}_${cid}.log" 2>&1
+          done
+        done
     - name: Collect audit logs
       if: ${{ always() }}
       working-directory: ${{ runner.temp }}/e2e-artifacts
       run: |
         set -euEx -o pipefail
-        sudo cat $( ls /var/log/minikube/kube-apiserver-audit*.log | sort -n ) > ./kube-apiserver-audit.log
+        sudo cat $( ls /var/log/kube-apiserver-audit*.log | sort -n ) > ./kube-apiserver-audit.log
         jq -s 'group_by(.user.username) | map({"user": .[0].user.username, "total": length, "verbs": (group_by(.verb) | map({"key":.[0].verb, "value": length}) | from_entries)}) | sort_by(.total) | reverse' ./kube-apiserver-audit.log > ./api-call-stats.json
     - name: Compress artifacts
       if: ${{ always() }}

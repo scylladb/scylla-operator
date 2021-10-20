@@ -8,7 +8,7 @@ IMAGE_TAG ?= latest
 IMAGE_REF ?= docker.io/scylladb/scylla-operator:$(IMAGE_TAG)
 
 MAKE_REQUIRED_MIN_VERSION:=4.2 # for SHELLSTATUS
-GO_REQUIRED_MIN_VERSION ?=1.16
+GO_REQUIRED_MIN_VERSION ?=1.17.1
 
 GIT_TAG ?=$(shell git describe --long --tags --abbrev=7 --match 'v[0-9]*')$(if $(filter $(.SHELLSTATUS),0),,$(error git describe failed))
 GIT_TAG_SHORT ?=$(shell git describe --tags --abbrev=7 --match 'v[0-9]*')$(if $(filter $(.SHELLSTATUS),0),,$(error git describe failed))
@@ -103,7 +103,7 @@ $(if $(strip $(call is_equal_or_higher_version,$($(2)),$(3))),,$(error `$(1)` is
 )
 endef
 
-ifneq "$(GO_REQUIRED_MIN_VERSION)" ""
+ifneq "$(MAKE_REQUIRED_MIN_VERSION)" ""
 $(call require_minimal_version,make,MAKE_REQUIRED_MIN_VERSION,$(MAKE_VERSION))
 endif
 
@@ -463,7 +463,16 @@ update-examples: update-examples-manager update-examples-operator
 verify-examples: verify-example-manager verify-example-operator
 .PHONY: verify-examples
 
-verify: verify-gofmt verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-examples verify-govet verify-helm-lint
+verify-links:
+	@set -euEo pipefail; broken_links=( $$( find . -type l ! -exec test -e {} \; -print ) ); \
+	if [[ -n "$${broken_links[@]}" ]]; then \
+		echo "The following links are broken:" > /dev/stderr; \
+		ls -l --color=auto $${broken_links[@]}; \
+		exit 1; \
+	fi;
+.PHONY: verify-links
+
+verify: verify-gofmt verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-examples verify-govet verify-helm-lint verify-links
 .PHONY: verify
 
 update: update-gofmt update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples

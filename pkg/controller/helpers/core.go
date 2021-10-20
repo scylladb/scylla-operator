@@ -3,10 +3,10 @@ package helpers
 import (
 	"context"
 
-	"github.com/scylladb/scylla-operator/pkg/util/nodeaffinity"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+	corev1schedulinghelpers "k8s.io/component-helpers/scheduling/corev1"
 	"k8s.io/klog/v2"
 )
 
@@ -59,7 +59,7 @@ func IsOrphanedPV(pv *corev1.PersistentVolume, nodes []*corev1.Node) (bool, erro
 	}
 
 	for _, node := range nodes {
-		match, err := nodeaffinity.NewLazyErrorNodeSelector(pv.Spec.NodeAffinity.Required).Match(node)
+		match, err := corev1schedulinghelpers.MatchNodeSelectorTerms(node, pv.Spec.NodeAffinity.Required)
 		if err != nil {
 			return false, err
 		}

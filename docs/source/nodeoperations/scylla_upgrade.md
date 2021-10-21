@@ -2,9 +2,9 @@
 
 To upgrade Scylla version using Operator user have to modify existing ScyllaCluster definition.
 
-In this example cluster will be upgraded to `2020.1.0` version.
+In this example cluster will be upgraded to version `4.4.5`.
 ```bash
-kubectl -n scylla patch ScyllaCluster simple-cluster  -p '{"spec":{"version": "4.2.2}}' --type=merge
+kubectl -n scylla patch ScyllaCluster simple-cluster  -p '{"spec":{"version": "4.4.5"}}' --type=merge
 ```
 
 Operator supports two types of version upgrades:

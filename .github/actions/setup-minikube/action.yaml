@@ -31,7 +31,7 @@ runs:
       apiVersion: audit.k8s.io/v1
       kind: Policy
       rules:
-      - level: Request
+      - level: RequestResponse
       EOF
 
       sudo minikube start --wait=all --extra-config='apiserver.event-ttl=24h' --extra-config='apiserver.audit-policy-file=/etc/ssl/certs/audit-policy.yaml' --extra-config='apiserver.audit-log-path=/var/log/kube-apiserver-audit.log'

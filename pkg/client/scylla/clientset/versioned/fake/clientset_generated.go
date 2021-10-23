@@ -58,7 +58,10 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 	return c.tracker
 }
 
-var _ clientset.Interface = &Clientset{}
+var (
+	_ clientset.Interface = &Clientset{}
+	_ testing.FakeClient  = &Clientset{}
+)
 
 // ScyllaV1 retrieves the ScyllaV1Client
 func (c *Clientset) ScyllaV1() scyllav1.ScyllaV1Interface {

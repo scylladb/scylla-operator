@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 if pwd | egrep -q '\s'; then
 	echo "Working directory name contains one or more spaces."

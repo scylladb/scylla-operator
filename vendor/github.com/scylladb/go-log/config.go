@@ -3,10 +3,7 @@
 package log
 
 import (
-	"errors"
 	"fmt"
-	"log/syslog"
-	"os"
 	"time"
 
 	"go.uber.org/zap"
@@ -19,17 +16,16 @@ type Mode int8
 const (
 	// StderrMode logs are written to standard error.
 	StderrMode Mode = iota
-	// SyslogMode logs are written to syslog with priority LOG_DAEMON and
-	// tag os.Args[0].
-	SyslogMode
+	// StderrMode logs are written to standard output.
+	StdoutMode
 )
 
 func (m Mode) String() string {
 	switch m {
 	case StderrMode:
 		return "stderr"
-	case SyslogMode:
-		return "syslog"
+	case StdoutMode:
+		return "stdout"
 	}
 
 	return ""
@@ -45,8 +41,8 @@ func (m *Mode) UnmarshalText(text []byte) error {
 	switch string(text) {
 	case "stderr", "STDERR":
 		*m = StderrMode
-	case "syslog", "SYSLOG":
-		*m = SyslogMode
+	case "stdout":
+		*m = StdoutMode
 	default:
 		return fmt.Errorf("unrecognized mode: %q", string(text))
 	}
@@ -56,15 +52,14 @@ func (m *Mode) UnmarshalText(text []byte) error {
 
 // Config specifies log mode and level.
 type Config struct {
-	Mode  Mode                 `yaml:"mode"`
-	Level zapcore.LevelEnabler `yaml:"level"`
+	Mode     Mode                `json:"mode" yaml:"mode"`
+	Level    zap.AtomicLevel     `json:"level" yaml:"level"`
+	Sampling *zap.SamplingConfig `json:"sampling" yaml:"sampling"`
 }
 
 // NewProduction builds a production Logger based on the configuration.
 func NewProduction(c Config, opts ...zap.Option) (Logger, error) {
-	opts = append([]zap.Option{zap.ErrorOutput(os.Stderr)}, opts...)
-
-	cfg := zapcore.EncoderConfig{
+	enc := zapcore.EncoderConfig{
 		// Keys can be anything except the empty string.
 		TimeKey:        "T",
 		LevelKey:       "L",
@@ -79,34 +74,18 @@ func NewProduction(c Config, opts ...zap.Option) (Logger, error) {
 		EncodeCaller:   zapcore.ShortCallerEncoder,
 	}
 
-	var core zapcore.Core
-	switch c.Mode {
-	case StderrMode:
-		core = zapcore.NewCore(
-			zapcore.NewJSONEncoder(cfg),
-			zapcore.Lock(os.Stderr),
-			c.Level,
-		)
-	case SyslogMode:
-		w, err := syslog.New(syslog.LOG_DAEMON, "")
-		if err != nil {
-			return NopLogger, err
-		}
+	cfg := zap.NewProductionConfig()
+	cfg.EncoderConfig = enc
+	cfg.OutputPaths = []string{c.Mode.String()}
+	cfg.Sampling = c.Sampling
+	cfg.Level = c.Level
+	cfg.DisableCaller = true
 
-		// ignore level and time as they will be logged by syslog
-		cfg.LevelKey = ""
-		cfg.TimeKey = ""
-
-		core = NewSyslogCore(
-			zapcore.NewJSONEncoder(cfg),
-			w,
-			c.Level,
-		)
-	default:
-		return NopLogger, errors.New("unrecognized logger mode")
+	l, err := cfg.Build(opts...)
+	if err != nil {
+		return NopLogger, err
 	}
-
-	return Logger{base: zap.New(core, opts...)}, nil
+	return NewLogger(l), nil
 }
 
 // NewDevelopment creates a new logger that writes DebugLevel and above
@@ -123,6 +102,7 @@ func NewDevelopmentWithLevel(level zapcore.Level) Logger {
 	cfg.EncoderConfig.EncodeTime = shortTimeEncoder
 	cfg.EncoderConfig.CallerKey = ""
 	cfg.Level.SetLevel(level)
+
 	l, _ := cfg.Build()
 	return Logger{base: l}
 }

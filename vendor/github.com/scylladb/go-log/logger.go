@@ -29,7 +29,10 @@ func (l Logger) Named(name string) Logger {
 	if l.base == nil {
 		return l
 	}
-	return Logger{base: l.base.Named(name)}
+
+	l.base = l.base.Named(name)
+
+	return l
 }
 
 // WithOptions clones the current Logger, applies the supplied Options, and
@@ -38,7 +41,10 @@ func (l Logger) WithOptions(opts ...zap.Option) Logger {
 	if l.base == nil {
 		return l
 	}
-	return Logger{base: l.base.WithOptions(opts...)}
+
+	l.base = l.base.WithOptions(opts...)
+
+	return l
 }
 
 // With adds a variadic number of fields to the logging context.
@@ -46,9 +52,12 @@ func (l Logger) With(keyvals ...interface{}) Logger {
 	if l.base == nil {
 		return l
 	}
+
 	fields := l.zapify(context.Background(), keyvals)
-	baseFields := append(l.baseFields, fields...)
-	return Logger{base: l.base.With(fields...), baseFields: baseFields}
+	l.baseFields = append(l.baseFields, fields...)
+	l.base = l.base.With(fields...)
+
+	return l
 }
 
 // Sync flushes any buffered log entries. Applications should take care to call

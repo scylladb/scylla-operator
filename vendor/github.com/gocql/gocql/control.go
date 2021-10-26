@@ -29,10 +29,16 @@ func init() {
 	randr = rand.New(rand.NewSource(int64(readInt(b))))
 }
 
+const (
+	controlConnStarting = 0
+	controlConnStarted  = 1
+	controlConnClosing  = -1
+)
+
 // Ensure that the atomic variable is aligned to a 64bit boundary
 // so that atomic operations can be applied on 32bit architectures.
 type controlConn struct {
-	started      int32
+	state        int32
 	reconnecting int32
 
 	session *Session
@@ -56,7 +62,7 @@ func createControlConn(session *Session) *controlConn {
 }
 
 func (c *controlConn) heartBeat() {
-	if !atomic.CompareAndSwapInt32(&c.started, 0, 1) {
+	if !atomic.CompareAndSwapInt32(&c.state, controlConnStarting, controlConnStarted) {
 		return
 	}
 
@@ -125,7 +131,7 @@ func hostInfo(addr string, defaultPort int) ([]*HostInfo, error) {
 	if err != nil {
 		return nil, err
 	} else if len(ips) == 0 {
-		return nil, fmt.Errorf("No IP's returned from DNS lookup for %q", addr)
+		return nil, fmt.Errorf("no IP's returned from DNS lookup for %q", addr)
 	}
 
 	// Filter to v4 addresses if any present
@@ -177,7 +183,7 @@ func (c *controlConn) shuffleDial(endpoints []*HostInfo) (*Conn, error) {
 			return conn, nil
 		}
 
-		Logger.Printf("gocql: unable to dial control conn %v: %v\n", host.ConnectAddress(), err)
+		c.session.logger.Printf("gocql: unable to dial control conn %v:%v: %v\n", host.ConnectAddress(), host.Port(), err)
 	}
 
 	return nil, err
@@ -285,8 +291,15 @@ func (c *controlConn) setupConn(conn *Conn) error {
 	}
 
 	c.conn.Store(ch)
-	c.session.handleNodeUp(host.ConnectAddress(), host.Port(), false)
-
+	if c.session.initialized() {
+		// We connected to control conn, so add the connect the host in pool as well.
+		// Notify session we can start trying to connect to the node.
+		// We can't start the fill before the session is initialized, otherwise the fill would interfere
+		// with the fill called by Session.init. Session.init needs to wait for its fill to finish and that
+		// would return immediately if we started the fill here.
+		// TODO(martin-sucha): Trigger pool refill for all hosts, like in reconnectDownedHosts?
+		go c.session.startPoolFill(host)
+	}
 	return nil
 }
 
@@ -326,6 +339,9 @@ func (c *controlConn) registerEvents(conn *Conn) error {
 }
 
 func (c *controlConn) reconnect(refreshring bool) {
+	if atomic.LoadInt32(&c.state) == controlConnClosing {
+		return
+	}
 	if !atomic.CompareAndSwapInt32(&c.reconnecting, 0, 1) {
 		return
 	}
@@ -374,7 +390,7 @@ func (c *controlConn) reconnect(refreshring bool) {
 
 	if err := c.setupConn(newConn); err != nil {
 		newConn.Close()
-		Logger.Printf("gocql: control unable to register events: %v\n", err)
+		c.session.logger.Printf("gocql: control unable to register events: %v\n", err)
 		return
 	}
 
@@ -452,11 +468,13 @@ func (c *controlConn) query(statement string, values ...interface{}) (iter *Iter
 
 	for {
 		iter = c.withConn(func(conn *Conn) *Iter {
+			// we want to keep the query on the control connection
+			q.conn = conn
 			return conn.executeQuery(context.TODO(), q)
 		})
 
 		if gocqlDebug && iter.err != nil {
-			Logger.Printf("control: error executing %q: %v\n", statement, iter.err)
+			c.session.logger.Printf("control: error executing %q: %v\n", statement, iter.err)
 		}
 
 		q.AddAttempts(1, c.getConn().host)
@@ -475,7 +493,7 @@ func (c *controlConn) awaitSchemaAgreement() error {
 }
 
 func (c *controlConn) close() {
-	if atomic.CompareAndSwapInt32(&c.started, 1, -1) {
+	if atomic.CompareAndSwapInt32(&c.state, controlConnStarted, controlConnClosing) {
 		c.quit <- struct{}{}
 	}
 

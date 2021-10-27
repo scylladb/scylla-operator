@@ -1,4 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Copyright (C) 2017 ScyllaDB
+#
+
+set -eu -o pipefail
 
 if pwd | egrep -q '\s'; then
 	echo "Working directory name contains one or more spaces."

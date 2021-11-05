@@ -124,11 +124,36 @@ jobs:
         sudo podman build --format=docker --squash -f ./Dockerfile -t '${{ env.image_repo_ref }}:ci' .
         sudo podman images '${{ env.image_repo_ref }}:ci'
         sudo podman save '${{ env.image_repo_ref }}:ci' | lz4 - ~/operatorimage.tar.lz4
-    - name: Upload artifact
+    - name: Upload image artifact
       uses: actions/upload-artifact@v2
       with:
         name: operatorimage.tar.lz4
         path: ~/operatorimage.tar.lz4
+        if-no-files-found: error
+        retention-days: ${{ env.retention_days }}
+
+  charts:
+    name: Build Helm charts
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: ${{ env.git_repo_path }}
+        fetch-depth: 0  # also fetch tags
+    - name: Setup git tags
+      if: ${{ startsWith(github.ref, 'refs/tags/') }}
+      run: ./hack/ci-detect-tags.sh
+    - name: Setup go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.go_version }}
+    - name: Build Helm charts
+      run: make helm-build
+    - name: Upload charts artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: helm-charts.zip
+        path: ${{ env.git_repo_path }}/helm/build/*
         if-no-files-found: error
         retention-days: ${{ env.retention_days }}
 
@@ -256,8 +281,8 @@ jobs:
     - verify
     - verify-deps
     - build-and-test
-#    - test-integration  # flaky
     - images
+    - charts
     - test-e2e
     # TODO: Depend on upgrade-e2e when available
     steps:

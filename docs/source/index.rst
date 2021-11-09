@@ -4,7 +4,7 @@ Scylla Operator Documentation
 
 .. toctree::
    :hidden:
-   :maxdepth: 2
+   :maxdepth: 1
 
    generic
    eks
@@ -12,7 +12,8 @@ Scylla Operator Documentation
    helm
    manager
    monitoring
-   node_operations
+   migration
+   nodeoperations/index
    upgrade
    releases
    known_issues

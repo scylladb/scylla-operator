@@ -1,7 +1,7 @@
-### Version  migrations
+## Version  migrations
 
 
-## `v0.3.0` -> `v1.0.0` migration
+### `v0.3.0` -> `v1.0.0` migration
 
 `v0.3.0` used a very common name as a CRD kind (`Cluster`). In `v1.0.0` this issue was solved by using less common kind
 which is easier to disambiguate (`ScyllaCluster`).

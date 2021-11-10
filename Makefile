@@ -63,6 +63,7 @@ HELM ?=helm
 HELM_CHANNEL ?=latest
 HELM_CHARTS ?=scylla-operator scylla-manager scylla
 HELM_CHARTS_DIR ?=helm
+HELM_BUILD_DIR ?=$(HELM_CHARTS_DIR)/build
 HELM_LOCAL_REPO ?=$(HELM_CHARTS_DIR)/repo/$(HELM_CHANNEL)
 HELM_APP_VERSION ?=$(IMAGE_TAG)
 HELM_CHART_VERSION_SUFFIX ?=
@@ -517,6 +518,10 @@ cert-manager:
 image:
 	docker build . -t $(IMAGE_REF)
 .PHONY: image
+
+helm-build:
+	$(foreach chart,$(HELM_CHARTS),$(call package-helm,$(chart),$(HELM_BUILD_DIR),$(HELM_APP_VERSION),$(HELM_CHART_VERSION)))
+.PHONY: helm-build
 
 # Build Helm charts and publish them in Development GCS repo
 helm-publish-dev: HELM_REPOSITORY=https://scylla-operator-charts-dev.storage.googleapis.com/$(HELM_CHANNEL)

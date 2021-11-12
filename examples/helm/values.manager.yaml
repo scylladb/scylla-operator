@@ -23,9 +23,9 @@ controllerResources:
 scylla:
   developerMode: true
   scyllaImage:
-    tag: 4.3.0
+    tag: 4.5.1
   agentImage:
-    tag: 2.2.1
+    tag: 2.5.2
   datacenter: manager-dc
   racks:
     - name: manager-rack

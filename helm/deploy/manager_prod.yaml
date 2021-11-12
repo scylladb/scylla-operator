@@ -23,9 +23,9 @@ scylla:
   fullnameOverride: scylla-manager-cluster
   scyllaImage:
     repository: docker.io/scylladb/scylla
-    tag: 4.4.2
+    tag: 4.5.1
   agentImage:
-    tag: 2.3.0
+    tag: 2.5.2
     repository: docker.io/scylladb/scylla-manager-agent
   developerMode: true
   cpuset: true

@@ -1,8 +1,8 @@
 # Version information
 scyllaImage:
-  tag: 4.3.0
+  tag: 4.5.1
 agentImage:
-  tag: 2.2.1
+  tag: 2.5.2
 
 # Cluster information
 developerMode: true

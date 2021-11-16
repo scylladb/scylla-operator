@@ -215,7 +215,7 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	args := map[string]*string{
 		"listen-address":        &listenAddress,
 		"broadcast-address":     &m.StaticIP,
-		"broadcast-rpc-address": &m.StaticIP,
+		"broadcast-rpc-address": &m.IP,
 		"seeds":                 pointer.StringPtr(seed),
 		"developer-mode":        &devMode,
 		"overprovisioned":       &overprovisioned,

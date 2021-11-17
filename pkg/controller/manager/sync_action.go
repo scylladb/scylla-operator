@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-set/strset"
@@ -122,6 +123,12 @@ func syncBackupTasks(clusterID string, cluster *scyllav1.ScyllaCluster, syncer s
 	for _, bt := range cluster.Spec.Backups {
 		backupTask := &BackupTask{BackupTaskSpec: bt}
 
+		for _, managerTask := range managerState.BackupTasks {
+			if syncer.taskID(backupTask.Name) == managerTask.ID {
+				evaluateDates(backupTask, managerTask)
+			}
+		}
+
 		if syncer.shouldCreateTask(backupTask.Name) {
 			mt, err := backupTask.ToManager()
 			if err != nil {
@@ -139,6 +146,7 @@ func syncBackupTasks(clusterID string, cluster *scyllav1.ScyllaCluster, syncer s
 			for _, managerTask := range managerState.BackupTasks {
 				if managerTask.ID == backupTask.ID {
 					update = !reflect.DeepEqual(backupTask, managerTask)
+					break
 				}
 			}
 			if update {
@@ -165,6 +173,12 @@ func syncRepairTasks(clusterID string, cluster *scyllav1.ScyllaCluster, syncer s
 	for _, rt := range cluster.Spec.Repairs {
 		repairTask := &RepairTask{RepairTaskSpec: rt}
 
+		for _, managerTask := range managerState.RepairTasks {
+			if syncer.taskID(repairTask.Name) == managerTask.ID {
+				evaluateDates(repairTask, managerTask)
+			}
+		}
+
 		if syncer.shouldCreateTask(rt.Name) {
 			mt, err := repairTask.ToManager()
 			if err != nil {
@@ -182,6 +196,7 @@ func syncRepairTasks(clusterID string, cluster *scyllav1.ScyllaCluster, syncer s
 			for _, managerTask := range managerState.RepairTasks {
 				if managerTask.ID == repairTask.ID {
 					update = !reflect.DeepEqual(repairTask, managerTask)
+					break
 				}
 			}
 			if update {
@@ -199,6 +214,18 @@ func syncRepairTasks(clusterID string, cluster *scyllav1.ScyllaCluster, syncer s
 	}
 
 	return actions, nil
+}
+
+type startDateGetterSetter interface {
+	GetStartDate() string
+	SetStartDate(sd string)
+}
+
+func evaluateDates(spec, managerTask startDateGetterSetter) {
+	// Keep special "now" value evaluated on task creation.
+	if strings.HasPrefix(spec.GetStartDate(), "now") {
+		spec.SetStartDate(managerTask.GetStartDate())
+	}
 }
 
 type stateCache struct {

@@ -4,6 +4,7 @@ package manager
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -108,7 +109,7 @@ func TestManagerSynchronization(t *testing.T) {
 					{
 						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 							Name:      "my-repair",
-							StartDate: "now",
+							StartDate: "2006-01-02T15:04:05Z",
 							Interval:  "0",
 						},
 						SmallTableThreshold: "1GiB",
@@ -139,7 +140,7 @@ func TestManagerSynchronization(t *testing.T) {
 					{
 						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 							Name:      "my-backup",
-							StartDate: "now",
+							StartDate: "2006-01-02T15:04:05Z",
 							Interval:  "0",
 						},
 						DC:               []string{"dc1"},
@@ -172,7 +173,7 @@ func TestManagerSynchronization(t *testing.T) {
 					{
 						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 							Name:      "repair",
-							StartDate: "now",
+							StartDate: "2006-01-02T15:04:05Z",
 							Interval:  "0",
 						},
 						SmallTableThreshold: "1GiB",
@@ -188,7 +189,7 @@ func TestManagerSynchronization(t *testing.T) {
 						RepairTaskSpec: scyllav1.RepairTaskSpec{
 							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 								Name:      "repair",
-								StartDate: "now",
+								StartDate: "2006-01-02T15:04:05Z",
 								Interval:  "0",
 							},
 							Intensity:           "666",
@@ -208,7 +209,7 @@ func TestManagerSynchronization(t *testing.T) {
 						RepairTaskSpec: scyllav1.RepairTaskSpec{
 							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 								Name:      "repair",
-								StartDate: "now",
+								StartDate: "2006-01-02T15:04:05Z",
 								Interval:  "0",
 							},
 							Intensity:           "123",
@@ -228,7 +229,7 @@ func TestManagerSynchronization(t *testing.T) {
 					{
 						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 							Name:      "repair",
-							StartDate: "now",
+							StartDate: "2021-01-01T11:11:11Z",
 							Interval:  "0",
 						},
 						Intensity:           "666",
@@ -244,7 +245,7 @@ func TestManagerSynchronization(t *testing.T) {
 						RepairTaskSpec: scyllav1.RepairTaskSpec{
 							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 								Name:      "repair",
-								StartDate: "now",
+								StartDate: "2021-01-01T11:11:11Z",
 								Interval:  "0",
 							},
 							Intensity:           "666",
@@ -264,7 +265,7 @@ func TestManagerSynchronization(t *testing.T) {
 						RepairTaskSpec: scyllav1.RepairTaskSpec{
 							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 								Name:      "repair",
-								StartDate: "now",
+								StartDate: "2021-01-01T11:11:11Z",
 								Interval:  "0",
 							},
 							Intensity:           "666",
@@ -294,7 +295,7 @@ func TestManagerSynchronization(t *testing.T) {
 						RepairTaskSpec: scyllav1.RepairTaskSpec{
 							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 								Name:      "other-repair",
-								StartDate: "now",
+								StartDate: "2006-01-02T15:04:05Z",
 								Interval:  "0",
 							},
 						},
@@ -304,6 +305,118 @@ func TestManagerSynchronization(t *testing.T) {
 			},
 
 			Actions: []action{&deleteTaskAction{clusterID: clusterID, taskID: "other-repair-id"}},
+		},
+		{
+			Name: "Special 'now' startDate is not compared during update decision",
+			Spec: scyllav1.ScyllaClusterSpec{
+				Repairs: []scyllav1.RepairTaskSpec{
+					{
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+							Name:      "repair",
+							StartDate: "now",
+							Interval:  "0",
+						},
+						Intensity:           "666",
+						SmallTableThreshold: "1GiB",
+					},
+				},
+			},
+			Status: scyllav1.ScyllaClusterStatus{
+				ManagerID: pointer.Ptr(clusterID),
+				Repairs: []scyllav1.RepairTaskStatus{
+					{
+						ID: "repair-id",
+						RepairTaskSpec: scyllav1.RepairTaskSpec{
+							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+								Name:      "repair",
+								StartDate: "2021-01-01T11:11:11Z",
+								Interval:  "0",
+							},
+							Intensity:           "666",
+							SmallTableThreshold: "1GiB",
+						},
+					},
+				},
+			},
+			State: state{
+				Clusters: []*mermaidclient.Cluster{{
+					ID:        clusterID,
+					Name:      clusterName,
+					AuthToken: clusterAuthToken,
+				}},
+				RepairTasks: []*RepairTask{
+					{
+						ID: "repair-id",
+						RepairTaskSpec: scyllav1.RepairTaskSpec{
+							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+								Name:      "repair",
+								StartDate: "2021-01-01T11:11:11Z",
+								Interval:  "0",
+							},
+							Intensity:           "666",
+							SmallTableThreshold: "1GiB",
+						},
+					},
+				},
+			},
+
+			Actions: nil,
+		},
+		{
+			Name: "Task gets updated when startDate is changed",
+			Spec: scyllav1.ScyllaClusterSpec{
+				Repairs: []scyllav1.RepairTaskSpec{
+					{
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+							Name:      "repair",
+							StartDate: "2006-01-02T15:04:05Z",
+							Interval:  "0",
+						},
+						Intensity:           "666",
+						SmallTableThreshold: "1GiB",
+					},
+				},
+			},
+			Status: scyllav1.ScyllaClusterStatus{
+				ManagerID: pointer.Ptr(clusterID),
+				Repairs: []scyllav1.RepairTaskStatus{
+					{
+						ID: "repair-id",
+						RepairTaskSpec: scyllav1.RepairTaskSpec{
+							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+								Name:      "repair",
+								StartDate: "2021-01-01T11:11:11Z",
+								Interval:  "0",
+							},
+							Intensity:           "666",
+							SmallTableThreshold: "1GiB",
+						},
+					},
+				},
+			},
+			State: state{
+				Clusters: []*mermaidclient.Cluster{{
+					ID:        clusterID,
+					Name:      clusterName,
+					AuthToken: clusterAuthToken,
+				}},
+				RepairTasks: []*RepairTask{
+					{
+						RepairTaskSpec: scyllav1.RepairTaskSpec{
+							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+								Name:      "repair",
+								StartDate: "2021-01-01T11:11:11Z",
+								Interval:  "0",
+							},
+							Intensity:           "666",
+							SmallTableThreshold: "1GiB",
+						},
+						ID: "repair-id",
+					},
+				},
+			},
+
+			Actions: []action{&updateTaskAction{clusterID: clusterID, task: &mermaidclient.Task{ID: "repair-id"}}},
 		},
 	}
 
@@ -354,4 +467,84 @@ func actionComparer(a action, b action) bool {
 	default:
 	}
 	return false
+}
+
+func TestBackupTaskChanged(t *testing.T) {
+	ts := []struct {
+		name        string
+		spec        *BackupTask
+		managerTask *BackupTask
+		expected    *BackupTask
+	}{
+		{
+			name: "Task startDate is changed to one from manager state when prefix is 'now'",
+			spec: &BackupTask{BackupTaskSpec: scyllav1.BackupTaskSpec{
+				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+					StartDate: "now",
+				},
+			}},
+			managerTask: &BackupTask{BackupTaskSpec: scyllav1.BackupTaskSpec{
+				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+					StartDate: "2021-01-01T11:11:11Z",
+				},
+			}},
+			expected: &BackupTask{BackupTaskSpec: scyllav1.BackupTaskSpec{
+				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+					StartDate: "2021-01-01T11:11:11Z",
+				},
+			}},
+		},
+	}
+
+	for i := range ts {
+		test := ts[i]
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			evaluateDates(test.spec, test.managerTask)
+			if !reflect.DeepEqual(test.spec, test.expected) {
+				t.Errorf("expected %v, got %v", test.expected, test.spec)
+			}
+		})
+	}
+}
+
+func TestRepairTaskChanged(t *testing.T) {
+	ts := []struct {
+		name        string
+		spec        *RepairTask
+		managerTask *RepairTask
+		expected    *RepairTask
+	}{
+		{
+			name: "Task startDate is changed to one from manager state when prefix is 'now'",
+			spec: &RepairTask{RepairTaskSpec: scyllav1.RepairTaskSpec{
+				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+					StartDate: "now",
+				},
+			}},
+			managerTask: &RepairTask{RepairTaskSpec: scyllav1.RepairTaskSpec{
+				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+					StartDate: "2021-01-01T11:11:11Z",
+				},
+			}},
+			expected: &RepairTask{RepairTaskSpec: scyllav1.RepairTaskSpec{
+				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+					StartDate: "2021-01-01T11:11:11Z",
+				},
+			}},
+		},
+	}
+
+	for i := range ts {
+		test := ts[i]
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			evaluateDates(test.spec, test.managerTask)
+			if !reflect.DeepEqual(test.spec, test.expected) {
+				t.Errorf("expected %v, got %v", test.expected, test.spec)
+			}
+		})
+	}
 }

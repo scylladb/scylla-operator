@@ -72,7 +72,7 @@ func (scc *Controller) pruneServices(
 		stsName := fmt.Sprintf("%s-%s-%s", sc.Name, sc.Spec.Datacenter.Name, rackName)
 		sts, ok := statefulSets[stsName]
 		if !ok {
-			errs = append(errs, fmt.Errorf("statefulset %s/%s is missing", sts.Namespace, sts.Name))
+			errs = append(errs, fmt.Errorf("statefulset %s/%s is missing", sc.Namespace, stsName))
 			continue
 		}
 		// TODO: Label services with the ordinal instead of parsing.

@@ -3,8 +3,8 @@ kind: ScyllaCluster
 metadata:
   name: basic
 spec:
-  version: 4.4.5
-  agentVersion: 2.5.1
+  version: 4.5.1
+  agentVersion: 2.5.2
   developerMode: true
   datacenter:
     name: us-east-1

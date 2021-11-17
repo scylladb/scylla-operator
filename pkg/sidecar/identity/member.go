@@ -84,9 +84,11 @@ func (m *Member) GetSeed(ctx context.Context, coreClient v1.CoreV1Interface) (st
 		return "", fmt.Errorf("internal error: can't find any pod for this cluster, including itself")
 	}
 
+	var allPods []*corev1.Pod
 	var otherPods []*corev1.Pod
 	for i := range podList.Items {
 		pod := &podList.Items[i]
+		allPods = append(allPods, pod)
 		if pod.Name != m.Name {
 			otherPods = append(otherPods, pod)
 		}
@@ -97,15 +99,15 @@ func (m *Member) GetSeed(ctx context.Context, coreClient v1.CoreV1Interface) (st
 		return m.StaticIP, nil
 	}
 
-	sort.Slice(otherPods, func(i, j int) bool {
-		if helpers.IsPodReady(otherPods[i]) && !helpers.IsPodReady(otherPods[j]) {
+	sort.Slice(allPods, func(i, j int) bool {
+		if helpers.IsPodReady(allPods[i]) && !helpers.IsPodReady(allPods[j]) {
 			return true
 		}
 
-		return podList.Items[i].ObjectMeta.CreationTimestamp.Before(&podList.Items[j].ObjectMeta.CreationTimestamp)
+		return allPods[i].ObjectMeta.CreationTimestamp.Before(&allPods[j].ObjectMeta.CreationTimestamp)
 	})
 
-	pod := otherPods[0]
+	pod := allPods[0]
 
 	svc, err := coreClient.Services(m.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
 	if err != nil {

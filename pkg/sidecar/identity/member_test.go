@@ -87,7 +87,7 @@ func TestMember_GetSeeds(t *testing.T) {
 			memberName: firstPod.Name,
 			memberIP:   firstService.Spec.ClusterIP,
 			objects:    []runtime.Object{firstPod, firstService, secondPod, secondService, thirdPod, thirdService},
-			expectSeed: secondService.Spec.ClusterIP,
+			expectSeed: firstService.Spec.ClusterIP,
 		},
 	}
 

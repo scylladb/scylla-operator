@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,8 +24,8 @@ func TestManagerSynchronization(t *testing.T) {
 
 	tcs := []struct {
 		Name   string
-		Spec   v1.ScyllaClusterSpec
-		Status v1.ScyllaClusterStatus
+		Spec   scyllav1.ScyllaClusterSpec
+		Status scyllav1.ScyllaClusterStatus
 		State  state
 
 		Actions []action
@@ -33,8 +33,8 @@ func TestManagerSynchronization(t *testing.T) {
 	}{
 		{
 			Name:   "Empty manager, empty spec, add cluster and requeue",
-			Spec:   v1.ScyllaClusterSpec{},
-			Status: v1.ScyllaClusterStatus{},
+			Spec:   scyllav1.ScyllaClusterSpec{},
+			Status: scyllav1.ScyllaClusterStatus{},
 			State:  state{},
 
 			Requeue: true,
@@ -42,10 +42,10 @@ func TestManagerSynchronization(t *testing.T) {
 		},
 		{
 			Name: "Empty manager, task in spec, add cluster and requeue",
-			Spec: v1.ScyllaClusterSpec{
-				Repairs: []v1.RepairTaskSpec{},
+			Spec: scyllav1.ScyllaClusterSpec{
+				Repairs: []scyllav1.RepairTaskSpec{},
 			},
-			Status: v1.ScyllaClusterStatus{},
+			Status: scyllav1.ScyllaClusterStatus{},
 			State:  state{},
 
 			Requeue: true,
@@ -53,8 +53,8 @@ func TestManagerSynchronization(t *testing.T) {
 		},
 		{
 			Name:   "Cluster registered in manager do nothing",
-			Spec:   v1.ScyllaClusterSpec{},
-			Status: v1.ScyllaClusterStatus{},
+			Spec:   scyllav1.ScyllaClusterSpec{},
+			Status: scyllav1.ScyllaClusterStatus{},
 			State: state{
 				Clusters: []*mermaidclient.Cluster{{
 					Name:      clusterName,
@@ -67,8 +67,8 @@ func TestManagerSynchronization(t *testing.T) {
 		},
 		{
 			Name: "Cluster registered in manager but auth token is different, update and requeue",
-			Spec: v1.ScyllaClusterSpec{},
-			Status: v1.ScyllaClusterStatus{
+			Spec: scyllav1.ScyllaClusterSpec{},
+			Status: scyllav1.ScyllaClusterStatus{
 				ManagerID: pointer.Ptr(clusterID),
 			},
 			State: state{
@@ -84,8 +84,8 @@ func TestManagerSynchronization(t *testing.T) {
 		},
 		{
 			Name: "Name collision, delete old one, add new and requeue",
-			Spec: v1.ScyllaClusterSpec{},
-			Status: v1.ScyllaClusterStatus{
+			Spec: scyllav1.ScyllaClusterSpec{},
+			Status: scyllav1.ScyllaClusterStatus{
 				ManagerID: pointer.Ptr(clusterID),
 			},
 			State: state{
@@ -103,10 +103,10 @@ func TestManagerSynchronization(t *testing.T) {
 		},
 		{
 			Name: "Schedule repair task",
-			Spec: v1.ScyllaClusterSpec{
-				Repairs: []v1.RepairTaskSpec{
+			Spec: scyllav1.ScyllaClusterSpec{
+				Repairs: []scyllav1.RepairTaskSpec{
 					{
-						SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 							Name:      "my-repair",
 							StartDate: "now",
 							Interval:  "0",
@@ -119,7 +119,7 @@ func TestManagerSynchronization(t *testing.T) {
 					},
 				},
 			},
-			Status: v1.ScyllaClusterStatus{
+			Status: scyllav1.ScyllaClusterStatus{
 				ManagerID: pointer.Ptr(clusterID),
 			},
 			State: state{
@@ -134,10 +134,10 @@ func TestManagerSynchronization(t *testing.T) {
 		},
 		{
 			Name: "Schedule backup task",
-			Spec: v1.ScyllaClusterSpec{
-				Backups: []v1.BackupTaskSpec{
+			Spec: scyllav1.ScyllaClusterSpec{
+				Backups: []scyllav1.BackupTaskSpec{
 					{
-						SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 							Name:      "my-backup",
 							StartDate: "now",
 							Interval:  "0",
@@ -152,7 +152,7 @@ func TestManagerSynchronization(t *testing.T) {
 					},
 				},
 			},
-			Status: v1.ScyllaClusterStatus{
+			Status: scyllav1.ScyllaClusterStatus{
 				ManagerID: pointer.Ptr(clusterID),
 			},
 			State: state{
@@ -167,10 +167,10 @@ func TestManagerSynchronization(t *testing.T) {
 		},
 		{
 			Name: "Update repair if it's already registered in Manager",
-			Spec: v1.ScyllaClusterSpec{
-				Repairs: []v1.RepairTaskSpec{
+			Spec: scyllav1.ScyllaClusterSpec{
+				Repairs: []scyllav1.RepairTaskSpec{
 					{
-						SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 							Name:      "repair",
 							StartDate: "now",
 							Interval:  "0",
@@ -180,13 +180,13 @@ func TestManagerSynchronization(t *testing.T) {
 					},
 				},
 			},
-			Status: v1.ScyllaClusterStatus{
+			Status: scyllav1.ScyllaClusterStatus{
 				ManagerID: pointer.Ptr(clusterID),
-				Repairs: []v1.RepairTaskStatus{
+				Repairs: []scyllav1.RepairTaskStatus{
 					{
 						ID: "repair-id",
-						RepairTaskSpec: v1.RepairTaskSpec{
-							SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						RepairTaskSpec: scyllav1.RepairTaskSpec{
+							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 								Name:      "repair",
 								StartDate: "now",
 								Interval:  "0",
@@ -205,8 +205,8 @@ func TestManagerSynchronization(t *testing.T) {
 				}},
 				RepairTasks: []*RepairTask{
 					{
-						RepairTaskSpec: v1.RepairTaskSpec{
-							SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						RepairTaskSpec: scyllav1.RepairTaskSpec{
+							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 								Name:      "repair",
 								StartDate: "now",
 								Interval:  "0",
@@ -223,10 +223,10 @@ func TestManagerSynchronization(t *testing.T) {
 		},
 		{
 			Name: "Do not update task when it didn't change",
-			Spec: v1.ScyllaClusterSpec{
-				Repairs: []v1.RepairTaskSpec{
+			Spec: scyllav1.ScyllaClusterSpec{
+				Repairs: []scyllav1.RepairTaskSpec{
 					{
-						SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 							Name:      "repair",
 							StartDate: "now",
 							Interval:  "0",
@@ -236,13 +236,13 @@ func TestManagerSynchronization(t *testing.T) {
 					},
 				},
 			},
-			Status: v1.ScyllaClusterStatus{
+			Status: scyllav1.ScyllaClusterStatus{
 				ManagerID: pointer.Ptr(clusterID),
-				Repairs: []v1.RepairTaskStatus{
+				Repairs: []scyllav1.RepairTaskStatus{
 					{
 						ID: "repair-id",
-						RepairTaskSpec: v1.RepairTaskSpec{
-							SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						RepairTaskSpec: scyllav1.RepairTaskSpec{
+							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 								Name:      "repair",
 								StartDate: "now",
 								Interval:  "0",
@@ -261,8 +261,8 @@ func TestManagerSynchronization(t *testing.T) {
 				}},
 				RepairTasks: []*RepairTask{
 					{
-						RepairTaskSpec: v1.RepairTaskSpec{
-							SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						RepairTaskSpec: scyllav1.RepairTaskSpec{
+							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 								Name:      "repair",
 								StartDate: "now",
 								Interval:  "0",
@@ -279,8 +279,8 @@ func TestManagerSynchronization(t *testing.T) {
 		},
 		{
 			Name: "Delete tasks from Manager unknown to spec",
-			Spec: v1.ScyllaClusterSpec{},
-			Status: v1.ScyllaClusterStatus{
+			Spec: scyllav1.ScyllaClusterSpec{},
+			Status: scyllav1.ScyllaClusterStatus{
 				ManagerID: pointer.Ptr(clusterID),
 			},
 			State: state{
@@ -291,8 +291,8 @@ func TestManagerSynchronization(t *testing.T) {
 				}},
 				RepairTasks: []*RepairTask{
 					{
-						RepairTaskSpec: v1.RepairTaskSpec{
-							SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						RepairTaskSpec: scyllav1.RepairTaskSpec{
+							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 								Name:      "other-repair",
 								StartDate: "now",
 								Interval:  "0",
@@ -311,7 +311,7 @@ func TestManagerSynchronization(t *testing.T) {
 		test := tcs[i]
 		t.Run(test.Name, func(t *testing.T) {
 			ctx := context.Background()
-			cluster := &v1.ScyllaCluster{
+			cluster := &scyllav1.ScyllaCluster{
 				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
 				Spec:       test.Spec,
 				Status:     test.Status,

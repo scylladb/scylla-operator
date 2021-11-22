@@ -331,7 +331,10 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 							StartupProbe: &corev1.Probe{
 								// Initial delay should be big, because scylla runs benchmarks
 								// to tune the IO settings.
-								TimeoutSeconds:   int32(5),
+								// TODO: Lower the timeout when we fix probes. We have temporarily changed them from 5s
+								// to 30s to survive cluster overload.
+								// Relevant issue: https://github.com/scylladb/scylla-operator/issues/844
+								TimeoutSeconds:   int32(30),
 								FailureThreshold: int32(40),
 								PeriodSeconds:    int32(10),
 								Handler: corev1.Handler{
@@ -342,7 +345,10 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								},
 							},
 							LivenessProbe: &corev1.Probe{
-								TimeoutSeconds:   int32(5),
+								// TODO: Lower the timeout when we fix probes. We have temporarily changed them from 5s
+								// to 30s to survive cluster overload.
+								// Relevant issue: https://github.com/scylladb/scylla-operator/issues/844
+								TimeoutSeconds:   int32(30),
 								FailureThreshold: int32(3),
 								PeriodSeconds:    int32(10),
 								Handler: corev1.Handler{
@@ -353,7 +359,10 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								},
 							},
 							ReadinessProbe: &corev1.Probe{
-								TimeoutSeconds: int32(5),
+								// TODO: Lower the timeout when we fix probes. We have temporarily changed them from 5s
+								// to 30s to survive cluster overload.
+								// Relevant issue: https://github.com/scylladb/scylla-operator/issues/844
+								TimeoutSeconds: int32(30),
 								PeriodSeconds:  int32(10),
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{

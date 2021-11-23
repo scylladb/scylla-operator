@@ -261,36 +261,6 @@ func (scc *Controller) syncServices(
 				}
 			}
 			resourceapply.ReportDeleteEvent(scc.eventRecorder, podMeta, nil)
-
-			// Delete the member Service.
-			klog.V(2).InfoS("Deleting the member service to replace member",
-				"ScyllaCluster", klog.KObj(sc),
-				"Service", klog.KObj(svc),
-			)
-			err = scc.kubeClient.CoreV1().Services(svc.Namespace).Delete(ctx, svc.Name, metav1.DeleteOptions{
-				PropagationPolicy: &backgroundPropagationPolicy,
-				Preconditions: &metav1.Preconditions{
-					UID: &svc.UID,
-					// Delete only if its the version we see in cache. (Has the same replace label state.)
-					ResourceVersion: &svc.ResourceVersion,
-				},
-			})
-			if err != nil {
-				if apierrors.IsNotFound(err) {
-					klog.V(4).InfoS("Pod not found", "Pod", klog.ObjectRef{Namespace: svc.Namespace, Name: svc.Name})
-				} else {
-					resourceapply.ReportDeleteEvent(scc.eventRecorder, svc, err)
-					return status, err
-				}
-			} else {
-				resourceapply.ReportDeleteEvent(scc.eventRecorder, svc, nil)
-
-				// FIXME: The pod could have been already up and read the old ClusterIP - make sure it will restart.
-				//        We can't delete the pod here as it wouldn't retry failures.
-
-				// We have deleted the service. Wait for re-queue.
-				return status, nil
-			}
 		} else {
 			// Member is being replaced. Wait for readiness and clear the replace label.
 

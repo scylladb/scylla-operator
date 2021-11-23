@@ -228,9 +228,9 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 			args["alternator-write-isolation"] = pointer.StringPtr(cluster.Spec.Alternator.WriteIsolation)
 		}
 	}
-	// If node is being replaced
-	if addr, ok := m.ServiceLabels[naming.ReplaceLabel]; ok {
-		args["replace-address-first-boot"] = pointer.StringPtr(addr)
+	// Always replace itself if not seed
+	if seed != "" && seed != m.StaticIP {
+		args["replace-address-first-boot"] = pointer.StringPtr(m.StaticIP)
 	}
 	// See if we need to use cpu-pinning
 	// TODO: Add more checks to make sure this is valid.

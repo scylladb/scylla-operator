@@ -563,7 +563,7 @@ func TestStatefulSetForRack(t *testing.T) {
 									},
 								},
 								StartupProbe: &corev1.Probe{
-									TimeoutSeconds:   int32(5),
+									TimeoutSeconds:   int32(30),
 									FailureThreshold: int32(40),
 									PeriodSeconds:    int32(10),
 									Handler: corev1.Handler{
@@ -574,7 +574,7 @@ func TestStatefulSetForRack(t *testing.T) {
 									},
 								},
 								LivenessProbe: &corev1.Probe{
-									TimeoutSeconds:   int32(5),
+									TimeoutSeconds:   int32(30),
 									FailureThreshold: int32(3),
 									PeriodSeconds:    int32(10),
 									Handler: corev1.Handler{
@@ -585,7 +585,7 @@ func TestStatefulSetForRack(t *testing.T) {
 									},
 								},
 								ReadinessProbe: &corev1.Probe{
-									TimeoutSeconds: int32(5),
+									TimeoutSeconds: int32(30),
 									PeriodSeconds:  int32(10),
 									Handler: corev1.Handler{
 										HTTPGet: &corev1.HTTPGetAction{

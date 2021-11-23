@@ -228,9 +228,18 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 			args["alternator-write-isolation"] = pointer.StringPtr(cluster.Spec.Alternator.WriteIsolation)
 		}
 	}
-	// Always replace itself if not seed
+	// try replace itself if not seed
 	if seed != "" && seed != m.StaticIP {
-		args["replace-address-first-boot"] = pointer.StringPtr(m.StaticIP)
+		myself, err := s.kubeClient.CoreV1().Pods(s.member.Namespace).Get(ctx, s.member.Name, metav1.GetOptions{})
+		if err != nil {
+			return nil, errors.Wrap(err, "error getting self k8s pod")
+		}
+		if len(myself.Status.ContainerStatuses) == 0 || myself.Status.ContainerStatuses[0].Name != "scylla" {
+			return nil, errors.Wrap(err, "error scylla container not found in pod")
+		}
+		if myself.Status.ContainerStatuses[0].RestartCount%2 == 1 {
+			args["replace-address-first-boot"] = pointer.StringPtr(m.StaticIP)
+		}
 	}
 	// See if we need to use cpu-pinning
 	// TODO: Add more checks to make sure this is valid.

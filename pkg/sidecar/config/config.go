@@ -237,7 +237,7 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		if len(myself.Status.ContainerStatuses) == 0 || myself.Status.ContainerStatuses[0].Name != "scylla" {
 			return nil, errors.Wrap(err, "error scylla container not found in pod")
 		}
-		if myself.Status.ContainerStatuses[0].RestartCount%2 == 1 {
+		if myself.Status.ContainerStatuses[0].RestartCount%2 == 0 {
 			args["replace-address-first-boot"] = pointer.StringPtr(m.StaticIP)
 		}
 	}

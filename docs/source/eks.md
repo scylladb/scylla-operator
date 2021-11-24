@@ -116,7 +116,7 @@ Instructions on how to access the database can also be found in the [generic gui
 
 ### Deleting an EKS cluster
 
-Once you are done with your experiments delete your cluster using the following command:
+Once you are done with your experiments, delete your cluster using the following command:
 
 ```
 eksctl delete cluster "${CLUSTER_NAME}"

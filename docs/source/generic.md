@@ -79,7 +79,7 @@ kubectl create -f examples/generic/cluster.yaml
 ```
 
 We can verify that a Kubernetes object has been created that represents our new Scylla cluster with the command below.
-This is important because it shows that  has successfully extended Kubernetes to make Scylla clusters a first class citizen in the Kubernetes cloud-native environment.
+This is important because it shows that kubernetes has successfully been extended to make Scylla clusters a first class citizen in the Kubernetes cloud-native environment.
 
 ```console
 kubectl -n scylla get ScyllaCluster

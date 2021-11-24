@@ -10,7 +10,7 @@ _This procedure is for replacing one dead node. To replace more than one dead no
 
 **Procedure**
 
-1. Verify the status of the node using `nodetool status` command, the node with status DN is down and need to be replaced
+1. Verify the status of the node using `nodetool status` command, the node with status DN is down and needs to be replaced
     ```bash
     kubectl -n scylla exec -ti simple-cluster-us-east-1-us-east-1a-0 -c scylla -- nodetool status
     Datacenter: us-east-1

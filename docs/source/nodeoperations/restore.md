@@ -85,5 +85,5 @@ To load data into cluster pass cluster address to `sstableloader` together with 
 sstableloader -d 'simple-cluster-us-east-1-us-east-1a-0.scylla.svc,simple-cluster-us-east-1-us-east-1a-1.scylla.svc,simple-cluster-us-east-1-us-east-1a-2.scylla.svc' ./users/data_0 --username scylla --password <password>
 ```
 
-Depending on how big is your data set, this operation may take some time.
+Depending on how big your data set is, this operation may take some time.
 Once it finishes, data from the snapshot is restored and you may clean up the host.

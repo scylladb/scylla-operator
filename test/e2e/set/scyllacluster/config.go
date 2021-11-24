@@ -10,7 +10,7 @@ const (
 	upgradeFromScyllaVersion = "4.4.6"
 	upgradeToScyllaVersion   = "4.5.1"
 
-	testTimout = 15 * time.Minute
+	testTimout = 45 * time.Minute
 
 	memberRolloutTimeout = 3 * time.Minute
 	baseRolloutTimout    = 30 * time.Second

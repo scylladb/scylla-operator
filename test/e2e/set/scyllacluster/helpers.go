@@ -35,7 +35,7 @@ import (
 )
 
 func rolloutTimeoutForScyllaCluster(sc *scyllav1.ScyllaCluster) time.Duration {
-	return baseRolloutTimout + time.Duration(getMemberCount(sc))*memberRolloutTimeout
+	return baseRolloutTimout + time.Duration(int32(len(sc.Spec.Datacenter.Racks))*getMemberCount(sc))*memberRolloutTimeout
 }
 
 func getMemberCount(sc *scyllav1.ScyllaCluster) int32 {

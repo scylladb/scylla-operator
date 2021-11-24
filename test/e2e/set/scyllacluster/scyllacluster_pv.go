@@ -8,6 +8,7 @@ import (
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controller/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	scyllaclusterfixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scyllacluster"
@@ -108,10 +109,19 @@ var _ = g.Describe("ScyllaCluster Orphaned PV", func() {
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		framework.By("Waiting for the ScyllaCluster to deploy")
+		framework.By("Waiting for the ScyllaCluster to observe the degradation")
 		waitCtx3, waitCtx3Cancel := contextForRollout(ctx, sc)
 		defer waitCtx3Cancel()
-		sc, err = waitForScyllaClusterState(waitCtx3, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, scyllaClusterRolledOut)
+		sc, err = waitForScyllaClusterState(waitCtx3, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, func(sc *scyllav1.ScyllaCluster) (bool, error) {
+			rolledOut, err := scyllaClusterRolledOut(sc)
+			return !rolledOut, err
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to deploy")
+		waitCtx4, waitCtx4Cancel := contextForRollout(ctx, sc)
+		defer waitCtx4Cancel()
+		sc, err = waitForScyllaClusterState(waitCtx4, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, scyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc, di)

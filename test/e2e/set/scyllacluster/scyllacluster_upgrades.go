@@ -9,6 +9,7 @@ import (
 	g "github.com/onsi/ginkgo"
 	gt "github.com/onsi/ginkgo/extensions/table"
 	o "github.com/onsi/gomega"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllaclusterfixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scyllacluster"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,12 +23,13 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 
 	type entry struct {
 		rackSize       int32
+		rackCount      int32
 		initialVersion string
 		updatedVersion string
 	}
 
 	describeEntry := func(e *entry) string {
-		return fmt.Sprintf("with %d member(s) from %s to %s", e.rackSize, e.initialVersion, e.updatedVersion)
+		return fmt.Sprintf("with %d member(s) and %d rack(s) from %s to %s", e.rackSize, e.rackCount, e.initialVersion, e.updatedVersion)
 	}
 
 	gt.DescribeTable("should deploy and update",
@@ -37,7 +39,16 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 
 			sc := scyllaclusterfixture.BasicScyllaCluster.ReadOrFail()
 			sc.Spec.Version = e.initialVersion
-			sc.Spec.Datacenter.Racks[0].Members = e.rackSize
+
+			o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
+			rack := &sc.Spec.Datacenter.Racks[0]
+			sc.Spec.Datacenter.Racks = make([]scyllav1.RackSpec, 0, e.rackCount)
+			for i := int32(0); i < e.rackCount; i++ {
+				r := rack.DeepCopy()
+				r.Name = fmt.Sprintf("rack-%d", i)
+				r.Members = e.rackSize
+				sc.Spec.Datacenter.Racks = append(sc.Spec.Datacenter.Racks, *r)
+			}
 
 			framework.By("Creating a ScyllaCluster")
 			err := framework.SetupScyllaClusterSA(ctx, f.KubeClient().CoreV1(), f.KubeClient().RbacV1(), f.Namespace(), sc.Name)
@@ -90,21 +101,31 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 		},
 		// Test 1 and 3 member rack to cover e.g. handling PDBs correctly.
 		gt.Entry(describeEntry, &entry{
+			rackCount:      1,
 			rackSize:       1,
 			initialVersion: updateFromScyllaVersion,
 			updatedVersion: updateToScyllaVersion,
 		}),
 		gt.Entry(describeEntry, &entry{
+			rackCount:      1,
 			rackSize:       3,
 			initialVersion: updateFromScyllaVersion,
 			updatedVersion: updateToScyllaVersion,
 		}),
 		gt.Entry(describeEntry, &entry{
+			rackCount:      1,
 			rackSize:       1,
 			initialVersion: upgradeFromScyllaVersion,
 			updatedVersion: upgradeToScyllaVersion,
 		}),
 		gt.Entry(describeEntry, &entry{
+			rackCount:      1,
+			rackSize:       3,
+			initialVersion: upgradeFromScyllaVersion,
+			updatedVersion: upgradeToScyllaVersion,
+		}),
+		gt.Entry(describeEntry, &entry{
+			rackCount:      2,
 			rackSize:       3,
 			initialVersion: upgradeFromScyllaVersion,
 			updatedVersion: upgradeToScyllaVersion,

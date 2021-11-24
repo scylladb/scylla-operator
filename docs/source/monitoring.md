@@ -40,7 +40,7 @@ Customization can be done in `examples/common/monitoring/values.yaml`
 
 1. Install dashboards
 
-    Scylla Monitoring comes with pre generated dashboards suitable for multiple Scylla versions.
+    Scylla Monitoring comes with pre-generated dashboards suitable for multiple Scylla versions.
     In this example we will use dashboards for Scylla 4.3, and Scylla Manager 2.2.
     Amend directory path to generated dashboards to version suitable for your deployment.
 

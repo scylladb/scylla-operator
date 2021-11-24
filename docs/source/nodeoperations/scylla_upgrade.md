@@ -1,8 +1,8 @@
 ### Upgrading version of Scylla
 
-To upgrade Scylla version using Operator user have to modify existing ScyllaCluster definition.
+To upgrade the Scylla version using Operator, the user has to modify the existing ScyllaCluster definition.
 
-In this example cluster will be upgraded to version `4.4.5`.
+In this example the cluster will be upgraded to version `4.4.5`.
 ```bash
 kubectl -n scylla patch ScyllaCluster simple-cluster  -p '{"spec":{"version": "4.4.5"}}' --type=merge
 ```

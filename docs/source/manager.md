@@ -16,7 +16,7 @@ See the Scylla Manager [Proprietary Software License Agreement](https://www.scyl
 
 ## Architecture
 
-Scylla Manager in K8s consist of:
+Scylla Manager in K8s consists of:
 - Dedicated Scylla Cluster
 
   Scylla Manager persists its state to a Scylla cluster.

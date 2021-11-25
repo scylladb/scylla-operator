@@ -8,8 +8,7 @@ import (
 
 	"github.com/blang/semver"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	controllerhelpers "github.com/scylladb/scylla-operator/pkg/controller/helpers"
-	"github.com/scylladb/scylla-operator/pkg/controller/scyllacluster/resource"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
@@ -47,7 +46,7 @@ func (scc *Controller) makeRacks(sc *scyllav1.ScyllaCluster, statefulSets map[st
 	sets := make([]*appsv1.StatefulSet, 0, len(sc.Spec.Datacenter.Racks))
 	for _, rack := range sc.Spec.Datacenter.Racks {
 		oldSts := statefulSets[naming.StatefulSetNameForRack(rack, sc)]
-		sts, err := resource.StatefulSetForRack(rack, sc, oldSts, scc.operatorImage)
+		sts, err := StatefulSetForRack(rack, sc, oldSts, scc.operatorImage)
 		if err != nil {
 			return nil, err
 		}

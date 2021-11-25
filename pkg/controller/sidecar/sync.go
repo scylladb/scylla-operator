@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/scylladb/scylla-operator/pkg/controller/helpers"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	corev1 "k8s.io/api/core/v1"
@@ -24,7 +24,7 @@ func (c *Controller) getScyllaClient() (*scyllaclient.Client, error) {
 		return nil, fmt.Errorf("can't get manager agent auth secret %s/%s: %w", c.namespace, c.secretName, err)
 	}
 
-	return helpers.NewScyllaClientFromSecret(secret, []string{c.hostAddr})
+	return controllerhelpers.NewScyllaClientFromSecret(secret, []string{c.hostAddr})
 }
 
 func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) error {

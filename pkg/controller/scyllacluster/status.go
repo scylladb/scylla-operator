@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	controllerhelpers "github.com/scylladb/scylla-operator/pkg/controller/helpers"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"

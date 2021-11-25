@@ -4,15 +4,12 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"time"
 
-	"github.com/pkg/errors"
-	"github.com/scylladb/scylla-operator/pkg/controller/helpers"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
@@ -31,43 +28,24 @@ type Member struct {
 	Datacenter    string
 	Cluster       string
 	ServiceLabels map[string]string
+	PodID         string
 
 	Overprovisioned bool
 }
 
-func Retrieve(ctx context.Context, name, namespace string, kubeclient kubernetes.Interface) (*Member, error) {
-	// Get the member's service
-	var memberService *corev1.Service
-	var err error
-	const maxRetryCount = 5
-	for retryCount := 0; ; retryCount++ {
-		memberService, err = kubeclient.CoreV1().Services(namespace).Get(ctx, name, metav1.GetOptions{})
-		if err == nil {
-			break
-		}
-		if retryCount > maxRetryCount {
-			return nil, errors.Wrap(err, "failed to get memberservice")
-		}
-		time.Sleep(500 * time.Millisecond)
-	}
-
-	// Get the pod's ip
-	pod, err := kubeclient.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get pod")
-	}
-
+func NewMemberFromObjects(service *corev1.Service, pod *corev1.Pod) *Member {
 	return &Member{
-		Name:            name,
-		Namespace:       namespace,
+		Namespace:       service.Namespace,
+		Name:            service.Name,
 		IP:              pod.Status.PodIP,
-		StaticIP:        memberService.Spec.ClusterIP,
+		StaticIP:        service.Spec.ClusterIP,
 		Rack:            pod.Labels[naming.RackNameLabel],
 		Datacenter:      pod.Labels[naming.DatacenterNameLabel],
 		Cluster:         pod.Labels[naming.ClusterNameLabel],
-		ServiceLabels:   memberService.Labels,
+		ServiceLabels:   service.Labels,
+		PodID:           string(pod.UID),
 		Overprovisioned: pod.Status.QOSClass != corev1.PodQOSGuaranteed,
-	}, nil
+	}
 }
 
 func (m *Member) GetSeed(ctx context.Context, coreClient v1.CoreV1Interface) (string, error) {
@@ -98,7 +76,7 @@ func (m *Member) GetSeed(ctx context.Context, coreClient v1.CoreV1Interface) (st
 	}
 
 	sort.Slice(otherPods, func(i, j int) bool {
-		if helpers.IsPodReady(otherPods[i]) && !helpers.IsPodReady(otherPods[j]) {
+		if controllerhelpers.IsPodReady(otherPods[i]) && !controllerhelpers.IsPodReady(otherPods[j]) {
 			return true
 		}
 

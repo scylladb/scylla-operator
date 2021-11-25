@@ -11,13 +11,21 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+func ManualRef(namespace, name string) string {
+	return fmt.Sprintf("%s/%s", namespace, name)
+}
+
 func ObjRef(obj metav1.Object) string {
 	namespace := obj.GetNamespace()
 	if len(namespace) == 0 {
 		return obj.GetName()
 	}
 
-	return fmt.Sprintf("%s/%s", obj.GetNamespace(), obj.GetName())
+	return ManualRef(obj.GetNamespace(), obj.GetName())
+}
+
+func ObjRefWithUID(obj metav1.Object) string {
+	return fmt.Sprintf("%s(UID=%s)", ObjRef(obj), obj.GetUID())
 }
 
 func StatefulSetNameForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) string {
@@ -150,4 +158,12 @@ func SidecarVersion(containers []corev1.Container) (string, error) {
 		return "", errors.Wrap(err, "parse sidecar container version")
 	}
 	return version, nil
+}
+
+func PerftuneResultName(uid string) string {
+	return fmt.Sprintf("%s-%s", PerftuneJobPrefixName, uid)
+}
+
+func GetTuningConfigMapNameForPod(pod *corev1.Pod) string {
+	return fmt.Sprintf("nodeconfig-podinfo-%s", pod.UID)
 }

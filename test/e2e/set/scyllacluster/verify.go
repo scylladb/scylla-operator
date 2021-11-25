@@ -7,14 +7,15 @@ import (
 
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	"github.com/scylladb/scylla-operator/pkg/controller/scyllacluster/util"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
+	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/utils/pointer"
 )
 
 func verifyPersistentVolumeClaims(ctx context.Context, coreClient corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) {
@@ -63,7 +64,18 @@ func verifyStatefulset(sts *appsv1.StatefulSet) {
 }
 
 func verifyPodDisruptionBudget(sc *scyllav1.ScyllaCluster, pdb *policyv1beta1.PodDisruptionBudget) {
-	o.Expect(pdb.ObjectMeta.OwnerReferences).To(o.ConsistOf(util.NewControllerRef(sc)))
+	o.Expect(pdb.ObjectMeta.OwnerReferences).To(o.BeEquivalentTo(
+		[]metav1.OwnerReference{
+			{
+				APIVersion:         "scylla.scylladb.com/v1",
+				Kind:               "ScyllaCluster",
+				Name:               sc.Name,
+				UID:                sc.UID,
+				BlockOwnerDeletion: pointer.Bool(true),
+				Controller:         pointer.Bool(true),
+			},
+		}),
+	)
 	o.Expect(pdb.Spec.MaxUnavailable.IntValue()).To(o.Equal(1))
 	o.Expect(pdb.Spec.Selector).To(o.Equal(metav1.SetAsLabelSelector(naming.ClusterLabels(sc))))
 }
@@ -74,7 +86,7 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 	o.Expect(sc.Status.ObservedGeneration).NotTo(o.BeNil())
 	o.Expect(sc.Status.Racks).To(o.HaveLen(len(sc.Spec.Datacenter.Racks)))
 
-	statefulsets, err := getStatefulSetsForScyllaCluster(ctx, kubeClient.AppsV1(), sc)
+	statefulsets, err := utils.GetStatefulSetsForScyllaCluster(ctx, kubeClient.AppsV1(), sc)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(statefulsets).To(o.HaveLen(len(sc.Spec.Datacenter.Racks)))
 
@@ -105,7 +117,7 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 	verifyPersistentVolumeClaims(ctx, kubeClient.CoreV1(), sc)
 
 	// TODO: Use scylla client to check at least "UN"
-	scyllaClient, hosts, err := getScyllaClient(ctx, kubeClient.CoreV1(), sc)
+	scyllaClient, hosts, err := utils.GetScyllaClient(ctx, kubeClient.CoreV1(), sc)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(hosts).To(o.HaveLen(memberCount))
 

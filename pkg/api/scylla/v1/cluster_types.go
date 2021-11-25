@@ -360,7 +360,7 @@ type BackupTaskStatus struct {
 	Error string `json:"error"`
 }
 
-// ScyllaClusterStatus defines the observed state of ScyllaCluster
+// ScyllaClusterStatus defines the observed state of ScyllaCluster.
 type ScyllaClusterStatus struct {
 	// observedGeneration is the most recent generation observed for this ScyllaCluster. It corresponds to the
 	// ScyllaCluster's generation, which is updated on mutation by the API Server.
@@ -436,6 +436,7 @@ type RackStatus struct {
 
 	// FIXME: The json value should have been a camelCase string.
 	//        We need to deprecate this value and introduce a new one.
+
 	// replace_address_first_boot holds addresses which should be replaced by new nodes.
 	ReplaceAddressFirstBoot map[string]string `json:"replace_address_first_boot,omitempty"`
 }

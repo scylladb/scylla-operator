@@ -1859,7 +1859,7 @@ spec:
                       replace_address_first_boot:
                         additionalProperties:
                           type: string
-                        description: 'FIXME: The json value should have been a camelCase string.        We need to deprecate this value and introduce a new one. replace_address_first_boot holds addresses which should be replaced by new nodes.'
+                        description: replace_address_first_boot holds addresses which should be replaced by new nodes.
                         type: object
                       stale:
                         description: stale indicates if the current rack status is collected for a previous generation. stale should eventually become false when the appropriate controller writes a fresh status.

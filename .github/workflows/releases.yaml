@@ -17,7 +17,7 @@ on:
         required: true
 
 env:
-  go_version: 1.16
+  go_version: 1.17.2
   git_repo_path: ${{ github.workspace }}/go/src/github.com/scylladb/scylla-operator
   retention_days: 90
 

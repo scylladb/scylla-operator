@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	g "github.com/onsi/ginkgo"
+	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"

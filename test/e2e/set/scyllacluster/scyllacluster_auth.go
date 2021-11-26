@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
-	g "github.com/onsi/ginkgo"
+	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	"github.com/scylladb/go-log"
 	"github.com/scylladb/scylla-operator/pkg/helpers"

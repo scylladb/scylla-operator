@@ -6,8 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	g "github.com/onsi/ginkgo"
-	gt "github.com/onsi/ginkgo/extensions/table"
+	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
@@ -33,7 +32,7 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 		return fmt.Sprintf("with %d member(s) and %d rack(s) from %s to %s", e.rackSize, e.rackCount, e.initialVersion, e.updatedVersion)
 	}
 
-	gt.DescribeTable("should deploy and update",
+	g.DescribeTable("should deploy and update",
 		func(e *entry) {
 			ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 			defer cancel()
@@ -101,31 +100,31 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			verifyScyllaCluster(ctx, f.KubeClient(), sc, di)
 		},
 		// Test 1 and 3 member rack to cover e.g. handling PDBs correctly.
-		gt.Entry(describeEntry, &entry{
+		g.Entry(describeEntry, &entry{
 			rackCount:      1,
 			rackSize:       1,
 			initialVersion: updateFromScyllaVersion,
 			updatedVersion: updateToScyllaVersion,
 		}),
-		gt.Entry(describeEntry, &entry{
+		g.Entry(describeEntry, &entry{
 			rackCount:      1,
 			rackSize:       3,
 			initialVersion: updateFromScyllaVersion,
 			updatedVersion: updateToScyllaVersion,
 		}),
-		gt.Entry(describeEntry, &entry{
+		g.Entry(describeEntry, &entry{
 			rackCount:      1,
 			rackSize:       1,
 			initialVersion: upgradeFromScyllaVersion,
 			updatedVersion: upgradeToScyllaVersion,
 		}),
-		gt.Entry(describeEntry, &entry{
+		g.Entry(describeEntry, &entry{
 			rackCount:      1,
 			rackSize:       3,
 			initialVersion: upgradeFromScyllaVersion,
 			updatedVersion: upgradeToScyllaVersion,
 		}),
-		gt.Entry(describeEntry, &entry{
+		g.Entry(describeEntry, &entry{
 			rackCount:      2,
 			rackSize:       3,
 			initialVersion: upgradeFromScyllaVersion,

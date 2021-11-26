@@ -9,7 +9,7 @@ import (
 	"sort"
 	"time"
 
-	g "github.com/onsi/ginkgo"
+	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
@@ -30,7 +30,7 @@ const (
 
 // These tests modify global resource affecting global cluster state.
 // They must not be run asynchronously with other tests.
-var _ = g.Describe("NodeConfig Optimizations [Serial]", func() {
+var _ = g.Describe("NodeConfig Optimizations", g.Serial, func() {
 	defer g.GinkgoRecover()
 
 	f := framework.NewFramework("nodeconfig")

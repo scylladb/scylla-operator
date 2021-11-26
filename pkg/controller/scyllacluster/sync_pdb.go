@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	"github.com/scylladb/scylla-operator/pkg/controller/scyllacluster/resource"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,7 +19,7 @@ func (scc *Controller) syncPodDisruptionBudgets(
 ) (*scyllav1.ScyllaClusterStatus, error) {
 	var err error
 
-	requiredPDB := resource.MakePodDisruptionBudget(sc)
+	requiredPDB := MakePodDisruptionBudget(sc)
 
 	// Delete any excessive PodDisruptionBudgets.
 	// Delete has to be the fist action to avoid getting stuck on quota.

@@ -139,6 +139,7 @@ func NewController(
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    scc.addPod,
 		UpdateFunc: scc.updatePod,
+		DeleteFunc: scc.deletePod,
 	})
 
 	statefulSetInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -276,7 +277,6 @@ func (scc *Controller) resolveScyllaClusterControllerThroughStatefulSet(obj meta
 	if sts == nil {
 		return nil
 	}
-
 	sc := scc.resolveScyllaClusterController(sts)
 	if sc == nil {
 		return nil
@@ -328,19 +328,13 @@ func (scc *Controller) enqueueOwnerThroughStatefulSet(obj metav1.Object) {
 	scc.enqueue(sc)
 }
 
-func (scc *Controller) enqueueScyllaClusterFromPod(obj metav1.Object) {
-	sc := scc.resolveScyllaClusterController(obj)
+func (scc *Controller) enqueueScyllaClusterFromPod(pod *corev1.Pod) {
+	sc := scc.resolveScyllaClusterControllerThroughStatefulSet(pod)
 	if sc == nil {
 		return
 	}
 
-	gvk, err := resource.GetObjectGVK(obj.(runtime.Object))
-	if err != nil {
-		utilruntime.HandleError(err)
-		return
-	}
-
-	klog.V(4).InfoS(fmt.Sprintf("%s added", gvk.Kind), gvk.Kind, klog.KObj(sc))
+	klog.V(4).InfoS("Pod added", "ScyllaCluster", klog.KObj(sc))
 	scc.enqueue(sc)
 }
 
@@ -435,7 +429,7 @@ func (scc *Controller) deleteSecret(obj interface{}) {
 func (scc *Controller) addPod(obj interface{}) {
 	pod := obj.(*corev1.Pod)
 	klog.V(4).InfoS("Observed addition of Pod", "Pod", klog.KObj(pod))
-	scc.enqueueOwner(pod)
+	scc.enqueueScyllaClusterFromPod(pod)
 }
 
 func (scc *Controller) updatePod(old, cur interface{}) {
@@ -448,14 +442,32 @@ func (scc *Controller) updatePod(old, cur interface{}) {
 			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldPod, err))
 			return
 		}
-		scc.deleteService(cache.DeletedFinalStateUnknown{
+		scc.deletePod(cache.DeletedFinalStateUnknown{
 			Key: key,
 			Obj: oldPod,
 		})
 	}
 
 	klog.V(4).InfoS("Observed update of Pod", "Pod", klog.KObj(oldPod))
-	scc.enqueueOwner(currentPod)
+	scc.enqueueScyllaClusterFromPod(currentPod)
+}
+
+func (scc *Controller) deletePod(obj interface{}) {
+	pod, ok := obj.(*corev1.Pod)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
+			return
+		}
+		pod, ok = tombstone.Obj.(*corev1.Pod)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a Pod %#v", obj))
+			return
+		}
+	}
+	klog.V(4).InfoS("Observed deletion of Pod", "Pod", klog.KObj(pod), "RV", pod.ResourceVersion)
+	scc.enqueueScyllaClusterFromPod(pod)
 }
 
 func (scc *Controller) addStatefulSet(obj interface{}) {

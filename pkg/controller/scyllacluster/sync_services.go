@@ -8,8 +8,7 @@ import (
 	"time"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	controllerhelpers "github.com/scylladb/scylla-operator/pkg/controller/helpers"
-	"github.com/scylladb/scylla-operator/pkg/controller/scyllacluster/resource"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	appsv1 "k8s.io/api/apps/v1"
@@ -24,7 +23,7 @@ var serviceOrdinalRegex = regexp.MustCompile("^.*-([0-9]+)$")
 
 func (scc *Controller) makeServices(sc *scyllav1.ScyllaCluster, oldServices map[string]*corev1.Service) []*corev1.Service {
 	services := []*corev1.Service{
-		resource.HeadlessServiceForCluster(sc),
+		HeadlessServiceForCluster(sc),
 	}
 
 	for _, rack := range sc.Spec.Datacenter.Racks {
@@ -33,7 +32,7 @@ func (scc *Controller) makeServices(sc *scyllav1.ScyllaCluster, oldServices map[
 		for ord := int32(0); ord < rack.Members; ord++ {
 			svcName := fmt.Sprintf("%s-%d", stsName, ord)
 			oldSvc := oldServices[svcName]
-			services = append(services, resource.MemberService(sc, rack.Name, svcName, oldSvc))
+			services = append(services, MemberService(sc, rack.Name, svcName, oldSvc))
 		}
 	}
 

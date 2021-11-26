@@ -9,8 +9,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	appv1client "k8s.io/client-go/kubernetes/typed/core/v1"
-	appv1listers "k8s.io/client-go/listers/core/v1"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 )
@@ -20,8 +20,8 @@ import (
 // would be adopted but the old objects may not have correct labels that we need to fix in the new version.
 func ApplyService(
 	ctx context.Context,
-	client appv1client.ServicesGetter,
-	lister appv1listers.ServiceLister,
+	client corev1client.ServicesGetter,
+	lister corev1listers.ServiceLister,
 	recorder record.EventRecorder,
 	required *corev1.Service,
 	forceOwnership bool,
@@ -91,8 +91,8 @@ func ApplyService(
 // would be adopted but the old objects may not have correct labels that we need to fix in the new version.
 func ApplySecret(
 	ctx context.Context,
-	client appv1client.SecretsGetter,
-	lister appv1listers.SecretLister,
+	client corev1client.SecretsGetter,
+	lister corev1listers.SecretLister,
 	recorder record.EventRecorder,
 	required *corev1.Secret,
 	forceOwnership bool,
@@ -149,6 +149,209 @@ func ApplySecret(
 	}
 	if err != nil {
 		return nil, false, fmt.Errorf("can't update secret: %w", err)
+	}
+	return actual, true, nil
+}
+
+// ApplyConfigMap will apply the ConfigMap to match the required object.
+func ApplyConfigMap(
+	ctx context.Context,
+	client corev1client.ConfigMapsGetter,
+	lister corev1listers.ConfigMapLister,
+	recorder record.EventRecorder,
+	required *corev1.ConfigMap,
+) (*corev1.ConfigMap, bool, error) {
+	requiredControllerRef := metav1.GetControllerOfNoCopy(required)
+	if requiredControllerRef == nil {
+		return nil, false, fmt.Errorf("ConfigMap %q is missing controllerRef", naming.ObjRef(required))
+	}
+
+	requiredCopy := required.DeepCopy()
+	err := SetHashAnnotation(requiredCopy)
+	if err != nil {
+		return nil, false, err
+	}
+
+	existing, err := lister.ConfigMaps(requiredCopy.Namespace).Get(requiredCopy.Name)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, false, err
+		}
+
+		actual, err := client.ConfigMaps(requiredCopy.Namespace).Create(ctx, requiredCopy, metav1.CreateOptions{})
+		if apierrors.IsAlreadyExists(err) {
+			klog.V(2).InfoS("Already exists (stale cache)", "ConfigMap", klog.KObj(requiredCopy))
+		} else {
+			ReportCreateEvent(recorder, requiredCopy, err)
+		}
+		return actual, true, err
+	}
+
+	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
+	if !equality.Semantic.DeepEqual(existingControllerRef, requiredControllerRef) {
+		// This is not the place to handle adoption.
+		err := fmt.Errorf("configmap %q isn't controlled by us", naming.ObjRef(requiredCopy))
+		ReportUpdateEvent(recorder, requiredCopy, err)
+		return nil, false, err
+	}
+
+	existingHash := existing.Annotations[naming.ManagedHash]
+	requiredHash := requiredCopy.Annotations[naming.ManagedHash]
+
+	// If they are the same do nothing.
+	if existingHash == requiredHash {
+		return existing, false, nil
+	}
+
+	// Honor the required RV if it was already set.
+	// Required objects set RV in case their input is based on a previous version of itself.
+	if len(requiredCopy.ResourceVersion) == 0 {
+		requiredCopy.ResourceVersion = existing.ResourceVersion
+	}
+	actual, err := client.ConfigMaps(requiredCopy.Namespace).Update(ctx, requiredCopy, metav1.UpdateOptions{})
+	if apierrors.IsConflict(err) {
+		klog.V(2).InfoS("Hit update conflict, will retry.", "ConfigMap", klog.KObj(requiredCopy))
+	} else {
+		ReportUpdateEvent(recorder, requiredCopy, err)
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("can't update configmap: %w", err)
+	}
+	return actual, true, nil
+}
+
+// ApplyServiceAccount will apply the ServiceAccount to match the required object.
+func ApplyServiceAccount(
+	ctx context.Context,
+	client corev1client.ServiceAccountsGetter,
+	lister corev1listers.ServiceAccountLister,
+	recorder record.EventRecorder,
+	required *corev1.ServiceAccount,
+	allowMissingControllerRef bool,
+) (*corev1.ServiceAccount, bool, error) {
+	requiredControllerRef := metav1.GetControllerOfNoCopy(required)
+	if !allowMissingControllerRef && requiredControllerRef == nil {
+		return nil, false, fmt.Errorf("ServiceAccount %q is missing controllerRef", naming.ObjRef(required))
+	}
+
+	requiredCopy := required.DeepCopy()
+	err := SetHashAnnotation(requiredCopy)
+	if err != nil {
+		return nil, false, err
+	}
+
+	existing, err := lister.ServiceAccounts(requiredCopy.Namespace).Get(requiredCopy.Name)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, false, err
+		}
+
+		actual, err := client.ServiceAccounts(requiredCopy.Namespace).Create(ctx, requiredCopy, metav1.CreateOptions{})
+		if apierrors.IsAlreadyExists(err) {
+			klog.V(2).InfoS("Already exists (stale cache)", "ServiceAccount", klog.KObj(requiredCopy))
+		} else {
+			ReportCreateEvent(recorder, requiredCopy, err)
+		}
+		return actual, true, err
+	}
+
+	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
+	if !equality.Semantic.DeepEqual(existingControllerRef, requiredControllerRef) {
+		// This is not the place to handle adoption.
+		err := fmt.Errorf("serviceaccount %q isn't controlled by us", naming.ObjRef(requiredCopy))
+		ReportUpdateEvent(recorder, requiredCopy, err)
+		return nil, false, err
+	}
+
+	existingHash := existing.Annotations[naming.ManagedHash]
+	requiredHash := requiredCopy.Annotations[naming.ManagedHash]
+
+	// If they are the same do nothing.
+	if existingHash == requiredHash {
+		return existing, false, nil
+	}
+
+	// Honor the required RV if it was already set.
+	// Required objects set RV in case their input is based on a previous version of itself.
+	if len(requiredCopy.ResourceVersion) == 0 {
+		requiredCopy.ResourceVersion = existing.ResourceVersion
+	}
+	actual, err := client.ServiceAccounts(requiredCopy.Namespace).Update(ctx, requiredCopy, metav1.UpdateOptions{})
+	if apierrors.IsConflict(err) {
+		klog.V(2).InfoS("Hit update conflict, will retry.", "ServiceAccount", klog.KObj(requiredCopy))
+	} else {
+		ReportUpdateEvent(recorder, requiredCopy, err)
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("can't update serviceaccount: %w", err)
+	}
+	return actual, true, nil
+}
+
+// ApplyNamespace will apply the Namespace to match the required object.
+func ApplyNamespace(
+	ctx context.Context,
+	client corev1client.NamespacesGetter,
+	lister corev1listers.NamespaceLister,
+	recorder record.EventRecorder,
+	required *corev1.Namespace,
+	allowMissingControllerRef bool,
+) (*corev1.Namespace, bool, error) {
+	requiredControllerRef := metav1.GetControllerOfNoCopy(required)
+	if !allowMissingControllerRef && requiredControllerRef == nil {
+		return nil, false, fmt.Errorf("Namespace %q is missing controllerRef", naming.ObjRef(required))
+	}
+
+	requiredCopy := required.DeepCopy()
+	err := SetHashAnnotation(requiredCopy)
+	if err != nil {
+		return nil, false, err
+	}
+
+	existing, err := lister.Get(requiredCopy.Name)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, false, err
+		}
+
+		actual, err := client.Namespaces().Create(ctx, requiredCopy, metav1.CreateOptions{})
+		if apierrors.IsAlreadyExists(err) {
+			klog.V(2).InfoS("Already exists (stale cache)", "Namespace", klog.KObj(requiredCopy))
+		} else {
+			ReportCreateEvent(recorder, requiredCopy, err)
+		}
+		return actual, true, err
+	}
+
+	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
+	if !equality.Semantic.DeepEqual(existingControllerRef, requiredControllerRef) {
+		// This is not the place to handle adoption.
+		err := fmt.Errorf("namespace %q isn't controlled by us", naming.ObjRef(requiredCopy))
+		ReportUpdateEvent(recorder, requiredCopy, err)
+		return nil, false, err
+	}
+
+	existingHash := existing.Annotations[naming.ManagedHash]
+	requiredHash := requiredCopy.Annotations[naming.ManagedHash]
+
+	// If they are the same do nothing.
+	if existingHash == requiredHash {
+		return existing, false, nil
+	}
+
+	// Honor the required RV if it was already set.
+	// Required objects set RV in case their input is based on a previous version of itself.
+	if len(requiredCopy.ResourceVersion) == 0 {
+		requiredCopy.ResourceVersion = existing.ResourceVersion
+	}
+	actual, err := client.Namespaces().Update(ctx, requiredCopy, metav1.UpdateOptions{})
+	if apierrors.IsConflict(err) {
+		klog.V(2).InfoS("Hit update conflict, will retry.", "Namespace", klog.KObj(requiredCopy))
+	} else {
+		ReportUpdateEvent(recorder, requiredCopy, err)
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("can't update namespace: %w", err)
 	}
 	return actual, true, nil
 }

@@ -9,8 +9,9 @@ import (
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	scyllaclusterfixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scyllacluster"
+	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
+	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -22,10 +23,10 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 	f := framework.NewFramework("scyllacluster")
 
 	g.It("should forbid invalid requests", func() {
-		ctx, cancel := context.WithTimeout(context.Background(), testTimout)
+		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		validSC := scyllaclusterfixture.BasicScyllaCluster.ReadOrFail()
+		validSC := scyllafixture.BasicScyllaCluster.ReadOrFail()
 		err := framework.SetupScyllaClusterSA(ctx, f.KubeClient().CoreV1(), f.KubeClient().RbacV1(), f.Namespace(), validSC.Name)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -84,12 +85,12 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("waiting for the ScyllaCluster to deploy")
-		waitCtx1, waitCtx1Cancel := contextForRollout(ctx, validSC)
+		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, validSC)
 		defer waitCtx1Cancel()
-		validSC, err = waitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), validSC.Namespace, validSC.Name, scyllaClusterRolledOut)
+		validSC, err = utils.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), validSC.Namespace, validSC.Name, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		di, err := NewDataInserter(ctx, f.KubeClient().CoreV1(), validSC, getMemberCount(validSC))
+		di, err := NewDataInserter(ctx, f.KubeClient().CoreV1(), validSC, utils.GetMemberCount(validSC))
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer di.Close()
 

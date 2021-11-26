@@ -10,11 +10,5 @@ const (
 	upgradeFromScyllaVersion = "4.4.6"
 	upgradeToScyllaVersion   = "4.5.1"
 
-	testTimout = 45 * time.Minute
-
-	memberRolloutTimeout = 3 * time.Minute
-	baseRolloutTimout    = 30 * time.Second
-
-	baseManagerSyncTimeout = 3 * time.Minute
-	managerTaskSyncTimeout = 30 * time.Second
+	testTimeout = 45 * time.Minute
 )

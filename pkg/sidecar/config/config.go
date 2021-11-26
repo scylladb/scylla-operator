@@ -264,6 +264,7 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		klog.InfoS("Scylla IO properties are already set, skipping io tuning")
 		ioSetup := "0"
 		args["io-setup"] = &ioSetup
+		args["io-properties-file"] = pointer.StringPtr(scyllaIOPropertiesPath)
 	}
 
 	var argsList []string

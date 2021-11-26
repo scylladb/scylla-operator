@@ -64,3 +64,4 @@ runs:
 
       kubectl -n kube-system rollout status --timeout=5m deployment.apps/coredns
 
+      kubectl label nodes scylla.scylladb.com/node-type=scylla --all

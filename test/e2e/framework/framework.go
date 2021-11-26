@@ -111,6 +111,11 @@ func (f *Framework) ScyllaClient() *scyllaclientset.Clientset {
 	o.Expect(err).NotTo(o.HaveOccurred())
 	return client
 }
+func (f *Framework) ScyllaAdminClient() *scyllaclientset.Clientset {
+	client, err := scyllaclientset.NewForConfig(f.AdminClientConfig())
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return client
+}
 
 func (f *Framework) setupNamespace(ctx context.Context) {
 	By("Creating a new namespace")
@@ -239,7 +244,7 @@ func (f *Framework) deleteNamespace(ctx context.Context, ns *corev1.Namespace) {
 	// We have deleted only the namespace object but it is still there with deletionTimestamp set.
 
 	By("Waiting for namespace %q to be removed.", ns.Name)
-	err = WaitForObjectDeletion(ctx, f.DynamicAdminClient(), corev1.SchemeGroupVersion.WithResource("namespaces"), "", ns.Name, ns.UID)
+	err = WaitForObjectDeletion(ctx, f.DynamicAdminClient(), corev1.SchemeGroupVersion.WithResource("namespaces"), "", ns.Name, &ns.UID)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	klog.InfoS("Namespace removed.", "Namespace", ns.Name)
 }
@@ -298,7 +303,7 @@ func (f *Framework) afterEach() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
 
-		err = DumpNamespace(ctx, f.KubeClient().Discovery(), f.DynamicAdminClient(), f.KubeClient().CoreV1(), d, f.Namespace())
+		err = DumpNamespace(ctx, f.KubeAdminClient().Discovery(), f.DynamicAdminClient(), f.KubeAdminClient().CoreV1(), d, f.Namespace())
 		o.Expect(err).NotTo(o.HaveOccurred())
 	}
 }

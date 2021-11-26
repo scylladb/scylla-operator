@@ -4,7 +4,11 @@ package resourceapply
 
 import (
 	"math/big"
+	"math/rand"
+	"reflect"
 	"testing"
+
+	hash2 "github.com/scylladb/scylla-operator/pkg/util/hash"
 )
 
 type A struct {
@@ -13,7 +17,7 @@ type A struct {
 }
 
 func hashObjectsOrDie(objs ...interface{}) string {
-	hash, err := HashObjects(objs...)
+	hash, err := hash2.HashObjects(objs...)
 	if err != nil {
 		panic(err)
 	}
@@ -62,5 +66,23 @@ func TestDeepHashObject(t *testing.T) {
 				hashes[hash] = struct{}{}
 			}
 		})
+	}
+}
+
+func TestHashObjectOrderMatters(t *testing.T) {
+	objs := []interface{}{1, 2, "3", 4.0}
+	var objsCopy []interface{}
+	copy(objs, objsCopy)
+	for {
+		rand.Shuffle(len(objs), func(i, j int) {
+			objs[i], objs[j] = objs[j], objs[i]
+		})
+		if !reflect.DeepEqual(objs, objsCopy) {
+			break
+		}
+	}
+
+	if hashObjectsOrDie(objs...) == hashObjectsOrDie(objsCopy) {
+		t.Errorf("expected different hash for slices of same elements but different order, hash1: %q, hash2: %q", hashObjectsOrDie(objs...), hashObjectsOrDie(objsCopy))
 	}
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	"github.com/scylladb/scylla-operator/pkg/controller/scyllacluster/resource"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
@@ -60,7 +59,7 @@ func (scc *Controller) syncAgentToken(
 		token = rand.String(128)
 	}
 
-	secret, err := resource.MakeAgentAuthTokenSecret(sc, token)
+	secret, err := MakeAgentAuthTokenSecret(sc, token)
 	if err != nil {
 		return status, fmt.Errorf("can't make auth token secret: %w", err)
 	}

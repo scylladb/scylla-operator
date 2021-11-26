@@ -1,0 +1,8 @@
+apiVersion: scylla.scylladb.com/v1alpha1
+kind: NodeConfig
+metadata:
+  name: cluster
+spec:
+  placement:
+    nodeSelector:
+      scylla.scylladb.com/node-type: scylla

@@ -65,3 +65,6 @@ wait-for-object-creation scylla-manager statefulset.apps/scylla-manager-cluster-
 kubectl -n scylla-manager rollout status --timeout=5m statefulset.apps/scylla-manager-cluster-manager-dc-manager-rack
 kubectl -n scylla-manager rollout status --timeout=5m deployment.apps/scylla-manager
 kubectl -n scylla-manager rollout status --timeout=5m deployment.apps/scylla-manager-controller
+
+kubectl wait --for condition=established crd/nodeconfigs.scylla.scylladb.com
+kubectl wait --for condition=established crd/scyllaoperatorconfigs.scylla.scylladb.com

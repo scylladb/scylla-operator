@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/scylladb/scylla-operator/pkg/controller/helpers"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/pkg/util/network"
@@ -53,7 +53,7 @@ func (p *Prober) getScyllaClient() (*scyllaclient.Client, error) {
 		return nil, fmt.Errorf("can't get manager agent auth secret %s/%s: %w", p.namespace, p.secretName, err)
 	}
 
-	return helpers.NewScyllaClientFromSecret(secret, []string{p.hostAddr})
+	return controllerhelpers.NewScyllaClientFromSecret(secret, []string{p.hostAddr})
 }
 
 func (p *Prober) isNodeUnderMaintenance() (bool, error) {
@@ -72,7 +72,7 @@ func (p *Prober) getNodeAddress() (string, error) {
 		return "", err
 	}
 
-	return helpers.GetScyllaIPFromService(svc)
+	return controllerhelpers.GetScyllaIPFromService(svc)
 }
 
 func (p *Prober) Readyz(w http.ResponseWriter, req *http.Request) {

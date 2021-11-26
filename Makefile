@@ -4,7 +4,7 @@ SHELL :=/bin/bash -euEo pipefail -O inherit_errexit
 
 comma :=,
 
-IMAGE_TAG ?= latest
+IMAGE_TAG ?= 1.6
 IMAGE_REF ?= docker.io/scylladb/scylla-operator:$(IMAGE_TAG)
 
 MAKE_REQUIRED_MIN_VERSION:=4.2 # for SHELLSTATUS

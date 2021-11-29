@@ -13,7 +13,6 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/informers"
 	corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -61,7 +60,7 @@ func NewController(
 	hostAddr string,
 	kubeClient kubernetes.Interface,
 	singleServiceInformer corev1informers.ServiceInformer,
-	namespacedKubeInformers informers.SharedInformerFactory,
+	secretInformer corev1informers.SecretInformer,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
@@ -102,11 +101,11 @@ func NewController(
 
 		kubeClient:          kubeClient,
 		singleServiceLister: singleServiceInformer.Lister(),
-		secretLister:        namespacedKubeInformers.Core().V1().Secrets().Lister(),
+		secretLister:        secretInformer.Lister(),
 
 		cachesToSync: []cache.InformerSynced{
 			singleServiceInformer.Informer().HasSynced,
-			namespacedKubeInformers.Core().V1().Secrets().Informer().HasSynced,
+			secretInformer.Informer().HasSynced,
 		},
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scyllasidecar-controller"}),

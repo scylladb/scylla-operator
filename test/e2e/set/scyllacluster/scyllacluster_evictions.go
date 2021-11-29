@@ -7,8 +7,9 @@ import (
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
-	scyllaclusterfixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scyllacluster"
+	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
+	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -19,10 +20,10 @@ var _ = g.Describe("ScyllaCluster evictions", func() {
 	f := framework.NewFramework("scyllacluster")
 
 	g.It("should allow one disruption", func() {
-		ctx, cancel := context.WithTimeout(context.Background(), testTimout)
+		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		sc := scyllaclusterfixture.BasicScyllaCluster.ReadOrFail()
+		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
 		sc.Spec.Datacenter.Racks[0].Members = 2
 
 		framework.By("Creating a ScyllaCluster")
@@ -33,12 +34,12 @@ var _ = g.Describe("ScyllaCluster evictions", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the ScyllaCluster to deploy")
-		waitCtx1, waitCtx1Cancel := contextForRollout(ctx, sc)
+		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx1Cancel()
-		sc, err = waitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, scyllaClusterRolledOut)
+		sc, err = utils.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		di, err := NewDataInserter(ctx, f.KubeClient().CoreV1(), sc, getMemberCount(sc))
+		di, err := NewDataInserter(ctx, f.KubeClient().CoreV1(), sc, utils.GetMemberCount(sc))
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer di.Close()
 
@@ -50,7 +51,7 @@ var _ = g.Describe("ScyllaCluster evictions", func() {
 		framework.By("Allowing the first pod to be evicted")
 		e := &policyv1beta1.Eviction{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      getNodeName(sc, 0),
+				Name:      utils.GetNodeName(sc, 0),
 				Namespace: f.Namespace(),
 			},
 		}
@@ -60,7 +61,7 @@ var _ = g.Describe("ScyllaCluster evictions", func() {
 		framework.By("Forbidding to evict a second pod")
 		e = &policyv1beta1.Eviction{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      getNodeName(sc, 1),
+				Name:      utils.GetNodeName(sc, 1),
 				Namespace: f.Namespace(),
 			},
 		}

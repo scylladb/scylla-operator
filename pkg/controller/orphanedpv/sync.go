@@ -6,7 +6,7 @@ import (
 	"time"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	"github.com/scylladb/scylla-operator/pkg/controller/helpers"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -111,7 +111,7 @@ func (opc *Controller) sync(ctx context.Context, key string) error {
 	}
 
 	for _, pi := range pis {
-		orphaned, err := helpers.IsOrphanedPV(pi.PV, nodes)
+		orphaned, err := controllerhelpers.IsOrphanedPV(pi.PV, nodes)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -132,7 +132,7 @@ func (opc *Controller) sync(ctx context.Context, key string) error {
 			continue
 		}
 
-		freshOrphaned, err := helpers.IsOrphanedPV(pi.PV, helpers.GetNodePointerArrayFromArray(freshNodes.Items))
+		freshOrphaned, err := controllerhelpers.IsOrphanedPV(pi.PV, controllerhelpers.GetNodePointerArrayFromArray(freshNodes.Items))
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -165,7 +165,7 @@ func (opc *Controller) sync(ctx context.Context, key string) error {
 	}
 
 	if len(requeueReasons) > 0 {
-		return helpers.NewRequeueError(requeueReasons...)
+		return controllerhelpers.NewRequeueError(requeueReasons...)
 	}
 
 	return nil

@@ -29,15 +29,22 @@ const (
 
 // Generic Labels used on objects created by the operator.
 const (
-	ClusterNameLabel    = "scylla/cluster"
-	DatacenterNameLabel = "scylla/datacenter"
-	RackNameLabel       = "scylla/rack"
-	ScyllaVersionLabel  = "scylla/scylla-version"
-	ManagedHash         = "scylla-operator.scylladb.com/managed-hash"
+	ClusterNameLabel             = "scylla/cluster"
+	DatacenterNameLabel          = "scylla/datacenter"
+	RackNameLabel                = "scylla/rack"
+	ScyllaVersionLabel           = "scylla/scylla-version"
+	ManagedHash                  = "scylla-operator.scylladb.com/managed-hash"
+	NodeConfigJobForNodeUIDLabel = "scylla-operator.scylladb.com/node-config-job-for-node-uid"
+	NodeConfigJobTypeLabel       = "scylla-operator.scylladb.com/node-config-job-type"
+	NodeConfigJobData            = "scylla-operator.scylladb.com/node-config-job-data"
+	NodeConfigNameLabel          = "scylla-operator.scylladb.com/node-config-name"
+	ConfigMapTypeLabel           = "scylla-operator.scylladb.com/config-map-type"
+	OwnerUIDLabel                = "scylla-operator.scylladb.com/owner-uid"
 
-	AppName         = "scylla"
-	OperatorAppName = "scylla-operator"
-	ManagerAppName  = "scylla-manager"
+	AppName           = "scylla"
+	OperatorAppName   = "scylla-operator"
+	ManagerAppName    = "scylla-manager"
+	NodeConfigAppName = "scylla-node-config"
 
 	PrometheusScrapeAnnotation = "prometheus.io/scrape"
 	PrometheusPortAnnotation   = "prometheus.io/port"
@@ -45,10 +52,15 @@ const (
 	ForceRedeploymentReasonAnnotation = "scylla-operator.scylladb.com/force-redeployment-reason"
 )
 
+const (
+	NodeConfigJobForNodeKey = "scylla-operator.scylladb.com/node-config-job-for-node"
+)
+
 // Configuration Values
 const (
 	ScyllaContainerName          = "scylla"
 	SidecarInjectorContainerName = "sidecar-injection"
+	PerftuneContainerName        = "perftune"
 
 	PVCTemplateName = "data"
 
@@ -60,7 +72,6 @@ const (
 	ScyllaAgentAuthTokenFileName = "auth-token.yaml"
 	ScyllaAgentConfigDefaultFile = "/etc/scylla-manager-agent/scylla-manager-agent.yaml"
 	ScyllaClientConfigDirName    = "/mnt/scylla-client-config"
-	ScyllaClientConfigFileName   = "scylla-client.yaml"
 	ScyllaConfigName             = "scylla.yaml"
 	ScyllaRackDCPropertiesName   = "cassandra-rackdc.properties"
 	ScyllaIOPropertiesName       = "io_properties.yaml"
@@ -70,7 +81,6 @@ const (
 	ReadinessProbePath = "/readyz"
 	LivenessProbePath  = "/healthz"
 	ProbePort          = 8080
-	MetricsPort        = 8081
 
 	OperatorEnvVarPrefix = "SCYLLA_OPERATOR_"
 )
@@ -78,4 +88,30 @@ const (
 const (
 	ScyllaManagerNamespace   = "scylla-manager"
 	ScyllaManagerServiceName = "scylla-manager"
+
+	ScyllaOperatorNodeTuningNamespace = "scylla-operator-node-tuning"
+
+	SingletonName = "cluster"
+
+	PerftuneJobPrefixName = "perftune"
+
+	// TODO: Make sure this doesn't get out of date.
+	DefaultScyllaUtilsImage = "docker.io/scylladb/scylla:4.5.1"
+)
+
+type NodeConfigJobType string
+
+const (
+	NodeConfigJobTypeNode       NodeConfigJobType = "Node"
+	NodeConfigJobTypeContainers NodeConfigJobType = "Containers"
+)
+
+type ConfigMapType string
+
+const (
+	NodeConfigDataConfigMapType ConfigMapType = "NodeConfigData"
+)
+
+const (
+	ScyllaRuntimeConfigKey string = "ScyllaRuntimeConfig"
 )

@@ -3,6 +3,13 @@ description: 'Installs minikube Kubernetes cluster'
 runs:
   using: "composite"
   steps:
+  - name: Configure system
+    shell: bash
+    run: |
+      set -euExo pipefail
+
+      echo 'fs.aio-max-nr = 10485760' | sudo tee /etc/sysctl.d/90-scylla.conf >/dev/null
+      sudo sysctl --system
   - name: Install minikube
     shell: bash
     run: |
@@ -57,3 +64,4 @@ runs:
 
       kubectl -n kube-system rollout status --timeout=5m deployment.apps/coredns
 
+      kubectl label nodes scylla.scylladb.com/node-type=scylla --all

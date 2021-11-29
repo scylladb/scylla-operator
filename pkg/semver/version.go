@@ -21,8 +21,9 @@ import (
 )
 
 var (
-	ScyllaVersionThatSupportsArgs              = semver.MustParse("4.2.0")
-	ScyllaVersionThatSupportsDisablingIOTuning = semver.MustParse("4.3.0")
+	ScyllaVersionThatSupportsArgs                    = semver.MustParse("4.2.0")
+	ScyllaVersionThatSupportsDisablingIOTuning       = semver.MustParse("4.3.0")
+	ScyllaVersionThatSupportsDisablingWritebackCache = semver.MustParse("2021.0.0")
 )
 
 // ScyllaVersion contains the version of a cluster with unkown version support

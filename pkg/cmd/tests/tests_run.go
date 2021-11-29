@@ -10,13 +10,13 @@ import (
 	gconfig "github.com/onsi/ginkgo/config"
 	greporters "github.com/onsi/ginkgo/reporters"
 	"github.com/onsi/gomega"
-	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/util/errors"
+	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
 	"k8s.io/kubectl/pkg/util/templates"
 
@@ -78,7 +78,7 @@ func NewRunCommand(streams genericclioptions.IOStreams) *cobra.Command {
 				return err
 			}
 
-			err = o.Run(streams, cmd.Name())
+			err = o.Run(streams, cmd)
 			if err != nil {
 				return err
 			}
@@ -134,9 +134,9 @@ func (o *RunOptions) Complete() error {
 	return nil
 }
 
-func (o *RunOptions) Run(streams genericclioptions.IOStreams, commandName string) error {
-	klog.Infof("%s version %q", commandName, version.Get())
-	klog.Infof("loglevel is set to %q", cmdutil.GetLoglevel())
+func (o *RunOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command) error {
+	klog.Infof("%s version %q", cmd.Name(), version.Get())
+	cliflag.PrintFlags(cmd.Flags())
 
 	stopCh := signals.StopChannel()
 	ctx, cancel := context.WithCancel(context.Background())

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/scylladb/scylla-operator/pkg/controller/helpers"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -118,7 +118,7 @@ func TestMember_GetSeeds(t *testing.T) {
 
 func markPodReady(pod *corev1.Pod) *corev1.Pod {
 	p := pod.DeepCopy()
-	cond := helpers.GetPodCondition(p.Status.Conditions, corev1.PodReady)
+	cond := controllerhelpers.GetPodCondition(p.Status.Conditions, corev1.PodReady)
 	if cond != nil {
 		cond.Status = corev1.ConditionTrue
 		return p

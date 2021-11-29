@@ -9,8 +9,10 @@ import (
 	g "github.com/onsi/ginkgo"
 	gt "github.com/onsi/ginkgo/extensions/table"
 	o "github.com/onsi/gomega"
-	scyllaclusterfixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scyllacluster"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
+	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -22,22 +24,32 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 
 	type entry struct {
 		rackSize       int32
+		rackCount      int32
 		initialVersion string
 		updatedVersion string
 	}
 
 	describeEntry := func(e *entry) string {
-		return fmt.Sprintf("with %d member(s) from %s to %s", e.rackSize, e.initialVersion, e.updatedVersion)
+		return fmt.Sprintf("with %d member(s) and %d rack(s) from %s to %s", e.rackSize, e.rackCount, e.initialVersion, e.updatedVersion)
 	}
 
 	gt.DescribeTable("should deploy and update",
 		func(e *entry) {
-			ctx, cancel := context.WithTimeout(context.Background(), testTimout)
+			ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 			defer cancel()
 
-			sc := scyllaclusterfixture.BasicScyllaCluster.ReadOrFail()
+			sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
 			sc.Spec.Version = e.initialVersion
-			sc.Spec.Datacenter.Racks[0].Members = e.rackSize
+
+			o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
+			rack := &sc.Spec.Datacenter.Racks[0]
+			sc.Spec.Datacenter.Racks = make([]scyllav1.RackSpec, 0, e.rackCount)
+			for i := int32(0); i < e.rackCount; i++ {
+				r := rack.DeepCopy()
+				r.Name = fmt.Sprintf("rack-%d", i)
+				r.Members = e.rackSize
+				sc.Spec.Datacenter.Racks = append(sc.Spec.Datacenter.Racks, *r)
+			}
 
 			framework.By("Creating a ScyllaCluster")
 			err := framework.SetupScyllaClusterSA(ctx, f.KubeClient().CoreV1(), f.KubeClient().RbacV1(), f.Namespace(), sc.Name)
@@ -48,12 +60,12 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			o.Expect(sc.Spec.Version).To(o.Equal(e.initialVersion))
 
 			framework.By("Waiting for the ScyllaCluster to deploy")
-			waitCtx1, waitCtx1Cancel := contextForRollout(ctx, sc)
+			waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
 			defer waitCtx1Cancel()
-			sc, err = waitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, scyllaClusterRolledOut)
+			sc, err = utils.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.IsScyllaClusterRolledOut)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			di, err := NewDataInserter(ctx, f.KubeClient().CoreV1(), sc, getMemberCount(sc))
+			di, err := NewDataInserter(ctx, f.KubeClient().CoreV1(), sc, utils.GetMemberCount(sc))
 			o.Expect(err).NotTo(o.HaveOccurred())
 			defer di.Close()
 
@@ -78,9 +90,9 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			o.Expect(sc.Spec.Version).To(o.Equal(e.updatedVersion))
 
 			framework.By("Waiting for the ScyllaCluster to re-deploy")
-			waitCtx2, waitCtx2Cancel := contextForRollout(ctx, sc)
+			waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc)
 			defer waitCtx2Cancel()
-			sc, err = waitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, scyllaClusterRolledOut)
+			sc, err = utils.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.IsScyllaClusterRolledOut)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			err = di.UpdateClientEndpoints(ctx, sc)
@@ -90,21 +102,31 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 		},
 		// Test 1 and 3 member rack to cover e.g. handling PDBs correctly.
 		gt.Entry(describeEntry, &entry{
+			rackCount:      1,
 			rackSize:       1,
 			initialVersion: updateFromScyllaVersion,
 			updatedVersion: updateToScyllaVersion,
 		}),
 		gt.Entry(describeEntry, &entry{
+			rackCount:      1,
 			rackSize:       3,
 			initialVersion: updateFromScyllaVersion,
 			updatedVersion: updateToScyllaVersion,
 		}),
 		gt.Entry(describeEntry, &entry{
+			rackCount:      1,
 			rackSize:       1,
 			initialVersion: upgradeFromScyllaVersion,
 			updatedVersion: upgradeToScyllaVersion,
 		}),
 		gt.Entry(describeEntry, &entry{
+			rackCount:      1,
+			rackSize:       3,
+			initialVersion: upgradeFromScyllaVersion,
+			updatedVersion: upgradeToScyllaVersion,
+		}),
+		gt.Entry(describeEntry, &entry{
+			rackCount:      2,
 			rackSize:       3,
 			initialVersion: upgradeFromScyllaVersion,
 			updatedVersion: upgradeToScyllaVersion,

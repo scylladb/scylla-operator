@@ -90,3 +90,70 @@ func ApplyStatefulSet(
 	}
 	return actual, true, nil
 }
+
+// ApplyDaemonSet will apply the DaemonSet to match the required object.
+func ApplyDaemonSet(
+	ctx context.Context,
+	client appv1client.DaemonSetsGetter,
+	lister appv1listers.DaemonSetLister,
+	recorder record.EventRecorder,
+	required *appsv1.DaemonSet,
+) (*appsv1.DaemonSet, bool, error) {
+	requiredControllerRef := metav1.GetControllerOfNoCopy(required)
+	if requiredControllerRef == nil {
+		return nil, false, fmt.Errorf("DaemonSet %q is missing controllerRef", naming.ObjRef(required))
+	}
+
+	requiredCopy := required.DeepCopy()
+	err := SetHashAnnotation(requiredCopy)
+	if err != nil {
+		return nil, false, err
+	}
+
+	existing, err := lister.DaemonSets(requiredCopy.Namespace).Get(requiredCopy.Name)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, false, err
+		}
+
+		actual, err := client.DaemonSets(requiredCopy.Namespace).Create(ctx, requiredCopy, metav1.CreateOptions{})
+		if apierrors.IsAlreadyExists(err) {
+			klog.V(2).InfoS("Already exists (stale cache)", "DaemonSet", klog.KObj(requiredCopy))
+		} else {
+			ReportCreateEvent(recorder, requiredCopy, err)
+		}
+		return actual, true, err
+	}
+
+	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
+	if !equality.Semantic.DeepEqual(existingControllerRef, requiredControllerRef) {
+		// This is not the place to handle adoption.
+		err := fmt.Errorf("daemonset %q isn't controlled by us", naming.ObjRef(requiredCopy))
+		ReportUpdateEvent(recorder, requiredCopy, err)
+		return nil, false, err
+	}
+
+	existingHash := existing.Annotations[naming.ManagedHash]
+	requiredHash := requiredCopy.Annotations[naming.ManagedHash]
+
+	// If they are the same do nothing.
+	if existingHash == requiredHash {
+		return existing, false, nil
+	}
+
+	// Honor the required RV if it was already set.
+	// Required objects set RV in case their input is based on a previous version of itself.
+	if len(requiredCopy.ResourceVersion) == 0 {
+		requiredCopy.ResourceVersion = existing.ResourceVersion
+	}
+	actual, err := client.DaemonSets(requiredCopy.Namespace).Update(ctx, requiredCopy, metav1.UpdateOptions{})
+	if apierrors.IsConflict(err) {
+		klog.V(2).InfoS("Hit update conflict, will retry.", "DaemonSet", klog.KObj(requiredCopy))
+	} else {
+		ReportUpdateEvent(recorder, requiredCopy, err)
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("can't update daemonset: %w", err)
+	}
+	return actual, true, nil
+}

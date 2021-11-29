@@ -2,6 +2,7 @@ package operator
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,9 +11,10 @@ import (
 	"time"
 
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
-	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	sidecarcontroller "github.com/scylladb/scylla-operator/pkg/controller/sidecar"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
+	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/sidecar"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/config"
@@ -21,13 +23,20 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/util/network"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	apierrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
+	watchtools "k8s.io/client-go/tools/watch"
+	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
 )
 
@@ -72,7 +81,7 @@ func NewSidecarCmd(streams genericclioptions.IOStreams) *cobra.Command {
 				return err
 			}
 
-			err = o.Run(streams, cmd.Name())
+			err = o.Run(streams, cmd)
 			if err != nil {
 				return err
 			}
@@ -118,7 +127,7 @@ func (o *SidecarOptions) Validate() error {
 		}
 	}
 
-	return apierrors.NewAggregate(errs)
+	return utilerrors.NewAggregate(errs)
 }
 
 func (o *SidecarOptions) Complete() error {
@@ -145,9 +154,9 @@ func (o *SidecarOptions) Complete() error {
 	return nil
 }
 
-func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, commandName string) error {
-	klog.Infof("%s version %s", commandName, version.Get())
-	klog.Infof("loglevel is set to %q", cmdutil.GetLoglevel())
+func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command) error {
+	klog.Infof("%s version %s", cmd.Name(), version.Get())
+	cliflag.PrintFlags(cmd.Flags())
 
 	stopCh := signals.StopChannel()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -167,24 +176,11 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, commandName st
 			},
 		),
 	)
-	singleServiceInformer := singleServiceKubeInformers.Core().V1().Services()
 
 	namespacedKubeInformers := informers.NewSharedInformerFactoryWithOptions(o.kubeClient, 12*time.Hour, informers.WithNamespace(o.Namespace))
 
-	member, err := identity.Retrieve(ctx, o.ServiceName, o.Namespace, o.kubeClient)
-	if err != nil {
-		return fmt.Errorf("can't get member info: %w", err)
-	}
-
-	cfg := config.NewScyllaConfig(member, o.kubeClient, o.scyllaClient, o.CPUCount)
-	cmd, err := cfg.Setup(ctx)
-	if err != nil {
-		return fmt.Errorf("can't set up scylla: %w", err)
-	}
-	// Make sure to propagate the signal if we die.
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Pdeathsig: syscall.SIGKILL,
-	}
+	singleServiceInformer := singleServiceKubeInformers.Core().V1().Services()
+	secretsInformer := namespacedKubeInformers.Core().V1().Secrets()
 
 	hostIP, err := network.FindFirstNonLocalIP()
 	if err != nil {
@@ -198,7 +194,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, commandName st
 		o.ServiceName,
 		o.SecretName,
 		singleServiceInformer.Lister(),
-		namespacedKubeInformers.Core().V1().Secrets().Lister(),
+		secretsInformer.Lister(),
 		hostAddr,
 	)
 
@@ -209,49 +205,197 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, commandName st
 		hostAddr,
 		o.kubeClient,
 		singleServiceInformer,
-		namespacedKubeInformers,
+		secretsInformer,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create sidecar controller: %w", err)
 	}
 
-	// Run scylla in a new process.
-	err = cmd.Start()
-	if err != nil {
-		return fmt.Errorf("can't start scylla: %w", err)
-	}
-	defer func() {
-		klog.InfoS("Waiting for scylla process to finish")
-		defer klog.InfoS("Scylla process finished")
-
-		err := cmd.Wait()
-		if err != nil {
-			klog.ErrorS(err, "Can't wait for scylla process to finish")
-		}
-	}()
-
 	// Start informers.
 	singleServiceKubeInformers.Start(ctx.Done())
 	namespacedKubeInformers.Start(ctx.Done())
 
+	klog.V(2).InfoS("Waiting for single service informer caches to sync")
+	if !cache.WaitForCacheSync(ctx.Done(), singleServiceInformer.Informer().HasSynced) {
+		return fmt.Errorf("failed to wait for caches to sync")
+	}
+
+	// Wait for the service that holds identity for this scylla node.
+	serviceFieldSelector := fields.OneTermEqualSelector("metadata.name", o.ServiceName)
+	serviceLW := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			options.FieldSelector = serviceFieldSelector.String()
+			return o.kubeClient.CoreV1().Services(o.Namespace).List(ctx, options)
+		},
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			options.FieldSelector = serviceFieldSelector.String()
+			return o.kubeClient.CoreV1().Services(o.Namespace).Watch(ctx, options)
+		},
+	}
+	klog.V(2).InfoS("Waiting for Service", "Service", naming.ManualRef(o.Namespace, o.ServiceName))
+	event, err := watchtools.UntilWithSync(
+		ctx,
+		serviceLW,
+		&corev1.Service{},
+		nil,
+		func(e watch.Event) (bool, error) {
+			switch t := e.Type; t {
+			case watch.Added, watch.Modified:
+				return true, nil
+			case watch.Error:
+				return true, apierrors.FromObject(e.Object)
+			default:
+				return true, fmt.Errorf("unexpected event type %v", t)
+			}
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("can't wait for service %q: %w", naming.ManualRef(o.Namespace, o.ServiceName), err)
+	}
+	service := event.Object.(*corev1.Service)
+
+	// Wait for this Pod to have ContainerID set.
+	podFieldSelector := fields.OneTermEqualSelector("metadata.name", o.ServiceName)
+	podLW := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			options.FieldSelector = podFieldSelector.String()
+			return o.kubeClient.CoreV1().Pods(o.Namespace).List(ctx, options)
+		},
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			options.FieldSelector = podFieldSelector.String()
+			return o.kubeClient.CoreV1().Pods(o.Namespace).Watch(ctx, options)
+		},
+	}
+	klog.V(2).InfoS("Waiting for Pod To have scylla ContainerID set", "Pod", naming.ManualRef(o.Namespace, o.ServiceName))
+	var containerID string
+	var pod *corev1.Pod
+	_, err = watchtools.UntilWithSync(
+		ctx,
+		podLW,
+		&corev1.Pod{},
+		nil,
+		func(e watch.Event) (bool, error) {
+			switch t := e.Type; t {
+			case watch.Added, watch.Modified:
+				pod = e.Object.(*corev1.Pod)
+
+				containerID, err = controllerhelpers.GetScyllaContainerID(pod)
+				if err != nil {
+					klog.Warningf("can't get scylla container id in pod %q: %w", naming.ObjRef(pod), err)
+					return false, nil
+				}
+
+				if len(containerID) == 0 {
+					klog.V(4).InfoS("ContainerID is not yet set", "Pod", klog.KObj(pod))
+					return false, nil
+				}
+
+				return true, nil
+
+			case watch.Error:
+				return true, apierrors.FromObject(e.Object)
+
+			default:
+				return true, fmt.Errorf("unexpected event type %v", t)
+			}
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("can't wait for pod's ContainerID: %w", err)
+	}
+
+	member := identity.NewMemberFromObjects(service, pod)
+
+	labelSelector := labels.Set{
+		naming.OwnerUIDLabel:      string(pod.UID),
+		naming.ConfigMapTypeLabel: string(naming.NodeConfigDataConfigMapType),
+	}.AsSelector()
+	podLW = &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			options.LabelSelector = labelSelector.String()
+			return o.kubeClient.CoreV1().ConfigMaps(pod.Namespace).List(ctx, options)
+		},
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			options.LabelSelector = labelSelector.String()
+			return o.kubeClient.CoreV1().ConfigMaps(pod.Namespace).Watch(ctx, options)
+		},
+	}
+	klog.V(2).InfoS("Waiting for NodeConfig's data ConfigMap ", "Selector", labelSelector.String())
+	_, err = watchtools.UntilWithSync(
+		ctx,
+		podLW,
+		&corev1.ConfigMap{},
+		nil,
+		func(e watch.Event) (bool, error) {
+			switch t := e.Type; t {
+			case watch.Added, watch.Modified:
+				cm := e.Object.(*corev1.ConfigMap)
+
+				if cm.Data == nil {
+					klog.V(4).InfoS("ConfigMap missing data", "ConfigMap", klog.KObj(cm))
+					return false, nil
+				}
+
+				srcData, found := cm.Data[naming.ScyllaRuntimeConfigKey]
+				if !found {
+					klog.V(4).InfoS("ConfigMap is missing key", "ConfigMap", klog.KObj(cm), "Key", naming.ScyllaRuntimeConfigKey)
+					return false, nil
+				}
+
+				src := &internalapi.SidecarRuntimeConfig{}
+				err = json.Unmarshal([]byte(srcData), src)
+				if err != nil {
+					klog.V(4).ErrorS(err, "Can't unmarshal scylla runtime config", "ConfigMap", klog.KObj(cm), "Key", naming.ScyllaRuntimeConfigKey)
+					return false, nil
+				}
+
+				if src.ContainerID != containerID {
+					klog.V(4).InfoS("Scylla runtime config is not yet updated with our container id",
+						"ConfigMap", klog.KObj(cm),
+						"ConfigContainerID", src.ContainerID,
+						"SidecarContainerID", containerID,
+					)
+					return false, nil
+				}
+
+				if len(src.BlockingNodeConfigs) > 0 {
+					klog.V(4).InfoS("Waiting on NodeConfig(s)",
+						"ConfigMap", klog.KObj(cm),
+						"ContainerID", containerID,
+						"NodeConfig", src.BlockingNodeConfigs,
+					)
+					return false, nil
+				}
+
+				klog.V(4).InfoS("ConfigMap container ready", "ConfigMap", klog.KObj(cm), "ContainerID", containerID)
+				return true, nil
+
+			case watch.Error:
+				return true, apierrors.FromObject(e.Object)
+
+			default:
+				return true, fmt.Errorf("unexpected event type %v", t)
+			}
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("can't wait for optimization: %w", err)
+	}
+
+	klog.V(2).InfoS("Starting scylla")
+
+	cfg := config.NewScyllaConfig(member, o.kubeClient, o.scyllaClient, o.CPUCount)
+	scyllaCmd, err := cfg.Setup(ctx)
+	if err != nil {
+		return fmt.Errorf("can't set up scylla: %w", err)
+	}
+	// Make sure to propagate the signal if we die.
+	scyllaCmd.SysProcAttr = &syscall.SysProcAttr{
+		Pdeathsig: syscall.SIGKILL,
+	}
+
 	var wg sync.WaitGroup
 	defer wg.Wait()
-
-	// Terminate the scylla process.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		<-ctx.Done()
-
-		klog.InfoS("Sending SIGTERM to the scylla process")
-		err := cmd.Process.Signal(syscall.SIGTERM)
-		if err != nil {
-			klog.ErrorS(err, "Can't send SIGTERM to the scylla process")
-			return
-		}
-		klog.InfoS("Sent SIGTERM to the scylla process")
-	}()
 
 	// Run probes.
 	server := &http.Server{
@@ -262,7 +406,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, commandName st
 	go func() {
 		defer wg.Done()
 
-		ok := cache.WaitForNamedCacheSync("Prober", ctx.Done(), namespacedKubeInformers.Core().V1().Secrets().Informer().HasSynced)
+		ok := cache.WaitForNamedCacheSync("Prober", ctx.Done(), secretsInformer.Informer().HasSynced)
 		if !ok {
 			return
 		}
@@ -300,6 +444,38 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, commandName st
 	go func() {
 		defer wg.Done()
 		sc.Run(ctx)
+	}()
+
+	// Run scylla in a new process.
+	err = scyllaCmd.Start()
+	if err != nil {
+		return fmt.Errorf("can't start scylla: %w", err)
+	}
+
+	defer func() {
+		klog.InfoS("Waiting for scylla process to finish")
+		defer klog.InfoS("Scylla process finished")
+
+		err := scyllaCmd.Wait()
+		if err != nil {
+			klog.ErrorS(err, "Can't wait for scylla process to finish")
+		}
+	}()
+
+	// Terminate the scylla process.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		<-ctx.Done()
+
+		klog.InfoS("Sending SIGTERM to the scylla process")
+		err := scyllaCmd.Process.Signal(syscall.SIGTERM)
+		if err != nil {
+			klog.ErrorS(err, "Can't send SIGTERM to the scylla process")
+			return
+		}
+		klog.InfoS("Sent SIGTERM to the scylla process")
 	}()
 
 	<-ctx.Done()

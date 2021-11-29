@@ -9,7 +9,7 @@ import (
 // ClusterLabels returns a map of label keys and values
 // for the given Cluster.
 func ClusterLabels(c *scyllav1.ScyllaCluster) map[string]string {
-	labels := recommendedLabels()
+	labels := ScyllaLabels()
 	labels[ClusterNameLabel] = c.Name
 	return labels
 }
@@ -17,7 +17,7 @@ func ClusterLabels(c *scyllav1.ScyllaCluster) map[string]string {
 // DatacenterLabels returns a map of label keys and values
 // for the given Datacenter.
 func DatacenterLabels(c *scyllav1.ScyllaCluster) map[string]string {
-	recLabels := recommendedLabels()
+	recLabels := ScyllaLabels()
 	dcLabels := ClusterLabels(c)
 	dcLabels[DatacenterNameLabel] = c.Spec.Datacenter.Name
 
@@ -27,7 +27,7 @@ func DatacenterLabels(c *scyllav1.ScyllaCluster) map[string]string {
 // RackLabels returns a map of label keys and values
 // for the given Rack.
 func RackLabels(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) map[string]string {
-	recLabels := recommendedLabels()
+	recLabels := ScyllaLabels()
 	rackLabels := DatacenterLabels(c)
 	rackLabels[RackNameLabel] = r.Name
 
@@ -51,7 +51,7 @@ func RackSelector(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) labels.Selecto
 	return sel
 }
 
-func recommendedLabels() map[string]string {
+func ScyllaLabels() map[string]string {
 
 	return map[string]string{
 		"app": AppName,
@@ -65,6 +65,10 @@ func ManagerSelector() labels.Selector {
 	return labels.SelectorFromSet(map[string]string{
 		"app.kubernetes.io/name": ManagerAppName,
 	})
+}
+
+func ScyllaSelector() labels.Selector {
+	return labels.SelectorFromSet(ScyllaLabels())
 }
 
 func mergeLabels(l1, l2 map[string]string) map[string]string {

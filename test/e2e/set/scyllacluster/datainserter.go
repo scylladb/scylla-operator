@@ -14,6 +14,7 @@ import (
 	"github.com/scylladb/gocqlx/v2/table"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
+	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -134,7 +135,7 @@ func (di *DataInserter) GetExpected() []*TestData {
 }
 
 func (di *DataInserter) createSession(ctx context.Context, sc *scyllav1.ScyllaCluster) (*gocqlx.Session, error) {
-	hosts, err := getHosts(ctx, di.client, sc)
+	hosts, err := utils.GetHosts(ctx, di.client, sc)
 	if err != nil {
 		return nil, fmt.Errorf("can't get hosts: %w", err)
 	}

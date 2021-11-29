@@ -4,6 +4,7 @@ package framework
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 
@@ -11,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/fields"
@@ -64,7 +66,7 @@ func WaitForServiceAccount(ctx context.Context, c corev1client.CoreV1Interface, 
 	return event.Object.(*corev1.ServiceAccount), nil
 }
 
-func WaitForObjectDeletion(ctx context.Context, dynamicClient dynamic.Interface, resource schema.GroupVersionResource, namespace, name string, uid types.UID) error {
+func WaitForObjectDeletion(ctx context.Context, dynamicClient dynamic.Interface, resource schema.GroupVersionResource, namespace, name string, uid *types.UID) error {
 	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
 	lw := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
@@ -81,13 +83,26 @@ func WaitForObjectDeletion(ctx context.Context, dynamicClient dynamic.Interface,
 		lw,
 		&unstructured.Unstructured{},
 		func(store cache.Store) (bool, error) {
-			_, exists, err := store.Get(&metav1.ObjectMeta{Namespace: namespace, Name: name})
+			obj, exists, err := store.Get(&metav1.ObjectMeta{Namespace: namespace, Name: name})
 			if err != nil {
 				return true, err
 			}
 			if !exists {
 				return true, nil
 			}
+
+			objMeta, err := meta.Accessor(obj)
+			if err != nil {
+				return true, errors.New("can't get object metadata")
+			}
+
+			objUID := objMeta.GetUID()
+			if uid != nil && *uid != objUID {
+				return true, nil
+			}
+
+			uid = &objUID
+
 			return false, nil
 		},
 		func(e watch.Event) (bool, error) {
@@ -96,7 +111,7 @@ func WaitForObjectDeletion(ctx context.Context, dynamicClient dynamic.Interface,
 				return false, nil
 			case watch.Modified:
 				// DeltaFIFO can return modified event on re-list if the object is recreated in the meantime
-				if e.Object.(metav1.Object).GetUID() != uid {
+				if e.Object.(metav1.Object).GetUID() != *uid {
 					return true, nil
 				}
 				return false, nil

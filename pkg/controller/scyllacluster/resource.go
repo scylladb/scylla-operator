@@ -396,7 +396,8 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 						PodAffinity:     placement.PodAffinity,
 						PodAntiAffinity: placement.PodAntiAffinity,
 					},
-					ImagePullSecrets: c.Spec.ImagePullSecrets,
+					ImagePullSecrets:              c.Spec.ImagePullSecrets,
+					TerminationGracePeriodSeconds: pointer.Int64Ptr(900),
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{

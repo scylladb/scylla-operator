@@ -1,6 +1,50 @@
 # Upgrade of Scylla Operator
 
-This pages describes Scylla Operator upgrade procedures.
+This page describes Scylla Operator upgrade procedures.  
+There are two generic update procedures - via Helm and via kubectl. Before upgrading, please check this page to find out
+if your target version requires additional upgrade steps.
+
+## Upgrade via Helm
+
+Helm doesn't support managing CustomResourceDefinition resources ([#5871](https://github.com/helm/helm/issues/5871), [#7735](https://github.com/helm/helm/issues/7735))   
+These are only created on first install and never updated. In order to update them, users have to do it manually.
+
+Replace `<release_name>` with the name of your Helm release for Scylla Operator and replace `<version>` with the version number you want to install:
+1. Make sure Helm chart repository is up-to-date:
+   ```
+   helm repo add scylla-operator https://storage.googleapis.com/scylla-operator-charts/stable
+   helm repo update
+   ```
+2. Update CRD resources. We recommend using `--server-side` flag for `kubectl apply`, if your version supports it.
+   ```
+   tmpdir=$( mktemp -d ) \
+     && helm pull scylla-operator/scylla-operator --version <version> --untar --untardir "${tmpdir}" \
+     && find "${tmpdir}"/scylla-operator/crds/ -name '*.yaml' -printf '-f=%p ' \
+     | xargs kubectl apply
+   ``` 
+3. Update Scylla Operator
+   ```
+   helm upgrade --version <version> <release_name> scylla-operator/scylla-operator
+   ```
+
+## Upgrade via kubectl
+
+Replace `<version>` with the version number you want to install:
+
+1. Checkout source code of version you want to use:
+   ```
+   git checkout <version>
+   ```
+2. Manifests use rolling minor version tag, you may want to pin it to specific version:
+   ```
+   find deploy/operator -name "*.yaml" | xargs sed --follow-symlinks -i -E "s^docker.io/scylladb/scylla-operator:[0-9]+\.[0-9]+^docker.io/scylladb/scylla-operator:<version>^g"
+   ```
+3. Update Scylla Operator. We recommend using `--server-side` flag for `kubectl apply`, if your version supports it.
+   ```
+   kubectl apply -f deploy/operator
+   ```
+
+---
 
 ## `v1.2.0` -> `v1.3.0`
 

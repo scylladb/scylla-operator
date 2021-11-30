@@ -643,9 +643,10 @@ func TestStatefulSetForRack(t *testing.T) {
 								Resources: newBasicRack().Resources,
 							},
 						},
-						DNSPolicy:          "ClusterFirstWithHostNet",
-						ServiceAccountName: "basic-member",
-						Affinity:           &corev1.Affinity{},
+						DNSPolicy:                     "ClusterFirstWithHostNet",
+						ServiceAccountName:            "basic-member",
+						Affinity:                      &corev1.Affinity{},
+						TerminationGracePeriodSeconds: pointer.Int64Ptr(900),
 					},
 				},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{

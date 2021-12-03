@@ -30,7 +30,7 @@ const (
 
 // These tests modify global resource affecting global cluster state.
 // They must not be run asynchronously with other tests.
-var _ = g.Describe("NodeConfig Optimizations", g.Serial, func() {
+var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 	defer g.GinkgoRecover()
 
 	f := framework.NewFramework("nodeconfig")

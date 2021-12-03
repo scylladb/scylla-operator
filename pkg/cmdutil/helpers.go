@@ -61,9 +61,9 @@ func ReadFlagsFromEnv(prefix string, cmd *cobra.Command) error {
 func InstallKlog(cmd *cobra.Command) {
 	level := flag.CommandLine.Lookup("v").Value.(*klog.Level)
 	levelPtr := (*int32)(level)
-	cmd.PersistentFlags().Int32Var(levelPtr, FlagLogLevelKey, *levelPtr, "Set the level of log output (0-10)")
+	cmd.PersistentFlags().Int32Var(levelPtr, FlagLogLevelKey, *levelPtr, "Set the level of log output (0-10).")
 	if cmd.PersistentFlags().Lookup("v") == nil {
-		cmd.PersistentFlags().Int32Var(levelPtr, "v", *levelPtr, "Set the level of log output (0-10)")
+		cmd.PersistentFlags().Int32Var(levelPtr, "v", *levelPtr, "Set the level of log output (0-10).")
 	}
 	cmd.PersistentFlags().Lookup("v").Hidden = true
 

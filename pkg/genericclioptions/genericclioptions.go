@@ -44,9 +44,9 @@ func NewClientConfig(userAgentName string) ClientConfig {
 }
 
 func (cc *ClientConfig) AddFlags(cmd *cobra.Command) {
-	cmd.PersistentFlags().StringVarP(&cc.Kubeconfig, "kubeconfig", "", cc.Kubeconfig, "Path to the kubeconfig file")
-	cmd.PersistentFlags().Float32VarP(&cc.QPS, "qps", "", cc.QPS, "Maximum allowed number of queries per second")
-	cmd.PersistentFlags().IntVarP(&cc.Burst, "burst", "", cc.Burst, "Allows extra queries to accumulate when a client is exceeding its rate")
+	cmd.PersistentFlags().StringVarP(&cc.Kubeconfig, "kubeconfig", "", cc.Kubeconfig, "Path to the kubeconfig file.")
+	cmd.PersistentFlags().Float32VarP(&cc.QPS, "qps", "", cc.QPS, "Maximum allowed number of queries per second.")
+	cmd.PersistentFlags().IntVarP(&cc.Burst, "burst", "", cc.Burst, "Allows extra queries to accumulate when a client is exceeding its rate.")
 }
 
 func (cc *ClientConfig) Validate() error {

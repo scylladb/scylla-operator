@@ -510,7 +510,6 @@ func TestStatefulSetForRack(t *testing.T) {
 								Command: []string{
 									"/mnt/shared/scylla-operator",
 									"sidecar",
-									"--secret-name=basic-auth-token",
 									"--service-name=$(SERVICE_NAME)",
 									"--cpu-count=$(CPU_COUNT)",
 									"--loglevel=2",

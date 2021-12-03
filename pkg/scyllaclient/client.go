@@ -24,7 +24,7 @@ import (
 )
 
 type Client struct {
-	config Config
+	config *Config
 	logger log.Logger
 
 	scyllaOps *scyllaOperations.Client
@@ -34,7 +34,7 @@ type Client struct {
 	dcCache map[string]string
 }
 
-func NewClient(config Config, logger log.Logger) (*Client, error) {
+func NewClient(config *Config, logger log.Logger) (*Client, error) {
 	/*if err := config.Validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid config")
 	}*/

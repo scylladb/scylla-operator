@@ -73,7 +73,7 @@ You can also change `pullPolicy` if default one does not
 fullfill your needs. In [Kubernetes documentation](https://kubernetes.io/docs/concepts/containers/images/) you 
 can read more about different pull policies.
 
-Image URL will be composed based on these fields in follwing pattern:
+Image URL will be composed based on these fields in following pattern:
 `repository/scylla-operator:tag`
 ```yaml
 image:

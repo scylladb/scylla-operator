@@ -1,7 +1,7 @@
 # Releases
 
 ## Schedule
-We are aiming to ship a new release approximately every 6 weeks. The following release schedule is only advisory, there are no commitments made to hitting these dates.
+We are aiming to ship a new release approximately every 6 weeks. The following release schedule is only advisory. We make no legal commitment to provide a new release by these forecasted dates.
 
 | Release | Code freeze | General availability |
 | :-----: | :---------: | :------------------: |

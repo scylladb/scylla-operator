@@ -25,12 +25,12 @@ kubectl explain nodeconfigs.scylla.scylladb.com/v1alpha1
 ```
 
 For all optimizations we use a Python script available in the Scylla image called perftune. 
-Perftune - contains performance optimization - it’s able to tune the kernel, network and disk devices, spread IRQs across CPUs and more.
+Perftune executes the performance optmizations like tuning the kernel, network, disk devices, spreading IRQs across CPUs and more.
 
 Tuning consists of two separate optimizations: common node tuning, and tuning based on Scylla Pods and their resource assignment.
-Node tuning is executed when tuning Pod lands on Node. Pod tuning is executed when Scylla Pod lands on the same Node.
+Node tuning is executed immediately. Pod tuning is executed when Scylla Pod lands on the same Node.
 
-Scylla does not like sharing, it works most efficiently when it’s not interrupted. 
+Scylla works most efficently when it's pinned to CPU and not interrupted. 
 One of the most common causes of context-switching are network interrupts. Packets coming to a node need to be processed, 
 and this requires CPU shares.  
 
@@ -53,9 +53,8 @@ However, kubelet may be configured to assign CPUs exclusively, by setting the CP
 Setting up kubelet configuration is provider specific. Please check the docs for your distribution or talk to your
 provider.
 
-Pods which receive a Guaranteed Quality of Service class can take advantage of this option. 
-As Guaranteed pods whose containers fit the requirements for being statically assigned are scheduled to the node, 
-CPUs are removed from the shared pool and placed in the cpuset for the container.
+Only pods within the [Guaranteed QoS class](https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/#create-a-pod-that-gets-assigned-a-qos-class-of-guaranteed)) can take advantage of this option. 
+When such pod lands on a Node, kubelet will pin them to specific CPUs, and those won't be part of the shared pool.
 
 In our case there are two requirements each ScyllaCluster must fulfill to receive a Guaranteed QoS class:
 * resource request and limits must be equal or only limits have to be provided

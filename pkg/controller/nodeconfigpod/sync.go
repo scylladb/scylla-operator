@@ -85,6 +85,10 @@ func (ncpc *Controller) sync(ctx context.Context, key string) error {
 		return fmt.Errorf("can't list pods: %w", err)
 	}
 
+	if pod.DeletionTimestamp != nil {
+		return nil
+	}
+
 	configMaps, err := ncpc.getConfigMaps(ctx, pod)
 	if err != nil {
 		return err

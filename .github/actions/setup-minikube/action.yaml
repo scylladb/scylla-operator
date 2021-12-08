@@ -15,7 +15,7 @@ runs:
     run: |
       set -x
       sudo apt-get install -y --no-install-recommends conntrack
-      sudo curl -s --fail -L https://storage.googleapis.com/minikube/releases/v1.23.0/minikube-linux-amd64 -o /usr/local/bin/minikube
+      sudo curl -s --fail -L https://storage.googleapis.com/minikube/releases/v1.24.0/minikube-linux-amd64 -o /usr/local/bin/minikube
       sudo chmod +x /usr/local/bin/minikube
 
       sudo curl -s --fail -L "https://dl.k8s.io/release/v1.22.2/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl

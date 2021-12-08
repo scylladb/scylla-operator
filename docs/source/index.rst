@@ -14,6 +14,7 @@ Scylla Operator Documentation
    monitoring
    migration
    nodeoperations/index
+   performance
    upgrade
    releases
    known_issues
@@ -53,6 +54,7 @@ Currently it supports:
 * :doc:`Deploying Scylla stack using Helm Charts <helm>`
 * :doc:`Setting up Monitoring using Prometheus and Grafana <monitoring>`
 * :doc:`Node operations <nodeoperations/index>`
+* :doc:`Performance tuning [Experimental] <performance>`
 * :doc:`Upgrade procedures <upgrade>`
 * :doc:`Releases <releases>`
 * :doc:`Known issues <known_issues>`

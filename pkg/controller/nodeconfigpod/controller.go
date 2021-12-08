@@ -44,7 +44,7 @@ const (
 
 var (
 	keyFunc       = cache.DeletionHandlingMetaNamespaceKeyFunc
-	controllerGVK = corev1.SchemeGroupVersion.WithKind("pods")
+	controllerGVK = corev1.SchemeGroupVersion.WithKind("Pod")
 )
 
 type Controller struct {

@@ -9,7 +9,7 @@ import (
 	"path"
 	"time"
 
-	g "github.com/onsi/ginkgo"
+	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	scyllaclientset "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
@@ -267,7 +267,7 @@ func (f *Framework) afterEach() {
 		case DeleteTestingNSPolicyNever:
 			keepNamespace = true
 		case DeleteTestingNSPolicyOnSuccess:
-			if g.CurrentGinkgoTestDescription().Failed {
+			if g.CurrentSpecReport().Failed() {
 				keepNamespace = true
 			}
 		case DeleteTestingNSPolicyAlways:
@@ -285,7 +285,7 @@ func (f *Framework) afterEach() {
 	}()
 
 	// Print events if the test failed.
-	if g.CurrentGinkgoTestDescription().Failed {
+	if g.CurrentSpecReport().Failed() {
 		By(fmt.Sprintf("Collecting events from namespace %q.", f.namespace.Name))
 		DumpEventsInNamespace(ctx, f.KubeAdminClient(), f.namespace.Name)
 	}

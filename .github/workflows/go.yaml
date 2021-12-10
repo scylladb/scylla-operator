@@ -217,11 +217,15 @@ jobs:
           e2e_timeout_minutes="$(( ${e2e_timeout_minutes} + ${flake_attempts} * 10 ))"
         fi
 
-        timeout "${e2e_timeout_minutes}m" docker run --user="$( id -u ):$( id -g )" --rm \
+        docker run --user="$( id -u ):$( id -g )" --rm \
         --entrypoint=/usr/bin/scylla-operator-tests \
         -v="${ARTIFACTS_DIR}:${ARTIFACTS_DIR}:rw" \
         -v="${HOME}/.kube/config:/kubeconfig:ro" -e='KUBECONFIG=/kubeconfig' \
-        '${{ env.image_repo_ref }}:ci' run --artifacts-dir="${ARTIFACTS_DIR}" --flake-attempts="${flake_attempts}"
+        '${{ env.image_repo_ref }}:ci' \
+        run all \
+        --artifacts-dir="${ARTIFACTS_DIR}" \
+        --flake-attempts="${flake_attempts}" \
+        --timeout="${e2e_timeout_minutes}m"
     - name: Dump cluster state
       if: ${{ always() }}
       working-directory: ${{ runner.temp }}

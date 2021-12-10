@@ -24,13 +24,13 @@ func NewTestFrameworkOptions() TestFrameworkOptions {
 
 func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVarP(&o.ArtifactsDir, "artifacts-dir", "", o.ArtifactsDir, "A directory for storing test artifacts. No data is collected until set.")
-	cmd.PersistentFlags().StringVarP(&o.DeleteTestingNSPolicyUntyped, "delete-namespace-policy", "", o.DeleteTestingNSPolicyUntyped, fmt.Sprintf("Namespace deletion policy. Allowed values are [%s]", strings.Join(
+	cmd.PersistentFlags().StringVarP(&o.DeleteTestingNSPolicyUntyped, "delete-namespace-policy", "", o.DeleteTestingNSPolicyUntyped, fmt.Sprintf("Namespace deletion policy. Allowed values are [%s].", strings.Join(
 		[]string{
 			string(framework.DeleteTestingNSPolicyAlways),
 			string(framework.DeleteTestingNSPolicyNever),
 			string(framework.DeleteTestingNSPolicyOnSuccess),
 		},
-		",",
+		", ",
 	)))
 }
 

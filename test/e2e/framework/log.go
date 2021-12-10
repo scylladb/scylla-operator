@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	g "github.com/onsi/ginkgo"
-	gconfig "github.com/onsi/ginkgo/config"
+	g "github.com/onsi/ginkgo/v2"
 )
 
 func nowStamp() string {
@@ -43,9 +42,5 @@ func Skipf(format string, args ...interface{}) {
 }
 
 func By(format string, args ...interface{}) {
-	preamble := "\x1b[1mSTEP\x1b[0m"
-	if gconfig.DefaultReporterConfig.NoColor {
-		preamble = "STEP"
-	}
-	logf(preamble, format, args...)
+	g.By(fmt.Sprintf(format, args...))
 }

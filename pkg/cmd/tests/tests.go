@@ -13,6 +13,7 @@ const (
 
 func NewTestsCommand(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
+		Use: "scylla-operator-tests",
 		Long: templates.LongDesc(`
 		Scylla operator tests
 
@@ -22,6 +23,9 @@ func NewTestsCommand(streams genericclioptions.IOStreams) *cobra.Command {
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return cmdutil.ReadFlagsFromEnv(EnvVarPrefix, cmd)
 		},
+
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 
 	cmd.AddCommand(NewRunCommand(streams))

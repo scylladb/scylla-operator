@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 
-	g "github.com/onsi/ginkgo"
+	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"

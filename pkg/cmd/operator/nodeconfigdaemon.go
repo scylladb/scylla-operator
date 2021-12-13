@@ -44,6 +44,11 @@ type NodeConfigDaemonOptions struct {
 	ScyllaImage          string
 	DisableOptimizations bool
 
+	DisableScyllaImageSettings bool
+	NodeMultitenancy           int64
+	TenantScalableKeys         []string
+	CustomKeyValues            []string
+
 	CRIEndpoints []string
 
 	kubeClient   kubernetes.Interface
@@ -102,6 +107,10 @@ func NewNodeConfigCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd.Flags().StringVarP(&o.ScyllaImage, "scylla-image", "", o.ScyllaImage, "Scylla image used for running perftune.")
 	cmd.Flags().BoolVarP(&o.DisableOptimizations, "disable-optimizations", "", o.DisableOptimizations, "Controls if optimizations are disabled")
 	cmd.Flags().StringArrayVarP(&o.CRIEndpoints, "cri-endpoint", "", o.CRIEndpoints, "CRI endpoint to connect to. It will try to connect to any of them, in the given order.")
+	cmd.Flags().BoolVarP(&o.DisableScyllaImageSettings, "disable-scylla-image-settings", "", o.DisableScyllaImageSettings, "Controls if recommended settings available in Scylla image are disabled.")
+	cmd.Flags().Int64VarP(&o.NodeMultitenancy, "node-multitenancy", "", o.NodeMultitenancy, "Controls how many Scylla Pods are expected to be hosted on this Node. Use together with tenant-scalable-keys.")
+	cmd.Flags().StringSliceVarP(&o.TenantScalableKeys, "tenant-scalable-keys", "", o.TenantScalableKeys, "List of kernel parameter keys scalable with provided multitenancy.")
+	cmd.Flags().StringSliceVarP(&o.CustomKeyValues, "custom-key-values", "", o.CustomKeyValues, "List of custom kernel parameters key-values.")
 
 	return cmd
 }
@@ -220,6 +229,10 @@ func (o *NodeConfigDaemonOptions) Run(streams genericclioptions.IOStreams, cmd *
 		o.NodeConfigName,
 		types.UID(o.NodeConfigUID),
 		o.ScyllaImage,
+		o.DisableScyllaImageSettings,
+		o.NodeMultitenancy,
+		o.TenantScalableKeys,
+		o.CustomKeyValues,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create node config instance controller: %w", err)

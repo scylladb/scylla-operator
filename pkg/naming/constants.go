@@ -61,10 +61,13 @@ const (
 	ScyllaContainerName          = "scylla"
 	SidecarInjectorContainerName = "sidecar-injection"
 	PerftuneContainerName        = "perftune"
+	SysctlContainerName          = "sysctl"
+	SysctlInitContainerName      = "sysctl-init"
 
 	PVCTemplateName = "data"
 
-	SharedDirName = "/mnt/shared"
+	SharedDirName        = "/mnt/shared"
+	ScyllaSysctlsDirName = "/mnt/scylla-sysctls"
 
 	ScyllaConfigDirName          = "/mnt/scylla-config"
 	ScyllaAgentConfigDirName     = "/mnt/scylla-agent-config"

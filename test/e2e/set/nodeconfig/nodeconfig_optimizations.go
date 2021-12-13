@@ -16,6 +16,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
+	"github.com/scylladb/scylla-operator/test/e2e/tools"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -84,6 +85,98 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		if !apierrors.IsNotFound(err) {
 			err = framework.WaitForObjectDeletion(context.Background(), f.DynamicAdminClient(), corev1.SchemeGroupVersion.WithResource("resourcequota"), naming.ScyllaOperatorNodeTuningNamespace, resourceQuotaName, nil)
 			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+	})
+
+	g.It("should apply user provided kernel parameters on tuned nodes", func() {
+		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+		defer cancel()
+
+		const (
+			// This has to be synced with Scylla image used in ScyllaOperatorConfig.
+			// This parameter wasn't changed for over 2 years, so hopefully it's not going to require frequent syncing.
+			parameterFromScyllaImageKey   = "vm.swappiness"
+			parameterFromScyllaImageValue = 1
+
+			customParameterCollidingWithScyllaImageKey   = "fs.inotify.max_user_instances"
+			customParameterCollidingWithScyllaImageValue = 600
+
+			scalableParameterKey   = "fs.aio-max-nr"
+			scalableParameterValue = 5578536
+		)
+
+		nc := ncTemplate.DeepCopy()
+		nc.Spec.KernelParameters.NodeMultitenancy = 2
+		nc.Spec.KernelParameters.CustomKeyValues = []string{
+			fmt.Sprintf("%s=%d", customParameterCollidingWithScyllaImageKey, customParameterCollidingWithScyllaImageValue),
+			fmt.Sprintf("%s=%d", scalableParameterKey, scalableParameterValue),
+		}
+		nc.Spec.KernelParameters.TenantScalableKeys = []string{
+			scalableParameterKey,
+		}
+
+		g.By("Creating a NodeConfig")
+		nc, err := f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Create(ctx, nc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the NodeConfig to deploy")
+		waitCtx1, waitCtx1Cancel := context.WithTimeout(ctx, nodeConfigRolloutTimeout)
+		defer waitCtx1Cancel()
+		nc, err = utils.WaitForNodeConfigState(
+			waitCtx1,
+			f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs(),
+			nc.Name,
+			utils.WaitForStateOptions{TolerateDelete: false},
+			utils.IsNodeConfigRolledOut,
+			utils.IsNodeConfigDoneWithNodeTuningFunc(matchingNodes),
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		verifyNodeConfig(ctx, f.KubeAdminClient(), nc)
+
+		// There should be a tuning job for every scylla node.
+		nodeJobList, err := f.KubeAdminClient().BatchV1().Jobs(naming.ScyllaOperatorNodeTuningNamespace).List(ctx, metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(labels.Set{
+				naming.NodeConfigNameLabel:    nc.Name,
+				naming.NodeConfigJobTypeLabel: string(naming.NodeConfigJobTypeNode),
+			}).String(),
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(nodeJobList.Items).To(o.HaveLen(len(matchingNodes)))
+
+		framework.By("Creating a ScyllaCluster")
+		sc := scyllafixture.BasicScyllaCluster.ReadOrFail().DeepCopy()
+		sc.Spec.Datacenter.Racks[0].Members = 1
+
+		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to deploy")
+		waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc)
+		defer waitCtx2Cancel()
+		sc, err = utils.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Checking the sysctl value")
+		expectedSysctls := map[string]int{
+			parameterFromScyllaImageKey:                parameterFromScyllaImageValue,
+			customParameterCollidingWithScyllaImageKey: customParameterCollidingWithScyllaImageValue,
+			scalableParameterKey:                       scalableParameterValue * int(nc.Spec.KernelParameters.NodeMultitenancy),
+		}
+		podName := fmt.Sprintf("%s-0", naming.StatefulSetNameForRack(sc.Spec.Datacenter.Racks[0], sc))
+		for key, value := range expectedSysctls {
+			stdout, stderr, err := tools.PodExec(
+				f.KubeClient().CoreV1().RESTClient(),
+				f.ClientConfig(),
+				f.Namespace(),
+				podName,
+				"scylla",
+				[]string{"/usr/sbin/sysctl", "--values", key},
+				nil,
+			)
+			o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("sysctl failed for %q key: %q", key, stderr))
+			o.Expect(stderr).To(o.BeEmpty())
+			o.Expect(stdout).To(o.Equal(fmt.Sprintf("%d\n", value)))
 		}
 	})
 

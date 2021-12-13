@@ -6,7 +6,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/c9s/goprocinfo/linux"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
@@ -17,6 +22,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/util/cloud"
 	"github.com/scylladb/scylla-operator/pkg/util/cpuset"
 	"github.com/scylladb/scylla-operator/pkg/util/network"
+	"github.com/scylladb/scylla-operator/pkg/util/sysctl"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,6 +43,11 @@ func (ncdc *Controller) makeJobsForNode(ctx context.Context) ([]*batchv1.Job, er
 		return nil, fmt.Errorf("can't get controller ref: %w", err)
 	}
 
+	sysctls, err := makeSysctls(ncdc.disableScyllaImageSettings, ncdc.nodeMultitenancy, ncdc.tenantScalableKeys, ncdc.customKeyValues)
+	if err != nil {
+		return nil, fmt.Errorf("can't make sysctls: %w", err)
+	}
+
 	jobs = append(jobs, makePerftuneJobForNode(
 		cr,
 		ncdc.namespace,
@@ -45,6 +56,7 @@ func (ncdc *Controller) makeJobsForNode(ctx context.Context) ([]*batchv1.Job, er
 		ncdc.nodeUID,
 		ncdc.scyllaImage,
 		&pod.Spec,
+		sysctls,
 	))
 
 	return jobs, nil
@@ -278,4 +290,84 @@ func (ncdc *Controller) pruneJobs(ctx context.Context, jobs map[string]*batchv1.
 		}
 	}
 	return utilerrors.NewAggregate(errs)
+}
+
+func makeSysctls(disableScyllaImageSettings bool, nodeMultitenancy int64, tenantScalableKeys []string, customKeyValues []string) ([]string, error) {
+	kv := map[string]string{}
+
+	if !disableScyllaImageSettings {
+		err := filepath.WalkDir(naming.ScyllaSysctlsDirName, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if path != naming.ScyllaSysctlsDirName && d.IsDir() {
+				return filepath.SkipDir
+			}
+
+			f, err := os.Open(path)
+			if err != nil {
+				return fmt.Errorf("can't open file %q: %w", path, err)
+			}
+
+			kvs, err := sysctl.ParseConfig(f)
+			if err != nil {
+				return fmt.Errorf("parse scylla sysctl config %q: %w", d.Name(), err)
+			}
+
+			klog.V(4).InfoS("Parsed scylla sysctls", "name", d.Name(), "parameters", len(kvs))
+			for k, v := range kvs {
+				kv[k] = v
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			return nil, fmt.Errorf("read scylla image settings: %w", err)
+		}
+	}
+
+	for _, v := range customKeyValues {
+		if len(v) == 0 {
+			continue
+		}
+		parts := strings.Split(v, "=")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid format of custom kernel parameter: %q", v)
+		}
+		kv[parts[0]] = parts[1]
+	}
+
+	for _, scalableKey := range tenantScalableKeys {
+		if len(scalableKey) == 0 {
+			continue
+		}
+		value, ok := kv[scalableKey]
+		if !ok {
+			// TODO: set degraded status
+			klog.Warning("Key provided in tenantScalableKeys has unknown initial value, it's not going to be applied", "key", scalableKey)
+			continue
+		}
+
+		v, err := strconv.Atoi(value)
+		if err != nil {
+			// TODO: set degraded status
+			klog.Warning("Non-numerical key cannot be scaled, it's not going to be multiplied", "key", scalableKey)
+			continue
+		}
+
+		kv[scalableKey] = fmt.Sprintf("%d", int(nodeMultitenancy)*v)
+	}
+
+	klog.V(4).InfoS("Tuning kernel parameters", "parameters", len(kv))
+	sysctls := make([]string, 0, len(kv))
+	for k, v := range kv {
+		klog.V(4).InfoS("Setting kernel parameter", "key", k, "value", v)
+		sysctls = append(sysctls, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	sort.Strings(sysctls)
+
+	return sysctls, nil
 }

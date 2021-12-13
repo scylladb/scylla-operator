@@ -75,6 +75,11 @@ type Controller struct {
 	nodeConfigUID  types.UID
 	scyllaImage    string
 
+	disableScyllaImageSettings bool
+	nodeMultitenancy           int64
+	tenantScalableKeys         []string
+	customKeyValues            []string
+
 	cachesToSync []cache.InformerSynced
 
 	eventRecorder record.EventRecorder
@@ -98,6 +103,10 @@ func NewController(
 	nodeConfigName string,
 	nodeConfigUID types.UID,
 	scyllaImage string,
+	disableScyllaImageSettings bool,
+	nodeMultitenancy int64,
+	tenantScalableKeys []string,
+	customKeyValues []string,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
@@ -131,6 +140,11 @@ func NewController(
 		nodeConfigName: nodeConfigName,
 		nodeConfigUID:  nodeConfigUID,
 		scyllaImage:    scyllaImage,
+
+		disableScyllaImageSettings: disableScyllaImageSettings,
+		nodeMultitenancy:           nodeMultitenancy,
+		tenantScalableKeys:         tenantScalableKeys,
+		customKeyValues:            customKeyValues,
 
 		cachesToSync: []cache.InformerSynced{
 			nodeConfigInformer.Informer().HasSynced,

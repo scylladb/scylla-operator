@@ -4,6 +4,7 @@ package nodeconfig
 
 import (
 	"fmt"
+	"strings"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -126,6 +127,48 @@ func makeNodeConfigDaemonSet(nc *scyllav1alpha1.NodeConfig, operatorImage, scyll
 		naming.NodeConfigNameLabel: nc.Name,
 	}
 
+	var initContainers []corev1.Container
+	volumes := []corev1.Volume{
+		makeHostDirVolume("hostfs", "/"),
+	}
+	volumeMounts := []corev1.VolumeMount{
+		makeVolumeMount("hostfs", "/host", false),
+	}
+
+	if !nc.Spec.KernelParameters.DisableScyllaImageSettings {
+		initContainers = []corev1.Container{
+			{
+				Name:            naming.SysctlInitContainerName,
+				Image:           scyllaImage,
+				ImagePullPolicy: corev1.PullIfNotPresent,
+				Command: []string{
+					"/usr/bin/bash",
+					"-euExo",
+					"pipefail",
+					"-c",
+				},
+				Args: []string{
+					fmt.Sprintf("cp /usr/lib/sysctl.d/*.conf %s", naming.ScyllaSysctlsDirName),
+				},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "scylla-sysctls",
+					MountPath: naming.ScyllaSysctlsDirName,
+				}},
+			},
+		}
+
+		volumes = append(volumes, corev1.Volume{
+			Name: "scylla-sysctls",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "scylla-sysctls",
+			MountPath: naming.ScyllaSysctlsDirName,
+		})
+	}
+
 	return &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      nc.Name,
@@ -146,13 +189,12 @@ func makeNodeConfigDaemonSet(nc *scyllav1alpha1.NodeConfig, operatorImage, scyll
 				Spec: corev1.PodSpec{
 					ServiceAccountName: naming.NodeConfigAppName,
 					// Required for getting the right iface name to tune
-					HostNetwork:  true,
-					NodeSelector: nc.Spec.Placement.NodeSelector,
-					Affinity:     &nc.Spec.Placement.Affinity,
-					Tolerations:  nc.Spec.Placement.Tolerations,
-					Volumes: []corev1.Volume{
-						makeHostDirVolume("hostfs", "/"),
-					},
+					HostNetwork:    true,
+					NodeSelector:   nc.Spec.Placement.NodeSelector,
+					Affinity:       &nc.Spec.Placement.Affinity,
+					Tolerations:    nc.Spec.Placement.Tolerations,
+					Volumes:        volumes,
+					InitContainers: initContainers,
 					Containers: []corev1.Container{
 						{
 							Name:            naming.NodeConfigAppName,
@@ -173,6 +215,11 @@ cd "$( mktemp -d )"
 for f in $( find /host -mindepth 1 -maxdepth 1 -type d -printf '%f\n' ); do
 	mkdir -p "./${f}"
 	mount --rbind "/host/${f}" "./${f}"
+done
+
+for f in $( find /mnt -mindepth 1 -maxdepth 1 -type d -printf '%f\n' ); do
+	mkdir -p "./mnt/${f}"
+	mount --rbind "/mnt/${f}" "./mnt/${f}"
 done
 
 for f in $( find /host -mindepth 1 -maxdepth 1 -type f -printf '%f\n' ); do
@@ -224,6 +271,10 @@ exec chroot ./ /scylla-operator/scylla-operator node-config-daemon \
 --node-config-uid=` + fmt.Sprintf("%q", nc.UID) + ` \
 --scylla-image=` + fmt.Sprintf("%q", scyllaImage) + ` \
 --disable-optimizations=` + fmt.Sprintf("%t", nc.Spec.DisableOptimizations) + ` \
+--disable-scylla-image-settings=` + fmt.Sprintf("%t", nc.Spec.KernelParameters.DisableScyllaImageSettings) + ` \
+--node-multitenancy=` + fmt.Sprintf("%d", nc.Spec.KernelParameters.NodeMultitenancy) + ` \
+--tenant-scalable-keys=` + fmt.Sprintf("%q", strings.Join(nc.Spec.KernelParameters.TenantScalableKeys, ",")) + ` \
+--custom-key-values=` + fmt.Sprintf("%q", strings.Join(nc.Spec.KernelParameters.CustomKeyValues, ",")) + ` \
 --loglevel=` + fmt.Sprintf("%d", 4) + `
 							`,
 							},
@@ -265,9 +316,7 @@ exec chroot ./ /scylla-operator/scylla-operator node-config-daemon \
 							SecurityContext: &corev1.SecurityContext{
 								Privileged: pointer.BoolPtr(true),
 							},
-							VolumeMounts: []corev1.VolumeMount{
-								makeVolumeMount("hostfs", "/host", false),
-							},
+							VolumeMounts: volumeMounts,
 						},
 					},
 				},

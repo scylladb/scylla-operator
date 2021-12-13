@@ -76,6 +76,28 @@ type NodeConfigPlacement struct {
 	NodeSelector map[string]string `json:"nodeSelector"`
 }
 
+type KernelParametersSpec struct {
+	// disableScyllaImageSettings controls if recommended kernel parameters settings available in Scylla image
+	// shouldn't be applied on tuned hosts. Turning off this on already optimized host doesn't revert values to initial settings.
+	DisableScyllaImageSettings bool `json:"disableScyllaImageSettings"`
+
+	// nodeMultitenancy is a value of expected number of Scylla Pods Nodes are going to host.
+	// Value is used together with tenantScalableKeys.
+	// +kubebuilder:default:=1
+	NodeMultitenancy int64 `json:"nodeMultitenancy"`
+
+	// tenantScalableKeys is a list of names of kernel parameters which values will be multiplied by the nodeMultitenancy.
+	// These keys must be available in either customKeyValues or provided by Scylla image.
+	// +optional
+	TenantScalableKeys []string `json:"tenantScalableKeys"`
+
+	// customKeyValues is a list of additional user provided kernel parameters.
+	// Array values must be in following format "key=value", where 'key' is kernel parameter name, and
+	// 'value' is value to which parameter must be set.
+	// +optional
+	CustomKeyValues []string `json:"customKeyValues"`
+}
+
 type NodeConfigSpec struct {
 	// placement contains scheduling rules for NodeConfig Pods.
 	// +kubebuilder:validation:Required
@@ -85,6 +107,9 @@ type NodeConfigSpec struct {
 	// are going to be optimized. Turning off optimizations on already optimized
 	// Nodes does not revert changes.
 	DisableOptimizations bool `json:"disableOptimizations"`
+
+	// kernelParameters contains settings of kernel parameter tuning.
+	KernelParameters KernelParametersSpec `json:"kernelParameters"`
 }
 
 // +kubebuilder:object:root=true

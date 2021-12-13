@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	batchv1 "k8s.io/api/batch/v1"
@@ -18,7 +19,7 @@ import (
 
 // TODO: set anti affinities so config jobs don't run on the same node at the same time
 
-func makePerftuneJobForNode(controllerRef *metav1.OwnerReference, namespace, nodeConfigName, nodeName string, nodeUID types.UID, image string, podSpec *corev1.PodSpec) *batchv1.Job {
+func makePerftuneJobForNode(controllerRef *metav1.OwnerReference, namespace, nodeConfigName, nodeName string, nodeUID types.UID, image string, podSpec *corev1.PodSpec, sysctls []string) *batchv1.Job {
 	podSpec = podSpec.DeepCopy()
 
 	args := []string{
@@ -95,6 +96,27 @@ func makePerftuneJobForNode(controllerRef *metav1.OwnerReference, namespace, nod
 				},
 			},
 		},
+	}
+
+	if len(sysctls) != 0 {
+		job.Spec.Template.Spec.Containers = append(job.Spec.Template.Spec.Containers, corev1.Container{
+			Name:            naming.SysctlContainerName,
+			Image:           image,
+			ImagePullPolicy: corev1.PullIfNotPresent,
+			Command: []string{"/bin/sh",
+				"-c",
+				fmt.Sprintf("sysctl -e %s", strings.Join(sysctls, " ")),
+			},
+			SecurityContext: &corev1.SecurityContext{
+				Privileged: pointer.BoolPtr(true),
+			},
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("10m"),
+					corev1.ResourceMemory: resource.MustParse("50Mi"),
+				},
+			},
+		})
 	}
 
 	return job

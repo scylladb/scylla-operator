@@ -6,7 +6,6 @@ import (
 
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	appv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
@@ -53,15 +52,18 @@ func ApplyStatefulSet(
 	}
 
 	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
-	if !equality.Semantic.DeepEqual(existingControllerRef, requiredControllerRef) {
-		if existingControllerRef == nil && forceOwnership {
-			klog.V(2).InfoS("Forcing apply to claim the StatefulSet", "StatefulSet", naming.ObjRef(requiredCopy))
-		} else {
+	if existingControllerRef == nil {
+		if !forceOwnership {
 			// This is not the place to handle adoption.
-			err := fmt.Errorf("statefulset %q isn't controlled by us", naming.ObjRef(requiredCopy))
+			err = fmt.Errorf("statefulset %q isn't controlled by anyone, won't adopt it in apply", naming.ObjRef(requiredCopy))
 			ReportUpdateEvent(recorder, requiredCopy, err)
 			return nil, false, err
 		}
+		klog.V(2).InfoS("Forcing apply to claim the StatefulSet", "StatefulSet", naming.ObjRef(requiredCopy))
+	} else if existingControllerRef.UID != requiredControllerRef.UID {
+		err = fmt.Errorf("statefulset %q is controlled by someone else", naming.ObjRef(requiredCopy))
+		ReportUpdateEvent(recorder, requiredCopy, err)
+		return nil, false, err
 	}
 
 	existingHash := existing.Annotations[naming.ManagedHash]
@@ -126,9 +128,8 @@ func ApplyDaemonSet(
 	}
 
 	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
-	if !equality.Semantic.DeepEqual(existingControllerRef, requiredControllerRef) {
-		// This is not the place to handle adoption.
-		err := fmt.Errorf("daemonset %q isn't controlled by us", naming.ObjRef(requiredCopy))
+	if existingControllerRef == nil || existingControllerRef.UID != requiredControllerRef.UID {
+		err = fmt.Errorf("daemonset %q isn't controlled by us", naming.ObjRef(requiredCopy))
 		ReportUpdateEvent(recorder, requiredCopy, err)
 		return nil, false, err
 	}

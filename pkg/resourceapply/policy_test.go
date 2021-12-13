@@ -272,6 +272,29 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 			expectedEvents:  []string{"Normal PodDisruptionBudgetUpdated PodDisruptionBudget default/test updated"},
 		},
 		{
+			name: "update succeeds to replace ownerRef kind",
+			existing: []runtime.Object{
+				func() *policyv1beta1.PodDisruptionBudget {
+					pdb := newPDB()
+					pdb.OwnerReferences[0].Kind = "WrongKind"
+					utilruntime.Must(SetHashAnnotation(pdb))
+					return pdb
+				}(),
+			},
+			required: func() *policyv1beta1.PodDisruptionBudget {
+				pdb := newPDB()
+				return pdb
+			}(),
+			expectedPDB: func() *policyv1beta1.PodDisruptionBudget {
+				pdb := newPDB()
+				utilruntime.Must(SetHashAnnotation(pdb))
+				return pdb
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal PodDisruptionBudgetUpdated PodDisruptionBudget default/test updated"},
+		},
+		{
 			name: "update fails if the existing object is owned by someone else",
 			existing: []runtime.Object{
 				func() *policyv1beta1.PodDisruptionBudget {

@@ -51,11 +51,17 @@ func ApplyClusterRole(
 	}
 
 	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
-	if !equality.Semantic.DeepEqual(existingControllerRef, requiredControllerRef) {
-		// This is not the place to handle adoption.
-		err := fmt.Errorf("clusterrole %q isn't controlled by us", naming.ObjRef(requiredCopy))
-		ReportUpdateEvent(recorder, requiredCopy, err)
-		return nil, false, err
+	if existingControllerRef == nil {
+		if !allowMissingControllerRef {
+			klog.V(2).InfoS("ClusterRole isn't controlled by anyone. Waiting for adoption.", "ClusterRole", klog.KObj(requiredCopy))
+			return nil, false, nil
+		}
+	} else {
+		if requiredControllerRef == nil || existingControllerRef.UID != requiredControllerRef.UID {
+			err = fmt.Errorf("clusterrole %q is controlled by someone else", naming.ObjRef(requiredCopy))
+			ReportUpdateEvent(recorder, requiredCopy, err)
+			return nil, false, err
+		}
 	}
 
 	existingHash := existing.Annotations[naming.ManagedHash]
@@ -119,11 +125,17 @@ func ApplyClusterRoleBinding(
 	}
 
 	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
-	if !equality.Semantic.DeepEqual(existingControllerRef, requiredControllerRef) {
-		// This is not the place to handle adoption.
-		err := fmt.Errorf("clusterrolebinding %q isn't controlled by us", naming.ObjRef(requiredCopy))
-		ReportUpdateEvent(recorder, requiredCopy, err)
-		return nil, false, err
+	if existingControllerRef == nil {
+		if !allowMissingControllerRef {
+			klog.V(2).InfoS("ClusterRoleBinding isn't controlled by anyone. Waiting for adoption.", "ClusterRole", klog.KObj(requiredCopy))
+			return nil, false, nil
+		}
+	} else {
+		if requiredControllerRef == nil || existingControllerRef.UID != requiredControllerRef.UID {
+			err = fmt.Errorf("clusterrolebinding %q is controlled by someone else", naming.ObjRef(requiredCopy))
+			ReportUpdateEvent(recorder, requiredCopy, err)
+			return nil, false, err
+		}
 	}
 
 	existingHash := existing.Annotations[naming.ManagedHash]

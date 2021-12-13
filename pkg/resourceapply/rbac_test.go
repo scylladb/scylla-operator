@@ -278,8 +278,8 @@ func TestApplyClusterRole(t *testing.T) {
 			required:                  newCr(),
 			expectedCr:                nil,
 			expectedChanged:           false,
-			expectedErr:               fmt.Errorf(`clusterrole "test" isn't controlled by us`),
-			expectedEvents:            []string{`Warning UpdateClusterRoleFailed Failed to update ClusterRole test: clusterrole "test" isn't controlled by us`},
+			expectedErr:               fmt.Errorf(`clusterrole "test" is controlled by someone else`),
+			expectedEvents:            []string{`Warning UpdateClusterRoleFailed Failed to update ClusterRole test: clusterrole "test" is controlled by someone else`},
 		},
 	}
 
@@ -646,8 +646,8 @@ func TestApplyClusterRoleBinding(t *testing.T) {
 			required:                  newCrb(),
 			expectedCrb:               nil,
 			expectedChanged:           false,
-			expectedErr:               fmt.Errorf(`clusterrolebinding "test" isn't controlled by us`),
-			expectedEvents:            []string{`Warning UpdateClusterRoleBindingFailed Failed to update ClusterRoleBinding test: clusterrolebinding "test" isn't controlled by us`},
+			expectedErr:               fmt.Errorf(`clusterrolebinding "test" is controlled by someone else`),
+			expectedEvents:            []string{`Warning UpdateClusterRoleBindingFailed Failed to update ClusterRoleBinding test: clusterrolebinding "test" is controlled by someone else`},
 		},
 	}
 

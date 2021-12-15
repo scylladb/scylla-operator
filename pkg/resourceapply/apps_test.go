@@ -274,8 +274,8 @@ func TestApplyStatefulSet(t *testing.T) {
 			}(),
 			expectedSts:     nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`statefulset "default/test" isn't controlled by us`),
-			expectedEvents:  []string{`Warning UpdateStatefulSetFailed Failed to update StatefulSet default/test: statefulset "default/test" isn't controlled by us`},
+			expectedErr:     fmt.Errorf(`statefulset "default/test" isn't controlled by anyone, won't adopt it in apply`),
+			expectedEvents:  []string{`Warning UpdateStatefulSetFailed Failed to update StatefulSet default/test: statefulset "default/test" isn't controlled by anyone, won't adopt it in apply`},
 		},
 		{
 			name: "forced update succeeds if the existing object has no ownerRef",
@@ -304,6 +304,29 @@ func TestApplyStatefulSet(t *testing.T) {
 			expectedEvents:  []string{"Normal StatefulSetUpdated StatefulSet default/test updated"},
 		},
 		{
+			name: "update succeeds to replace ownerRef kind",
+			existing: []runtime.Object{
+				func() *appsv1.StatefulSet {
+					sts := newSts()
+					sts.OwnerReferences[0].Kind = "WrongKind"
+					utilruntime.Must(SetHashAnnotation(sts))
+					return sts
+				}(),
+			},
+			required: func() *appsv1.StatefulSet {
+				sts := newSts()
+				return sts
+			}(),
+			expectedSts: func() *appsv1.StatefulSet {
+				sts := newSts()
+				utilruntime.Must(SetHashAnnotation(sts))
+				return sts
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal StatefulSetUpdated StatefulSet default/test updated"},
+		},
+		{
 			name: "update fails if the existing object is owned by someone else",
 			existing: []runtime.Object{
 				func() *appsv1.StatefulSet {
@@ -320,8 +343,8 @@ func TestApplyStatefulSet(t *testing.T) {
 			}(),
 			expectedSts:     nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`statefulset "default/test" isn't controlled by us`),
-			expectedEvents:  []string{`Warning UpdateStatefulSetFailed Failed to update StatefulSet default/test: statefulset "default/test" isn't controlled by us`},
+			expectedErr:     fmt.Errorf(`statefulset "default/test" is controlled by someone else`),
+			expectedEvents:  []string{`Warning UpdateStatefulSetFailed Failed to update StatefulSet default/test: statefulset "default/test" is controlled by someone else`},
 		},
 		{
 			name: "forced update fails if the existing object is owned by someone else",
@@ -341,8 +364,8 @@ func TestApplyStatefulSet(t *testing.T) {
 			forceOwnership:  true,
 			expectedSts:     nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`statefulset "default/test" isn't controlled by us`),
-			expectedEvents:  []string{`Warning UpdateStatefulSetFailed Failed to update StatefulSet default/test: statefulset "default/test" isn't controlled by us`},
+			expectedErr:     fmt.Errorf(`statefulset "default/test" is controlled by someone else`),
+			expectedEvents:  []string{`Warning UpdateStatefulSetFailed Failed to update StatefulSet default/test: statefulset "default/test" is controlled by someone else`},
 		},
 	}
 
@@ -445,7 +468,7 @@ func TestApplyStatefulSet(t *testing.T) {
 
 func TestApplyDaemonSet(t *testing.T) {
 	// Using a generating function prevents unwanted mutations.
-	newDs := func() *appsv1.DaemonSet {
+	newDS := func() *appsv1.DaemonSet {
 		return &appsv1.DaemonSet{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "default",
@@ -482,7 +505,7 @@ func TestApplyDaemonSet(t *testing.T) {
 	}
 
 	newDsWithHash := func() *appsv1.DaemonSet {
-		ds := newDs()
+		ds := newDS()
 		utilruntime.Must(SetHashAnnotation(ds))
 		return ds
 	}
@@ -500,7 +523,7 @@ func TestApplyDaemonSet(t *testing.T) {
 		{
 			name:              "creates a new ds when there is none",
 			existing:          nil,
-			required:          newDs(),
+			required:          newDS(),
 			expectedDaemonSet: newDsWithHash(),
 			expectedChanged:   true,
 			expectedErr:       nil,
@@ -511,7 +534,7 @@ func TestApplyDaemonSet(t *testing.T) {
 			existing: []runtime.Object{
 				newDsWithHash(),
 			},
-			required:          newDs(),
+			required:          newDS(),
 			expectedDaemonSet: newDsWithHash(),
 			expectedChanged:   false,
 			expectedErr:       nil,
@@ -531,9 +554,9 @@ func TestApplyDaemonSet(t *testing.T) {
 		{
 			name: "updates the ds if it exists without the hash",
 			existing: []runtime.Object{
-				newDs(),
+				newDS(),
 			},
-			required:          newDs(),
+			required:          newDS(),
 			expectedDaemonSet: newDsWithHash(),
 			expectedChanged:   true,
 			expectedErr:       nil,
@@ -543,7 +566,7 @@ func TestApplyDaemonSet(t *testing.T) {
 			name:     "fails to create the ds without a controllerRef",
 			existing: nil,
 			required: func() *appsv1.DaemonSet {
-				ds := newDs()
+				ds := newDS()
 				ds.OwnerReferences = nil
 				return ds
 			}(),
@@ -555,15 +578,15 @@ func TestApplyDaemonSet(t *testing.T) {
 		{
 			name: "updates the sts if template differ",
 			existing: []runtime.Object{
-				newDs(),
+				newDS(),
 			},
 			required: func() *appsv1.DaemonSet {
-				ds := newDs()
+				ds := newDS()
 				ds.Spec.Template.Spec.Containers[0].Image = "differentimage:latest"
 				return ds
 			}(),
 			expectedDaemonSet: func() *appsv1.DaemonSet {
-				ds := newDs()
+				ds := newDS()
 				ds.Spec.Template.Spec.Containers[0].Image = "differentimage:latest"
 				utilruntime.Must(SetHashAnnotation(ds))
 				return ds
@@ -578,12 +601,12 @@ func TestApplyDaemonSet(t *testing.T) {
 				newDsWithHash(),
 			},
 			required: func() *appsv1.DaemonSet {
-				ds := newDs()
+				ds := newDS()
 				ds.Labels["foo"] = "bar"
 				return ds
 			}(),
 			expectedDaemonSet: func() *appsv1.DaemonSet {
-				ds := newDs()
+				ds := newDS()
 				ds.Labels["foo"] = "bar"
 				utilruntime.Must(SetHashAnnotation(ds))
 				return ds
@@ -602,7 +625,7 @@ func TestApplyDaemonSet(t *testing.T) {
 					return ds
 				}(),
 			},
-			required: newDs(),
+			required: newDS(),
 			expectedDaemonSet: func() *appsv1.DaemonSet {
 				ds := newDsWithHash()
 				// Simulate admission by changing a value after the hash is computed.
@@ -624,13 +647,13 @@ func TestApplyDaemonSet(t *testing.T) {
 				}(),
 			},
 			required: func() *appsv1.DaemonSet {
-				ds := newDs()
+				ds := newDS()
 				ds.ResourceVersion = ""
 				ds.Spec.Template.Spec.Containers[0].Image += "-rc.0"
 				return ds
 			}(),
 			expectedDaemonSet: func() *appsv1.DaemonSet {
-				ds := newDs()
+				ds := newDS()
 				ds.ResourceVersion = "21"
 				ds.Spec.Template.Spec.Containers[0].Image += "-rc.0"
 				utilruntime.Must(SetHashAnnotation(ds))
@@ -647,7 +670,7 @@ func TestApplyDaemonSet(t *testing.T) {
 				newDsWithHash(),
 			},
 			required: func() *appsv1.DaemonSet {
-				ds := newDs()
+				ds := newDS()
 				ds.Spec.Template.Spec.Containers[0].Image += "-rc.0"
 				return ds
 			}(),
@@ -660,14 +683,14 @@ func TestApplyDaemonSet(t *testing.T) {
 			name: "update fails if the existing object has no ownerRef",
 			existing: []runtime.Object{
 				func() *appsv1.DaemonSet {
-					sts := newDs()
+					sts := newDS()
 					sts.OwnerReferences = nil
 					utilruntime.Must(SetHashAnnotation(sts))
 					return sts
 				}(),
 			},
 			required: func() *appsv1.DaemonSet {
-				ds := newDs()
+				ds := newDS()
 				ds.Spec.Template.Spec.Containers[0].Image += "-rc.0"
 				return ds
 			}(),
@@ -677,17 +700,40 @@ func TestApplyDaemonSet(t *testing.T) {
 			expectedEvents:    []string{`Warning UpdateDaemonSetFailed Failed to update DaemonSet default/test: daemonset "default/test" isn't controlled by us`},
 		},
 		{
+			name: "update succeeds to replace ownerRef kind",
+			existing: []runtime.Object{
+				func() *appsv1.DaemonSet {
+					ds := newDS()
+					ds.OwnerReferences[0].Kind = "WrongKind"
+					utilruntime.Must(SetHashAnnotation(ds))
+					return ds
+				}(),
+			},
+			required: func() *appsv1.DaemonSet {
+				ds := newDS()
+				return ds
+			}(),
+			expectedDaemonSet: func() *appsv1.DaemonSet {
+				ds := newDS()
+				utilruntime.Must(SetHashAnnotation(ds))
+				return ds
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal DaemonSetUpdated DaemonSet default/test updated"},
+		},
+		{
 			name: "update fails if the existing object is owned by someone else",
 			existing: []runtime.Object{
 				func() *appsv1.DaemonSet {
-					ds := newDs()
+					ds := newDS()
 					ds.OwnerReferences[0].UID = "42"
 					utilruntime.Must(SetHashAnnotation(ds))
 					return ds
 				}(),
 			},
 			required: func() *appsv1.DaemonSet {
-				ds := newDs()
+				ds := newDS()
 				ds.Spec.Template.Spec.Containers[0].Image += "-rc.0"
 				return ds
 			}(),

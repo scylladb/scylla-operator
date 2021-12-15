@@ -276,6 +276,29 @@ func TestApplyService(t *testing.T) {
 			expectedEvents:  []string{"Normal ServiceUpdated Service default/test updated"},
 		},
 		{
+			name: "update succeeds to replace ownerRef kind",
+			existing: []runtime.Object{
+				func() *corev1.Service {
+					svc := newService()
+					svc.OwnerReferences[0].Kind = "WrongKind"
+					utilruntime.Must(SetHashAnnotation(svc))
+					return svc
+				}(),
+			},
+			required: func() *corev1.Service {
+				svc := newService()
+				return svc
+			}(),
+			expectedService: func() *corev1.Service {
+				svc := newService()
+				utilruntime.Must(SetHashAnnotation(svc))
+				return svc
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal ServiceUpdated Service default/test updated"},
+		},
+		{
 			name: "update fails if the existing object is owned by someone else",
 			existing: []runtime.Object{
 				func() *corev1.Service {
@@ -618,10 +641,10 @@ func TestApplySecret(t *testing.T) {
 			name: "update fails if the existing object has no ownerRef",
 			existing: []runtime.Object{
 				func() *corev1.Secret {
-					sts := newSecret()
-					sts.OwnerReferences = nil
-					utilruntime.Must(SetHashAnnotation(sts))
-					return sts
+					secret := newSecret()
+					secret.OwnerReferences = nil
+					utilruntime.Must(SetHashAnnotation(secret))
+					return secret
 				}(),
 			},
 			required: func() *corev1.Secret {
@@ -638,10 +661,10 @@ func TestApplySecret(t *testing.T) {
 			name: "forced update succeeds if the existing object has no ownerRef",
 			existing: []runtime.Object{
 				func() *corev1.Secret {
-					sts := newSecret()
-					sts.OwnerReferences = nil
-					utilruntime.Must(SetHashAnnotation(sts))
-					return sts
+					secret := newSecret()
+					secret.OwnerReferences = nil
+					utilruntime.Must(SetHashAnnotation(secret))
+					return secret
 				}(),
 			},
 			required: func() *corev1.Secret {
@@ -653,6 +676,29 @@ func TestApplySecret(t *testing.T) {
 			expectedSecret: func() *corev1.Secret {
 				secret := newSecret()
 				secret.Labels["foo"] = "bar"
+				utilruntime.Must(SetHashAnnotation(secret))
+				return secret
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal SecretUpdated Secret default/test updated"},
+		},
+		{
+			name: "update succeeds to replace ownerRef kind",
+			existing: []runtime.Object{
+				func() *corev1.Secret {
+					secret := newSecret()
+					secret.OwnerReferences[0].Kind = "WrongKind"
+					utilruntime.Must(SetHashAnnotation(secret))
+					return secret
+				}(),
+			},
+			required: func() *corev1.Secret {
+				secret := newSecret()
+				return secret
+			}(),
+			expectedSecret: func() *corev1.Secret {
+				secret := newSecret()
 				utilruntime.Must(SetHashAnnotation(secret))
 				return secret
 			}(),
@@ -1327,10 +1373,10 @@ func TestApplyConfigMap(t *testing.T) {
 			name: "update fails if the existing object has no ownerRef",
 			existing: []runtime.Object{
 				func() *corev1.ConfigMap {
-					sts := newConfigMap()
-					sts.OwnerReferences = nil
-					utilruntime.Must(SetHashAnnotation(sts))
-					return sts
+					cm := newConfigMap()
+					cm.OwnerReferences = nil
+					utilruntime.Must(SetHashAnnotation(cm))
+					return cm
 				}(),
 			},
 			required: func() *corev1.ConfigMap {
@@ -1342,6 +1388,29 @@ func TestApplyConfigMap(t *testing.T) {
 			expectedChanged: false,
 			expectedErr:     fmt.Errorf(`configmap "default/test" isn't controlled by us`),
 			expectedEvents:  []string{`Warning UpdateConfigMapFailed Failed to update ConfigMap default/test: configmap "default/test" isn't controlled by us`},
+		},
+		{
+			name: "update succeeds to replace ownerRef kind",
+			existing: []runtime.Object{
+				func() *corev1.ConfigMap {
+					cm := newConfigMap()
+					cm.OwnerReferences[0].Kind = "WrongKind"
+					utilruntime.Must(SetHashAnnotation(cm))
+					return cm
+				}(),
+			},
+			required: func() *corev1.ConfigMap {
+				cm := newConfigMap()
+				return cm
+			}(),
+			expectedCM: func() *corev1.ConfigMap {
+				cm := newConfigMap()
+				utilruntime.Must(SetHashAnnotation(cm))
+				return cm
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal ConfigMapUpdated ConfigMap default/test updated"},
 		},
 		{
 			name: "update fails if the existing object is owned by someone else",

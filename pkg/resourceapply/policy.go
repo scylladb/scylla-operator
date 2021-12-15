@@ -8,7 +8,6 @@ import (
 
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	policyv1beta1client "k8s.io/client-go/kubernetes/typed/policy/v1beta1"
@@ -55,7 +54,7 @@ func ApplyPodDisruptionBudget(
 	}
 
 	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
-	if !equality.Semantic.DeepEqual(existingControllerRef, requiredControllerRef) {
+	if existingControllerRef == nil || existingControllerRef.UID != requiredControllerRef.UID {
 		if existingControllerRef == nil && forceOwnership {
 			klog.V(2).InfoS("Forcing apply to claim the PodDisruptionBudget", "PodDisruptionBudget", naming.ObjRef(requiredCopy))
 		} else {

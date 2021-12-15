@@ -53,7 +53,7 @@ func ApplyService(
 	}
 
 	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
-	if !equality.Semantic.DeepEqual(existingControllerRef, requiredControllerRef) {
+	if existingControllerRef == nil || existingControllerRef.UID != requiredControllerRef.UID {
 		if existingControllerRef == nil && forceOwnership {
 			klog.V(2).InfoS("Forcing apply to claim the Service", "Service", naming.ObjRef(requiredCopy))
 		} else {
@@ -124,7 +124,7 @@ func ApplySecret(
 	}
 
 	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
-	if !equality.Semantic.DeepEqual(existingControllerRef, requiredControllerRef) {
+	if existingControllerRef == nil || existingControllerRef.UID != requiredControllerRef.UID {
 		if existingControllerRef == nil && forceOwnership {
 			klog.V(2).InfoS("Forcing apply to claim the Secret", "Secret", naming.ObjRef(requiredCopy))
 		} else {
@@ -188,7 +188,7 @@ func ApplyConfigMap(
 	}
 
 	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
-	if !equality.Semantic.DeepEqual(existingControllerRef, requiredControllerRef) {
+	if existingControllerRef == nil || existingControllerRef.UID != requiredControllerRef.UID {
 		// This is not the place to handle adoption.
 		err := fmt.Errorf("configmap %q isn't controlled by us", naming.ObjRef(requiredCopy))
 		ReportUpdateEvent(recorder, requiredCopy, err)

@@ -366,8 +366,9 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								// TODO: Lower the timeout when we fix probes. We have temporarily changed them from 5s
 								// to 30s to survive cluster overload.
 								// Relevant issue: https://github.com/scylladb/scylla-operator/issues/844
-								TimeoutSeconds: int32(30),
-								PeriodSeconds:  int32(10),
+								TimeoutSeconds:   int32(30),
+								FailureThreshold: int32(1),
+								PeriodSeconds:    int32(10),
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Port: intstr.FromInt(naming.ProbePort),

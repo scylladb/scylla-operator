@@ -1,4 +1,4 @@
-### Automatic cleanup and replacement in case when k8s node is lost
+# Automatic cleanup and replacement in case when k8s node is lost
 
 In case when your k8s cluster loses one of the nodes due to incident or explicit removal, Scylla Pods may become unschedulable due to PVC node affinity.
 

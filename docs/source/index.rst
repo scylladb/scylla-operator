@@ -53,7 +53,7 @@ Currently it supports:
 * :doc:`Deploying Scylla Manager on a Kubernetes Cluster <manager>`
 * :doc:`Deploying Scylla stack using Helm Charts <helm>`
 * :doc:`Setting up Monitoring using Prometheus and Grafana <monitoring>`
-* :doc:`Node operations <node_operations>`
+* :doc:`Node operations <nodeoperations/index>`
 * :doc:`Performance tuning [Experimental] <performance>`
 * :doc:`Upgrade procedures <upgrade>`
 * :doc:`Releases <releases>`

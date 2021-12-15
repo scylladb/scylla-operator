@@ -5,8 +5,13 @@ package utils
 import "time"
 
 const (
-	memberRolloutTimeout = 3 * time.Minute
-	baseRolloutTimout    = 30 * time.Second
+	baseRolloutTimout  = 30 * time.Second
+	imagePullTimeout   = 4 * time.Minute
+	joinClusterTimeout = 3 * time.Minute
+
+	// memberRolloutTimeout is the maximum amount of time it takes to start a scylla pod and become ready.
+	// It includes the time to pull the images, copy the necessary files (sidecar), join the cluster and similar.
+	memberRolloutTimeout = 30*time.Second + imagePullTimeout + joinClusterTimeout
 
 	baseManagerSyncTimeout = 3 * time.Minute
 	managerTaskSyncTimeout = 30 * time.Second

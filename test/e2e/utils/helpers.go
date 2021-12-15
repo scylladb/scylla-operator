@@ -37,10 +37,6 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func rolloutTimeoutForScyllaCluster(sc *scyllav1.ScyllaCluster) time.Duration {
-	return baseRolloutTimout + time.Duration(int32(len(sc.Spec.Datacenter.Racks))*GetMemberCount(sc))*memberRolloutTimeout
-}
-
 func IsNodeConfigRolledOut(nc *scyllav1alpha1.NodeConfig) (bool, error) {
 	cond := controllerhelpers.FindNodeConfigCondition(nc.Status.Conditions, scyllav1alpha1.NodeConfigReconciledConditionType)
 	return nc.Status.ObservedGeneration >= nc.Generation &&

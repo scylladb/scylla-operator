@@ -585,8 +585,9 @@ func TestStatefulSetForRack(t *testing.T) {
 									},
 								},
 								ReadinessProbe: &corev1.Probe{
-									TimeoutSeconds: int32(30),
-									PeriodSeconds:  int32(10),
+									TimeoutSeconds:   int32(30),
+									FailureThreshold: int32(1),
+									PeriodSeconds:    int32(10),
 									Handler: corev1.Handler{
 										HTTPGet: &corev1.HTTPGetAction{
 											Port: intstr.FromInt(8080),

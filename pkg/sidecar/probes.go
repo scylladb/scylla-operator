@@ -82,7 +82,7 @@ func (p *Prober) Readyz(w http.ResponseWriter, req *http.Request) {
 	underMaintenance, err := p.isNodeUnderMaintenance()
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		klog.ErrorS(err, "healthz probe: can't look up service maintenance label", "Service", p.serviceRef())
+		klog.ErrorS(err, "readyz probe: can't look up service maintenance label", "Service", p.serviceRef())
 		return
 	}
 
@@ -166,10 +166,10 @@ func (p *Prober) Healthz(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Check if JMX is reachable
+	// Check if Scylla is reachable
 	_, err = scyllaClient.Ping(context.Background(), host.String())
 	if err != nil {
-		klog.ErrorS(err, "healthz probe: can't connect to JMX", "Service", p.serviceRef())
+		klog.ErrorS(err, "healthz probe: can't connect to Scylla", "Service", p.serviceRef())
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}

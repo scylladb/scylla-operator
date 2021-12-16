@@ -1,0 +1,27 @@
+name: "Build documentation and upload artifacts"
+description: 'Builds the docs and uploads artifacts'
+runs:
+  using: "composite"
+  steps:
+  - name: Build docs
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      make -C ./docs/ multiversion SPHINXOPTS="--keep-going"
+      
+      if [[ ! -d ./docs/_build ]]; then
+        echo "docs dir not found"
+        exit 1
+      fi
+      
+      tar -cJf ~/docs.tar.xz -C ./docs/_build .
+
+  - name: Upload docs artifact
+    uses: actions/upload-artifact@v2
+    with:
+      name: docs.tar.xz
+      path: ~/docs.tar.xz
+      if-no-files-found: error
+      retention-days: ${{ env.retention_days }}

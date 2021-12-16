@@ -1,0 +1,26 @@
+name: "Setup Documentation Essentials"
+description: 'Sets up dependencies for building the docs'
+runs:
+  using: "composite"
+  steps:
+  - name: Set up Python
+    uses: actions/setup-python@v1
+    with:
+      python-version: 3.7
+
+  - name: Set up Poetry
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      ./docs/hack/install-poetry.sh
+
+  - name: Install dependencies
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      pushd ./docs/
+      ~/.poetry/bin/poetry install

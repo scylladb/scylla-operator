@@ -29,6 +29,7 @@ on:
 
 env:
   go_version: 1.17.5
+  log_level: 4
   GOPATH: ${{ github.workspace }}/go
   git_repo_path: ${{ github.workspace }}/go/src/github.com/scylladb/scylla-operator
   image_repo_ref: docker.io/scylladb/scylla-operator
@@ -200,7 +201,7 @@ jobs:
     - name: Deploy scylla-operator
       run: |
         set -x
-        timeout 10m ./hack/ci-deploy.sh '${{ env.image_repo_ref }}:ci'
+        timeout 10m ./hack/ci-deploy.sh '${{ env.image_repo_ref }}:ci' '${{ env.log_level }}'
         kubectl get pods -A
     - name: Tolerate flakes on promotion jobs
       if: ${{ github.event_name != 'pull_request' }}
@@ -225,7 +226,8 @@ jobs:
         run all \
         --artifacts-dir="${ARTIFACTS_DIR}" \
         --flake-attempts="${flake_attempts}" \
-        --timeout="${e2e_timeout_minutes}m"
+        --timeout="${e2e_timeout_minutes}m" \
+        --loglevel="${log_level}"
     - name: Dump cluster state
       if: ${{ always() }}
       working-directory: ${{ runner.temp }}

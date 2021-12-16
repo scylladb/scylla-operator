@@ -30,6 +30,7 @@ function kubectl_create {
 
 ARTIFACTS_DIR=${ARTIFACTS_DIR:-$( mktemp -d )}
 OPERATOR_IMAGE_REF=${1}
+LOG_LEVEL="${2:-2}"
 
 deploy_dir=${ARTIFACTS_DIR}/deploy
 mkdir -p "${deploy_dir}/"{operator,manager}
@@ -40,6 +41,7 @@ cp ./examples/common/cert-manager.yaml "${deploy_dir}/"
 
 for f in $( find "${deploy_dir}"/ -type f -name '*.yaml' ); do
     sed -i -E -e "s~docker.io/scylladb/scylla-operator(:|@sha256:)[^ ]*~${OPERATOR_IMAGE_REF}~" "${f}"
+    sed -i -E -e "s~--loglevel=[0-9]+~--loglevel=${LOG_LEVEL}~" "${f}"
 done
 
 kubectl_create -f "${deploy_dir}"/cert-manager.yaml

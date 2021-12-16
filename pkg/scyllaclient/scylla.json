@@ -12618,6 +12618,33 @@
         "security": []
       }
     },
+    "/system/uptime_ms": {
+      "get": {
+        "description": "Get system uptime, in milliseconds",
+        "summary": "get_system_uptime_ms",
+        "operationId": "SystemUptimeMsGet",
+        "deprecated": false,
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "number"
+            },
+            "headers": {}
+          },
+          "default": {
+            "description": "internal server error",
+            "schema": {
+              "$ref": "#/definitions/ErrorModel"
+            }
+          }
+        },
+        "security": []
+      }
+    },
     "/system/logger/{name}": {
       "get": {
         "description": "Get logger level",

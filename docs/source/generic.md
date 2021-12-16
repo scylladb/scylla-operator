@@ -153,12 +153,9 @@ In order to support this, the Scylla Operator defines a cluster property `sysctl
 ___For example___: To increase the number events available for asynchronous IO processing in the Linux kernel to N set sysctls to`fs.aio-max-nr=N`.
 
 ```yaml
-racks:
-  - name: rack-name
-    scyllaConfig: "scylla-config"
-    scyllaAgentConfig: "scylla-agent-config"
-    sysctls:
-      - "fs.aio-max-nr=2097152"
+spec:
+  sysctls:
+  - "fs.aio-max-nr=2097152"
 ```
 
 ### Deploying Alternator

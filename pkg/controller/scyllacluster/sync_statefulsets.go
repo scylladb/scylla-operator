@@ -18,6 +18,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -279,6 +280,24 @@ func (scc *Controller) beforeNodeUpgrade(ctx context.Context, sc *scyllav1.Scyll
 	)
 	if err != nil {
 		return true, err
+	}
+
+	// Because we've drained the node, it can never come back to being ready. Unfortunately, there is a bug in Kubernetes
+	// StatefulSet controller that won't update a broken StatefulSet, so we need to delete the pod manually.
+	// https://github.com/kubernetes/kubernetes/issues/67250
+	// Kubernetes can't evict pods when DesiredHealthy == 0 and it's already down, so we need to use DELETE
+	// to succeed even when having just one replica.
+	podName := svcName
+	klog.V(2).InfoS("Deleting Pod", "ScyllaCluster", klog.KObj(sc), "Pod", naming.ManualRef(sc.Namespace, podName))
+	err = scc.kubeClient.CoreV1().Pods(sc.Namespace).Delete(ctx, podName, metav1.DeleteOptions{})
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return true, fmt.Errorf("can't delete pod %q: %w", naming.ManualRef(sc.Namespace, podName), err)
+		}
+
+		klog.V(3).InfoS("Pod already deleted", "ScyllaCluster", klog.KObj(sc), "Pod", naming.ManualRef(sc.Namespace, podName))
+	} else {
+		klog.V(2).InfoS("Pod deleted", "ScyllaCluster", klog.KObj(sc), "Pod", naming.ManualRef(sc.Namespace, podName))
 	}
 
 	return true, nil

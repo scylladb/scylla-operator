@@ -397,6 +397,13 @@ define set-default-app-version
 	$(YQ) eval -i -P '.appVersion = "$(2)"' '$(1)'/Chart.yaml
 endef
 
+# $1 - file path
+# $2 - container name
+# $3 - target image ref
+define replace-template-container-image-ref
+	$(YQ) eval -i '(.spec.template.spec.containers[]|select(.name == "$(2)").image) |= "$(3)"' $(1)
+endef
+
 update-helm-charts:
 	$(call set-default-app-version,helm/scylla-operator,$(IMAGE_TAG))
 	$(call set-default-app-version,helm/scylla-manager,$(IMAGE_TAG))
@@ -458,10 +465,21 @@ verify-example-manager:
 	$(diff) '$(tmp_file)' examples/common/manager.yaml || (echo 'Manager example is not up-to date. Please run `make update-examples-manager` to update it.' && false)
 .PHONY: verify-example-manager
 
-update-examples: update-examples-manager update-examples-operator
+update-example-xfs-formatter:
+	$(call replace-template-container-image-ref,examples/gke/xfs-formatter-daemonset.yaml,xfs-formatter,$(IMAGE_REF))
+.PHONY: update-example-xfs-formatter
+
+verify-example-xfs-formatter: tmp_dir :=$(shell mktemp -d)
+verify-example-xfs-formatter:
+	cp examples/gke/xfs-formatter-daemonset.yaml $(tmp_dir)/xfs-formatter-daemonset.yaml
+	$(call replace-template-container-image-ref,$(tmp_dir)/xfs-formatter-daemonset.yaml,xfs-formatter,$(IMAGE_REF))
+	$(diff) '$(tmp_dir)/xfs-formatter-daemonset.yaml' examples/gke/xfs-formatter-daemonset.yaml || (echo 'xfs-formatter example is not up-to date. Please run `make update-example-xfs-formatter` to update it.' && false)
+.PHONY: verify-example-xfs-formatter
+
+update-examples: update-examples-manager update-examples-operator update-example-xfs-formatter
 .PHONY: update-examples
 
-verify-examples: verify-example-manager verify-example-operator
+verify-examples: verify-example-manager verify-example-operator verify-example-xfs-formatter
 .PHONY: verify-examples
 
 verify-links:
@@ -494,11 +512,12 @@ test-e2e:
 	$(GO) run ./cmd/scylla-operator-tests run $(GO_TEST_E2E_EXTRA_ARGS)
 .PHONY: test-e2e
 
-test-version-script:
+test-scripts:
 	./hack/lib/tag-from-gh-ref.sh
-.PHONY: test-version-script
+	./hack/test/gke/xfs-formatter/tune2fs_test.sh
+.PHONY: test-scripts
 
-test: test-unit test-version-script
+test: test-unit test-scripts
 .PHONY: test
 
 help:

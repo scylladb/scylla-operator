@@ -55,25 +55,21 @@ kubeletConfig:
 
 Then we'll create a GKE cluster with the following:
 
-1. A NodePool of 4 `n1-standard-32` Nodes, where the Scylla Pods will be deployed. Each of these Nodes has 8 local SSDs attached, which will later be combined into a RAID0 array. It is important to disable `autoupgrade` and `autorepair`, since they increase the frequency of loss of data on local SSDs.
-
-    ```
-    gcloud container --project "${GCP_PROJECT}" \
-    clusters create "${CLUSTER_NAME}" --username "admin" \
-    --zone "${GCP_ZONE}" \
-    --cluster-version "${CLUSTER_VERSION}" \
-    --node-version "${CLUSTER_VERSION}" \
-    --machine-type "n1-standard-32" \
-    --num-nodes "4" \
-    --disk-type "pd-ssd" --disk-size "20" \
-    --local-ssd-count "8" \
-    --node-taints role=scylla-clusters:NoSchedule \
-    --image-type "UBUNTU_CONTAINERD" \
-    --system-config-from-file=systemconfig.yaml \
-    --enable-stackdriver-kubernetes \
-    --no-enable-autoupgrade \
-    --no-enable-autorepair
-    ```
+1. A NodePool of 2 `n1-standard-8` Nodes, where the operator and the monitoring stack will be deployed. These are generic Nodes and their free capacity can be used for other purposes. 
+   ```
+   gcloud container \
+   clusters create "${CLUSTER_NAME}" \
+   --cluster-version "${CLUSTER_VERSION}" \
+   --node-version "${CLUSTER_VERSION}" \
+   --machine-type "n1-standard-8" \
+   --num-nodes "2" \
+   --disk-type "pd-ssd" --disk-size "20" \
+   --image-type "UBUNTU_CONTAINERD" \
+   --system-config-from-file=systemconfig.yaml \
+   --enable-stackdriver-kubernetes \
+   --no-enable-autoupgrade \
+   --no-enable-autorepair
+   ```
 
 2. A NodePool of 2 `n1-standard-32` Nodes to deploy `cassandra-stress` later on.
 
@@ -91,21 +87,23 @@ Then we'll create a GKE cluster with the following:
     --no-enable-autoupgrade \
     --no-enable-autorepair
     ```
-
-3. A NodePool of 1 `n1-standard-8` Node, where the operator and the monitoring stack will be deployed.
-    ```
-    gcloud container --project "${GCP_PROJECT}" \
-    node-pools create "operator-pool" \
-    --cluster "${CLUSTER_NAME}" \
-    --zone "${GCP_ZONE}" \
-    --node-version "${CLUSTER_VERSION}" \
-    --machine-type "n1-standard-8" \
-    --num-nodes "1" \
-    --disk-type "pd-ssd" --disk-size "20" \
-    --image-type "UBUNTU_CONTAINERD" \
-    --no-enable-autoupgrade \
-    --no-enable-autorepair
-    ```
+   
+3. A NodePool of 4 `n1-standard-32` Nodes, where the Scylla Pods will be deployed. Each of these Nodes has 8 local SSDs attached, which are combined into a RAID0 array by using gcloud beta feature `ephemeral-storage`. It is important to disable `autoupgrade` and `autorepair`. Automatic cluster upgrade or node repair has a hard timeout after which it no longer respect PDBs and force deletes the Compute Engine instances, which also deletes all data on the local SSDs. At this point, it's better to handle upgrades manually, with more control over the process and error handling.
+   ```
+   gcloud beta container \
+   node-pools create "scylla-pool" \
+   --cluster "${CLUSTER_NAME}" \
+   --node-version "${CLUSTER_VERSION}" \
+   --machine-type "n1-standard-32" \
+   --num-nodes "4" \
+   --disk-type "pd-ssd" --disk-size "20" \
+   --ephemeral-storage local-ssd-count="8" \
+   --node-taints role=scylla-clusters:NoSchedule \
+   --node-labels scylla.scylladb.com/gke-ephemeral-storage-local-ssd=true \
+   --image-type "UBUNTU_CONTAINERD" \
+   --no-enable-autoupgrade \
+   --no-enable-autorepair
+   ```
 
 #### Setting Yourself as `cluster-admin`
 > (By default GKE doesn't give you the necessary RBAC permissions)
@@ -129,17 +127,19 @@ kubectl create clusterrolebinding cluster-admin-binding --clusterrole cluster-ad
 
 If you don't have Helm installed, Go to the [helm docs](https://docs.helm.sh/using_helm/#installing-helm) to get the binary for your distro.
 
-#### Install RAID DaemonSet
+#### Install xfs-formatter DaemonSet
 
-To combine the local disks together in RAID0 arrays, we deploy a DaemonSet to do the work for us.
+To run Scylla, it is necessary to convert ephemeral storage's filesystem to `xfs`. Deploy the `xfs-formatter` DaemonSet to have it taken care of.
+Unfortunately, GKE is only able to provision the ephemeral storage with `ext4` filesystem while Scylla requires `xfs` filesystem. Deploying the `xfs-format` DaemonSet will format the storage as `xfs` and prevent GKE from reformatting it back to `ext4`.
 
+Note that despite our best efforts, this solution is only a workaround. Its robustness depends on GKE's disk formatting logic remaining unchanged, for which there is no guarantee.
 ```
-kubectl apply -f examples/gke/raid-daemonset.yaml
+kubectl apply -f examples/gke/xfs-formatter-daemonset.yaml
 ```
 
 #### Install the local provisioner
 
-After combining the local SSDs into RAID0 arrays, we deploy the local volume provisioner, which will discover their mount points and make them available as PersistentVolumes.
+Afterwards, deploy the local volume provisioner, which will discover the RAID0 arrays' mount points and make them available as PersistentVolumes.
 ```
 helm install local-provisioner examples/common/provisioner
 ```

@@ -1,0 +1,10 @@
+[Unit]
+Description=Service converting ephemeral storage to xfs
+
+[Service]
+Type=oneshot
+Environment=RAID_DEVICE_FILE=/tmp/xfs-formatter.raid-device
+ExecCondition=/var/lib/xfs-formatter/xfs-checker.sh
+ExecStart=/var/lib/xfs-formatter/xfs-formatter.sh
+ExecStartPost=/usr/bin/rm -f "${RAID_DEVICE_FILE}"
+ExecStartPost=/usr/sbin/reboot

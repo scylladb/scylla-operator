@@ -139,6 +139,9 @@ func (p *Prober) Readyz(w http.ResponseWriter, req *http.Request) {
 }
 
 func (p *Prober) Healthz(w http.ResponseWriter, req *http.Request) {
+	ctx, cancel := context.WithCancel(req.Context())
+	defer cancel()
+
 	underMaintenance, err := p.isNodeUnderMaintenance()
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
@@ -167,7 +170,7 @@ func (p *Prober) Healthz(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Check if Scylla is reachable
-	_, err = scyllaClient.Ping(context.Background(), host.String())
+	_, err = scyllaClient.Ping(ctx, host.String())
 	if err != nil {
 		klog.ErrorS(err, "healthz probe: can't connect to Scylla", "Service", p.serviceRef())
 		w.WriteHeader(http.StatusServiceUnavailable)

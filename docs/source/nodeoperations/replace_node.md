@@ -1,6 +1,6 @@
 # Replacing a Scylla node
 
-### Replacing a dead node
+## Replacing a dead node
 In the case of a host failure, it may not be possible to bring back the node to life.
 
 Replace dead node operation will cause the other nodes in the cluster to stream data to the node that was replaced.

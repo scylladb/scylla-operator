@@ -13839,6 +13839,41 @@ func (a *Client) SystemLoggerPost(params *SystemLoggerPostParams) (*SystemLogger
 	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
 }
 
+/*
+SystemUptimeMsGet gets system uptime ms
+
+Get system uptime, in milliseconds
+*/
+func (a *Client) SystemUptimeMsGet(params *SystemUptimeMsGetParams) (*SystemUptimeMsGetOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewSystemUptimeMsGetParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "SystemUptimeMsGet",
+		Method:             "GET",
+		PathPattern:        "/system/uptime_ms",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &SystemUptimeMsGetReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*SystemUptimeMsGetOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	unexpectedSuccess := result.(*SystemUptimeMsGetDefault)
+	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
+}
+
 // SetTransport changes the transport on the client
 func (a *Client) SetTransport(transport runtime.ClientTransport) {
 	a.transport = transport

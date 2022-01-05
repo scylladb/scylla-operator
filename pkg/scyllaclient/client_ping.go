@@ -213,7 +213,7 @@ func (c *Client) newURL(host, path string) url.URL {
 }
 
 func (c *Client) ping(ctx context.Context, host string) error {
-	_, err := c.scyllaOps.StorageServiceScyllaReleaseVersionGet(&scyllaOperations.StorageServiceScyllaReleaseVersionGetParams{
+	_, err := c.scyllaOps.SystemUptimeMsGet(&scyllaOperations.SystemUptimeMsGetParams{
 		Context: forceHost(ctx, host),
 	})
 	if err != nil {

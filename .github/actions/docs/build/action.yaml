@@ -1,5 +1,9 @@
 name: "Build documentation and upload artifacts"
-description: 'Builds the docs and uploads artifacts'
+description: "Builds the docs and uploads artifacts"
+inputs:
+  build_target:
+    description: "Build target"
+    required: true
 runs:
   using: "composite"
   steps:
@@ -9,7 +13,7 @@ runs:
       set -euExo pipefail
       shopt -s inherit_errexit
       
-      make -C ./docs/ multiversion SPHINXOPTS="--keep-going"
+      make -C ./docs/ '${{ inputs.build_target }}' SPHINXOPTS="--keep-going"
       
       if [[ ! -d ./docs/_build ]]; then
         echo "docs dir not found"

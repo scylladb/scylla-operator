@@ -35,3 +35,5 @@ jobs:
 
     - name: Build
       uses: ./.github/actions/docs/build
+      with:
+        build_target: "dirhtml"

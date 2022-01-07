@@ -11,6 +11,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/api/policy/v1beta1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -409,7 +410,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 							},
 						},
 					},
-					ServiceAccountName: naming.ServiceAccountNameForMembers(c),
+					ServiceAccountName: naming.MemberServiceAccountNameForScyllaCluster(c.Name),
 					Affinity: &corev1.Affinity{
 						NodeAffinity:    placement.NodeAffinity,
 						PodAffinity:     placement.PodAffinity,
@@ -645,4 +646,44 @@ func stringOrDefault(str, def string) string {
 		return str
 	}
 	return def
+}
+
+func MakeServiceAccount(sc *scyllav1.ScyllaCluster) *corev1.ServiceAccount {
+	return &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      naming.MemberServiceAccountNameForScyllaCluster(sc.Name),
+			Namespace: sc.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(sc, controllerGVK),
+			},
+			Labels: naming.ClusterLabels(sc),
+		},
+	}
+}
+
+func MakeRoleBinding(sc *scyllav1.ScyllaCluster) *rbacv1.RoleBinding {
+	saName := naming.MemberServiceAccountNameForScyllaCluster(sc.Name)
+	return &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      saName,
+			Namespace: sc.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(sc, controllerGVK),
+			},
+			Labels: naming.ClusterLabels(sc),
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				APIGroup:  corev1.GroupName,
+				Kind:      rbacv1.ServiceAccountKind,
+				Namespace: sc.Namespace,
+				Name:      saName,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: rbacv1.GroupName,
+			Kind:     "ClusterRole",
+			Name:     naming.ScyllaClusterMemberClusterRoleName,
+		},
+	}
 }

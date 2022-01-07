@@ -51,10 +51,7 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			}
 
 			framework.By("Creating a ScyllaCluster")
-			err := framework.SetupScyllaClusterSA(ctx, f.KubeClient().CoreV1(), f.KubeClient().RbacV1(), f.Namespace(), sc.Name)
-			o.Expect(err).NotTo(o.HaveOccurred())
-
-			sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+			sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(sc.Spec.Version).To(o.Equal(e.initialVersion))
 

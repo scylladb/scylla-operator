@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -715,6 +716,425 @@ func TestApplyClusterRoleBinding(t *testing.T) {
 						}
 						if !equality.Semantic.DeepEqual(createdCrb, gotCrb) {
 							t.Errorf("created and returned clusterrolebindings differ:\n%s", cmp.Diff(createdCrb, gotCrb))
+						}
+					}
+
+					if i == 0 {
+						if gotChanged != tc.expectedChanged {
+							t.Errorf("expected %t, got %t", tc.expectedChanged, gotChanged)
+						}
+					} else {
+						if gotChanged {
+							t.Errorf("object changed in iteration %d", i)
+						}
+					}
+
+					close(recorder.Events)
+					var gotEvents []string
+					for e := range recorder.Events {
+						gotEvents = append(gotEvents, e)
+					}
+					if i == 0 {
+						if !reflect.DeepEqual(gotEvents, tc.expectedEvents) {
+							t.Errorf("expected %v, got %v, diff:\n%s", tc.expectedEvents, gotEvents, cmp.Diff(tc.expectedEvents, gotEvents))
+						}
+					} else {
+						if len(gotEvents) > 0 {
+							t.Errorf("unexpected events: %v", gotEvents)
+						}
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestApplyRoleBinding(t *testing.T) {
+	// Using a generating function prevents unwanted mutations.
+	newRB := func() *rbacv1.RoleBinding {
+		return &rbacv1.RoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "test",
+				// Setting a RV make sure it's propagated to update calls for optimistic concurrency.
+				ResourceVersion: "42",
+				Labels:          map[string]string{},
+			},
+		}
+	}
+	newRBWithControllerRef := func() *rbacv1.RoleBinding {
+		rb := newRB()
+		rb.OwnerReferences = []metav1.OwnerReference{
+			{
+				Controller:         pointer.BoolPtr(true),
+				UID:                "abcdefgh",
+				APIVersion:         "scylla.scylladb.com/v1",
+				Kind:               "ScyllaCluster",
+				Name:               "basic",
+				BlockOwnerDeletion: pointer.BoolPtr(true),
+			},
+		}
+		return rb
+	}
+
+	newRBWithHash := func() *rbacv1.RoleBinding {
+		rb := newRB()
+		utilruntime.Must(SetHashAnnotation(rb))
+		return rb
+	}
+
+	tt := []struct {
+		name                      string
+		existing                  []runtime.Object
+		cache                     []runtime.Object // nil cache means autofill from the client
+		forceOwnership            bool
+		allowMissingControllerRef bool
+		required                  *rbacv1.RoleBinding
+		expectedRB                *rbacv1.RoleBinding
+		expectedChanged           bool
+		expectedErr               error
+		expectedEvents            []string
+	}{
+		{
+			name:                      "creates a new RB when there is none",
+			existing:                  nil,
+			allowMissingControllerRef: true,
+			required:                  newRB(),
+			expectedRB:                newRBWithHash(),
+			expectedChanged:           true,
+			expectedErr:               nil,
+			expectedEvents:            []string{"Normal RoleBindingCreated RoleBinding default/test created"},
+		},
+		{
+			name: "does nothing if the same RB already exists",
+			existing: []runtime.Object{
+				newRBWithHash(),
+			},
+			allowMissingControllerRef: true,
+			required:                  newRB(),
+			expectedRB:                newRBWithHash(),
+			expectedChanged:           false,
+			expectedErr:               nil,
+			expectedEvents:            nil,
+		},
+		{
+			name: "does nothing if the same RB already exists and required one has the hash",
+			existing: []runtime.Object{
+				newRBWithHash(),
+			},
+			allowMissingControllerRef: true,
+			required:                  newRBWithHash(),
+			expectedRB:                newRBWithHash(),
+			expectedChanged:           false,
+			expectedErr:               nil,
+			expectedEvents:            nil,
+		},
+		{
+			name: "updates the RB if it exists without the hash",
+			existing: []runtime.Object{
+				newRB(),
+			},
+			allowMissingControllerRef: true,
+			required:                  newRB(),
+			expectedRB:                newRBWithHash(),
+			expectedChanged:           true,
+			expectedErr:               nil,
+			expectedEvents:            []string{"Normal RoleBindingUpdated RoleBinding default/test updated"},
+		},
+		{
+			name:                      "fails to create the RB without a controllerRef",
+			existing:                  nil,
+			allowMissingControllerRef: false,
+			required: func() *rbacv1.RoleBinding {
+				rb := newRB()
+				rb.OwnerReferences = nil
+				return rb
+			}(),
+			expectedRB:      nil,
+			expectedChanged: false,
+			expectedErr:     fmt.Errorf(`RoleBinding "default/test" is missing controllerRef`),
+			expectedEvents:  nil,
+		},
+		{
+			name: "updates the RB when AutomountRoleBindingToken differ",
+			existing: []runtime.Object{
+				newRB(),
+			},
+			allowMissingControllerRef: true,
+			required: func() *rbacv1.RoleBinding {
+				rb := newRB()
+				rb.RoleRef.Name = "foo"
+				return rb
+			}(),
+			expectedRB: func() *rbacv1.RoleBinding {
+				rb := newRB()
+				rb.RoleRef.Name = "foo"
+				utilruntime.Must(SetHashAnnotation(rb))
+				return rb
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal RoleBindingUpdated RoleBinding default/test updated"},
+		},
+		{
+			name: "updates the RB if labels differ",
+			existing: []runtime.Object{
+				newRBWithHash(),
+			},
+			allowMissingControllerRef: true,
+			required: func() *rbacv1.RoleBinding {
+				rb := newRB()
+				rb.Labels["foo"] = "bar"
+				return rb
+			}(),
+			expectedRB: func() *rbacv1.RoleBinding {
+				rb := newRB()
+				rb.Labels["foo"] = "bar"
+				utilruntime.Must(SetHashAnnotation(rb))
+				return rb
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal RoleBindingUpdated RoleBinding default/test updated"},
+		},
+		{
+			name: "won't update the RB if an admission changes the RB",
+			existing: []runtime.Object{
+				func() *rbacv1.RoleBinding {
+					rb := newRBWithHash()
+					// Simulate admission by changing a value after the hash is computed.
+					rb.RoleRef.Name = "foo"
+					return rb
+				}(),
+			},
+			allowMissingControllerRef: true,
+			required:                  newRB(),
+			expectedRB: func() *rbacv1.RoleBinding {
+				rb := newRBWithHash()
+				// Simulate admission by changing a value after the hash is computed.
+				rb.RoleRef.Name = "foo"
+				return rb
+			}(),
+			expectedChanged: false,
+			expectedErr:     nil,
+			expectedEvents:  nil,
+		},
+		{
+			// We test propagating the RV from required in all the other test.
+			name: "specifying no RV will use the one from the existing object",
+			existing: []runtime.Object{
+				func() *rbacv1.RoleBinding {
+					rb := newRBWithHash()
+					rb.ResourceVersion = "21"
+					return rb
+				}(),
+			},
+			allowMissingControllerRef: true,
+			required: func() *rbacv1.RoleBinding {
+				rb := newRB()
+				rb.ResourceVersion = ""
+				rb.RoleRef.Name = "foo"
+				return rb
+			}(),
+			expectedRB: func() *rbacv1.RoleBinding {
+				rb := newRB()
+				rb.ResourceVersion = "21"
+				rb.RoleRef.Name = "foo"
+				utilruntime.Must(SetHashAnnotation(rb))
+				return rb
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal RoleBindingUpdated RoleBinding default/test updated"},
+		},
+		{
+			name:     "update fails if the RB is missing but we still see it in the cache",
+			existing: nil,
+			cache: []runtime.Object{
+				newRBWithHash(),
+			},
+			allowMissingControllerRef: true,
+			required: func() *rbacv1.RoleBinding {
+				rb := newRB()
+				rb.RoleRef.Name = "foo"
+				return rb
+			}(),
+			expectedRB:      nil,
+			expectedChanged: false,
+			expectedErr:     fmt.Errorf("can't update roleBinding: %w", apierrors.NewNotFound(rbacv1.Resource("rolebindings"), "test")),
+			expectedEvents:  []string{`Warning UpdateRoleBindingFailed Failed to update RoleBinding default/test: rolebindings.rbac.authorization.k8s.io "test" not found`},
+		},
+		{
+			name: "update fails if the existing object has ownerRef and required hasn't",
+			existing: []runtime.Object{
+				func() *rbacv1.RoleBinding {
+					rb := newRBWithControllerRef()
+					utilruntime.Must(SetHashAnnotation(rb))
+					return rb
+				}(),
+			},
+			allowMissingControllerRef: true,
+			required:                  newRB(),
+			expectedRB:                nil,
+			expectedChanged:           false,
+			expectedErr:               fmt.Errorf(`roleBinding "default/test" isn't controlled by us`),
+			expectedEvents:            []string{`Warning UpdateRoleBindingFailed Failed to update RoleBinding default/test: roleBinding "default/test" isn't controlled by us`},
+		},
+		{
+			name: "forced update succeeds if the existing object has no ownerRef",
+			existing: []runtime.Object{
+				func() *rbacv1.RoleBinding {
+					rb := newRB()
+					utilruntime.Must(SetHashAnnotation(rb))
+					return rb
+				}(),
+			},
+			required: func() *rbacv1.RoleBinding {
+				rb := newRBWithControllerRef()
+				rb.Labels["foo"] = "bar"
+				return rb
+			}(),
+			forceOwnership: true,
+			expectedRB: func() *rbacv1.RoleBinding {
+				rb := newRBWithControllerRef()
+				rb.Labels["foo"] = "bar"
+				utilruntime.Must(SetHashAnnotation(rb))
+				return rb
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal RoleBindingUpdated RoleBinding default/test updated"},
+		},
+		{
+			name: "update succeeds to replace ownerRef kind",
+			existing: []runtime.Object{
+				func() *rbacv1.RoleBinding {
+					rb := newRBWithControllerRef()
+					rb.OwnerReferences[0].Kind = "WrongKind"
+					utilruntime.Must(SetHashAnnotation(rb))
+					return rb
+				}(),
+			},
+			required: func() *rbacv1.RoleBinding {
+				rb := newRBWithControllerRef()
+				return rb
+			}(),
+			expectedRB: func() *rbacv1.RoleBinding {
+				rb := newRBWithControllerRef()
+				utilruntime.Must(SetHashAnnotation(rb))
+				return rb
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal RoleBindingUpdated RoleBinding default/test updated"},
+		},
+		{
+			name: "update fails if the existing object is owned by someone else",
+			existing: []runtime.Object{
+				func() *rbacv1.RoleBinding {
+					rb := newRBWithControllerRef()
+					rb.OwnerReferences[0].UID = "42"
+					utilruntime.Must(SetHashAnnotation(rb))
+					return rb
+				}(),
+			},
+			required: func() *rbacv1.RoleBinding {
+				rb := newRBWithControllerRef()
+				rb.Labels["foo"] = "bar"
+				return rb
+			}(),
+			expectedRB:      nil,
+			expectedChanged: false,
+			expectedErr:     fmt.Errorf(`roleBinding "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateRoleBindingFailed Failed to update RoleBinding default/test: roleBinding "default/test" isn't controlled by us`},
+		},
+		{
+			name: "forced update fails if the existing object is owned by someone else",
+			existing: []runtime.Object{
+				func() *rbacv1.RoleBinding {
+					rb := newRBWithControllerRef()
+					rb.OwnerReferences[0].UID = "42"
+					utilruntime.Must(SetHashAnnotation(rb))
+					return rb
+				}(),
+			},
+			required: func() *rbacv1.RoleBinding {
+				rb := newRBWithControllerRef()
+				rb.Labels["foo"] = "bar"
+				return rb
+			}(),
+			forceOwnership:  true,
+			expectedRB:      nil,
+			expectedChanged: false,
+			expectedErr:     fmt.Errorf(`roleBinding "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateRoleBindingFailed Failed to update RoleBinding default/test: roleBinding "default/test" isn't controlled by us`},
+		},
+	}
+
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Client holds the state, so it has to persist the iterations.
+			client := fake.NewSimpleClientset(tc.existing...)
+
+			// ApplyClusterRole needs to be reentrant so running it the second time should give the same results.
+			// (One of the common mistakes is editing the object after computing the hash, so it differs the second time.)
+			iterations := 2
+			if tc.expectedErr != nil {
+				iterations = 1
+			}
+			for i := 0; i < iterations; i++ {
+				t.Run("", func(t *testing.T) {
+					ctx, ctxCancel := context.WithTimeout(context.Background(), 30*time.Second)
+					defer ctxCancel()
+
+					recorder := record.NewFakeRecorder(10)
+
+					rbCache := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+					rbLister := rbacv1listers.NewRoleBindingLister(rbCache)
+
+					if tc.cache != nil {
+						for _, obj := range tc.cache {
+							err := rbCache.Add(obj)
+							if err != nil {
+								t.Fatal(err)
+							}
+						}
+					} else {
+						rbList, err := client.RbacV1().RoleBindings(corev1.NamespaceAll).List(ctx, metav1.ListOptions{
+							LabelSelector: labels.Everything().String(),
+						})
+						if err != nil {
+							t.Fatal(err)
+						}
+
+						for i := range rbList.Items {
+							err := rbCache.Add(&rbList.Items[i])
+							if err != nil {
+								t.Fatal(err)
+							}
+						}
+					}
+
+					gotRB, gotChanged, gotErr := ApplyRoleBinding(ctx, client.RbacV1(), rbLister, recorder, tc.required, tc.forceOwnership, tc.allowMissingControllerRef)
+					if !reflect.DeepEqual(gotErr, tc.expectedErr) {
+						t.Fatalf("expected %v, got %v", tc.expectedErr, gotErr)
+					}
+
+					if !equality.Semantic.DeepEqual(gotRB, tc.expectedRB) {
+						t.Errorf("expected %#v, got %#v, diff:\n%s", tc.expectedRB, gotRB, cmp.Diff(tc.expectedRB, gotRB))
+					}
+
+					// Make sure such object was actually created.
+					if gotRB != nil {
+						createdRB, err := client.RbacV1().RoleBindings(gotRB.Namespace).Get(ctx, gotRB.Name, metav1.GetOptions{})
+						if err != nil {
+							t.Error(err)
+						}
+						if !equality.Semantic.DeepEqual(createdRB, gotRB) {
+							t.Errorf("created and returned RoleBindings differ:\n%s", cmp.Diff(createdRB, gotRB))
 						}
 					}
 

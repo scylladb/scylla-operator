@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
 	rbacv1listers "k8s.io/client-go/listers/rbac/v1"
 	"k8s.io/client-go/tools/record"
@@ -183,6 +184,87 @@ func ApplyClusterRoleBinding(
 	}
 	if err != nil {
 		return nil, false, fmt.Errorf("can't update clusterrolebinding: %w", err)
+	}
+	return actual, true, nil
+}
+
+// ApplyRoleBinding will apply the RoleBinding to match the required object.
+func ApplyRoleBinding(
+	ctx context.Context,
+	client rbacv1client.RoleBindingsGetter,
+	lister rbacv1listers.RoleBindingLister,
+	recorder record.EventRecorder,
+	required *rbacv1.RoleBinding,
+	forceOwnership bool,
+	allowMissingControllerRef bool,
+) (*rbacv1.RoleBinding, bool, error) {
+	requiredControllerRef := metav1.GetControllerOfNoCopy(required)
+	if !allowMissingControllerRef && requiredControllerRef == nil {
+		return nil, false, fmt.Errorf("RoleBinding %q is missing controllerRef", naming.ObjRef(required))
+	}
+
+	requiredCopy := required.DeepCopy()
+	err := SetHashAnnotation(requiredCopy)
+	if err != nil {
+		return nil, false, err
+	}
+
+	existing, err := lister.RoleBindings(requiredCopy.Namespace).Get(requiredCopy.Name)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, false, err
+		}
+
+		actual, err := client.RoleBindings(requiredCopy.Namespace).Create(ctx, requiredCopy, metav1.CreateOptions{})
+		if apierrors.IsAlreadyExists(err) {
+			klog.V(2).InfoS("Already exists (stale cache)", "RoleBinding", klog.KObj(requiredCopy))
+		} else {
+			ReportCreateEvent(recorder, requiredCopy, err)
+		}
+		return actual, true, err
+	}
+
+	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
+
+	existingControllerRefUID := types.UID("")
+	if existingControllerRef != nil {
+		existingControllerRefUID = existingControllerRef.UID
+	}
+	requiredControllerRefUID := types.UID("")
+	if requiredControllerRef != nil {
+		requiredControllerRefUID = requiredControllerRef.UID
+	}
+
+	if existingControllerRef == nil && requiredControllerRef != nil && forceOwnership {
+		klog.V(2).InfoS("Forcing apply to claim the RoleBinding", "RoleBinding", naming.ObjRef(requiredCopy))
+	} else if existingControllerRefUID != requiredControllerRefUID {
+		// This is not the place to handle adoption.
+		err := fmt.Errorf("roleBinding %q isn't controlled by us", naming.ObjRef(requiredCopy))
+		ReportUpdateEvent(recorder, requiredCopy, err)
+		return nil, false, err
+	}
+
+	existingHash := existing.Annotations[naming.ManagedHash]
+	requiredHash := requiredCopy.Annotations[naming.ManagedHash]
+
+	// If they are the same do nothing.
+	if existingHash == requiredHash {
+		return existing, false, nil
+	}
+
+	// Honor the required RV if it was already set.
+	// Required objects set RV in case their input is based on a previous version of itself.
+	if len(requiredCopy.ResourceVersion) == 0 {
+		requiredCopy.ResourceVersion = existing.ResourceVersion
+	}
+	actual, err := client.RoleBindings(requiredCopy.Namespace).Update(ctx, requiredCopy, metav1.UpdateOptions{})
+	if apierrors.IsConflict(err) {
+		klog.V(2).InfoS("Hit update conflict, will retry.", "RoleBinding", klog.KObj(requiredCopy))
+	} else {
+		ReportUpdateEvent(recorder, requiredCopy, err)
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("can't update roleBinding: %w", err)
 	}
 	return actual, true, nil
 }

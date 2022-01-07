@@ -67,7 +67,7 @@ func (ncc *Controller) syncServiceAccounts(
 
 	var errs []error
 	for _, sa := range requiredServiceAccounts {
-		_, _, err := resourceapply.ApplyServiceAccount(ctx, ncc.kubeClient.CoreV1(), ncc.serviceAccountLister, ncc.eventRecorder, sa, true)
+		_, _, err := resourceapply.ApplyServiceAccount(ctx, ncc.kubeClient.CoreV1(), ncc.serviceAccountLister, ncc.eventRecorder, sa, false, true)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't create missing ServiceAccount: %w", err))
 			continue

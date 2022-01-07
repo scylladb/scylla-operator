@@ -15,6 +15,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -24,11 +25,13 @@ import (
 	appsv1informers "k8s.io/client-go/informers/apps/v1"
 	corev1informers "k8s.io/client-go/informers/core/v1"
 	policyv1beta1informers "k8s.io/client-go/informers/policy/v1beta1"
+	rbacv1informers "k8s.io/client-go/informers/rbac/v1"
 	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	policyv1beta1listers "k8s.io/client-go/listers/policy/v1beta1"
+	rbacv1listers "k8s.io/client-go/listers/rbac/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
@@ -57,12 +60,14 @@ type Controller struct {
 	kubeClient   kubernetes.Interface
 	scyllaClient scyllav1client.ScyllaV1Interface
 
-	podLister         corev1listers.PodLister
-	serviceLister     corev1listers.ServiceLister
-	secretLister      corev1listers.SecretLister
-	statefulSetLister appsv1listers.StatefulSetLister
-	pdbLister         policyv1beta1listers.PodDisruptionBudgetLister
-	scyllaLister      scyllav1listers.ScyllaClusterLister
+	podLister            corev1listers.PodLister
+	serviceLister        corev1listers.ServiceLister
+	secretLister         corev1listers.SecretLister
+	serviceAccountLister corev1listers.ServiceAccountLister
+	roleBindingLister    rbacv1listers.RoleBindingLister
+	statefulSetLister    appsv1listers.StatefulSetLister
+	pdbLister            policyv1beta1listers.PodDisruptionBudgetLister
+	scyllaLister         scyllav1listers.ScyllaClusterLister
 
 	cachesToSync []cache.InformerSynced
 
@@ -77,6 +82,8 @@ func NewController(
 	podInformer corev1informers.PodInformer,
 	serviceInformer corev1informers.ServiceInformer,
 	secretInformer corev1informers.SecretInformer,
+	serviceAccountInformer corev1informers.ServiceAccountInformer,
+	roleBindingInformer rbacv1informers.RoleBindingInformer,
 	statefulSetInformer appsv1informers.StatefulSetInformer,
 	pdbInformer policyv1beta1informers.PodDisruptionBudgetInformer,
 	scyllaClusterInformer scyllav1informers.ScyllaClusterInformer,
@@ -102,17 +109,21 @@ func NewController(
 		kubeClient:   kubeClient,
 		scyllaClient: scyllaClient,
 
-		podLister:         podInformer.Lister(),
-		serviceLister:     serviceInformer.Lister(),
-		secretLister:      secretInformer.Lister(),
-		statefulSetLister: statefulSetInformer.Lister(),
-		pdbLister:         pdbInformer.Lister(),
-		scyllaLister:      scyllaClusterInformer.Lister(),
+		podLister:            podInformer.Lister(),
+		serviceLister:        serviceInformer.Lister(),
+		secretLister:         secretInformer.Lister(),
+		serviceAccountLister: serviceAccountInformer.Lister(),
+		roleBindingLister:    roleBindingInformer.Lister(),
+		statefulSetLister:    statefulSetInformer.Lister(),
+		pdbLister:            pdbInformer.Lister(),
+		scyllaLister:         scyllaClusterInformer.Lister(),
 
 		cachesToSync: []cache.InformerSynced{
 			podInformer.Informer().HasSynced,
 			serviceInformer.Informer().HasSynced,
 			secretInformer.Informer().HasSynced,
+			serviceAccountInformer.Informer().HasSynced,
+			roleBindingInformer.Informer().HasSynced,
 			statefulSetInformer.Informer().HasSynced,
 			pdbInformer.Informer().HasSynced,
 			scyllaClusterInformer.Informer().HasSynced,
@@ -140,6 +151,18 @@ func NewController(
 		AddFunc:    scc.addPod,
 		UpdateFunc: scc.updatePod,
 		DeleteFunc: scc.deletePod,
+	})
+
+	serviceAccountInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    scc.addServiceAccount,
+		UpdateFunc: scc.updateServiceAccount,
+		DeleteFunc: scc.deleteServiceAccount,
+	})
+
+	roleBindingInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    scc.addRoleBinding,
+		UpdateFunc: scc.updateRoleBinding,
+		DeleteFunc: scc.deleteRoleBinding,
 	})
 
 	statefulSetInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -424,6 +447,94 @@ func (scc *Controller) deleteSecret(obj interface{}) {
 	}
 	klog.V(4).InfoS("Observed deletion of Secret", "Secret", klog.KObj(secret))
 	scc.enqueueOwner(secret)
+}
+
+func (sac *Controller) addServiceAccount(obj interface{}) {
+	sa := obj.(*corev1.ServiceAccount)
+	klog.V(4).InfoS("Observed addition of ServiceAccount", "ServiceAccount", klog.KObj(sa))
+	sac.enqueueOwner(sa)
+}
+
+func (sac *Controller) updateServiceAccount(old, cur interface{}) {
+	oldSA := old.(*corev1.ServiceAccount)
+	currentSA := cur.(*corev1.ServiceAccount)
+
+	if currentSA.UID != oldSA.UID {
+		key, err := keyFunc(oldSA)
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldSA, err))
+			return
+		}
+		sac.deleteServiceAccount(cache.DeletedFinalStateUnknown{
+			Key: key,
+			Obj: oldSA,
+		})
+	}
+
+	klog.V(4).InfoS("Observed update of ServiceAccount", "ServiceAccount", klog.KObj(oldSA))
+	sac.enqueueOwner(currentSA)
+}
+
+func (sac *Controller) deleteServiceAccount(obj interface{}) {
+	svc, ok := obj.(*corev1.ServiceAccount)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
+			return
+		}
+		svc, ok = tombstone.Obj.(*corev1.ServiceAccount)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ServiceAccount %#v", obj))
+			return
+		}
+	}
+	klog.V(4).InfoS("Observed deletion of ServiceAccount", "ServiceAccount", klog.KObj(svc))
+	sac.enqueueOwner(svc)
+}
+
+func (sac *Controller) addRoleBinding(obj interface{}) {
+	roleBinding := obj.(*rbacv1.RoleBinding)
+	klog.V(4).InfoS("Observed addition of RoleBinding", "RoleBinding", klog.KObj(roleBinding))
+	sac.enqueueOwner(roleBinding)
+}
+
+func (sac *Controller) updateRoleBinding(old, cur interface{}) {
+	oldRoleBinding := old.(*rbacv1.RoleBinding)
+	currentRoleBinding := cur.(*rbacv1.RoleBinding)
+
+	if currentRoleBinding.UID != oldRoleBinding.UID {
+		key, err := keyFunc(oldRoleBinding)
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldRoleBinding, err))
+			return
+		}
+		sac.deleteRoleBinding(cache.DeletedFinalStateUnknown{
+			Key: key,
+			Obj: oldRoleBinding,
+		})
+	}
+
+	klog.V(4).InfoS("Observed update of RoleBinding", "RoleBinding", klog.KObj(oldRoleBinding))
+	sac.enqueueOwner(currentRoleBinding)
+}
+
+func (sac *Controller) deleteRoleBinding(obj interface{}) {
+	roleBinding, ok := obj.(*rbacv1.RoleBinding)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
+			return
+		}
+		roleBinding, ok = tombstone.Obj.(*rbacv1.RoleBinding)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a RoleBinding %#v", obj))
+			return
+		}
+	}
+	klog.V(4).InfoS("Observed deletion of RoleBinding", "RoleBinding", klog.KObj(roleBinding))
+	sac.enqueueOwner(roleBinding)
 }
 
 func (scc *Controller) addPod(obj interface{}) {

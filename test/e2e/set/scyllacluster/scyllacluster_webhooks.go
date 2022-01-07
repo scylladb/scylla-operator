@@ -30,13 +30,10 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 		validSC := scyllafixture.BasicScyllaCluster.ReadOrFail()
 		validSC.Name = names.SimpleNameGenerator.GenerateName(validSC.GenerateName)
 
-		err := framework.SetupScyllaClusterSA(ctx, f.KubeClient().CoreV1(), f.KubeClient().RbacV1(), f.Namespace(), validSC.Name)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
 		framework.By("rejecting a creation of ScyllaCluster with duplicated racks")
 		duplicateRacksSC := validSC.DeepCopy()
 		duplicateRacksSC.Spec.Datacenter.Racks = append(duplicateRacksSC.Spec.Datacenter.Racks, *duplicateRacksSC.Spec.Datacenter.Racks[0].DeepCopy())
-		_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, duplicateRacksSC, metav1.CreateOptions{})
+		_, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, duplicateRacksSC, metav1.CreateOptions{})
 		o.Expect(err).To(o.Equal(&errors.StatusError{ErrStatus: metav1.Status{
 			Status:  "Failure",
 			Message: fmt.Sprintf(`admission webhook "webhook.scylla.scylladb.com" denied the request: ScyllaCluster.scylla.scylladb.com %q is invalid: spec.datacenter.racks[1].name: Duplicate value: "us-east-1a"`, duplicateRacksSC.Name),

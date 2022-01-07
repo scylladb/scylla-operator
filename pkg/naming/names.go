@@ -49,10 +49,6 @@ func ServiceDNSName(service string, c *scyllav1.ScyllaCluster) string {
 	return fmt.Sprintf("%s.%s", service, CrossNamespaceServiceNameForCluster(c))
 }
 
-func ServiceAccountNameForMembers(c *scyllav1.ScyllaCluster) string {
-	return fmt.Sprintf("%s-member", c.Name)
-}
-
 func HeadlessServiceNameForCluster(c *scyllav1.ScyllaCluster) string {
 	return fmt.Sprintf("%s-client", c.Name)
 }
@@ -166,4 +162,8 @@ func PerftuneResultName(uid string) string {
 
 func GetTuningConfigMapNameForPod(pod *corev1.Pod) string {
 	return fmt.Sprintf("nodeconfig-podinfo-%s", pod.UID)
+}
+
+func MemberServiceAccountNameForScyllaCluster(scName string) string {
+	return fmt.Sprintf("%s-member", scName)
 }

@@ -189,12 +189,14 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 
 	hostAddr := hostIP.String()
 
+	secrets := secretsInformer.Lister()
+
 	prober := sidecar.NewProber(
 		o.Namespace,
 		o.ServiceName,
 		o.SecretName,
 		singleServiceInformer.Lister(),
-		secretsInformer.Lister(),
+		secrets,
 		hostAddr,
 	)
 
@@ -384,7 +386,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 
 	klog.V(2).InfoS("Starting scylla")
 
-	cfg := config.NewScyllaConfig(member, o.kubeClient, o.scyllaClient, o.CPUCount)
+	cfg := config.NewScyllaConfig(member, o.kubeClient, o.scyllaClient, o.CPUCount, o.SecretName, secrets)
 	scyllaCmd, err := cfg.Setup(ctx)
 	if err != nil {
 		return fmt.Errorf("can't set up scylla: %w", err)

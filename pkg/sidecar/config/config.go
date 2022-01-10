@@ -14,12 +14,15 @@ import (
 	"github.com/magiconair/properties"
 	"github.com/pkg/errors"
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/pkg/semver"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/util/cpuset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	corev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 )
@@ -44,9 +47,12 @@ type ScyllaConfig struct {
 	scyllaRackDCPropertiesPath          string
 	scyllaRackDCPropertiesConfigMapPath string
 	cpuCount                            int
+
+	secretName   string
+	secretLister corev1.SecretLister
 }
 
-func NewScyllaConfig(m *identity.Member, kubeClient kubernetes.Interface, scyllaClient scyllaversionedclient.Interface, cpuCount int) *ScyllaConfig {
+func NewScyllaConfig(m *identity.Member, kubeClient kubernetes.Interface, scyllaClient scyllaversionedclient.Interface, cpuCount int, secretName string, secretLister corev1.SecretLister) *ScyllaConfig {
 	return &ScyllaConfig{
 		member:                              m,
 		kubeClient:                          kubeClient,
@@ -54,6 +60,8 @@ func NewScyllaConfig(m *identity.Member, kubeClient kubernetes.Interface, scylla
 		scyllaRackDCPropertiesPath:          scyllaRackDCPropertiesPath,
 		scyllaRackDCPropertiesConfigMapPath: scyllaRackDCPropertiesConfigMapPath,
 		cpuCount:                            cpuCount,
+		secretName:                          secretName,
+		secretLister:                        secretLister,
 	}
 }
 
@@ -228,17 +236,25 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 			args["alternator-write-isolation"] = pointer.StringPtr(cluster.Spec.Alternator.WriteIsolation)
 		}
 	}
-	// try replace itself if not seed
+	// try to replace itself if not seed
 	if seed != "" && seed != m.StaticIP {
-		myself, err := s.kubeClient.CoreV1().Pods(s.member.Namespace).Get(ctx, s.member.Name, metav1.GetOptions{})
+		// try to figure out if its ip exists in cluster
+		scyllaClient, err := s.getScyllaClient(seed)
 		if err != nil {
-			return nil, errors.Wrap(err, "error getting self k8s pod")
+			return nil, errors.Wrap(err, "can't get scylla client")
 		}
-		if len(myself.Status.ContainerStatuses) == 0 || myself.Status.ContainerStatuses[0].Name != "scylla" {
-			return nil, errors.Wrap(err, "error scylla container not found in pod")
+
+		// Contact Scylla to learn about the status of the member
+		nodeStatuses, err := scyllaClient.Status(ctx, seed)
+		if err != nil {
+			return nil, errors.Wrap(err, "can't get scylla node status")
 		}
-		if myself.Status.ContainerStatuses[0].RestartCount%2 == 0 {
-			args["replace-address-first-boot"] = pointer.StringPtr(m.StaticIP)
+
+		for _, s := range nodeStatuses {
+			if s.Addr == m.StaticIP { // if it exists, add "replace-address-first-boot" to boot
+				args["replace-address-first-boot"] = pointer.StringPtr(m.StaticIP)
+				break
+			}
 		}
 	}
 	// See if we need to use cpu-pinning
@@ -291,6 +307,15 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	klog.InfoS("Scylla entrypoint", "Command", scyllaCmd)
 
 	return scyllaCmd, nil
+}
+
+func (s *ScyllaConfig) getScyllaClient(seed string) (*scyllaclient.Client, error) {
+	secret, err := s.secretLister.Secrets(s.member.Namespace).Get(s.secretName)
+	if err != nil {
+		return nil, fmt.Errorf("can't get manager agent auth secret %s/%s: %w", s.member.Namespace, s.secretName, err)
+	}
+
+	return controllerhelpers.NewScyllaClientFromSecret(secret, []string{seed})
 }
 
 func (s *ScyllaConfig) validateCpuSet(ctx context.Context, cpusAllowed string, shards int) error {

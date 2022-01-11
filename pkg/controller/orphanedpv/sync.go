@@ -35,6 +35,9 @@ func (opc *Controller) getPVsForScyllaCluster(ctx context.Context, sc *scyllav1.
 			pvc, err := opc.pvcLister.PersistentVolumeClaims(sc.Namespace).Get(pvcName)
 			if err != nil {
 				if apierrors.IsNotFound(err) {
+					if rack.Storage.StorageClassName != nil && (*rack.Storage.StorageClassName == "hostpath" || *rack.Storage.StorageClassName == "dev") {
+						continue
+					}
 					klog.V(2).InfoS("PVC not found", "PVC", fmt.Sprintf("%s/%s", sc.Namespace, pvcName))
 					// We aren't watching PVCs so we need to requeue manually
 					requeueReasons = append(requeueReasons, "PVC not found")

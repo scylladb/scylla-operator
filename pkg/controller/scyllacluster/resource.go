@@ -151,9 +151,94 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 	}
 	opt := true
 
-	storageCapacity, err := resource.ParseQuantity(r.Storage.Capacity)
-	if err != nil {
-		return nil, fmt.Errorf("cannot parse %q: %v", r.Storage.Capacity, err)
+	volumes := []corev1.Volume{
+		{
+			Name: "shared",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "scylla-config-volume",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: stringOrDefault(r.ScyllaConfig, "scylla-config"),
+					},
+					Optional: &opt,
+				},
+			},
+		},
+		{
+			Name: scyllaAgentConfigVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: stringOrDefault(r.ScyllaAgentConfig, "scylla-agent-config-secret"),
+					Optional:   &opt,
+				},
+			},
+		},
+		{
+			Name: "scylla-client-config-volume",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: "scylla-client-config-secret",
+					Optional:   &opt,
+				},
+			},
+		},
+		{
+			Name: scyllaAgentAuthTokenVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: naming.AgentAuthTokenSecretName(c.Name),
+				},
+			},
+		},
+	}
+
+	var volumeClaims []corev1.PersistentVolumeClaim
+
+	storageClassName := ""
+	if r.Storage.StorageClassName != nil {
+		storageClassName = *r.Storage.StorageClassName
+	}
+
+	switch storageClassName {
+	case "dev", "hostpath":
+		hostPathType := corev1.HostPathDirectory
+		if storageClassName == "dev" {
+			hostPathType = corev1.HostPathDirectoryOrCreate
+		}
+		volumes = append(volumes, corev1.Volume{
+			Name: naming.PVCTemplateName,
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: "/mnt/raid-disks/disk0",
+					Type: &hostPathType,
+				},
+			},
+		})
+	default:
+		storageCapacity, err := resource.ParseQuantity(r.Storage.Capacity)
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse %q: %v", r.Storage.Capacity, err)
+		}
+		volumeClaims = append(volumeClaims, corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   naming.PVCTemplateName,
+				Labels: matchLabels,
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+				StorageClassName: r.Storage.StorageClassName,
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: storageCapacity,
+					},
+				},
+			},
+		})
 	}
 
 	sts := &appsv1.StatefulSet{
@@ -191,51 +276,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 				Spec: corev1.PodSpec{
 					HostNetwork: c.Spec.Network.HostNetworking,
 					DNSPolicy:   c.Spec.Network.GetDNSPolicy(),
-					Volumes: []corev1.Volume{
-						{
-							Name: "shared",
-							VolumeSource: corev1.VolumeSource{
-								EmptyDir: &corev1.EmptyDirVolumeSource{},
-							},
-						},
-						{
-							Name: "scylla-config-volume",
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: stringOrDefault(r.ScyllaConfig, "scylla-config"),
-									},
-									Optional: &opt,
-								},
-							},
-						},
-						{
-							Name: scyllaAgentConfigVolumeName,
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{
-									SecretName: stringOrDefault(r.ScyllaAgentConfig, "scylla-agent-config-secret"),
-									Optional:   &opt,
-								},
-							},
-						},
-						{
-							Name: "scylla-client-config-volume",
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{
-									SecretName: "scylla-client-config-secret",
-									Optional:   &opt,
-								},
-							},
-						},
-						{
-							Name: scyllaAgentAuthTokenVolumeName,
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{
-									SecretName: naming.AgentAuthTokenSecretName(c.Name),
-								},
-							},
-						},
-					},
+					Volumes:     volumes,
 					Tolerations: placement.Tolerations,
 					InitContainers: []corev1.Container{
 						{
@@ -398,23 +439,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 					TerminationGracePeriodSeconds: pointer.Int64Ptr(900),
 				},
 			},
-			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:   naming.PVCTemplateName,
-						Labels: matchLabels,
-					},
-					Spec: corev1.PersistentVolumeClaimSpec{
-						AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-						StorageClassName: r.Storage.StorageClassName,
-						Resources: corev1.ResourceRequirements{
-							Requests: corev1.ResourceList{
-								corev1.ResourceStorage: storageCapacity,
-							},
-						},
-					},
-				},
-			},
+			VolumeClaimTemplates: volumeClaims,
 		},
 	}
 

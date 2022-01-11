@@ -61,6 +61,7 @@ const (
 	ScyllaContainerName          = "scylla"
 	SidecarInjectorContainerName = "sidecar-injection"
 	PerftuneContainerName        = "perftune"
+	SysctlContainerName          = "sysctl"
 
 	PVCTemplateName = "data"
 

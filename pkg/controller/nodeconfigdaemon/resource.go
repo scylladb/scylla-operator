@@ -61,6 +61,24 @@ func makePerftuneJobForNode(controllerRef *metav1.OwnerReference, namespace, nod
 					HostNetwork:   true,
 					Containers: []corev1.Container{
 						{
+							Name:            naming.SysctlContainerName,
+							Image:           image,
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Command: []string{"/bin/sh",
+								"-c",
+								"sysctl -e -f /usr/lib/sysctl.d/*.conf",
+							},
+							SecurityContext: &corev1.SecurityContext{
+								Privileged: pointer.BoolPtr(true),
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("50Mi"),
+								},
+							},
+						},
+						{
 							Name:            naming.PerftuneContainerName,
 							Image:           image,
 							ImagePullPolicy: corev1.PullIfNotPresent,

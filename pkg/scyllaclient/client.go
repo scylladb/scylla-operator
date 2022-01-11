@@ -24,7 +24,7 @@ import (
 )
 
 type Client struct {
-	config Config
+	config *Config
 	logger log.Logger
 
 	scyllaOps *scyllaOperations.Client
@@ -34,7 +34,7 @@ type Client struct {
 	dcCache map[string]string
 }
 
-func NewClient(config Config, logger log.Logger) (*Client, error) {
+func NewClient(config *Config, logger log.Logger) (*Client, error) {
 	/*if err := config.Validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid config")
 	}*/
@@ -301,8 +301,16 @@ func (c *Client) HasSchemaAgreement(ctx context.Context) (bool, error) {
 	return len(versions) == 1, nil
 }
 
-func DefaultTransport() *http.Transport {
-	return &http.Transport{
+type TransportOption func(transport *http.Transport)
+
+func WithTLSConfig(tlsConfig *tls.Config) func(*http.Transport) {
+	return func(transport *http.Transport) {
+		transport.TLSClientConfig = tlsConfig
+	}
+}
+
+func DefaultTransport(options ...TransportOption) *http.Transport {
+	t := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
 			Timeout:   30 * time.Second,
@@ -318,6 +326,12 @@ func DefaultTransport() *http.Transport {
 			InsecureSkipVerify: true,
 		},
 	}
+
+	for _, option := range options {
+		option(t)
+	}
+
+	return t
 }
 
 func setNodeState(all []NodeStatusInfo, state NodeState, addrs []string) {

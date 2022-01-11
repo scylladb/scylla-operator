@@ -20,7 +20,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/sidecar/config"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/signals"
-	"github.com/scylladb/scylla-operator/pkg/util/network"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -182,32 +181,19 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 	singleServiceInformer := singleServiceKubeInformers.Core().V1().Services()
 	secretsInformer := namespacedKubeInformers.Core().V1().Secrets()
 
-	hostIP, err := network.FindFirstNonLocalIP()
-	if err != nil {
-		return fmt.Errorf("can't get node ip: %w", err)
-	}
-
-	hostAddr := hostIP.String()
-
 	secrets := secretsInformer.Lister()
 
 	prober := sidecar.NewProber(
 		o.Namespace,
 		o.ServiceName,
-		o.SecretName,
 		singleServiceInformer.Lister(),
-		secrets,
-		hostAddr,
 	)
 
 	sc, err := sidecarcontroller.NewController(
 		o.Namespace,
 		o.ServiceName,
-		o.SecretName,
-		hostAddr,
 		o.kubeClient,
 		singleServiceInformer,
-		secretsInformer,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create sidecar controller: %w", err)

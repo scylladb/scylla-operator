@@ -47,8 +47,8 @@ type BackoffConfig struct {
 }
 
 // DefaultConfig returns a Config initialized with default values.
-func DefaultConfig(authToken string, hosts ...string) Config {
-	return Config{
+func DefaultConfig(authToken string, hosts ...string) *Config {
+	return &Config{
 		AuthToken: authToken,
 		Hosts:     hosts,
 		Port:      "10001",
@@ -71,7 +71,7 @@ func DefaultConfig(authToken string, hosts ...string) Config {
 }
 
 // Validate checks if all the fields are properly set.
-func (c Config) Validate() error {
+func (c *Config) Validate() error {
 	var err error
 	if len(c.Hosts) == 0 {
 		err = multierr.Append(err, errors.New("missing hosts"))

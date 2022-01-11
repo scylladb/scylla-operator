@@ -38,12 +38,9 @@ var (
 type Controller struct {
 	namespace   string
 	serviceName string
-	secretName  string
-	hostAddr    string
 
 	kubeClient          kubernetes.Interface
 	singleServiceLister corev1listers.ServiceLister
-	secretLister        corev1listers.SecretLister
 
 	cachesToSync []cache.InformerSynced
 
@@ -56,11 +53,8 @@ type Controller struct {
 func NewController(
 	namespace,
 	serviceName string,
-	secretName string,
-	hostAddr string,
 	kubeClient kubernetes.Interface,
 	singleServiceInformer corev1informers.ServiceInformer,
-	secretInformer corev1informers.SecretInformer,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
@@ -96,16 +90,12 @@ func NewController(
 	scc := &Controller{
 		namespace:   namespace,
 		serviceName: serviceName,
-		secretName:  secretName,
-		hostAddr:    hostAddr,
 
 		kubeClient:          kubeClient,
 		singleServiceLister: singleServiceInformer.Lister(),
-		secretLister:        secretInformer.Lister(),
 
 		cachesToSync: []cache.InformerSynced{
 			singleServiceInformer.Informer().HasSynced,
-			secretInformer.Informer().HasSynced,
 		},
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scyllasidecar-controller"}),

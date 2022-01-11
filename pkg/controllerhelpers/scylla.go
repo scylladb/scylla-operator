@@ -69,19 +69,31 @@ func GetRequiredScyllaHosts(sc *scyllav1.ScyllaCluster, services map[string]*cor
 	return hosts, nil
 }
 
-func NewScyllaClientFromToken(hosts []string, authToken string) (*scyllaclient.Client, error) {
+func NewScyllaClient(cfg *scyllaclient.Config) (*scyllaclient.Client, error) {
 	// TODO: unify logging
 	logger, _ := log.NewProduction(log.Config{
 		Level: zap.NewAtomicLevelAt(zapcore.InfoLevel),
 	})
 
-	cfg := scyllaclient.DefaultConfig(authToken, hosts...)
 	scyllaClient, err := scyllaclient.NewClient(cfg, logger.Named("scylla_client"))
 	if err != nil {
 		return nil, err
 	}
 
 	return scyllaClient, nil
+}
+
+func NewScyllaClientForLocalhost() (*scyllaclient.Client, error) {
+	cfg := scyllaclient.DefaultConfig("", "localhost")
+	cfg.Scheme = "http"
+	cfg.Port = fmt.Sprintf("%d", naming.ScyllaAPIPort)
+	cfg.Transport = scyllaclient.DefaultTransport(scyllaclient.WithTLSConfig(nil))
+	return NewScyllaClient(cfg)
+}
+
+func NewScyllaClientFromToken(hosts []string, authToken string) (*scyllaclient.Client, error) {
+	cfg := scyllaclient.DefaultConfig(authToken, hosts...)
+	return NewScyllaClient(cfg)
 }
 
 func NewScyllaClientFromSecret(secret *corev1.Secret, hosts []string) (*scyllaclient.Client, error) {

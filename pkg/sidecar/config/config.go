@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -58,20 +59,25 @@ func NewScyllaConfig(m *identity.Member, kubeClient kubernetes.Interface, scylla
 }
 
 func (s *ScyllaConfig) Setup(ctx context.Context) (*exec.Cmd, error) {
-	var err error
-	var cmd *exec.Cmd
+	klog.Info("Setting up iotune cache")
+	if err := setupIOTuneCache(); err != nil {
+		return nil, fmt.Errorf("can't setup iotune cache: %w", err)
+	}
 
 	klog.Info("Setting up scylla.yaml")
-	if err = s.setupScyllaYAML(scyllaYAMLPath, scyllaYAMLConfigMapPath); err != nil {
-		return nil, errors.Wrap(err, "failed to setup scylla.yaml")
+	if err := s.setupScyllaYAML(scyllaYAMLPath, scyllaYAMLConfigMapPath); err != nil {
+		return nil, fmt.Errorf("can't setup scylla.yaml: %w", err)
 	}
+
 	klog.Info("Setting up cassandra-rackdc.properties")
-	if err = s.setupRackDCProperties(); err != nil {
-		return nil, errors.Wrap(err, "failed to setup rackdc properties file")
+	if err := s.setupRackDCProperties(); err != nil {
+		return nil, fmt.Errorf("can't setup rackdc properties file: %w", err)
 	}
+
 	klog.Info("Setting up entrypoint script")
-	if cmd, err = s.setupEntrypoint(ctx); err != nil {
-		return nil, errors.Wrap(err, "failed to setup entrypoint")
+	cmd, err := s.setupEntrypoint(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("can't setup entrypoint: %w", err)
 	}
 
 	return cmd, nil
@@ -293,6 +299,25 @@ func (s *ScyllaConfig) validateCpuSet(ctx context.Context, cpusAllowed string, s
 		klog.InfoS("suboptimal shard and cpuset config, shard count (config: 'CPU') and cpuset size should match for optimal performance",
 			"shards", shards, "cpuset", cpuSet.String())
 	}
+	return nil
+}
+
+func setupIOTuneCache() error {
+	if _, err := os.Stat(scyllaIOPropertiesPath); err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("can't stat file %q: %w", scyllaIOPropertiesPath, err)
+		}
+
+		cachePath := path.Join(naming.DataDir, naming.ScyllaIOPropertiesName)
+		if err := os.Symlink(cachePath, scyllaIOPropertiesPath); err != nil {
+			return fmt.Errorf("can't create symlink from %q to %q: %w", scyllaIOPropertiesPath, cachePath, err)
+		}
+
+		klog.V(2).Info("Initialized IOTune benchmark cache", "path", scyllaIOPropertiesPath, "cachePath", cachePath)
+	} else {
+		klog.V(2).Info("Found cached IOTune benchmark results", "path", scyllaIOPropertiesPath)
+	}
+
 	return nil
 }
 

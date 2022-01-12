@@ -13,7 +13,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
-	"github.com/scylladb/scylla-operator/pkg/semver"
 	"github.com/scylladb/scylla-operator/pkg/util/cloud"
 	"github.com/scylladb/scylla-operator/pkg/util/cpuset"
 	"github.com/scylladb/scylla-operator/pkg/util/network"
@@ -77,15 +76,7 @@ func (ncdc *Controller) makePerftuneJobForContainers(ctx context.Context, podSpe
 
 	disableWritebackCache := false
 	if cloud.OnGKE() {
-		scyllaVersion, err := naming.ImageToVersion(ncdc.scyllaImage)
-		if err != nil {
-			return nil, fmt.Errorf("can't determine scylla image version %q: %w", ncdc.scyllaImage, err)
-		}
-		sv := semver.NewScyllaVersion(scyllaVersion)
-
-		if sv.SupportFeatureSafe(semver.ScyllaVersionThatSupportsDisablingWritebackCache) {
-			disableWritebackCache = true
-		}
+		disableWritebackCache = true
 	}
 
 	// Because perftune is not running in chroot we need to resolve any absolute symlinks in these paths.

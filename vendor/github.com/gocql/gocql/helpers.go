@@ -130,38 +130,38 @@ func getCassandraBaseType(name string) Type {
 	}
 }
 
-func getCassandraType(name string, logger StdLogger) TypeInfo {
+func getCassandraType(name string) TypeInfo {
 	if strings.HasPrefix(name, "frozen<") {
-		return getCassandraType(strings.TrimPrefix(name[:len(name)-1], "frozen<"), logger)
+		return getCassandraType(strings.TrimPrefix(name[:len(name)-1], "frozen<"))
 	} else if strings.HasPrefix(name, "set<") {
 		return CollectionType{
 			NativeType: NativeType{typ: TypeSet},
-			Elem:       getCassandraType(strings.TrimPrefix(name[:len(name)-1], "set<"), logger),
+			Elem:       getCassandraType(strings.TrimPrefix(name[:len(name)-1], "set<")),
 		}
 	} else if strings.HasPrefix(name, "list<") {
 		return CollectionType{
 			NativeType: NativeType{typ: TypeList},
-			Elem:       getCassandraType(strings.TrimPrefix(name[:len(name)-1], "list<"), logger),
+			Elem:       getCassandraType(strings.TrimPrefix(name[:len(name)-1], "list<")),
 		}
 	} else if strings.HasPrefix(name, "map<") {
 		names := splitCompositeTypes(strings.TrimPrefix(name[:len(name)-1], "map<"))
 		if len(names) != 2 {
-			logger.Printf("Error parsing map type, it has %d subelements, expecting 2\n", len(names))
+			Logger.Printf("Error parsing map type, it has %d subelements, expecting 2\n", len(names))
 			return NativeType{
 				typ: TypeCustom,
 			}
 		}
 		return CollectionType{
 			NativeType: NativeType{typ: TypeMap},
-			Key:        getCassandraType(names[0], logger),
-			Elem:       getCassandraType(names[1], logger),
+			Key:        getCassandraType(names[0]),
+			Elem:       getCassandraType(names[1]),
 		}
 	} else if strings.HasPrefix(name, "tuple<") {
 		names := splitCompositeTypes(strings.TrimPrefix(name[:len(name)-1], "tuple<"))
 		types := make([]TypeInfo, len(names))
 
 		for i, name := range names {
-			types[i] = getCassandraType(name, logger)
+			types[i] = getCassandraType(name)
 		}
 
 		return TupleTypeInfo{
@@ -270,6 +270,15 @@ func getApacheCassandraType(class string) Type {
 	}
 }
 
+func typeCanBeNull(typ TypeInfo) bool {
+	switch typ.(type) {
+	case CollectionType, UDTTypeInfo, TupleTypeInfo:
+		return false
+	}
+
+	return true
+}
+
 func (r *RowData) rowMap(m map[string]interface{}) {
 	for i, column := range r.Columns {
 		val := dereference(r.Values[i])
@@ -363,7 +372,7 @@ func (iter *Iter) SliceMap() ([]map[string]interface{}, error) {
 //	iter := session.Query(`SELECT * FROM mytable`).Iter()
 //	for {
 //		// New map each iteration
-//		row := make(map[string]interface{})
+//		row = make(map[string]interface{})
 //		if !iter.MapScan(row) {
 //			break
 //		}

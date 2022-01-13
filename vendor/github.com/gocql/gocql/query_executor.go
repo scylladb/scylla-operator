@@ -14,6 +14,8 @@ type ExecutableQuery interface {
 	GetRoutingKey() ([]byte, error)
 	Keyspace() string
 	IsIdempotent() bool
+	IsLWT() bool
+	GetCustomPartitioner() partitioner
 
 	withContext(context.Context) ExecutableQuery
 
@@ -116,7 +118,7 @@ func (q *queryExecutor) do(ctx context.Context, qry ExecutableQuery, hostIter Ne
 			continue
 		}
 
-		conn := pool.Pick()
+		conn := pool.Pick(selectedHost.Token())
 		if conn == nil {
 			selectedHost = hostIter()
 			continue

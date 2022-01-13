@@ -2,8 +2,9 @@ package gocql
 
 import (
 	"bytes"
-	"github.com/gocql/gocql/internal/lru"
 	"sync"
+
+	"github.com/gocql/gocql/internal/lru"
 )
 
 const defaultMaxPreparedStmts = 1000
@@ -12,6 +13,18 @@ const defaultMaxPreparedStmts = 1000
 type preparedLRU struct {
 	mu  sync.Mutex
 	lru *lru.Cache
+}
+
+// Max adjusts the maximum size of the cache and cleans up the oldest records if
+// the new max is lower than the previous value. Not concurrency safe.
+func (p *preparedLRU) max(max int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	for p.lru.Len() > max {
+		p.lru.RemoveOldest()
+	}
+	p.lru.MaxEntries = max
 }
 
 func (p *preparedLRU) clear() {

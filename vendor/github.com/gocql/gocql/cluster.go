@@ -62,7 +62,7 @@ type ClusterConfig struct {
 	MaxPreparedStmts   int                                      // Sets the maximum cache size for prepared statements globally for gocql (default: 1000)
 	MaxRoutingKeyInfo  int                                      // Sets the maximum cache size for query info about statements for each session (default: 1000)
 	PageSize           int                                      // Default page size to use for created sessions (default: 5000)
-	SerialConsistency  SerialConsistency                        // Sets the consistency for the serial part of queries, values can be either SERIAL or LOCAL_SERIAL (default: unset)
+	SerialConsistency  Consistency                              // Sets the consistency for the serial part of queries, values can be either SERIAL or LOCAL_SERIAL (default: unset)
 	SslOpts            *SslOptions
 	DefaultTimestamp   bool // Sends a client side timestamp for all requests which overrides the timestamp at which it arrives at the server. (default: true, only enabled for protocol 3 and above)
 	// PoolConfig configures the underlying connection pool, allowing the
@@ -149,9 +149,16 @@ type ClusterConfig struct {
 	// If not provided, a default dialer configured with ConnectTimeout will be used.
 	Dialer Dialer
 
-	// Logger for this ClusterConfig.
-	// If not specified, defaults to the global gocql.Logger.
-	Logger StdLogger
+	// DisableShardAwarePort will prevent the driver from connecting to Scylla's shard-aware port,
+	// even if there are nodes in the cluster that support it.
+	//
+	// It is generally recommended to leave this option turned off because gocql can use
+	// the shard-aware port to make the process of establishing more robust.
+	// However, if you have a cluster with nodes which expose shard-aware port
+	// but the port is unreachable due to network configuration issues, you can use
+	// this option to work around the issue. Set it to true only if you neither can fix
+	// your network nor disable shard-aware port on your nodes.
+	DisableShardAwarePort bool
 
 	// internal config for testing
 	disableControlConn bool
@@ -192,13 +199,6 @@ func NewCluster(hosts ...string) *ClusterConfig {
 	return cfg
 }
 
-func (cfg *ClusterConfig) logger() StdLogger {
-	if cfg.Logger == nil {
-		return Logger
-	}
-	return cfg.Logger
-}
-
 // CreateSession initializes the cluster based on this config and returns a
 // session object that can be used to interact with the database.
 func (cfg *ClusterConfig) CreateSession() (*Session, error) {
@@ -215,7 +215,7 @@ func (cfg *ClusterConfig) translateAddressPort(addr net.IP, port int) (net.IP, i
 	}
 	newAddr, newPort := cfg.AddressTranslator.Translate(addr, port)
 	if gocqlDebug {
-		cfg.logger().Printf("gocql: translating address '%v:%d' to '%v:%d'", addr, port, newAddr, newPort)
+		Logger.Printf("gocql: translating address '%v:%d' to '%v:%d'", addr, port, newAddr, newPort)
 	}
 	return newAddr, newPort
 }

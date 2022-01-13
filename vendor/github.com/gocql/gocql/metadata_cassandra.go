@@ -1,3 +1,6 @@
+// +build cassandra
+// +build !scylla
+
 // Copyright (c) 2015 The gocql Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
@@ -290,8 +293,7 @@ func (s *schemaDescriber) refreshSchema(keyspaceName string) error {
 	}
 
 	// organize the schema data
-	compileMetadata(s.session.cfg.ProtoVersion, keyspace, tables, columns, functions, aggregates, views,
-		materializedViews, s.session.logger)
+	compileMetadata(s.session.cfg.ProtoVersion, keyspace, tables, columns, functions, aggregates, views, materializedViews)
 
 	// update the cache
 	s.cache[keyspaceName] = keyspace
@@ -313,7 +315,6 @@ func compileMetadata(
 	aggregates []AggregateMetadata,
 	views []ViewMetadata,
 	materializedViews []MaterializedViewMetadata,
-	logger StdLogger,
 ) {
 	keyspace.Tables = make(map[string]*TableMetadata)
 	for i := range tables {
@@ -359,13 +360,13 @@ func compileMetadata(
 		col := &columns[i]
 		// decode the validator for TypeInfo and order
 		if col.ClusteringOrder != "" { // Cassandra 3.x+
-			col.Type = getCassandraType(col.Validator, logger)
+			col.Type = getCassandraType(col.Validator)
 			col.Order = ASC
 			if col.ClusteringOrder == "desc" {
 				col.Order = DESC
 			}
 		} else {
-			validatorParsed := parseType(col.Validator, logger)
+			validatorParsed := parseType(col.Validator)
 			col.Type = validatorParsed.types[0]
 			col.Order = ASC
 			if validatorParsed.reversed[0] {
@@ -387,9 +388,9 @@ func compileMetadata(
 	}
 
 	if protoVersion == protoVersion1 {
-		compileV1Metadata(tables, logger)
+		compileV1Metadata(tables)
 	} else {
-		compileV2Metadata(tables, logger)
+		compileV2Metadata(tables)
 	}
 }
 
@@ -398,14 +399,14 @@ func compileMetadata(
 // column metadata as V2+ (because V1 doesn't support the "type" column in the
 // system.schema_columns table) so determining PartitionKey and ClusterColumns
 // is more complex.
-func compileV1Metadata(tables []TableMetadata, logger StdLogger) {
+func compileV1Metadata(tables []TableMetadata) {
 	for i := range tables {
 		table := &tables[i]
 
 		// decode the key validator
-		keyValidatorParsed := parseType(table.KeyValidator, logger)
+		keyValidatorParsed := parseType(table.KeyValidator)
 		// decode the comparator
-		comparatorParsed := parseType(table.Comparator, logger)
+		comparatorParsed := parseType(table.Comparator)
 
 		// the partition key length is the same as the number of types in the
 		// key validator
@@ -491,7 +492,7 @@ func compileV1Metadata(tables []TableMetadata, logger StdLogger) {
 				alias = table.ValueAlias
 			}
 			// decode the default validator
-			defaultValidatorParsed := parseType(table.DefaultValidator, logger)
+			defaultValidatorParsed := parseType(table.DefaultValidator)
 			column := &ColumnMetadata{
 				Keyspace: table.Keyspace,
 				Table:    table.Name,
@@ -505,7 +506,7 @@ func compileV1Metadata(tables []TableMetadata, logger StdLogger) {
 }
 
 // The simpler compile case for V2+ protocol
-func compileV2Metadata(tables []TableMetadata, logger StdLogger) {
+func compileV2Metadata(tables []TableMetadata) {
 	for i := range tables {
 		table := &tables[i]
 
@@ -513,7 +514,7 @@ func compileV2Metadata(tables []TableMetadata, logger StdLogger) {
 		table.ClusteringColumns = make([]*ColumnMetadata, clusteringColumnCount)
 
 		if table.KeyValidator != "" {
-			keyValidatorParsed := parseType(table.KeyValidator, logger)
+			keyValidatorParsed := parseType(table.KeyValidator)
 			table.PartitionKey = make([]*ColumnMetadata, len(keyValidatorParsed.types))
 		} else { // Cassandra 3.x+
 			partitionKeyCount := componentColumnCountOfType(table.Columns, ColumnPartitionKey)
@@ -923,11 +924,11 @@ func getColumnMetadata(session *Session, keyspaceName string) ([]ColumnMetadata,
 	return columns, nil
 }
 
-func getTypeInfo(t string, logger StdLogger) TypeInfo {
+func getTypeInfo(t string) TypeInfo {
 	if strings.HasPrefix(t, apacheCassandraTypePrefix) {
 		t = apacheToCassandraType(t)
 	}
-	return getCassandraType(t, logger)
+	return getCassandraType(t)
 }
 
 func getViewsMetadata(session *Session, keyspaceName string) ([]ViewMetadata, error) {
@@ -963,7 +964,7 @@ func getViewsMetadata(session *Session, keyspaceName string) ([]ViewMetadata, er
 		}
 		view.FieldTypes = make([]TypeInfo, len(argumentTypes))
 		for i, argumentType := range argumentTypes {
-			view.FieldTypes[i] = getTypeInfo(argumentType, session.logger)
+			view.FieldTypes[i] = getTypeInfo(argumentType)
 		}
 		views = append(views, view)
 	}
@@ -1084,10 +1085,10 @@ func getFunctionsMetadata(session *Session, keyspaceName string) ([]FunctionMeta
 		if err != nil {
 			return nil, err
 		}
-		function.ReturnType = getTypeInfo(returnType, session.logger)
+		function.ReturnType = getTypeInfo(returnType)
 		function.ArgumentTypes = make([]TypeInfo, len(argumentTypes))
 		for i, argumentType := range argumentTypes {
-			function.ArgumentTypes[i] = getTypeInfo(argumentType, session.logger)
+			function.ArgumentTypes[i] = getTypeInfo(argumentType)
 		}
 		functions = append(functions, function)
 	}
@@ -1141,11 +1142,11 @@ func getAggregatesMetadata(session *Session, keyspaceName string) ([]AggregateMe
 		if err != nil {
 			return nil, err
 		}
-		aggregate.ReturnType = getTypeInfo(returnType, session.logger)
-		aggregate.StateType = getTypeInfo(stateType, session.logger)
+		aggregate.ReturnType = getTypeInfo(returnType)
+		aggregate.StateType = getTypeInfo(stateType)
 		aggregate.ArgumentTypes = make([]TypeInfo, len(argumentTypes))
 		for i, argumentType := range argumentTypes {
-			aggregate.ArgumentTypes[i] = getTypeInfo(argumentType, session.logger)
+			aggregate.ArgumentTypes[i] = getTypeInfo(argumentType)
 		}
 		aggregates = append(aggregates, aggregate)
 	}
@@ -1159,9 +1160,8 @@ func getAggregatesMetadata(session *Session, keyspaceName string) ([]AggregateMe
 
 // type definition parser state
 type typeParser struct {
-	input  string
-	index  int
-	logger StdLogger
+	input string
+	index int
 }
 
 // the type definition parser result
@@ -1173,8 +1173,8 @@ type typeParserResult struct {
 }
 
 // Parse the type definition used for validator and comparator schema data
-func parseType(def string, logger StdLogger) typeParserResult {
-	parser := &typeParser{input: def, logger: logger}
+func parseType(def string) typeParserResult {
+	parser := &typeParser{input: def}
 	return parser.parse()
 }
 
@@ -1234,7 +1234,7 @@ func (t *typeParser) parse() typeParserResult {
 				var name string
 				decoded, err := hex.DecodeString(*param.name)
 				if err != nil {
-					t.logger.Printf(
+					Logger.Printf(
 						"Error parsing type '%s', contains collection name '%s' with an invalid format: %v",
 						t.input,
 						*param.name,

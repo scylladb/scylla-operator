@@ -30,7 +30,7 @@ type retryableOperation struct {
 }
 
 // retryable wraps parent and adds retry capabilities.
-func retryable(transport runtime.ClientTransport, config Config, logger log.Logger) runtime.ClientTransport {
+func retryable(transport runtime.ClientTransport, config *Config, logger log.Logger) runtime.ClientTransport {
 	return retryableTransport{
 		transport:         transport,
 		config:            config.Backoff,

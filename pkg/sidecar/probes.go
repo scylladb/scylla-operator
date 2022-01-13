@@ -8,52 +8,36 @@ import (
 
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
-	"github.com/scylladb/scylla-operator/pkg/util/network"
 	corev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
+)
+
+const (
+	localhost = "localhost"
 )
 
 type Prober struct {
 	namespace     string
 	serviceName   string
-	secretName    string
 	serviceLister corev1.ServiceLister
-	secretLister  corev1.SecretLister
-	hostAddr      string
 	timeout       time.Duration
 }
 
 func NewProber(
 	namespace string,
 	serviceName string,
-	secretName string,
 	serviceLister corev1.ServiceLister,
-	secretLister corev1.SecretLister,
-	hostAddr string,
 ) *Prober {
 	return &Prober{
 		namespace:     namespace,
 		serviceName:   serviceName,
-		secretName:    secretName,
 		serviceLister: serviceLister,
-		secretLister:  secretLister,
-		hostAddr:      hostAddr,
 		timeout:       60 * time.Second,
 	}
 }
 
 func (p *Prober) serviceRef() string {
 	return fmt.Sprintf("%s/%s", p.namespace, p.serviceName)
-}
-
-func (p *Prober) getScyllaClient() (*scyllaclient.Client, error) {
-	secret, err := p.secretLister.Secrets(p.namespace).Get(p.secretName)
-	if err != nil {
-		return nil, fmt.Errorf("can't get manager agent auth secret %s/%s: %w", p.namespace, p.secretName, err)
-	}
-
-	return controllerhelpers.NewScyllaClientFromSecret(secret, []string{p.hostAddr})
 }
 
 func (p *Prober) isNodeUnderMaintenance() (bool, error) {
@@ -93,7 +77,7 @@ func (p *Prober) Readyz(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	scyllaClient, err := p.getScyllaClient()
+	scyllaClient, err := controllerhelpers.NewScyllaClientForLocalhost()
 	if err != nil {
 		klog.ErrorS(err, "readyz probe: can't get scylla client", "Service", p.serviceRef())
 		w.WriteHeader(http.StatusInternalServerError)
@@ -101,7 +85,7 @@ func (p *Prober) Readyz(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Contact Scylla to learn about the status of the member
-	nodeStatuses, err := scyllaClient.Status(ctx, p.hostAddr)
+	nodeStatuses, err := scyllaClient.Status(ctx, localhost)
 	if err != nil {
 		klog.ErrorS(err, "readyz probe: can't get scylla node status", "Service", p.serviceRef())
 		w.WriteHeader(http.StatusInternalServerError)
@@ -119,7 +103,7 @@ func (p *Prober) Readyz(w http.ResponseWriter, req *http.Request) {
 		klog.V(4).InfoS("readyz probe: node state", "Node", s.Addr, "Status", s.Status, "State", s.State)
 
 		if s.Addr == nodeAddress && s.IsUN() {
-			transportEnabled, err := scyllaClient.IsNativeTransportEnabled(ctx, p.hostAddr)
+			transportEnabled, err := scyllaClient.IsNativeTransportEnabled(ctx, localhost)
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)
 				klog.ErrorS(err, "readyz probe: can't get scylla native transport", "Service", p.serviceRef(), "Node", s.Addr)
@@ -139,8 +123,8 @@ func (p *Prober) Readyz(w http.ResponseWriter, req *http.Request) {
 }
 
 func (p *Prober) Healthz(w http.ResponseWriter, req *http.Request) {
-	ctx, cancel := context.WithCancel(req.Context())
-	defer cancel()
+	ctx, ctxCancel := context.WithTimeout(req.Context(), p.timeout)
+	defer ctxCancel()
 
 	underMaintenance, err := p.isNodeUnderMaintenance()
 	if err != nil {
@@ -155,24 +139,17 @@ func (p *Prober) Healthz(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	host, err := network.FindFirstNonLocalIP()
-	if err != nil {
-		w.WriteHeader(http.StatusServiceUnavailable)
-		klog.ErrorS(err, "healthz probe: can't determine the local IP", "Service", p.serviceRef())
-		return
-	}
-
-	scyllaClient, err := p.getScyllaClient()
+	scyllaClient, err := controllerhelpers.NewScyllaClientForLocalhost()
 	if err != nil {
 		klog.ErrorS(err, "healthz probe: can't get scylla client", "Service", p.serviceRef())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	// Check if Scylla is reachable
-	_, err = scyllaClient.Ping(ctx, host.String())
+	// Check if Scylla API is reachable
+	_, err = scyllaClient.Ping(ctx, localhost)
 	if err != nil {
-		klog.ErrorS(err, "healthz probe: can't connect to Scylla", "Service", p.serviceRef())
+		klog.ErrorS(err, "healthz probe: can't connect to Scylla API", "Service", p.serviceRef())
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}

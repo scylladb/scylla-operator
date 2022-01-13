@@ -279,7 +279,6 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 							Command: []string{
 								path.Join(naming.SharedDirName, "scylla-operator"),
 								"sidecar",
-								fmt.Sprintf("--secret-name=%s", naming.AgentAuthTokenSecretName(c.Name)),
 								"--service-name=$(SERVICE_NAME)",
 								"--cpu-count=$(CPU_COUNT)",
 								// TODO: make it configurable

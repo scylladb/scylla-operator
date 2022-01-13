@@ -7,7 +7,6 @@ import (
 	"github.com/scylladb/go-log"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"go.uber.org/zap"
@@ -69,28 +68,31 @@ func GetRequiredScyllaHosts(sc *scyllav1.ScyllaCluster, services map[string]*cor
 	return hosts, nil
 }
 
-func NewScyllaClientFromToken(hosts []string, authToken string) (*scyllaclient.Client, error) {
+func NewScyllaClient(cfg *scyllaclient.Config) (*scyllaclient.Client, error) {
 	// TODO: unify logging
 	logger, _ := log.NewProduction(log.Config{
 		Level: zap.NewAtomicLevelAt(zapcore.InfoLevel),
 	})
-
-	cfg := scyllaclient.DefaultConfig(authToken, hosts...)
 	scyllaClient, err := scyllaclient.NewClient(cfg, logger.Named("scylla_client"))
 	if err != nil {
 		return nil, err
 	}
-
 	return scyllaClient, nil
 }
 
-func NewScyllaClientFromSecret(secret *corev1.Secret, hosts []string) (*scyllaclient.Client, error) {
-	token, err := helpers.GetAgentAuthTokenFromSecret(secret)
-	if err != nil {
-		return nil, err
-	}
+func NewScyllaClientFromToken(hosts []string, authToken string) (*scyllaclient.Client, error) {
+	cfg := scyllaclient.DefaultConfig(authToken, hosts...)
+	return NewScyllaClient(cfg)
+}
 
-	return NewScyllaClientFromToken(hosts, token)
+func NewScyllaClientForLocalhost() (*scyllaclient.Client, error) {
+	cfg := scyllaclient.DefaultConfig("", "localhost")
+	cfg.Scheme = "http"
+	cfg.Port = fmt.Sprintf("%d", naming.ScyllaAPIPort)
+	t := scyllaclient.DefaultTransport()
+	t.TLSClientConfig = nil
+	cfg.Transport = t
+	return NewScyllaClient(cfg)
 }
 
 func SetRackCondition(rackStatus *scyllav1.RackStatus, newCondition scyllav1.RackConditionType) {

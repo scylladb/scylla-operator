@@ -81,6 +81,7 @@ const (
 	ReadinessProbePath = "/readyz"
 	LivenessProbePath  = "/healthz"
 	ProbePort          = 8080
+	ScyllaAPIPort      = 10000
 
 	OperatorEnvVarPrefix = "SCYLLA_OPERATOR_"
 )

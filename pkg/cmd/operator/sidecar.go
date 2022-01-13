@@ -20,7 +20,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/sidecar/config"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/signals"
-	"github.com/scylladb/scylla-operator/pkg/util/network"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -45,7 +44,6 @@ type SidecarOptions struct {
 	genericclioptions.InClusterReflection
 
 	ServiceName string
-	SecretName  string
 	CPUCount    int
 
 	kubeClient   kubernetes.Interface
@@ -97,7 +95,6 @@ func NewSidecarCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	o.InClusterReflection.AddFlags(cmd)
 
 	cmd.Flags().StringVarP(&o.ServiceName, "service-name", "", o.ServiceName, "Name of the service corresponding to the managed node.")
-	cmd.Flags().StringVarP(&o.SecretName, "secret-name", "", o.SecretName, "Name of the manager-agent secret for this ScyllaCluster.")
 	cmd.Flags().IntVarP(&o.CPUCount, "cpu-count", "", o.CPUCount, "Number of cpus to use.")
 
 	return cmd
@@ -115,15 +112,6 @@ func (o *SidecarOptions) Validate() error {
 		serviceNameValidationErrs := apimachineryvalidation.NameIsDNS1035Label(o.ServiceName, false)
 		if len(serviceNameValidationErrs) != 0 {
 			errs = append(errs, fmt.Errorf("invalid service name %q: %v", o.ServiceName, serviceNameValidationErrs))
-		}
-	}
-
-	if len(o.SecretName) == 0 {
-		errs = append(errs, fmt.Errorf("secret-name can't be empty"))
-	} else {
-		secretNameValidationErrs := apimachineryvalidation.NameIsDNSSubdomain(o.SecretName, false)
-		if len(secretNameValidationErrs) != 0 {
-			errs = append(errs, fmt.Errorf("invalid secret name %q: %v", o.SecretName, secretNameValidationErrs))
 		}
 	}
 
@@ -180,32 +168,18 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 	namespacedKubeInformers := informers.NewSharedInformerFactoryWithOptions(o.kubeClient, 12*time.Hour, informers.WithNamespace(o.Namespace))
 
 	singleServiceInformer := singleServiceKubeInformers.Core().V1().Services()
-	secretsInformer := namespacedKubeInformers.Core().V1().Secrets()
-
-	hostIP, err := network.FindFirstNonLocalIP()
-	if err != nil {
-		return fmt.Errorf("can't get node ip: %w", err)
-	}
-
-	hostAddr := hostIP.String()
 
 	prober := sidecar.NewProber(
 		o.Namespace,
 		o.ServiceName,
-		o.SecretName,
 		singleServiceInformer.Lister(),
-		secretsInformer.Lister(),
-		hostAddr,
 	)
 
 	sc, err := sidecarcontroller.NewController(
 		o.Namespace,
 		o.ServiceName,
-		o.SecretName,
-		hostAddr,
 		o.kubeClient,
 		singleServiceInformer,
-		secretsInformer,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create sidecar controller: %w", err)
@@ -406,7 +380,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 	go func() {
 		defer wg.Done()
 
-		ok := cache.WaitForNamedCacheSync("Prober", ctx.Done(), secretsInformer.Informer().HasSynced)
+		ok := cache.WaitForNamedCacheSync("Prober", ctx.Done(), singleServiceInformer.Informer().HasSynced)
 		if !ok {
 			return
 		}

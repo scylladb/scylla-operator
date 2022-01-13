@@ -16,24 +16,18 @@ import (
 	"k8s.io/klog/v2"
 )
 
-const requeueWaitDuration = 5 * time.Second
-
-func (c *Controller) getScyllaClient() (*scyllaclient.Client, error) {
-	secret, err := c.secretLister.Secrets(c.namespace).Get(c.secretName)
-	if err != nil {
-		return nil, fmt.Errorf("can't get manager agent auth secret %s/%s: %w", c.namespace, c.secretName, err)
-	}
-
-	return controllerhelpers.NewScyllaClientFromSecret(secret, []string{c.hostAddr})
-}
+const (
+	requeueWaitDuration = 5 * time.Second
+	localhost           = "localhost"
+)
 
 func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) error {
-	scyllaClient, err := c.getScyllaClient()
+	scyllaClient, err := controllerhelpers.NewScyllaClientForLocalhost()
 	if err != nil {
 		return err
 	}
 
-	opMode, err := scyllaClient.OperationMode(ctx, c.hostAddr)
+	opMode, err := scyllaClient.OperationMode(ctx, localhost)
 	if err != nil {
 		return fmt.Errorf("can't get node operation mode: %w", err)
 	}
@@ -60,7 +54,7 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 		// Node can be in NORMAL mode while still starting up.
 		// Last thing that scylla is doing as part of startup process is brining native transport up
 		// so we check if native port is up as sign that it is not loading.
-		nativeUp, err := scyllaClient.IsNativeTransportEnabled(ctx, c.hostAddr)
+		nativeUp, err := scyllaClient.IsNativeTransportEnabled(ctx, localhost)
 		if err != nil {
 			return fmt.Errorf("can't get native transport status: %w", err)
 		}
@@ -72,11 +66,11 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 		}
 
 		// Decommission the node only if it is in normal mode and native transport is up.
-		decommissionErr := scyllaClient.Decommission(ctx, c.hostAddr)
+		decommissionErr := scyllaClient.Decommission(ctx, localhost)
 		if decommissionErr != nil {
 			// Decommission is long running task, so request fails due to the timeout in most cases.
 			// To not raise an error, when it is in progress, we check opMode.
-			opMode, err := scyllaClient.OperationMode(ctx, c.hostAddr)
+			opMode, err := scyllaClient.OperationMode(ctx, localhost)
 			if err == nil && (opMode.IsDecommissioned() || opMode.IsLeaving() || opMode.IsDecommissioning()) {
 				klog.V(2).InfoS("Decommissioning is in progress. Waiting a bit.", "Mode", opMode)
 				c.queue.AddAfter(c.key, requeueWaitDuration)

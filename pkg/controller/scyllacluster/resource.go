@@ -22,6 +22,11 @@ const (
 	scyllaAgentAuthTokenVolumeName = "scylla-agent-auth-token-volume"
 )
 
+const (
+	rootUID = 0
+	rootGID = 0
+)
+
 func HeadlessServiceForCluster(c *scyllav1.ScyllaCluster) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -202,6 +207,10 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 				Spec: corev1.PodSpec{
 					HostNetwork: c.Spec.Network.HostNetworking,
 					DNSPolicy:   c.Spec.Network.GetDNSPolicy(),
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsUser:  pointer.Int64(rootUID),
+						RunAsGroup: pointer.Int64(rootGID),
+					},
 					Volumes: []corev1.Volume{
 						{
 							Name: "shared",
@@ -336,6 +345,8 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 							},
 							// Add CAP_SYS_NICE as instructed by scylla logs
 							SecurityContext: &corev1.SecurityContext{
+								RunAsUser:  pointer.Int64(rootUID),
+								RunAsGroup: pointer.Int64(rootGID),
 								Capabilities: &corev1.Capabilities{
 									Add: []corev1.Capability{"SYS_NICE"},
 								},

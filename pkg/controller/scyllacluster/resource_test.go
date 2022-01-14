@@ -407,6 +407,10 @@ func TestStatefulSetForRack(t *testing.T) {
 						},
 					},
 					Spec: corev1.PodSpec{
+						SecurityContext: &corev1.PodSecurityContext{
+							RunAsUser:  pointer.Int64(0),
+							RunAsGroup: pointer.Int64(0),
+						},
 						Volumes: []corev1.Volume{
 							{
 								Name: "shared",
@@ -566,6 +570,8 @@ func TestStatefulSetForRack(t *testing.T) {
 									},
 								},
 								SecurityContext: &corev1.SecurityContext{
+									RunAsUser:  pointer.Int64(0),
+									RunAsGroup: pointer.Int64(0),
 									Capabilities: &corev1.Capabilities{
 										Add: []corev1.Capability{"SYS_NICE"},
 									},

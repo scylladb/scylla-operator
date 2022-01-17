@@ -95,7 +95,7 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 			Type:                     corev1.ServiceTypeClusterIP,
 			Selector:                 naming.StatefulSetPodLabel(name),
 			Ports:                    memberServicePorts(sc),
-			PublishNotReadyAddresses: true,
+			PublishNotReadyAddresses: false,
 		},
 	}
 }
@@ -391,7 +391,24 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								PreStop: &corev1.Handler{
 									Exec: &corev1.ExecAction{
 										Command: []string{
-											"/bin/sh", "-c", "PID=$(pgrep -x scylla);supervisorctl stop scylla; while kill -0 $PID; do sleep 1; done;",
+											"/bin/bash",
+											"-euExo",
+											"pipefail",
+											"-O",
+											"inherit_errexit",
+											"-c",
+											`
+# Make sure the LB has time to take the endpoint down.
+sleep 30s &
+
+PID=$(pgrep -x scylla)
+supervisorctl stop scylla
+while kill -0 $PID; do
+  sleep 1
+done
+
+wait
+`,
 										},
 									},
 								},

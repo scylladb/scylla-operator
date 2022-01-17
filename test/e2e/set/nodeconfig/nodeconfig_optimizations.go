@@ -199,6 +199,8 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		pod, err := utils.WaitForPodState(ctx1, f.KubeClient().CoreV1(), sc.Namespace, podName, func(p *corev1.Pod) (bool, error) {
 			return true, nil
 		}, utils.WaitForStateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
 		cmName := naming.GetTuningConfigMapNameForPod(pod)
 		ctx2, ctx2Cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer ctx2Cancel()

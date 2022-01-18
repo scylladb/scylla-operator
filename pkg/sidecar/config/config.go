@@ -200,10 +200,24 @@ func appendScyllaArguments(ctx context.Context, s *ScyllaConfig, scyllaArgs stri
 	}
 }
 
+func (s *ScyllaConfig) checkSeed(ctx context.Context, seed string) (scyllaclient.NodeStatusInfoSlice, error) {
+	// try to figure out if its ip exists in cluster
+	scyllaClient, err := s.getScyllaClient(seed)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get scylla client")
+	}
+	// Contact Scylla to learn about the status of the member
+	nodeStatuses, err := scyllaClient.Status(ctx, seed)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get scylla node status")
+	}
+	return nodeStatuses, nil
+}
+
 func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	m := s.member
 	// Get seeds
-	seed, err := m.GetSeed(ctx, s.kubeClient.CoreV1())
+	seed, err := m.GetSeed(ctx, s.kubeClient.CoreV1(), s.checkSeed)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting seeds")
 	}
@@ -244,19 +258,15 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	}
 	// try to replace itself if not seed
 	if seed != "" && seed != m.StaticIP {
-		// try to figure out if its ip exists in cluster
-		scyllaClient, err := s.getScyllaClient(seed)
-		if err != nil {
-			return nil, errors.Wrap(err, "can't get scylla client")
-		}
-
 		// Contact Scylla to learn about the status of the member
-		nodeStatuses, err := scyllaClient.Status(ctx, seed)
+		klog.InfoS("Getting existing Scylla gossip group")
+		nodeStatuses, err := s.checkSeed(ctx, seed)
 		if err != nil {
-			return nil, errors.Wrap(err, "can't get scylla node status")
+			return nil, err
 		}
 
 		for _, s := range nodeStatuses {
+			klog.InfoS("Found existing Scylla in gossip group", "addr", s.Addr)
 			if s.Addr == m.StaticIP { // if it exists, add "replace-address-first-boot" to boot
 				args["replace-address-first-boot"] = pointer.StringPtr(m.StaticIP)
 				break

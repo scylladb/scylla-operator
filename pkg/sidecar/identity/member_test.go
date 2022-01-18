@@ -11,6 +11,7 @@ import (
 
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -105,7 +106,9 @@ func TestMember_GetSeeds(t *testing.T) {
 			}
 
 			fakeClient := fake.NewSimpleClientset(test.objects...)
-			seed, err := member.GetSeed(ctx, fakeClient.CoreV1())
+			seed, err := member.GetSeed(ctx, fakeClient.CoreV1(), func(ctx context.Context, seed string) (scyllaclient.NodeStatusInfoSlice, error) {
+				return nil, nil
+			})
 			if !reflect.DeepEqual(err, test.expectError) {
 				t.Errorf("expected error %v, got %v", test.expectError, err)
 			}

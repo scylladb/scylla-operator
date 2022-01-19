@@ -13,6 +13,9 @@ var (
 	//go:embed "basic.scyllacluster.yaml"
 	BasicScyllaCluster ScyllaClusterBytes
 
+	//go:embed "optimized.scyllacluster.yaml"
+	OptimizedScyllaCluster ScyllaClusterBytes
+
 	//go:embed "nodeconfig.yaml"
 	NodeConfig NodeConfigBytes
 )

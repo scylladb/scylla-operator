@@ -150,7 +150,7 @@ func (ncdc *Controller) makeJobForContainers(ctx context.Context) (*batchv1.Job,
 	for i := range localScyllaPods {
 		scyllaPod := localScyllaPods[i]
 
-		if scyllaPod.Status.QOSClass != corev1.PodQOSGuaranteed {
+		if !controllerhelpers.IsPodTunable(scyllaPod) {
 			klog.V(4).Infof("Pod %q isn't a subject for optimizations", naming.ObjRef(scyllaPod))
 			continue
 		}

@@ -186,7 +186,17 @@ func IsNodeTunedForContainer(nc *scyllav1alpha1.NodeConfig, nodeName string, con
 		return false
 	}
 
-	return true
+	for _, cid := range ns.TunedContainers {
+		if cid == containerID {
+			return true
+		}
+	}
+
+	return false
+}
+
+func IsPodTunable(pod *corev1.Pod) bool {
+	return pod.Status.QOSClass == corev1.PodQOSGuaranteed
 }
 
 func IsNodeTuned(ncnss []scyllav1alpha1.NodeConfigNodeStatus, nodeName string) bool {

@@ -25,7 +25,7 @@ const defaultCgroupMountpoint = "/sys/fs/cgroup"
 func getIRQCPUs(ctx context.Context, criClient cri.Client, scyllaPods []*corev1.Pod, hostFullCpuset cpuset.CPUSet, cgroupMountpoint string) (cpuset.CPUSet, error) {
 	scyllaCPUs := cpuset.CPUSet{}
 	for _, scyllaPod := range scyllaPods {
-		if scyllaPod.Status.QOSClass != corev1.PodQOSGuaranteed {
+		if !controllerhelpers.IsPodTunable(scyllaPod) {
 			continue
 		}
 

@@ -148,7 +148,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 
 		nc := ncTemplate.DeepCopy()
 
-		g.By("Blocking node tuning")
+		g.By("Blocking container tuning")
 		// We have to make sure the namespace exists.
 		_, err := f.KubeAdminClient().CoreV1().Namespaces().Create(
 			ctx,
@@ -171,7 +171,8 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 				},
 				Spec: corev1.ResourceQuotaSpec{
 					Hard: corev1.ResourceList{
-						corev1.ResourcePods: resource.MustParse("0"),
+						// Allow Node tuning Job.
+						"count/jobs.batch": resource.MustParse(fmt.Sprintf("%d", len(matchingNodes))),
 					},
 				},
 			},
@@ -183,26 +184,51 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		nc, err = f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Create(ctx, nc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		framework.By("Waiting for the NodeConfig to deploy")
+		ctx1, ctx1Cancel := context.WithTimeout(ctx, nodeConfigRolloutTimeout)
+		defer ctx1Cancel()
+		nc, err = utils.WaitForNodeConfigState(
+			ctx1,
+			f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs(),
+			nc.Name,
+			utils.WaitForStateOptions{TolerateDelete: false},
+			utils.IsNodeConfigRolledOut,
+			utils.IsNodeConfigDoneWithNodeTuningFunc(matchingNodes),
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		verifyNodeConfig(ctx, f.KubeAdminClient(), nc)
+
+		// There should be a tuning job for every scylla node.
+		nodeJobList, err := f.KubeAdminClient().BatchV1().Jobs(naming.ScyllaOperatorNodeTuningNamespace).List(ctx, metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(labels.Set{
+				naming.NodeConfigNameLabel:    nc.Name,
+				naming.NodeConfigJobTypeLabel: string(naming.NodeConfigJobTypeNode),
+			}).String(),
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(nodeJobList.Items).To(o.HaveLen(len(matchingNodes)))
+
+		sc := scyllafixture.OptimizedScyllaCluster.ReadOrFail()
 
 		framework.By("Creating a ScyllaCluster")
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for a ConfigMap to indicate blocking NodeConfig")
-		ctx1, ctx1Cancel := context.WithTimeout(ctx, apiCallTimeout)
-		defer ctx1Cancel()
+		ctx2, ctx2Cancel := context.WithTimeout(ctx, apiCallTimeout)
+		defer ctx2Cancel()
 		podName := fmt.Sprintf("%s-%d", naming.StatefulSetNameForRack(sc.Spec.Datacenter.Racks[0], sc), 0)
-		pod, err := utils.WaitForPodState(ctx1, f.KubeClient().CoreV1().Pods(sc.Namespace), podName, func(p *corev1.Pod) (bool, error) {
+		pod, err := utils.WaitForPodState(ctx2, f.KubeClient().CoreV1().Pods(sc.Namespace), podName, func(p *corev1.Pod) (bool, error) {
 			return true, nil
 		}, utils.WaitForStateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		cmName := naming.GetTuningConfigMapNameForPod(pod)
-		ctx2, ctx2Cancel := context.WithTimeout(ctx, 30*time.Second)
-		defer ctx2Cancel()
+		ctx3, ctx3Cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer ctx3Cancel()
 		src := &internalapi.SidecarRuntimeConfig{}
-		cm, err := utils.WaitForConfigMapState(ctx2, f.KubeClient().CoreV1().ConfigMaps(sc.Namespace), cmName, utils.WaitForStateOptions{}, func(cm *corev1.ConfigMap) (bool, error) {
+		cm, err := utils.WaitForConfigMapState(ctx3, f.KubeClient().CoreV1().ConfigMaps(sc.Namespace), cmName, utils.WaitForStateOptions{}, func(cm *corev1.ConfigMap) (bool, error) {
 			if cm.Data == nil {
 				return false, nil
 			}
@@ -223,7 +249,18 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		o.Expect(src.ContainerID).To(o.BeEmpty())
 		o.Expect(src.MatchingNodeConfigs).NotTo(o.BeEmpty())
 
-		waitTime := utils.RolloutTimeoutForScyllaCluster(sc)
+		// There shouldn't be any tuning job for containers.
+		containerJobList, err := f.KubeAdminClient().BatchV1().Jobs(naming.ScyllaOperatorNodeTuningNamespace).List(ctx, metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(labels.Set{
+				naming.NodeConfigNameLabel:    nc.Name,
+				naming.NodeConfigJobTypeLabel: string(naming.NodeConfigJobTypeContainers),
+			}).String(),
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(containerJobList.Items).To(o.BeEmpty())
+
+		waitTime := time.Minute
+		// waitTime := utils.RolloutTimeoutForScyllaCluster(sc)
 		framework.By("Sleeping for %v", waitTime)
 		time.Sleep(waitTime)
 
@@ -240,26 +277,19 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		framework.By("Waiting for the NodeConfig to deploy")
-		ctx3, ctx3Cancel := context.WithTimeout(ctx, nodeConfigRolloutTimeout)
-		defer ctx3Cancel()
-		nc, err = utils.WaitForNodeConfigState(
-			ctx3,
-			f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs(),
-			nc.Name,
-			utils.WaitForStateOptions{TolerateDelete: false},
-			utils.IsNodeConfigRolledOut,
-			utils.IsNodeConfigDoneWithNodeTuningFunc(matchingNodes),
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		verifyNodeConfig(ctx, f.KubeAdminClient(), nc)
-
 		framework.By("Waiting for the ScyllaCluster to deploy")
 		ctx4, ctx4Cancel := utils.ContextForRollout(ctx, sc)
 		defer ctx4Cancel()
 		sc, err = utils.WaitForScyllaClusterState(ctx4, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// Pod might be restarted, update name of ConfigMap we are interested
+		pod, err = utils.WaitForPodState(ctx4, f.KubeClient().CoreV1().Pods(sc.Namespace), podName, func(p *corev1.Pod) (bool, error) {
+			return true, nil
+		}, utils.WaitForStateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		cmName = naming.GetTuningConfigMapNameForPod(pod)
 
 		framework.By("Verifying ConfigMap content")
 		ctx5, ctx5Cancel := context.WithTimeout(ctx, apiCallTimeout)

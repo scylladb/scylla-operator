@@ -37,10 +37,6 @@ func (ncpc *Controller) makeConfigMap(ctx context.Context, pod *corev1.Pod) (*co
 	// Filter nodeconfig selecting this node.
 	var ncs []*scyllav1alpha1.NodeConfig
 	for _, nc := range allNodeConfigs {
-		if nc.Spec.DisableOptimizations {
-			continue
-		}
-
 		isSelectingNode, err := controllerhelpers.IsNodeConfigSelectingNode(nc, node)
 		if err != nil {
 			return nil, fmt.Errorf(
@@ -71,9 +67,15 @@ func (ncpc *Controller) makeConfigMap(ctx context.Context, pod *corev1.Pod) (*co
 		for _, nc := range ncs {
 			src.MatchingNodeConfigs = append(src.MatchingNodeConfigs, nc.Name)
 
-			if !controllerhelpers.IsNodeTunedForContainer(nc, node.Name, containerID) {
-				src.BlockingNodeConfigs = append(src.BlockingNodeConfigs, nc.Name)
+			if nc.Spec.DisableOptimizations {
+				continue
 			}
+
+			if controllerhelpers.IsNodeTunedForContainer(nc, node.Name, containerID) {
+				continue
+			}
+
+			src.BlockingNodeConfigs = append(src.BlockingNodeConfigs, nc.Name)
 		}
 	}
 

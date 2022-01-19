@@ -1,7 +1,7 @@
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
 metadata:
-  name: basic
+  generateName: basic-
 spec:
   version: 4.5.1
   agentVersion: 2.5.2

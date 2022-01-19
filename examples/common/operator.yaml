@@ -2697,6 +2697,28 @@ spec:
                 disableOptimizations:
                   description: disableOptimizations controls if nodes matching placement requirements are going to be optimized. Turning off optimizations on already optimized Nodes does not revert changes.
                   type: boolean
+                kernelParameters:
+                  description: kernelParameters contains settings of kernel parameter tuning.
+                  properties:
+                    customKeyValues:
+                      description: customKeyValues is a list of additional user provided kernel parameters. Array values must be in following format "key=value", where 'key' is kernel parameter name, and 'value' is value to which parameter must be set.
+                      items:
+                        type: string
+                      type: array
+                    disableScyllaImageSettings:
+                      description: disableScyllaImageSettings controls if recommended kernel parameters settings available in Scylla image shouldn't be applied on tuned hosts. Turning off this on already optimized host doesn't revert values to initial settings.
+                      type: boolean
+                    nodeMultitenancy:
+                      default: 1
+                      description: nodeMultitenancy is a value of expected number of Scylla Pods Nodes are going to host. Value is used together with tenantScalableKeys.
+                      format: int64
+                      type: integer
+                    tenantScalableKeys:
+                      description: tenantScalableKeys is a list of names of kernel parameters which values will be multiplied by the nodeMultitenancy. These keys must be available in either customKeyValues or provided by Scylla image.
+                      items:
+                        type: string
+                      type: array
+                  type: object
                 placement:
                   description: placement contains scheduling rules for NodeConfig Pods.
                   properties:

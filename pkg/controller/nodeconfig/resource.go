@@ -223,7 +223,6 @@ exec chroot ./ /scylla-operator/scylla-operator node-config-daemon \
 --node-config-name=` + fmt.Sprintf("%q", nc.Name) + ` \
 --node-config-uid=` + fmt.Sprintf("%q", nc.UID) + ` \
 --scylla-image=` + fmt.Sprintf("%q", scyllaImage) + ` \
---disable-optimizations=` + fmt.Sprintf("%t", nc.Spec.DisableOptimizations) + ` \
 --loglevel=` + fmt.Sprintf("%d", 4) + `
 							`,
 							},

@@ -117,10 +117,6 @@ func makeNodeConfigClusterRoleBinding() *rbacv1.ClusterRoleBinding {
 }
 
 func makeNodeConfigDaemonSet(nc *scyllav1alpha1.NodeConfig, operatorImage, scyllaImage string) *appsv1.DaemonSet {
-	if nc.Spec.DisableOptimizations {
-		return nil
-	}
-
 	labels := map[string]string{
 		"app.kubernetes.io/name":   naming.NodeConfigAppName,
 		naming.NodeConfigNameLabel: nc.Name,

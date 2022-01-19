@@ -67,13 +67,14 @@ type Controller struct {
 	namespacedJobLister       batchv1listers.JobLister
 	selfPodLister             corev1listers.PodLister
 
-	namespace      string
-	podName        string
-	nodeName       string
-	nodeUID        types.UID
-	nodeConfigName string
-	nodeConfigUID  types.UID
-	scyllaImage    string
+	namespace            string
+	podName              string
+	nodeName             string
+	nodeUID              types.UID
+	nodeConfigName       string
+	nodeConfigUID        types.UID
+	scyllaImage          string
+	disableOptimizations bool
 
 	cachesToSync []cache.InformerSynced
 
@@ -98,6 +99,7 @@ func NewController(
 	nodeConfigName string,
 	nodeConfigUID types.UID,
 	scyllaImage string,
+	disableOptimizations bool,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
@@ -124,13 +126,14 @@ func NewController(
 		namespacedJobLister:       namespacedJobInformer.Lister(),
 		selfPodLister:             selfPodInformer.Lister(),
 
-		namespace:      namespace,
-		podName:        podName,
-		nodeName:       nodeName,
-		nodeUID:        nodeUID,
-		nodeConfigName: nodeConfigName,
-		nodeConfigUID:  nodeConfigUID,
-		scyllaImage:    scyllaImage,
+		namespace:            namespace,
+		podName:              podName,
+		nodeName:             nodeName,
+		nodeUID:              nodeUID,
+		nodeConfigName:       nodeConfigName,
+		nodeConfigUID:        nodeConfigUID,
+		scyllaImage:          scyllaImage,
+		disableOptimizations: disableOptimizations,
 
 		cachesToSync: []cache.InformerSynced{
 			nodeConfigInformer.Informer().HasSynced,

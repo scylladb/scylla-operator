@@ -178,23 +178,27 @@ func (ncdc *Controller) makeJobForContainers(ctx context.Context) (*batchv1.Job,
 }
 
 func (ncdc *Controller) syncJobs(ctx context.Context, jobs map[string]*batchv1.Job, nodeStatus *scyllav1alpha1.NodeConfigNodeStatus) error {
-	requiredForNode, err := ncdc.makeJobsForNode(ctx)
-	if err != nil {
-		return fmt.Errorf("can't make Jobs for node: %w", err)
+	var required []*batchv1.Job
+
+	if !ncdc.disableOptimizations {
+		requiredForNode, err := ncdc.makeJobsForNode(ctx)
+		if err != nil {
+			return fmt.Errorf("can't make Jobs for node: %w", err)
+		}
+
+		requiredForContainers, err := ncdc.makeJobForContainers(ctx)
+		if err != nil {
+			return fmt.Errorf("can't make Jobs for containers: %w", err)
+		}
+
+		required = make([]*batchv1.Job, 0, len(requiredForNode)+1)
+		required = append(required, requiredForNode...)
+		if requiredForContainers != nil {
+			required = append(required, requiredForContainers)
+		}
 	}
 
-	requiredForContainers, err := ncdc.makeJobForContainers(ctx)
-	if err != nil {
-		return fmt.Errorf("can't make Jobs for containers: %w", err)
-	}
-
-	required := make([]*batchv1.Job, 0, len(requiredForNode)+1)
-	required = append(required, requiredForNode...)
-	if requiredForContainers != nil {
-		required = append(required, requiredForContainers)
-	}
-
-	err = ncdc.pruneJobs(ctx, jobs, required)
+	err := ncdc.pruneJobs(ctx, jobs, required)
 	if err != nil {
 		return fmt.Errorf("can't prune Jobs: %w", err)
 	}

@@ -185,6 +185,26 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		sc := f.GetDefaultScyllaCluster()
+		sc.Spec.Datacenter.Racks[0].AgentResources = corev1.ResourceRequirements{
+			Requests: map[corev1.ResourceName]resource.Quantity{
+				corev1.ResourceCPU:    resource.MustParse("50m"),
+				corev1.ResourceMemory: resource.MustParse("50Mi"),
+			},
+			Limits: map[corev1.ResourceName]resource.Quantity{
+				corev1.ResourceCPU:    resource.MustParse("50m"),
+				corev1.ResourceMemory: resource.MustParse("50Mi"),
+			},
+		}
+		sc.Spec.Datacenter.Racks[0].Resources = corev1.ResourceRequirements{
+			Requests: map[corev1.ResourceName]resource.Quantity{
+				corev1.ResourceCPU:    resource.MustParse("1"),
+				corev1.ResourceMemory: resource.MustParse("1Gi"),
+			},
+			Limits: map[corev1.ResourceName]resource.Quantity{
+				corev1.ResourceCPU:    resource.MustParse("1"),
+				corev1.ResourceMemory: resource.MustParse("1Gi"),
+			},
+		}
 
 		framework.By("Creating a ScyllaCluster")
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
@@ -198,6 +218,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 			return true, nil
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(pod.Status.QOSClass).To(o.Equal(corev1.PodQOSGuaranteed))
 
 		cmName := naming.GetTuningConfigMapNameForPod(pod)
 		ctx2, ctx2Cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -241,6 +262,16 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
+		pod, err = f.KubeClient().CoreV1().Pods(f.Namespace()).Get(
+			ctx,
+			utils.GetNodeName(sc, 0),
+			metav1.GetOptions{},
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		scyllaContainerID, err := controllerhelpers.GetScyllaContainerID(pod)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
 		framework.By("Waiting for the NodeConfig to deploy")
 		ctx3, ctx3Cancel := context.WithTimeout(ctx, nodeConfigRolloutTimeout)
 		defer ctx3Cancel()
@@ -251,6 +282,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
 			utils.IsNodeConfigRolledOut,
 			utils.IsNodeConfigDoneWithNodeTuningFunc(matchingNodes),
+			utils.IsNodeConfigDoneWithContainerTuningFunc(pod.Spec.NodeName, scyllaContainerID),
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 

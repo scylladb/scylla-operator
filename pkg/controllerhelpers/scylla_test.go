@@ -777,3 +777,102 @@ func TestGetRequiredScyllaHosts(t *testing.T) {
 		})
 	}
 }
+
+func TestIsNodeTunedForContainer(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name          string
+		nodeConfig    *scyllav1alpha1.NodeConfig
+		nodeName      string
+		containerID   string
+		expectedTuned bool
+	}{
+		{
+			name:          "empty nodeConfig status isn't considered to be tuned",
+			nodeConfig:    &scyllav1alpha1.NodeConfig{},
+			nodeName:      "node1",
+			containerID:   "container-id",
+			expectedTuned: false,
+		},
+		{
+			name: "nodeConfig of different node",
+			nodeConfig: &scyllav1alpha1.NodeConfig{
+				Status: scyllav1alpha1.NodeConfigStatus{
+					NodeStatuses: []scyllav1alpha1.NodeConfigNodeStatus{
+						{
+							Name:            "different-node",
+							TunedNode:       true,
+							TunedContainers: []string{"container-id"},
+						},
+					},
+				},
+			},
+			nodeName:      "node1",
+			containerID:   "container-id",
+			expectedTuned: false,
+		},
+		{
+			name: "not tuned node having no tuned containers isn't considered to be tuned",
+			nodeConfig: &scyllav1alpha1.NodeConfig{
+				Status: scyllav1alpha1.NodeConfigStatus{
+					NodeStatuses: []scyllav1alpha1.NodeConfigNodeStatus{
+						{
+							Name:            "node1",
+							TunedNode:       false,
+							TunedContainers: []string{},
+						},
+					},
+				},
+			},
+			nodeName:      "node1",
+			containerID:   "container-id",
+			expectedTuned: false,
+		},
+		{
+			name: "tuned node but with different tuned container isn't considered to be tuned",
+			nodeConfig: &scyllav1alpha1.NodeConfig{
+				Status: scyllav1alpha1.NodeConfigStatus{
+					NodeStatuses: []scyllav1alpha1.NodeConfigNodeStatus{
+						{
+							Name:            "node1",
+							TunedNode:       true,
+							TunedContainers: []string{"different-container-id"},
+						},
+					},
+				},
+			},
+			nodeName:      "node1",
+			containerID:   "container-id",
+			expectedTuned: false,
+		},
+		{
+			name: "tuned node having matching tuned container is considered to be tuned",
+			nodeConfig: &scyllav1alpha1.NodeConfig{
+				Status: scyllav1alpha1.NodeConfigStatus{
+					NodeStatuses: []scyllav1alpha1.NodeConfigNodeStatus{
+						{
+							Name:            "node1",
+							TunedNode:       true,
+							TunedContainers: []string{"different-container-id", "container-id"},
+						},
+					},
+				},
+			},
+			nodeName:      "node1",
+			containerID:   "container-id",
+			expectedTuned: true,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tuned := IsNodeTunedForContainer(tc.nodeConfig, tc.nodeName, tc.containerID)
+			if tuned != tc.expectedTuned {
+				t.Errorf("expected %v, got %v", tc.expectedTuned, tuned)
+			}
+		})
+	}
+}

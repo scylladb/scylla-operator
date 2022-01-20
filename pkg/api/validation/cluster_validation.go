@@ -134,35 +134,53 @@ func ValidateScyllaClusterRackSpec(rack scyllav1.RackSpec, rackNames sets.String
 func ValidateScyllaClusterUpdate(new, old *scyllav1.ScyllaCluster) field.ErrorList {
 	allErrs := ValidateScyllaCluster(new)
 
-	return append(allErrs, ValidateScyllaClusterSpecUpdate(&new.Spec, &old.Spec, field.NewPath("spec"))...)
+	return append(allErrs, ValidateScyllaClusterSpecUpdate(new, old, field.NewPath("spec"))...)
 }
 
-func ValidateScyllaClusterSpecUpdate(newSpec, oldSpec *scyllav1.ScyllaClusterSpec, fldPath *field.Path) field.ErrorList {
+func ValidateScyllaClusterSpecUpdate(new, old *scyllav1.ScyllaCluster, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	// Check that the datacenter name didn't change
-	if oldSpec.Datacenter.Name != newSpec.Datacenter.Name {
+	if old.Spec.Datacenter.Name != new.Spec.Datacenter.Name {
 		allErrs = append(allErrs, field.Forbidden(fldPath.Child("datacenter", "name"), "change of datacenter name is currently not supported"))
 	}
 
 	// Check that all rack names are the same as before
 	oldRackNames, newRackNames := sets.NewString(), sets.NewString()
-	for _, rack := range oldSpec.Datacenter.Racks {
+	for _, rack := range old.Spec.Datacenter.Racks {
 		oldRackNames.Insert(rack.Name)
 	}
-	for _, rack := range newSpec.Datacenter.Racks {
+	for _, rack := range new.Spec.Datacenter.Racks {
 		newRackNames.Insert(rack.Name)
 	}
 	diff := oldRackNames.Difference(newRackNames)
-	if diff.Len() != 0 {
-		allErrs = append(allErrs, field.Forbidden(fldPath.Child("datacenter", "racks"), fmt.Sprintf("racks %v not found, you cannot remove racks from the spec", diff.List())))
+	for _, rackName := range diff.List() {
+		for i, rack := range old.Spec.Datacenter.Racks {
+			if rack.Name != rackName {
+				continue
+			}
+
+			if rack.Members != 0 {
+				allErrs = append(allErrs, field.Forbidden(fldPath.Child("datacenter", "racks").Index(i), fmt.Sprintf("rack %q can't be removed because it still has members that have to be scaled down to zero first", rackName)))
+				continue
+			}
+
+			if old.Status.Racks[rack.Name].Members != 0 {
+				allErrs = append(allErrs, field.Forbidden(fldPath.Child("datacenter", "racks").Index(i), fmt.Sprintf("rack %q can't be removed because the members are being scaled down", rackName)))
+				continue
+			}
+
+			if !isRackStatusUpToDate(old, rack.Name) {
+				allErrs = append(allErrs, field.InternalError(fldPath.Child("datacenter", "racks").Index(i), fmt.Errorf("rack %q can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later", rackName)))
+			}
+		}
 	}
 
 	rackMap := make(map[string]scyllav1.RackSpec)
-	for _, oldRack := range oldSpec.Datacenter.Racks {
+	for _, oldRack := range old.Spec.Datacenter.Racks {
 		rackMap[oldRack.Name] = oldRack
 	}
-	for i, newRack := range newSpec.Datacenter.Racks {
+	for i, newRack := range new.Spec.Datacenter.Racks {
 		oldRack, exists := rackMap[newRack.Name]
 		if !exists {
 			continue
@@ -176,4 +194,11 @@ func ValidateScyllaClusterSpecUpdate(newSpec, oldSpec *scyllav1.ScyllaClusterSpe
 	}
 
 	return allErrs
+}
+
+func isRackStatusUpToDate(sc *scyllav1.ScyllaCluster, rack string) bool {
+	return sc.Status.ObservedGeneration != nil &&
+		*sc.Status.ObservedGeneration >= sc.Generation &&
+		sc.Status.Racks[rack].Stale != nil &&
+		!*sc.Status.Racks[rack].Stale
 }

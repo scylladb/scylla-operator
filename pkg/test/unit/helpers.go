@@ -7,6 +7,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 )
 
 // NewSingleRackCluster returns ScyllaCluster having single racks.
@@ -23,8 +24,9 @@ func NewMultiRackCluster(members ...int32) *scyllav1.ScyllaCluster {
 func NewDetailedSingleRackCluster(name, namespace, repo, version, dc, rack string, members int32) *scyllav1.ScyllaCluster {
 	return &scyllav1.ScyllaCluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
+			Name:       name,
+			Namespace:  namespace,
+			Generation: 1,
 		},
 		Spec: scyllav1.ScyllaClusterSpec{
 			Repository: repo,
@@ -49,11 +51,13 @@ func NewDetailedSingleRackCluster(name, namespace, repo, version, dc, rack strin
 			},
 		},
 		Status: scyllav1.ScyllaClusterStatus{
+			ObservedGeneration: pointer.Int64(1),
 			Racks: map[string]scyllav1.RackStatus{
 				rack: {
 					Version:      version,
 					Members:      members,
 					ReadyMembers: members,
+					Stale:        pointer.Bool(false),
 				},
 			},
 		},
@@ -64,8 +68,9 @@ func NewDetailedSingleRackCluster(name, namespace, repo, version, dc, rack strin
 func NewDetailedMultiRackCluster(name, namespace, repo, version, dc string, members ...int32) *scyllav1.ScyllaCluster {
 	c := &scyllav1.ScyllaCluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
+			Name:       name,
+			Namespace:  namespace,
+			Generation: 1,
 		},
 		Spec: scyllav1.ScyllaClusterSpec{
 			Repository: repo,
@@ -76,7 +81,8 @@ func NewDetailedMultiRackCluster(name, namespace, repo, version, dc string, memb
 			},
 		},
 		Status: scyllav1.ScyllaClusterStatus{
-			Racks: map[string]scyllav1.RackStatus{},
+			ObservedGeneration: pointer.Int64(1),
+			Racks:              map[string]scyllav1.RackStatus{},
 		},
 	}
 
@@ -93,6 +99,7 @@ func NewDetailedMultiRackCluster(name, namespace, repo, version, dc string, memb
 			Version:      version,
 			Members:      m,
 			ReadyMembers: m,
+			Stale:        pointer.Bool(false),
 		}
 	}
 

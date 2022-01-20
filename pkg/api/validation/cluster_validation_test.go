@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/pointer"
 )
 
 func TestValidateScyllaCluster(t *testing.T) {
@@ -114,7 +115,6 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 			expectedErrorList:   field.ErrorList{},
 			expectedErrorString: "",
 		},
-
 		{
 			name:                "major version changed",
 			old:                 unit.NewSingleRackCluster(3),
@@ -176,13 +176,49 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 			expectedErrorString: "",
 		},
 		{
-			name: "rack deleted",
-			old:  unit.NewSingleRackCluster(3),
-			new:  rackDeleted(unit.NewSingleRackCluster(3)),
+			name:                "empty rack removed",
+			old:                 unit.NewSingleRackCluster(0),
+			new:                 racksDeleted(unit.NewSingleRackCluster(0)),
+			expectedErrorList:   field.ErrorList{},
+			expectedErrorString: "",
+		},
+		{
+			name: "empty rack with members under decommission",
+			old:  withStatus(unit.NewSingleRackCluster(0), v1.ScyllaClusterStatus{Racks: map[string]v1.RackStatus{"test-rack": {Members: 3}}}),
+			new:  racksDeleted(unit.NewSingleRackCluster(0)),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.datacenter.racks", BadValue: "", Detail: "racks [test-rack] not found, you cannot remove racks from the spec"},
+				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.datacenter.racks[0]", BadValue: "", Detail: `rack "test-rack" can't be removed because the members are being scaled down`},
 			},
-			expectedErrorString: "spec.datacenter.racks: Forbidden: racks [test-rack] not found, you cannot remove racks from the spec",
+			expectedErrorString: `spec.datacenter.racks[0]: Forbidden: rack "test-rack" can't be removed because the members are being scaled down`,
+		},
+		{
+			name: "empty rack with stale status",
+			old:  withStatus(unit.NewSingleRackCluster(0), v1.ScyllaClusterStatus{Racks: map[string]v1.RackStatus{"test-rack": {Stale: pointer.Bool(true), Members: 0}}}),
+			new:  racksDeleted(unit.NewSingleRackCluster(0)),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeInternal, Field: "spec.datacenter.racks[0]", Detail: `rack "test-rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`},
+			},
+			expectedErrorString: `spec.datacenter.racks[0]: Internal error: rack "test-rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`,
+		},
+		{
+			name: "empty rack with not reconciled generation",
+			old:  withStatus(withGeneration(unit.NewSingleRackCluster(0), 123), v1.ScyllaClusterStatus{ObservedGeneration: pointer.Int64(321), Racks: map[string]v1.RackStatus{"test-rack": {Members: 0}}}),
+			new:  racksDeleted(unit.NewSingleRackCluster(0)),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeInternal, Field: "spec.datacenter.racks[0]", Detail: `rack "test-rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`},
+			},
+			expectedErrorString: `spec.datacenter.racks[0]: Internal error: rack "test-rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`,
+		},
+		{
+			name: "non-empty racks deleted",
+			old:  unit.NewMultiRackCluster(3, 2, 1, 0),
+			new:  racksDeleted(unit.NewSingleRackCluster(3)),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.datacenter.racks[0]", BadValue: "", Detail: `rack "rack-0" can't be removed because it still has members that have to be scaled down to zero first`},
+				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.datacenter.racks[1]", BadValue: "", Detail: `rack "rack-1" can't be removed because it still has members that have to be scaled down to zero first`},
+				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.datacenter.racks[2]", BadValue: "", Detail: `rack "rack-2" can't be removed because it still has members that have to be scaled down to zero first`},
+			},
+			expectedErrorString: `[spec.datacenter.racks[0]: Forbidden: rack "rack-0" can't be removed because it still has members that have to be scaled down to zero first, spec.datacenter.racks[1]: Forbidden: rack "rack-1" can't be removed because it still has members that have to be scaled down to zero first, spec.datacenter.racks[2]: Forbidden: rack "rack-2" can't be removed because it still has members that have to be scaled down to zero first]`,
 		},
 	}
 
@@ -204,6 +240,16 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 	}
 }
 
+func withGeneration(sc *v1.ScyllaCluster, generation int64) *v1.ScyllaCluster {
+	sc.Generation = generation
+	return sc
+}
+
+func withStatus(sc *v1.ScyllaCluster, status v1.ScyllaClusterStatus) *v1.ScyllaCluster {
+	sc.Status = status
+	return sc
+}
+
 func placementChanged(c *v1.ScyllaCluster) *v1.ScyllaCluster {
 	c.Spec.Datacenter.Racks[0].Placement = &v1.PlacementSpec{}
 	return c
@@ -216,7 +262,7 @@ func resourceChanged(c *v1.ScyllaCluster) *v1.ScyllaCluster {
 	return c
 }
 
-func rackDeleted(c *v1.ScyllaCluster) *v1.ScyllaCluster {
+func racksDeleted(c *v1.ScyllaCluster) *v1.ScyllaCluster {
 	c.Spec.Datacenter.Racks = nil
 	return c
 }

@@ -550,6 +550,7 @@ func sysctlInitContainer(sysctls []string, image string) *corev1.Container {
 }
 
 func agentContainer(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) corev1.Container {
+	root := int64(0)
 	cnt := corev1.Container{
 		Name:            "scylla-manager-agent",
 		Image:           agentImageForCluster(c),
@@ -561,6 +562,9 @@ func agentContainer(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) corev1.Conta
 			path.Join(naming.ScyllaAgentConfigDirName, naming.ScyllaAgentConfigFileName),
 			"-c",
 			path.Join(naming.ScyllaAgentConfigDirName, naming.ScyllaAgentAuthTokenFileName),
+		},
+		SecurityContext: &corev1.SecurityContext{
+			RunAsUser: &root, // to clean up scylla snapshots
 		},
 		Ports: []corev1.ContainerPort{
 			{

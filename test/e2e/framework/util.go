@@ -10,7 +10,6 @@ import (
 
 	o "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,7 +22,6 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
-	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
 )
@@ -124,42 +122,6 @@ func WaitForObjectDeletion(ctx context.Context, dynamicClient dynamic.Interface,
 			}
 		},
 	)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// TODO: Replace when Scylla cluster can configure a SA or use the default one.
-func SetupScyllaClusterSA(ctx context.Context, coreClient corev1client.CoreV1Interface, rbacClient rbacv1client.RbacV1Interface, namespace, scyllaClusterName string) error {
-	sa, err := coreClient.ServiceAccounts(namespace).Create(ctx, &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("%s-member", scyllaClusterName),
-		},
-	}, metav1.CreateOptions{})
-	if err != nil {
-		return err
-	}
-
-	_, err = rbacClient.RoleBindings(namespace).Create(ctx, &rbacv1.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: sa.Name,
-		},
-		Subjects: []rbacv1.Subject{
-			{
-				APIGroup:  corev1.GroupName,
-				Kind:      rbacv1.ServiceAccountKind,
-				Namespace: sa.Namespace,
-				Name:      sa.Name,
-			},
-		},
-		RoleRef: rbacv1.RoleRef{
-			APIGroup: rbacv1.GroupName,
-			Kind:     "ClusterRole",
-			Name:     "scyllacluster-member",
-		},
-	}, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}

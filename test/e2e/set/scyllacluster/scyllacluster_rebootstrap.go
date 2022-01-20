@@ -28,16 +28,14 @@ var _ = g.Describe("ScyllaCluster", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		templateSC := scyllafixture.BasicScyllaCluster.ReadOrFail()
-		templateSC.Spec.Datacenter.Racks[0].Members = membersCount
-		sc := templateSC.DeepCopy()
+		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc.Spec.Datacenter.Racks[0].Members = membersCount
 
 		framework.By("Creating a ScyllaCluster")
-		err := framework.SetupScyllaClusterSA(ctx, f.KubeClient().CoreV1(), f.KubeClient().RbacV1(), f.Namespace(), sc.Name)
+		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
-
-		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		originalSC := sc.DeepCopy()
+		originalSC.ResourceVersion = ""
 
 		framework.By("Waiting for the ScyllaCluster to deploy")
 		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
@@ -96,7 +94,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		}
 
 		framework.By("Redeploying the ScyllaCluster")
-		sc = templateSC.DeepCopy()
+		sc = originalSC.DeepCopy()
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -106,7 +104,8 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = utils.WaitForScyllaClusterState(waitCtx3, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		di.UpdateClientEndpoints(ctx, sc)
+		err = di.UpdateClientEndpoints(ctx, sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		verifyScyllaCluster(ctx, f.KubeClient(), sc, di)
 	})
 })

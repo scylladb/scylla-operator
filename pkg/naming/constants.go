@@ -92,6 +92,8 @@ const (
 
 	ScyllaOperatorNodeTuningNamespace = "scylla-operator-node-tuning"
 
+	ScyllaClusterMemberClusterRoleName = "scyllacluster-member"
+
 	SingletonName = "cluster"
 
 	PerftuneJobPrefixName = "perftune"

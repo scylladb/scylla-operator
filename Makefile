@@ -372,10 +372,8 @@ define generate-manager-manifests-prod
 	mv '$(3)'/scylla-manager/templates/manager_service.yaml '$(2)'/10_manager_service.yaml
 	mv '$(3)'/scylla-manager/templates/manager_serviceaccount.yaml '$(2)'/10_manager_serviceaccount.yaml
 	mv '$(3)'/scylla-manager/templates/manager_configmap.yaml '$(2)'/10_manager_configmap.yaml
-	mv '$(3)'/scylla-manager/charts/scylla/templates/serviceaccount.yaml '$(2)'/10_scyllacluster_serviceaccount.yaml
 
 	mv '$(3)'/scylla-manager/templates/controller_clusterrolebinding.yaml '$(2)'/20_controller_clusterrolebinding.yaml
-	mv '$(3)'/scylla-manager/charts/scylla/templates/rolebinding.yaml '$(2)'/20_scyllacluster_rolebinding.yaml
 
 	mv '$(3)'/scylla-manager/charts/scylla/templates/scyllacluster.yaml '$(2)'/50_scyllacluster.yaml
 	mv '$(3)'/scylla-manager/templates/controller_deployment.yaml '$(2)'/50_controller_deployment.yaml

@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/record"
@@ -227,6 +228,7 @@ func ApplyServiceAccount(
 	lister corev1listers.ServiceAccountLister,
 	recorder record.EventRecorder,
 	required *corev1.ServiceAccount,
+	forceOwnership bool,
 	allowMissingControllerRef bool,
 ) (*corev1.ServiceAccount, bool, error) {
 	requiredControllerRef := metav1.GetControllerOfNoCopy(required)
@@ -256,9 +258,21 @@ func ApplyServiceAccount(
 	}
 
 	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
-	if !equality.Semantic.DeepEqual(existingControllerRef, requiredControllerRef) {
+
+	existingControllerRefUID := types.UID("")
+	if existingControllerRef != nil {
+		existingControllerRefUID = existingControllerRef.UID
+	}
+	requiredControllerRefUID := types.UID("")
+	if requiredControllerRef != nil {
+		requiredControllerRefUID = requiredControllerRef.UID
+	}
+
+	if existingControllerRef == nil && requiredControllerRef != nil && forceOwnership {
+		klog.V(2).InfoS("Forcing apply to claim the ServiceAccount", "ServiceAccount", naming.ObjRef(requiredCopy))
+	} else if existingControllerRefUID != requiredControllerRefUID {
 		// This is not the place to handle adoption.
-		err := fmt.Errorf("serviceaccount %q isn't controlled by us", naming.ObjRef(requiredCopy))
+		err := fmt.Errorf("serviceAccount %q isn't controlled by us", naming.ObjRef(requiredCopy))
 		ReportUpdateEvent(recorder, requiredCopy, err)
 		return nil, false, err
 	}
@@ -299,7 +313,7 @@ func ApplyNamespace(
 ) (*corev1.Namespace, bool, error) {
 	requiredControllerRef := metav1.GetControllerOfNoCopy(required)
 	if !allowMissingControllerRef && requiredControllerRef == nil {
-		return nil, false, fmt.Errorf("Namespace %q is missing controllerRef", naming.ObjRef(required))
+		return nil, false, fmt.Errorf("namespace %q is missing controllerRef", naming.ObjRef(required))
 	}
 
 	requiredCopy := required.DeepCopy()

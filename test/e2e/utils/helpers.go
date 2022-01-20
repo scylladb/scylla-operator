@@ -25,6 +25,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
@@ -32,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	appv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
 	"k8s.io/klog/v2"
@@ -222,6 +224,68 @@ func WaitForPodState(ctx context.Context, client corev1client.CoreV1Interface, n
 		return nil, err
 	}
 	return event.Object.(*corev1.Pod), nil
+}
+
+func WaitForServiceAccountState(ctx context.Context, client corev1client.CoreV1Interface, namespace string, name string, condition func(sc *corev1.ServiceAccount) (bool, error), o WaitForStateOptions) (*corev1.ServiceAccount, error) {
+	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
+	lw := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			options.FieldSelector = fieldSelector
+			return client.ServiceAccounts(namespace).List(ctx, options)
+		},
+		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
+			options.FieldSelector = fieldSelector
+			return client.ServiceAccounts(namespace).Watch(ctx, options)
+		},
+	}
+	event, err := watchtools.UntilWithSync(ctx, lw, &corev1.ServiceAccount{}, nil, func(event watch.Event) (bool, error) {
+		switch event.Type {
+		case watch.Added, watch.Modified:
+			return condition(event.Object.(*corev1.ServiceAccount))
+		case watch.Deleted:
+			if o.TolerateDelete {
+				return condition(event.Object.(*corev1.ServiceAccount))
+			}
+			fallthrough
+		default:
+			return true, fmt.Errorf("unexpected event: %#v", event)
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	return event.Object.(*corev1.ServiceAccount), nil
+}
+
+func WaitForRoleBindingState(ctx context.Context, client rbacv1client.RbacV1Interface, namespace string, name string, condition func(sc *rbacv1.RoleBinding) (bool, error), o WaitForStateOptions) (*rbacv1.RoleBinding, error) {
+	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
+	lw := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			options.FieldSelector = fieldSelector
+			return client.RoleBindings(namespace).List(ctx, options)
+		},
+		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
+			options.FieldSelector = fieldSelector
+			return client.RoleBindings(namespace).Watch(ctx, options)
+		},
+	}
+	event, err := watchtools.UntilWithSync(ctx, lw, &rbacv1.RoleBinding{}, nil, func(event watch.Event) (bool, error) {
+		switch event.Type {
+		case watch.Added, watch.Modified:
+			return condition(event.Object.(*rbacv1.RoleBinding))
+		case watch.Deleted:
+			if o.TolerateDelete {
+				return condition(event.Object.(*rbacv1.RoleBinding))
+			}
+			fallthrough
+		default:
+			return true, fmt.Errorf("unexpected event: %#v", event)
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	return event.Object.(*rbacv1.RoleBinding), nil
 }
 
 func WaitForPVCState(ctx context.Context, client corev1client.CoreV1Interface, namespace string, name string, condition func(sc *corev1.PersistentVolumeClaim) (bool, error), o WaitForStateOptions) (*corev1.PersistentVolumeClaim, error) {

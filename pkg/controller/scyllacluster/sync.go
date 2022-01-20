@@ -11,6 +11,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -151,6 +152,94 @@ func (scc *Controller) getSecrets(ctx context.Context, sc *scyllav1.ScyllaCluste
 	return cm.ClaimSecrets(secrets)
 }
 
+func (sac *Controller) getServiceAccounts(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*corev1.ServiceAccount, error) {
+	// List all ServiceAccounts to find even those that no longer match our selector.
+	// They will be orphaned in ClaimServiceAccount().
+	serviceAccounts, err := sac.serviceAccountLister.ServiceAccounts(sc.Namespace).List(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+
+	selector := labels.SelectorFromSet(labels.Set{
+		naming.ClusterNameLabel: sc.Name,
+	})
+
+	// If any adoptions are attempted, we should first recheck for deletion with
+	// an uncached quorum read sometime after listing StatefulSets.
+	canAdoptFunc := func() error {
+		fresh, err := sac.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		if fresh.UID != sc.UID {
+			return fmt.Errorf("original ScyllaCluster %v/%v is gone: got uid %v, wanted %v", sc.Namespace, sc.Name, fresh.UID, sc.UID)
+		}
+
+		if fresh.GetDeletionTimestamp() != nil {
+			return fmt.Errorf("%v/%v has just been deleted at %v", sc.Namespace, sc.Name, sc.DeletionTimestamp)
+		}
+
+		return nil
+	}
+	cm := controllertools.NewServiceAccountControllerRefManager(
+		ctx,
+		sc,
+		controllerGVK,
+		selector,
+		canAdoptFunc,
+		controllertools.RealServiceAccountControl{
+			KubeClient: sac.kubeClient,
+			Recorder:   sac.eventRecorder,
+		},
+	)
+	return cm.ClaimServiceAccounts(serviceAccounts)
+}
+
+func (sac *Controller) getRoleBindings(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*rbacv1.RoleBinding, error) {
+	// List all RoleBindings to find even those that no longer match our selector.
+	// They will be orphaned in ClaimRoleBindings().
+	roleBindings, err := sac.roleBindingLister.RoleBindings(sc.Namespace).List(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+
+	selector := labels.SelectorFromSet(labels.Set{
+		naming.ClusterNameLabel: sc.Name,
+	})
+
+	// If any adoptions are attempted, we should first recheck for deletion with
+	// an uncached quorum read sometime after listing RoleBindings.
+	canAdoptFunc := func() error {
+		fresh, err := sac.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		if fresh.UID != sc.UID {
+			return fmt.Errorf("original ScyllaCluster %v/%v is gone: got uid %v, wanted %v", sc.Namespace, sc.Name, fresh.UID, sc.UID)
+		}
+
+		if fresh.GetDeletionTimestamp() != nil {
+			return fmt.Errorf("%v/%v has just been deleted at %v", sc.Namespace, sc.Name, sc.DeletionTimestamp)
+		}
+
+		return nil
+	}
+	cm := controllertools.NewRoleBindingControllerRefManager(
+		ctx,
+		sc,
+		controllerGVK,
+		selector,
+		canAdoptFunc,
+		controllertools.RealRoleBindingControl{
+			KubeClient: sac.kubeClient,
+			Recorder:   sac.eventRecorder,
+		},
+	)
+	return cm.ClaimRoleBindings(roleBindings)
+}
+
 func (scc *Controller) getPDBs(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*policyv1beta1.PodDisruptionBudget, error) {
 	// List all Pdbs to find even those that no longer match our selector.
 	// They will be orphaned in ClaimPdbs().
@@ -232,6 +321,16 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		return err
 	}
 
+	serviceAccounts, err := scc.getServiceAccounts(ctx, sc)
+	if err != nil {
+		return fmt.Errorf("can't get serviceaccounts: %w", err)
+	}
+
+	roleBindings, err := scc.getRoleBindings(ctx, sc)
+	if err != nil {
+		return fmt.Errorf("can't get rolebindings: %w", err)
+	}
+
 	pdbMap, err := scc.getPDBs(ctx, sc)
 	if err != nil {
 		return err
@@ -244,6 +343,18 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 	}
 
 	var errs []error
+
+	err = scc.syncServiceAccounts(ctx, sc, serviceAccounts)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't sync serviceaccounts: %w", err))
+		// TODO: Set degraded condition
+	}
+
+	err = scc.syncRoleBindings(ctx, sc, roleBindings)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't sync rolebindings: %w", err))
+		// TODO: Set degraded condition
+	}
 
 	status, err = scc.syncAgentToken(ctx, sc, status, secretMap)
 	if err != nil {

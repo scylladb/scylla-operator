@@ -27,10 +27,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc.Spec.Datacenter.Racks[0].Members = 1
 
 		framework.By("Creating a ScyllaCluster with 1 member")
-		err := framework.SetupScyllaClusterSA(ctx, f.KubeClient().CoreV1(), f.KubeClient().RbacV1(), f.Namespace(), sc.Name)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the ScyllaCluster to rollout")

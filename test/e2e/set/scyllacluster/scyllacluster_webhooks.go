@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apiserver/pkg/storage/names"
 )
 
 var _ = g.Describe("ScyllaCluster webhook", func() {
@@ -27,19 +28,18 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 		defer cancel()
 
 		validSC := scyllafixture.BasicScyllaCluster.ReadOrFail()
-		err := framework.SetupScyllaClusterSA(ctx, f.KubeClient().CoreV1(), f.KubeClient().RbacV1(), f.Namespace(), validSC.Name)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		validSC.Name = names.SimpleNameGenerator.GenerateName(validSC.GenerateName)
 
 		framework.By("rejecting a creation of ScyllaCluster with duplicated racks")
 		duplicateRacksSC := validSC.DeepCopy()
 		duplicateRacksSC.Spec.Datacenter.Racks = append(duplicateRacksSC.Spec.Datacenter.Racks, *duplicateRacksSC.Spec.Datacenter.Racks[0].DeepCopy())
-		_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, duplicateRacksSC, metav1.CreateOptions{})
+		_, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, duplicateRacksSC, metav1.CreateOptions{})
 		o.Expect(err).To(o.Equal(&errors.StatusError{ErrStatus: metav1.Status{
 			Status:  "Failure",
-			Message: `admission webhook "webhook.scylla.scylladb.com" denied the request: ScyllaCluster.scylla.scylladb.com "basic" is invalid: spec.datacenter.racks[1].name: Duplicate value: "us-east-1a"`,
+			Message: fmt.Sprintf(`admission webhook "webhook.scylla.scylladb.com" denied the request: ScyllaCluster.scylla.scylladb.com %q is invalid: spec.datacenter.racks[1].name: Duplicate value: "us-east-1a"`, duplicateRacksSC.Name),
 			Reason:  "Invalid",
 			Details: &metav1.StatusDetails{
-				Name:  "basic",
+				Name:  duplicateRacksSC.Name,
 				Group: "scylla.scylladb.com",
 				Kind:  "ScyllaCluster",
 				UID:   "",
@@ -62,10 +62,10 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 		_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, invalidIntensitySC, metav1.CreateOptions{})
 		o.Expect(err).To(o.Equal(&errors.StatusError{ErrStatus: metav1.Status{
 			Status:  "Failure",
-			Message: `admission webhook "webhook.scylla.scylladb.com" denied the request: ScyllaCluster.scylla.scylladb.com "basic" is invalid: spec.repairs[0].intensity: Invalid value: "100Mib": invalid intensity, it must be a float value`,
+			Message: fmt.Sprintf(`admission webhook "webhook.scylla.scylladb.com" denied the request: ScyllaCluster.scylla.scylladb.com %q is invalid: spec.repairs[0].intensity: Invalid value: "100Mib": invalid intensity, it must be a float value`, invalidIntensitySC.Name),
 			Reason:  "Invalid",
 			Details: &metav1.StatusDetails{
-				Name:  "basic",
+				Name:  invalidIntensitySC.Name,
 				Group: "scylla.scylladb.com",
 				Kind:  "ScyllaCluster",
 				UID:   "",
@@ -109,10 +109,10 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 		)
 		o.Expect(err).To(o.Equal(&errors.StatusError{ErrStatus: metav1.Status{
 			Status:  "Failure",
-			Message: `admission webhook "webhook.scylla.scylladb.com" denied the request: ScyllaCluster.scylla.scylladb.com "basic" is invalid: spec.datacenter.name: Forbidden: change of datacenter name is currently not supported`,
+			Message: fmt.Sprintf(`admission webhook "webhook.scylla.scylladb.com" denied the request: ScyllaCluster.scylla.scylladb.com %q is invalid: spec.datacenter.name: Forbidden: change of datacenter name is currently not supported`, validSC.Name),
 			Reason:  "Invalid",
 			Details: &metav1.StatusDetails{
-				Name:  "basic",
+				Name:  validSC.Name,
 				Group: "scylla.scylladb.com",
 				Kind:  "ScyllaCluster",
 				UID:   "",
@@ -137,10 +137,10 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 		)
 		o.Expect(err).To(o.Equal(&errors.StatusError{ErrStatus: metav1.Status{
 			Status:  "Failure",
-			Message: `admission webhook "webhook.scylla.scylladb.com" denied the request: ScyllaCluster.scylla.scylladb.com "basic" is invalid: spec.datacenter.name: Forbidden: change of datacenter name is currently not supported`,
+			Message: fmt.Sprintf(`admission webhook "webhook.scylla.scylladb.com" denied the request: ScyllaCluster.scylla.scylladb.com %q is invalid: spec.datacenter.name: Forbidden: change of datacenter name is currently not supported`, validSC.Name),
 			Reason:  "Invalid",
 			Details: &metav1.StatusDetails{
-				Name:  "basic",
+				Name:  validSC.Name,
 				Group: "scylla.scylladb.com",
 				Kind:  "ScyllaCluster",
 				UID:   "",

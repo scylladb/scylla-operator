@@ -859,6 +859,20 @@ func TestApplyServiceAccount(t *testing.T) {
 			},
 		}
 	}
+	newSAWithControllerRef := func() *corev1.ServiceAccount {
+		sa := newSA()
+		sa.OwnerReferences = []metav1.OwnerReference{
+			{
+				Controller:         pointer.BoolPtr(true),
+				UID:                "abcdefgh",
+				APIVersion:         "scylla.scylladb.com/v1",
+				Kind:               "ScyllaCluster",
+				Name:               "basic",
+				BlockOwnerDeletion: pointer.BoolPtr(true),
+			},
+		}
+		return sa
+	}
 
 	newSAWithHash := func() *corev1.ServiceAccount {
 		sa := newSA()
@@ -870,6 +884,7 @@ func TestApplyServiceAccount(t *testing.T) {
 		name                      string
 		existing                  []runtime.Object
 		cache                     []runtime.Object // nil cache means autofill from the client
+		forceOwnership            bool
 		allowMissingControllerRef bool
 		required                  *corev1.ServiceAccount
 		expectedSA                *corev1.ServiceAccount
@@ -1050,17 +1065,7 @@ func TestApplyServiceAccount(t *testing.T) {
 			name: "update fails if the existing object has ownerRef and required hasn't",
 			existing: []runtime.Object{
 				func() *corev1.ServiceAccount {
-					sa := newSA()
-					sa.OwnerReferences = []metav1.OwnerReference{
-						{
-							Controller:         pointer.BoolPtr(true),
-							UID:                "abcdefgh",
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
-							Name:               "basic",
-							BlockOwnerDeletion: pointer.BoolPtr(true),
-						},
-					}
+					sa := newSAWithControllerRef()
 					utilruntime.Must(SetHashAnnotation(sa))
 					return sa
 				}(),
@@ -1069,8 +1074,97 @@ func TestApplyServiceAccount(t *testing.T) {
 			required:                  newSA(),
 			expectedSA:                nil,
 			expectedChanged:           false,
-			expectedErr:               fmt.Errorf(`serviceaccount "default/test" isn't controlled by us`),
-			expectedEvents:            []string{`Warning UpdateServiceAccountFailed Failed to update ServiceAccount default/test: serviceaccount "default/test" isn't controlled by us`},
+			expectedErr:               fmt.Errorf(`serviceAccount "default/test" isn't controlled by us`),
+			expectedEvents:            []string{`Warning UpdateServiceAccountFailed Failed to update ServiceAccount default/test: serviceAccount "default/test" isn't controlled by us`},
+		},
+		{
+			name: "forced update succeeds if the existing object has no ownerRef",
+			existing: []runtime.Object{
+				func() *corev1.ServiceAccount {
+					sa := newSA()
+					utilruntime.Must(SetHashAnnotation(sa))
+					return sa
+				}(),
+			},
+			required: func() *corev1.ServiceAccount {
+				sa := newSAWithControllerRef()
+				sa.Labels["foo"] = "bar"
+				return sa
+			}(),
+			forceOwnership: true,
+			expectedSA: func() *corev1.ServiceAccount {
+				sa := newSAWithControllerRef()
+				sa.Labels["foo"] = "bar"
+				utilruntime.Must(SetHashAnnotation(sa))
+				return sa
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal ServiceAccountUpdated ServiceAccount default/test updated"},
+		},
+		{
+			name: "update succeeds to replace ownerRef kind",
+			existing: []runtime.Object{
+				func() *corev1.ServiceAccount {
+					sa := newSAWithControllerRef()
+					sa.OwnerReferences[0].Kind = "WrongKind"
+					utilruntime.Must(SetHashAnnotation(sa))
+					return sa
+				}(),
+			},
+			required: func() *corev1.ServiceAccount {
+				sa := newSAWithControllerRef()
+				return sa
+			}(),
+			expectedSA: func() *corev1.ServiceAccount {
+				sa := newSAWithControllerRef()
+				utilruntime.Must(SetHashAnnotation(sa))
+				return sa
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal ServiceAccountUpdated ServiceAccount default/test updated"},
+		},
+		{
+			name: "update fails if the existing object is owned by someone else",
+			existing: []runtime.Object{
+				func() *corev1.ServiceAccount {
+					sa := newSAWithControllerRef()
+					sa.OwnerReferences[0].UID = "42"
+					utilruntime.Must(SetHashAnnotation(sa))
+					return sa
+				}(),
+			},
+			required: func() *corev1.ServiceAccount {
+				sa := newSAWithControllerRef()
+				sa.Labels["foo"] = "bar"
+				return sa
+			}(),
+			expectedSA:      nil,
+			expectedChanged: false,
+			expectedErr:     fmt.Errorf(`serviceAccount "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateServiceAccountFailed Failed to update ServiceAccount default/test: serviceAccount "default/test" isn't controlled by us`},
+		},
+		{
+			name: "forced update fails if the existing object is owned by someone else",
+			existing: []runtime.Object{
+				func() *corev1.ServiceAccount {
+					sa := newSAWithControllerRef()
+					sa.OwnerReferences[0].UID = "42"
+					utilruntime.Must(SetHashAnnotation(sa))
+					return sa
+				}(),
+			},
+			required: func() *corev1.ServiceAccount {
+				sa := newSAWithControllerRef()
+				sa.Labels["foo"] = "bar"
+				return sa
+			}(),
+			forceOwnership:  true,
+			expectedSA:      nil,
+			expectedChanged: false,
+			expectedErr:     fmt.Errorf(`serviceAccount "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateServiceAccountFailed Failed to update ServiceAccount default/test: serviceAccount "default/test" isn't controlled by us`},
 		},
 	}
 
@@ -1079,11 +1173,11 @@ func TestApplyServiceAccount(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			// Client holds the state so it has to persicr the iterations.
+			// Client holds the state, so it has to persist the iterations.
 			client := fake.NewSimpleClientset(tc.existing...)
 
 			// ApplyClusterRole needs to be reentrant so running it the second time should give the same results.
-			// (One of the common mistakes is editing the object after computing the hash so it differs the second time.)
+			// (One of the common mistakes is editing the object after computing the hash, so it differs the second time.)
 			iterations := 2
 			if tc.expectedErr != nil {
 				iterations = 1
@@ -1121,7 +1215,7 @@ func TestApplyServiceAccount(t *testing.T) {
 						}
 					}
 
-					gotSA, gotChanged, gotErr := ApplyServiceAccount(ctx, client.CoreV1(), crbLister, recorder, tc.required, tc.allowMissingControllerRef)
+					gotSA, gotChanged, gotErr := ApplyServiceAccount(ctx, client.CoreV1(), crbLister, recorder, tc.required, tc.forceOwnership, tc.allowMissingControllerRef)
 					if !reflect.DeepEqual(gotErr, tc.expectedErr) {
 						t.Fatalf("expected %v, got %v", tc.expectedErr, gotErr)
 					}
@@ -1618,7 +1712,7 @@ func TestApplyNamespace(t *testing.T) {
 			}(),
 			expectedNS:      nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`Namespace "test" is missing controllerRef`),
+			expectedErr:     fmt.Errorf(`namespace "test" is missing controllerRef`),
 			expectedEvents:  nil,
 		},
 		{

@@ -74,7 +74,8 @@ func dumpPodLogs(ctx context.Context, coreClient corev1client.CoreV1Interface, p
 	for _, c := range pod.Spec.Containers {
 		cs := findContainerStatus(pod.Status.ContainerStatuses, c.Name)
 		if cs == nil {
-			return fmt.Errorf("can't find container status for container %q in pod %q", c.Name, naming.ObjRef(pod))
+			klog.InfoS("Container doesn't yet have a status", "Pod", naming.ObjRef(pod), "Container", c.Name)
+			continue
 		}
 
 		logOptions := &corev1.PodLogOptions{

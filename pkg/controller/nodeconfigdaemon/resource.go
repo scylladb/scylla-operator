@@ -33,7 +33,7 @@ func makePerftuneJobForNode(controllerRef *metav1.OwnerReference, namespace, nod
 	}
 
 	annotations := map[string]string{
-		naming.NodeConfigJobForNodeKey: string(nodeUID),
+		naming.NodeConfigJobForNodeKey: nodeName,
 	}
 
 	job := &batchv1.Job{

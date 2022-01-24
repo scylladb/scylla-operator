@@ -55,7 +55,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		preconditionSuccessful = true
 
 		g.By("Verifying there is at least one scylla node")
-		matchingNodes, err := utils.GetMatchingNodesForNodeConfig(ctx, f.KubeAdminClient().CoreV1(), ncTemplate)
+		matchingNodes, err = utils.GetMatchingNodesForNodeConfig(ctx, f.KubeAdminClient().CoreV1(), ncTemplate)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(matchingNodes).NotTo(o.HaveLen(0))
 		framework.Infof("There are %d scylla nodes", len(matchingNodes))

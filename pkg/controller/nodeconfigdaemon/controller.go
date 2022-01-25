@@ -156,6 +156,9 @@ func NewController(
 		DeleteFunc: snc.deleteJob,
 	})
 
+	// Start right away, Scylla might not be scheduled yet, but Node can already be tuned.
+	snc.enqueue()
+
 	return snc, nil
 }
 

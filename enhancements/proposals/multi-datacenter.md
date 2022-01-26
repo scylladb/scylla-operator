@@ -25,7 +25,7 @@ TODO
 
 In Kubernetes, we expect the Pods to be replaced rather regularly. Therefore, there is no guarantee that a Scylla node will be available at the same IP, were it to be replaced. Because Scylla uses IP (value of `broadcast-rpc-address`) as a node identity for its peers, we can't simply allow for the IP to change regularly.
 Currently, each Scylla node has a corresponding service of type ClusterIP, with the ClusterIP used as the node's identity. Both `broadcast-address` and `broadcast-rpc-address` are currently set to the corresponding ClusterIP. Such service is also currently used for a range of node operations, such as node replacement and switching to maintenance mode.
-ClusterIP is however only a virtual address, so it is not possible to expose it outside a cluster.
+ClusterIP is however only a virtual address, so it is not possible to expose it outside a cluster. TODO move to motivations and explain why it's not routable
 
 To overcome these limitations, a new CRD is introduced. The CRD, hereafter referred to as ScyllaNodeIdentity, replaces the existing service as a source of Scylla node's identity and an object used as an endpoint for performing node operations.
 ScyllaNodeIdentity will specify an IP field and will act as a source of truth for Scylla nodes to configure the attributes that define its identity.
@@ -49,7 +49,7 @@ ScyllaCluster's Network specification will be extended as follows:
 
 ```go
 type Network struct {
-    ...
+	...
 	
 	ExposurePolicy ExposurePolicy `json:"exposurePolicy,omitempty"`
 
@@ -86,9 +86,12 @@ ScyllaCluster will also be enhanced with an option of requesting a NodePort serv
 ```go
 type NodePortConfig struct {
 	Native int `json:"native,omitempty"`
+	
 	Internode int `json:"internode,omitempty"`
 }
 ```
+
+TODO describe ports
 
 #### HostNetworking 
 
@@ -125,7 +128,7 @@ TODO
 
 ### Test Plan
 
-TODO
+TODO unit tests? + e2e testing whether fields are setup correctly + QA taking care of testing scylla
 
 ### Upgrade / Downgrade Strategy
 
@@ -145,7 +148,7 @@ TODO
 
 ## Alternatives
 
-TODO
+TODO tried vpc peering, tried cilium, explain why clusterIP is a no-go
 
 ## Infrastructure Needed [optional]
 

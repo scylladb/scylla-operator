@@ -52,10 +52,16 @@ ScyllaCluster's Network specification will be extended as follows:
 
 ```go
 type Network struct {
-	... TODO hostnetworking
+	...
 	
+	// ExposurePolicy defines how the cluster is exposed
+	// +kubebuilder:default:="internal"
+	// +optional
 	ExposurePolicy ExposurePolicy `json:"exposurePolicy,omitempty"`
 
+	// NodePort defines the configuration of ports to be exposed on each Node's IP. 
+	// If not set, the NodePort service is not created. 
+	// +optional
 	NodePort *NodePortConfig `json:"nodePort,omitempty"`
 }
 ```
@@ -72,33 +78,47 @@ ExposurePolicy is an enum defining two options: `Internal` and `External`.
 type ExposurePolicy string
 
 const (
-	Internal ExposurePolicy = "internal"
+	// ExposureInternal indicates that the cluster should not be exposed externally. 
+	// No service is created for any of the Scylla nodes.
+	ExposureInternal ExposurePolicy = "Internal"
 	
-	External ExposurePolicy = "external"
+	// ExposureExternal indicates that the cluster should be exposed externally.
+	// Service of type LoadBalancer is created for each Scylla node.
+	ExposureExternal ExposurePolicy = "External"
 )
 ```
 
-`External` will result in creating a service of type LoadBalancer with each Scylla node and setting the IP address of each ScyllaNodeIdentity to its corresponding Pod service's ExternalIP.
+`Internal` exposure policy will not result in creating any additional services.
 
-`Internal` exposure policy will not result in creating any additional services and will result in setting the IP address of ScyllaNodeIdentity to its Pod's `PodIP` in case NodePort is disabled or `HostIP` otherwise.
+`External` will result in creating a service of type LoadBalancer with each Scylla node. The LoadBalancer's ExternalIP is used as an IP in its corresponding ScyllaNodeIdentity.
 
 ##### NodePort
 
-ScyllaCluster will also be enhanced with an option of requesting a NodePort service, in which a single NodePort service will be created for the entire datacenter. Such service routes specified external ports to internal ones on all hosts.
+ScyllaCluster will also be enhanced with an option of requesting creation of a NodePort service. A single NodePort service will be created for the entire datacenter. Such service exposes the specified ports on all hosts.
 
 ```go
 type NodePortConfig struct {
+	// Native defines native transport port (CQL).
+	// +optional 
 	Native int `json:"native,omitempty"`
-	
+
+	// NativeSSL defines secure native transport port (SSL CQL).
+	// +optional
+	NativeSSL int `json:"nativeSSL,omitempty"`
+
+	// Internode defines internode communication port (RPC).
+	// +optional
 	Internode int `json:"internode,omitempty"`
+	
+	// InternodeSSL defines secure internode communication port (SSL RPC).
+	// +optional
+	InternodeSSL int `json:"internodeSSL,omitempty"`
 }
 ```
 
-TODO describe ports
-
 #### HostNetworking 
 
-Although it is now possible to enable `HostNetworking`, it doesn't result in exposing Scylla nodes on IPs of their host machines. With the proposed configuration, running the cluster with `Internal` exposure policy and host networking enabled would result in exposing the nodes on its' hosts' IPs.
+Although it is currently possible to enable `HostNetworking`, it doesn't result in exposing Scylla nodes on IPs of their hosts. With the proposed configuration, running the cluster with `Internal` exposure policy and host networking enabled would result in exposing the Scylla nodes on their hosts' IPs.
 
 ### User Stories
 

@@ -12,9 +12,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/api/policy/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/utils/pointer"
 )
 
@@ -648,17 +650,45 @@ func stringOrDefault(str, def string) string {
 	return def
 }
 
-func MakeServiceAccount(sc *scyllav1.ScyllaCluster) *corev1.ServiceAccount {
+func MakeServiceAccount(sc *scyllav1.ScyllaCluster, serviceAccounts map[string]*corev1.ServiceAccount, serviceAccountLister corev1listers.ServiceAccountLister) (*corev1.ServiceAccount, error) {
+	annotations := map[string]string{}
+	name := naming.MemberServiceAccountNameForScyllaCluster(sc.Name)
+
+	existing, found := serviceAccounts[name]
+	if !found {
+		// In 1.7.0 we started managing ServiceAccounts. Because previously these were created by users
+		// there's a high chance that they don't match our selector, hence are not available in serviceAccounts.
+		// Ref: https://github.com/scylladb/scylla-operator/issues/932
+		//
+		// Cache fetch happens only once - when SA is being adopted, or it's missing.
+		// It can be removed in 1.8.0 because all SAs will be already adopted, and they will match our selector.
+		// TODO: https://github.com/scylladb/scylla-operator/issues/934
+		var err error
+		existing, err = serviceAccountLister.ServiceAccounts(sc.Namespace).Get(name)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("can't get %s service account: %w", naming.ManualRef(sc.Namespace, name), err)
+		}
+	}
+
+	if existing != nil {
+		// We need to copy annotations stored in user SA because these may control integrations with k8s provider services
+		// like IAM management.
+		for k, v := range existing.Annotations {
+			annotations[k] = v
+		}
+	}
+
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      naming.MemberServiceAccountNameForScyllaCluster(sc.Name),
+			Name:      name,
 			Namespace: sc.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(sc, controllerGVK),
 			},
-			Labels: naming.ClusterLabels(sc),
+			Labels:      naming.ClusterLabels(sc),
+			Annotations: annotations,
 		},
-	}
+	}, nil
 }
 
 func MakeRoleBinding(sc *scyllav1.ScyllaCluster) *rbacv1.RoleBinding {

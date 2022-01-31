@@ -3,6 +3,7 @@ package resourceapply
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
@@ -237,9 +238,24 @@ func ApplyServiceAccount(
 	}
 
 	requiredCopy := required.DeepCopy()
+
+	// Users may need to add custom annotations to integrate with k8s provider services.
+	// These should be filtered out before hash is computed.
+	customAnnotations := map[string]string{}
+	for key, value := range requiredCopy.Annotations {
+		if !strings.HasPrefix(key, "scylla-operator.scylladb.com/") {
+			customAnnotations[key] = value
+			delete(requiredCopy.Annotations, key)
+		}
+	}
+
 	err := SetHashAnnotation(requiredCopy)
 	if err != nil {
 		return nil, false, err
+	}
+
+	for key, value := range customAnnotations {
+		requiredCopy.Annotations[key] = value
 	}
 
 	existing, err := lister.ServiceAccounts(requiredCopy.Namespace).Get(requiredCopy.Name)

@@ -35,6 +35,9 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sa, err := f.KubeClient().CoreV1().ServiceAccounts(f.Namespace()).Create(ctx, &corev1.ServiceAccount{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: fmt.Sprintf("%s-member", sc.Name),
+				Annotations: map[string]string{
+					"user-annotation": "123",
+				},
 			},
 		}, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -85,6 +88,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		}, utils.WaitForStateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(sa.OwnerReferences).To(o.HaveLen(1))
+		o.Expect(sa.Annotations).To(o.HaveKeyWithValue("user-annotation", "123"))
 
 		framework.By("Waiting for the RoleBinding to be adopted")
 		waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc)

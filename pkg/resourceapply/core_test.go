@@ -1166,6 +1166,66 @@ func TestApplyServiceAccount(t *testing.T) {
 			expectedErr:     fmt.Errorf(`serviceAccount "default/test" isn't controlled by us`),
 			expectedEvents:  []string{`Warning UpdateServiceAccountFailed Failed to update ServiceAccount default/test: serviceAccount "default/test" isn't controlled by us`},
 		},
+		{
+			name: "annotations not starting with our prefix are ignored during hashing and kept in the object",
+			existing: []runtime.Object{
+				func() *corev1.ServiceAccount {
+					sa := newSAWithControllerRef()
+					utilruntime.Must(SetHashAnnotation(sa))
+					sa.Annotations["custom-annotation"] = "custom-value"
+					return sa
+				}(),
+			},
+			required: func() *corev1.ServiceAccount {
+				sa := newSAWithControllerRef()
+				sa.Annotations = map[string]string{
+					"custom-annotation": "custom-value",
+				}
+				return sa
+			}(),
+			forceOwnership: true,
+			expectedSA: func() *corev1.ServiceAccount {
+				sa := newSAWithControllerRef()
+				utilruntime.Must(SetHashAnnotation(sa))
+				sa.Annotations["custom-annotation"] = "custom-value"
+				return sa
+			}(),
+			expectedChanged: false,
+			expectedErr:     nil,
+			expectedEvents:  nil,
+		},
+		{
+			name: "annotations starting with our prefix are accounted during hash compute",
+			existing: []runtime.Object{
+				func() *corev1.ServiceAccount {
+					sa := newSAWithControllerRef()
+					utilruntime.Must(SetHashAnnotation(sa))
+					sa.Annotations["custom-annotation"] = "custom-value"
+					return sa
+				}(),
+			},
+			required: func() *corev1.ServiceAccount {
+				sa := newSAWithControllerRef()
+				sa.Annotations = map[string]string{
+					"custom-annotation":                   "custom-value",
+					"scylla-operator.scylladb.com/blabla": "123",
+				}
+				return sa
+			}(),
+			forceOwnership: true,
+			expectedSA: func() *corev1.ServiceAccount {
+				sa := newSAWithControllerRef()
+				sa.Annotations = map[string]string{
+					"scylla-operator.scylladb.com/blabla": "123",
+				}
+				utilruntime.Must(SetHashAnnotation(sa))
+				sa.Annotations["custom-annotation"] = "custom-value"
+				return sa
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal ServiceAccountUpdated ServiceAccount default/test updated"},
+		},
 	}
 
 	for _, tc := range tt {

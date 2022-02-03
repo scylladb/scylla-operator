@@ -34,7 +34,10 @@ Create chart name and version as used by the chart label.
 Common labels
 */}}
 {{- define "scylla.labels" -}}
-{{ include "scylla.selectorLabels" . }}
+scylla/cluster: {{ include "scylla.fullname" . }}
+app: scylla
+app.kubernetes.io/name: scylla
+app.kubernetes.io/managed-by: scylla-operator
 {{- end }}
 
 {{/*
@@ -45,9 +48,3 @@ app.kubernetes.io/name: {{ include "scylla.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "scylla.serviceAccountName" -}}
-{{- printf "%s-%s" (include "scylla.fullname" .) "member" }}
-{{- end }}

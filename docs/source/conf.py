@@ -108,7 +108,6 @@ html_theme_options = {
     'hide_edit_this_page_button': 'false',
     'github_repository': 'scylladb/scylla-operator',
     'github_issues_repository': 'scylladb/scylla-operator',
-    'hide_sidebar_index': 'false',
 }
 
 # If not None, a 'Last updated on:' timestamp is inserted at every page

@@ -175,6 +175,35 @@ helm install scylla scylla/scylla --values examples/helm/values.cluster.yaml --c
 
 Scylla Operator will provision this cluster on your K8s environment.
 
+#### Deploying Alternator
+
+The helm-chart is also capable of deploying Alternator instead of the regular Scylla. This requires a small change in the [values.yaml](https://github.com/scylladb/scylla-operator/blob/master/helm/scylla/values.yaml#L25):
+
+Switch from
+```go
+# ...
+alternator:
+  # Allows to enable Alternator (DynamoDB compatible API) frontend
+  enabled: false             
+  port: 8000
+  writeIsolation: "always"
+# ...
+```
+
+to
+
+```go
+# ...
+alternator:
+  # Allows to enable Alternator (DynamoDB compatible API) frontend
+  enabled: true             
+  port: 8000
+  writeIsolation: "always"
+# ...
+```
+
+After applying changes, the corresponding alternator port should appear in output of following command `kubectl -n scylla describe service`.
+
 ### Scylla Manager Helm Chart
 
 Scylla Manager Chart allows to customize and deploy Scylla Manager in K8s environment.

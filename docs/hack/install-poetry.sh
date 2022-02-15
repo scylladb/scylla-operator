@@ -13,4 +13,4 @@ poetry_installer="$( mktemp )"
 curl --fail -sSL "https://raw.githubusercontent.com/python-poetry/poetry/${POETRY_VERSION}/get-poetry.py" | \
   tee "${poetry_installer}" | \
   sha512sum -c <( echo "${POETRY_CHECKSUM}" - )
-python3 "${poetry_installer}" --version "${POETRY_VERSION}"
+python3 "${poetry_installer}" --version "${POETRY_VERSION}" -y

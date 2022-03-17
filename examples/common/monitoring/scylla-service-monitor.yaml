@@ -11,6 +11,7 @@ spec:
     matchLabels:
       app: scylla
   endpoints:
+    - port: node-exporter
     - port: agent-prometheus
       metricRelabelings:
         # rename job label to 'manager_agent' due to hardcoded name

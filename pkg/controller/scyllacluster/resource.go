@@ -142,6 +142,10 @@ func memberServicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 			Name: "agent-api",
 			Port: 10001,
 		},
+		{
+			Name: "node-exporter",
+			Port: 9100,
+		},
 	}
 	if cluster.Spec.Alternator.Enabled() {
 		ports = append(ports, corev1.ServicePort{
@@ -494,6 +498,10 @@ func containerPorts(c *scyllav1.ScyllaCluster) []corev1.ContainerPort {
 		{
 			Name:          "prometheus",
 			ContainerPort: 9180,
+		},
+		{
+			Name:          "node-exporter",
+			ContainerPort: 9100,
 		},
 	}
 

@@ -91,6 +91,10 @@ func TestMemberService(t *testing.T) {
 			Port: 10001,
 		},
 		{
+			Name: "node-exporter",
+			Port: 9100,
+		},
+		{
 			Name: "thrift",
 			Port: 9160,
 		},
@@ -506,6 +510,10 @@ func TestStatefulSetForRack(t *testing.T) {
 									{
 										Name:          "prometheus",
 										ContainerPort: 9180,
+									},
+									{
+										Name:          "node-exporter",
+										ContainerPort: 9100,
 									},
 									{
 										Name:          "cql",

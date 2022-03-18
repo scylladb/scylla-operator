@@ -43,7 +43,7 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 	case scyllaclient.OperationalModeDrained:
 		klog.InfoS("Node is in DRAINED state, restarting scylla to make it decommissionable")
 		// TODO: Label pod/service that it is in restarting state to avoid liveness probe race
-		_, err := exec.Command("supervisorctl", "restart", "scylla").Output()
+		_, err := exec.Command("supervisorctl", "restart", "scylla-server").Output()
 		if err != nil {
 			return fmt.Errorf("can't restart scylla node: %w", err)
 		}

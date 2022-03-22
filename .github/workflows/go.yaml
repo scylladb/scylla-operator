@@ -342,7 +342,7 @@ jobs:
         docker tag '${{ env.image_repo_ref }}:ci' '${{ env.image_repo_ref }}:${{ env.CI_IMAGE_TAG }}'
         docker push '${{ env.image_repo_ref }}:${{ env.CI_IMAGE_TAG }}'
     - name: Set up Cloud SDK
-      uses: google-github-actions/setup-gcloud@master
+      uses: google-github-actions/setup-gcloud@v0
       with:
         service_account_key: ${{ secrets.GCP_SA_KEY }}
     - name: Publish Helm Chart

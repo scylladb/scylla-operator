@@ -1167,27 +1167,64 @@ func TestApplyServiceAccount(t *testing.T) {
 			expectedEvents:  []string{`Warning UpdateServiceAccountFailed Failed to update ServiceAccount default/test: serviceAccount "default/test" isn't controlled by us`},
 		},
 		{
-			name: "annotations not starting with our prefix are ignored during hashing and kept in the object",
+			name: "all label and annotation keys are kept when the hash matches",
 			existing: []runtime.Object{
 				func() *corev1.ServiceAccount {
 					sa := newSAWithControllerRef()
+					sa.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "",
+					}
+					sa.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "",
+					}
 					utilruntime.Must(SetHashAnnotation(sa))
-					sa.Annotations["custom-annotation"] = "custom-value"
+					sa.Annotations["a-1"] = "a-alpha-changed"
+					sa.Annotations["a-3"] = "a-resurrected"
+					sa.Annotations["a-custom"] = "custom-value"
+					sa.Labels["l-1"] = "l-alpha-changed"
+					sa.Labels["l-3"] = "l-resurrected"
+					sa.Labels["l-custom"] = "custom-value"
 					return sa
 				}(),
 			},
 			required: func() *corev1.ServiceAccount {
 				sa := newSAWithControllerRef()
 				sa.Annotations = map[string]string{
-					"custom-annotation": "custom-value",
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				sa.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
 				}
 				return sa
 			}(),
 			forceOwnership: true,
 			expectedSA: func() *corev1.ServiceAccount {
 				sa := newSAWithControllerRef()
+				sa.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				sa.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
 				utilruntime.Must(SetHashAnnotation(sa))
-				sa.Annotations["custom-annotation"] = "custom-value"
+				sa.Annotations["a-1"] = "a-alpha-changed"
+				sa.Annotations["a-3"] = "a-resurrected"
+				sa.Annotations["a-custom"] = "custom-value"
+				sa.Labels["l-1"] = "l-alpha-changed"
+				sa.Labels["l-3"] = "l-resurrected"
+				sa.Labels["l-custom"] = "custom-value"
 				return sa
 			}(),
 			expectedChanged: false,
@@ -1195,20 +1232,39 @@ func TestApplyServiceAccount(t *testing.T) {
 			expectedEvents:  nil,
 		},
 		{
-			name: "annotations starting with our prefix are accounted during hash compute",
+			name: "only managed label and annotation keys are updated when the hash changes",
 			existing: []runtime.Object{
 				func() *corev1.ServiceAccount {
 					sa := newSAWithControllerRef()
+					sa.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "a-resurrected",
+					}
+					sa.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "l-resurrected",
+					}
 					utilruntime.Must(SetHashAnnotation(sa))
-					sa.Annotations["custom-annotation"] = "custom-value"
+					sa.Annotations["a-1"] = "a-alpha-changed"
+					sa.Annotations["a-custom"] = "a-custom-value"
+					sa.Labels["l-1"] = "l-alpha-changed"
+					sa.Labels["l-custom"] = "l-custom-value"
 					return sa
 				}(),
 			},
 			required: func() *corev1.ServiceAccount {
 				sa := newSAWithControllerRef()
 				sa.Annotations = map[string]string{
-					"custom-annotation":                   "custom-value",
-					"scylla-operator.scylladb.com/blabla": "123",
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				sa.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
 				}
 				return sa
 			}(),
@@ -1216,10 +1272,20 @@ func TestApplyServiceAccount(t *testing.T) {
 			expectedSA: func() *corev1.ServiceAccount {
 				sa := newSAWithControllerRef()
 				sa.Annotations = map[string]string{
-					"scylla-operator.scylladb.com/blabla": "123",
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				sa.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
 				}
 				utilruntime.Must(SetHashAnnotation(sa))
-				sa.Annotations["custom-annotation"] = "custom-value"
+				delete(sa.Annotations, "a-3-")
+				sa.Annotations["a-custom"] = "a-custom-value"
+				delete(sa.Labels, "l-3-")
+				sa.Labels["l-custom"] = "l-custom-value"
 				return sa
 			}(),
 			expectedChanged: true,
@@ -1281,7 +1347,7 @@ func TestApplyServiceAccount(t *testing.T) {
 					}
 
 					if !equality.Semantic.DeepEqual(gotSA, tc.expectedSA) {
-						t.Errorf("expected %#v, got %#v, diff:\n%s", tc.expectedSA, gotSA, cmp.Diff(tc.expectedSA, gotSA))
+						t.Errorf("expected and got SA differ:\n%s", cmp.Diff(tc.expectedSA, gotSA))
 					}
 
 					// Make sure such object was actually created.

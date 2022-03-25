@@ -3,9 +3,9 @@ package resourceapply
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/resourcemerge"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -238,24 +238,9 @@ func ApplyServiceAccount(
 	}
 
 	requiredCopy := required.DeepCopy()
-
-	// Users may need to add custom annotations to integrate with k8s provider services.
-	// These should be filtered out before hash is computed.
-	customAnnotations := map[string]string{}
-	for key, value := range requiredCopy.Annotations {
-		if !strings.HasPrefix(key, "scylla-operator.scylladb.com/") {
-			customAnnotations[key] = value
-			delete(requiredCopy.Annotations, key)
-		}
-	}
-
 	err := SetHashAnnotation(requiredCopy)
 	if err != nil {
 		return nil, false, err
-	}
-
-	for key, value := range customAnnotations {
-		requiredCopy.Annotations[key] = value
 	}
 
 	existing, err := lister.ServiceAccounts(requiredCopy.Namespace).Get(requiredCopy.Name)
@@ -264,6 +249,7 @@ func ApplyServiceAccount(
 			return nil, false, err
 		}
 
+		resourcemerge.SanitizeObject(requiredCopy)
 		actual, err := client.ServiceAccounts(requiredCopy.Namespace).Create(ctx, requiredCopy, metav1.CreateOptions{})
 		if apierrors.IsAlreadyExists(err) {
 			klog.V(2).InfoS("Already exists (stale cache)", "ServiceAccount", klog.KObj(requiredCopy))
@@ -300,6 +286,8 @@ func ApplyServiceAccount(
 	if existingHash == requiredHash {
 		return existing, false, nil
 	}
+
+	resourcemerge.MergeMetadataInPlace(&requiredCopy.ObjectMeta, existing.ObjectMeta)
 
 	// Honor the required RV if it was already set.
 	// Required objects set RV in case their input is based on a previous version of itself.

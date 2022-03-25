@@ -9,7 +9,7 @@ ENV PATH=$PATH:$GOROOT/bin:$GOPATH/bin
 RUN apt-get update; \
     apt-get install -y --no-install-recommends make git curl gzip ca-certificates jq; \
     apt-get clean; \
-    curl --fail -L https://storage.googleapis.com/golang/go1.17.5.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+    curl --fail -L https://storage.googleapis.com/golang/go1.18.linux-amd64.tar.gz | tar -C /usr/local -xzf -
 WORKDIR /go/src/github.com/scylladb/scylla-operator
 COPY . .
 RUN make build --warn-undefined-variables

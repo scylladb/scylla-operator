@@ -367,6 +367,132 @@ func TestApplyStatefulSet(t *testing.T) {
 			expectedErr:     fmt.Errorf(`statefulset "default/test" is controlled by someone else`),
 			expectedEvents:  []string{`Warning UpdateStatefulSetFailed Failed to update StatefulSet default/test: statefulset "default/test" is controlled by someone else`},
 		},
+		{
+			name: "all label and annotation keys are kept when the hash matches",
+			existing: []runtime.Object{
+				func() *appsv1.StatefulSet {
+					sts := newSts()
+					sts.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "",
+					}
+					sts.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "",
+					}
+					utilruntime.Must(SetHashAnnotation(sts))
+					sts.Annotations["a-1"] = "a-alpha-changed"
+					sts.Annotations["a-3"] = "a-resurrected"
+					sts.Annotations["a-custom"] = "custom-value"
+					sts.Labels["l-1"] = "l-alpha-changed"
+					sts.Labels["l-3"] = "l-resurrected"
+					sts.Labels["l-custom"] = "custom-value"
+					return sts
+				}(),
+			},
+			required: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				sts.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				return sts
+			}(),
+			forceOwnership: false,
+			expectedSts: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				sts.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(sts))
+				sts.Annotations["a-1"] = "a-alpha-changed"
+				sts.Annotations["a-3"] = "a-resurrected"
+				sts.Annotations["a-custom"] = "custom-value"
+				sts.Labels["l-1"] = "l-alpha-changed"
+				sts.Labels["l-3"] = "l-resurrected"
+				sts.Labels["l-custom"] = "custom-value"
+				return sts
+			}(),
+			expectedChanged: false,
+			expectedErr:     nil,
+			expectedEvents:  nil,
+		},
+		{
+			name: "only managed label and annotation keys are updated when the hash changes",
+			existing: []runtime.Object{
+				func() *appsv1.StatefulSet {
+					sts := newSts()
+					sts.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "a-resurrected",
+					}
+					sts.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "l-resurrected",
+					}
+					utilruntime.Must(SetHashAnnotation(sts))
+					sts.Annotations["a-1"] = "a-alpha-changed"
+					sts.Annotations["a-custom"] = "a-custom-value"
+					sts.Labels["l-1"] = "l-alpha-changed"
+					sts.Labels["l-custom"] = "l-custom-value"
+					return sts
+				}(),
+			},
+			required: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				sts.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				return sts
+			}(),
+			forceOwnership: true,
+			expectedSts: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				sts.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(sts))
+				delete(sts.Annotations, "a-3-")
+				sts.Annotations["a-custom"] = "a-custom-value"
+				delete(sts.Labels, "l-3-")
+				sts.Labels["l-custom"] = "l-custom-value"
+				return sts
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal StatefulSetUpdated StatefulSet default/test updated"},
+		},
 	}
 
 	for _, tc := range tt {
@@ -741,6 +867,130 @@ func TestApplyDaemonSet(t *testing.T) {
 			expectedChanged:   false,
 			expectedErr:       fmt.Errorf(`daemonset "default/test" isn't controlled by us`),
 			expectedEvents:    []string{`Warning UpdateDaemonSetFailed Failed to update DaemonSet default/test: daemonset "default/test" isn't controlled by us`},
+		},
+		{
+			name: "all label and annotation keys are kept when the hash matches",
+			existing: []runtime.Object{
+				func() *appsv1.DaemonSet {
+					ds := newDS()
+					ds.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "",
+					}
+					ds.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "",
+					}
+					utilruntime.Must(SetHashAnnotation(ds))
+					ds.Annotations["a-1"] = "a-alpha-changed"
+					ds.Annotations["a-3"] = "a-resurrected"
+					ds.Annotations["a-custom"] = "custom-value"
+					ds.Labels["l-1"] = "l-alpha-changed"
+					ds.Labels["l-3"] = "l-resurrected"
+					ds.Labels["l-custom"] = "custom-value"
+					return ds
+				}(),
+			},
+			required: func() *appsv1.DaemonSet {
+				ds := newDS()
+				ds.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				ds.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				return ds
+			}(),
+			expectedDaemonSet: func() *appsv1.DaemonSet {
+				ds := newDS()
+				ds.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				ds.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(ds))
+				ds.Annotations["a-1"] = "a-alpha-changed"
+				ds.Annotations["a-3"] = "a-resurrected"
+				ds.Annotations["a-custom"] = "custom-value"
+				ds.Labels["l-1"] = "l-alpha-changed"
+				ds.Labels["l-3"] = "l-resurrected"
+				ds.Labels["l-custom"] = "custom-value"
+				return ds
+			}(),
+			expectedChanged: false,
+			expectedErr:     nil,
+			expectedEvents:  nil,
+		},
+		{
+			name: "only managed label and annotation keys are updated when the hash changes",
+			existing: []runtime.Object{
+				func() *appsv1.DaemonSet {
+					ds := newDS()
+					ds.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "a-resurrected",
+					}
+					ds.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "l-resurrected",
+					}
+					utilruntime.Must(SetHashAnnotation(ds))
+					ds.Annotations["a-1"] = "a-alpha-changed"
+					ds.Annotations["a-custom"] = "a-custom-value"
+					ds.Labels["l-1"] = "l-alpha-changed"
+					ds.Labels["l-custom"] = "l-custom-value"
+					return ds
+				}(),
+			},
+			required: func() *appsv1.DaemonSet {
+				ds := newDS()
+				ds.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				ds.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				return ds
+			}(),
+			expectedDaemonSet: func() *appsv1.DaemonSet {
+				ds := newDS()
+				ds.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				ds.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(ds))
+				delete(ds.Annotations, "a-3-")
+				ds.Annotations["a-custom"] = "a-custom-value"
+				delete(ds.Labels, "l-3-")
+				ds.Labels["l-custom"] = "l-custom-value"
+				return ds
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal DaemonSetUpdated DaemonSet default/test updated"},
 		},
 	}
 

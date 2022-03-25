@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/resourcemerge"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -42,6 +43,7 @@ func ApplyClusterRole(
 			return nil, false, err
 		}
 
+		resourcemerge.SanitizeObject(requiredCopy)
 		actual, err := client.ClusterRoles().Create(ctx, requiredCopy, metav1.CreateOptions{})
 		if apierrors.IsAlreadyExists(err) {
 			klog.V(2).InfoS("Already exists (stale cache)", "ClusterRole", klog.KObj(requiredCopy))
@@ -72,6 +74,8 @@ func ApplyClusterRole(
 	if existingHash == requiredHash {
 		return existing, false, nil
 	}
+
+	resourcemerge.MergeMetadataInPlace(&requiredCopy.ObjectMeta, existing.ObjectMeta)
 
 	// Honor the required RV if it was already set.
 	// Required objects set RV in case their input is based on a previous version of itself.
@@ -116,6 +120,7 @@ func ApplyClusterRoleBinding(
 			return nil, false, err
 		}
 
+		resourcemerge.SanitizeObject(requiredCopy)
 		actual, err := client.ClusterRoleBindings().Create(ctx, requiredCopy, metav1.CreateOptions{})
 		if apierrors.IsAlreadyExists(err) {
 			klog.V(2).InfoS("Already exists (stale cache)", "ClusterRoleBinding", klog.KObj(requiredCopy))
@@ -147,6 +152,8 @@ func ApplyClusterRoleBinding(
 		return existing, false, nil
 	}
 
+	resourcemerge.MergeMetadataInPlace(&requiredCopy.ObjectMeta, existing.ObjectMeta)
+
 	if !equality.Semantic.DeepEqual(existing.RoleRef, requiredCopy.RoleRef) {
 		klog.V(2).InfoS(
 			"Apply needs to change immutable field(s) and will recreate the object",
@@ -162,6 +169,7 @@ func ApplyClusterRoleBinding(
 			return nil, false, err
 		}
 
+		resourcemerge.SanitizeObject(requiredCopy)
 		created, err := client.ClusterRoleBindings().Create(ctx, requiredCopy, metav1.CreateOptions{})
 		ReportCreateEvent(recorder, requiredCopy, err)
 		if err != nil {
@@ -215,6 +223,7 @@ func ApplyRoleBinding(
 			return nil, false, err
 		}
 
+		resourcemerge.SanitizeObject(requiredCopy)
 		actual, err := client.RoleBindings(requiredCopy.Namespace).Create(ctx, requiredCopy, metav1.CreateOptions{})
 		if apierrors.IsAlreadyExists(err) {
 			klog.V(2).InfoS("Already exists (stale cache)", "RoleBinding", klog.KObj(requiredCopy))
@@ -251,6 +260,8 @@ func ApplyRoleBinding(
 	if existingHash == requiredHash {
 		return existing, false, nil
 	}
+
+	resourcemerge.MergeMetadataInPlace(&requiredCopy.ObjectMeta, existing.ObjectMeta)
 
 	// Honor the required RV if it was already set.
 	// Required objects set RV in case their input is based on a previous version of itself.

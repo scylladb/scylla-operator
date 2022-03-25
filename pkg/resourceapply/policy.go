@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/resourcemerge"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,6 +45,7 @@ func ApplyPodDisruptionBudget(
 			return nil, false, err
 		}
 
+		resourcemerge.SanitizeObject(requiredCopy)
 		actual, err := client.PodDisruptionBudgets(requiredCopy.Namespace).Create(ctx, requiredCopy, metav1.CreateOptions{})
 		if apierrors.IsAlreadyExists(err) {
 			klog.V(2).InfoS("Already exists (stale cache)", "PodDisruptionBudget", klog.KObj(requiredCopy))
@@ -69,6 +71,8 @@ func ApplyPodDisruptionBudget(
 	if existing.Annotations[naming.ManagedHash] == requiredCopy.Annotations[naming.ManagedHash] {
 		return existing, false, nil
 	}
+
+	resourcemerge.MergeMetadataInPlace(&requiredCopy.ObjectMeta, existing.ObjectMeta)
 
 	requiredCopy.ResourceVersion = existing.ResourceVersion
 	actual, err := client.PodDisruptionBudgets(requiredCopy.Namespace).Update(ctx, requiredCopy, metav1.UpdateOptions{})

@@ -335,6 +335,132 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 			expectedErr:     fmt.Errorf(`poddisruptionbudget "default/test" isn't controlled by us`),
 			expectedEvents:  []string{`Warning UpdatePodDisruptionBudgetFailed Failed to update PodDisruptionBudget default/test: poddisruptionbudget "default/test" isn't controlled by us`},
 		},
+		{
+			name: "all label and annotation keys are kept when the hash matches",
+			existing: []runtime.Object{
+				func() *policyv1beta1.PodDisruptionBudget {
+					pdb := newPDB()
+					pdb.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "",
+					}
+					pdb.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "",
+					}
+					utilruntime.Must(SetHashAnnotation(pdb))
+					pdb.Annotations["a-1"] = "a-alpha-changed"
+					pdb.Annotations["a-3"] = "a-resurrected"
+					pdb.Annotations["a-custom"] = "custom-value"
+					pdb.Labels["l-1"] = "l-alpha-changed"
+					pdb.Labels["l-3"] = "l-resurrected"
+					pdb.Labels["l-custom"] = "custom-value"
+					return pdb
+				}(),
+			},
+			required: func() *policyv1beta1.PodDisruptionBudget {
+				pdb := newPDB()
+				pdb.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				pdb.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				return pdb
+			}(),
+			forceOwnership: false,
+			expectedPDB: func() *policyv1beta1.PodDisruptionBudget {
+				pdb := newPDB()
+				pdb.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				pdb.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(pdb))
+				pdb.Annotations["a-1"] = "a-alpha-changed"
+				pdb.Annotations["a-3"] = "a-resurrected"
+				pdb.Annotations["a-custom"] = "custom-value"
+				pdb.Labels["l-1"] = "l-alpha-changed"
+				pdb.Labels["l-3"] = "l-resurrected"
+				pdb.Labels["l-custom"] = "custom-value"
+				return pdb
+			}(),
+			expectedChanged: false,
+			expectedErr:     nil,
+			expectedEvents:  nil,
+		},
+		{
+			name: "only managed label and annotation keys are updated when the hash changes",
+			existing: []runtime.Object{
+				func() *policyv1beta1.PodDisruptionBudget {
+					pdb := newPDB()
+					pdb.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "a-resurrected",
+					}
+					pdb.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "l-resurrected",
+					}
+					utilruntime.Must(SetHashAnnotation(pdb))
+					pdb.Annotations["a-1"] = "a-alpha-changed"
+					pdb.Annotations["a-custom"] = "a-custom-value"
+					pdb.Labels["l-1"] = "l-alpha-changed"
+					pdb.Labels["l-custom"] = "l-custom-value"
+					return pdb
+				}(),
+			},
+			required: func() *policyv1beta1.PodDisruptionBudget {
+				pdb := newPDB()
+				pdb.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				pdb.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				return pdb
+			}(),
+			forceOwnership: true,
+			expectedPDB: func() *policyv1beta1.PodDisruptionBudget {
+				podDisruptionBudget := newPDB()
+				podDisruptionBudget.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				podDisruptionBudget.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(podDisruptionBudget))
+				delete(podDisruptionBudget.Annotations, "a-3-")
+				podDisruptionBudget.Annotations["a-custom"] = "a-custom-value"
+				delete(podDisruptionBudget.Labels, "l-3-")
+				podDisruptionBudget.Labels["l-custom"] = "l-custom-value"
+				return podDisruptionBudget
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal PodDisruptionBudgetUpdated PodDisruptionBudget default/test updated"},
+		},
 	}
 
 	for _, tc := range tt {

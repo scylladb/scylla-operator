@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/resourcemerge"
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,6 +43,7 @@ func ApplyStatefulSet(
 			return nil, false, err
 		}
 
+		resourcemerge.SanitizeObject(requiredCopy)
 		actual, err := client.StatefulSets(requiredCopy.Namespace).Create(ctx, requiredCopy, metav1.CreateOptions{})
 		if apierrors.IsAlreadyExists(err) {
 			klog.V(2).InfoS("Already exists (stale cache)", "StatefulSet", klog.KObj(requiredCopy))
@@ -73,6 +75,8 @@ func ApplyStatefulSet(
 	if existingHash == requiredHash {
 		return existing, false, nil
 	}
+
+	resourcemerge.MergeMetadataInPlace(&requiredCopy.ObjectMeta, existing.ObjectMeta)
 
 	// TODO: Handle immutable fields. Maybe orphan delete + recreate.
 
@@ -118,6 +122,7 @@ func ApplyDaemonSet(
 			return nil, false, err
 		}
 
+		resourcemerge.SanitizeObject(requiredCopy)
 		actual, err := client.DaemonSets(requiredCopy.Namespace).Create(ctx, requiredCopy, metav1.CreateOptions{})
 		if apierrors.IsAlreadyExists(err) {
 			klog.V(2).InfoS("Already exists (stale cache)", "DaemonSet", klog.KObj(requiredCopy))
@@ -141,6 +146,8 @@ func ApplyDaemonSet(
 	if existingHash == requiredHash {
 		return existing, false, nil
 	}
+
+	resourcemerge.MergeMetadataInPlace(&requiredCopy.ObjectMeta, existing.ObjectMeta)
 
 	// Honor the required RV if it was already set.
 	// Required objects set RV in case their input is based on a previous version of itself.

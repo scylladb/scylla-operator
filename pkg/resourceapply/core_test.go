@@ -339,6 +339,132 @@ func TestApplyService(t *testing.T) {
 			expectedErr:     fmt.Errorf(`service "default/test" isn't controlled by us`),
 			expectedEvents:  []string{`Warning UpdateServiceFailed Failed to update Service default/test: service "default/test" isn't controlled by us`},
 		},
+		{
+			name: "all label and annotation keys are kept when the hash matches",
+			existing: []runtime.Object{
+				func() *corev1.Service {
+					svc := newService()
+					svc.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "",
+					}
+					svc.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "",
+					}
+					utilruntime.Must(SetHashAnnotation(svc))
+					svc.Annotations["a-1"] = "a-alpha-changed"
+					svc.Annotations["a-3"] = "a-resurrected"
+					svc.Annotations["a-custom"] = "custom-value"
+					svc.Labels["l-1"] = "l-alpha-changed"
+					svc.Labels["l-3"] = "l-resurrected"
+					svc.Labels["l-custom"] = "custom-value"
+					return svc
+				}(),
+			},
+			required: func() *corev1.Service {
+				svc := newService()
+				svc.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				svc.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				return svc
+			}(),
+			forceOwnership: false,
+			expectedService: func() *corev1.Service {
+				svc := newService()
+				svc.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				svc.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(svc))
+				svc.Annotations["a-1"] = "a-alpha-changed"
+				svc.Annotations["a-3"] = "a-resurrected"
+				svc.Annotations["a-custom"] = "custom-value"
+				svc.Labels["l-1"] = "l-alpha-changed"
+				svc.Labels["l-3"] = "l-resurrected"
+				svc.Labels["l-custom"] = "custom-value"
+				return svc
+			}(),
+			expectedChanged: false,
+			expectedErr:     nil,
+			expectedEvents:  nil,
+		},
+		{
+			name: "only managed label and annotation keys are updated when the hash changes",
+			existing: []runtime.Object{
+				func() *corev1.Service {
+					svc := newService()
+					svc.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "a-resurrected",
+					}
+					svc.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "l-resurrected",
+					}
+					utilruntime.Must(SetHashAnnotation(svc))
+					svc.Annotations["a-1"] = "a-alpha-changed"
+					svc.Annotations["a-custom"] = "a-custom-value"
+					svc.Labels["l-1"] = "l-alpha-changed"
+					svc.Labels["l-custom"] = "l-custom-value"
+					return svc
+				}(),
+			},
+			required: func() *corev1.Service {
+				svc := newService()
+				svc.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				svc.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				return svc
+			}(),
+			forceOwnership: true,
+			expectedService: func() *corev1.Service {
+				svc := newService()
+				svc.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				svc.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(svc))
+				delete(svc.Annotations, "a-3-")
+				svc.Annotations["a-custom"] = "a-custom-value"
+				delete(svc.Labels, "l-3-")
+				svc.Labels["l-custom"] = "l-custom-value"
+				return svc
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal ServiceUpdated Service default/test updated"},
+		},
 	}
 
 	for _, tc := range tt {
@@ -746,6 +872,132 @@ func TestApplySecret(t *testing.T) {
 			expectedChanged: false,
 			expectedErr:     fmt.Errorf(`secret "default/test" isn't controlled by us`),
 			expectedEvents:  []string{`Warning UpdateSecretFailed Failed to update Secret default/test: secret "default/test" isn't controlled by us`},
+		},
+		{
+			name: "all label and annotation keys are kept when the hash matches",
+			existing: []runtime.Object{
+				func() *corev1.Secret {
+					secret := newSecret()
+					secret.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "",
+					}
+					secret.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "",
+					}
+					utilruntime.Must(SetHashAnnotation(secret))
+					secret.Annotations["a-1"] = "a-alpha-changed"
+					secret.Annotations["a-3"] = "a-resurrected"
+					secret.Annotations["a-custom"] = "custom-value"
+					secret.Labels["l-1"] = "l-alpha-changed"
+					secret.Labels["l-3"] = "l-resurrected"
+					secret.Labels["l-custom"] = "custom-value"
+					return secret
+				}(),
+			},
+			required: func() *corev1.Secret {
+				secret := newSecret()
+				secret.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				secret.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				return secret
+			}(),
+			forceOwnership: false,
+			expectedSecret: func() *corev1.Secret {
+				secret := newSecret()
+				secret.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				secret.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(secret))
+				secret.Annotations["a-1"] = "a-alpha-changed"
+				secret.Annotations["a-3"] = "a-resurrected"
+				secret.Annotations["a-custom"] = "custom-value"
+				secret.Labels["l-1"] = "l-alpha-changed"
+				secret.Labels["l-3"] = "l-resurrected"
+				secret.Labels["l-custom"] = "custom-value"
+				return secret
+			}(),
+			expectedChanged: false,
+			expectedErr:     nil,
+			expectedEvents:  nil,
+		},
+		{
+			name: "only managed label and annotation keys are updated when the hash changes",
+			existing: []runtime.Object{
+				func() *corev1.Secret {
+					secret := newSecret()
+					secret.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "a-resurrected",
+					}
+					secret.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "l-resurrected",
+					}
+					utilruntime.Must(SetHashAnnotation(secret))
+					secret.Annotations["a-1"] = "a-alpha-changed"
+					secret.Annotations["a-custom"] = "a-custom-value"
+					secret.Labels["l-1"] = "l-alpha-changed"
+					secret.Labels["l-custom"] = "l-custom-value"
+					return secret
+				}(),
+			},
+			required: func() *corev1.Secret {
+				secret := newSecret()
+				secret.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				secret.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				return secret
+			}(),
+			forceOwnership: true,
+			expectedSecret: func() *corev1.Secret {
+				secret := newSecret()
+				secret.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				secret.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(secret))
+				delete(secret.Annotations, "a-3-")
+				secret.Annotations["a-custom"] = "a-custom-value"
+				delete(secret.Labels, "l-3-")
+				secret.Labels["l-custom"] = "l-custom-value"
+				return secret
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal SecretUpdated Secret default/test updated"},
 		},
 	}
 
@@ -1167,27 +1419,64 @@ func TestApplyServiceAccount(t *testing.T) {
 			expectedEvents:  []string{`Warning UpdateServiceAccountFailed Failed to update ServiceAccount default/test: serviceAccount "default/test" isn't controlled by us`},
 		},
 		{
-			name: "annotations not starting with our prefix are ignored during hashing and kept in the object",
+			name: "all label and annotation keys are kept when the hash matches",
 			existing: []runtime.Object{
 				func() *corev1.ServiceAccount {
 					sa := newSAWithControllerRef()
+					sa.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "",
+					}
+					sa.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "",
+					}
 					utilruntime.Must(SetHashAnnotation(sa))
-					sa.Annotations["custom-annotation"] = "custom-value"
+					sa.Annotations["a-1"] = "a-alpha-changed"
+					sa.Annotations["a-3"] = "a-resurrected"
+					sa.Annotations["a-custom"] = "custom-value"
+					sa.Labels["l-1"] = "l-alpha-changed"
+					sa.Labels["l-3"] = "l-resurrected"
+					sa.Labels["l-custom"] = "custom-value"
 					return sa
 				}(),
 			},
 			required: func() *corev1.ServiceAccount {
 				sa := newSAWithControllerRef()
 				sa.Annotations = map[string]string{
-					"custom-annotation": "custom-value",
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				sa.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
 				}
 				return sa
 			}(),
-			forceOwnership: true,
+			forceOwnership: false,
 			expectedSA: func() *corev1.ServiceAccount {
 				sa := newSAWithControllerRef()
+				sa.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				sa.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
 				utilruntime.Must(SetHashAnnotation(sa))
-				sa.Annotations["custom-annotation"] = "custom-value"
+				sa.Annotations["a-1"] = "a-alpha-changed"
+				sa.Annotations["a-3"] = "a-resurrected"
+				sa.Annotations["a-custom"] = "custom-value"
+				sa.Labels["l-1"] = "l-alpha-changed"
+				sa.Labels["l-3"] = "l-resurrected"
+				sa.Labels["l-custom"] = "custom-value"
 				return sa
 			}(),
 			expectedChanged: false,
@@ -1195,20 +1484,39 @@ func TestApplyServiceAccount(t *testing.T) {
 			expectedEvents:  nil,
 		},
 		{
-			name: "annotations starting with our prefix are accounted during hash compute",
+			name: "only managed label and annotation keys are updated when the hash changes",
 			existing: []runtime.Object{
 				func() *corev1.ServiceAccount {
 					sa := newSAWithControllerRef()
+					sa.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "a-resurrected",
+					}
+					sa.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "l-resurrected",
+					}
 					utilruntime.Must(SetHashAnnotation(sa))
-					sa.Annotations["custom-annotation"] = "custom-value"
+					sa.Annotations["a-1"] = "a-alpha-changed"
+					sa.Annotations["a-custom"] = "a-custom-value"
+					sa.Labels["l-1"] = "l-alpha-changed"
+					sa.Labels["l-custom"] = "l-custom-value"
 					return sa
 				}(),
 			},
 			required: func() *corev1.ServiceAccount {
 				sa := newSAWithControllerRef()
 				sa.Annotations = map[string]string{
-					"custom-annotation":                   "custom-value",
-					"scylla-operator.scylladb.com/blabla": "123",
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				sa.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
 				}
 				return sa
 			}(),
@@ -1216,10 +1524,20 @@ func TestApplyServiceAccount(t *testing.T) {
 			expectedSA: func() *corev1.ServiceAccount {
 				sa := newSAWithControllerRef()
 				sa.Annotations = map[string]string{
-					"scylla-operator.scylladb.com/blabla": "123",
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				sa.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
 				}
 				utilruntime.Must(SetHashAnnotation(sa))
-				sa.Annotations["custom-annotation"] = "custom-value"
+				delete(sa.Annotations, "a-3-")
+				sa.Annotations["a-custom"] = "a-custom-value"
+				delete(sa.Labels, "l-3-")
+				sa.Labels["l-custom"] = "l-custom-value"
 				return sa
 			}(),
 			expectedChanged: true,
@@ -1281,7 +1599,7 @@ func TestApplyServiceAccount(t *testing.T) {
 					}
 
 					if !equality.Semantic.DeepEqual(gotSA, tc.expectedSA) {
-						t.Errorf("expected %#v, got %#v, diff:\n%s", tc.expectedSA, gotSA, cmp.Diff(tc.expectedSA, gotSA))
+						t.Errorf("expected and got SA differ:\n%s", cmp.Diff(tc.expectedSA, gotSA))
 					}
 
 					// Make sure such object was actually created.
@@ -1585,6 +1903,130 @@ func TestApplyConfigMap(t *testing.T) {
 			expectedChanged: false,
 			expectedErr:     fmt.Errorf(`configmap "default/test" isn't controlled by us`),
 			expectedEvents:  []string{`Warning UpdateConfigMapFailed Failed to update ConfigMap default/test: configmap "default/test" isn't controlled by us`},
+		},
+		{
+			name: "all label and annotation keys are kept when the hash matches",
+			existing: []runtime.Object{
+				func() *corev1.ConfigMap {
+					cm := newConfigMap()
+					cm.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "",
+					}
+					cm.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "",
+					}
+					utilruntime.Must(SetHashAnnotation(cm))
+					cm.Annotations["a-1"] = "a-alpha-changed"
+					cm.Annotations["a-3"] = "a-resurrected"
+					cm.Annotations["a-custom"] = "custom-value"
+					cm.Labels["l-1"] = "l-alpha-changed"
+					cm.Labels["l-3"] = "l-resurrected"
+					cm.Labels["l-custom"] = "custom-value"
+					return cm
+				}(),
+			},
+			required: func() *corev1.ConfigMap {
+				cm := newConfigMap()
+				cm.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				cm.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				return cm
+			}(),
+			expectedCM: func() *corev1.ConfigMap {
+				cm := newConfigMap()
+				cm.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				cm.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(cm))
+				cm.Annotations["a-1"] = "a-alpha-changed"
+				cm.Annotations["a-3"] = "a-resurrected"
+				cm.Annotations["a-custom"] = "custom-value"
+				cm.Labels["l-1"] = "l-alpha-changed"
+				cm.Labels["l-3"] = "l-resurrected"
+				cm.Labels["l-custom"] = "custom-value"
+				return cm
+			}(),
+			expectedChanged: false,
+			expectedErr:     nil,
+			expectedEvents:  nil,
+		},
+		{
+			name: "only managed label and annotation keys are updated when the hash changes",
+			existing: []runtime.Object{
+				func() *corev1.ConfigMap {
+					cm := newConfigMap()
+					cm.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "a-resurrected",
+					}
+					cm.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "l-resurrected",
+					}
+					utilruntime.Must(SetHashAnnotation(cm))
+					cm.Annotations["a-1"] = "a-alpha-changed"
+					cm.Annotations["a-custom"] = "a-custom-value"
+					cm.Labels["l-1"] = "l-alpha-changed"
+					cm.Labels["l-custom"] = "l-custom-value"
+					return cm
+				}(),
+			},
+			required: func() *corev1.ConfigMap {
+				cm := newConfigMap()
+				cm.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				cm.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				return cm
+			}(),
+			expectedCM: func() *corev1.ConfigMap {
+				configMap := newConfigMap()
+				configMap.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				configMap.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(configMap))
+				delete(configMap.Annotations, "a-3-")
+				configMap.Annotations["a-custom"] = "a-custom-value"
+				delete(configMap.Labels, "l-3-")
+				configMap.Labels["l-custom"] = "l-custom-value"
+				return configMap
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal ConfigMapUpdated ConfigMap default/test updated"},
 		},
 	}
 
@@ -1909,6 +2351,132 @@ func TestApplyNamespace(t *testing.T) {
 			expectedChanged:           false,
 			expectedErr:               fmt.Errorf(`namespace "test" isn't controlled by us`),
 			expectedEvents:            []string{`Warning UpdateNamespaceFailed Failed to update Namespace test: namespace "test" isn't controlled by us`},
+		},
+		{
+			name: "all label and annotation keys are kept when the hash matches",
+			existing: []runtime.Object{
+				func() *corev1.Namespace {
+					ns := newNS()
+					ns.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "",
+					}
+					ns.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "",
+					}
+					utilruntime.Must(SetHashAnnotation(ns))
+					ns.Annotations["a-1"] = "a-alpha-changed"
+					ns.Annotations["a-3"] = "a-resurrected"
+					ns.Annotations["a-custom"] = "custom-value"
+					ns.Labels["l-1"] = "l-alpha-changed"
+					ns.Labels["l-3"] = "l-resurrected"
+					ns.Labels["l-custom"] = "custom-value"
+					return ns
+				}(),
+			},
+			allowMissingControllerRef: true,
+			required: func() *corev1.Namespace {
+				ns := newNS()
+				ns.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				ns.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				return ns
+			}(),
+			expectedNS: func() *corev1.Namespace {
+				ns := newNS()
+				ns.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				ns.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(ns))
+				ns.Annotations["a-1"] = "a-alpha-changed"
+				ns.Annotations["a-3"] = "a-resurrected"
+				ns.Annotations["a-custom"] = "custom-value"
+				ns.Labels["l-1"] = "l-alpha-changed"
+				ns.Labels["l-3"] = "l-resurrected"
+				ns.Labels["l-custom"] = "custom-value"
+				return ns
+			}(),
+			expectedChanged: false,
+			expectedErr:     nil,
+			expectedEvents:  nil,
+		},
+		{
+			name: "only managed label and annotation keys are updated when the hash changes",
+			existing: []runtime.Object{
+				func() *corev1.Namespace {
+					ns := newNS()
+					ns.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "a-resurrected",
+					}
+					ns.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "l-resurrected",
+					}
+					utilruntime.Must(SetHashAnnotation(ns))
+					ns.Annotations["a-1"] = "a-alpha-changed"
+					ns.Annotations["a-custom"] = "a-custom-value"
+					ns.Labels["l-1"] = "l-alpha-changed"
+					ns.Labels["l-custom"] = "l-custom-value"
+					return ns
+				}(),
+			},
+			allowMissingControllerRef: true,
+			required: func() *corev1.Namespace {
+				ns := newNS()
+				ns.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				ns.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				return ns
+			}(),
+			expectedNS: func() *corev1.Namespace {
+				ns := newNS()
+				ns.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				ns.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(ns))
+				delete(ns.Annotations, "a-3-")
+				ns.Annotations["a-custom"] = "a-custom-value"
+				delete(ns.Labels, "l-3-")
+				ns.Labels["l-custom"] = "l-custom-value"
+				return ns
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal NamespaceUpdated Namespace test updated"},
 		},
 	}
 

@@ -3,9 +3,9 @@ package resourceapply
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/resourcemerge"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -45,6 +45,7 @@ func ApplyService(
 			return nil, false, err
 		}
 
+		resourcemerge.SanitizeObject(requiredCopy)
 		actual, err := client.Services(requiredCopy.Namespace).Create(ctx, requiredCopy, metav1.CreateOptions{})
 		if apierrors.IsAlreadyExists(err) {
 			klog.V(2).InfoS("Already exists (stale cache)", "Service", klog.KObj(requiredCopy))
@@ -70,6 +71,8 @@ func ApplyService(
 	if existing.Annotations[naming.ManagedHash] == requiredCopy.Annotations[naming.ManagedHash] {
 		return existing, false, nil
 	}
+
+	resourcemerge.MergeMetadataInPlace(&requiredCopy.ObjectMeta, existing.ObjectMeta)
 
 	// Preserve allocated fields.
 	requiredCopy.Spec.ClusterIP = existing.Spec.ClusterIP
@@ -116,6 +119,7 @@ func ApplySecret(
 			return nil, false, err
 		}
 
+		resourcemerge.SanitizeObject(requiredCopy)
 		actual, err := client.Secrets(requiredCopy.Namespace).Create(ctx, requiredCopy, metav1.CreateOptions{})
 		if apierrors.IsAlreadyExists(err) {
 			klog.V(2).InfoS("Already exists (stale cache)", "Secret", klog.KObj(requiredCopy))
@@ -141,6 +145,8 @@ func ApplySecret(
 	if existing.Annotations[naming.ManagedHash] == requiredCopy.Annotations[naming.ManagedHash] {
 		return existing, false, nil
 	}
+
+	resourcemerge.MergeMetadataInPlace(&requiredCopy.ObjectMeta, existing.ObjectMeta)
 
 	requiredCopy.ResourceVersion = existing.ResourceVersion
 	actual, err := client.Secrets(requiredCopy.Namespace).Update(ctx, requiredCopy, metav1.UpdateOptions{})
@@ -180,6 +186,7 @@ func ApplyConfigMap(
 			return nil, false, err
 		}
 
+		resourcemerge.SanitizeObject(requiredCopy)
 		actual, err := client.ConfigMaps(requiredCopy.Namespace).Create(ctx, requiredCopy, metav1.CreateOptions{})
 		if apierrors.IsAlreadyExists(err) {
 			klog.V(2).InfoS("Already exists (stale cache)", "ConfigMap", klog.KObj(requiredCopy))
@@ -204,6 +211,8 @@ func ApplyConfigMap(
 	if existingHash == requiredHash {
 		return existing, false, nil
 	}
+
+	resourcemerge.MergeMetadataInPlace(&requiredCopy.ObjectMeta, existing.ObjectMeta)
 
 	// Honor the required RV if it was already set.
 	// Required objects set RV in case their input is based on a previous version of itself.
@@ -238,24 +247,9 @@ func ApplyServiceAccount(
 	}
 
 	requiredCopy := required.DeepCopy()
-
-	// Users may need to add custom annotations to integrate with k8s provider services.
-	// These should be filtered out before hash is computed.
-	customAnnotations := map[string]string{}
-	for key, value := range requiredCopy.Annotations {
-		if !strings.HasPrefix(key, "scylla-operator.scylladb.com/") {
-			customAnnotations[key] = value
-			delete(requiredCopy.Annotations, key)
-		}
-	}
-
 	err := SetHashAnnotation(requiredCopy)
 	if err != nil {
 		return nil, false, err
-	}
-
-	for key, value := range customAnnotations {
-		requiredCopy.Annotations[key] = value
 	}
 
 	existing, err := lister.ServiceAccounts(requiredCopy.Namespace).Get(requiredCopy.Name)
@@ -264,6 +258,7 @@ func ApplyServiceAccount(
 			return nil, false, err
 		}
 
+		resourcemerge.SanitizeObject(requiredCopy)
 		actual, err := client.ServiceAccounts(requiredCopy.Namespace).Create(ctx, requiredCopy, metav1.CreateOptions{})
 		if apierrors.IsAlreadyExists(err) {
 			klog.V(2).InfoS("Already exists (stale cache)", "ServiceAccount", klog.KObj(requiredCopy))
@@ -300,6 +295,8 @@ func ApplyServiceAccount(
 	if existingHash == requiredHash {
 		return existing, false, nil
 	}
+
+	resourcemerge.MergeMetadataInPlace(&requiredCopy.ObjectMeta, existing.ObjectMeta)
 
 	// Honor the required RV if it was already set.
 	// Required objects set RV in case their input is based on a previous version of itself.
@@ -344,6 +341,7 @@ func ApplyNamespace(
 			return nil, false, err
 		}
 
+		resourcemerge.SanitizeObject(requiredCopy)
 		actual, err := client.Namespaces().Create(ctx, requiredCopy, metav1.CreateOptions{})
 		if apierrors.IsAlreadyExists(err) {
 			klog.V(2).InfoS("Already exists (stale cache)", "Namespace", klog.KObj(requiredCopy))
@@ -368,6 +366,8 @@ func ApplyNamespace(
 	if existingHash == requiredHash {
 		return existing, false, nil
 	}
+
+	resourcemerge.MergeMetadataInPlace(&requiredCopy.ObjectMeta, existing.ObjectMeta)
 
 	// Honor the required RV if it was already set.
 	// Required objects set RV in case their input is based on a previous version of itself.

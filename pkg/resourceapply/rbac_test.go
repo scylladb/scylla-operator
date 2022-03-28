@@ -282,6 +282,132 @@ func TestApplyClusterRole(t *testing.T) {
 			expectedErr:               fmt.Errorf(`clusterrole "test" is controlled by someone else`),
 			expectedEvents:            []string{`Warning UpdateClusterRoleFailed Failed to update ClusterRole test: clusterrole "test" is controlled by someone else`},
 		},
+		{
+			name: "all label and annotation keys are kept when the hash matches",
+			existing: []runtime.Object{
+				func() *rbacv1.ClusterRole {
+					cr := newCr()
+					cr.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "",
+					}
+					cr.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "",
+					}
+					utilruntime.Must(SetHashAnnotation(cr))
+					cr.Annotations["a-1"] = "a-alpha-changed"
+					cr.Annotations["a-3"] = "a-resurrected"
+					cr.Annotations["a-custom"] = "custom-value"
+					cr.Labels["l-1"] = "l-alpha-changed"
+					cr.Labels["l-3"] = "l-resurrected"
+					cr.Labels["l-custom"] = "custom-value"
+					return cr
+				}(),
+			},
+			allowMissingControllerRef: true,
+			required: func() *rbacv1.ClusterRole {
+				clusterRole := newCr()
+				clusterRole.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				clusterRole.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				return clusterRole
+			}(),
+			expectedCr: func() *rbacv1.ClusterRole {
+				cr := newCr()
+				cr.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				cr.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(cr))
+				cr.Annotations["a-1"] = "a-alpha-changed"
+				cr.Annotations["a-3"] = "a-resurrected"
+				cr.Annotations["a-custom"] = "custom-value"
+				cr.Labels["l-1"] = "l-alpha-changed"
+				cr.Labels["l-3"] = "l-resurrected"
+				cr.Labels["l-custom"] = "custom-value"
+				return cr
+			}(),
+			expectedChanged: false,
+			expectedErr:     nil,
+			expectedEvents:  nil,
+		},
+		{
+			name: "only managed label and annotation keys are updated when the hash changes",
+			existing: []runtime.Object{
+				func() *rbacv1.ClusterRole {
+					cr := newCr()
+					cr.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "a-resurrected",
+					}
+					cr.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "l-resurrected",
+					}
+					utilruntime.Must(SetHashAnnotation(cr))
+					cr.Annotations["a-1"] = "a-alpha-changed"
+					cr.Annotations["a-custom"] = "a-custom-value"
+					cr.Labels["l-1"] = "l-alpha-changed"
+					cr.Labels["l-custom"] = "l-custom-value"
+					return cr
+				}(),
+			},
+			allowMissingControllerRef: true,
+			required: func() *rbacv1.ClusterRole {
+				cr := newCr()
+				cr.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				cr.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				return cr
+			}(),
+			expectedCr: func() *rbacv1.ClusterRole {
+				clusterRole := newCr()
+				clusterRole.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				clusterRole.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(clusterRole))
+				delete(clusterRole.Annotations, "a-3-")
+				clusterRole.Annotations["a-custom"] = "a-custom-value"
+				delete(clusterRole.Labels, "l-3-")
+				clusterRole.Labels["l-custom"] = "l-custom-value"
+				return clusterRole
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal ClusterRoleUpdated ClusterRole test updated"},
+		},
 	}
 
 	for _, tc := range tt {
@@ -649,6 +775,132 @@ func TestApplyClusterRoleBinding(t *testing.T) {
 			expectedChanged:           false,
 			expectedErr:               fmt.Errorf(`clusterrolebinding "test" is controlled by someone else`),
 			expectedEvents:            []string{`Warning UpdateClusterRoleBindingFailed Failed to update ClusterRoleBinding test: clusterrolebinding "test" is controlled by someone else`},
+		},
+		{
+			name: "all label and annotation keys are kept when the hash matches",
+			existing: []runtime.Object{
+				func() *rbacv1.ClusterRoleBinding {
+					crb := newCrb()
+					crb.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "",
+					}
+					crb.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "",
+					}
+					utilruntime.Must(SetHashAnnotation(crb))
+					crb.Annotations["a-1"] = "a-alpha-changed"
+					crb.Annotations["a-3"] = "a-resurrected"
+					crb.Annotations["a-custom"] = "custom-value"
+					crb.Labels["l-1"] = "l-alpha-changed"
+					crb.Labels["l-3"] = "l-resurrected"
+					crb.Labels["l-custom"] = "custom-value"
+					return crb
+				}(),
+			},
+			required: func() *rbacv1.ClusterRoleBinding {
+				crb := newCrb()
+				crb.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				crb.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				return crb
+			}(),
+			allowMissingControllerRef: true,
+			expectedCrb: func() *rbacv1.ClusterRoleBinding {
+				crb := newCrb()
+				crb.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				crb.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(crb))
+				crb.Annotations["a-1"] = "a-alpha-changed"
+				crb.Annotations["a-3"] = "a-resurrected"
+				crb.Annotations["a-custom"] = "custom-value"
+				crb.Labels["l-1"] = "l-alpha-changed"
+				crb.Labels["l-3"] = "l-resurrected"
+				crb.Labels["l-custom"] = "custom-value"
+				return crb
+			}(),
+			expectedChanged: false,
+			expectedErr:     nil,
+			expectedEvents:  nil,
+		},
+		{
+			name: "only managed label and annotation keys are updated when the hash changes",
+			existing: []runtime.Object{
+				func() *rbacv1.ClusterRoleBinding {
+					crb := newCrb()
+					crb.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "a-resurrected",
+					}
+					crb.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "l-resurrected",
+					}
+					utilruntime.Must(SetHashAnnotation(crb))
+					crb.Annotations["a-1"] = "a-alpha-changed"
+					crb.Annotations["a-custom"] = "a-custom-value"
+					crb.Labels["l-1"] = "l-alpha-changed"
+					crb.Labels["l-custom"] = "l-custom-value"
+					return crb
+				}(),
+			},
+			required: func() *rbacv1.ClusterRoleBinding {
+				crb := newCrb()
+				crb.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				crb.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				return crb
+			}(),
+			allowMissingControllerRef: true,
+			expectedCrb: func() *rbacv1.ClusterRoleBinding {
+				crb := newCrb()
+				crb.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				crb.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(crb))
+				delete(crb.Annotations, "a-3-")
+				crb.Annotations["a-custom"] = "a-custom-value"
+				delete(crb.Labels, "l-3-")
+				crb.Labels["l-custom"] = "l-custom-value"
+				return crb
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal ClusterRoleBindingUpdated ClusterRoleBinding test updated"},
 		},
 	}
 
@@ -1068,6 +1320,134 @@ func TestApplyRoleBinding(t *testing.T) {
 			expectedChanged: false,
 			expectedErr:     fmt.Errorf(`roleBinding "default/test" isn't controlled by us`),
 			expectedEvents:  []string{`Warning UpdateRoleBindingFailed Failed to update RoleBinding default/test: roleBinding "default/test" isn't controlled by us`},
+		},
+		{
+			name: "all label and annotation keys are kept when the hash matches",
+			existing: []runtime.Object{
+				func() *rbacv1.RoleBinding {
+					rb := newRB()
+					rb.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "",
+					}
+					rb.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "",
+					}
+					utilruntime.Must(SetHashAnnotation(rb))
+					rb.Annotations["a-1"] = "a-alpha-changed"
+					rb.Annotations["a-3"] = "a-resurrected"
+					rb.Annotations["a-custom"] = "custom-value"
+					rb.Labels["l-1"] = "l-alpha-changed"
+					rb.Labels["l-3"] = "l-resurrected"
+					rb.Labels["l-custom"] = "custom-value"
+					return rb
+				}(),
+			},
+			allowMissingControllerRef: true,
+			required: func() *rbacv1.RoleBinding {
+				rb := newRB()
+				rb.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				rb.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				return rb
+			}(),
+			forceOwnership: false,
+			expectedRB: func() *rbacv1.RoleBinding {
+				roleBinding := newRB()
+				roleBinding.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				roleBinding.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(roleBinding))
+				roleBinding.Annotations["a-1"] = "a-alpha-changed"
+				roleBinding.Annotations["a-3"] = "a-resurrected"
+				roleBinding.Annotations["a-custom"] = "custom-value"
+				roleBinding.Labels["l-1"] = "l-alpha-changed"
+				roleBinding.Labels["l-3"] = "l-resurrected"
+				roleBinding.Labels["l-custom"] = "custom-value"
+				return roleBinding
+			}(),
+			expectedChanged: false,
+			expectedErr:     nil,
+			expectedEvents:  nil,
+		},
+		{
+			name: "only managed label and annotation keys are updated when the hash changes",
+			existing: []runtime.Object{
+				func() *rbacv1.RoleBinding {
+					rb := newRB()
+					rb.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "a-resurrected",
+					}
+					rb.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "l-resurrected",
+					}
+					utilruntime.Must(SetHashAnnotation(rb))
+					rb.Annotations["a-1"] = "a-alpha-changed"
+					rb.Annotations["a-custom"] = "a-custom-value"
+					rb.Labels["l-1"] = "l-alpha-changed"
+					rb.Labels["l-custom"] = "l-custom-value"
+					return rb
+				}(),
+			},
+			allowMissingControllerRef: true,
+			required: func() *rbacv1.RoleBinding {
+				rb := newRB()
+				rb.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				rb.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				return rb
+			}(),
+			forceOwnership: true,
+			expectedRB: func() *rbacv1.RoleBinding {
+				rb := newRB()
+				rb.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				rb.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(rb))
+				delete(rb.Annotations, "a-3-")
+				rb.Annotations["a-custom"] = "a-custom-value"
+				delete(rb.Labels, "l-3-")
+				rb.Labels["l-custom"] = "l-custom-value"
+				return rb
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal RoleBindingUpdated RoleBinding default/test updated"},
 		},
 	}
 

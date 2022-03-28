@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/resourcemerge"
 	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -43,6 +44,7 @@ func ApplyJob(
 			return nil, false, err
 		}
 
+		resourcemerge.SanitizeObject(requiredCopy)
 		actual, err := client.Jobs(requiredCopy.Namespace).Create(ctx, requiredCopy, metav1.CreateOptions{})
 		if apierrors.IsAlreadyExists(err) {
 			klog.V(2).InfoS("Already exists (stale cache)", "Job", klog.KObj(requiredCopy))
@@ -61,6 +63,8 @@ func ApplyJob(
 		return existing, false, nil
 	}
 
+	resourcemerge.MergeMetadataInPlace(&requiredCopy.ObjectMeta, existing.ObjectMeta)
+
 	if !equality.Semantic.DeepEqual(existing.Spec.Completions, requiredCopy.Spec.Completions) ||
 		!equality.Semantic.DeepEqual(existing.Spec.Template, requiredCopy.Spec.Template) ||
 		(requiredCopy.Spec.ManualSelector != nil && *requiredCopy.Spec.ManualSelector && !equality.Semantic.DeepEqual(existing.Spec.Selector, requiredCopy.Spec.Selector)) {
@@ -78,6 +82,7 @@ func ApplyJob(
 			return nil, false, err
 		}
 
+		resourcemerge.SanitizeObject(requiredCopy)
 		created, err := client.Jobs(requiredCopy.Namespace).Create(ctx, requiredCopy, metav1.CreateOptions{})
 		ReportCreateEvent(recorder, requiredCopy, err)
 		if err != nil {

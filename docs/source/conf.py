@@ -20,7 +20,8 @@ extensions = [
     'sphinx_scylladb_theme',
     'sphinx_multiversion',
     'recommonmark',
-    'sphinx_markdown_tables'
+    'sphinx_markdown_tables',
+    "sphinx_sitemap",
 ]
 
 # The suffix(es) of source filenames.
@@ -79,6 +80,8 @@ TAGS = []
 smv_tag_whitelist = multiversion_regex_builder(TAGS)
 # Whitelist pattern for branches (set to None to ignore all branches)
 BRANCHES = ['master', 'v0.3', 'v1.0', 'v1.1', 'v1.2', 'v1.3', 'v1.4', 'v1.5', 'v1.6', 'v1.7']
+# Set which versions are not released yet.
+UNSTABLE_VERSIONS = ["master"]
 smv_branch_whitelist = multiversion_regex_builder(BRANCHES)
 # Defines which version is considered to be the latest stable version.
 # Must be listed in smv_tag_whitelist or smv_branch_whitelist.
@@ -108,6 +111,7 @@ html_theme_options = {
     'hide_edit_this_page_button': 'false',
     'github_repository': 'scylladb/scylla-operator',
     'github_issues_repository': 'scylladb/scylla-operator',
+    "versions_unstable": UNSTABLE_VERSIONS,
 }
 
 # If not None, a 'Last updated on:' timestamp is inserted at every page
@@ -128,3 +132,5 @@ html_baseurl = 'https://operator.docs.scylladb.com'
 
 # Dictionary of values to pass into the template engine’s context for all pages
 html_context = {'html_baseurl': html_baseurl}
+
+sitemap_url_scheme = "stable/{link}"

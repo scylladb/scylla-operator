@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 	appv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -195,16 +196,16 @@ type WaitForStateOptions struct {
 	TolerateDelete bool
 }
 
-func WaitForPodState(ctx context.Context, client corev1client.CoreV1Interface, namespace string, name string, condition func(sc *corev1.Pod) (bool, error), o WaitForStateOptions) (*corev1.Pod, error) {
+func WaitForPodState(ctx context.Context, client corev1client.PodInterface, name string, condition func(sc *corev1.Pod) (bool, error), o WaitForStateOptions) (*corev1.Pod, error) {
 	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
 	lw := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 			options.FieldSelector = fieldSelector
-			return client.Pods(namespace).List(ctx, options)
+			return client.List(ctx, options)
 		},
 		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
 			options.FieldSelector = fieldSelector
-			return client.Pods(namespace).Watch(ctx, options)
+			return client.Watch(ctx, options)
 		},
 	}
 	event, err := watchtools.UntilWithSync(ctx, lw, &corev1.Pod{}, nil, func(event watch.Event) (bool, error) {
@@ -425,6 +426,56 @@ func WaitForConfigMapState(ctx context.Context, cmClient corev1client.ConfigMapI
 		return nil, err
 	}
 	return event.Object.(*corev1.ConfigMap), nil
+}
+
+func RunEphemeralContainerAndWaitForCompletion(ctx context.Context, client corev1client.PodInterface, podName string, ec *corev1.EphemeralContainer) (*corev1.Pod, error) {
+	ephemeralPod := &corev1.Pod{
+		Spec: corev1.PodSpec{
+			EphemeralContainers: []corev1.EphemeralContainer{*ec},
+		},
+	}
+	patch, err := helpers.CreateTwoWayMergePatch(&corev1.Pod{}, ephemeralPod)
+	if err != nil {
+		return nil, fmt.Errorf("can't create two-way merge patch: %w", err)
+	}
+
+	ephemeralPod, err = client.Patch(
+		ctx,
+		podName,
+		types.StrategicMergePatchType,
+		patch,
+		metav1.PatchOptions{},
+		"ephemeralcontainers",
+	)
+	if err != nil {
+		return nil, fmt.Errorf("can't path pod %q to add ephemeral container: %w", podName, err)
+	}
+
+	return WaitForPodState(
+		ctx,
+		client,
+		podName,
+		func(pod *corev1.Pod) (bool, error) {
+			s := controllerhelpers.FindContainerStatus(pod, ec.Name)
+			if s == nil {
+				framework.Infof("Waiting for the ephemeral container %q in Pod %q to be created", ec.Name, naming.ObjRef(pod))
+				return false, nil
+			}
+
+			if s.State.Terminated != nil {
+				return true, nil
+			}
+
+			if s.State.Running != nil {
+				framework.Infof("Waiting for the ephemeral container %q in Pod %q to finish", ec.Name, naming.ObjRef(pod))
+				return false, nil
+			}
+
+			framework.Infof("Waiting for the ephemeral container %q in Pod %q to start", ec.Name, naming.ObjRef(pod))
+			return false, nil
+		},
+		WaitForStateOptions{},
+	)
 }
 
 func GetStatefulSetsForScyllaCluster(ctx context.Context, client appv1client.AppsV1Interface, sc *scyllav1.ScyllaCluster) (map[string]*appsv1.StatefulSet, error) {

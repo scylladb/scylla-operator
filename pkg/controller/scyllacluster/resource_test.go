@@ -534,7 +534,7 @@ func TestStatefulSetForRack(t *testing.T) {
 									"sidecar",
 									"--service-name=$(SERVICE_NAME)",
 									"--cpu-count=$(CPU_COUNT)",
-									"--loglevel=2",
+									"--loglevel=4",
 								},
 								Env: []corev1.EnvVar{
 									{

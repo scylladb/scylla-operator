@@ -310,7 +310,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								"--service-name=$(SERVICE_NAME)",
 								"--cpu-count=$(CPU_COUNT)",
 								// TODO: make it configurable
-								"--loglevel=2",
+								"--loglevel=4",
 							},
 							Env: []corev1.EnvVar{
 								{

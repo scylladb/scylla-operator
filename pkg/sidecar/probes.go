@@ -99,9 +99,12 @@ func (p *Prober) Readyz(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	klog.V(4).InfoS("readyz probe: listing node states", "Self", nodeAddress)
 	for _, s := range nodeStatuses {
 		klog.V(4).InfoS("readyz probe: node state", "Node", s.Addr, "Status", s.Status, "State", s.State)
+	}
 
+	for _, s := range nodeStatuses {
 		if s.Addr == nodeAddress && s.IsUN() {
 			transportEnabled, err := scyllaClient.IsNativeTransportEnabled(ctx, localhost)
 			if err != nil {

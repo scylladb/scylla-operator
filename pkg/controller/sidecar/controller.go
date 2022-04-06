@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -35,6 +36,11 @@ var (
 	keyFunc = cache.DeletionHandlingMetaNamespaceKeyFunc
 )
 
+type hostID struct {
+	v string
+	sync.RWMutex
+}
+
 type Controller struct {
 	namespace   string
 	serviceName string
@@ -48,6 +54,8 @@ type Controller struct {
 
 	queue workqueue.RateLimitingInterface
 	key   string
+
+	hostID hostID
 }
 
 func NewController(
@@ -233,4 +241,40 @@ func (c *Controller) deleteService(obj interface{}) {
 	}
 	klog.V(4).InfoS("Observed deletion of Service", "Service", klog.KObj(svc))
 	c.enqueue(svc)
+}
+
+func (c *Controller) getHostID(ctx context.Context) (string, error) {
+	c.hostID.RLock()
+	v := c.hostID.v
+	c.hostID.RUnlock()
+
+	if len(v) > 0 {
+		return v, nil
+	}
+
+	c.hostID.Lock()
+	defer c.hostID.Unlock()
+
+	v = c.hostID.v
+	if len(v) > 0 {
+		return v, nil
+	}
+
+	scyllaClient, err := controllerhelpers.NewScyllaClientForLocalhost()
+	if err != nil {
+		return "", fmt.Errorf("can't create a new ScyllaClient for localhost: %w", err)
+	}
+
+	v, err = scyllaClient.GetLocalHostId(ctx, localhost, false)
+	if err != nil {
+		return "", fmt.Errorf("can't get local HostID: %w", err)
+	}
+
+	if len(v) == 0 {
+		return "", fmt.Errorf("can't get local HostID: HostID can't be empty")
+	}
+
+	c.hostID.v = v
+
+	return v, nil
 }

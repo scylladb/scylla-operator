@@ -518,9 +518,7 @@ func GetScyllaClient(ctx context.Context, client corev1client.CoreV1Interface, s
 
 func GetHosts(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
 	serviceList, err := client.Services(sc.Namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: labels.Set{
-			naming.ClusterNameLabel: sc.Name,
-		}.AsSelector().String(),
+		LabelSelector: GetMemberServiceSelector(sc.Name).String(),
 	})
 	if err != nil {
 		return nil, err
@@ -530,11 +528,6 @@ func GetHosts(ctx context.Context, client corev1client.CoreV1Interface, sc *scyl
 	for _, s := range serviceList.Items {
 		if s.Spec.Type != corev1.ServiceTypeClusterIP {
 			return nil, fmt.Errorf("service %s/%s is of type %q instead of %q", s.Namespace, s.Name, s.Spec.Type, corev1.ServiceTypeClusterIP)
-		}
-
-		// TODO: Fix labeling in the operator so it can be selected.
-		if s.Name == naming.HeadlessServiceNameForCluster(sc) {
-			continue
 		}
 
 		if s.Spec.ClusterIP == corev1.ClusterIPNone {
@@ -579,4 +572,11 @@ func GetNodeName(sc *scyllav1.ScyllaCluster, idx int) string {
 		sc.Spec.Datacenter.Racks[0].Name,
 		idx,
 	)
+}
+
+func GetMemberServiceSelector(scyllaClusterName string) labels.Selector {
+	return labels.Set{
+		naming.ClusterNameLabel:       scyllaClusterName,
+		naming.ScyllaServiceTypeLabel: string(naming.ScyllaServiceTypeMember),
+	}.AsSelector()
 }

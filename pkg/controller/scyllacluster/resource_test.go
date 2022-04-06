@@ -55,6 +55,7 @@ func TestMemberService(t *testing.T) {
 			"scylla/cluster":               "basic",
 			"scylla/datacenter":            "dc",
 			"scylla/rack":                  "rack",
+			"scylla-operator.scylladb.com/scylla-service-type": "member",
 		}
 	}
 	basicPorts := []corev1.ServicePort{

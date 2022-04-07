@@ -282,6 +282,8 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		}
 	}
 
+	argsList = append(argsList, fmt.Sprintf("--logger-log-level gossip=trace"))
+
 	scyllaCmd := exec.Command(entrypointPath, argsList...)
 	scyllaCmd.Stderr = os.Stderr
 	scyllaCmd.Stdout = os.Stdout

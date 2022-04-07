@@ -3,11 +3,12 @@ package sidecar
 import (
 	"context"
 	"fmt"
-	"os/exec"
+	"syscall"
 	"time"
 
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/proc"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -42,11 +43,13 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 
 	case scyllaclient.OperationalModeDrained:
 		klog.InfoS("Node is in DRAINED state, restarting scylla to make it decommissionable")
-		// TODO: Label pod/service that it is in restarting state to avoid liveness probe race
-		_, err := exec.Command("supervisorctl", "restart", "scylla").Output()
+
+		// TODO: Make scylla write it's pid file to avoid the error prone regex.
+		err = proc.SignalScylla(syscall.SIGTERM)
 		if err != nil {
-			return fmt.Errorf("can't restart scylla node: %w", err)
+			return fmt.Errorf("can't send SIGTERM to scylla: %w", err)
 		}
+
 		klog.InfoS("Successfully restarted scylla.")
 		c.queue.AddAfter(c.key, requeueWaitDuration)
 		return nil

@@ -3,20 +3,14 @@ package operator
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"net/http"
-	"sync"
 	"syscall"
-	"time"
 
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
-	sidecarcontroller "github.com/scylladb/scylla-operator/pkg/controller/sidecar"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	"github.com/scylladb/scylla-operator/pkg/sidecar"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/config"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/signals"
@@ -31,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
@@ -39,7 +32,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-type SidecarOptions struct {
+type ScyllaStarterOptions struct {
 	genericclioptions.ClientConfig
 	genericclioptions.InClusterReflection
 
@@ -50,24 +43,24 @@ type SidecarOptions struct {
 	scyllaClient scyllaversionedclient.Interface
 }
 
-func NewSidecarOptions(streams genericclioptions.IOStreams) *SidecarOptions {
-	clientConfig := genericclioptions.NewClientConfig("scylla-sidecar")
+func NewScyllaStarterOptions(streams genericclioptions.IOStreams) *ScyllaStarterOptions {
+	clientConfig := genericclioptions.NewClientConfig("scylla-starter")
 	clientConfig.QPS = 2
 	clientConfig.Burst = 5
 
-	return &SidecarOptions{
+	return &ScyllaStarterOptions{
 		ClientConfig:        clientConfig,
 		InClusterReflection: genericclioptions.InClusterReflection{},
 	}
 }
 
-func NewSidecarCmd(streams genericclioptions.IOStreams) *cobra.Command {
-	o := NewSidecarOptions(streams)
+func NewScyllaStarterCmd(streams genericclioptions.IOStreams) *cobra.Command {
+	o := NewScyllaStarterOptions(streams)
 
 	cmd := &cobra.Command{
-		Use:   "sidecar",
-		Short: "Run the scylla sidecar.",
-		Long:  `Run the scylla sidecar.`,
+		Use:   "run-scylla",
+		Short: "Run scylla.",
+		Long:  `Run scylla.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := o.Validate()
 			if err != nil {
@@ -100,7 +93,7 @@ func NewSidecarCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	return cmd
 }
 
-func (o *SidecarOptions) Validate() error {
+func (o *ScyllaStarterOptions) Validate() error {
 	var errs []error
 
 	errs = append(errs, o.ClientConfig.Validate())
@@ -118,7 +111,7 @@ func (o *SidecarOptions) Validate() error {
 	return utilerrors.NewAggregate(errs)
 }
 
-func (o *SidecarOptions) Complete() error {
+func (o *ScyllaStarterOptions) Complete() error {
 	err := o.ClientConfig.Complete()
 	if err != nil {
 		return err
@@ -142,10 +135,7 @@ func (o *SidecarOptions) Complete() error {
 	return nil
 }
 
-func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command) error {
-	klog.Infof("%s version %s", cmd.Name(), version.Get())
-	cliflag.PrintFlags(cmd.Flags())
-
+func (o *ScyllaStarterOptions) prepareCommand(streams genericclioptions.IOStreams, cmd *cobra.Command) ([]string, []string, error) {
 	stopCh := signals.StopChannel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -153,46 +143,6 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 		<-stopCh
 		cancel()
 	}()
-
-	singleServiceKubeInformers := informers.NewSharedInformerFactoryWithOptions(
-		o.kubeClient,
-		12*time.Hour,
-		informers.WithNamespace(o.Namespace),
-		informers.WithTweakListOptions(
-			func(options *metav1.ListOptions) {
-				options.FieldSelector = fields.OneTermEqualSelector("metadata.name", o.ServiceName).String()
-			},
-		),
-	)
-
-	namespacedKubeInformers := informers.NewSharedInformerFactoryWithOptions(o.kubeClient, 12*time.Hour, informers.WithNamespace(o.Namespace))
-
-	singleServiceInformer := singleServiceKubeInformers.Core().V1().Services()
-
-	prober := sidecar.NewProber(
-		o.Namespace,
-		o.ServiceName,
-		singleServiceInformer.Lister(),
-	)
-
-	sc, err := sidecarcontroller.NewController(
-		o.Namespace,
-		o.ServiceName,
-		o.kubeClient,
-		singleServiceInformer,
-	)
-	if err != nil {
-		return fmt.Errorf("can't create sidecar controller: %w", err)
-	}
-
-	// Start informers.
-	singleServiceKubeInformers.Start(ctx.Done())
-	namespacedKubeInformers.Start(ctx.Done())
-
-	klog.V(2).InfoS("Waiting for single service informer caches to sync")
-	if !cache.WaitForCacheSync(ctx.Done(), singleServiceInformer.Informer().HasSynced) {
-		return fmt.Errorf("failed to wait for caches to sync")
-	}
 
 	// Wait for the service that holds identity for this scylla node.
 	serviceFieldSelector := fields.OneTermEqualSelector("metadata.name", o.ServiceName)
@@ -224,7 +174,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("can't wait for service %q: %w", naming.ManualRef(o.Namespace, o.ServiceName), err)
+		return nil, nil, fmt.Errorf("can't wait for service %q: %w", naming.ManualRef(o.Namespace, o.ServiceName), err)
 	}
 	service := event.Object.(*corev1.Service)
 
@@ -275,7 +225,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("can't wait for pod's ContainerID: %w", err)
+		return nil, nil, fmt.Errorf("can't wait for pod's ContainerID: %w", err)
 	}
 
 	member := identity.NewMemberFromObjects(service, pod)
@@ -353,106 +303,32 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("can't wait for optimization: %w", err)
+		return nil, nil, fmt.Errorf("can't wait for optimization: %w", err)
 	}
 
 	klog.V(2).InfoS("Starting scylla")
 
 	cfg := config.NewScyllaConfig(member, o.kubeClient, o.scyllaClient, o.CPUCount)
-	scyllaCmd, err := cfg.Setup(ctx)
+	scyllaCmd, env, err := cfg.Setup(ctx)
 	if err != nil {
-		return fmt.Errorf("can't set up scylla: %w", err)
-	}
-	// Make sure to propagate the signal if we die.
-	scyllaCmd.SysProcAttr = &syscall.SysProcAttr{
-		Pdeathsig: syscall.SIGKILL,
+		return nil, nil, fmt.Errorf("can't set up scylla: %w", err)
 	}
 
-	var wg sync.WaitGroup
-	defer wg.Wait()
+	return scyllaCmd, env, nil
 
-	// Run probes.
-	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", naming.ProbePort),
-		Handler: nil,
-	}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+}
+func (o *ScyllaStarterOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command) error {
+	klog.Infof("%s version %s", cmd.Name(), version.Get())
+	cliflag.PrintFlags(cmd.Flags())
 
-		ok := cache.WaitForNamedCacheSync("Prober", ctx.Done(), singleServiceInformer.Informer().HasSynced)
-		if !ok {
-			return
-		}
-
-		klog.InfoS("Starting Prober server")
-		defer klog.InfoS("Prober server shut down")
-
-		http.HandleFunc(naming.LivenessProbePath, prober.Healthz)
-		http.HandleFunc(naming.ReadinessProbePath, prober.Readyz)
-
-		err := server.ListenAndServe()
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			klog.Fatal("ListenAndServe failed: %v", err)
-		}
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		<-ctx.Done()
-
-		klog.InfoS("Shutting down Prober server")
-		defer klog.InfoS("Shut down Prober server")
-
-		shutdownCtx, shutdownCtxCancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer shutdownCtxCancel()
-		err := server.Shutdown(shutdownCtx)
-		if err != nil {
-			klog.ErrorS(err, "Shutting down Prober server")
-		}
-	}()
-
-	// Run sidecar controller.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		sc.Run(ctx)
-	}()
-
-	// Run scylla in a new process.
-	err = scyllaCmd.Start()
+	command, env, err := o.prepareCommand(streams, cmd)
 	if err != nil {
-		return fmt.Errorf("can't start scylla: %w", err)
+		return fmt.Errorf("can't prepare scylla command: %w", err)
+	}
+	if len(command) == 0 {
+		return fmt.Errorf("scylla command can't be empty")
 	}
 
-	defer func() {
-		klog.InfoS("Waiting for scylla process to finish")
-		defer klog.InfoS("Scylla process finished")
-
-		err := scyllaCmd.Wait()
-		if err != nil {
-			klog.ErrorS(err, "Can't wait for scylla process to finish")
-		}
-	}()
-
-	// Terminate the scylla process.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		<-ctx.Done()
-
-		klog.InfoS("Sending SIGTERM to the scylla process")
-		err := scyllaCmd.Process.Signal(syscall.SIGTERM)
-		if err != nil {
-			klog.ErrorS(err, "Can't send SIGTERM to the scylla process")
-			return
-		}
-		klog.InfoS("Sent SIGTERM to the scylla process")
-	}()
-
-	<-ctx.Done()
-
-	return nil
+	// Exec into Scylla.
+	return syscall.Exec(command[0], command, env)
 }

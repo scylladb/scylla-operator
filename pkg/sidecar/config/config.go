@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path"
 	"regexp"
 	"strconv"
@@ -58,29 +57,24 @@ func NewScyllaConfig(m *identity.Member, kubeClient kubernetes.Interface, scylla
 	}
 }
 
-func (s *ScyllaConfig) Setup(ctx context.Context) (*exec.Cmd, error) {
+func (s *ScyllaConfig) Setup(ctx context.Context) ([]string, []string, error) {
 	klog.Info("Setting up iotune cache")
 	if err := setupIOTuneCache(); err != nil {
-		return nil, fmt.Errorf("can't setup iotune cache: %w", err)
+		return nil, nil, fmt.Errorf("can't setup iotune cache: %w", err)
 	}
 
 	klog.Info("Setting up scylla.yaml")
 	if err := s.setupScyllaYAML(scyllaYAMLPath, scyllaYAMLConfigMapPath); err != nil {
-		return nil, fmt.Errorf("can't setup scylla.yaml: %w", err)
+		return nil, nil, fmt.Errorf("can't setup scylla.yaml: %w", err)
 	}
 
 	klog.Info("Setting up cassandra-rackdc.properties")
 	if err := s.setupRackDCProperties(); err != nil {
-		return nil, fmt.Errorf("can't setup rackdc properties file: %w", err)
+		return nil, nil, fmt.Errorf("can't setup rackdc properties file: %w", err)
 	}
 
-	klog.Info("Setting up entrypoint script")
-	cmd, err := s.setupEntrypoint(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("can't setup entrypoint: %w", err)
-	}
-
-	return cmd, nil
+	klog.Info("Generating Scylla arguments")
+	return s.generateCommand(ctx)
 }
 
 // setupScyllaYAML edits the default scylla.yaml file with our custom options.
@@ -192,19 +186,19 @@ func appendScyllaArguments(ctx context.Context, s *ScyllaConfig, scyllaArgs stri
 	}
 }
 
-func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
+func (s *ScyllaConfig) generateCommand(ctx context.Context) ([]string, []string, error) {
 	m := s.member
 	// Get seeds
 	seed, err := m.GetSeed(ctx, s.kubeClient.CoreV1())
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting seeds")
+		return nil, nil, errors.Wrap(err, "error getting seeds")
 	}
 
 	// Check if we need to run in developer mode
 	devMode := "0"
 	cluster, err := s.scyllaClient.ScyllaV1().ScyllaClusters(s.member.Namespace).Get(ctx, s.member.Cluster, metav1.GetOptions{})
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting cluster")
+		return nil, nil, errors.Wrap(err, "error getting cluster")
 	}
 	if cluster.Spec.DeveloperMode {
 		devMode = "1"
@@ -246,10 +240,10 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	if cluster.Spec.CpuSet {
 		cpusAllowed, err := getCPUsAllowedList("/proc/1/status")
 		if err != nil {
-			return nil, errors.WithStack(err)
+			return nil, nil, errors.WithStack(err)
 		}
 		if err := s.validateCpuSet(ctx, cpusAllowed, s.cpuCount); err != nil {
-			return nil, errors.WithStack(err)
+			return nil, nil, errors.WithStack(err)
 		}
 		args["cpuset"] = &cpusAllowed
 	}
@@ -273,21 +267,16 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		args["io-properties-file"] = pointer.StringPtr(scyllaIOPropertiesPath)
 	}
 
-	var argsList []string
+	command := []string{entrypointPath}
 	for key, value := range args {
 		if value == nil {
-			argsList = append(argsList, fmt.Sprintf("--%s", key))
+			command = append(command, fmt.Sprintf("--%s", key))
 		} else {
-			argsList = append(argsList, fmt.Sprintf("--%s=%s", key, *value))
+			command = append(command, fmt.Sprintf("--%s=%s", key, *value))
 		}
 	}
 
-	scyllaCmd := exec.Command(entrypointPath, argsList...)
-	scyllaCmd.Stderr = os.Stderr
-	scyllaCmd.Stdout = os.Stdout
-	klog.InfoS("Scylla entrypoint", "Command", scyllaCmd)
-
-	return scyllaCmd, nil
+	return command, os.Environ(), nil
 }
 
 func (s *ScyllaConfig) validateCpuSet(ctx context.Context, cpusAllowed string, shards int) error {

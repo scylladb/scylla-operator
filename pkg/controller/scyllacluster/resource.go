@@ -167,7 +167,7 @@ func memberServicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 
 // StatefulSetForRack make a StatefulSet for the rack.
 // existingSts may be nil if it doesn't exist yet.
-func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existingSts *appsv1.StatefulSet, sidecarImage string) (*appsv1.StatefulSet, error) {
+func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existingSts *appsv1.StatefulSet, operatorImage string) (*appsv1.StatefulSet, error) {
 	matchLabels := naming.RackLabels(r, c)
 	rackLabels := naming.RackLabels(r, c)
 	rackLabels[naming.ScyllaVersionLabel] = c.Spec.Version
@@ -181,6 +181,50 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 	storageCapacity, err := resource.ParseQuantity(r.Storage.Capacity)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse %q: %v", r.Storage.Capacity, err)
+	}
+
+	scyllaStartupProbe := &corev1.Probe{
+		// Initial delay should be big, because scylla runs benchmarks
+		// to tune the IO settings.
+		// TODO: Lower the timeout when we fix probes. We have temporarily changed them from 5s
+		// to 30s to survive cluster overload.
+		// Relevant issue: https://github.com/scylladb/scylla-operator/issues/844
+		TimeoutSeconds:   int32(30),
+		FailureThreshold: int32(40),
+		PeriodSeconds:    int32(10),
+		Handler: corev1.Handler{
+			HTTPGet: &corev1.HTTPGetAction{
+				Port: intstr.FromInt(naming.ProbePort),
+				Path: naming.LivenessProbePath,
+			},
+		},
+	}
+	scyllaReadinessProbe := &corev1.Probe{
+		// TODO: Lower the timeout when we fix probes. We have temporarily changed them from 5s
+		// to 30s to survive cluster overload.
+		// Relevant issue: https://github.com/scylladb/scylla-operator/issues/844
+		TimeoutSeconds:   int32(30),
+		FailureThreshold: int32(1),
+		PeriodSeconds:    int32(10),
+		Handler: corev1.Handler{
+			HTTPGet: &corev1.HTTPGetAction{
+				Port: intstr.FromInt(naming.ProbePort),
+				Path: naming.ReadinessProbePath,
+			},
+		},
+	}
+	scyllaLivenessProbe := &corev1.Probe{
+		// TODO: Lower the timeout when we fix probes. Currently we need them raised
+		// 		 because scylla doesn't respond under load. (#844)
+		TimeoutSeconds:   int32(10),
+		FailureThreshold: int32(12),
+		PeriodSeconds:    int32(10),
+		Handler: corev1.Handler{
+			HTTPGet: &corev1.HTTPGetAction{
+				Port: intstr.FromInt(naming.ProbePort),
+				Path: naming.LivenessProbePath,
+			},
+		},
 	}
 
 	sts := &appsv1.StatefulSet{
@@ -267,11 +311,12 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 							},
 						},
 					},
-					Tolerations: placement.Tolerations,
+					Tolerations:           placement.Tolerations,
+					ShareProcessNamespace: pointer.BoolPtr(true),
 					InitContainers: []corev1.Container{
 						{
 							Name:            naming.SidecarInjectorContainerName,
-							Image:           sidecarImage,
+							Image:           operatorImage,
 							ImagePullPolicy: corev1.PullIfNotPresent,
 							Command: []string{
 								"/bin/sh",
@@ -306,11 +351,12 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 							// TODO: unprivileged entrypoint
 							Command: []string{
 								path.Join(naming.SharedDirName, "scylla-operator"),
-								"sidecar",
+								"run-scylla",
 								"--service-name=$(SERVICE_NAME)",
 								"--cpu-count=$(CPU_COUNT)",
 								// TODO: make it configurable
 								"--loglevel=2",
+								"--loglevel=5", // FIXME: REMOVE
 							},
 							Env: []corev1.EnvVar{
 								{
@@ -362,62 +408,71 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 									Add: []corev1.Capability{"SYS_NICE"},
 								},
 							},
-							StartupProbe: &corev1.Probe{
-								// Initial delay should be big, because scylla runs benchmarks
-								// to tune the IO settings.
-								// TODO: Lower the timeout when we fix probes. We have temporarily changed them from 5s
-								// to 30s to survive cluster overload.
-								// Relevant issue: https://github.com/scylladb/scylla-operator/issues/844
-								TimeoutSeconds:   int32(30),
-								FailureThreshold: int32(40),
-								PeriodSeconds:    int32(10),
-								Handler: corev1.Handler{
-									HTTPGet: &corev1.HTTPGetAction{
-										Port: intstr.FromInt(naming.ProbePort),
-										Path: naming.LivenessProbePath,
-									},
-								},
+							StartupProbe:   scyllaStartupProbe,
+							LivenessProbe:  scyllaLivenessProbe,
+							ReadinessProbe: scyllaReadinessProbe,
+						},
+						{
+							Name:            naming.ScyllaContainerName + "-probes",
+							Image:           operatorImage,
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Command: []string{
+								"/usr/bin/scylla-operator",
+								"serve-scylla-probes",
+								"--service-name=$(SERVICE_NAME)",
+								// TODO: make it configurable
+								"--loglevel=2",
+								"--loglevel=4", // FIXME: REMOVE
 							},
-							LivenessProbe: &corev1.Probe{
-								// TODO: Lower the timeout when we fix probes. Currently we need them raised
-								// 		 because scylla doesn't respond under load. (#844)
-								TimeoutSeconds:   int32(10),
-								FailureThreshold: int32(12),
-								PeriodSeconds:    int32(10),
-								Handler: corev1.Handler{
-									HTTPGet: &corev1.HTTPGetAction{
-										Port: intstr.FromInt(naming.ProbePort),
-										Path: naming.LivenessProbePath,
-									},
-								},
-							},
-							ReadinessProbe: &corev1.Probe{
-								// TODO: Lower the timeout when we fix probes. We have temporarily changed them from 5s
-								// to 30s to survive cluster overload.
-								// Relevant issue: https://github.com/scylladb/scylla-operator/issues/844
-								TimeoutSeconds:   int32(30),
-								FailureThreshold: int32(1),
-								PeriodSeconds:    int32(10),
-								Handler: corev1.Handler{
-									HTTPGet: &corev1.HTTPGetAction{
-										Port: intstr.FromInt(naming.ProbePort),
-										Path: naming.ReadinessProbePath,
-									},
-								},
-							},
-							// Before a Scylla Pod is stopped, execute nodetool drain to
-							// flush the memtable to disk and stop listening for connections.
-							// This is necessary to ensure we don't lose any data and we don't
-							// need to replay the commitlog in the next startup.
-							Lifecycle: &corev1.Lifecycle{
-								PreStop: &corev1.Handler{
-									Exec: &corev1.ExecAction{
-										Command: []string{
-											"/bin/sh", "-c", "PID=$(pgrep -x scylla);supervisorctl stop scylla; while kill -0 $PID; do sleep 1; done;",
+							Env: []corev1.EnvVar{
+								{
+									Name: "SERVICE_NAME",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
 										},
 									},
 								},
 							},
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("20Mi"),
+								},
+							},
+							StartupProbe:   scyllaStartupProbe,
+							ReadinessProbe: scyllaReadinessProbe,
+							LivenessProbe:  scyllaLivenessProbe,
+						},
+						{
+							Name:            naming.ScyllaContainerName + "-sidecar",
+							Image:           operatorImage,
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Command: []string{
+								"/usr/bin/scylla-operator",
+								"run-scylla-sidecar",
+								"--service-name=$(SERVICE_NAME)",
+								// TODO: make it configurable
+								"--loglevel=2",
+								"--loglevel=4", // FIXME: REMOVE
+							},
+							Env: []corev1.EnvVar{
+								{
+									Name: "SERVICE_NAME",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
+										},
+									},
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("20Mi"),
+								},
+							},
+							// TODO: wire probes at leas to informers or something.
 						},
 					},
 					ServiceAccountName: naming.MemberServiceAccountNameForScyllaCluster(c.Name),
@@ -469,7 +524,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 		sts.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(*sts.Spec.Replicas)
 	}
 
-	sysctlContainer := sysctlInitContainer(c.Spec.Sysctls, sidecarImage)
+	sysctlContainer := sysctlInitContainer(c.Spec.Sysctls, operatorImage)
 	if sysctlContainer != nil {
 		sts.Spec.Template.Spec.InitContainers = append(sts.Spec.Template.Spec.InitContainers, *sysctlContainer)
 	}

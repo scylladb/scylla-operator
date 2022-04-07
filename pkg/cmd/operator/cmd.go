@@ -16,7 +16,9 @@ func NewOperatorCommand(streams genericclioptions.IOStreams) *cobra.Command {
 
 	cmd.AddCommand(NewOperatorCmd(streams))
 	cmd.AddCommand(NewWebhookCmd(streams))
-	cmd.AddCommand(NewSidecarCmd(streams))
+	cmd.AddCommand(NewScyllaStarterCmd(streams))
+	cmd.AddCommand(NewScyllaProbesCmd(streams))
+	cmd.AddCommand(NewScyllaSidecarCmd(streams))
 	cmd.AddCommand(NewManagerControllerCmd(streams))
 	cmd.AddCommand(NewNodeConfigCmd(streams))
 

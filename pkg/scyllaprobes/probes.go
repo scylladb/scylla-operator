@@ -1,4 +1,4 @@
-package sidecar
+package scyllaprobes
 
 import (
 	"context"

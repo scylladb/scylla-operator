@@ -27,6 +27,12 @@ const (
 	LabelValueFalse = "false"
 )
 
+// Annotations used internally by sidecar controller.
+const (
+	// HostIDAnnotation reflects the host_id of the scylla node.
+	HostIDAnnotation = "internal.scylla-operator.scylladb.com/host-id"
+)
+
 type ScyllaServiceType string
 
 const (

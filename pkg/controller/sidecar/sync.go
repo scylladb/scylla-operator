@@ -104,6 +104,36 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 	return nil
 }
 
+func (c *Controller) syncHostIDAnnotation(ctx context.Context, svc *corev1.Service) error {
+	startTime := time.Now()
+	klog.V(4).InfoS("Started syncing HostID annotation", "Service", klog.KObj(svc), "startTime", startTime)
+	defer func() {
+		klog.V(4).InfoS("Finished syncing HostID annotation", "Service", klog.KObj(svc), "duration", time.Since(startTime))
+	}()
+
+	hostID, err := c.getHostID(ctx)
+	if err != nil {
+		return fmt.Errorf("can't get HostID: %w", err)
+	}
+
+	hostIDValue, hasHostIDAnnotation := svc.Annotations[naming.HostIDAnnotation]
+	klog.V(4).InfoS("Syncing HostID annotation", "Service", klog.KObj(svc), "required", hostID, "existing", hostIDValue)
+	if hasHostIDAnnotation && hostIDValue == hostID {
+		klog.V(4).InfoS("Existing HostID matches the required one. Skipping update.", "Service", klog.KObj(svc))
+		return nil
+	}
+
+	svcCopy := svc.DeepCopy()
+	svcCopy.Annotations[naming.HostIDAnnotation] = hostID
+	_, err = c.kubeClient.CoreV1().Services(svcCopy.Namespace).Update(ctx, svcCopy, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("can't update service %q: %w", naming.ObjRef(svc), err)
+	}
+
+	klog.V(2).InfoS("Successfully updated HostID annotation", "Service", klog.KObj(svc), "HostID", hostID)
+	return nil
+}
+
 func (c *Controller) sync(ctx context.Context) error {
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing Service", "Service", klog.KRef(c.namespace, c.serviceName), "startTime", startTime)
@@ -126,11 +156,16 @@ func (c *Controller) sync(ctx context.Context) error {
 
 	var errs []error
 
+	err = c.syncHostIDAnnotation(ctx, svc)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't sync the HostID annotation: %w", err))
+	}
+
 	decommissionValue, hasDecommissionLabel := svc.Labels[naming.DecommissionedLabel]
 	if hasDecommissionLabel && decommissionValue != "true" {
 		err := c.decommissionNode(ctx, svc)
 		if err != nil {
-			errs = append(errs, err)
+			errs = append(errs, fmt.Errorf("can't decommision a node: %w", err))
 		}
 	}
 

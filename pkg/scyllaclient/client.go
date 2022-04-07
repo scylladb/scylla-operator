@@ -160,6 +160,23 @@ func (c *Client) Status(ctx context.Context, host string) (NodeStatusInfoSlice, 
 	return all, nil
 }
 
+func (c *Client) GetLocalHostId(ctx context.Context, host string, retry bool) (string, error) {
+	if len(host) > 0 {
+		ctx = forceHost(ctx, host)
+	}
+
+	if !retry {
+		ctx = noRetry(ctx)
+	}
+
+	resp, err := c.scyllaOps.StorageServiceHostidLocalGet(&scyllaOperations.StorageServiceHostidLocalGetParams{Context: ctx})
+	if err != nil {
+		return "", err
+	}
+
+	return resp.GetPayload(), nil
+}
+
 const (
 	snapshotTimeout = 5 * time.Minute
 	drainTimeout    = 5 * time.Minute

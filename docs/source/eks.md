@@ -2,7 +2,7 @@
 
 This guide is focused on deploying Scylla on EKS with improved performance.
 Performance tricks used by the script won't work with different machine tiers.
-It sets up the kubelets on EKS nodes to run with [static cpu policy](https://kubernetes.io/blog/2018/07/24/feature-highlight-cpu-manager/) and uses [local sdd disks](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/local-ssd) in RAID0 for maximum performance.
+It sets up the kubelets on EKS nodes to run with [static cpu policy](https://kubernetes.io/blog/2018/07/24/feature-highlight-cpu-manager/) and uses [local sdd disks](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ssd-instance-store.html) in RAID0 for maximum performance.
 
 Most of the commands used to setup the Scylla cluster are the same for all environments
 As such we have tried to keep them separate in the [general guide](generic.md).

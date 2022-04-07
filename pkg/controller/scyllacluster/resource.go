@@ -31,11 +31,14 @@ const (
 )
 
 func HeadlessServiceForCluster(c *scyllav1.ScyllaCluster) *corev1.Service {
+	labels := naming.ClusterLabels(c)
+	labels[naming.ScyllaServiceTypeLabel] = string(naming.ScyllaServiceTypeIdentity)
+
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      naming.HeadlessServiceNameForCluster(c),
 			Namespace: c.Namespace,
-			Labels:    naming.ClusterLabels(c),
+			Labels:    labels,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(c, controllerGVK),
 			},
@@ -62,6 +65,7 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 	labels := naming.ClusterLabels(sc)
 	labels[naming.DatacenterNameLabel] = sc.Spec.Datacenter.Name
 	labels[naming.RackNameLabel] = rackName
+	labels[naming.ScyllaServiceTypeLabel] = string(naming.ScyllaServiceTypeMember)
 
 	// Copy the old replace label, if present.
 	var replaceAddr string

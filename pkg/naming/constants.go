@@ -27,12 +27,20 @@ const (
 	LabelValueFalse = "false"
 )
 
+type ScyllaServiceType string
+
+const (
+	ScyllaServiceTypeIdentity ScyllaServiceType = "identity"
+	ScyllaServiceTypeMember   ScyllaServiceType = "member"
+)
+
 // Generic Labels used on objects created by the operator.
 const (
 	ClusterNameLabel             = "scylla/cluster"
 	DatacenterNameLabel          = "scylla/datacenter"
 	RackNameLabel                = "scylla/rack"
 	ScyllaVersionLabel           = "scylla/scylla-version"
+	ScyllaServiceTypeLabel       = "scylla-operator.scylladb.com/scylla-service-type"
 	ManagedHash                  = "scylla-operator.scylladb.com/managed-hash"
 	NodeConfigJobForNodeUIDLabel = "scylla-operator.scylladb.com/node-config-job-for-node-uid"
 	NodeConfigJobTypeLabel       = "scylla-operator.scylladb.com/node-config-job-type"

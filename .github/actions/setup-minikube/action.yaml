@@ -82,6 +82,8 @@ runs:
 
       kubectl -n kube-system rollout status --timeout=5m deployment.apps/coredns
       
+      kubectl get -n kube-system -o yaml daemonsets.apps/kube-proxy -o yaml | $( which yq ) eval '.spec.template.spec.containers[] |= select(.name == "kube-proxy").command += "--v=4"' - | kubectl apply -n kube-system -f -
+      
       # DaemonSet resposible for removing stale TCP conntrack entries causing issues in gossip.
       # https://github.com/scylladb/scylla-operator/issues/975
       # TODO: remove when GitHub Actions upgrades to kernel version 5.14.

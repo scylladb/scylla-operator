@@ -7,7 +7,7 @@
 [![LICENSE](https://img.shields.io/github/license/scylladb/scylla-operator.svg)](https://github.com/scylladb/scylla-operator/blob/master/LICENSE)
 
 
-[Scylla Operator](https://github.com/scylladb/scylla-operator) is a Kubernetes Operator for managing and automating tasks related to managing a Scylla clusters.
+[Scylla Operator](https://github.com/scylladb/scylla-operator) is a Kubernetes Operator for managing and automating tasks related to managing Scylla clusters.
 
 [Scylla](https://www.scylladb.com) is a close-to-the-hardware rewrite of Cassandra in C++. It features a shared nothing architecture that enables true linear scaling and major hardware optimizations that achieve ultra-low latencies and extreme throughput. It is a drop-in replacement for Cassandra and uses the same interfaces.
 
@@ -33,12 +33,13 @@ helm repo add scylla-operator https://storage.googleapis.com/scylla-operator-cha
 ```
 
 
-## Quickstarts
+## Quickstarts and Training
 To quickly deploy a ScyllaCluster, you can choose one of the following options:
 
 * [Generic](docs/source/generic.md): Follow this guide for the general way to use the operator.
 * [GKE](docs/source/gke.md): An advanced guide for deploying Scylla with the **best performance settings** on [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine).
 * [EKS](docs/source/eks.md): An advanced guide for deploying Scylla with the **best performance settings** on [Amazon Elastic Kubernetes Service](https://aws.amazon.com/eks/).
+* [Scylla University Lesson](https://university.scylladb.com/courses/scylla-operations/lessons/kubernetes-operator/): Follow this lesson on Scylla University to learn more about the Operator and how to use it. The lesson includes some hands-on examples which you can run yourself. 
 
 ## Releases
 To find out more about our releases, support matrix and how our CI/CD is set up there is a [dedicated docs page](./docs/source/releases.md).

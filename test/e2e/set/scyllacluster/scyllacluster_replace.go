@@ -73,7 +73,7 @@ var _ = g.Describe("ScyllaCluster replace", func() {
 		framework.By("Waiting for the pod to be replaced")
 		waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx2Cancel()
-		_, err = utils.WaitForPodState(waitCtx2, f.KubeClient().CoreV1(), pod.Namespace, pod.Name, func(p *corev1.Pod) (bool, error) {
+		_, err = utils.WaitForPodState(waitCtx2, f.KubeClient().CoreV1().Pods(pod.Namespace), pod.Name, func(p *corev1.Pod) (bool, error) {
 			return p.UID != pod.UID, nil
 		}, utils.WaitForStateOptions{TolerateDelete: true})
 		o.Expect(err).NotTo(o.HaveOccurred())

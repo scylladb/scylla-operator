@@ -193,7 +193,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		ctx1, ctx1Cancel := context.WithTimeout(ctx, apiCallTimeout)
 		defer ctx1Cancel()
 		podName := fmt.Sprintf("%s-%d", naming.StatefulSetNameForRack(sc.Spec.Datacenter.Racks[0], sc), 0)
-		pod, err := utils.WaitForPodState(ctx1, f.KubeClient().CoreV1(), sc.Namespace, podName, func(p *corev1.Pod) (bool, error) {
+		pod, err := utils.WaitForPodState(ctx1, f.KubeClient().CoreV1().Pods(sc.Namespace), podName, func(p *corev1.Pod) (bool, error) {
 			return true, nil
 		}, utils.WaitForStateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())

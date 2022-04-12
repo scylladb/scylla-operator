@@ -48,6 +48,7 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 			return fmt.Errorf("can't restart scylla node: %w", err)
 		}
 		klog.InfoS("Successfully restarted scylla.")
+		c.queue.AddAfter(c.key, requeueWaitDuration)
 		return nil
 
 	case scyllaclient.OperationalModeNormal:

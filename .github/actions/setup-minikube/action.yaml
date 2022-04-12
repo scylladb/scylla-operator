@@ -15,12 +15,12 @@ runs:
     run: |
       set -x
       sudo apt-get install -y --no-install-recommends conntrack
-      sudo curl -s --fail -L https://storage.googleapis.com/minikube/releases/v1.24.0/minikube-linux-amd64 -o /usr/local/bin/minikube
+      sudo curl -s --fail -L https://storage.googleapis.com/minikube/releases/v1.25.2/minikube-linux-amd64 -o /usr/local/bin/minikube
       sudo chmod +x /usr/local/bin/minikube
 
-      sudo curl -s --fail -L "https://dl.k8s.io/release/v1.22.2/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl
+      sudo curl -s --fail -L "https://dl.k8s.io/release/v1.23.0/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl
       sudo chmod +x /usr/local/bin/kubectl
-      sudo curl -s --fail -L https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.22.0/crictl-v1.22.0-linux-amd64.tar.gz | tar -f - -xz -C /usr/local/bin crictl
+      sudo curl -s --fail -L https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.23.0/crictl-v1.23.0-linux-amd64.tar.gz | tar -f - -xz -C /usr/local/bin crictl
   - name: Configure minikube
     shell: bash
     run: |
@@ -61,6 +61,24 @@ runs:
         echo 'Waiting for apiserver to come up.'
         sleep 1
       done
+
+      # Hotfix pods/ephemeralcontainers perms needed by e2e tests
+      # (Upstream fix in https://github.com/kubernetes/kubernetes/pull/109332)
+      kubectl apply --server-side -f - <<EOF
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRole
+        metadata:
+          name: scylladb-e2e:hotfixes
+          labels:
+            rbac.authorization.k8s.io/aggregate-to-admin: "true"
+        rules:
+        - apiGroups:
+          - ""
+          resources:
+          - pods/ephemeralcontainers
+          verbs:
+          - patch
+      EOF
 
       kubectl -n kube-system rollout status --timeout=5m deployment.apps/coredns
 

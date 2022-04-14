@@ -9,6 +9,9 @@ import (
 	"path"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/utils/pointer"
+
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	scyllaclientset "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
@@ -224,6 +227,62 @@ func (f *Framework) setupNamespace(ctx context.Context) {
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
+func (f *Framework) createConntrackDaemonSet(ctx context.Context) {
+	// Create a DaemonSet for dumping conntrack state
+	_, err := f.KubeAdminClient().AppsV1().DaemonSets(f.Namespace()).Create(ctx, &appsv1.DaemonSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "conntrack-dump",
+		},
+		Spec: appsv1.DaemonSetSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": "conntrack-dump",
+				},
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": "conntrack-dump",
+					},
+				},
+				Spec: corev1.PodSpec{
+					HostPID:     true,
+					HostNetwork: true,
+					Containers: []corev1.Container{
+						{
+							Name:            "conntrack-dump",
+							Image:           "docker.io/nicolaka/netshoot",
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Command: []string{
+								"/bin/bash",
+								"-euEo",
+								"pipefail",
+								"-O",
+								"inherit_errexit",
+								"-c",
+							},
+							Args: []string{
+								`
+i=0
+while true; do
+echo "${i}: $(date)"
+conntrack -L |& grep -h "sport=7000"
+i=$((i+1))
+sleep 60
+done`,
+							},
+							SecurityContext: &corev1.SecurityContext{
+								Privileged: pointer.BoolPtr(true),
+							},
+						},
+					},
+				},
+			},
+		},
+	}, metav1.CreateOptions{})
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
 func (f *Framework) deleteNamespace(ctx context.Context, ns *corev1.Namespace) {
 	By("Destroying namespace %q.", ns.Name)
 	var gracePeriod int64 = 0
@@ -251,6 +310,7 @@ func (f *Framework) deleteNamespace(ctx context.Context, ns *corev1.Namespace) {
 
 func (f *Framework) beforeEach() {
 	f.setupNamespace(context.Background())
+	f.createConntrackDaemonSet(context.Background())
 }
 
 func (f *Framework) afterEach() {

@@ -81,5 +81,42 @@ runs:
       EOF
 
       kubectl -n kube-system rollout status --timeout=5m deployment.apps/coredns
-
+      
+      # DaemonSet resposible for removing stale TCP conntrack entries causing issues in gossip.
+      # https://github.com/scylladb/scylla-operator/issues/975
+      # TODO: remove when GitHub Actions upgrades to kernel version 5.14.
+      kubectl -n kube-system create -f - <<EOF
+        apiVersion: apps/v1
+        kind: DaemonSet
+        metadata:
+          name: conntrack-cleaner-agent
+          namespace: kube-system
+        spec:
+          selector:
+            matchLabels:
+              k8s-app: conntrack-cleaner-agent
+          template:
+            metadata:
+              labels:
+                k8s-app: conntrack-cleaner-agent
+            spec:
+              hostNetwork: true
+              containers:
+              - name: conntrack-cleaner-agent
+                image: docker.io/hanamantagoud/conntrack-cleaner@sha256:8e57d55bd7672166f2f1ae5f2f6fb7b1945ab5e97959200d71f0963218c3e771
+                env:
+                # Values for CONNTRACK_TABLE_DUMP_FREQUENCY should contain duration such as 1s,100ms.
+                # NOTE: Dont set values in nonosecond (ns), microsecond(ms).
+                - name: CONNTRACK_TABLE_DUMP_FREQUENCY
+                  value: "1s"
+                - name: CONNECTION_RENEWAL_THRESHOLD
+                  value: "3"
+                securityContext:
+                  privileged: false
+                  capabilities:
+                    add: ["NET_ADMIN", "NET_RAW"]
+      EOF
+      
+      kubectl -n kube-system rollout status --timeout=5m daemonset.apps/conntrack-cleaner-agent
+      
       kubectl label nodes scylla.scylladb.com/node-type=scylla --all

@@ -64,7 +64,12 @@ for n in ${namespaces}; do
                 containers=$( kubectl -n "${n}" get "pods/${o}" --template='{{ range .spec.containers }}{{ println .name }}{{ end }}' )
                 for c in ${containers}; do
                     # Logs are best effort, a pod might not have been running yet.
-                    { kubectl -n "${n}" logs pod/"${o}" -c="${c}" > "${c}".log; } || true
+                    { kubectl -n "${n}" logs pod/"${o}" -c="${c}" > "${c}".current; } || true
+
+                    has_previous=$( kubectl -n "${n}" get "pods/${o}" --template="{{ range .status.containerStatuses }}{{ if eq .name \"${c}\" }}{{ gt .restartCount 0 | print }}{{ end }}{{ end }}" )
+                    if [[ "${has_previous}" = "true" ]]; then
+                      { kubectl -n "${n}" logs pod/"${o}" -c="${c}" --previous > "${c}".previous; } || true
+                    fi
                 done
                 popd
                 ;;

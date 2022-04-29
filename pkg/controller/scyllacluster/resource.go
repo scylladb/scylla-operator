@@ -274,9 +274,10 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 							Image:           sidecarImage,
 							ImagePullPolicy: corev1.PullIfNotPresent,
 							Command: []string{
-								"/bin/sh",
-								"-c",
-								fmt.Sprintf("cp -a /usr/bin/scylla-operator %s", naming.SharedDirName),
+								"/usr/bin/mount",
+								"--bind",
+								"/usr/bin/scylla-operator",
+								fmt.Sprintf("%s/scylla-operator", naming.SharedDirName),
 							},
 							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{

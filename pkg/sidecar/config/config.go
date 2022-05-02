@@ -35,8 +35,6 @@ const (
 	entrypointPath                      = "/docker-entrypoint.py"
 )
 
-var scyllaJMXPaths = []string{"/usr/lib/scylla/jmx/scylla-jmx", "/opt/scylladb/jmx/scylla-jmx"}
-
 type ScyllaConfig struct {
 	member                              *identity.Member
 	kubeClient                          kubernetes.Interface
@@ -267,7 +265,36 @@ func (s *ScyllaConfig) generateCommand(ctx context.Context) ([]string, []string,
 		args["io-properties-file"] = pointer.StringPtr(scyllaIOPropertiesPath)
 	}
 
-	command := []string{entrypointPath}
+	command := []string{
+		"/usr/bin/bash",
+		"-euExo",
+		"pipefail",
+		"-c",
+		`
+python3 << EOF
+import os
+import sys
+import scyllasetup
+import logging
+import commandlineparser
+
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format="%(message)s")
+
+try:
+	arguments, extra_arguments = commandlineparser.parse()
+	setup = scyllasetup.ScyllaSetup(arguments, extra_arguments=extra_arguments)
+	setup.developerMode()
+	setup.cpuSet()
+	setup.io()
+	setup.cqlshrc()
+	setup.arguments()
+except Exception:
+	logging.exception('failed!')
+EOF
+
+/opt/scylladb/supervisor/scylla-server.sh -- $@
+`,
+	}
 	for key, value := range args {
 		if value == nil {
 			command = append(command, fmt.Sprintf("--%s", key))

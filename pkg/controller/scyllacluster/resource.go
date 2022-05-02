@@ -315,11 +315,14 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 					ShareProcessNamespace: pointer.BoolPtr(true),
 					InitContainers: []corev1.Container{
 						{
-							Name:            naming.SidecarInjectorContainerName,
-							Image:           operatorImage,
-							ImagePullPolicy: corev1.PullIfNotPresent,
+							Name:                     naming.SidecarInjectorContainerName,
+							Image:                    operatorImage,
+							ImagePullPolicy:          corev1.PullIfNotPresent,
+							TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 							Command: []string{
-								"/bin/sh",
+								"/usr/bin/bash",
+								"-euExo",
+								"pipefail",
 								"-c",
 								fmt.Sprintf("cp -a /usr/bin/scylla-operator %s", naming.SharedDirName),
 							},
@@ -344,10 +347,11 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 					},
 					Containers: []corev1.Container{
 						{
-							Name:            naming.ScyllaContainerName,
-							Image:           ImageForCluster(c),
-							ImagePullPolicy: corev1.PullIfNotPresent,
-							Ports:           containerPorts(c),
+							Name:                     naming.ScyllaContainerName,
+							Image:                    ImageForCluster(c),
+							ImagePullPolicy:          corev1.PullIfNotPresent,
+							TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+							Ports:                    containerPorts(c),
 							// TODO: unprivileged entrypoint
 							Command: []string{
 								path.Join(naming.SharedDirName, "scylla-operator"),
@@ -413,9 +417,147 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 							ReadinessProbe: scyllaReadinessProbe,
 						},
 						{
-							Name:            naming.ScyllaContainerName + "-probes",
-							Image:           operatorImage,
-							ImagePullPolicy: corev1.PullIfNotPresent,
+							Name:                     naming.ScyllaContainerName + "-housekeeping",
+							Image:                    ImageForCluster(c),
+							ImagePullPolicy:          corev1.PullIfNotPresent,
+							TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+							Command: []string{
+								"/usr/bin/bash",
+								"-euExo",
+								"pipefail",
+								"-c",
+								`
+python3 << EOF
+import os
+import sys
+import scyllasetup
+import logging
+import commandlineparser
+
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format="%(message)s")
+
+try:
+	arguments, extra_arguments = commandlineparser.parse()
+	setup = scyllasetup.ScyllaSetup(arguments, extra_arguments=extra_arguments)
+	setup.developerMode()
+	setup.cqlshrc()
+	setup.arguments()
+	setup.set_housekeeping()
+except Exception:
+	logging.exception('failed!')
+EOF
+
+/scylla-housekeeping-service.sh
+`,
+							},
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("20Mi"),
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      naming.PVCTemplateName,
+									MountPath: naming.DataDir,
+								},
+							},
+						},
+						{
+							Name:                     naming.ScyllaContainerName + "-nodeexporter",
+							Image:                    ImageForCluster(c),
+							ImagePullPolicy:          corev1.PullIfNotPresent,
+							TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+							Command: []string{
+								"/usr/bin/bash",
+								"-euExo",
+								"pipefail",
+								"-c",
+								`
+python3 << EOF
+import os
+import sys
+import scyllasetup
+import logging
+import commandlineparser
+
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format="%(message)s")
+
+try:
+	arguments, extra_arguments = commandlineparser.parse()
+	setup = scyllasetup.ScyllaSetup(arguments, extra_arguments=extra_arguments)
+	setup.cqlshrc()
+	setup.arguments()
+except Exception:
+	logging.exception('failed!')
+EOF
+
+/opt/scylladb/supervisor/scylla-node-exporter.sh
+`,
+							},
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("20Mi"),
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      naming.PVCTemplateName,
+									MountPath: naming.DataDir,
+								},
+							},
+						},
+						{
+							Name:                     naming.ScyllaContainerName + "-jmx",
+							Image:                    ImageForCluster(c),
+							ImagePullPolicy:          corev1.PullIfNotPresent,
+							TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+							Command: []string{
+								"/usr/bin/bash",
+								"-euExo",
+								"pipefail",
+								"-c",
+								`
+python3 << EOF
+import os
+import sys
+import scyllasetup
+import logging
+import commandlineparser
+
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format="%(message)s")
+
+try:
+	arguments, extra_arguments = commandlineparser.parse()
+	setup = scyllasetup.ScyllaSetup(arguments, extra_arguments=extra_arguments)
+	setup.cqlshrc()
+	setup.arguments()
+except Exception:
+	logging.exception('failed!')
+EOF
+
+/opt/scylladb/supervisor/scylla-jmx.sh
+`,
+							},
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("20Mi"),
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      naming.PVCTemplateName,
+									MountPath: naming.DataDir,
+								},
+							},
+						},
+						{
+							Name:                     naming.ScyllaContainerName + "-probes",
+							Image:                    operatorImage,
+							ImagePullPolicy:          corev1.PullIfNotPresent,
+							TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 							Command: []string{
 								"/usr/bin/scylla-operator",
 								"serve-scylla-probes",
@@ -445,9 +587,10 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 							LivenessProbe:  scyllaLivenessProbe,
 						},
 						{
-							Name:            naming.ScyllaContainerName + "-sidecar",
-							Image:           operatorImage,
-							ImagePullPolicy: corev1.PullIfNotPresent,
+							Name:                     naming.ScyllaContainerName + "-sidecar",
+							Image:                    operatorImage,
+							ImagePullPolicy:          corev1.PullIfNotPresent,
+							TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 							Command: []string{
 								"/usr/bin/scylla-operator",
 								"run-scylla-sidecar",
@@ -591,9 +734,10 @@ func sysctlInitContainer(sysctls []string, image string) *corev1.Container {
 	}
 	opt := true
 	return &corev1.Container{
-		Name:            "sysctl-buddy",
-		Image:           image,
-		ImagePullPolicy: corev1.PullIfNotPresent,
+		Name:                     "sysctl-buddy",
+		Image:                    image,
+		ImagePullPolicy:          corev1.PullIfNotPresent,
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &opt,
 		},

@@ -1,21 +1,9 @@
-# TODO: extract builder and base image into its own repo for reuse and to speed up builds
-FROM docker.io/library/ubuntu:20.04 AS builder
-SHELL ["/bin/bash", "-euEo", "pipefail", "-c"]
-ENV GOPATH=/go \
-    GOROOT=/usr/local/go \
-# Enable madvdontneed=1, for golang < 1.16 https://github.com/golang/go/issues/42330
-    GODEBUG=madvdontneed=1
-ENV PATH=$PATH:$GOROOT/bin:$GOPATH/bin
-RUN apt-get update; \
-    apt-get install -y --no-install-recommends make git curl gzip ca-certificates jq; \
-    apt-get clean; \
-    curl --fail -L https://storage.googleapis.com/golang/go1.18.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+FROM quay.io/scylladb/scylla-operator-images:golang-1.18 AS builder
 WORKDIR /go/src/github.com/scylladb/scylla-operator
 COPY . .
 RUN make build --warn-undefined-variables
 
-FROM docker.io/library/ubuntu:20.04
-SHELL ["/bin/bash", "-euEo", "pipefail", "-c"]
+FROM quay.io/scylladb/scylla-operator-images:base-ubuntu
 # sidecar-injection container and existing installations use binary from root,
 # we have to keep it there until we figure out how to properly upgrade them.
 COPY --from=builder /go/src/github.com/scylladb/scylla-operator/scylla-operator /usr/bin/

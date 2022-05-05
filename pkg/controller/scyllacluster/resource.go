@@ -427,7 +427,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								"pipefail",
 								"-c",
 								`
-python3 << EOF
+python3 - $@ << EOF
 import os
 import sys
 import scyllasetup
@@ -447,13 +447,13 @@ except Exception:
 	logging.exception('failed!')
 EOF
 
-/scylla-housekeeping-service.sh
+bash -x /scylla-housekeeping-service.sh
 `,
 							},
 							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{
 									corev1.ResourceCPU:    resource.MustParse("10m"),
-									corev1.ResourceMemory: resource.MustParse("20Mi"),
+									corev1.ResourceMemory: resource.MustParse("50Mi"),
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{
@@ -492,7 +492,7 @@ except Exception:
 	logging.exception('failed!')
 EOF
 
-/opt/scylladb/supervisor/scylla-node-exporter.sh
+bash -x /opt/scylladb/supervisor/scylla-node-exporter.sh
 `,
 							},
 							Resources: corev1.ResourceRequirements{
@@ -519,7 +519,7 @@ EOF
 								"pipefail",
 								"-c",
 								`
-python3 << EOF
+python3 - $@ << EOF
 import os
 import sys
 import scyllasetup
@@ -537,19 +537,33 @@ except Exception:
 	logging.exception('failed!')
 EOF
 
-/opt/scylladb/supervisor/scylla-jmx.sh
+export SCYLLA_JMX_ADDR='-ja 0.0.0.0'
+bash -x /opt/scylladb/supervisor/scylla-jmx.sh
 `,
 							},
 							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("10m"),
-									corev1.ResourceMemory: resource.MustParse("20Mi"),
+									corev1.ResourceCPU:    resource.MustParse("100m"),
+									corev1.ResourceMemory: resource.MustParse("100Mi"),
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      naming.PVCTemplateName,
 									MountPath: naming.DataDir,
+								},
+							},
+							ReadinessProbe: &corev1.Probe{
+								// TODO: Lower the timeout when we fix probes. We have temporarily changed them from 5s
+								// to 30s to survive cluster overload.
+								// Relevant issue: https://github.com/scylladb/scylla-operator/issues/844
+								TimeoutSeconds:   int32(30),
+								FailureThreshold: int32(1),
+								PeriodSeconds:    int32(10),
+								Handler: corev1.Handler{
+									TCPSocket: &corev1.TCPSocketAction{
+										Port: intstr.FromInt(7199),
+									},
 								},
 							},
 						},
@@ -579,7 +593,7 @@ EOF
 							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{
 									corev1.ResourceCPU:    resource.MustParse("10m"),
-									corev1.ResourceMemory: resource.MustParse("20Mi"),
+									corev1.ResourceMemory: resource.MustParse("50Mi"),
 								},
 							},
 							StartupProbe:   scyllaStartupProbe,

@@ -3,6 +3,7 @@ package scyllaclient
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net"
 	"net/http"
 	"runtime"
@@ -104,7 +105,7 @@ func (c *Client) Status(ctx context.Context, host string) (NodeStatusInfoSlice, 
 	// Get all hosts
 	resp, err := c.scyllaOps.StorageServiceHostIDGet(&scyllaOperations.StorageServiceHostIDGetParams{Context: ctx})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("can't get StorageServiceHostID: %w", err)
 	}
 
 	all := make([]NodeStatusInfo, len(resp.Payload))
@@ -117,13 +118,14 @@ func (c *Client) Status(ctx context.Context, host string) (NodeStatusInfoSlice, 
 	for i := range all {
 		all[i].Datacenter, err = c.HostDatacenter(ctx, all[i].Addr)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("can't get HostDatacenter for %q: %w", all[i].Addr, err)
 		}
 	}
 
 	// Get live nodes
 	live, err := c.scyllaOps.GossiperEndpointLiveGet(&scyllaOperations.GossiperEndpointLiveGetParams{Context: ctx})
 	if err != nil {
+		return nil, fmt.Errorf("can't get GossiperEndpointLive: %w", err)
 		return nil, err
 	}
 	setNodeStatus(all, NodeStatusUp, live.Payload)
@@ -131,21 +133,21 @@ func (c *Client) Status(ctx context.Context, host string) (NodeStatusInfoSlice, 
 	// Get joining nodes
 	joining, err := c.scyllaOps.StorageServiceNodesJoiningGet(&scyllaOperations.StorageServiceNodesJoiningGetParams{Context: ctx})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("can't get StorageServiceNodesJoining: %w", err)
 	}
 	setNodeState(all, NodeStateJoining, joining.Payload)
 
 	// Get leaving nodes
 	leaving, err := c.scyllaOps.StorageServiceNodesLeavingGet(&scyllaOperations.StorageServiceNodesLeavingGetParams{Context: ctx})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("can't get StorageServiceNodesLeaving: %w", err)
 	}
 	setNodeState(all, NodeStateLeaving, leaving.Payload)
 
 	// Get moving nodes
 	moving, err := c.scyllaOps.StorageServiceNodesMovingGet(&scyllaOperations.StorageServiceNodesMovingGetParams{Context: ctx})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("can't get StorageServiceNodesMoving: %w", err)
 	}
 	setNodeState(all, NodeStateMoving, moving.Payload)
 

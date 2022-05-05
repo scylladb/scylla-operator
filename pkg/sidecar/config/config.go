@@ -271,7 +271,7 @@ func (s *ScyllaConfig) generateCommand(ctx context.Context) ([]string, []string,
 		"pipefail",
 		"-c",
 		`
-python3 << EOF
+python3 - $@ << EOF
 import os
 import sys
 import scyllasetup
@@ -292,7 +292,7 @@ except Exception:
 	logging.exception('failed!')
 EOF
 
-/opt/scylladb/supervisor/scylla-server.sh -- $@
+/opt/scylladb/supervisor/scylla-server.sh
 `,
 	}
 	for key, value := range args {

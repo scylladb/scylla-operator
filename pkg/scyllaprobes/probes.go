@@ -98,6 +98,7 @@ func (p *Prober) Readyz(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	klog.V(4).InfoS("readyz probe", "nodeAddress", nodeAddress)
 
 	for _, s := range nodeStatuses {
 		klog.V(4).InfoS("readyz probe: node state", "Node", s.Addr, "Status", s.Status, "State", s.State)

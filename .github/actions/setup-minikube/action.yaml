@@ -41,7 +41,9 @@ runs:
       - level: RequestResponse
       EOF
 
-      sudo minikube start --wait=all --extra-config='apiserver.event-ttl=24h' --extra-config='apiserver.audit-policy-file=/etc/ssl/certs/audit-policy.yaml' --extra-config='apiserver.audit-log-path=/var/log/kube-apiserver-audit.log'
+      # Disable addons. We'll install storage provisioner on our own. 
+      # NOTE: Explicitly disable `storage-provisioner` and `default-storageclass` if you want to install addons.
+      sudo minikube start --wait=all --install-addons=false --extra-config='apiserver.event-ttl=24h' --extra-config='apiserver.audit-policy-file=/etc/ssl/certs/audit-policy.yaml' --extra-config='apiserver.audit-log-path=/var/log/kube-apiserver-audit.log'
 
       mkdir -p ~/.kube/
       sudo cat /root/.kube/config > ~/.kube/config

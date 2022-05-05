@@ -1,0 +1,12 @@
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: pv-setup-daemonset
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pv-setup-daemonset
+subjects:
+- kind: ServiceAccount
+  name: pv-setup-daemonset
+  namespace: pv-setup

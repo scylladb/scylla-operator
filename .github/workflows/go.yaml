@@ -197,6 +197,16 @@ jobs:
         go install github.com/mikefarah/yq/v4@v4.6.1
     - name: Setup minikube
       uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/setup-minikube
+    - name: Set up volume provisioner
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+        
+        kubectl -n pv-setup create -f ./.github/actions/setup-minikube/manifests/pv-setup/
+        kubectl -n pv-setup rollout status --timeout 5m daemonset.apps/pv-setup
+    
+        kubectl -n local-storage-provisioner create -f ./.github/actions/setup-minikube/manifests/local-storage-provisioner/
+        kubectl -n local-storage-provisioner rollout status --timeout 5m daemonset.apps/local-volume-provisioner
     - name: Deploy scylla-operator
       run: |
         set -x

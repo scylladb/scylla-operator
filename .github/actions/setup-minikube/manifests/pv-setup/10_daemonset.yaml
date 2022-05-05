@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: pv-setup
+  namespace: pv-setup
+  labels:
+    app: pv-setup
+spec:
+  selector:
+    matchLabels:
+      app: pv-setup
+  template:
+    metadata:
+      labels:
+        app: pv-setup
+    spec:
+      hostPID: true
+      hostIPC: true
+      hostNetwork: true
+      serviceAccountName: pv-setup
+      containers:
+      - name: pv-setup
+        image: quay.io/scylladb/scylla-operator-images:node-setup
+        imagePullPolicy: IfNotPresent
+        command:
+        - "/bin/bash"
+        - "-euExo"
+        - "pipefail"
+        - "-O"
+        - "inherit_errexit"
+        - "-c"
+        - |
+          mkdir -p /host/var/persistent-volumes/
+          if [[ ! -f "/host/var/persistent-volumes/persistent-volume-image.xfs" ]]; then
+            dd if=/dev/zero of=/host/var/persistent-volumes/persistent-volume-image.xfs bs=1024 count=0 seek=10485760
+          fi
+          
+          if [[ $( blkid -o value -s TYPE "/host/var/persistent-volumes/persistent-volume-image.xfs" ) != "xfs" ]]; then
+            mkfs -t xfs /host/var/persistent-volumes/persistent-volume-image.xfs
+          fi
+            
+          mkdir -p /host/mnt/persistent-volumes/
+          for d in $(seq -f "pv-%05g" 1 30); do
+            if [[ ! -d "/host/mnt/persistent-volumes/${d}" ]]; then
+              mkdir "/host/mnt/persistent-volumes/${d}"
+            fi
+            ( mount | grep "/host/mnt/persistent-volumes/${d} " 2>/dev/null 1>&2 ) || \
+            mount --bind "/host/mnt/persistent-volumes/${d}"{,}
+          done
+          
+          sleep infinity
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: hostfs
+          mountPath: /host
+          mountPropagation: Bidirectional
+      volumes:
+      - name: hostfs
+        hostPath:
+          path: /

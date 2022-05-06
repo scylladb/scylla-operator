@@ -453,7 +453,7 @@ func RunEphemeralContainerAndWaitForCompletion(ctx context.Context, client corev
 		"ephemeralcontainers",
 	)
 	if err != nil {
-		return nil, fmt.Errorf("can't path pod %q to add ephemeral container: %w", podName, err)
+		return nil, fmt.Errorf("can't patch pod %q to add ephemeral container: %w", podName, err)
 	}
 
 	return WaitForPodState(

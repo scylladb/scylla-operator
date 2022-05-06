@@ -727,16 +727,28 @@ func containerPorts(c *scyllav1.ScyllaCluster) []corev1.ContainerPort {
 			ContainerPort: c.Spec.Alternator.Port,
 		})
 	} else {
-		ports = append(ports, corev1.ContainerPort{
-			Name:          "cql",
-			ContainerPort: 9042,
-		}, corev1.ContainerPort{
-			Name:          "cql-ssl",
-			ContainerPort: 9142,
-		}, corev1.ContainerPort{
-			Name:          "thrift",
-			ContainerPort: 9160,
-		})
+		ports = append(ports,
+			corev1.ContainerPort{
+				Name:          "cql",
+				ContainerPort: 9042,
+			},
+			corev1.ContainerPort{
+				Name:          "cql-shard-aware",
+				ContainerPort: 19042,
+			},
+			corev1.ContainerPort{
+				Name:          "cql-ssl-sa",
+				ContainerPort: 19142,
+			},
+			corev1.ContainerPort{
+				Name:          "cql-ssl",
+				ContainerPort: 9142,
+			},
+			corev1.ContainerPort{
+				Name:          "thrift",
+				ContainerPort: 9160,
+			},
+		)
 	}
 
 	return ports

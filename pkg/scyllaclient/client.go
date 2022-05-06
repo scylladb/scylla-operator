@@ -126,7 +126,6 @@ func (c *Client) Status(ctx context.Context, host string) (NodeStatusInfoSlice, 
 	live, err := c.scyllaOps.GossiperEndpointLiveGet(&scyllaOperations.GossiperEndpointLiveGetParams{Context: ctx})
 	if err != nil {
 		return nil, fmt.Errorf("can't get GossiperEndpointLive: %w", err)
-		return nil, err
 	}
 	setNodeStatus(all, NodeStatusUp, live.Payload)
 

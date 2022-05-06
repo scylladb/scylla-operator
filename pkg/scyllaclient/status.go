@@ -3,23 +3,31 @@
 package scyllaclient
 
 import (
-	"github.com/go-openapi/runtime"
-	"github.com/pkg/errors"
+	"errors"
+
+	openapiruntime "github.com/go-openapi/runtime"
+	pkgerrors "github.com/pkg/errors"
 	agentModels "github.com/scylladb/scylla-operator/pkg/scyllaclient/internal/agent/models"
 	scylla2Models "github.com/scylladb/scylla-operator/pkg/scyllaclient/internal/scylla_v2/models"
 )
 
 // StatusCodeOf returns HTTP status code carried by the error or it's cause.
 // If not status can be found it returns 0.
-func StatusCodeOf(err error) int {
-	err = errors.Cause(err)
+func StatusCodeOf(sourceErr error) int {
+	err := errors.Unwrap(sourceErr)
+	if err == nil {
+		err = sourceErr
+	}
+	err = pkgerrors.Cause(err)
 	switch v := err.(type) {
 	case interface {
 		Code() int
 	}:
 		return v.Code()
-	case *runtime.APIError:
+
+	case *openapiruntime.APIError:
 		return v.Code
+
 	case interface {
 		GetPayload() *agentModels.ErrorResponse
 	}:
@@ -27,6 +35,8 @@ func StatusCodeOf(err error) int {
 		if p != nil {
 			return int(p.Status)
 		}
+		return 0
+
 	case interface {
 		GetPayload() *scylla2Models.ErrorModel
 	}:
@@ -34,6 +44,9 @@ func StatusCodeOf(err error) int {
 		if p != nil {
 			return int(p.Code)
 		}
+		return 0
+
+	default:
+		return 0
 	}
-	return 0
 }

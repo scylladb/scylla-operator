@@ -292,7 +292,7 @@ except Exception:
 	logging.exception('failed!')
 EOF
 
-/opt/scylladb/supervisor/scylla-server.sh
+bash -x /opt/scylladb/supervisor/scylla-server.sh
 `,
 	}
 	for key, value := range args {
@@ -302,6 +302,8 @@ EOF
 			command = append(command, fmt.Sprintf("--%s=%s", key, *value))
 		}
 	}
+
+	klog.V(4).InfoS("Scylla command", "Command", command)
 
 	return command, os.Environ(), nil
 }

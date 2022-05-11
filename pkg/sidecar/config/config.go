@@ -32,7 +32,6 @@ const (
 	scyllaIOPropertiesPath              = configDirScyllaD + "/" + naming.ScyllaIOPropertiesName
 	scyllaRackDCPropertiesPath          = configDirScylla + "/" + naming.ScyllaRackDCPropertiesName
 	scyllaRackDCPropertiesConfigMapPath = naming.ScyllaConfigDirName + "/" + naming.ScyllaRackDCPropertiesName
-	entrypointPath                      = "/docker-entrypoint.py"
 )
 
 type ScyllaConfig struct {
@@ -211,14 +210,14 @@ func (s *ScyllaConfig) generateCommand(ctx context.Context) ([]string, []string,
 	listenAddress := "0.0.0.0"
 	prometheusAddress := "0.0.0.0"
 	args := map[string]*string{
-		"listen-address":        &listenAddress,
-		"broadcast-address":     &m.StaticIP,
-		"broadcast-rpc-address": &m.StaticIP,
-		"seeds":                 pointer.StringPtr(seed),
-		"developer-mode":        &devMode,
-		"overprovisioned":       &overprovisioned,
-		"smp":                   pointer.StringPtr(strconv.Itoa(s.cpuCount)),
-		"prometheus-address":    &prometheusAddress,
+		"listen-address":           &listenAddress,
+		"broadcast-address":        &m.StaticIP,
+		"broadcast-rpc-address":    &m.StaticIP,
+		"seed-provider-parameters": pointer.StringPtr(seed),
+		"developer-mode":           &devMode,
+		"overprovisioned":          &overprovisioned,
+		"smp":                      pointer.StringPtr(strconv.Itoa(s.cpuCount)),
+		"prometheus-address":       &prometheusAddress,
 	}
 	if cluster.Spec.Alternator.Enabled() {
 		args["alternator-port"] = pointer.StringPtr(strconv.Itoa(int(cluster.Spec.Alternator.Port)))
@@ -269,30 +268,17 @@ func (s *ScyllaConfig) generateCommand(ctx context.Context) ([]string, []string,
 		"/usr/bin/bash",
 		"-euExo",
 		"pipefail",
+		"-O",
+		"inherit_errexit",
 		"-c",
 		`
-python3 - $@ << EOF
-import os
-import sys
-import scyllasetup
-import logging
-import commandlineparser
+env
+# We need to setup /etc/scylla.d/dev-mode.conf for scylla_io_setup
+/opt/scylladb/scripts/scylla_dev_mode_setup --developer-mode="${DEVELOPER_MODE}"
+/opt/scylladb/scripts/scylla_io_setup
 
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format="%(message)s")
-
-try:
-	arguments, extra_arguments = commandlineparser.parse()
-	setup = scyllasetup.ScyllaSetup(arguments, extra_arguments=extra_arguments)
-	setup.developerMode()
-	setup.cpuSet()
-	setup.io()
-	setup.cqlshrc()
-	setup.arguments()
-except Exception:
-	logging.exception('failed!')
-EOF
-
-bash -x /opt/scylladb/supervisor/scylla-server.sh
+/opt/scylladb/scripts/scylla_prepare
+/usr/bin/scylla "$@"
 `,
 	}
 	for key, value := range args {

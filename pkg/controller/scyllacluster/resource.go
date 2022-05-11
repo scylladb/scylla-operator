@@ -320,11 +320,10 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 							ImagePullPolicy:          corev1.PullIfNotPresent,
 							TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 							Command: []string{
-								"/usr/bin/bash",
-								"-euExo",
-								"pipefail",
-								"-c",
-								fmt.Sprintf("cp -a /usr/bin/scylla-operator %s", naming.SharedDirName),
+								"/usr/bin/cp",
+								"-a",
+								"/usr/bin/scylla-operator",
+								naming.SharedDirName,
 							},
 							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{
@@ -381,6 +380,15 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 										},
 									},
 								},
+								{
+									Name: "DEVELOPER_MODE",
+									Value: func() string {
+										if c.Spec.DeveloperMode {
+											return "1"
+										}
+										return "0"
+									}(),
+								},
 							},
 							Resources: r.Resources,
 							VolumeMounts: []corev1.VolumeMount{
@@ -425,29 +433,15 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								"/usr/bin/bash",
 								"-euExo",
 								"pipefail",
+								"-O",
+								"inherit_errexit",
 								"-c",
 								`
-python3 - $@ << EOF
-import os
-import sys
-import scyllasetup
-import logging
-import commandlineparser
-
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format="%(message)s")
-
-try:
-	arguments, extra_arguments = commandlineparser.parse()
-	setup = scyllasetup.ScyllaSetup(arguments, extra_arguments=extra_arguments)
-	setup.developerMode()
-	setup.cqlshrc()
-	setup.arguments()
-	setup.set_housekeeping()
-except Exception:
-	logging.exception('failed!')
+cat <<EOF > /etc/scylla.d/housekeeping.cfg
+[housekeeping]
+check-version: False
 EOF
-
-bash -x /scylla-housekeeping-service.sh
+exec bash -x /scylla-housekeeping-service.sh
 `,
 							},
 							Resources: corev1.ResourceRequirements{
@@ -469,31 +463,7 @@ bash -x /scylla-housekeeping-service.sh
 							ImagePullPolicy:          corev1.PullIfNotPresent,
 							TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 							Command: []string{
-								"/usr/bin/bash",
-								"-euExo",
-								"pipefail",
-								"-c",
-								`
-python3 << EOF
-import os
-import sys
-import scyllasetup
-import logging
-import commandlineparser
-
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format="%(message)s")
-
-try:
-	arguments, extra_arguments = commandlineparser.parse()
-	setup = scyllasetup.ScyllaSetup(arguments, extra_arguments=extra_arguments)
-	setup.cqlshrc()
-	setup.arguments()
-except Exception:
-	logging.exception('failed!')
-EOF
-
-bash -x /opt/scylladb/supervisor/scylla-node-exporter.sh
-`,
+								"/opt/scylladb/node_exporter/node_exporter",
 							},
 							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{
@@ -514,32 +484,11 @@ bash -x /opt/scylladb/supervisor/scylla-node-exporter.sh
 							ImagePullPolicy:          corev1.PullIfNotPresent,
 							TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 							Command: []string{
-								"/usr/bin/bash",
-								"-euExo",
-								"pipefail",
-								"-c",
-								`
-python3 - $@ << EOF
-import os
-import sys
-import scyllasetup
-import logging
-import commandlineparser
-
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format="%(message)s")
-
-try:
-	arguments, extra_arguments = commandlineparser.parse()
-	setup = scyllasetup.ScyllaSetup(arguments, extra_arguments=extra_arguments)
-	setup.cqlshrc()
-	setup.arguments()
-except Exception:
-	logging.exception('failed!')
-EOF
-
-export SCYLLA_JMX_ADDR='-ja 0.0.0.0'
-bash -x /opt/scylladb/supervisor/scylla-jmx.sh
-`,
+								"/opt/scylladb/jmx/scylla-jmx",
+								"-l",
+								"/opt/scylladb/jmx",
+								"-ja",
+								"0.0.0.0",
 							},
 							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{

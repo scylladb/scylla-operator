@@ -203,7 +203,7 @@ func (s *ScyllaConfig) generateCommand(ctx context.Context) ([]string, []string,
 
 	// Listen on all interfaces so users or a service mesh can use localhost.
 	// TODO: move some of these to the config.
-	args := map[string]*string{
+	argMap := map[string]*string{
 		"listen-address":            pointer.StringPtr("0.0.0.0"),
 		"broadcast-address":         &m.StaticIP,
 		"broadcast-rpc-address":     &m.StaticIP,
@@ -218,18 +218,18 @@ func (s *ScyllaConfig) generateCommand(ctx context.Context) ([]string, []string,
 		"blocked-reactor-notify-ms": pointer.StringPtr("999999999"),
 	}
 	if m.Overprovisioned {
-		args["overprovisioned"] = nil
+		argMap["overprovisioned"] = nil
 	}
 	if cluster.Spec.Alternator.Enabled() {
-		args["alternator-address"] = pointer.StringPtr("0.0.0.0")
-		args["alternator-port"] = pointer.StringPtr(strconv.Itoa(int(cluster.Spec.Alternator.Port)))
+		argMap["alternator-address"] = pointer.StringPtr("0.0.0.0")
+		argMap["alternator-port"] = pointer.StringPtr(strconv.Itoa(int(cluster.Spec.Alternator.Port)))
 		if cluster.Spec.Alternator.WriteIsolation != "" {
-			args["alternator-write-isolation"] = pointer.StringPtr(cluster.Spec.Alternator.WriteIsolation)
+			argMap["alternator-write-isolation"] = pointer.StringPtr(cluster.Spec.Alternator.WriteIsolation)
 		}
 	}
 	// If node is being replaced
 	if addr, ok := m.ServiceLabels[naming.ReplaceLabel]; ok {
-		args["replace-address-first-boot"] = pointer.StringPtr(addr)
+		argMap["replace-address-first-boot"] = pointer.StringPtr(addr)
 	}
 	// See if we need to use cpu-pinning
 	// TODO: Add more checks to make sure this is valid.
@@ -244,7 +244,7 @@ func (s *ScyllaConfig) generateCommand(ctx context.Context) ([]string, []string,
 		if err := s.validateCpuSet(ctx, cpusAllowed, s.cpuCount); err != nil {
 			return nil, nil, errors.WithStack(err)
 		}
-		args["cpuset"] = &cpusAllowed
+		argMap["cpuset"] = &cpusAllowed
 	}
 
 	version := semver.NewScyllaVersion(cluster.Spec.Version)
@@ -255,15 +255,25 @@ func (s *ScyllaConfig) generateCommand(ctx context.Context) ([]string, []string,
 		if !version.SupportFeatureUnsafe(semver.ScyllaVersionThatSupportsArgs) {
 			klog.InfoS("This scylla version does not support ScyllaArgs. ScyllaArgs is ignored", "version", cluster.Spec.Version)
 		} else {
-			appendScyllaArguments(ctx, s, cluster.Spec.ScyllaArgs, args)
+			appendScyllaArguments(ctx, s, cluster.Spec.ScyllaArgs, argMap)
 		}
 	}
 
 	if _, err := os.Stat(scyllaIOPropertiesPath); err == nil && version.SupportFeatureSafe(semver.ScyllaVersionThatSupportsDisablingIOTuning) {
 		klog.InfoS("Scylla IO properties are already set, skipping io tuning")
 		ioSetup := "0"
-		args["io-setup"] = &ioSetup
-		args["io-properties-file"] = pointer.StringPtr(scyllaIOPropertiesPath)
+		argMap["io-setup"] = &ioSetup
+		argMap["io-properties-file"] = pointer.StringPtr(scyllaIOPropertiesPath)
+	}
+
+	var sb strings.Builder
+	sb.WriteString("exec /usr/bin/scylla")
+	for key, value := range argMap {
+		if value == nil {
+			sb.WriteString(fmt.Sprintf(" --%s", key))
+		} else {
+			sb.WriteString(fmt.Sprintf(" --%s=%s", key, *value))
+		}
 	}
 
 	command := []string{
@@ -274,21 +284,12 @@ func (s *ScyllaConfig) generateCommand(ctx context.Context) ([]string, []string,
 		"inherit_errexit",
 		"-c",
 		`
-env
 # We need to setup /etc/scylla.d/dev-mode.conf for scylla_io_setup
 /opt/scylladb/scripts/scylla_dev_mode_setup --developer-mode="${DEVELOPER_MODE}"
 /opt/scylladb/scripts/scylla_io_setup
 
 /opt/scylladb/scripts/scylla_prepare
-/usr/bin/scylla "$@"
-`,
-	}
-	for key, value := range args {
-		if value == nil {
-			command = append(command, fmt.Sprintf("--%s", key))
-		} else {
-			command = append(command, fmt.Sprintf("--%s=%s", key, *value))
-		}
+` + sb.String(),
 	}
 
 	klog.V(4).InfoS("Scylla command", "Command", command)

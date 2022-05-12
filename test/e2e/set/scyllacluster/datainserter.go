@@ -143,6 +143,10 @@ func (di *DataInserter) createSession(ctx context.Context, sc *scyllav1.ScyllaCl
 	clusterConfig := gocql.NewCluster(hosts...)
 	clusterConfig.Timeout = 3 * time.Second
 	clusterConfig.ConnectTimeout = 3 * time.Second
+	clusterConfig.RetryPolicy = &gocql.SimpleRetryPolicy{
+		// In CI Scylla should always be up and any failures should manifest into the test state.
+		NumRetries: 0,
+	}
 
 	session, err := gocqlx.WrapSession(clusterConfig.CreateSession())
 	if err != nil {

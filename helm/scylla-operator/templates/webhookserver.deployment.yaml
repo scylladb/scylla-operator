@@ -10,6 +10,9 @@ spec:
   replicas: {{ .Values.webhookServerReplicas }}
   strategy:
     type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 50%
+      maxSurge: 100%
   selector:
     matchLabels:
       app.kubernetes.io/name: webhook-server

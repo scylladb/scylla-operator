@@ -186,9 +186,9 @@ func appendScyllaArguments(ctx context.Context, s *ScyllaConfig, scyllaArgs stri
 func (s *ScyllaConfig) generateCommand(ctx context.Context) ([]string, []string, error) {
 	m := s.member
 	// Get seeds
-	seed, err := m.GetSeed(ctx, s.kubeClient.CoreV1())
+	seedAddress, err := m.GetSeed(ctx, s.kubeClient.CoreV1())
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error getting seeds")
+		return nil, nil, fmt.Errorf("can't get seed address: %w", err)
 	}
 
 	// Check if we need to run in developer mode
@@ -201,25 +201,27 @@ func (s *ScyllaConfig) generateCommand(ctx context.Context) ([]string, []string,
 		devMode = "1"
 	}
 
-	overprovisioned := "0"
-	if m.Overprovisioned {
-		overprovisioned = "1"
-	}
-
 	// Listen on all interfaces so users or a service mesh can use localhost.
-	listenAddress := "0.0.0.0"
-	prometheusAddress := "0.0.0.0"
+	// TODO: move some of these to the config.
 	args := map[string]*string{
-		"listen-address":           &listenAddress,
-		"broadcast-address":        &m.StaticIP,
-		"broadcast-rpc-address":    &m.StaticIP,
-		"seed-provider-parameters": pointer.StringPtr(seed),
-		"developer-mode":           &devMode,
-		"overprovisioned":          &overprovisioned,
-		"smp":                      pointer.StringPtr(strconv.Itoa(s.cpuCount)),
-		"prometheus-address":       &prometheusAddress,
+		"listen-address":            pointer.StringPtr("0.0.0.0"),
+		"broadcast-address":         &m.StaticIP,
+		"broadcast-rpc-address":     &m.StaticIP,
+		"seed-provider-parameters":  pointer.StringPtr(fmt.Sprintf("seeds=%s", seedAddress)),
+		"developer-mode":            &devMode,
+		"smp":                       pointer.StringPtr(strconv.Itoa(s.cpuCount)),
+		"log-to-syslog":             pointer.StringPtr("0"),
+		"log-to-stdout":             pointer.StringPtr("1"),
+		"prometheus-address":        pointer.StringPtr("0.0.0.0"),
+		"default-log-level":         pointer.StringPtr("info"),
+		"network-stack":             pointer.StringPtr("posix"),
+		"blocked-reactor-notify-ms": pointer.StringPtr("999999999"),
+	}
+	if m.Overprovisioned {
+		args["overprovisioned"] = nil
 	}
 	if cluster.Spec.Alternator.Enabled() {
+		args["alternator-address"] = pointer.StringPtr("0.0.0.0")
 		args["alternator-port"] = pointer.StringPtr(strconv.Itoa(int(cluster.Spec.Alternator.Port)))
 		if cluster.Spec.Alternator.WriteIsolation != "" {
 			args["alternator-write-isolation"] = pointer.StringPtr(cluster.Spec.Alternator.WriteIsolation)
@@ -291,7 +293,13 @@ env
 
 	klog.V(4).InfoS("Scylla command", "Command", command)
 
-	return command, os.Environ(), nil
+	osEnv := os.Environ()
+	env := make([]string, 0, len(osEnv)+1)
+	env = append(env, osEnv...)
+	env = append(env, "SCYLLA_HOME=/var/lib/scylla")
+	env = append(env, "SCYLLA_CONF=/etc/scylla")
+
+	return command, env, nil
 }
 
 func (s *ScyllaConfig) validateCpuSet(ctx context.Context, cpusAllowed string, shards int) error {

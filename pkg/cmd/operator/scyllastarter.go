@@ -475,6 +475,7 @@ func (o *ScyllaStarterOptions) Run(streams genericclioptions.IOStreams, cmd *cob
 
 	if ioPropertiesPresent {
 		klog.InfoS("Found IO properties file, skipping io tuning", "Path", config.ScyllaIOPropertiesPath)
+		// FIXME: add io-properties file argument so it's picked up. (We don't cache the flags in /etc.)
 	} else {
 		// TODO: scylla_io_setup loads precomputed IO properties for machine types which is not desirable
 		//       for us and we need to replace it wit lower level calls. Currently that's broken, and

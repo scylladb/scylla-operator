@@ -6,12 +6,27 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/magiconair/properties"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
 )
+
+func convertScyllaArguments(scyllaArguments string) map[string]string {
+	output := make(map[string]string)
+	for _, value := range scyllaArgumentsRegexp.FindAllStringSubmatch(scyllaArguments, -1) {
+		if value[2] == "" {
+			output[value[1]] = ""
+		} else if value[2][0] == '=' {
+			output[value[1]] = strings.TrimSpace(value[2][1:])
+		} else {
+			output[value[1]] = strings.TrimSpace(value[2])
+		}
+	}
+	return output
+}
 
 func TestCreateRackDCProperties(t *testing.T) {
 	tests := map[string]struct {
@@ -158,7 +173,7 @@ func TestScyllaYamlMerging(t *testing.T) {
 		defer os.Remove(configMapYamlPath)
 
 		sc := &ScyllaConfig{member: &identity.Member{Cluster: "cluster-name"}}
-		if err := sc.setupScyllaYAML(scyllaYamlPath, configMapYamlPath); err != nil {
+		if err := sc.SetupScyllaYAML(); err != nil {
 			t.Error(err)
 		}
 

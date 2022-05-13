@@ -18,11 +18,11 @@ package semver
 
 import (
 	"github.com/blang/semver"
+	"k8s.io/klog/v2"
 )
 
 var (
 	ScyllaVersionThatSupportsArgs                    = semver.MustParse("4.2.0")
-	ScyllaVersionThatSupportsDisablingIOTuning       = semver.MustParse("4.3.0")
 	ScyllaVersionThatSupportsDisablingWritebackCache = semver.MustParse("2021.0.0")
 )
 
@@ -37,6 +37,9 @@ func NewScyllaVersion(v string) ScyllaVersion {
 	if err != nil {
 		return ScyllaVersion{unknown: true}
 	}
+
+	klog.V(2).InfoS("Scylla version detected", "version", version)
+
 	return ScyllaVersion{version: version, unknown: false}
 }
 

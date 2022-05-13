@@ -578,7 +578,7 @@ exec bash -x /scylla-housekeeping-service.sh
 									corev1.ResourceMemory: resource.MustParse("20Mi"),
 								},
 							},
-							// TODO: wire probes at leas to informers or something.
+							// TODO: wire probes at least to informers or something.
 						},
 					},
 					ServiceAccountName: naming.MemberServiceAccountNameForScyllaCluster(c.Name),

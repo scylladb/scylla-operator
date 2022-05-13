@@ -7,12 +7,13 @@ import (
 	"os"
 	"path"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/ghodss/yaml"
+	"github.com/google/shlex"
 	"github.com/magiconair/properties"
 	"github.com/pkg/errors"
+	"github.com/scylladb/scylla-operator/pkg/arg"
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/semver"
@@ -21,7 +22,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/pointer"
 )
 
 const (
@@ -29,7 +29,7 @@ const (
 	configDirScyllaD                    = "/etc/scylla.d"
 	scyllaYAMLPath                      = configDirScylla + "/" + naming.ScyllaConfigName
 	scyllaYAMLConfigMapPath             = naming.ScyllaConfigDirName + "/" + naming.ScyllaConfigName
-	scyllaIOPropertiesPath              = configDirScyllaD + "/" + naming.ScyllaIOPropertiesName
+	ScyllaIOPropertiesPath              = configDirScyllaD + "/" + naming.ScyllaIOPropertiesName
 	scyllaRackDCPropertiesPath          = configDirScylla + "/" + naming.ScyllaRackDCPropertiesName
 	scyllaRackDCPropertiesConfigMapPath = naming.ScyllaConfigDirName + "/" + naming.ScyllaRackDCPropertiesName
 )
@@ -54,41 +54,21 @@ func NewScyllaConfig(m *identity.Member, kubeClient kubernetes.Interface, scylla
 	}
 }
 
-func (s *ScyllaConfig) Setup(ctx context.Context) ([]string, []string, error) {
-	klog.Info("Setting up iotune cache")
-	if err := setupIOTuneCache(); err != nil {
-		return nil, nil, fmt.Errorf("can't setup iotune cache: %w", err)
-	}
-
-	klog.Info("Setting up scylla.yaml")
-	if err := s.setupScyllaYAML(scyllaYAMLPath, scyllaYAMLConfigMapPath); err != nil {
-		return nil, nil, fmt.Errorf("can't setup scylla.yaml: %w", err)
-	}
-
-	klog.Info("Setting up cassandra-rackdc.properties")
-	if err := s.setupRackDCProperties(); err != nil {
-		return nil, nil, fmt.Errorf("can't setup rackdc properties file: %w", err)
-	}
-
-	klog.Info("Generating Scylla arguments")
-	return s.generateCommand(ctx)
-}
-
-// setupScyllaYAML edits the default scylla.yaml file with our custom options.
+// SetupScyllaYAML edits the default scylla.yaml file with our custom options.
 // We only edit the options that are not available to configure via the
 // entrypoint script flags. Those options are:
 // - cluster_name
 // - rpc_address
 // - endpoint_snitch
-func (s *ScyllaConfig) setupScyllaYAML(configFilePath, configMapPath string) error {
+func (s *ScyllaConfig) SetupScyllaYAML() error {
 	// Read default scylla.yaml
-	configFileBytes, err := ioutil.ReadFile(configFilePath)
+	configFileBytes, err := ioutil.ReadFile(scyllaYAMLPath)
 	if err != nil {
 		return errors.Wrap(err, "failed to open scylla.yaml")
 	}
 
 	// Read config map scylla.yaml
-	configMapBytes, err := ioutil.ReadFile(configMapPath)
+	configMapBytes, err := ioutil.ReadFile(scyllaYAMLConfigMapPath)
 	if err != nil {
 		klog.InfoS("no scylla.yaml config map available")
 	}
@@ -114,14 +94,14 @@ func (s *ScyllaConfig) setupScyllaYAML(configFilePath, configMapPath string) err
 	}
 
 	// Write result to file
-	if err = ioutil.WriteFile(configFilePath, customConfigBytesBytes, os.ModePerm); err != nil {
+	if err = ioutil.WriteFile(scyllaYAMLPath, customConfigBytesBytes, os.ModePerm); err != nil {
 		return errors.Wrap(err, "error trying to write scylla.yaml")
 	}
 
 	return nil
 }
 
-func (s *ScyllaConfig) setupRackDCProperties() error {
+func (s *ScyllaConfig) SetupRackDCProperties() error {
 	suppliedProperties := loadProperties(s.scyllaRackDCPropertiesConfigMapPath)
 	rackDCProperties := createRackDCProperties(suppliedProperties, s.member.Datacenter, s.member.Rack)
 	f, err := os.Create(s.scyllaRackDCPropertiesPath)
@@ -159,148 +139,113 @@ func loadProperties(fileName string) *properties.Properties {
 
 var scyllaArgumentsRegexp = regexp.MustCompile(`--([^= ]+)(="[^"]+"|=\S+|\s+"[^"]+"|\s+[^\s-]+|\s+-?\d*\.?\d+[^\s-]+|)`)
 
-func convertScyllaArguments(scyllaArguments string) map[string]string {
-	output := make(map[string]string)
-	for _, value := range scyllaArgumentsRegexp.FindAllStringSubmatch(scyllaArguments, -1) {
-		if value[2] == "" {
-			output[value[1]] = ""
-		} else if value[2][0] == '=' {
-			output[value[1]] = strings.TrimSpace(value[2][1:])
-		} else {
-			output[value[1]] = strings.TrimSpace(value[2])
-		}
-	}
-	return output
-}
-
-func appendScyllaArguments(ctx context.Context, s *ScyllaConfig, scyllaArgs string, scyllaFinalArgs map[string]*string) {
-	for argName, argValue := range convertScyllaArguments(scyllaArgs) {
-		if existing := scyllaFinalArgs[argName]; existing == nil {
-			scyllaFinalArgs[argName] = pointer.StringPtr(strings.TrimSpace(argValue))
-		} else {
-			klog.Infof("ScyllaArgs: argument '%s' is ignored, it is already in the list", argName)
-		}
-	}
-}
-
-func (s *ScyllaConfig) generateCommand(ctx context.Context) ([]string, []string, error) {
-	m := s.member
-	// Get seeds
-	seedAddress, err := m.GetSeed(ctx, s.kubeClient.CoreV1())
-	if err != nil {
-		return nil, nil, fmt.Errorf("can't get seed address: %w", err)
-	}
-
-	// Check if we need to run in developer mode
-	devMode := "0"
-	cluster, err := s.scyllaClient.ScyllaV1().ScyllaClusters(s.member.Namespace).Get(ctx, s.member.Cluster, metav1.GetOptions{})
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "error getting cluster")
-	}
-	if cluster.Spec.DeveloperMode {
-		devMode = "1"
-	}
-
-	// Listen on all interfaces so users or a service mesh can use localhost.
-	// TODO: move some of these to the config.
-	argMap := map[string]*string{
-		"listen-address":            pointer.StringPtr("0.0.0.0"),
-		"broadcast-address":         &m.StaticIP,
-		"broadcast-rpc-address":     &m.StaticIP,
-		"seed-provider-parameters":  pointer.StringPtr(fmt.Sprintf("seeds=%s", seedAddress)),
-		"developer-mode":            &devMode,
-		"smp":                       pointer.StringPtr(strconv.Itoa(s.cpuCount)),
-		"log-to-syslog":             pointer.StringPtr("0"),
-		"log-to-stdout":             pointer.StringPtr("1"),
-		"prometheus-address":        pointer.StringPtr("0.0.0.0"),
-		"default-log-level":         pointer.StringPtr("info"),
-		"network-stack":             pointer.StringPtr("posix"),
-		"blocked-reactor-notify-ms": pointer.StringPtr("999999999"),
-	}
-	if m.Overprovisioned {
-		argMap["overprovisioned"] = nil
-	}
-	if cluster.Spec.Alternator.Enabled() {
-		argMap["alternator-address"] = pointer.StringPtr("0.0.0.0")
-		argMap["alternator-port"] = pointer.StringPtr(strconv.Itoa(int(cluster.Spec.Alternator.Port)))
-		if cluster.Spec.Alternator.WriteIsolation != "" {
-			argMap["alternator-write-isolation"] = pointer.StringPtr(cluster.Spec.Alternator.WriteIsolation)
-		}
-	}
-	// If node is being replaced
-	if addr, ok := m.ServiceLabels[naming.ReplaceLabel]; ok {
-		argMap["replace-address-first-boot"] = pointer.StringPtr(addr)
-	}
-	// See if we need to use cpu-pinning
-	// TODO: Add more checks to make sure this is valid.
-	// eg. parse the cpuset and check the number of cpus is the same as cpu limits
-	// Now we rely completely on the user to have the cpu policy correctly
-	// configured in the kubelet, otherwise scylla will crash.
-	if cluster.Spec.CpuSet {
-		cpusAllowed, err := getCPUsAllowedList("/proc/1/status")
-		if err != nil {
-			return nil, nil, errors.WithStack(err)
-		}
-		if err := s.validateCpuSet(ctx, cpusAllowed, s.cpuCount); err != nil {
-			return nil, nil, errors.WithStack(err)
-		}
-		argMap["cpuset"] = &cpusAllowed
-	}
-
-	version := semver.NewScyllaVersion(cluster.Spec.Version)
-
-	klog.InfoS("Scylla version detected", "version", version)
-
-	if len(cluster.Spec.ScyllaArgs) > 0 {
-		if !version.SupportFeatureUnsafe(semver.ScyllaVersionThatSupportsArgs) {
-			klog.InfoS("This scylla version does not support ScyllaArgs. ScyllaArgs is ignored", "version", cluster.Spec.Version)
-		} else {
-			appendScyllaArguments(ctx, s, cluster.Spec.ScyllaArgs, argMap)
-		}
-	}
-
-	if _, err := os.Stat(scyllaIOPropertiesPath); err == nil && version.SupportFeatureSafe(semver.ScyllaVersionThatSupportsDisablingIOTuning) {
-		klog.InfoS("Scylla IO properties are already set, skipping io tuning")
-		ioSetup := "0"
-		argMap["io-setup"] = &ioSetup
-		argMap["io-properties-file"] = pointer.StringPtr(scyllaIOPropertiesPath)
-	}
-
-	var sb strings.Builder
-	sb.WriteString("exec /usr/bin/scylla")
-	for key, value := range argMap {
-		if value == nil {
-			sb.WriteString(fmt.Sprintf(" --%s", key))
-		} else {
-			sb.WriteString(fmt.Sprintf(" --%s=%s", key, *value))
-		}
-	}
-
-	command := []string{
-		"/usr/bin/bash",
-		"-euExo",
-		"pipefail",
-		"-O",
-		"inherit_errexit",
-		"-c",
-		`
-# We need to setup /etc/scylla.d/dev-mode.conf for scylla_io_setup
-/opt/scylladb/scripts/scylla_dev_mode_setup --developer-mode="${DEVELOPER_MODE}"
-/opt/scylladb/scripts/scylla_io_setup
-
-/opt/scylladb/scripts/scylla_prepare
-` + sb.String(),
-	}
-
-	klog.V(4).InfoS("Scylla command", "Command", command)
-
+func (s *ScyllaConfig) GenerateScyllaEnv() []string {
 	osEnv := os.Environ()
 	env := make([]string, 0, len(osEnv)+1)
 	env = append(env, osEnv...)
 	env = append(env, "SCYLLA_HOME=/var/lib/scylla")
 	env = append(env, "SCYLLA_CONF=/etc/scylla")
+	return env
+}
 
-	return command, env, nil
+func (s *ScyllaConfig) GetScyllaUserArgs(ctx context.Context) ([]string, error) {
+	// TODO: cache it
+	cluster, err := s.scyllaClient.ScyllaV1().ScyllaClusters(s.member.Namespace).Get(ctx, s.member.Cluster, metav1.GetOptions{})
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting cluster")
+	}
+
+	version := semver.NewScyllaVersion(cluster.Spec.Version)
+	if !version.SupportFeatureUnsafe(semver.ScyllaVersionThatSupportsArgs) && len(cluster.Spec.ScyllaArgs) > 0 {
+		klog.InfoS("This scylla version does not support ScyllaArgs. ScyllaArgs is ignored", "version", cluster.Spec.Version)
+		return nil, nil
+	}
+
+	// This is an unfortunate API design (eventually we want to migrate it to `unsupportedScyllaArgs []string`).
+	// We need to parse the qouted arguments on our own :(
+	args, err := shlex.Split(cluster.Spec.ScyllaArgs)
+	if err != nil {
+		return nil, fmt.Errorf("can't split scylla args: %w", err)
+	}
+
+	return args, nil
+}
+
+func (s *ScyllaConfig) GenerateScyllaArgs(ctx context.Context) ([]string, error) {
+	m := s.member
+	// Get seeds
+	seedAddress, err := m.GetSeed(ctx, s.kubeClient.CoreV1())
+	if err != nil {
+		return nil, fmt.Errorf("can't get seed address: %w", err)
+	}
+
+	// Check if we need to run in developer mode
+	cluster, err := s.scyllaClient.ScyllaV1().ScyllaClusters(s.member.Namespace).Get(ctx, s.member.Cluster, metav1.GetOptions{})
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting cluster")
+	}
+
+	// Avoid a map to always write the arguments in a stable order.
+	// TODO: move some of these to the config.
+	args := arg.NewArgs()
+	// Listen on all interfaces so users or a service mesh can use localhost.
+	args.AddArgWithStringValue("--listen-address", "0.0.0.0")
+	args.AddArgWithStringValue("--broadcast-address", m.StaticIP)
+	args.AddArgWithStringValue("--broadcast-rpc-address", m.StaticIP)
+	args.AddArgWithStringValue("--seed-provider-parameters", fmt.Sprintf("seeds=%s", seedAddress))
+	args.AddArgWithIntValue("--developer-mode", arg.IntFromBool(cluster.Spec.DeveloperMode))
+	args.AddArgWithIntValue("--smp", s.cpuCount)
+	args.AddArgWithIntValue("--log-to-syslog", 0)
+	args.AddArgWithIntValue("--log-to-stdout", 1)
+	args.AddArgWithStringValue("--prometheus-address", "0.0.0.0")
+	args.AddArgWithStringValue("--default-log-level", "info")
+	args.AddArgWithStringValue("--network-stack", "posix")
+	args.AddArgWithIntValue("--blocked-reactor-notify-ms", 999999999)
+
+	if m.Overprovisioned {
+		args.AddArg("--overprovisioned")
+	}
+	if cluster.Spec.Alternator.Enabled() {
+		args.AddArgWithStringValue("--alternator-address", "0.0.0.0")
+		args.AddArgWithIntValue("--alternator-port", int(cluster.Spec.Alternator.Port))
+		if cluster.Spec.Alternator.WriteIsolation != "" {
+			args.AddArgWithStringValue("--alternator-write-isolation", cluster.Spec.Alternator.WriteIsolation)
+		}
+	}
+	// If node is being replaced
+	if addr, ok := m.ServiceLabels[naming.ReplaceLabel]; ok {
+		args.AddArgWithStringValue("--replace-address-first-boot", addr)
+	}
+
+	// if _, err := os.Stat(scyllaIOPropertiesPath); err == nil && version.SupportFeatureSafe(semver.ScyllaVersionThatSupportsDisablingIOTuning) {
+	// 	klog.InfoS("Scylla IO properties are already set, skipping io tuning")
+	// 	ioSetup := "0"
+	// 	ab.AddArgWithIntValue("--cpuset", cpusAllowed)
+	// 	argMap["io-setup"] = &ioSetup
+	// 	argMap["io-properties-file"] = pointer.StringPtr(scyllaIOPropertiesPath)
+	// }
+
+	// 	command := []string{
+	// 		"/usr/bin/bash",
+	// 		"-euExo",
+	// 		"pipefail",
+	// 		"-O",
+	// 		"inherit_errexit",
+	// 		"-c",
+	// 		`
+	// # We need to setup /etc/scylla.d/dev-mode.conf for scylla_io_setup
+	// /opt/scylladb/scripts/scylla_dev_mode_setup --developer-mode="${DEVELOPER_MODE}"
+	//
+	// #todo cpuset conf file
+	// /opt/scylladb/scripts/scylla_io_setup
+	//
+	// /opt/scylladb/scripts/scylla_prepare
+	// exec /usr/bin/scylla ` + ab.String() + userArgs,
+	// 	}
+
+	// klog.V(4).InfoS("Scylla command", "Command", command)
+
+	return args.ArgStrings(), nil
 }
 
 func (s *ScyllaConfig) validateCpuSet(ctx context.Context, cpusAllowed string, shards int) error {
@@ -315,20 +260,51 @@ func (s *ScyllaConfig) validateCpuSet(ctx context.Context, cpusAllowed string, s
 	return nil
 }
 
-func setupIOTuneCache() error {
-	if _, err := os.Stat(scyllaIOPropertiesPath); err != nil {
+func (s *ScyllaConfig) GetCpusetArg(ctx context.Context) (*arg.Arg, error) {
+	cluster, err := s.scyllaClient.ScyllaV1().ScyllaClusters(s.member.Namespace).Get(ctx, s.member.Cluster, metav1.GetOptions{})
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting cluster")
+	}
+
+	// See if we need to use cpu-pinning
+	// TODO: Add more checks to make sure this is valid.
+	// eg. parse the cpuset and check the number of cpus is the same as cpu limits
+	// Now we rely completely on the user to have the cpu policy correctly
+	// configured in the kubelet, otherwise scylla will crash.
+	if !cluster.Spec.CpuSet {
+		return nil, nil
+	}
+
+	cpusAllowed, err := getCPUsAllowedList("/proc/1/status")
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	err = s.validateCpuSet(ctx, cpusAllowed, s.cpuCount)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &arg.Arg{
+		Flag:  "--cpuset",
+		Value: &cpusAllowed,
+	}, nil
+}
+
+func SetupIOTuneCache() error {
+	if _, err := os.Stat(ScyllaIOPropertiesPath); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("can't stat file %q: %w", scyllaIOPropertiesPath, err)
+			return fmt.Errorf("can't stat file %q: %w", ScyllaIOPropertiesPath, err)
 		}
 
 		cachePath := path.Join(naming.DataDir, naming.ScyllaIOPropertiesName)
-		if err := os.Symlink(cachePath, scyllaIOPropertiesPath); err != nil {
-			return fmt.Errorf("can't create symlink from %q to %q: %w", scyllaIOPropertiesPath, cachePath, err)
+		if err := os.Symlink(cachePath, ScyllaIOPropertiesPath); err != nil {
+			return fmt.Errorf("can't create symlink from %q to %q: %w", ScyllaIOPropertiesPath, cachePath, err)
 		}
 
-		klog.V(2).Info("Initialized IOTune benchmark cache", "path", scyllaIOPropertiesPath, "cachePath", cachePath)
+		klog.V(2).Info("Initialized IOTune benchmark cache", "path", ScyllaIOPropertiesPath, "cachePath", cachePath)
 	} else {
-		klog.V(2).Info("Found cached IOTune benchmark results", "path", scyllaIOPropertiesPath)
+		klog.V(2).Info("Found cached IOTune benchmark results", "path", ScyllaIOPropertiesPath)
 	}
 
 	return nil

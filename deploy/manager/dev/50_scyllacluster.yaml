@@ -16,7 +16,7 @@ spec:
       - name: manager-rack
         members: 1
         storage:
-          capacity: 5Gi
+          capacity: 10Gi
         resources:
           limits:
             cpu: 200m

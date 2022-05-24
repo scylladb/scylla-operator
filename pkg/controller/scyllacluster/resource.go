@@ -123,10 +123,6 @@ func memberServicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 			Port: 7001,
 		},
 		{
-			Name: "jmx-monitoring",
-			Port: 7199,
-		},
-		{
 			Name: "cql",
 			Port: 9042,
 		},
@@ -488,7 +484,17 @@ exec bash -x /scylla-housekeeping-service.sh
 								"-l",
 								"/opt/scylladb/jmx",
 								"-ja",
-								"0.0.0.0",
+								"$(POD_IP)",
+							},
+							Env: []corev1.EnvVar{
+								{
+									Name: "POD_IP",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "status.podIP",
+										},
+									},
+								},
 							},
 							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{
@@ -655,10 +661,6 @@ func containerPorts(c *scyllav1.ScyllaCluster) []corev1.ContainerPort {
 		{
 			Name:          "tls-intra-node",
 			ContainerPort: 7001,
-		},
-		{
-			Name:          "jmx",
-			ContainerPort: 7199,
 		},
 		{
 			Name:          "prometheus",

@@ -513,5 +513,5 @@ func (o *ScyllaStarterOptions) Run(streams genericclioptions.IOStreams, cmd *cob
 	// Exec into Scylla.
 	const scyllaPath = "/usr/bin/scylla"
 	klog.V(2).InfoS("Starting scylla", "Command", scyllaPath, "Args", scyllaArgs)
-	return syscall.Exec(scyllaPath, scyllaArgs, scyllaEnv)
+	return syscall.Exec(scyllaPath, append([]string{scyllaPath}, scyllaArgs...), scyllaEnv)
 }

@@ -429,10 +429,13 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								"/usr/bin/bash",
 								"-euExo",
 								"pipefail",
-								"-O",
-								"inherit_errexit",
+								// Old scylla images have bash < 4.4 that doesn't have this. Enable when we support only 4.6+.
+								// "-O",
+								// "inherit_errexit",
 								"-c",
 								`
+shopt -s inherit_errexit 2>/dev/null || true
+
 cat <<EOF > /etc/scylla.d/housekeeping.cfg
 [housekeeping]
 check-version: False

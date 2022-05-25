@@ -498,7 +498,7 @@ exec bash -x /scylla-housekeeping-service.sh
 							},
 							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("100m"),
+									corev1.ResourceCPU:    resource.MustParse("30m"),
 									corev1.ResourceMemory: resource.MustParse("100Mi"),
 								},
 							},

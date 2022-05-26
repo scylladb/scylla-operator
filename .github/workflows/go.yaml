@@ -229,7 +229,7 @@ jobs:
         -v="${HOME}/.kube/config:/kubeconfig:ro" -e='KUBECONFIG=/kubeconfig' \
         '${{ env.image_repo_ref }}:ci' \
         run all \
-        --parallelism=15 \
+        --parallelism=10 \
         --artifacts-dir="${ARTIFACTS_DIR}" \
         --flake-attempts="${flake_attempts}" \
         --timeout="${e2e_timeout_minutes}m"

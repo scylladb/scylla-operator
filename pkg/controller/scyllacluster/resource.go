@@ -3,6 +3,7 @@ package scyllacluster
 import (
 	"fmt"
 	"path"
+	"sort"
 	"strings"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
@@ -10,6 +11,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/api/policy/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -17,6 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	corev1listers "k8s.io/client-go/listers/core/v1"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 )
 
@@ -28,6 +31,15 @@ const (
 const (
 	rootUID = 0
 	rootGID = 0
+)
+
+const (
+	portNameCQL              = "cql"
+	portNameCQLSSL           = "cql-ssl"
+	portNameCQLShardAware    = "cql-shard-aware"
+	portNameCQLSSLShardAware = "cql-ssl-shard-aware"
+	portNameAlternator       = "alternator"
+	portNameThrift           = "thrift"
 )
 
 func HeadlessServiceForCluster(c *scyllav1.ScyllaCluster) *corev1.Service {
@@ -148,30 +160,30 @@ func memberServicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 func backendPorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 	ports := []corev1.ServicePort{
 		{
-			Name: "cql",
+			Name: portNameCQL,
 			Port: 9042,
 		},
 		{
-			Name: "cql-ssl",
+			Name: portNameCQLSSL,
 			Port: 9142,
 		},
 		{
-			Name: "cql-shard-aware",
+			Name: portNameCQLShardAware,
 			Port: 19042,
 		},
 		{
-			Name: "cql-ssl-shard-aware",
+			Name: portNameCQLSSLShardAware,
 			Port: 19142,
 		},
 	}
 	if cluster.Spec.Alternator.Enabled() {
 		ports = append(ports, corev1.ServicePort{
-			Name: "alternator",
+			Name: portNameAlternator,
 			Port: cluster.Spec.Alternator.Port,
 		})
 	} else {
 		ports = append(ports, corev1.ServicePort{
-			Name: "thrift",
+			Name: portNameThrift,
 			Port: 9160,
 		})
 	}
@@ -636,6 +648,121 @@ func MakePodDisruptionBudget(c *scyllav1.ScyllaCluster) *v1beta1.PodDisruptionBu
 			Selector:       metav1.SetAsLabelSelector(naming.ClusterLabels(c)),
 		},
 	}
+}
+
+func MakeIngresses(c *scyllav1.ScyllaCluster, services map[string]*corev1.Service) []*networkingv1.Ingress {
+	// Don't create Ingresses if cluster isn't exposed.
+	if c.Spec.ExposeOptions == nil {
+		return nil
+	}
+
+	type params struct {
+		backendName    string
+		portName       string
+		ingressOptions *scyllav1.IngressOptions
+	}
+	var ingressParams []params
+
+	if c.Spec.ExposeOptions.CQL != nil && isIngressEnabled(c.Spec.ExposeOptions.CQL.Ingress) {
+		ingressParams = append(ingressParams, params{
+			backendName:    "cql",
+			portName:       portNameCQLSSL,
+			ingressOptions: c.Spec.ExposeOptions.CQL.Ingress,
+		})
+	}
+
+	var ingresses []*networkingv1.Ingress
+
+	for _, ip := range ingressParams {
+		for _, service := range services {
+			var hosts []string
+			labels := naming.ClusterLabels(c)
+
+			switch naming.ScyllaServiceType(service.Labels[naming.ScyllaServiceTypeLabel]) {
+			case naming.ScyllaServiceTypeIdentity:
+				for _, domain := range c.Spec.DNSDomains {
+					hosts = append(hosts, fmt.Sprintf("%s.%s.%s", naming.ScyllaIngressSubdomainAny, ip.backendName, domain))
+				}
+				labels[naming.ScyllaIngressTypeLabel] = string(naming.ScyllaIngressTypeAnyNode)
+
+			case naming.ScyllaServiceTypeMember:
+				hostID, ok := service.Annotations[naming.HostIDAnnotation]
+				if !ok {
+					klog.V(4).Infof("Service %q is missing HostID annotation, postponing Ingress creation until it's available", naming.ObjRef(service))
+					continue
+				}
+
+				if len(hostID) == 0 {
+					klog.Warningf("Can't create Ingress for Service %s because it has unexpected empty HostID annotation", klog.KObj(service))
+					continue
+				}
+
+				for _, domain := range c.Spec.DNSDomains {
+					hosts = append(hosts, fmt.Sprintf("%s.%s.%s", hostID, ip.backendName, domain))
+				}
+				labels[naming.ScyllaIngressTypeLabel] = string(naming.ScyllaIngressTypeNode)
+
+			default:
+				klog.Warningf("Unsupported Scylla service type %q, not creating Ingress for it", service.Labels[naming.ScyllaServiceTypeLabel])
+				continue
+			}
+
+			ingress := &networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        fmt.Sprintf("%s-%s", service.Name, ip.backendName),
+					Namespace:   c.Namespace,
+					Labels:      labels,
+					Annotations: ip.ingressOptions.Annotations,
+					OwnerReferences: []metav1.OwnerReference{
+						*metav1.NewControllerRef(c, controllerGVK),
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					IngressClassName: pointer.String(ip.ingressOptions.IngressClassName),
+				},
+			}
+
+			pathPrefix := networkingv1.PathTypePrefix
+			for _, host := range hosts {
+				ingress.Spec.Rules = append(ingress.Spec.Rules, networkingv1.IngressRule{
+					Host: host,
+					IngressRuleValue: networkingv1.IngressRuleValue{
+						HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{
+								{
+									Path:     "/",
+									PathType: &pathPrefix,
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: service.Name,
+											Port: networkingv1.ServiceBackendPort{
+												Name: ip.portName,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				})
+			}
+
+			ingresses = append(ingresses, ingress)
+		}
+	}
+
+	sort.Slice(ingresses, func(i, j int) bool {
+		return ingresses[i].GetName() < ingresses[j].GetName()
+	})
+
+	return ingresses
+}
+
+func isIngressEnabled(ingressOptions *scyllav1.IngressOptions) bool {
+	if ingressOptions == nil {
+		return false
+	}
+	return ingressOptions.Disabled == nil || !*ingressOptions.Disabled
 }
 
 func MakeAgentAuthTokenSecret(c *scyllav1.ScyllaCluster, authToken string) (*corev1.Secret, error) {

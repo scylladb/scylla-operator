@@ -8,7 +8,9 @@ import (
 	"github.com/scylladb/go-set/strset"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/semver"
+	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/sets"
+	apimachineryutilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -84,6 +86,46 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 		if spec.GenericUpgrade.FailureStrategy != scyllav1.GenericUpgradeFailureStrategyRetry {
 			allErrs = append(allErrs, field.NotSupported(fldPath.Child("genericUpgrade", "failureStrategy"), spec.GenericUpgrade.FailureStrategy, []string{string(scyllav1.GenericUpgradeFailureStrategyRetry)}))
 		}
+	}
+
+	for i, domain := range spec.DNSDomains {
+		allErrs = append(allErrs, apimachineryutilvalidation.IsFullyQualifiedName(fldPath.Child("dnsDomains").Index(i), domain)...)
+	}
+
+	if len(spec.DNSDomains) == 0 && spec.ExposeOptions != nil {
+		if spec.ExposeOptions.CQL != nil && spec.ExposeOptions.CQL.Ingress != nil {
+			allErrs = append(allErrs, field.Required(fldPath.Child("dnsDomains"), "at least one domain needs to be provided when exposing CQL via ingresses"))
+		}
+	}
+
+	if spec.ExposeOptions != nil {
+		allErrs = append(allErrs, ValidateExposeOptions(spec.ExposeOptions, fldPath.Child("exposeOptions"))...)
+	}
+
+	return allErrs
+}
+
+func ValidateExposeOptions(options *scyllav1.ExposeOptions, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if options.CQL != nil && options.CQL.Ingress != nil {
+		allErrs = append(allErrs, ValidateIngressOptions(options.CQL.Ingress, fldPath.Child("cql", "ingress"))...)
+	}
+
+	return allErrs
+}
+
+func ValidateIngressOptions(options *scyllav1.IngressOptions, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if len(options.IngressClassName) != 0 {
+		for _, msg := range apimachineryvalidation.NameIsDNSSubdomain(options.IngressClassName, false) {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("ingressClassName"), options.IngressClassName, msg))
+		}
+	}
+
+	if len(options.Annotations) != 0 {
+		allErrs = append(allErrs, apimachineryvalidation.ValidateAnnotations(options.Annotations, fldPath.Child("annotations"))...)
 	}
 
 	return allErrs

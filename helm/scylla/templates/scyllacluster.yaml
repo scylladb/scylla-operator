@@ -42,6 +42,14 @@ spec:
   repairs:
     {{- toYaml . | nindent 4 }}
   {{- end }}
+  {{- with .Values.dnsDomains }}
+  dnsDomains:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.exposeOptions }}
+  exposeOptions:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   datacenter:
     name: {{ .Values.datacenter }}
     racks:

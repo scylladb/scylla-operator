@@ -95,6 +95,55 @@ type ScyllaClusterSpec struct {
 	// used for pulling Scylla and Agent images.
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+
+	// dnsDomains is a list of DNS domains this cluster is reachable by.
+	// These domains are used when setting up the infrastructure, like certificates.
+	// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+	// +optional
+	DNSDomains []string `json:"dnsDomains,omitempty"`
+
+	// exposeOptions specifies options for exposing ScyllaCluster services.
+	// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+	// +optional
+	ExposeOptions *ExposeOptions `json:"exposeOptions,omitempty"`
+}
+
+// ExposeOptions hold options related to exposing ScyllaCluster backends.
+// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+type ExposeOptions struct {
+	// cql specifies expose options for CQL SSL backend.
+	// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+	// +optional
+	CQL *CQLExposeOptions `json:"cql,omitempty"`
+}
+
+// CQLExposeOptions hold options related to exposing CQL backend.
+// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+type CQLExposeOptions struct {
+	// ingress is an Ingress configuration options.
+	// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+	// +optional
+	Ingress *IngressOptions `json:"ingress,omitempty"`
+}
+
+// IngressOptions defines configuration options for Ingress objects associated with cluster nodes.
+// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+type IngressOptions struct {
+	// disabled controls if Ingress object creation is disabled.
+	// Unless disabled, there is an Ingress objects created for every Scylla node.
+	// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+	// +optional
+	Disabled *bool `json:"disabled,omitempty"`
+
+	// ingressClassName specifies Ingress class name.
+	// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+	// +optional
+	IngressClassName string `json:"ingressClassName,omitempty"`
+
+	// annotations specifies custom annotations merged into every Ingress object.
+	// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
 // GenericUpgradeFailureStrategy allows to specify how upgrade logic should handle failures.

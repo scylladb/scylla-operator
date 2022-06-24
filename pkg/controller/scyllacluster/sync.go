@@ -10,6 +10,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -284,6 +285,50 @@ func (scc *Controller) getPDBs(ctx context.Context, sc *scyllav1.ScyllaCluster) 
 	return cm.ClaimPodDisruptionBudgets(pdbs)
 }
 
+func (scc *Controller) getIngresses(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*networkingv1.Ingress, error) {
+	// List all Ingresses to find even those that no longer match our selector.
+	// They will be orphaned in ClaimIngress().
+	ingresses, err := scc.ingressLister.Ingresses(sc.Namespace).List(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+
+	selector := labels.SelectorFromSet(labels.Set{
+		naming.ClusterNameLabel: sc.Name,
+	})
+
+	// If any adoptions are attempted, we should first recheck for deletion with
+	// an uncached quorum read sometime after listing Ingresses.
+	canAdoptFunc := func() error {
+		fresh, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		if fresh.UID != sc.UID {
+			return fmt.Errorf("original ScyllaCluster %v/%v is gone: got uid %v, wanted %v", sc.Namespace, sc.Name, fresh.UID, sc.UID)
+		}
+
+		if fresh.GetDeletionTimestamp() != nil {
+			return fmt.Errorf("%v/%v has just been deleted at %v", sc.Namespace, sc.Name, sc.DeletionTimestamp)
+		}
+
+		return nil
+	}
+	cm := controllertools.NewIngressControllerRefManager(
+		ctx,
+		sc,
+		controllerGVK,
+		selector,
+		canAdoptFunc,
+		controllertools.RealIngressControl{
+			KubeClient: scc.kubeClient,
+			Recorder:   scc.eventRecorder,
+		},
+	)
+	return cm.ClaimIngresss(ingresses)
+}
+
 func (scc *Controller) sync(ctx context.Context, key string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
@@ -336,6 +381,11 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		return err
 	}
 
+	ingressMap, err := scc.getIngresses(ctx, sc)
+	if err != nil {
+		return fmt.Errorf("can't get ingresses: %w", err)
+	}
+
 	status := scc.calculateStatus(sc, statefulSetMap, serviceMap)
 
 	if sc.DeletionTimestamp != nil {
@@ -375,6 +425,11 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 	}
 
 	status, err = scc.syncPodDisruptionBudgets(ctx, sc, status, pdbMap)
+	if err != nil {
+		errs = append(errs, err)
+		// TODO: Set degraded condition
+	}
+	status, err = scc.syncIngresses(ctx, sc, status, ingressMap, serviceMap)
 	if err != nil {
 		errs = append(errs, err)
 		// TODO: Set degraded condition

@@ -72,6 +72,14 @@ func TestMemberService(t *testing.T) {
 			Port: 7199,
 		},
 		{
+			Name: "agent-api",
+			Port: 10001,
+		},
+		{
+			Name: "node-exporter",
+			Port: 9100,
+		},
+		{
 			Name: "cql",
 			Port: 9042,
 		},
@@ -86,14 +94,6 @@ func TestMemberService(t *testing.T) {
 		{
 			Name: "cql-ssl-shard-aware",
 			Port: 19142,
-		},
-		{
-			Name: "agent-api",
-			Port: 10001,
-		},
-		{
-			Name: "node-exporter",
-			Port: 9100,
 		},
 		{
 			Name: "thrift",

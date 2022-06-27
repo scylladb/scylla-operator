@@ -34,6 +34,19 @@ func HeadlessServiceForCluster(c *scyllav1.ScyllaCluster) *corev1.Service {
 	labels := naming.ClusterLabels(c)
 	labels[naming.ScyllaServiceTypeLabel] = string(naming.ScyllaServiceTypeIdentity)
 
+	ports := []corev1.ServicePort{
+		{
+			Name: "prometheus",
+			Port: 9180,
+		},
+		{
+			Name: "agent-prometheus",
+			Port: 5090,
+		},
+	}
+
+	ports = append(ports, backendPorts(c)...)
+
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      naming.HeadlessServiceNameForCluster(c),
@@ -47,16 +60,7 @@ func HeadlessServiceForCluster(c *scyllav1.ScyllaCluster) *corev1.Service {
 			ClusterIP: corev1.ClusterIPNone,
 			Type:      corev1.ServiceTypeClusterIP,
 			Selector:  naming.ClusterLabels(c),
-			Ports: []corev1.ServicePort{
-				{
-					Name: "prometheus",
-					Port: 9180,
-				},
-				{
-					Name: "agent-prometheus",
-					Port: 5090,
-				},
-			},
+			Ports:     ports,
 		},
 	}
 }
@@ -127,6 +131,23 @@ func memberServicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 			Port: 7199,
 		},
 		{
+			Name: "agent-api",
+			Port: 10001,
+		},
+		{
+			Name: "node-exporter",
+			Port: 9100,
+		},
+	}
+
+	ports = append(ports, backendPorts(cluster)...)
+
+	return ports
+}
+
+func backendPorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
+	ports := []corev1.ServicePort{
+		{
 			Name: "cql",
 			Port: 9042,
 		},
@@ -141,14 +162,6 @@ func memberServicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 		{
 			Name: "cql-ssl-shard-aware",
 			Port: 19142,
-		},
-		{
-			Name: "agent-api",
-			Port: 10001,
-		},
-		{
-			Name: "node-exporter",
-			Port: 9100,
 		},
 	}
 	if cluster.Spec.Alternator.Enabled() {

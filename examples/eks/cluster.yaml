@@ -26,6 +26,7 @@ spec:
     - name: a
       members: 1
       storage:
+        storageClassName: local-raid-disks
         capacity: 1800G
       resources:
         limits:
@@ -48,6 +49,7 @@ spec:
     - name: b
       members: 1
       storage:
+        storageClassName: local-raid-disks
         capacity: 1800G
       resources:
         limits:
@@ -70,6 +72,7 @@ spec:
     - name: c
       members: 1
       storage:
+        storageClassName: local-raid-disks
         capacity: 1800G
       resources:
         limits:

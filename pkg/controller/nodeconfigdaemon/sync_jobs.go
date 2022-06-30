@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"sort"
 
 	"github.com/c9s/goprocinfo/linux"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
@@ -99,6 +100,9 @@ func (ncdc *Controller) makePerftuneJobForContainers(ctx context.Context, podSpe
 		dataHostPaths = append(dataHostPaths, p)
 	}
 
+	// Sort paths to have stable representation for the same set host paths.
+	sort.Strings(dataHostPaths)
+
 	cr, err := ncdc.newOwningDSControllerRef()
 	if err != nil {
 		return nil, fmt.Errorf("can't get controller ref: %w", err)
@@ -112,6 +116,10 @@ func (ncdc *Controller) makePerftuneJobForContainers(ctx context.Context, podSpe
 	for _, iface := range ifaces {
 		ifaceNames = append(ifaceNames, iface.Name)
 	}
+
+	// Sort interface names to have stable representation for the same set of interfaces.
+	sort.Strings(ifaceNames)
+
 	klog.V(4).Info("Tuning network interfaces", "ifaces", ifaceNames)
 
 	return makePerftuneJobForContainers(
@@ -168,6 +176,9 @@ func (ncdc *Controller) makeJobForContainers(ctx context.Context) (*batchv1.Job,
 		klog.V(2).InfoS("No optimizable pod found on this node")
 		return nil, nil
 	}
+
+	// Sort container IDs to have stable representation for the same set of containers.
+	sort.Strings(scyllaContainerIDs)
 
 	selfPod, err := ncdc.selfPodLister.Pods(ncdc.namespace).Get(ncdc.podName)
 	if err != nil {

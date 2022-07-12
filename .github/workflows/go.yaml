@@ -121,7 +121,7 @@ jobs:
         set -x
         # Avoid podman permission error on Ubuntu 20.04 by using it as root, although it shouldn't be needed.
         # Use --format=docker to support SHELL instruction in the Dockerfile. (SHELL didn't make it to OCI spec.)
-        sudo podman build --format=docker --squash --network=none -f ./Dockerfile -t '${{ env.image_repo_ref }}:ci' .
+        sudo podman --cgroup-manager=cgroupfs build --format=docker --squash --network=none -f ./Dockerfile -t '${{ env.image_repo_ref }}:ci' .
         sudo podman images '${{ env.image_repo_ref }}:ci'
         sudo podman save '${{ env.image_repo_ref }}:ci' | lz4 - ~/operatorimage.tar.lz4
     - name: Upload image artifact

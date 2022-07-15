@@ -25,7 +25,7 @@ scylla:
     repository: docker.io/scylladb/scylla
     tag: 4.6.3
   agentImage:
-    tag: 2.6.3
+    tag: 3.0.0
     repository: docker.io/scylladb/scylla-manager-agent
   developerMode: true
   cpuset: true

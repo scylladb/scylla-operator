@@ -4,12 +4,12 @@ metadata:
   name: scylla-service-monitor
   namespace: scylla
 spec:
-  jobLabel: "app"
+  jobLabel: "app.kubernetes.io/name"
   targetLabels: ["scylla/cluster"]
   podTargetLabels: ["scylla/datacenter","scylla/rack"]
   selector:
     matchLabels:
-      app: scylla
+      app.kubernetes.io/name: scylla
   endpoints:
     - port: node-exporter
     - port: agent-prometheus

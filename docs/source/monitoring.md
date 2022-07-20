@@ -15,17 +15,25 @@ Customization can be done in `examples/common/monitoring/values.yaml`
    ```
 
 1. Add monitoring stack charts repository
+
    ```
    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
    helm repo update
    ```
+
 1. Install monitoring stack
-    ```
-    helm install monitoring prometheus-community/kube-prometheus-stack --values examples/common/monitoring/values.yaml --create-namespace --namespace scylla-monitoring
-    ```
-   If you want to tweak the prometheus properties, for example it's assigned memory,
+
+   ```
+   helm install monitoring prometheus-community/kube-prometheus-stack --create-namespace --namespace scylla-monitoring -f examples/common/monitoring/values.yaml -f <( cd scylla-monitoring/prometheus/prom_rules && find * -maxdepth 1 -type f -iregex '.*\.\(yaml\|yml\)' -print0 | xargs -0 yq ea '{(filename | sub("\/", "-")): .} | . as $item ireduce ({}; . * $item) | {"additionalPrometheusRulesMap": .}' )
+   ```
+
+   If you want to tweak the Prometheus properties, for example it's assigned memory,
    you can override it by adding a command line argument like this: `--set prometheus.resources.limits.memory=4Gi`
    or edit values file located at `examples/common/monitoring/values.yaml`.
+
+   The `yq` command prepares and formats custom Prometheus rules included in Scylla Monitoring and passes them as
+   additional values to `helm install` command.
+   It results in creating additional PrometheusRules: custom resources used to mount the rules into Prometheus.
 
 1. Install Service Monitors
 

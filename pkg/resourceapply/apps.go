@@ -165,3 +165,72 @@ func ApplyDaemonSet(
 	}
 	return actual, true, nil
 }
+
+// ApplyDeployment will apply the Deployment to match the required object.
+func ApplyDeployment(
+	ctx context.Context,
+	client appv1client.DeploymentsGetter,
+	lister appv1listers.DeploymentLister,
+	recorder record.EventRecorder,
+	required *appsv1.Deployment,
+) (*appsv1.Deployment, bool, error) {
+	requiredControllerRef := metav1.GetControllerOfNoCopy(required)
+	if requiredControllerRef == nil {
+		return nil, false, fmt.Errorf("deployment %q is missing controllerRef", naming.ObjRef(required))
+	}
+
+	requiredCopy := required.DeepCopy()
+	err := SetHashAnnotation(requiredCopy)
+	if err != nil {
+		return nil, false, err
+	}
+
+	existing, err := lister.Deployments(requiredCopy.Namespace).Get(requiredCopy.Name)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, false, err
+		}
+
+		resourcemerge.SanitizeObject(requiredCopy)
+		actual, err := client.Deployments(requiredCopy.Namespace).Create(ctx, requiredCopy, metav1.CreateOptions{})
+		if apierrors.IsAlreadyExists(err) {
+			klog.V(2).InfoS("Already exists (stale cache)", "Deployment", klog.KObj(requiredCopy))
+		} else {
+			ReportCreateEvent(recorder, requiredCopy, err)
+		}
+		return actual, true, err
+	}
+
+	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
+	if existingControllerRef == nil || existingControllerRef.UID != requiredControllerRef.UID {
+		err = fmt.Errorf("deployment %q isn't controlled by us", naming.ObjRef(requiredCopy))
+		ReportUpdateEvent(recorder, requiredCopy, err)
+		return nil, false, err
+	}
+
+	existingHash := existing.Annotations[naming.ManagedHash]
+	requiredHash := requiredCopy.Annotations[naming.ManagedHash]
+
+	// If they are the same do nothing.
+	if existingHash == requiredHash {
+		return existing, false, nil
+	}
+
+	resourcemerge.MergeMetadataInPlace(&requiredCopy.ObjectMeta, existing.ObjectMeta)
+
+	// Honor the required RV if it was already set.
+	// Required objects set RV in case their input is based on a previous version of itself.
+	if len(requiredCopy.ResourceVersion) == 0 {
+		requiredCopy.ResourceVersion = existing.ResourceVersion
+	}
+	actual, err := client.Deployments(requiredCopy.Namespace).Update(ctx, requiredCopy, metav1.UpdateOptions{})
+	if apierrors.IsConflict(err) {
+		klog.V(2).InfoS("Hit update conflict, will retry.", "Deployment", klog.KObj(requiredCopy))
+	} else {
+		ReportUpdateEvent(recorder, requiredCopy, err)
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("can't update deployment: %w", err)
+	}
+	return actual, true, nil
+}

@@ -2,6 +2,7 @@ package naming
 
 import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -80,4 +81,15 @@ func mergeLabels(l1, l2 map[string]string) map[string]string {
 		res[k] = v
 	}
 	return res
+}
+
+func ManagerLabels(sm *v1alpha1.ScyllaManager) map[string]string {
+	return map[string]string{
+		"app": AppName,
+
+		"app.kubernetes.io/name":       AppName,
+		"app.kubernetes.io/managed-by": ManagerOperatorAppName,
+
+		"scylla.scylla-manager/name": sm.Name,
+	}
 }

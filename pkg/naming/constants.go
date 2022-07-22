@@ -63,10 +63,11 @@ const (
 	ConfigMapTypeLabel           = "scylla-operator.scylladb.com/config-map-type"
 	OwnerUIDLabel                = "scylla-operator.scylladb.com/owner-uid"
 
-	AppName           = "scylla"
-	OperatorAppName   = "scylla-operator"
-	ManagerAppName    = "scylla-manager"
-	NodeConfigAppName = "scylla-node-config"
+	AppName                = "scylla"
+	OperatorAppName        = "scylla-operator"
+	ManagerOperatorAppName = "scylla-manager-operator"
+	ManagerAppName         = "scylla-manager"
+	NodeConfigAppName      = "scylla-node-config"
 
 	PrometheusScrapeAnnotation = "prometheus.io/scrape"
 	PrometheusPortAnnotation   = "prometheus.io/port"
@@ -97,6 +98,9 @@ const (
 	ScyllaConfigName             = "scylla.yaml"
 	ScyllaRackDCPropertiesName   = "cassandra-rackdc.properties"
 	ScyllaIOPropertiesName       = "io_properties.yaml"
+	ScyllaManagerConfigDirName   = "/mnt/scylla-manager-config/"
+	ScyllaManagerConfigName      = "scylla-manager-config.json"
+	ScyllaManagerSecretName      = "scylla-manager-secret.json"
 
 	DataDir = "/var/lib/scylla"
 
@@ -104,6 +108,13 @@ const (
 	LivenessProbePath  = "/healthz"
 	ProbePort          = 8080
 	ScyllaAPIPort      = 10000
+
+	ScyllaManagerReadinessProbePath = "/api/v1/clusters"
+	ScyllaManagerLivenessProbePath  = "/api/v1/version"
+	ScyllaManagerProbePort          = 5080
+	ScyllaManagerHttpPort           = 5080
+	ScyllaManagerHttpsPort          = 5443
+	ScyllaManagerMetricsPort        = 5090
 
 	OperatorEnvVarPrefix = "SCYLLA_OPERATOR_"
 )

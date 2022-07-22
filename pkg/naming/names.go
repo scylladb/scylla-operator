@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -202,4 +203,14 @@ func GetCQLProtocolSubDomain(domain string) string {
 
 func GetCQLHostIDSubDomain(hostID, domain string) string {
 	return fmt.Sprintf("%s.%s", hostID, GetCQLProtocolSubDomain(domain))
+
+}
+
+func ManagerAPIUrl(sm *v1alpha1.ScyllaManager) string {
+	// TODO: use https
+	return fmt.Sprintf("http://%s.%s.svc/api/v1", sm.Name, sm.Namespace)
+}
+
+func ManagerNamespaceAndName(sm *v1alpha1.ScyllaManager) string {
+	return fmt.Sprintf("%s/%s", sm.Namespace, sm.Name)
 }

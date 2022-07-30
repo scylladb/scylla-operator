@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   namespace: scylla-operator
-  name: scylla-operator-webhook
+  name: {{ include "scylla-operator.webhookServiceName" . }}
   labels:
     app.kubernetes.io/name: webhook-server
     app.kubernetes.io/instance: webhook-server

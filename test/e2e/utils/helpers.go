@@ -228,6 +228,10 @@ func WaitForSecretState(ctx context.Context, client corev1client.SecretInterface
 	return WaitForObjectState[*corev1.Secret, *corev1.SecretList](ctx, client, name, options, condition, additionalConditions...)
 }
 
+func WaitForManagerState(ctx context.Context, client scyllav1alpha1client.ScyllaV1alpha1Interface, namespace string, name string, options WaitForStateOptions, condition func(manager *scyllav1alpha1.ScyllaManager) (bool, error), additionalConditions ...func(manager *scyllav1alpha1.ScyllaManager) (bool, error)) (*scyllav1alpha1.ScyllaManager, error) {
+	return WaitForObjectState[*scyllav1alpha1.ScyllaManager, *scyllav1alpha1.ScyllaManagerList](ctx, client.ScyllaManagers(namespace), name, options, condition, additionalConditions...)
+}
+
 func RunEphemeralContainerAndWaitForCompletion(ctx context.Context, client corev1client.PodInterface, podName string, ec *corev1.EphemeralContainer) (*corev1.Pod, error) {
 	ephemeralPod := &corev1.Pod{
 		Spec: corev1.PodSpec{
@@ -495,4 +499,89 @@ func GetScyllaHostsAndWaitForFullQuorum(ctx context.Context, client corev1client
 	framework.Infof("ScyllaDB nodes have reached status consistency.")
 
 	return hosts, nil
+}
+
+func RolloutTimeoutForScyllaManager(sm *scyllav1alpha1.ScyllaManager) time.Duration {
+	return SyncTimeout + ConnectToScyllaManagerDatabaseTimeout(sm)
+}
+
+func ConnectToScyllaManagerDatabaseTimeout(_ *scyllav1alpha1.ScyllaManager) time.Duration {
+	return 80 * time.Second
+}
+
+func ContextForScyllaManagerRollout(parent context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(parent, 4*time.Minute)
+}
+
+func ContextForScyllaManagerTask(parent context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(parent, 5*time.Minute)
+}
+
+func IsScyllaManagerRolledOut(sm *scyllav1alpha1.ScyllaManager) (bool, error) {
+	// ObservedGeneration == nil will filter out the case when the object is initially created
+	// so no other optional (but required) field should be nil after this point.
+	if sm.Status.ObservedGeneration == nil || *sm.Status.ObservedGeneration < sm.Generation {
+		return false, nil
+	}
+
+	if !helpers.IsStatusConditionPresentAndTrue(sm.Status.Conditions, scyllav1alpha1.ScyllaManagerAvailable, sm.Generation) {
+		return false, nil
+	}
+
+	if !helpers.IsStatusConditionPresentAndFalse(sm.Status.Conditions, scyllav1alpha1.ScyllaManagerDegraded, sm.Generation) {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func IsRepairDone(sc *scyllav1.ScyllaCluster, task string) func(*scyllav1alpha1.ScyllaManager) (bool, error) {
+	return func(sm *scyllav1alpha1.ScyllaManager) (bool, error) {
+		for _, mc := range sm.Status.ManagedClusters {
+			if mc.Name == naming.ManagerClusterName(sc) && helpers.IsStatusConditionPresentAndTrue(mc.Conditions, scyllav1alpha1.ClusterRegistered, sc.Generation) {
+				for _, t := range mc.Repairs {
+					if t.Name == task && t.Status == scyllav1alpha1.TaskStatusDone {
+						return true, nil
+					}
+				}
+			}
+		}
+
+		return false, nil
+	}
+}
+
+func IsBackupDone(sc *scyllav1.ScyllaCluster, task string) func(*scyllav1alpha1.ScyllaManager) (bool, error) {
+	return func(sm *scyllav1alpha1.ScyllaManager) (bool, error) {
+		for _, mc := range sm.Status.ManagedClusters {
+			if mc.Name == naming.ManagerClusterName(sc) && helpers.IsStatusConditionPresentAndTrue(mc.Conditions, scyllav1alpha1.ClusterRegistered, sc.Generation) {
+				for _, t := range mc.Backups {
+					if t.Name == task && t.Status == scyllav1alpha1.TaskStatusDone {
+						return true, nil
+					}
+				}
+			}
+		}
+
+		return false, nil
+	}
+}
+
+func IsScyllaClusterRegisteredInManager(sc *scyllav1.ScyllaCluster) func(manager *scyllav1alpha1.ScyllaManager) (bool, error) {
+	return func(sm *scyllav1alpha1.ScyllaManager) (bool, error) {
+		for _, mc := range sm.Status.ManagedClusters {
+			if mc.Name == naming.ManagerClusterName(sc) {
+				return helpers.IsStatusConditionPresentAndTrue(mc.Conditions, scyllav1alpha1.ClusterRegistered, sc.Generation), nil
+			}
+		}
+
+		return false, nil
+	}
+}
+
+func IsScyllaClusterNotRegisteredInManager(sc *scyllav1.ScyllaCluster) func(manager *scyllav1alpha1.ScyllaManager) (bool, error) {
+	return func(sm *scyllav1alpha1.ScyllaManager) (bool, error) {
+		registered, err := IsScyllaClusterRegisteredInManager(sc)(sm)
+		return !registered, err
+	}
 }

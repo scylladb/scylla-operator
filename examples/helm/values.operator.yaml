@@ -1,9 +1,9 @@
 # Specify desired Scylla Operator image
 image:
-  tag: nightly
+  tag: latest
 
 # Change log level
-logLevel: info
+logLevel: 2
 
 # Resources allocated to Scylla Operator pods
 resources:

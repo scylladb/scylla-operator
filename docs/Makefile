@@ -9,70 +9,62 @@ SOURCEDIR     := source
 # Internal variables.
 PAPEROPT_a4     := -D latex_paper_size=a4
 PAPEROPT_letter := -D latex_paper_size=letter
-ALLSPHINXOPTS   := -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) $(SOURCEDIR)
+ALLSPHINXOPTS   := -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) $(SOURCEDIR) -W
 # the i18n builder cannot share the environment and doctrees with the others
 I18NSPHINXOPTS  := $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) $(SOURCEDIR)
 
 .PHONY: all
 all: dirhtml
 
-.PHONY: pristine
-pristine: clean
-	git clean -dfX
-
-.PHONY: setup
-setup:
-	./_utils/setup.sh
-
-.PHONY: clean
 clean:
-	rm -rf $(BUILDDIR)/*
+	rm -rf '$(BUILDDIR)'/*
+.PHONY: clean
 
-.PHONY: preview
-preview: setup
+preview:
 	$(POETRY) run sphinx-autobuild -b dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/dirhtml --port 5500
+.PHONY: preview
 
-.PHONY: dirhtml
-dirhtml: setup
+dirhtml:
 	$(SPHINXBUILD) -b dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/dirhtml
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/dirhtml."
+.PHONY: dirhtml
 
-.PHONY: singlehtml
-singlehtml: setup
+singlehtml:
 	$(SPHINXBUILD) -b singlehtml $(ALLSPHINXOPTS) $(BUILDDIR)/singlehtml
 	@echo
 	@echo "Build finished. The HTML page is in $(BUILDDIR)/singlehtml."
+.PHONY: singlehtml
 
-.PHONY: epub
-epub: setup
+epub:
 	$(SPHINXBUILD) -b epub $(ALLSPHINXOPTS) $(BUILDDIR)/epub
 	@echo
 	@echo "Build finished. The epub file is in $(BUILDDIR)/epub."
+.PHONY: epub
 
-.PHONY: epub3
-epub3:	setup
+epub3:
 	$(SPHINXBUILD) -b epub3 $(ALLSPHINXOPTS) $(BUILDDIR)/epub3
 	@echo
 	@echo "Build finished. The epub3 file is in $(BUILDDIR)/epub3."
+.PHONY: epub3
 
-.PHONY: dummy
-dummy: 	setup
+dummy:
 	$(SPHINXBUILD) -b dummy $(ALLSPHINXOPTS) $(BUILDDIR)/dummy
 	@echo
 	@echo "Build finished. Dummy builder generates no files."
+.PHONY: dummy
 
-.PHONY: linkcheck
-linkcheck: setup
+linkcheck:
 	$(SPHINXBUILD) -b linkcheck $(SOURCEDIR) $(BUILDDIR)/linkcheck
+.PHONY: linkcheck
 
-.PHONY: multiversion
-multiversion: setup
+multiversion:
 	@mkdir -p $(HOME)/.cache/pypoetry/virtualenvs
 	$(POETRY) run sphinx-multiversion $(SOURCEDIR) $(BUILDDIR)/dirhtml
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/dirhtml."
+.PHONY: multiversion
 
-.PHONY: multiversionpreview
-multiversionpreview: multiversion
+multiversionpreview:
 	$(POETRY) run python3 -m http.server 5500 --directory $(BUILDDIR)/dirhtml
+.PHONY: multiversionpreview

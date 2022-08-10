@@ -1,4 +1,4 @@
-### Maintenance mode
+# Maintenance mode
 
 When maintenance mode is enabled, readiness probe of Scylla Pod will always return failure and liveness probe will always succeed. This causes that Pod under maintenance
 is being removed from K8s Load Balancer and DNS registry but Pod itself stays alive.

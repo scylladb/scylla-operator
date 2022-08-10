@@ -1,4 +1,4 @@
-### Restore from backup
+# Restore from backup
 
 This procedure will describe how to restore from backup taken using [Scylla Manager](../manager.md) to a fresh **empty** cluster of any size.
 

@@ -1,4 +1,4 @@
-### Upgrading version of Scylla
+# Upgrading version of Scylla
 
 To upgrade Scylla version using Operator user have to modify existing ScyllaCluster definition.
 

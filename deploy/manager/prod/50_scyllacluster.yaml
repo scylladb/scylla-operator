@@ -10,6 +10,8 @@ spec:
   agentRepository: docker.io/scylladb/scylla-manager-agent
   developerMode: true
   cpuset: true
+  sysctls:
+    - fs.aio-max-nr=2097152
   datacenter:
     name: manager-dc
     racks:

@@ -29,6 +29,13 @@ Then make kubectl aware of this local installation like this:
 eval $(minikube docker-env)
 ```
 
+## Download Scylla Operator
+In this guide you will be using the examples and manifests from [Scylla Operator repository](https://github.com/scylladb/scylla-operator), so start off by cloning it to your local machine.
+```console
+git clone git@github.com:scylladb/scylla-operator.git
+cd scylla-operator
+```
+
 ## Deploy Cert Manager
 First deploy Cert Manager, you can either follow [upsteam instructions](https://cert-manager.io/docs/installation/kubernetes/) or use following command:
 

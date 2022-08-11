@@ -11,7 +11,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -241,7 +241,7 @@ func (sac *Controller) getRoleBindings(ctx context.Context, sc *scyllav1.ScyllaC
 	return cm.ClaimRoleBindings(roleBindings)
 }
 
-func (scc *Controller) getPDBs(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*policyv1beta1.PodDisruptionBudget, error) {
+func (scc *Controller) getPDBs(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*policyv1.PodDisruptionBudget, error) {
 	// List all Pdbs to find even those that no longer match our selector.
 	// They will be orphaned in ClaimPdbs().
 	pdbs, err := scc.pdbLister.PodDisruptionBudgets(sc.Namespace).List(labels.Everything())

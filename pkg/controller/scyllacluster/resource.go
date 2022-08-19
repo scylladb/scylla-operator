@@ -46,19 +46,6 @@ func IdentityService(c *scyllav1.ScyllaCluster) *corev1.Service {
 	labels := naming.ClusterLabels(c)
 	labels[naming.ScyllaServiceTypeLabel] = string(naming.ScyllaServiceTypeIdentity)
 
-	ports := []corev1.ServicePort{
-		{
-			Name: "prometheus",
-			Port: 9180,
-		},
-		{
-			Name: "agent-prometheus",
-			Port: 5090,
-		},
-	}
-
-	ports = append(ports, backendPorts(c)...)
-
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      naming.HeadlessServiceNameForCluster(c),
@@ -71,7 +58,7 @@ func IdentityService(c *scyllav1.ScyllaCluster) *corev1.Service {
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceTypeClusterIP,
 			Selector: naming.ClusterLabels(c),
-			Ports:    ports,
+			Ports:    servicePorts(c),
 		},
 	}
 }
@@ -121,13 +108,13 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 		Spec: corev1.ServiceSpec{
 			Type:                     corev1.ServiceTypeClusterIP,
 			Selector:                 naming.StatefulSetPodLabel(name),
-			Ports:                    memberServicePorts(sc),
+			Ports:                    servicePorts(sc),
 			PublishNotReadyAddresses: true,
 		},
 	}
 }
 
-func memberServicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
+func servicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 	ports := []corev1.ServicePort{
 		{
 			Name: "inter-node-communication",
@@ -146,18 +133,17 @@ func memberServicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 			Port: 10001,
 		},
 		{
+			Name: "prometheus",
+			Port: 9180,
+		},
+		{
+			Name: "agent-prometheus",
+			Port: 5090,
+		},
+		{
 			Name: "node-exporter",
 			Port: 9100,
 		},
-	}
-
-	ports = append(ports, backendPorts(cluster)...)
-
-	return ports
-}
-
-func backendPorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
-	ports := []corev1.ServicePort{
 		{
 			Name: portNameCQL,
 			Port: 9042,
@@ -175,6 +161,7 @@ func backendPorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 			Port: 19142,
 		},
 	}
+
 	if cluster.Spec.Alternator.Enabled() {
 		ports = append(ports, corev1.ServicePort{
 			Name: portNameAlternator,
@@ -186,6 +173,7 @@ func backendPorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 			Port: 9160,
 		})
 	}
+
 	return ports
 }
 

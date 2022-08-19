@@ -77,6 +77,14 @@ func TestMemberService(t *testing.T) {
 			Port: 10001,
 		},
 		{
+			Name: "prometheus",
+			Port: 9180,
+		},
+		{
+			Name: "agent-prometheus",
+			Port: 5090,
+		},
+		{
 			Name: "node-exporter",
 			Port: 9100,
 		},

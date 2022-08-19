@@ -2,6 +2,8 @@ package managerv2
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/aws/smithy-go/ptr"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
@@ -247,4 +249,92 @@ func MakeClusters(scyllaClusters []*scyllav1.ScyllaCluster, secretLister corev1l
 	}
 
 	return clusters, utilerrors.NewAggregate(errs)
+}
+
+func MakeRepairTasks(sm *v1alpha1.ScyllaManager, clusters []*managerclient.Cluster) ([]*managerclient.Task, error) {
+	makeTask := func(r v1alpha1.RepairTaskSpec, c *managerclient.Cluster) (*managerclient.Task, error) {
+		p := make(map[string]interface{})
+		p["failfast"] = r.FailFast
+		p["dc"] = r.DC
+		intensity, err := strconv.ParseFloat(r.Intensity, 64)
+		if err != nil {
+			return nil, err
+		}
+		p["intensity"] = intensity
+		p["parallel"] = r.Parallel
+		p["keyspace"] = r.Keyspace
+		p["smalltablethreshold"] = r.SmallTableThreshold
+		p["host"] = r.Host
+		var window []string
+		if r.TimeWindow != "" {
+			window = strings.Split(r.TimeWindow, ",")
+		}
+		return &managerclient.Task{
+			ClusterID:  c.ID,
+			Enabled:    !r.Disable,
+			Name:       r.Name,
+			Properties: p,
+			Schedule: &managerclient.Schedule{
+				Cron:       r.Cron,
+				NumRetries: *r.NumRetries,
+				Timezone:   r.Timezone,
+				Window:     window,
+			},
+			Type: naming.RepairTask,
+		}, nil
+	}
+
+	var errs []error
+	tasks := make([]*managerclient.Task, 0, len(clusters)*len(sm.Spec.Repairs))
+	for _, c := range clusters {
+		for _, t := range sm.Spec.Repairs {
+			task, err := makeTask(t, c)
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
+			tasks = append(tasks, task)
+		}
+	}
+
+	return tasks, utilerrors.NewAggregate(errs)
+}
+
+func MakeBackupTasks(sm *v1alpha1.ScyllaManager, clusters []*managerclient.Cluster) []*managerclient.Task {
+	makeTask := func(r v1alpha1.BackupTaskSpec, c *managerclient.Cluster) *managerclient.Task {
+		p := make(map[string]interface{})
+		p["dc"] = r.DC
+		p["keyspace"] = r.Keyspace
+		p["location"] = r.Location
+		p["ratelimit"] = r.RateLimit
+		p["retention"] = r.Retention
+		p["snapshotparallel"] = r.SnapshotParallel
+		p["uploadparallel"] = r.UploadParallel
+		var window []string
+		if r.TimeWindow != "" {
+			window = strings.Split(r.TimeWindow, ",")
+		}
+		return &managerclient.Task{
+			ClusterID:  c.ID,
+			Enabled:    !r.Disable,
+			Name:       r.Name,
+			Properties: p,
+			Schedule: &managerclient.Schedule{
+				Cron:       r.Cron,
+				NumRetries: *r.NumRetries,
+				Timezone:   r.Timezone,
+				Window:     window,
+			},
+			Type: naming.BackupTask,
+		}
+	}
+
+	tasks := make([]*managerclient.Task, 0, len(clusters)*len(sm.Spec.Backups))
+	for _, c := range clusters {
+		for _, t := range sm.Spec.Backups {
+			tasks = append(tasks, makeTask(t, c))
+		}
+	}
+
+	return tasks
 }

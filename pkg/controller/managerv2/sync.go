@@ -10,6 +10,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/managerclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/util/uuid"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
@@ -85,13 +86,23 @@ func (smc *Controller) sync(ctx context.Context, key string) error {
 		return err
 	}
 
-	status := smc.calculateStatus(sm, deploymentsMap, scyllaClusters, managedClusters)
+	managedRepairTasks, err := smc.getRepairTasks(ctx, client, managedClusters, managerReady)
+	if err != nil {
+		return err
+	}
+
+	managedBackupTasks, err := smc.getBackupTasks(ctx, client, managedClusters, managerReady)
+	if err != nil {
+		return err
+	}
+
+	var errs []error
+
+	status := smc.calculateStatus(sm, deploymentsMap, scyllaClusters, managedClusters, managedRepairTasks, managedBackupTasks)
 
 	if sm.DeletionTimestamp != nil {
 		return smc.updateStatus(ctx, sm, status)
 	}
-
-	var errs []error
 
 	err = smc.syncSecrets(ctx, sm, secretMap)
 	errs = append(errs, err)
@@ -108,7 +119,14 @@ func (smc *Controller) sync(ctx context.Context, key string) error {
 	err = smc.syncServices(ctx, sm, serviceMap)
 	errs = append(errs, err)
 
-	status, _, err = smc.syncClusters(ctx, client, managedClusters, scyllaClusters, status, managerReady)
+	var syncedClusters []*managerclient.Cluster
+	status, syncedClusters, err = smc.syncClusters(ctx, client, managedClusters, scyllaClusters, status, managerReady)
+	errs = append(errs, err)
+
+	status, err = smc.syncRepairTasks(ctx, status, sm, client, smc.reduceTasks(managedRepairTasks), syncedClusters, managerReady)
+	errs = append(errs, err)
+
+	status, err = smc.syncBackupTasks(ctx, status, sm, client, smc.reduceTasks(managedBackupTasks), syncedClusters, managerReady)
 	errs = append(errs, err)
 
 	err = smc.updateStatus(ctx, sm, status)
@@ -346,4 +364,131 @@ func (smc *Controller) isManagerReady(sm *v1alpha1.ScyllaManager, deployments ma
 	}
 
 	return false
+}
+
+func (smc *Controller) getTasks(
+	ctx context.Context,
+	client *managerclient.Client,
+	clusters []*managerclient.Cluster,
+	managerReady bool,
+	typ string,
+) ([]*managerclient.ExtendedTask, error) {
+	if !managerReady {
+		return nil, nil
+	}
+
+	tasks := make([]*managerclient.ExtendedTask, 0)
+	for _, cluster := range clusters {
+		l, err := client.ListTasks(ctx, cluster.ID, typ, true, "")
+		if err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, l.ExtendedTaskSlice...)
+	}
+
+	return tasks, nil
+
+}
+
+func (smc *Controller) getRepairTasks(
+	ctx context.Context,
+	client *managerclient.Client,
+	clusters []*managerclient.Cluster,
+	managerReady bool,
+) ([]*managerclient.ExtendedTask, error) {
+	return smc.getTasks(ctx, client, clusters, managerReady, naming.RepairTask)
+}
+
+func (smc *Controller) getBackupTasks(
+	ctx context.Context,
+	client *managerclient.Client,
+	clusters []*managerclient.Cluster,
+	managerReady bool,
+) ([]*managerclient.ExtendedTask, error) {
+	return smc.getTasks(ctx, client, clusters, managerReady, naming.BackupTask)
+}
+
+func (smc *Controller) reduceTasks(tasks []*managerclient.ExtendedTask) []*managerclient.Task {
+	res := make([]*managerclient.Task, 0, len(tasks))
+	for _, task := range tasks {
+		res = append(res, &managerclient.Task{
+			ID:         task.ID,
+			ClusterID:  task.ClusterID,
+			Name:       task.Name,
+			Properties: task.Properties,
+			Schedule:   task.Schedule,
+			Type:       task.Type,
+			Enabled:    task.Enabled,
+			Tags:       task.Tags,
+		})
+	}
+	return res
+}
+
+func (smc *Controller) pruneTasks(
+	ctx context.Context,
+	client *managerclient.Client,
+	tasks, requiredTasks []*managerclient.Task,
+) error {
+	var errs []error
+
+	for _, task := range tasks {
+		remove := true
+		for _, requiredTask := range requiredTasks {
+			if task.Name == requiredTask.Name && task.ClusterID == requiredTask.ClusterID && task.Type == requiredTask.Type {
+				remove = false
+			}
+		}
+
+		if remove {
+			err := client.DeleteTask(ctx, task.ClusterID, task.Type, uuid.MustParse(task.ID))
+			if err != nil {
+				errs = append(errs, fmt.Errorf("deleting task %v of type %v, clusterID %v, %v", task.Name, task.Type, task.ClusterID, err))
+			} else {
+				klog.V(2).InfoS("deleted task", "type", task.Type, "task", task.Name, "clusterID", task.ClusterID)
+			}
+		}
+	}
+
+	return utilerrors.NewAggregate(errs)
+}
+
+func (smc *Controller) scheduleNextStatusUpdate(sm *v1alpha1.ScyllaManager, tasks []*managerclient.ExtendedTask) error {
+	key, err := keyFunc(sm)
+	if err != nil {
+		return err
+	}
+
+	duration := time.Duration(0)
+	for _, task := range tasks {
+		d, ok := smc.nextTaskStatusUpdate(sm, task)
+		if ok {
+			if d < duration || duration == 0 {
+				duration = d
+			}
+		}
+	}
+
+	if duration > 0 {
+		smc.queue.AddAfter(key, duration)
+		klog.V(2).InfoS("Added key to refresh tasks statuses", "key", key, "duration[s]", duration.Seconds())
+	}
+	return nil
+}
+
+// TODO: What to do with suspended tasks?
+func (smc *Controller) nextTaskStatusUpdate(sm *v1alpha1.ScyllaManager, t *managerclient.ExtendedTask) (time.Duration, bool) {
+	if !t.Enabled {
+		return time.Duration(0), false
+	}
+
+	if t.NextActivation != nil {
+		return time.Time(*t.NextActivation).Sub(time.Now()), true
+	}
+
+	if v1alpha1.TaskStatusType(t.Status) != v1alpha1.TaskStatusDone {
+		return sm.Spec.TaskStatusRefreshTime, true
+	}
+
+	return time.Duration(0), false
 }

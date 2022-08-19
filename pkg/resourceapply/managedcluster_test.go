@@ -9,13 +9,13 @@ import (
 
 	"github.com/go-chi/render"
 	"github.com/google/go-cmp/cmp"
-	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
+	"github.com/scylladb/scylla-operator/pkg/managerclient"
 	"github.com/scylladb/scylla-operator/pkg/util/uuid"
 )
 
-func NewServerAndClient(t *testing.T, handler http.Handler) (*httptest.Server, *mermaidclient.Client) {
+func NewServerAndClient(t *testing.T, handler http.Handler) (*httptest.Server, *managerclient.Client) {
 	server := httptest.NewServer(handler)
-	client, err := mermaidclient.NewClient(fmt.Sprintf("http://%s", server.Listener.Addr().String()), &http.Transport{})
+	client, err := managerclient.NewClient(fmt.Sprintf("http://%s", server.Listener.Addr().String()), &http.Transport{})
 	if err != nil {
 		t.Fatalf("creating client failed: %v", err)
 	}
@@ -26,23 +26,23 @@ func TestApplyCluster(t *testing.T) {
 	t.Parallel()
 
 	testUUID := uuid.NewFromUint64(128, 153)
-	newCluster := func() *mermaidclient.Cluster {
-		return &mermaidclient.Cluster{
+	newCluster := func() *managerclient.Cluster {
+		return &managerclient.Cluster{
 			AuthToken: "token",
 			Host:      "host",
 			Name:      "cluster",
 		}
 	}
-	registeredCluster1 := func() *mermaidclient.Cluster {
-		return &mermaidclient.Cluster{
+	registeredCluster1 := func() *managerclient.Cluster {
+		return &managerclient.Cluster{
 			AuthToken: "token",
 			Host:      "host",
 			Name:      "cluster",
 			ID:        testUUID.String(),
 		}
 	}
-	registeredCluster2 := func() *mermaidclient.Cluster {
-		return &mermaidclient.Cluster{
+	registeredCluster2 := func() *managerclient.Cluster {
+		return &managerclient.Cluster{
 			AuthToken: "different-token",
 			Host:      "host",
 			Name:      "cluster",
@@ -51,12 +51,12 @@ func TestApplyCluster(t *testing.T) {
 	}
 	tt := []struct {
 		name            string
-		requiredCluster *mermaidclient.Cluster
-		clusters        []*mermaidclient.Cluster
+		requiredCluster *managerclient.Cluster
+		clusters        []*managerclient.Cluster
 		handler         http.Handler
 		expectedChange  bool
 		expectedError   error
-		expectedCluster *mermaidclient.Cluster
+		expectedCluster *managerclient.Cluster
 	}{
 		{
 			name:            "create cluster",
@@ -73,7 +73,7 @@ func TestApplyCluster(t *testing.T) {
 		{
 			name:            "updated cluster",
 			requiredCluster: newCluster(),
-			clusters:        []*mermaidclient.Cluster{registeredCluster2()},
+			clusters:        []*managerclient.Cluster{registeredCluster2()},
 			handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				render.Respond(w, r, registeredCluster1())
 			}),
@@ -84,7 +84,7 @@ func TestApplyCluster(t *testing.T) {
 		{
 			name:            "cluster will not change",
 			requiredCluster: newCluster(),
-			clusters:        []*mermaidclient.Cluster{registeredCluster1()},
+			clusters:        []*managerclient.Cluster{registeredCluster1()},
 			handler:         nil,
 			expectedChange:  false,
 			expectedError:   nil,

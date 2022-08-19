@@ -6,16 +6,16 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
+	"github.com/scylladb/scylla-operator/pkg/managerclient"
 	"k8s.io/klog/v2"
 )
 
 func ApplyCluster(
 	ctx context.Context,
-	client *mermaidclient.Client,
-	requiredCluster *mermaidclient.Cluster,
-	managedClusters []*mermaidclient.Cluster,
-) (*mermaidclient.Cluster, bool, error) {
+	client *managerclient.Client,
+	requiredCluster *managerclient.Cluster,
+	managedClusters []*managerclient.Cluster,
+) (*managerclient.Cluster, bool, error) {
 	for _, mc := range managedClusters {
 		if requiredCluster.Name == mc.Name {
 			// The Cluster is already registered in manager.
@@ -44,12 +44,12 @@ func ApplyCluster(
 }
 
 // diffClusters returns true when different.
-func diffClusters(c1, c2 *mermaidclient.Cluster) bool {
+func diffClusters(c1, c2 *managerclient.Cluster) bool {
 	// TODO: check what fields are missing in manager response and create issue about it.
 	// Ignore fields in comparison:
 	// ID - unknown at this point (clusters that have not yet been registered have no ID)
 	// Host - not set in responses from ScyllaManager
 	// Password - not set in responses from ScyllaManager
-	ignore := cmpopts.IgnoreFields(mermaidclient.Cluster{}, "ID", "Host", "Password")
+	ignore := cmpopts.IgnoreFields(managerclient.Cluster{}, "ID", "Host", "Password")
 	return cmp.Diff(c1, c2, ignore) != ""
 }

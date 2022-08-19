@@ -40,6 +40,8 @@ func (smc *Controller) calculateStatus(
 	deployments map[string]*v1.Deployment,
 	clusters []*scyllav1.ScyllaCluster,
 	syncedClusters []*managerclient.Cluster,
+	syncedRepairs []*managerclient.ExtendedTask,
+	syncedBackups []*managerclient.ExtendedTask,
 ) *v1alpha1.ScyllaManagerStatus {
 	status := sm.Status.DeepCopy()
 	status.ObservedGeneration = pointer.Int64(sm.Generation)
@@ -47,6 +49,9 @@ func (smc *Controller) calculateStatus(
 	status = smc.calculateManagerConditions(status, sm, deployments)
 	status = smc.calculateStatusDeployment(status, sm, deployments)
 	status = smc.calculateClustersStatuses(status, clusters, syncedClusters)
+
+	status = smc.calculateClustersRepairs(status, syncedRepairs, syncedClusters)
+	status = smc.calculateClustersBackups(status, syncedBackups, syncedClusters)
 
 	return status
 }
@@ -187,4 +192,58 @@ func (smc *Controller) calculateClustersStatuses(
 
 	status.ManagedClusters = managedClusters
 	return status
+}
+
+func (smc *Controller) calculateClustersRepairs(
+	status *v1alpha1.ScyllaManagerStatus,
+	tasks []*managerclient.ExtendedTask,
+	clusters []*managerclient.Cluster,
+) *v1alpha1.ScyllaManagerStatus {
+	for _, cluster := range clusters {
+		var repairs []*v1alpha1.TaskStatus
+		for _, task := range tasks {
+			if task.ClusterID == cluster.ID {
+				repairs = append(repairs, smc.calculateTaskStatus(task))
+			}
+		}
+
+		for _, mc := range status.ManagedClusters {
+			if mc.ID == cluster.ID {
+				mc.Repairs = repairs
+			}
+		}
+	}
+
+	return status
+}
+
+func (smc *Controller) calculateClustersBackups(
+	status *v1alpha1.ScyllaManagerStatus,
+	tasks []*managerclient.ExtendedTask,
+	clusters []*managerclient.Cluster,
+) *v1alpha1.ScyllaManagerStatus {
+	for _, cluster := range clusters {
+		var backups []*v1alpha1.TaskStatus
+		for _, task := range tasks {
+			if task.ClusterID == cluster.ID {
+				backups = append(backups, smc.calculateTaskStatus(task))
+			}
+		}
+
+		for _, mc := range status.ManagedClusters {
+			if mc.ID == cluster.ID {
+				mc.Backups = backups
+			}
+		}
+	}
+
+	return status
+}
+
+func (smc *Controller) calculateTaskStatus(task *managerclient.ExtendedTask) *v1alpha1.TaskStatus {
+	return &v1alpha1.TaskStatus{
+		ID:     task.ID,
+		Name:   task.Name,
+		Status: v1alpha1.TaskStatusType(task.Status),
+	}
 }

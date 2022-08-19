@@ -101,6 +101,8 @@ const (
 	ScyllaManagerConfigDirName   = "/mnt/scylla-manager-config/"
 	ScyllaManagerConfigName      = "scylla-manager-config.json"
 	ScyllaManagerSecretName      = "scylla-manager-secret.json"
+	RepairTask                   = "repair"
+	BackupTask                   = "backup"
 
 	DataDir = "/var/lib/scylla"
 

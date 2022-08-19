@@ -23,7 +23,7 @@ var serviceOrdinalRegex = regexp.MustCompile("^.*-([0-9]+)$")
 
 func (scc *Controller) makeServices(sc *scyllav1.ScyllaCluster, oldServices map[string]*corev1.Service) []*corev1.Service {
 	services := []*corev1.Service{
-		HeadlessServiceForCluster(sc),
+		IdentityService(sc),
 	}
 
 	for _, rack := range sc.Spec.Datacenter.Racks {

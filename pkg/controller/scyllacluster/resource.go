@@ -42,7 +42,7 @@ const (
 	portNameThrift           = "thrift"
 )
 
-func HeadlessServiceForCluster(c *scyllav1.ScyllaCluster) *corev1.Service {
+func IdentityService(c *scyllav1.ScyllaCluster) *corev1.Service {
 	labels := naming.ClusterLabels(c)
 	labels[naming.ScyllaServiceTypeLabel] = string(naming.ScyllaServiceTypeIdentity)
 
@@ -69,10 +69,9 @@ func HeadlessServiceForCluster(c *scyllav1.ScyllaCluster) *corev1.Service {
 			},
 		},
 		Spec: corev1.ServiceSpec{
-			ClusterIP: corev1.ClusterIPNone,
-			Type:      corev1.ServiceTypeClusterIP,
-			Selector:  naming.ClusterLabels(c),
-			Ports:     ports,
+			Type:     corev1.ServiceTypeClusterIP,
+			Selector: naming.ClusterLabels(c),
+			Ports:    ports,
 		},
 	}
 }

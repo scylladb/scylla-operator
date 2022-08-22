@@ -10,6 +10,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -72,6 +73,22 @@ func TestMemberService(t *testing.T) {
 			Port: 7199,
 		},
 		{
+			Name: "agent-api",
+			Port: 10001,
+		},
+		{
+			Name: "prometheus",
+			Port: 9180,
+		},
+		{
+			Name: "agent-prometheus",
+			Port: 5090,
+		},
+		{
+			Name: "node-exporter",
+			Port: 9100,
+		},
+		{
 			Name: "cql",
 			Port: 9042,
 		},
@@ -88,14 +105,6 @@ func TestMemberService(t *testing.T) {
 			Port: 19142,
 		},
 		{
-			Name: "agent-api",
-			Port: 10001,
-		},
-		{
-			Name: "node-exporter",
-			Port: 9100,
-		},
-		{
 			Name: "thrift",
 			Port: 9160,
 		},
@@ -103,7 +112,7 @@ func TestMemberService(t *testing.T) {
 
 	tt := []struct {
 		name            string
-		scyllaCLuster   *scyllav1.ScyllaCluster
+		scyllaCluster   *scyllav1.ScyllaCluster
 		rackName        string
 		svcName         string
 		oldService      *corev1.Service
@@ -111,7 +120,7 @@ func TestMemberService(t *testing.T) {
 	}{
 		{
 			name:          "new service",
-			scyllaCLuster: basicSC,
+			scyllaCluster: basicSC,
 			rackName:      basicRackName,
 			svcName:       basicSVCName,
 			oldService:    nil,
@@ -131,7 +140,7 @@ func TestMemberService(t *testing.T) {
 		},
 		{
 			name: "new service with saved IP",
-			scyllaCLuster: func() *scyllav1.ScyllaCluster {
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
 				sc := basicSC.DeepCopy()
 				sc.Status.Racks[basicRackName] = scyllav1.RackStatus{
 					ReplaceAddressFirstBoot: map[string]string{
@@ -163,7 +172,7 @@ func TestMemberService(t *testing.T) {
 		},
 		{
 			name: "new service with saved IP and existing replace address",
-			scyllaCLuster: func() *scyllav1.ScyllaCluster {
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
 				sc := basicSC.DeepCopy()
 				sc.Status.Racks[basicRackName] = scyllav1.RackStatus{
 					ReplaceAddressFirstBoot: map[string]string{
@@ -201,7 +210,7 @@ func TestMemberService(t *testing.T) {
 		},
 		{
 			name:          "new service with unsaved IP and existing replace address",
-			scyllaCLuster: basicSC,
+			scyllaCluster: basicSC,
 			rackName:      basicRackName,
 			svcName:       basicSVCName,
 			oldService: &corev1.Service{
@@ -231,7 +240,7 @@ func TestMemberService(t *testing.T) {
 		},
 		{
 			name:          "existing initial service",
-			scyllaCLuster: basicSC,
+			scyllaCluster: basicSC,
 			rackName:      basicRackName,
 			svcName:       basicSVCName,
 			oldService: &corev1.Service{
@@ -261,7 +270,7 @@ func TestMemberService(t *testing.T) {
 		},
 		{
 			name: "existing initial service with IP",
-			scyllaCLuster: func() *scyllav1.ScyllaCluster {
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
 				sc := basicSC.DeepCopy()
 				sc.Status.Racks[basicRackName] = scyllav1.RackStatus{
 					ReplaceAddressFirstBoot: map[string]string{
@@ -299,7 +308,7 @@ func TestMemberService(t *testing.T) {
 		},
 		{
 			name:          "existing service",
-			scyllaCLuster: basicSC,
+			scyllaCluster: basicSC,
 			rackName:      basicRackName,
 			svcName:       basicSVCName,
 			oldService: &corev1.Service{
@@ -325,7 +334,7 @@ func TestMemberService(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			got := MemberService(tc.scyllaCLuster, tc.rackName, tc.svcName, tc.oldService)
+			got := MemberService(tc.scyllaCluster, tc.rackName, tc.svcName, tc.oldService)
 
 			if !apiequality.Semantic.DeepEqual(got, tc.expectedService) {
 				t.Errorf("expected and actual services differ: %s", cmp.Diff(tc.expectedService, got))
@@ -921,6 +930,418 @@ func TestStatefulSetForRack(t *testing.T) {
 			if !apiequality.Semantic.DeepEqual(got, tc.expectedStatefulSet) {
 				t.Errorf("expected and actual StatefulSets differ: %s",
 					cmp.Diff(tc.expectedStatefulSet, got))
+			}
+		})
+	}
+}
+
+func TestMakeIngresses(t *testing.T) {
+	basicScyllaCluster := &scyllav1.ScyllaCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "basic",
+			UID:  "the-uid",
+		},
+		Spec: scyllav1.ScyllaClusterSpec{
+			Datacenter: scyllav1.DatacenterSpec{
+				Name: "dc",
+				Racks: []scyllav1.RackSpec{
+					{
+						Name: "rack",
+						Storage: scyllav1.StorageSpec{
+							Capacity: "1Gi",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	newIdentityService := func(name string) *corev1.Service {
+		return &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name,
+				Labels: map[string]string{
+					naming.ScyllaServiceTypeLabel: string(naming.ScyllaServiceTypeIdentity),
+				},
+			},
+		}
+	}
+
+	newMemberService := func(name, hostID string) *corev1.Service {
+		return &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name,
+				Annotations: map[string]string{
+					"internal.scylla-operator.scylladb.com/host-id": hostID,
+				},
+				Labels: map[string]string{
+					"scylla-operator.scylladb.com/scylla-service-type": "member",
+				},
+			},
+		}
+	}
+
+	pathTypePrefix := networkingv1.PathTypePrefix
+
+	tt := []struct {
+		name              string
+		cluster           *scyllav1.ScyllaCluster
+		services          map[string]*corev1.Service
+		expectedIngresses []*networkingv1.Ingress
+	}{
+		{
+			name:              "no ingresses when cluster isn't exposed",
+			cluster:           basicScyllaCluster,
+			services:          map[string]*corev1.Service{},
+			expectedIngresses: nil,
+		},
+		{
+			name: "no ingresses when ingresses are explicitly disabled",
+			cluster: func() *scyllav1.ScyllaCluster {
+				cluster := basicScyllaCluster.DeepCopy()
+				cluster.Spec.DNSDomains = []string{"public.scylladb.com", "private.scylladb.com"}
+				cluster.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					CQL: &scyllav1.CQLExposeOptions{
+						Ingress: &scyllav1.IngressOptions{
+							Disabled:         pointer.Bool(true),
+							IngressClassName: "cql-ingress-class",
+							Annotations: map[string]string{
+								"my-cql-custom-annotation": "my-cql-custom-annotation-value",
+							},
+						},
+					},
+				}
+
+				return cluster
+			}(),
+			services:          map[string]*corev1.Service{},
+			expectedIngresses: nil,
+		},
+		{
+			name: "ingress objects are generated for every domain",
+			services: map[string]*corev1.Service{
+				"any":    newIdentityService("any"),
+				"node-1": newMemberService("node-1", "host-id-1"),
+				"node-2": newMemberService("node-2", "host-id-2"),
+				"node-3": newMemberService("node-3", "host-id-3"),
+			},
+			cluster: func() *scyllav1.ScyllaCluster {
+				cluster := basicScyllaCluster.DeepCopy()
+				cluster.Spec.DNSDomains = []string{"public.scylladb.com", "private.scylladb.com"}
+				cluster.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					CQL: &scyllav1.CQLExposeOptions{
+						Ingress: &scyllav1.IngressOptions{
+							IngressClassName: "cql-ingress-class",
+							Annotations: map[string]string{
+								"my-cql-custom-annotation": "my-cql-custom-annotation-value",
+							},
+						},
+					},
+				}
+
+				return cluster
+			}(),
+			expectedIngresses: []*networkingv1.Ingress{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "any-cql",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/name":       "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"scylla/cluster":               "basic",
+							"scylla-operator.scylladb.com/scylla-ingress-type": "AnyNode",
+						},
+						Annotations: map[string]string{
+							"my-cql-custom-annotation": "my-cql-custom-annotation-value",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1",
+								Kind:               "ScyllaCluster",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.BoolPtr(true),
+								BlockOwnerDeletion: pointer.BoolPtr(true),
+							},
+						},
+					},
+					Spec: networkingv1.IngressSpec{
+						IngressClassName: pointer.String("cql-ingress-class"),
+						Rules: []networkingv1.IngressRule{
+							{
+								Host: "any.cql.public.scylladb.com",
+								IngressRuleValue: networkingv1.IngressRuleValue{
+									HTTP: &networkingv1.HTTPIngressRuleValue{
+										Paths: []networkingv1.HTTPIngressPath{
+											{
+												Path:     "/",
+												PathType: &pathTypePrefix,
+												Backend: networkingv1.IngressBackend{
+													Service: &networkingv1.IngressServiceBackend{
+														Name: "any",
+														Port: networkingv1.ServiceBackendPort{
+															Name: "cql-ssl",
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							{
+								Host: "any.cql.private.scylladb.com",
+								IngressRuleValue: networkingv1.IngressRuleValue{
+									HTTP: &networkingv1.HTTPIngressRuleValue{
+										Paths: []networkingv1.HTTPIngressPath{
+											{
+												Path:     "/",
+												PathType: &pathTypePrefix,
+												Backend: networkingv1.IngressBackend{
+													Service: &networkingv1.IngressServiceBackend{
+														Name: "any",
+														Port: networkingv1.ServiceBackendPort{
+															Name: "cql-ssl",
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-1-cql",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/name":       "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"scylla/cluster":               "basic",
+							"scylla-operator.scylladb.com/scylla-ingress-type": "Node",
+						},
+						Annotations: map[string]string{
+							"my-cql-custom-annotation": "my-cql-custom-annotation-value",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1",
+								Kind:               "ScyllaCluster",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.BoolPtr(true),
+								BlockOwnerDeletion: pointer.BoolPtr(true),
+							},
+						},
+					},
+					Spec: networkingv1.IngressSpec{
+						IngressClassName: pointer.String("cql-ingress-class"),
+						Rules: []networkingv1.IngressRule{
+							{
+								Host: "host-id-1.cql.public.scylladb.com",
+								IngressRuleValue: networkingv1.IngressRuleValue{
+									HTTP: &networkingv1.HTTPIngressRuleValue{
+										Paths: []networkingv1.HTTPIngressPath{
+											{
+												Path:     "/",
+												PathType: &pathTypePrefix,
+												Backend: networkingv1.IngressBackend{
+													Service: &networkingv1.IngressServiceBackend{
+														Name: "node-1",
+														Port: networkingv1.ServiceBackendPort{
+															Name: "cql-ssl",
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							{
+								Host: "host-id-1.cql.private.scylladb.com",
+								IngressRuleValue: networkingv1.IngressRuleValue{
+									HTTP: &networkingv1.HTTPIngressRuleValue{
+										Paths: []networkingv1.HTTPIngressPath{
+											{
+												Path:     "/",
+												PathType: &pathTypePrefix,
+												Backend: networkingv1.IngressBackend{
+													Service: &networkingv1.IngressServiceBackend{
+														Name: "node-1",
+														Port: networkingv1.ServiceBackendPort{
+															Name: "cql-ssl",
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-2-cql",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/name":       "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"scylla/cluster":               "basic",
+							"scylla-operator.scylladb.com/scylla-ingress-type": "Node",
+						},
+						Annotations: map[string]string{
+							"my-cql-custom-annotation": "my-cql-custom-annotation-value",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1",
+								Kind:               "ScyllaCluster",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.BoolPtr(true),
+								BlockOwnerDeletion: pointer.BoolPtr(true),
+							},
+						},
+					},
+					Spec: networkingv1.IngressSpec{
+						IngressClassName: pointer.String("cql-ingress-class"),
+						Rules: []networkingv1.IngressRule{
+							{
+								Host: "host-id-2.cql.public.scylladb.com",
+								IngressRuleValue: networkingv1.IngressRuleValue{
+									HTTP: &networkingv1.HTTPIngressRuleValue{
+										Paths: []networkingv1.HTTPIngressPath{
+											{
+												Path:     "/",
+												PathType: &pathTypePrefix,
+												Backend: networkingv1.IngressBackend{
+													Service: &networkingv1.IngressServiceBackend{
+														Name: "node-2",
+														Port: networkingv1.ServiceBackendPort{
+															Name: "cql-ssl",
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							{
+								Host: "host-id-2.cql.private.scylladb.com",
+								IngressRuleValue: networkingv1.IngressRuleValue{
+									HTTP: &networkingv1.HTTPIngressRuleValue{
+										Paths: []networkingv1.HTTPIngressPath{
+											{
+												Path:     "/",
+												PathType: &pathTypePrefix,
+												Backend: networkingv1.IngressBackend{
+													Service: &networkingv1.IngressServiceBackend{
+														Name: "node-2",
+														Port: networkingv1.ServiceBackendPort{
+															Name: "cql-ssl",
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-3-cql",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/name":       "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"scylla/cluster":               "basic",
+							"scylla-operator.scylladb.com/scylla-ingress-type": "Node",
+						},
+						Annotations: map[string]string{
+							"my-cql-custom-annotation": "my-cql-custom-annotation-value",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1",
+								Kind:               "ScyllaCluster",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.BoolPtr(true),
+								BlockOwnerDeletion: pointer.BoolPtr(true),
+							},
+						},
+					},
+					Spec: networkingv1.IngressSpec{
+						IngressClassName: pointer.String("cql-ingress-class"),
+						Rules: []networkingv1.IngressRule{
+							{
+								Host: "host-id-3.cql.public.scylladb.com",
+								IngressRuleValue: networkingv1.IngressRuleValue{
+									HTTP: &networkingv1.HTTPIngressRuleValue{
+										Paths: []networkingv1.HTTPIngressPath{
+											{
+												Path:     "/",
+												PathType: &pathTypePrefix,
+												Backend: networkingv1.IngressBackend{
+													Service: &networkingv1.IngressServiceBackend{
+														Name: "node-3",
+														Port: networkingv1.ServiceBackendPort{
+															Name: "cql-ssl",
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							{
+								Host: "host-id-3.cql.private.scylladb.com",
+								IngressRuleValue: networkingv1.IngressRuleValue{
+									HTTP: &networkingv1.HTTPIngressRuleValue{
+										Paths: []networkingv1.HTTPIngressPath{
+											{
+												Path:     "/",
+												PathType: &pathTypePrefix,
+												Backend: networkingv1.IngressBackend{
+													Service: &networkingv1.IngressServiceBackend{
+														Name: "node-3",
+														Port: networkingv1.ServiceBackendPort{
+															Name: "cql-ssl",
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for i := range tt {
+		tc := tt[i]
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := MakeIngresses(tc.cluster, tc.services)
+			if !apiequality.Semantic.DeepEqual(got, tc.expectedIngresses) {
+				t.Errorf("expected and actual Ingresses differ: %s", cmp.Diff(tc.expectedIngresses, got))
 			}
 		})
 	}

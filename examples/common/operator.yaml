@@ -264,6 +264,18 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 
 ---
 apiVersion: v1
@@ -1930,6 +1942,34 @@ spec:
                 developerMode:
                   description: developerMode determines if the cluster runs in developer-mode.
                   type: boolean
+                dnsDomains:
+                  description: dnsDomains is a list of DNS domains this cluster is reachable by. These domains are used when setting up the infrastructure, like certificates. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+                  items:
+                    type: string
+                  type: array
+                exposeOptions:
+                  description: exposeOptions specifies options for exposing ScyllaCluster services. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+                  properties:
+                    cql:
+                      description: cql specifies expose options for CQL SSL backend. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+                      properties:
+                        ingress:
+                          description: ingress is an Ingress configuration options. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+                          properties:
+                            annotations:
+                              additionalProperties:
+                                type: string
+                              description: annotations specifies custom annotations merged into every Ingress object. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+                              type: object
+                            disabled:
+                              description: disabled controls if Ingress object creation is disabled. Unless disabled, there is an Ingress objects created for every Scylla node. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+                              type: boolean
+                            ingressClassName:
+                              description: ingressClassName specifies Ingress class name. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+                              type: string
+                          type: object
+                      type: object
+                  type: object
                 forceRedeploymentReason:
                   description: forceRedeploymentReason can be used to force a rolling update of all racks by providing a unique string.
                   type: string

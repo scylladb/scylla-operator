@@ -23,41 +23,25 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 	}
 
-	sameName := validCluster.DeepCopy()
-	sameName.Spec.Datacenter.Racks = append(sameName.Spec.Datacenter.Racks, sameName.Spec.Datacenter.Racks[0])
-
-	invalidIntensity := validCluster.DeepCopy()
-	invalidIntensity.Spec.Repairs = append(invalidIntensity.Spec.Repairs, v1.RepairTaskSpec{
-		Intensity: "100Mib",
-	})
-
-	nonUniqueManagerTaskNames := validCluster.DeepCopy()
-	nonUniqueManagerTaskNames.Spec.Backups = append(nonUniqueManagerTaskNames.Spec.Backups, v1.BackupTaskSpec{
-		SchedulerTaskSpec: v1.SchedulerTaskSpec{
-			Name: "task-name",
-		},
-	})
-	nonUniqueManagerTaskNames.Spec.Repairs = append(nonUniqueManagerTaskNames.Spec.Repairs, v1.RepairTaskSpec{
-		SchedulerTaskSpec: v1.SchedulerTaskSpec{
-			Name: "task-name",
-		},
-	})
-
 	tests := []struct {
 		name                string
-		obj                 *v1.ScyllaCluster
+		cluster             *v1.ScyllaCluster
 		expectedErrorList   field.ErrorList
 		expectedErrorString string
 	}{
 		{
 			name:                "valid",
-			obj:                 validCluster,
+			cluster:             validCluster.DeepCopy(),
 			expectedErrorList:   field.ErrorList{},
 			expectedErrorString: "",
 		},
 		{
 			name: "two racks with same name",
-			obj:  sameName,
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Datacenter.Racks = append(cluster.Spec.Datacenter.Racks, *cluster.Spec.Datacenter.Racks[0].DeepCopy())
+				return cluster
+			}(),
 			expectedErrorList: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeDuplicate, Field: "spec.datacenter.racks[1].name", BadValue: "test-rack"},
 			},
@@ -65,7 +49,13 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "invalid intensity in repair task spec",
-			obj:  invalidIntensity,
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
+					Intensity: "100Mib",
+				})
+				return cluster
+			}(),
 			expectedErrorList: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.repairs[0].intensity", BadValue: "100Mib", Detail: "invalid intensity, it must be a float value"},
 			},
@@ -73,18 +63,61 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "invalid intensity in repair task spec && non-unique names in manager tasks spec",
-			obj:  nonUniqueManagerTaskNames,
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name: "task-name",
+					},
+				})
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name: "task-name",
+					},
+				})
+				return cluster
+			}(),
 			expectedErrorList: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.repairs[0].intensity", BadValue: "", Detail: "invalid intensity, it must be a float value"},
 				&field.Error{Type: field.ErrorTypeDuplicate, Field: "spec.backups[0].name", BadValue: "task-name"},
 			},
 			expectedErrorString: `[spec.repairs[0].intensity: Invalid value: "": invalid intensity, it must be a float value, spec.backups[0].name: Duplicate value: "task-name"]`,
 		},
+		{
+			name: "when CQL ingress is provided, domains must not be empty",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.ExposeOptions = &v1.ExposeOptions{
+					CQL: &v1.CQLExposeOptions{
+						Ingress: &v1.IngressOptions{},
+					},
+				}
+
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeRequired, Field: "spec.dnsDomains", BadValue: "", Detail: "at least one domain needs to be provided when exposing CQL via ingresses"},
+			},
+			expectedErrorString: `spec.dnsDomains: Required value: at least one domain needs to be provided when exposing CQL via ingresses`,
+		},
+		{
+			name: "invalid domain",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.DNSDomains = []string{"-hello"}
+
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.dnsDomains[0]", BadValue: "-hello", Detail: `a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')`},
+			},
+			expectedErrorString: `spec.dnsDomains[0]: Invalid value: "-hello": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')`,
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			errList := validation.ValidateScyllaCluster(test.obj)
+			errList := validation.ValidateScyllaCluster(test.cluster)
 			if !reflect.DeepEqual(errList, test.expectedErrorList) {
 				t.Errorf("expected and actual error lists differ: %s", cmp.Diff(test.expectedErrorList, errList))
 			}

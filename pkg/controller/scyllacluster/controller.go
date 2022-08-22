@@ -14,6 +14,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -24,12 +25,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	appsv1informers "k8s.io/client-go/informers/apps/v1"
 	corev1informers "k8s.io/client-go/informers/core/v1"
+	networkingv1informers "k8s.io/client-go/informers/networking/v1"
 	policyv1beta1informers "k8s.io/client-go/informers/policy/v1beta1"
 	rbacv1informers "k8s.io/client-go/informers/rbac/v1"
 	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
+	networkingv1listers "k8s.io/client-go/listers/networking/v1"
 	policyv1beta1listers "k8s.io/client-go/listers/policy/v1beta1"
 	rbacv1listers "k8s.io/client-go/listers/rbac/v1"
 	"k8s.io/client-go/tools/cache"
@@ -67,6 +70,7 @@ type Controller struct {
 	roleBindingLister    rbacv1listers.RoleBindingLister
 	statefulSetLister    appsv1listers.StatefulSetLister
 	pdbLister            policyv1beta1listers.PodDisruptionBudgetLister
+	ingressLister        networkingv1listers.IngressLister
 	scyllaLister         scyllav1listers.ScyllaClusterLister
 
 	cachesToSync []cache.InformerSynced
@@ -86,6 +90,7 @@ func NewController(
 	roleBindingInformer rbacv1informers.RoleBindingInformer,
 	statefulSetInformer appsv1informers.StatefulSetInformer,
 	pdbInformer policyv1beta1informers.PodDisruptionBudgetInformer,
+	ingressInformer networkingv1informers.IngressInformer,
 	scyllaClusterInformer scyllav1informers.ScyllaClusterInformer,
 	operatorImage string,
 ) (*Controller, error) {
@@ -116,6 +121,7 @@ func NewController(
 		roleBindingLister:    roleBindingInformer.Lister(),
 		statefulSetLister:    statefulSetInformer.Lister(),
 		pdbLister:            pdbInformer.Lister(),
+		ingressLister:        ingressInformer.Lister(),
 		scyllaLister:         scyllaClusterInformer.Lister(),
 
 		cachesToSync: []cache.InformerSynced{
@@ -126,6 +132,7 @@ func NewController(
 			roleBindingInformer.Informer().HasSynced,
 			statefulSetInformer.Informer().HasSynced,
 			pdbInformer.Informer().HasSynced,
+			ingressInformer.Informer().HasSynced,
 			scyllaClusterInformer.Informer().HasSynced,
 		},
 
@@ -175,6 +182,12 @@ func NewController(
 		AddFunc:    scc.addPodDisruptionBudget,
 		UpdateFunc: scc.updatePodDisruptionBudget,
 		DeleteFunc: scc.deletePodDisruptionBudget,
+	})
+
+	ingressInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    scc.addIngress,
+		UpdateFunc: scc.updateIngress,
+		DeleteFunc: scc.deleteIngress,
 	})
 
 	scyllaClusterInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -667,6 +680,50 @@ func (scc *Controller) deletePodDisruptionBudget(obj interface{}) {
 	}
 	klog.V(4).InfoS("Observed deletion of PodDisruptionBudget", "PodDisruptionBudget", klog.KObj(pdb))
 	scc.enqueueOwner(pdb)
+}
+
+func (scc *Controller) addIngress(obj interface{}) {
+	ingress := obj.(*networkingv1.Ingress)
+	klog.V(4).InfoS("Observed addition of Ingress", "Ingress", klog.KObj(ingress))
+	scc.enqueueOwner(ingress)
+}
+
+func (scc *Controller) updateIngress(old, cur interface{}) {
+	oldIngress := old.(*networkingv1.Ingress)
+	currentIngress := cur.(*networkingv1.Ingress)
+
+	if currentIngress.UID != oldIngress.UID {
+		key, err := keyFunc(oldIngress)
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldIngress, err))
+			return
+		}
+		scc.deleteIngress(cache.DeletedFinalStateUnknown{
+			Key: key,
+			Obj: oldIngress,
+		})
+	}
+
+	klog.V(4).InfoS("Observed update of Ingress", "Ingress", klog.KObj(oldIngress))
+	scc.enqueueOwner(currentIngress)
+}
+
+func (scc *Controller) deleteIngress(obj interface{}) {
+	ingress, ok := obj.(*networkingv1.Ingress)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
+			return
+		}
+		ingress, ok = tombstone.Obj.(*networkingv1.Ingress)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a Ingress %#v", obj))
+			return
+		}
+	}
+	klog.V(4).InfoS("Observed deletion of Ingress", "Ingress", klog.KObj(ingress))
+	scc.enqueueOwner(ingress)
 }
 
 func (scc *Controller) addScyllaCluster(obj interface{}) {

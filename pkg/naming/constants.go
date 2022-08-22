@@ -40,6 +40,15 @@ const (
 	ScyllaServiceTypeMember   ScyllaServiceType = "member"
 )
 
+type ScyllaIngressType string
+
+const (
+	ScyllaIngressTypeNode    ScyllaIngressType = "Node"
+	ScyllaIngressTypeAnyNode ScyllaIngressType = "AnyNode"
+
+	ScyllaIngressSubdomainAny = "any"
+)
+
 // Generic Labels used on objects created by the operator.
 const (
 	ClusterNameLabel             = "scylla/cluster"
@@ -47,6 +56,7 @@ const (
 	RackNameLabel                = "scylla/rack"
 	ScyllaVersionLabel           = "scylla/scylla-version"
 	ScyllaServiceTypeLabel       = "scylla-operator.scylladb.com/scylla-service-type"
+	ScyllaIngressTypeLabel       = "scylla-operator.scylladb.com/scylla-ingress-type"
 	ManagedHash                  = "scylla-operator.scylladb.com/managed-hash"
 	NodeConfigJobForNodeUIDLabel = "scylla-operator.scylladb.com/node-config-job-for-node-uid"
 	NodeConfigJobTypeLabel       = "scylla-operator.scylladb.com/node-config-job-type"

@@ -15,6 +15,8 @@ metadata:
   name: simple-cluster
   namespace: scylla
 spec:
+  sysctls:
+    - "fs.aio-max-nr=2097152"
   version: 4.6.3
   agentVersion: 3.0.0
   developerMode: true
@@ -24,9 +26,9 @@ spec:
       - name: us-east-1a
         scyllaConfig: "scylla-config"
         scyllaAgentConfig: "scylla-agent-config"
-        members: 3
+        members: 1
         storage:
-          capacity: 5Gi
+          capacity: 1Gi
         resources:
           requests:
             cpu: 1

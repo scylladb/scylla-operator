@@ -264,6 +264,7 @@ func (c *Controller) getHostID(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("can't create a new ScyllaClient for localhost: %w", err)
 	}
+	defer scyllaClient.Close()
 
 	v, err = scyllaClient.GetLocalHostId(ctx, localhost, false)
 	if err != nil {

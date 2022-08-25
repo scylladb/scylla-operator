@@ -119,6 +119,8 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 	// TODO: Use scylla client to check at least "UN"
 	scyllaClient, hosts, err := utils.GetScyllaClient(ctx, kubeClient.CoreV1(), sc)
 	o.Expect(err).NotTo(o.HaveOccurred())
+	defer scyllaClient.Close()
+
 	o.Expect(hosts).To(o.HaveLen(memberCount))
 
 	status, err := scyllaClient.Status(ctx, "")

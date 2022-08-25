@@ -169,6 +169,7 @@ func getScyllaClientStatus(ctx context.Context, hosts []string, authToken string
 
 	client, err := scyllaclient.NewClient(cfg, log.NopLogger)
 	o.Expect(err).NotTo(o.HaveOccurred())
+	defer client.Close()
 
 	return client.Status(ctx, hosts[0])
 }

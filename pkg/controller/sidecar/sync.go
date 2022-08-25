@@ -26,6 +26,7 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 	if err != nil {
 		return err
 	}
+	defer scyllaClient.Close()
 
 	opMode, err := scyllaClient.OperationMode(ctx, localhost)
 	if err != nil {

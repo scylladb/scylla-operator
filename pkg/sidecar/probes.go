@@ -83,6 +83,7 @@ func (p *Prober) Readyz(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	defer scyllaClient.Close()
 
 	// Contact Scylla to learn about the status of the member
 	nodeStatuses, err := scyllaClient.Status(ctx, localhost)
@@ -145,6 +146,7 @@ func (p *Prober) Healthz(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	defer scyllaClient.Close()
 
 	// Check if Scylla API is reachable
 	_, err = scyllaClient.Ping(ctx, localhost)

@@ -50,6 +50,7 @@ var _ = g.Describe("ScyllaCluster HostID", func() {
 		framework.By("Verifying annotations")
 		scyllaClient, _, err := utils.GetScyllaClient(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
+		defer scyllaClient.Close()
 
 		svcs, err := f.KubeClient().CoreV1().Services(sc.Namespace).List(ctx, metav1.ListOptions{
 			LabelSelector: utils.GetMemberServiceSelector(sc.Name).String(),

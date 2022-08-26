@@ -150,6 +150,7 @@ func (scc *Controller) beforeUpgrade(ctx context.Context, sc *scyllav1.ScyllaClu
 	if err != nil {
 		return true, err
 	}
+	defer scyllaClient.Close()
 
 	klog.V(4).InfoS("Checking schema agreement", "ScyllaCluster", klog.KObj(sc))
 	hasSchemaAgreement, err := scyllaClient.HasSchemaAgreement(ctx)
@@ -188,6 +189,7 @@ func (scc *Controller) afterUpgrade(ctx context.Context, sc *scyllav1.ScyllaClus
 	if err != nil {
 		return err
 	}
+	defer scyllaClient.Close()
 
 	// Clear system backup.
 	err = scc.removeSnapshot(ctx, scyllaClient, hosts, []string{sc.Status.Upgrade.SystemSnapshotTag})
@@ -234,6 +236,7 @@ func (scc *Controller) beforeNodeUpgrade(ctx context.Context, sc *scyllav1.Scyll
 	if err != nil {
 		return true, err
 	}
+	defer scyllaClient.Close()
 
 	om, err := scyllaClient.OperationMode(ctx, host)
 	if err != nil {
@@ -313,6 +316,7 @@ func (scc *Controller) afterNodeUpgrade(ctx context.Context, sc *scyllav1.Scylla
 	if err != nil {
 		return err
 	}
+	defer scyllaClient.Close()
 
 	// Clear data backup.
 	err = scc.removeSnapshot(ctx, scyllaClient, []string{host}, []string{sc.Status.Upgrade.DataSnapshotTag})

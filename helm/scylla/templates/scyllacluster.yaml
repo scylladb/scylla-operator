@@ -50,6 +50,9 @@ spec:
   exposeOptions:
     {{- toYaml . | nindent 4 }}
   {{- end }}
+  {{- if .Values.scyllaArgs }}
+  scyllaArgs: {{ .Values.scyllaArgs }}
+  {{- end }}
   datacenter:
     name: {{ .Values.datacenter }}
     racks:

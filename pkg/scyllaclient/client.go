@@ -29,6 +29,7 @@ type Client struct {
 
 	scyllaOps *scyllaOperations.Client
 	transport http.RoundTripper
+	pool      hostpool.HostPool
 
 	mu      sync.RWMutex
 	dcCache map[string]string
@@ -69,8 +70,15 @@ func NewClient(config *Config, logger log.Logger) (*Client, error) {
 		logger:    logger,
 		scyllaOps: scyllaOps,
 		transport: transport,
+		pool:      pool,
 		dcCache:   make(map[string]string),
 	}, nil
+}
+
+func (c *Client) Close() {
+	if c.pool != nil {
+		c.pool.Close()
+	}
 }
 
 // HostDatacenter looks up the datacenter that the given host belongs to.

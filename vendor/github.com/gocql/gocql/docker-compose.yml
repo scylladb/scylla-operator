@@ -8,23 +8,19 @@ services:
     networks:
       public:
         ipv4_address: 192.168.100.11
-
-  node_2:
-    image: ${SCYLLA_IMAGE}
-    privileged: true
-    command: --smp 2 --memory 512M --seeds 192.168.100.11 --overprovisioned 1
-    networks:
-      public:
-        ipv4_address: 192.168.100.12
-
-#  node_3:
-#    image: ${SCYLLA_IMAGE}
-#    privileged: true
-#    command: --smp 2 --memory 512M --seeds 192.168.100.11
-#    networks:
-#      public:
-#        ipv4_address: 192.168.100.13
-
+    volumes:
+    - type: bind
+      source: ./testdata/config/scylla.yaml
+      target: /etc/scylla/scylla.yaml
+    - type: bind
+      source: ./testdata/pki/ca.crt
+      target: /etc/scylla/ca.crt
+    - type: bind
+      source: ./testdata/pki/cassandra.crt
+      target: /etc/scylla/db.crt
+    - type: bind
+      source: ./testdata/pki/cassandra.key
+      target: /etc/scylla/db.key
 networks:
   public:
     driver: bridge

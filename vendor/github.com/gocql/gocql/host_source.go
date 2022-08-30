@@ -131,6 +131,9 @@ type HostInfo struct {
 	state                      nodeState
 	schemaVersion              string
 	tokens                     []string
+
+	scyllaShardAwarePort    uint16
+	scyllaShardAwarePortTLS uint16
 }
 
 func (h *HostInfo) Equal(host *HostInfo) bool {
@@ -146,13 +149,6 @@ func (h *HostInfo) Peer() net.IP {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	return h.peer
-}
-
-func (h *HostInfo) setPeer(peer net.IP) *HostInfo {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.peer = peer
-	return h
 }
 
 func (h *HostInfo) invalidConnectAddr() bool {
@@ -180,6 +176,22 @@ func (h *HostInfo) connectAddressLocked() (net.IP, string) {
 		return h.peer, "peer"
 	}
 	return net.IPv4zero, "invalid"
+}
+
+// nodeToNodeAddress returns address broadcasted between node to nodes.
+// It's either `broadcast_address` if host info is read from system.local or `peer` if read from system.peers.
+// This IP address is also part of CQL Event emitted on topology/status changes,
+// but does not uniquely identify the node in case multiple nodes use the same IP address.
+func (h *HostInfo) nodeToNodeAddress() net.IP {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	if validIpAddr(h.broadcastAddress) {
+		return h.broadcastAddress
+	} else if validIpAddr(h.peer) {
+		return h.peer
+	}
+	return net.IPv4zero
 }
 
 // Returns the address that should be used to connect to the host.
@@ -248,25 +260,11 @@ func (h *HostInfo) DataCenter() string {
 	return dc
 }
 
-func (h *HostInfo) setDataCenter(dataCenter string) *HostInfo {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.dataCenter = dataCenter
-	return h
-}
-
 func (h *HostInfo) Rack() string {
 	h.mu.RLock()
 	rack := h.rack
 	h.mu.RUnlock()
 	return rack
-}
-
-func (h *HostInfo) setRack(rack string) *HostInfo {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.rack = rack
-	return h
 }
 
 func (h *HostInfo) HostID() string {
@@ -275,11 +273,10 @@ func (h *HostInfo) HostID() string {
 	return h.hostId
 }
 
-func (h *HostInfo) setHostID(hostID string) *HostInfo {
+func (h *HostInfo) SetHostID(hostID string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.hostId = hostID
-	return h
 }
 
 func (h *HostInfo) WorkLoad() string {
@@ -318,13 +315,6 @@ func (h *HostInfo) Version() cassVersion {
 	return h.version
 }
 
-func (h *HostInfo) setVersion(major, minor, patch int) *HostInfo {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.version = cassVersion{major, minor, patch}
-	return h
-}
-
 func (h *HostInfo) State() nodeState {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
@@ -344,24 +334,10 @@ func (h *HostInfo) Tokens() []string {
 	return h.tokens
 }
 
-func (h *HostInfo) setTokens(tokens []string) *HostInfo {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.tokens = tokens
-	return h
-}
-
 func (h *HostInfo) Port() int {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	return h.port
-}
-
-func (h *HostInfo) setPort(port int) *HostInfo {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.port = port
-	return h
 }
 
 func (h *HostInfo) update(from *HostInfo) {
@@ -431,10 +407,23 @@ func (h *HostInfo) IsUp() bool {
 }
 
 func (h *HostInfo) HostnameAndPort() string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	if h.hostname == "" {
-		h.hostname = h.ConnectAddress().String()
+		addr, _ := h.connectAddressLocked()
+		h.hostname = addr.String()
 	}
 	return net.JoinHostPort(h.hostname, strconv.Itoa(h.port))
+}
+
+func (h *HostInfo) Hostname() string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.hostname == "" {
+		addr, _ := h.connectAddressLocked()
+		h.hostname = addr.String()
+	}
+	return h.hostname
 }
 
 func (h *HostInfo) String() string {
@@ -450,6 +439,29 @@ func (h *HostInfo) String() string {
 		h.port, h.dataCenter, h.rack, h.hostId, h.version, h.state, len(h.tokens))
 }
 
+func (h *HostInfo) setScyllaSupported(s scyllaSupported) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.scyllaShardAwarePort = s.shardAwarePort
+	h.scyllaShardAwarePortTLS = s.shardAwarePortSSL
+}
+
+// ScyllaShardAwarePort returns the shard aware port of this host.
+// Returns zero if the shard aware port is not known.
+func (h *HostInfo) ScyllaShardAwarePort() uint16 {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.scyllaShardAwarePort
+}
+
+// ScyllaShardAwarePortTLS returns the TLS-enabled shard aware port of this host.
+// Returns zero if the shard aware port is not known.
+func (h *HostInfo) ScyllaShardAwarePortTLS() uint16 {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.scyllaShardAwarePortTLS
+}
+
 // Polls system.peers at a specific interval to find new hosts
 type ringDescriber struct {
 	session         *Session
@@ -463,7 +475,7 @@ func checkSystemSchema(control *controlConn) (bool, error) {
 	iter := control.query("SELECT * FROM system_schema.keyspaces")
 	if err := iter.err; err != nil {
 		if errf, ok := err.(*errorFrame); ok {
-			if errf.code == errSyntax {
+			if errf.code == ErrCodeSyntax {
 				return false, nil
 			}
 		}
@@ -609,7 +621,7 @@ func (r *ringDescriber) getClusterPeerInfo() ([]*HostInfo, error) {
 			return nil, err
 		} else if !isValidPeer(host) {
 			// If it's not a valid peer
-			Logger.Printf("Found invalid peer '%s' "+
+			r.session.logger.Printf("Found invalid peer '%s' "+
 				"Likely due to a gossip or snitch issue, this host will be ignored", host)
 			continue
 		}
@@ -648,44 +660,42 @@ func (r *ringDescriber) GetHosts() ([]*HostInfo, string, error) {
 }
 
 // Given an ip/port return HostInfo for the specified ip/port
-func (r *ringDescriber) getHostInfo(ip net.IP, port int) (*HostInfo, error) {
+func (r *ringDescriber) getHostInfo(hostID UUID) (*HostInfo, error) {
 	var host *HostInfo
-	iter := r.session.control.withConnHost(func(ch *connHost) *Iter {
-		if ch.host.ConnectAddress().Equal(ip) {
-			host = ch.host
-			return nil
-		}
+	for _, table := range []string{"system.peers", "system.local"} {
+		iter := r.session.control.withConnHost(func(ch *connHost) *Iter {
+			if ch.host.HostID() == hostID.String() {
+				host = ch.host
+				return nil
+			}
 
-		return ch.conn.query(context.TODO(), "SELECT * FROM system.peers")
-	})
+			return ch.conn.query(context.TODO(), fmt.Sprintf("SELECT * FROM %s", table))
+		})
 
-	if iter != nil {
-		rows, err := iter.SliceMap()
-		if err != nil {
-			return nil, err
-		}
-
-		for _, row := range rows {
-			h, err := r.session.hostInfoFromMap(row, &HostInfo{port: port})
+		if iter != nil {
+			rows, err := iter.SliceMap()
 			if err != nil {
 				return nil, err
 			}
 
-			if h.ConnectAddress().Equal(ip) {
-				host = h
-				break
-			}
-		}
+			for _, row := range rows {
+				h, err := r.session.hostInfoFromMap(row, &HostInfo{port: r.session.cfg.Port})
+				if err != nil {
+					return nil, err
+				}
 
-		if host == nil {
-			return nil, errors.New("host not found in peers table")
+				if h.HostID() == hostID.String() {
+					host = h
+					break
+				}
+			}
 		}
 	}
 
 	if host == nil {
 		return nil, errors.New("unable to fetch host info: invalid control connection")
 	} else if host.invalidConnectAddr() {
-		return nil, fmt.Errorf("host ConnectAddress invalid ip=%v: %v", ip, host)
+		return nil, fmt.Errorf("host ConnectAddress invalid ip=%v: %v", host.connectAddress, host)
 	}
 
 	return host, nil
@@ -705,17 +715,16 @@ func (r *ringDescriber) refreshRing() error {
 
 	// TODO: move this to session
 	for _, h := range hosts {
-		if filter := r.session.cfg.HostFilter; filter != nil && !filter.Accept(h) {
+		if r.session.cfg.filterHost(h) {
 			continue
 		}
 
 		if host, ok := r.session.ring.addHostIfMissing(h); !ok {
-			r.session.pool.addHost(h)
-			r.session.policy.AddHost(h)
+			r.session.startPoolFill(h)
 		} else {
 			host.update(h)
 		}
-		delete(prevHosts, h.ConnectAddress().String())
+		delete(prevHosts, h.HostID())
 	}
 
 	// TODO(zariel): it may be worth having a mutex covering the overall ring state

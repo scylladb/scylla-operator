@@ -35,8 +35,10 @@ type ClusterConfig struct {
 	// address, which is used to index connected hosts. If the domain name specified
 	// resolves to more than 1 IP address then the driver may connect multiple times to
 	// the same host, and will not mark the node being down or up from events.
-	Hosts      []string
-	CQLVersion string // CQL version (default: 3.0.0)
+	Hosts []string
+
+	// CQL version (default: 3.0.0)
+	CQLVersion string
 
 	// ProtoVersion sets the version of the native protocol to use, this will
 	// enable features in the driver for specific protocol versions, generally this
@@ -45,26 +47,80 @@ type ClusterConfig struct {
 	// If it is 0 or unset (the default) then the driver will attempt to discover the
 	// highest supported protocol for the cluster. In clusters with nodes of different
 	// versions the protocol selected is not defined (ie, it can be any of the supported in the cluster)
-	ProtoVersion       int
-	Timeout            time.Duration                            // connection timeout (default: 600ms)
-	ConnectTimeout     time.Duration                            // initial connection timeout, used during initial dial to server (default: 600ms)
-	Port               int                                      // port (default: 9042)
-	Keyspace           string                                   // initial keyspace (optional)
-	NumConns           int                                      // number of connections per host (default: 2)
-	Consistency        Consistency                              // default consistency level (default: Quorum)
-	Compressor         Compressor                               // compression algorithm (default: nil)
-	Authenticator      Authenticator                            // authenticator (default: nil)
-	AuthProvider       func(h *HostInfo) (Authenticator, error) // an authenticator factory. Can be used to create alternative authenticators (default: nil)
-	RetryPolicy        RetryPolicy                              // Default retry policy to use for queries (default: 0)
-	ConvictionPolicy   ConvictionPolicy                         // Decide whether to mark host as down based on the error and host info (default: SimpleConvictionPolicy)
-	ReconnectionPolicy ReconnectionPolicy                       // Default reconnection policy to use for reconnecting before trying to mark host as down (default: see below)
-	SocketKeepalive    time.Duration                            // The keepalive period to use, enabled if > 0 (default: 0)
-	MaxPreparedStmts   int                                      // Sets the maximum cache size for prepared statements globally for gocql (default: 1000)
-	MaxRoutingKeyInfo  int                                      // Sets the maximum cache size for query info about statements for each session (default: 1000)
-	PageSize           int                                      // Default page size to use for created sessions (default: 5000)
-	SerialConsistency  Consistency                              // Sets the consistency for the serial part of queries, values can be either SERIAL or LOCAL_SERIAL (default: unset)
-	SslOpts            *SslOptions
-	DefaultTimestamp   bool // Sends a client side timestamp for all requests which overrides the timestamp at which it arrives at the server. (default: true, only enabled for protocol 3 and above)
+	ProtoVersion int
+
+	// Connection timeout (default: 600ms)
+	Timeout time.Duration
+
+	// Initial connection timeout, used during initial dial to server (default: 600ms)
+	// ConnectTimeout is used to set up the default dialer and is ignored if Dialer or HostDialer is provided.
+	ConnectTimeout time.Duration
+
+	// Port used when dialing.
+	// Default: 9042
+	Port int
+
+	// Initial keyspace. Optional.
+	Keyspace string
+
+	// Number of connections per host.
+	// Default: 2
+	NumConns int
+
+	// Default consistency level.
+	// Default: Quorum
+	Consistency Consistency
+
+	// Compression algorithm.
+	// Default: nil
+	Compressor Compressor
+
+	// Default: nil
+	Authenticator Authenticator
+
+	// An Authenticator factory. Can be used to create alternative authenticators.
+	// Default: nil
+	AuthProvider func(h *HostInfo) (Authenticator, error)
+
+	// Default retry policy to use for queries.
+	// Default: no retries.
+	RetryPolicy RetryPolicy
+
+	// ConvictionPolicy decides whether to mark host as down based on the error and host info.
+	// Default: SimpleConvictionPolicy
+	ConvictionPolicy ConvictionPolicy
+
+	// Default reconnection policy to use for reconnecting before trying to mark host as down.
+	ReconnectionPolicy ReconnectionPolicy
+
+	// The keepalive period to use, enabled if > 0 (default: 0)
+	// SocketKeepalive is used to set up the default dialer and is ignored if Dialer or HostDialer is provided.
+	SocketKeepalive time.Duration
+
+	// Maximum cache size for prepared statements globally for gocql.
+	// Default: 1000
+	MaxPreparedStmts int
+
+	// Maximum cache size for query info about statements for each session.
+	// Default: 1000
+	MaxRoutingKeyInfo int
+
+	// Default page size to use for created sessions.
+	// Default: 5000
+	PageSize int
+
+	// Consistency for the serial part of queries, values can be either SERIAL or LOCAL_SERIAL.
+	// Default: unset
+	SerialConsistency SerialConsistency
+
+	// SslOpts configures TLS use when HostDialer is not set.
+	// SslOpts is ignored if HostDialer is set.
+	SslOpts *SslOptions
+
+	// Sends a client side timestamp for all requests which overrides the timestamp at which it arrives at the server.
+	// Default: true, only enabled for protocol 3 and above.
+	DefaultTimestamp bool
+
 	// PoolConfig configures the underlying connection pool, allowing the
 	// configuration of host selection and connection selection policies.
 	PoolConfig PoolConfig
@@ -147,7 +203,14 @@ type ClusterConfig struct {
 
 	// Dialer will be used to establish all connections created for this Cluster.
 	// If not provided, a default dialer configured with ConnectTimeout will be used.
+	// Dialer is ignored if HostDialer is provided.
 	Dialer Dialer
+
+	// HostDialer will be used to establish all connections for this Cluster.
+	// Unlike Dialer, HostDialer is responsible for setting up the entire connection, including the TLS session.
+	// To support shard-aware port, HostDialer should implement ShardDialer.
+	// If not provided, Dialer will be used instead.
+	HostDialer HostDialer
 
 	// DisableShardAwarePort will prevent the driver from connecting to Scylla's shard-aware port,
 	// even if there are nodes in the cluster that support it.
@@ -160,8 +223,13 @@ type ClusterConfig struct {
 	// your network nor disable shard-aware port on your nodes.
 	DisableShardAwarePort bool
 
+	// Logger for this ClusterConfig.
+	// If not specified, defaults to the global gocql.Logger.
+	Logger StdLogger
+
 	// internal config for testing
 	disableControlConn bool
+	disableInit        bool
 }
 
 type Dialer interface {
@@ -196,7 +264,15 @@ func NewCluster(hosts ...string) *ClusterConfig {
 		ReconnectionPolicy:     &ConstantReconnectionPolicy{MaxRetries: 3, Interval: 1 * time.Second},
 		WriteCoalesceWaitTime:  200 * time.Microsecond,
 	}
+
 	return cfg
+}
+
+func (cfg *ClusterConfig) logger() StdLogger {
+	if cfg.Logger == nil {
+		return Logger
+	}
+	return cfg.Logger
 }
 
 // CreateSession initializes the cluster based on this config and returns a
@@ -215,7 +291,7 @@ func (cfg *ClusterConfig) translateAddressPort(addr net.IP, port int) (net.IP, i
 	}
 	newAddr, newPort := cfg.AddressTranslator.Translate(addr, port)
 	if gocqlDebug {
-		Logger.Printf("gocql: translating address '%v:%d' to '%v:%d'", addr, port, newAddr, newPort)
+		cfg.logger().Printf("gocql: translating address '%v:%d' to '%v:%d'", addr, port, newAddr, newPort)
 	}
 	return newAddr, newPort
 }

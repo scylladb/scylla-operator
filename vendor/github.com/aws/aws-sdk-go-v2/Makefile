@@ -1,5 +1,6 @@
 # Lint rules to ignore
 LINTIGNORESINGLEFIGHT='internal/sync/singleflight/singleflight.go:.+error should be the last type'
+LINT_IGNORE_S3MANAGER_INPUT='feature/s3/manager/upload.go:.+struct field SSEKMSKeyId should be SSEKMSKeyID'
 
 UNIT_TEST_TAGS=
 BUILD_TAGS=-tags "example,codegen,integration,ec2env,perftest"
@@ -38,6 +39,8 @@ ENDPOINT_PREFIX_JSON=${CODEGEN_RESOURCES_PATH}/endpoint-prefix.json
 
 LICENSE_FILE=$(shell pwd)/LICENSE.txt
 
+SMITHY_GO_VERSION ?=
+PRE_RELEASE_VERSION ?=
 RELEASE_MANIFEST_FILE ?=
 RELEASE_CHGLOG_DESC_FILE ?=
 
@@ -51,9 +54,16 @@ REPOTOOLS_CMD_UPDATE_MODULE_METADATA = ${REPOTOOLS_MODULE}/cmd/updatemodulemeta@
 REPOTOOLS_CMD_GENERATE_CHANGELOG = ${REPOTOOLS_MODULE}/cmd/generatechangelog@${REPOTOOLS_VERSION}
 REPOTOOLS_CMD_CHANGELOG = ${REPOTOOLS_MODULE}/cmd/changelog@${REPOTOOLS_VERSION}
 REPOTOOLS_CMD_TAG_RELEASE = ${REPOTOOLS_MODULE}/cmd/tagrelease@${REPOTOOLS_VERSION}
+REPOTOOLS_CMD_EDIT_MODULE_DEPENDENCY = ${REPOTOOLS_MODULE}/cmd/editmoduledependency@${REPOTOOLS_VERSION}
 
 REPOTOOLS_CALCULATE_RELEASE_VERBOSE ?= false
 REPOTOOLS_CALCULATE_RELEASE_VERBOSE_FLAG=-v=${REPOTOOLS_CALCULATE_RELEASE_VERBOSE}
+
+REPOTOOLS_CALCULATE_RELEASE_ADDITIONAL_ARGS ?=
+
+ifneq ($(PRE_RELEASE_VERSION),)
+	REPOTOOLS_CALCULATE_RELEASE_ADDITIONAL_ARGS += -preview=${PRE_RELEASE_VERSION}
+endif
 
 .PHONY: all
 all: generate unit
@@ -62,22 +72,22 @@ all: generate unit
 # Code Generation #
 ###################
 .PHONY: generate smithy-generate smithy-build smithy-build-% smithy-clean smithy-go-publish-local format \
-gen-config-asserts gen-repo-mod-replace gen-mod-replace-smithy gen-mod-dropreplace-smithy gen-aws-ptrs tidy-modules-% \
-add-module-license-files sync-models sync-endpoints-model sync-endpoints.json clone-v1-models gen-endpoint-prefix.json \
+gen-config-asserts gen-repo-mod-replace gen-mod-replace-smithy gen-mod-dropreplace-smithy-% gen-aws-ptrs tidy-modules-% \
+add-module-license-files sync-models sync-endpoints-model sync-endpoints.json clone-v1-models gen-internal-codegen \
 sync-api-models copy-attributevalue-feature min-go-version-% update-requires smithy-annotate-stable \
 update-module-metadata download-modules-%
 
 generate: smithy-generate update-requires gen-repo-mod-replace update-module-metadata smithy-annotate-stable \
-gen-config-asserts copy-attributevalue-feature  gen-mod-dropreplace-smithy min-go-version-. tidy-modules-. \
-add-module-license-files gen-aws-ptrs format
+gen-config-asserts gen-internal-codegen copy-attributevalue-feature gen-mod-dropreplace-smithy-. min-go-version-. \
+tidy-modules-. add-module-license-files gen-aws-ptrs format
 
 smithy-generate:
 	cd codegen && ./gradlew clean build -Plog-tests && ./gradlew clean
 
-smithy-build: gen-repo-mod-replace
+smithy-build:
 	cd codegen && ./gradlew clean build -Plog-tests
 
-smithy-build-%: gen-repo-mod-replace
+smithy-build-%:
 	@# smithy-build- command that uses the pattern to define build filter that
 	@# the smithy API model service id starts with. Strips off the
 	@# "smithy-build-".
@@ -107,17 +117,34 @@ gen-config-asserts:
 	    && go mod tidy \
 	    && go generate
 
+gen-internal-codegen:
+	@echo "Generating internal/codegen"
+	cd internal/codegen \
+		&& go generate
+
 gen-repo-mod-replace:
 	@echo "Generating go.mod replace for repo modules"
 	go run ${REPOTOOLS_CMD_MAKE_RELATIVE}
 
-gen-mod-replace-smithy:
+gen-mod-replace-smithy-%:
+	@# gen-mod-replace-smithy- command that uses the pattern to define build filter that
+	@# for modules to add replace to. Strips off the "gen-mod-replace-smithy-".
+	@#
+	@# SMITHY_GO_SRC environment variable is the path to add replace to
+	@#
+	@# e.g. gen-mod-replace-smithy-service_ssooidc
 	cd ./internal/repotools/cmd/eachmodule \
-    		&& go run . "go mod edit -replace github.com/aws/smithy-go=${SMITHY_GO_SRC}"
+		&& go run . -p $(subst _,/,$(subst gen-mod-replace-smithy-,,$@)) ${EACHMODULE_FLAGS} \
+			"go mod edit -replace github.com/aws/smithy-go=${SMITHY_GO_SRC}"
 
-gen-mod-dropreplace-smithy:
+gen-mod-dropreplace-smithy-%:
+	@# gen-mod-dropreplace-smithy- command that uses the pattern to define build filter that
+	@# for modules to add replace to. Strips off the "gen-mod-dropreplace-smithy-".
+	@#
+	@# e.g. gen-mod-dropreplace-smithy-service_ssooidc
 	cd ./internal/repotools/cmd/eachmodule \
-    		&& go run . "go mod edit -dropreplace github.com/aws/smithy-go"
+		&& go run . -p $(subst _,/,$(subst gen-mod-dropreplace-smithy-,,$@)) ${EACHMODULE_FLAGS} \
+			"go mod edit -dropreplace github.com/aws/smithy-go"
 
 gen-aws-ptrs:
 	cd aws && go generate
@@ -149,7 +176,7 @@ add-module-license-files:
 
 sync-models: sync-endpoints-model sync-api-models
 
-sync-endpoints-model: sync-endpoints.json gen-endpoint-prefix.json
+sync-endpoints-model: sync-endpoints.json
 
 sync-endpoints.json:
 	[[ ! -z "${ENDPOINTS_MODEL}" ]] && cp ${ENDPOINTS_MODEL} ${ENDPOINTS_JSON} || echo "ENDPOINTS_MODEL not set, must not be empty"
@@ -157,12 +184,6 @@ sync-endpoints.json:
 clone-v1-models:
 	rm -rf /tmp/aws-sdk-go-model-sync
 	git clone https://github.com/aws/aws-sdk-go.git --depth 1 /tmp/aws-sdk-go-model-sync
-
-gen-endpoint-prefix.json: clone-v1-models
-	cd internal/repotools/cmd/endpointPrefix && \
-		go run . \
-			-m '/tmp/aws-sdk-go-model-sync/models/apis/*/*/api-2.json' \
-			-o ${ENDPOINT_PREFIX_JSON}
 
 sync-api-models:
 	cd internal/repotools/cmd/syncAPIModels && \
@@ -396,7 +417,7 @@ ls-changes:
 	go run ${REPOTOOLS_CMD_CHANGELOG} ls
 
 preview-release:
-	go run ${REPOTOOLS_CMD_CALCULATE_RELEASE} ${REPOTOOLS_CALCULATE_RELEASE_VERBOSE_FLAG}
+	go run ${REPOTOOLS_CMD_CALCULATE_RELEASE} ${REPOTOOLS_CALCULATE_RELEASE_VERBOSE_FLAG} ${REPOTOOLS_CALCULATE_RELEASE_ADDITIONAL_ARGS}
 
 pre-release-validation:
 	@if [[ -z "${RELEASE_MANIFEST_FILE}" ]]; then \
@@ -407,7 +428,7 @@ pre-release-validation:
 	fi
 
 release: pre-release-validation
-	go run ${REPOTOOLS_CMD_CALCULATE_RELEASE} -o ${RELEASE_MANIFEST_FILE} ${REPOTOOLS_CALCULATE_RELEASE_VERBOSE_FLAG}
+	go run ${REPOTOOLS_CMD_CALCULATE_RELEASE} -o ${RELEASE_MANIFEST_FILE} ${REPOTOOLS_CALCULATE_RELEASE_VERBOSE_FLAG} ${REPOTOOLS_CALCULATE_RELEASE_ADDITIONAL_ARGS}
 	go run ${REPOTOOLS_CMD_UPDATE_REQUIRES} -release ${RELEASE_MANIFEST_FILE}
 	go run ${REPOTOOLS_CMD_UPDATE_MODULE_METADATA} -release ${RELEASE_MANIFEST_FILE}
 	go run ${REPOTOOLS_CMD_GENERATE_CHANGELOG} -release ${RELEASE_MANIFEST_FILE} -o ${RELEASE_CHGLOG_DESC_FILE}
@@ -422,6 +443,12 @@ release: pre-release-validation
 install-repotools:
 	go install ${REPOTOOLS_MODULE}/cmd/changelog@${REPOTOOLS_VERSION}
 
+set-smithy-go-version:
+	@if [[ -z "${SMITHY_GO_VERSION}" ]]; then \
+		echo "SMITHY_GO_VERSION is required to update SDK's smithy-go module dependency version" && false; \
+	fi
+	go run ${REPOTOOLS_CMD_EDIT_MODULE_DEPENDENCY} -s "github.com/aws/smithy-go" -v "${SMITHY_GO_VERSION}"
+
 ##################
 # Linting/Verify #
 ##################
@@ -433,6 +460,7 @@ lint:
 	@echo "go lint SDK and vendor packages"
 	@lint=`golint ./...`; \
 	dolint=`echo "$$lint" | grep -E -v \
+	-e ${LINT_IGNORE_S3MANAGER_INPUT} \
 	-e ${LINTIGNORESINGLEFIGHT}`; \
 	echo "$$dolint"; \
 	if [ "$$dolint" != "" ]; then exit 1; fi
@@ -449,6 +477,21 @@ sdkv1check:
 	@sdkv1usage=`go list -test -f '''{{ if not .Standard }}{{ range $$_, $$name := .Imports }} * {{ $$.ImportPath }} -> {{ $$name }}{{ print "\n" }}{{ end }}{{ range $$_, $$name := .TestImports }} *: {{ $$.ImportPath }} -> {{ $$name }}{{ print "\n" }}{{ end }}{{ end}}''' ./... | sort -u | grep '''/aws-sdk-go/'''`; \
 	echo "$$sdkv1usage"; \
 	if [ "$$sdkv1usage" != "" ]; then exit 1; fi
+
+list-deps: list-deps-.
+
+list-deps-%:
+	@# command that uses the pattern to define the root path that the
+	@# module testing will start from. Strips off the "list-deps-" and
+	@# replaces all "_" with "/".
+	@#
+	@# Trim output to only include stdout for list of dependencies only.
+	@#    make list-deps 2>&-
+	@#
+	@# e.g. list-deps-internal_protocoltest
+	@cd ./internal/repotools/cmd/eachmodule \
+		&& go run . -p $(subst _,/,$(subst list-deps-,,$@)) ${EACHMODULE_FLAGS} \
+		"go list -m all | grep -v 'github.com/aws/aws-sdk-go-v2'" | sort -u
 
 ###################
 # Sandbox Testing #

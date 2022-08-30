@@ -29,25 +29,19 @@ var (
 	ecsContainerEndpoint = "http://169.254.170.2" // not constant to allow for swapping during unit-testing
 )
 
-// resolveCredentials extracts a credential provider from slice of config sources.
+// resolveCredentials extracts a credential provider from slice of config
+// sources.
 //
-// If an explict credential provider is not found the resolver will fallback to resolving
-// credentials by extracting a credential provider from EnvConfig and SharedConfig.
+// If an explicit credential provider is not found the resolver will fallback
+// to resolving credentials by extracting a credential provider from EnvConfig
+// and SharedConfig.
 func resolveCredentials(ctx context.Context, cfg *aws.Config, configs configs) error {
 	found, err := resolveCredentialProvider(ctx, cfg, configs)
-	if err != nil {
-		return err
-	}
-	if found {
-		return nil
-	}
-
-	err = resolveCredentialChain(ctx, cfg, configs)
-	if err != nil {
+	if found || err != nil {
 		return err
 	}
 
-	return nil
+	return resolveCredentialChain(ctx, cfg, configs)
 }
 
 // resolveCredentialProvider extracts the first instance of Credentials from the
@@ -59,16 +53,16 @@ func resolveCredentials(ctx context.Context, cfg *aws.Config, configs configs) e
 //
 // Config providers used:
 // * credentialsProviderProvider
-func resolveCredentialProvider(ctx context.Context, cfg *aws.Config, cfgs configs) (bool, error) {
-	credProvider, found, err := getCredentialsProvider(ctx, cfgs)
+func resolveCredentialProvider(ctx context.Context, cfg *aws.Config, configs configs) (bool, error) {
+	credProvider, found, err := getCredentialsProvider(ctx, configs)
+	if !found || err != nil {
+		return false, err
+	}
+
+	cfg.Credentials, err = wrapWithCredentialsCache(ctx, configs, credProvider)
 	if err != nil {
 		return false, err
 	}
-	if !found {
-		return false, nil
-	}
-
-	cfg.Credentials = wrapWithCredentialsCache(credProvider)
 
 	return true, nil
 }
@@ -105,7 +99,10 @@ func resolveCredentialChain(ctx context.Context, cfg *aws.Config, configs config
 	}
 
 	// Wrap the resolved provider in a cache so the SDK will cache credentials.
-	cfg.Credentials = wrapWithCredentialsCache(cfg.Credentials)
+	cfg.Credentials, err = wrapWithCredentialsCache(ctx, configs, cfg.Credentials)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -248,9 +245,12 @@ func resolveHTTPCredProvider(ctx context.Context, cfg *aws.Config, url, authToke
 
 	provider := endpointcreds.New(url, optFns...)
 
-	cfg.Credentials = wrapWithCredentialsCache(provider, func(options *aws.CredentialsCacheOptions) {
+	cfg.Credentials, err = wrapWithCredentialsCache(ctx, configs, provider, func(options *aws.CredentialsCacheOptions) {
 		options.ExpiryWindow = 5 * time.Minute
 	})
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -296,9 +296,10 @@ func resolveEC2RoleCredentials(ctx context.Context, cfg *aws.Config, configs con
 
 	provider := ec2rolecreds.New(optFns...)
 
-	cfg.Credentials = wrapWithCredentialsCache(provider, func(options *aws.CredentialsCacheOptions) {
-		options.ExpiryWindow = 5 * time.Minute
-	})
+	cfg.Credentials, err = wrapWithCredentialsCache(ctx, configs, provider)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -430,12 +431,31 @@ func credsFromAssumeRole(ctx context.Context, cfg *aws.Config, sharedCfg *Shared
 	return nil
 }
 
-// wrapWithCredentialsCache will wrap provider with an aws.CredentialsCache with the provided options if the provider is not already a aws.CredentialsCache.
-func wrapWithCredentialsCache(provider aws.CredentialsProvider, optFns ...func(options *aws.CredentialsCacheOptions)) aws.CredentialsProvider {
+// wrapWithCredentialsCache will wrap provider with an aws.CredentialsCache
+// with the provided options if the provider is not already a
+// aws.CredentialsCache.
+func wrapWithCredentialsCache(
+	ctx context.Context,
+	cfgs configs,
+	provider aws.CredentialsProvider,
+	optFns ...func(options *aws.CredentialsCacheOptions),
+) (aws.CredentialsProvider, error) {
 	_, ok := provider.(*aws.CredentialsCache)
 	if ok {
-		return provider
+		return provider, nil
 	}
 
-	return aws.NewCredentialsCache(provider, optFns...)
+	credCacheOptions, optionsFound, err := getCredentialsCacheOptionsProvider(ctx, cfgs)
+	if err != nil {
+		return nil, err
+	}
+
+	// force allocation of a new slice if the additional options are
+	// needed, to prevent overwriting the passed in slice of options.
+	optFns = optFns[:len(optFns):len(optFns)]
+	if optionsFound {
+		optFns = append(optFns, credCacheOptions)
+	}
+
+	return aws.NewCredentialsCache(provider, optFns...), nil
 }

@@ -62,7 +62,6 @@ type Session struct {
 	schemaEvents *eventDebouncer
 
 	// ring metadata
-	hosts                     []HostInfo
 	useSystemSchema           bool
 	hasAggregatesAndFunctions bool
 
@@ -71,8 +70,15 @@ type Session struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	closeMu  sync.RWMutex
+	// sessionStateMu protects isClosed and isInitialized.
+	sessionStateMu sync.RWMutex
+	// isClosed is true once Session.Close is called.
 	isClosed bool
+	// isInitialized is true once Session.init succeeds.
+	// you can use initialized() to read the value.
+	isInitialized bool
+
+	logger StdLogger
 }
 
 var queryPool = &sync.Pool{
@@ -81,14 +87,14 @@ var queryPool = &sync.Pool{
 	},
 }
 
-func addrsToHosts(addrs []string, defaultPort int) ([]*HostInfo, error) {
+func addrsToHosts(addrs []string, defaultPort int, logger StdLogger) ([]*HostInfo, error) {
 	var hosts []*HostInfo
 	for _, hostport := range addrs {
 		resolvedHosts, err := hostInfo(hostport, defaultPort)
 		if err != nil {
 			// Try other hosts if unable to resolve DNS name
 			if _, ok := err.(*net.DNSError); ok {
-				Logger.Printf("gocql: dns error: %v\n", err)
+				logger.Printf("gocql: dns error: %v\n", err)
 				continue
 			}
 			return nil, err
@@ -126,6 +132,7 @@ func NewSession(cfg ClusterConfig) (*Session, error) {
 		connectObserver: cfg.ConnectObserver,
 		ctx:             ctx,
 		cancel:          cancel,
+		logger:          cfg.logger(),
 	}
 
 	// Close created resources on error otherwise they'll leak
@@ -138,8 +145,8 @@ func NewSession(cfg ClusterConfig) (*Session, error) {
 
 	s.schemaDescriber = newSchemaDescriber(s)
 
-	s.nodeEvents = newEventDebouncer("NodeEvents", s.handleNodeEvent)
-	s.schemaEvents = newEventDebouncer("SchemaEvents", s.handleSchemaEvent)
+	s.nodeEvents = newEventDebouncer("NodeEvents", s.handleNodeEvent, s.logger)
+	s.schemaEvents = newEventDebouncer("SchemaEvents", s.handleSchemaEvent, s.logger)
 
 	s.routingKeyInfoCache.lru = lru.New(cfg.MaxRoutingKeyInfo)
 
@@ -186,7 +193,11 @@ func NewSession(cfg ClusterConfig) (*Session, error) {
 }
 
 func (s *Session) init() error {
-	hosts, err := addrsToHosts(s.cfg.Hosts, s.cfg.Port)
+	if s.cfg.disableInit {
+		return nil
+	}
+
+	hosts, err := addrsToHosts(s.cfg.Hosts, s.cfg.Port, s.logger)
 	if err != nil {
 		return err
 	}
@@ -224,36 +235,65 @@ func (s *Session) init() error {
 					filteredHosts = append(filteredHosts, host)
 				}
 			}
-			hosts = append(hosts, filteredHosts...)
+
+			hosts = filteredHosts
+		}
+	}
+
+	for _, host := range hosts {
+		// In case when host lookup is disabled and when we are in unit tests,
+		// host are not discovered, and we are missing host ID information used
+		// by internal logic.
+		// Associate random UUIDs here with all hosts missing this information.
+		if len(host.HostID()) == 0 {
+			host.SetHostID(MustRandomUUID().String())
 		}
 	}
 
 	hostMap := make(map[string]*HostInfo, len(hosts))
 	for _, host := range hosts {
-		hostMap[host.ConnectAddress().String()] = host
+		hostMap[host.HostID()] = host
 	}
 
 	hosts = hosts[:0]
-
-	var wg sync.WaitGroup
+	// each host will increment left and decrement it after connecting and once
+	// there's none left, we'll close hostCh
+	var left int64
+	// we will receive up to len(hostMap) of messages so create a buffer so we
+	// don't end up stuck in a goroutine if we stopped listening
+	connectedCh := make(chan struct{}, len(hostMap))
+	// we add one here because we don't want to end up closing hostCh until we're
+	// done looping and the decerement code might be reached before we've looped
+	// again
+	atomic.AddInt64(&left, 1)
 	for _, host := range hostMap {
 		host := s.ring.addOrUpdate(host)
 		if s.cfg.filterHost(host) {
 			continue
 		}
 
-		host.setState(NodeUp)
-		hosts = append(hosts, host)
-
-		wg.Add(1)
+		atomic.AddInt64(&left, 1)
 		go func() {
-			defer wg.Done()
 			s.pool.addHost(host)
+			connectedCh <- struct{}{}
+
+			// if there are no hosts left, then close the hostCh to unblock the loop
+			// below if its still waiting
+			if atomic.AddInt64(&left, -1) == 0 {
+				close(connectedCh)
+			}
 		}()
+
+		hosts = append(hosts, host)
+	}
+	// once we're done looping we subtract the one we initially added and check
+	// to see if we should close
+	if atomic.AddInt64(&left, -1) == 0 {
+		close(connectedCh)
 	}
 
-	wg.Wait()
-
+	// before waiting for them to connect, add them all to the policy so we can
+	// utilize efficiencies by calling AddHosts if the policy supports it
 	type bulkAddHosts interface {
 		AddHosts([]*HostInfo)
 	}
@@ -262,6 +302,15 @@ func (s *Session) init() error {
 	} else {
 		for _, host := range hosts {
 			s.policy.AddHost(host)
+		}
+	}
+
+	readyPolicy, _ := s.policy.(ReadyPolicy)
+	// now loop over connectedCh until it's closed (meaning we've connected to all)
+	// or until the policy says we're ready
+	for range connectedCh {
+		if readyPolicy != nil && readyPolicy.Ready() {
+			break
 		}
 	}
 
@@ -294,6 +343,10 @@ func (s *Session) init() error {
 	if !s.cfg.disableControlConn && s.cfg.Keyspace != "" {
 		s.policy.KeyspaceChanged(KeyspaceUpdateEvent{Keyspace: s.cfg.Keyspace})
 	}
+
+	s.sessionStateMu.Lock()
+	s.isInitialized = true
+	s.sessionStateMu.Unlock()
 
 	return nil
 }
@@ -328,14 +381,15 @@ func (s *Session) reconnectDownedHosts(intv time.Duration) {
 				for _, h := range hosts {
 					buf.WriteString("[" + h.ConnectAddress().String() + ":" + h.State().String() + "]")
 				}
-				Logger.Println(buf.String())
+				s.logger.Println(buf.String())
 			}
 
 			for _, h := range hosts {
 				if h.IsUp() {
 					continue
 				}
-				s.handleNodeUp(h.ConnectAddress(), h.Port(), true)
+				// we let the pool call handleNodeConnected to change the host state
+				s.pool.addHost(h)
 			}
 		case <-s.ctx.Done():
 			return
@@ -419,8 +473,8 @@ func (s *Session) Bind(stmt string, b func(q *QueryInfo) ([]interface{}, error))
 // operation.
 func (s *Session) Close() {
 
-	s.closeMu.Lock()
-	defer s.closeMu.Unlock()
+	s.sessionStateMu.Lock()
+	defer s.sessionStateMu.Unlock()
 	if s.isClosed {
 		return
 	}
@@ -448,10 +502,17 @@ func (s *Session) Close() {
 }
 
 func (s *Session) Closed() bool {
-	s.closeMu.RLock()
+	s.sessionStateMu.RLock()
 	closed := s.isClosed
-	s.closeMu.RUnlock()
+	s.sessionStateMu.RUnlock()
 	return closed
+}
+
+func (s *Session) initialized() bool {
+	s.sessionStateMu.RLock()
+	initialized := s.isInitialized
+	s.sessionStateMu.RUnlock()
+	return initialized
 }
 
 func (s *Session) executeQuery(qry *Query) (it *Iter) {
@@ -473,8 +534,9 @@ func (s *Session) executeQuery(qry *Query) (it *Iter) {
 
 func (s *Session) removeHost(h *HostInfo) {
 	s.policy.RemoveHost(h)
-	s.pool.removeHost(h.ConnectAddress())
-	s.ring.removeHost(h.ConnectAddress())
+	hostID := h.HostID()
+	s.pool.removeHost(hostID)
+	s.ring.removeHost(hostID)
 }
 
 // KeyspaceMetadata returns the schema metadata for the keyspace specified. Returns an error if the keyspace does not exist.
@@ -836,6 +898,7 @@ type Query struct {
 	trace                 Tracer
 	observer              QueryObserver
 	session               *Session
+	conn                  *Conn
 	rt                    RetryPolicy
 	spec                  SpeculativeExecutionPolicy
 	binding               func(q *QueryInfo) ([]interface{}, error)
@@ -1052,6 +1115,7 @@ func (q *Query) attempt(keyspace string, end, start time.Time, iter *Iter, host 
 		q.observer.ObserveQuery(q.Context(), ObservedQuery{
 			Keyspace:  keyspace,
 			Statement: q.stmt,
+			Values:    q.values,
 			Start:     start,
 			End:       end,
 			Rows:      iter.numRows,
@@ -1242,6 +1306,11 @@ func isUseStatement(stmt string) bool {
 func (q *Query) Iter() *Iter {
 	if isUseStatement(q.stmt) {
 		return &Iter{err: ErrUseStmt}
+	}
+	// if the query was specifically run on a connection then re-use that
+	// connection when fetching the next results
+	if q.conn != nil {
+		return q.conn.executeQuery(q.Context(), q)
 	}
 	return q.session.executeQuery(q)
 }
@@ -1600,6 +1669,8 @@ func (iter *Iter) NumRows() int {
 	return iter.numRows
 }
 
+// nextIter holds state for fetching a single page in an iterator.
+// single page might be attempted multiple times due to retries.
 type nextIter struct {
 	qry   *Query
 	pos   int
@@ -1616,7 +1687,13 @@ func (n *nextIter) fetchAsync() {
 
 func (n *nextIter) fetch() *Iter {
 	n.once.Do(func() {
-		n.next = n.qry.session.executeQuery(n.qry)
+		// if the query was specifically run on a connection then re-use that
+		// connection when fetching the next results
+		if n.qry.conn != nil {
+			n.next = n.qry.conn.executeQuery(n.qry.Context(), n.qry)
+		} else {
+			n.next = n.qry.session.executeQuery(n.qry)
+		}
 	})
 	return n.next
 }
@@ -1626,10 +1703,10 @@ type Batch struct {
 	Entries               []BatchEntry
 	Cons                  Consistency
 	routingKey            []byte
-	routingKeyBuffer      []byte
 	CustomPayload         map[string][]byte
 	rt                    RetryPolicy
 	spec                  SpeculativeExecutionPolicy
+	trace                 Tracer
 	observer              BatchObserver
 	session               *Session
 	serialCons            Consistency
@@ -1663,6 +1740,7 @@ func (s *Session) NewBatch(typ BatchType) *Batch {
 		Type:             typ,
 		rt:               s.cfg.RetryPolicy,
 		serialCons:       s.cfg.SerialConsistency,
+		trace:            s.trace,
 		observer:         s.batchObserver,
 		session:          s,
 		Cons:             s.cons,
@@ -1675,6 +1753,13 @@ func (s *Session) NewBatch(typ BatchType) *Batch {
 
 	s.mu.RUnlock()
 	return batch
+}
+
+// Trace enables tracing of this batch. Look at the documentation of the
+// Tracer interface to learn more about tracing.
+func (b *Batch) Trace(trace Tracer) *Batch {
+	b.trace = trace
+	return b
 }
 
 // Observer enables batch-level observer on this batch.
@@ -1846,13 +1931,17 @@ func (b *Batch) attempt(keyspace string, end, start time.Time, iter *Iter, host 
 	}
 
 	statements := make([]string, len(b.Entries))
+	values := make([][]interface{}, len(b.Entries))
+
 	for i, entry := range b.Entries {
 		statements[i] = entry.Stmt
+		values[i] = entry.Args
 	}
 
 	b.observer.ObserveBatch(b.Context(), ObservedBatch{
 		Keyspace:   keyspace,
 		Statements: statements,
+		Values:     values,
 		Start:      start,
 		End:        end,
 		// Rows not used in batch observations // TODO - might be able to support it when using BatchCAS
@@ -2064,6 +2153,10 @@ type ObservedQuery struct {
 	Keyspace  string
 	Statement string
 
+	// Values holds a slice of bound values for the query.
+	// Do not modify the values here, they are shared with multiple goroutines.
+	Values []interface{}
+
 	Start time.Time // time immediately before the query was called
 	End   time.Time // time immediately after the query returned
 
@@ -2083,7 +2176,6 @@ type ObservedQuery struct {
 	Err error
 
 	// Attempt is the index of attempt at executing this query.
-	// An attempt might be either retry or fetching next page of a query.
 	// The first attempt is number zero and any retries have non-zero attempt number.
 	Attempt int
 }
@@ -2102,6 +2194,11 @@ type ObservedBatch struct {
 	Keyspace   string
 	Statements []string
 
+	// Values holds a slice of bound values for each statement.
+	// Values[i] are bound values passed to Statements[i].
+	// Do not modify the values here, they are shared with multiple goroutines.
+	Values [][]interface{}
+
 	Start time.Time // time immediately before the batch query was called
 	End   time.Time // time immediately after the batch query returned
 
@@ -2116,7 +2213,6 @@ type ObservedBatch struct {
 	Metrics *hostMetrics
 
 	// Attempt is the index of attempt at executing this query.
-	// An attempt might be either retry or fetching next page of a query.
 	// The first attempt is number zero and any retries have non-zero attempt number.
 	Attempt int
 }

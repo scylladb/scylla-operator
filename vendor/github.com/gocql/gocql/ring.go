@@ -2,7 +2,6 @@ package gocql
 
 import (
 	"fmt"
-	"net"
 	"sync"
 	"sync/atomic"
 )
@@ -13,9 +12,12 @@ type ring struct {
 	// strap the initial connection.
 	endpoints []*HostInfo
 
-	// hosts are the set of all hosts in the cassandra ring that we know of
-	mu    sync.RWMutex
+	mu sync.RWMutex
+	// hosts are the set of all hosts in the cassandra ring that we know of.
+	// key of map is host_id.
 	hosts map[string]*HostInfo
+	// hostIPToUUID maps host native address to host_id.
+	hostIPToUUID map[string]string
 
 	hostList []*HostInfo
 	pos      uint32
@@ -36,9 +38,16 @@ func (r *ring) rrHost() *HostInfo {
 	return r.hostList[pos%len(r.hostList)]
 }
 
-func (r *ring) getHost(ip net.IP) *HostInfo {
+func (r *ring) getHostByIP(ip string) (*HostInfo, bool) {
 	r.mu.RLock()
-	host := r.hosts[ip.String()]
+	defer r.mu.RUnlock()
+	hi, ok := r.hostIPToUUID[ip]
+	return r.hosts[hi], ok
+}
+
+func (r *ring) getHost(hostID string) *HostInfo {
+	r.mu.RLock()
+	host := r.hosts[hostID]
 	r.mu.RUnlock()
 	return host
 }
@@ -63,29 +72,6 @@ func (r *ring) currentHosts() map[string]*HostInfo {
 	return hosts
 }
 
-func (r *ring) addHost(host *HostInfo) bool {
-	// TODO(zariel): key all host info by HostID instead of
-	// ip addresses
-	if host.invalidConnectAddr() {
-		panic(fmt.Sprintf("invalid host: %v", host))
-	}
-	ip := host.ConnectAddress().String()
-
-	r.mu.Lock()
-	if r.hosts == nil {
-		r.hosts = make(map[string]*HostInfo)
-	}
-
-	_, ok := r.hosts[ip]
-	if !ok {
-		r.hostList = append(r.hostList, host)
-	}
-
-	r.hosts[ip] = host
-	r.mu.Unlock()
-	return ok
-}
-
 func (r *ring) addOrUpdate(host *HostInfo) *HostInfo {
 	if existingHost, ok := r.addHostIfMissing(host); ok {
 		existingHost.update(host)
@@ -98,16 +84,20 @@ func (r *ring) addHostIfMissing(host *HostInfo) (*HostInfo, bool) {
 	if host.invalidConnectAddr() {
 		panic(fmt.Sprintf("invalid host: %v", host))
 	}
-	ip := host.ConnectAddress().String()
+	hostID := host.HostID()
 
 	r.mu.Lock()
 	if r.hosts == nil {
 		r.hosts = make(map[string]*HostInfo)
 	}
+	if r.hostIPToUUID == nil {
+		r.hostIPToUUID = make(map[string]string)
+	}
 
-	existing, ok := r.hosts[ip]
+	existing, ok := r.hosts[hostID]
 	if !ok {
-		r.hosts[ip] = host
+		r.hosts[hostID] = host
+		r.hostIPToUUID[host.nodeToNodeAddress().String()] = hostID
 		existing = host
 		r.hostList = append(r.hostList, host)
 	}
@@ -115,23 +105,26 @@ func (r *ring) addHostIfMissing(host *HostInfo) (*HostInfo, bool) {
 	return existing, ok
 }
 
-func (r *ring) removeHost(ip net.IP) bool {
+func (r *ring) removeHost(hostID string) bool {
 	r.mu.Lock()
 	if r.hosts == nil {
 		r.hosts = make(map[string]*HostInfo)
 	}
+	if r.hostIPToUUID == nil {
+		r.hostIPToUUID = make(map[string]string)
+	}
 
-	k := ip.String()
-	_, ok := r.hosts[k]
+	h, ok := r.hosts[hostID]
 	if ok {
 		for i, host := range r.hostList {
-			if host.ConnectAddress().Equal(ip) {
+			if host.HostID() == hostID {
 				r.hostList = append(r.hostList[:i], r.hostList[i+1:]...)
 				break
 			}
 		}
+		delete(r.hostIPToUUID, h.nodeToNodeAddress().String())
 	}
-	delete(r.hosts, k)
+	delete(r.hosts, hostID)
 	r.mu.Unlock()
 	return ok
 }

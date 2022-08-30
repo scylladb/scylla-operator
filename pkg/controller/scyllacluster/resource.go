@@ -205,7 +205,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 			},
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: pointer.Int32Ptr(r.Members),
+			Replicas: pointer.Int32(r.Members),
 			// Use a common Headless Service for all StatefulSets
 			ServiceName: naming.HeadlessServiceNameForCluster(c),
 			Selector: &metav1.LabelSelector{
@@ -215,7 +215,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: appsv1.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
-					Partition: pointer.Int32Ptr(0),
+					Partition: pointer.Int32(0),
 				},
 			},
 			// Template for Pods
@@ -383,7 +383,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								TimeoutSeconds:   int32(30),
 								FailureThreshold: int32(40),
 								PeriodSeconds:    int32(10),
-								Handler: corev1.Handler{
+								ProbeHandler: corev1.ProbeHandler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Port: intstr.FromInt(naming.ProbePort),
 										Path: naming.LivenessProbePath,
@@ -396,7 +396,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								TimeoutSeconds:   int32(10),
 								FailureThreshold: int32(12),
 								PeriodSeconds:    int32(10),
-								Handler: corev1.Handler{
+								ProbeHandler: corev1.ProbeHandler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Port: intstr.FromInt(naming.ProbePort),
 										Path: naming.LivenessProbePath,
@@ -410,7 +410,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								TimeoutSeconds:   int32(30),
 								FailureThreshold: int32(1),
 								PeriodSeconds:    int32(10),
-								Handler: corev1.Handler{
+								ProbeHandler: corev1.ProbeHandler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Port: intstr.FromInt(naming.ProbePort),
 										Path: naming.ReadinessProbePath,
@@ -422,7 +422,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 							// This is necessary to ensure we don't lose any data and we don't
 							// need to replay the commitlog in the next startup.
 							Lifecycle: &corev1.Lifecycle{
-								PreStop: &corev1.Handler{
+								PreStop: &corev1.LifecycleHandler{
 									Exec: &corev1.ExecAction{
 										Command: []string{
 											"/bin/sh", "-c", "PID=$(pgrep -x scylla);supervisorctl stop scylla; while kill -0 $PID; do sleep 1; done;",
@@ -439,7 +439,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 						PodAntiAffinity: placement.PodAntiAffinity,
 					},
 					ImagePullSecrets:              c.Spec.ImagePullSecrets,
-					TerminationGracePeriodSeconds: pointer.Int64Ptr(900),
+					TerminationGracePeriodSeconds: pointer.Int64(900),
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -478,7 +478,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 
 	// Make sure we adjust if it was scaled in between.
 	if *sts.Spec.UpdateStrategy.RollingUpdate.Partition > *sts.Spec.Replicas {
-		sts.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(*sts.Spec.Replicas)
+		sts.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32(*sts.Spec.Replicas)
 	}
 
 	sysctlContainer := sysctlInitContainer(c.Spec.Sysctls, sidecarImage)

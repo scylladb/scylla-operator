@@ -265,3 +265,28 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+    - apps
+  resources:
+  - deployments
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - scyllamanagers
+  - scyllamanagers/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch

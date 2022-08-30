@@ -8,6 +8,7 @@ import (
 
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
+	"github.com/scylladb/scylla-operator/pkg/controller/managerv2"
 	"github.com/scylladb/scylla-operator/pkg/controller/nodeconfig"
 	"github.com/scylladb/scylla-operator/pkg/controller/nodeconfigpod"
 	"github.com/scylladb/scylla-operator/pkg/controller/orphanedpv"
@@ -40,6 +41,7 @@ type OperatorOptions struct {
 	ConcurrentSyncs int
 	OperatorImage   string
 	CQLSIngressPort int
+	Manager         bool
 }
 
 func NewOperatorOptions(streams genericclioptions.IOStreams) *OperatorOptions {
@@ -51,6 +53,7 @@ func NewOperatorOptions(streams genericclioptions.IOStreams) *OperatorOptions {
 		ConcurrentSyncs: 50,
 		OperatorImage:   "",
 		CQLSIngressPort: 0,
+		Manager:         false,
 	}
 }
 
@@ -91,6 +94,7 @@ func NewOperatorCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd.Flags().IntVarP(&o.ConcurrentSyncs, "concurrent-syncs", "", o.ConcurrentSyncs, "The number of ScyllaCluster objects that are allowed to sync concurrently.")
 	cmd.Flags().StringVarP(&o.OperatorImage, "image", "", o.OperatorImage, "Image of the operator used.")
 	cmd.Flags().IntVarP(&o.CQLSIngressPort, "cqls-ingress-port", "", o.CQLSIngressPort, "Port on which is the ingress controller listening for secure CQL connections.")
+	cmd.Flags().BoolVarP(&o.Manager, "manager", "", o.Manager, "Run ScyllaManager Controller")
 
 	return cmd
 }
@@ -227,6 +231,9 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		kubeInformers.Core().V1().ServiceAccounts(),
 		o.OperatorImage,
 	)
+	if err != nil {
+		return err
+	}
 
 	ncpc, err := nodeconfigpod.NewController(
 		o.kubeClient,
@@ -236,12 +243,36 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		kubeInformers.Core().V1().Nodes(),
 		scyllaInformers.Scylla().V1alpha1().NodeConfigs(),
 	)
+	if err != nil {
+		return err
+	}
 
 	socc, err := scyllaoperatorconfig.NewController(
 		o.kubeClient,
 		o.scyllaClient.ScyllaV1alpha1(),
 		scyllaOperatorConfigInformers.Scylla().V1alpha1().ScyllaOperatorConfigs(),
 	)
+	if err != nil {
+		return err
+	}
+
+	var smc *managerv2.Controller
+	if o.Manager {
+		smc, err = managerv2.NewController(
+			o.kubeClient,
+			o.scyllaClient.ScyllaV1alpha1(),
+			kubeInformers.Core().V1().Services(),
+			kubeInformers.Core().V1().Secrets(),
+			kubeInformers.Core().V1().ConfigMaps(),
+			kubeInformers.Apps().V1().Deployments(),
+			kubeInformers.Policy().V1().PodDisruptionBudgets(),
+			scyllaInformers.Scylla().V1alpha1().ScyllaManagers(),
+			scyllaInformers.Scylla().V1().ScyllaClusters(),
+		)
+		if err != nil {
+			return err
+		}
+	}
 
 	var wg sync.WaitGroup
 	defer wg.Wait()
@@ -293,6 +324,14 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		defer wg.Done()
 		socc.Run(ctx, o.ConcurrentSyncs)
 	}()
+
+	if o.Manager {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			smc.Run(ctx, o.ConcurrentSyncs)
+		}()
+	}
 
 	<-ctx.Done()
 

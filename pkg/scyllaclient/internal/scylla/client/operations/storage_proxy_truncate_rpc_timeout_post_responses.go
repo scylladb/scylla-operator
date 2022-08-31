@@ -48,7 +48,8 @@ func NewStorageProxyTruncateRPCTimeoutPostOK() *StorageProxyTruncateRPCTimeoutPo
 	return &StorageProxyTruncateRPCTimeoutPostOK{}
 }
 
-/*StorageProxyTruncateRPCTimeoutPostOK handles this case with default header values.
+/*
+StorageProxyTruncateRPCTimeoutPostOK handles this case with default header values.
 
 StorageProxyTruncateRPCTimeoutPostOK storage proxy truncate Rpc timeout post o k
 */
@@ -67,7 +68,8 @@ func NewStorageProxyTruncateRPCTimeoutPostDefault(code int) *StorageProxyTruncat
 	}
 }
 
-/*StorageProxyTruncateRPCTimeoutPostDefault handles this case with default header values.
+/*
+StorageProxyTruncateRPCTimeoutPostDefault handles this case with default header values.
 
 internal server error
 */

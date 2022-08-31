@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsBloomFilterOffHeapMemoryUsedGetParamsWithHTTPClient(c
 	}
 }
 
-/*ColumnFamilyMetricsBloomFilterOffHeapMemoryUsedGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsBloomFilterOffHeapMemoryUsedGetParams contains all the parameters to send to the API endpoint
 for the column family metrics bloom filter off heap memory used get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsBloomFilterOffHeapMemoryUsedGetParams struct {

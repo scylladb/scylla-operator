@@ -56,7 +56,8 @@ func NewStorageProxyMetricsReadUnavailablesRatesGetParamsWithHTTPClient(client *
 	}
 }
 
-/*StorageProxyMetricsReadUnavailablesRatesGetParams contains all the parameters to send to the API endpoint
+/*
+StorageProxyMetricsReadUnavailablesRatesGetParams contains all the parameters to send to the API endpoint
 for the storage proxy metrics read unavailables rates get operation typically these are written to a http.Request
 */
 type StorageProxyMetricsReadUnavailablesRatesGetParams struct {

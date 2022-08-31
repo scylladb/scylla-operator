@@ -57,7 +57,8 @@ func NewStorageServiceUpdateSnitchPostParamsWithHTTPClient(client *http.Client) 
 	}
 }
 
-/*StorageServiceUpdateSnitchPostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceUpdateSnitchPostParams contains all the parameters to send to the API endpoint
 for the storage service update snitch post operation typically these are written to a http.Request
 */
 type StorageServiceUpdateSnitchPostParams struct {

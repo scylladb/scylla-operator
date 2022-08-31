@@ -48,7 +48,8 @@ func NewStorageServiceIsInitializedGetOK() *StorageServiceIsInitializedGetOK {
 	return &StorageServiceIsInitializedGetOK{}
 }
 
-/*StorageServiceIsInitializedGetOK handles this case with default header values.
+/*
+StorageServiceIsInitializedGetOK handles this case with default header values.
 
 StorageServiceIsInitializedGetOK storage service is initialized get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceIsInitializedGetDefault(code int) *StorageServiceIsInitial
 	}
 }
 
-/*StorageServiceIsInitializedGetDefault handles this case with default header values.
+/*
+StorageServiceIsInitializedGetDefault handles this case with default header values.
 
 internal server error
 */

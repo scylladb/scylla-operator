@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsCasPrepareEstimatedRecentHistogramByNameGetParamsWith
 	}
 }
 
-/*ColumnFamilyMetricsCasPrepareEstimatedRecentHistogramByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsCasPrepareEstimatedRecentHistogramByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics cas prepare estimated recent histogram by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsCasPrepareEstimatedRecentHistogramByNameGetParams struct {

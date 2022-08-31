@@ -56,7 +56,8 @@ func NewStorageServiceKeyspaceFlushByKeyspacePostParamsWithHTTPClient(client *ht
 	}
 }
 
-/*StorageServiceKeyspaceFlushByKeyspacePostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceKeyspaceFlushByKeyspacePostParams contains all the parameters to send to the API endpoint
 for the storage service keyspace flush by keyspace post operation typically these are written to a http.Request
 */
 type StorageServiceKeyspaceFlushByKeyspacePostParams struct {

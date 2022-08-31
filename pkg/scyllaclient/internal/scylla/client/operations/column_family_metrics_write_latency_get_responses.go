@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsWriteLatencyGetOK() *ColumnFamilyMetricsWriteLatencyG
 	return &ColumnFamilyMetricsWriteLatencyGetOK{}
 }
 
-/*ColumnFamilyMetricsWriteLatencyGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsWriteLatencyGetOK handles this case with default header values.
 
 ColumnFamilyMetricsWriteLatencyGetOK column family metrics write latency get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsWriteLatencyGetDefault(code int) *ColumnFamilyMetrics
 	}
 }
 
-/*ColumnFamilyMetricsWriteLatencyGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsWriteLatencyGetDefault handles this case with default header values.
 
 internal server error
 */

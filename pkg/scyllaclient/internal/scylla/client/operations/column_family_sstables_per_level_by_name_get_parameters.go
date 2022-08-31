@@ -56,7 +56,8 @@ func NewColumnFamilySstablesPerLevelByNameGetParamsWithHTTPClient(client *http.C
 	}
 }
 
-/*ColumnFamilySstablesPerLevelByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilySstablesPerLevelByNameGetParams contains all the parameters to send to the API endpoint
 for the column family sstables per level by name get operation typically these are written to a http.Request
 */
 type ColumnFamilySstablesPerLevelByNameGetParams struct {

@@ -48,7 +48,8 @@ func NewGossiperGenerationNumberByAddrGetOK() *GossiperGenerationNumberByAddrGet
 	return &GossiperGenerationNumberByAddrGetOK{}
 }
 
-/*GossiperGenerationNumberByAddrGetOK handles this case with default header values.
+/*
+GossiperGenerationNumberByAddrGetOK handles this case with default header values.
 
 GossiperGenerationNumberByAddrGetOK gossiper generation number by addr get o k
 */
@@ -77,7 +78,8 @@ func NewGossiperGenerationNumberByAddrGetDefault(code int) *GossiperGenerationNu
 	}
 }
 
-/*GossiperGenerationNumberByAddrGetDefault handles this case with default header values.
+/*
+GossiperGenerationNumberByAddrGetDefault handles this case with default header values.
 
 internal server error
 */

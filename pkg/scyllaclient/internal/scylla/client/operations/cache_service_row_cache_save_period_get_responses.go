@@ -48,7 +48,8 @@ func NewCacheServiceRowCacheSavePeriodGetOK() *CacheServiceRowCacheSavePeriodGet
 	return &CacheServiceRowCacheSavePeriodGetOK{}
 }
 
-/*CacheServiceRowCacheSavePeriodGetOK handles this case with default header values.
+/*
+CacheServiceRowCacheSavePeriodGetOK handles this case with default header values.
 
 CacheServiceRowCacheSavePeriodGetOK cache service row cache save period get o k
 */
@@ -77,7 +78,8 @@ func NewCacheServiceRowCacheSavePeriodGetDefault(code int) *CacheServiceRowCache
 	}
 }
 
-/*CacheServiceRowCacheSavePeriodGetDefault handles this case with default header values.
+/*
+CacheServiceRowCacheSavePeriodGetDefault handles this case with default header values.
 
 internal server error
 */

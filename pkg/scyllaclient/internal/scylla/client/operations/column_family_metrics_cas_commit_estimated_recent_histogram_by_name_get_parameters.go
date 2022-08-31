@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsCasCommitEstimatedRecentHistogramByNameGetParamsWithH
 	}
 }
 
-/*ColumnFamilyMetricsCasCommitEstimatedRecentHistogramByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsCasCommitEstimatedRecentHistogramByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics cas commit estimated recent histogram by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsCasCommitEstimatedRecentHistogramByNameGetParams struct {

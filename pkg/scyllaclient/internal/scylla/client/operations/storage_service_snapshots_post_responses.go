@@ -48,7 +48,8 @@ func NewStorageServiceSnapshotsPostOK() *StorageServiceSnapshotsPostOK {
 	return &StorageServiceSnapshotsPostOK{}
 }
 
-/*StorageServiceSnapshotsPostOK handles this case with default header values.
+/*
+StorageServiceSnapshotsPostOK handles this case with default header values.
 
 StorageServiceSnapshotsPostOK storage service snapshots post o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceSnapshotsPostDefault(code int) *StorageServiceSnapshotsPos
 	}
 }
 
-/*StorageServiceSnapshotsPostDefault handles this case with default header values.
+/*
+StorageServiceSnapshotsPostDefault handles this case with default header values.
 
 internal server error
 */

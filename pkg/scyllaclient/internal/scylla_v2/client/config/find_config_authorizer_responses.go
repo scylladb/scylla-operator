@@ -48,7 +48,8 @@ func NewFindConfigAuthorizerOK() *FindConfigAuthorizerOK {
 	return &FindConfigAuthorizerOK{}
 }
 
-/*FindConfigAuthorizerOK handles this case with default header values.
+/*
+FindConfigAuthorizerOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigAuthorizerDefault(code int) *FindConfigAuthorizerDefault {
 	}
 }
 
-/*FindConfigAuthorizerDefault handles this case with default header values.
+/*
+FindConfigAuthorizerDefault handles this case with default header values.
 
 unexpected error
 */

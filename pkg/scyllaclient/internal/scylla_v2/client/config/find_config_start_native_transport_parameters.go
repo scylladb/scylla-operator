@@ -56,7 +56,8 @@ func NewFindConfigStartNativeTransportParamsWithHTTPClient(client *http.Client) 
 	}
 }
 
-/*FindConfigStartNativeTransportParams contains all the parameters to send to the API endpoint
+/*
+FindConfigStartNativeTransportParams contains all the parameters to send to the API endpoint
 for the find config start native transport operation typically these are written to a http.Request
 */
 type FindConfigStartNativeTransportParams struct {

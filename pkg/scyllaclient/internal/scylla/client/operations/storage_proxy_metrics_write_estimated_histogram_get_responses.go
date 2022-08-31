@@ -48,7 +48,8 @@ func NewStorageProxyMetricsWriteEstimatedHistogramGetOK() *StorageProxyMetricsWr
 	return &StorageProxyMetricsWriteEstimatedHistogramGetOK{}
 }
 
-/*StorageProxyMetricsWriteEstimatedHistogramGetOK handles this case with default header values.
+/*
+StorageProxyMetricsWriteEstimatedHistogramGetOK handles this case with default header values.
 
 StorageProxyMetricsWriteEstimatedHistogramGetOK storage proxy metrics write estimated histogram get o k
 */
@@ -67,7 +68,8 @@ func NewStorageProxyMetricsWriteEstimatedHistogramGetDefault(code int) *StorageP
 	}
 }
 
-/*StorageProxyMetricsWriteEstimatedHistogramGetDefault handles this case with default header values.
+/*
+StorageProxyMetricsWriteEstimatedHistogramGetDefault handles this case with default header values.
 
 internal server error
 */

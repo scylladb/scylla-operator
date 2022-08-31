@@ -56,7 +56,8 @@ func NewMessagingServiceMessagesExceptionGetParamsWithHTTPClient(client *http.Cl
 	}
 }
 
-/*MessagingServiceMessagesExceptionGetParams contains all the parameters to send to the API endpoint
+/*
+MessagingServiceMessagesExceptionGetParams contains all the parameters to send to the API endpoint
 for the messaging service messages exception get operation typically these are written to a http.Request
 */
 type MessagingServiceMessagesExceptionGetParams struct {

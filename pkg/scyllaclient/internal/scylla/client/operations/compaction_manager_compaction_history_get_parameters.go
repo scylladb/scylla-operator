@@ -56,7 +56,8 @@ func NewCompactionManagerCompactionHistoryGetParamsWithHTTPClient(client *http.C
 	}
 }
 
-/*CompactionManagerCompactionHistoryGetParams contains all the parameters to send to the API endpoint
+/*
+CompactionManagerCompactionHistoryGetParams contains all the parameters to send to the API endpoint
 for the compaction manager compaction history get operation typically these are written to a http.Request
 */
 type CompactionManagerCompactionHistoryGetParams struct {

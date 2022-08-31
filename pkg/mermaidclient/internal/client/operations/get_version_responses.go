@@ -47,7 +47,8 @@ func NewGetVersionOK() *GetVersionOK {
 	return &GetVersionOK{}
 }
 
-/*GetVersionOK handles this case with default header values.
+/*
+GetVersionOK handles this case with default header values.
 
 Server version
 */
@@ -82,7 +83,8 @@ func NewGetVersionDefault(code int) *GetVersionDefault {
 	}
 }
 
-/*GetVersionDefault handles this case with default header values.
+/*
+GetVersionDefault handles this case with default header values.
 
 Unexpected error
 */

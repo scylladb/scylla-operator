@@ -49,7 +49,8 @@ func NewCoreBwlimitOK() *CoreBwlimitOK {
 	return &CoreBwlimitOK{}
 }
 
-/*CoreBwlimitOK handles this case with default header values.
+/*
+CoreBwlimitOK handles this case with default header values.
 
 bandwidth rate
 */
@@ -89,7 +90,8 @@ func NewCoreBwlimitDefault(code int) *CoreBwlimitDefault {
 	}
 }
 
-/*CoreBwlimitDefault handles this case with default header values.
+/*
+CoreBwlimitDefault handles this case with default header values.
 
 Server error
 */

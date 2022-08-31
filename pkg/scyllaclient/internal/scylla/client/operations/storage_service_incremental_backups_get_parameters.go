@@ -56,7 +56,8 @@ func NewStorageServiceIncrementalBackupsGetParamsWithHTTPClient(client *http.Cli
 	}
 }
 
-/*StorageServiceIncrementalBackupsGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceIncrementalBackupsGetParams contains all the parameters to send to the API endpoint
 for the storage service incremental backups get operation typically these are written to a http.Request
 */
 type StorageServiceIncrementalBackupsGetParams struct {

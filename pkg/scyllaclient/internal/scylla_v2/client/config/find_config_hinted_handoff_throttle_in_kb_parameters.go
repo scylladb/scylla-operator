@@ -56,7 +56,8 @@ func NewFindConfigHintedHandoffThrottleInKbParamsWithHTTPClient(client *http.Cli
 	}
 }
 
-/*FindConfigHintedHandoffThrottleInKbParams contains all the parameters to send to the API endpoint
+/*
+FindConfigHintedHandoffThrottleInKbParams contains all the parameters to send to the API endpoint
 for the find config hinted handoff throttle in kb operation typically these are written to a http.Request
 */
 type FindConfigHintedHandoffThrottleInKbParams struct {

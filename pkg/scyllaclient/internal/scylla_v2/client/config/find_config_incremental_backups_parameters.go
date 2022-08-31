@@ -56,7 +56,8 @@ func NewFindConfigIncrementalBackupsParamsWithHTTPClient(client *http.Client) *F
 	}
 }
 
-/*FindConfigIncrementalBackupsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigIncrementalBackupsParams contains all the parameters to send to the API endpoint
 for the find config incremental backups operation typically these are written to a http.Request
 */
 type FindConfigIncrementalBackupsParams struct {

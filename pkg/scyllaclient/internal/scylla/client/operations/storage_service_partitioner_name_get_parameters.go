@@ -56,7 +56,8 @@ func NewStorageServicePartitionerNameGetParamsWithHTTPClient(client *http.Client
 	}
 }
 
-/*StorageServicePartitionerNameGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServicePartitionerNameGetParams contains all the parameters to send to the API endpoint
 for the storage service partitioner name get operation typically these are written to a http.Request
 */
 type StorageServicePartitionerNameGetParams struct {

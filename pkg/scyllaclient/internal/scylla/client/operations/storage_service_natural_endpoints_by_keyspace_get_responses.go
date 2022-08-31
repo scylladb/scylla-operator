@@ -48,7 +48,8 @@ func NewStorageServiceNaturalEndpointsByKeyspaceGetOK() *StorageServiceNaturalEn
 	return &StorageServiceNaturalEndpointsByKeyspaceGetOK{}
 }
 
-/*StorageServiceNaturalEndpointsByKeyspaceGetOK handles this case with default header values.
+/*
+StorageServiceNaturalEndpointsByKeyspaceGetOK handles this case with default header values.
 
 StorageServiceNaturalEndpointsByKeyspaceGetOK storage service natural endpoints by keyspace get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceNaturalEndpointsByKeyspaceGetDefault(code int) *StorageSer
 	}
 }
 
-/*StorageServiceNaturalEndpointsByKeyspaceGetDefault handles this case with default header values.
+/*
+StorageServiceNaturalEndpointsByKeyspaceGetDefault handles this case with default header values.
 
 internal server error
 */

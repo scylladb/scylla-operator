@@ -47,7 +47,8 @@ func NewDeleteClusterClusterIDOK() *DeleteClusterClusterIDOK {
 	return &DeleteClusterClusterIDOK{}
 }
 
-/*DeleteClusterClusterIDOK handles this case with default header values.
+/*
+DeleteClusterClusterIDOK handles this case with default header values.
 
 Cluster deleted
 */
@@ -70,7 +71,8 @@ func NewDeleteClusterClusterIDDefault(code int) *DeleteClusterClusterIDDefault {
 	}
 }
 
-/*DeleteClusterClusterIDDefault handles this case with default header values.
+/*
+DeleteClusterClusterIDDefault handles this case with default header values.
 
 Unexpected error
 */

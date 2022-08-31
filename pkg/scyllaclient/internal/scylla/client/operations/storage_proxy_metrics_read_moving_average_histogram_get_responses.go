@@ -48,7 +48,8 @@ func NewStorageProxyMetricsReadMovingAverageHistogramGetOK() *StorageProxyMetric
 	return &StorageProxyMetricsReadMovingAverageHistogramGetOK{}
 }
 
-/*StorageProxyMetricsReadMovingAverageHistogramGetOK handles this case with default header values.
+/*
+StorageProxyMetricsReadMovingAverageHistogramGetOK handles this case with default header values.
 
 StorageProxyMetricsReadMovingAverageHistogramGetOK storage proxy metrics read moving average histogram get o k
 */
@@ -67,7 +68,8 @@ func NewStorageProxyMetricsReadMovingAverageHistogramGetDefault(code int) *Stora
 	}
 }
 
-/*StorageProxyMetricsReadMovingAverageHistogramGetDefault handles this case with default header values.
+/*
+StorageProxyMetricsReadMovingAverageHistogramGetDefault handles this case with default header values.
 
 internal server error
 */

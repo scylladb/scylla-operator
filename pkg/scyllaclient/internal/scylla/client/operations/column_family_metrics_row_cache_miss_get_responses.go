@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsRowCacheMissGetOK() *ColumnFamilyMetricsRowCacheMissG
 	return &ColumnFamilyMetricsRowCacheMissGetOK{}
 }
 
-/*ColumnFamilyMetricsRowCacheMissGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsRowCacheMissGetOK handles this case with default header values.
 
 ColumnFamilyMetricsRowCacheMissGetOK column family metrics row cache miss get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsRowCacheMissGetDefault(code int) *ColumnFamilyMetrics
 	}
 }
 
-/*ColumnFamilyMetricsRowCacheMissGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsRowCacheMissGetDefault handles this case with default header values.
 
 internal server error
 */

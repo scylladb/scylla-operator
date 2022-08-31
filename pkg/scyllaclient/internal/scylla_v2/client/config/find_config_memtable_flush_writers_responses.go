@@ -48,7 +48,8 @@ func NewFindConfigMemtableFlushWritersOK() *FindConfigMemtableFlushWritersOK {
 	return &FindConfigMemtableFlushWritersOK{}
 }
 
-/*FindConfigMemtableFlushWritersOK handles this case with default header values.
+/*
+FindConfigMemtableFlushWritersOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigMemtableFlushWritersDefault(code int) *FindConfigMemtableFlush
 	}
 }
 
-/*FindConfigMemtableFlushWritersDefault handles this case with default header values.
+/*
+FindConfigMemtableFlushWritersDefault handles this case with default header values.
 
 unexpected error
 */

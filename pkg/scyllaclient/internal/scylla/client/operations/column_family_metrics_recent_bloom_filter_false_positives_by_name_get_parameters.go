@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsRecentBloomFilterFalsePositivesByNameGetParamsWithHTT
 	}
 }
 
-/*ColumnFamilyMetricsRecentBloomFilterFalsePositivesByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsRecentBloomFilterFalsePositivesByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics recent bloom filter false positives by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsRecentBloomFilterFalsePositivesByNameGetParams struct {

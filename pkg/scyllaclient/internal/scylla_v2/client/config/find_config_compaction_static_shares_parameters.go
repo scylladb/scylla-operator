@@ -56,7 +56,8 @@ func NewFindConfigCompactionStaticSharesParamsWithHTTPClient(client *http.Client
 	}
 }
 
-/*FindConfigCompactionStaticSharesParams contains all the parameters to send to the API endpoint
+/*
+FindConfigCompactionStaticSharesParams contains all the parameters to send to the API endpoint
 for the find config compaction static shares operation typically these are written to a http.Request
 */
 type FindConfigCompactionStaticSharesParams struct {

@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsWriteLatencyHistogramByNameGetParamsWithHTTPClient(cl
 	}
 }
 
-/*ColumnFamilyMetricsWriteLatencyHistogramByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsWriteLatencyHistogramByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics write latency histogram by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsWriteLatencyHistogramByNameGetParams struct {

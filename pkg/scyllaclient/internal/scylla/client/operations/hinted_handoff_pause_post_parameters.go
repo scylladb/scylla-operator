@@ -57,7 +57,8 @@ func NewHintedHandoffPausePostParamsWithHTTPClient(client *http.Client) *HintedH
 	}
 }
 
-/*HintedHandoffPausePostParams contains all the parameters to send to the API endpoint
+/*
+HintedHandoffPausePostParams contains all the parameters to send to the API endpoint
 for the hinted handoff pause post operation typically these are written to a http.Request
 */
 type HintedHandoffPausePostParams struct {

@@ -56,7 +56,8 @@ func NewFindConfigThriftMaxMessageLengthInMbParamsWithHTTPClient(client *http.Cl
 	}
 }
 
-/*FindConfigThriftMaxMessageLengthInMbParams contains all the parameters to send to the API endpoint
+/*
+FindConfigThriftMaxMessageLengthInMbParams contains all the parameters to send to the API endpoint
 for the find config thrift max message length in mb operation typically these are written to a http.Request
 */
 type FindConfigThriftMaxMessageLengthInMbParams struct {

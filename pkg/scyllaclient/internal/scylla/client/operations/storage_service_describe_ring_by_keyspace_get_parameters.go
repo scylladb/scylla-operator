@@ -56,7 +56,8 @@ func NewStorageServiceDescribeRingByKeyspaceGetParamsWithHTTPClient(client *http
 	}
 }
 
-/*StorageServiceDescribeRingByKeyspaceGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceDescribeRingByKeyspaceGetParams contains all the parameters to send to the API endpoint
 for the storage service describe ring by keyspace get operation typically these are written to a http.Request
 */
 type StorageServiceDescribeRingByKeyspaceGetParams struct {

@@ -57,7 +57,8 @@ func NewCollectdByPluginidPostParamsWithHTTPClient(client *http.Client) *Collect
 	}
 }
 
-/*CollectdByPluginidPostParams contains all the parameters to send to the API endpoint
+/*
+CollectdByPluginidPostParams contains all the parameters to send to the API endpoint
 for the collectd by pluginid post operation typically these are written to a http.Request
 */
 type CollectdByPluginidPostParams struct {

@@ -47,7 +47,8 @@ func NewPostClusterClusterIDRepairsIntensityOK() *PostClusterClusterIDRepairsInt
 	return &PostClusterClusterIDRepairsIntensityOK{}
 }
 
-/*PostClusterClusterIDRepairsIntensityOK handles this case with default header values.
+/*
+PostClusterClusterIDRepairsIntensityOK handles this case with default header values.
 
 OK
 */
@@ -70,7 +71,8 @@ func NewPostClusterClusterIDRepairsIntensityDefault(code int) *PostClusterCluste
 	}
 }
 
-/*PostClusterClusterIDRepairsIntensityDefault handles this case with default header values.
+/*
+PostClusterClusterIDRepairsIntensityDefault handles this case with default header values.
 
 Unexpected error
 */

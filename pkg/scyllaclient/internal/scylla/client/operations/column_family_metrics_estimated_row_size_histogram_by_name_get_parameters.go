@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsEstimatedRowSizeHistogramByNameGetParamsWithHTTPClien
 	}
 }
 
-/*ColumnFamilyMetricsEstimatedRowSizeHistogramByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsEstimatedRowSizeHistogramByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics estimated row size histogram by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsEstimatedRowSizeHistogramByNameGetParams struct {

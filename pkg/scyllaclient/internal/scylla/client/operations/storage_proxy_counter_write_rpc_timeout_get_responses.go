@@ -48,7 +48,8 @@ func NewStorageProxyCounterWriteRPCTimeoutGetOK() *StorageProxyCounterWriteRPCTi
 	return &StorageProxyCounterWriteRPCTimeoutGetOK{}
 }
 
-/*StorageProxyCounterWriteRPCTimeoutGetOK handles this case with default header values.
+/*
+StorageProxyCounterWriteRPCTimeoutGetOK handles this case with default header values.
 
 StorageProxyCounterWriteRPCTimeoutGetOK storage proxy counter write Rpc timeout get o k
 */
@@ -77,7 +78,8 @@ func NewStorageProxyCounterWriteRPCTimeoutGetDefault(code int) *StorageProxyCoun
 	}
 }
 
-/*StorageProxyCounterWriteRPCTimeoutGetDefault handles this case with default header values.
+/*
+StorageProxyCounterWriteRPCTimeoutGetDefault handles this case with default header values.
 
 internal server error
 */

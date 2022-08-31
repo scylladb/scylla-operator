@@ -48,7 +48,8 @@ func NewStorageServiceKeyspaceCompactionByKeyspacePostOK() *StorageServiceKeyspa
 	return &StorageServiceKeyspaceCompactionByKeyspacePostOK{}
 }
 
-/*StorageServiceKeyspaceCompactionByKeyspacePostOK handles this case with default header values.
+/*
+StorageServiceKeyspaceCompactionByKeyspacePostOK handles this case with default header values.
 
 StorageServiceKeyspaceCompactionByKeyspacePostOK storage service keyspace compaction by keyspace post o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceKeyspaceCompactionByKeyspacePostDefault(code int) *Storage
 	}
 }
 
-/*StorageServiceKeyspaceCompactionByKeyspacePostDefault handles this case with default header values.
+/*
+StorageServiceKeyspaceCompactionByKeyspacePostDefault handles this case with default header values.
 
 internal server error
 */

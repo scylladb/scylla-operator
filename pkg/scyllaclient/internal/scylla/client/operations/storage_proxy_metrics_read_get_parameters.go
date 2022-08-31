@@ -56,7 +56,8 @@ func NewStorageProxyMetricsReadGetParamsWithHTTPClient(client *http.Client) *Sto
 	}
 }
 
-/*StorageProxyMetricsReadGetParams contains all the parameters to send to the API endpoint
+/*
+StorageProxyMetricsReadGetParams contains all the parameters to send to the API endpoint
 for the storage proxy metrics read get operation typically these are written to a http.Request
 */
 type StorageProxyMetricsReadGetParams struct {

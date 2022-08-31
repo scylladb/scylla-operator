@@ -56,7 +56,8 @@ func NewFailureDetectorPhiPostParamsWithHTTPClient(client *http.Client) *Failure
 	}
 }
 
-/*FailureDetectorPhiPostParams contains all the parameters to send to the API endpoint
+/*
+FailureDetectorPhiPostParams contains all the parameters to send to the API endpoint
 for the failure detector phi post operation typically these are written to a http.Request
 */
 type FailureDetectorPhiPostParams struct {

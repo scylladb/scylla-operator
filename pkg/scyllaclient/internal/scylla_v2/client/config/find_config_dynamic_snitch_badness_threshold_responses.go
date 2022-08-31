@@ -48,7 +48,8 @@ func NewFindConfigDynamicSnitchBadnessThresholdOK() *FindConfigDynamicSnitchBadn
 	return &FindConfigDynamicSnitchBadnessThresholdOK{}
 }
 
-/*FindConfigDynamicSnitchBadnessThresholdOK handles this case with default header values.
+/*
+FindConfigDynamicSnitchBadnessThresholdOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigDynamicSnitchBadnessThresholdDefault(code int) *FindConfigDyna
 	}
 }
 
-/*FindConfigDynamicSnitchBadnessThresholdDefault handles this case with default header values.
+/*
+FindConfigDynamicSnitchBadnessThresholdDefault handles this case with default header values.
 
 unexpected error
 */

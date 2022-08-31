@@ -56,7 +56,8 @@ func NewFindConfigTrickleFsyncIntervalInKbParamsWithHTTPClient(client *http.Clie
 	}
 }
 
-/*FindConfigTrickleFsyncIntervalInKbParams contains all the parameters to send to the API endpoint
+/*
+FindConfigTrickleFsyncIntervalInKbParams contains all the parameters to send to the API endpoint
 for the find config trickle fsync interval in kb operation typically these are written to a http.Request
 */
 type FindConfigTrickleFsyncIntervalInKbParams struct {

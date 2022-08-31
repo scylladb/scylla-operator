@@ -56,7 +56,8 @@ func NewFindConfigPrometheusPortParamsWithHTTPClient(client *http.Client) *FindC
 	}
 }
 
-/*FindConfigPrometheusPortParams contains all the parameters to send to the API endpoint
+/*
+FindConfigPrometheusPortParams contains all the parameters to send to the API endpoint
 for the find config prometheus port operation typically these are written to a http.Request
 */
 type FindConfigPrometheusPortParams struct {

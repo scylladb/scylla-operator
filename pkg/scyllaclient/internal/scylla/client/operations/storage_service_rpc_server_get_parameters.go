@@ -56,7 +56,8 @@ func NewStorageServiceRPCServerGetParamsWithHTTPClient(client *http.Client) *Sto
 	}
 }
 
-/*StorageServiceRPCServerGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceRPCServerGetParams contains all the parameters to send to the API endpoint
 for the storage service Rpc server get operation typically these are written to a http.Request
 */
 type StorageServiceRPCServerGetParams struct {

@@ -56,7 +56,8 @@ func NewFindConfigRPCServerTypeParamsWithHTTPClient(client *http.Client) *FindCo
 	}
 }
 
-/*FindConfigRPCServerTypeParams contains all the parameters to send to the API endpoint
+/*
+FindConfigRPCServerTypeParams contains all the parameters to send to the API endpoint
 for the find config rpc server type operation typically these are written to a http.Request
 */
 type FindConfigRPCServerTypeParams struct {

@@ -48,7 +48,8 @@ func NewFindConfigMurmur3PartitionerIgnoreMsbBitsOK() *FindConfigMurmur3Partitio
 	return &FindConfigMurmur3PartitionerIgnoreMsbBitsOK{}
 }
 
-/*FindConfigMurmur3PartitionerIgnoreMsbBitsOK handles this case with default header values.
+/*
+FindConfigMurmur3PartitionerIgnoreMsbBitsOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigMurmur3PartitionerIgnoreMsbBitsDefault(code int) *FindConfigMu
 	}
 }
 
-/*FindConfigMurmur3PartitionerIgnoreMsbBitsDefault handles this case with default header values.
+/*
+FindConfigMurmur3PartitionerIgnoreMsbBitsDefault handles this case with default header values.
 
 unexpected error
 */

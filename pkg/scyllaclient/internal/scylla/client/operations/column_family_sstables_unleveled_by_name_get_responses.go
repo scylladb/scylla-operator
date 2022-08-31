@@ -48,7 +48,8 @@ func NewColumnFamilySstablesUnleveledByNameGetOK() *ColumnFamilySstablesUnlevele
 	return &ColumnFamilySstablesUnleveledByNameGetOK{}
 }
 
-/*ColumnFamilySstablesUnleveledByNameGetOK handles this case with default header values.
+/*
+ColumnFamilySstablesUnleveledByNameGetOK handles this case with default header values.
 
 ColumnFamilySstablesUnleveledByNameGetOK column family sstables unleveled by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilySstablesUnleveledByNameGetDefault(code int) *ColumnFamilySst
 	}
 }
 
-/*ColumnFamilySstablesUnleveledByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilySstablesUnleveledByNameGetDefault handles this case with default header values.
 
 internal server error
 */

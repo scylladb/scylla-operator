@@ -56,7 +56,8 @@ func NewStorageServiceSampleKeyRangeGetParamsWithHTTPClient(client *http.Client)
 	}
 }
 
-/*StorageServiceSampleKeyRangeGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceSampleKeyRangeGetParams contains all the parameters to send to the API endpoint
 for the storage service sample key range get operation typically these are written to a http.Request
 */
 type StorageServiceSampleKeyRangeGetParams struct {

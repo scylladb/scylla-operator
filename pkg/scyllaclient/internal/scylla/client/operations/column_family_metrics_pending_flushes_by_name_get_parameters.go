@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsPendingFlushesByNameGetParamsWithHTTPClient(client *h
 	}
 }
 
-/*ColumnFamilyMetricsPendingFlushesByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsPendingFlushesByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics pending flushes by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsPendingFlushesByNameGetParams struct {

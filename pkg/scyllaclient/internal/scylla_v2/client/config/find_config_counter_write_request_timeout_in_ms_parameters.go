@@ -56,7 +56,8 @@ func NewFindConfigCounterWriteRequestTimeoutInMsParamsWithHTTPClient(client *htt
 	}
 }
 
-/*FindConfigCounterWriteRequestTimeoutInMsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigCounterWriteRequestTimeoutInMsParams contains all the parameters to send to the API endpoint
 for the find config counter write request timeout in ms operation typically these are written to a http.Request
 */
 type FindConfigCounterWriteRequestTimeoutInMsParams struct {

@@ -56,7 +56,8 @@ func NewStreamManagerMetricsOutgoingByPeerGetParamsWithHTTPClient(client *http.C
 	}
 }
 
-/*StreamManagerMetricsOutgoingByPeerGetParams contains all the parameters to send to the API endpoint
+/*
+StreamManagerMetricsOutgoingByPeerGetParams contains all the parameters to send to the API endpoint
 for the stream manager metrics outgoing by peer get operation typically these are written to a http.Request
 */
 type StreamManagerMetricsOutgoingByPeerGetParams struct {

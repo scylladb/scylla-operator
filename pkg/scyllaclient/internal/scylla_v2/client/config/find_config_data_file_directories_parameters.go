@@ -56,7 +56,8 @@ func NewFindConfigDataFileDirectoriesParamsWithHTTPClient(client *http.Client) *
 	}
 }
 
-/*FindConfigDataFileDirectoriesParams contains all the parameters to send to the API endpoint
+/*
+FindConfigDataFileDirectoriesParams contains all the parameters to send to the API endpoint
 for the find config data file directories operation typically these are written to a http.Request
 */
 type FindConfigDataFileDirectoriesParams struct {

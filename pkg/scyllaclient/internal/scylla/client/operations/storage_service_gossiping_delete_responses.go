@@ -48,7 +48,8 @@ func NewStorageServiceGossipingDeleteOK() *StorageServiceGossipingDeleteOK {
 	return &StorageServiceGossipingDeleteOK{}
 }
 
-/*StorageServiceGossipingDeleteOK handles this case with default header values.
+/*
+StorageServiceGossipingDeleteOK handles this case with default header values.
 
 StorageServiceGossipingDeleteOK storage service gossiping delete o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceGossipingDeleteDefault(code int) *StorageServiceGossipingD
 	}
 }
 
-/*StorageServiceGossipingDeleteDefault handles this case with default header values.
+/*
+StorageServiceGossipingDeleteDefault handles this case with default header values.
 
 internal server error
 */

@@ -56,7 +56,8 @@ func NewFindConfigAuthenticatorParamsWithHTTPClient(client *http.Client) *FindCo
 	}
 }
 
-/*FindConfigAuthenticatorParams contains all the parameters to send to the API endpoint
+/*
+FindConfigAuthenticatorParams contains all the parameters to send to the API endpoint
 for the find config authenticator operation typically these are written to a http.Request
 */
 type FindConfigAuthenticatorParams struct {

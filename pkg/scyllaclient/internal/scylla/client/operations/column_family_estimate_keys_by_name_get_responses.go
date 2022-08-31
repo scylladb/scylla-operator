@@ -48,7 +48,8 @@ func NewColumnFamilyEstimateKeysByNameGetOK() *ColumnFamilyEstimateKeysByNameGet
 	return &ColumnFamilyEstimateKeysByNameGetOK{}
 }
 
-/*ColumnFamilyEstimateKeysByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyEstimateKeysByNameGetOK handles this case with default header values.
 
 ColumnFamilyEstimateKeysByNameGetOK column family estimate keys by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyEstimateKeysByNameGetDefault(code int) *ColumnFamilyEstimate
 	}
 }
 
-/*ColumnFamilyEstimateKeysByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyEstimateKeysByNameGetDefault handles this case with default header values.
 
 internal server error
 */

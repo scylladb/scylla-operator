@@ -94,7 +94,7 @@ func (c *FakeScyllaOperatorConfigs) UpdateStatus(ctx context.Context, scyllaOper
 // Delete takes name of the scyllaOperatorConfig and deletes it. Returns an error if one occurs.
 func (c *FakeScyllaOperatorConfigs) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(scyllaoperatorconfigsResource, name), &v1alpha1.ScyllaOperatorConfig{})
+		Invokes(testing.NewRootDeleteActionWithOptions(scyllaoperatorconfigsResource, name, opts), &v1alpha1.ScyllaOperatorConfig{})
 	return err
 }
 

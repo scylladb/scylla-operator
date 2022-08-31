@@ -56,7 +56,8 @@ func NewStorageProxyMetricsWriteMovingAverageHistogramGetParamsWithHTTPClient(cl
 	}
 }
 
-/*StorageProxyMetricsWriteMovingAverageHistogramGetParams contains all the parameters to send to the API endpoint
+/*
+StorageProxyMetricsWriteMovingAverageHistogramGetParams contains all the parameters to send to the API endpoint
 for the storage proxy metrics write moving average histogram get operation typically these are written to a http.Request
 */
 type StorageProxyMetricsWriteMovingAverageHistogramGetParams struct {

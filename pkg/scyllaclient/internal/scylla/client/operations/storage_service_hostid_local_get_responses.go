@@ -48,7 +48,8 @@ func NewStorageServiceHostidLocalGetOK() *StorageServiceHostidLocalGetOK {
 	return &StorageServiceHostidLocalGetOK{}
 }
 
-/*StorageServiceHostidLocalGetOK handles this case with default header values.
+/*
+StorageServiceHostidLocalGetOK handles this case with default header values.
 
 StorageServiceHostidLocalGetOK storage service hostid local get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceHostidLocalGetDefault(code int) *StorageServiceHostidLocal
 	}
 }
 
-/*StorageServiceHostidLocalGetDefault handles this case with default header values.
+/*
+StorageServiceHostidLocalGetDefault handles this case with default header values.
 
 internal server error
 */

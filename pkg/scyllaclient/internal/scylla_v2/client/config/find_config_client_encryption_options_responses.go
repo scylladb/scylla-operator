@@ -48,7 +48,8 @@ func NewFindConfigClientEncryptionOptionsOK() *FindConfigClientEncryptionOptions
 	return &FindConfigClientEncryptionOptionsOK{}
 }
 
-/*FindConfigClientEncryptionOptionsOK handles this case with default header values.
+/*
+FindConfigClientEncryptionOptionsOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigClientEncryptionOptionsDefault(code int) *FindConfigClientEncr
 	}
 }
 
-/*FindConfigClientEncryptionOptionsDefault handles this case with default header values.
+/*
+FindConfigClientEncryptionOptionsDefault handles this case with default header values.
 
 unexpected error
 */

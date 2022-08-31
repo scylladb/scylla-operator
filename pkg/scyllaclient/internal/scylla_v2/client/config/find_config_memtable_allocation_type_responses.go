@@ -48,7 +48,8 @@ func NewFindConfigMemtableAllocationTypeOK() *FindConfigMemtableAllocationTypeOK
 	return &FindConfigMemtableAllocationTypeOK{}
 }
 
-/*FindConfigMemtableAllocationTypeOK handles this case with default header values.
+/*
+FindConfigMemtableAllocationTypeOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigMemtableAllocationTypeDefault(code int) *FindConfigMemtableAll
 	}
 }
 
-/*FindConfigMemtableAllocationTypeDefault handles this case with default header values.
+/*
+FindConfigMemtableAllocationTypeDefault handles this case with default header values.
 
 unexpected error
 */

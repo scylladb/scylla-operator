@@ -56,7 +56,8 @@ func NewStorageServiceStopDaemonPostParamsWithHTTPClient(client *http.Client) *S
 	}
 }
 
-/*StorageServiceStopDaemonPostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceStopDaemonPostParams contains all the parameters to send to the API endpoint
 for the storage service stop daemon post operation typically these are written to a http.Request
 */
 type StorageServiceStopDaemonPostParams struct {

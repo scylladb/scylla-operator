@@ -48,7 +48,8 @@ func NewStorageProxyCasContentionTimeoutGetOK() *StorageProxyCasContentionTimeou
 	return &StorageProxyCasContentionTimeoutGetOK{}
 }
 
-/*StorageProxyCasContentionTimeoutGetOK handles this case with default header values.
+/*
+StorageProxyCasContentionTimeoutGetOK handles this case with default header values.
 
 StorageProxyCasContentionTimeoutGetOK storage proxy cas contention timeout get o k
 */
@@ -77,7 +78,8 @@ func NewStorageProxyCasContentionTimeoutGetDefault(code int) *StorageProxyCasCon
 	}
 }
 
-/*StorageProxyCasContentionTimeoutGetDefault handles this case with default header values.
+/*
+StorageProxyCasContentionTimeoutGetDefault handles this case with default header values.
 
 internal server error
 */

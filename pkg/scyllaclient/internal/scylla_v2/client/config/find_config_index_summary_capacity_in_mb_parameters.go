@@ -56,7 +56,8 @@ func NewFindConfigIndexSummaryCapacityInMbParamsWithHTTPClient(client *http.Clie
 	}
 }
 
-/*FindConfigIndexSummaryCapacityInMbParams contains all the parameters to send to the API endpoint
+/*
+FindConfigIndexSummaryCapacityInMbParams contains all the parameters to send to the API endpoint
 for the find config index summary capacity in mb operation typically these are written to a http.Request
 */
 type FindConfigIndexSummaryCapacityInMbParams struct {

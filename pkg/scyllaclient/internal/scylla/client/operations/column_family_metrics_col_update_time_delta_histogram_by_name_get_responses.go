@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsColUpdateTimeDeltaHistogramByNameGetOK() *ColumnFamil
 	return &ColumnFamilyMetricsColUpdateTimeDeltaHistogramByNameGetOK{}
 }
 
-/*ColumnFamilyMetricsColUpdateTimeDeltaHistogramByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsColUpdateTimeDeltaHistogramByNameGetOK handles this case with default header values.
 
 ColumnFamilyMetricsColUpdateTimeDeltaHistogramByNameGetOK column family metrics col update time delta histogram by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsColUpdateTimeDeltaHistogramByNameGetDefault(code int)
 	}
 }
 
-/*ColumnFamilyMetricsColUpdateTimeDeltaHistogramByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsColUpdateTimeDeltaHistogramByNameGetDefault handles this case with default header values.
 
 internal server error
 */

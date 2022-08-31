@@ -56,7 +56,8 @@ func NewStorageServiceOwnershipGetParamsWithHTTPClient(client *http.Client) *Sto
 	}
 }
 
-/*StorageServiceOwnershipGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceOwnershipGetParams contains all the parameters to send to the API endpoint
 for the storage service ownership get operation typically these are written to a http.Request
 */
 type StorageServiceOwnershipGetParams struct {

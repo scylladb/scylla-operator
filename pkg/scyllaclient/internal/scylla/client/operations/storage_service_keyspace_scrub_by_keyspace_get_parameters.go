@@ -57,7 +57,8 @@ func NewStorageServiceKeyspaceScrubByKeyspaceGetParamsWithHTTPClient(client *htt
 	}
 }
 
-/*StorageServiceKeyspaceScrubByKeyspaceGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceKeyspaceScrubByKeyspaceGetParams contains all the parameters to send to the API endpoint
 for the storage service keyspace scrub by keyspace get operation typically these are written to a http.Request
 */
 type StorageServiceKeyspaceScrubByKeyspaceGetParams struct {

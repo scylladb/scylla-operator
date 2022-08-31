@@ -48,7 +48,8 @@ func NewStorageServiceScyllaReleaseVersionGetOK() *StorageServiceScyllaReleaseVe
 	return &StorageServiceScyllaReleaseVersionGetOK{}
 }
 
-/*StorageServiceScyllaReleaseVersionGetOK handles this case with default header values.
+/*
+StorageServiceScyllaReleaseVersionGetOK handles this case with default header values.
 
 StorageServiceScyllaReleaseVersionGetOK storage service scylla release version get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceScyllaReleaseVersionGetDefault(code int) *StorageServiceSc
 	}
 }
 
-/*StorageServiceScyllaReleaseVersionGetDefault handles this case with default header values.
+/*
+StorageServiceScyllaReleaseVersionGetDefault handles this case with default header values.
 
 internal server error
 */

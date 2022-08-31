@@ -48,7 +48,8 @@ func NewStorageServiceStopDaemonPostOK() *StorageServiceStopDaemonPostOK {
 	return &StorageServiceStopDaemonPostOK{}
 }
 
-/*StorageServiceStopDaemonPostOK handles this case with default header values.
+/*
+StorageServiceStopDaemonPostOK handles this case with default header values.
 
 StorageServiceStopDaemonPostOK storage service stop daemon post o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceStopDaemonPostDefault(code int) *StorageServiceStopDaemonP
 	}
 }
 
-/*StorageServiceStopDaemonPostDefault handles this case with default header values.
+/*
+StorageServiceStopDaemonPostDefault handles this case with default header values.
 
 internal server error
 */

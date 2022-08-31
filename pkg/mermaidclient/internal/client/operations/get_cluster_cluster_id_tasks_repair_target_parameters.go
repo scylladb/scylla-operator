@@ -58,7 +58,8 @@ func NewGetClusterClusterIDTasksRepairTargetParamsWithHTTPClient(client *http.Cl
 	}
 }
 
-/*GetClusterClusterIDTasksRepairTargetParams contains all the parameters to send to the API endpoint
+/*
+GetClusterClusterIDTasksRepairTargetParams contains all the parameters to send to the API endpoint
 for the get cluster cluster ID tasks repair target operation typically these are written to a http.Request
 */
 type GetClusterClusterIDTasksRepairTargetParams struct {

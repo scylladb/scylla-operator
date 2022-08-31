@@ -56,7 +56,8 @@ func NewCommitLogMetricsWaitingOnSegmentAllocationGetParamsWithHTTPClient(client
 	}
 }
 
-/*CommitLogMetricsWaitingOnSegmentAllocationGetParams contains all the parameters to send to the API endpoint
+/*
+CommitLogMetricsWaitingOnSegmentAllocationGetParams contains all the parameters to send to the API endpoint
 for the commit log metrics waiting on segment allocation get operation typically these are written to a http.Request
 */
 type CommitLogMetricsWaitingOnSegmentAllocationGetParams struct {

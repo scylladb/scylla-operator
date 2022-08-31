@@ -56,7 +56,8 @@ func NewCompactionManagerMetricsPendingTasksGetParamsWithHTTPClient(client *http
 	}
 }
 
-/*CompactionManagerMetricsPendingTasksGetParams contains all the parameters to send to the API endpoint
+/*
+CompactionManagerMetricsPendingTasksGetParams contains all the parameters to send to the API endpoint
 for the compaction manager metrics pending tasks get operation typically these are written to a http.Request
 */
 type CompactionManagerMetricsPendingTasksGetParams struct {

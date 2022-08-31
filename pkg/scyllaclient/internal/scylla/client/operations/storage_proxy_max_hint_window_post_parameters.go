@@ -57,7 +57,8 @@ func NewStorageProxyMaxHintWindowPostParamsWithHTTPClient(client *http.Client) *
 	}
 }
 
-/*StorageProxyMaxHintWindowPostParams contains all the parameters to send to the API endpoint
+/*
+StorageProxyMaxHintWindowPostParams contains all the parameters to send to the API endpoint
 for the storage proxy max hint window post operation typically these are written to a http.Request
 */
 type StorageProxyMaxHintWindowPostParams struct {

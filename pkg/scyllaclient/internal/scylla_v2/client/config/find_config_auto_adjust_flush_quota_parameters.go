@@ -56,7 +56,8 @@ func NewFindConfigAutoAdjustFlushQuotaParamsWithHTTPClient(client *http.Client) 
 	}
 }
 
-/*FindConfigAutoAdjustFlushQuotaParams contains all the parameters to send to the API endpoint
+/*
+FindConfigAutoAdjustFlushQuotaParams contains all the parameters to send to the API endpoint
 for the find config auto adjust flush quota operation typically these are written to a http.Request
 */
 type FindConfigAutoAdjustFlushQuotaParams struct {

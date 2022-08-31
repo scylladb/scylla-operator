@@ -58,7 +58,8 @@ func NewOperationsCatParamsWithHTTPClient(client *http.Client) *OperationsCatPar
 	}
 }
 
-/*OperationsCatParams contains all the parameters to send to the API endpoint
+/*
+OperationsCatParams contains all the parameters to send to the API endpoint
 for the operations cat operation typically these are written to a http.Request
 */
 type OperationsCatParams struct {

@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsMemtableSwitchCountGetOK() *ColumnFamilyMetricsMemtab
 	return &ColumnFamilyMetricsMemtableSwitchCountGetOK{}
 }
 
-/*ColumnFamilyMetricsMemtableSwitchCountGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsMemtableSwitchCountGetOK handles this case with default header values.
 
 ColumnFamilyMetricsMemtableSwitchCountGetOK column family metrics memtable switch count get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsMemtableSwitchCountGetDefault(code int) *ColumnFamily
 	}
 }
 
-/*ColumnFamilyMetricsMemtableSwitchCountGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsMemtableSwitchCountGetDefault handles this case with default header values.
 
 internal server error
 */

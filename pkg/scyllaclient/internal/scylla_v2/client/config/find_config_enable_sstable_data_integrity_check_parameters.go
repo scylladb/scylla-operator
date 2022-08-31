@@ -56,7 +56,8 @@ func NewFindConfigEnableSstableDataIntegrityCheckParamsWithHTTPClient(client *ht
 	}
 }
 
-/*FindConfigEnableSstableDataIntegrityCheckParams contains all the parameters to send to the API endpoint
+/*
+FindConfigEnableSstableDataIntegrityCheckParams contains all the parameters to send to the API endpoint
 for the find config enable sstable data integrity check operation typically these are written to a http.Request
 */
 type FindConfigEnableSstableDataIntegrityCheckParams struct {

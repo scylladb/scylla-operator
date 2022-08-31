@@ -56,7 +56,8 @@ func NewStorageServiceDeliverHintsPostParamsWithHTTPClient(client *http.Client) 
 	}
 }
 
-/*StorageServiceDeliverHintsPostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceDeliverHintsPostParams contains all the parameters to send to the API endpoint
 for the storage service deliver hints post operation typically these are written to a http.Request
 */
 type StorageServiceDeliverHintsPostParams struct {

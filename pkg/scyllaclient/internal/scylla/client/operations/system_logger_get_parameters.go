@@ -56,7 +56,8 @@ func NewSystemLoggerGetParamsWithHTTPClient(client *http.Client) *SystemLoggerGe
 	}
 }
 
-/*SystemLoggerGetParams contains all the parameters to send to the API endpoint
+/*
+SystemLoggerGetParams contains all the parameters to send to the API endpoint
 for the system logger get operation typically these are written to a http.Request
 */
 type SystemLoggerGetParams struct {

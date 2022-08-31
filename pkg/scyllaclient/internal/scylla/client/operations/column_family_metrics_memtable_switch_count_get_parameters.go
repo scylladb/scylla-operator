@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsMemtableSwitchCountGetParamsWithHTTPClient(client *ht
 	}
 }
 
-/*ColumnFamilyMetricsMemtableSwitchCountGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsMemtableSwitchCountGetParams contains all the parameters to send to the API endpoint
 for the column family metrics memtable switch count get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsMemtableSwitchCountGetParams struct {

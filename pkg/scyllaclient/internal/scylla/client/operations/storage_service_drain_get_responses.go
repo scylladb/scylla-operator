@@ -48,7 +48,8 @@ func NewStorageServiceDrainGetOK() *StorageServiceDrainGetOK {
 	return &StorageServiceDrainGetOK{}
 }
 
-/*StorageServiceDrainGetOK handles this case with default header values.
+/*
+StorageServiceDrainGetOK handles this case with default header values.
 
 StorageServiceDrainGetOK storage service drain get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceDrainGetDefault(code int) *StorageServiceDrainGetDefault {
 	}
 }
 
-/*StorageServiceDrainGetDefault handles this case with default header values.
+/*
+StorageServiceDrainGetDefault handles this case with default header values.
 
 internal server error
 */

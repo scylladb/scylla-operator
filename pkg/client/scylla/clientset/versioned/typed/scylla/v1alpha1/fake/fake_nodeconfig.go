@@ -94,7 +94,7 @@ func (c *FakeNodeConfigs) UpdateStatus(ctx context.Context, nodeConfig *v1alpha1
 // Delete takes name of the nodeConfig and deletes it. Returns an error if one occurs.
 func (c *FakeNodeConfigs) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(nodeconfigsResource, name), &v1alpha1.NodeConfig{})
+		Invokes(testing.NewRootDeleteActionWithOptions(nodeconfigsResource, name, opts), &v1alpha1.NodeConfig{})
 	return err
 }
 

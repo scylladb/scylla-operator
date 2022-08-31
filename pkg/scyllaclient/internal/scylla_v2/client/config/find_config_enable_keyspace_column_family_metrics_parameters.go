@@ -56,7 +56,8 @@ func NewFindConfigEnableKeyspaceColumnFamilyMetricsParamsWithHTTPClient(client *
 	}
 }
 
-/*FindConfigEnableKeyspaceColumnFamilyMetricsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigEnableKeyspaceColumnFamilyMetricsParams contains all the parameters to send to the API endpoint
 for the find config enable keyspace column family metrics operation typically these are written to a http.Request
 */
 type FindConfigEnableKeyspaceColumnFamilyMetricsParams struct {

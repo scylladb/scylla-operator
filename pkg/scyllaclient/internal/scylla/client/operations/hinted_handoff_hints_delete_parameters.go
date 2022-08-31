@@ -56,7 +56,8 @@ func NewHintedHandoffHintsDeleteParamsWithHTTPClient(client *http.Client) *Hinte
 	}
 }
 
-/*HintedHandoffHintsDeleteParams contains all the parameters to send to the API endpoint
+/*
+HintedHandoffHintsDeleteParams contains all the parameters to send to the API endpoint
 for the hinted handoff hints delete operation typically these are written to a http.Request
 */
 type HintedHandoffHintsDeleteParams struct {

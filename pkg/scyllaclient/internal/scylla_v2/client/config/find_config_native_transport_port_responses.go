@@ -48,7 +48,8 @@ func NewFindConfigNativeTransportPortOK() *FindConfigNativeTransportPortOK {
 	return &FindConfigNativeTransportPortOK{}
 }
 
-/*FindConfigNativeTransportPortOK handles this case with default header values.
+/*
+FindConfigNativeTransportPortOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigNativeTransportPortDefault(code int) *FindConfigNativeTranspor
 	}
 }
 
-/*FindConfigNativeTransportPortDefault handles this case with default header values.
+/*
+FindConfigNativeTransportPortDefault handles this case with default header values.
 
 unexpected error
 */

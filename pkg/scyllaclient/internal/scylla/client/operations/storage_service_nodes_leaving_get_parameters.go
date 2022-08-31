@@ -56,7 +56,8 @@ func NewStorageServiceNodesLeavingGetParamsWithHTTPClient(client *http.Client) *
 	}
 }
 
-/*StorageServiceNodesLeavingGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceNodesLeavingGetParams contains all the parameters to send to the API endpoint
 for the storage service nodes leaving get operation typically these are written to a http.Request
 */
 type StorageServiceNodesLeavingGetParams struct {

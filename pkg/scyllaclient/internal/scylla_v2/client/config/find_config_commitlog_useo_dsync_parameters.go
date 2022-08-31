@@ -56,7 +56,8 @@ func NewFindConfigCommitlogUseoDsyncParamsWithHTTPClient(client *http.Client) *F
 	}
 }
 
-/*FindConfigCommitlogUseoDsyncParams contains all the parameters to send to the API endpoint
+/*
+FindConfigCommitlogUseoDsyncParams contains all the parameters to send to the API endpoint
 for the find config commitlog use o dsync operation typically these are written to a http.Request
 */
 type FindConfigCommitlogUseoDsyncParams struct {

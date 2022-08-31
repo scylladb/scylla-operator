@@ -56,7 +56,8 @@ func NewStorageServiceTombstoneFailureThresholdGetParamsWithHTTPClient(client *h
 	}
 }
 
-/*StorageServiceTombstoneFailureThresholdGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceTombstoneFailureThresholdGetParams contains all the parameters to send to the API endpoint
 for the storage service tombstone failure threshold get operation typically these are written to a http.Request
 */
 type StorageServiceTombstoneFailureThresholdGetParams struct {

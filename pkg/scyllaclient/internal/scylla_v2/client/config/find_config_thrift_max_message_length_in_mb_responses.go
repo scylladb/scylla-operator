@@ -48,7 +48,8 @@ func NewFindConfigThriftMaxMessageLengthInMbOK() *FindConfigThriftMaxMessageLeng
 	return &FindConfigThriftMaxMessageLengthInMbOK{}
 }
 
-/*FindConfigThriftMaxMessageLengthInMbOK handles this case with default header values.
+/*
+FindConfigThriftMaxMessageLengthInMbOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigThriftMaxMessageLengthInMbDefault(code int) *FindConfigThriftM
 	}
 }
 
-/*FindConfigThriftMaxMessageLengthInMbDefault handles this case with default header values.
+/*
+FindConfigThriftMaxMessageLengthInMbDefault handles this case with default header values.
 
 unexpected error
 */

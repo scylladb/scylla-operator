@@ -56,7 +56,8 @@ func NewCommitlogMetricsTotalCommitLogSizeGetParamsWithHTTPClient(client *http.C
 	}
 }
 
-/*CommitlogMetricsTotalCommitLogSizeGetParams contains all the parameters to send to the API endpoint
+/*
+CommitlogMetricsTotalCommitLogSizeGetParams contains all the parameters to send to the API endpoint
 for the commitlog metrics total commit log size get operation typically these are written to a http.Request
 */
 type CommitlogMetricsTotalCommitLogSizeGetParams struct {

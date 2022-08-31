@@ -56,7 +56,8 @@ func NewHintedHandoffMetricsNotStoredHintsByAddrGetParamsWithHTTPClient(client *
 	}
 }
 
-/*HintedHandoffMetricsNotStoredHintsByAddrGetParams contains all the parameters to send to the API endpoint
+/*
+HintedHandoffMetricsNotStoredHintsByAddrGetParams contains all the parameters to send to the API endpoint
 for the hinted handoff metrics not stored hints by addr get operation typically these are written to a http.Request
 */
 type HintedHandoffMetricsNotStoredHintsByAddrGetParams struct {

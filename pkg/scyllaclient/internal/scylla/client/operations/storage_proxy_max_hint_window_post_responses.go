@@ -48,7 +48,8 @@ func NewStorageProxyMaxHintWindowPostOK() *StorageProxyMaxHintWindowPostOK {
 	return &StorageProxyMaxHintWindowPostOK{}
 }
 
-/*StorageProxyMaxHintWindowPostOK handles this case with default header values.
+/*
+StorageProxyMaxHintWindowPostOK handles this case with default header values.
 
 StorageProxyMaxHintWindowPostOK storage proxy max hint window post o k
 */
@@ -67,7 +68,8 @@ func NewStorageProxyMaxHintWindowPostDefault(code int) *StorageProxyMaxHintWindo
 	}
 }
 
-/*StorageProxyMaxHintWindowPostDefault handles this case with default header values.
+/*
+StorageProxyMaxHintWindowPostDefault handles this case with default header values.
 
 internal server error
 */

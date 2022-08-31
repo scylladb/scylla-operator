@@ -56,7 +56,8 @@ func NewFailureDetectorCountEndpointUpGetParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*FailureDetectorCountEndpointUpGetParams contains all the parameters to send to the API endpoint
+/*
+FailureDetectorCountEndpointUpGetParams contains all the parameters to send to the API endpoint
 for the failure detector count endpoint up get operation typically these are written to a http.Request
 */
 type FailureDetectorCountEndpointUpGetParams struct {

@@ -56,7 +56,8 @@ func NewCacheServiceMetricsCounterCapacityGetParamsWithHTTPClient(client *http.C
 	}
 }
 
-/*CacheServiceMetricsCounterCapacityGetParams contains all the parameters to send to the API endpoint
+/*
+CacheServiceMetricsCounterCapacityGetParams contains all the parameters to send to the API endpoint
 for the cache service metrics counter capacity get operation typically these are written to a http.Request
 */
 type CacheServiceMetricsCounterCapacityGetParams struct {

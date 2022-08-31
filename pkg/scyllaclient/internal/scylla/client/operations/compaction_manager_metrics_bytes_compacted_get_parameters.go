@@ -56,7 +56,8 @@ func NewCompactionManagerMetricsBytesCompactedGetParamsWithHTTPClient(client *ht
 	}
 }
 
-/*CompactionManagerMetricsBytesCompactedGetParams contains all the parameters to send to the API endpoint
+/*
+CompactionManagerMetricsBytesCompactedGetParams contains all the parameters to send to the API endpoint
 for the compaction manager metrics bytes compacted get operation typically these are written to a http.Request
 */
 type CompactionManagerMetricsBytesCompactedGetParams struct {

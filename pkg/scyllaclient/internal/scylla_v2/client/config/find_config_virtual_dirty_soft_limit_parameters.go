@@ -56,7 +56,8 @@ func NewFindConfigVirtualDirtySoftLimitParamsWithHTTPClient(client *http.Client)
 	}
 }
 
-/*FindConfigVirtualDirtySoftLimitParams contains all the parameters to send to the API endpoint
+/*
+FindConfigVirtualDirtySoftLimitParams contains all the parameters to send to the API endpoint
 for the find config virtual dirty soft limit operation typically these are written to a http.Request
 */
 type FindConfigVirtualDirtySoftLimitParams struct {

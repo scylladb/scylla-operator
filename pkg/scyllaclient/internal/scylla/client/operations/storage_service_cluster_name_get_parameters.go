@@ -56,7 +56,8 @@ func NewStorageServiceClusterNameGetParamsWithHTTPClient(client *http.Client) *S
 	}
 }
 
-/*StorageServiceClusterNameGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceClusterNameGetParams contains all the parameters to send to the API endpoint
 for the storage service cluster name get operation typically these are written to a http.Request
 */
 type StorageServiceClusterNameGetParams struct {

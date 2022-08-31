@@ -56,7 +56,8 @@ func NewNodeInfoParamsWithHTTPClient(client *http.Client) *NodeInfoParams {
 	}
 }
 
-/*NodeInfoParams contains all the parameters to send to the API endpoint
+/*
+NodeInfoParams contains all the parameters to send to the API endpoint
 for the node info operation typically these are written to a http.Request
 */
 type NodeInfoParams struct {

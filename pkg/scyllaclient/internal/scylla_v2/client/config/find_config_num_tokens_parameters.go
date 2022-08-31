@@ -56,7 +56,8 @@ func NewFindConfigNumTokensParamsWithHTTPClient(client *http.Client) *FindConfig
 	}
 }
 
-/*FindConfigNumTokensParams contains all the parameters to send to the API endpoint
+/*
+FindConfigNumTokensParams contains all the parameters to send to the API endpoint
 for the find config num tokens operation typically these are written to a http.Request
 */
 type FindConfigNumTokensParams struct {

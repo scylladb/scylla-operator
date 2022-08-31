@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsBloomFilterDiskSpaceUsedByNameGetParamsWithHTTPClient
 	}
 }
 
-/*ColumnFamilyMetricsBloomFilterDiskSpaceUsedByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsBloomFilterDiskSpaceUsedByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics bloom filter disk space used by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsBloomFilterDiskSpaceUsedByNameGetParams struct {

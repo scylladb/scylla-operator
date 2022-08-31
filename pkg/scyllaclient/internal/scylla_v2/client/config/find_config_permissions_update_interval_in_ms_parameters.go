@@ -56,7 +56,8 @@ func NewFindConfigPermissionsUpdateIntervalInMsParamsWithHTTPClient(client *http
 	}
 }
 
-/*FindConfigPermissionsUpdateIntervalInMsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigPermissionsUpdateIntervalInMsParams contains all the parameters to send to the API endpoint
 for the find config permissions update interval in ms operation typically these are written to a http.Request
 */
 type FindConfigPermissionsUpdateIntervalInMsParams struct {

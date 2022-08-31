@@ -56,7 +56,8 @@ func NewColumnFamilyCrcCheckChanceByNamePostParamsWithHTTPClient(client *http.Cl
 	}
 }
 
-/*ColumnFamilyCrcCheckChanceByNamePostParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyCrcCheckChanceByNamePostParams contains all the parameters to send to the API endpoint
 for the column family crc check chance by name post operation typically these are written to a http.Request
 */
 type ColumnFamilyCrcCheckChanceByNamePostParams struct {

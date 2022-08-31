@@ -48,7 +48,8 @@ func NewFindConfigMemtableHeapSpaceInMbOK() *FindConfigMemtableHeapSpaceInMbOK {
 	return &FindConfigMemtableHeapSpaceInMbOK{}
 }
 
-/*FindConfigMemtableHeapSpaceInMbOK handles this case with default header values.
+/*
+FindConfigMemtableHeapSpaceInMbOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigMemtableHeapSpaceInMbDefault(code int) *FindConfigMemtableHeap
 	}
 }
 
-/*FindConfigMemtableHeapSpaceInMbDefault handles this case with default header values.
+/*
+FindConfigMemtableHeapSpaceInMbDefault handles this case with default header values.
 
 unexpected error
 */

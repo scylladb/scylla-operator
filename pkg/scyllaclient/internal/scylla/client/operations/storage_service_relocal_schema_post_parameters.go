@@ -56,7 +56,8 @@ func NewStorageServiceRelocalSchemaPostParamsWithHTTPClient(client *http.Client)
 	}
 }
 
-/*StorageServiceRelocalSchemaPostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceRelocalSchemaPostParams contains all the parameters to send to the API endpoint
 for the storage service relocal schema post operation typically these are written to a http.Request
 */
 type StorageServiceRelocalSchemaPostParams struct {

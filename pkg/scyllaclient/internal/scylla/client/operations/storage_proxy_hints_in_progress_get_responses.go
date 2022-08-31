@@ -48,7 +48,8 @@ func NewStorageProxyHintsInProgressGetOK() *StorageProxyHintsInProgressGetOK {
 	return &StorageProxyHintsInProgressGetOK{}
 }
 
-/*StorageProxyHintsInProgressGetOK handles this case with default header values.
+/*
+StorageProxyHintsInProgressGetOK handles this case with default header values.
 
 StorageProxyHintsInProgressGetOK storage proxy hints in progress get o k
 */
@@ -77,7 +78,8 @@ func NewStorageProxyHintsInProgressGetDefault(code int) *StorageProxyHintsInProg
 	}
 }
 
-/*StorageProxyHintsInProgressGetDefault handles this case with default header values.
+/*
+StorageProxyHintsInProgressGetDefault handles this case with default header values.
 
 internal server error
 */

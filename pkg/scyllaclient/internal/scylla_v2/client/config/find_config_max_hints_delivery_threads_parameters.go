@@ -56,7 +56,8 @@ func NewFindConfigMaxHintsDeliveryThreadsParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*FindConfigMaxHintsDeliveryThreadsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigMaxHintsDeliveryThreadsParams contains all the parameters to send to the API endpoint
 for the find config max hints delivery threads operation typically these are written to a http.Request
 */
 type FindConfigMaxHintsDeliveryThreadsParams struct {

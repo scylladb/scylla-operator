@@ -56,7 +56,8 @@ func NewStorageServiceDescribeRingGetParamsWithHTTPClient(client *http.Client) *
 	}
 }
 
-/*StorageServiceDescribeRingGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceDescribeRingGetParams contains all the parameters to send to the API endpoint
 for the storage service describe ring get operation typically these are written to a http.Request
 */
 type StorageServiceDescribeRingGetParams struct {

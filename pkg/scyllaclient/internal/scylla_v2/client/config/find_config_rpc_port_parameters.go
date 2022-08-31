@@ -56,7 +56,8 @@ func NewFindConfigRPCPortParamsWithHTTPClient(client *http.Client) *FindConfigRP
 	}
 }
 
-/*FindConfigRPCPortParams contains all the parameters to send to the API endpoint
+/*
+FindConfigRPCPortParams contains all the parameters to send to the API endpoint
 for the find config rpc port operation typically these are written to a http.Request
 */
 type FindConfigRPCPortParams struct {

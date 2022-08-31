@@ -56,7 +56,8 @@ func NewFindConfigReduceCacheSizesAtParamsWithHTTPClient(client *http.Client) *F
 	}
 }
 
-/*FindConfigReduceCacheSizesAtParams contains all the parameters to send to the API endpoint
+/*
+FindConfigReduceCacheSizesAtParams contains all the parameters to send to the API endpoint
 for the find config reduce cache sizes at operation typically these are written to a http.Request
 */
 type FindConfigReduceCacheSizesAtParams struct {

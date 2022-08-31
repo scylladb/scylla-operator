@@ -48,7 +48,8 @@ func NewStorageServiceIncrementalBackupsGetOK() *StorageServiceIncrementalBackup
 	return &StorageServiceIncrementalBackupsGetOK{}
 }
 
-/*StorageServiceIncrementalBackupsGetOK handles this case with default header values.
+/*
+StorageServiceIncrementalBackupsGetOK handles this case with default header values.
 
 StorageServiceIncrementalBackupsGetOK storage service incremental backups get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceIncrementalBackupsGetDefault(code int) *StorageServiceIncr
 	}
 }
 
-/*StorageServiceIncrementalBackupsGetDefault handles this case with default header values.
+/*
+StorageServiceIncrementalBackupsGetDefault handles this case with default header values.
 
 internal server error
 */

@@ -48,7 +48,8 @@ func NewFindConfigCommitlogReuseSegmentsOK() *FindConfigCommitlogReuseSegmentsOK
 	return &FindConfigCommitlogReuseSegmentsOK{}
 }
 
-/*FindConfigCommitlogReuseSegmentsOK handles this case with default header values.
+/*
+FindConfigCommitlogReuseSegmentsOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigCommitlogReuseSegmentsDefault(code int) *FindConfigCommitlogRe
 	}
 }
 
-/*FindConfigCommitlogReuseSegmentsDefault handles this case with default header values.
+/*
+FindConfigCommitlogReuseSegmentsDefault handles this case with default header values.
 
 unexpected error
 */

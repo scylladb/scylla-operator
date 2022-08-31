@@ -56,7 +56,8 @@ func NewFindConfigTruncateRequestTimeoutInMsParamsWithHTTPClient(client *http.Cl
 	}
 }
 
-/*FindConfigTruncateRequestTimeoutInMsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigTruncateRequestTimeoutInMsParams contains all the parameters to send to the API endpoint
 for the find config truncate request timeout in ms operation typically these are written to a http.Request
 */
 type FindConfigTruncateRequestTimeoutInMsParams struct {

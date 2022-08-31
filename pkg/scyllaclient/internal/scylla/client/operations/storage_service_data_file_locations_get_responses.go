@@ -48,7 +48,8 @@ func NewStorageServiceDataFileLocationsGetOK() *StorageServiceDataFileLocationsG
 	return &StorageServiceDataFileLocationsGetOK{}
 }
 
-/*StorageServiceDataFileLocationsGetOK handles this case with default header values.
+/*
+StorageServiceDataFileLocationsGetOK handles this case with default header values.
 
 StorageServiceDataFileLocationsGetOK storage service data file locations get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceDataFileLocationsGetDefault(code int) *StorageServiceDataF
 	}
 }
 
-/*StorageServiceDataFileLocationsGetDefault handles this case with default header values.
+/*
+StorageServiceDataFileLocationsGetDefault handles this case with default header values.
 
 internal server error
 */

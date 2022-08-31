@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsSnapshotsSizeByNameGetParamsWithHTTPClient(client *ht
 	}
 }
 
-/*ColumnFamilyMetricsSnapshotsSizeByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsSnapshotsSizeByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics snapshots size by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsSnapshotsSizeByNameGetParams struct {

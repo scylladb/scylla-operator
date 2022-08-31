@@ -48,7 +48,8 @@ func NewFindConfigRequestTimeoutInMsOK() *FindConfigRequestTimeoutInMsOK {
 	return &FindConfigRequestTimeoutInMsOK{}
 }
 
-/*FindConfigRequestTimeoutInMsOK handles this case with default header values.
+/*
+FindConfigRequestTimeoutInMsOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigRequestTimeoutInMsDefault(code int) *FindConfigRequestTimeoutI
 	}
 }
 
-/*FindConfigRequestTimeoutInMsDefault handles this case with default header values.
+/*
+FindConfigRequestTimeoutInMsDefault handles this case with default header values.
 
 unexpected error
 */

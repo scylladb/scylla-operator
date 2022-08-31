@@ -47,7 +47,8 @@ func NewPostClusterClusterIDTasksCreated() *PostClusterClusterIDTasksCreated {
 	return &PostClusterClusterIDTasksCreated{}
 }
 
-/*PostClusterClusterIDTasksCreated handles this case with default header values.
+/*
+PostClusterClusterIDTasksCreated handles this case with default header values.
 
 Task added
 */
@@ -74,7 +75,8 @@ func NewPostClusterClusterIDTasksDefault(code int) *PostClusterClusterIDTasksDef
 	}
 }
 
-/*PostClusterClusterIDTasksDefault handles this case with default header values.
+/*
+PostClusterClusterIDTasksDefault handles this case with default header values.
 
 Unexpected error
 */

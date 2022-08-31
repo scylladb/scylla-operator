@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsBloomFilterFalsePositivesGetParamsWithHTTPClient(clie
 	}
 }
 
-/*ColumnFamilyMetricsBloomFilterFalsePositivesGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsBloomFilterFalsePositivesGetParams contains all the parameters to send to the API endpoint
 for the column family metrics bloom filter false positives get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsBloomFilterFalsePositivesGetParams struct {

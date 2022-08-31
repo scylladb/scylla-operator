@@ -56,7 +56,8 @@ func NewFindConfigBatchSizeWarnThresholdInKbParamsWithHTTPClient(client *http.Cl
 	}
 }
 
-/*FindConfigBatchSizeWarnThresholdInKbParams contains all the parameters to send to the API endpoint
+/*
+FindConfigBatchSizeWarnThresholdInKbParams contains all the parameters to send to the API endpoint
 for the find config batch size warn threshold in kb operation typically these are written to a http.Request
 */
 type FindConfigBatchSizeWarnThresholdInKbParams struct {

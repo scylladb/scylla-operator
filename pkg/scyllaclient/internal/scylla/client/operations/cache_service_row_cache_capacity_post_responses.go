@@ -48,7 +48,8 @@ func NewCacheServiceRowCacheCapacityPostOK() *CacheServiceRowCacheCapacityPostOK
 	return &CacheServiceRowCacheCapacityPostOK{}
 }
 
-/*CacheServiceRowCacheCapacityPostOK handles this case with default header values.
+/*
+CacheServiceRowCacheCapacityPostOK handles this case with default header values.
 
 CacheServiceRowCacheCapacityPostOK cache service row cache capacity post o k
 */
@@ -67,7 +68,8 @@ func NewCacheServiceRowCacheCapacityPostDefault(code int) *CacheServiceRowCacheC
 	}
 }
 
-/*CacheServiceRowCacheCapacityPostDefault handles this case with default header values.
+/*
+CacheServiceRowCacheCapacityPostDefault handles this case with default header values.
 
 internal server error
 */

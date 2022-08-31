@@ -56,7 +56,8 @@ func NewFindConfigColumnIndexSizeInKbParamsWithHTTPClient(client *http.Client) *
 	}
 }
 
-/*FindConfigColumnIndexSizeInKbParams contains all the parameters to send to the API endpoint
+/*
+FindConfigColumnIndexSizeInKbParams contains all the parameters to send to the API endpoint
 for the find config column index size in kb operation typically these are written to a http.Request
 */
 type FindConfigColumnIndexSizeInKbParams struct {

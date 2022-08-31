@@ -48,9 +48,10 @@ var (
 // propagate the "enabled" information from a ScyllaCluster to a PVC annotation because PVCs are not
 // reconciled.
 // TODO: When we support auto-replacing nodes, we could replace it with generic controller
-//       deleting PVs bound to nodes that don't exists anymore, without knowing about ScyllaClusters.
-//       It would also process PVs instead of ScyllaClusters which is currently complicating the logic
-//       that has to handle multiple PVs at once, artificial requeues / not watching PVs and different error paths.
+//
+//	deleting PVs bound to nodes that don't exists anymore, without knowing about ScyllaClusters.
+//	It would also process PVs instead of ScyllaClusters which is currently complicating the logic
+//	that has to handle multiple PVs at once, artificial requeues / not watching PVs and different error paths.
 type Controller struct {
 	kubeClient kubernetes.Interface
 

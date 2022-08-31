@@ -56,7 +56,8 @@ func NewStorageServiceForceTerminatePostParamsWithHTTPClient(client *http.Client
 	}
 }
 
-/*StorageServiceForceTerminatePostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceForceTerminatePostParams contains all the parameters to send to the API endpoint
 for the storage service force terminate post operation typically these are written to a http.Request
 */
 type StorageServiceForceTerminatePostParams struct {

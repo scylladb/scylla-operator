@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsEstimatedColumnCountHistogramByNameGetParamsWithHTTPC
 	}
 }
 
-/*ColumnFamilyMetricsEstimatedColumnCountHistogramByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsEstimatedColumnCountHistogramByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics estimated column count histogram by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsEstimatedColumnCountHistogramByNameGetParams struct {

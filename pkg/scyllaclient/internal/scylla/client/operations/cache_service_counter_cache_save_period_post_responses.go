@@ -48,7 +48,8 @@ func NewCacheServiceCounterCacheSavePeriodPostOK() *CacheServiceCounterCacheSave
 	return &CacheServiceCounterCacheSavePeriodPostOK{}
 }
 
-/*CacheServiceCounterCacheSavePeriodPostOK handles this case with default header values.
+/*
+CacheServiceCounterCacheSavePeriodPostOK handles this case with default header values.
 
 CacheServiceCounterCacheSavePeriodPostOK cache service counter cache save period post o k
 */
@@ -67,7 +68,8 @@ func NewCacheServiceCounterCacheSavePeriodPostDefault(code int) *CacheServiceCou
 	}
 }
 
-/*CacheServiceCounterCacheSavePeriodPostDefault handles this case with default header values.
+/*
+CacheServiceCounterCacheSavePeriodPostDefault handles this case with default header values.
 
 internal server error
 */

@@ -56,7 +56,8 @@ func NewGetClusterClusterIDStatusParamsWithHTTPClient(client *http.Client) *GetC
 	}
 }
 
-/*GetClusterClusterIDStatusParams contains all the parameters to send to the API endpoint
+/*
+GetClusterClusterIDStatusParams contains all the parameters to send to the API endpoint
 for the get cluster cluster ID status operation typically these are written to a http.Request
 */
 type GetClusterClusterIDStatusParams struct {

@@ -56,7 +56,8 @@ func NewFindConfigReplaceNodeParamsWithHTTPClient(client *http.Client) *FindConf
 	}
 }
 
-/*FindConfigReplaceNodeParams contains all the parameters to send to the API endpoint
+/*
+FindConfigReplaceNodeParams contains all the parameters to send to the API endpoint
 for the find config replace node operation typically these are written to a http.Request
 */
 type FindConfigReplaceNodeParams struct {

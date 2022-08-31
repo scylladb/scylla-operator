@@ -56,7 +56,8 @@ func NewStorageServiceHostIDGetParamsWithHTTPClient(client *http.Client) *Storag
 	}
 }
 
-/*StorageServiceHostIDGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceHostIDGetParams contains all the parameters to send to the API endpoint
 for the storage service host Id get operation typically these are written to a http.Request
 */
 type StorageServiceHostIDGetParams struct {

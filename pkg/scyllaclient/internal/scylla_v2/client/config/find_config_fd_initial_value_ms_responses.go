@@ -48,7 +48,8 @@ func NewFindConfigFdInitialValueMsOK() *FindConfigFdInitialValueMsOK {
 	return &FindConfigFdInitialValueMsOK{}
 }
 
-/*FindConfigFdInitialValueMsOK handles this case with default header values.
+/*
+FindConfigFdInitialValueMsOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigFdInitialValueMsDefault(code int) *FindConfigFdInitialValueMsD
 	}
 }
 
-/*FindConfigFdInitialValueMsDefault handles this case with default header values.
+/*
+FindConfigFdInitialValueMsDefault handles this case with default header values.
 
 unexpected error
 */

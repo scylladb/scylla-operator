@@ -56,7 +56,8 @@ func NewFindConfigInternodeSendBuffSizeInBytesParamsWithHTTPClient(client *http.
 	}
 }
 
-/*FindConfigInternodeSendBuffSizeInBytesParams contains all the parameters to send to the API endpoint
+/*
+FindConfigInternodeSendBuffSizeInBytesParams contains all the parameters to send to the API endpoint
 for the find config internode send buff size in bytes operation typically these are written to a http.Request
 */
 type FindConfigInternodeSendBuffSizeInBytesParams struct {

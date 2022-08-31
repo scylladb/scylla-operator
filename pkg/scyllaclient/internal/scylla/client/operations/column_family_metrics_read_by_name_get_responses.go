@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsReadByNameGetOK() *ColumnFamilyMetricsReadByNameGetOK
 	return &ColumnFamilyMetricsReadByNameGetOK{}
 }
 
-/*ColumnFamilyMetricsReadByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsReadByNameGetOK handles this case with default header values.
 
 ColumnFamilyMetricsReadByNameGetOK column family metrics read by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsReadByNameGetDefault(code int) *ColumnFamilyMetricsRe
 	}
 }
 
-/*ColumnFamilyMetricsReadByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsReadByNameGetDefault handles this case with default header values.
 
 internal server error
 */

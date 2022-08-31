@@ -56,7 +56,8 @@ func NewFindConfigStartRPCParamsWithHTTPClient(client *http.Client) *FindConfigS
 	}
 }
 
-/*FindConfigStartRPCParams contains all the parameters to send to the API endpoint
+/*
+FindConfigStartRPCParams contains all the parameters to send to the API endpoint
 for the find config start rpc operation typically these are written to a http.Request
 */
 type FindConfigStartRPCParams struct {

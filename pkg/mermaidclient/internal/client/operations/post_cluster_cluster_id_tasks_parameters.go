@@ -58,7 +58,8 @@ func NewPostClusterClusterIDTasksParamsWithHTTPClient(client *http.Client) *Post
 	}
 }
 
-/*PostClusterClusterIDTasksParams contains all the parameters to send to the API endpoint
+/*
+PostClusterClusterIDTasksParams contains all the parameters to send to the API endpoint
 for the post cluster cluster ID tasks operation typically these are written to a http.Request
 */
 type PostClusterClusterIDTasksParams struct {

@@ -56,7 +56,8 @@ func NewFindConfigRPCMinThreadsParamsWithHTTPClient(client *http.Client) *FindCo
 	}
 }
 
-/*FindConfigRPCMinThreadsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigRPCMinThreadsParams contains all the parameters to send to the API endpoint
 for the find config rpc min threads operation typically these are written to a http.Request
 */
 type FindConfigRPCMinThreadsParams struct {

@@ -57,7 +57,8 @@ func NewColumnFamilyMaximumCompactionByNamePostParamsWithHTTPClient(client *http
 	}
 }
 
-/*ColumnFamilyMaximumCompactionByNamePostParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMaximumCompactionByNamePostParams contains all the parameters to send to the API endpoint
 for the column family maximum compaction by name post operation typically these are written to a http.Request
 */
 type ColumnFamilyMaximumCompactionByNamePostParams struct {

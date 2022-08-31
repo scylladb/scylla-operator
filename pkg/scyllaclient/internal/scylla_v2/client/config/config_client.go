@@ -192,8 +192,9 @@ func (a *Client) FindConfigAPIUIDir(params *FindConfigAPIUIDirParams) (*FindConf
 /*
 FindConfigAuthenticator The authentication backend, used to identify users. The available authenticators are:
 
- org.apache.cassandra.auth.AllowAllAuthenticator : Disables authentication; no checks are performed.
- org.apache.cassandra.auth.PasswordAuthenticator : Authenticates users with user names and hashed passwords stored in the system_auth.credentials table. If you use the default, 1, and the node with the lone replica goes down, you will not be able to log into the cluster because the system_auth keyspace was not replicated.
+	org.apache.cassandra.auth.AllowAllAuthenticator : Disables authentication; no checks are performed.
+	org.apache.cassandra.auth.PasswordAuthenticator : Authenticates users with user names and hashed passwords stored in the system_auth.credentials table. If you use the default, 1, and the node with the lone replica goes down, you will not be able to log into the cluster because the system_auth keyspace was not replicated.
+
 Related information: Internal authentication
 */
 func (a *Client) FindConfigAuthenticator(params *FindConfigAuthenticatorParams) (*FindConfigAuthenticatorOK, error) {
@@ -229,8 +230,9 @@ func (a *Client) FindConfigAuthenticator(params *FindConfigAuthenticatorParams) 
 /*
 FindConfigAuthorizer The authorization backend. It implements IAuthenticator, which limits access and provides permissions. The available authorizers are:
 
- AllowAllAuthorizer : Disables authorization; allows any action to any user.
- CassandraAuthorizer : Stores permissions in system_auth.permissions table. If you use the default, 1, and the node with the lone replica goes down, you will not be able to log into the cluster because the system_auth keyspace was not replicated.
+	AllowAllAuthorizer : Disables authorization; allows any action to any user.
+	CassandraAuthorizer : Stores permissions in system_auth.permissions table. If you use the default, 1, and the node with the lone replica goes down, you will not be able to log into the cluster because the system_auth keyspace was not replicated.
+
 Related information: Object permissions
 */
 func (a *Client) FindConfigAuthorizer(params *FindConfigAuthorizerParams) (*FindConfigAuthorizerOK, error) {
@@ -531,7 +533,6 @@ func (a *Client) FindConfigBroadcastAddress(params *FindConfigBroadcastAddressPa
 
 /*
 FindConfigBroadcastRPCAddress RPC address to broadcast to drivers and other Scylla nodes. This cannot be set to 0.0.0.0. If blank, it is set to the value of the rpc_address or rpc_interface. If rpc_address or rpc_interfaceis set to 0.0.0.0, this property must be set.
-
 */
 func (a *Client) FindConfigBroadcastRPCAddress(params *FindConfigBroadcastRPCAddressParams) (*FindConfigBroadcastRPCAddressOK, error) {
 	// TODO: Validate the params before sending
@@ -632,15 +633,17 @@ func (a *Client) FindConfigCasContentionTimeoutInMs(params *FindConfigCasContent
 /*
 FindConfigClientEncryptionOptions Enable or disable client-to-node encryption. You must also generate keys and provide the appropriate key and certificate. No custom encryption options are currently enabled. The available options are:
 
- enabled : (Default: false ) To enable, set to true.
- certificate: (Default: conf/scylla.crt) The location of a PEM-encoded x509 certificate used to identify and encrypt the client/server communication.
- keyfile: (Default: conf/scylla.key) PEM Key file associated with certificate.
+	enabled : (Default: false ) To enable, set to true.
+	certificate: (Default: conf/scylla.crt) The location of a PEM-encoded x509 certificate used to identify and encrypt the client/server communication.
+	keyfile: (Default: conf/scylla.key) PEM Key file associated with certificate.
+
 truststore : (Default: <system truststore> ) Location of the truststore containing the trusted certificate for authenticating remote servers.
 
 The advanced settings are:
 
- priority_string : GnuTLS priority string controlling TLS algorithms used/allowed.
- require_client_auth : (Default: false ) Enables or disables certificate authentication.
+	priority_string : GnuTLS priority string controlling TLS algorithms used/allowed.
+	require_client_auth : (Default: false ) Enables or disables certificate authentication.
+
 Related information: Client-to-node encryption
 */
 func (a *Client) FindConfigClientEncryptionOptions(params *FindConfigClientEncryptionOptionsParams) (*FindConfigClientEncryptionOptionsOK, error) {
@@ -742,10 +745,10 @@ func (a *Client) FindConfigColumnIndexSizeInKb(params *FindConfigColumnIndexSize
 /*
 FindConfigCommitFailurePolicy Policy for commit disk failures:
 
- die          Shut down gossip and Thrift and kill the JVM, so the node can be replaced.
- stop         Shut down gossip and Thrift, leaving the node effectively dead, but can be inspected using JMX.
- stop_commit  Shut down the commit log, letting writes collect but continuing to service reads (as in pre-2.0.5 Cassandra).
- ignore       Ignore fatal errors and let the batches fail.
+	die          Shut down gossip and Thrift and kill the JVM, so the node can be replaced.
+	stop         Shut down gossip and Thrift, leaving the node effectively dead, but can be inspected using JMX.
+	stop_commit  Shut down the commit log, letting writes collect but continuing to service reads (as in pre-2.0.5 Cassandra).
+	ignore       Ignore fatal errors and let the batches fail.
 */
 func (a *Client) FindConfigCommitFailurePolicy(params *FindConfigCommitFailurePolicyParams) (*FindConfigCommitFailurePolicyOK, error) {
 	// TODO: Validate the params before sending
@@ -812,7 +815,6 @@ func (a *Client) FindConfigCommitlogDirectory(params *FindConfigCommitlogDirecto
 
 /*
 FindConfigCommitlogReuseSegments Whether or not to re-use commitlog segments when finished instead of deleting them. Can improve commitlog latency on some file systems.
-
 */
 func (a *Client) FindConfigCommitlogReuseSegments(params *FindConfigCommitlogReuseSegmentsParams) (*FindConfigCommitlogReuseSegmentsOK, error) {
 	// TODO: Validate the params before sending
@@ -881,8 +883,9 @@ func (a *Client) FindConfigCommitlogSegmentSizeInMb(params *FindConfigCommitlogS
 /*
 FindConfigCommitlogSync The method that Scylla uses to acknowledge writes in milliseconds:
 
- periodic : Used with commitlog_sync_period_in_ms (Default: 10000 - 10 seconds ) to control how often the commit log is synchronized to disk. Periodic syncs are acknowledged immediately.
- batch : Used with commitlog_sync_batch_window_in_ms (Default: disabled **) to control how long Scylla waits for other writes before performing a sync. When using this method, writes are not acknowledged until fsynced to disk.
+	periodic : Used with commitlog_sync_period_in_ms (Default: 10000 - 10 seconds ) to control how often the commit log is synchronized to disk. Periodic syncs are acknowledged immediately.
+	batch : Used with commitlog_sync_batch_window_in_ms (Default: disabled **) to control how long Scylla waits for other writes before performing a sync. When using this method, writes are not acknowledged until fsynced to disk.
+
 Related information: Durability
 */
 func (a *Client) FindConfigCommitlogSync(params *FindConfigCommitlogSyncParams) (*FindConfigCommitlogSyncOK, error) {
@@ -916,7 +919,7 @@ func (a *Client) FindConfigCommitlogSync(params *FindConfigCommitlogSyncParams) 
 }
 
 /*
-FindConfigCommitlogSyncBatchWindowInMs Controls how long the system waits for other writes before performing a sync in ''batch'' mode.
+FindConfigCommitlogSyncBatchWindowInMs Controls how long the system waits for other writes before performing a sync in ”batch” mode.
 */
 func (a *Client) FindConfigCommitlogSyncBatchWindowInMs(params *FindConfigCommitlogSyncBatchWindowInMsParams) (*FindConfigCommitlogSyncBatchWindowInMsOK, error) {
 	// TODO: Validate the params before sending
@@ -949,7 +952,7 @@ func (a *Client) FindConfigCommitlogSyncBatchWindowInMs(params *FindConfigCommit
 }
 
 /*
-FindConfigCommitlogSyncPeriodInMs Controls how long the system waits for other writes before performing a sync in ''periodic'' mode.
+FindConfigCommitlogSyncPeriodInMs Controls how long the system waits for other writes before performing a sync in ”periodic” mode.
 */
 func (a *Client) FindConfigCommitlogSyncPeriodInMs(params *FindConfigCommitlogSyncPeriodInMsParams) (*FindConfigCommitlogSyncPeriodInMsOK, error) {
 	// TODO: Validate the params before sending
@@ -1017,7 +1020,6 @@ func (a *Client) FindConfigCommitlogTotalSpaceInMb(params *FindConfigCommitlogTo
 
 /*
 FindConfigCommitlogUseoDsync Whether or not to use O_DSYNC mode for commitlog segments IO. Can improve commitlog latency on some file systems.
-
 */
 func (a *Client) FindConfigCommitlogUseoDsync(params *FindConfigCommitlogUseoDsyncParams) (*FindConfigCommitlogUseODsyncOK, error) {
 	// TODO: Validate the params before sending
@@ -1814,14 +1816,13 @@ func (a *Client) FindConfigDeveloperMode(params *FindConfigDeveloperModeParams) 
 /*
 FindConfigDiskFailurePolicy Sets how Scylla responds to disk failure. Recommend settings are stop or best_effort.
 
- die              Shut down gossip and Thrift and kill the JVM for any file system errors or single SSTable errors, so the node can be replaced.
- stop_paranoid    Shut down gossip and Thrift even for single SSTable errors.
- stop             Shut down gossip and Thrift, leaving the node effectively dead, but available for inspection using JMX.
- best_effort      Stop using the failed disk and respond to requests based on the remaining available SSTables. This means you will see obsolete data at consistency level of ONE.
- ignore           Ignores fatal errors and lets the requests fail; all file system errors are logged but otherwise ignored. Scylla acts as in versions prior to Cassandra 1.2.
+	die              Shut down gossip and Thrift and kill the JVM for any file system errors or single SSTable errors, so the node can be replaced.
+	stop_paranoid    Shut down gossip and Thrift even for single SSTable errors.
+	stop             Shut down gossip and Thrift, leaving the node effectively dead, but available for inspection using JMX.
+	best_effort      Stop using the failed disk and respond to requests based on the remaining available SSTables. This means you will see obsolete data at consistency level of ONE.
+	ignore           Ignores fatal errors and lets the requests fail; all file system errors are logged but otherwise ignored. Scylla acts as in versions prior to Cassandra 1.2.
 
 Related information: Handling Disk Failures In Cassandra 1.2 blog and Recovering from a single disk failure using JBOD.
-
 */
 func (a *Client) FindConfigDiskFailurePolicy(params *FindConfigDiskFailurePolicyParams) (*FindConfigDiskFailurePolicyOK, error) {
 	// TODO: Validate the params before sending
@@ -2252,20 +2253,19 @@ func (a *Client) FindConfigEnableSstablesMcFormat(params *FindConfigEnableSstabl
 /*
 FindConfigEndpointSnitch Set to a class that implements the IEndpointSnitch. Scylla uses snitches for locating nodes and routing requests.
 
- SimpleSnitch: Use for single-data center deployments or single-zone in public clouds. Does not recognize data center or rack information. It treats strategy order as proximity, which can improve cache locality when disabling read repair.
+	SimpleSnitch: Use for single-data center deployments or single-zone in public clouds. Does not recognize data center or rack information. It treats strategy order as proximity, which can improve cache locality when disabling read repair.
 
- GossipingPropertyFileSnitch: Recommended for production. The rack and data center for the local node are defined in the cassandra-rackdc.properties file and propagated to other nodes via gossip. To allow migration from the PropertyFileSnitch, it uses the cassandra-topology.properties file if it is present.
+	GossipingPropertyFileSnitch: Recommended for production. The rack and data center for the local node are defined in the cassandra-rackdc.properties file and propagated to other nodes via gossip. To allow migration from the PropertyFileSnitch, it uses the cassandra-topology.properties file if it is present.
 
- Ec2Snitch: For EC2 deployments in a single region. Loads region and availability zone information from the EC2 API. The region is treated as the data center and the availability zone as the rack. Uses only private IPs. Subsequently it does not work across multiple regions.
+	Ec2Snitch: For EC2 deployments in a single region. Loads region and availability zone information from the EC2 API. The region is treated as the data center and the availability zone as the rack. Uses only private IPs. Subsequently it does not work across multiple regions.
 
- Ec2MultiRegionSnitch: Uses public IPs as the broadcast_address to allow cross-region connectivity. This means you must also set seed addresses to the public IP and open the storage_port or ssl_storage_port on the public IP firewall. For intra-region traffic, Scylla switches to the private IP after establishing a connection.
+	Ec2MultiRegionSnitch: Uses public IPs as the broadcast_address to allow cross-region connectivity. This means you must also set seed addresses to the public IP and open the storage_port or ssl_storage_port on the public IP firewall. For intra-region traffic, Scylla switches to the private IP after establishing a connection.
 
- GoogleCloudSnitch: For deployments on Google Cloud Platform across one or more regions. The region is treated as a datacenter and the availability zone is treated as a rack within the datacenter. The communication should occur over private IPs within the same logical network.
+	GoogleCloudSnitch: For deployments on Google Cloud Platform across one or more regions. The region is treated as a datacenter and the availability zone is treated as a rack within the datacenter. The communication should occur over private IPs within the same logical network.
 
- RackInferringSnitch: Proximity is determined by rack and data center, which are assumed to correspond to the 3rd and 2nd octet of each node's IP address, respectively. This snitch is best used as an example for writing a custom snitch class (unless this happens to match your deployment conventions).
+	RackInferringSnitch: Proximity is determined by rack and data center, which are assumed to correspond to the 3rd and 2nd octet of each node's IP address, respectively. This snitch is best used as an example for writing a custom snitch class (unless this happens to match your deployment conventions).
 
 Related information: Snitches
-
 */
 func (a *Client) FindConfigEndpointSnitch(params *FindConfigEndpointSnitchParams) (*FindConfigEndpointSnitchOK, error) {
 	// TODO: Validate the params before sending
@@ -2798,9 +2798,9 @@ func (a *Client) FindConfigInternodeAuthenticator(params *FindConfigInternodeAut
 /*
 FindConfigInternodeCompression Controls whether traffic between nodes is compressed. The valid values are:
 
- all: All traffic is compressed.
- dc : Traffic between data centers is compressed.
- none : No compression.
+	all: All traffic is compressed.
+	dc : Traffic between data centers is compressed.
+	none : No compression.
 */
 func (a *Client) FindConfigInternodeCompression(params *FindConfigInternodeCompressionParams) (*FindConfigInternodeCompressionOK, error) {
 	// TODO: Validate the params before sending
@@ -2869,11 +2869,10 @@ func (a *Client) FindConfigInternodeRecvBuffSizeInBytes(params *FindConfigIntern
 FindConfigInternodeSendBuffSizeInBytes Sets the sending socket buffer size in bytes for inter-node calls.
 When setting this parameter and internode_recv_buff_size_in_bytes, the buffer size is limited by net.core.wmem_max. When unset, buffer size is defined by net.ipv4.tcp_wmem. See man tcp and:
 
- /proc/sys/net/core/wmem_max
- /proc/sys/net/core/rmem_max
- /proc/sys/net/ipv4/tcp_wmem
- /proc/sys/net/ipv4/tcp_wmem
-
+	/proc/sys/net/core/wmem_max
+	/proc/sys/net/core/rmem_max
+	/proc/sys/net/ipv4/tcp_wmem
+	/proc/sys/net/ipv4/tcp_wmem
 */
 func (a *Client) FindConfigInternodeSendBuffSizeInBytes(params *FindConfigInternodeSendBuffSizeInBytesParams) (*FindConfigInternodeSendBuffSizeInBytesOK, error) {
 	// TODO: Validate the params before sending
@@ -3442,8 +3441,9 @@ func (a *Client) FindConfigMaxHintsDeliveryThreads(params *FindConfigMaxHintsDel
 
 /*
 FindConfigMemoryAllocator The off-heap memory allocator. In addition to caches, this property affects storage engine meta data. Supported values:
- NativeAllocator
- JEMallocAllocator
+
+	NativeAllocator
+	JEMallocAllocator
 
 Experiments show that jemalloc saves some memory compared to the native allocator because it is more fragmentation resistant. To use, install jemalloc as a library and modify cassandra-env.sh (instructions in file).
 */
@@ -3479,9 +3479,10 @@ func (a *Client) FindConfigMemoryAllocator(params *FindConfigMemoryAllocatorPara
 
 /*
 FindConfigMemtableAllocationType Specify the way Cassandra allocates and manages memtable memory. See Off-heap memtables in Cassandra 2.1. Options are:
- heap_buffers     On heap NIO (non-blocking I/O) buffers.
- offheap_buffers  Off heap (direct) NIO buffers.
- offheap_objects  Native memory, eliminating NIO buffer heap overhead.
+
+	heap_buffers     On heap NIO (non-blocking I/O) buffers.
+	offheap_buffers  Off heap (direct) NIO buffers.
+	offheap_objects  Native memory, eliminating NIO buffer heap overhead.
 */
 func (a *Client) FindConfigMemtableAllocationType(params *FindConfigMemtableAllocationTypeParams) (*FindConfigMemtableAllocationTypeOK, error) {
 	// TODO: Validate the params before sending
@@ -3816,7 +3817,6 @@ FindConfigNativeTransportMaxThreads The maximum number of thread handling reques
 Default is different (128 versus unlimited).
 No corresponding native_transport_min_threads.
 Idle threads are stopped after 30 seconds.
-
 */
 func (a *Client) FindConfigNativeTransportMaxThreads(params *FindConfigNativeTransportMaxThreadsParams) (*FindConfigNativeTransportMaxThreadsOK, error) {
 	// TODO: Validate the params before sending
@@ -3986,9 +3986,9 @@ func (a *Client) FindConfigOverrideDecommission(params *FindConfigOverrideDecomm
 FindConfigPartitioner Distributes rows (by partition key) across all nodes in the cluster. Any IPartitioner may be used, including your own as long as it is in the class path. For new clusters use the default partitioner.
 Scylla provides the following partitioners for backwards compatibility:
 
- RandomPartitioner
- ByteOrderedPartitioner
- OrderPreservingPartitioner (deprecated)
+	RandomPartitioner
+	ByteOrderedPartitioner
+	OrderPreservingPartitioner (deprecated)
 
 Related information: Partitioners
 */
@@ -4555,9 +4555,9 @@ func (a *Client) FindConfigReplaceToken(params *FindConfigReplaceTokenParams) (*
 /*
 FindConfigRequestScheduler Defines a scheduler to handle incoming client requests according to a defined policy. This scheduler is useful for throttling client requests in single clusters containing multiple keyspaces. This parameter is specifically for requests from the client and does not affect inter-node communication. Valid values are:
 
- org.apache.cassandra.scheduler.NoScheduler   No scheduling takes place.
- org.apache.cassandra.scheduler.RoundRobinScheduler   Round robin of client requests to a node with a separate queue for each request_scheduler_id property.
- A Java class that implements the RequestScheduler interface.
+	org.apache.cassandra.scheduler.NoScheduler   No scheduling takes place.
+	org.apache.cassandra.scheduler.RoundRobinScheduler   Round robin of client requests to a node with a separate queue for each request_scheduler_id property.
+	A Java class that implements the RequestScheduler interface.
 */
 func (a *Client) FindConfigRequestScheduler(params *FindConfigRequestSchedulerParams) (*FindConfigRequestSchedulerOK, error) {
 	// TODO: Validate the params before sending
@@ -4625,9 +4625,9 @@ func (a *Client) FindConfigRequestSchedulerID(params *FindConfigRequestScheduler
 /*
 FindConfigRequestSchedulerOptions Contains a list of properties that define configuration options for request_scheduler:
 
- throttle_limit: The number of in-flight requests per client. Requests beyond this limit are queued up until running requests complete. Recommended value is ((concurrent_reads + concurrent_writes) × 2)
- default_weight: (Default: 1 **)  How many requests are handled during each turn of the RoundRobin.
- weights: (Default: Keyspace: 1)  Takes a list of keyspaces. It sets how many requests are handled during each turn of the RoundRobin, based on the request_scheduler_id.
+	throttle_limit: The number of in-flight requests per client. Requests beyond this limit are queued up until running requests complete. Recommended value is ((concurrent_reads + concurrent_writes) × 2)
+	default_weight: (Default: 1 **)  How many requests are handled during each turn of the RoundRobin.
+	weights: (Default: Keyspace: 1)  Takes a list of keyspaces. It sets how many requests are handled during each turn of the RoundRobin, based on the request_scheduler_id.
 */
 func (a *Client) FindConfigRequestSchedulerOptions(params *FindConfigRequestSchedulerOptionsParams) (*FindConfigRequestSchedulerOptionsOK, error) {
 	// TODO: Validate the params before sending
@@ -4729,7 +4729,8 @@ func (a *Client) FindConfigRingDelayMs(params *FindConfigRingDelayMsParams) (*Fi
 /*
 FindConfigRoleManager The role-management backend, used to maintain grantts and memberships between roles.
 The available role-managers are:
- CassandraRoleManager : Stores role data in the system_auth keyspace.
+
+	CassandraRoleManager : Stores role data in the system_auth keyspace.
 */
 func (a *Client) FindConfigRoleManager(params *FindConfigRoleManagerParams) (*FindConfigRoleManagerOK, error) {
 	// TODO: Validate the params before sending
@@ -4863,12 +4864,12 @@ func (a *Client) FindConfigRowCacheSizeInMb(params *FindConfigRowCacheSizeInMbPa
 /*
 FindConfigRPCAddress The listen address for client connections (Thrift RPC service and native transport).Valid values are:
 
- unset:   Resolves the address using the hostname configuration of the node. If left unset, the hostname must resolve to the IP address of this node using /etc/hostname, /etc/hosts, or DNS.
- 0.0.0.0 : Listens on all configured interfaces, but you must set the broadcast_rpc_address to a value other than 0.0.0.0.
- IP address
- hostname
-Related information: Network
+	unset:   Resolves the address using the hostname configuration of the node. If left unset, the hostname must resolve to the IP address of this node using /etc/hostname, /etc/hosts, or DNS.
+	0.0.0.0 : Listens on all configured interfaces, but you must set the broadcast_rpc_address to a value other than 0.0.0.0.
+	IP address
+	hostname
 
+Related information: Network
 */
 func (a *Client) FindConfigRPCAddress(params *FindConfigRPCAddressParams) (*FindConfigRPCAddressOK, error) {
 	// TODO: Validate the params before sending
@@ -5134,10 +5135,10 @@ func (a *Client) FindConfigRPCSendBuffSizeInBytes(params *FindConfigRPCSendBuffS
 /*
 FindConfigRPCServerType Cassandra provides three options for the RPC server. On Windows, sync is about 30% slower than hsha. On Linux, sync and hsha performance is about the same, but hsha uses less memory.
 
- sync    (Default One thread per Thrift connection.) For a very large number of clients, memory is the limiting factor. On a 64-bit JVM, 180KB is the minimum stack size per thread and corresponds to your use of virtual memory. Physical memory may be limited depending on use of stack space.
- hsh      Half synchronous, half asynchronous. All Thrift clients are handled asynchronously using a small number of threads that does not vary with the number of clients and thus scales well to many clients. The RPC requests are synchronous (one thread per active request).
-          Note: When selecting this option, you must change the default value (unlimited) of rpc_max_threads.
- Your own RPC server: You must provide a fully-qualified class name of an o.a.c.t.TServerFactory that can create a server instance.
+	sync    (Default One thread per Thrift connection.) For a very large number of clients, memory is the limiting factor. On a 64-bit JVM, 180KB is the minimum stack size per thread and corresponds to your use of virtual memory. Physical memory may be limited depending on use of stack space.
+	hsh      Half synchronous, half asynchronous. All Thrift clients are handled asynchronously using a small number of threads that does not vary with the number of clients and thus scales well to many clients. The RPC requests are synchronous (one thread per active request).
+	         Note: When selecting this option, you must change the default value (unlimited) of rpc_max_threads.
+	Your own RPC server: You must provide a fully-qualified class name of an o.a.c.t.TServerFactory that can create a server instance.
 */
 func (a *Client) FindConfigRPCServerType(params *FindConfigRPCServerTypeParams) (*FindConfigRPCServerTypeOK, error) {
 	// TODO: Validate the params before sending
@@ -5205,9 +5206,9 @@ func (a *Client) FindConfigSavedCachesDirectory(params *FindConfigSavedCachesDir
 /*
 FindConfigSeedProvider The addresses of hosts deemed contact points. Scylla nodes use the -seeds list to find each other and learn the topology of the ring.
 
-  class_name (Default: org.apache.cassandra.locator.SimpleSeedProvider)
-   The class within Scylla that handles the seed logic. It can be customized, but this is typically not required.
-   - seeds (Default: 127.0.0.1)    A comma-delimited list of IP addresses used by gossip for bootstrapping new nodes joining a cluster. When running multiple nodes, you must change the list from the default value. In multiple data-center clusters, the seed list should include at least one node from each data center (replication group). More than a single seed node per data center is recommended for fault tolerance. Otherwise, gossip has to communicate with another data center when bootstrapping a node. Making every node a seed node is not recommended because of increased maintenance and reduced gossip performance. Gossip optimization is not critical, but it is recommended to use a small seed list (approximately three nodes per data center).
+	class_name (Default: org.apache.cassandra.locator.SimpleSeedProvider)
+	 The class within Scylla that handles the seed logic. It can be customized, but this is typically not required.
+	 - seeds (Default: 127.0.0.1)    A comma-delimited list of IP addresses used by gossip for bootstrapping new nodes joining a cluster. When running multiple nodes, you must change the list from the default value. In multiple data-center clusters, the seed list should include at least one node from each data center (replication group). More than a single seed node per data center is recommended for fault tolerance. Otherwise, gossip has to communicate with another data center when bootstrapping a node. Making every node a seed node is not recommended because of increased maintenance and reduced gossip performance. Gossip optimization is not critical, but it is recommended to use a small seed list (approximately three nodes per data center).
 
 Related information: Initializing a multiple node cluster (single data center) and Initializing a multiple node cluster (multiple data centers).
 */
@@ -5245,18 +5246,21 @@ func (a *Client) FindConfigSeedProvider(params *FindConfigSeedProviderParams) (*
 FindConfigServerEncryptionOptions Enable or disable inter-node encryption. You must also generate keys and provide the appropriate key and trust store locations and passwords. No custom encryption options are currently enabled. The available options are:
 
 internode_encryption : (Default: none ) Enable or disable encryption of inter-node communication using the TLS_RSA_WITH_AES_128_CBC_SHA cipher suite for authentication, key exchange, and encryption of data transfers. The available inter-node options are:
- all : Encrypt all inter-node communications.
- none : No encryption.
- dc : Encrypt the traffic between the data centers (server only).
- rack : Encrypt the traffic between the racks(server only).
+
+	all : Encrypt all inter-node communications.
+	none : No encryption.
+	dc : Encrypt the traffic between the data centers (server only).
+	rack : Encrypt the traffic between the racks(server only).
+
 certificate : (Default: conf/scylla.crt) The location of a PEM-encoded x509 certificate used to identify and encrypt the internode communication.
 keyfile : (Default: conf/scylla.key) PEM Key file associated with certificate.
 truststore : (Default: <system truststore> ) Location of the truststore containing the trusted certificate for authenticating remote servers.
 
 The advanced settings are:
 
- priority_string : GnuTLS priority string controlling TLS algorithms used/allowed.
- require_client_auth : (Default: false ) Enables or disables certificate authentication.
+	priority_string : GnuTLS priority string controlling TLS algorithms used/allowed.
+	require_client_auth : (Default: false ) Enables or disables certificate authentication.
+
 Related information: Node-to-node encryption
 */
 func (a *Client) FindConfigServerEncryptionOptions(params *FindConfigServerEncryptionOptionsParams) (*FindConfigServerEncryptionOptionsOK, error) {

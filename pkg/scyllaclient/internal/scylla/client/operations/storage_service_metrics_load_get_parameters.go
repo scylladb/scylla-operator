@@ -56,7 +56,8 @@ func NewStorageServiceMetricsLoadGetParamsWithHTTPClient(client *http.Client) *S
 	}
 }
 
-/*StorageServiceMetricsLoadGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceMetricsLoadGetParams contains all the parameters to send to the API endpoint
 for the storage service metrics load get operation typically these are written to a http.Request
 */
 type StorageServiceMetricsLoadGetParams struct {

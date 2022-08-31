@@ -56,7 +56,8 @@ func NewFindConfigDeveloperModeParamsWithHTTPClient(client *http.Client) *FindCo
 	}
 }
 
-/*FindConfigDeveloperModeParams contains all the parameters to send to the API endpoint
+/*
+FindConfigDeveloperModeParams contains all the parameters to send to the API endpoint
 for the find config developer mode operation typically these are written to a http.Request
 */
 type FindConfigDeveloperModeParams struct {

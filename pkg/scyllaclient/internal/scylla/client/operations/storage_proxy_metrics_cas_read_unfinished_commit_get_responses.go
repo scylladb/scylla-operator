@@ -48,7 +48,8 @@ func NewStorageProxyMetricsCasReadUnfinishedCommitGetOK() *StorageProxyMetricsCa
 	return &StorageProxyMetricsCasReadUnfinishedCommitGetOK{}
 }
 
-/*StorageProxyMetricsCasReadUnfinishedCommitGetOK handles this case with default header values.
+/*
+StorageProxyMetricsCasReadUnfinishedCommitGetOK handles this case with default header values.
 
 StorageProxyMetricsCasReadUnfinishedCommitGetOK storage proxy metrics cas read unfinished commit get o k
 */
@@ -77,7 +78,8 @@ func NewStorageProxyMetricsCasReadUnfinishedCommitGetDefault(code int) *StorageP
 	}
 }
 
-/*StorageProxyMetricsCasReadUnfinishedCommitGetDefault handles this case with default header values.
+/*
+StorageProxyMetricsCasReadUnfinishedCommitGetDefault handles this case with default header values.
 
 internal server error
 */

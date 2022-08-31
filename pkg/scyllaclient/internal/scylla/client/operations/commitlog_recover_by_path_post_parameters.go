@@ -56,7 +56,8 @@ func NewCommitlogRecoverByPathPostParamsWithHTTPClient(client *http.Client) *Com
 	}
 }
 
-/*CommitlogRecoverByPathPostParams contains all the parameters to send to the API endpoint
+/*
+CommitlogRecoverByPathPostParams contains all the parameters to send to the API endpoint
 for the commitlog recover by path post operation typically these are written to a http.Request
 */
 type CommitlogRecoverByPathPostParams struct {

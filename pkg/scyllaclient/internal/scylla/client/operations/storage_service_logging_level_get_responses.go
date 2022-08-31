@@ -48,7 +48,8 @@ func NewStorageServiceLoggingLevelGetOK() *StorageServiceLoggingLevelGetOK {
 	return &StorageServiceLoggingLevelGetOK{}
 }
 
-/*StorageServiceLoggingLevelGetOK handles this case with default header values.
+/*
+StorageServiceLoggingLevelGetOK handles this case with default header values.
 
 StorageServiceLoggingLevelGetOK storage service logging level get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceLoggingLevelGetDefault(code int) *StorageServiceLoggingLev
 	}
 }
 
-/*StorageServiceLoggingLevelGetDefault handles this case with default header values.
+/*
+StorageServiceLoggingLevelGetDefault handles this case with default header values.
 
 internal server error
 */

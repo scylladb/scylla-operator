@@ -56,7 +56,8 @@ func NewFindConfigViewBuildingParamsWithHTTPClient(client *http.Client) *FindCon
 	}
 }
 
-/*FindConfigViewBuildingParams contains all the parameters to send to the API endpoint
+/*
+FindConfigViewBuildingParams contains all the parameters to send to the API endpoint
 for the find config view building operation typically these are written to a http.Request
 */
 type FindConfigViewBuildingParams struct {

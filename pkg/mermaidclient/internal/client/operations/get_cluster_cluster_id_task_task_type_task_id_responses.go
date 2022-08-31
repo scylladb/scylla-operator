@@ -47,7 +47,8 @@ func NewGetClusterClusterIDTaskTaskTypeTaskIDOK() *GetClusterClusterIDTaskTaskTy
 	return &GetClusterClusterIDTaskTaskTypeTaskIDOK{}
 }
 
-/*GetClusterClusterIDTaskTaskTypeTaskIDOK handles this case with default header values.
+/*
+GetClusterClusterIDTaskTaskTypeTaskIDOK handles this case with default header values.
 
 Task info
 */
@@ -82,7 +83,8 @@ func NewGetClusterClusterIDTaskTaskTypeTaskIDDefault(code int) *GetClusterCluste
 	}
 }
 
-/*GetClusterClusterIDTaskTaskTypeTaskIDDefault handles this case with default header values.
+/*
+GetClusterClusterIDTaskTaskTypeTaskIDDefault handles this case with default header values.
 
 Unexpected error
 */

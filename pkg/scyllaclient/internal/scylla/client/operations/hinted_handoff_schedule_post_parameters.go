@@ -56,7 +56,8 @@ func NewHintedHandoffSchedulePostParamsWithHTTPClient(client *http.Client) *Hint
 	}
 }
 
-/*HintedHandoffSchedulePostParams contains all the parameters to send to the API endpoint
+/*
+HintedHandoffSchedulePostParams contains all the parameters to send to the API endpoint
 for the hinted handoff schedule post operation typically these are written to a http.Request
 */
 type HintedHandoffSchedulePostParams struct {

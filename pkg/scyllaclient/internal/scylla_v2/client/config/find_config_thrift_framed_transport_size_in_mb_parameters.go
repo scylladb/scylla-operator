@@ -56,7 +56,8 @@ func NewFindConfigThriftFramedTransportSizeInMbParamsWithHTTPClient(client *http
 	}
 }
 
-/*FindConfigThriftFramedTransportSizeInMbParams contains all the parameters to send to the API endpoint
+/*
+FindConfigThriftFramedTransportSizeInMbParams contains all the parameters to send to the API endpoint
 for the find config thrift framed transport size in mb operation typically these are written to a http.Request
 */
 type FindConfigThriftFramedTransportSizeInMbParams struct {

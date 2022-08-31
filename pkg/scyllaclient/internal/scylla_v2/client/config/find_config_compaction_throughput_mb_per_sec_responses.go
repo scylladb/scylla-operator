@@ -48,7 +48,8 @@ func NewFindConfigCompactionThroughputMbPerSecOK() *FindConfigCompactionThroughp
 	return &FindConfigCompactionThroughputMbPerSecOK{}
 }
 
-/*FindConfigCompactionThroughputMbPerSecOK handles this case with default header values.
+/*
+FindConfigCompactionThroughputMbPerSecOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigCompactionThroughputMbPerSecDefault(code int) *FindConfigCompa
 	}
 }
 
-/*FindConfigCompactionThroughputMbPerSecDefault handles this case with default header values.
+/*
+FindConfigCompactionThroughputMbPerSecDefault handles this case with default header values.
 
 unexpected error
 */

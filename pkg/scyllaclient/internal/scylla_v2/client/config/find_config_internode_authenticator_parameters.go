@@ -56,7 +56,8 @@ func NewFindConfigInternodeAuthenticatorParamsWithHTTPClient(client *http.Client
 	}
 }
 
-/*FindConfigInternodeAuthenticatorParams contains all the parameters to send to the API endpoint
+/*
+FindConfigInternodeAuthenticatorParams contains all the parameters to send to the API endpoint
 for the find config internode authenticator operation typically these are written to a http.Request
 */
 type FindConfigInternodeAuthenticatorParams struct {

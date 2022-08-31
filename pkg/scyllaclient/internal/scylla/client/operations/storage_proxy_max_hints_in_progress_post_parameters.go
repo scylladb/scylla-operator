@@ -57,7 +57,8 @@ func NewStorageProxyMaxHintsInProgressPostParamsWithHTTPClient(client *http.Clie
 	}
 }
 
-/*StorageProxyMaxHintsInProgressPostParams contains all the parameters to send to the API endpoint
+/*
+StorageProxyMaxHintsInProgressPostParams contains all the parameters to send to the API endpoint
 for the storage proxy max hints in progress post operation typically these are written to a http.Request
 */
 type StorageProxyMaxHintsInProgressPostParams struct {

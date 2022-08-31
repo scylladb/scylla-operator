@@ -58,7 +58,8 @@ func NewCoreStatsDeleteParamsWithHTTPClient(client *http.Client) *CoreStatsDelet
 	}
 }
 
-/*CoreStatsDeleteParams contains all the parameters to send to the API endpoint
+/*
+CoreStatsDeleteParams contains all the parameters to send to the API endpoint
 for the core stats delete operation typically these are written to a http.Request
 */
 type CoreStatsDeleteParams struct {

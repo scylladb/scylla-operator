@@ -56,7 +56,8 @@ func NewFindConfigMurmur3PartitionerIgnoreMsbBitsParamsWithHTTPClient(client *ht
 	}
 }
 
-/*FindConfigMurmur3PartitionerIgnoreMsbBitsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigMurmur3PartitionerIgnoreMsbBitsParams contains all the parameters to send to the API endpoint
 for the find config murmur3 partitioner ignore msb bits operation typically these are written to a http.Request
 */
 type FindConfigMurmur3PartitionerIgnoreMsbBitsParams struct {

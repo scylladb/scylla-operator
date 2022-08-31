@@ -48,7 +48,8 @@ func NewFindConfigCounterWriteRequestTimeoutInMsOK() *FindConfigCounterWriteRequ
 	return &FindConfigCounterWriteRequestTimeoutInMsOK{}
 }
 
-/*FindConfigCounterWriteRequestTimeoutInMsOK handles this case with default header values.
+/*
+FindConfigCounterWriteRequestTimeoutInMsOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigCounterWriteRequestTimeoutInMsDefault(code int) *FindConfigCou
 	}
 }
 
-/*FindConfigCounterWriteRequestTimeoutInMsDefault handles this case with default header values.
+/*
+FindConfigCounterWriteRequestTimeoutInMsDefault handles this case with default header values.
 
 unexpected error
 */

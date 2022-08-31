@@ -56,7 +56,8 @@ func NewFindConfigPreheatKernelPageCacheParamsWithHTTPClient(client *http.Client
 	}
 }
 
-/*FindConfigPreheatKernelPageCacheParams contains all the parameters to send to the API endpoint
+/*
+FindConfigPreheatKernelPageCacheParams contains all the parameters to send to the API endpoint
 for the find config preheat kernel page cache operation typically these are written to a http.Request
 */
 type FindConfigPreheatKernelPageCacheParams struct {

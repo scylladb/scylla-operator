@@ -48,7 +48,8 @@ func NewFindConfigCompactionPreheatKeyCacheOK() *FindConfigCompactionPreheatKeyC
 	return &FindConfigCompactionPreheatKeyCacheOK{}
 }
 
-/*FindConfigCompactionPreheatKeyCacheOK handles this case with default header values.
+/*
+FindConfigCompactionPreheatKeyCacheOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigCompactionPreheatKeyCacheDefault(code int) *FindConfigCompacti
 	}
 }
 
-/*FindConfigCompactionPreheatKeyCacheDefault handles this case with default header values.
+/*
+FindConfigCompactionPreheatKeyCacheDefault handles this case with default header values.
 
 unexpected error
 */

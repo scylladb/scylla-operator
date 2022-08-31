@@ -48,7 +48,8 @@ func NewSystemUptimeMsGetOK() *SystemUptimeMsGetOK {
 	return &SystemUptimeMsGetOK{}
 }
 
-/*SystemUptimeMsGetOK handles this case with default header values.
+/*
+SystemUptimeMsGetOK handles this case with default header values.
 
 SystemUptimeMsGetOK system uptime ms get o k
 */
@@ -77,7 +78,8 @@ func NewSystemUptimeMsGetDefault(code int) *SystemUptimeMsGetDefault {
 	}
 }
 
-/*SystemUptimeMsGetDefault handles this case with default header values.
+/*
+SystemUptimeMsGetDefault handles this case with default header values.
 
 internal server error
 */

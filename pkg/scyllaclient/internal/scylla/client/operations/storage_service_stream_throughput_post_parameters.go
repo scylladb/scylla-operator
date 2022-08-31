@@ -57,7 +57,8 @@ func NewStorageServiceStreamThroughputPostParamsWithHTTPClient(client *http.Clie
 	}
 }
 
-/*StorageServiceStreamThroughputPostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceStreamThroughputPostParams contains all the parameters to send to the API endpoint
 for the storage service stream throughput post operation typically these are written to a http.Request
 */
 type StorageServiceStreamThroughputPostParams struct {

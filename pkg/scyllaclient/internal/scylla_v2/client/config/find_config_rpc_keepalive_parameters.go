@@ -56,7 +56,8 @@ func NewFindConfigRPCKeepaliveParamsWithHTTPClient(client *http.Client) *FindCon
 	}
 }
 
-/*FindConfigRPCKeepaliveParams contains all the parameters to send to the API endpoint
+/*
+FindConfigRPCKeepaliveParams contains all the parameters to send to the API endpoint
 for the find config rpc keepalive operation typically these are written to a http.Request
 */
 type FindConfigRPCKeepaliveParams struct {

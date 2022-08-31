@@ -48,7 +48,8 @@ func NewFailureDetectorPhiPostOK() *FailureDetectorPhiPostOK {
 	return &FailureDetectorPhiPostOK{}
 }
 
-/*FailureDetectorPhiPostOK handles this case with default header values.
+/*
+FailureDetectorPhiPostOK handles this case with default header values.
 
 FailureDetectorPhiPostOK failure detector phi post o k
 */
@@ -77,7 +78,8 @@ func NewFailureDetectorPhiPostDefault(code int) *FailureDetectorPhiPostDefault {
 	}
 }
 
-/*FailureDetectorPhiPostDefault handles this case with default header values.
+/*
+FailureDetectorPhiPostDefault handles this case with default header values.
 
 internal server error
 */

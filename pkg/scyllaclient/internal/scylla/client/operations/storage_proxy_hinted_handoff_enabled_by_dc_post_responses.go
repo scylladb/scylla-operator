@@ -48,7 +48,8 @@ func NewStorageProxyHintedHandoffEnabledByDcPostOK() *StorageProxyHintedHandoffE
 	return &StorageProxyHintedHandoffEnabledByDcPostOK{}
 }
 
-/*StorageProxyHintedHandoffEnabledByDcPostOK handles this case with default header values.
+/*
+StorageProxyHintedHandoffEnabledByDcPostOK handles this case with default header values.
 
 StorageProxyHintedHandoffEnabledByDcPostOK storage proxy hinted handoff enabled by dc post o k
 */
@@ -67,7 +68,8 @@ func NewStorageProxyHintedHandoffEnabledByDcPostDefault(code int) *StorageProxyH
 	}
 }
 
-/*StorageProxyHintedHandoffEnabledByDcPostDefault handles this case with default header values.
+/*
+StorageProxyHintedHandoffEnabledByDcPostDefault handles this case with default header values.
 
 internal server error
 */

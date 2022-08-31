@@ -56,7 +56,8 @@ func NewFindConfigRPCMaxThreadsParamsWithHTTPClient(client *http.Client) *FindCo
 	}
 }
 
-/*FindConfigRPCMaxThreadsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigRPCMaxThreadsParams contains all the parameters to send to the API endpoint
 for the find config rpc max threads operation typically these are written to a http.Request
 */
 type FindConfigRPCMaxThreadsParams struct {

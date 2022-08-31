@@ -56,7 +56,8 @@ func NewSnitchRackGetParamsWithHTTPClient(client *http.Client) *SnitchRackGetPar
 	}
 }
 
-/*SnitchRackGetParams contains all the parameters to send to the API endpoint
+/*
+SnitchRackGetParams contains all the parameters to send to the API endpoint
 for the snitch rack get operation typically these are written to a http.Request
 */
 type SnitchRackGetParams struct {

@@ -57,7 +57,8 @@ func NewPostClusterClusterIDRepairsIntensityParamsWithHTTPClient(client *http.Cl
 	}
 }
 
-/*PostClusterClusterIDRepairsIntensityParams contains all the parameters to send to the API endpoint
+/*
+PostClusterClusterIDRepairsIntensityParams contains all the parameters to send to the API endpoint
 for the post cluster cluster ID repairs intensity operation typically these are written to a http.Request
 */
 type PostClusterClusterIDRepairsIntensityParams struct {

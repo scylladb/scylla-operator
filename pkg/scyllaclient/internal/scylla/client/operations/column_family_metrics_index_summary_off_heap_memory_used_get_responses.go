@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsIndexSummaryOffHeapMemoryUsedGetOK() *ColumnFamilyMet
 	return &ColumnFamilyMetricsIndexSummaryOffHeapMemoryUsedGetOK{}
 }
 
-/*ColumnFamilyMetricsIndexSummaryOffHeapMemoryUsedGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsIndexSummaryOffHeapMemoryUsedGetOK handles this case with default header values.
 
 ColumnFamilyMetricsIndexSummaryOffHeapMemoryUsedGetOK column family metrics index summary off heap memory used get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsIndexSummaryOffHeapMemoryUsedGetDefault(code int) *Co
 	}
 }
 
-/*ColumnFamilyMetricsIndexSummaryOffHeapMemoryUsedGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsIndexSummaryOffHeapMemoryUsedGetDefault handles this case with default header values.
 
 internal server error
 */

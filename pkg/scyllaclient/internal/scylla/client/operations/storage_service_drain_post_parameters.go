@@ -56,7 +56,8 @@ func NewStorageServiceDrainPostParamsWithHTTPClient(client *http.Client) *Storag
 	}
 }
 
-/*StorageServiceDrainPostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceDrainPostParams contains all the parameters to send to the API endpoint
 for the storage service drain post operation typically these are written to a http.Request
 */
 type StorageServiceDrainPostParams struct {

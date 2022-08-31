@@ -49,7 +49,8 @@ func NewJobStopOK() *JobStopOK {
 	return &JobStopOK{}
 }
 
-/*JobStopOK handles this case with default header values.
+/*
+JobStopOK handles this case with default header values.
 
 Empty object
 */
@@ -87,7 +88,8 @@ func NewJobStopDefault(code int) *JobStopDefault {
 	}
 }
 
-/*JobStopDefault handles this case with default header values.
+/*
+JobStopDefault handles this case with default header values.
 
 Server error
 */

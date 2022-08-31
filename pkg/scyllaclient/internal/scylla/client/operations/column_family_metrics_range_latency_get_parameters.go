@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsRangeLatencyGetParamsWithHTTPClient(client *http.Clie
 	}
 }
 
-/*ColumnFamilyMetricsRangeLatencyGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsRangeLatencyGetParams contains all the parameters to send to the API endpoint
 for the column family metrics range latency get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsRangeLatencyGetParams struct {

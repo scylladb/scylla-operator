@@ -48,7 +48,8 @@ func NewStorageServiceDecommissionPostOK() *StorageServiceDecommissionPostOK {
 	return &StorageServiceDecommissionPostOK{}
 }
 
-/*StorageServiceDecommissionPostOK handles this case with default header values.
+/*
+StorageServiceDecommissionPostOK handles this case with default header values.
 
 StorageServiceDecommissionPostOK storage service decommission post o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceDecommissionPostDefault(code int) *StorageServiceDecommiss
 	}
 }
 
-/*StorageServiceDecommissionPostDefault handles this case with default header values.
+/*
+StorageServiceDecommissionPostDefault handles this case with default header values.
 
 internal server error
 */

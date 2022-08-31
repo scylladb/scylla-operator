@@ -48,7 +48,8 @@ func NewFindConfigOverrideDecommissionOK() *FindConfigOverrideDecommissionOK {
 	return &FindConfigOverrideDecommissionOK{}
 }
 
-/*FindConfigOverrideDecommissionOK handles this case with default header values.
+/*
+FindConfigOverrideDecommissionOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigOverrideDecommissionDefault(code int) *FindConfigOverrideDecom
 	}
 }
 
-/*FindConfigOverrideDecommissionDefault handles this case with default header values.
+/*
+FindConfigOverrideDecommissionDefault handles this case with default header values.
 
 unexpected error
 */

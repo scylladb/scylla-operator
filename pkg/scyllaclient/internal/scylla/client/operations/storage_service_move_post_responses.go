@@ -48,7 +48,8 @@ func NewStorageServiceMovePostOK() *StorageServiceMovePostOK {
 	return &StorageServiceMovePostOK{}
 }
 
-/*StorageServiceMovePostOK handles this case with default header values.
+/*
+StorageServiceMovePostOK handles this case with default header values.
 
 StorageServiceMovePostOK storage service move post o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceMovePostDefault(code int) *StorageServiceMovePostDefault {
 	}
 }
 
-/*StorageServiceMovePostDefault handles this case with default header values.
+/*
+StorageServiceMovePostDefault handles this case with default header values.
 
 internal server error
 */

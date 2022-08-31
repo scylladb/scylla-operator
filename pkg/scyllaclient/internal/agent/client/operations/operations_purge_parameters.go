@@ -71,7 +71,8 @@ func NewOperationsPurgeParamsWithHTTPClient(client *http.Client) *OperationsPurg
 	}
 }
 
-/*OperationsPurgeParams contains all the parameters to send to the API endpoint
+/*
+OperationsPurgeParams contains all the parameters to send to the API endpoint
 for the operations purge operation typically these are written to a http.Request
 */
 type OperationsPurgeParams struct {

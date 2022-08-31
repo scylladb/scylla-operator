@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsReadGetParamsWithHTTPClient(client *http.Client) *Col
 	}
 }
 
-/*ColumnFamilyMetricsReadGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsReadGetParams contains all the parameters to send to the API endpoint
 for the column family metrics read get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsReadGetParams struct {

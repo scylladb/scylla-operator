@@ -56,7 +56,8 @@ func NewFindConfigPermissionsCacheMaxEntriesParamsWithHTTPClient(client *http.Cl
 	}
 }
 
-/*FindConfigPermissionsCacheMaxEntriesParams contains all the parameters to send to the API endpoint
+/*
+FindConfigPermissionsCacheMaxEntriesParams contains all the parameters to send to the API endpoint
 for the find config permissions cache max entries operation typically these are written to a http.Request
 */
 type FindConfigPermissionsCacheMaxEntriesParams struct {

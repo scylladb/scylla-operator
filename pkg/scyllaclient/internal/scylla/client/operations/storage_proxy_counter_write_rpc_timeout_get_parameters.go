@@ -56,7 +56,8 @@ func NewStorageProxyCounterWriteRPCTimeoutGetParamsWithHTTPClient(client *http.C
 	}
 }
 
-/*StorageProxyCounterWriteRPCTimeoutGetParams contains all the parameters to send to the API endpoint
+/*
+StorageProxyCounterWriteRPCTimeoutGetParams contains all the parameters to send to the API endpoint
 for the storage proxy counter write Rpc timeout get operation typically these are written to a http.Request
 */
 type StorageProxyCounterWriteRPCTimeoutGetParams struct {

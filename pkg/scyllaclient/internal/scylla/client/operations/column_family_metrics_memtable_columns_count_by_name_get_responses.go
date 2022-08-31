@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsMemtableColumnsCountByNameGetOK() *ColumnFamilyMetric
 	return &ColumnFamilyMetricsMemtableColumnsCountByNameGetOK{}
 }
 
-/*ColumnFamilyMetricsMemtableColumnsCountByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsMemtableColumnsCountByNameGetOK handles this case with default header values.
 
 ColumnFamilyMetricsMemtableColumnsCountByNameGetOK column family metrics memtable columns count by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsMemtableColumnsCountByNameGetDefault(code int) *Colum
 	}
 }
 
-/*ColumnFamilyMetricsMemtableColumnsCountByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsMemtableColumnsCountByNameGetDefault handles this case with default header values.
 
 internal server error
 */

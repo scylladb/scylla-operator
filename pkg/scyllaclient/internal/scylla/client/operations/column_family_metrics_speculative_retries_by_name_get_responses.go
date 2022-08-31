@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsSpeculativeRetriesByNameGetOK() *ColumnFamilyMetricsS
 	return &ColumnFamilyMetricsSpeculativeRetriesByNameGetOK{}
 }
 
-/*ColumnFamilyMetricsSpeculativeRetriesByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsSpeculativeRetriesByNameGetOK handles this case with default header values.
 
 ColumnFamilyMetricsSpeculativeRetriesByNameGetOK column family metrics speculative retries by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsSpeculativeRetriesByNameGetDefault(code int) *ColumnF
 	}
 }
 
-/*ColumnFamilyMetricsSpeculativeRetriesByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsSpeculativeRetriesByNameGetDefault handles this case with default header values.
 
 internal server error
 */

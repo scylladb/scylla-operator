@@ -56,7 +56,8 @@ func NewFindConfigCommitlogSyncParamsWithHTTPClient(client *http.Client) *FindCo
 	}
 }
 
-/*FindConfigCommitlogSyncParams contains all the parameters to send to the API endpoint
+/*
+FindConfigCommitlogSyncParams contains all the parameters to send to the API endpoint
 for the find config commitlog sync operation typically these are written to a http.Request
 */
 type FindConfigCommitlogSyncParams struct {

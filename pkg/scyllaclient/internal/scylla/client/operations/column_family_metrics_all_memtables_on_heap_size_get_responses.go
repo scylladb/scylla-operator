@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsAllMemtablesOnHeapSizeGetOK() *ColumnFamilyMetricsAll
 	return &ColumnFamilyMetricsAllMemtablesOnHeapSizeGetOK{}
 }
 
-/*ColumnFamilyMetricsAllMemtablesOnHeapSizeGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsAllMemtablesOnHeapSizeGetOK handles this case with default header values.
 
 ColumnFamilyMetricsAllMemtablesOnHeapSizeGetOK column family metrics all memtables on heap size get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsAllMemtablesOnHeapSizeGetDefault(code int) *ColumnFam
 	}
 }
 
-/*ColumnFamilyMetricsAllMemtablesOnHeapSizeGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsAllMemtablesOnHeapSizeGetDefault handles this case with default header values.
 
 internal server error
 */

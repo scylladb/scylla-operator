@@ -48,7 +48,8 @@ func NewFindConfigNumTokensOK() *FindConfigNumTokensOK {
 	return &FindConfigNumTokensOK{}
 }
 
-/*FindConfigNumTokensOK handles this case with default header values.
+/*
+FindConfigNumTokensOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigNumTokensDefault(code int) *FindConfigNumTokensDefault {
 	}
 }
 
-/*FindConfigNumTokensDefault handles this case with default header values.
+/*
+FindConfigNumTokensDefault handles this case with default header values.
 
 unexpected error
 */

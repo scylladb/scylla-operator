@@ -56,7 +56,8 @@ func NewCacheServiceSaveCachesPostParamsWithHTTPClient(client *http.Client) *Cac
 	}
 }
 
-/*CacheServiceSaveCachesPostParams contains all the parameters to send to the API endpoint
+/*
+CacheServiceSaveCachesPostParams contains all the parameters to send to the API endpoint
 for the cache service save caches post operation typically these are written to a http.Request
 */
 type CacheServiceSaveCachesPostParams struct {

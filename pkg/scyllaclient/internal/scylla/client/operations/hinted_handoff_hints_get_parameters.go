@@ -56,7 +56,8 @@ func NewHintedHandoffHintsGetParamsWithHTTPClient(client *http.Client) *HintedHa
 	}
 }
 
-/*HintedHandoffHintsGetParams contains all the parameters to send to the API endpoint
+/*
+HintedHandoffHintsGetParams contains all the parameters to send to the API endpoint
 for the hinted handoff hints get operation typically these are written to a http.Request
 */
 type HintedHandoffHintsGetParams struct {

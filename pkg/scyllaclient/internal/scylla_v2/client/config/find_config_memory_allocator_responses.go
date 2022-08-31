@@ -48,7 +48,8 @@ func NewFindConfigMemoryAllocatorOK() *FindConfigMemoryAllocatorOK {
 	return &FindConfigMemoryAllocatorOK{}
 }
 
-/*FindConfigMemoryAllocatorOK handles this case with default header values.
+/*
+FindConfigMemoryAllocatorOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigMemoryAllocatorDefault(code int) *FindConfigMemoryAllocatorDef
 	}
 }
 
-/*FindConfigMemoryAllocatorDefault handles this case with default header values.
+/*
+FindConfigMemoryAllocatorDefault handles this case with default header values.
 
 unexpected error
 */

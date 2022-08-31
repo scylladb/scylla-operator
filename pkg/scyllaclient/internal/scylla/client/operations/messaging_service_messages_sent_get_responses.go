@@ -48,7 +48,8 @@ func NewMessagingServiceMessagesSentGetOK() *MessagingServiceMessagesSentGetOK {
 	return &MessagingServiceMessagesSentGetOK{}
 }
 
-/*MessagingServiceMessagesSentGetOK handles this case with default header values.
+/*
+MessagingServiceMessagesSentGetOK handles this case with default header values.
 
 MessagingServiceMessagesSentGetOK messaging service messages sent get o k
 */
@@ -77,7 +78,8 @@ func NewMessagingServiceMessagesSentGetDefault(code int) *MessagingServiceMessag
 	}
 }
 
-/*MessagingServiceMessagesSentGetDefault handles this case with default header values.
+/*
+MessagingServiceMessagesSentGetDefault handles this case with default header values.
 
 internal server error
 */

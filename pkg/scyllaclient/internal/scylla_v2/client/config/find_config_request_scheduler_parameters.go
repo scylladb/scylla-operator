@@ -56,7 +56,8 @@ func NewFindConfigRequestSchedulerParamsWithHTTPClient(client *http.Client) *Fin
 	}
 }
 
-/*FindConfigRequestSchedulerParams contains all the parameters to send to the API endpoint
+/*
+FindConfigRequestSchedulerParams contains all the parameters to send to the API endpoint
 for the find config request scheduler operation typically these are written to a http.Request
 */
 type FindConfigRequestSchedulerParams struct {

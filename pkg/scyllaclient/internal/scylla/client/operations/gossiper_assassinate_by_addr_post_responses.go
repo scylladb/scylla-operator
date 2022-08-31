@@ -48,7 +48,8 @@ func NewGossiperAssassinateByAddrPostOK() *GossiperAssassinateByAddrPostOK {
 	return &GossiperAssassinateByAddrPostOK{}
 }
 
-/*GossiperAssassinateByAddrPostOK handles this case with default header values.
+/*
+GossiperAssassinateByAddrPostOK handles this case with default header values.
 
 GossiperAssassinateByAddrPostOK gossiper assassinate by addr post o k
 */
@@ -67,7 +68,8 @@ func NewGossiperAssassinateByAddrPostDefault(code int) *GossiperAssassinateByAdd
 	}
 }
 
-/*GossiperAssassinateByAddrPostDefault handles this case with default header values.
+/*
+GossiperAssassinateByAddrPostDefault handles this case with default header values.
 
 internal server error
 */

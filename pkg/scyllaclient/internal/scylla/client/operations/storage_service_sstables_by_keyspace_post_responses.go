@@ -48,7 +48,8 @@ func NewStorageServiceSstablesByKeyspacePostOK() *StorageServiceSstablesByKeyspa
 	return &StorageServiceSstablesByKeyspacePostOK{}
 }
 
-/*StorageServiceSstablesByKeyspacePostOK handles this case with default header values.
+/*
+StorageServiceSstablesByKeyspacePostOK handles this case with default header values.
 
 StorageServiceSstablesByKeyspacePostOK storage service sstables by keyspace post o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceSstablesByKeyspacePostDefault(code int) *StorageServiceSst
 	}
 }
 
-/*StorageServiceSstablesByKeyspacePostDefault handles this case with default header values.
+/*
+StorageServiceSstablesByKeyspacePostDefault handles this case with default header values.
 
 internal server error
 */

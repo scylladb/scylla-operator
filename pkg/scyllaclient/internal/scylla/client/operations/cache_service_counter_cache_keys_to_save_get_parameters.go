@@ -56,7 +56,8 @@ func NewCacheServiceCounterCacheKeysToSaveGetParamsWithHTTPClient(client *http.C
 	}
 }
 
-/*CacheServiceCounterCacheKeysToSaveGetParams contains all the parameters to send to the API endpoint
+/*
+CacheServiceCounterCacheKeysToSaveGetParams contains all the parameters to send to the API endpoint
 for the cache service counter cache keys to save get operation typically these are written to a http.Request
 */
 type CacheServiceCounterCacheKeysToSaveGetParams struct {

@@ -49,7 +49,8 @@ func NewCoreStatsDeleteOK() *CoreStatsDeleteOK {
 	return &CoreStatsDeleteOK{}
 }
 
-/*CoreStatsDeleteOK handles this case with default header values.
+/*
+CoreStatsDeleteOK handles this case with default header values.
 
 Empty object
 */
@@ -87,7 +88,8 @@ func NewCoreStatsDeleteDefault(code int) *CoreStatsDeleteDefault {
 	}
 }
 
-/*CoreStatsDeleteDefault handles this case with default header values.
+/*
+CoreStatsDeleteDefault handles this case with default header values.
 
 Server error
 */

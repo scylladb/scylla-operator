@@ -56,7 +56,8 @@ func NewFindConfigConcurrentReadsParamsWithHTTPClient(client *http.Client) *Find
 	}
 }
 
-/*FindConfigConcurrentReadsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigConcurrentReadsParams contains all the parameters to send to the API endpoint
 for the find config concurrent reads operation typically these are written to a http.Request
 */
 type FindConfigConcurrentReadsParams struct {

@@ -56,7 +56,8 @@ func NewStorageServiceSnapshotsPostParamsWithHTTPClient(client *http.Client) *St
 	}
 }
 
-/*StorageServiceSnapshotsPostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceSnapshotsPostParams contains all the parameters to send to the API endpoint
 for the storage service snapshots post operation typically these are written to a http.Request
 */
 type StorageServiceSnapshotsPostParams struct {

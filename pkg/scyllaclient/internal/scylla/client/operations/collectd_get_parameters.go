@@ -56,7 +56,8 @@ func NewCollectdGetParamsWithHTTPClient(client *http.Client) *CollectdGetParams 
 	}
 }
 
-/*CollectdGetParams contains all the parameters to send to the API endpoint
+/*
+CollectdGetParams contains all the parameters to send to the API endpoint
 for the collectd get operation typically these are written to a http.Request
 */
 type CollectdGetParams struct {

@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsMeanRowSizeByNameGetOK() *ColumnFamilyMetricsMeanRowS
 	return &ColumnFamilyMetricsMeanRowSizeByNameGetOK{}
 }
 
-/*ColumnFamilyMetricsMeanRowSizeByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsMeanRowSizeByNameGetOK handles this case with default header values.
 
 ColumnFamilyMetricsMeanRowSizeByNameGetOK column family metrics mean row size by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsMeanRowSizeByNameGetDefault(code int) *ColumnFamilyMe
 	}
 }
 
-/*ColumnFamilyMetricsMeanRowSizeByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsMeanRowSizeByNameGetDefault handles this case with default header values.
 
 internal server error
 */

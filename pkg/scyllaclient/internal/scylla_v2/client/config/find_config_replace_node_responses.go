@@ -48,7 +48,8 @@ func NewFindConfigReplaceNodeOK() *FindConfigReplaceNodeOK {
 	return &FindConfigReplaceNodeOK{}
 }
 
-/*FindConfigReplaceNodeOK handles this case with default header values.
+/*
+FindConfigReplaceNodeOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigReplaceNodeDefault(code int) *FindConfigReplaceNodeDefault {
 	}
 }
 
-/*FindConfigReplaceNodeDefault handles this case with default header values.
+/*
+FindConfigReplaceNodeDefault handles this case with default header values.
 
 unexpected error
 */

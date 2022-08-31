@@ -56,7 +56,8 @@ func NewFindConfigCommitFailurePolicyParamsWithHTTPClient(client *http.Client) *
 	}
 }
 
-/*FindConfigCommitFailurePolicyParams contains all the parameters to send to the API endpoint
+/*
+FindConfigCommitFailurePolicyParams contains all the parameters to send to the API endpoint
 for the find config commit failure policy operation typically these are written to a http.Request
 */
 type FindConfigCommitFailurePolicyParams struct {

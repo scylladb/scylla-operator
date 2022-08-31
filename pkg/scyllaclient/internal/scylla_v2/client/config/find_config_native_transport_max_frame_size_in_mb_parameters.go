@@ -56,7 +56,8 @@ func NewFindConfigNativeTransportMaxFrameSizeInMbParamsWithHTTPClient(client *ht
 	}
 }
 
-/*FindConfigNativeTransportMaxFrameSizeInMbParams contains all the parameters to send to the API endpoint
+/*
+FindConfigNativeTransportMaxFrameSizeInMbParams contains all the parameters to send to the API endpoint
 for the find config native transport max frame size in mb operation typically these are written to a http.Request
 */
 type FindConfigNativeTransportMaxFrameSizeInMbParams struct {

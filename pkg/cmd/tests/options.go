@@ -13,6 +13,7 @@ type TestFrameworkOptions struct {
 	ArtifactsDir                 string
 	DeleteTestingNSPolicyUntyped string
 	DeleteTestingNSPolicy        framework.DeleteTestingNSPolicyType
+	ExternalStorage              framework.ExternalStorageOptions
 }
 
 func NewTestFrameworkOptions() TestFrameworkOptions {
@@ -32,6 +33,7 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 		},
 		", ",
 	)))
+	o.ExternalStorage.AddFlags(cmd)
 }
 
 func (o *TestFrameworkOptions) Validate() error {

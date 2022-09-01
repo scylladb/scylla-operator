@@ -259,6 +259,7 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 		RestConfig:            o.RestConfig,
 		ArtifactsDir:          o.ArtifactsDir,
 		DeleteTestingNSPolicy: o.DeleteTestingNSPolicy,
+		ExternalStorage:       o.ExternalStorage,
 	}
 
 	suiteConfig, reporterConfig := ginkgo.GinkgoConfiguration()

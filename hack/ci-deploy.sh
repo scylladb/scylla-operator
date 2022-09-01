@@ -74,3 +74,11 @@ kubectl -n scylla-manager rollout status --timeout=5m deployment.apps/scylla-man
 
 kubectl wait --for condition=established crd/nodeconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scyllaoperatorconfigs.scylla.scylladb.com
+
+# Minio - storage used in e2e tests.
+MINIO_DIR="hack/test/minio"
+kubectl_create -f "${MINIO_DIR}"/minio.yaml
+kubectl -n minio wait --for condition=available --timeout=5m deployment.apps/minio
+kubectl_create -f "${MINIO_DIR}"/minio_init.yaml
+kubectl -n minio wait --for condition=complete --timeout=5m job/minio-mc
+

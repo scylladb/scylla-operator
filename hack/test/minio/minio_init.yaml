@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-mc
+  namespace: minio
+  labels:
+    app.kubernetes.io/name: minio-mc
+    app.kubernetes.io/instance: minio-mc
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: minio-mc
+        app.kubernetes.io/instance: minio-mc
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: minio-mc
+          image: minio/mc:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - bash
+            - -c
+            - |
+              mc config host add minio-test http://minio.minio.svc:9000 minio minio123
+              mc admin policy add minio-test user /mnt/user-policy.json
+              mc admin user add minio-test miniouser minio1234
+              mc admin policy set minio-test user user=miniouser
+              mc mb minio-test/my-bucket
+          volumeMounts:
+            - name: user-policy
+              mountPath: /mnt/user-policy.json
+              subPath: user-policy.json
+          resources:
+            requests:
+              cpu: 10m
+              memory: 20Mi
+      volumes:
+        - name: user-policy
+          configMap:
+            name: user-policy
+
+

@@ -56,7 +56,8 @@ func NewMessagingServiceMessagesTimeoutGetParamsWithHTTPClient(client *http.Clie
 	}
 }
 
-/*MessagingServiceMessagesTimeoutGetParams contains all the parameters to send to the API endpoint
+/*
+MessagingServiceMessagesTimeoutGetParams contains all the parameters to send to the API endpoint
 for the messaging service messages timeout get operation typically these are written to a http.Request
 */
 type MessagingServiceMessagesTimeoutGetParams struct {

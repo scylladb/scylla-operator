@@ -56,7 +56,8 @@ func NewFindConfigEnableShardAwareDriversParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*FindConfigEnableShardAwareDriversParams contains all the parameters to send to the API endpoint
+/*
+FindConfigEnableShardAwareDriversParams contains all the parameters to send to the API endpoint
 for the find config enable shard aware drivers operation typically these are written to a http.Request
 */
 type FindConfigEnableShardAwareDriversParams struct {

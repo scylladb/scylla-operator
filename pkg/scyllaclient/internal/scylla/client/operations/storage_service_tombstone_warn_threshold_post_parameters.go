@@ -57,7 +57,8 @@ func NewStorageServiceTombstoneWarnThresholdPostParamsWithHTTPClient(client *htt
 	}
 }
 
-/*StorageServiceTombstoneWarnThresholdPostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceTombstoneWarnThresholdPostParams contains all the parameters to send to the API endpoint
 for the storage service tombstone warn threshold post operation typically these are written to a http.Request
 */
 type StorageServiceTombstoneWarnThresholdPostParams struct {

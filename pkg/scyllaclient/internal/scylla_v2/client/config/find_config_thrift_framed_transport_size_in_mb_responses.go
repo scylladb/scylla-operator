@@ -48,7 +48,8 @@ func NewFindConfigThriftFramedTransportSizeInMbOK() *FindConfigThriftFramedTrans
 	return &FindConfigThriftFramedTransportSizeInMbOK{}
 }
 
-/*FindConfigThriftFramedTransportSizeInMbOK handles this case with default header values.
+/*
+FindConfigThriftFramedTransportSizeInMbOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigThriftFramedTransportSizeInMbDefault(code int) *FindConfigThri
 	}
 }
 
-/*FindConfigThriftFramedTransportSizeInMbDefault handles this case with default header values.
+/*
+FindConfigThriftFramedTransportSizeInMbDefault handles this case with default header values.
 
 unexpected error
 */

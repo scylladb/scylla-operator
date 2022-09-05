@@ -48,7 +48,8 @@ func NewFindConfigKeyCacheSizeInMbOK() *FindConfigKeyCacheSizeInMbOK {
 	return &FindConfigKeyCacheSizeInMbOK{}
 }
 
-/*FindConfigKeyCacheSizeInMbOK handles this case with default header values.
+/*
+FindConfigKeyCacheSizeInMbOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigKeyCacheSizeInMbDefault(code int) *FindConfigKeyCacheSizeInMbD
 	}
 }
 
-/*FindConfigKeyCacheSizeInMbDefault handles this case with default header values.
+/*
+FindConfigKeyCacheSizeInMbDefault handles this case with default header values.
 
 unexpected error
 */

@@ -57,7 +57,8 @@ func NewStorageServiceRangeToEndpointMapByKeyspaceGetParamsWithHTTPClient(client
 	}
 }
 
-/*StorageServiceRangeToEndpointMapByKeyspaceGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceRangeToEndpointMapByKeyspaceGetParams contains all the parameters to send to the API endpoint
 for the storage service range to endpoint map by keyspace get operation typically these are written to a http.Request
 */
 type StorageServiceRangeToEndpointMapByKeyspaceGetParams struct {

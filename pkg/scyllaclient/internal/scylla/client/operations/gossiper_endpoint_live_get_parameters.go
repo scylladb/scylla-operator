@@ -56,7 +56,8 @@ func NewGossiperEndpointLiveGetParamsWithHTTPClient(client *http.Client) *Gossip
 	}
 }
 
-/*GossiperEndpointLiveGetParams contains all the parameters to send to the API endpoint
+/*
+GossiperEndpointLiveGetParams contains all the parameters to send to the API endpoint
 for the gossiper endpoint live get operation typically these are written to a http.Request
 */
 type GossiperEndpointLiveGetParams struct {

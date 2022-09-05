@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsWaitingOnFreeMemtableGetParamsWithHTTPClient(client *
 	}
 }
 
-/*ColumnFamilyMetricsWaitingOnFreeMemtableGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsWaitingOnFreeMemtableGetParams contains all the parameters to send to the API endpoint
 for the column family metrics waiting on free memtable get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsWaitingOnFreeMemtableGetParams struct {

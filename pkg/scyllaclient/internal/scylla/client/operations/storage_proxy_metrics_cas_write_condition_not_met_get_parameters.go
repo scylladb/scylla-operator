@@ -56,7 +56,8 @@ func NewStorageProxyMetricsCasWriteConditionNotMetGetParamsWithHTTPClient(client
 	}
 }
 
-/*StorageProxyMetricsCasWriteConditionNotMetGetParams contains all the parameters to send to the API endpoint
+/*
+StorageProxyMetricsCasWriteConditionNotMetGetParams contains all the parameters to send to the API endpoint
 for the storage proxy metrics cas write condition not met get operation typically these are written to a http.Request
 */
 type StorageProxyMetricsCasWriteConditionNotMetGetParams struct {

@@ -56,7 +56,8 @@ func NewFindConfigCommitlogTotalSpaceInMbParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*FindConfigCommitlogTotalSpaceInMbParams contains all the parameters to send to the API endpoint
+/*
+FindConfigCommitlogTotalSpaceInMbParams contains all the parameters to send to the API endpoint
 for the find config commitlog total space in mb operation typically these are written to a http.Request
 */
 type FindConfigCommitlogTotalSpaceInMbParams struct {

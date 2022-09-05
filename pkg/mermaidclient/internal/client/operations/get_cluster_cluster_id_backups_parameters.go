@@ -57,7 +57,8 @@ func NewGetClusterClusterIDBackupsParamsWithHTTPClient(client *http.Client) *Get
 	}
 }
 
-/*GetClusterClusterIDBackupsParams contains all the parameters to send to the API endpoint
+/*
+GetClusterClusterIDBackupsParams contains all the parameters to send to the API endpoint
 for the get cluster cluster ID backups operation typically these are written to a http.Request
 */
 type GetClusterClusterIDBackupsParams struct {

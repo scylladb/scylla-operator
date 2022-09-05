@@ -56,7 +56,8 @@ func NewFindConfigMemtableCleanupThresholdParamsWithHTTPClient(client *http.Clie
 	}
 }
 
-/*FindConfigMemtableCleanupThresholdParams contains all the parameters to send to the API endpoint
+/*
+FindConfigMemtableCleanupThresholdParams contains all the parameters to send to the API endpoint
 for the find config memtable cleanup threshold operation typically these are written to a http.Request
 */
 type FindConfigMemtableCleanupThresholdParams struct {

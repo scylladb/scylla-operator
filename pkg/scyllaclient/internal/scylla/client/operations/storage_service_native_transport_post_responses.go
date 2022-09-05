@@ -48,7 +48,8 @@ func NewStorageServiceNativeTransportPostOK() *StorageServiceNativeTransportPost
 	return &StorageServiceNativeTransportPostOK{}
 }
 
-/*StorageServiceNativeTransportPostOK handles this case with default header values.
+/*
+StorageServiceNativeTransportPostOK handles this case with default header values.
 
 StorageServiceNativeTransportPostOK storage service native transport post o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceNativeTransportPostDefault(code int) *StorageServiceNative
 	}
 }
 
-/*StorageServiceNativeTransportPostDefault handles this case with default header values.
+/*
+StorageServiceNativeTransportPostDefault handles this case with default header values.
 
 internal server error
 */

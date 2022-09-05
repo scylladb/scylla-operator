@@ -56,7 +56,8 @@ func NewFindConfigSnapshotBeforeCompactionParamsWithHTTPClient(client *http.Clie
 	}
 }
 
-/*FindConfigSnapshotBeforeCompactionParams contains all the parameters to send to the API endpoint
+/*
+FindConfigSnapshotBeforeCompactionParams contains all the parameters to send to the API endpoint
 for the find config snapshot before compaction operation typically these are written to a http.Request
 */
 type FindConfigSnapshotBeforeCompactionParams struct {

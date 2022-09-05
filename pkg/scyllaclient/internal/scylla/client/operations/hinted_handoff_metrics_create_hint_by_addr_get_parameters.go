@@ -56,7 +56,8 @@ func NewHintedHandoffMetricsCreateHintByAddrGetParamsWithHTTPClient(client *http
 	}
 }
 
-/*HintedHandoffMetricsCreateHintByAddrGetParams contains all the parameters to send to the API endpoint
+/*
+HintedHandoffMetricsCreateHintByAddrGetParams contains all the parameters to send to the API endpoint
 for the hinted handoff metrics create hint by addr get operation typically these are written to a http.Request
 */
 type HintedHandoffMetricsCreateHintByAddrGetParams struct {

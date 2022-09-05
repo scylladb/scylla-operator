@@ -56,7 +56,8 @@ func NewFindConfigMemtableFlushQueueSizeParamsWithHTTPClient(client *http.Client
 	}
 }
 
-/*FindConfigMemtableFlushQueueSizeParams contains all the parameters to send to the API endpoint
+/*
+FindConfigMemtableFlushQueueSizeParams contains all the parameters to send to the API endpoint
 for the find config memtable flush queue size operation typically these are written to a http.Request
 */
 type FindConfigMemtableFlushQueueSizeParams struct {

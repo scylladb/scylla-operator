@@ -48,7 +48,8 @@ func NewFindConfigLsaReclamationStepOK() *FindConfigLsaReclamationStepOK {
 	return &FindConfigLsaReclamationStepOK{}
 }
 
-/*FindConfigLsaReclamationStepOK handles this case with default header values.
+/*
+FindConfigLsaReclamationStepOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigLsaReclamationStepDefault(code int) *FindConfigLsaReclamationS
 	}
 }
 
-/*FindConfigLsaReclamationStepDefault handles this case with default header values.
+/*
+FindConfigLsaReclamationStepDefault handles this case with default header values.
 
 unexpected error
 */

@@ -56,7 +56,8 @@ func NewFindConfigMemtableHeapSpaceInMbParamsWithHTTPClient(client *http.Client)
 	}
 }
 
-/*FindConfigMemtableHeapSpaceInMbParams contains all the parameters to send to the API endpoint
+/*
+FindConfigMemtableHeapSpaceInMbParams contains all the parameters to send to the API endpoint
 for the find config memtable heap space in mb operation typically these are written to a http.Request
 */
 type FindConfigMemtableHeapSpaceInMbParams struct {

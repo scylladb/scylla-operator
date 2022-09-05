@@ -56,7 +56,8 @@ func NewFindConfigSslStoragePortParamsWithHTTPClient(client *http.Client) *FindC
 	}
 }
 
-/*FindConfigSslStoragePortParams contains all the parameters to send to the API endpoint
+/*
+FindConfigSslStoragePortParams contains all the parameters to send to the API endpoint
 for the find config ssl storage port operation typically these are written to a http.Request
 */
 type FindConfigSslStoragePortParams struct {

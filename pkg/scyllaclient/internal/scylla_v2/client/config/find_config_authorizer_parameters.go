@@ -56,7 +56,8 @@ func NewFindConfigAuthorizerParamsWithHTTPClient(client *http.Client) *FindConfi
 	}
 }
 
-/*FindConfigAuthorizerParams contains all the parameters to send to the API endpoint
+/*
+FindConfigAuthorizerParams contains all the parameters to send to the API endpoint
 for the find config authorizer operation typically these are written to a http.Request
 */
 type FindConfigAuthorizerParams struct {

@@ -48,7 +48,8 @@ func NewStorageServicePendingRangeByKeyspaceGetOK() *StorageServicePendingRangeB
 	return &StorageServicePendingRangeByKeyspaceGetOK{}
 }
 
-/*StorageServicePendingRangeByKeyspaceGetOK handles this case with default header values.
+/*
+StorageServicePendingRangeByKeyspaceGetOK handles this case with default header values.
 
 StorageServicePendingRangeByKeyspaceGetOK storage service pending range by keyspace get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServicePendingRangeByKeyspaceGetDefault(code int) *StorageService
 	}
 }
 
-/*StorageServicePendingRangeByKeyspaceGetDefault handles this case with default header values.
+/*
+StorageServicePendingRangeByKeyspaceGetDefault handles this case with default header values.
 
 internal server error
 */

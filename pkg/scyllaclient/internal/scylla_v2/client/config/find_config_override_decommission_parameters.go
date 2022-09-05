@@ -56,7 +56,8 @@ func NewFindConfigOverrideDecommissionParamsWithHTTPClient(client *http.Client) 
 	}
 }
 
-/*FindConfigOverrideDecommissionParams contains all the parameters to send to the API endpoint
+/*
+FindConfigOverrideDecommissionParams contains all the parameters to send to the API endpoint
 for the find config override decommission operation typically these are written to a http.Request
 */
 type FindConfigOverrideDecommissionParams struct {

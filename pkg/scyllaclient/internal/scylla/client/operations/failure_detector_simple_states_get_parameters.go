@@ -56,7 +56,8 @@ func NewFailureDetectorSimpleStatesGetParamsWithHTTPClient(client *http.Client) 
 	}
 }
 
-/*FailureDetectorSimpleStatesGetParams contains all the parameters to send to the API endpoint
+/*
+FailureDetectorSimpleStatesGetParams contains all the parameters to send to the API endpoint
 for the failure detector simple states get operation typically these are written to a http.Request
 */
 type FailureDetectorSimpleStatesGetParams struct {

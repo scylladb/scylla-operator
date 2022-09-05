@@ -48,7 +48,8 @@ func NewStorageServiceTruncateByKeyspacePostOK() *StorageServiceTruncateByKeyspa
 	return &StorageServiceTruncateByKeyspacePostOK{}
 }
 
-/*StorageServiceTruncateByKeyspacePostOK handles this case with default header values.
+/*
+StorageServiceTruncateByKeyspacePostOK handles this case with default header values.
 
 StorageServiceTruncateByKeyspacePostOK storage service truncate by keyspace post o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceTruncateByKeyspacePostDefault(code int) *StorageServiceTru
 	}
 }
 
-/*StorageServiceTruncateByKeyspacePostDefault handles this case with default header values.
+/*
+StorageServiceTruncateByKeyspacePostDefault handles this case with default header values.
 
 internal server error
 */

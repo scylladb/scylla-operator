@@ -48,7 +48,8 @@ func NewMessagingServiceMessagesRepliedGetOK() *MessagingServiceMessagesRepliedG
 	return &MessagingServiceMessagesRepliedGetOK{}
 }
 
-/*MessagingServiceMessagesRepliedGetOK handles this case with default header values.
+/*
+MessagingServiceMessagesRepliedGetOK handles this case with default header values.
 
 MessagingServiceMessagesRepliedGetOK messaging service messages replied get o k
 */
@@ -77,7 +78,8 @@ func NewMessagingServiceMessagesRepliedGetDefault(code int) *MessagingServiceMes
 	}
 }
 
-/*MessagingServiceMessagesRepliedGetDefault handles this case with default header values.
+/*
+MessagingServiceMessagesRepliedGetDefault handles this case with default header values.
 
 internal server error
 */

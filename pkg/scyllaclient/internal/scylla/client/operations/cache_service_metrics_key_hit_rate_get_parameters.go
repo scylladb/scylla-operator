@@ -56,7 +56,8 @@ func NewCacheServiceMetricsKeyHitRateGetParamsWithHTTPClient(client *http.Client
 	}
 }
 
-/*CacheServiceMetricsKeyHitRateGetParams contains all the parameters to send to the API endpoint
+/*
+CacheServiceMetricsKeyHitRateGetParams contains all the parameters to send to the API endpoint
 for the cache service metrics key hit rate get operation typically these are written to a http.Request
 */
 type CacheServiceMetricsKeyHitRateGetParams struct {

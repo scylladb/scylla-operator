@@ -56,7 +56,8 @@ func NewCommitlogMetricsPendingTasksGetParamsWithHTTPClient(client *http.Client)
 	}
 }
 
-/*CommitlogMetricsPendingTasksGetParams contains all the parameters to send to the API endpoint
+/*
+CommitlogMetricsPendingTasksGetParams contains all the parameters to send to the API endpoint
 for the commitlog metrics pending tasks get operation typically these are written to a http.Request
 */
 type CommitlogMetricsPendingTasksGetParams struct {

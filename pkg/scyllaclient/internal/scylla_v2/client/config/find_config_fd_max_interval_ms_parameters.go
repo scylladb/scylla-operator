@@ -56,7 +56,8 @@ func NewFindConfigFdMaxIntervalMsParamsWithHTTPClient(client *http.Client) *Find
 	}
 }
 
-/*FindConfigFdMaxIntervalMsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigFdMaxIntervalMsParams contains all the parameters to send to the API endpoint
 for the find config fd max interval ms operation typically these are written to a http.Request
 */
 type FindConfigFdMaxIntervalMsParams struct {

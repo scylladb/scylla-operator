@@ -48,7 +48,8 @@ func NewStorageServiceTraceProbabilityGetOK() *StorageServiceTraceProbabilityGet
 	return &StorageServiceTraceProbabilityGetOK{}
 }
 
-/*StorageServiceTraceProbabilityGetOK handles this case with default header values.
+/*
+StorageServiceTraceProbabilityGetOK handles this case with default header values.
 
 StorageServiceTraceProbabilityGetOK storage service trace probability get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceTraceProbabilityGetDefault(code int) *StorageServiceTraceP
 	}
 }
 
-/*StorageServiceTraceProbabilityGetDefault handles this case with default header values.
+/*
+StorageServiceTraceProbabilityGetDefault handles this case with default header values.
 
 internal server error
 */

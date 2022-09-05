@@ -48,7 +48,8 @@ func NewFindConfigEnableSstableDataIntegrityCheckOK() *FindConfigEnableSstableDa
 	return &FindConfigEnableSstableDataIntegrityCheckOK{}
 }
 
-/*FindConfigEnableSstableDataIntegrityCheckOK handles this case with default header values.
+/*
+FindConfigEnableSstableDataIntegrityCheckOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigEnableSstableDataIntegrityCheckDefault(code int) *FindConfigEn
 	}
 }
 
-/*FindConfigEnableSstableDataIntegrityCheckDefault handles this case with default header values.
+/*
+FindConfigEnableSstableDataIntegrityCheckDefault handles this case with default header values.
 
 unexpected error
 */

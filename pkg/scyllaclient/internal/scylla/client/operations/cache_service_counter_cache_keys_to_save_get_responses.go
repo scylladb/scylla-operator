@@ -48,7 +48,8 @@ func NewCacheServiceCounterCacheKeysToSaveGetOK() *CacheServiceCounterCacheKeysT
 	return &CacheServiceCounterCacheKeysToSaveGetOK{}
 }
 
-/*CacheServiceCounterCacheKeysToSaveGetOK handles this case with default header values.
+/*
+CacheServiceCounterCacheKeysToSaveGetOK handles this case with default header values.
 
 CacheServiceCounterCacheKeysToSaveGetOK cache service counter cache keys to save get o k
 */
@@ -77,7 +78,8 @@ func NewCacheServiceCounterCacheKeysToSaveGetDefault(code int) *CacheServiceCoun
 	}
 }
 
-/*CacheServiceCounterCacheKeysToSaveGetDefault handles this case with default header values.
+/*
+CacheServiceCounterCacheKeysToSaveGetDefault handles this case with default header values.
 
 internal server error
 */

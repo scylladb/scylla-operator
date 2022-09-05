@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsLiveScannedHistogramByNameGetParamsWithHTTPClient(cli
 	}
 }
 
-/*ColumnFamilyMetricsLiveScannedHistogramByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsLiveScannedHistogramByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics live scanned histogram by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsLiveScannedHistogramByNameGetParams struct {

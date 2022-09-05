@@ -57,7 +57,8 @@ func NewCacheServiceCounterCacheSavePeriodPostParamsWithHTTPClient(client *http.
 	}
 }
 
-/*CacheServiceCounterCacheSavePeriodPostParams contains all the parameters to send to the API endpoint
+/*
+CacheServiceCounterCacheSavePeriodPostParams contains all the parameters to send to the API endpoint
 for the cache service counter cache save period post operation typically these are written to a http.Request
 */
 type CacheServiceCounterCacheSavePeriodPostParams struct {

@@ -56,7 +56,8 @@ func NewStorageServiceGossipingPostParamsWithHTTPClient(client *http.Client) *St
 	}
 }
 
-/*StorageServiceGossipingPostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceGossipingPostParams contains all the parameters to send to the API endpoint
 for the storage service gossiping post operation typically these are written to a http.Request
 */
 type StorageServiceGossipingPostParams struct {

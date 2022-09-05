@@ -48,7 +48,8 @@ func NewFindConfigRequestSchedulerOK() *FindConfigRequestSchedulerOK {
 	return &FindConfigRequestSchedulerOK{}
 }
 
-/*FindConfigRequestSchedulerOK handles this case with default header values.
+/*
+FindConfigRequestSchedulerOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigRequestSchedulerDefault(code int) *FindConfigRequestSchedulerD
 	}
 }
 
-/*FindConfigRequestSchedulerDefault handles this case with default header values.
+/*
+FindConfigRequestSchedulerDefault handles this case with default header values.
 
 unexpected error
 */

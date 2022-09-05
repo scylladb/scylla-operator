@@ -16,7 +16,7 @@ The EntryDescription decorator allows you to pass a format string to DescribeTab
 
 where parameters are the parameters passed into the entry.
 
-When passed into an Entry the EntryDescription is used to generate the name or that entry.  When passed to DescribeTable, the EntryDescription is used to generate teh names for any entries that have `nil` descriptions.
+When passed into an Entry the EntryDescription is used to generate the name or that entry.  When passed to DescribeTable, the EntryDescription is used to generate the names for any entries that have `nil` descriptions.
 
 You can learn more about generating EntryDescriptions here: https://onsi.github.io/ginkgo/#generating-entry-descriptions
 */
@@ -135,8 +135,10 @@ func generateTable(description string, args ...interface{}) {
 		return "Entry: " + strings.Join(out, ", ")
 	}
 
-	for _, arg := range args {
+	for i, arg := range args {
 		switch t := reflect.TypeOf(arg); {
+		case t == nil:
+			exitIfErr(types.GinkgoErrors.IncorrectParameterTypeForTable(i, "nil", cl))
 		case t == reflect.TypeOf(TableEntry{}):
 			entries = append(entries, arg.(TableEntry))
 		case t == reflect.TypeOf([]TableEntry{}):

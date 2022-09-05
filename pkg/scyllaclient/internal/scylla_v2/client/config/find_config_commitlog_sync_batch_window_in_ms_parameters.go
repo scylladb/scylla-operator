@@ -56,7 +56,8 @@ func NewFindConfigCommitlogSyncBatchWindowInMsParamsWithHTTPClient(client *http.
 	}
 }
 
-/*FindConfigCommitlogSyncBatchWindowInMsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigCommitlogSyncBatchWindowInMsParams contains all the parameters to send to the API endpoint
 for the find config commitlog sync batch window in ms operation typically these are written to a http.Request
 */
 type FindConfigCommitlogSyncBatchWindowInMsParams struct {

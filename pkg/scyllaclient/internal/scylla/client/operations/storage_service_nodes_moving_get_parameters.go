@@ -56,7 +56,8 @@ func NewStorageServiceNodesMovingGetParamsWithHTTPClient(client *http.Client) *S
 	}
 }
 
-/*StorageServiceNodesMovingGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceNodesMovingGetParams contains all the parameters to send to the API endpoint
 for the storage service nodes moving get operation typically these are written to a http.Request
 */
 type StorageServiceNodesMovingGetParams struct {

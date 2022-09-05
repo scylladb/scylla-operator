@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsLiveSsTableCountGetParamsWithHTTPClient(client *http.
 	}
 }
 
-/*ColumnFamilyMetricsLiveSsTableCountGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsLiveSsTableCountGetParams contains all the parameters to send to the API endpoint
 for the column family metrics live ss table count get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsLiveSsTableCountGetParams struct {

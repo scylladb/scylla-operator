@@ -48,7 +48,8 @@ func NewHintedHandoffSchedulePostOK() *HintedHandoffSchedulePostOK {
 	return &HintedHandoffSchedulePostOK{}
 }
 
-/*HintedHandoffSchedulePostOK handles this case with default header values.
+/*
+HintedHandoffSchedulePostOK handles this case with default header values.
 
 HintedHandoffSchedulePostOK hinted handoff schedule post o k
 */
@@ -67,7 +68,8 @@ func NewHintedHandoffSchedulePostDefault(code int) *HintedHandoffSchedulePostDef
 	}
 }
 
-/*HintedHandoffSchedulePostDefault handles this case with default header values.
+/*
+HintedHandoffSchedulePostDefault handles this case with default header values.
 
 internal server error
 */

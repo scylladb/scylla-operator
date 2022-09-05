@@ -49,7 +49,8 @@ func NewOperationsDeletefileOK() *OperationsDeletefileOK {
 	return &OperationsDeletefileOK{}
 }
 
-/*OperationsDeletefileOK handles this case with default header values.
+/*
+OperationsDeletefileOK handles this case with default header values.
 
 Job ID
 */
@@ -89,7 +90,8 @@ func NewOperationsDeletefileDefault(code int) *OperationsDeletefileDefault {
 	}
 }
 
-/*OperationsDeletefileDefault handles this case with default header values.
+/*
+OperationsDeletefileDefault handles this case with default header values.
 
 Server error
 */

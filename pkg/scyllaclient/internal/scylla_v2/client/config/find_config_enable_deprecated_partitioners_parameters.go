@@ -56,7 +56,8 @@ func NewFindConfigEnableDeprecatedPartitionersParamsWithHTTPClient(client *http.
 	}
 }
 
-/*FindConfigEnableDeprecatedPartitionersParams contains all the parameters to send to the API endpoint
+/*
+FindConfigEnableDeprecatedPartitionersParams contains all the parameters to send to the API endpoint
 for the find config enable deprecated partitioners operation typically these are written to a http.Request
 */
 type FindConfigEnableDeprecatedPartitionersParams struct {

@@ -56,7 +56,8 @@ func NewFindConfigCommitlogDirectoryParamsWithHTTPClient(client *http.Client) *F
 	}
 }
 
-/*FindConfigCommitlogDirectoryParams contains all the parameters to send to the API endpoint
+/*
+FindConfigCommitlogDirectoryParams contains all the parameters to send to the API endpoint
 for the find config commitlog directory operation typically these are written to a http.Request
 */
 type FindConfigCommitlogDirectoryParams struct {

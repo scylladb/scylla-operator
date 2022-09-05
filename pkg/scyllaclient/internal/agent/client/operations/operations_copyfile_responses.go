@@ -49,7 +49,8 @@ func NewOperationsCopyfileOK() *OperationsCopyfileOK {
 	return &OperationsCopyfileOK{}
 }
 
-/*OperationsCopyfileOK handles this case with default header values.
+/*
+OperationsCopyfileOK handles this case with default header values.
 
 Job
 */
@@ -89,7 +90,8 @@ func NewOperationsCopyfileDefault(code int) *OperationsCopyfileDefault {
 	}
 }
 
-/*OperationsCopyfileDefault handles this case with default header values.
+/*
+OperationsCopyfileDefault handles this case with default header values.
 
 Server error
 */

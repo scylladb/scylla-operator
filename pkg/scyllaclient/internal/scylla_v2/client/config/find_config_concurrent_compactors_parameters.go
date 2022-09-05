@@ -56,7 +56,8 @@ func NewFindConfigConcurrentCompactorsParamsWithHTTPClient(client *http.Client) 
 	}
 }
 
-/*FindConfigConcurrentCompactorsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigConcurrentCompactorsParams contains all the parameters to send to the API endpoint
 for the find config concurrent compactors operation typically these are written to a http.Request
 */
 type FindConfigConcurrentCompactorsParams struct {

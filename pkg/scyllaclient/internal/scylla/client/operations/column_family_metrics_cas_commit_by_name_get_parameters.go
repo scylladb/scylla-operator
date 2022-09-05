@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsCasCommitByNameGetParamsWithHTTPClient(client *http.C
 	}
 }
 
-/*ColumnFamilyMetricsCasCommitByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsCasCommitByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics cas commit by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsCasCommitByNameGetParams struct {

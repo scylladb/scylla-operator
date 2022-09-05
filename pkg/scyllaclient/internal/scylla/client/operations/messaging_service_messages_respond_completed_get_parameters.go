@@ -56,7 +56,8 @@ func NewMessagingServiceMessagesRespondCompletedGetParamsWithHTTPClient(client *
 	}
 }
 
-/*MessagingServiceMessagesRespondCompletedGetParams contains all the parameters to send to the API endpoint
+/*
+MessagingServiceMessagesRespondCompletedGetParams contains all the parameters to send to the API endpoint
 for the messaging service messages respond completed get operation typically these are written to a http.Request
 */
 type MessagingServiceMessagesRespondCompletedGetParams struct {

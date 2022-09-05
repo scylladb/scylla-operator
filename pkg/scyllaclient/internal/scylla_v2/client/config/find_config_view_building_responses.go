@@ -48,7 +48,8 @@ func NewFindConfigViewBuildingOK() *FindConfigViewBuildingOK {
 	return &FindConfigViewBuildingOK{}
 }
 
-/*FindConfigViewBuildingOK handles this case with default header values.
+/*
+FindConfigViewBuildingOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigViewBuildingDefault(code int) *FindConfigViewBuildingDefault {
 	}
 }
 
-/*FindConfigViewBuildingDefault handles this case with default header values.
+/*
+FindConfigViewBuildingDefault handles this case with default header values.
 
 unexpected error
 */

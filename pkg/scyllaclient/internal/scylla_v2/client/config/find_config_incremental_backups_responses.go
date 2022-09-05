@@ -48,7 +48,8 @@ func NewFindConfigIncrementalBackupsOK() *FindConfigIncrementalBackupsOK {
 	return &FindConfigIncrementalBackupsOK{}
 }
 
-/*FindConfigIncrementalBackupsOK handles this case with default header values.
+/*
+FindConfigIncrementalBackupsOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigIncrementalBackupsDefault(code int) *FindConfigIncrementalBack
 	}
 }
 
-/*FindConfigIncrementalBackupsDefault handles this case with default header values.
+/*
+FindConfigIncrementalBackupsDefault handles this case with default header values.
 
 unexpected error
 */

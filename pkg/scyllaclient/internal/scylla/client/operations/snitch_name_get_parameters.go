@@ -56,7 +56,8 @@ func NewSnitchNameGetParamsWithHTTPClient(client *http.Client) *SnitchNameGetPar
 	}
 }
 
-/*SnitchNameGetParams contains all the parameters to send to the API endpoint
+/*
+SnitchNameGetParams contains all the parameters to send to the API endpoint
 for the snitch name get operation typically these are written to a http.Request
 */
 type SnitchNameGetParams struct {

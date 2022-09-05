@@ -48,7 +48,8 @@ func NewFindConfigAutoSnapshotOK() *FindConfigAutoSnapshotOK {
 	return &FindConfigAutoSnapshotOK{}
 }
 
-/*FindConfigAutoSnapshotOK handles this case with default header values.
+/*
+FindConfigAutoSnapshotOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigAutoSnapshotDefault(code int) *FindConfigAutoSnapshotDefault {
 	}
 }
 
-/*FindConfigAutoSnapshotDefault handles this case with default header values.
+/*
+FindConfigAutoSnapshotDefault handles this case with default header values.
 
 unexpected error
 */

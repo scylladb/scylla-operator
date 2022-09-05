@@ -56,7 +56,8 @@ func NewFindConfigLogToStdoutParamsWithHTTPClient(client *http.Client) *FindConf
 	}
 }
 
-/*FindConfigLogToStdoutParams contains all the parameters to send to the API endpoint
+/*
+FindConfigLogToStdoutParams contains all the parameters to send to the API endpoint
 for the find config log to stdout operation typically these are written to a http.Request
 */
 type FindConfigLogToStdoutParams struct {

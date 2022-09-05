@@ -48,7 +48,8 @@ func NewFindConfigInternodeRecvBuffSizeInBytesOK() *FindConfigInternodeRecvBuffS
 	return &FindConfigInternodeRecvBuffSizeInBytesOK{}
 }
 
-/*FindConfigInternodeRecvBuffSizeInBytesOK handles this case with default header values.
+/*
+FindConfigInternodeRecvBuffSizeInBytesOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigInternodeRecvBuffSizeInBytesDefault(code int) *FindConfigInter
 	}
 }
 
-/*FindConfigInternodeRecvBuffSizeInBytesDefault handles this case with default header values.
+/*
+FindConfigInternodeRecvBuffSizeInBytesDefault handles this case with default header values.
 
 unexpected error
 */

@@ -56,7 +56,8 @@ func NewStorageProxyCasContentionTimeoutPostParamsWithHTTPClient(client *http.Cl
 	}
 }
 
-/*StorageProxyCasContentionTimeoutPostParams contains all the parameters to send to the API endpoint
+/*
+StorageProxyCasContentionTimeoutPostParams contains all the parameters to send to the API endpoint
 for the storage proxy cas contention timeout post operation typically these are written to a http.Request
 */
 type StorageProxyCasContentionTimeoutPostParams struct {

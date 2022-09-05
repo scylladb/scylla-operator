@@ -56,7 +56,8 @@ func NewStorageServiceHostidLocalGetParamsWithHTTPClient(client *http.Client) *S
 	}
 }
 
-/*StorageServiceHostidLocalGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceHostidLocalGetParams contains all the parameters to send to the API endpoint
 for the storage service hostid local get operation typically these are written to a http.Request
 */
 type StorageServiceHostidLocalGetParams struct {

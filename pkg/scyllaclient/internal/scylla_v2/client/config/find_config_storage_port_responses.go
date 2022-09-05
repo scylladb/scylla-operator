@@ -48,7 +48,8 @@ func NewFindConfigStoragePortOK() *FindConfigStoragePortOK {
 	return &FindConfigStoragePortOK{}
 }
 
-/*FindConfigStoragePortOK handles this case with default header values.
+/*
+FindConfigStoragePortOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigStoragePortDefault(code int) *FindConfigStoragePortDefault {
 	}
 }
 
-/*FindConfigStoragePortDefault handles this case with default header values.
+/*
+FindConfigStoragePortDefault handles this case with default header values.
 
 unexpected error
 */

@@ -48,7 +48,8 @@ func NewFindConfigEnableSstablesMcFormatOK() *FindConfigEnableSstablesMcFormatOK
 	return &FindConfigEnableSstablesMcFormatOK{}
 }
 
-/*FindConfigEnableSstablesMcFormatOK handles this case with default header values.
+/*
+FindConfigEnableSstablesMcFormatOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigEnableSstablesMcFormatDefault(code int) *FindConfigEnableSstab
 	}
 }
 
-/*FindConfigEnableSstablesMcFormatDefault handles this case with default header values.
+/*
+FindConfigEnableSstablesMcFormatDefault handles this case with default header values.
 
 unexpected error
 */

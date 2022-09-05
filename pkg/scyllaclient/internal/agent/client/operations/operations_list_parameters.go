@@ -58,7 +58,8 @@ func NewOperationsListParamsWithHTTPClient(client *http.Client) *OperationsListP
 	}
 }
 
-/*OperationsListParams contains all the parameters to send to the API endpoint
+/*
+OperationsListParams contains all the parameters to send to the API endpoint
 for the operations list operation typically these are written to a http.Request
 */
 type OperationsListParams struct {

@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsRangeLatencyEstimatedHistogramByNameGetOK() *ColumnFa
 	return &ColumnFamilyMetricsRangeLatencyEstimatedHistogramByNameGetOK{}
 }
 
-/*ColumnFamilyMetricsRangeLatencyEstimatedHistogramByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsRangeLatencyEstimatedHistogramByNameGetOK handles this case with default header values.
 
 ColumnFamilyMetricsRangeLatencyEstimatedHistogramByNameGetOK column family metrics range latency estimated histogram by name get o k
 */
@@ -67,7 +68,8 @@ func NewColumnFamilyMetricsRangeLatencyEstimatedHistogramByNameGetDefault(code i
 	}
 }
 
-/*ColumnFamilyMetricsRangeLatencyEstimatedHistogramByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsRangeLatencyEstimatedHistogramByNameGetDefault handles this case with default header values.
 
 internal server error
 */

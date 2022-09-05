@@ -48,7 +48,8 @@ func NewFindConfigAPIDocDirOK() *FindConfigAPIDocDirOK {
 	return &FindConfigAPIDocDirOK{}
 }
 
-/*FindConfigAPIDocDirOK handles this case with default header values.
+/*
+FindConfigAPIDocDirOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigAPIDocDirDefault(code int) *FindConfigAPIDocDirDefault {
 	}
 }
 
-/*FindConfigAPIDocDirDefault handles this case with default header values.
+/*
+FindConfigAPIDocDirDefault handles this case with default header values.
 
 unexpected error
 */

@@ -48,7 +48,8 @@ func NewFindConfigCacheHitRateReadBalancingOK() *FindConfigCacheHitRateReadBalan
 	return &FindConfigCacheHitRateReadBalancingOK{}
 }
 
-/*FindConfigCacheHitRateReadBalancingOK handles this case with default header values.
+/*
+FindConfigCacheHitRateReadBalancingOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigCacheHitRateReadBalancingDefault(code int) *FindConfigCacheHit
 	}
 }
 
-/*FindConfigCacheHitRateReadBalancingDefault handles this case with default header values.
+/*
+FindConfigCacheHitRateReadBalancingDefault handles this case with default header values.
 
 unexpected error
 */

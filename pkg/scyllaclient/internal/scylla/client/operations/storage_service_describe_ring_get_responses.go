@@ -48,7 +48,8 @@ func NewStorageServiceDescribeRingGetOK() *StorageServiceDescribeRingGetOK {
 	return &StorageServiceDescribeRingGetOK{}
 }
 
-/*StorageServiceDescribeRingGetOK handles this case with default header values.
+/*
+StorageServiceDescribeRingGetOK handles this case with default header values.
 
 StorageServiceDescribeRingGetOK storage service describe ring get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceDescribeRingGetDefault(code int) *StorageServiceDescribeRi
 	}
 }
 
-/*StorageServiceDescribeRingGetDefault handles this case with default header values.
+/*
+StorageServiceDescribeRingGetDefault handles this case with default header values.
 
 internal server error
 */

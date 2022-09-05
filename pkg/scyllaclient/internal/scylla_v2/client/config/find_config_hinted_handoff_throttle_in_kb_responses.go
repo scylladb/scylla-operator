@@ -48,7 +48,8 @@ func NewFindConfigHintedHandoffThrottleInKbOK() *FindConfigHintedHandoffThrottle
 	return &FindConfigHintedHandoffThrottleInKbOK{}
 }
 
-/*FindConfigHintedHandoffThrottleInKbOK handles this case with default header values.
+/*
+FindConfigHintedHandoffThrottleInKbOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigHintedHandoffThrottleInKbDefault(code int) *FindConfigHintedHa
 	}
 }
 
-/*FindConfigHintedHandoffThrottleInKbDefault handles this case with default header values.
+/*
+FindConfigHintedHandoffThrottleInKbDefault handles this case with default header values.
 
 unexpected error
 */

@@ -48,7 +48,8 @@ func NewStorageProxyMetricsRangeHistogramGetOK() *StorageProxyMetricsRangeHistog
 	return &StorageProxyMetricsRangeHistogramGetOK{}
 }
 
-/*StorageProxyMetricsRangeHistogramGetOK handles this case with default header values.
+/*
+StorageProxyMetricsRangeHistogramGetOK handles this case with default header values.
 
 StorageProxyMetricsRangeHistogramGetOK storage proxy metrics range histogram get o k
 */
@@ -67,7 +68,8 @@ func NewStorageProxyMetricsRangeHistogramGetDefault(code int) *StorageProxyMetri
 	}
 }
 
-/*StorageProxyMetricsRangeHistogramGetDefault handles this case with default header values.
+/*
+StorageProxyMetricsRangeHistogramGetDefault handles this case with default header values.
 
 internal server error
 */

@@ -56,7 +56,8 @@ func NewCacheServiceKeyCacheCapacityPostParamsWithHTTPClient(client *http.Client
 	}
 }
 
-/*CacheServiceKeyCacheCapacityPostParams contains all the parameters to send to the API endpoint
+/*
+CacheServiceKeyCacheCapacityPostParams contains all the parameters to send to the API endpoint
 for the cache service key cache capacity post operation typically these are written to a http.Request
 */
 type CacheServiceKeyCacheCapacityPostParams struct {

@@ -56,7 +56,8 @@ func NewDeleteClusterClusterIDTaskTaskTypeTaskIDParamsWithHTTPClient(client *htt
 	}
 }
 
-/*DeleteClusterClusterIDTaskTaskTypeTaskIDParams contains all the parameters to send to the API endpoint
+/*
+DeleteClusterClusterIDTaskTaskTypeTaskIDParams contains all the parameters to send to the API endpoint
 for the delete cluster cluster ID task task type task ID operation typically these are written to a http.Request
 */
 type DeleteClusterClusterIDTaskTaskTypeTaskIDParams struct {

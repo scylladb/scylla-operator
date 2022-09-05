@@ -56,7 +56,8 @@ func NewStorageProxyMetricsCasWriteUnavailablesGetParamsWithHTTPClient(client *h
 	}
 }
 
-/*StorageProxyMetricsCasWriteUnavailablesGetParams contains all the parameters to send to the API endpoint
+/*
+StorageProxyMetricsCasWriteUnavailablesGetParams contains all the parameters to send to the API endpoint
 for the storage proxy metrics cas write unavailables get operation typically these are written to a http.Request
 */
 type StorageProxyMetricsCasWriteUnavailablesGetParams struct {

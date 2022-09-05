@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsRowCacheHitOutOfRangeByNameGetOK() *ColumnFamilyMetri
 	return &ColumnFamilyMetricsRowCacheHitOutOfRangeByNameGetOK{}
 }
 
-/*ColumnFamilyMetricsRowCacheHitOutOfRangeByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsRowCacheHitOutOfRangeByNameGetOK handles this case with default header values.
 
 ColumnFamilyMetricsRowCacheHitOutOfRangeByNameGetOK column family metrics row cache hit out of range by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsRowCacheHitOutOfRangeByNameGetDefault(code int) *Colu
 	}
 }
 
-/*ColumnFamilyMetricsRowCacheHitOutOfRangeByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsRowCacheHitOutOfRangeByNameGetDefault handles this case with default header values.
 
 internal server error
 */

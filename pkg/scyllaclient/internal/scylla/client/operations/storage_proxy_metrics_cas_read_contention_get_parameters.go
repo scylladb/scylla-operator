@@ -56,7 +56,8 @@ func NewStorageProxyMetricsCasReadContentionGetParamsWithHTTPClient(client *http
 	}
 }
 
-/*StorageProxyMetricsCasReadContentionGetParams contains all the parameters to send to the API endpoint
+/*
+StorageProxyMetricsCasReadContentionGetParams contains all the parameters to send to the API endpoint
 for the storage proxy metrics cas read contention get operation typically these are written to a http.Request
 */
 type StorageProxyMetricsCasReadContentionGetParams struct {

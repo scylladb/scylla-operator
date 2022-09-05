@@ -48,7 +48,8 @@ func NewSystemLoggerPostOK() *SystemLoggerPostOK {
 	return &SystemLoggerPostOK{}
 }
 
-/*SystemLoggerPostOK handles this case with default header values.
+/*
+SystemLoggerPostOK handles this case with default header values.
 
 SystemLoggerPostOK system logger post o k
 */
@@ -67,7 +68,8 @@ func NewSystemLoggerPostDefault(code int) *SystemLoggerPostDefault {
 	}
 }
 
-/*SystemLoggerPostDefault handles this case with default header values.
+/*
+SystemLoggerPostDefault handles this case with default header values.
 
 internal server error
 */

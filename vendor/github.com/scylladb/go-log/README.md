@@ -16,6 +16,7 @@ Example:
 logger, err := log.NewProduction(log.Config{
 	Mode:  log.SyslogMode,
 	Level: zapcore.InfoLevel,
+	Encoding: log.JSONEncoding,
 })
 if err != nil {
 	t.Fatal(err)

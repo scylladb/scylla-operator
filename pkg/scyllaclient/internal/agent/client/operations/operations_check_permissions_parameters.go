@@ -58,7 +58,8 @@ func NewOperationsCheckPermissionsParamsWithHTTPClient(client *http.Client) *Ope
 	}
 }
 
-/*OperationsCheckPermissionsParams contains all the parameters to send to the API endpoint
+/*
+OperationsCheckPermissionsParams contains all the parameters to send to the API endpoint
 for the operations check permissions operation typically these are written to a http.Request
 */
 type OperationsCheckPermissionsParams struct {

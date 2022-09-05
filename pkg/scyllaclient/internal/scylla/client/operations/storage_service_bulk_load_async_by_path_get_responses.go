@@ -48,7 +48,8 @@ func NewStorageServiceBulkLoadAsyncByPathGetOK() *StorageServiceBulkLoadAsyncByP
 	return &StorageServiceBulkLoadAsyncByPathGetOK{}
 }
 
-/*StorageServiceBulkLoadAsyncByPathGetOK handles this case with default header values.
+/*
+StorageServiceBulkLoadAsyncByPathGetOK handles this case with default header values.
 
 StorageServiceBulkLoadAsyncByPathGetOK storage service bulk load async by path get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceBulkLoadAsyncByPathGetDefault(code int) *StorageServiceBul
 	}
 }
 
-/*StorageServiceBulkLoadAsyncByPathGetDefault handles this case with default header values.
+/*
+StorageServiceBulkLoadAsyncByPathGetDefault handles this case with default header values.
 
 internal server error
 */

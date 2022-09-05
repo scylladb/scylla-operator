@@ -56,7 +56,8 @@ func NewStorageProxyTruncateRPCTimeoutGetParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*StorageProxyTruncateRPCTimeoutGetParams contains all the parameters to send to the API endpoint
+/*
+StorageProxyTruncateRPCTimeoutGetParams contains all the parameters to send to the API endpoint
 for the storage proxy truncate Rpc timeout get operation typically these are written to a http.Request
 */
 type StorageProxyTruncateRPCTimeoutGetParams struct {

@@ -48,7 +48,8 @@ func NewStorageServiceReleaseVersionGetOK() *StorageServiceReleaseVersionGetOK {
 	return &StorageServiceReleaseVersionGetOK{}
 }
 
-/*StorageServiceReleaseVersionGetOK handles this case with default header values.
+/*
+StorageServiceReleaseVersionGetOK handles this case with default header values.
 
 StorageServiceReleaseVersionGetOK storage service release version get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceReleaseVersionGetDefault(code int) *StorageServiceReleaseV
 	}
 }
 
-/*StorageServiceReleaseVersionGetDefault handles this case with default header values.
+/*
+StorageServiceReleaseVersionGetDefault handles this case with default header values.
 
 internal server error
 */

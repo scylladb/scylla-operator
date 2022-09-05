@@ -56,7 +56,8 @@ func NewFindConfigRequestSchedulerOptionsParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*FindConfigRequestSchedulerOptionsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigRequestSchedulerOptionsParams contains all the parameters to send to the API endpoint
 for the find config request scheduler options operation typically these are written to a http.Request
 */
 type FindConfigRequestSchedulerOptionsParams struct {

@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsMaxRowSizeByNameGetParamsWithHTTPClient(client *http.
 	}
 }
 
-/*ColumnFamilyMetricsMaxRowSizeByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsMaxRowSizeByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics max row size by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsMaxRowSizeByNameGetParams struct {

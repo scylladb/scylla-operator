@@ -48,7 +48,8 @@ func NewStorageProxyMetricsRangeUnavailablesGetOK() *StorageProxyMetricsRangeUna
 	return &StorageProxyMetricsRangeUnavailablesGetOK{}
 }
 
-/*StorageProxyMetricsRangeUnavailablesGetOK handles this case with default header values.
+/*
+StorageProxyMetricsRangeUnavailablesGetOK handles this case with default header values.
 
 StorageProxyMetricsRangeUnavailablesGetOK storage proxy metrics range unavailables get o k
 */
@@ -77,7 +78,8 @@ func NewStorageProxyMetricsRangeUnavailablesGetDefault(code int) *StorageProxyMe
 	}
 }
 
-/*StorageProxyMetricsRangeUnavailablesGetDefault handles this case with default header values.
+/*
+StorageProxyMetricsRangeUnavailablesGetDefault handles this case with default header values.
 
 internal server error
 */

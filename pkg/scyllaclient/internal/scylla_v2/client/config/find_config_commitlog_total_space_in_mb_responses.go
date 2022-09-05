@@ -48,7 +48,8 @@ func NewFindConfigCommitlogTotalSpaceInMbOK() *FindConfigCommitlogTotalSpaceInMb
 	return &FindConfigCommitlogTotalSpaceInMbOK{}
 }
 
-/*FindConfigCommitlogTotalSpaceInMbOK handles this case with default header values.
+/*
+FindConfigCommitlogTotalSpaceInMbOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigCommitlogTotalSpaceInMbDefault(code int) *FindConfigCommitlogT
 	}
 }
 
-/*FindConfigCommitlogTotalSpaceInMbDefault handles this case with default header values.
+/*
+FindConfigCommitlogTotalSpaceInMbDefault handles this case with default header values.
 
 unexpected error
 */

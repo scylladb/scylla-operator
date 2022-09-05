@@ -48,7 +48,8 @@ func NewHintedHandoffMetricsCreateHintByAddrGetOK() *HintedHandoffMetricsCreateH
 	return &HintedHandoffMetricsCreateHintByAddrGetOK{}
 }
 
-/*HintedHandoffMetricsCreateHintByAddrGetOK handles this case with default header values.
+/*
+HintedHandoffMetricsCreateHintByAddrGetOK handles this case with default header values.
 
 HintedHandoffMetricsCreateHintByAddrGetOK hinted handoff metrics create hint by addr get o k
 */
@@ -77,7 +78,8 @@ func NewHintedHandoffMetricsCreateHintByAddrGetDefault(code int) *HintedHandoffM
 	}
 }
 
-/*HintedHandoffMetricsCreateHintByAddrGetDefault handles this case with default header values.
+/*
+HintedHandoffMetricsCreateHintByAddrGetDefault handles this case with default header values.
 
 internal server error
 */

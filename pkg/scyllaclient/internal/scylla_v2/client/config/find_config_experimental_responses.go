@@ -48,7 +48,8 @@ func NewFindConfigExperimentalOK() *FindConfigExperimentalOK {
 	return &FindConfigExperimentalOK{}
 }
 
-/*FindConfigExperimentalOK handles this case with default header values.
+/*
+FindConfigExperimentalOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigExperimentalDefault(code int) *FindConfigExperimentalDefault {
 	}
 }
 
-/*FindConfigExperimentalDefault handles this case with default header values.
+/*
+FindConfigExperimentalDefault handles this case with default header values.
 
 unexpected error
 */

@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsCasProposeEstimatedHistogramByNameGetOK() *ColumnFami
 	return &ColumnFamilyMetricsCasProposeEstimatedHistogramByNameGetOK{}
 }
 
-/*ColumnFamilyMetricsCasProposeEstimatedHistogramByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsCasProposeEstimatedHistogramByNameGetOK handles this case with default header values.
 
 ColumnFamilyMetricsCasProposeEstimatedHistogramByNameGetOK column family metrics cas propose estimated histogram by name get o k
 */
@@ -67,7 +68,8 @@ func NewColumnFamilyMetricsCasProposeEstimatedHistogramByNameGetDefault(code int
 	}
 }
 
-/*ColumnFamilyMetricsCasProposeEstimatedHistogramByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsCasProposeEstimatedHistogramByNameGetDefault handles this case with default header values.
 
 internal server error
 */

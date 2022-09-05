@@ -48,7 +48,8 @@ func NewStorageServiceKeyspaceFlushByKeyspacePostOK() *StorageServiceKeyspaceFlu
 	return &StorageServiceKeyspaceFlushByKeyspacePostOK{}
 }
 
-/*StorageServiceKeyspaceFlushByKeyspacePostOK handles this case with default header values.
+/*
+StorageServiceKeyspaceFlushByKeyspacePostOK handles this case with default header values.
 
 StorageServiceKeyspaceFlushByKeyspacePostOK storage service keyspace flush by keyspace post o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceKeyspaceFlushByKeyspacePostDefault(code int) *StorageServi
 	}
 }
 
-/*StorageServiceKeyspaceFlushByKeyspacePostDefault handles this case with default header values.
+/*
+StorageServiceKeyspaceFlushByKeyspacePostDefault handles this case with default header values.
 
 internal server error
 */

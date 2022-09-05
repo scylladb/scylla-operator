@@ -48,7 +48,8 @@ func NewCompactionManagerMetricsPendingTasksGetOK() *CompactionManagerMetricsPen
 	return &CompactionManagerMetricsPendingTasksGetOK{}
 }
 
-/*CompactionManagerMetricsPendingTasksGetOK handles this case with default header values.
+/*
+CompactionManagerMetricsPendingTasksGetOK handles this case with default header values.
 
 CompactionManagerMetricsPendingTasksGetOK compaction manager metrics pending tasks get o k
 */
@@ -77,7 +78,8 @@ func NewCompactionManagerMetricsPendingTasksGetDefault(code int) *CompactionMana
 	}
 }
 
-/*CompactionManagerMetricsPendingTasksGetDefault handles this case with default header values.
+/*
+CompactionManagerMetricsPendingTasksGetDefault handles this case with default header values.
 
 internal server error
 */

@@ -48,7 +48,8 @@ func NewCacheServiceMetricsRowHitsMovingAvrageGetOK() *CacheServiceMetricsRowHit
 	return &CacheServiceMetricsRowHitsMovingAvrageGetOK{}
 }
 
-/*CacheServiceMetricsRowHitsMovingAvrageGetOK handles this case with default header values.
+/*
+CacheServiceMetricsRowHitsMovingAvrageGetOK handles this case with default header values.
 
 CacheServiceMetricsRowHitsMovingAvrageGetOK cache service metrics row hits moving avrage get o k
 */
@@ -79,7 +80,8 @@ func NewCacheServiceMetricsRowHitsMovingAvrageGetDefault(code int) *CacheService
 	}
 }
 
-/*CacheServiceMetricsRowHitsMovingAvrageGetDefault handles this case with default header values.
+/*
+CacheServiceMetricsRowHitsMovingAvrageGetDefault handles this case with default header values.
 
 internal server error
 */

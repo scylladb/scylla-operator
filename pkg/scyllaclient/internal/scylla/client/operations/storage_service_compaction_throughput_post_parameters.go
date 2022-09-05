@@ -57,7 +57,8 @@ func NewStorageServiceCompactionThroughputPostParamsWithHTTPClient(client *http.
 	}
 }
 
-/*StorageServiceCompactionThroughputPostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceCompactionThroughputPostParams contains all the parameters to send to the API endpoint
 for the storage service compaction throughput post operation typically these are written to a http.Request
 */
 type StorageServiceCompactionThroughputPostParams struct {

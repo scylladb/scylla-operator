@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsCompressionRatioByNameGetOK() *ColumnFamilyMetricsCom
 	return &ColumnFamilyMetricsCompressionRatioByNameGetOK{}
 }
 
-/*ColumnFamilyMetricsCompressionRatioByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsCompressionRatioByNameGetOK handles this case with default header values.
 
 ColumnFamilyMetricsCompressionRatioByNameGetOK column family metrics compression ratio by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsCompressionRatioByNameGetDefault(code int) *ColumnFam
 	}
 }
 
-/*ColumnFamilyMetricsCompressionRatioByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsCompressionRatioByNameGetDefault handles this case with default header values.
 
 internal server error
 */

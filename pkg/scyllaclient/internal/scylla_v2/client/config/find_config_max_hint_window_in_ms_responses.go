@@ -48,7 +48,8 @@ func NewFindConfigMaxHintWindowInMsOK() *FindConfigMaxHintWindowInMsOK {
 	return &FindConfigMaxHintWindowInMsOK{}
 }
 
-/*FindConfigMaxHintWindowInMsOK handles this case with default header values.
+/*
+FindConfigMaxHintWindowInMsOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigMaxHintWindowInMsDefault(code int) *FindConfigMaxHintWindowInM
 	}
 }
 
-/*FindConfigMaxHintWindowInMsDefault handles this case with default header values.
+/*
+FindConfigMaxHintWindowInMsDefault handles this case with default header values.
 
 unexpected error
 */

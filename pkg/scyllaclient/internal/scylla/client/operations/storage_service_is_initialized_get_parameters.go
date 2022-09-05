@@ -56,7 +56,8 @@ func NewStorageServiceIsInitializedGetParamsWithHTTPClient(client *http.Client) 
 	}
 }
 
-/*StorageServiceIsInitializedGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceIsInitializedGetParams contains all the parameters to send to the API endpoint
 for the storage service is initialized get operation typically these are written to a http.Request
 */
 type StorageServiceIsInitializedGetParams struct {

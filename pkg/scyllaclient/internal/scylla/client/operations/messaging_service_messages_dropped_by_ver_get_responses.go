@@ -48,7 +48,8 @@ func NewMessagingServiceMessagesDroppedByVerGetOK() *MessagingServiceMessagesDro
 	return &MessagingServiceMessagesDroppedByVerGetOK{}
 }
 
-/*MessagingServiceMessagesDroppedByVerGetOK handles this case with default header values.
+/*
+MessagingServiceMessagesDroppedByVerGetOK handles this case with default header values.
 
 MessagingServiceMessagesDroppedByVerGetOK messaging service messages dropped by ver get o k
 */
@@ -77,7 +78,8 @@ func NewMessagingServiceMessagesDroppedByVerGetDefault(code int) *MessagingServi
 	}
 }
 
-/*MessagingServiceMessagesDroppedByVerGetDefault handles this case with default header values.
+/*
+MessagingServiceMessagesDroppedByVerGetDefault handles this case with default header values.
 
 internal server error
 */

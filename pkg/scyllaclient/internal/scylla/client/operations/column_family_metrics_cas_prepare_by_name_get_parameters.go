@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsCasPrepareByNameGetParamsWithHTTPClient(client *http.
 	}
 }
 
-/*ColumnFamilyMetricsCasPrepareByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsCasPrepareByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics cas prepare by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsCasPrepareByNameGetParams struct {

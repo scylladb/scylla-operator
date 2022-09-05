@@ -48,7 +48,8 @@ func NewFindConfigSstableSummaryRatioOK() *FindConfigSstableSummaryRatioOK {
 	return &FindConfigSstableSummaryRatioOK{}
 }
 
-/*FindConfigSstableSummaryRatioOK handles this case with default header values.
+/*
+FindConfigSstableSummaryRatioOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigSstableSummaryRatioDefault(code int) *FindConfigSstableSummary
 	}
 }
 
-/*FindConfigSstableSummaryRatioDefault handles this case with default header values.
+/*
+FindConfigSstableSummaryRatioDefault handles this case with default header values.
 
 unexpected error
 */

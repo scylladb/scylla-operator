@@ -56,7 +56,8 @@ func NewColumnFamilyEstimateKeysByNameGetParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*ColumnFamilyEstimateKeysByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyEstimateKeysByNameGetParams contains all the parameters to send to the API endpoint
 for the column family estimate keys by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyEstimateKeysByNameGetParams struct {

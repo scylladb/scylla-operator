@@ -56,7 +56,8 @@ func NewFindConfigStreamThroughputOutboundMegabitsPerSecParamsWithHTTPClient(cli
 	}
 }
 
-/*FindConfigStreamThroughputOutboundMegabitsPerSecParams contains all the parameters to send to the API endpoint
+/*
+FindConfigStreamThroughputOutboundMegabitsPerSecParams contains all the parameters to send to the API endpoint
 for the find config stream throughput outbound megabits per sec operation typically these are written to a http.Request
 */
 type FindConfigStreamThroughputOutboundMegabitsPerSecParams struct {

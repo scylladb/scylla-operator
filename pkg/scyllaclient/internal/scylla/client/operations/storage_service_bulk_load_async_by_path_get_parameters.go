@@ -56,7 +56,8 @@ func NewStorageServiceBulkLoadAsyncByPathGetParamsWithHTTPClient(client *http.Cl
 	}
 }
 
-/*StorageServiceBulkLoadAsyncByPathGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceBulkLoadAsyncByPathGetParams contains all the parameters to send to the API endpoint
 for the storage service bulk load async by path get operation typically these are written to a http.Request
 */
 type StorageServiceBulkLoadAsyncByPathGetParams struct {

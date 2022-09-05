@@ -56,7 +56,8 @@ func NewStorageProxyReadRepairRepairedBackgroundGetParamsWithHTTPClient(client *
 	}
 }
 
-/*StorageProxyReadRepairRepairedBackgroundGetParams contains all the parameters to send to the API endpoint
+/*
+StorageProxyReadRepairRepairedBackgroundGetParams contains all the parameters to send to the API endpoint
 for the storage proxy read repair repaired background get operation typically these are written to a http.Request
 */
 type StorageProxyReadRepairRepairedBackgroundGetParams struct {

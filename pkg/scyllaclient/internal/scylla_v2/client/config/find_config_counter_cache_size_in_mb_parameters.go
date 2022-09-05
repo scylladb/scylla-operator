@@ -56,7 +56,8 @@ func NewFindConfigCounterCacheSizeInMbParamsWithHTTPClient(client *http.Client) 
 	}
 }
 
-/*FindConfigCounterCacheSizeInMbParams contains all the parameters to send to the API endpoint
+/*
+FindConfigCounterCacheSizeInMbParams contains all the parameters to send to the API endpoint
 for the find config counter cache size in mb operation typically these are written to a http.Request
 */
 type FindConfigCounterCacheSizeInMbParams struct {

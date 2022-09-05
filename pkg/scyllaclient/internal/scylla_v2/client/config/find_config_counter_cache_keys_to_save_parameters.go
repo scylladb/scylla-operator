@@ -56,7 +56,8 @@ func NewFindConfigCounterCacheKeysToSaveParamsWithHTTPClient(client *http.Client
 	}
 }
 
-/*FindConfigCounterCacheKeysToSaveParams contains all the parameters to send to the API endpoint
+/*
+FindConfigCounterCacheKeysToSaveParams contains all the parameters to send to the API endpoint
 for the find config counter cache keys to save operation typically these are written to a http.Request
 */
 type FindConfigCounterCacheKeysToSaveParams struct {

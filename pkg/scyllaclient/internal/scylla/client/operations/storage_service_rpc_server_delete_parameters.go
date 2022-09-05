@@ -56,7 +56,8 @@ func NewStorageServiceRPCServerDeleteParamsWithHTTPClient(client *http.Client) *
 	}
 }
 
-/*StorageServiceRPCServerDeleteParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceRPCServerDeleteParams contains all the parameters to send to the API endpoint
 for the storage service Rpc server delete operation typically these are written to a http.Request
 */
 type StorageServiceRPCServerDeleteParams struct {

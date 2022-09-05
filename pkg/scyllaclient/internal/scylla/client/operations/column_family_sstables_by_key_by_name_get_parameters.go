@@ -56,7 +56,8 @@ func NewColumnFamilySstablesByKeyByNameGetParamsWithHTTPClient(client *http.Clie
 	}
 }
 
-/*ColumnFamilySstablesByKeyByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilySstablesByKeyByNameGetParams contains all the parameters to send to the API endpoint
 for the column family sstables by key by name get operation typically these are written to a http.Request
 */
 type ColumnFamilySstablesByKeyByNameGetParams struct {

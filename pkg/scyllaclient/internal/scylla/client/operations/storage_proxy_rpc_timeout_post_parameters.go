@@ -56,7 +56,8 @@ func NewStorageProxyRPCTimeoutPostParamsWithHTTPClient(client *http.Client) *Sto
 	}
 }
 
-/*StorageProxyRPCTimeoutPostParams contains all the parameters to send to the API endpoint
+/*
+StorageProxyRPCTimeoutPostParams contains all the parameters to send to the API endpoint
 for the storage proxy Rpc timeout post operation typically these are written to a http.Request
 */
 type StorageProxyRPCTimeoutPostParams struct {

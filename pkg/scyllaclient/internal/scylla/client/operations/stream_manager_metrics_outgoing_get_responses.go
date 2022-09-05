@@ -48,7 +48,8 @@ func NewStreamManagerMetricsOutgoingGetOK() *StreamManagerMetricsOutgoingGetOK {
 	return &StreamManagerMetricsOutgoingGetOK{}
 }
 
-/*StreamManagerMetricsOutgoingGetOK handles this case with default header values.
+/*
+StreamManagerMetricsOutgoingGetOK handles this case with default header values.
 
 StreamManagerMetricsOutgoingGetOK stream manager metrics outgoing get o k
 */
@@ -77,7 +78,8 @@ func NewStreamManagerMetricsOutgoingGetDefault(code int) *StreamManagerMetricsOu
 	}
 }
 
-/*StreamManagerMetricsOutgoingGetDefault handles this case with default header values.
+/*
+StreamManagerMetricsOutgoingGetDefault handles this case with default header values.
 
 internal server error
 */

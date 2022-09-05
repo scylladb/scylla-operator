@@ -56,7 +56,8 @@ func NewFindConfigMemoryAllocatorParamsWithHTTPClient(client *http.Client) *Find
 	}
 }
 
-/*FindConfigMemoryAllocatorParams contains all the parameters to send to the API endpoint
+/*
+FindConfigMemoryAllocatorParams contains all the parameters to send to the API endpoint
 for the find config memory allocator operation typically these are written to a http.Request
 */
 type FindConfigMemoryAllocatorParams struct {

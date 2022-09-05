@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsCompressionMetadataOffHeapMemoryUsedByNameGetOK() *Co
 	return &ColumnFamilyMetricsCompressionMetadataOffHeapMemoryUsedByNameGetOK{}
 }
 
-/*ColumnFamilyMetricsCompressionMetadataOffHeapMemoryUsedByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsCompressionMetadataOffHeapMemoryUsedByNameGetOK handles this case with default header values.
 
 ColumnFamilyMetricsCompressionMetadataOffHeapMemoryUsedByNameGetOK column family metrics compression metadata off heap memory used by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsCompressionMetadataOffHeapMemoryUsedByNameGetDefault(
 	}
 }
 
-/*ColumnFamilyMetricsCompressionMetadataOffHeapMemoryUsedByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsCompressionMetadataOffHeapMemoryUsedByNameGetDefault handles this case with default header values.
 
 internal server error
 */

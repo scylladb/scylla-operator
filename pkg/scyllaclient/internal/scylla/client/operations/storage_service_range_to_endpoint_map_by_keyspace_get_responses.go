@@ -48,7 +48,8 @@ func NewStorageServiceRangeToEndpointMapByKeyspaceGetOK() *StorageServiceRangeTo
 	return &StorageServiceRangeToEndpointMapByKeyspaceGetOK{}
 }
 
-/*StorageServiceRangeToEndpointMapByKeyspaceGetOK handles this case with default header values.
+/*
+StorageServiceRangeToEndpointMapByKeyspaceGetOK handles this case with default header values.
 
 StorageServiceRangeToEndpointMapByKeyspaceGetOK storage service range to endpoint map by keyspace get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceRangeToEndpointMapByKeyspaceGetDefault(code int) *StorageS
 	}
 }
 
-/*StorageServiceRangeToEndpointMapByKeyspaceGetDefault handles this case with default header values.
+/*
+StorageServiceRangeToEndpointMapByKeyspaceGetDefault handles this case with default header values.
 
 internal server error
 */

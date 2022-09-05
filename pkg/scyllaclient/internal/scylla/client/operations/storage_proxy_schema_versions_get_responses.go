@@ -48,7 +48,8 @@ func NewStorageProxySchemaVersionsGetOK() *StorageProxySchemaVersionsGetOK {
 	return &StorageProxySchemaVersionsGetOK{}
 }
 
-/*StorageProxySchemaVersionsGetOK handles this case with default header values.
+/*
+StorageProxySchemaVersionsGetOK handles this case with default header values.
 
 StorageProxySchemaVersionsGetOK storage proxy schema versions get o k
 */
@@ -77,7 +78,8 @@ func NewStorageProxySchemaVersionsGetDefault(code int) *StorageProxySchemaVersio
 	}
 }
 
-/*StorageProxySchemaVersionsGetDefault handles this case with default header values.
+/*
+StorageProxySchemaVersionsGetDefault handles this case with default header values.
 
 internal server error
 */

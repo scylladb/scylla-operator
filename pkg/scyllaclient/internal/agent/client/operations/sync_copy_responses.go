@@ -50,7 +50,8 @@ func NewSyncCopyOK() *SyncCopyOK {
 	return &SyncCopyOK{}
 }
 
-/*SyncCopyOK handles this case with default header values.
+/*
+SyncCopyOK handles this case with default header values.
 
 Job ID
 */
@@ -90,7 +91,8 @@ func NewSyncCopyDefault(code int) *SyncCopyDefault {
 	}
 }
 
-/*SyncCopyDefault handles this case with default header values.
+/*
+SyncCopyDefault handles this case with default header values.
 
 Server error
 */
@@ -134,7 +136,8 @@ func (o *SyncCopyDefault) Error() string {
 	return fmt.Sprintf("agent [HTTP %d] %s", o._statusCode, strings.TrimRight(o.Payload.Message, "."))
 }
 
-/*SyncCopyBody sync copy body
+/*
+SyncCopyBody sync copy body
 swagger:model SyncCopyBody
 */
 type SyncCopyBody struct {

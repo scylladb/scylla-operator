@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsIndexSummaryOffHeapMemoryUsedGetParamsWithHTTPClient(
 	}
 }
 
-/*ColumnFamilyMetricsIndexSummaryOffHeapMemoryUsedGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsIndexSummaryOffHeapMemoryUsedGetParams contains all the parameters to send to the API endpoint
 for the column family metrics index summary off heap memory used get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsIndexSummaryOffHeapMemoryUsedGetParams struct {

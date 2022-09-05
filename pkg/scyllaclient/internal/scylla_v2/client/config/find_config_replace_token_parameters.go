@@ -56,7 +56,8 @@ func NewFindConfigReplaceTokenParamsWithHTTPClient(client *http.Client) *FindCon
 	}
 }
 
-/*FindConfigReplaceTokenParams contains all the parameters to send to the API endpoint
+/*
+FindConfigReplaceTokenParams contains all the parameters to send to the API endpoint
 for the find config replace token operation typically these are written to a http.Request
 */
 type FindConfigReplaceTokenParams struct {

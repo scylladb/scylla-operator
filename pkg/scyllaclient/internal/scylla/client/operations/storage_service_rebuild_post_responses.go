@@ -48,7 +48,8 @@ func NewStorageServiceRebuildPostOK() *StorageServiceRebuildPostOK {
 	return &StorageServiceRebuildPostOK{}
 }
 
-/*StorageServiceRebuildPostOK handles this case with default header values.
+/*
+StorageServiceRebuildPostOK handles this case with default header values.
 
 StorageServiceRebuildPostOK storage service rebuild post o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceRebuildPostDefault(code int) *StorageServiceRebuildPostDef
 	}
 }
 
-/*StorageServiceRebuildPostDefault handles this case with default header values.
+/*
+StorageServiceRebuildPostDefault handles this case with default header values.
 
 internal server error
 */

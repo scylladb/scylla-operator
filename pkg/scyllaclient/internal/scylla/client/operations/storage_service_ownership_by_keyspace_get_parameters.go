@@ -56,7 +56,8 @@ func NewStorageServiceOwnershipByKeyspaceGetParamsWithHTTPClient(client *http.Cl
 	}
 }
 
-/*StorageServiceOwnershipByKeyspaceGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceOwnershipByKeyspaceGetParams contains all the parameters to send to the API endpoint
 for the storage service ownership by keyspace get operation typically these are written to a http.Request
 */
 type StorageServiceOwnershipByKeyspaceGetParams struct {

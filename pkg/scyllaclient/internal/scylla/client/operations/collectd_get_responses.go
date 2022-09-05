@@ -48,7 +48,8 @@ func NewCollectdGetOK() *CollectdGetOK {
 	return &CollectdGetOK{}
 }
 
-/*CollectdGetOK handles this case with default header values.
+/*
+CollectdGetOK handles this case with default header values.
 
 CollectdGetOK collectd get o k
 */
@@ -77,7 +78,8 @@ func NewCollectdGetDefault(code int) *CollectdGetDefault {
 	}
 }
 
-/*CollectdGetDefault handles this case with default header values.
+/*
+CollectdGetDefault handles this case with default header values.
 
 internal server error
 */

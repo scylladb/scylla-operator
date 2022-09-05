@@ -48,7 +48,8 @@ func NewFindConfigViewHintsDirectoryOK() *FindConfigViewHintsDirectoryOK {
 	return &FindConfigViewHintsDirectoryOK{}
 }
 
-/*FindConfigViewHintsDirectoryOK handles this case with default header values.
+/*
+FindConfigViewHintsDirectoryOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigViewHintsDirectoryDefault(code int) *FindConfigViewHintsDirect
 	}
 }
 
-/*FindConfigViewHintsDirectoryDefault handles this case with default header values.
+/*
+FindConfigViewHintsDirectoryDefault handles this case with default header values.
 
 unexpected error
 */

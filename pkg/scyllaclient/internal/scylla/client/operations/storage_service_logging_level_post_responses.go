@@ -48,7 +48,8 @@ func NewStorageServiceLoggingLevelPostOK() *StorageServiceLoggingLevelPostOK {
 	return &StorageServiceLoggingLevelPostOK{}
 }
 
-/*StorageServiceLoggingLevelPostOK handles this case with default header values.
+/*
+StorageServiceLoggingLevelPostOK handles this case with default header values.
 
 StorageServiceLoggingLevelPostOK storage service logging level post o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceLoggingLevelPostDefault(code int) *StorageServiceLoggingLe
 	}
 }
 
-/*StorageServiceLoggingLevelPostDefault handles this case with default header values.
+/*
+StorageServiceLoggingLevelPostDefault handles this case with default header values.
 
 internal server error
 */

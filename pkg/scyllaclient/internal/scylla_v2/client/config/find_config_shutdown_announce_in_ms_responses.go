@@ -48,7 +48,8 @@ func NewFindConfigShutdownAnnounceInMsOK() *FindConfigShutdownAnnounceInMsOK {
 	return &FindConfigShutdownAnnounceInMsOK{}
 }
 
-/*FindConfigShutdownAnnounceInMsOK handles this case with default header values.
+/*
+FindConfigShutdownAnnounceInMsOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigShutdownAnnounceInMsDefault(code int) *FindConfigShutdownAnnou
 	}
 }
 
-/*FindConfigShutdownAnnounceInMsDefault handles this case with default header values.
+/*
+FindConfigShutdownAnnounceInMsDefault handles this case with default header values.
 
 unexpected error
 */

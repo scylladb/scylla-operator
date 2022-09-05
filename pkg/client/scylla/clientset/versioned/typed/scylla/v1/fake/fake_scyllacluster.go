@@ -101,7 +101,7 @@ func (c *FakeScyllaClusters) UpdateStatus(ctx context.Context, scyllaCluster *sc
 // Delete takes name of the scyllaCluster and deletes it. Returns an error if one occurs.
 func (c *FakeScyllaClusters) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(scyllaclustersResource, c.ns, name), &scyllav1.ScyllaCluster{})
+		Invokes(testing.NewDeleteActionWithOptions(scyllaclustersResource, c.ns, name, opts), &scyllav1.ScyllaCluster{})
 
 	return err
 }

@@ -58,7 +58,8 @@ func NewJobStopParamsWithHTTPClient(client *http.Client) *JobStopParams {
 	}
 }
 
-/*JobStopParams contains all the parameters to send to the API endpoint
+/*
+JobStopParams contains all the parameters to send to the API endpoint
 for the job stop operation typically these are written to a http.Request
 */
 type JobStopParams struct {

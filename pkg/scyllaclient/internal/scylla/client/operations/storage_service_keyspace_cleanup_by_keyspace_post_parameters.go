@@ -56,7 +56,8 @@ func NewStorageServiceKeyspaceCleanupByKeyspacePostParamsWithHTTPClient(client *
 	}
 }
 
-/*StorageServiceKeyspaceCleanupByKeyspacePostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceKeyspaceCleanupByKeyspacePostParams contains all the parameters to send to the API endpoint
 for the storage service keyspace cleanup by keyspace post operation typically these are written to a http.Request
 */
 type StorageServiceKeyspaceCleanupByKeyspacePostParams struct {

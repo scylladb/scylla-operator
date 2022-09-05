@@ -56,7 +56,8 @@ func NewColumnFamilyNameKeyspaceGetParamsWithHTTPClient(client *http.Client) *Co
 	}
 }
 
-/*ColumnFamilyNameKeyspaceGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyNameKeyspaceGetParams contains all the parameters to send to the API endpoint
 for the column family name keyspace get operation typically these are written to a http.Request
 */
 type ColumnFamilyNameKeyspaceGetParams struct {

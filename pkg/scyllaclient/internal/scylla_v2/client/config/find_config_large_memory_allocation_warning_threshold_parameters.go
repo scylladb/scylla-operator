@@ -56,7 +56,8 @@ func NewFindConfigLargeMemoryAllocationWarningThresholdParamsWithHTTPClient(clie
 	}
 }
 
-/*FindConfigLargeMemoryAllocationWarningThresholdParams contains all the parameters to send to the API endpoint
+/*
+FindConfigLargeMemoryAllocationWarningThresholdParams contains all the parameters to send to the API endpoint
 for the find config large memory allocation warning threshold operation typically these are written to a http.Request
 */
 type FindConfigLargeMemoryAllocationWarningThresholdParams struct {

@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsRecentBloomFilterFalseRatioByNameGetOK() *ColumnFamil
 	return &ColumnFamilyMetricsRecentBloomFilterFalseRatioByNameGetOK{}
 }
 
-/*ColumnFamilyMetricsRecentBloomFilterFalseRatioByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsRecentBloomFilterFalseRatioByNameGetOK handles this case with default header values.
 
 ColumnFamilyMetricsRecentBloomFilterFalseRatioByNameGetOK column family metrics recent bloom filter false ratio by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsRecentBloomFilterFalseRatioByNameGetDefault(code int)
 	}
 }
 
-/*ColumnFamilyMetricsRecentBloomFilterFalseRatioByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsRecentBloomFilterFalseRatioByNameGetDefault handles this case with default header values.
 
 internal server error
 */

@@ -56,7 +56,8 @@ func NewFindConfigConsistentRangemovementParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*FindConfigConsistentRangemovementParams contains all the parameters to send to the API endpoint
+/*
+FindConfigConsistentRangemovementParams contains all the parameters to send to the API endpoint
 for the find config consistent rangemovement operation typically these are written to a http.Request
 */
 type FindConfigConsistentRangemovementParams struct {

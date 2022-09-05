@@ -56,7 +56,8 @@ func NewFindConfigAutoSnapshotParamsWithHTTPClient(client *http.Client) *FindCon
 	}
 }
 
-/*FindConfigAutoSnapshotParams contains all the parameters to send to the API endpoint
+/*
+FindConfigAutoSnapshotParams contains all the parameters to send to the API endpoint
 for the find config auto snapshot operation typically these are written to a http.Request
 */
 type FindConfigAutoSnapshotParams struct {

@@ -48,7 +48,8 @@ func NewStorageServiceBatchSizeFailureThresholdPostOK() *StorageServiceBatchSize
 	return &StorageServiceBatchSizeFailureThresholdPostOK{}
 }
 
-/*StorageServiceBatchSizeFailureThresholdPostOK handles this case with default header values.
+/*
+StorageServiceBatchSizeFailureThresholdPostOK handles this case with default header values.
 
 StorageServiceBatchSizeFailureThresholdPostOK storage service batch size failure threshold post o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceBatchSizeFailureThresholdPostDefault(code int) *StorageSer
 	}
 }
 
-/*StorageServiceBatchSizeFailureThresholdPostDefault handles this case with default header values.
+/*
+StorageServiceBatchSizeFailureThresholdPostDefault handles this case with default header values.
 
 internal server error
 */

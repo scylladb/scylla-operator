@@ -48,7 +48,8 @@ func NewStorageServiceOwnershipByKeyspaceGetOK() *StorageServiceOwnershipByKeysp
 	return &StorageServiceOwnershipByKeyspaceGetOK{}
 }
 
-/*StorageServiceOwnershipByKeyspaceGetOK handles this case with default header values.
+/*
+StorageServiceOwnershipByKeyspaceGetOK handles this case with default header values.
 
 StorageServiceOwnershipByKeyspaceGetOK storage service ownership by keyspace get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceOwnershipByKeyspaceGetDefault(code int) *StorageServiceOwn
 	}
 }
 
-/*StorageServiceOwnershipByKeyspaceGetDefault handles this case with default header values.
+/*
+StorageServiceOwnershipByKeyspaceGetDefault handles this case with default header values.
 
 internal server error
 */

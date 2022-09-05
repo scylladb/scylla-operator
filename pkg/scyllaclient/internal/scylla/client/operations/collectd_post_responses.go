@@ -48,7 +48,8 @@ func NewCollectdPostOK() *CollectdPostOK {
 	return &CollectdPostOK{}
 }
 
-/*CollectdPostOK handles this case with default header values.
+/*
+CollectdPostOK handles this case with default header values.
 
 CollectdPostOK collectd post o k
 */
@@ -67,7 +68,8 @@ func NewCollectdPostDefault(code int) *CollectdPostDefault {
 	}
 }
 
-/*CollectdPostDefault handles this case with default header values.
+/*
+CollectdPostDefault handles this case with default header values.
 
 internal server error
 */

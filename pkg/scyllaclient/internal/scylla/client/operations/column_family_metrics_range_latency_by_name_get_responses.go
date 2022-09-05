@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsRangeLatencyByNameGetOK() *ColumnFamilyMetricsRangeLa
 	return &ColumnFamilyMetricsRangeLatencyByNameGetOK{}
 }
 
-/*ColumnFamilyMetricsRangeLatencyByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsRangeLatencyByNameGetOK handles this case with default header values.
 
 ColumnFamilyMetricsRangeLatencyByNameGetOK column family metrics range latency by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsRangeLatencyByNameGetDefault(code int) *ColumnFamilyM
 	}
 }
 
-/*ColumnFamilyMetricsRangeLatencyByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsRangeLatencyByNameGetDefault handles this case with default header values.
 
 internal server error
 */

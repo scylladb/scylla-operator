@@ -56,7 +56,8 @@ func NewStorageProxyReloadTriggerClassesPostParamsWithHTTPClient(client *http.Cl
 	}
 }
 
-/*StorageProxyReloadTriggerClassesPostParams contains all the parameters to send to the API endpoint
+/*
+StorageProxyReloadTriggerClassesPostParams contains all the parameters to send to the API endpoint
 for the storage proxy reload trigger classes post operation typically these are written to a http.Request
 */
 type StorageProxyReloadTriggerClassesPostParams struct {

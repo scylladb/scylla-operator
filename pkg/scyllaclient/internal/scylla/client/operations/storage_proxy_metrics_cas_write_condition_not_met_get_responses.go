@@ -48,7 +48,8 @@ func NewStorageProxyMetricsCasWriteConditionNotMetGetOK() *StorageProxyMetricsCa
 	return &StorageProxyMetricsCasWriteConditionNotMetGetOK{}
 }
 
-/*StorageProxyMetricsCasWriteConditionNotMetGetOK handles this case with default header values.
+/*
+StorageProxyMetricsCasWriteConditionNotMetGetOK handles this case with default header values.
 
 StorageProxyMetricsCasWriteConditionNotMetGetOK storage proxy metrics cas write condition not met get o k
 */
@@ -77,7 +78,8 @@ func NewStorageProxyMetricsCasWriteConditionNotMetGetDefault(code int) *StorageP
 	}
 }
 
-/*StorageProxyMetricsCasWriteConditionNotMetGetDefault handles this case with default header values.
+/*
+StorageProxyMetricsCasWriteConditionNotMetGetDefault handles this case with default header values.
 
 internal server error
 */

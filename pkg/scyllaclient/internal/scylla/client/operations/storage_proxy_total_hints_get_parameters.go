@@ -56,7 +56,8 @@ func NewStorageProxyTotalHintsGetParamsWithHTTPClient(client *http.Client) *Stor
 	}
 }
 
-/*StorageProxyTotalHintsGetParams contains all the parameters to send to the API endpoint
+/*
+StorageProxyTotalHintsGetParams contains all the parameters to send to the API endpoint
 for the storage proxy total hints get operation typically these are written to a http.Request
 */
 type StorageProxyTotalHintsGetParams struct {

@@ -56,7 +56,8 @@ func NewCompactionManagerForceUserDefinedCompactionPostParamsWithHTTPClient(clie
 	}
 }
 
-/*CompactionManagerForceUserDefinedCompactionPostParams contains all the parameters to send to the API endpoint
+/*
+CompactionManagerForceUserDefinedCompactionPostParams contains all the parameters to send to the API endpoint
 for the compaction manager force user defined compaction post operation typically these are written to a http.Request
 */
 type CompactionManagerForceUserDefinedCompactionPostParams struct {

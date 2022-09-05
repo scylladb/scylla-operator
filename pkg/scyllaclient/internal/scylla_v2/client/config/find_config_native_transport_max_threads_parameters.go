@@ -56,7 +56,8 @@ func NewFindConfigNativeTransportMaxThreadsParamsWithHTTPClient(client *http.Cli
 	}
 }
 
-/*FindConfigNativeTransportMaxThreadsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigNativeTransportMaxThreadsParams contains all the parameters to send to the API endpoint
 for the find config native transport max threads operation typically these are written to a http.Request
 */
 type FindConfigNativeTransportMaxThreadsParams struct {

@@ -48,7 +48,8 @@ func NewFindConfigTrickleFsyncIntervalInKbOK() *FindConfigTrickleFsyncIntervalIn
 	return &FindConfigTrickleFsyncIntervalInKbOK{}
 }
 
-/*FindConfigTrickleFsyncIntervalInKbOK handles this case with default header values.
+/*
+FindConfigTrickleFsyncIntervalInKbOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigTrickleFsyncIntervalInKbDefault(code int) *FindConfigTrickleFs
 	}
 }
 
-/*FindConfigTrickleFsyncIntervalInKbDefault handles this case with default header values.
+/*
+FindConfigTrickleFsyncIntervalInKbDefault handles this case with default header values.
 
 unexpected error
 */

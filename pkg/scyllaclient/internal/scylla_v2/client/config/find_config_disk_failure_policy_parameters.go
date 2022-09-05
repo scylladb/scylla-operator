@@ -56,7 +56,8 @@ func NewFindConfigDiskFailurePolicyParamsWithHTTPClient(client *http.Client) *Fi
 	}
 }
 
-/*FindConfigDiskFailurePolicyParams contains all the parameters to send to the API endpoint
+/*
+FindConfigDiskFailurePolicyParams contains all the parameters to send to the API endpoint
 for the find config disk failure policy operation typically these are written to a http.Request
 */
 type FindConfigDiskFailurePolicyParams struct {

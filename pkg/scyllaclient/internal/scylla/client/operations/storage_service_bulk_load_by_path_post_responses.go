@@ -48,7 +48,8 @@ func NewStorageServiceBulkLoadByPathPostOK() *StorageServiceBulkLoadByPathPostOK
 	return &StorageServiceBulkLoadByPathPostOK{}
 }
 
-/*StorageServiceBulkLoadByPathPostOK handles this case with default header values.
+/*
+StorageServiceBulkLoadByPathPostOK handles this case with default header values.
 
 StorageServiceBulkLoadByPathPostOK storage service bulk load by path post o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceBulkLoadByPathPostDefault(code int) *StorageServiceBulkLoa
 	}
 }
 
-/*StorageServiceBulkLoadByPathPostDefault handles this case with default header values.
+/*
+StorageServiceBulkLoadByPathPostDefault handles this case with default header values.
 
 internal server error
 */

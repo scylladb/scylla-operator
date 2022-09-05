@@ -48,7 +48,8 @@ func NewStorageServiceTokensByEndpointGetOK() *StorageServiceTokensByEndpointGet
 	return &StorageServiceTokensByEndpointGetOK{}
 }
 
-/*StorageServiceTokensByEndpointGetOK handles this case with default header values.
+/*
+StorageServiceTokensByEndpointGetOK handles this case with default header values.
 
 StorageServiceTokensByEndpointGetOK storage service tokens by endpoint get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceTokensByEndpointGetDefault(code int) *StorageServiceTokens
 	}
 }
 
-/*StorageServiceTokensByEndpointGetDefault handles this case with default header values.
+/*
+StorageServiceTokensByEndpointGetDefault handles this case with default header values.
 
 internal server error
 */

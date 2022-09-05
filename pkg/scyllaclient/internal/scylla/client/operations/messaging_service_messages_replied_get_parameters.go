@@ -56,7 +56,8 @@ func NewMessagingServiceMessagesRepliedGetParamsWithHTTPClient(client *http.Clie
 	}
 }
 
-/*MessagingServiceMessagesRepliedGetParams contains all the parameters to send to the API endpoint
+/*
+MessagingServiceMessagesRepliedGetParams contains all the parameters to send to the API endpoint
 for the messaging service messages replied get operation typically these are written to a http.Request
 */
 type MessagingServiceMessagesRepliedGetParams struct {

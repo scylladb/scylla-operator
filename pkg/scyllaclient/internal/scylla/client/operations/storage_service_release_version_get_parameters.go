@@ -56,7 +56,8 @@ func NewStorageServiceReleaseVersionGetParamsWithHTTPClient(client *http.Client)
 	}
 }
 
-/*StorageServiceReleaseVersionGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceReleaseVersionGetParams contains all the parameters to send to the API endpoint
 for the storage service release version get operation typically these are written to a http.Request
 */
 type StorageServiceReleaseVersionGetParams struct {

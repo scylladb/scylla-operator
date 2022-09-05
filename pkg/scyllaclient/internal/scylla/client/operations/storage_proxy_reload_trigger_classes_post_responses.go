@@ -48,7 +48,8 @@ func NewStorageProxyReloadTriggerClassesPostOK() *StorageProxyReloadTriggerClass
 	return &StorageProxyReloadTriggerClassesPostOK{}
 }
 
-/*StorageProxyReloadTriggerClassesPostOK handles this case with default header values.
+/*
+StorageProxyReloadTriggerClassesPostOK handles this case with default header values.
 
 StorageProxyReloadTriggerClassesPostOK storage proxy reload trigger classes post o k
 */
@@ -67,7 +68,8 @@ func NewStorageProxyReloadTriggerClassesPostDefault(code int) *StorageProxyReloa
 	}
 }
 
-/*StorageProxyReloadTriggerClassesPostDefault handles this case with default header values.
+/*
+StorageProxyReloadTriggerClassesPostDefault handles this case with default header values.
 
 internal server error
 */

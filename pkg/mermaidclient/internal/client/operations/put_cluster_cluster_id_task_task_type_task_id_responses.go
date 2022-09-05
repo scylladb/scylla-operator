@@ -47,7 +47,8 @@ func NewPutClusterClusterIDTaskTaskTypeTaskIDOK() *PutClusterClusterIDTaskTaskTy
 	return &PutClusterClusterIDTaskTaskTypeTaskIDOK{}
 }
 
-/*PutClusterClusterIDTaskTaskTypeTaskIDOK handles this case with default header values.
+/*
+PutClusterClusterIDTaskTaskTypeTaskIDOK handles this case with default header values.
 
 Updated task info
 */
@@ -82,7 +83,8 @@ func NewPutClusterClusterIDTaskTaskTypeTaskIDDefault(code int) *PutClusterCluste
 	}
 }
 
-/*PutClusterClusterIDTaskTaskTypeTaskIDDefault handles this case with default header values.
+/*
+PutClusterClusterIDTaskTaskTypeTaskIDDefault handles this case with default header values.
 
 Unexpected error
 */

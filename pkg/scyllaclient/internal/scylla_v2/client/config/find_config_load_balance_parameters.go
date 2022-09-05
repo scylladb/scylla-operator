@@ -56,7 +56,8 @@ func NewFindConfigLoadBalanceParamsWithHTTPClient(client *http.Client) *FindConf
 	}
 }
 
-/*FindConfigLoadBalanceParams contains all the parameters to send to the API endpoint
+/*
+FindConfigLoadBalanceParams contains all the parameters to send to the API endpoint
 for the find config load balance operation typically these are written to a http.Request
 */
 type FindConfigLoadBalanceParams struct {

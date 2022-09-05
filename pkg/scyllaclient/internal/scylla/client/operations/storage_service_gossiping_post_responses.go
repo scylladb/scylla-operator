@@ -48,7 +48,8 @@ func NewStorageServiceGossipingPostOK() *StorageServiceGossipingPostOK {
 	return &StorageServiceGossipingPostOK{}
 }
 
-/*StorageServiceGossipingPostOK handles this case with default header values.
+/*
+StorageServiceGossipingPostOK handles this case with default header values.
 
 StorageServiceGossipingPostOK storage service gossiping post o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceGossipingPostDefault(code int) *StorageServiceGossipingPos
 	}
 }
 
-/*StorageServiceGossipingPostDefault handles this case with default header values.
+/*
+StorageServiceGossipingPostDefault handles this case with default header values.
 
 internal server error
 */

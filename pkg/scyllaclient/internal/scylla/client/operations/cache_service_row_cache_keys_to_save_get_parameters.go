@@ -56,7 +56,8 @@ func NewCacheServiceRowCacheKeysToSaveGetParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*CacheServiceRowCacheKeysToSaveGetParams contains all the parameters to send to the API endpoint
+/*
+CacheServiceRowCacheKeysToSaveGetParams contains all the parameters to send to the API endpoint
 for the cache service row cache keys to save get operation typically these are written to a http.Request
 */
 type CacheServiceRowCacheKeysToSaveGetParams struct {

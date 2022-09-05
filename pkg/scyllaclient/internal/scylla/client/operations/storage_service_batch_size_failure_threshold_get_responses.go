@@ -48,7 +48,8 @@ func NewStorageServiceBatchSizeFailureThresholdGetOK() *StorageServiceBatchSizeF
 	return &StorageServiceBatchSizeFailureThresholdGetOK{}
 }
 
-/*StorageServiceBatchSizeFailureThresholdGetOK handles this case with default header values.
+/*
+StorageServiceBatchSizeFailureThresholdGetOK handles this case with default header values.
 
 StorageServiceBatchSizeFailureThresholdGetOK storage service batch size failure threshold get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceBatchSizeFailureThresholdGetDefault(code int) *StorageServ
 	}
 }
 
-/*StorageServiceBatchSizeFailureThresholdGetDefault handles this case with default header values.
+/*
+StorageServiceBatchSizeFailureThresholdGetDefault handles this case with default header values.
 
 internal server error
 */

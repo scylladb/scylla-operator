@@ -56,7 +56,8 @@ func NewStorageServiceBatchSizeFailureThresholdGetParamsWithHTTPClient(client *h
 	}
 }
 
-/*StorageServiceBatchSizeFailureThresholdGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceBatchSizeFailureThresholdGetParams contains all the parameters to send to the API endpoint
 for the storage service batch size failure threshold get operation typically these are written to a http.Request
 */
 type StorageServiceBatchSizeFailureThresholdGetParams struct {

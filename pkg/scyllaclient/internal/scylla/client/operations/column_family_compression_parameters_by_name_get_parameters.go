@@ -56,7 +56,8 @@ func NewColumnFamilyCompressionParametersByNameGetParamsWithHTTPClient(client *h
 	}
 }
 
-/*ColumnFamilyCompressionParametersByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyCompressionParametersByNameGetParams contains all the parameters to send to the API endpoint
 for the column family compression parameters by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyCompressionParametersByNameGetParams struct {

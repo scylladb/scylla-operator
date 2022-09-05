@@ -56,7 +56,8 @@ func NewFindConfigPhiConvictThresholdParamsWithHTTPClient(client *http.Client) *
 	}
 }
 
-/*FindConfigPhiConvictThresholdParams contains all the parameters to send to the API endpoint
+/*
+FindConfigPhiConvictThresholdParams contains all the parameters to send to the API endpoint
 for the find config phi convict threshold operation typically these are written to a http.Request
 */
 type FindConfigPhiConvictThresholdParams struct {

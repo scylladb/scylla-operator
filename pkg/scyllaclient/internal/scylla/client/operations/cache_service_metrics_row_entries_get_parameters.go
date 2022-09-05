@@ -56,7 +56,8 @@ func NewCacheServiceMetricsRowEntriesGetParamsWithHTTPClient(client *http.Client
 	}
 }
 
-/*CacheServiceMetricsRowEntriesGetParams contains all the parameters to send to the API endpoint
+/*
+CacheServiceMetricsRowEntriesGetParams contains all the parameters to send to the API endpoint
 for the cache service metrics row entries get operation typically these are written to a http.Request
 */
 type CacheServiceMetricsRowEntriesGetParams struct {

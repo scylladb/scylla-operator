@@ -56,7 +56,8 @@ func NewFindConfigRoleManagerParamsWithHTTPClient(client *http.Client) *FindConf
 	}
 }
 
-/*FindConfigRoleManagerParams contains all the parameters to send to the API endpoint
+/*
+FindConfigRoleManagerParams contains all the parameters to send to the API endpoint
 for the find config role manager operation typically these are written to a http.Request
 */
 type FindConfigRoleManagerParams struct {

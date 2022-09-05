@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsCasProposeByNameGetOK() *ColumnFamilyMetricsCasPropos
 	return &ColumnFamilyMetricsCasProposeByNameGetOK{}
 }
 
-/*ColumnFamilyMetricsCasProposeByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsCasProposeByNameGetOK handles this case with default header values.
 
 ColumnFamilyMetricsCasProposeByNameGetOK column family metrics cas propose by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsCasProposeByNameGetDefault(code int) *ColumnFamilyMet
 	}
 }
 
-/*ColumnFamilyMetricsCasProposeByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsCasProposeByNameGetDefault handles this case with default header values.
 
 internal server error
 */

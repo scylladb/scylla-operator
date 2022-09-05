@@ -48,7 +48,8 @@ func NewHintedHandoffMetricsNotStoredHintsByAddrGetOK() *HintedHandoffMetricsNot
 	return &HintedHandoffMetricsNotStoredHintsByAddrGetOK{}
 }
 
-/*HintedHandoffMetricsNotStoredHintsByAddrGetOK handles this case with default header values.
+/*
+HintedHandoffMetricsNotStoredHintsByAddrGetOK handles this case with default header values.
 
 HintedHandoffMetricsNotStoredHintsByAddrGetOK hinted handoff metrics not stored hints by addr get o k
 */
@@ -77,7 +78,8 @@ func NewHintedHandoffMetricsNotStoredHintsByAddrGetDefault(code int) *HintedHand
 	}
 }
 
-/*HintedHandoffMetricsNotStoredHintsByAddrGetDefault handles this case with default header values.
+/*
+HintedHandoffMetricsNotStoredHintsByAddrGetDefault handles this case with default header values.
 
 internal server error
 */

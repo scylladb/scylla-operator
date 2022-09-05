@@ -56,7 +56,8 @@ func NewFindConfigDefragmentMemoryOnIdleParamsWithHTTPClient(client *http.Client
 	}
 }
 
-/*FindConfigDefragmentMemoryOnIdleParams contains all the parameters to send to the API endpoint
+/*
+FindConfigDefragmentMemoryOnIdleParams contains all the parameters to send to the API endpoint
 for the find config defragment memory on idle operation typically these are written to a http.Request
 */
 type FindConfigDefragmentMemoryOnIdleParams struct {

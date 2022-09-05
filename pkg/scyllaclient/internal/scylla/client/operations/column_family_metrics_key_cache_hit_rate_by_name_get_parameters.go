@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsKeyCacheHitRateByNameGetParamsWithHTTPClient(client *
 	}
 }
 
-/*ColumnFamilyMetricsKeyCacheHitRateByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsKeyCacheHitRateByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics key cache hit rate by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsKeyCacheHitRateByNameGetParams struct {

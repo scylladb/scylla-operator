@@ -48,7 +48,8 @@ func NewStorageServiceRepairAsyncByKeyspacePostOK() *StorageServiceRepairAsyncBy
 	return &StorageServiceRepairAsyncByKeyspacePostOK{}
 }
 
-/*StorageServiceRepairAsyncByKeyspacePostOK handles this case with default header values.
+/*
+StorageServiceRepairAsyncByKeyspacePostOK handles this case with default header values.
 
 StorageServiceRepairAsyncByKeyspacePostOK storage service repair async by keyspace post o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceRepairAsyncByKeyspacePostDefault(code int) *StorageService
 	}
 }
 
-/*StorageServiceRepairAsyncByKeyspacePostDefault handles this case with default header values.
+/*
+StorageServiceRepairAsyncByKeyspacePostDefault handles this case with default header values.
 
 internal server error
 */

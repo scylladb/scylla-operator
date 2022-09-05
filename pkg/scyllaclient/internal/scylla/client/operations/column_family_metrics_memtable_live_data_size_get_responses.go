@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsMemtableLiveDataSizeGetOK() *ColumnFamilyMetricsMemta
 	return &ColumnFamilyMetricsMemtableLiveDataSizeGetOK{}
 }
 
-/*ColumnFamilyMetricsMemtableLiveDataSizeGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsMemtableLiveDataSizeGetOK handles this case with default header values.
 
 ColumnFamilyMetricsMemtableLiveDataSizeGetOK column family metrics memtable live data size get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsMemtableLiveDataSizeGetDefault(code int) *ColumnFamil
 	}
 }
 
-/*ColumnFamilyMetricsMemtableLiveDataSizeGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsMemtableLiveDataSizeGetDefault handles this case with default header values.
 
 internal server error
 */

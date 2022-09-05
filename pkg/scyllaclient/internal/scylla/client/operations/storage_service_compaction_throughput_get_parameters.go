@@ -56,7 +56,8 @@ func NewStorageServiceCompactionThroughputGetParamsWithHTTPClient(client *http.C
 	}
 }
 
-/*StorageServiceCompactionThroughputGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceCompactionThroughputGetParams contains all the parameters to send to the API endpoint
 for the storage service compaction throughput get operation typically these are written to a http.Request
 */
 type StorageServiceCompactionThroughputGetParams struct {

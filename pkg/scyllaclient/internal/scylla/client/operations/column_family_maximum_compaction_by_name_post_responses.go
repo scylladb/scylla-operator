@@ -48,7 +48,8 @@ func NewColumnFamilyMaximumCompactionByNamePostOK() *ColumnFamilyMaximumCompacti
 	return &ColumnFamilyMaximumCompactionByNamePostOK{}
 }
 
-/*ColumnFamilyMaximumCompactionByNamePostOK handles this case with default header values.
+/*
+ColumnFamilyMaximumCompactionByNamePostOK handles this case with default header values.
 
 ColumnFamilyMaximumCompactionByNamePostOK column family maximum compaction by name post o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMaximumCompactionByNamePostDefault(code int) *ColumnFamilyMa
 	}
 }
 
-/*ColumnFamilyMaximumCompactionByNamePostDefault handles this case with default header values.
+/*
+ColumnFamilyMaximumCompactionByNamePostDefault handles this case with default header values.
 
 internal server error
 */

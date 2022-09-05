@@ -56,7 +56,8 @@ func NewFindConfigShadowRoundMsParamsWithHTTPClient(client *http.Client) *FindCo
 	}
 }
 
-/*FindConfigShadowRoundMsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigShadowRoundMsParams contains all the parameters to send to the API endpoint
 for the find config shadow round ms operation typically these are written to a http.Request
 */
 type FindConfigShadowRoundMsParams struct {

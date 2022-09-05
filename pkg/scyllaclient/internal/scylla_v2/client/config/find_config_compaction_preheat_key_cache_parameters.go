@@ -56,7 +56,8 @@ func NewFindConfigCompactionPreheatKeyCacheParamsWithHTTPClient(client *http.Cli
 	}
 }
 
-/*FindConfigCompactionPreheatKeyCacheParams contains all the parameters to send to the API endpoint
+/*
+FindConfigCompactionPreheatKeyCacheParams contains all the parameters to send to the API endpoint
 for the find config compaction preheat key cache operation typically these are written to a http.Request
 */
 type FindConfigCompactionPreheatKeyCacheParams struct {

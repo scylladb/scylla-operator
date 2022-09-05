@@ -56,7 +56,8 @@ func NewCacheServiceRowCacheCapacityPostParamsWithHTTPClient(client *http.Client
 	}
 }
 
-/*CacheServiceRowCacheCapacityPostParams contains all the parameters to send to the API endpoint
+/*
+CacheServiceRowCacheCapacityPostParams contains all the parameters to send to the API endpoint
 for the cache service row cache capacity post operation typically these are written to a http.Request
 */
 type CacheServiceRowCacheCapacityPostParams struct {

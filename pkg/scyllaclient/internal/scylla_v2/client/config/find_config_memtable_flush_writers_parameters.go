@@ -56,7 +56,8 @@ func NewFindConfigMemtableFlushWritersParamsWithHTTPClient(client *http.Client) 
 	}
 }
 
-/*FindConfigMemtableFlushWritersParams contains all the parameters to send to the API endpoint
+/*
+FindConfigMemtableFlushWritersParams contains all the parameters to send to the API endpoint
 for the find config memtable flush writers operation typically these are written to a http.Request
 */
 type FindConfigMemtableFlushWritersParams struct {

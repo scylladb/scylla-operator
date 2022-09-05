@@ -56,7 +56,8 @@ func NewFindConfigEnableDangerousDirectImportOfCassandraCountersParamsWithHTTPCl
 	}
 }
 
-/*FindConfigEnableDangerousDirectImportOfCassandraCountersParams contains all the parameters to send to the API endpoint
+/*
+FindConfigEnableDangerousDirectImportOfCassandraCountersParams contains all the parameters to send to the API endpoint
 for the find config enable dangerous direct import of cassandra counters operation typically these are written to a http.Request
 */
 type FindConfigEnableDangerousDirectImportOfCassandraCountersParams struct {

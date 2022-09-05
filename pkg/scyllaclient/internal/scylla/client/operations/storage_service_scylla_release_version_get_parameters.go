@@ -56,7 +56,8 @@ func NewStorageServiceScyllaReleaseVersionGetParamsWithHTTPClient(client *http.C
 	}
 }
 
-/*StorageServiceScyllaReleaseVersionGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceScyllaReleaseVersionGetParams contains all the parameters to send to the API endpoint
 for the storage service scylla release version get operation typically these are written to a http.Request
 */
 type StorageServiceScyllaReleaseVersionGetParams struct {

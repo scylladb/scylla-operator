@@ -56,7 +56,8 @@ func NewCacheServiceMetricsRowSizeGetParamsWithHTTPClient(client *http.Client) *
 	}
 }
 
-/*CacheServiceMetricsRowSizeGetParams contains all the parameters to send to the API endpoint
+/*
+CacheServiceMetricsRowSizeGetParams contains all the parameters to send to the API endpoint
 for the cache service metrics row size get operation typically these are written to a http.Request
 */
 type CacheServiceMetricsRowSizeGetParams struct {

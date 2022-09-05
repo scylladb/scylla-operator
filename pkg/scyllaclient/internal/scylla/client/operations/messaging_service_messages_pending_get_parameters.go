@@ -56,7 +56,8 @@ func NewMessagingServiceMessagesPendingGetParamsWithHTTPClient(client *http.Clie
 	}
 }
 
-/*MessagingServiceMessagesPendingGetParams contains all the parameters to send to the API endpoint
+/*
+MessagingServiceMessagesPendingGetParams contains all the parameters to send to the API endpoint
 for the messaging service messages pending get operation typically these are written to a http.Request
 */
 type MessagingServiceMessagesPendingGetParams struct {

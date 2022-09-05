@@ -48,7 +48,8 @@ func NewFindConfigInMemoryCompactionLimitInMbOK() *FindConfigInMemoryCompactionL
 	return &FindConfigInMemoryCompactionLimitInMbOK{}
 }
 
-/*FindConfigInMemoryCompactionLimitInMbOK handles this case with default header values.
+/*
+FindConfigInMemoryCompactionLimitInMbOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigInMemoryCompactionLimitInMbDefault(code int) *FindConfigInMemo
 	}
 }
 
-/*FindConfigInMemoryCompactionLimitInMbDefault handles this case with default header values.
+/*
+FindConfigInMemoryCompactionLimitInMbDefault handles this case with default header values.
 
 unexpected error
 */

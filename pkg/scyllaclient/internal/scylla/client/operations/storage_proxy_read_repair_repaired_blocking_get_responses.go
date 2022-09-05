@@ -48,7 +48,8 @@ func NewStorageProxyReadRepairRepairedBlockingGetOK() *StorageProxyReadRepairRep
 	return &StorageProxyReadRepairRepairedBlockingGetOK{}
 }
 
-/*StorageProxyReadRepairRepairedBlockingGetOK handles this case with default header values.
+/*
+StorageProxyReadRepairRepairedBlockingGetOK handles this case with default header values.
 
 StorageProxyReadRepairRepairedBlockingGetOK storage proxy read repair repaired blocking get o k
 */
@@ -77,7 +78,8 @@ func NewStorageProxyReadRepairRepairedBlockingGetDefault(code int) *StorageProxy
 	}
 }
 
-/*StorageProxyReadRepairRepairedBlockingGetDefault handles this case with default header values.
+/*
+StorageProxyReadRepairRepairedBlockingGetDefault handles this case with default header values.
 
 internal server error
 */

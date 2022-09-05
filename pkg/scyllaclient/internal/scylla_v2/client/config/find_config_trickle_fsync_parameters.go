@@ -56,7 +56,8 @@ func NewFindConfigTrickleFsyncParamsWithHTTPClient(client *http.Client) *FindCon
 	}
 }
 
-/*FindConfigTrickleFsyncParams contains all the parameters to send to the API endpoint
+/*
+FindConfigTrickleFsyncParams contains all the parameters to send to the API endpoint
 for the find config trickle fsync operation typically these are written to a http.Request
 */
 type FindConfigTrickleFsyncParams struct {

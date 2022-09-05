@@ -48,7 +48,8 @@ func NewFindConfigAPIPortOK() *FindConfigAPIPortOK {
 	return &FindConfigAPIPortOK{}
 }
 
-/*FindConfigAPIPortOK handles this case with default header values.
+/*
+FindConfigAPIPortOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigAPIPortDefault(code int) *FindConfigAPIPortDefault {
 	}
 }
 
-/*FindConfigAPIPortDefault handles this case with default header values.
+/*
+FindConfigAPIPortDefault handles this case with default header values.
 
 unexpected error
 */

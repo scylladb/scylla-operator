@@ -56,7 +56,8 @@ func NewFindConfigDynamicSnitchBadnessThresholdParamsWithHTTPClient(client *http
 	}
 }
 
-/*FindConfigDynamicSnitchBadnessThresholdParams contains all the parameters to send to the API endpoint
+/*
+FindConfigDynamicSnitchBadnessThresholdParams contains all the parameters to send to the API endpoint
 for the find config dynamic snitch badness threshold operation typically these are written to a http.Request
 */
 type FindConfigDynamicSnitchBadnessThresholdParams struct {

@@ -48,7 +48,8 @@ func NewCommitLogMetricsWaitingOnSegmentAllocationGetOK() *CommitLogMetricsWaiti
 	return &CommitLogMetricsWaitingOnSegmentAllocationGetOK{}
 }
 
-/*CommitLogMetricsWaitingOnSegmentAllocationGetOK handles this case with default header values.
+/*
+CommitLogMetricsWaitingOnSegmentAllocationGetOK handles this case with default header values.
 
 CommitLogMetricsWaitingOnSegmentAllocationGetOK commit log metrics waiting on segment allocation get o k
 */
@@ -67,7 +68,8 @@ func NewCommitLogMetricsWaitingOnSegmentAllocationGetDefault(code int) *CommitLo
 	}
 }
 
-/*CommitLogMetricsWaitingOnSegmentAllocationGetDefault handles this case with default header values.
+/*
+CommitLogMetricsWaitingOnSegmentAllocationGetDefault handles this case with default header values.
 
 internal server error
 */

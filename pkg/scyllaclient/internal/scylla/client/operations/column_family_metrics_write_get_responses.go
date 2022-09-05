@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsWriteGetOK() *ColumnFamilyMetricsWriteGetOK {
 	return &ColumnFamilyMetricsWriteGetOK{}
 }
 
-/*ColumnFamilyMetricsWriteGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsWriteGetOK handles this case with default header values.
 
 ColumnFamilyMetricsWriteGetOK column family metrics write get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsWriteGetDefault(code int) *ColumnFamilyMetricsWriteGe
 	}
 }
 
-/*ColumnFamilyMetricsWriteGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsWriteGetDefault handles this case with default header values.
 
 internal server error
 */

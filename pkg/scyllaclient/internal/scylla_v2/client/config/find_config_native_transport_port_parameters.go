@@ -56,7 +56,8 @@ func NewFindConfigNativeTransportPortParamsWithHTTPClient(client *http.Client) *
 	}
 }
 
-/*FindConfigNativeTransportPortParams contains all the parameters to send to the API endpoint
+/*
+FindConfigNativeTransportPortParams contains all the parameters to send to the API endpoint
 for the find config native transport port operation typically these are written to a http.Request
 */
 type FindConfigNativeTransportPortParams struct {

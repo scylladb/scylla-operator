@@ -56,7 +56,8 @@ func NewFindConfigCompactionRowsCountWarningThresholdParamsWithHTTPClient(client
 	}
 }
 
-/*FindConfigCompactionRowsCountWarningThresholdParams contains all the parameters to send to the API endpoint
+/*
+FindConfigCompactionRowsCountWarningThresholdParams contains all the parameters to send to the API endpoint
 for the find config compaction rows count warning threshold operation typically these are written to a http.Request
 */
 type FindConfigCompactionRowsCountWarningThresholdParams struct {

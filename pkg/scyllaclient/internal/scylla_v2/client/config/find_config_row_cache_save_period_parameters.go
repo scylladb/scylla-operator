@@ -56,7 +56,8 @@ func NewFindConfigRowCacheSavePeriodParamsWithHTTPClient(client *http.Client) *F
 	}
 }
 
-/*FindConfigRowCacheSavePeriodParams contains all the parameters to send to the API endpoint
+/*
+FindConfigRowCacheSavePeriodParams contains all the parameters to send to the API endpoint
 for the find config row cache save period operation typically these are written to a http.Request
 */
 type FindConfigRowCacheSavePeriodParams struct {

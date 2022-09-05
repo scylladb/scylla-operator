@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsWriteLatencyMovingAverageHistogramByNameGetOK() *Colu
 	return &ColumnFamilyMetricsWriteLatencyMovingAverageHistogramByNameGetOK{}
 }
 
-/*ColumnFamilyMetricsWriteLatencyMovingAverageHistogramByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsWriteLatencyMovingAverageHistogramByNameGetOK handles this case with default header values.
 
 ColumnFamilyMetricsWriteLatencyMovingAverageHistogramByNameGetOK column family metrics write latency moving average histogram by name get o k
 */
@@ -67,7 +68,8 @@ func NewColumnFamilyMetricsWriteLatencyMovingAverageHistogramByNameGetDefault(co
 	}
 }
 
-/*ColumnFamilyMetricsWriteLatencyMovingAverageHistogramByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsWriteLatencyMovingAverageHistogramByNameGetDefault handles this case with default header values.
 
 internal server error
 */

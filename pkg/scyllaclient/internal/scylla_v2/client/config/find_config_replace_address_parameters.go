@@ -56,7 +56,8 @@ func NewFindConfigReplaceAddressParamsWithHTTPClient(client *http.Client) *FindC
 	}
 }
 
-/*FindConfigReplaceAddressParams contains all the parameters to send to the API endpoint
+/*
+FindConfigReplaceAddressParams contains all the parameters to send to the API endpoint
 for the find config replace address operation typically these are written to a http.Request
 */
 type FindConfigReplaceAddressParams struct {

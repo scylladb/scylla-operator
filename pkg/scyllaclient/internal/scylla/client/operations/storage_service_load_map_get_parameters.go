@@ -56,7 +56,8 @@ func NewStorageServiceLoadMapGetParamsWithHTTPClient(client *http.Client) *Stora
 	}
 }
 
-/*StorageServiceLoadMapGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceLoadMapGetParams contains all the parameters to send to the API endpoint
 for the storage service load map get operation typically these are written to a http.Request
 */
 type StorageServiceLoadMapGetParams struct {

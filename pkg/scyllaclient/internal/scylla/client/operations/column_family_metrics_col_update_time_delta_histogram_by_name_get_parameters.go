@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsColUpdateTimeDeltaHistogramByNameGetParamsWithHTTPCli
 	}
 }
 
-/*ColumnFamilyMetricsColUpdateTimeDeltaHistogramByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsColUpdateTimeDeltaHistogramByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics col update time delta histogram by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsColUpdateTimeDeltaHistogramByNameGetParams struct {

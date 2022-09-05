@@ -56,7 +56,8 @@ func NewGossiperHeartBeatVersionByAddrGetParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*GossiperHeartBeatVersionByAddrGetParams contains all the parameters to send to the API endpoint
+/*
+GossiperHeartBeatVersionByAddrGetParams contains all the parameters to send to the API endpoint
 for the gossiper heart beat version by addr get operation typically these are written to a http.Request
 */
 type GossiperHeartBeatVersionByAddrGetParams struct {

@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsWriteGetParamsWithHTTPClient(client *http.Client) *Co
 	}
 }
 
-/*ColumnFamilyMetricsWriteGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsWriteGetParams contains all the parameters to send to the API endpoint
 for the column family metrics write get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsWriteGetParams struct {

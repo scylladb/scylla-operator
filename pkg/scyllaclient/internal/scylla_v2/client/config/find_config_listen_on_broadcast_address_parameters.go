@@ -56,7 +56,8 @@ func NewFindConfigListenOnBroadcastAddressParamsWithHTTPClient(client *http.Clie
 	}
 }
 
-/*FindConfigListenOnBroadcastAddressParams contains all the parameters to send to the API endpoint
+/*
+FindConfigListenOnBroadcastAddressParams contains all the parameters to send to the API endpoint
 for the find config listen on broadcast address operation typically these are written to a http.Request
 */
 type FindConfigListenOnBroadcastAddressParams struct {

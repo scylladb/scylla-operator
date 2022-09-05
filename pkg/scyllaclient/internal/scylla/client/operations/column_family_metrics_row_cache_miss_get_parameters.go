@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsRowCacheMissGetParamsWithHTTPClient(client *http.Clie
 	}
 }
 
-/*ColumnFamilyMetricsRowCacheMissGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsRowCacheMissGetParams contains all the parameters to send to the API endpoint
 for the column family metrics row cache miss get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsRowCacheMissGetParams struct {

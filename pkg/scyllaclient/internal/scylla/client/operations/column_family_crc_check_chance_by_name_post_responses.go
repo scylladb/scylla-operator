@@ -48,7 +48,8 @@ func NewColumnFamilyCrcCheckChanceByNamePostOK() *ColumnFamilyCrcCheckChanceByNa
 	return &ColumnFamilyCrcCheckChanceByNamePostOK{}
 }
 
-/*ColumnFamilyCrcCheckChanceByNamePostOK handles this case with default header values.
+/*
+ColumnFamilyCrcCheckChanceByNamePostOK handles this case with default header values.
 
 ColumnFamilyCrcCheckChanceByNamePostOK column family crc check chance by name post o k
 */
@@ -67,7 +68,8 @@ func NewColumnFamilyCrcCheckChanceByNamePostDefault(code int) *ColumnFamilyCrcCh
 	}
 }
 
-/*ColumnFamilyCrcCheckChanceByNamePostDefault handles this case with default header values.
+/*
+ColumnFamilyCrcCheckChanceByNamePostDefault handles this case with default header values.
 
 internal server error
 */

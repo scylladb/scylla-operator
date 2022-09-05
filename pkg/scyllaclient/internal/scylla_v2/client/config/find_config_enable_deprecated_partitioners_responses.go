@@ -48,7 +48,8 @@ func NewFindConfigEnableDeprecatedPartitionersOK() *FindConfigEnableDeprecatedPa
 	return &FindConfigEnableDeprecatedPartitionersOK{}
 }
 
-/*FindConfigEnableDeprecatedPartitionersOK handles this case with default header values.
+/*
+FindConfigEnableDeprecatedPartitionersOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigEnableDeprecatedPartitionersDefault(code int) *FindConfigEnabl
 	}
 }
 
-/*FindConfigEnableDeprecatedPartitionersDefault handles this case with default header values.
+/*
+FindConfigEnableDeprecatedPartitionersDefault handles this case with default header values.
 
 unexpected error
 */

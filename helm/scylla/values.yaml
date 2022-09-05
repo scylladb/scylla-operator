@@ -44,7 +44,6 @@ repairs: []
 
 # scyllaArgs will be appended to Scylla binary startup parameters.
 scyllaArgs: ""
-# --memory 1g
 
 # Name of datacenter
 datacenter: "us-east-1"

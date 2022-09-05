@@ -42,7 +42,7 @@ backups: []
 # Scylla Manager Repair task definition
 repairs: []
 
-# scyllaArgs will be appended to Scylla binary during startup. This is supported from 4.2.0 Scylla version.
+# scyllaArgs will be appended to Scylla binary startup parameters.
 scyllaArgs: ""
 # --memory 1g
 

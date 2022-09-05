@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsMinRowSizeByNameGetParamsWithHTTPClient(client *http.
 	}
 }
 
-/*ColumnFamilyMetricsMinRowSizeByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsMinRowSizeByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics min row size by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsMinRowSizeByNameGetParams struct {

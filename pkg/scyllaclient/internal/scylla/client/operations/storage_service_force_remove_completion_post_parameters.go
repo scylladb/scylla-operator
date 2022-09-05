@@ -56,7 +56,8 @@ func NewStorageServiceForceRemoveCompletionPostParamsWithHTTPClient(client *http
 	}
 }
 
-/*StorageServiceForceRemoveCompletionPostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceForceRemoveCompletionPostParams contains all the parameters to send to the API endpoint
 for the storage service force remove completion post operation typically these are written to a http.Request
 */
 type StorageServiceForceRemoveCompletionPostParams struct {

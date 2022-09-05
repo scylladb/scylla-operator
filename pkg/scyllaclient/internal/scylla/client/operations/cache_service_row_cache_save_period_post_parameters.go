@@ -57,7 +57,8 @@ func NewCacheServiceRowCacheSavePeriodPostParamsWithHTTPClient(client *http.Clie
 	}
 }
 
-/*CacheServiceRowCacheSavePeriodPostParams contains all the parameters to send to the API endpoint
+/*
+CacheServiceRowCacheSavePeriodPostParams contains all the parameters to send to the API endpoint
 for the cache service row cache save period post operation typically these are written to a http.Request
 */
 type CacheServiceRowCacheSavePeriodPostParams struct {

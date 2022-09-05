@@ -209,7 +209,7 @@ func (o *WebhookOptions) run(ctx context.Context, streams genericclioptions.IOSt
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			o.dynamicCertKeyPairContent.Run(1, ctx.Done())
+			o.dynamicCertKeyPairContent.Run(ctx, 1)
 		}()
 	}
 

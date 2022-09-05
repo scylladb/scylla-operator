@@ -48,7 +48,8 @@ func NewFindConfigInternodeCompressionOK() *FindConfigInternodeCompressionOK {
 	return &FindConfigInternodeCompressionOK{}
 }
 
-/*FindConfigInternodeCompressionOK handles this case with default header values.
+/*
+FindConfigInternodeCompressionOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigInternodeCompressionDefault(code int) *FindConfigInternodeComp
 	}
 }
 
-/*FindConfigInternodeCompressionDefault handles this case with default header values.
+/*
+FindConfigInternodeCompressionDefault handles this case with default header values.
 
 unexpected error
 */

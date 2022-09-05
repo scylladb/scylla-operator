@@ -49,7 +49,8 @@ func NewOperationsCatOK() *OperationsCatOK {
 	return &OperationsCatOK{}
 }
 
-/*OperationsCatOK handles this case with default header values.
+/*
+OperationsCatOK handles this case with default header values.
 
 File system details
 */
@@ -89,7 +90,8 @@ func NewOperationsCatDefault(code int) *OperationsCatDefault {
 	}
 }
 
-/*OperationsCatDefault handles this case with default header values.
+/*
+OperationsCatDefault handles this case with default header values.
 
 Server error
 */

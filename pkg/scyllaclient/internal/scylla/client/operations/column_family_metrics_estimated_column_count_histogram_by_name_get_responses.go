@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsEstimatedColumnCountHistogramByNameGetOK() *ColumnFam
 	return &ColumnFamilyMetricsEstimatedColumnCountHistogramByNameGetOK{}
 }
 
-/*ColumnFamilyMetricsEstimatedColumnCountHistogramByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsEstimatedColumnCountHistogramByNameGetOK handles this case with default header values.
 
 ColumnFamilyMetricsEstimatedColumnCountHistogramByNameGetOK column family metrics estimated column count histogram by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsEstimatedColumnCountHistogramByNameGetDefault(code in
 	}
 }
 
-/*ColumnFamilyMetricsEstimatedColumnCountHistogramByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsEstimatedColumnCountHistogramByNameGetDefault handles this case with default header values.
 
 internal server error
 */

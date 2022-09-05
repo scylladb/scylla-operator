@@ -48,7 +48,8 @@ func NewFindConfigTruncateRequestTimeoutInMsOK() *FindConfigTruncateRequestTimeo
 	return &FindConfigTruncateRequestTimeoutInMsOK{}
 }
 
-/*FindConfigTruncateRequestTimeoutInMsOK handles this case with default header values.
+/*
+FindConfigTruncateRequestTimeoutInMsOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigTruncateRequestTimeoutInMsDefault(code int) *FindConfigTruncat
 	}
 }
 
-/*FindConfigTruncateRequestTimeoutInMsDefault handles this case with default header values.
+/*
+FindConfigTruncateRequestTimeoutInMsDefault handles this case with default header values.
 
 unexpected error
 */

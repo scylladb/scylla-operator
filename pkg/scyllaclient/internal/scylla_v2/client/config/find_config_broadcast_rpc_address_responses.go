@@ -48,7 +48,8 @@ func NewFindConfigBroadcastRPCAddressOK() *FindConfigBroadcastRPCAddressOK {
 	return &FindConfigBroadcastRPCAddressOK{}
 }
 
-/*FindConfigBroadcastRPCAddressOK handles this case with default header values.
+/*
+FindConfigBroadcastRPCAddressOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigBroadcastRPCAddressDefault(code int) *FindConfigBroadcastRPCAd
 	}
 }
 
-/*FindConfigBroadcastRPCAddressDefault handles this case with default header values.
+/*
+FindConfigBroadcastRPCAddressDefault handles this case with default header values.
 
 unexpected error
 */

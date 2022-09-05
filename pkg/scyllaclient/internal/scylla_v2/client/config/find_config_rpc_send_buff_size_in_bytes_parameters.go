@@ -56,7 +56,8 @@ func NewFindConfigRPCSendBuffSizeInBytesParamsWithHTTPClient(client *http.Client
 	}
 }
 
-/*FindConfigRPCSendBuffSizeInBytesParams contains all the parameters to send to the API endpoint
+/*
+FindConfigRPCSendBuffSizeInBytesParams contains all the parameters to send to the API endpoint
 for the find config rpc send buff size in bytes operation typically these are written to a http.Request
 */
 type FindConfigRPCSendBuffSizeInBytesParams struct {

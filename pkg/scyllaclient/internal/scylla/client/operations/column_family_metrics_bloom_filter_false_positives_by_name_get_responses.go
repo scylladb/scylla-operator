@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsBloomFilterFalsePositivesByNameGetOK() *ColumnFamilyM
 	return &ColumnFamilyMetricsBloomFilterFalsePositivesByNameGetOK{}
 }
 
-/*ColumnFamilyMetricsBloomFilterFalsePositivesByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsBloomFilterFalsePositivesByNameGetOK handles this case with default header values.
 
 ColumnFamilyMetricsBloomFilterFalsePositivesByNameGetOK column family metrics bloom filter false positives by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsBloomFilterFalsePositivesByNameGetDefault(code int) *
 	}
 }
 
-/*ColumnFamilyMetricsBloomFilterFalsePositivesByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsBloomFilterFalsePositivesByNameGetDefault handles this case with default header values.
 
 internal server error
 */

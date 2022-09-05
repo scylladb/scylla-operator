@@ -48,7 +48,8 @@ func NewColumnFamilyNameGetOK() *ColumnFamilyNameGetOK {
 	return &ColumnFamilyNameGetOK{}
 }
 
-/*ColumnFamilyNameGetOK handles this case with default header values.
+/*
+ColumnFamilyNameGetOK handles this case with default header values.
 
 ColumnFamilyNameGetOK column family name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyNameGetDefault(code int) *ColumnFamilyNameGetDefault {
 	}
 }
 
-/*ColumnFamilyNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyNameGetDefault handles this case with default header values.
 
 internal server error
 */

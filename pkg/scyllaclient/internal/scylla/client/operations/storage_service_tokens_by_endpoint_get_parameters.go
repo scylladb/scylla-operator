@@ -56,7 +56,8 @@ func NewStorageServiceTokensByEndpointGetParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*StorageServiceTokensByEndpointGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceTokensByEndpointGetParams contains all the parameters to send to the API endpoint
 for the storage service tokens by endpoint get operation typically these are written to a http.Request
 */
 type StorageServiceTokensByEndpointGetParams struct {

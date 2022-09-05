@@ -56,7 +56,8 @@ func NewLsaCompactPostParamsWithHTTPClient(client *http.Client) *LsaCompactPostP
 	}
 }
 
-/*LsaCompactPostParams contains all the parameters to send to the API endpoint
+/*
+LsaCompactPostParams contains all the parameters to send to the API endpoint
 for the lsa compact post operation typically these are written to a http.Request
 */
 type LsaCompactPostParams struct {

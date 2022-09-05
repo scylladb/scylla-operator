@@ -56,7 +56,8 @@ func NewStorageServiceDecommissionPostParamsWithHTTPClient(client *http.Client) 
 	}
 }
 
-/*StorageServiceDecommissionPostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceDecommissionPostParams contains all the parameters to send to the API endpoint
 for the storage service decommission post operation typically these are written to a http.Request
 */
 type StorageServiceDecommissionPostParams struct {

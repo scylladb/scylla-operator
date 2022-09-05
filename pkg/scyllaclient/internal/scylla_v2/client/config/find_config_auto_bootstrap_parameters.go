@@ -56,7 +56,8 @@ func NewFindConfigAutoBootstrapParamsWithHTTPClient(client *http.Client) *FindCo
 	}
 }
 
-/*FindConfigAutoBootstrapParams contains all the parameters to send to the API endpoint
+/*
+FindConfigAutoBootstrapParams contains all the parameters to send to the API endpoint
 for the find config auto bootstrap operation typically these are written to a http.Request
 */
 type FindConfigAutoBootstrapParams struct {

@@ -48,7 +48,8 @@ func NewColumnFamilyMinimumCompactionByNamePostOK() *ColumnFamilyMinimumCompacti
 	return &ColumnFamilyMinimumCompactionByNamePostOK{}
 }
 
-/*ColumnFamilyMinimumCompactionByNamePostOK handles this case with default header values.
+/*
+ColumnFamilyMinimumCompactionByNamePostOK handles this case with default header values.
 
 ColumnFamilyMinimumCompactionByNamePostOK column family minimum compaction by name post o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMinimumCompactionByNamePostDefault(code int) *ColumnFamilyMi
 	}
 }
 
-/*ColumnFamilyMinimumCompactionByNamePostDefault handles this case with default header values.
+/*
+ColumnFamilyMinimumCompactionByNamePostDefault handles this case with default header values.
 
 internal server error
 */

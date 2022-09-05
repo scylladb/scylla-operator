@@ -56,7 +56,8 @@ func NewFindConfigEnableCacheParamsWithHTTPClient(client *http.Client) *FindConf
 	}
 }
 
-/*FindConfigEnableCacheParams contains all the parameters to send to the API endpoint
+/*
+FindConfigEnableCacheParams contains all the parameters to send to the API endpoint
 for the find config enable cache operation typically these are written to a http.Request
 */
 type FindConfigEnableCacheParams struct {

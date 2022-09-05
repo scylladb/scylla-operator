@@ -56,7 +56,8 @@ func NewStorageServiceRemovalStatusGetParamsWithHTTPClient(client *http.Client) 
 	}
 }
 
-/*StorageServiceRemovalStatusGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceRemovalStatusGetParams contains all the parameters to send to the API endpoint
 for the storage service removal status get operation typically these are written to a http.Request
 */
 type StorageServiceRemovalStatusGetParams struct {

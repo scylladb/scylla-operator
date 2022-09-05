@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsReadLatencyMovingAverageHistogramGetParamsWithHTTPCli
 	}
 }
 
-/*ColumnFamilyMetricsReadLatencyMovingAverageHistogramGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsReadLatencyMovingAverageHistogramGetParams contains all the parameters to send to the API endpoint
 for the column family metrics read latency moving average histogram get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsReadLatencyMovingAverageHistogramGetParams struct {

@@ -56,7 +56,8 @@ func NewFindConfigListenInterfaceParamsWithHTTPClient(client *http.Client) *Find
 	}
 }
 
-/*FindConfigListenInterfaceParams contains all the parameters to send to the API endpoint
+/*
+FindConfigListenInterfaceParams contains all the parameters to send to the API endpoint
 for the find config listen interface operation typically these are written to a http.Request
 */
 type FindConfigListenInterfaceParams struct {

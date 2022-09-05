@@ -56,7 +56,8 @@ func NewStorageServiceActiveRepairGetParamsWithHTTPClient(client *http.Client) *
 	}
 }
 
-/*StorageServiceActiveRepairGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceActiveRepairGetParams contains all the parameters to send to the API endpoint
 for the storage service active repair get operation typically these are written to a http.Request
 */
 type StorageServiceActiveRepairGetParams struct {

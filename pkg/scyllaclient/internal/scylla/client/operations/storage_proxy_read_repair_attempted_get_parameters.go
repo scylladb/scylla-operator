@@ -56,7 +56,8 @@ func NewStorageProxyReadRepairAttemptedGetParamsWithHTTPClient(client *http.Clie
 	}
 }
 
-/*StorageProxyReadRepairAttemptedGetParams contains all the parameters to send to the API endpoint
+/*
+StorageProxyReadRepairAttemptedGetParams contains all the parameters to send to the API endpoint
 for the storage proxy read repair attempted get operation typically these are written to a http.Request
 */
 type StorageProxyReadRepairAttemptedGetParams struct {

@@ -56,7 +56,8 @@ func NewFindConfigReplaceAddressFirstBootParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*FindConfigReplaceAddressFirstBootParams contains all the parameters to send to the API endpoint
+/*
+FindConfigReplaceAddressFirstBootParams contains all the parameters to send to the API endpoint
 for the find config replace address first boot operation typically these are written to a http.Request
 */
 type FindConfigReplaceAddressFirstBootParams struct {

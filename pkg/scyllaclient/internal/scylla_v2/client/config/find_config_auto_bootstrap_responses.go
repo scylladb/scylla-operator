@@ -48,7 +48,8 @@ func NewFindConfigAutoBootstrapOK() *FindConfigAutoBootstrapOK {
 	return &FindConfigAutoBootstrapOK{}
 }
 
-/*FindConfigAutoBootstrapOK handles this case with default header values.
+/*
+FindConfigAutoBootstrapOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigAutoBootstrapDefault(code int) *FindConfigAutoBootstrapDefault
 	}
 }
 
-/*FindConfigAutoBootstrapDefault handles this case with default header values.
+/*
+FindConfigAutoBootstrapDefault handles this case with default header values.
 
 unexpected error
 */

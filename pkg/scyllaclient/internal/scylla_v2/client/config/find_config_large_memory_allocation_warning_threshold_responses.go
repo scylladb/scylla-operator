@@ -48,7 +48,8 @@ func NewFindConfigLargeMemoryAllocationWarningThresholdOK() *FindConfigLargeMemo
 	return &FindConfigLargeMemoryAllocationWarningThresholdOK{}
 }
 
-/*FindConfigLargeMemoryAllocationWarningThresholdOK handles this case with default header values.
+/*
+FindConfigLargeMemoryAllocationWarningThresholdOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigLargeMemoryAllocationWarningThresholdDefault(code int) *FindCo
 	}
 }
 
-/*FindConfigLargeMemoryAllocationWarningThresholdDefault handles this case with default header values.
+/*
+FindConfigLargeMemoryAllocationWarningThresholdDefault handles this case with default header values.
 
 unexpected error
 */

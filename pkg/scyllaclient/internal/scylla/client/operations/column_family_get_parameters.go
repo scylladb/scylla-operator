@@ -56,7 +56,8 @@ func NewColumnFamilyGetParamsWithHTTPClient(client *http.Client) *ColumnFamilyGe
 	}
 }
 
-/*ColumnFamilyGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyGetParams contains all the parameters to send to the API endpoint
 for the column family get operation typically these are written to a http.Request
 */
 type ColumnFamilyGetParams struct {

@@ -56,7 +56,8 @@ func NewStorageServicePendingRangeByKeyspaceGetParamsWithHTTPClient(client *http
 	}
 }
 
-/*StorageServicePendingRangeByKeyspaceGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServicePendingRangeByKeyspaceGetParams contains all the parameters to send to the API endpoint
 for the storage service pending range by keyspace get operation typically these are written to a http.Request
 */
 type StorageServicePendingRangeByKeyspaceGetParams struct {

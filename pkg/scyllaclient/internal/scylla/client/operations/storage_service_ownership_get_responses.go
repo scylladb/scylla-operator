@@ -48,7 +48,8 @@ func NewStorageServiceOwnershipGetOK() *StorageServiceOwnershipGetOK {
 	return &StorageServiceOwnershipGetOK{}
 }
 
-/*StorageServiceOwnershipGetOK handles this case with default header values.
+/*
+StorageServiceOwnershipGetOK handles this case with default header values.
 
 StorageServiceOwnershipGetOK storage service ownership get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceOwnershipGetDefault(code int) *StorageServiceOwnershipGetD
 	}
 }
 
-/*StorageServiceOwnershipGetDefault handles this case with default header values.
+/*
+StorageServiceOwnershipGetDefault handles this case with default header values.
 
 internal server error
 */

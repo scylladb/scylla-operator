@@ -57,7 +57,8 @@ func NewStorageServiceKeyspaceUpgradeSstablesByKeyspaceGetParamsWithHTTPClient(c
 	}
 }
 
-/*StorageServiceKeyspaceUpgradeSstablesByKeyspaceGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceKeyspaceUpgradeSstablesByKeyspaceGetParams contains all the parameters to send to the API endpoint
 for the storage service keyspace upgrade sstables by keyspace get operation typically these are written to a http.Request
 */
 type StorageServiceKeyspaceUpgradeSstablesByKeyspaceGetParams struct {

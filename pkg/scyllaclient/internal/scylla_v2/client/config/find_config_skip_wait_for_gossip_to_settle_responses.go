@@ -48,7 +48,8 @@ func NewFindConfigSkipWaitForGossipToSettleOK() *FindConfigSkipWaitForGossipToSe
 	return &FindConfigSkipWaitForGossipToSettleOK{}
 }
 
-/*FindConfigSkipWaitForGossipToSettleOK handles this case with default header values.
+/*
+FindConfigSkipWaitForGossipToSettleOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigSkipWaitForGossipToSettleDefault(code int) *FindConfigSkipWait
 	}
 }
 
-/*FindConfigSkipWaitForGossipToSettleDefault handles this case with default header values.
+/*
+FindConfigSkipWaitForGossipToSettleDefault handles this case with default header values.
 
 unexpected error
 */

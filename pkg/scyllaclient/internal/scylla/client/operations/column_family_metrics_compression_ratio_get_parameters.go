@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsCompressionRatioGetParamsWithHTTPClient(client *http.
 	}
 }
 
-/*ColumnFamilyMetricsCompressionRatioGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsCompressionRatioGetParams contains all the parameters to send to the API endpoint
 for the column family metrics compression ratio get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsCompressionRatioGetParams struct {

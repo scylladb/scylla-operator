@@ -48,7 +48,8 @@ func NewCommitlogMetricsTotalCommitLogSizeGetOK() *CommitlogMetricsTotalCommitLo
 	return &CommitlogMetricsTotalCommitLogSizeGetOK{}
 }
 
-/*CommitlogMetricsTotalCommitLogSizeGetOK handles this case with default header values.
+/*
+CommitlogMetricsTotalCommitLogSizeGetOK handles this case with default header values.
 
 CommitlogMetricsTotalCommitLogSizeGetOK commitlog metrics total commit log size get o k
 */
@@ -77,7 +78,8 @@ func NewCommitlogMetricsTotalCommitLogSizeGetDefault(code int) *CommitlogMetrics
 	}
 }
 
-/*CommitlogMetricsTotalCommitLogSizeGetDefault handles this case with default header values.
+/*
+CommitlogMetricsTotalCommitLogSizeGetDefault handles this case with default header values.
 
 internal server error
 */

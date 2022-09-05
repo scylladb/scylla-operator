@@ -48,7 +48,8 @@ func NewFindConfigCommitlogSyncBatchWindowInMsOK() *FindConfigCommitlogSyncBatch
 	return &FindConfigCommitlogSyncBatchWindowInMsOK{}
 }
 
-/*FindConfigCommitlogSyncBatchWindowInMsOK handles this case with default header values.
+/*
+FindConfigCommitlogSyncBatchWindowInMsOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigCommitlogSyncBatchWindowInMsDefault(code int) *FindConfigCommi
 	}
 }
 
-/*FindConfigCommitlogSyncBatchWindowInMsDefault handles this case with default header values.
+/*
+FindConfigCommitlogSyncBatchWindowInMsDefault handles this case with default header values.
 
 unexpected error
 */

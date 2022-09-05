@@ -56,7 +56,8 @@ func NewStorageServiceJoinRingPostParamsWithHTTPClient(client *http.Client) *Sto
 	}
 }
 
-/*StorageServiceJoinRingPostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceJoinRingPostParams contains all the parameters to send to the API endpoint
 for the storage service join ring post operation typically these are written to a http.Request
 */
 type StorageServiceJoinRingPostParams struct {

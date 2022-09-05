@@ -56,7 +56,8 @@ func NewFindConfigInMemoryCompactionLimitInMbParamsWithHTTPClient(client *http.C
 	}
 }
 
-/*FindConfigInMemoryCompactionLimitInMbParams contains all the parameters to send to the API endpoint
+/*
+FindConfigInMemoryCompactionLimitInMbParams contains all the parameters to send to the API endpoint
 for the find config in memory compaction limit in mb operation typically these are written to a http.Request
 */
 type FindConfigInMemoryCompactionLimitInMbParams struct {

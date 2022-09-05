@@ -48,7 +48,8 @@ func NewFindConfigEnableDangerousDirectImportOfCassandraCountersOK() *FindConfig
 	return &FindConfigEnableDangerousDirectImportOfCassandraCountersOK{}
 }
 
-/*FindConfigEnableDangerousDirectImportOfCassandraCountersOK handles this case with default header values.
+/*
+FindConfigEnableDangerousDirectImportOfCassandraCountersOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigEnableDangerousDirectImportOfCassandraCountersDefault(code int
 	}
 }
 
-/*FindConfigEnableDangerousDirectImportOfCassandraCountersDefault handles this case with default header values.
+/*
+FindConfigEnableDangerousDirectImportOfCassandraCountersDefault handles this case with default header values.
 
 unexpected error
 */

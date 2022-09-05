@@ -48,7 +48,8 @@ func NewSystemLoggerGetOK() *SystemLoggerGetOK {
 	return &SystemLoggerGetOK{}
 }
 
-/*SystemLoggerGetOK handles this case with default header values.
+/*
+SystemLoggerGetOK handles this case with default header values.
 
 SystemLoggerGetOK system logger get o k
 */
@@ -77,7 +78,8 @@ func NewSystemLoggerGetDefault(code int) *SystemLoggerGetDefault {
 	}
 }
 
-/*SystemLoggerGetDefault handles this case with default header values.
+/*
+SystemLoggerGetDefault handles this case with default header values.
 
 internal server error
 */

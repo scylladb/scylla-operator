@@ -48,7 +48,8 @@ func NewMessagingServiceVersionGetOK() *MessagingServiceVersionGetOK {
 	return &MessagingServiceVersionGetOK{}
 }
 
-/*MessagingServiceVersionGetOK handles this case with default header values.
+/*
+MessagingServiceVersionGetOK handles this case with default header values.
 
 MessagingServiceVersionGetOK messaging service version get o k
 */
@@ -77,7 +78,8 @@ func NewMessagingServiceVersionGetDefault(code int) *MessagingServiceVersionGetD
 	}
 }
 
-/*MessagingServiceVersionGetDefault handles this case with default header values.
+/*
+MessagingServiceVersionGetDefault handles this case with default header values.
 
 internal server error
 */

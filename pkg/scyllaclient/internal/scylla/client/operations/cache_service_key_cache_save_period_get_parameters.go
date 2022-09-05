@@ -56,7 +56,8 @@ func NewCacheServiceKeyCacheSavePeriodGetParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*CacheServiceKeyCacheSavePeriodGetParams contains all the parameters to send to the API endpoint
+/*
+CacheServiceKeyCacheSavePeriodGetParams contains all the parameters to send to the API endpoint
 for the cache service key cache save period get operation typically these are written to a http.Request
 */
 type CacheServiceKeyCacheSavePeriodGetParams struct {

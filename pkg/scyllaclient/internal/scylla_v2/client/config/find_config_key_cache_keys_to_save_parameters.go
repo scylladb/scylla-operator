@@ -56,7 +56,8 @@ func NewFindConfigKeyCacheKeysToSaveParamsWithHTTPClient(client *http.Client) *F
 	}
 }
 
-/*FindConfigKeyCacheKeysToSaveParams contains all the parameters to send to the API endpoint
+/*
+FindConfigKeyCacheKeysToSaveParams contains all the parameters to send to the API endpoint
 for the find config key cache keys to save operation typically these are written to a http.Request
 */
 type FindConfigKeyCacheKeysToSaveParams struct {

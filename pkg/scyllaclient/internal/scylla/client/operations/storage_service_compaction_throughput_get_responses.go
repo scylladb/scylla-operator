@@ -48,7 +48,8 @@ func NewStorageServiceCompactionThroughputGetOK() *StorageServiceCompactionThrou
 	return &StorageServiceCompactionThroughputGetOK{}
 }
 
-/*StorageServiceCompactionThroughputGetOK handles this case with default header values.
+/*
+StorageServiceCompactionThroughputGetOK handles this case with default header values.
 
 StorageServiceCompactionThroughputGetOK storage service compaction throughput get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceCompactionThroughputGetDefault(code int) *StorageServiceCo
 	}
 }
 
-/*StorageServiceCompactionThroughputGetDefault handles this case with default header values.
+/*
+StorageServiceCompactionThroughputGetDefault handles this case with default header values.
 
 internal server error
 */

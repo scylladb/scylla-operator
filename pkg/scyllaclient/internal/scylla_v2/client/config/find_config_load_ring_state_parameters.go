@@ -56,7 +56,8 @@ func NewFindConfigLoadRingStateParamsWithHTTPClient(client *http.Client) *FindCo
 	}
 }
 
-/*FindConfigLoadRingStateParams contains all the parameters to send to the API endpoint
+/*
+FindConfigLoadRingStateParams contains all the parameters to send to the API endpoint
 for the find config load ring state operation typically these are written to a http.Request
 */
 type FindConfigLoadRingStateParams struct {

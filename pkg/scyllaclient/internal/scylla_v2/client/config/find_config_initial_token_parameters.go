@@ -56,7 +56,8 @@ func NewFindConfigInitialTokenParamsWithHTTPClient(client *http.Client) *FindCon
 	}
 }
 
-/*FindConfigInitialTokenParams contains all the parameters to send to the API endpoint
+/*
+FindConfigInitialTokenParams contains all the parameters to send to the API endpoint
 for the find config initial token operation typically these are written to a http.Request
 */
 type FindConfigInitialTokenParams struct {

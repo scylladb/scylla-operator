@@ -56,7 +56,8 @@ func NewStorageServiceGossipingDeleteParamsWithHTTPClient(client *http.Client) *
 	}
 }
 
-/*StorageServiceGossipingDeleteParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceGossipingDeleteParams contains all the parameters to send to the API endpoint
 for the storage service gossiping delete operation typically these are written to a http.Request
 */
 type StorageServiceGossipingDeleteParams struct {

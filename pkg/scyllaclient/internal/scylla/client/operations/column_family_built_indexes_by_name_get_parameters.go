@@ -56,7 +56,8 @@ func NewColumnFamilyBuiltIndexesByNameGetParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*ColumnFamilyBuiltIndexesByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyBuiltIndexesByNameGetParams contains all the parameters to send to the API endpoint
 for the column family built indexes by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyBuiltIndexesByNameGetParams struct {

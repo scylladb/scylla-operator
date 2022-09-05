@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsTotalDiskSpaceUsedByNameGetOK() *ColumnFamilyMetricsT
 	return &ColumnFamilyMetricsTotalDiskSpaceUsedByNameGetOK{}
 }
 
-/*ColumnFamilyMetricsTotalDiskSpaceUsedByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsTotalDiskSpaceUsedByNameGetOK handles this case with default header values.
 
 ColumnFamilyMetricsTotalDiskSpaceUsedByNameGetOK column family metrics total disk space used by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsTotalDiskSpaceUsedByNameGetDefault(code int) *ColumnF
 	}
 }
 
-/*ColumnFamilyMetricsTotalDiskSpaceUsedByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsTotalDiskSpaceUsedByNameGetDefault handles this case with default header values.
 
 internal server error
 */

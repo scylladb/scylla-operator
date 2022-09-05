@@ -56,7 +56,8 @@ func NewFindConfigBackgroundWriterSchedulingQuotaParamsWithHTTPClient(client *ht
 	}
 }
 
-/*FindConfigBackgroundWriterSchedulingQuotaParams contains all the parameters to send to the API endpoint
+/*
+FindConfigBackgroundWriterSchedulingQuotaParams contains all the parameters to send to the API endpoint
 for the find config background writer scheduling quota operation typically these are written to a http.Request
 */
 type FindConfigBackgroundWriterSchedulingQuotaParams struct {

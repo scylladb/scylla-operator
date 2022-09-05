@@ -56,7 +56,8 @@ func NewCacheServiceMetricsCounterEntriesGetParamsWithHTTPClient(client *http.Cl
 	}
 }
 
-/*CacheServiceMetricsCounterEntriesGetParams contains all the parameters to send to the API endpoint
+/*
+CacheServiceMetricsCounterEntriesGetParams contains all the parameters to send to the API endpoint
 for the cache service metrics counter entries get operation typically these are written to a http.Request
 */
 type CacheServiceMetricsCounterEntriesGetParams struct {

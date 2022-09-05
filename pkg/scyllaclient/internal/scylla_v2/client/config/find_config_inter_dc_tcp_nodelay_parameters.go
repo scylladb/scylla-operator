@@ -56,7 +56,8 @@ func NewFindConfigInterDcTCPNodelayParamsWithHTTPClient(client *http.Client) *Fi
 	}
 }
 
-/*FindConfigInterDcTCPNodelayParams contains all the parameters to send to the API endpoint
+/*
+FindConfigInterDcTCPNodelayParams contains all the parameters to send to the API endpoint
 for the find config inter dc tcp nodelay operation typically these are written to a http.Request
 */
 type FindConfigInterDcTCPNodelayParams struct {

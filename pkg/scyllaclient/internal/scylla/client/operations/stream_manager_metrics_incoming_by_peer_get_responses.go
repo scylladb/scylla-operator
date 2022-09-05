@@ -48,7 +48,8 @@ func NewStreamManagerMetricsIncomingByPeerGetOK() *StreamManagerMetricsIncomingB
 	return &StreamManagerMetricsIncomingByPeerGetOK{}
 }
 
-/*StreamManagerMetricsIncomingByPeerGetOK handles this case with default header values.
+/*
+StreamManagerMetricsIncomingByPeerGetOK handles this case with default header values.
 
 StreamManagerMetricsIncomingByPeerGetOK stream manager metrics incoming by peer get o k
 */
@@ -77,7 +78,8 @@ func NewStreamManagerMetricsIncomingByPeerGetDefault(code int) *StreamManagerMet
 	}
 }
 
-/*StreamManagerMetricsIncomingByPeerGetDefault handles this case with default header values.
+/*
+StreamManagerMetricsIncomingByPeerGetDefault handles this case with default header values.
 
 internal server error
 */

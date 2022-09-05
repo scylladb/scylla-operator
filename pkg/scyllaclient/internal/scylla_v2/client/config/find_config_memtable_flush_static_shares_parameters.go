@@ -56,7 +56,8 @@ func NewFindConfigMemtableFlushStaticSharesParamsWithHTTPClient(client *http.Cli
 	}
 }
 
-/*FindConfigMemtableFlushStaticSharesParams contains all the parameters to send to the API endpoint
+/*
+FindConfigMemtableFlushStaticSharesParams contains all the parameters to send to the API endpoint
 for the find config memtable flush static shares operation typically these are written to a http.Request
 */
 type FindConfigMemtableFlushStaticSharesParams struct {

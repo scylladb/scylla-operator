@@ -56,7 +56,8 @@ func NewCacheServiceMetricsKeyHitsMovingAvrageGetParamsWithHTTPClient(client *ht
 	}
 }
 
-/*CacheServiceMetricsKeyHitsMovingAvrageGetParams contains all the parameters to send to the API endpoint
+/*
+CacheServiceMetricsKeyHitsMovingAvrageGetParams contains all the parameters to send to the API endpoint
 for the cache service metrics key hits moving avrage get operation typically these are written to a http.Request
 */
 type CacheServiceMetricsKeyHitsMovingAvrageGetParams struct {

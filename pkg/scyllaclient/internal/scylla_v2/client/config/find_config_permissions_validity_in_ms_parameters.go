@@ -56,7 +56,8 @@ func NewFindConfigPermissionsValidityInMsParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*FindConfigPermissionsValidityInMsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigPermissionsValidityInMsParams contains all the parameters to send to the API endpoint
 for the find config permissions validity in ms operation typically these are written to a http.Request
 */
 type FindConfigPermissionsValidityInMsParams struct {

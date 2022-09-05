@@ -48,7 +48,8 @@ func NewCacheServiceMetricsCounterHitsGetOK() *CacheServiceMetricsCounterHitsGet
 	return &CacheServiceMetricsCounterHitsGetOK{}
 }
 
-/*CacheServiceMetricsCounterHitsGetOK handles this case with default header values.
+/*
+CacheServiceMetricsCounterHitsGetOK handles this case with default header values.
 
 CacheServiceMetricsCounterHitsGetOK cache service metrics counter hits get o k
 */
@@ -77,7 +78,8 @@ func NewCacheServiceMetricsCounterHitsGetDefault(code int) *CacheServiceMetricsC
 	}
 }
 
-/*CacheServiceMetricsCounterHitsGetDefault handles this case with default header values.
+/*
+CacheServiceMetricsCounterHitsGetDefault handles this case with default header values.
 
 internal server error
 */

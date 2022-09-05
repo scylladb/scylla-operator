@@ -56,7 +56,8 @@ func NewFindConfigEndpointSnitchParamsWithHTTPClient(client *http.Client) *FindC
 	}
 }
 
-/*FindConfigEndpointSnitchParams contains all the parameters to send to the API endpoint
+/*
+FindConfigEndpointSnitchParams contains all the parameters to send to the API endpoint
 for the find config endpoint snitch operation typically these are written to a http.Request
 */
 type FindConfigEndpointSnitchParams struct {

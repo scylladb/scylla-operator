@@ -56,7 +56,8 @@ func NewFindConfigEnableInMemoryDataStoreParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*FindConfigEnableInMemoryDataStoreParams contains all the parameters to send to the API endpoint
+/*
+FindConfigEnableInMemoryDataStoreParams contains all the parameters to send to the API endpoint
 for the find config enable in memory data store operation typically these are written to a http.Request
 */
 type FindConfigEnableInMemoryDataStoreParams struct {

@@ -10,7 +10,7 @@ package qb
 import (
 	"bytes"
 	"context"
-	"fmt"
+	"time"
 
 	"github.com/scylladb/gocqlx/v2"
 )
@@ -22,7 +22,7 @@ const (
 	// ASC is ascending order
 	ASC Order = true
 	// DESC is descending order
-	DESC = false
+	DESC Order = false
 )
 
 func (o Order) String() string {
@@ -37,11 +37,12 @@ type SelectBuilder struct {
 	table             string
 	columns           columns
 	distinct          columns
+	using             using
 	where             where
 	groupBy           columns
 	orderBy           columns
-	limit             uint
-	limitPerPartition uint
+	limit             limit
+	limitPerPartition limit
 	allowFiltering    bool
 	bypassCache       bool
 	json              bool
@@ -83,7 +84,8 @@ func (b *SelectBuilder) ToCql() (stmt string, names []string) {
 	cql.WriteString(b.table)
 	cql.WriteByte(' ')
 
-	names = b.where.writeCql(&cql)
+	names = append(names, b.using.writeCql(&cql)...)
+	names = append(names, b.where.writeCql(&cql)...)
 
 	if len(b.groupBy) > 0 {
 		cql.WriteString("GROUP BY ")
@@ -97,17 +99,8 @@ func (b *SelectBuilder) ToCql() (stmt string, names []string) {
 		cql.WriteByte(' ')
 	}
 
-	if b.limit != 0 {
-		cql.WriteString("LIMIT ")
-		cql.WriteString(fmt.Sprint(b.limit))
-		cql.WriteByte(' ')
-	}
-
-	if b.limitPerPartition != 0 {
-		cql.WriteString("PER PARTITION LIMIT ")
-		cql.WriteString(fmt.Sprint(b.limitPerPartition))
-		cql.WriteByte(' ')
-	}
+	names = append(names, b.limitPerPartition.writeCql(&cql)...)
+	names = append(names, b.limit.writeCql(&cql)...)
 
 	if b.allowFiltering {
 		cql.WriteString("ALLOW FILTERING ")
@@ -168,6 +161,19 @@ func (b *SelectBuilder) Distinct(columns ...string) *SelectBuilder {
 	return b
 }
 
+// Timeout adds USING TIMEOUT clause to the query.
+func (b *SelectBuilder) Timeout(d time.Duration) *SelectBuilder {
+	b.using.Timeout(d)
+	return b
+}
+
+// TimeoutNamed adds a USING TIMEOUT clause to the query with a custom
+// parameter name.
+func (b *SelectBuilder) TimeoutNamed(name string) *SelectBuilder {
+	b.using.TimeoutNamed(name)
+	return b
+}
+
 // Where adds an expression to the WHERE clause of the query. Expressions are
 // ANDed together in the generated CQL.
 func (b *SelectBuilder) Where(w ...Cmp) *SelectBuilder {
@@ -198,13 +204,25 @@ func (b *SelectBuilder) OrderBy(column string, o Order) *SelectBuilder {
 
 // Limit sets a LIMIT clause on the query.
 func (b *SelectBuilder) Limit(limit uint) *SelectBuilder {
-	b.limit = limit
+	b.limit = limitLit(limit, false)
+	return b
+}
+
+// LimitNamed produces LIMIT ? clause with a custom parameter name.
+func (b *SelectBuilder) LimitNamed(name string) *SelectBuilder {
+	b.limit = limitNamed(name, false)
 	return b
 }
 
 // LimitPerPartition sets a PER PARTITION LIMIT clause on the query.
 func (b *SelectBuilder) LimitPerPartition(limit uint) *SelectBuilder {
-	b.limitPerPartition = limit
+	b.limitPerPartition = limitLit(limit, true)
+	return b
+}
+
+// LimitPerPartitionNamed produces PER PARTITION LIMIT ? clause with a custom parameter name.
+func (b *SelectBuilder) LimitPerPartitionNamed(name string) *SelectBuilder {
+	b.limitPerPartition = limitNamed(name, true)
 	return b
 }
 

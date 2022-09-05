@@ -48,7 +48,8 @@ func NewStorageServiceKeyspaceUpgradeSstablesByKeyspaceGetOK() *StorageServiceKe
 	return &StorageServiceKeyspaceUpgradeSstablesByKeyspaceGetOK{}
 }
 
-/*StorageServiceKeyspaceUpgradeSstablesByKeyspaceGetOK handles this case with default header values.
+/*
+StorageServiceKeyspaceUpgradeSstablesByKeyspaceGetOK handles this case with default header values.
 
 StorageServiceKeyspaceUpgradeSstablesByKeyspaceGetOK storage service keyspace upgrade sstables by keyspace get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceKeyspaceUpgradeSstablesByKeyspaceGetDefault(code int) *Sto
 	}
 }
 
-/*StorageServiceKeyspaceUpgradeSstablesByKeyspaceGetDefault handles this case with default header values.
+/*
+StorageServiceKeyspaceUpgradeSstablesByKeyspaceGetDefault handles this case with default header values.
 
 internal server error
 */

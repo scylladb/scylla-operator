@@ -56,7 +56,8 @@ func NewColumnFamilyLoadSstableByNamePostParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*ColumnFamilyLoadSstableByNamePostParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyLoadSstableByNamePostParams contains all the parameters to send to the API endpoint
 for the column family load sstable by name post operation typically these are written to a http.Request
 */
 type ColumnFamilyLoadSstableByNamePostParams struct {

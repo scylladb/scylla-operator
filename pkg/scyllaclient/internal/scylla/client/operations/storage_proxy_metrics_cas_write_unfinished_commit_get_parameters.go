@@ -56,7 +56,8 @@ func NewStorageProxyMetricsCasWriteUnfinishedCommitGetParamsWithHTTPClient(clien
 	}
 }
 
-/*StorageProxyMetricsCasWriteUnfinishedCommitGetParams contains all the parameters to send to the API endpoint
+/*
+StorageProxyMetricsCasWriteUnfinishedCommitGetParams contains all the parameters to send to the API endpoint
 for the storage proxy metrics cas write unfinished commit get operation typically these are written to a http.Request
 */
 type StorageProxyMetricsCasWriteUnfinishedCommitGetParams struct {

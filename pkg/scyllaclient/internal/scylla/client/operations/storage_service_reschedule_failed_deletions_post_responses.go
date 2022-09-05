@@ -48,7 +48,8 @@ func NewStorageServiceRescheduleFailedDeletionsPostOK() *StorageServiceReschedul
 	return &StorageServiceRescheduleFailedDeletionsPostOK{}
 }
 
-/*StorageServiceRescheduleFailedDeletionsPostOK handles this case with default header values.
+/*
+StorageServiceRescheduleFailedDeletionsPostOK handles this case with default header values.
 
 StorageServiceRescheduleFailedDeletionsPostOK storage service reschedule failed deletions post o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceRescheduleFailedDeletionsPostDefault(code int) *StorageSer
 	}
 }
 
-/*StorageServiceRescheduleFailedDeletionsPostDefault handles this case with default header values.
+/*
+StorageServiceRescheduleFailedDeletionsPostDefault handles this case with default header values.
 
 internal server error
 */

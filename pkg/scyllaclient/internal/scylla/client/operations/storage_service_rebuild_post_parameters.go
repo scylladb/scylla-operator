@@ -56,7 +56,8 @@ func NewStorageServiceRebuildPostParamsWithHTTPClient(client *http.Client) *Stor
 	}
 }
 
-/*StorageServiceRebuildPostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceRebuildPostParams contains all the parameters to send to the API endpoint
 for the storage service rebuild post operation typically these are written to a http.Request
 */
 type StorageServiceRebuildPostParams struct {

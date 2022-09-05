@@ -56,7 +56,8 @@ func NewFindConfigNativeTransportPortSslParamsWithHTTPClient(client *http.Client
 	}
 }
 
-/*FindConfigNativeTransportPortSslParams contains all the parameters to send to the API endpoint
+/*
+FindConfigNativeTransportPortSslParams contains all the parameters to send to the API endpoint
 for the find config native transport port ssl operation typically these are written to a http.Request
 */
 type FindConfigNativeTransportPortSslParams struct {

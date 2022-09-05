@@ -48,7 +48,8 @@ func NewCompactionManagerForceUserDefinedCompactionPostOK() *CompactionManagerFo
 	return &CompactionManagerForceUserDefinedCompactionPostOK{}
 }
 
-/*CompactionManagerForceUserDefinedCompactionPostOK handles this case with default header values.
+/*
+CompactionManagerForceUserDefinedCompactionPostOK handles this case with default header values.
 
 CompactionManagerForceUserDefinedCompactionPostOK compaction manager force user defined compaction post o k
 */
@@ -67,7 +68,8 @@ func NewCompactionManagerForceUserDefinedCompactionPostDefault(code int) *Compac
 	}
 }
 
-/*CompactionManagerForceUserDefinedCompactionPostDefault handles this case with default header values.
+/*
+CompactionManagerForceUserDefinedCompactionPostDefault handles this case with default header values.
 
 internal server error
 */

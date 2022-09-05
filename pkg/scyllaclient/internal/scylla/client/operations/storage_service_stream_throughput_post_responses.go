@@ -48,7 +48,8 @@ func NewStorageServiceStreamThroughputPostOK() *StorageServiceStreamThroughputPo
 	return &StorageServiceStreamThroughputPostOK{}
 }
 
-/*StorageServiceStreamThroughputPostOK handles this case with default header values.
+/*
+StorageServiceStreamThroughputPostOK handles this case with default header values.
 
 StorageServiceStreamThroughputPostOK storage service stream throughput post o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceStreamThroughputPostDefault(code int) *StorageServiceStrea
 	}
 }
 
-/*StorageServiceStreamThroughputPostDefault handles this case with default header values.
+/*
+StorageServiceStreamThroughputPostDefault handles this case with default header values.
 
 internal server error
 */

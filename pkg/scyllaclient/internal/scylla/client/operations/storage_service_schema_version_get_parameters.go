@@ -56,7 +56,8 @@ func NewStorageServiceSchemaVersionGetParamsWithHTTPClient(client *http.Client) 
 	}
 }
 
-/*StorageServiceSchemaVersionGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceSchemaVersionGetParams contains all the parameters to send to the API endpoint
 for the storage service schema version get operation typically these are written to a http.Request
 */
 type StorageServiceSchemaVersionGetParams struct {

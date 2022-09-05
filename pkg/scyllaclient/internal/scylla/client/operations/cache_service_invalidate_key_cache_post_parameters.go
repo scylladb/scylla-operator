@@ -56,7 +56,8 @@ func NewCacheServiceInvalidateKeyCachePostParamsWithHTTPClient(client *http.Clie
 	}
 }
 
-/*CacheServiceInvalidateKeyCachePostParams contains all the parameters to send to the API endpoint
+/*
+CacheServiceInvalidateKeyCachePostParams contains all the parameters to send to the API endpoint
 for the cache service invalidate key cache post operation typically these are written to a http.Request
 */
 type CacheServiceInvalidateKeyCachePostParams struct {

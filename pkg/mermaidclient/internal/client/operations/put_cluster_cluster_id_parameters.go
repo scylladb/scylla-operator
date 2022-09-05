@@ -58,7 +58,8 @@ func NewPutClusterClusterIDParamsWithHTTPClient(client *http.Client) *PutCluster
 	}
 }
 
-/*PutClusterClusterIDParams contains all the parameters to send to the API endpoint
+/*
+PutClusterClusterIDParams contains all the parameters to send to the API endpoint
 for the put cluster cluster ID operation typically these are written to a http.Request
 */
 type PutClusterClusterIDParams struct {

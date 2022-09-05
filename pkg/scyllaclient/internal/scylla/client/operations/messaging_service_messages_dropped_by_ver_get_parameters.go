@@ -56,7 +56,8 @@ func NewMessagingServiceMessagesDroppedByVerGetParamsWithHTTPClient(client *http
 	}
 }
 
-/*MessagingServiceMessagesDroppedByVerGetParams contains all the parameters to send to the API endpoint
+/*
+MessagingServiceMessagesDroppedByVerGetParams contains all the parameters to send to the API endpoint
 for the messaging service messages dropped by ver get operation typically these are written to a http.Request
 */
 type MessagingServiceMessagesDroppedByVerGetParams struct {

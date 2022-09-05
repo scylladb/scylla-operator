@@ -48,7 +48,8 @@ func NewStorageProxyMetricsRangeTimeoutsRatesGetOK() *StorageProxyMetricsRangeTi
 	return &StorageProxyMetricsRangeTimeoutsRatesGetOK{}
 }
 
-/*StorageProxyMetricsRangeTimeoutsRatesGetOK handles this case with default header values.
+/*
+StorageProxyMetricsRangeTimeoutsRatesGetOK handles this case with default header values.
 
 StorageProxyMetricsRangeTimeoutsRatesGetOK storage proxy metrics range timeouts rates get o k
 */
@@ -79,7 +80,8 @@ func NewStorageProxyMetricsRangeTimeoutsRatesGetDefault(code int) *StorageProxyM
 	}
 }
 
-/*StorageProxyMetricsRangeTimeoutsRatesGetDefault handles this case with default header values.
+/*
+StorageProxyMetricsRangeTimeoutsRatesGetDefault handles this case with default header values.
 
 internal server error
 */

@@ -48,7 +48,8 @@ func NewCompactionManagerMetricsTotalCompactionsCompletedGetOK() *CompactionMana
 	return &CompactionManagerMetricsTotalCompactionsCompletedGetOK{}
 }
 
-/*CompactionManagerMetricsTotalCompactionsCompletedGetOK handles this case with default header values.
+/*
+CompactionManagerMetricsTotalCompactionsCompletedGetOK handles this case with default header values.
 
 CompactionManagerMetricsTotalCompactionsCompletedGetOK compaction manager metrics total compactions completed get o k
 */
@@ -77,7 +78,8 @@ func NewCompactionManagerMetricsTotalCompactionsCompletedGetDefault(code int) *C
 	}
 }
 
-/*CompactionManagerMetricsTotalCompactionsCompletedGetDefault handles this case with default header values.
+/*
+CompactionManagerMetricsTotalCompactionsCompletedGetDefault handles this case with default header values.
 
 internal server error
 */

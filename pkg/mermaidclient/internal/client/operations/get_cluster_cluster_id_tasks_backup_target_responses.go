@@ -47,7 +47,8 @@ func NewGetClusterClusterIDTasksBackupTargetOK() *GetClusterClusterIDTasksBackup
 	return &GetClusterClusterIDTasksBackupTargetOK{}
 }
 
-/*GetClusterClusterIDTasksBackupTargetOK handles this case with default header values.
+/*
+GetClusterClusterIDTasksBackupTargetOK handles this case with default header values.
 
 Backup target
 */
@@ -82,7 +83,8 @@ func NewGetClusterClusterIDTasksBackupTargetDefault(code int) *GetClusterCluster
 	}
 }
 
-/*GetClusterClusterIDTasksBackupTargetDefault handles this case with default header values.
+/*
+GetClusterClusterIDTasksBackupTargetDefault handles this case with default header values.
 
 Unexpected error
 */

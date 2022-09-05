@@ -71,7 +71,8 @@ func NewOperationsCopyfileParamsWithHTTPClient(client *http.Client) *OperationsC
 	}
 }
 
-/*OperationsCopyfileParams contains all the parameters to send to the API endpoint
+/*
+OperationsCopyfileParams contains all the parameters to send to the API endpoint
 for the operations copyfile operation typically these are written to a http.Request
 */
 type OperationsCopyfileParams struct {

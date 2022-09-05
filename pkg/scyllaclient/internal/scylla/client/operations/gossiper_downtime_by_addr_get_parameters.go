@@ -56,7 +56,8 @@ func NewGossiperDowntimeByAddrGetParamsWithHTTPClient(client *http.Client) *Goss
 	}
 }
 
-/*GossiperDowntimeByAddrGetParams contains all the parameters to send to the API endpoint
+/*
+GossiperDowntimeByAddrGetParams contains all the parameters to send to the API endpoint
 for the gossiper downtime by addr get operation typically these are written to a http.Request
 */
 type GossiperDowntimeByAddrGetParams struct {

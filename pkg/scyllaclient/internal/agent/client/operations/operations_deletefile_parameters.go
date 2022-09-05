@@ -71,7 +71,8 @@ func NewOperationsDeletefileParamsWithHTTPClient(client *http.Client) *Operation
 	}
 }
 
-/*OperationsDeletefileParams contains all the parameters to send to the API endpoint
+/*
+OperationsDeletefileParams contains all the parameters to send to the API endpoint
 for the operations deletefile operation typically these are written to a http.Request
 */
 type OperationsDeletefileParams struct {

@@ -56,7 +56,8 @@ func NewFindConfigServerEncryptionOptionsParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*FindConfigServerEncryptionOptionsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigServerEncryptionOptionsParams contains all the parameters to send to the API endpoint
 for the find config server encryption options operation typically these are written to a http.Request
 */
 type FindConfigServerEncryptionOptionsParams struct {

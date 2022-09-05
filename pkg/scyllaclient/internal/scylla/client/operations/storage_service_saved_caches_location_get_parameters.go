@@ -56,7 +56,8 @@ func NewStorageServiceSavedCachesLocationGetParamsWithHTTPClient(client *http.Cl
 	}
 }
 
-/*StorageServiceSavedCachesLocationGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceSavedCachesLocationGetParams contains all the parameters to send to the API endpoint
 for the storage service saved caches location get operation typically these are written to a http.Request
 */
 type StorageServiceSavedCachesLocationGetParams struct {

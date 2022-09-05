@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsSpeculativeRetriesByNameGetParamsWithHTTPClient(clien
 	}
 }
 
-/*ColumnFamilyMetricsSpeculativeRetriesByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsSpeculativeRetriesByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics speculative retries by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsSpeculativeRetriesByNameGetParams struct {

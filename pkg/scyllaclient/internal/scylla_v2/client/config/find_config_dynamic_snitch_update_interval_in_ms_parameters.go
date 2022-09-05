@@ -56,7 +56,8 @@ func NewFindConfigDynamicSnitchUpdateIntervalInMsParamsWithHTTPClient(client *ht
 	}
 }
 
-/*FindConfigDynamicSnitchUpdateIntervalInMsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigDynamicSnitchUpdateIntervalInMsParams contains all the parameters to send to the API endpoint
 for the find config dynamic snitch update interval in ms operation typically these are written to a http.Request
 */
 type FindConfigDynamicSnitchUpdateIntervalInMsParams struct {

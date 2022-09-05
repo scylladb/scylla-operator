@@ -48,7 +48,8 @@ func NewStorageServicePartitionerNameGetOK() *StorageServicePartitionerNameGetOK
 	return &StorageServicePartitionerNameGetOK{}
 }
 
-/*StorageServicePartitionerNameGetOK handles this case with default header values.
+/*
+StorageServicePartitionerNameGetOK handles this case with default header values.
 
 StorageServicePartitionerNameGetOK storage service partitioner name get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServicePartitionerNameGetDefault(code int) *StorageServicePartiti
 	}
 }
 
-/*StorageServicePartitionerNameGetDefault handles this case with default header values.
+/*
+StorageServicePartitionerNameGetDefault handles this case with default header values.
 
 internal server error
 */

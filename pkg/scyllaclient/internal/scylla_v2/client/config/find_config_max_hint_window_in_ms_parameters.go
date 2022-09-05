@@ -56,7 +56,8 @@ func NewFindConfigMaxHintWindowInMsParamsWithHTTPClient(client *http.Client) *Fi
 	}
 }
 
-/*FindConfigMaxHintWindowInMsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigMaxHintWindowInMsParams contains all the parameters to send to the API endpoint
 for the find config max hint window in ms operation typically these are written to a http.Request
 */
 type FindConfigMaxHintWindowInMsParams struct {

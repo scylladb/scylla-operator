@@ -48,7 +48,8 @@ func NewFindConfigNativeTransportMaxFrameSizeInMbOK() *FindConfigNativeTransport
 	return &FindConfigNativeTransportMaxFrameSizeInMbOK{}
 }
 
-/*FindConfigNativeTransportMaxFrameSizeInMbOK handles this case with default header values.
+/*
+FindConfigNativeTransportMaxFrameSizeInMbOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigNativeTransportMaxFrameSizeInMbDefault(code int) *FindConfigNa
 	}
 }
 
-/*FindConfigNativeTransportMaxFrameSizeInMbDefault handles this case with default header values.
+/*
+FindConfigNativeTransportMaxFrameSizeInMbDefault handles this case with default header values.
 
 unexpected error
 */

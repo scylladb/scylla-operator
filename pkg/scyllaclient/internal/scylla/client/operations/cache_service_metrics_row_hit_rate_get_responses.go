@@ -48,7 +48,8 @@ func NewCacheServiceMetricsRowHitRateGetOK() *CacheServiceMetricsRowHitRateGetOK
 	return &CacheServiceMetricsRowHitRateGetOK{}
 }
 
-/*CacheServiceMetricsRowHitRateGetOK handles this case with default header values.
+/*
+CacheServiceMetricsRowHitRateGetOK handles this case with default header values.
 
 CacheServiceMetricsRowHitRateGetOK cache service metrics row hit rate get o k
 */
@@ -77,7 +78,8 @@ func NewCacheServiceMetricsRowHitRateGetDefault(code int) *CacheServiceMetricsRo
 	}
 }
 
-/*CacheServiceMetricsRowHitRateGetDefault handles this case with default header values.
+/*
+CacheServiceMetricsRowHitRateGetDefault handles this case with default header values.
 
 internal server error
 */

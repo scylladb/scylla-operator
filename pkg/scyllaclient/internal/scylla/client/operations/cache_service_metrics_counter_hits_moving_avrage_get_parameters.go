@@ -56,7 +56,8 @@ func NewCacheServiceMetricsCounterHitsMovingAvrageGetParamsWithHTTPClient(client
 	}
 }
 
-/*CacheServiceMetricsCounterHitsMovingAvrageGetParams contains all the parameters to send to the API endpoint
+/*
+CacheServiceMetricsCounterHitsMovingAvrageGetParams contains all the parameters to send to the API endpoint
 for the cache service metrics counter hits moving avrage get operation typically these are written to a http.Request
 */
 type CacheServiceMetricsCounterHitsMovingAvrageGetParams struct {

@@ -56,7 +56,8 @@ func NewStorageProxyMetricsReadTimeoutsRatesGetParamsWithHTTPClient(client *http
 	}
 }
 
-/*StorageProxyMetricsReadTimeoutsRatesGetParams contains all the parameters to send to the API endpoint
+/*
+StorageProxyMetricsReadTimeoutsRatesGetParams contains all the parameters to send to the API endpoint
 for the storage proxy metrics read timeouts rates get operation typically these are written to a http.Request
 */
 type StorageProxyMetricsReadTimeoutsRatesGetParams struct {

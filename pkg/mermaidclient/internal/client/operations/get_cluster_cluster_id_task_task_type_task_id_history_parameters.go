@@ -57,7 +57,8 @@ func NewGetClusterClusterIDTaskTaskTypeTaskIDHistoryParamsWithHTTPClient(client 
 	}
 }
 
-/*GetClusterClusterIDTaskTaskTypeTaskIDHistoryParams contains all the parameters to send to the API endpoint
+/*
+GetClusterClusterIDTaskTaskTypeTaskIDHistoryParams contains all the parameters to send to the API endpoint
 for the get cluster cluster ID task task type task ID history operation typically these are written to a http.Request
 */
 type GetClusterClusterIDTaskTaskTypeTaskIDHistoryParams struct {

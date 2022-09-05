@@ -56,7 +56,8 @@ func NewFindConfigBroadcastRPCAddressParamsWithHTTPClient(client *http.Client) *
 	}
 }
 
-/*FindConfigBroadcastRPCAddressParams contains all the parameters to send to the API endpoint
+/*
+FindConfigBroadcastRPCAddressParams contains all the parameters to send to the API endpoint
 for the find config broadcast rpc address operation typically these are written to a http.Request
 */
 type FindConfigBroadcastRPCAddressParams struct {

@@ -48,7 +48,8 @@ func NewFindConfigNativeTransportMaxThreadsOK() *FindConfigNativeTransportMaxThr
 	return &FindConfigNativeTransportMaxThreadsOK{}
 }
 
-/*FindConfigNativeTransportMaxThreadsOK handles this case with default header values.
+/*
+FindConfigNativeTransportMaxThreadsOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigNativeTransportMaxThreadsDefault(code int) *FindConfigNativeTr
 	}
 }
 
-/*FindConfigNativeTransportMaxThreadsDefault handles this case with default header values.
+/*
+FindConfigNativeTransportMaxThreadsDefault handles this case with default header values.
 
 unexpected error
 */

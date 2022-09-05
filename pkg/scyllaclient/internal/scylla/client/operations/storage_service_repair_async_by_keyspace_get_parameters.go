@@ -57,7 +57,8 @@ func NewStorageServiceRepairAsyncByKeyspaceGetParamsWithHTTPClient(client *http.
 	}
 }
 
-/*StorageServiceRepairAsyncByKeyspaceGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceRepairAsyncByKeyspaceGetParams contains all the parameters to send to the API endpoint
 for the storage service repair async by keyspace get operation typically these are written to a http.Request
 */
 type StorageServiceRepairAsyncByKeyspaceGetParams struct {

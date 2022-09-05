@@ -56,7 +56,8 @@ func NewFindConfigCompactionLargeRowWarningThresholdMbParamsWithHTTPClient(clien
 	}
 }
 
-/*FindConfigCompactionLargeRowWarningThresholdMbParams contains all the parameters to send to the API endpoint
+/*
+FindConfigCompactionLargeRowWarningThresholdMbParams contains all the parameters to send to the API endpoint
 for the find config compaction large row warning threshold mb operation typically these are written to a http.Request
 */
 type FindConfigCompactionLargeRowWarningThresholdMbParams struct {

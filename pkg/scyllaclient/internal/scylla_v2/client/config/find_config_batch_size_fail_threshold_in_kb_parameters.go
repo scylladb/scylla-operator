@@ -56,7 +56,8 @@ func NewFindConfigBatchSizeFailThresholdInKbParamsWithHTTPClient(client *http.Cl
 	}
 }
 
-/*FindConfigBatchSizeFailThresholdInKbParams contains all the parameters to send to the API endpoint
+/*
+FindConfigBatchSizeFailThresholdInKbParams contains all the parameters to send to the API endpoint
 for the find config batch size fail threshold in kb operation typically these are written to a http.Request
 */
 type FindConfigBatchSizeFailThresholdInKbParams struct {

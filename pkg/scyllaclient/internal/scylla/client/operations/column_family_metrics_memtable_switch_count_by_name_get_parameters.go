@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsMemtableSwitchCountByNameGetParamsWithHTTPClient(clie
 	}
 }
 
-/*ColumnFamilyMetricsMemtableSwitchCountByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsMemtableSwitchCountByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics memtable switch count by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsMemtableSwitchCountByNameGetParams struct {

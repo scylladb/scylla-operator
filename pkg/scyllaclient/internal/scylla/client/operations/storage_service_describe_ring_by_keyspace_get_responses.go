@@ -48,7 +48,8 @@ func NewStorageServiceDescribeRingByKeyspaceGetOK() *StorageServiceDescribeRingB
 	return &StorageServiceDescribeRingByKeyspaceGetOK{}
 }
 
-/*StorageServiceDescribeRingByKeyspaceGetOK handles this case with default header values.
+/*
+StorageServiceDescribeRingByKeyspaceGetOK handles this case with default header values.
 
 StorageServiceDescribeRingByKeyspaceGetOK storage service describe ring by keyspace get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceDescribeRingByKeyspaceGetDefault(code int) *StorageService
 	}
 }
 
-/*StorageServiceDescribeRingByKeyspaceGetDefault handles this case with default header values.
+/*
+StorageServiceDescribeRingByKeyspaceGetDefault handles this case with default header values.
 
 internal server error
 */

@@ -56,7 +56,8 @@ func NewFindConfigBatchlogReplayThrottleInKbParamsWithHTTPClient(client *http.Cl
 	}
 }
 
-/*FindConfigBatchlogReplayThrottleInKbParams contains all the parameters to send to the API endpoint
+/*
+FindConfigBatchlogReplayThrottleInKbParams contains all the parameters to send to the API endpoint
 for the find config batchlog replay throttle in kb operation typically these are written to a http.Request
 */
 type FindConfigBatchlogReplayThrottleInKbParams struct {

@@ -57,7 +57,8 @@ func NewGossiperAssassinateByAddrPostParamsWithHTTPClient(client *http.Client) *
 	}
 }
 
-/*GossiperAssassinateByAddrPostParams contains all the parameters to send to the API endpoint
+/*
+GossiperAssassinateByAddrPostParams contains all the parameters to send to the API endpoint
 for the gossiper assassinate by addr post operation typically these are written to a http.Request
 */
 type GossiperAssassinateByAddrPostParams struct {

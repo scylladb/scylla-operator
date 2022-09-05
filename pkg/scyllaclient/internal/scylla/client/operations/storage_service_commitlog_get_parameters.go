@@ -56,7 +56,8 @@ func NewStorageServiceCommitlogGetParamsWithHTTPClient(client *http.Client) *Sto
 	}
 }
 
-/*StorageServiceCommitlogGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceCommitlogGetParams contains all the parameters to send to the API endpoint
 for the storage service commitlog get operation typically these are written to a http.Request
 */
 type StorageServiceCommitlogGetParams struct {

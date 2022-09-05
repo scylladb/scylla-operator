@@ -48,7 +48,8 @@ func NewMessagingServiceMessagesTimeoutGetOK() *MessagingServiceMessagesTimeoutG
 	return &MessagingServiceMessagesTimeoutGetOK{}
 }
 
-/*MessagingServiceMessagesTimeoutGetOK handles this case with default header values.
+/*
+MessagingServiceMessagesTimeoutGetOK handles this case with default header values.
 
 MessagingServiceMessagesTimeoutGetOK messaging service messages timeout get o k
 */
@@ -77,7 +78,8 @@ func NewMessagingServiceMessagesTimeoutGetDefault(code int) *MessagingServiceMes
 	}
 }
 
-/*MessagingServiceMessagesTimeoutGetDefault handles this case with default header values.
+/*
+MessagingServiceMessagesTimeoutGetDefault handles this case with default header values.
 
 internal server error
 */

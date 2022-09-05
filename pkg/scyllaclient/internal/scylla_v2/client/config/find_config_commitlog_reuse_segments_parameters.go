@@ -56,7 +56,8 @@ func NewFindConfigCommitlogReuseSegmentsParamsWithHTTPClient(client *http.Client
 	}
 }
 
-/*FindConfigCommitlogReuseSegmentsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigCommitlogReuseSegmentsParams contains all the parameters to send to the API endpoint
 for the find config commitlog reuse segments operation typically these are written to a http.Request
 */
 type FindConfigCommitlogReuseSegmentsParams struct {

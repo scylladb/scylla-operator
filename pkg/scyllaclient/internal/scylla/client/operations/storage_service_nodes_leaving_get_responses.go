@@ -48,7 +48,8 @@ func NewStorageServiceNodesLeavingGetOK() *StorageServiceNodesLeavingGetOK {
 	return &StorageServiceNodesLeavingGetOK{}
 }
 
-/*StorageServiceNodesLeavingGetOK handles this case with default header values.
+/*
+StorageServiceNodesLeavingGetOK handles this case with default header values.
 
 StorageServiceNodesLeavingGetOK storage service nodes leaving get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceNodesLeavingGetDefault(code int) *StorageServiceNodesLeavi
 	}
 }
 
-/*StorageServiceNodesLeavingGetDefault handles this case with default header values.
+/*
+StorageServiceNodesLeavingGetDefault handles this case with default header values.
 
 internal server error
 */

@@ -56,7 +56,8 @@ func NewColumnFamilyMinimumCompactionByNameGetParamsWithHTTPClient(client *http.
 	}
 }
 
-/*ColumnFamilyMinimumCompactionByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMinimumCompactionByNameGetParams contains all the parameters to send to the API endpoint
 for the column family minimum compaction by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMinimumCompactionByNameGetParams struct {

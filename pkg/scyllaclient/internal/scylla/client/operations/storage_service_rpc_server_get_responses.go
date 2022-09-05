@@ -48,7 +48,8 @@ func NewStorageServiceRPCServerGetOK() *StorageServiceRPCServerGetOK {
 	return &StorageServiceRPCServerGetOK{}
 }
 
-/*StorageServiceRPCServerGetOK handles this case with default header values.
+/*
+StorageServiceRPCServerGetOK handles this case with default header values.
 
 StorageServiceRPCServerGetOK storage service Rpc server get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceRPCServerGetDefault(code int) *StorageServiceRPCServerGetD
 	}
 }
 
-/*StorageServiceRPCServerGetDefault handles this case with default header values.
+/*
+StorageServiceRPCServerGetDefault handles this case with default header values.
 
 internal server error
 */

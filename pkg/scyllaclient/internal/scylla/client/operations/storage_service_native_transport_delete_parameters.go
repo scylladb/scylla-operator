@@ -56,7 +56,8 @@ func NewStorageServiceNativeTransportDeleteParamsWithHTTPClient(client *http.Cli
 	}
 }
 
-/*StorageServiceNativeTransportDeleteParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceNativeTransportDeleteParams contains all the parameters to send to the API endpoint
 for the storage service native transport delete operation typically these are written to a http.Request
 */
 type StorageServiceNativeTransportDeleteParams struct {

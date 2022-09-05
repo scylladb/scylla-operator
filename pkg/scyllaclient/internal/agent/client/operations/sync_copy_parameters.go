@@ -69,7 +69,8 @@ func NewSyncCopyParamsWithHTTPClient(client *http.Client) *SyncCopyParams {
 	}
 }
 
-/*SyncCopyParams contains all the parameters to send to the API endpoint
+/*
+SyncCopyParams contains all the parameters to send to the API endpoint
 for the sync copy operation typically these are written to a http.Request
 */
 type SyncCopyParams struct {

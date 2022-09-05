@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsBloomFilterDiskSpaceUsedGetOK() *ColumnFamilyMetricsB
 	return &ColumnFamilyMetricsBloomFilterDiskSpaceUsedGetOK{}
 }
 
-/*ColumnFamilyMetricsBloomFilterDiskSpaceUsedGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsBloomFilterDiskSpaceUsedGetOK handles this case with default header values.
 
 ColumnFamilyMetricsBloomFilterDiskSpaceUsedGetOK column family metrics bloom filter disk space used get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsBloomFilterDiskSpaceUsedGetDefault(code int) *ColumnF
 	}
 }
 
-/*ColumnFamilyMetricsBloomFilterDiskSpaceUsedGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsBloomFilterDiskSpaceUsedGetDefault handles this case with default header values.
 
 internal server error
 */

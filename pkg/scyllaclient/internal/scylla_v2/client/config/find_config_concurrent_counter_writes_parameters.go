@@ -56,7 +56,8 @@ func NewFindConfigConcurrentCounterWritesParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*FindConfigConcurrentCounterWritesParams contains all the parameters to send to the API endpoint
+/*
+FindConfigConcurrentCounterWritesParams contains all the parameters to send to the API endpoint
 for the find config concurrent counter writes operation typically these are written to a http.Request
 */
 type FindConfigConcurrentCounterWritesParams struct {

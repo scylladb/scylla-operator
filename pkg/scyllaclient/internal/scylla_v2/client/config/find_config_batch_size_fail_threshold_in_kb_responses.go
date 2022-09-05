@@ -48,7 +48,8 @@ func NewFindConfigBatchSizeFailThresholdInKbOK() *FindConfigBatchSizeFailThresho
 	return &FindConfigBatchSizeFailThresholdInKbOK{}
 }
 
-/*FindConfigBatchSizeFailThresholdInKbOK handles this case with default header values.
+/*
+FindConfigBatchSizeFailThresholdInKbOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigBatchSizeFailThresholdInKbDefault(code int) *FindConfigBatchSi
 	}
 }
 
-/*FindConfigBatchSizeFailThresholdInKbDefault handles this case with default header values.
+/*
+FindConfigBatchSizeFailThresholdInKbDefault handles this case with default header values.
 
 unexpected error
 */

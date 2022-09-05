@@ -48,7 +48,8 @@ func NewStorageServiceUpdateSnitchPostOK() *StorageServiceUpdateSnitchPostOK {
 	return &StorageServiceUpdateSnitchPostOK{}
 }
 
-/*StorageServiceUpdateSnitchPostOK handles this case with default header values.
+/*
+StorageServiceUpdateSnitchPostOK handles this case with default header values.
 
 StorageServiceUpdateSnitchPostOK storage service update snitch post o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceUpdateSnitchPostDefault(code int) *StorageServiceUpdateSni
 	}
 }
 
-/*StorageServiceUpdateSnitchPostDefault handles this case with default header values.
+/*
+StorageServiceUpdateSnitchPostDefault handles this case with default header values.
 
 internal server error
 */

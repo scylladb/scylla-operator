@@ -57,7 +57,8 @@ func NewStorageServiceHintedHandoffPostParamsWithHTTPClient(client *http.Client)
 	}
 }
 
-/*StorageServiceHintedHandoffPostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceHintedHandoffPostParams contains all the parameters to send to the API endpoint
 for the storage service hinted handoff post operation typically these are written to a http.Request
 */
 type StorageServiceHintedHandoffPostParams struct {

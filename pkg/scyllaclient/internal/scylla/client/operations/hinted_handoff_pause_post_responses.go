@@ -48,7 +48,8 @@ func NewHintedHandoffPausePostOK() *HintedHandoffPausePostOK {
 	return &HintedHandoffPausePostOK{}
 }
 
-/*HintedHandoffPausePostOK handles this case with default header values.
+/*
+HintedHandoffPausePostOK handles this case with default header values.
 
 HintedHandoffPausePostOK hinted handoff pause post o k
 */
@@ -67,7 +68,8 @@ func NewHintedHandoffPausePostDefault(code int) *HintedHandoffPausePostDefault {
 	}
 }
 
-/*HintedHandoffPausePostDefault handles this case with default header values.
+/*
+HintedHandoffPausePostDefault handles this case with default header values.
 
 internal server error
 */

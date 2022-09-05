@@ -56,7 +56,8 @@ func NewFindConfigAbortOnLsaBadAllocParamsWithHTTPClient(client *http.Client) *F
 	}
 }
 
-/*FindConfigAbortOnLsaBadAllocParams contains all the parameters to send to the API endpoint
+/*
+FindConfigAbortOnLsaBadAllocParams contains all the parameters to send to the API endpoint
 for the find config abort on lsa bad alloc operation typically these are written to a http.Request
 */
 type FindConfigAbortOnLsaBadAllocParams struct {

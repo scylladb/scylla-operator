@@ -48,7 +48,8 @@ func NewFindConfigEnableShardAwareDriversOK() *FindConfigEnableShardAwareDrivers
 	return &FindConfigEnableShardAwareDriversOK{}
 }
 
-/*FindConfigEnableShardAwareDriversOK handles this case with default header values.
+/*
+FindConfigEnableShardAwareDriversOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigEnableShardAwareDriversDefault(code int) *FindConfigEnableShar
 	}
 }
 
-/*FindConfigEnableShardAwareDriversDefault handles this case with default header values.
+/*
+FindConfigEnableShardAwareDriversDefault handles this case with default header values.
 
 unexpected error
 */

@@ -56,7 +56,8 @@ func NewFindConfigPrometheusPrefixParamsWithHTTPClient(client *http.Client) *Fin
 	}
 }
 
-/*FindConfigPrometheusPrefixParams contains all the parameters to send to the API endpoint
+/*
+FindConfigPrometheusPrefixParams contains all the parameters to send to the API endpoint
 for the find config prometheus prefix operation typically these are written to a http.Request
 */
 type FindConfigPrometheusPrefixParams struct {

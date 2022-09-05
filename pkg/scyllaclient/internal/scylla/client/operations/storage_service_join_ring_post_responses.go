@@ -48,7 +48,8 @@ func NewStorageServiceJoinRingPostOK() *StorageServiceJoinRingPostOK {
 	return &StorageServiceJoinRingPostOK{}
 }
 
-/*StorageServiceJoinRingPostOK handles this case with default header values.
+/*
+StorageServiceJoinRingPostOK handles this case with default header values.
 
 StorageServiceJoinRingPostOK storage service join ring post o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceJoinRingPostDefault(code int) *StorageServiceJoinRingPostD
 	}
 }
 
-/*StorageServiceJoinRingPostDefault handles this case with default header values.
+/*
+StorageServiceJoinRingPostDefault handles this case with default header values.
 
 internal server error
 */

@@ -56,7 +56,8 @@ func NewGossiperEndpointDownGetParamsWithHTTPClient(client *http.Client) *Gossip
 	}
 }
 
-/*GossiperEndpointDownGetParams contains all the parameters to send to the API endpoint
+/*
+GossiperEndpointDownGetParams contains all the parameters to send to the API endpoint
 for the gossiper endpoint down get operation typically these are written to a http.Request
 */
 type GossiperEndpointDownGetParams struct {

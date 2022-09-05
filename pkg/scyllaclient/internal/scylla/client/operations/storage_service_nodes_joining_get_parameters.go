@@ -56,7 +56,8 @@ func NewStorageServiceNodesJoiningGetParamsWithHTTPClient(client *http.Client) *
 	}
 }
 
-/*StorageServiceNodesJoiningGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceNodesJoiningGetParams contains all the parameters to send to the API endpoint
 for the storage service nodes joining get operation typically these are written to a http.Request
 */
 type StorageServiceNodesJoiningGetParams struct {

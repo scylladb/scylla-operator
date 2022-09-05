@@ -56,7 +56,8 @@ func NewStreamManagerGetParamsWithHTTPClient(client *http.Client) *StreamManager
 	}
 }
 
-/*StreamManagerGetParams contains all the parameters to send to the API endpoint
+/*
+StreamManagerGetParams contains all the parameters to send to the API endpoint
 for the stream manager get operation typically these are written to a http.Request
 */
 type StreamManagerGetParams struct {

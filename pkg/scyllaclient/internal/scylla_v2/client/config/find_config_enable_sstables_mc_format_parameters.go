@@ -56,7 +56,8 @@ func NewFindConfigEnableSstablesMcFormatParamsWithHTTPClient(client *http.Client
 	}
 }
 
-/*FindConfigEnableSstablesMcFormatParams contains all the parameters to send to the API endpoint
+/*
+FindConfigEnableSstablesMcFormatParams contains all the parameters to send to the API endpoint
 for the find config enable sstables mc format operation typically these are written to a http.Request
 */
 type FindConfigEnableSstablesMcFormatParams struct {

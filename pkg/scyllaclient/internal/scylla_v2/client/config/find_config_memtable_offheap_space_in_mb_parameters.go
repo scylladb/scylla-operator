@@ -56,7 +56,8 @@ func NewFindConfigMemtableOffheapSpaceInMbParamsWithHTTPClient(client *http.Clie
 	}
 }
 
-/*FindConfigMemtableOffheapSpaceInMbParams contains all the parameters to send to the API endpoint
+/*
+FindConfigMemtableOffheapSpaceInMbParams contains all the parameters to send to the API endpoint
 for the find config memtable offheap space in mb operation typically these are written to a http.Request
 */
 type FindConfigMemtableOffheapSpaceInMbParams struct {

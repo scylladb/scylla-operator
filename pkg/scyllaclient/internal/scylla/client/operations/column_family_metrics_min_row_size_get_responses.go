@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsMinRowSizeGetOK() *ColumnFamilyMetricsMinRowSizeGetOK
 	return &ColumnFamilyMetricsMinRowSizeGetOK{}
 }
 
-/*ColumnFamilyMetricsMinRowSizeGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsMinRowSizeGetOK handles this case with default header values.
 
 ColumnFamilyMetricsMinRowSizeGetOK column family metrics min row size get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsMinRowSizeGetDefault(code int) *ColumnFamilyMetricsMi
 	}
 }
 
-/*ColumnFamilyMetricsMinRowSizeGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsMinRowSizeGetDefault handles this case with default header values.
 
 internal server error
 */

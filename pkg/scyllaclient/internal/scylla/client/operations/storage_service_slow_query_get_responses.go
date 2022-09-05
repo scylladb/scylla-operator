@@ -48,7 +48,8 @@ func NewStorageServiceSlowQueryGetOK() *StorageServiceSlowQueryGetOK {
 	return &StorageServiceSlowQueryGetOK{}
 }
 
-/*StorageServiceSlowQueryGetOK handles this case with default header values.
+/*
+StorageServiceSlowQueryGetOK handles this case with default header values.
 
 StorageServiceSlowQueryGetOK storage service slow query get o k
 */
@@ -79,7 +80,8 @@ func NewStorageServiceSlowQueryGetDefault(code int) *StorageServiceSlowQueryGetD
 	}
 }
 
-/*StorageServiceSlowQueryGetDefault handles this case with default header values.
+/*
+StorageServiceSlowQueryGetDefault handles this case with default header values.
 
 internal server error
 */

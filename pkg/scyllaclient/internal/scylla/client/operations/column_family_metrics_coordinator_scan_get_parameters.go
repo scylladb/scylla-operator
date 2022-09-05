@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsCoordinatorScanGetParamsWithHTTPClient(client *http.C
 	}
 }
 
-/*ColumnFamilyMetricsCoordinatorScanGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsCoordinatorScanGetParams contains all the parameters to send to the API endpoint
 for the column family metrics coordinator scan get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsCoordinatorScanGetParams struct {

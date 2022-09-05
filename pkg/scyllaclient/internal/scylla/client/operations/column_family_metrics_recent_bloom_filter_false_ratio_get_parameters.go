@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsRecentBloomFilterFalseRatioGetParamsWithHTTPClient(cl
 	}
 }
 
-/*ColumnFamilyMetricsRecentBloomFilterFalseRatioGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsRecentBloomFilterFalseRatioGetParams contains all the parameters to send to the API endpoint
 for the column family metrics recent bloom filter false ratio get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsRecentBloomFilterFalseRatioGetParams struct {

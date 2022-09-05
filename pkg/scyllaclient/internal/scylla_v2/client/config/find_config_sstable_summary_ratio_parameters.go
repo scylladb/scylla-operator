@@ -56,7 +56,8 @@ func NewFindConfigSstableSummaryRatioParamsWithHTTPClient(client *http.Client) *
 	}
 }
 
-/*FindConfigSstableSummaryRatioParams contains all the parameters to send to the API endpoint
+/*
+FindConfigSstableSummaryRatioParams contains all the parameters to send to the API endpoint
 for the find config sstable summary ratio operation typically these are written to a http.Request
 */
 type FindConfigSstableSummaryRatioParams struct {

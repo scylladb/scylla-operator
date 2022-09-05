@@ -48,7 +48,8 @@ func NewStorageServiceRemoveNodePostOK() *StorageServiceRemoveNodePostOK {
 	return &StorageServiceRemoveNodePostOK{}
 }
 
-/*StorageServiceRemoveNodePostOK handles this case with default header values.
+/*
+StorageServiceRemoveNodePostOK handles this case with default header values.
 
 StorageServiceRemoveNodePostOK storage service remove node post o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceRemoveNodePostDefault(code int) *StorageServiceRemoveNodeP
 	}
 }
 
-/*StorageServiceRemoveNodePostDefault handles this case with default header values.
+/*
+StorageServiceRemoveNodePostDefault handles this case with default header values.
 
 internal server error
 */

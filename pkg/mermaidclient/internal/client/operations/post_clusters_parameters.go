@@ -58,7 +58,8 @@ func NewPostClustersParamsWithHTTPClient(client *http.Client) *PostClustersParam
 	}
 }
 
-/*PostClustersParams contains all the parameters to send to the API endpoint
+/*
+PostClustersParams contains all the parameters to send to the API endpoint
 for the post clusters operation typically these are written to a http.Request
 */
 type PostClustersParams struct {

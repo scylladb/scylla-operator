@@ -48,7 +48,8 @@ func NewColumnFamilyMaximumCompactionByNameGetOK() *ColumnFamilyMaximumCompactio
 	return &ColumnFamilyMaximumCompactionByNameGetOK{}
 }
 
-/*ColumnFamilyMaximumCompactionByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMaximumCompactionByNameGetOK handles this case with default header values.
 
 ColumnFamilyMaximumCompactionByNameGetOK column family maximum compaction by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMaximumCompactionByNameGetDefault(code int) *ColumnFamilyMax
 	}
 }
 
-/*ColumnFamilyMaximumCompactionByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMaximumCompactionByNameGetDefault handles this case with default header values.
 
 internal server error
 */

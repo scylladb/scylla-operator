@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsAllMemtablesOffHeapSizeGetParamsWithHTTPClient(client
 	}
 }
 
-/*ColumnFamilyMetricsAllMemtablesOffHeapSizeGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsAllMemtablesOffHeapSizeGetParams contains all the parameters to send to the API endpoint
 for the column family metrics all memtables off heap size get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsAllMemtablesOffHeapSizeGetParams struct {

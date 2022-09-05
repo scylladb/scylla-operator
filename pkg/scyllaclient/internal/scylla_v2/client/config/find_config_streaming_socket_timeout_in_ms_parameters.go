@@ -56,7 +56,8 @@ func NewFindConfigStreamingSocketTimeoutInMsParamsWithHTTPClient(client *http.Cl
 	}
 }
 
-/*FindConfigStreamingSocketTimeoutInMsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigStreamingSocketTimeoutInMsParams contains all the parameters to send to the API endpoint
 for the find config streaming socket timeout in ms operation typically these are written to a http.Request
 */
 type FindConfigStreamingSocketTimeoutInMsParams struct {

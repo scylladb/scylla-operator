@@ -47,7 +47,8 @@ func NewGetClusterClusterIDTasksOK() *GetClusterClusterIDTasksOK {
 	return &GetClusterClusterIDTasksOK{}
 }
 
-/*GetClusterClusterIDTasksOK handles this case with default header values.
+/*
+GetClusterClusterIDTasksOK handles this case with default header values.
 
 List of tasks
 */
@@ -80,7 +81,8 @@ func NewGetClusterClusterIDTasksDefault(code int) *GetClusterClusterIDTasksDefau
 	}
 }
 
-/*GetClusterClusterIDTasksDefault handles this case with default header values.
+/*
+GetClusterClusterIDTasksDefault handles this case with default header values.
 
 Unexpected error
 */

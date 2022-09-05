@@ -48,7 +48,8 @@ func NewFindConfigAPIAddressOK() *FindConfigAPIAddressOK {
 	return &FindConfigAPIAddressOK{}
 }
 
-/*FindConfigAPIAddressOK handles this case with default header values.
+/*
+FindConfigAPIAddressOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigAPIAddressDefault(code int) *FindConfigAPIAddressDefault {
 	}
 }
 
-/*FindConfigAPIAddressDefault handles this case with default header values.
+/*
+FindConfigAPIAddressDefault handles this case with default header values.
 
 unexpected error
 */

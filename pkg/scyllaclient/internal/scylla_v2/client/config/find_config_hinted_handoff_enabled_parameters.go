@@ -56,7 +56,8 @@ func NewFindConfigHintedHandoffEnabledParamsWithHTTPClient(client *http.Client) 
 	}
 }
 
-/*FindConfigHintedHandoffEnabledParams contains all the parameters to send to the API endpoint
+/*
+FindConfigHintedHandoffEnabledParams contains all the parameters to send to the API endpoint
 for the find config hinted handoff enabled operation typically these are written to a http.Request
 */
 type FindConfigHintedHandoffEnabledParams struct {

@@ -56,7 +56,8 @@ func NewColumnFamilyCompactionStrategyByNamePostParamsWithHTTPClient(client *htt
 	}
 }
 
-/*ColumnFamilyCompactionStrategyByNamePostParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyCompactionStrategyByNamePostParams contains all the parameters to send to the API endpoint
 for the column family compaction strategy by name post operation typically these are written to a http.Request
 */
 type ColumnFamilyCompactionStrategyByNamePostParams struct {

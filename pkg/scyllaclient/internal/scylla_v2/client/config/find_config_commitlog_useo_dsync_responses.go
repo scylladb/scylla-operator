@@ -48,7 +48,8 @@ func NewFindConfigCommitlogUseODsyncOK() *FindConfigCommitlogUseODsyncOK {
 	return &FindConfigCommitlogUseODsyncOK{}
 }
 
-/*FindConfigCommitlogUseODsyncOK handles this case with default header values.
+/*
+FindConfigCommitlogUseODsyncOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigCommitlogUseoDsyncDefault(code int) *FindConfigCommitlogUseoDs
 	}
 }
 
-/*FindConfigCommitlogUseoDsyncDefault handles this case with default header values.
+/*
+FindConfigCommitlogUseoDsyncDefault handles this case with default header values.
 
 unexpected error
 */

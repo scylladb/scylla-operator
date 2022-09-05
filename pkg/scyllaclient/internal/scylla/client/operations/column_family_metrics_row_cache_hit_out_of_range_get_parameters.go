@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsRowCacheHitOutOfRangeGetParamsWithHTTPClient(client *
 	}
 }
 
-/*ColumnFamilyMetricsRowCacheHitOutOfRangeGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsRowCacheHitOutOfRangeGetParams contains all the parameters to send to the API endpoint
 for the column family metrics row cache hit out of range get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsRowCacheHitOutOfRangeGetParams struct {

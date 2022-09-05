@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsMemtableColumnsCountGetParamsWithHTTPClient(client *h
 	}
 }
 
-/*ColumnFamilyMetricsMemtableColumnsCountGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsMemtableColumnsCountGetParams contains all the parameters to send to the API endpoint
 for the column family metrics memtable columns count get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsMemtableColumnsCountGetParams struct {

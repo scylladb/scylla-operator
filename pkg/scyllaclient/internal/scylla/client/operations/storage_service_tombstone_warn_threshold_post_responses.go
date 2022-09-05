@@ -48,7 +48,8 @@ func NewStorageServiceTombstoneWarnThresholdPostOK() *StorageServiceTombstoneWar
 	return &StorageServiceTombstoneWarnThresholdPostOK{}
 }
 
-/*StorageServiceTombstoneWarnThresholdPostOK handles this case with default header values.
+/*
+StorageServiceTombstoneWarnThresholdPostOK handles this case with default header values.
 
 StorageServiceTombstoneWarnThresholdPostOK storage service tombstone warn threshold post o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceTombstoneWarnThresholdPostDefault(code int) *StorageServic
 	}
 }
 
-/*StorageServiceTombstoneWarnThresholdPostDefault handles this case with default header values.
+/*
+StorageServiceTombstoneWarnThresholdPostDefault handles this case with default header values.
 
 internal server error
 */

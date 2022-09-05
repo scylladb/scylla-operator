@@ -48,7 +48,8 @@ func NewFindConfigSeedProviderOK() *FindConfigSeedProviderOK {
 	return &FindConfigSeedProviderOK{}
 }
 
-/*FindConfigSeedProviderOK handles this case with default header values.
+/*
+FindConfigSeedProviderOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigSeedProviderDefault(code int) *FindConfigSeedProviderDefault {
 	}
 }
 
-/*FindConfigSeedProviderDefault handles this case with default header values.
+/*
+FindConfigSeedProviderDefault handles this case with default header values.
 
 unexpected error
 */

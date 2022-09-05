@@ -56,7 +56,8 @@ func NewCommitlogSegmentsArchivingGetParamsWithHTTPClient(client *http.Client) *
 	}
 }
 
-/*CommitlogSegmentsArchivingGetParams contains all the parameters to send to the API endpoint
+/*
+CommitlogSegmentsArchivingGetParams contains all the parameters to send to the API endpoint
 for the commitlog segments archiving get operation typically these are written to a http.Request
 */
 type CommitlogSegmentsArchivingGetParams struct {

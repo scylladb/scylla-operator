@@ -56,7 +56,8 @@ func NewStorageServiceLoggingLevelGetParamsWithHTTPClient(client *http.Client) *
 	}
 }
 
-/*StorageServiceLoggingLevelGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceLoggingLevelGetParams contains all the parameters to send to the API endpoint
 for the storage service logging level get operation typically these are written to a http.Request
 */
 type StorageServiceLoggingLevelGetParams struct {

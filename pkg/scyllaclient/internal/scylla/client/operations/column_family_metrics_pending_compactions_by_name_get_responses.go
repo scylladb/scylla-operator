@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsPendingCompactionsByNameGetOK() *ColumnFamilyMetricsP
 	return &ColumnFamilyMetricsPendingCompactionsByNameGetOK{}
 }
 
-/*ColumnFamilyMetricsPendingCompactionsByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsPendingCompactionsByNameGetOK handles this case with default header values.
 
 ColumnFamilyMetricsPendingCompactionsByNameGetOK column family metrics pending compactions by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsPendingCompactionsByNameGetDefault(code int) *ColumnF
 	}
 }
 
-/*ColumnFamilyMetricsPendingCompactionsByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsPendingCompactionsByNameGetDefault handles this case with default header values.
 
 internal server error
 */

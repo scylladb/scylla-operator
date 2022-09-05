@@ -56,7 +56,8 @@ func NewFindConfigLogToSyslogParamsWithHTTPClient(client *http.Client) *FindConf
 	}
 }
 
-/*FindConfigLogToSyslogParams contains all the parameters to send to the API endpoint
+/*
+FindConfigLogToSyslogParams contains all the parameters to send to the API endpoint
 for the find config log to syslog operation typically these are written to a http.Request
 */
 type FindConfigLogToSyslogParams struct {

@@ -48,7 +48,8 @@ func NewFindConfigCommitlogSegmentSizeInMbOK() *FindConfigCommitlogSegmentSizeIn
 	return &FindConfigCommitlogSegmentSizeInMbOK{}
 }
 
-/*FindConfigCommitlogSegmentSizeInMbOK handles this case with default header values.
+/*
+FindConfigCommitlogSegmentSizeInMbOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigCommitlogSegmentSizeInMbDefault(code int) *FindConfigCommitlog
 	}
 }
 
-/*FindConfigCommitlogSegmentSizeInMbDefault handles this case with default header values.
+/*
+FindConfigCommitlogSegmentSizeInMbDefault handles this case with default header values.
 
 unexpected error
 */

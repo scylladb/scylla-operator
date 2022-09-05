@@ -49,7 +49,8 @@ func NewOperationsCheckPermissionsOK() *OperationsCheckPermissionsOK {
 	return &OperationsCheckPermissionsOK{}
 }
 
-/*OperationsCheckPermissionsOK handles this case with default header values.
+/*
+OperationsCheckPermissionsOK handles this case with default header values.
 
 Empty object
 */
@@ -87,7 +88,8 @@ func NewOperationsCheckPermissionsDefault(code int) *OperationsCheckPermissionsD
 	}
 }
 
-/*OperationsCheckPermissionsDefault handles this case with default header values.
+/*
+OperationsCheckPermissionsDefault handles this case with default header values.
 
 Server error
 */

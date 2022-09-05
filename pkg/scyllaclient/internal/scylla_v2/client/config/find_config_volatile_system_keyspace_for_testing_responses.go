@@ -48,7 +48,8 @@ func NewFindConfigVolatileSystemKeyspaceForTestingOK() *FindConfigVolatileSystem
 	return &FindConfigVolatileSystemKeyspaceForTestingOK{}
 }
 
-/*FindConfigVolatileSystemKeyspaceForTestingOK handles this case with default header values.
+/*
+FindConfigVolatileSystemKeyspaceForTestingOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigVolatileSystemKeyspaceForTestingDefault(code int) *FindConfigV
 	}
 }
 
-/*FindConfigVolatileSystemKeyspaceForTestingDefault handles this case with default header values.
+/*
+FindConfigVolatileSystemKeyspaceForTestingDefault handles this case with default header values.
 
 unexpected error
 */

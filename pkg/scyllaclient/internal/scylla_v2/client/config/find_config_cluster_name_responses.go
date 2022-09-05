@@ -48,7 +48,8 @@ func NewFindConfigClusterNameOK() *FindConfigClusterNameOK {
 	return &FindConfigClusterNameOK{}
 }
 
-/*FindConfigClusterNameOK handles this case with default header values.
+/*
+FindConfigClusterNameOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigClusterNameDefault(code int) *FindConfigClusterNameDefault {
 	}
 }
 
-/*FindConfigClusterNameDefault handles this case with default header values.
+/*
+FindConfigClusterNameDefault handles this case with default header values.
 
 unexpected error
 */

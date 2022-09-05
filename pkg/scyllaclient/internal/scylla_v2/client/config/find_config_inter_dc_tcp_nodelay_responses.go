@@ -48,7 +48,8 @@ func NewFindConfigInterDcTCPNodelayOK() *FindConfigInterDcTCPNodelayOK {
 	return &FindConfigInterDcTCPNodelayOK{}
 }
 
-/*FindConfigInterDcTCPNodelayOK handles this case with default header values.
+/*
+FindConfigInterDcTCPNodelayOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigInterDcTCPNodelayDefault(code int) *FindConfigInterDcTCPNodela
 	}
 }
 
-/*FindConfigInterDcTCPNodelayDefault handles this case with default header values.
+/*
+FindConfigInterDcTCPNodelayDefault handles this case with default header values.
 
 unexpected error
 */

@@ -48,7 +48,8 @@ func NewStorageProxyReadRPCTimeoutPostOK() *StorageProxyReadRPCTimeoutPostOK {
 	return &StorageProxyReadRPCTimeoutPostOK{}
 }
 
-/*StorageProxyReadRPCTimeoutPostOK handles this case with default header values.
+/*
+StorageProxyReadRPCTimeoutPostOK handles this case with default header values.
 
 StorageProxyReadRPCTimeoutPostOK storage proxy read Rpc timeout post o k
 */
@@ -67,7 +68,8 @@ func NewStorageProxyReadRPCTimeoutPostDefault(code int) *StorageProxyReadRPCTime
 	}
 }
 
-/*StorageProxyReadRPCTimeoutPostDefault handles this case with default header values.
+/*
+StorageProxyReadRPCTimeoutPostDefault handles this case with default header values.
 
 internal server error
 */

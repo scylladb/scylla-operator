@@ -48,7 +48,8 @@ func NewCompactionManagerMetricsBytesCompactedGetOK() *CompactionManagerMetricsB
 	return &CompactionManagerMetricsBytesCompactedGetOK{}
 }
 
-/*CompactionManagerMetricsBytesCompactedGetOK handles this case with default header values.
+/*
+CompactionManagerMetricsBytesCompactedGetOK handles this case with default header values.
 
 CompactionManagerMetricsBytesCompactedGetOK compaction manager metrics bytes compacted get o k
 */
@@ -77,7 +78,8 @@ func NewCompactionManagerMetricsBytesCompactedGetDefault(code int) *CompactionMa
 	}
 }
 
-/*CompactionManagerMetricsBytesCompactedGetDefault handles this case with default header values.
+/*
+CompactionManagerMetricsBytesCompactedGetDefault handles this case with default header values.
 
 internal server error
 */

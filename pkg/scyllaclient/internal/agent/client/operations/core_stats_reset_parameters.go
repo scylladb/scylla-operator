@@ -58,7 +58,8 @@ func NewCoreStatsResetParamsWithHTTPClient(client *http.Client) *CoreStatsResetP
 	}
 }
 
-/*CoreStatsResetParams contains all the parameters to send to the API endpoint
+/*
+CoreStatsResetParams contains all the parameters to send to the API endpoint
 for the core stats reset operation typically these are written to a http.Request
 */
 type CoreStatsResetParams struct {

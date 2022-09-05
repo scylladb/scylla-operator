@@ -56,7 +56,8 @@ func NewFindConfigReadRequestTimeoutInMsParamsWithHTTPClient(client *http.Client
 	}
 }
 
-/*FindConfigReadRequestTimeoutInMsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigReadRequestTimeoutInMsParams contains all the parameters to send to the API endpoint
 for the find config read request timeout in ms operation typically these are written to a http.Request
 */
 type FindConfigReadRequestTimeoutInMsParams struct {

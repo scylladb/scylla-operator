@@ -56,7 +56,8 @@ func NewFindConfigShutdownAnnounceInMsParamsWithHTTPClient(client *http.Client) 
 	}
 }
 
-/*FindConfigShutdownAnnounceInMsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigShutdownAnnounceInMsParams contains all the parameters to send to the API endpoint
 for the find config shutdown announce in ms operation typically these are written to a http.Request
 */
 type FindConfigShutdownAnnounceInMsParams struct {

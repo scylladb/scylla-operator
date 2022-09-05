@@ -49,7 +49,8 @@ func NewNodeInfoOK() *NodeInfoOK {
 	return &NodeInfoOK{}
 }
 
-/*NodeInfoOK handles this case with default header values.
+/*
+NodeInfoOK handles this case with default header values.
 
 node information
 */
@@ -89,7 +90,8 @@ func NewNodeInfoDefault(code int) *NodeInfoDefault {
 	}
 }
 
-/*NodeInfoDefault handles this case with default header values.
+/*
+NodeInfoDefault handles this case with default header values.
 
 Server error
 */

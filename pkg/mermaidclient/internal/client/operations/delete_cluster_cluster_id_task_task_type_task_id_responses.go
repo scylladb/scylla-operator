@@ -47,7 +47,8 @@ func NewDeleteClusterClusterIDTaskTaskTypeTaskIDOK() *DeleteClusterClusterIDTask
 	return &DeleteClusterClusterIDTaskTaskTypeTaskIDOK{}
 }
 
-/*DeleteClusterClusterIDTaskTaskTypeTaskIDOK handles this case with default header values.
+/*
+DeleteClusterClusterIDTaskTaskTypeTaskIDOK handles this case with default header values.
 
 Task deleted
 */
@@ -70,7 +71,8 @@ func NewDeleteClusterClusterIDTaskTaskTypeTaskIDDefault(code int) *DeleteCluster
 	}
 }
 
-/*DeleteClusterClusterIDTaskTaskTypeTaskIDDefault handles this case with default header values.
+/*
+DeleteClusterClusterIDTaskTaskTypeTaskIDDefault handles this case with default header values.
 
 Unexpected error
 */

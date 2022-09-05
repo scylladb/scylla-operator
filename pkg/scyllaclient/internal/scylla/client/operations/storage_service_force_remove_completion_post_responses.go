@@ -48,7 +48,8 @@ func NewStorageServiceForceRemoveCompletionPostOK() *StorageServiceForceRemoveCo
 	return &StorageServiceForceRemoveCompletionPostOK{}
 }
 
-/*StorageServiceForceRemoveCompletionPostOK handles this case with default header values.
+/*
+StorageServiceForceRemoveCompletionPostOK handles this case with default header values.
 
 StorageServiceForceRemoveCompletionPostOK storage service force remove completion post o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceForceRemoveCompletionPostDefault(code int) *StorageService
 	}
 }
 
-/*StorageServiceForceRemoveCompletionPostDefault handles this case with default header values.
+/*
+StorageServiceForceRemoveCompletionPostDefault handles this case with default header values.
 
 internal server error
 */

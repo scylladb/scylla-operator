@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/leaderelection"
@@ -38,15 +37,19 @@ func Run(ctx context.Context, programName, lockName, lockNamespace string, clien
 	id := hostname + "_" + string(uuid.NewUUID())
 	klog.V(4).Infof("Leader election ID is %q", id)
 
-	lock := &resourcelock.ConfigMapLock{
-		ConfigMapMeta: metav1.ObjectMeta{
-			Name:      lockName,
-			Namespace: lockNamespace,
-		},
-		Client: client.CoreV1(),
-		LockConfig: resourcelock.ResourceLockConfig{
+	// TODO: Migrate to single lock using just coordination API in >=1.9.
+	lock, err := resourcelock.New(
+		resourcelock.ConfigMapsLeasesResourceLock,
+		lockNamespace,
+		lockName,
+		client.CoreV1(),
+		client.CoordinationV1(),
+		resourcelock.ResourceLockConfig{
 			Identity: id,
 		},
+	)
+	if err != nil {
+		return fmt.Errorf("can't create resource lock: %w", err)
 	}
 
 	var fErr error

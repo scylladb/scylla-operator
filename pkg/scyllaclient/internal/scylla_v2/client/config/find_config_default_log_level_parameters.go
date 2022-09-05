@@ -56,7 +56,8 @@ func NewFindConfigDefaultLogLevelParamsWithHTTPClient(client *http.Client) *Find
 	}
 }
 
-/*FindConfigDefaultLogLevelParams contains all the parameters to send to the API endpoint
+/*
+FindConfigDefaultLogLevelParams contains all the parameters to send to the API endpoint
 for the find config default log level operation typically these are written to a http.Request
 */
 type FindConfigDefaultLogLevelParams struct {

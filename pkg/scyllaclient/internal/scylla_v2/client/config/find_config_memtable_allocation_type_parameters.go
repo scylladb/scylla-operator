@@ -56,7 +56,8 @@ func NewFindConfigMemtableAllocationTypeParamsWithHTTPClient(client *http.Client
 	}
 }
 
-/*FindConfigMemtableAllocationTypeParams contains all the parameters to send to the API endpoint
+/*
+FindConfigMemtableAllocationTypeParams contains all the parameters to send to the API endpoint
 for the find config memtable allocation type operation typically these are written to a http.Request
 */
 type FindConfigMemtableAllocationTypeParams struct {

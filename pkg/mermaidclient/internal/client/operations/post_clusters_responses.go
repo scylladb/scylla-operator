@@ -47,7 +47,8 @@ func NewPostClustersCreated() *PostClustersCreated {
 	return &PostClustersCreated{}
 }
 
-/*PostClustersCreated handles this case with default header values.
+/*
+PostClustersCreated handles this case with default header values.
 
 Cluster added
 */
@@ -74,7 +75,8 @@ func NewPostClustersDefault(code int) *PostClustersDefault {
 	}
 }
 
-/*PostClustersDefault handles this case with default header values.
+/*
+PostClustersDefault handles this case with default header values.
 
 Unexpected error
 */

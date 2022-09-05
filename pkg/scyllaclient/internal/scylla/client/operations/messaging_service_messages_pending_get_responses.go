@@ -48,7 +48,8 @@ func NewMessagingServiceMessagesPendingGetOK() *MessagingServiceMessagesPendingG
 	return &MessagingServiceMessagesPendingGetOK{}
 }
 
-/*MessagingServiceMessagesPendingGetOK handles this case with default header values.
+/*
+MessagingServiceMessagesPendingGetOK handles this case with default header values.
 
 MessagingServiceMessagesPendingGetOK messaging service messages pending get o k
 */
@@ -77,7 +78,8 @@ func NewMessagingServiceMessagesPendingGetDefault(code int) *MessagingServiceMes
 	}
 }
 
-/*MessagingServiceMessagesPendingGetDefault handles this case with default header values.
+/*
+MessagingServiceMessagesPendingGetDefault handles this case with default header values.
 
 internal server error
 */

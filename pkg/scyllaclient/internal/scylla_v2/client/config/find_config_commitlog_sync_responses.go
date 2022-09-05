@@ -48,7 +48,8 @@ func NewFindConfigCommitlogSyncOK() *FindConfigCommitlogSyncOK {
 	return &FindConfigCommitlogSyncOK{}
 }
 
-/*FindConfigCommitlogSyncOK handles this case with default header values.
+/*
+FindConfigCommitlogSyncOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigCommitlogSyncDefault(code int) *FindConfigCommitlogSyncDefault
 	}
 }
 
-/*FindConfigCommitlogSyncDefault handles this case with default header values.
+/*
+FindConfigCommitlogSyncDefault handles this case with default header values.
 
 unexpected error
 */

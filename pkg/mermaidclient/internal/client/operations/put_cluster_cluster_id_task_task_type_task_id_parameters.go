@@ -58,7 +58,8 @@ func NewPutClusterClusterIDTaskTaskTypeTaskIDParamsWithHTTPClient(client *http.C
 	}
 }
 
-/*PutClusterClusterIDTaskTaskTypeTaskIDParams contains all the parameters to send to the API endpoint
+/*
+PutClusterClusterIDTaskTaskTypeTaskIDParams contains all the parameters to send to the API endpoint
 for the put cluster cluster ID task task type task ID operation typically these are written to a http.Request
 */
 type PutClusterClusterIDTaskTaskTypeTaskIDParams struct {

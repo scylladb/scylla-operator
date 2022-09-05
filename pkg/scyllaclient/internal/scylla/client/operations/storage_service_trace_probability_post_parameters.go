@@ -56,7 +56,8 @@ func NewStorageServiceTraceProbabilityPostParamsWithHTTPClient(client *http.Clie
 	}
 }
 
-/*StorageServiceTraceProbabilityPostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceTraceProbabilityPostParams contains all the parameters to send to the API endpoint
 for the storage service trace probability post operation typically these are written to a http.Request
 */
 type StorageServiceTraceProbabilityPostParams struct {

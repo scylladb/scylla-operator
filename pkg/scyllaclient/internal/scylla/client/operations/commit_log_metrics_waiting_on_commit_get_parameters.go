@@ -56,7 +56,8 @@ func NewCommitLogMetricsWaitingOnCommitGetParamsWithHTTPClient(client *http.Clie
 	}
 }
 
-/*CommitLogMetricsWaitingOnCommitGetParams contains all the parameters to send to the API endpoint
+/*
+CommitLogMetricsWaitingOnCommitGetParams contains all the parameters to send to the API endpoint
 for the commit log metrics waiting on commit get operation typically these are written to a http.Request
 */
 type CommitLogMetricsWaitingOnCommitGetParams struct {

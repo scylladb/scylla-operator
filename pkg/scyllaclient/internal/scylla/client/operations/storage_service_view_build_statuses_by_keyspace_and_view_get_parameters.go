@@ -56,7 +56,8 @@ func NewStorageServiceViewBuildStatusesByKeyspaceAndViewGetParamsWithHTTPClient(
 	}
 }
 
-/*StorageServiceViewBuildStatusesByKeyspaceAndViewGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceViewBuildStatusesByKeyspaceAndViewGetParams contains all the parameters to send to the API endpoint
 for the storage service view build statuses by keyspace and view get operation typically these are written to a http.Request
 */
 type StorageServiceViewBuildStatusesByKeyspaceAndViewGetParams struct {

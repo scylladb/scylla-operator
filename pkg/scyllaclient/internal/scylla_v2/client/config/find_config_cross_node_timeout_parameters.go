@@ -56,7 +56,8 @@ func NewFindConfigCrossNodeTimeoutParamsWithHTTPClient(client *http.Client) *Fin
 	}
 }
 
-/*FindConfigCrossNodeTimeoutParams contains all the parameters to send to the API endpoint
+/*
+FindConfigCrossNodeTimeoutParams contains all the parameters to send to the API endpoint
 for the find config cross node timeout operation typically these are written to a http.Request
 */
 type FindConfigCrossNodeTimeoutParams struct {

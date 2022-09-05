@@ -56,7 +56,8 @@ func NewCommitlogSegmentsActiveGetParamsWithHTTPClient(client *http.Client) *Com
 	}
 }
 
-/*CommitlogSegmentsActiveGetParams contains all the parameters to send to the API endpoint
+/*
+CommitlogSegmentsActiveGetParams contains all the parameters to send to the API endpoint
 for the commitlog segments active get operation typically these are written to a http.Request
 */
 type CommitlogSegmentsActiveGetParams struct {

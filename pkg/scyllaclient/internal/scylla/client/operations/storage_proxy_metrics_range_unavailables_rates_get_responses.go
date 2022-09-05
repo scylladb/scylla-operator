@@ -48,7 +48,8 @@ func NewStorageProxyMetricsRangeUnavailablesRatesGetOK() *StorageProxyMetricsRan
 	return &StorageProxyMetricsRangeUnavailablesRatesGetOK{}
 }
 
-/*StorageProxyMetricsRangeUnavailablesRatesGetOK handles this case with default header values.
+/*
+StorageProxyMetricsRangeUnavailablesRatesGetOK handles this case with default header values.
 
 StorageProxyMetricsRangeUnavailablesRatesGetOK storage proxy metrics range unavailables rates get o k
 */
@@ -79,7 +80,8 @@ func NewStorageProxyMetricsRangeUnavailablesRatesGetDefault(code int) *StoragePr
 	}
 }
 
-/*StorageProxyMetricsRangeUnavailablesRatesGetDefault handles this case with default header values.
+/*
+StorageProxyMetricsRangeUnavailablesRatesGetDefault handles this case with default header values.
 
 internal server error
 */

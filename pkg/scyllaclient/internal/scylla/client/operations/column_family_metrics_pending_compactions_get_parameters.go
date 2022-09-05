@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsPendingCompactionsGetParamsWithHTTPClient(client *htt
 	}
 }
 
-/*ColumnFamilyMetricsPendingCompactionsGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsPendingCompactionsGetParams contains all the parameters to send to the API endpoint
 for the column family metrics pending compactions get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsPendingCompactionsGetParams struct {

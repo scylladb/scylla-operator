@@ -56,7 +56,8 @@ func NewFindConfigAPIUIDirParamsWithHTTPClient(client *http.Client) *FindConfigA
 	}
 }
 
-/*FindConfigAPIUIDirParams contains all the parameters to send to the API endpoint
+/*
+FindConfigAPIUIDirParams contains all the parameters to send to the API endpoint
 for the find config api ui dir operation typically these are written to a http.Request
 */
 type FindConfigAPIUIDirParams struct {

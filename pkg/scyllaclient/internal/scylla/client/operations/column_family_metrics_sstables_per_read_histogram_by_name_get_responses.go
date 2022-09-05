@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsSstablesPerReadHistogramByNameGetOK() *ColumnFamilyMe
 	return &ColumnFamilyMetricsSstablesPerReadHistogramByNameGetOK{}
 }
 
-/*ColumnFamilyMetricsSstablesPerReadHistogramByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsSstablesPerReadHistogramByNameGetOK handles this case with default header values.
 
 ColumnFamilyMetricsSstablesPerReadHistogramByNameGetOK column family metrics sstables per read histogram by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsSstablesPerReadHistogramByNameGetDefault(code int) *C
 	}
 }
 
-/*ColumnFamilyMetricsSstablesPerReadHistogramByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsSstablesPerReadHistogramByNameGetDefault handles this case with default header values.
 
 internal server error
 */

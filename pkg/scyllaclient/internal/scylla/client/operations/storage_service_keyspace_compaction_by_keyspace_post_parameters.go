@@ -56,7 +56,8 @@ func NewStorageServiceKeyspaceCompactionByKeyspacePostParamsWithHTTPClient(clien
 	}
 }
 
-/*StorageServiceKeyspaceCompactionByKeyspacePostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceKeyspaceCompactionByKeyspacePostParams contains all the parameters to send to the API endpoint
 for the storage service keyspace compaction by keyspace post operation typically these are written to a http.Request
 */
 type StorageServiceKeyspaceCompactionByKeyspacePostParams struct {

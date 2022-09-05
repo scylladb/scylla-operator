@@ -56,7 +56,8 @@ func NewStorageServiceKeyspacesGetParamsWithHTTPClient(client *http.Client) *Sto
 	}
 }
 
-/*StorageServiceKeyspacesGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceKeyspacesGetParams contains all the parameters to send to the API endpoint
 for the storage service keyspaces get operation typically these are written to a http.Request
 */
 type StorageServiceKeyspacesGetParams struct {

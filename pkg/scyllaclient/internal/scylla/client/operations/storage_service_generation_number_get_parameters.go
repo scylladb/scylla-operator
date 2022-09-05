@@ -56,7 +56,8 @@ func NewStorageServiceGenerationNumberGetParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*StorageServiceGenerationNumberGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceGenerationNumberGetParams contains all the parameters to send to the API endpoint
 for the storage service generation number get operation typically these are written to a http.Request
 */
 type StorageServiceGenerationNumberGetParams struct {

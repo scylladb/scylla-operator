@@ -56,7 +56,8 @@ func NewFindConfigCompactionEnforceMinThresholdParamsWithHTTPClient(client *http
 	}
 }
 
-/*FindConfigCompactionEnforceMinThresholdParams contains all the parameters to send to the API endpoint
+/*
+FindConfigCompactionEnforceMinThresholdParams contains all the parameters to send to the API endpoint
 for the find config compaction enforce min threshold operation typically these are written to a http.Request
 */
 type FindConfigCompactionEnforceMinThresholdParams struct {

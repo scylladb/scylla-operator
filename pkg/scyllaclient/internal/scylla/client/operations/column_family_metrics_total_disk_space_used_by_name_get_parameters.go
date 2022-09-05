@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsTotalDiskSpaceUsedByNameGetParamsWithHTTPClient(clien
 	}
 }
 
-/*ColumnFamilyMetricsTotalDiskSpaceUsedByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsTotalDiskSpaceUsedByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics total disk space used by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsTotalDiskSpaceUsedByNameGetParams struct {

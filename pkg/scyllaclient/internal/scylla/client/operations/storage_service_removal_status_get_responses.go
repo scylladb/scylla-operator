@@ -48,7 +48,8 @@ func NewStorageServiceRemovalStatusGetOK() *StorageServiceRemovalStatusGetOK {
 	return &StorageServiceRemovalStatusGetOK{}
 }
 
-/*StorageServiceRemovalStatusGetOK handles this case with default header values.
+/*
+StorageServiceRemovalStatusGetOK handles this case with default header values.
 
 StorageServiceRemovalStatusGetOK storage service removal status get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceRemovalStatusGetDefault(code int) *StorageServiceRemovalSt
 	}
 }
 
-/*StorageServiceRemovalStatusGetDefault handles this case with default header values.
+/*
+StorageServiceRemovalStatusGetDefault handles this case with default header values.
 
 internal server error
 */

@@ -48,7 +48,8 @@ func NewCommitlogMetricsCompletedTasksGetOK() *CommitlogMetricsCompletedTasksGet
 	return &CommitlogMetricsCompletedTasksGetOK{}
 }
 
-/*CommitlogMetricsCompletedTasksGetOK handles this case with default header values.
+/*
+CommitlogMetricsCompletedTasksGetOK handles this case with default header values.
 
 CommitlogMetricsCompletedTasksGetOK commitlog metrics completed tasks get o k
 */
@@ -77,7 +78,8 @@ func NewCommitlogMetricsCompletedTasksGetDefault(code int) *CommitlogMetricsComp
 	}
 }
 
-/*CommitlogMetricsCompletedTasksGetDefault handles this case with default header values.
+/*
+CommitlogMetricsCompletedTasksGetDefault handles this case with default header values.
 
 internal server error
 */

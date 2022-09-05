@@ -56,7 +56,8 @@ func NewSnitchDatacenterGetParamsWithHTTPClient(client *http.Client) *SnitchData
 	}
 }
 
-/*SnitchDatacenterGetParams contains all the parameters to send to the API endpoint
+/*
+SnitchDatacenterGetParams contains all the parameters to send to the API endpoint
 for the snitch datacenter get operation typically these are written to a http.Request
 */
 type SnitchDatacenterGetParams struct {

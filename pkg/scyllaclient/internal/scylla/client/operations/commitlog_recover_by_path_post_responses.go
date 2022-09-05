@@ -48,7 +48,8 @@ func NewCommitlogRecoverByPathPostOK() *CommitlogRecoverByPathPostOK {
 	return &CommitlogRecoverByPathPostOK{}
 }
 
-/*CommitlogRecoverByPathPostOK handles this case with default header values.
+/*
+CommitlogRecoverByPathPostOK handles this case with default header values.
 
 CommitlogRecoverByPathPostOK commitlog recover by path post o k
 */
@@ -67,7 +68,8 @@ func NewCommitlogRecoverByPathPostDefault(code int) *CommitlogRecoverByPathPostD
 	}
 }
 
-/*CommitlogRecoverByPathPostDefault handles this case with default header values.
+/*
+CommitlogRecoverByPathPostDefault handles this case with default header values.
 
 internal server error
 */

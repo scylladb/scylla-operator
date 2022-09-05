@@ -48,7 +48,8 @@ func NewFindConfigRoleManagerOK() *FindConfigRoleManagerOK {
 	return &FindConfigRoleManagerOK{}
 }
 
-/*FindConfigRoleManagerOK handles this case with default header values.
+/*
+FindConfigRoleManagerOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigRoleManagerDefault(code int) *FindConfigRoleManagerDefault {
 	}
 }
 
-/*FindConfigRoleManagerDefault handles this case with default header values.
+/*
+FindConfigRoleManagerDefault handles this case with default header values.
 
 unexpected error
 */

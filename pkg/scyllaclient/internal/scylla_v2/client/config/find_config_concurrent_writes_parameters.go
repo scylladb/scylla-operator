@@ -56,7 +56,8 @@ func NewFindConfigConcurrentWritesParamsWithHTTPClient(client *http.Client) *Fin
 	}
 }
 
-/*FindConfigConcurrentWritesParams contains all the parameters to send to the API endpoint
+/*
+FindConfigConcurrentWritesParams contains all the parameters to send to the API endpoint
 for the find config concurrent writes operation typically these are written to a http.Request
 */
 type FindConfigConcurrentWritesParams struct {

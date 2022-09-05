@@ -56,7 +56,8 @@ func NewFindConfigTombstoneFailureThresholdParamsWithHTTPClient(client *http.Cli
 	}
 }
 
-/*FindConfigTombstoneFailureThresholdParams contains all the parameters to send to the API endpoint
+/*
+FindConfigTombstoneFailureThresholdParams contains all the parameters to send to the API endpoint
 for the find config tombstone failure threshold operation typically these are written to a http.Request
 */
 type FindConfigTombstoneFailureThresholdParams struct {

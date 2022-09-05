@@ -56,7 +56,8 @@ func NewFindConfigHintsDirectoryParamsWithHTTPClient(client *http.Client) *FindC
 	}
 }
 
-/*FindConfigHintsDirectoryParams contains all the parameters to send to the API endpoint
+/*
+FindConfigHintsDirectoryParams contains all the parameters to send to the API endpoint
 for the find config hints directory operation typically these are written to a http.Request
 */
 type FindConfigHintsDirectoryParams struct {

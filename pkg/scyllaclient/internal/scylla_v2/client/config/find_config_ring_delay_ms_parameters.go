@@ -56,7 +56,8 @@ func NewFindConfigRingDelayMsParamsWithHTTPClient(client *http.Client) *FindConf
 	}
 }
 
-/*FindConfigRingDelayMsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigRingDelayMsParams contains all the parameters to send to the API endpoint
 for the find config ring delay ms operation typically these are written to a http.Request
 */
 type FindConfigRingDelayMsParams struct {

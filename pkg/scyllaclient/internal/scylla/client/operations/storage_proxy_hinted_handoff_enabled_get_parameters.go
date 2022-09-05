@@ -56,7 +56,8 @@ func NewStorageProxyHintedHandoffEnabledGetParamsWithHTTPClient(client *http.Cli
 	}
 }
 
-/*StorageProxyHintedHandoffEnabledGetParams contains all the parameters to send to the API endpoint
+/*
+StorageProxyHintedHandoffEnabledGetParams contains all the parameters to send to the API endpoint
 for the storage proxy hinted handoff enabled get operation typically these are written to a http.Request
 */
 type StorageProxyHintedHandoffEnabledGetParams struct {

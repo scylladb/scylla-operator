@@ -48,7 +48,8 @@ func NewStorageProxyHintedHandoffEnabledGetOK() *StorageProxyHintedHandoffEnable
 	return &StorageProxyHintedHandoffEnabledGetOK{}
 }
 
-/*StorageProxyHintedHandoffEnabledGetOK handles this case with default header values.
+/*
+StorageProxyHintedHandoffEnabledGetOK handles this case with default header values.
 
 StorageProxyHintedHandoffEnabledGetOK storage proxy hinted handoff enabled get o k
 */
@@ -77,7 +78,8 @@ func NewStorageProxyHintedHandoffEnabledGetDefault(code int) *StorageProxyHinted
 	}
 }
 
-/*StorageProxyHintedHandoffEnabledGetDefault handles this case with default header values.
+/*
+StorageProxyHintedHandoffEnabledGetDefault handles this case with default header values.
 
 internal server error
 */

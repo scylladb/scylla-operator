@@ -48,7 +48,8 @@ func NewFindConfigFileCacheSizeInMbOK() *FindConfigFileCacheSizeInMbOK {
 	return &FindConfigFileCacheSizeInMbOK{}
 }
 
-/*FindConfigFileCacheSizeInMbOK handles this case with default header values.
+/*
+FindConfigFileCacheSizeInMbOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigFileCacheSizeInMbDefault(code int) *FindConfigFileCacheSizeInM
 	}
 }
 
-/*FindConfigFileCacheSizeInMbDefault handles this case with default header values.
+/*
+FindConfigFileCacheSizeInMbDefault handles this case with default header values.
 
 unexpected error
 */

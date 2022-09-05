@@ -48,7 +48,8 @@ func NewStorageProxyMetricsReadGetOK() *StorageProxyMetricsReadGetOK {
 	return &StorageProxyMetricsReadGetOK{}
 }
 
-/*StorageProxyMetricsReadGetOK handles this case with default header values.
+/*
+StorageProxyMetricsReadGetOK handles this case with default header values.
 
 StorageProxyMetricsReadGetOK storage proxy metrics read get o k
 */
@@ -77,7 +78,8 @@ func NewStorageProxyMetricsReadGetDefault(code int) *StorageProxyMetricsReadGetD
 	}
 }
 
-/*StorageProxyMetricsReadGetDefault handles this case with default header values.
+/*
+StorageProxyMetricsReadGetDefault handles this case with default header values.
 
 internal server error
 */

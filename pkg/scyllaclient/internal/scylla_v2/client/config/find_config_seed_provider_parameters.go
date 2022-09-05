@@ -56,7 +56,8 @@ func NewFindConfigSeedProviderParamsWithHTTPClient(client *http.Client) *FindCon
 	}
 }
 
-/*FindConfigSeedProviderParams contains all the parameters to send to the API endpoint
+/*
+FindConfigSeedProviderParams contains all the parameters to send to the API endpoint
 for the find config seed provider operation typically these are written to a http.Request
 */
 type FindConfigSeedProviderParams struct {

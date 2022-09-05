@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsEstimatedRowCountByNameGetParamsWithHTTPClient(client
 	}
 }
 
-/*ColumnFamilyMetricsEstimatedRowCountByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsEstimatedRowCountByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics estimated row count by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsEstimatedRowCountByNameGetParams struct {

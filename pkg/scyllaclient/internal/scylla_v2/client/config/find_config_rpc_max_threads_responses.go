@@ -48,7 +48,8 @@ func NewFindConfigRPCMaxThreadsOK() *FindConfigRPCMaxThreadsOK {
 	return &FindConfigRPCMaxThreadsOK{}
 }
 
-/*FindConfigRPCMaxThreadsOK handles this case with default header values.
+/*
+FindConfigRPCMaxThreadsOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigRPCMaxThreadsDefault(code int) *FindConfigRPCMaxThreadsDefault
 	}
 }
 
-/*FindConfigRPCMaxThreadsDefault handles this case with default header values.
+/*
+FindConfigRPCMaxThreadsDefault handles this case with default header values.
 
 unexpected error
 */

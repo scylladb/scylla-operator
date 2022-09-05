@@ -56,7 +56,8 @@ func NewFindConfigInternodeCompressionParamsWithHTTPClient(client *http.Client) 
 	}
 }
 
-/*FindConfigInternodeCompressionParams contains all the parameters to send to the API endpoint
+/*
+FindConfigInternodeCompressionParams contains all the parameters to send to the API endpoint
 for the find config internode compression operation typically these are written to a http.Request
 */
 type FindConfigInternodeCompressionParams struct {

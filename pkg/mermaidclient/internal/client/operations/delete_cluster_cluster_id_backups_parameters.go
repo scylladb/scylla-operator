@@ -57,7 +57,8 @@ func NewDeleteClusterClusterIDBackupsParamsWithHTTPClient(client *http.Client) *
 	}
 }
 
-/*DeleteClusterClusterIDBackupsParams contains all the parameters to send to the API endpoint
+/*
+DeleteClusterClusterIDBackupsParams contains all the parameters to send to the API endpoint
 for the delete cluster cluster ID backups operation typically these are written to a http.Request
 */
 type DeleteClusterClusterIDBackupsParams struct {

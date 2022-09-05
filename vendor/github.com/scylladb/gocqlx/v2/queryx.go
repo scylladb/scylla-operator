@@ -93,7 +93,9 @@ type Queryx struct {
 	*gocql.Query
 	Names  []string
 	Mapper *reflectx.Mapper
-	err    error
+
+	tr  Transformer
+	err error
 }
 
 // Query creates a new Queryx from gocql.Query using a default mapper.
@@ -104,13 +106,21 @@ func Query(q *gocql.Query, names []string) *Queryx {
 		Query:  q,
 		Names:  names,
 		Mapper: DefaultMapper,
+		tr:     DefaultBindTransformer,
 	}
+}
+
+// WithBindTransformer sets the query bind transformer.
+// The transformer is called right before binding a value to a named parameter.
+func (q *Queryx) WithBindTransformer(tr Transformer) *Queryx {
+	q.tr = tr
+	return q
 }
 
 // BindStruct binds query named parameters to values from arg using mapper. If
 // value cannot be found error is reported.
 func (q *Queryx) BindStruct(arg interface{}) *Queryx {
-	arglist, err := bindStructArgs(q.Names, arg, nil, q.Mapper)
+	arglist, err := q.bindStructArgs(arg, nil)
 	if err != nil {
 		q.err = fmt.Errorf("bind error: %s", err)
 	} else {
@@ -125,7 +135,7 @@ func (q *Queryx) BindStruct(arg interface{}) *Queryx {
 // using a mapper. If value cannot be found in arg0 it's looked up in arg1
 // before reporting an error.
 func (q *Queryx) BindStructMap(arg0 interface{}, arg1 map[string]interface{}) *Queryx {
-	arglist, err := bindStructArgs(q.Names, arg0, arg1, q.Mapper)
+	arglist, err := q.bindStructArgs(arg0, arg1)
 	if err != nil {
 		q.err = fmt.Errorf("bind error: %s", err)
 	} else {
@@ -136,8 +146,8 @@ func (q *Queryx) BindStructMap(arg0 interface{}, arg1 map[string]interface{}) *Q
 	return q
 }
 
-func bindStructArgs(names []string, arg0 interface{}, arg1 map[string]interface{}, m *reflectx.Mapper) ([]interface{}, error) {
-	arglist := make([]interface{}, 0, len(names))
+func (q *Queryx) bindStructArgs(arg0 interface{}, arg1 map[string]interface{}) ([]interface{}, error) {
+	arglist := make([]interface{}, 0, len(q.Names))
 
 	// grab the indirected value of arg
 	v := reflect.ValueOf(arg0)
@@ -145,16 +155,20 @@ func bindStructArgs(names []string, arg0 interface{}, arg1 map[string]interface{
 		v = v.Elem()
 	}
 
-	err := m.TraversalsByNameFunc(v.Type(), names, func(i int, t []int) error {
+	err := q.Mapper.TraversalsByNameFunc(v.Type(), q.Names, func(i int, t []int) error {
 		if len(t) != 0 {
 			val := reflectx.FieldByIndexesReadOnly(v, t) // nolint:scopelint
 			arglist = append(arglist, val.Interface())
 		} else {
-			val, ok := arg1[names[i]]
+			val, ok := arg1[q.Names[i]]
 			if !ok {
-				return fmt.Errorf("could not find name %q in %#v and %#v", names[i], arg0, arg1)
+				return fmt.Errorf("could not find name %q in %#v and %#v", q.Names[i], arg0, arg1)
 			}
 			arglist = append(arglist, val)
+		}
+
+		if q.tr != nil {
+			arglist[i] = q.tr(q.Names[i], arglist[i])
 		}
 
 		return nil
@@ -165,7 +179,7 @@ func bindStructArgs(names []string, arg0 interface{}, arg1 map[string]interface{
 
 // BindMap binds query named parameters using map.
 func (q *Queryx) BindMap(arg map[string]interface{}) *Queryx {
-	arglist, err := bindMapArgs(q.Names, arg)
+	arglist, err := q.bindMapArgs(arg)
 	if err != nil {
 		q.err = fmt.Errorf("bind error: %s", err)
 	} else {
@@ -176,13 +190,17 @@ func (q *Queryx) BindMap(arg map[string]interface{}) *Queryx {
 	return q
 }
 
-func bindMapArgs(names []string, arg map[string]interface{}) ([]interface{}, error) {
-	arglist := make([]interface{}, 0, len(names))
+func (q *Queryx) bindMapArgs(arg map[string]interface{}) ([]interface{}, error) {
+	arglist := make([]interface{}, 0, len(q.Names))
 
-	for _, name := range names {
+	for _, name := range q.Names {
 		val, ok := arg[name]
 		if !ok {
 			return arglist, fmt.Errorf("could not find name %q in %#v", name, arg)
+		}
+
+		if q.tr != nil {
+			val = q.tr(name, val)
 		}
 		arglist = append(arglist, val)
 	}
@@ -265,6 +283,10 @@ func (q *Queryx) GetRelease(dest interface{}) error {
 // the previous values will be stored in dest object.
 // See: https://docs.scylladb.com/using-scylla/lwt/ for more details.
 func (q *Queryx) GetCAS(dest interface{}) (applied bool, err error) {
+	if q.err != nil {
+		return false, q.err
+	}
+
 	iter := q.Iter()
 	if err := iter.Get(dest); err != nil {
 		return false, err

@@ -48,7 +48,8 @@ func NewFailureDetectorPhiGetOK() *FailureDetectorPhiGetOK {
 	return &FailureDetectorPhiGetOK{}
 }
 
-/*FailureDetectorPhiGetOK handles this case with default header values.
+/*
+FailureDetectorPhiGetOK handles this case with default header values.
 
 FailureDetectorPhiGetOK failure detector phi get o k
 */
@@ -77,7 +78,8 @@ func NewFailureDetectorPhiGetDefault(code int) *FailureDetectorPhiGetDefault {
 	}
 }
 
-/*FailureDetectorPhiGetDefault handles this case with default header values.
+/*
+FailureDetectorPhiGetDefault handles this case with default header values.
 
 internal server error
 */

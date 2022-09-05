@@ -293,24 +293,8 @@ var (
 
 const maxFrameHeaderSize = 9
 
-func writeInt(p []byte, n int32) {
-	p[0] = byte(n >> 24)
-	p[1] = byte(n >> 16)
-	p[2] = byte(n >> 8)
-	p[3] = byte(n)
-}
-
 func readInt(p []byte) int32 {
 	return int32(p[0])<<24 | int32(p[1])<<16 | int32(p[2])<<8 | int32(p[3])
-}
-
-func writeShort(p []byte, n uint16) {
-	p[0] = byte(n >> 8)
-	p[1] = byte(n)
-}
-
-func readShort(p []byte) uint16 {
-	return uint16(p[0])<<8 | uint16(p[1])
 }
 
 type frameHeader struct {
@@ -609,7 +593,7 @@ func (f *framer) parseErrorFrame() frame {
 	}
 
 	switch code {
-	case errUnavailable:
+	case ErrCodeUnavailable:
 		cl := f.readConsistency()
 		required := f.readInt()
 		alive := f.readInt()
@@ -619,7 +603,7 @@ func (f *framer) parseErrorFrame() frame {
 			Required:    required,
 			Alive:       alive,
 		}
-	case errWriteTimeout:
+	case ErrCodeWriteTimeout:
 		cl := f.readConsistency()
 		received := f.readInt()
 		blockfor := f.readInt()
@@ -631,7 +615,7 @@ func (f *framer) parseErrorFrame() frame {
 			BlockFor:    blockfor,
 			WriteType:   writeType,
 		}
-	case errReadTimeout:
+	case ErrCodeReadTimeout:
 		cl := f.readConsistency()
 		received := f.readInt()
 		blockfor := f.readInt()
@@ -643,7 +627,7 @@ func (f *framer) parseErrorFrame() frame {
 			BlockFor:    blockfor,
 			DataPresent: dataPresent,
 		}
-	case errAlreadyExists:
+	case ErrCodeAlreadyExists:
 		ks := f.readString()
 		table := f.readString()
 		return &RequestErrAlreadyExists{
@@ -651,13 +635,13 @@ func (f *framer) parseErrorFrame() frame {
 			Keyspace:   ks,
 			Table:      table,
 		}
-	case errUnprepared:
+	case ErrCodeUnprepared:
 		stmtId := f.readShortBytes()
 		return &RequestErrUnprepared{
 			errorFrame:  errD,
 			StatementId: copyBytes(stmtId), // defensively copy
 		}
-	case errReadFailure:
+	case ErrCodeReadFailure:
 		res := &RequestErrReadFailure{
 			errorFrame: errD,
 		}
@@ -673,7 +657,7 @@ func (f *framer) parseErrorFrame() frame {
 		res.DataPresent = f.readByte() != 0
 
 		return res
-	case errWriteFailure:
+	case ErrCodeWriteFailure:
 		res := &RequestErrWriteFailure{
 			errorFrame: errD,
 		}
@@ -688,7 +672,7 @@ func (f *framer) parseErrorFrame() frame {
 		}
 		res.WriteType = f.readString()
 		return res
-	case errFunctionFailure:
+	case ErrCodeFunctionFailure:
 		res := &RequestErrFunctionFailure{
 			errorFrame: errD,
 		}
@@ -697,14 +681,21 @@ func (f *framer) parseErrorFrame() frame {
 		res.ArgTypes = f.readStringList()
 		return res
 
-	case errCDCWriteFailure:
+	case ErrCodeCDCWriteFailure:
 		res := &RequestErrCDCWriteFailure{
 			errorFrame: errD,
 		}
 		return res
-
-	case errInvalid, errBootstrapping, errConfig, errCredentials, errOverloaded,
-		errProtocol, errServer, errSyntax, errTruncate, errUnauthorized:
+	case ErrCodeCASWriteUnknown:
+		res := &RequestErrCASWriteUnknown{
+			errorFrame: errD,
+		}
+		res.Consistency = f.readConsistency()
+		res.Received = f.readInt()
+		res.BlockFor = f.readInt()
+		return res
+	case ErrCodeInvalid, ErrCodeBootstrapping, ErrCodeConfig, ErrCodeCredentials, ErrCodeOverloaded,
+		ErrCodeProtocol, ErrCodeServer, ErrCodeSyntax, ErrCodeTruncate, ErrCodeUnauthorized:
 		// TODO(zariel): we should have some distinct types for these errors
 		return errD
 	default:
@@ -1801,16 +1792,6 @@ func (f *framer) readShort() (n uint16) {
 	return
 }
 
-func (f *framer) readLong() (n int64) {
-	if len(f.rbuf) < 8 {
-		panic(fmt.Errorf("not enough bytes in buffer to read long require 8 got: %d", len(f.rbuf)))
-	}
-	n = int64(f.rbuf[0])<<56 | int64(f.rbuf[1])<<48 | int64(f.rbuf[2])<<40 | int64(f.rbuf[3])<<32 |
-		int64(f.rbuf[4])<<24 | int64(f.rbuf[5])<<16 | int64(f.rbuf[6])<<8 | int64(f.rbuf[7])
-	f.rbuf = f.rbuf[8:]
-	return
-}
-
 func (f *framer) readString() (s string) {
 	size := f.readShort()
 
@@ -1924,19 +1905,6 @@ func (f *framer) readConsistency() Consistency {
 	return Consistency(f.readShort())
 }
 
-func (f *framer) readStringMap() map[string]string {
-	size := f.readShort()
-	m := make(map[string]string, size)
-
-	for i := 0; i < int(size); i++ {
-		k := f.readString()
-		v := f.readString()
-		m[k] = v
-	}
-
-	return m
-}
-
 func (f *framer) readBytesMap() map[string][]byte {
 	size := f.readShort()
 	m := make(map[string][]byte, size)
@@ -2046,10 +2014,6 @@ func (f *framer) writeLongString(s string) {
 	f.wbuf = append(f.wbuf, s...)
 }
 
-func (f *framer) writeUUID(u *UUID) {
-	f.wbuf = append(f.wbuf, u[:]...)
-}
-
 func (f *framer) writeStringList(l []string) {
 	f.writeShort(uint16(len(l)))
 	for _, s := range l {
@@ -2080,18 +2044,6 @@ func (f *framer) writeBytes(p []byte) {
 func (f *framer) writeShortBytes(p []byte) {
 	f.writeShort(uint16(len(p)))
 	f.wbuf = append(f.wbuf, p...)
-}
-
-func (f *framer) writeInet(ip net.IP, port int) {
-	f.wbuf = append(f.wbuf,
-		byte(len(ip)),
-	)
-
-	f.wbuf = append(f.wbuf,
-		[]byte(ip)...,
-	)
-
-	f.writeInt(int32(port))
 }
 
 func (f *framer) writeConsistency(cons Consistency) {

@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsLiveSsTableCountByNameGetOK() *ColumnFamilyMetricsLiv
 	return &ColumnFamilyMetricsLiveSsTableCountByNameGetOK{}
 }
 
-/*ColumnFamilyMetricsLiveSsTableCountByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsLiveSsTableCountByNameGetOK handles this case with default header values.
 
 ColumnFamilyMetricsLiveSsTableCountByNameGetOK column family metrics live ss table count by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsLiveSsTableCountByNameGetDefault(code int) *ColumnFam
 	}
 }
 
-/*ColumnFamilyMetricsLiveSsTableCountByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsLiveSsTableCountByNameGetDefault handles this case with default header values.
 
 internal server error
 */

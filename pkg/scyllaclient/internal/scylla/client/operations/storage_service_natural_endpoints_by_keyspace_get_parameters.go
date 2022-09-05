@@ -56,7 +56,8 @@ func NewStorageServiceNaturalEndpointsByKeyspaceGetParamsWithHTTPClient(client *
 	}
 }
 
-/*StorageServiceNaturalEndpointsByKeyspaceGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceNaturalEndpointsByKeyspaceGetParams contains all the parameters to send to the API endpoint
 for the storage service natural endpoints by keyspace get operation typically these are written to a http.Request
 */
 type StorageServiceNaturalEndpointsByKeyspaceGetParams struct {

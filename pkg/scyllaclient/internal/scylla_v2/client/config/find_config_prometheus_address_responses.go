@@ -48,7 +48,8 @@ func NewFindConfigPrometheusAddressOK() *FindConfigPrometheusAddressOK {
 	return &FindConfigPrometheusAddressOK{}
 }
 
-/*FindConfigPrometheusAddressOK handles this case with default header values.
+/*
+FindConfigPrometheusAddressOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigPrometheusAddressDefault(code int) *FindConfigPrometheusAddres
 	}
 }
 
-/*FindConfigPrometheusAddressDefault handles this case with default header values.
+/*
+FindConfigPrometheusAddressDefault handles this case with default header values.
 
 unexpected error
 */

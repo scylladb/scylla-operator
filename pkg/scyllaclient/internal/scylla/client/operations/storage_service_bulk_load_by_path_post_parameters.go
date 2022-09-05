@@ -56,7 +56,8 @@ func NewStorageServiceBulkLoadByPathPostParamsWithHTTPClient(client *http.Client
 	}
 }
 
-/*StorageServiceBulkLoadByPathPostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceBulkLoadByPathPostParams contains all the parameters to send to the API endpoint
 for the storage service bulk load by path post operation typically these are written to a http.Request
 */
 type StorageServiceBulkLoadByPathPostParams struct {

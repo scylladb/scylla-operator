@@ -48,7 +48,8 @@ func NewStorageServiceClusterNameGetOK() *StorageServiceClusterNameGetOK {
 	return &StorageServiceClusterNameGetOK{}
 }
 
-/*StorageServiceClusterNameGetOK handles this case with default header values.
+/*
+StorageServiceClusterNameGetOK handles this case with default header values.
 
 StorageServiceClusterNameGetOK storage service cluster name get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceClusterNameGetDefault(code int) *StorageServiceClusterName
 	}
 }
 
-/*StorageServiceClusterNameGetDefault handles this case with default header values.
+/*
+StorageServiceClusterNameGetDefault handles this case with default header values.
 
 internal server error
 */

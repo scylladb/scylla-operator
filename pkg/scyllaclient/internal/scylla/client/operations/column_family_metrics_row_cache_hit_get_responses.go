@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsRowCacheHitGetOK() *ColumnFamilyMetricsRowCacheHitGet
 	return &ColumnFamilyMetricsRowCacheHitGetOK{}
 }
 
-/*ColumnFamilyMetricsRowCacheHitGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsRowCacheHitGetOK handles this case with default header values.
 
 ColumnFamilyMetricsRowCacheHitGetOK column family metrics row cache hit get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsRowCacheHitGetDefault(code int) *ColumnFamilyMetricsR
 	}
 }
 
-/*ColumnFamilyMetricsRowCacheHitGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsRowCacheHitGetDefault handles this case with default header values.
 
 internal server error
 */

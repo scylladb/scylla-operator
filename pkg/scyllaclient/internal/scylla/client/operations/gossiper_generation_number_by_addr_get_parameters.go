@@ -56,7 +56,8 @@ func NewGossiperGenerationNumberByAddrGetParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*GossiperGenerationNumberByAddrGetParams contains all the parameters to send to the API endpoint
+/*
+GossiperGenerationNumberByAddrGetParams contains all the parameters to send to the API endpoint
 for the gossiper generation number by addr get operation typically these are written to a http.Request
 */
 type GossiperGenerationNumberByAddrGetParams struct {

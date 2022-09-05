@@ -48,7 +48,8 @@ func NewStorageServiceGenerationNumberGetOK() *StorageServiceGenerationNumberGet
 	return &StorageServiceGenerationNumberGetOK{}
 }
 
-/*StorageServiceGenerationNumberGetOK handles this case with default header values.
+/*
+StorageServiceGenerationNumberGetOK handles this case with default header values.
 
 StorageServiceGenerationNumberGetOK storage service generation number get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceGenerationNumberGetDefault(code int) *StorageServiceGenera
 	}
 }
 
-/*StorageServiceGenerationNumberGetDefault handles this case with default header values.
+/*
+StorageServiceGenerationNumberGetDefault handles this case with default header values.
 
 internal server error
 */

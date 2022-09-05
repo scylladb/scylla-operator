@@ -48,7 +48,8 @@ func NewFailureDetectorSimpleStatesGetOK() *FailureDetectorSimpleStatesGetOK {
 	return &FailureDetectorSimpleStatesGetOK{}
 }
 
-/*FailureDetectorSimpleStatesGetOK handles this case with default header values.
+/*
+FailureDetectorSimpleStatesGetOK handles this case with default header values.
 
 FailureDetectorSimpleStatesGetOK failure detector simple states get o k
 */
@@ -77,7 +78,8 @@ func NewFailureDetectorSimpleStatesGetDefault(code int) *FailureDetectorSimpleSt
 	}
 }
 
-/*FailureDetectorSimpleStatesGetDefault handles this case with default header values.
+/*
+FailureDetectorSimpleStatesGetDefault handles this case with default header values.
 
 internal server error
 */

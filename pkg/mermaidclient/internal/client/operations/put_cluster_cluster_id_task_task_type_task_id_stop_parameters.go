@@ -57,7 +57,8 @@ func NewPutClusterClusterIDTaskTaskTypeTaskIDStopParamsWithHTTPClient(client *ht
 	}
 }
 
-/*PutClusterClusterIDTaskTaskTypeTaskIDStopParams contains all the parameters to send to the API endpoint
+/*
+PutClusterClusterIDTaskTaskTypeTaskIDStopParams contains all the parameters to send to the API endpoint
 for the put cluster cluster ID task task type task ID stop operation typically these are written to a http.Request
 */
 type PutClusterClusterIDTaskTaskTypeTaskIDStopParams struct {

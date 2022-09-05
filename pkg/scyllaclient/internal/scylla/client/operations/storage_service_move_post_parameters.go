@@ -56,7 +56,8 @@ func NewStorageServiceMovePostParamsWithHTTPClient(client *http.Client) *Storage
 	}
 }
 
-/*StorageServiceMovePostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceMovePostParams contains all the parameters to send to the API endpoint
 for the storage service move post operation typically these are written to a http.Request
 */
 type StorageServiceMovePostParams struct {

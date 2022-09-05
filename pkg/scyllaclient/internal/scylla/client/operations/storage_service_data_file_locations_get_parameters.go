@@ -56,7 +56,8 @@ func NewStorageServiceDataFileLocationsGetParamsWithHTTPClient(client *http.Clie
 	}
 }
 
-/*StorageServiceDataFileLocationsGetParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceDataFileLocationsGetParams contains all the parameters to send to the API endpoint
 for the storage service data file locations get operation typically these are written to a http.Request
 */
 type StorageServiceDataFileLocationsGetParams struct {

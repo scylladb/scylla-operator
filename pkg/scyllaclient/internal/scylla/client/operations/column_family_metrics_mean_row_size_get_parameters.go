@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsMeanRowSizeGetParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*ColumnFamilyMetricsMeanRowSizeGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsMeanRowSizeGetParams contains all the parameters to send to the API endpoint
 for the column family metrics mean row size get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsMeanRowSizeGetParams struct {

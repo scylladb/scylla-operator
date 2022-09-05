@@ -56,7 +56,8 @@ func NewMessagingServiceMessagesSentGetParamsWithHTTPClient(client *http.Client)
 	}
 }
 
-/*MessagingServiceMessagesSentGetParams contains all the parameters to send to the API endpoint
+/*
+MessagingServiceMessagesSentGetParams contains all the parameters to send to the API endpoint
 for the messaging service messages sent get operation typically these are written to a http.Request
 */
 type MessagingServiceMessagesSentGetParams struct {

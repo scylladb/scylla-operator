@@ -39,8 +39,8 @@ func TestMemberService(t *testing.T) {
 			Kind:               "ScyllaCluster",
 			Name:               "basic",
 			UID:                "the-uid",
-			Controller:         pointer.BoolPtr(true),
-			BlockOwnerDeletion: pointer.BoolPtr(true),
+			Controller:         pointer.Bool(true),
+			BlockOwnerDeletion: pointer.Bool(true),
 		},
 	}
 	basicRackName := "rack"
@@ -402,13 +402,13 @@ func TestStatefulSetForRack(t *testing.T) {
 						Kind:               "ScyllaCluster",
 						Name:               "basic",
 						UID:                "the-uid",
-						Controller:         pointer.BoolPtr(true),
-						BlockOwnerDeletion: pointer.BoolPtr(true),
+						Controller:         pointer.Bool(true),
+						BlockOwnerDeletion: pointer.Bool(true),
 					},
 				},
 			},
 			Spec: appsv1.StatefulSetSpec{
-				Replicas: pointer.Int32Ptr(0),
+				Replicas: pointer.Int32(0),
 				Selector: &metav1.LabelSelector{
 					MatchLabels: newBasicStatefulSetLabels(),
 				},
@@ -439,7 +439,7 @@ func TestStatefulSetForRack(t *testing.T) {
 										LocalObjectReference: corev1.LocalObjectReference{
 											Name: "scylla-config",
 										},
-										Optional: pointer.BoolPtr(true),
+										Optional: pointer.Bool(true),
 									},
 								},
 							},
@@ -448,7 +448,7 @@ func TestStatefulSetForRack(t *testing.T) {
 								VolumeSource: corev1.VolumeSource{
 									Secret: &corev1.SecretVolumeSource{
 										SecretName: "scylla-agent-config-secret",
-										Optional:   pointer.BoolPtr(true),
+										Optional:   pointer.Bool(true),
 									},
 								},
 							},
@@ -457,7 +457,7 @@ func TestStatefulSetForRack(t *testing.T) {
 								VolumeSource: corev1.VolumeSource{
 									Secret: &corev1.SecretVolumeSource{
 										SecretName: "scylla-client-config-secret",
-										Optional:   pointer.BoolPtr(true),
+										Optional:   pointer.Bool(true),
 									},
 								},
 							},
@@ -598,7 +598,7 @@ func TestStatefulSetForRack(t *testing.T) {
 									TimeoutSeconds:   int32(30),
 									FailureThreshold: int32(40),
 									PeriodSeconds:    int32(10),
-									Handler: corev1.Handler{
+									ProbeHandler: corev1.ProbeHandler{
 										HTTPGet: &corev1.HTTPGetAction{
 											Port: intstr.FromInt(8080),
 											Path: "/healthz",
@@ -609,7 +609,7 @@ func TestStatefulSetForRack(t *testing.T) {
 									TimeoutSeconds:   int32(10),
 									FailureThreshold: int32(12),
 									PeriodSeconds:    int32(10),
-									Handler: corev1.Handler{
+									ProbeHandler: corev1.ProbeHandler{
 										HTTPGet: &corev1.HTTPGetAction{
 											Port: intstr.FromInt(8080),
 											Path: "/healthz",
@@ -620,7 +620,7 @@ func TestStatefulSetForRack(t *testing.T) {
 									TimeoutSeconds:   int32(30),
 									FailureThreshold: int32(1),
 									PeriodSeconds:    int32(10),
-									Handler: corev1.Handler{
+									ProbeHandler: corev1.ProbeHandler{
 										HTTPGet: &corev1.HTTPGetAction{
 											Port: intstr.FromInt(8080),
 											Path: "/readyz",
@@ -628,7 +628,7 @@ func TestStatefulSetForRack(t *testing.T) {
 									},
 								},
 								Lifecycle: &corev1.Lifecycle{
-									PreStop: &corev1.Handler{
+									PreStop: &corev1.LifecycleHandler{
 										Exec: &corev1.ExecAction{
 											Command: []string{
 												"/bin/sh", "-c", "PID=$(pgrep -x scylla);supervisorctl stop scylla; while kill -0 $PID; do sleep 1; done;",
@@ -679,7 +679,7 @@ func TestStatefulSetForRack(t *testing.T) {
 						DNSPolicy:                     "ClusterFirstWithHostNet",
 						ServiceAccountName:            "basic-member",
 						Affinity:                      &corev1.Affinity{},
-						TerminationGracePeriodSeconds: pointer.Int64Ptr(900),
+						TerminationGracePeriodSeconds: pointer.Int64(900),
 					},
 				},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -704,7 +704,7 @@ func TestStatefulSetForRack(t *testing.T) {
 				UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 					Type: appsv1.RollingUpdateStatefulSetStrategyType,
 					RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
-						Partition: pointer.Int32Ptr(0),
+						Partition: pointer.Int32(0),
 					},
 				},
 			},

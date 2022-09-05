@@ -56,7 +56,8 @@ func NewStorageServiceTruncateByKeyspacePostParamsWithHTTPClient(client *http.Cl
 	}
 }
 
-/*StorageServiceTruncateByKeyspacePostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceTruncateByKeyspacePostParams contains all the parameters to send to the API endpoint
 for the storage service truncate by keyspace post operation typically these are written to a http.Request
 */
 type StorageServiceTruncateByKeyspacePostParams struct {

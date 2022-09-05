@@ -48,7 +48,8 @@ func NewCommitlogSegmentsArchivingGetOK() *CommitlogSegmentsArchivingGetOK {
 	return &CommitlogSegmentsArchivingGetOK{}
 }
 
-/*CommitlogSegmentsArchivingGetOK handles this case with default header values.
+/*
+CommitlogSegmentsArchivingGetOK handles this case with default header values.
 
 CommitlogSegmentsArchivingGetOK commitlog segments archiving get o k
 */
@@ -77,7 +78,8 @@ func NewCommitlogSegmentsArchivingGetDefault(code int) *CommitlogSegmentsArchivi
 	}
 }
 
-/*CommitlogSegmentsArchivingGetDefault handles this case with default header values.
+/*
+CommitlogSegmentsArchivingGetDefault handles this case with default header values.
 
 internal server error
 */

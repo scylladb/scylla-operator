@@ -56,7 +56,8 @@ func NewFindConfigSkipWaitForGossipToSettleParamsWithHTTPClient(client *http.Cli
 	}
 }
 
-/*FindConfigSkipWaitForGossipToSettleParams contains all the parameters to send to the API endpoint
+/*
+FindConfigSkipWaitForGossipToSettleParams contains all the parameters to send to the API endpoint
 for the find config skip wait for gossip to settle operation typically these are written to a http.Request
 */
 type FindConfigSkipWaitForGossipToSettleParams struct {

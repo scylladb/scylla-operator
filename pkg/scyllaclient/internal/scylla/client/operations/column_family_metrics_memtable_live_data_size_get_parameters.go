@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsMemtableLiveDataSizeGetParamsWithHTTPClient(client *h
 	}
 }
 
-/*ColumnFamilyMetricsMemtableLiveDataSizeGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsMemtableLiveDataSizeGetParams contains all the parameters to send to the API endpoint
 for the column family metrics memtable live data size get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsMemtableLiveDataSizeGetParams struct {

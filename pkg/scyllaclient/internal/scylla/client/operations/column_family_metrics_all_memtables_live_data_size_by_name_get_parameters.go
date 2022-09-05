@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsAllMemtablesLiveDataSizeByNameGetParamsWithHTTPClient
 	}
 }
 
-/*ColumnFamilyMetricsAllMemtablesLiveDataSizeByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsAllMemtablesLiveDataSizeByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics all memtables live data size by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsAllMemtablesLiveDataSizeByNameGetParams struct {

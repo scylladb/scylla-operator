@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsCompressionMetadataOffHeapMemoryUsedGetParamsWithHTTP
 	}
 }
 
-/*ColumnFamilyMetricsCompressionMetadataOffHeapMemoryUsedGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsCompressionMetadataOffHeapMemoryUsedGetParams contains all the parameters to send to the API endpoint
 for the column family metrics compression metadata off heap memory used get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsCompressionMetadataOffHeapMemoryUsedGetParams struct {

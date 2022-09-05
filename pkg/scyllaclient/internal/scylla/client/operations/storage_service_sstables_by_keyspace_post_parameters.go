@@ -56,7 +56,8 @@ func NewStorageServiceSstablesByKeyspacePostParamsWithHTTPClient(client *http.Cl
 	}
 }
 
-/*StorageServiceSstablesByKeyspacePostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceSstablesByKeyspacePostParams contains all the parameters to send to the API endpoint
 for the storage service sstables by keyspace post operation typically these are written to a http.Request
 */
 type StorageServiceSstablesByKeyspacePostParams struct {

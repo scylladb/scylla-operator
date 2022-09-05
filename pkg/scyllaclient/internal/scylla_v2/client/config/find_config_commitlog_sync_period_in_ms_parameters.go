@@ -56,7 +56,8 @@ func NewFindConfigCommitlogSyncPeriodInMsParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*FindConfigCommitlogSyncPeriodInMsParams contains all the parameters to send to the API endpoint
+/*
+FindConfigCommitlogSyncPeriodInMsParams contains all the parameters to send to the API endpoint
 for the find config commitlog sync period in ms operation typically these are written to a http.Request
 */
 type FindConfigCommitlogSyncPeriodInMsParams struct {

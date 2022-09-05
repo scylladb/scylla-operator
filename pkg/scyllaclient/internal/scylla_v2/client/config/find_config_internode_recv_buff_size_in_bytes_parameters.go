@@ -56,7 +56,8 @@ func NewFindConfigInternodeRecvBuffSizeInBytesParamsWithHTTPClient(client *http.
 	}
 }
 
-/*FindConfigInternodeRecvBuffSizeInBytesParams contains all the parameters to send to the API endpoint
+/*
+FindConfigInternodeRecvBuffSizeInBytesParams contains all the parameters to send to the API endpoint
 for the find config internode recv buff size in bytes operation typically these are written to a http.Request
 */
 type FindConfigInternodeRecvBuffSizeInBytesParams struct {

@@ -48,7 +48,8 @@ func NewStorageServiceMetricsLoadGetOK() *StorageServiceMetricsLoadGetOK {
 	return &StorageServiceMetricsLoadGetOK{}
 }
 
-/*StorageServiceMetricsLoadGetOK handles this case with default header values.
+/*
+StorageServiceMetricsLoadGetOK handles this case with default header values.
 
 StorageServiceMetricsLoadGetOK storage service metrics load get o k
 */
@@ -77,7 +78,8 @@ func NewStorageServiceMetricsLoadGetDefault(code int) *StorageServiceMetricsLoad
 	}
 }
 
-/*StorageServiceMetricsLoadGetDefault handles this case with default header values.
+/*
+StorageServiceMetricsLoadGetDefault handles this case with default header values.
 
 internal server error
 */

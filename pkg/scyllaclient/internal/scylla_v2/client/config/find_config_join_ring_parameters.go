@@ -56,7 +56,8 @@ func NewFindConfigJoinRingParamsWithHTTPClient(client *http.Client) *FindConfigJ
 	}
 }
 
-/*FindConfigJoinRingParams contains all the parameters to send to the API endpoint
+/*
+FindConfigJoinRingParams contains all the parameters to send to the API endpoint
 for the find config join ring operation typically these are written to a http.Request
 */
 type FindConfigJoinRingParams struct {

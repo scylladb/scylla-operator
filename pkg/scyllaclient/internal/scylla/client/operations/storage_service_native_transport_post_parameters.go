@@ -56,7 +56,8 @@ func NewStorageServiceNativeTransportPostParamsWithHTTPClient(client *http.Clien
 	}
 }
 
-/*StorageServiceNativeTransportPostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceNativeTransportPostParams contains all the parameters to send to the API endpoint
 for the storage service native transport post operation typically these are written to a http.Request
 */
 type StorageServiceNativeTransportPostParams struct {

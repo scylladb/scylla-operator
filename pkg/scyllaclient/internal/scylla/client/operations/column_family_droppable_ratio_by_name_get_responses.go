@@ -48,7 +48,8 @@ func NewColumnFamilyDroppableRatioByNameGetOK() *ColumnFamilyDroppableRatioByNam
 	return &ColumnFamilyDroppableRatioByNameGetOK{}
 }
 
-/*ColumnFamilyDroppableRatioByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyDroppableRatioByNameGetOK handles this case with default header values.
 
 ColumnFamilyDroppableRatioByNameGetOK column family droppable ratio by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyDroppableRatioByNameGetDefault(code int) *ColumnFamilyDroppa
 	}
 }
 
-/*ColumnFamilyDroppableRatioByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyDroppableRatioByNameGetDefault handles this case with default header values.
 
 internal server error
 */

@@ -56,7 +56,8 @@ func NewFindConfigEnableCommitlogParamsWithHTTPClient(client *http.Client) *Find
 	}
 }
 
-/*FindConfigEnableCommitlogParams contains all the parameters to send to the API endpoint
+/*
+FindConfigEnableCommitlogParams contains all the parameters to send to the API endpoint
 for the find config enable commitlog operation typically these are written to a http.Request
 */
 type FindConfigEnableCommitlogParams struct {

@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsPendingFlushesGetOK() *ColumnFamilyMetricsPendingFlus
 	return &ColumnFamilyMetricsPendingFlushesGetOK{}
 }
 
-/*ColumnFamilyMetricsPendingFlushesGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsPendingFlushesGetOK handles this case with default header values.
 
 ColumnFamilyMetricsPendingFlushesGetOK column family metrics pending flushes get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsPendingFlushesGetDefault(code int) *ColumnFamilyMetri
 	}
 }
 
-/*ColumnFamilyMetricsPendingFlushesGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsPendingFlushesGetDefault handles this case with default header values.
 
 internal server error
 */

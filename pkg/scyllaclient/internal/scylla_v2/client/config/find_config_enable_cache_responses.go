@@ -48,7 +48,8 @@ func NewFindConfigEnableCacheOK() *FindConfigEnableCacheOK {
 	return &FindConfigEnableCacheOK{}
 }
 
-/*FindConfigEnableCacheOK handles this case with default header values.
+/*
+FindConfigEnableCacheOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigEnableCacheDefault(code int) *FindConfigEnableCacheDefault {
 	}
 }
 
-/*FindConfigEnableCacheDefault handles this case with default header values.
+/*
+FindConfigEnableCacheDefault handles this case with default header values.
 
 unexpected error
 */

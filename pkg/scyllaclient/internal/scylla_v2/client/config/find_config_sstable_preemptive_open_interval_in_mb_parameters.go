@@ -56,7 +56,8 @@ func NewFindConfigSstablePreemptiveOpenIntervalInMbParamsWithHTTPClient(client *
 	}
 }
 
-/*FindConfigSstablePreemptiveOpenIntervalInMbParams contains all the parameters to send to the API endpoint
+/*
+FindConfigSstablePreemptiveOpenIntervalInMbParams contains all the parameters to send to the API endpoint
 for the find config sstable preemptive open interval in mb operation typically these are written to a http.Request
 */
 type FindConfigSstablePreemptiveOpenIntervalInMbParams struct {

@@ -48,7 +48,8 @@ func NewColumnFamilyMetricsTombstoneScannedHistogramByNameGetOK() *ColumnFamilyM
 	return &ColumnFamilyMetricsTombstoneScannedHistogramByNameGetOK{}
 }
 
-/*ColumnFamilyMetricsTombstoneScannedHistogramByNameGetOK handles this case with default header values.
+/*
+ColumnFamilyMetricsTombstoneScannedHistogramByNameGetOK handles this case with default header values.
 
 ColumnFamilyMetricsTombstoneScannedHistogramByNameGetOK column family metrics tombstone scanned histogram by name get o k
 */
@@ -77,7 +78,8 @@ func NewColumnFamilyMetricsTombstoneScannedHistogramByNameGetDefault(code int) *
 	}
 }
 
-/*ColumnFamilyMetricsTombstoneScannedHistogramByNameGetDefault handles this case with default header values.
+/*
+ColumnFamilyMetricsTombstoneScannedHistogramByNameGetDefault handles this case with default header values.
 
 internal server error
 */

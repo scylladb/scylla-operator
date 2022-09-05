@@ -48,7 +48,8 @@ func NewGossiperEndpointDownGetOK() *GossiperEndpointDownGetOK {
 	return &GossiperEndpointDownGetOK{}
 }
 
-/*GossiperEndpointDownGetOK handles this case with default header values.
+/*
+GossiperEndpointDownGetOK handles this case with default header values.
 
 GossiperEndpointDownGetOK gossiper endpoint down get o k
 */
@@ -77,7 +78,8 @@ func NewGossiperEndpointDownGetDefault(code int) *GossiperEndpointDownGetDefault
 	}
 }
 
-/*GossiperEndpointDownGetDefault handles this case with default header values.
+/*
+GossiperEndpointDownGetDefault handles this case with default header values.
 
 internal server error
 */

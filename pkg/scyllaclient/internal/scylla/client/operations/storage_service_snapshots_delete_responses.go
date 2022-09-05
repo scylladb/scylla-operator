@@ -48,7 +48,8 @@ func NewStorageServiceSnapshotsDeleteOK() *StorageServiceSnapshotsDeleteOK {
 	return &StorageServiceSnapshotsDeleteOK{}
 }
 
-/*StorageServiceSnapshotsDeleteOK handles this case with default header values.
+/*
+StorageServiceSnapshotsDeleteOK handles this case with default header values.
 
 StorageServiceSnapshotsDeleteOK storage service snapshots delete o k
 */
@@ -67,7 +68,8 @@ func NewStorageServiceSnapshotsDeleteDefault(code int) *StorageServiceSnapshotsD
 	}
 }
 
-/*StorageServiceSnapshotsDeleteDefault handles this case with default header values.
+/*
+StorageServiceSnapshotsDeleteDefault handles this case with default header values.
 
 internal server error
 */

@@ -56,7 +56,8 @@ func NewColumnFamilyMetricsTombstoneScannedHistogramByNameGetParamsWithHTTPClien
 	}
 }
 
-/*ColumnFamilyMetricsTombstoneScannedHistogramByNameGetParams contains all the parameters to send to the API endpoint
+/*
+ColumnFamilyMetricsTombstoneScannedHistogramByNameGetParams contains all the parameters to send to the API endpoint
 for the column family metrics tombstone scanned histogram by name get operation typically these are written to a http.Request
 */
 type ColumnFamilyMetricsTombstoneScannedHistogramByNameGetParams struct {

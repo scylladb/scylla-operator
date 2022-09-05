@@ -58,7 +58,8 @@ func NewCoreBwlimitParamsWithHTTPClient(client *http.Client) *CoreBwlimitParams 
 	}
 }
 
-/*CoreBwlimitParams contains all the parameters to send to the API endpoint
+/*
+CoreBwlimitParams contains all the parameters to send to the API endpoint
 for the core bwlimit operation typically these are written to a http.Request
 */
 type CoreBwlimitParams struct {

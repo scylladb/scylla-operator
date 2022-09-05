@@ -56,7 +56,8 @@ func NewStorageServiceRemoveNodePostParamsWithHTTPClient(client *http.Client) *S
 	}
 }
 
-/*StorageServiceRemoveNodePostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceRemoveNodePostParams contains all the parameters to send to the API endpoint
 for the storage service remove node post operation typically these are written to a http.Request
 */
 type StorageServiceRemoveNodePostParams struct {

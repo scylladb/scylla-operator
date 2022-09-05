@@ -48,7 +48,8 @@ func NewFindConfigDeveloperModeOK() *FindConfigDeveloperModeOK {
 	return &FindConfigDeveloperModeOK{}
 }
 
-/*FindConfigDeveloperModeOK handles this case with default header values.
+/*
+FindConfigDeveloperModeOK handles this case with default header values.
 
 Config value
 */
@@ -77,7 +78,8 @@ func NewFindConfigDeveloperModeDefault(code int) *FindConfigDeveloperModeDefault
 	}
 }
 
-/*FindConfigDeveloperModeDefault handles this case with default header values.
+/*
+FindConfigDeveloperModeDefault handles this case with default header values.
 
 unexpected error
 */

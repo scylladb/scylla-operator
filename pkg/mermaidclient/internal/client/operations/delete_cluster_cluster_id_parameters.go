@@ -57,7 +57,8 @@ func NewDeleteClusterClusterIDParamsWithHTTPClient(client *http.Client) *DeleteC
 	}
 }
 
-/*DeleteClusterClusterIDParams contains all the parameters to send to the API endpoint
+/*
+DeleteClusterClusterIDParams contains all the parameters to send to the API endpoint
 for the delete cluster cluster ID operation typically these are written to a http.Request
 */
 type DeleteClusterClusterIDParams struct {

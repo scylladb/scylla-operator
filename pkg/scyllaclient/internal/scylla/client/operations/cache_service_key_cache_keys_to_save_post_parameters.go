@@ -57,7 +57,8 @@ func NewCacheServiceKeyCacheKeysToSavePostParamsWithHTTPClient(client *http.Clie
 	}
 }
 
-/*CacheServiceKeyCacheKeysToSavePostParams contains all the parameters to send to the API endpoint
+/*
+CacheServiceKeyCacheKeysToSavePostParams contains all the parameters to send to the API endpoint
 for the cache service key cache keys to save post operation typically these are written to a http.Request
 */
 type CacheServiceKeyCacheKeysToSavePostParams struct {

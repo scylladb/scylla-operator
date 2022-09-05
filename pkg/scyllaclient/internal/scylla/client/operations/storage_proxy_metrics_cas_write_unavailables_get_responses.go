@@ -48,7 +48,8 @@ func NewStorageProxyMetricsCasWriteUnavailablesGetOK() *StorageProxyMetricsCasWr
 	return &StorageProxyMetricsCasWriteUnavailablesGetOK{}
 }
 
-/*StorageProxyMetricsCasWriteUnavailablesGetOK handles this case with default header values.
+/*
+StorageProxyMetricsCasWriteUnavailablesGetOK handles this case with default header values.
 
 StorageProxyMetricsCasWriteUnavailablesGetOK storage proxy metrics cas write unavailables get o k
 */
@@ -77,7 +78,8 @@ func NewStorageProxyMetricsCasWriteUnavailablesGetDefault(code int) *StorageProx
 	}
 }
 
-/*StorageProxyMetricsCasWriteUnavailablesGetDefault handles this case with default header values.
+/*
+StorageProxyMetricsCasWriteUnavailablesGetDefault handles this case with default header values.
 
 internal server error
 */

@@ -56,7 +56,8 @@ func NewStorageServiceAutoCompactionByKeyspacePostParamsWithHTTPClient(client *h
 	}
 }
 
-/*StorageServiceAutoCompactionByKeyspacePostParams contains all the parameters to send to the API endpoint
+/*
+StorageServiceAutoCompactionByKeyspacePostParams contains all the parameters to send to the API endpoint
 for the storage service auto compaction by keyspace post operation typically these are written to a http.Request
 */
 type StorageServiceAutoCompactionByKeyspacePostParams struct {

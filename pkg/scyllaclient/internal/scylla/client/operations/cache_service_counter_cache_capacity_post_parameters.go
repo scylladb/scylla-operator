@@ -56,7 +56,8 @@ func NewCacheServiceCounterCacheCapacityPostParamsWithHTTPClient(client *http.Cl
 	}
 }
 
-/*CacheServiceCounterCacheCapacityPostParams contains all the parameters to send to the API endpoint
+/*
+CacheServiceCounterCacheCapacityPostParams contains all the parameters to send to the API endpoint
 for the cache service counter cache capacity post operation typically these are written to a http.Request
 */
 type CacheServiceCounterCacheCapacityPostParams struct {

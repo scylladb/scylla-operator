@@ -3,6 +3,8 @@ kind: ScyllaCluster
 metadata:
   generateName: basic-
 spec:
+  sysctls:
+    - "fs.aio-max-nr=2097152"
   version: 4.6.3
   agentVersion: 2.6.3
   developerMode: true

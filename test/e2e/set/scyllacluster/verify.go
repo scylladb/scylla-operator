@@ -11,7 +11,7 @@ import (
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	appsv1 "k8s.io/api/apps/v1"
-	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -63,7 +63,7 @@ func verifyStatefulset(sts *appsv1.StatefulSet) {
 	o.Expect(sts.Status.CurrentRevision).To(o.Equal(sts.Status.UpdateRevision))
 }
 
-func verifyPodDisruptionBudget(sc *scyllav1.ScyllaCluster, pdb *policyv1beta1.PodDisruptionBudget) {
+func verifyPodDisruptionBudget(sc *scyllav1.ScyllaCluster, pdb *policyv1.PodDisruptionBudget) {
 	o.Expect(pdb.ObjectMeta.OwnerReferences).To(o.BeEquivalentTo(
 		[]metav1.OwnerReference{
 			{
@@ -110,7 +110,7 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 		o.Expect(sc.Status.Upgrade.FromVersion).To(o.Equal(sc.Status.Upgrade.ToVersion))
 	}
 
-	pdb, err := kubeClient.PolicyV1beta1().PodDisruptionBudgets(sc.Namespace).Get(ctx, naming.PodDisruptionBudgetName(sc), metav1.GetOptions{})
+	pdb, err := kubeClient.PolicyV1().PodDisruptionBudgets(sc.Namespace).Get(ctx, naming.PodDisruptionBudgetName(sc), metav1.GetOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
 	verifyPodDisruptionBudget(sc, pdb)
 

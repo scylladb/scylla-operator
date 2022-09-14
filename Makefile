@@ -79,6 +79,11 @@ HELM_MANIFEST_CACHE_CONTROL ?=public, max-age=600
 CONTROLLER_GEN ?=$(GO) run ./vendor/sigs.k8s.io/controller-tools/cmd/controller-gen --
 CRD_PATH ?= pkg/api/scylla/v1/scylla.scylladb.com_scyllaclusters.yaml
 
+SWAGGER_CMD_PKG ?=./vendor/github.com/go-swagger/go-swagger/cmd/swagger
+
+MANAGER_CLIENT_GEN_DIR ?=pkg/managerclient/gen/
+MANAGER_CLIENT_SPEC ?=pkg/managerclient/api/managerclient.json
+
 define version-ldflags
 -X $(1).versionFromGit="$(GIT_TAG)" \
 -X $(1).commitFromGit="$(GIT_COMMIT)" \
@@ -497,10 +502,31 @@ verify-links:
 	fi;
 .PHONY: verify-links
 
-verify: verify-gofmt verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-examples verify-govet verify-helm-lint verify-links
+# $1 - source file
+# $2 - client directory
+# $3 - client name
+define generate-swagger-client
+	GOPATH=$(GOPATH) $(GO) run '$(SWAGGER_CMD_PKG)' generate client --name '$(3)' --spec '$(1)' --target '$(2)'
+
+endef
+
+update-manager-client:
+	$(call generate-swagger-client,${MANAGER_CLIENT_SPEC},${MANAGER_CLIENT_GEN_DIR},manager)
+.PHONY: update-manager-client
+
+verify-manager-client: tmp_dir := $(shell mktemp -d)
+verify-manager-client:
+	mkdir -p "$(tmp_dir)/$(MANAGER_CLIENT_GEN_DIR)"
+	cd $(tmp_dir) && $(GO) mod init $(GO_MODULE)
+	$(call generate-swagger-client,${MANAGER_CLIENT_SPEC},$(tmp_dir)/$(MANAGER_CLIENT_GEN_DIR),manager)
+	$(diff) -r ${MANAGER_CLIENT_GEN_DIR} "$(tmp_dir)/${MANAGER_CLIENT_GEN_DIR}" || (echo 'manager-client is not up-to date. Please run `make update-manager-client` to update it.' && false)
+.PHONY: verify-manager-client
+
+
+verify: verify-gofmt verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-examples verify-govet verify-helm-lint verify-links verify-manager-client
 .PHONY: verify
 
-update: update-gofmt update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples
+update: update-gofmt update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-manager-client
 .PHONY: update
 
 test-unit:

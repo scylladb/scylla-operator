@@ -2,7 +2,7 @@
   "swagger": "2.0",
   "info": {
     "title": "Scylla Manager API",
-    "version": "0.1"
+    "version": ""
   },
   "basePath": "/api/v1",
   "produces": [
@@ -31,6 +31,9 @@
         },
         "host": {
           "type": "string"
+        },
+        "port": {
+          "type": "integer"
         },
         "auth_token": {
           "type": "string"
@@ -97,6 +100,9 @@
             "type": "number",
             "format": "float"
           },
+          "alternator_cause": {
+            "type": "string"
+          },
           "cql_status": {
             "type": "string"
           },
@@ -104,12 +110,18 @@
             "type": "number",
             "format": "float"
           },
+          "cql_cause": {
+            "type": "string"
+          },
           "rest_status": {
             "type": "string"
           },
           "rest_rtt_ms": {
             "type": "number",
             "format": "float"
+          },
+          "rest_cause": {
+            "type": "string"
           },
           "total_ram": {
             "type": "integer"
@@ -154,11 +166,23 @@
           "format": "date-time",
           "x-nullable": true
         },
+        "duration_ms": {
+          "type": "integer"
+        },
         "dcs": {
           "type": "array",
           "items": {
             "type": "string"
           }
+        },
+        "host": {
+          "type": "string"
+        },
+        "intensity": {
+          "type": "number"
+        },
+        "parallel": {
+          "type": "integer"
         },
         "hosts": {
           "type": "array",
@@ -167,9 +191,6 @@
             "properties": {
               "host": {
                 "type": "string"
-              },
-              "intensity":{
-                "type": "number"
               },
               "tables": {
                 "type": "array",
@@ -212,6 +233,9 @@
           "format": "date-time",
           "x-nullable": true
         },
+        "duration_ms": {
+          "type": "integer"
+        },
         "keyspace": {
           "type": "string"
         },
@@ -223,9 +247,22 @@
     "Schedule": {
       "type": "object",
       "properties": {
+        "cron": {
+          "type": "string"
+        },
+        "window": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "timezone": {
+          "type": "string"
+        },
         "start_date": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "x-nullable": true
         },
         "interval": {
           "type": "string"
@@ -233,6 +270,9 @@
         "num_retries": {
           "type": "number",
           "format": "int"
+        },
+        "retry_wait": {
+          "type": "string"
         }
       }
     },
@@ -269,7 +309,7 @@
         }
       }
     },
-    "ExtendedTask": {
+    "TaskListItem": {
       "type": "object",
       "properties": {
         "cluster_id": {
@@ -303,22 +343,31 @@
         "status": {
           "type": "string"
         },
-        "cause": {
-          "type": "string"
+        "success_count": {
+          "type": "integer"
         },
-        "start_time": {
-          "type": "string",
-          "format": "date-time"
+        "error_count": {
+          "type": "integer"
         },
-        "end_time": {
+        "last_success": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "last_error": {
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "suspended": {
+          "type": "boolean"
         },
         "next_activation": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "x-nullable": true
         },
-        "failures": {
+        "retry": {
           "type": "integer"
         }
       }
@@ -401,6 +450,12 @@
         "host": {
           "type": "string"
         },
+        "ignore_hosts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "dc": {
           "type": "array",
           "items": {
@@ -428,6 +483,9 @@
       "type": "object",
       "properties": {
         "cluster_id": {
+          "type": "string"
+        },
+        "task_id": {
           "type": "string"
         },
         "units": {
@@ -565,6 +623,9 @@
       "properties": {
         "snapshot_tag": {
           "type": "string"
+        },
+        "nodes": {
+          "type": "integer"
         },
         "size": {
           "type": "integer"
@@ -732,6 +793,71 @@
         }
       }
     },
+    "TaskRunValidateBackupProgress": {
+      "type": "object",
+      "properties": {
+        "run": {
+          "$ref": "#/definitions/TaskRun"
+        },
+        "progress": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ValidateBackupProgress"
+          }
+        }
+      }
+    },
+    "ValidateBackupProgress": {
+      "type": "object",
+      "properties": {
+        "dc": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "location": {
+          "type": "string"
+        },
+        "manifests": {
+          "type": "integer"
+        },
+        "scanned_files": {
+          "type": "integer"
+        },
+        "broken_snapshots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "missing_files": {
+          "type": "integer"
+        },
+        "orphaned_files": {
+          "type": "integer"
+        },
+        "orphaned_bytes": {
+          "type": "integer"
+        },
+        "deleted_files": {
+          "type": "integer"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        }
+      }
+    },
+    "Suspended": {
+      "type": "boolean"
+    },
     "ErrorResponse": {
       "type": "object",
       "properties": {
@@ -757,7 +883,7 @@
             }
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -778,7 +904,7 @@
             }
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -805,7 +931,7 @@
             }
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -831,7 +957,7 @@
             }
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -856,7 +982,7 @@
             }
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -881,7 +1007,7 @@
             "description": "Cluster deleted"
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -907,7 +1033,7 @@
             }
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -943,6 +1069,12 @@
             "in": "query",
             "type": "string",
             "required": false
+          },
+          {
+            "name": "short",
+            "in": "query",
+            "type": "boolean",
+            "required": false
           }
         ],
         "responses": {
@@ -951,12 +1083,12 @@
             "schema": {
               "type": "array",
               "items": {
-                "$ref": "#/definitions/ExtendedTask"
+                "$ref": "#/definitions/TaskListItem"
               }
             }
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -983,7 +1115,7 @@
             }
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1018,7 +1150,7 @@
             }
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1053,7 +1185,7 @@
             }
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1091,7 +1223,7 @@
             }
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1116,7 +1248,7 @@
             }
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1129,7 +1261,7 @@
             "description": "Task deleted"
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1170,7 +1302,7 @@
             "description": "Task started"
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1211,7 +1343,7 @@
             "description": "Task stopped"
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1261,7 +1393,7 @@
             }
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1299,7 +1431,7 @@
             }
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1337,7 +1469,45 @@
             }
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/cluster/{cluster_id}/task/validate_backup/{task_id}/{run_id}": {
+      "get": {
+        "parameters": [
+          {
+            "type": "string",
+            "name": "cluster_id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "task_id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "run_id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Backup validation progress",
+            "schema": {
+              "$ref": "#/definitions/TaskRunValidateBackupProgress"
+            }
+          },
+          "default": {
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1364,7 +1534,7 @@
           },
           {
             "type": "string",
-            "name": "cluster_id",
+            "name": "query_cluster_id",
             "in": "query"
           },
           {
@@ -1400,7 +1570,7 @@
             }
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1416,8 +1586,11 @@
             "required": true
           },
           {
-            "type": "string",
-            "name": "snapshot_tag",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "name": "snapshot_tags",
             "in": "query",
             "required": true
           },
@@ -1435,7 +1608,7 @@
             "description": "OK"
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1477,7 +1650,7 @@
           },
           {
             "type": "string",
-            "name": "cluster_id",
+            "name": "query_cluster_id",
             "in": "query"
           }
         ],
@@ -1492,7 +1665,7 @@
             }
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1501,7 +1674,7 @@
       }
     },
     "/cluster/{cluster_id}/repairs/intensity": {
-      "post": {
+      "put": {
         "parameters": [
           {
             "type": "string",
@@ -1521,7 +1694,94 @@
             "description": "OK"
           },
           "default": {
-            "description": "Unexpected error",
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/cluster/{cluster_id}/repairs/parallel": {
+      "put": {
+        "parameters": [
+          {
+            "type": "string",
+            "name": "cluster_id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "name": "parallel",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Suspended"
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/cluster/{cluster_id}/suspended": {
+      "parameters": [
+        {
+          "type": "string",
+          "name": "cluster_id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Suspended"
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "parameters": [
+          {
+            "name": "suspended",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Suspended"
+            }
+          },
+          {
+            "type": "boolean",
+            "name": "start_tasks",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }

@@ -1,6 +1,6 @@
 module github.com/scylladb/scylla-operator
 
-go 1.18
+go 1.19
 
 require (
 	cloud.google.com/go/compute v1.9.0

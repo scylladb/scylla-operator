@@ -371,8 +371,13 @@ func haveCredentialProvider(p aws.CredentialsProvider) bool {
 	if p == nil {
 		return false
 	}
+	switch p.(type) {
+	case aws.AnonymousCredentials,
+		*aws.AnonymousCredentials:
+		return false
+	}
 
-	return !aws.IsCredentialsProvider(p, (*aws.AnonymousCredentials)(nil))
+	return true
 }
 
 type payloadHashKey struct{}

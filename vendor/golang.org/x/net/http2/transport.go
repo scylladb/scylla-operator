@@ -258,8 +258,7 @@ func (t *Transport) initConnPool() {
 // HTTP/2 server.
 type ClientConn struct {
 	t             *Transport
-	tconn         net.Conn // usually *tls.Conn, except specialized impls
-	tconnClosed   bool
+	tconn         net.Conn             // usually *tls.Conn, except specialized impls
 	tlsState      *tls.ConnectionState // nil only for specialized impls
 	reused        uint32               // whether conn is being reused; atomic
 	singleUse     bool                 // whether being used for a single http.Request
@@ -345,8 +344,8 @@ type clientStream struct {
 	readErr     error // sticky read error; owned by transportResponseBody.Read
 
 	reqBody              io.ReadCloser
-	reqBodyContentLength int64         // -1 means unknown
-	reqBodyClosed        chan struct{} // guarded by cc.mu; non-nil on Close, closed when done
+	reqBodyContentLength int64 // -1 means unknown
+	reqBodyClosed        bool  // body has been closed; guarded by cc.mu
 
 	// owned by writeRequest:
 	sentEndStream bool // sent an END_STREAM flag to the peer
@@ -386,8 +385,9 @@ func (cs *clientStream) abortStreamLocked(err error) {
 		cs.abortErr = err
 		close(cs.abort)
 	})
-	if cs.reqBody != nil {
-		cs.closeReqBodyLocked()
+	if cs.reqBody != nil && !cs.reqBodyClosed {
+		cs.reqBody.Close()
+		cs.reqBodyClosed = true
 	}
 	// TODO(dneil): Clean up tests where cs.cc.cond is nil.
 	if cs.cc.cond != nil {
@@ -400,22 +400,11 @@ func (cs *clientStream) abortRequestBodyWrite() {
 	cc := cs.cc
 	cc.mu.Lock()
 	defer cc.mu.Unlock()
-	if cs.reqBody != nil && cs.reqBodyClosed == nil {
-		cs.closeReqBodyLocked()
+	if cs.reqBody != nil && !cs.reqBodyClosed {
+		cs.reqBody.Close()
+		cs.reqBodyClosed = true
 		cc.cond.Broadcast()
 	}
-}
-
-func (cs *clientStream) closeReqBodyLocked() {
-	if cs.reqBodyClosed != nil {
-		return
-	}
-	cs.reqBodyClosed = make(chan struct{})
-	reqBodyClosed := cs.reqBodyClosed
-	go func() {
-		cs.reqBody.Close()
-		close(reqBodyClosed)
-	}()
 }
 
 type stickyErrWriter struct {
@@ -932,10 +921,10 @@ func (cc *ClientConn) onIdleTimeout() {
 	cc.closeIfIdle()
 }
 
-func (cc *ClientConn) closeConn() {
+func (cc *ClientConn) closeConn() error {
 	t := time.AfterFunc(250*time.Millisecond, cc.forceCloseConn)
 	defer t.Stop()
-	cc.tconn.Close()
+	return cc.tconn.Close()
 }
 
 // A tls.Conn.Close can hang for a long time if the peer is unresponsive.
@@ -1001,8 +990,7 @@ func (cc *ClientConn) Shutdown(ctx context.Context) error {
 	shutdownEnterWaitStateHook()
 	select {
 	case <-done:
-		cc.closeConn()
-		return nil
+		return cc.closeConn()
 	case <-ctx.Done():
 		cc.mu.Lock()
 		// Free the goroutine above
@@ -1039,7 +1027,7 @@ func (cc *ClientConn) sendGoAway() error {
 
 // closes the client connection immediately. In-flight requests are interrupted.
 // err is sent to streams.
-func (cc *ClientConn) closeForError(err error) {
+func (cc *ClientConn) closeForError(err error) error {
 	cc.mu.Lock()
 	cc.closed = true
 	for _, cs := range cc.streams {
@@ -1047,7 +1035,7 @@ func (cc *ClientConn) closeForError(err error) {
 	}
 	cc.cond.Broadcast()
 	cc.mu.Unlock()
-	cc.closeConn()
+	return cc.closeConn()
 }
 
 // Close closes the client connection immediately.
@@ -1055,17 +1043,16 @@ func (cc *ClientConn) closeForError(err error) {
 // In-flight requests are interrupted. For a graceful shutdown, use Shutdown instead.
 func (cc *ClientConn) Close() error {
 	err := errors.New("http2: client connection force closed via ClientConn.Close")
-	cc.closeForError(err)
-	return nil
+	return cc.closeForError(err)
 }
 
 // closes the client connection immediately. In-flight requests are interrupted.
-func (cc *ClientConn) closeForLostPing() {
+func (cc *ClientConn) closeForLostPing() error {
 	err := errors.New("http2: client connection lost")
 	if f := cc.t.CountError; f != nil {
 		f("conn_close_lost_ping")
 	}
-	cc.closeForError(err)
+	return cc.closeForError(err)
 }
 
 // errRequestCanceled is a copy of net/http's errRequestCanceled because it's not
@@ -1443,19 +1430,11 @@ func (cs *clientStream) cleanupWriteRequest(err error) {
 	// and in multiple cases: server replies <=299 and >299
 	// while still writing request body
 	cc.mu.Lock()
-	mustCloseBody := false
-	if cs.reqBody != nil && cs.reqBodyClosed == nil {
-		mustCloseBody = true
-		cs.reqBodyClosed = make(chan struct{})
-	}
 	bodyClosed := cs.reqBodyClosed
+	cs.reqBodyClosed = true
 	cc.mu.Unlock()
-	if mustCloseBody {
+	if !bodyClosed && cs.reqBody != nil {
 		cs.reqBody.Close()
-		close(bodyClosed)
-	}
-	if bodyClosed != nil {
-		<-bodyClosed
 	}
 
 	if err != nil && cs.sentEndStream {
@@ -1635,7 +1614,7 @@ func (cs *clientStream) writeRequestBody(req *http.Request) (err error) {
 		}
 		if err != nil {
 			cc.mu.Lock()
-			bodyClosed := cs.reqBodyClosed != nil
+			bodyClosed := cs.reqBodyClosed
 			cc.mu.Unlock()
 			switch {
 			case bodyClosed:
@@ -1730,7 +1709,7 @@ func (cs *clientStream) awaitFlowControl(maxBytes int) (taken int32, err error) 
 		if cc.closed {
 			return 0, errClientConnClosed
 		}
-		if cs.reqBodyClosed != nil {
+		if cs.reqBodyClosed {
 			return 0, errStopReqBodyWrite
 		}
 		select {
@@ -2026,7 +2005,7 @@ func (cc *ClientConn) forgetStreamID(id uint32) {
 	// wake up RoundTrip if there is a pending request.
 	cc.cond.Broadcast()
 
-	closeOnIdle := cc.singleUse || cc.doNotReuse || cc.t.disableKeepAlives() || cc.goAway != nil
+	closeOnIdle := cc.singleUse || cc.doNotReuse || cc.t.disableKeepAlives()
 	if closeOnIdle && cc.streamsReserved == 0 && len(cc.streams) == 0 {
 		if VerboseLogs {
 			cc.vlogf("http2: Transport closing idle conn %p (forSingleUse=%v, maxStream=%v)", cc, cc.singleUse, cc.nextStreamID-2)
@@ -2102,7 +2081,6 @@ func (rl *clientConnReadLoop) cleanup() {
 		err = io.ErrUnexpectedEOF
 	}
 	cc.closed = true
-
 	for _, cs := range cc.streams {
 		select {
 		case <-cs.peerClosed:
@@ -2696,6 +2674,7 @@ func (rl *clientConnReadLoop) processGoAway(f *GoAwayFrame) error {
 		if fn := cc.t.CountError; fn != nil {
 			fn("recv_goaway_" + f.ErrCode.stringToken())
 		}
+
 	}
 	cc.setGoAway(f)
 	return nil
@@ -3049,7 +3028,7 @@ func traceGotConn(req *http.Request, cc *ClientConn, reused bool) {
 	cc.mu.Lock()
 	ci.WasIdle = len(cc.streams) == 0 && reused
 	if ci.WasIdle && !cc.lastActive.IsZero() {
-		ci.IdleTime = time.Since(cc.lastActive)
+		ci.IdleTime = time.Now().Sub(cc.lastActive)
 	}
 	cc.mu.Unlock()
 

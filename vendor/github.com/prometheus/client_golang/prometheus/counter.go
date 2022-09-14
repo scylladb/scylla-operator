@@ -140,13 +140,12 @@ func (c *counter) get() float64 {
 }
 
 func (c *counter) Write(out *dto.Metric) error {
-	// Read the Exemplar first and the value second. This is to avoid a race condition
-	// where users see an exemplar for a not-yet-existing observation.
+	val := c.get()
+
 	var exemplar *dto.Exemplar
 	if e := c.exemplar.Load(); e != nil {
 		exemplar = e.(*dto.Exemplar)
 	}
-	val := c.get()
 
 	return populateMetric(CounterValue, val, c.labelPairs, exemplar, out)
 }

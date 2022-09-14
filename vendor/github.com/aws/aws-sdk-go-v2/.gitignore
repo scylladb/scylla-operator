@@ -9,4 +9,3 @@ Gemfile.lock
 /private/model/cli/gen-api/gen-api
 .gradle/
 build/
-.idea/

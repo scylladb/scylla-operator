@@ -206,11 +206,7 @@ func (p *untypedParamBinder) Bind(request *http.Request, routeParams RouteParams
 		if p.parameter.Type == "file" {
 			file, header, ffErr := request.FormFile(p.parameter.Name)
 			if ffErr != nil {
-				if p.parameter.Required {
-					return errors.NewParseError(p.Name, p.parameter.In, "", ffErr)
-				} else {
-					return nil
-				}
+				return errors.NewParseError(p.Name, p.parameter.In, "", ffErr)
 			}
 			target.Set(reflect.ValueOf(runtime.File{Data: file, Header: header}))
 			return nil

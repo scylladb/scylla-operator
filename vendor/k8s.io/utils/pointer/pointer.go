@@ -53,7 +53,6 @@ func Int(i int) *int {
 }
 
 // IntPtr is a function variable referring to Int.
-//
 // Deprecated: Use Int instead.
 var IntPtr = Int // for back-compat
 
@@ -67,7 +66,6 @@ func IntDeref(ptr *int, def int) int {
 }
 
 // IntPtrDerefOr is a function variable referring to IntDeref.
-//
 // Deprecated: Use IntDeref instead.
 var IntPtrDerefOr = IntDeref // for back-compat
 
@@ -77,7 +75,6 @@ func Int32(i int32) *int32 {
 }
 
 // Int32Ptr is a function variable referring to Int32.
-//
 // Deprecated: Use Int32 instead.
 var Int32Ptr = Int32 // for back-compat
 
@@ -91,7 +88,6 @@ func Int32Deref(ptr *int32, def int32) int32 {
 }
 
 // Int32PtrDerefOr is a function variable referring to Int32Deref.
-//
 // Deprecated: Use Int32Deref instead.
 var Int32PtrDerefOr = Int32Deref // for back-compat
 
@@ -113,7 +109,6 @@ func Uint(i uint) *uint {
 }
 
 // UintPtr is a function variable referring to Uint.
-//
 // Deprecated: Use Uint instead.
 var UintPtr = Uint // for back-compat
 
@@ -127,7 +122,6 @@ func UintDeref(ptr *uint, def uint) uint {
 }
 
 // UintPtrDerefOr is a function variable referring to UintDeref.
-//
 // Deprecated: Use UintDeref instead.
 var UintPtrDerefOr = UintDeref // for back-compat
 
@@ -137,7 +131,6 @@ func Uint32(i uint32) *uint32 {
 }
 
 // Uint32Ptr is a function variable referring to Uint32.
-//
 // Deprecated: Use Uint32 instead.
 var Uint32Ptr = Uint32 // for back-compat
 
@@ -151,7 +144,6 @@ func Uint32Deref(ptr *uint32, def uint32) uint32 {
 }
 
 // Uint32PtrDerefOr is a function variable referring to Uint32Deref.
-//
 // Deprecated: Use Uint32Deref instead.
 var Uint32PtrDerefOr = Uint32Deref // for back-compat
 
@@ -173,7 +165,6 @@ func Int64(i int64) *int64 {
 }
 
 // Int64Ptr is a function variable referring to Int64.
-//
 // Deprecated: Use Int64 instead.
 var Int64Ptr = Int64 // for back-compat
 
@@ -187,7 +178,6 @@ func Int64Deref(ptr *int64, def int64) int64 {
 }
 
 // Int64PtrDerefOr is a function variable referring to Int64Deref.
-//
 // Deprecated: Use Int64Deref instead.
 var Int64PtrDerefOr = Int64Deref // for back-compat
 
@@ -209,7 +199,6 @@ func Uint64(i uint64) *uint64 {
 }
 
 // Uint64Ptr is a function variable referring to Uint64.
-//
 // Deprecated: Use Uint64 instead.
 var Uint64Ptr = Uint64 // for back-compat
 
@@ -223,7 +212,6 @@ func Uint64Deref(ptr *uint64, def uint64) uint64 {
 }
 
 // Uint64PtrDerefOr is a function variable referring to Uint64Deref.
-//
 // Deprecated: Use Uint64Deref instead.
 var Uint64PtrDerefOr = Uint64Deref // for back-compat
 
@@ -245,7 +233,6 @@ func Bool(b bool) *bool {
 }
 
 // BoolPtr is a function variable referring to Bool.
-//
 // Deprecated: Use Bool instead.
 var BoolPtr = Bool // for back-compat
 
@@ -259,7 +246,6 @@ func BoolDeref(ptr *bool, def bool) bool {
 }
 
 // BoolPtrDerefOr is a function variable referring to BoolDeref.
-//
 // Deprecated: Use BoolDeref instead.
 var BoolPtrDerefOr = BoolDeref // for back-compat
 
@@ -281,7 +267,6 @@ func String(s string) *string {
 }
 
 // StringPtr is a function variable referring to String.
-//
 // Deprecated: Use String instead.
 var StringPtr = String // for back-compat
 
@@ -295,7 +280,6 @@ func StringDeref(ptr *string, def string) string {
 }
 
 // StringPtrDerefOr is a function variable referring to StringDeref.
-//
 // Deprecated: Use StringDeref instead.
 var StringPtrDerefOr = StringDeref // for back-compat
 
@@ -317,7 +301,6 @@ func Float32(i float32) *float32 {
 }
 
 // Float32Ptr is a function variable referring to Float32.
-//
 // Deprecated: Use Float32 instead.
 var Float32Ptr = Float32
 
@@ -331,7 +314,6 @@ func Float32Deref(ptr *float32, def float32) float32 {
 }
 
 // Float32PtrDerefOr is a function variable referring to Float32Deref.
-//
 // Deprecated: Use Float32Deref instead.
 var Float32PtrDerefOr = Float32Deref // for back-compat
 
@@ -353,7 +335,6 @@ func Float64(i float64) *float64 {
 }
 
 // Float64Ptr is a function variable referring to Float64.
-//
 // Deprecated: Use Float64 instead.
 var Float64Ptr = Float64
 
@@ -367,7 +348,6 @@ func Float64Deref(ptr *float64, def float64) float64 {
 }
 
 // Float64PtrDerefOr is a function variable referring to Float64Deref.
-//
 // Deprecated: Use Float64Deref instead.
 var Float64PtrDerefOr = Float64Deref // for back-compat
 

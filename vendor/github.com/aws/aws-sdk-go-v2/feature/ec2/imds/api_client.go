@@ -106,10 +106,8 @@ func New(options Options, optFns ...func(*Options)) *Client {
 // or adding custom middleware behavior.
 func NewFromConfig(cfg aws.Config, optFns ...func(*Options)) *Client {
 	opts := Options{
-		APIOptions:    append([]func(*middleware.Stack) error{}, cfg.APIOptions...),
-		HTTPClient:    cfg.HTTPClient,
-		ClientLogMode: cfg.ClientLogMode,
-		Logger:        cfg.Logger,
+		APIOptions: append([]func(*middleware.Stack) error{}, cfg.APIOptions...),
+		HTTPClient: cfg.HTTPClient,
 	}
 
 	if cfg.Retryer != nil {

@@ -182,3 +182,160 @@ In case you need to preserve your data, refer to backup and restore guide.
     kind: ScyllaCluster
     ```
 1. Once your cluster definition is ready, use `kubectl apply` to install fresh Scylla cluster.
+
+## `v1.7.0` -> `v1.8.0`
+
+`v1.8.0` introduces new Manager Controller, which unfortunately is **not** backward compatible.
+The Manager has to be manually migrated.  
+
+1. Make sure you're on `v1.7.0` branch
+   ```
+   git checkout v1.7.0
+   ```
+2. Delete existing manager and its controller
+   
+   Note: You can keep scylla-manager-cluster to be reused by the new manager.
+   ``` 
+   kubectl delete -f examples/common/manager.yaml
+   ```
+   
+3. Delete existing CRD and operator 
+   ```
+   kubectl delete -f examples/common/operator.yaml
+   ```
+4. Checkout `v1.8.0` version
+   ```
+   git checkout v1.8.0
+   ```
+5. Install new CRD and operator
+   ```
+   kubectl apply -f examples/common/operator.yaml 
+   ```
+6. Create ScyllaManager CRD. 
+   - Fill in name and namespace. 
+    
+     Remember that Scylla Manager has to be in the same namespace as the clusters that are supposed to be managed. 
+   ```yaml
+   apiVersion: scylla.scylladb.com/v1alpha1
+   kind: ScyllaManager
+   metadata:
+     name: scylla-manager
+     namespace: example-manager
+   spec: [...]
+   ```
+   - Fill in manager image, desired replicas, refresh time of tasks statuses and scyllaClusterSelector.
+      
+     Manager will register only the clusters which labels match the given selector.
+   ```yaml
+   apiVersion: scylla.scylladb.com/v1alpha1
+   kind: ScyllaManager
+   metadata:
+    name: scylla-manager
+    namespace: example-manager
+   spec:
+    replicas: 1
+    image: docker.io/scylladb/scylla-manager:3.0.0
+    taskStatusRefreshTime: 300000000000 # 300 seconds
+    scyllaClusterSelector:
+      matchLabels:
+        example-manager: "true"
+        managed: "true"
+        managed-by: scylla-manager
+   ```
+   - Fill in manager database spec
+   ```yaml
+   apiVersion: scylla.scylladb.com/v1alpha1
+   kind: ScyllaManager
+   metadata:
+     name: scylla-manager
+     namespace: example-manager
+   spec:
+     replicas: 1
+     image: docker.io/scylladb/scylla-manager:3.0.0
+     taskStatusRefreshTime: 300000000000 # 300 seconds
+     scyllaClusterSelector:
+       matchLabels:
+         example-manager: "true"
+         managed: "true"
+         managed-by: scylla-manager
+   
+     database:
+       connection:
+         server: scylla-manager-cluster-manager-dc-manager-rack-0.example-manager.svc
+         username: cassandra
+         password: cassandra
+   
+   ```
+   - Move tasks scheduled by [Cluster CRD](scylla_cluster_crd.md) to Manager CRD.
+   
+     Notice that tasks scheduling changed `interval` -> `cron`.
+   ```yaml
+   apiVersion: scylla.scylladb.com/v1alpha1
+   kind: ScyllaManager
+   metadata:
+     name: scylla-manager
+     namespace: example-manager
+   spec:
+     replicas: 1
+     image: docker.io/scylladb/scylla-manager:3.0.0
+     taskStatusRefreshTime: 300000000000 # 300 seconds
+     scyllaClusterSelector:
+       matchLabels:
+         example-manager: "true"
+         managed: "true"
+         managed-by: scylla-manager
+   
+     database:
+       connection:
+         server: scylla-manager-cluster-manager-dc-manager-rack-0.example-manager.svc
+         username: cassandra
+         password: cassandra
+   
+     repairs:
+       - name: "weekly us-east-1 repair"
+         intensity: "2"
+         cron: "@weekly"
+         dc: ["us-east-1"]
+     backups:
+       - name: "daily users backup"
+         rateLimit: ["50"]
+         location: ["s3:cluster-backups"]
+         cron: "@daily"
+         keyspace: ["users"]
+       - name: "weekly full cluster backup"
+         rateLimit: ["50"]
+         location: ["s3:cluster-backups"]
+         cron: "@weekly"
+   ```
+7. Create new Manager 
+   ```
+   kubectl apply -f manager.yaml
+   ```
+   The Operator shall register matching clusters in manager and schedule tasks.
+   
+   Manager Status can be tracked:
+   ```
+   kubectl get -n namespace ScyllaManager -o yaml -w 
+   ```
+### Upgrade Manager with helm
+
+1. Make sure you're on `v1.7.0` branch
+   ```
+   git checkout v1.7.0
+   ```
+2. Delete existing manager, its controller and operator 
+
+   Note: You can keep scylla-manager-cluster to be reused by the new manager.
+   ``` 
+   helm uninstall scylla-manager -n scylla-manager
+   helm uninstall scylla-operator -n scylla-operator
+   ```
+3. Checkout `v1.8.0` version
+   ```
+   git checkout v1.8.0
+   ```
+4. Install new operator and CRDs
+   ```
+   helm install scylla-operator scylla/scylla-operator --create-namespace --namespace scylla-operator
+   helm install scylla-manager scylla/scylla-manager --create-namespace --namespace scylla-manager
+   ```

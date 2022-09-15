@@ -1,0 +1,6 @@
+dependencies:
+- name: scylla
+  repository: file://../scylla
+  version: 1.0.0
+digest: sha256:40da60d50e6a16c1c75a17564b461f5e5afc33417109f172d26944d7c9fdd103
+generated: "2021-02-04T15:13:31.081380767+01:00"

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scylla-manager-config
+  namespace: scylla-manager
+data:
+  scylla-manager.yaml: |-
+    http: :5080
+    logger:
+      level: {{ .Values.logLevel }}
+    database:
+      hosts:
+    {{- range $rack := .Values.scylla.racks }}
+    {{- range $idx, $e := until ($rack.members | int) }}
+      - {{ printf "%s-%s-%s-%d" ( include "call-nested" (list $ "scylla" "scylla.fullname")) $.Values.scylla.datacenter $rack.name $idx }}
+    {{- end }}
+    {{- end }}

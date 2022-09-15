@@ -1,0 +1,22 @@
+apiVersion: v2
+name: scylla-manager
+description: Scylla Manager automates database operations.
+version: 0.0.0 # overwritten during publishing
+appVersion: latest # overwritten during publishing
+dependencies:
+  - name: scylla
+    version: 1.0.0
+    repository: file://../scylla
+keywords:
+  - scylla
+  - scylladb
+  - scylla-manager
+  - scylla-operator
+  - operator
+home: https://www.scylladb.com/
+sources:
+  - https://github.com/scylladb/scylla-operator
+maintainers:
+  - name: Maciej Zimnoch
+    email: maciej@scylladb.com
+icon: https://www.scylladb.com/wp-content/uploads/scylla-manager.png

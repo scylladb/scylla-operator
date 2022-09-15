@@ -1,0 +1,8 @@
+
+The Scylla Manager has been installed. Check its status by running:
+
+  kubectl -n scylla-manager get pods -l "app.kubernetes.io/name=scylla-manager"
+  kubectl -n scylla-manager get pods -l "app.kubernetes.io/name=scylla-manager-controller"
+
+Visit https://github.com/scylladb/scylla-operator for tutorials on how to
+create and configure Scylla clusters using the Scylla Operator and set up monitoring.

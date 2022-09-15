@@ -82,7 +82,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 			framework.Failf("Can't delete ResourceQuota %q: %v", naming.ManualRef(naming.ScyllaOperatorNodeTuningNamespace, resourceQuotaName), err)
 		}
 		if !apierrors.IsNotFound(err) {
-			err = framework.WaitForObjectDeletion(context.Background(), f.DynamicAdminClient(), corev1.SchemeGroupVersion.WithResource("resourcequota"), naming.ScyllaOperatorNodeTuningNamespace, resourceQuotaName, nil)
+			err = framework.WaitForObjectDeletion(context.Background(), f.DynamicAdminClient(), corev1.SchemeGroupVersion.WithResource(corev1.ResourceQuotas.String()), naming.ScyllaOperatorNodeTuningNamespace, resourceQuotaName, nil)
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
 	})
@@ -190,7 +190,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for a ConfigMap to indicate blocking NodeConfig")
-		ctx1, ctx1Cancel := context.WithTimeout(ctx, apiCallTimeout)
+		ctx1, ctx1Cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer ctx1Cancel()
 		podName := fmt.Sprintf("%s-%d", naming.StatefulSetNameForRack(sc.Spec.Datacenter.Racks[0], sc), 0)
 		pod, err := utils.WaitForPodState(ctx1, f.KubeClient().CoreV1().Pods(sc.Namespace), podName, utils.WaitForStateOptions{}, func(p *corev1.Pod) (bool, error) {

@@ -430,7 +430,19 @@ type ScyllaClusterStatus struct {
 
 	// upgrade reflects state of ongoing upgrade procedure.
 	Upgrade *UpgradeStatus `json:"upgrade,omitempty"`
+
+	// conditions hold conditions describing ScyllaCluster status.
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
+
+const (
+	CertControllerDegradedCondition    = "CertControllerDegraded"
+	CertControllerProgressingCondition = "CertControllerProgressing"
+
+	AsExpectedReason  = "AsExpected"
+	ErrorReason       = "Error"
+	ProgressingReason = "Progressing"
+)
 
 // UpgradeStatus contains the internal state of an ongoing upgrade procedure.
 // Do not rely on these internal values externally. They are meant for keeping an internal state

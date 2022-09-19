@@ -52,7 +52,7 @@ var _ = g.Describe("ScyllaCluster Ingress", func() {
 		waitCtx, waitCtxCancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtxCancel()
 
-		sc, err = utils.WaitForScyllaClusterState(waitCtx, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.IsScyllaClusterRolledOut)
+		sc, err = utils.WaitForScyllaClusterState(waitCtx, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc, nil)

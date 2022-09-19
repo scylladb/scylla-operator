@@ -226,31 +226,31 @@ func WaitForObjectState[Object, ListObject runtime.Object](ctx context.Context, 
 	return event.Object.(Object), nil
 }
 
-func WaitForScyllaClusterState(ctx context.Context, client scyllav1client.ScyllaV1Interface, namespace string, name string, conditions ...func(*scyllav1.ScyllaCluster) (bool, error)) (*scyllav1.ScyllaCluster, error) {
-	return WaitForObjectState[*scyllav1.ScyllaCluster, *scyllav1.ScyllaClusterList](ctx, client.ScyllaClusters(namespace), name, WaitForStateOptions{}, conditions[0], conditions[1:]...)
+func WaitForScyllaClusterState(ctx context.Context, client scyllav1client.ScyllaV1Interface, namespace string, name string, options WaitForStateOptions, condition func(*scyllav1.ScyllaCluster) (bool, error), additionalConditions ...func(*scyllav1.ScyllaCluster) (bool, error)) (*scyllav1.ScyllaCluster, error) {
+	return WaitForObjectState[*scyllav1.ScyllaCluster, *scyllav1.ScyllaClusterList](ctx, client.ScyllaClusters(namespace), name, options, condition, additionalConditions...)
 }
 
-func WaitForPodState(ctx context.Context, client corev1client.PodInterface, name string, condition func(*corev1.Pod) (bool, error), options WaitForStateOptions) (*corev1.Pod, error) {
-	return WaitForObjectState[*corev1.Pod, *corev1.PodList](ctx, client, name, options, condition)
+func WaitForPodState(ctx context.Context, client corev1client.PodInterface, name string, options WaitForStateOptions, condition func(*corev1.Pod) (bool, error), additionalConditions ...func(*corev1.Pod) (bool, error)) (*corev1.Pod, error) {
+	return WaitForObjectState[*corev1.Pod, *corev1.PodList](ctx, client, name, options, condition, additionalConditions...)
 }
 
-func WaitForServiceAccountState(ctx context.Context, client corev1client.CoreV1Interface, namespace string, name string, condition func(*corev1.ServiceAccount) (bool, error), options WaitForStateOptions) (*corev1.ServiceAccount, error) {
-	return WaitForObjectState[*corev1.ServiceAccount, *corev1.ServiceAccountList](ctx, client.ServiceAccounts(namespace), name, options, condition)
+func WaitForServiceAccountState(ctx context.Context, client corev1client.CoreV1Interface, namespace string, name string, options WaitForStateOptions, condition func(*corev1.ServiceAccount) (bool, error), additionalConditions ...func(*corev1.ServiceAccount) (bool, error)) (*corev1.ServiceAccount, error) {
+	return WaitForObjectState[*corev1.ServiceAccount, *corev1.ServiceAccountList](ctx, client.ServiceAccounts(namespace), name, options, condition, additionalConditions...)
 }
 
-func WaitForRoleBindingState(ctx context.Context, client rbacv1client.RbacV1Interface, namespace string, name string, condition func(*rbacv1.RoleBinding) (bool, error), options WaitForStateOptions) (*rbacv1.RoleBinding, error) {
-	return WaitForObjectState[*rbacv1.RoleBinding, *rbacv1.RoleBindingList](ctx, client.RoleBindings(namespace), name, options, condition)
+func WaitForRoleBindingState(ctx context.Context, client rbacv1client.RbacV1Interface, namespace string, name string, options WaitForStateOptions, condition func(*rbacv1.RoleBinding) (bool, error), additionalConditions ...func(*rbacv1.RoleBinding) (bool, error)) (*rbacv1.RoleBinding, error) {
+	return WaitForObjectState[*rbacv1.RoleBinding, *rbacv1.RoleBindingList](ctx, client.RoleBindings(namespace), name, options, condition, additionalConditions...)
 }
 
-func WaitForPVCState(ctx context.Context, client corev1client.CoreV1Interface, namespace string, name string, condition func(*corev1.PersistentVolumeClaim) (bool, error), options WaitForStateOptions) (*corev1.PersistentVolumeClaim, error) {
-	return WaitForObjectState[*corev1.PersistentVolumeClaim, *corev1.PersistentVolumeClaimList](ctx, client.PersistentVolumeClaims(namespace), name, options, condition)
+func WaitForPVCState(ctx context.Context, client corev1client.CoreV1Interface, namespace string, name string, options WaitForStateOptions, condition func(*corev1.PersistentVolumeClaim) (bool, error), additionalConditions ...func(*corev1.PersistentVolumeClaim) (bool, error)) (*corev1.PersistentVolumeClaim, error) {
+	return WaitForObjectState[*corev1.PersistentVolumeClaim, *corev1.PersistentVolumeClaimList](ctx, client.PersistentVolumeClaims(namespace), name, options, condition, additionalConditions...)
 }
 
-func WaitForNodeConfigState(ctx context.Context, ncClient scyllav1alpha1client.NodeConfigInterface, name string, options WaitForStateOptions, conditions ...func(*scyllav1alpha1.NodeConfig) (bool, error)) (*scyllav1alpha1.NodeConfig, error) {
-	return WaitForObjectState[*scyllav1alpha1.NodeConfig, *scyllav1alpha1.NodeConfigList](ctx, ncClient, name, options, conditions[0], conditions[1:]...)
+func WaitForNodeConfigState(ctx context.Context, ncClient scyllav1alpha1client.NodeConfigInterface, name string, options WaitForStateOptions, condition func(*scyllav1alpha1.NodeConfig) (bool, error), additionalConditions ...func(*scyllav1alpha1.NodeConfig) (bool, error)) (*scyllav1alpha1.NodeConfig, error) {
+	return WaitForObjectState[*scyllav1alpha1.NodeConfig, *scyllav1alpha1.NodeConfigList](ctx, ncClient, name, options, condition, additionalConditions...)
 }
 
-func WaitForConfigMapState(ctx context.Context, client corev1client.ConfigMapInterface, name string, options WaitForStateOptions, condition func(cm *corev1.ConfigMap) (bool, error), additionalConditions ...func(*corev1.ConfigMap) (bool, error)) (*corev1.ConfigMap, error) {
+func WaitForConfigMapState(ctx context.Context, client corev1client.ConfigMapInterface, name string, options WaitForStateOptions, condition func(*corev1.ConfigMap) (bool, error), additionalConditions ...func(*corev1.ConfigMap) (bool, error)) (*corev1.ConfigMap, error) {
 	return WaitForObjectState[*corev1.ConfigMap, *corev1.ConfigMapList](ctx, client, name, options, condition, additionalConditions...)
 }
 
@@ -281,6 +281,7 @@ func RunEphemeralContainerAndWaitForCompletion(ctx context.Context, client corev
 		ctx,
 		client,
 		podName,
+		WaitForStateOptions{},
 		func(pod *corev1.Pod) (bool, error) {
 			s := controllerhelpers.FindContainerStatus(pod, ec.Name)
 			if s == nil {
@@ -300,7 +301,6 @@ func RunEphemeralContainerAndWaitForCompletion(ctx context.Context, client corev
 			framework.Infof("Waiting for the ephemeral container %q in Pod %q to start", ec.Name, naming.ObjRef(pod))
 			return false, nil
 		},
-		WaitForStateOptions{},
 	)
 }
 

@@ -160,48 +160,16 @@ func IsScyllaClusterRolledOut(sc *scyllav1.ScyllaCluster) (bool, error) {
 	return true, nil
 }
 
-func WaitForScyllaClusterState(ctx context.Context, client scyllav1client.ScyllaV1Interface, namespace string, name string, conditions ...func(sc *scyllav1.ScyllaCluster) (bool, error)) (*scyllav1.ScyllaCluster, error) {
-	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
-	lw := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-			options.FieldSelector = fieldSelector
-			return client.ScyllaClusters(namespace).List(ctx, options)
-		},
-		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
-			options.FieldSelector = fieldSelector
-			return client.ScyllaClusters(namespace).Watch(ctx, options)
-		},
-	}
-
-	event, err := watchtools.UntilWithSync(ctx, lw, &scyllav1.ScyllaCluster{}, nil, func(event watch.Event) (bool, error) {
-		switch event.Type {
-		case watch.Added, watch.Modified:
-			for _, condition := range conditions {
-				done, err := condition(event.Object.(*scyllav1.ScyllaCluster))
-				if err != nil {
-					return false, err
-				}
-				if !done {
-					return false, nil
-				}
-			}
-			return true, nil
-		default:
-			return true, fmt.Errorf("unexpected event: %#v", event)
-		}
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return event.Object.(*scyllav1.ScyllaCluster), nil
+type listerWatcher[ListObject runtime.Object] interface {
+	List(context.Context, metav1.ListOptions) (ListObject, error)
+	Watch(context.Context, metav1.ListOptions) (watch.Interface, error)
 }
 
 type WaitForStateOptions struct {
 	TolerateDelete bool
 }
 
-func WaitForPodState(ctx context.Context, client corev1client.PodInterface, name string, condition func(sc *corev1.Pod) (bool, error), o WaitForStateOptions) (*corev1.Pod, error) {
+func WaitForObjectState[Object, ListObject runtime.Object](ctx context.Context, client listerWatcher[ListObject], name string, options WaitForStateOptions, condition func(obj Object) (bool, error), additionalConditions ...func(obj Object) (bool, error)) (Object, error) {
 	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
 	lw := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
@@ -213,143 +181,19 @@ func WaitForPodState(ctx context.Context, client corev1client.PodInterface, name
 			return client.Watch(ctx, options)
 		},
 	}
-	event, err := watchtools.UntilWithSync(ctx, lw, &corev1.Pod{}, nil, func(event watch.Event) (bool, error) {
-		switch event.Type {
-		case watch.Added, watch.Modified:
-			return condition(event.Object.(*corev1.Pod))
-		case watch.Deleted:
-			if o.TolerateDelete {
-				return condition(event.Object.(*corev1.Pod))
-			}
-			fallthrough
-		default:
-			return true, fmt.Errorf("unexpected event: %#v", event)
-		}
-	})
-	if err != nil {
-		return nil, err
-	}
-	return event.Object.(*corev1.Pod), nil
-}
 
-func WaitForServiceAccountState(ctx context.Context, client corev1client.CoreV1Interface, namespace string, name string, condition func(sc *corev1.ServiceAccount) (bool, error), o WaitForStateOptions) (*corev1.ServiceAccount, error) {
-	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
-	lw := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-			options.FieldSelector = fieldSelector
-			return client.ServiceAccounts(namespace).List(ctx, options)
-		},
-		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
-			options.FieldSelector = fieldSelector
-			return client.ServiceAccounts(namespace).Watch(ctx, options)
-		},
-	}
-	event, err := watchtools.UntilWithSync(ctx, lw, &corev1.ServiceAccount{}, nil, func(event watch.Event) (bool, error) {
-		switch event.Type {
-		case watch.Added, watch.Modified:
-			return condition(event.Object.(*corev1.ServiceAccount))
-		case watch.Deleted:
-			if o.TolerateDelete {
-				return condition(event.Object.(*corev1.ServiceAccount))
-			}
-			fallthrough
-		default:
-			return true, fmt.Errorf("unexpected event: %#v", event)
-		}
-	})
-	if err != nil {
-		return nil, err
-	}
-	return event.Object.(*corev1.ServiceAccount), nil
-}
-
-func WaitForRoleBindingState(ctx context.Context, client rbacv1client.RbacV1Interface, namespace string, name string, condition func(sc *rbacv1.RoleBinding) (bool, error), o WaitForStateOptions) (*rbacv1.RoleBinding, error) {
-	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
-	lw := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-			options.FieldSelector = fieldSelector
-			return client.RoleBindings(namespace).List(ctx, options)
-		},
-		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
-			options.FieldSelector = fieldSelector
-			return client.RoleBindings(namespace).Watch(ctx, options)
-		},
-	}
-	event, err := watchtools.UntilWithSync(ctx, lw, &rbacv1.RoleBinding{}, nil, func(event watch.Event) (bool, error) {
-		switch event.Type {
-		case watch.Added, watch.Modified:
-			return condition(event.Object.(*rbacv1.RoleBinding))
-		case watch.Deleted:
-			if o.TolerateDelete {
-				return condition(event.Object.(*rbacv1.RoleBinding))
-			}
-			fallthrough
-		default:
-			return true, fmt.Errorf("unexpected event: %#v", event)
-		}
-	})
-	if err != nil {
-		return nil, err
-	}
-	return event.Object.(*rbacv1.RoleBinding), nil
-}
-
-func WaitForPVCState(ctx context.Context, client corev1client.CoreV1Interface, namespace string, name string, condition func(sc *corev1.PersistentVolumeClaim) (bool, error), o WaitForStateOptions) (*corev1.PersistentVolumeClaim, error) {
-	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
-	lw := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-			options.FieldSelector = fieldSelector
-			return client.PersistentVolumeClaims(namespace).List(ctx, options)
-		},
-		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
-			options.FieldSelector = fieldSelector
-			return client.PersistentVolumeClaims(namespace).Watch(ctx, options)
-		},
-	}
-	event, err := watchtools.UntilWithSync(ctx, lw, &corev1.PersistentVolumeClaim{}, nil, func(event watch.Event) (bool, error) {
-		switch event.Type {
-		case watch.Added, watch.Modified:
-			return condition(event.Object.(*corev1.PersistentVolumeClaim))
-		case watch.Deleted:
-			if o.TolerateDelete {
-				return condition(event.Object.(*corev1.PersistentVolumeClaim))
-			}
-			fallthrough
-		default:
-			return true, fmt.Errorf("unexpected event: %#v", event)
-		}
-	})
-	if err != nil {
-		return nil, err
-	}
-	return event.Object.(*corev1.PersistentVolumeClaim), nil
-}
-
-func WaitForNodeConfigState(ctx context.Context, ncClient scyllav1alpha1client.NodeConfigInterface, name string, o WaitForStateOptions, condition func(sc *scyllav1alpha1.NodeConfig) (bool, error), additionalConditions ...func(sc *scyllav1alpha1.NodeConfig) (bool, error)) (*scyllav1alpha1.NodeConfig, error) {
-	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
-	lw := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-			options.FieldSelector = fieldSelector
-			return ncClient.List(ctx, options)
-		},
-		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
-			options.FieldSelector = fieldSelector
-			return ncClient.Watch(ctx, options)
-		},
-	}
-
-	conditions := make([]func(sc *scyllav1alpha1.NodeConfig) (bool, error), 0, 1+len(additionalConditions))
+	conditions := make([]func(Object) (bool, error), 0, 1+len(additionalConditions))
 	conditions = append(conditions, condition)
 	if len(additionalConditions) != 0 {
 		conditions = append(conditions, additionalConditions...)
 	}
-	aggregatedCond := func(nc *scyllav1alpha1.NodeConfig) (bool, error) {
+	aggregatedCond := func(obj Object) (bool, error) {
 		allDone := true
 		for _, c := range conditions {
 			var err error
 			var done bool
 
-			done, err = c(nc)
+			done, err = c(obj)
 			if err != nil {
 				return done, err
 			}
@@ -360,77 +204,54 @@ func WaitForNodeConfigState(ctx context.Context, ncClient scyllav1alpha1client.N
 		return allDone, nil
 	}
 
-	event, err := watchtools.UntilWithSync(ctx, lw, &scyllav1alpha1.NodeConfig{}, nil, func(event watch.Event) (bool, error) {
+	event, err := watchtools.UntilWithSync(ctx, lw, *new(Object), nil, func(event watch.Event) (bool, error) {
 		switch event.Type {
 		case watch.Added, watch.Modified:
-			return aggregatedCond(event.Object.(*scyllav1alpha1.NodeConfig))
+			return aggregatedCond(event.Object.(Object))
+
 		case watch.Deleted:
-			if o.TolerateDelete {
-				return aggregatedCond(event.Object.(*scyllav1alpha1.NodeConfig))
+			if options.TolerateDelete {
+				return aggregatedCond(event.Object.(Object))
 			}
 			fallthrough
+
 		default:
 			return true, fmt.Errorf("unexpected event: %#v", event)
 		}
 	})
 	if err != nil {
-		return nil, err
+		return *new(Object), err
 	}
-	return event.Object.(*scyllav1alpha1.NodeConfig), nil
+
+	return event.Object.(Object), nil
 }
 
-func WaitForConfigMapState(ctx context.Context, cmClient corev1client.ConfigMapInterface, name string, o WaitForStateOptions, condition func(cm *corev1.ConfigMap) (bool, error), additionalConditions ...func(cm *corev1.ConfigMap) (bool, error)) (*corev1.ConfigMap, error) {
-	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
-	lw := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-			options.FieldSelector = fieldSelector
-			return cmClient.List(ctx, options)
-		},
-		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
-			options.FieldSelector = fieldSelector
-			return cmClient.Watch(ctx, options)
-		},
-	}
+func WaitForScyllaClusterState(ctx context.Context, client scyllav1client.ScyllaV1Interface, namespace string, name string, conditions ...func(*scyllav1.ScyllaCluster) (bool, error)) (*scyllav1.ScyllaCluster, error) {
+	return WaitForObjectState[*scyllav1.ScyllaCluster, *scyllav1.ScyllaClusterList](ctx, client.ScyllaClusters(namespace), name, WaitForStateOptions{}, conditions[0], conditions[1:]...)
+}
 
-	conditions := make([]func(sc *corev1.ConfigMap) (bool, error), 0, 1+len(additionalConditions))
-	conditions = append(conditions, condition)
-	if len(additionalConditions) != 0 {
-		conditions = append(conditions, additionalConditions...)
-	}
-	aggregatedCond := func(nc *corev1.ConfigMap) (bool, error) {
-		allDone := true
-		for _, c := range conditions {
-			var err error
-			var done bool
+func WaitForPodState(ctx context.Context, client corev1client.PodInterface, name string, condition func(*corev1.Pod) (bool, error), options WaitForStateOptions) (*corev1.Pod, error) {
+	return WaitForObjectState[*corev1.Pod, *corev1.PodList](ctx, client, name, options, condition)
+}
 
-			done, err = c(nc)
-			if err != nil {
-				return done, err
-			}
-			if !done {
-				allDone = false
-			}
-		}
-		return allDone, nil
-	}
+func WaitForServiceAccountState(ctx context.Context, client corev1client.CoreV1Interface, namespace string, name string, condition func(*corev1.ServiceAccount) (bool, error), options WaitForStateOptions) (*corev1.ServiceAccount, error) {
+	return WaitForObjectState[*corev1.ServiceAccount, *corev1.ServiceAccountList](ctx, client.ServiceAccounts(namespace), name, options, condition)
+}
 
-	event, err := watchtools.UntilWithSync(ctx, lw, &corev1.ConfigMap{}, nil, func(event watch.Event) (bool, error) {
-		switch event.Type {
-		case watch.Added, watch.Modified:
-			return aggregatedCond(event.Object.(*corev1.ConfigMap))
-		case watch.Deleted:
-			if o.TolerateDelete {
-				return aggregatedCond(event.Object.(*corev1.ConfigMap))
-			}
-			fallthrough
-		default:
-			return true, fmt.Errorf("unexpected event: %#v", event)
-		}
-	})
-	if err != nil {
-		return nil, err
-	}
-	return event.Object.(*corev1.ConfigMap), nil
+func WaitForRoleBindingState(ctx context.Context, client rbacv1client.RbacV1Interface, namespace string, name string, condition func(*rbacv1.RoleBinding) (bool, error), options WaitForStateOptions) (*rbacv1.RoleBinding, error) {
+	return WaitForObjectState[*rbacv1.RoleBinding, *rbacv1.RoleBindingList](ctx, client.RoleBindings(namespace), name, options, condition)
+}
+
+func WaitForPVCState(ctx context.Context, client corev1client.CoreV1Interface, namespace string, name string, condition func(*corev1.PersistentVolumeClaim) (bool, error), options WaitForStateOptions) (*corev1.PersistentVolumeClaim, error) {
+	return WaitForObjectState[*corev1.PersistentVolumeClaim, *corev1.PersistentVolumeClaimList](ctx, client.PersistentVolumeClaims(namespace), name, options, condition)
+}
+
+func WaitForNodeConfigState(ctx context.Context, ncClient scyllav1alpha1client.NodeConfigInterface, name string, options WaitForStateOptions, conditions ...func(*scyllav1alpha1.NodeConfig) (bool, error)) (*scyllav1alpha1.NodeConfig, error) {
+	return WaitForObjectState[*scyllav1alpha1.NodeConfig, *scyllav1alpha1.NodeConfigList](ctx, ncClient, name, options, conditions[0], conditions[1:]...)
+}
+
+func WaitForConfigMapState(ctx context.Context, client corev1client.ConfigMapInterface, name string, options WaitForStateOptions, condition func(cm *corev1.ConfigMap) (bool, error), additionalConditions ...func(*corev1.ConfigMap) (bool, error)) (*corev1.ConfigMap, error) {
+	return WaitForObjectState[*corev1.ConfigMap, *corev1.ConfigMapList](ctx, client, name, options, condition, additionalConditions...)
 }
 
 func RunEphemeralContainerAndWaitForCompletion(ctx context.Context, client corev1client.PodInterface, podName string, ec *corev1.EphemeralContainer) (*corev1.Pod, error) {

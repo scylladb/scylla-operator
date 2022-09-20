@@ -1,0 +1,86 @@
+run:
+  deadline: 5m
+  tests: true
+  skip-files:
+    - experiments/cmd/benchtab
+  silent: true
+
+linters-settings:
+  errcheck:
+    check-blank: true
+  gocognit:
+    min-complexity: 50
+  gocyclo:
+    min-complexity: 50
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - performance
+      - style
+    disabled-checks:
+      - evalOrder
+  lll:
+    line-length: 180
+  nestif:
+    min-complexity: 6
+
+linters:
+  enable-all: true
+  disable:
+    - contextcheck
+    - cyclop
+    - durationcheck
+    - errorlint
+    - exhaustive
+    - exhaustivestruct
+    - exhaustruct
+    - forbidigo
+    - forcetypeassert
+    - funlen
+    - gas
+    - godox
+    - gci
+    - gochecknoglobals
+    - gochecknoinits
+    - goerr113
+    - gofumpt
+    - golint
+    - gomnd
+    - ifshort
+    - interfacer
+    - ireturn
+    - maligned
+    - nlreturn
+    - nonamedreturns
+    - nolintlint
+    - prealloc
+    - promlinter
+    - scopelint
+    - tagliatelle
+    - testpackage
+    - varnamelen
+    - wrapcheck
+    - wsl
+
+issues:
+  exclude-use-default: false
+  exclude:
+    - exported
+    - indent-error-flow
+    - should not use dot imports
+    - stdmethods
+    - ST1000
+    - cfg is heavy
+    - replacement are not allowed
+    - s is heavy \([\d]+ bytes\); consider passing it by pointer
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - dupl
+        - thelper
+    - path: _test_input\.go
+      linters:
+        - dupl
+        - lll
+    - path: transport/observer.go
+      text: ev is heavy

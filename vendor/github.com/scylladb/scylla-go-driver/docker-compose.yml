@@ -1,0 +1,44 @@
+version: "3.7"
+
+services:
+  node1:
+    image: ${SCYLLA_IMAGE}:${SCYLLA_VERSION}
+    command: ${SCYLLA_ARGS} --seeds 192.168.100.100 --skip-wait-for-gossip-to-settle 0
+    networks:
+      public:
+        ipv4_address: 192.168.100.100
+    volumes:
+    - type: bind
+      source: ./testdata/config/scylla.yaml
+      target: /etc/scylla/scylla.yaml
+    - "./testdata/tls:/etc/scylla/tls"
+  node2:
+    image: ${SCYLLA_IMAGE}:${SCYLLA_VERSION}
+    command: ${SCYLLA_ARGS} --seeds 192.168.100.100 --skip-wait-for-gossip-to-settle 0
+    networks:
+      public:
+        ipv4_address: 192.168.100.101
+    volumes:
+    - type: bind
+      source: ./testdata/config/scylla.yaml
+      target: /etc/scylla/scylla.yaml
+    - "./testdata/tls:/etc/scylla/tls"
+  node3:
+    image: ${SCYLLA_IMAGE}:${SCYLLA_VERSION}
+    command: ${SCYLLA_ARGS} --seeds 192.168.100.100,192.168.100.101 --skip-wait-for-gossip-to-settle 0
+    networks:
+      public:
+        ipv4_address: 192.168.100.102
+    volumes:
+    - type: bind
+      source: ./testdata/config/scylla.yaml
+      target: /etc/scylla/scylla.yaml
+    - "./testdata/tls:/etc/scylla/tls"
+
+networks:
+  public:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.100.0/24

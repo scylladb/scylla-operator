@@ -231,7 +231,8 @@ jobs:
         run all \
         --artifacts-dir="${ARTIFACTS_DIR}" \
         --flake-attempts="${flake_attempts}" \
-        --timeout="${e2e_timeout_minutes}m"
+        --timeout="${e2e_timeout_minutes}m" \
+        --parallelism=1
     - name: Dump cluster state
       if: ${{ always() }}
       working-directory: ${{ runner.temp }}

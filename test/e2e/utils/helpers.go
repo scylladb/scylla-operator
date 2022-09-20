@@ -93,6 +93,10 @@ func ContextForRollout(parent context.Context, sc *scyllav1.ScyllaCluster) (cont
 	return context.WithTimeout(parent, RolloutTimeoutForScyllaCluster(sc))
 }
 
+func ContextForPodStartup(parent context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(parent, imagePullTimeout)
+}
+
 func SyncTimeoutForScyllaCluster(sc *scyllav1.ScyllaCluster) time.Duration {
 	tasks := int64(len(sc.Spec.Repairs) + len(sc.Spec.Backups))
 	return baseManagerSyncTimeout + time.Duration(tasks)*managerTaskSyncTimeout
@@ -456,4 +460,14 @@ func GetMemberServiceSelector(scyllaClusterName string) labels.Selector {
 		naming.ClusterNameLabel:       scyllaClusterName,
 		naming.ScyllaServiceTypeLabel: string(naming.ScyllaServiceTypeMember),
 	}.AsSelector()
+}
+
+func PodIsRunning(pod *corev1.Pod) (bool, error) {
+	switch pod.Status.Phase {
+	case corev1.PodRunning:
+		return true, nil
+	case corev1.PodFailed, corev1.PodSucceeded:
+		return false, fmt.Errorf("pod ran to completion")
+	}
+	return false, nil
 }

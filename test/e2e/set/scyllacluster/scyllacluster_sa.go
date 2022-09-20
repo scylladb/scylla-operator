@@ -71,7 +71,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		framework.By("Waiting for the ServiceAccount to be adopted")
 		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx1Cancel()
-		sa, err = utils.WaitForServiceAccountState(waitCtx1, f.KubeClient().CoreV1(), sa.Namespace, sa.Name, func(sa *corev1.ServiceAccount) (bool, error) {
+		sa, err = utils.WaitForServiceAccountState(waitCtx1, f.KubeClient().CoreV1(), sa.Namespace, sa.Name, utils.WaitForStateOptions{}, func(sa *corev1.ServiceAccount) (bool, error) {
 			ref := metav1.GetControllerOfNoCopy(sa)
 			if ref == nil {
 				klog.V(2).InfoS("No controller ref")
@@ -85,7 +85,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 			klog.Error("Foreign controller has claimed the object", "ControllerRef", ref)
 
 			return true, fmt.Errorf("foreign controller has claimed the object")
-		}, utils.WaitForStateOptions{})
+		})
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(sa.OwnerReferences).To(o.HaveLen(1))
 		o.Expect(sa.Annotations).To(o.HaveKeyWithValue("user-annotation", "123"))
@@ -93,7 +93,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		framework.By("Waiting for the RoleBinding to be adopted")
 		waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx2Cancel()
-		rb, err = utils.WaitForRoleBindingState(waitCtx2, f.KubeClient().RbacV1(), rb.Namespace, rb.Name, func(sa *rbacv1.RoleBinding) (bool, error) {
+		rb, err = utils.WaitForRoleBindingState(waitCtx2, f.KubeClient().RbacV1(), rb.Namespace, rb.Name, utils.WaitForStateOptions{}, func(sa *rbacv1.RoleBinding) (bool, error) {
 			ref := metav1.GetControllerOfNoCopy(sa)
 			if ref == nil {
 				return false, nil
@@ -106,7 +106,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 			klog.Error("Foreign controller has claimed the object", "ControllerRef", ref)
 
 			return true, fmt.Errorf("foreign controller has claimed the object")
-		}, utils.WaitForStateOptions{})
+		})
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(rb.OwnerReferences).To(o.HaveLen(1))
 	})

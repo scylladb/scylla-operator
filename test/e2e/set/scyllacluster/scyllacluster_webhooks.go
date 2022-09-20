@@ -87,7 +87,7 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 		framework.By("waiting for the ScyllaCluster to deploy")
 		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, validSC)
 		defer waitCtx1Cancel()
-		validSC, err = utils.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), validSC.Namespace, validSC.Name, utils.IsScyllaClusterRolledOut)
+		validSC, err = utils.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), validSC.Namespace, validSC.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		di, err := NewDataInserter(ctx, f.KubeClient().CoreV1(), validSC, utils.GetMemberCount(validSC))

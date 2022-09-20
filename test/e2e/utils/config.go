@@ -14,7 +14,7 @@ const (
 	memberRolloutTimeout = 30*time.Second + imagePullTimeout + joinClusterTimeout
 
 	baseManagerSyncTimeout = 3 * time.Minute
-	managerTaskSyncTimeout = 30 * time.Second
+	managerTaskSyncTimeout = 90 * time.Second
 
 	nodeConfigRolloutTimeout = 3 * time.Minute
 )

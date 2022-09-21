@@ -46,7 +46,7 @@ func NewOperatorOptions(streams genericclioptions.IOStreams) *OperatorOptions {
 		InClusterReflection: genericclioptions.InClusterReflection{},
 		LeaderElection:      genericclioptions.NewLeaderElection(),
 
-		ConcurrentSyncs: 5,
+		ConcurrentSyncs: 50,
 		OperatorImage:   "",
 	}
 }

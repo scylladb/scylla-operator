@@ -13,9 +13,10 @@ import (
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
 )
 
-var _ = g.Describe("Scylla Manager integration", func() {
+var _ = g.FDescribe("Scylla Manager integration", func() {
 	defer g.GinkgoRecover()
 
 	f := framework.NewFramework("scyllacluster")
@@ -87,11 +88,27 @@ var _ = g.Describe("Scylla Manager integration", func() {
 
 		waitCtx2, waitCtx2Cancel := utils.ContextForManagerSync(ctx, sc)
 		defer waitCtx2Cancel()
-		sc, err = utils.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, registeredInManagerCond, repairTaskScheduledCond, backupTaskSyncFailedCond)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		sc, err2 := utils.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, registeredInManagerCond, repairTaskScheduledCond, backupTaskSyncFailedCond)
 
 		managerClient, err := utils.GetManagerClient(ctx, f.KubeAdminClient().CoreV1())
 		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Listing Repairs")
+		l, err := managerClient.ListTasks(ctx, *sc.Status.ManagerID, "repair", true, "")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		for _, t := range l.ExtendedTaskSlice {
+			klog.InfoS("repair", "name", t.Name, "status", t.Status, "next", t.NextActivation)
+		}
+
+		framework.By("Listing Backups")
+		l, err = managerClient.ListTasks(ctx, *sc.Status.ManagerID, "backup", true, "")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		for _, t := range l.ExtendedTaskSlice {
+			klog.InfoS("backup", "name", t.Name, "status", t.Status, "next", t.NextActivation)
+		}
+
+		framework.By("Did sync fail?")
+		o.Expect(err2).NotTo(o.HaveOccurred())
 
 		framework.By("Verifying that task properties were synchronized")
 		tasks, err := managerClient.ListTasks(ctx, *sc.Status.ManagerID, "repair", false, "")

@@ -8,6 +8,7 @@ import (
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	appsv1 "k8s.io/api/apps/v1"
@@ -80,6 +81,29 @@ func verifyPodDisruptionBudget(sc *scyllav1.ScyllaCluster, pdb *policyv1.PodDisr
 	o.Expect(pdb.Spec.Selector).To(o.Equal(metav1.SetAsLabelSelector(naming.ClusterLabels(sc))))
 }
 
+func verifyAllHostsUN(ctx context.Context, scyllaClient *scyllaclient.Client, hosts []string) {
+	allHostsUN := true
+	for _, h := range hosts {
+		statuses, err := scyllaClient.Status(ctx, h)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.Infof("Host statuses from %s: %v", h, statuses)
+
+		foundHost := false
+		for _, s := range statuses {
+			if s.Addr == h {
+				foundHost = true
+				allHostsUN = allHostsUN && s.IsUN()
+				break
+			}
+		}
+
+		allHostsUN = allHostsUN && foundHost
+	}
+
+	o.Expect(allHostsUN).To(o.BeTrue())
+}
+
 func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, sc *scyllav1.ScyllaCluster, di *DataInserter) {
 	framework.By("Verifying the ScyllaCluster")
 
@@ -116,17 +140,13 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 
 	verifyPersistentVolumeClaims(ctx, kubeClient.CoreV1(), sc)
 
-	// TODO: Use scylla client to check at least "UN"
 	scyllaClient, hosts, err := utils.GetScyllaClient(ctx, kubeClient.CoreV1(), sc)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	defer scyllaClient.Close()
 
 	o.Expect(hosts).To(o.HaveLen(memberCount))
 
-	status, err := scyllaClient.Status(ctx, "")
-	o.Expect(err).NotTo(o.HaveOccurred())
-	o.Expect(status.DownHosts()).To(o.BeEmpty())
-	o.Expect(status.LiveHosts()).To(o.HaveLen(memberCount))
+	verifyAllHostsUN(ctx, scyllaClient, hosts)
 
 	if di != nil {
 		read, err := di.Read()

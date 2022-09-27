@@ -157,8 +157,8 @@ jobs:
         if-no-files-found: error
         retention-days: ${{ env.retention_days }}
 
-  test-e2e:
-    name: Test e2e
+  test-e2e-parallel:
+    name: Test e2e parallel
     runs-on: ubuntu-20.04
     needs: images
     steps:
@@ -166,122 +166,28 @@ jobs:
       with:
         path: ${{ env.git_repo_path }}
         fetch-depth: 0  # also fetch tags
-    - name: Setup git tags
-      if: ${{ startsWith(github.ref, 'refs/tags/') }}
-      run: ./hack/ci-detect-tags.sh
-    - name: Create artifacts dir
-      env:
-        ARTIFACTS_DIR: ${{ runner.temp }}/e2e-artifacts
-      run: |
-        set -x
-        mkdir "${ARTIFACTS_DIR}"
-        echo "ARTIFACTS_DIR=${ARTIFACTS_DIR}" | tee -a ${GITHUB_ENV}
-    - uses: actions/download-artifact@v2
-      with:
-        name: operatorimage.tar.lz4
-        path: ~/
-    - name: Load image
-      run: |
-        set -x
-        unlz4 ~/operatorimage.tar.lz4 - | docker load
-        # docker looses the registry part on save/load
-        docker tag "$( echo "${image_repo_ref}:ci" | sed -E -e 's~[^/]+/(.*)~\1~' )" "${image_repo_ref}:ci"
-        docker images '${{ env.image_repo_ref }}:ci'
-    - name: Setup go
-      uses: actions/setup-go@v2
-      with:
-        go-version: ${{ env.go_version }}
-    - name: Install tools
-      run: |
-        set -x
-        go install github.com/mikefarah/yq/v4@v4.6.1
-    - name: Setup minikube
-      uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/setup-minikube
-    - name: Deploy scylla-operator
-      run: |
-        set -x
-        timeout 10m ./hack/ci-deploy.sh '${{ env.image_repo_ref }}:ci'
-        
-        # Raise loglevel in CI.
-        # TODO: Replace it with ScyllaOperatorConfig field when available.
-        kubectl -n scylla-operator patch deployment/scylla-operator --type=json -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--loglevel=4"}]'
-        kubectl -n scylla-operator rollout status deployment/scylla-operator
-        kubectl -n scylla-manager patch deployment/scylla-manager-controller --type=json -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--loglevel=4"}]'
-        kubectl -n scylla-manager rollout status deployment/scylla-manager-controller
-        
-        kubectl get pods -A
-    - name: Tolerate flakes on promotion jobs
-      if: ${{ github.event_name != 'pull_request' }}
-      run: |
-        echo "FLAKE_ATTEMPTS=5" | tee -a ${GITHUB_ENV}
     - name: Run e2e
-      run: |
-        set -euExo pipefail
-
-        e2e_timeout_minutes=120
-        flake_attempts=0
-        if [[ -v 'FLAKE_ATTEMPTS' ]]; then
-          flake_attempts="${FLAKE_ATTEMPTS}"
-          e2e_timeout_minutes="$(( ${e2e_timeout_minutes} + ${flake_attempts} * 10 ))"
-        fi
-
-        docker run --user="$( id -u ):$( id -g )" --rm \
-        --entrypoint=/usr/bin/scylla-operator-tests \
-        -v="${ARTIFACTS_DIR}:${ARTIFACTS_DIR}:rw" \
-        -v="${HOME}/.kube/config:/kubeconfig:ro" -e='KUBECONFIG=/kubeconfig' \
-        '${{ env.image_repo_ref }}:ci' \
-        run all \
-        --artifacts-dir="${ARTIFACTS_DIR}" \
-        --flake-attempts="${flake_attempts}" \
-        --timeout="${e2e_timeout_minutes}m"
-    - name: Dump cluster state
-      if: ${{ always() }}
-      working-directory: ${{ runner.temp }}
-      run: timeout 10m ${{ env.git_repo_path }}/hack/ci-gather-artifacts.sh
-    - name: Get machine logs and info
-      if: ${{ always() }}
-      working-directory: ${{ runner.temp }}/e2e-artifacts
-      run: |
-        set -euExo pipefail
-        shopt -s inherit_errexit
-
-        docker info > docker.info
-        docker images -a > docker.images
-        docker stats -a --no-stream --no-trunc > docker.stats
-        free -h > free
-        journalctl -u kubelet > kubelet.log
-
-        sudo tar -c --use-compress-program=lz4 -f ./kubernetes.tar.lz4 "/etc/kubernetes"
-
-        mkdir container-logs
-        for ns in kube-system; do
-          mkdir "container-logs/${ns}"
-          for cid in $( sudo crictl ps --label="io.kubernetes.pod.namespace=${ns}" -a -q ); do
-            cname=$( sudo crictl inspect -o go-template --template='{{ .status.metadata.name }}' "${cid}" )
-            sudo crictl logs "${cid}" 1>"container-logs/${ns}/${cname}_${cid}.log" 2>&1
-          done
-        done
-    - name: Collect audit logs
-      if: ${{ always() }}
-      working-directory: ${{ runner.temp }}/e2e-artifacts
-      run: |
-        set -euEx -o pipefail
-        sudo cat $( ls /var/log/kube-apiserver-audit*.log | sort -n ) > ./kube-apiserver-audit.log
-        jq -s 'group_by(.user.username) | map({"user": .[0].user.username, "total": length, "verbs": (group_by(.verb) | map({"key":.[0].verb, "value": length}) | from_entries)}) | sort_by(.total) | reverse' ./kube-apiserver-audit.log > ./api-call-stats.json
-    - name: Compress artifacts
-      if: ${{ always() }}
-      working-directory: ${{ runner.temp }}
-      run: |
-        set -x
-        tar -c --use-compress-program=lz4 -f ./e2e-artifacts.tar.lz4 "e2e-artifacts/"
-    - name: Upload artifacts
-      if: ${{ always() }}
-      uses: actions/upload-artifact@v2
+      uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/run-e2e
       with:
-        name: e2e-artifacts.tar.lz4
-        path: ${{ runner.temp }}/e2e-artifacts.tar.lz4
-        if-no-files-found: error
-        retention-days: ${{ env.retention_days }}
+        repositoryPath: ${{ env.git_repo_path }}
+        jobSuffix: "parallel"
+        suite: "scylla-operator/conformance/parallel"
+
+  test-e2e-serial:
+    name: Test e2e serial
+    runs-on: ubuntu-20.04
+    needs: images
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: ${{ env.git_repo_path }}
+        fetch-depth: 0  # also fetch tags
+    - name: Run e2e
+      uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/run-e2e
+      with:
+        repositoryPath: ${{ env.git_repo_path }}
+        jobSuffix: "serial"
+        suite: "scylla-operator/conformance/serial"
 
   # TODO: Add upgrade-e2e - use the same image sha from images step
 
@@ -295,7 +201,8 @@ jobs:
     - build-and-test
     - images
     - charts
-    - test-e2e
+    - test-e2e-parallel
+    - test-e2e-serial
     # TODO: Depend on upgrade-e2e when available
     steps:
     - name: Always succeed

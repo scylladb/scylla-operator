@@ -4,6 +4,7 @@ package scyllacluster
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -21,6 +22,12 @@ import (
 )
 
 const nRows = 10
+
+const (
+	retryInterval = 100 * time.Millisecond
+	// retryTimeout should be equal to ring_delay_ms to allow for gossip to settle
+	retryTimeout = 30000 * time.Millisecond
+)
 
 type DataInserter struct {
 	client            corev1client.CoreV1Interface
@@ -140,9 +147,15 @@ func (di *DataInserter) createSession(ctx context.Context, sc *scyllav1.ScyllaCl
 		return nil, fmt.Errorf("can't get hosts: %w", err)
 	}
 
+	retryPolicy, err := newOnUnavailableIntervalRetryPolicy(retryInterval, retryTimeout)
+	if err != nil {
+		return nil, fmt.Errorf("can't create onUnavailableIntervalRetryPolicy: %w", err)
+	}
+
 	clusterConfig := gocql.NewCluster(hosts...)
 	clusterConfig.Timeout = 3 * time.Second
 	clusterConfig.ConnectTimeout = 3 * time.Second
+	clusterConfig.RetryPolicy = retryPolicy
 
 	session, err := gocqlx.WrapSession(clusterConfig.CreateSession())
 	if err != nil {
@@ -150,4 +163,47 @@ func (di *DataInserter) createSession(ctx context.Context, sc *scyllav1.ScyllaCl
 	}
 
 	return &session, nil
+}
+
+type onUnavailableIntervalRetryPolicy struct {
+	numRetires int64
+	interval   time.Duration
+}
+
+func newOnUnavailableIntervalRetryPolicy(interval, timeout time.Duration) (*onUnavailableIntervalRetryPolicy, error) {
+	if interval <= 0 {
+		return nil, errors.New("invalid interval value: interval has to be greater than 0")
+	}
+
+	if timeout <= 0 {
+		return nil, errors.New("invalid timeout value: timeout has to be greater than 0")
+	}
+
+	if interval > timeout {
+		return nil, errors.New("invalid interval value: interval has to be less than or equal to timeout")
+	}
+
+	numRetries := int64(timeout / interval)
+	return &onUnavailableIntervalRetryPolicy{
+		numRetires: numRetries,
+		interval:   interval,
+	}, nil
+}
+
+func (s *onUnavailableIntervalRetryPolicy) Attempt(q gocql.RetryableQuery) bool {
+	if int64(q.Attempts()) > s.numRetires {
+		return false
+	}
+
+	time.Sleep(s.interval)
+	return true
+}
+
+func (s *onUnavailableIntervalRetryPolicy) GetRetryType(err error) gocql.RetryType {
+	switch err.(type) {
+	case *gocql.RequestErrUnavailable:
+		return gocql.Retry
+	default:
+		return gocql.Rethrow
+	}
 }

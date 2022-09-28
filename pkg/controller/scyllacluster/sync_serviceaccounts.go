@@ -16,10 +16,9 @@ func (scc *Controller) syncServiceAccounts(
 	sc *scyllav1.ScyllaCluster,
 	serviceAccounts map[string]*corev1.ServiceAccount,
 ) error {
-	requiredServiceAccount, err := MakeServiceAccount(sc, serviceAccounts, scc.serviceAccountLister)
-	if err != nil {
-		return fmt.Errorf("can't make service account(s): %w", err)
-	}
+	var err error
+
+	requiredServiceAccount := MakeServiceAccount(sc)
 
 	// Delete any excessive ServiceAccounts.
 	// Delete has to be the fist action to avoid getting stuck on quota.

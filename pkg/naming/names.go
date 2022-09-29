@@ -167,3 +167,31 @@ func GetTuningConfigMapNameForPod(pod *corev1.Pod) string {
 func MemberServiceAccountNameForScyllaCluster(scName string) string {
 	return fmt.Sprintf("%s-member", scName)
 }
+
+func GetScyllaClusterRootCASecretName(scName string) string {
+	return fmt.Sprintf("%s-root-ca", scName)
+}
+
+func GetScyllaClusterLocalClientCAName(scName string) string {
+	return fmt.Sprintf("%s-local-client-ca", scName)
+}
+
+func GetScyllaClusterLocalUserAdminCertName(scName string) string {
+	return fmt.Sprintf("%s-local-user-admin", scName)
+}
+
+func GetScyllaClusterLocalServingCAName(scName string) string {
+	return fmt.Sprintf("%s-local-serving-ca", scName)
+}
+
+func GetScyllaClusterLocalServingCertName(scName string) string {
+	return fmt.Sprintf("%s-local-serving-certs", scName)
+}
+
+func GetCQLAnySubDomain(domain string) string {
+	return fmt.Sprintf("any.cql.%s", domain)
+}
+
+func GetCQLHostIDSubDomain(hostID, domain string) string {
+	return fmt.Sprintf("%s.cql.%s", hostID, domain)
+}

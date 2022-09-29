@@ -52,9 +52,9 @@ const (
 )
 
 var (
-	keyFunc                  = cache.DeletionHandlingMetaNamespaceKeyFunc
-	controllerGVK            = scyllav1.GroupVersion.WithKind("ScyllaCluster")
-	statefulSetControllerGVK = appsv1.SchemeGroupVersion.WithKind("StatefulSet")
+	keyFunc                    = cache.DeletionHandlingMetaNamespaceKeyFunc
+	scyllaClusterControllerGVK = scyllav1.GroupVersion.WithKind("ScyllaCluster")
+	statefulSetControllerGVK   = appsv1.SchemeGroupVersion.WithKind("StatefulSet")
 )
 
 type Controller struct {
@@ -66,6 +66,7 @@ type Controller struct {
 	podLister            corev1listers.PodLister
 	serviceLister        corev1listers.ServiceLister
 	secretLister         corev1listers.SecretLister
+	configMapLister      corev1listers.ConfigMapLister
 	serviceAccountLister corev1listers.ServiceAccountLister
 	roleBindingLister    rbacv1listers.RoleBindingLister
 	statefulSetLister    appsv1listers.StatefulSetLister
@@ -86,6 +87,7 @@ func NewController(
 	podInformer corev1informers.PodInformer,
 	serviceInformer corev1informers.ServiceInformer,
 	secretInformer corev1informers.SecretInformer,
+	configMapInformer corev1informers.ConfigMapInformer,
 	serviceAccountInformer corev1informers.ServiceAccountInformer,
 	roleBindingInformer rbacv1informers.RoleBindingInformer,
 	statefulSetInformer appsv1informers.StatefulSetInformer,
@@ -117,6 +119,7 @@ func NewController(
 		podLister:            podInformer.Lister(),
 		serviceLister:        serviceInformer.Lister(),
 		secretLister:         secretInformer.Lister(),
+		configMapLister:      configMapInformer.Lister(),
 		serviceAccountLister: serviceAccountInformer.Lister(),
 		roleBindingLister:    roleBindingInformer.Lister(),
 		statefulSetLister:    statefulSetInformer.Lister(),
@@ -128,6 +131,7 @@ func NewController(
 			podInformer.Informer().HasSynced,
 			serviceInformer.Informer().HasSynced,
 			secretInformer.Informer().HasSynced,
+			configMapInformer.Informer().HasSynced,
 			serviceAccountInformer.Informer().HasSynced,
 			roleBindingInformer.Informer().HasSynced,
 			statefulSetInformer.Informer().HasSynced,
@@ -151,6 +155,12 @@ func NewController(
 		AddFunc:    scc.addSecret,
 		UpdateFunc: scc.updateSecret,
 		DeleteFunc: scc.deleteSecret,
+	})
+
+	configMapInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    scc.addConfigMap,
+		UpdateFunc: scc.updateConfigMap,
+		DeleteFunc: scc.deleteConfigMap,
 	})
 
 	// We need pods events to know if a pod is ready after replace operation.
@@ -270,7 +280,7 @@ func (scc *Controller) resolveScyllaClusterController(obj metav1.Object) *scylla
 		return nil
 	}
 
-	if controllerRef.Kind != controllerGVK.Kind {
+	if controllerRef.Kind != scyllaClusterControllerGVK.Kind {
 		return nil
 	}
 
@@ -460,6 +470,50 @@ func (scc *Controller) deleteSecret(obj interface{}) {
 	}
 	klog.V(4).InfoS("Observed deletion of Secret", "Secret", klog.KObj(secret))
 	scc.enqueueOwner(secret)
+}
+
+func (scc *Controller) addConfigMap(obj interface{}) {
+	configMap := obj.(*corev1.ConfigMap)
+	klog.V(4).InfoS("Observed addition of ConfigMap", "ConfigMap", klog.KObj(configMap))
+	scc.enqueueOwner(configMap)
+}
+
+func (scc *Controller) updateConfigMap(old, cur interface{}) {
+	oldConfigMap := old.(*corev1.ConfigMap)
+	currentConfigMap := cur.(*corev1.ConfigMap)
+
+	if currentConfigMap.UID != oldConfigMap.UID {
+		key, err := keyFunc(oldConfigMap)
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldConfigMap, err))
+			return
+		}
+		scc.deleteConfigMap(cache.DeletedFinalStateUnknown{
+			Key: key,
+			Obj: oldConfigMap,
+		})
+	}
+
+	klog.V(4).InfoS("Observed update of ConfigMap", "ConfigMap", klog.KObj(oldConfigMap))
+	scc.enqueueOwner(currentConfigMap)
+}
+
+func (scc *Controller) deleteConfigMap(obj interface{}) {
+	configMap, ok := obj.(*corev1.ConfigMap)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
+			return
+		}
+		configMap, ok = tombstone.Obj.(*corev1.ConfigMap)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ConfigMap %#v", obj))
+			return
+		}
+	}
+	klog.V(4).InfoS("Observed deletion of ConfigMap", "ConfigMap", klog.KObj(configMap))
+	scc.enqueueOwner(configMap)
 }
 
 func (sac *Controller) addServiceAccount(obj interface{}) {

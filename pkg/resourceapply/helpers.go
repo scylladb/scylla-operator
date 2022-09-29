@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/resource"
 	hashutil "github.com/scylladb/scylla-operator/pkg/util/hash"
 	corev1 "k8s.io/api/core/v1"
@@ -16,7 +17,36 @@ import (
 	"k8s.io/klog/v2"
 )
 
+func verifyDesiredObject(obj metav1.Object) error {
+	if obj.GetUID() != "" {
+		return fmt.Errorf("desired objects are not allowed to have UID set")
+	}
+
+	if !pointer.Time(obj.GetCreationTimestamp()).IsZero() {
+		return fmt.Errorf("desired objects are not allowed to have creationTimestamp set")
+	}
+
+	if obj.GetGeneration() != 0 {
+		return fmt.Errorf("desired objects are not allowed to have generation set")
+	}
+
+	if len(obj.GetManagedFields()) != 0 {
+		return fmt.Errorf("desired objects are not allowed to contain managedFields")
+	}
+
+	if len(obj.GetSelfLink()) != 0 {
+		return fmt.Errorf("desired objects are not allowed to have selfLink set")
+	}
+
+	return nil
+}
+
 func SetHashAnnotation(obj metav1.Object) error {
+	err := verifyDesiredObject(obj)
+	if err != nil {
+		return fmt.Errorf("invalid desider object %q: %w", naming.ObjRef(obj), err)
+	}
+
 	// Do not hash ResourceVersion.
 	rv := obj.GetResourceVersion()
 	obj.SetResourceVersion("")

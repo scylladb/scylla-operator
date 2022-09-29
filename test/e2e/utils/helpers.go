@@ -19,6 +19,7 @@ import (
 	scyllav1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1"
 	scyllav1alpha1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -37,6 +38,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	appv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
@@ -155,6 +157,15 @@ func IsScyllaClusterRolledOut(sc *scyllav1.ScyllaCluster) (bool, error) {
 		return false, nil
 	}
 
+	if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {
+		// TODO: move to a global, aggregated "Progressing" condition. Otherwise certController
+		//  might not be progressing but service controller finishing progressing would change that as it would need to sing new hostIDs.
+		//  We also need to check none of them is "Degraded".
+		if !helpers.IsStatusConditionPresentAndFalse(sc.Status.Conditions, scyllav1.CertControllerProgressingCondition, sc.Generation) {
+			return false, nil
+		}
+	}
+
 	framework.Infof("ScyllaCluster %s (RV=%s) is rolled out", klog.KObj(sc), sc.ResourceVersion)
 
 	// Allow CI to remove stale conntrack entries.
@@ -257,6 +268,10 @@ func WaitForNodeConfigState(ctx context.Context, ncClient scyllav1alpha1client.N
 
 func WaitForConfigMapState(ctx context.Context, client corev1client.ConfigMapInterface, name string, options WaitForStateOptions, condition func(*corev1.ConfigMap) (bool, error), additionalConditions ...func(*corev1.ConfigMap) (bool, error)) (*corev1.ConfigMap, error) {
 	return WaitForObjectState[*corev1.ConfigMap, *corev1.ConfigMapList](ctx, client, name, options, condition, additionalConditions...)
+}
+
+func WaitForSecretState(ctx context.Context, client corev1client.SecretInterface, name string, options WaitForStateOptions, condition func(*corev1.Secret) (bool, error), additionalConditions ...func(*corev1.Secret) (bool, error)) (*corev1.Secret, error) {
+	return WaitForObjectState[*corev1.Secret, *corev1.SecretList](ctx, client, name, options, condition, additionalConditions...)
 }
 
 func RunEphemeralContainerAndWaitForCompletion(ctx context.Context, client corev1client.PodInterface, podName string, ec *corev1.EphemeralContainer) (*corev1.Pod, error) {
@@ -398,28 +413,35 @@ func GetScyllaClient(ctx context.Context, client corev1client.CoreV1Interface, s
 	return scyllaClient, hosts, nil
 }
 
-func GetHosts(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
+func GetHostsAndUUIDs(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, []string, error) {
 	serviceList, err := client.Services(sc.Namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: GetMemberServiceSelector(sc.Name).String(),
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var hosts []string
+	var uuids []string
 	for _, s := range serviceList.Items {
 		if s.Spec.Type != corev1.ServiceTypeClusterIP {
-			return nil, fmt.Errorf("service %s/%s is of type %q instead of %q", s.Namespace, s.Name, s.Spec.Type, corev1.ServiceTypeClusterIP)
+			return nil, nil, fmt.Errorf("service %s/%s is of type %q instead of %q", s.Namespace, s.Name, s.Spec.Type, corev1.ServiceTypeClusterIP)
 		}
 
 		if s.Spec.ClusterIP == corev1.ClusterIPNone {
-			return nil, fmt.Errorf("service %s/%s doesn't have a ClusterIP", s.Namespace, s.Name)
+			return nil, nil, fmt.Errorf("service %s/%s doesn't have a ClusterIP", s.Namespace, s.Name)
 		}
 
 		hosts = append(hosts, s.Spec.ClusterIP)
+		uuids = append(uuids, s.Annotations[naming.HostIDAnnotation])
 	}
 
-	return hosts, nil
+	return hosts, uuids, nil
+}
+
+func GetHosts(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
+	hosts, _, err := GetHostsAndUUIDs(ctx, client, sc)
+	return hosts, err
 }
 
 // GetManagerClient gets managerClient using IP address. E2E tests shouldn't rely on InCluster DNS.

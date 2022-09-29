@@ -2,15 +2,19 @@ package scyllacluster
 
 import (
 	"context"
+	"crypto"
+	"crypto/x509"
 	"sort"
 	"strings"
 
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -150,4 +154,43 @@ func insertAndVerifyCQLData(ctx context.Context, hosts []string) *utils.DataInse
 	verifyCQLData(ctx, di)
 
 	return di
+}
+
+type verifyTLSCertOptions struct {
+	isCA     *bool
+	keyUsage *x509.KeyUsage
+}
+
+func verifyAndParseTLSCert(secret *corev1.Secret, options verifyTLSCertOptions) ([]*x509.Certificate, []byte, crypto.PrivateKey, []byte) {
+	o.Expect(secret.Type).To(o.Equal(corev1.SecretType("kubernetes.io/tls")))
+	o.Expect(secret.Data).To(o.HaveKey("tls.crt"))
+	o.Expect(secret.Data).To(o.HaveKey("tls.key"))
+
+	certsBytes := secret.Data["tls.crt"]
+	keyBytes := secret.Data["tls.key"]
+	o.Expect(certsBytes).NotTo(o.BeEmpty())
+	o.Expect(keyBytes).NotTo(o.BeEmpty())
+
+	certs, key, err := ocrypto.GetTLSCertificatesFromBytes(certsBytes, keyBytes)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	o.Expect(certs).NotTo(o.BeEmpty())
+	o.Expect(certs[0].IsCA).To(o.Equal(*options.isCA))
+	o.Expect(certs[0].KeyUsage).To(o.Equal(*options.keyUsage))
+
+	o.Expect(key.Validate()).To(o.Succeed())
+
+	return certs, certsBytes, key, keyBytes
+}
+
+func verifyAndParseCABundle(cm *corev1.ConfigMap) []*x509.Certificate {
+	o.Expect(cm.Data).To(o.HaveKey("ca-bundle.crt"))
+
+	bundleBytes := cm.Data["ca-bundle.crt"]
+	o.Expect(bundleBytes).NotTo(o.BeEmpty())
+
+	certs, err := ocrypto.DecodeCertificates([]byte(bundleBytes))
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	return certs
 }

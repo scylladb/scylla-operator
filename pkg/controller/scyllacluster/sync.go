@@ -7,16 +7,20 @@ import (
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
+	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	outilerrors "github.com/scylladb/scylla-operator/pkg/util/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
@@ -54,7 +58,7 @@ func (scc *Controller) getStatefulSets(ctx context.Context, sc *scyllav1.ScyllaC
 	cm := controllertools.NewStatefulSetControllerRefManager(
 		ctx,
 		sc,
-		controllerGVK,
+		scyllaClusterControllerGVK,
 		selector,
 		canAdoptFunc,
 		controllertools.RealStatefulSetControl{
@@ -98,7 +102,7 @@ func (scc *Controller) getServices(ctx context.Context, sc *scyllav1.ScyllaClust
 	cm := controllertools.NewServiceControllerRefManager(
 		ctx,
 		sc,
-		controllerGVK,
+		scyllaClusterControllerGVK,
 		selector,
 		canAdoptFunc,
 		controllertools.RealServiceControl{
@@ -142,7 +146,7 @@ func (scc *Controller) getSecrets(ctx context.Context, sc *scyllav1.ScyllaCluste
 	cm := controllertools.NewSecretControllerRefManager(
 		ctx,
 		sc,
-		controllerGVK,
+		scyllaClusterControllerGVK,
 		selector,
 		canAdoptFunc,
 		controllertools.RealSecretControl{
@@ -151,6 +155,50 @@ func (scc *Controller) getSecrets(ctx context.Context, sc *scyllav1.ScyllaCluste
 		},
 	)
 	return cm.ClaimSecrets(secrets)
+}
+
+func (scc *Controller) getConfigMaps(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*corev1.ConfigMap, error) {
+	// List all ConfigMaps to find even those that no longer match our selector.
+	// They will be orphaned in ClaimConfigMaps().
+	configMaps, err := scc.configMapLister.ConfigMaps(sc.Namespace).List(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+
+	selector := labels.SelectorFromSet(labels.Set{
+		naming.ClusterNameLabel: sc.Name,
+	})
+
+	// If any adoptions are attempted, we should first recheck for deletion with
+	// an uncached quorum read sometime after listing ConfigMaps.
+	canAdoptFunc := func() error {
+		fresh, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		if fresh.UID != sc.UID {
+			return fmt.Errorf("original ScyllaCluster %v/%v is gone: got uid %v, wanted %v", sc.Namespace, sc.Name, fresh.UID, sc.UID)
+		}
+
+		if fresh.GetDeletionTimestamp() != nil {
+			return fmt.Errorf("%v/%v has just been deleted at %v", sc.Namespace, sc.Name, sc.DeletionTimestamp)
+		}
+
+		return nil
+	}
+	cm := controllertools.NewConfigMapControllerRefManager(
+		ctx,
+		sc,
+		scyllaClusterControllerGVK,
+		selector,
+		canAdoptFunc,
+		controllertools.RealConfigMapControl{
+			KubeClient: scc.kubeClient,
+			Recorder:   scc.eventRecorder,
+		},
+	)
+	return cm.ClaimConfigMaps(configMaps)
 }
 
 func (sac *Controller) getServiceAccounts(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*corev1.ServiceAccount, error) {
@@ -186,7 +234,7 @@ func (sac *Controller) getServiceAccounts(ctx context.Context, sc *scyllav1.Scyl
 	cm := controllertools.NewServiceAccountControllerRefManager(
 		ctx,
 		sc,
-		controllerGVK,
+		scyllaClusterControllerGVK,
 		selector,
 		canAdoptFunc,
 		controllertools.RealServiceAccountControl{
@@ -230,7 +278,7 @@ func (sac *Controller) getRoleBindings(ctx context.Context, sc *scyllav1.ScyllaC
 	cm := controllertools.NewRoleBindingControllerRefManager(
 		ctx,
 		sc,
-		controllerGVK,
+		scyllaClusterControllerGVK,
 		selector,
 		canAdoptFunc,
 		controllertools.RealRoleBindingControl{
@@ -274,7 +322,7 @@ func (scc *Controller) getPDBs(ctx context.Context, sc *scyllav1.ScyllaCluster) 
 	cm := controllertools.NewPodDisruptionBudgetControllerRefManager(
 		ctx,
 		sc,
-		controllerGVK,
+		scyllaClusterControllerGVK,
 		selector,
 		canAdoptFunc,
 		controllertools.RealPodDisruptionBudgetControl{
@@ -318,7 +366,7 @@ func (scc *Controller) getIngresses(ctx context.Context, sc *scyllav1.ScyllaClus
 	cm := controllertools.NewIngressControllerRefManager(
 		ctx,
 		sc,
-		controllerGVK,
+		scyllaClusterControllerGVK,
 		selector,
 		canAdoptFunc,
 		controllertools.RealIngressControl{
@@ -362,6 +410,11 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 	}
 
 	secretMap, err := scc.getSecrets(ctx, sc)
+	if err != nil {
+		return err
+	}
+
+	configMapMap, err := scc.getConfigMaps(ctx, sc)
 	if err != nil {
 		return err
 	}
@@ -412,6 +465,29 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		// TODO: Set degraded condition
 	}
 
+	if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {
+		status, err = scc.syncCerts(ctx, sc, status, secretMap, configMapMap, serviceMap)
+		if err != nil {
+			errs = append(errs, err)
+
+			apimeta.SetStatusCondition(&status.Conditions, metav1.Condition{
+				Type:               scyllav1.CertControllerDegradedCondition,
+				Status:             metav1.ConditionTrue,
+				Reason:             scyllav1.ErrorReason,
+				Message:            outilerrors.NewMultilineAggregate([]error{err}).Error(),
+				ObservedGeneration: sc.Generation,
+			})
+		} else {
+			apimeta.SetStatusCondition(&status.Conditions, metav1.Condition{
+				Type:               scyllav1.CertControllerDegradedCondition,
+				Status:             metav1.ConditionFalse,
+				Reason:             scyllav1.AsExpectedReason,
+				Message:            "",
+				ObservedGeneration: sc.Generation,
+			})
+		}
+	}
+
 	status, err = scc.syncStatefulSets(ctx, key, sc, status, statefulSetMap, serviceMap)
 	if err != nil {
 		errs = append(errs, err)
@@ -429,6 +505,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		errs = append(errs, err)
 		// TODO: Set degraded condition
 	}
+
 	status, err = scc.syncIngresses(ctx, sc, status, ingressMap, serviceMap)
 	if err != nil {
 		errs = append(errs, err)

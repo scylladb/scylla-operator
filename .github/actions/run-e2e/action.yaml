@@ -1,0 +1,155 @@
+name: "Run E2E"
+description: "Runs E2E test suite"
+inputs:
+  repositoryPath:
+    description: "Path to where the project code lives"
+    required: true
+  jobSuffix:
+    description: "E2E job suffix"
+    required: true
+  suite:
+    description: "E2E suite name"
+    required: true
+  extraArgs:
+    description: "Extra arguments for the E2E binary"
+    required: false
+    default: ""
+  baseTimeoutMinutes:
+    description: "Default timeout in minutes. Can be extended to accommodate for flake retries."
+    required: false
+    default: 120
+runs:
+  using: "composite"
+  steps:
+  - name: Setup git tags
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    shell: bash
+    working-directory: ${{ inputs.repositoryPath }}
+    run: ./hack/ci-detect-tags.sh
+  - name: Create artifacts dir
+    shell: bash
+    env:
+      ARTIFACTS_DIR: ${{ runner.temp }}/e2e-artifacts
+    run: |
+      set -x
+      mkdir "${ARTIFACTS_DIR}"
+      echo "ARTIFACTS_DIR=${ARTIFACTS_DIR}" | tee -a ${GITHUB_ENV}
+  - uses: actions/download-artifact@v2
+    with:
+      name: operatorimage.tar.lz4
+      path: ~/
+  - name: Load image
+    shell: bash
+    run: |
+      set -x
+      unlz4 ~/operatorimage.tar.lz4 - | docker load
+      # docker looses the registry part on save/load
+      docker tag "$( echo "${image_repo_ref}:ci" | sed -E -e 's~[^/]+/(.*)~\1~' )" "${image_repo_ref}:ci"
+      docker images '${{ env.image_repo_ref }}:ci'
+  - name: Setup go
+    uses: actions/setup-go@v2
+    with:
+      go-version: ${{ env.go_version }}
+  - name: Install tools
+    shell: bash
+    run: |
+      set -x
+      go install github.com/mikefarah/yq/v4@v4.6.1
+  - name: Setup minikube
+    uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/setup-minikube
+  - name: Deploy scylla-operator
+    shell: bash
+    working-directory: ${{ inputs.repositoryPath }}
+    run: |
+      set -x
+      
+      SCYLLA_OPERATOR_FEATURE_GATES="${SCYLLA_OPERATOR_FEATURE_GATES}"
+      export SCYLLA_OPERATOR_FEATURE_GATES
+      timeout 10m ./hack/ci-deploy.sh '${{ env.image_repo_ref }}:ci'
+      
+      # Raise loglevel in CI.
+      # TODO: Replace it with ScyllaOperatorConfig field when available.
+      kubectl -n scylla-operator patch deployment/scylla-operator --type=json -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--loglevel=4"}]'
+      kubectl -n scylla-operator rollout status deployment/scylla-operator
+      
+      kubectl get pods -A
+  - name: Tolerate flakes on promotion jobs
+    shell: bash
+    if: ${{ github.event_name != 'pull_request' }}
+    run: |
+      echo "FLAKE_ATTEMPTS=5" | tee -a ${GITHUB_ENV}
+  - name: Run e2e
+    shell: bash
+    run: |
+      set -euExo pipefail
+
+      e2e_timeout_minutes='${{ inputs.baseTimeoutMinutes }}'
+      flake_attempts=0
+      if [[ -v 'FLAKE_ATTEMPTS' ]]; then
+        flake_attempts="${FLAKE_ATTEMPTS}"
+        e2e_timeout_minutes="$(( ${e2e_timeout_minutes} + ${flake_attempts} * 10 ))"
+      fi
+
+      docker run --user="$( id -u ):$( id -g )" --rm \
+      --entrypoint=/usr/bin/scylla-operator-tests \
+      -v="${ARTIFACTS_DIR}:${ARTIFACTS_DIR}:rw" \
+      -v="${HOME}/.kube/config:/kubeconfig:ro" -e='KUBECONFIG=/kubeconfig' \
+      '${{ env.image_repo_ref }}:ci' \
+      run '${{ inputs.suite }}' \
+      --loglevel=2 \
+      --artifacts-dir="${ARTIFACTS_DIR}" \
+      --flake-attempts="${flake_attempts}" \
+      --timeout="${e2e_timeout_minutes}m" \
+      ${{ inputs.extraArgs }}
+  - name: Dump cluster state
+    if: ${{ always() }}
+    working-directory: ${{ runner.temp }}
+    shell: bash
+    run: timeout 10m ${{ inputs.repositoryPath }}/hack/ci-gather-artifacts.sh
+  - name: Get machine logs and info
+    if: ${{ always() }}
+    working-directory: ${{ runner.temp }}/e2e-artifacts
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+
+      docker info > docker.info
+      docker images -a > docker.images
+      docker stats -a --no-stream --no-trunc > docker.stats
+      free -h > free
+      journalctl -u kubelet > kubelet.log
+
+      sudo tar -c --use-compress-program=lz4 -f ./kubernetes.tar.lz4 "/etc/kubernetes"
+
+      mkdir container-logs
+      for ns in kube-system; do
+        mkdir "container-logs/${ns}"
+        for cid in $( sudo crictl ps --label="io.kubernetes.pod.namespace=${ns}" -a -q ); do
+          cname=$( sudo crictl inspect -o go-template --template='{{ .status.metadata.name }}' "${cid}" )
+          sudo crictl logs "${cid}" 1>"container-logs/${ns}/${cname}_${cid}.log" 2>&1
+        done
+      done
+  - name: Collect audit logs
+    if: ${{ always() }}
+    working-directory: ${{ runner.temp }}/e2e-artifacts
+    shell: bash
+    run: |
+      set -euEx -o pipefail
+      sudo cat $( ls /var/log/kube-apiserver-audit*.log | sort -n ) > ./kube-apiserver-audit.log
+      jq -s 'group_by(.user.username) | map({"user": .[0].user.username, "total": length, "verbs": (group_by(.verb) | map({"key":.[0].verb, "value": length}) | from_entries)}) | sort_by(.total) | reverse' ./kube-apiserver-audit.log > ./api-call-stats.json
+  - name: Compress artifacts
+    if: ${{ always() }}
+    working-directory: ${{ runner.temp }}
+    shell: bash
+    run: |
+      set -x
+      tar -c --use-compress-program=lz4 -f ./e2e-artifacts.tar.lz4 "e2e-artifacts/"
+  - name: Upload artifacts
+    if: ${{ always() }}
+    uses: actions/upload-artifact@v2
+    with:
+      name: e2e-artifacts-${{ inputs.jobSuffix }}.tar.lz4
+      path: ${{ runner.temp }}/e2e-artifacts.tar.lz4
+      if-no-files-found: error
+      retention-days: ${{ env.retention_days }}

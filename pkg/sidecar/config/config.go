@@ -184,11 +184,7 @@ func convertScyllaArguments(scyllaArguments string) map[string]string {
 
 func appendScyllaArguments(ctx context.Context, s *ScyllaConfig, scyllaArgs string, scyllaFinalArgs map[string]*string) {
 	for argName, argValue := range convertScyllaArguments(scyllaArgs) {
-		if existing := scyllaFinalArgs[argName]; existing == nil {
-			scyllaFinalArgs[argName] = pointer.StringPtr(strings.TrimSpace(argValue))
-		} else {
-			klog.Infof("ScyllaArgs: argument '%s' is ignored, it is already in the list", argName)
-		}
+		scyllaFinalArgs[argName] = pointer.StringPtr(strings.TrimSpace(argValue))
 	}
 }
 

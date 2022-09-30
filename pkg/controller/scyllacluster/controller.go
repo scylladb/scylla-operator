@@ -216,8 +216,6 @@ func (scc *Controller) processNextItem(ctx context.Context) bool {
 	}
 	defer scc.queue.Done(key)
 
-	ctx, cancel := context.WithTimeout(ctx, maxSyncDuration)
-	defer cancel()
 	err := scc.sync(ctx, key.(string))
 	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
 	err = utilerrors.Reduce(err)

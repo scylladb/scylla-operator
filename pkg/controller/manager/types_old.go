@@ -9,29 +9,29 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
+	"github.com/scylladb/scylla-operator/pkg/managerclient"
 	"github.com/scylladb/scylla-operator/pkg/util/duration"
 	"k8s.io/utils/pointer"
 )
 
 type RepairTask v1.RepairTaskStatus
 
-func (r RepairTask) ToManager() (*mermaidclient.Task, error) {
-	t := &mermaidclient.Task{
+func (r RepairTask) ToManager() (*managerclient.Task, error) {
+	t := &managerclient.Task{
 		ID:         r.ID,
 		Type:       "repair",
 		Enabled:    true,
-		Schedule:   new(mermaidclient.Schedule),
+		Schedule:   new(managerclient.Schedule),
 		Properties: make(map[string]interface{}),
 	}
 
 	props := t.Properties.(map[string]interface{})
 
-	startDate, err := mermaidclient.ParseStartDate(r.StartDate)
+	startDate, err := managerclient.ParseStartDate(r.StartDate)
 	if err != nil {
 		return nil, errors.Wrap(err, "parse start date")
 	}
-	t.Schedule.StartDate = startDate
+	t.Schedule.StartDate = &startDate
 
 	if _, err := duration.ParseDuration(r.Interval); err != nil {
 		return nil, errors.Wrap(err, "parse interval")
@@ -59,7 +59,7 @@ func (r RepairTask) ToManager() (*mermaidclient.Task, error) {
 	}
 	props["intensity"] = intensity
 	props["parallel"] = r.Parallel
-	threshold, err := mermaidclient.ParseByteCount(r.SmallTableThreshold)
+	threshold, err := managerclient.ParseByteCount(r.SmallTableThreshold)
 	if err != nil {
 		return nil, errors.Wrap(err, "parse small table threshold")
 	}
@@ -71,7 +71,7 @@ func (r RepairTask) ToManager() (*mermaidclient.Task, error) {
 	return t, nil
 }
 
-func (r *RepairTask) FromManager(t *mermaidclient.ExtendedTask) error {
+func (r *RepairTask) FromManager(t *managerclient.ExtendedTask) error {
 	r.ID = t.ID
 	r.Name = t.Name
 	r.Interval = t.Schedule.Interval
@@ -88,22 +88,22 @@ func (r *RepairTask) FromManager(t *mermaidclient.ExtendedTask) error {
 
 type BackupTask v1.BackupTaskStatus
 
-func (b BackupTask) ToManager() (*mermaidclient.Task, error) {
-	t := &mermaidclient.Task{
+func (b BackupTask) ToManager() (*managerclient.Task, error) {
+	t := &managerclient.Task{
 		ID:         b.ID,
 		Type:       "backup",
 		Enabled:    true,
-		Schedule:   new(mermaidclient.Schedule),
+		Schedule:   new(managerclient.Schedule),
 		Properties: make(map[string]interface{}),
 	}
 
 	props := t.Properties.(map[string]interface{})
 
-	startDate, err := mermaidclient.ParseStartDate(b.StartDate)
+	startDate, err := managerclient.ParseStartDate(b.StartDate)
 	if err != nil {
 		return nil, errors.Wrap(err, "parse start date")
 	}
-	t.Schedule.StartDate = startDate
+	t.Schedule.StartDate = &startDate
 
 	if _, err := duration.ParseDuration(b.Interval); err != nil {
 		return nil, errors.Wrap(err, "parse interval")
@@ -138,7 +138,7 @@ func (b BackupTask) ToManager() (*mermaidclient.Task, error) {
 	return t, nil
 }
 
-func (b *BackupTask) FromManager(t *mermaidclient.ExtendedTask) error {
+func (b *BackupTask) FromManager(t *managerclient.ExtendedTask) error {
 	b.ID = t.ID
 	b.Name = t.Name
 	b.Interval = t.Schedule.Interval

@@ -10,7 +10,7 @@ import (
 	scyllav1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1"
 	scyllav1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1"
 	scyllav1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1"
-	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
+	"github.com/scylladb/scylla-operator/pkg/managerclient"
 	"github.com/scylladb/scylla-operator/pkg/resource"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
@@ -50,7 +50,7 @@ type Controller struct {
 	secretLister corev1listers.SecretLister
 	scyllaLister scyllav1listers.ScyllaClusterLister
 
-	managerClient *mermaidclient.Client
+	managerClient *managerclient.Client
 
 	cachesToSync []cache.InformerSynced
 
@@ -64,7 +64,7 @@ func NewController(
 	scyllaClient scyllav1client.ScyllaV1Interface,
 	secretInformer corev1informers.SecretInformer,
 	scyllaClusterInformer scyllav1informers.ScyllaClusterInformer,
-	managerClient *mermaidclient.Client,
+	managerClient *managerclient.Client,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)

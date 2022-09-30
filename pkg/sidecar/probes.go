@@ -3,6 +3,7 @@ package sidecar
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -100,10 +101,12 @@ func (p *Prober) Readyz(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// We can't do a direct string comparison for IPv6 addresses
+	nodeAddressIP := net.ParseIP(nodeAddress)
 	for _, s := range nodeStatuses {
 		klog.V(4).InfoS("readyz probe: node state", "Node", s.Addr, "Status", s.Status, "State", s.State)
 
-		if s.Addr == nodeAddress && s.IsUN() {
+		if nodeAddressIP != nil && nodeAddressIP.Equal(net.ParseIP(s.Addr)) && s.IsUN() {
 			transportEnabled, err := scyllaClient.IsNativeTransportEnabled(ctx, localhost)
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)

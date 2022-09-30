@@ -1,11 +1,11 @@
 // Copyright (C) 2017 ScyllaDB
 
-package mermaidclient
+package managerclient
 
 import (
 	"io"
 
-	"github.com/scylladb/scylla-operator/pkg/mermaidclient/internal/models"
+	"github.com/scylladb/scylla-operator/pkg/managerclient/gen/models"
 )
 
 // ErrorResponse is returned in case of an error.
@@ -54,11 +54,11 @@ type BackupTarget struct {
 
 // ExtendedTask is a representation of scheduler.Task with additional fields
 // from scheduler.Run.
-type ExtendedTask = models.ExtendedTask
+type ExtendedTask = models.TaskListItem
 
 // ExtendedTaskSlice is a representation of a slice of scheduler.Task with
 // additional fields from scheduler.Run.
-type ExtendedTaskSlice = []*models.ExtendedTask
+type ExtendedTaskSlice = []*models.TaskListItem
 
 // ExtendedTasks is a representation of []*scheduler.Task with additional
 // fields from scheduler.Run.

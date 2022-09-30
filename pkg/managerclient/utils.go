@@ -1,6 +1,6 @@
 // Copyright (C) 2017 ScyllaDB
 
-package mermaidclient
+package managerclient
 
 import (
 	"fmt"

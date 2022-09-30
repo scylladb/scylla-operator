@@ -1,6 +1,6 @@
 // Copyright (C) 2017 ScyllaDB
 
-package mermaidclient
+package managerclient
 
 import (
 	"context"
@@ -16,8 +16,8 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	"github.com/pkg/errors"
-	"github.com/scylladb/scylla-operator/pkg/mermaidclient/internal/client/operations"
-	"github.com/scylladb/scylla-operator/pkg/mermaidclient/internal/models"
+	"github.com/scylladb/scylla-operator/pkg/managerclient/gen/client/operations"
+	"github.com/scylladb/scylla-operator/pkg/managerclient/gen/models"
 	"github.com/scylladb/scylla-operator/pkg/util/uuid"
 )
 
@@ -25,9 +25,9 @@ var disableOpenAPIDebugOnce sync.Once
 
 //go:generate ./internalgen.sh
 
-// Client provides means to interact with Mermaid.
+// Client provides means to interact with Manager.
 type Client struct {
-	operations *operations.Client
+	operations operations.ClientService
 }
 
 // DefaultTLSConfig specifies default TLS configuration used when creating a new
@@ -424,10 +424,10 @@ func (c Client) ListBackupFiles(ctx context.Context, clusterID string,
 func (c Client) DeleteSnapshot(ctx context.Context, clusterID string,
 	locations []string, snapshotTag string) error {
 	p := &operations.DeleteClusterClusterIDBackupsParams{
-		Context:     ctx,
-		ClusterID:   clusterID,
-		Locations:   locations,
-		SnapshotTag: snapshotTag,
+		Context:      ctx,
+		ClusterID:    clusterID,
+		Locations:    locations,
+		SnapshotTags: []string{snapshotTag},
 	}
 
 	_, err := c.operations.DeleteClusterClusterIDBackups(p) // nolint: errcheck
@@ -448,12 +448,12 @@ func (c Client) Version(ctx context.Context) (*models.Version, error) {
 
 // SetRepairIntensity updates ongoing repair intensity.
 func (c Client) SetRepairIntensity(ctx context.Context, clusterID string, intensity float64) error {
-	p := &operations.PostClusterClusterIDRepairsIntensityParams{
+	p := &operations.PutClusterClusterIDRepairsIntensityParams{
 		Context:   ctx,
 		ClusterID: clusterID,
 		Intensity: intensity,
 	}
 
-	_, err := c.operations.PostClusterClusterIDRepairsIntensity(p) // nolint: errcheck
+	_, err := c.operations.PutClusterClusterIDRepairsIntensity(p) // nolint: errcheck
 	return err
 }

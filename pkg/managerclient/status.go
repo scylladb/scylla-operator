@@ -1,11 +1,11 @@
 // Copyright (C) 2017 ScyllaDB
 
-package mermaidclient
+package managerclient
 
 import (
 	"github.com/go-openapi/runtime"
 	"github.com/pkg/errors"
-	"github.com/scylladb/scylla-operator/pkg/mermaidclient/internal/models"
+	"github.com/scylladb/scylla-operator/pkg/managerclient/gen/models"
 )
 
 // StatusCodeOf returns HTTP status code carried by the error or it's cause.

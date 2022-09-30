@@ -20,6 +20,7 @@ Scylla Operator Documentation
    known_issues
    scylla_cluster_crd
    contributing
+   storage_resizing
 
 Scylla Operator is an open source project which helps users of Scylla Open Source and Scylla Enterprise run Scylla on Kubernetes (K8s)
 The Scylla operator manages Scylla clusters deployed to Kubernetes and automates tasks related to operating a Scylla cluster, like installation, out and downscale, rolling upgrades.
@@ -60,3 +61,4 @@ Currently it supports:
 * :doc:`Known issues <known_issues>`
 * :doc:`Scylla Cluster Custom Resource Definition (CRD) <scylla_cluster_crd>`
 * :doc:`Contributing to the Scylla Operator Project <contributing>`
+* :doc:`Resizing storage in a Scylla Cluster <storage_resizing>`

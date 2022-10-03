@@ -82,7 +82,7 @@ func IsNodeConfigDoneWithNodeTuningFunc(nodes []*corev1.Node) func(nc *scyllav1a
 }
 
 func RolloutTimeoutForScyllaCluster(sc *scyllav1.ScyllaCluster) time.Duration {
-	return baseRolloutTimout + time.Duration(GetMemberCount(sc))*memberRolloutTimeout
+	return SyncTimeout + time.Duration(GetMemberCount(sc))*memberRolloutTimeout
 }
 
 func GetMemberCount(sc *scyllav1.ScyllaCluster) int32 {

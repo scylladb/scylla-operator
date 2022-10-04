@@ -14,6 +14,7 @@ import (
 	sidecarcontroller "github.com/scylladb/scylla-operator/pkg/controller/sidecar"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/sidecar"
@@ -197,10 +198,10 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 	// Wait for the service that holds identity for this scylla node.
 	serviceFieldSelector := fields.OneTermEqualSelector("metadata.name", o.ServiceName)
 	serviceLW := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+		ListFunc: helpers.UncachedListFunc(func(options metav1.ListOptions) (runtime.Object, error) {
 			options.FieldSelector = serviceFieldSelector.String()
 			return o.kubeClient.CoreV1().Services(o.Namespace).List(ctx, options)
-		},
+		}),
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 			options.FieldSelector = serviceFieldSelector.String()
 			return o.kubeClient.CoreV1().Services(o.Namespace).Watch(ctx, options)
@@ -231,10 +232,10 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 	// Wait for this Pod to have ContainerID set.
 	podFieldSelector := fields.OneTermEqualSelector("metadata.name", o.ServiceName)
 	podLW := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+		ListFunc: helpers.UncachedListFunc(func(options metav1.ListOptions) (runtime.Object, error) {
 			options.FieldSelector = podFieldSelector.String()
 			return o.kubeClient.CoreV1().Pods(o.Namespace).List(ctx, options)
-		},
+		}),
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 			options.FieldSelector = podFieldSelector.String()
 			return o.kubeClient.CoreV1().Pods(o.Namespace).Watch(ctx, options)
@@ -285,10 +286,10 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 		naming.ConfigMapTypeLabel: string(naming.NodeConfigDataConfigMapType),
 	}.AsSelector()
 	podLW = &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+		ListFunc: helpers.UncachedListFunc(func(options metav1.ListOptions) (runtime.Object, error) {
 			options.LabelSelector = labelSelector.String()
 			return o.kubeClient.CoreV1().ConfigMaps(pod.Namespace).List(ctx, options)
-		},
+		}),
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 			options.LabelSelector = labelSelector.String()
 			return o.kubeClient.CoreV1().ConfigMaps(pod.Namespace).Watch(ctx, options)

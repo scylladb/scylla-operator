@@ -4,6 +4,7 @@ package nodeconfigpod
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -365,21 +366,32 @@ func (ncpc *Controller) processNextItem(ctx context.Context) bool {
 
 	ctx, cancel := context.WithTimeout(ctx, maxSyncDuration)
 	defer cancel()
-	err := ncpc.sync(ctx, key.(string))
-	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
-	err = utilerrors.Reduce(err)
-	switch {
-	case err == nil:
+	syncErr := ncpc.sync(ctx, key.(string))
+	if syncErr == nil {
 		ncpc.queue.Forget(key)
 		return true
+	}
 
-	case apierrors.IsConflict(err):
-		klog.V(2).InfoS("Hit conflict, will retry in a bit", "Key", key, "Error", err)
+	allErrors := utilerrors.Flatten(utilerrors.NewAggregate([]error{syncErr}))
+	var remainingErrors []error
+	for _, err := range allErrors.Errors() {
+		switch {
+		case errors.Is(err, &controllerhelpers.RequeueError{}):
+			klog.V(2).InfoS("Re-queuing for recheck", "Key", key, "Reason", err)
 
-	case apierrors.IsAlreadyExists(err):
-		klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", key, "Error", err)
+		case apierrors.IsConflict(err):
+			klog.V(2).InfoS("Hit conflict, will retry in a bit", "Key", key, "Error", err)
 
-	default:
+		case apierrors.IsAlreadyExists(err):
+			klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", key, "Error", err)
+
+		default:
+			remainingErrors = append(remainingErrors, err)
+		}
+	}
+
+	err := utilerrors.NewAggregate(remainingErrors)
+	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
 	}
 

@@ -9,6 +9,7 @@ import (
 	"sort"
 
 	o "github.com/onsi/gomega"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -29,10 +30,10 @@ import (
 func WaitForServiceAccount(ctx context.Context, c corev1client.CoreV1Interface, namespace, name string) (*corev1.ServiceAccount, error) {
 	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
 	lw := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+		ListFunc: helpers.UncachedListFunc(func(options metav1.ListOptions) (runtime.Object, error) {
 			options.FieldSelector = fieldSelector
 			return c.ServiceAccounts(namespace).List(ctx, options)
-		},
+		}),
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 			options.FieldSelector = fieldSelector
 			return c.ServiceAccounts(namespace).Watch(ctx, options)
@@ -67,10 +68,10 @@ func WaitForServiceAccount(ctx context.Context, c corev1client.CoreV1Interface, 
 func WaitForObjectDeletion(ctx context.Context, dynamicClient dynamic.Interface, resource schema.GroupVersionResource, namespace, name string, uid *types.UID) error {
 	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
 	lw := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+		ListFunc: helpers.UncachedListFunc(func(options metav1.ListOptions) (runtime.Object, error) {
 			options.FieldSelector = fieldSelector
 			return dynamicClient.Resource(resource).Namespace(namespace).List(ctx, options)
-		},
+		}),
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 			options.FieldSelector = fieldSelector
 			return dynamicClient.Resource(resource).Namespace(namespace).Watch(ctx, options)

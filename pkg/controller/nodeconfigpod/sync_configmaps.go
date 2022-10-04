@@ -55,7 +55,7 @@ func (ncpc *Controller) makeConfigMap(ctx context.Context, pod *corev1.Pod) (*co
 
 	containerID, err := controllerhelpers.GetScyllaContainerID(pod)
 	if err != nil {
-		return nil, fmt.Errorf("can't get container id: %w", err)
+		return nil, controllerhelpers.NewRequeueError(fmt.Sprintf("can't get container id: %s", err))
 	}
 
 	src := &internalapi.SidecarRuntimeConfig{

@@ -19,3 +19,8 @@ func NewRequeueError(reasons ...string) *RequeueError {
 func (e *RequeueError) Error() string {
 	return strings.Join(e.reasons, ", ")
 }
+
+func (e *RequeueError) Is(err error) bool {
+	_, ok := err.(*RequeueError)
+	return ok
+}

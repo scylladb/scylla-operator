@@ -149,7 +149,7 @@ Add following task definition to Cluster spec:
     - name: "users repair"
       keyspace: ["users"]
       interval: "1d"
-  backup:
+  backups:
     - name: "weekly backup"
       location: ["s3:cluster-backups"]
       retention: 3

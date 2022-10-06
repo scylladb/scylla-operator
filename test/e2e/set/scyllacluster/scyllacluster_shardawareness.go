@@ -28,6 +28,10 @@ var _ = g.Describe("ScyllaCluster", func() {
 	f := framework.NewFramework("scyllacluster")
 
 	g.It("should allow to build connection pool using shard aware ports", func() {
+		g.Skip("Shardawareness doesn't work on setups NATting traffic, and our CI does it when traffic is going through ClusterIPs." +
+			"It's shall be reenabled once we switch client-node communication to PodIPs.",
+		)
+
 		const (
 			nonShardAwarePort = 9042
 			shardAwarePort    = 19042

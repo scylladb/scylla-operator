@@ -103,10 +103,22 @@ func (p *Prober) Readyz(w http.ResponseWriter, req *http.Request) {
 
 	// We can't do a direct string comparison for IPv6 addresses
 	nodeAddressIP := net.ParseIP(nodeAddress)
+	if nodeAddressIP == nil {
+		klog.Errorf("readyz probe: failed to parse scylla node address for Service=%s", p.serviceRef())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	for _, s := range nodeStatuses {
 		klog.V(4).InfoS("readyz probe: node state", "Node", s.Addr, "Status", s.Status, "State", s.State)
 
-		if nodeAddressIP != nil && nodeAddressIP.Equal(net.ParseIP(s.Addr)) && s.IsUN() {
+		sAddrIp := net.ParseIP(s.Addr)
+		if sAddrIp == nil {
+			klog.Warningf("readyz probe: failed to parse node address for Node=%s", s.Addr)
+			continue
+		}
+
+		if nodeAddressIP.Equal(sAddrIp) && s.IsUN() {
 			transportEnabled, err := scyllaClient.IsNativeTransportEnabled(ctx, localhost)
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)

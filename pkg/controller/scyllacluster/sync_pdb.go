@@ -49,8 +49,7 @@ func (scc *Controller) syncPodDisruptionBudgets(
 		return progressingConditions, fmt.Errorf("can't delete pdb(s): %w", err)
 	}
 
-	// TODO: Remove forced ownership in v1.5 (#672)
-	_, changed, err := resourceapply.ApplyPodDisruptionBudget(ctx, scc.kubeClient.PolicyV1(), scc.pdbLister, scc.eventRecorder, requiredPDB, true)
+	_, changed, err := resourceapply.ApplyPodDisruptionBudget(ctx, scc.kubeClient.PolicyV1(), scc.pdbLister, scc.eventRecorder, requiredPDB, false)
 	if changed {
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, pdbControllerProgressingCondition, requiredPDB, "apply", sc.Generation)
 	}

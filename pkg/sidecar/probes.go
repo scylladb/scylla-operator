@@ -112,13 +112,13 @@ func (p *Prober) Readyz(w http.ResponseWriter, req *http.Request) {
 	for _, s := range nodeStatuses {
 		klog.V(4).InfoS("readyz probe: node state", "Node", s.Addr, "Status", s.Status, "State", s.State)
 
-		sAddrIp := net.ParseIP(s.Addr)
-		if sAddrIp == nil {
+		sAddrIP := net.ParseIP(s.Addr)
+		if sAddrIP == nil {
 			klog.Warningf("readyz probe: failed to parse node address for Node=%s", s.Addr)
 			continue
 		}
 
-		if nodeAddressIP.Equal(sAddrIp) && s.IsUN() {
+		if nodeAddressIP.Equal(sAddrIP) && s.IsUN() {
 			transportEnabled, err := scyllaClient.IsNativeTransportEnabled(ctx, localhost)
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)

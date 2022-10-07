@@ -37,7 +37,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		originalSC := sc.DeepCopy()
 		originalSC.ResourceVersion = ""
 
-		framework.By("Waiting for the ScyllaCluster to deploy")
+		framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", sc.ResourceVersion)
 		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx1Cancel()
 		sc, err = utils.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)

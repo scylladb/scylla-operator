@@ -255,7 +255,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 
 		verifyNodeConfig(ctx, f.KubeAdminClient(), nc)
 
-		framework.By("Waiting for the ScyllaCluster to deploy")
+		framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", sc.ResourceVersion)
 		ctx4, ctx4Cancel := utils.ContextForRollout(ctx, sc)
 		defer ctx4Cancel()
 		sc, err = utils.WaitForScyllaClusterState(ctx4, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)

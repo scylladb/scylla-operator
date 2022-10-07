@@ -30,7 +30,7 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 		validSC := scyllafixture.BasicScyllaCluster.ReadOrFail()
 		validSC.Name = names.SimpleNameGenerator.GenerateName(validSC.GenerateName)
 
-		framework.By("rejecting a creation of ScyllaCluster with duplicated racks")
+		framework.By("Rejecting a creation of ScyllaCluster with duplicated racks")
 		duplicateRacksSC := validSC.DeepCopy()
 		duplicateRacksSC.Spec.Datacenter.Racks = append(duplicateRacksSC.Spec.Datacenter.Racks, *duplicateRacksSC.Spec.Datacenter.Racks[0].DeepCopy())
 		_, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, duplicateRacksSC, metav1.CreateOptions{})
@@ -54,7 +54,7 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 			Code: 422,
 		}}))
 
-		framework.By("rejecting a creation of ScyllaCluster with invalid intensity in repair task spec")
+		framework.By("Rejecting a creation of ScyllaCluster with invalid intensity in repair task spec")
 		invalidIntensitySC := validSC.DeepCopy()
 		invalidIntensitySC.Spec.Repairs = append(invalidIntensitySC.Spec.Repairs, scyllav1.RepairTaskSpec{
 			Intensity: "100Mib",
@@ -80,11 +80,11 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 			Code: 422,
 		}}))
 
-		framework.By("accepting a creation of valid ScyllaCluster")
+		framework.By("Accepting a creation of valid ScyllaCluster")
 		validSC, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, validSC, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		framework.By("waiting for the ScyllaCluster to deploy")
+		framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", validSC.ResourceVersion)
 		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, validSC)
 		defer waitCtx1Cancel()
 		validSC, err = utils.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), validSC.Namespace, validSC.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
@@ -99,7 +99,7 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 
 		verifyScyllaCluster(ctx, f.KubeClient(), validSC, di)
 
-		framework.By("rejecting an update of ScyllaCluster's repo")
+		framework.By("Rejecting an update of ScyllaCluster's repo")
 		_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(validSC.Namespace).Patch(
 			ctx,
 			validSC.Name,
@@ -127,7 +127,7 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 			Code: 422,
 		}}))
 
-		framework.By("rejecting an update of ScyllaCluster's dcName")
+		framework.By("Rejecting an update of ScyllaCluster's dcName")
 		_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(validSC.Namespace).Patch(
 			ctx,
 			validSC.Name,

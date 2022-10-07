@@ -36,7 +36,7 @@ var _ = g.Describe("ScyllaCluster Orphaned PV", func() {
 		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		framework.By("Waiting for the ScyllaCluster to deploy")
+		framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", sc.ResourceVersion)
 		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx1Cancel()
 		sc, err = utils.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
@@ -114,7 +114,7 @@ var _ = g.Describe("ScyllaCluster Orphaned PV", func() {
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		framework.By("Waiting for the ScyllaCluster to deploy")
+		framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", sc.ResourceVersion)
 		waitCtx4, waitCtx4Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx4Cancel()
 		sc, err = utils.WaitForScyllaClusterState(waitCtx4, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)

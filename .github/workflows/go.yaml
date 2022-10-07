@@ -157,37 +157,37 @@ jobs:
         if-no-files-found: error
         retention-days: ${{ env.retention_days }}
 
-  test-e2e-parallel:
-    name: Test e2e parallel
-    runs-on: ubuntu-20.04
-    needs: images
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        path: ${{ env.git_repo_path }}
-        fetch-depth: 0  # also fetch tags
-    - name: Run e2e
-      uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/run-e2e
-      with:
-        repositoryPath: ${{ env.git_repo_path }}
-        jobSuffix: "parallel"
-        suite: "scylla-operator/conformance/parallel"
-
-  test-e2e-serial:
-    name: Test e2e serial
-    runs-on: ubuntu-20.04
-    needs: images
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        path: ${{ env.git_repo_path }}
-        fetch-depth: 0  # also fetch tags
-    - name: Run e2e
-      uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/run-e2e
-      with:
-        repositoryPath: ${{ env.git_repo_path }}
-        jobSuffix: "serial"
-        suite: "scylla-operator/conformance/serial"
+#  test-e2e-parallel:
+#    name: Test e2e parallel
+#    runs-on: ubuntu-20.04
+#    needs: images
+#    steps:
+#    - uses: actions/checkout@v2
+#      with:
+#        path: ${{ env.git_repo_path }}
+#        fetch-depth: 0  # also fetch tags
+#    - name: Run e2e
+#      uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/run-e2e
+#      with:
+#        repositoryPath: ${{ env.git_repo_path }}
+#        jobSuffix: "parallel"
+#        suite: "scylla-operator/conformance/parallel"
+#
+#  test-e2e-serial:
+#    name: Test e2e serial
+#    runs-on: ubuntu-20.04
+#    needs: images
+#    steps:
+#    - uses: actions/checkout@v2
+#      with:
+#        path: ${{ env.git_repo_path }}
+#        fetch-depth: 0  # also fetch tags
+#    - name: Run e2e
+#      uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/run-e2e
+#      with:
+#        repositoryPath: ${{ env.git_repo_path }}
+#        jobSuffix: "serial"
+#        suite: "scylla-operator/conformance/serial"
 
   # TODO: Add upgrade-e2e - use the same image sha from images step
 
@@ -201,8 +201,7 @@ jobs:
     - build-and-test
     - images
     - charts
-    - test-e2e-parallel
-    - test-e2e-serial
+    - openshift
     # TODO: Depend on upgrade-e2e when available
     steps:
     - name: Always succeed
@@ -290,3 +289,17 @@ jobs:
         }
         EOF
         ) '${{ secrets.SLACK_WEBHOOK_URL }}'
+
+  openshift:
+    name: Example OpenShift Cluster interaction
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+      - name: Setup OpenShift
+        uses: manusa/actions-setup-openshift@v1.1.3
+        with:
+          oc version: 'v4.7.0'
+          github token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Interact with the cluster
+        run: oc cluster status

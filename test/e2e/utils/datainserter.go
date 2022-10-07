@@ -1,6 +1,6 @@
 // Copyright (c) 2021 ScyllaDB
 
-package scyllacluster
+package utils
 
 import (
 	"fmt"

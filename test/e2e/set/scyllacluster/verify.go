@@ -132,16 +132,16 @@ func getScyllaHostsAndWaitForFullQuorum(ctx context.Context, client corev1client
 	return hosts
 }
 
-func verifyCQLData(ctx context.Context, di *DataInserter) {
+func verifyCQLData(ctx context.Context, di *utils.DataInserter) {
 	framework.By("Verifying the data")
 	data, err := di.Read()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(data).To(o.Equal(di.GetExpected()))
 }
 
-func insertAndVerifyCQLData(ctx context.Context, hosts []string) *DataInserter {
+func insertAndVerifyCQLData(ctx context.Context, hosts []string) *utils.DataInserter {
 	framework.By("Inserting data")
-	di, err := NewDataInserter(hosts)
+	di, err := utils.NewDataInserter(hosts)
 	o.Expect(err).NotTo(o.HaveOccurred())
 
 	err = di.Insert()

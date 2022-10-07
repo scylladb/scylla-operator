@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"reflect"
+	"sort"
+	"strings"
 	"time"
 
 	o "github.com/onsi/gomega"
@@ -31,6 +34,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	apierrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	appv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -456,4 +461,62 @@ func GetMemberServiceSelector(scyllaClusterName string) labels.Selector {
 		naming.ClusterNameLabel:       scyllaClusterName,
 		naming.ScyllaServiceTypeLabel: string(naming.ScyllaServiceTypeMember),
 	}.AsSelector()
+}
+
+func GetScyllaHostsAndWaitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
+	scyllaClient, hosts, err := GetScyllaClient(ctx, client, sc)
+	if err != nil {
+		return nil, fmt.Errorf("can't get scylla client: %w", err)
+	}
+	defer scyllaClient.Close()
+
+	sortedHosts := make([]string, len(hosts))
+	copy(sortedHosts, hosts)
+	sort.Strings(sortedHosts)
+
+	// Wait for node status to propagate and reach consistency.
+	// This can take a while so let's set a large enough timeout to avoid flakes.
+	err = wait.PollImmediateWithContext(ctx, 5*time.Minute, time.Second, func(ctx context.Context) (done bool, err error) {
+		allSeeAllAsUN := true
+		infoMessages := make([]string, 0, len(hosts))
+		var errs []error
+		for _, h := range sortedHosts {
+			s, err := scyllaClient.Status(ctx, h)
+			if err != nil {
+				return true, fmt.Errorf("can't get scylla status on node %q: %w", h, err)
+			}
+
+			sHosts := s.Hosts()
+			sort.Strings(sHosts)
+			if !reflect.DeepEqual(sHosts, sortedHosts) {
+				errs = append(errs, fmt.Errorf("node %q thinks the cluster consists of different nodes: %s", h, sHosts))
+			}
+
+			downHosts := s.DownHosts()
+			infoMessages = append(infoMessages, fmt.Sprintf("Node %q, down: %q, up: %q", h, strings.Join(downHosts, "\n"), strings.Join(s.LiveHosts(), ",")))
+
+			if len(downHosts) != 0 {
+				allSeeAllAsUN = false
+			}
+		}
+
+		if !allSeeAllAsUN {
+			framework.Infof("ScyllaDB nodes have not reached status consistency yet. Statuses:\n%s", strings.Join(infoMessages, ","))
+		}
+
+		err = apierrors.NewAggregate(errs)
+		if err != nil {
+			framework.Infof("ScyllaDB nodes encountered an error. Statuses:\n%s", strings.Join(infoMessages, ","))
+			return true, err
+		}
+
+		return allSeeAllAsUN, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("can't wait for scylla nodes to reach status consistency: %w", err)
+	}
+
+	framework.Infof("ScyllaDB nodes have reached status consistency.")
+
+	return hosts, nil
 }

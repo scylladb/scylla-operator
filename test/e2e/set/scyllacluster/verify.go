@@ -80,7 +80,7 @@ func verifyPodDisruptionBudget(sc *scyllav1.ScyllaCluster, pdb *policyv1.PodDisr
 	o.Expect(pdb.Spec.Selector).To(o.Equal(metav1.SetAsLabelSelector(naming.ClusterLabels(sc))))
 }
 
-func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, sc *scyllav1.ScyllaCluster, di *DataInserter) {
+func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, sc *scyllav1.ScyllaCluster) {
 	framework.By("Verifying the ScyllaCluster")
 
 	o.Expect(sc.Status.ObservedGeneration).NotTo(o.BeNil())
@@ -116,23 +116,38 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 
 	verifyPersistentVolumeClaims(ctx, kubeClient.CoreV1(), sc)
 
-	// TODO: Use scylla client to check at least "UN"
 	scyllaClient, hosts, err := utils.GetScyllaClient(ctx, kubeClient.CoreV1(), sc)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	defer scyllaClient.Close()
 
 	o.Expect(hosts).To(o.HaveLen(memberCount))
+}
 
-	status, err := scyllaClient.Status(ctx, "")
+func getScyllaHostsAndWaitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) []string {
+	framework.By("Waiting for the ScyllaCluster to reach consistency ALL")
+	hosts, err := utils.GetScyllaHostsAndWaitForFullQuorum(ctx, client, sc)
 	o.Expect(err).NotTo(o.HaveOccurred())
-	o.Expect(status.DownHosts()).To(o.BeEmpty())
-	o.Expect(status.LiveHosts()).To(o.HaveLen(memberCount))
+	o.Expect(hosts).To(o.HaveLen(int(utils.GetMemberCount(sc))))
 
-	if di != nil {
-		read, err := di.Read()
-		o.Expect(err).NotTo(o.HaveOccurred())
+	return hosts
+}
 
-		framework.By("Verifying data consistency")
-		o.Expect(read).To(o.Equal(di.GetExpected()))
-	}
+func verifyCQLData(ctx context.Context, di *DataInserter) {
+	framework.By("Verifying the data")
+	data, err := di.Read()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(data).To(o.Equal(di.GetExpected()))
+}
+
+func insertAndVerifyCQLData(ctx context.Context, hosts []string) *DataInserter {
+	framework.By("Inserting data")
+	di, err := NewDataInserter(hosts)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	err = di.Insert()
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	verifyCQLData(ctx, di)
+
+	return di
 }

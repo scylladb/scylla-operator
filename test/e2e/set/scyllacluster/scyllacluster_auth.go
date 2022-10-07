@@ -44,19 +44,13 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 		sc, err = utils.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		di, err := NewDataInserter(ctx, f.KubeClient().CoreV1(), sc, utils.GetMemberCount(sc))
-		o.Expect(err).NotTo(o.HaveOccurred())
+		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(hosts).To(o.HaveLen(1))
+		di := insertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
 
-		err = di.Insert()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		verifyScyllaCluster(ctx, f.KubeClient(), sc, di)
-
 		framework.By("Rejecting an unauthorized request")
-
-		_, hosts, err := utils.GetScyllaClient(ctx, f.KubeClient().CoreV1(), sc)
-
 		emptyAuthToken := ""
 		_, err = getScyllaClientStatus(ctx, hosts, emptyAuthToken)
 		o.Expect(err).To(o.HaveOccurred())
@@ -123,7 +117,9 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 		sc, err = utils.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc, di)
+		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		o.Expect(hosts).To(o.ConsistOf(getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)))
+		verifyCQLData(ctx, di)
 
 		framework.By("Accepting requests authorized using token from user agent config")
 		_, err = getScyllaClientStatus(ctx, hosts, agentConfig.AuthToken)
@@ -156,7 +152,9 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 		sc, err = utils.WaitForScyllaClusterState(waitCtx3, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc, di)
+		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		o.Expect(hosts).To(o.ConsistOf(getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)))
+		verifyCQLData(ctx, di)
 
 		framework.By("Accepting requests authorized using token from user agent config")
 		_, err = getScyllaClientStatus(ctx, hosts, agentConfig.AuthToken)

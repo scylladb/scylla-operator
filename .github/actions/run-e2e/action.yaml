@@ -71,6 +71,8 @@ runs:
       # TODO: Replace it with ScyllaOperatorConfig field when available.
       kubectl -n scylla-operator patch deployment/scylla-operator --type=json -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--loglevel=4"}]'
       kubectl -n scylla-operator rollout status deployment/scylla-operator
+      kubectl -n scylla-manager patch deployment/scylla-manager-controller --type=json -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--loglevel=4"}]'
+      kubectl -n scylla-manager rollout status deployment/scylla-manager-controller
       
       kubectl get pods -A
   - name: Tolerate flakes on promotion jobs

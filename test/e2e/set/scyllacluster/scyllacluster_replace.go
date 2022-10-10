@@ -40,14 +40,11 @@ var _ = g.Describe("ScyllaCluster replace", func() {
 		sc, err = utils.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		di, err := NewDataInserter(ctx, f.KubeClient().CoreV1(), sc, utils.GetMemberCount(sc))
-		o.Expect(err).NotTo(o.HaveOccurred())
+		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(hosts).To(o.HaveLen(2))
+		di := insertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
-
-		err = di.Insert()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		verifyScyllaCluster(ctx, f.KubeClient(), sc, di)
 
 		framework.By("Replacing a node #0")
 		pod, err := f.KubeClient().CoreV1().Pods(f.Namespace()).Get(
@@ -87,6 +84,14 @@ var _ = g.Describe("ScyllaCluster replace", func() {
 		sc, err = utils.WaitForScyllaClusterState(waitCtx3, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc, di)
+		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+
+		oldHosts := hosts
+		hosts = getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(hosts).To(o.HaveLen(len(oldHosts)))
+		o.Expect(hosts).NotTo(o.ConsistOf(oldHosts))
+		err = di.SetClientEndpoints(hosts)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		verifyCQLData(ctx, di)
 	})
 })

@@ -42,14 +42,11 @@ var _ = g.Describe("ScyllaCluster Orphaned PV", func() {
 		sc, err = utils.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		di, err := NewDataInserter(ctx, f.KubeClient().CoreV1(), sc, utils.GetMemberCount(sc))
-		o.Expect(err).NotTo(o.HaveOccurred())
+		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(hosts).To(o.HaveLen(3))
+		di := insertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
-
-		err = di.Insert()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		verifyScyllaCluster(ctx, f.KubeClient(), sc, di)
 
 		framework.By("Simulating a PV on node that's gone")
 		stsName := naming.StatefulSetNameForRack(sc.Spec.Datacenter.Racks[0], sc)
@@ -120,6 +117,14 @@ var _ = g.Describe("ScyllaCluster Orphaned PV", func() {
 		sc, err = utils.WaitForScyllaClusterState(waitCtx4, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc, di)
+		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+
+		oldHosts := hosts
+		hosts = getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(hosts).To(o.HaveLen(len(oldHosts)))
+		o.Expect(hosts).NotTo(o.ConsistOf(oldHosts))
+		err = di.SetClientEndpoints(hosts)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		verifyCQLData(ctx, di)
 	})
 })

@@ -476,7 +476,7 @@ func GetScyllaHostsAndWaitForFullQuorum(ctx context.Context, client corev1client
 
 	// Wait for node status to propagate and reach consistency.
 	// This can take a while so let's set a large enough timeout to avoid flakes.
-	err = wait.PollImmediateWithContext(ctx, 5*time.Minute, time.Second, func(ctx context.Context) (done bool, err error) {
+	err = wait.PollImmediateWithContext(ctx, 1*time.Second, 5*time.Minute, func(ctx context.Context) (done bool, err error) {
 		allSeeAllAsUN := true
 		infoMessages := make([]string, 0, len(hosts))
 		var errs []error

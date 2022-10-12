@@ -379,7 +379,7 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't start command %q with args %v: %w", e.cmd.Path, e.cmd.Args, err))
 		}
-		klog.V(2).InfoS("Started process", "ID", e.id, "Process", e.cmd.String())
+		klog.V(2).InfoS("Started process", "ID", e.id, "Command", e.cmd.String())
 		// RegisterAlive needs to be set so ginkgo worker #1 can detect all the other workers are finished
 		// and start serial tests. It needs cmd.Wait to be called first to pick up the state.
 		server.RegisterAlive(e.id, func() bool { return e.cmd.ProcessState == nil || !e.cmd.ProcessState.Exited() })
@@ -400,20 +400,21 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 		go func() {
 			defer wg.Done()
 
-			klog.V(2).InfoS("Waiting for process", "ID", e.id, "Process", e.cmd.String())
+			klog.V(2).InfoS("Waiting for process", "ID", e.id, "Command", e.cmd.String())
 			err := e.cmd.Wait()
 			if err != nil {
 				errs[entryIndex] = fmt.Errorf("can't wait for command %q with args %q: %w", e.cmd.Path, e.cmd.Args, err)
 			}
-			klog.V(2).InfoS("Process finished", "ID", e.id, "Process", e.cmd.String(), "ExitCode", e.cmd.ProcessState.ExitCode())
+			klog.V(2).InfoS("Process finished", "ID", e.id, "Command", e.cmd.String(), "ProcessState", e.cmd.ProcessState.String())
 		}()
-	}
-	err = apierrors.NewAggregate(errs)
-	if err != nil {
-		return err
 	}
 
 	wg.Wait()
+
+	err = apierrors.NewAggregate(errs)
+	if err != nil {
+		klog.ErrorS(err, "Processes encountered errors")
+	}
 
 	select {
 	case <-ctx.Done():
@@ -429,7 +430,7 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 			case 0, types.GINKGO_FOCUS_EXIT_CODE:
 				break
 			default:
-				klog.ErrorS(nil, "Process failed", "ID", e.id, "Process", e.cmd.String(), "Logs", e.out.String())
+				klog.ErrorS(nil, "Process failed", "ID", e.id, "Command", e.cmd.String(), "ProcessState", e.cmd.ProcessState.String(), "Logs", e.out.String())
 			}
 		}
 

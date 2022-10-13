@@ -322,6 +322,29 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 		if suiteConfig.ParallelTotal > 1 {
 			suiteConfig.ParallelHost = o.ParallelServerAddress
 			suiteConfig.ParallelProcess = o.ParallelShard
+
+			ginkgo.BeforeSuite(func() {
+				if len(o.ArtifactsDir) < 1 {
+					return
+				}
+
+				d := path.Join(o.ArtifactsDir, "e2e-parallel-processes-logs")
+				err := os.Mkdir(d, 0777)
+				if err != nil && !os.IsExist(err) {
+					gomega.Expect(err).NotTo(gomega.HaveOccurred())
+				}
+
+				f, err := os.Create(path.Join(d, fmt.Sprintf("%d.log", o.ParallelShard)))
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+				ginkgo.GinkgoWriter.TeeTo(f)
+
+				ginkgo.DeferCleanup(func() {
+					ginkgo.GinkgoWriter.ClearTeeWriters()
+					// Ignoring the error as there's nowhere to log it.
+					_ = f.Close()
+				})
+			})
 		}
 
 		klog.InfoS("Running specs")

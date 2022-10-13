@@ -34,7 +34,7 @@ runs:
       set -x
       mkdir "${ARTIFACTS_DIR}"
       echo "ARTIFACTS_DIR=${ARTIFACTS_DIR}" | tee -a ${GITHUB_ENV}
-  - uses: actions/download-artifact@v2
+  - uses: actions/download-artifact@v3
     with:
       name: operatorimage.tar.lz4
       path: ~/
@@ -47,7 +47,7 @@ runs:
       docker tag "$( echo "${image_repo_ref}:ci" | sed -E -e 's~[^/]+/(.*)~\1~' )" "${image_repo_ref}:ci"
       docker images '${{ env.image_repo_ref }}:ci'
   - name: Setup go
-    uses: actions/setup-go@v2
+    uses: actions/setup-go@v3
     with:
       go-version: ${{ env.go_version }}
   - name: Install tools
@@ -149,7 +149,7 @@ runs:
       tar -c --use-compress-program=lz4 -f ./e2e-artifacts.tar.lz4 "e2e-artifacts/"
   - name: Upload artifacts
     if: ${{ always() }}
-    uses: actions/upload-artifact@v2
+    uses: actions/upload-artifact@v3
     with:
       name: e2e-artifacts-${{ inputs.jobSuffix }}.tar.lz4
       path: ${{ runner.temp }}/e2e-artifacts.tar.lz4

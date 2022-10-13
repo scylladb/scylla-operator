@@ -31,12 +31,12 @@ jobs:
     name: Publish release notes
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         path: ${{ env.git_repo_path }}
         fetch-depth: 0
     - name: Setup go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
         go-version: ${{ env.go_version }}
     - name: Create release
@@ -104,7 +104,7 @@ jobs:
 
     - name: Upload artifact
       if: ${{ always() }}
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: release_notes.md
         path: ~/release_notes.md

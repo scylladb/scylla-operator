@@ -7,6 +7,7 @@ import (
 	"github.com/scylladb/go-log"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"go.uber.org/zap"
@@ -217,4 +218,20 @@ func EnsureNodeConfigCondition(status *scyllav1alpha1.NodeConfigStatus, cond *sc
 	}
 
 	*existingCond = *cond
+}
+
+func IsScyllaClusterRolledOut(sc *scyllav1.ScyllaCluster) bool {
+	if !helpers.IsStatusConditionPresentAndTrue(sc.Status.Conditions, scyllav1.AvailableCondition, sc.Generation) {
+		return false
+	}
+
+	if !helpers.IsStatusConditionPresentAndFalse(sc.Status.Conditions, scyllav1.ProgressingCondition, sc.Generation) {
+		return false
+	}
+
+	if !helpers.IsStatusConditionPresentAndFalse(sc.Status.Conditions, scyllav1.DegradedCondition, sc.Generation) {
+		return false
+	}
+
+	return true
 }

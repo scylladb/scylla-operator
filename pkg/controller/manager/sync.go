@@ -6,7 +6,8 @@ import (
 	"time"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	helpers "github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -105,6 +106,12 @@ func (c *Controller) sync(ctx context.Context, key string) error {
 	}
 
 	if sc.DeletionTimestamp != nil {
+		return nil
+	}
+
+	if !controllerhelpers.IsScyllaClusterRolledOut(sc) {
+		klog.V(4).InfoS("Skipping sync - cluster is not yet rolled out", "ScyllaCluster", klog.KObj(sc))
+		// Exit and wait for cluster to roll out.
 		return nil
 	}
 

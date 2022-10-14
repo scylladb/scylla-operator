@@ -52,7 +52,7 @@ func ApplyService(
 		} else {
 			ReportCreateEvent(recorder, requiredCopy, err)
 		}
-		return actual, true, err
+		return actual, err == nil, err
 	}
 
 	existingControllerRef := metav1.GetControllerOfNoCopy(existing)

@@ -44,9 +44,6 @@ import (
 
 const (
 	ControllerName = "ScyllaClusterController"
-	// maxSyncDuration enforces preemption. Do not raise the value! Controllers shouldn't actively wait,
-	// but rather use the queue.
-	maxSyncDuration = 40 * time.Second
 
 	artificialDelayForCachesToCatchUp = 10 * time.Second
 )
@@ -206,8 +203,6 @@ func (scc *Controller) processNextItem(ctx context.Context) bool {
 	}
 	defer scc.queue.Done(key)
 
-	ctx, cancel := context.WithTimeout(ctx, maxSyncDuration)
-	defer cancel()
 	err := scc.sync(ctx, key.(string))
 	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
 	err = utilerrors.Reduce(err)

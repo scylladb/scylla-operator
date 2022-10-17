@@ -54,7 +54,7 @@ jobs:
     - name: Install tools
       run: |
         set -x
-        go install github.com/mikefarah/yq/v4@v4.11.2
+        go install github.com/mikefarah/yq/v4@v4.28.1
     - name: Verify
       run: make verify --warn-undefined-variables
 

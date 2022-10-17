@@ -42,6 +42,8 @@ for f in $( find "${deploy_dir}"/ -type f -name '*.yaml' ); do
     sed -i -E -e "s~docker.io/scylladb/scylla-operator(:|@sha256:)[^ ]*~${OPERATOR_IMAGE_REF}~" "${f}"
 done
 
+yq e --inplace '.spec.template.spec.containers[0].args += ["--qps=200", "--burst=400"]' "${deploy_dir}/operator/50_operator.deployment.yaml"
+
 kubectl_create -f "${deploy_dir}"/cert-manager.yaml
 
 # Wait for cert-manager

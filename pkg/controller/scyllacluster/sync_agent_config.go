@@ -5,10 +5,12 @@ import (
 	"fmt"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
@@ -30,9 +32,10 @@ func (scc *Controller) getAgentTokenFromAgentConfig(sc *scyllav1.ScyllaCluster) 
 func (scc *Controller) syncAgentToken(
 	ctx context.Context,
 	sc *scyllav1.ScyllaCluster,
-	status *scyllav1.ScyllaClusterStatus,
 	secrets map[string]*corev1.Secret,
-) (*scyllav1.ScyllaClusterStatus, error) {
+) ([]metav1.Condition, error) {
+	var progressingConditions []metav1.Condition
+
 	token, tokenErr := scc.getAgentTokenFromAgentConfig(sc)
 	if tokenErr != nil {
 		tokenErr = fmt.Errorf("can't get agent token: %w", tokenErr)
@@ -49,7 +52,7 @@ func (scc *Controller) syncAgentToken(
 			var err error
 			token, err = helpers.GetAgentAuthTokenFromSecret(tokenSecret)
 			if err != nil {
-				return status, fmt.Errorf("can't read token from secret %q: %w", naming.ObjRef(tokenSecret), err)
+				return progressingConditions, fmt.Errorf("can't read token from secret %q: %w", naming.ObjRef(tokenSecret), err)
 			}
 		}
 	}
@@ -61,14 +64,17 @@ func (scc *Controller) syncAgentToken(
 
 	secret, err := MakeAgentAuthTokenSecret(sc, token)
 	if err != nil {
-		return status, fmt.Errorf("can't make auth token secret: %w", err)
+		return progressingConditions, fmt.Errorf("can't make auth token secret: %w", err)
 	}
 
 	// TODO: Remove forced ownership in v1.5 (#672)
-	_, _, err = resourceapply.ApplySecret(ctx, scc.kubeClient.CoreV1(), scc.secretLister, scc.eventRecorder, secret, true)
+	_, changed, err := resourceapply.ApplySecret(ctx, scc.kubeClient.CoreV1(), scc.secretLister, scc.eventRecorder, secret, true)
+	if changed {
+		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, agentTokenControllerProgressingCondition, secret, "apply", sc.Generation)
+	}
 	if err != nil {
-		return status, fmt.Errorf("can't apply secret %q: %w", naming.ObjRef(secret), err)
+		return progressingConditions, fmt.Errorf("can't apply secret %q: %w", naming.ObjRef(secret), err)
 	}
 
-	return status, tokenErr
+	return progressingConditions, tokenErr
 }

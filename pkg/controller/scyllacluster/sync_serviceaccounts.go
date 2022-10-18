@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,8 +16,9 @@ func (scc *Controller) syncServiceAccounts(
 	ctx context.Context,
 	sc *scyllav1.ScyllaCluster,
 	serviceAccounts map[string]*corev1.ServiceAccount,
-) error {
+) ([]metav1.Condition, error) {
 	var err error
+	var progressingConditions []metav1.Condition
 
 	requiredServiceAccount := MakeServiceAccount(sc)
 
@@ -33,6 +35,7 @@ func (scc *Controller) syncServiceAccounts(
 		}
 
 		propagationPolicy := metav1.DeletePropagationBackground
+		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceAccountControllerProgressingCondition, sa, "delete", sc.Generation)
 		err = scc.kubeClient.CoreV1().ServiceAccounts(sa.Namespace).Delete(ctx, sa.Name, metav1.DeleteOptions{
 			Preconditions: &metav1.Preconditions{
 				UID: &sa.UID,
@@ -43,13 +46,16 @@ func (scc *Controller) syncServiceAccounts(
 	}
 	err = utilerrors.NewAggregate(deletionErrors)
 	if err != nil {
-		return fmt.Errorf("can't delete service account(s): %w", err)
+		return progressingConditions, fmt.Errorf("can't delete service account(s): %w", err)
 	}
 
-	_, _, err = resourceapply.ApplyServiceAccount(ctx, scc.kubeClient.CoreV1(), scc.serviceAccountLister, scc.eventRecorder, requiredServiceAccount, true, false)
+	_, changed, err := resourceapply.ApplyServiceAccount(ctx, scc.kubeClient.CoreV1(), scc.serviceAccountLister, scc.eventRecorder, requiredServiceAccount, true, false)
+	if changed {
+		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceAccountControllerProgressingCondition, requiredServiceAccount, "apply", sc.Generation)
+	}
 	if err != nil {
-		return fmt.Errorf("can't apply service account: %w", err)
+		return progressingConditions, fmt.Errorf("can't apply service account: %w", err)
 	}
 
-	return nil
+	return progressingConditions, nil
 }

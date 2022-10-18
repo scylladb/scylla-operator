@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,10 +15,10 @@ import (
 func (scc *Controller) syncPodDisruptionBudgets(
 	ctx context.Context,
 	sc *scyllav1.ScyllaCluster,
-	status *scyllav1.ScyllaClusterStatus,
 	pdbs map[string]*policyv1.PodDisruptionBudget,
-) (*scyllav1.ScyllaClusterStatus, error) {
+) ([]metav1.Condition, error) {
 	var err error
+	var progressingConditions []metav1.Condition
 
 	requiredPDB := MakePodDisruptionBudget(sc)
 
@@ -34,6 +35,7 @@ func (scc *Controller) syncPodDisruptionBudgets(
 		}
 
 		propagationPolicy := metav1.DeletePropagationBackground
+		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, pdbControllerProgressingCondition, pdb, "delete", sc.Generation)
 		err = scc.kubeClient.PolicyV1().PodDisruptionBudgets(pdb.Namespace).Delete(ctx, pdb.Name, metav1.DeleteOptions{
 			Preconditions: &metav1.Preconditions{
 				UID: &pdb.UID,
@@ -44,14 +46,17 @@ func (scc *Controller) syncPodDisruptionBudgets(
 	}
 	err = utilerrors.NewAggregate(deletionErrors)
 	if err != nil {
-		return status, fmt.Errorf("can't delete pdb(s): %w", err)
+		return progressingConditions, fmt.Errorf("can't delete pdb(s): %w", err)
 	}
 
 	// TODO: Remove forced ownership in v1.5 (#672)
-	_, _, err = resourceapply.ApplyPodDisruptionBudget(ctx, scc.kubeClient.PolicyV1(), scc.pdbLister, scc.eventRecorder, requiredPDB, true)
+	_, changed, err := resourceapply.ApplyPodDisruptionBudget(ctx, scc.kubeClient.PolicyV1(), scc.pdbLister, scc.eventRecorder, requiredPDB, true)
+	if changed {
+		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, pdbControllerProgressingCondition, requiredPDB, "apply", sc.Generation)
+	}
 	if err != nil {
-		return status, fmt.Errorf("can't apply pdb: %w", err)
+		return progressingConditions, fmt.Errorf("can't apply pdb: %w", err)
 	}
 
-	return status, nil
+	return progressingConditions, nil
 }

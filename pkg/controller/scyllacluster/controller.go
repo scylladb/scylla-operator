@@ -49,9 +49,9 @@ const (
 )
 
 var (
-	keyFunc                  = cache.DeletionHandlingMetaNamespaceKeyFunc
-	controllerGVK            = scyllav1.GroupVersion.WithKind("ScyllaCluster")
-	statefulSetControllerGVK = appsv1.SchemeGroupVersion.WithKind("StatefulSet")
+	keyFunc                    = cache.DeletionHandlingMetaNamespaceKeyFunc
+	scyllaClusterControllerGVK = scyllav1.GroupVersion.WithKind("ScyllaCluster")
+	statefulSetControllerGVK   = appsv1.SchemeGroupVersion.WithKind("StatefulSet")
 )
 
 type Controller struct {
@@ -265,7 +265,7 @@ func (scc *Controller) resolveScyllaClusterController(obj metav1.Object) *scylla
 		return nil
 	}
 
-	if controllerRef.Kind != controllerGVK.Kind {
+	if controllerRef.Kind != scyllaClusterControllerGVK.Kind {
 		return nil
 	}
 
@@ -457,13 +457,13 @@ func (scc *Controller) deleteSecret(obj interface{}) {
 	scc.enqueueOwner(secret)
 }
 
-func (sac *Controller) addServiceAccount(obj interface{}) {
+func (scc *Controller) addServiceAccount(obj interface{}) {
 	sa := obj.(*corev1.ServiceAccount)
 	klog.V(4).InfoS("Observed addition of ServiceAccount", "ServiceAccount", klog.KObj(sa))
-	sac.enqueueOwner(sa)
+	scc.enqueueOwner(sa)
 }
 
-func (sac *Controller) updateServiceAccount(old, cur interface{}) {
+func (scc *Controller) updateServiceAccount(old, cur interface{}) {
 	oldSA := old.(*corev1.ServiceAccount)
 	currentSA := cur.(*corev1.ServiceAccount)
 
@@ -473,17 +473,17 @@ func (sac *Controller) updateServiceAccount(old, cur interface{}) {
 			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldSA, err))
 			return
 		}
-		sac.deleteServiceAccount(cache.DeletedFinalStateUnknown{
+		scc.deleteServiceAccount(cache.DeletedFinalStateUnknown{
 			Key: key,
 			Obj: oldSA,
 		})
 	}
 
 	klog.V(4).InfoS("Observed update of ServiceAccount", "ServiceAccount", klog.KObj(oldSA))
-	sac.enqueueOwner(currentSA)
+	scc.enqueueOwner(currentSA)
 }
 
-func (sac *Controller) deleteServiceAccount(obj interface{}) {
+func (scc *Controller) deleteServiceAccount(obj interface{}) {
 	svc, ok := obj.(*corev1.ServiceAccount)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
@@ -498,16 +498,16 @@ func (sac *Controller) deleteServiceAccount(obj interface{}) {
 		}
 	}
 	klog.V(4).InfoS("Observed deletion of ServiceAccount", "ServiceAccount", klog.KObj(svc))
-	sac.enqueueOwner(svc)
+	scc.enqueueOwner(svc)
 }
 
-func (sac *Controller) addRoleBinding(obj interface{}) {
+func (scc *Controller) addRoleBinding(obj interface{}) {
 	roleBinding := obj.(*rbacv1.RoleBinding)
 	klog.V(4).InfoS("Observed addition of RoleBinding", "RoleBinding", klog.KObj(roleBinding))
-	sac.enqueueOwner(roleBinding)
+	scc.enqueueOwner(roleBinding)
 }
 
-func (sac *Controller) updateRoleBinding(old, cur interface{}) {
+func (scc *Controller) updateRoleBinding(old, cur interface{}) {
 	oldRoleBinding := old.(*rbacv1.RoleBinding)
 	currentRoleBinding := cur.(*rbacv1.RoleBinding)
 
@@ -517,17 +517,17 @@ func (sac *Controller) updateRoleBinding(old, cur interface{}) {
 			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldRoleBinding, err))
 			return
 		}
-		sac.deleteRoleBinding(cache.DeletedFinalStateUnknown{
+		scc.deleteRoleBinding(cache.DeletedFinalStateUnknown{
 			Key: key,
 			Obj: oldRoleBinding,
 		})
 	}
 
 	klog.V(4).InfoS("Observed update of RoleBinding", "RoleBinding", klog.KObj(oldRoleBinding))
-	sac.enqueueOwner(currentRoleBinding)
+	scc.enqueueOwner(currentRoleBinding)
 }
 
-func (sac *Controller) deleteRoleBinding(obj interface{}) {
+func (scc *Controller) deleteRoleBinding(obj interface{}) {
 	roleBinding, ok := obj.(*rbacv1.RoleBinding)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
@@ -542,7 +542,7 @@ func (sac *Controller) deleteRoleBinding(obj interface{}) {
 		}
 	}
 	klog.V(4).InfoS("Observed deletion of RoleBinding", "RoleBinding", klog.KObj(roleBinding))
-	sac.enqueueOwner(roleBinding)
+	scc.enqueueOwner(roleBinding)
 }
 
 func (scc *Controller) addPod(obj interface{}) {

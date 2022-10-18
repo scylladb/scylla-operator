@@ -108,50 +108,15 @@ func ContextForManagerSync(parent context.Context, sc *scyllav1.ScyllaCluster) (
 }
 
 func IsScyllaClusterRolledOut(sc *scyllav1.ScyllaCluster) (bool, error) {
-	// ObservedGeneration == nil will filter out the case when the object is initially created
-	// so no other optional (but required) field should be nil after this point and we should error out.
-	if sc.Status.ObservedGeneration == nil || *sc.Status.ObservedGeneration < sc.Generation {
+	if !helpers.IsStatusConditionPresentAndTrue(sc.Status.Conditions, scyllav1.AvailableCondition, sc.Generation) {
 		return false, nil
 	}
 
-	// TODO: this should be more straight forward - we need better status (conditions, aggregated state, ...)
-
-	for _, r := range sc.Spec.Datacenter.Racks {
-		rackStatus, found := sc.Status.Racks[r.Name]
-		if !found {
-			return false, nil
-		}
-
-		if rackStatus.Stale == nil {
-			return true, fmt.Errorf("stale shouldn't be nil")
-		}
-
-		if *rackStatus.Stale {
-			return false, nil
-		}
-
-		if rackStatus.Members != r.Members {
-			return false, nil
-		}
-
-		if rackStatus.ReadyMembers != r.Members {
-			return false, nil
-		}
-
-		if rackStatus.UpdatedMembers == nil {
-			return true, fmt.Errorf("updatedMembers shouldn't be nil")
-		}
-
-		if *rackStatus.UpdatedMembers != r.Members {
-			return false, nil
-		}
-
-		if rackStatus.Version != sc.Spec.Version {
-			return false, nil
-		}
+	if !helpers.IsStatusConditionPresentAndFalse(sc.Status.Conditions, scyllav1.ProgressingCondition, sc.Generation) {
+		return false, nil
 	}
 
-	if sc.Status.Upgrade != nil && sc.Status.Upgrade.FromVersion != sc.Status.Upgrade.ToVersion {
+	if !helpers.IsStatusConditionPresentAndFalse(sc.Status.Conditions, scyllav1.DegradedCondition, sc.Generation) {
 		return false, nil
 	}
 

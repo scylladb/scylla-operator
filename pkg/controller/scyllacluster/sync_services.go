@@ -45,8 +45,9 @@ func (scc *Controller) pruneServices(
 	requiredServices []*corev1.Service,
 	services map[string]*corev1.Service,
 	statefulSets map[string]*appsv1.StatefulSet,
-) error {
+) ([]metav1.Condition, error) {
 	var errs []error
+	var progressingConditions []metav1.Condition
 	for _, svc := range services {
 		if svc.DeletionTimestamp != nil {
 			continue
@@ -87,12 +88,26 @@ func (scc *Controller) pruneServices(
 			continue
 		}
 		if int32(svcOrdinal) < *sts.Spec.Replicas {
+			progressingConditions = append(progressingConditions, metav1.Condition{
+				Type:               serviceControllerProgressingCondition,
+				Status:             metav1.ConditionTrue,
+				Reason:             "WaitingForAnotherService",
+				Message:            fmt.Sprintf("Service %q is waiting for another service to be decommissioned first.", naming.ObjRef(svc)),
+				ObservedGeneration: sc.Generation,
+			})
 			continue
 		}
 
 		// Do not delete services that weren't properly decommissioned.
 		if svc.Labels[naming.DecommissionedLabel] != naming.LabelValueTrue {
 			klog.Warningf("Refusing to cleanup service %s/%s whose member wasn't decommissioned.", svc.Namespace, svc.Name)
+			progressingConditions = append(progressingConditions, metav1.Condition{
+				Type:               serviceControllerProgressingCondition,
+				Status:             metav1.ConditionTrue,
+				Reason:             "WaitingForServiceDecommission",
+				Message:            fmt.Sprintf("Waiting for service %q to be fully decommissioned", naming.ObjRef(svc)),
+				ObservedGeneration: sc.Generation,
+			})
 			continue
 		}
 
@@ -107,17 +122,32 @@ func (scc *Controller) pruneServices(
 
 			if freshSvc.UID != svc.UID {
 				klog.V(2).InfoS("Stale caches, won't delete the pvc because the service UIDs don't match.", "Service", klog.KObj(svc))
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               serviceControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "WaitingForCaches",
+					Message:            fmt.Sprintf("Service %q is outdated because live UID is different. Waiting on service caches to catch up.", naming.ObjRef(svc)),
+					ObservedGeneration: sc.Generation,
+				})
 				continue
 			}
 
 			if freshSvc.Labels[naming.DecommissionedLabel] != naming.LabelValueTrue {
 				klog.V(2).InfoS("Stale caches, won't delete the pvc because the service is no longer decommissioned.", "Service", klog.KObj(svc))
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               serviceControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "WaitingForCaches",
+					Message:            fmt.Sprintf("Service %q is outdated because the service is no longed decommisioned. Waiting on service caches to catch up.", naming.ObjRef(svc)),
+					ObservedGeneration: sc.Generation,
+				})
 				continue
 			}
 		}
 
 		backgroundPropagationPolicy := metav1.DeletePropagationBackground
 
+		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, &corev1.PersistentVolumeClaim{}, "delete", sc.Generation)
 		pvcName := naming.PVCNameForService(svc.Name)
 		err = scc.kubeClient.CoreV1().PersistentVolumeClaims(svc.Namespace).Delete(ctx, pvcName, metav1.DeleteOptions{
 			PropagationPolicy: &backgroundPropagationPolicy,
@@ -127,6 +157,7 @@ func (scc *Controller) pruneServices(
 			continue
 		}
 
+		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, svc, "delete", sc.Generation)
 		err = scc.kubeClient.CoreV1().Services(svc.Namespace).Delete(ctx, svc.Name, metav1.DeleteOptions{
 			Preconditions: &metav1.Preconditions{
 				UID:             &svc.UID,
@@ -139,7 +170,7 @@ func (scc *Controller) pruneServices(
 			continue
 		}
 	}
-	return utilerrors.NewAggregate(errs)
+	return progressingConditions, utilerrors.NewAggregate(errs)
 }
 
 func (scc *Controller) syncServices(
@@ -148,23 +179,26 @@ func (scc *Controller) syncServices(
 	status *scyllav1.ScyllaClusterStatus,
 	services map[string]*corev1.Service,
 	statefulSets map[string]*appsv1.StatefulSet,
-) (*scyllav1.ScyllaClusterStatus, error) {
+) ([]metav1.Condition, error) {
 	var err error
 
 	requiredServices := scc.makeServices(sc, services)
 
 	// Delete any excessive Services.
 	// Delete has to be the fist action to avoid getting stuck on quota.
-	err = scc.pruneServices(ctx, sc, requiredServices, services, statefulSets)
+	progressingConditions, err := scc.pruneServices(ctx, sc, requiredServices, services, statefulSets)
 	if err != nil {
-		return status, fmt.Errorf("can't delete Service(s): %w", err)
+		return nil, fmt.Errorf("can't delete Service(s): %w", err)
 	}
 
 	// We need to first propagate ReplaceAddressFirstBoot from status for the new service.
 	for _, svc := range requiredServices {
-		_, _, err = resourceapply.ApplyService(ctx, scc.kubeClient.CoreV1(), scc.serviceLister, scc.eventRecorder, svc, false)
+		_, changed, err := resourceapply.ApplyService(ctx, scc.kubeClient.CoreV1(), scc.serviceLister, scc.eventRecorder, svc, false)
+		if changed {
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, svc, "apply", sc.Generation)
+		}
 		if err != nil {
-			return status, err
+			return progressingConditions, err
 		}
 	}
 
@@ -177,7 +211,7 @@ func (scc *Controller) syncServices(
 
 		rackName, ok := svc.Labels[naming.RackNameLabel]
 		if !ok {
-			return status, fmt.Errorf("service %s/%s is missing %q label", svc.Namespace, svc.Name, naming.RackNameLabel)
+			return progressingConditions, fmt.Errorf("service %s/%s is missing %q label", svc.Namespace, svc.Name, naming.RackNameLabel)
 		}
 
 		rackStatus := status.Racks[rackName]
@@ -196,7 +230,14 @@ func (scc *Controller) syncServices(
 				klog.V(2).InfoS("Adding member address to replace address list", "Member", svc.Name, "IP", svc.Spec.ClusterIP, "ReplaceAddresses", status.Racks[rackName].ReplaceAddressFirstBoot)
 
 				// Make sure the address is stored before proceeding further.
-				return status, nil
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               serviceControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "WaitingToPickUpReplaceAddress",
+					Message:            fmt.Sprintf("Service %q is waiting to pick up stored replace address.", naming.ObjRef(svc)),
+					ObservedGeneration: sc.Generation,
+				})
+				return progressingConditions, nil
 			}
 
 			backgroundPropagationPolicy := metav1.DeletePropagationBackground
@@ -215,6 +256,7 @@ func (scc *Controller) syncServices(
 				"Service", klog.KObj(svc),
 				"PVC", klog.KObj(pvcMeta),
 			)
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, pvcMeta, "delete", sc.Generation)
 			err = scc.kubeClient.CoreV1().PersistentVolumeClaims(pvcMeta.Namespace).Delete(ctx, pvcMeta.Name, metav1.DeleteOptions{
 				PropagationPolicy: &backgroundPropagationPolicy,
 			})
@@ -223,7 +265,7 @@ func (scc *Controller) syncServices(
 					klog.V(4).InfoS("PVC not found", "PVC", klog.KObj(pvcMeta))
 				} else {
 					resourceapply.ReportDeleteEvent(scc.eventRecorder, pvcMeta, err)
-					return status, err
+					return progressingConditions, err
 				}
 			}
 			resourceapply.ReportDeleteEvent(scc.eventRecorder, pvcMeta, nil)
@@ -233,6 +275,13 @@ func (scc *Controller) syncServices(
 			// it's presence only from its cache, and never recreates it if it's missing, only when it
 			// creates the pod. This gives StatefulSet controller a chance to see the PVC was deleted
 			// before deleting the pod.
+			progressingConditions = append(progressingConditions, metav1.Condition{
+				Type:               serviceControllerProgressingCondition,
+				Status:             metav1.ConditionTrue,
+				Reason:             "WaitingForStatefulSetToObservePVCDeletion",
+				Message:            "Waiting for StatefulSet controller to observe PVC deletion.",
+				ObservedGeneration: sc.Generation,
+			})
 			time.Sleep(10 * time.Second)
 
 			// Evict the Pod if it exists.
@@ -247,6 +296,7 @@ func (scc *Controller) syncServices(
 				"Service", klog.KObj(svc),
 				"Pod", klog.KObj(podMeta),
 			)
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, podMeta, "delete", sc.Generation)
 			// TODO: Revert back to eviction when it's fixed in kubernetes 1.19.z (#732)
 			//       (https://github.com/kubernetes/kubernetes/issues/103970)
 			err = scc.kubeClient.CoreV1().Pods(podMeta.Namespace).Delete(ctx, podMeta.Name, metav1.DeleteOptions{
@@ -257,7 +307,7 @@ func (scc *Controller) syncServices(
 					klog.V(4).InfoS("Pod not found", "Pod", klog.ObjectRef{Namespace: svc.Namespace, Name: svc.Name})
 				} else {
 					resourceapply.ReportDeleteEvent(scc.eventRecorder, podMeta, err)
-					return status, err
+					return progressingConditions, err
 				}
 			}
 			resourceapply.ReportDeleteEvent(scc.eventRecorder, podMeta, nil)
@@ -267,6 +317,7 @@ func (scc *Controller) syncServices(
 				"ScyllaCluster", klog.KObj(sc),
 				"Service", klog.KObj(svc),
 			)
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, svc, "delete", sc.Generation)
 			err = scc.kubeClient.CoreV1().Services(svc.Namespace).Delete(ctx, svc.Name, metav1.DeleteOptions{
 				PropagationPolicy: &backgroundPropagationPolicy,
 				Preconditions: &metav1.Preconditions{
@@ -280,7 +331,7 @@ func (scc *Controller) syncServices(
 					klog.V(4).InfoS("Pod not found", "Pod", klog.ObjectRef{Namespace: svc.Namespace, Name: svc.Name})
 				} else {
 					resourceapply.ReportDeleteEvent(scc.eventRecorder, svc, err)
-					return status, err
+					return progressingConditions, err
 				}
 			} else {
 				resourceapply.ReportDeleteEvent(scc.eventRecorder, svc, nil)
@@ -289,7 +340,14 @@ func (scc *Controller) syncServices(
 				//        We can't delete the pod here as it wouldn't retry failures.
 
 				// We have deleted the service. Wait for re-queue.
-				return status, nil
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               serviceControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "WaitingToObserveDeletedService",
+					Message:            fmt.Sprintf("Waiting to observe service %q as deleted to proceeed with other services.", naming.ObjRef(svc)),
+					ObservedGeneration: sc.Generation,
+				})
+				return progressingConditions, nil
 			}
 		} else {
 			// Member is being replaced. Wait for readiness and clear the replace label.
@@ -297,38 +355,42 @@ func (scc *Controller) syncServices(
 			pod, err := scc.podLister.Pods(svc.Namespace).Get(svc.Name)
 			if err != nil {
 				if !apierrors.IsNotFound(err) {
-					return status, err
+					return progressingConditions, err
 				}
 
 				klog.V(2).InfoS("Pod has not been recreated by the StatefulSet controller yet",
 					"ScyllaCluster", klog.KObj(sc),
 					"Pod", klog.KObj(pod),
 				)
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               serviceControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "WaitingForPodRecreation",
+					Message:            fmt.Sprintf("Service %q is waiting for StatefulSet controller to recreate pod %q.", naming.ObjRef(svc), naming.ObjRef(pod)),
+					ObservedGeneration: sc.Generation,
+				})
 			} else {
 				sc := scc.resolveScyllaClusterControllerThroughStatefulSet(pod)
 				if sc == nil {
-					klog.ErrorS(nil, "Pod matching our selector is not owned by us.",
-						"ScyllaCluster", klog.KObj(sc),
-						"Pod", klog.KObj(pod),
-					)
-					// User needs to fix the collision manually so there
-					// is no point in returning an error and retrying.
-					return status, nil
+					// User needs to fix the collision manually. We are subscribed to changes
+					// and there is no point in retrying.
+					return progressingConditions, fmt.Errorf("pod %q is not owned by us anymore", naming.ObjRef(pod))
 				}
 
 				// We could still see an old pod in the caches - verify with a live call.
 				podReady, pod, err := controllerhelpers.IsPodReadyWithPositiveLiveCheck(ctx, scc.kubeClient.CoreV1(), pod)
 				if err != nil {
-					return status, err
+					return progressingConditions, err
 				}
 				if podReady {
 					scc.eventRecorder.Eventf(svc, corev1.EventTypeNormal, "FinishedReplacingNode", "New pod %s/%s is ready.", pod.Namespace, pod.Name)
 					svcCopy := svc.DeepCopy()
 					delete(svcCopy.Labels, naming.ReplaceLabel)
+					controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, svcCopy, "update", sc.Generation)
 					_, err := scc.kubeClient.CoreV1().Services(svcCopy.Namespace).Update(ctx, svcCopy, metav1.UpdateOptions{})
 					resourceapply.ReportUpdateEvent(scc.eventRecorder, svc, err)
 					if err != nil {
-						return status, err
+						return progressingConditions, err
 					}
 
 					delete(status.Racks[rackName].ReplaceAddressFirstBoot, svc.Name)
@@ -337,10 +399,17 @@ func (scc *Controller) syncServices(
 						"ScyllaCluster", klog.KObj(sc),
 						"Pod", klog.KObj(pod),
 					)
+					progressingConditions = append(progressingConditions, metav1.Condition{
+						Type:               serviceControllerProgressingCondition,
+						Status:             metav1.ConditionTrue,
+						Reason:             "WaitingForPodReadiness",
+						Message:            fmt.Sprintf("Service %q is waiting for Pod %q to become ready.", naming.ObjRef(svc), naming.ObjRef(pod)),
+						ObservedGeneration: sc.Generation,
+					})
 				}
 			}
 		}
 	}
 
-	return status, nil
+	return progressingConditions, nil
 }

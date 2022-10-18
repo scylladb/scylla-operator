@@ -4,6 +4,8 @@ package framework
 
 import (
 	"context"
+	"crypto/sha512"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path"
@@ -66,6 +68,11 @@ func (f *Framework) Namespace() string {
 
 func (f *Framework) Username() string {
 	return f.username
+}
+
+func (f *Framework) FieldManager() string {
+	h := sha512.Sum512([]byte(fmt.Sprintf("scylla-operator-e2e-%s", f.Namespace())))
+	return base64.StdEncoding.EncodeToString(h[:])
 }
 
 func (f *Framework) ClientConfig() *restclient.Config {

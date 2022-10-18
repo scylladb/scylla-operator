@@ -1,16 +1,18 @@
 package config
 
 import (
-	"bytes"
 	"io"
 	"io/ioutil"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/magiconair/properties"
-	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
+	"github.com/scylladb/scylla-operator/pkg/features"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	featuregatetesting "k8s.io/component-base/featuregate/testing"
 )
 
 func TestCreateRackDCProperties(t *testing.T) {
@@ -63,50 +65,133 @@ func TestCreateRackDCProperties(t *testing.T) {
 }
 
 func TestMergeYAMLs(t *testing.T) {
-	tests := []struct {
+	tt := []struct {
+		name        string
 		initial     []byte
-		override    []byte
-		result      []byte
-		expectedErr bool
+		overrides   [][]byte
+		expected    []byte
+		expectedErr error
 	}{
 		{
-			[]byte("key: value"),
-			[]byte("key: override_value"),
-			[]byte("key: override_value\n"),
-			false,
+			name: "no overrides produce identical content",
+			initial: []byte(`
+key: value
+`),
+			overrides: nil,
+			expected: []byte(`
+key: value
+`),
+			expectedErr: nil,
 		},
 		{
-			[]byte("#comment"),
-			[]byte("key: value"),
-			[]byte("key: value\n"),
-			false,
+			name: "one level keys",
+			initial: []byte(`
+foo: bar
+key: value
+`),
+			overrides: [][]byte{
+				[]byte(`
+key: override_value
+`),
+			},
+			expected: []byte(`
+foo: bar
+key: override_value
+`),
+			expectedErr: nil,
 		},
 		{
-			[]byte("key: value"),
-			[]byte("#comment"),
-			[]byte("key: value\n"),
-			false,
+			name: "one level keys, last override wins",
+			initial: []byte(`
+foo: bar
+key: value
+`),
+			overrides: [][]byte{
+				[]byte(`
+key: override_value_1
+`),
+				[]byte(`
+key: "override_value_2"
+`),
+			},
+			expected: []byte(`
+foo: bar
+key: override_value_2
+`),
+			expectedErr: nil,
 		},
 		{
-			[]byte("key1:\n  nestedkey1: nestedvalue1"),
-			[]byte("key1:\n  nestedkey1: nestedvalue2"),
-			[]byte("key1:\n  nestedkey1: nestedvalue2\n"),
-			false,
+			name: "initial comment",
+			initial: []byte(`
+#comment
+`),
+			overrides: [][]byte{
+				[]byte(`
+key: override_value
+`),
+			},
+			expected: []byte(`
+key: override_value
+`),
+			expectedErr: nil,
+		},
+		{
+			name: "override comment",
+			initial: []byte(`
+key: value
+`),
+			overrides: [][]byte{
+				[]byte(`
+#comment
+`),
+			},
+			expected: []byte(`
+key: value
+`),
+			expectedErr: nil,
+		},
+		{
+			name: "nested keys override on the top level",
+			initial: []byte(`
+foo: bar
+key:
+  nestedKey_1: value_1
+  nestedKey_2: value_2
+`),
+			overrides: [][]byte{
+				[]byte(`
+key:
+  nestedKey_1: override_value_1
+`),
+			},
+			expected: []byte(`
+foo: bar
+key:
+  nestedKey_1: override_value_1
+`),
+			expectedErr: nil,
 		},
 	}
 
-	for _, test := range tests {
-		result, err := mergeYAMLs(test.initial, test.override)
-		if !bytes.Equal(result, test.result) {
-			t.Errorf("Merge of '%s' and '%s' was incorrect,\n got: %s,\n want: %s.",
-				test.initial, test.override, result, test.result)
-		}
-		if err == nil && test.expectedErr {
-			t.Errorf("Expected error.")
-		}
-		if err != nil && !test.expectedErr {
-			t.Logf("Got an error as expected: %s", err.Error())
-		}
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := mergeYAMLs(tc.initial, tc.overrides...)
+
+			if !reflect.DeepEqual(err, tc.expectedErr) {
+				t.Errorf("expected and actual errors differ: %s", cmp.Diff(tc.expectedErr, err))
+			}
+
+			if tc.expected != nil {
+				tc.expected = []byte(strings.TrimPrefix(string(tc.expected), "\n"))
+			}
+
+			if !reflect.DeepEqual(got, tc.expected) {
+				t.Errorf("expected and actual data differ: %s", cmp.Diff(string(tc.expected), string(got)))
+			}
+		})
 	}
 }
 
@@ -116,61 +201,6 @@ func TestAllowedCPUs(t *testing.T) {
 		t.Error(err)
 	}
 	t.Log(cpusAllowed)
-}
-
-func TestScyllaYamlMerging(t *testing.T) {
-	tests := []struct {
-		DefaultContent    string
-		UserConfigContent string
-		ExpectedResult    string
-	}{
-		{
-			DefaultContent:    "",
-			UserConfigContent: "",
-			ExpectedResult:    "cluster_name: cluster-name\nendpoint_snitch: GossipingPropertyFileSnitch\nrpc_address: 0.0.0.0\n",
-		},
-		{
-			DefaultContent:    "some_key: 1",
-			UserConfigContent: "",
-			ExpectedResult:    "cluster_name: cluster-name\nendpoint_snitch: GossipingPropertyFileSnitch\nrpc_address: 0.0.0.0\nsome_key: 1\n",
-		},
-		{
-			DefaultContent:    "cluster_name: default-name",
-			UserConfigContent: "",
-			ExpectedResult:    "cluster_name: cluster-name\nendpoint_snitch: GossipingPropertyFileSnitch\nrpc_address: 0.0.0.0\n",
-		},
-		{
-			DefaultContent:    "some_key: 1",
-			UserConfigContent: "cluster_name: different_name",
-			ExpectedResult:    "cluster_name: different_name\nendpoint_snitch: GossipingPropertyFileSnitch\nrpc_address: 0.0.0.0\nsome_key: 1\n",
-		},
-		{
-			DefaultContent:    "some_key: 1",
-			UserConfigContent: "some_key: 2",
-			ExpectedResult:    "cluster_name: cluster-name\nendpoint_snitch: GossipingPropertyFileSnitch\nrpc_address: 0.0.0.0\nsome_key: 2\n",
-		},
-	}
-
-	for _, test := range tests {
-		scyllaYamlPath := writeTempFile(t, "scylla-yaml", test.DefaultContent)
-		defer os.Remove(scyllaYamlPath)
-		configMapYamlPath := writeTempFile(t, "config-map", test.UserConfigContent)
-		defer os.Remove(configMapYamlPath)
-
-		sc := &ScyllaConfig{member: &identity.Member{Cluster: "cluster-name"}}
-		if err := sc.setupScyllaYAML(scyllaYamlPath, configMapYamlPath); err != nil {
-			t.Error(err)
-		}
-
-		resultContent, err := ioutil.ReadFile(scyllaYamlPath)
-		if err != nil {
-			t.Error(err)
-		}
-
-		if string(resultContent) != test.ExpectedResult {
-			t.Error(cmp.Diff(test.ExpectedResult, string(resultContent)))
-		}
-	}
 }
 
 func writeTempFile(t *testing.T, namePattern, content string) string {
@@ -291,6 +321,70 @@ func TestScyllaArguments(t *testing.T) {
 			argumentsMap := convertScyllaArguments(test.Args)
 			if !reflect.DeepEqual(test.ExpectedArgs, argumentsMap) {
 				t.Errorf("expected %+v, got %+v", test.ExpectedArgs, argumentsMap)
+			}
+		})
+	}
+}
+
+func Test_makeOperatorConfigOverrides(t *testing.T) {
+	tt := []struct {
+		name                 string
+		clusterName          string
+		enableTLSFeatureGate bool
+		expected             []byte
+		expectedErr          error
+	}{
+		{
+			name:                 "no TLS config when the feature is disabled",
+			clusterName:          "foo",
+			enableTLSFeatureGate: false,
+			expected: []byte(`
+cluster_name: "foo"
+rpc_address: "0.0.0.0"
+endpoint_snitch: "GossipingPropertyFileSnitch"
+`),
+			expectedErr: nil,
+		},
+		{
+			name:                 "TLS config present when the feature is enabled",
+			clusterName:          "foo",
+			enableTLSFeatureGate: true,
+			expected: []byte(`
+cluster_name: "foo"
+rpc_address: "0.0.0.0"
+endpoint_snitch: "GossipingPropertyFileSnitch"
+native_transport_port_ssl: 9142
+client_encryption_options:
+  enabled: true
+  optional: false
+  certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.crt"
+  keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.key"
+  require_client_auth: true
+  truststore: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/client-ca/tls.crt"
+`),
+			expectedErr: nil,
+		},
+	}
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			defer featuregatetesting.SetFeatureGateDuringTest(
+				t,
+				utilfeature.DefaultMutableFeatureGate,
+				features.AutomaticTLSCertificates,
+				tc.enableTLSFeatureGate,
+			)()
+
+			got, err := makeOperatorConfigOverrides(tc.clusterName)
+			if !reflect.DeepEqual(err, tc.expectedErr) {
+				t.Errorf("expected and actual errors differ: %s", cmp.Diff(tc.expectedErr, err))
+			}
+
+			if tc.expected != nil {
+				tc.expected = []byte(strings.TrimPrefix(string(tc.expected), "\n"))
+			}
+
+			if !reflect.DeepEqual(got, tc.expected) {
+				t.Errorf("expected and actual data differ: %s", cmp.Diff(string(tc.expected), string(got)))
 			}
 		})
 	}

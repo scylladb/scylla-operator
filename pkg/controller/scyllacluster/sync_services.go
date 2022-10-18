@@ -372,8 +372,6 @@ func (scc *Controller) syncServices(
 			} else {
 				sc := scc.resolveScyllaClusterControllerThroughStatefulSet(pod)
 				if sc == nil {
-					// User needs to fix the collision manually. We are subscribed to changes
-					// and there is no point in retrying.
 					return progressingConditions, fmt.Errorf("pod %q is not owned by us anymore", naming.ObjRef(pod))
 				}
 

@@ -16,6 +16,7 @@ import (
 	"github.com/onsi/ginkgo/v2/reporters"
 	"github.com/onsi/ginkgo/v2/types"
 	"github.com/onsi/gomega"
+	gomegaformat "github.com/onsi/gomega/format"
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/signals"
@@ -297,6 +298,9 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 	// Better context and it's required for nested assertions. Offset doesn't really solve it as it omits the nested function line.
 	reporterConfig.FullTrace = true
 	reporterConfig.SlowSpecThreshold = 10 * time.Minute
+	gomegaformat.MaxLength = 0
+	gomegaformat.MaxDepth = 20
+	gomegaformat.TruncatedDiff = false
 
 	gomega.RegisterFailHandler(ginkgo.Fail)
 

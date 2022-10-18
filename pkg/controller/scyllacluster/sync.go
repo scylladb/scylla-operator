@@ -8,6 +8,7 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
+	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
@@ -20,6 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
@@ -154,6 +156,50 @@ func (scc *Controller) getSecrets(ctx context.Context, sc *scyllav1.ScyllaCluste
 		},
 	)
 	return cm.ClaimSecrets(secrets)
+}
+
+func (scc *Controller) getConfigMaps(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*corev1.ConfigMap, error) {
+	// List all ConfigMaps to find even those that no longer match our selector.
+	// They will be orphaned in ClaimConfigMaps().
+	configMaps, err := scc.configMapLister.ConfigMaps(sc.Namespace).List(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+
+	selector := labels.SelectorFromSet(labels.Set{
+		naming.ClusterNameLabel: sc.Name,
+	})
+
+	// If any adoptions are attempted, we should first recheck for deletion with
+	// an uncached quorum read sometime after listing ConfigMaps.
+	canAdoptFunc := func() error {
+		fresh, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		if fresh.UID != sc.UID {
+			return fmt.Errorf("original ScyllaCluster %v/%v is gone: got uid %v, wanted %v", sc.Namespace, sc.Name, fresh.UID, sc.UID)
+		}
+
+		if fresh.GetDeletionTimestamp() != nil {
+			return fmt.Errorf("%v/%v has just been deleted at %v", sc.Namespace, sc.Name, sc.DeletionTimestamp)
+		}
+
+		return nil
+	}
+	cm := controllertools.NewConfigMapControllerRefManager(
+		ctx,
+		sc,
+		scyllaClusterControllerGVK,
+		selector,
+		canAdoptFunc,
+		controllertools.RealConfigMapControl{
+			KubeClient: scc.kubeClient,
+			Recorder:   scc.eventRecorder,
+		},
+	)
+	return cm.ClaimConfigMaps(configMaps)
 }
 
 func (scc *Controller) getServiceAccounts(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*corev1.ServiceAccount, error) {
@@ -394,6 +440,11 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		return err
 	}
 
+	configMapMap, err := scc.getConfigMaps(ctx, sc)
+	if err != nil {
+		return err
+	}
+
 	serviceAccounts, err := scc.getServiceAccounts(ctx, sc)
 	if err != nil {
 		return fmt.Errorf("can't get serviceaccounts: %w", err)
@@ -459,6 +510,21 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 	)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't sync agent token: %w", err))
+	}
+
+	if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {
+		err = runSync(
+			&status.Conditions,
+			certControllerProgressingCondition,
+			certControllerDegradedCondition,
+			sc.Generation,
+			func() ([]metav1.Condition, error) {
+				return scc.syncCerts(ctx, sc, secretMap, configMapMap, serviceMap)
+			},
+		)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("can't sync certificates: %w", err))
+		}
 	}
 
 	err = runSync(

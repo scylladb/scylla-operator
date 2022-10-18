@@ -430,7 +430,17 @@ type ScyllaClusterStatus struct {
 
 	// upgrade reflects state of ongoing upgrade procedure.
 	Upgrade *UpgradeStatus `json:"upgrade,omitempty"`
+
+	// conditions hold conditions describing ScyllaCluster state.
+	// To determine whether a cluster rollout is finished, look for Available=True,Progressing=False,Degraded=False.
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
+
+const (
+	AvailableCondition   = "Available"
+	ProgressingCondition = "Progressing"
+	DegradedCondition    = "Degraded"
+)
 
 // UpgradeStatus contains the internal state of an ongoing upgrade procedure.
 // Do not rely on these internal values externally. They are meant for keeping an internal state

@@ -44,11 +44,11 @@ jobs:
     name: Verify
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         path: ${{ env.git_repo_path }}
     - name: Setup go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
         go-version: ${{ env.go_version }}
     - name: Install tools
@@ -62,11 +62,11 @@ jobs:
     name: Verify dependencies
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         path: ${{ env.git_repo_path }}
     - name: Setup go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
         go-version: ${{ env.go_version }}
     - name: Verify dependencies
@@ -76,7 +76,7 @@ jobs:
     name: Build and test
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         path: ${{ env.git_repo_path }}
         fetch-depth: 0
@@ -84,7 +84,7 @@ jobs:
       if: ${{ startsWith(github.ref, 'refs/tags/') }}
       run: ./hack/ci-detect-tags.sh
     - name: Setup go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
         go-version: ${{ env.go_version }}
     - name: Build
@@ -100,7 +100,7 @@ jobs:
     name: Build images
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         path: ${{ env.git_repo_path }}
         fetch-depth: 0  # also fetch tags
@@ -125,7 +125,7 @@ jobs:
         sudo podman images '${{ env.image_repo_ref }}:ci'
         sudo podman save '${{ env.image_repo_ref }}:ci' | lz4 - ~/operatorimage.tar.lz4
     - name: Upload image artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: operatorimage.tar.lz4
         path: ~/operatorimage.tar.lz4
@@ -136,7 +136,7 @@ jobs:
     name: Build Helm charts
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         path: ${{ env.git_repo_path }}
         fetch-depth: 0  # also fetch tags
@@ -144,13 +144,13 @@ jobs:
       if: ${{ startsWith(github.ref, 'refs/tags/') }}
       run: ./hack/ci-detect-tags.sh
     - name: Setup go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
         go-version: ${{ env.go_version }}
     - name: Build Helm charts
       run: make helm-build
     - name: Upload charts artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: helm-charts.zip
         path: ${{ env.git_repo_path }}/helm/build/*
@@ -162,7 +162,7 @@ jobs:
     runs-on: ubuntu-20.04
     needs: images
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         path: ${{ env.git_repo_path }}
         fetch-depth: 0  # also fetch tags
@@ -178,7 +178,7 @@ jobs:
     runs-on: ubuntu-20.04
     needs: images
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         path: ${{ env.git_repo_path }}
         fetch-depth: 0  # also fetch tags
@@ -215,7 +215,7 @@ jobs:
     needs: [success]
     if: ${{ github.event_name != 'pull_request' }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         path: ${{ env.git_repo_path }}
         # Helm Chart version needs to be semantic, we need tags in checked out repo to determine latest one.
@@ -224,7 +224,7 @@ jobs:
       if: ${{ startsWith(github.ref, 'refs/tags/') }}
       run: ./hack/ci-detect-tags.sh
     - name: Setup go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
         go-version: ${{ env.go_version }}
     - name: Determine promotion tag
@@ -239,7 +239,7 @@ jobs:
         CI_IMAGE_TAG=nightly
         echo "CI_IMAGE_TAG=${CI_IMAGE_TAG}" | tee -a ${GITHUB_ENV}
         echo "HELM_CHART_VERSION_SUFFIX=-${CI_IMAGE_TAG}" | tee -a ${GITHUB_ENV}
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       with:
         name: operatorimage.tar.lz4
         path: ~/
@@ -251,7 +251,7 @@ jobs:
         docker tag "$( echo "${image_repo_ref}:ci" | sed -E -e 's~[^/]+/(.*)~\1~' )" "${image_repo_ref}:ci"
         docker images '${{ env.image_repo_ref }}:ci'
     - name: Login to DockerHub
-      uses: docker/login-action@v1
+      uses: docker/login-action@v2
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}

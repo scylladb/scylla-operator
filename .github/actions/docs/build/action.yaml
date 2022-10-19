@@ -23,7 +23,7 @@ runs:
       tar -cJf ~/docs.tar.xz -C ./docs/_build .
 
   - name: Upload docs artifact
-    uses: actions/upload-artifact@v2
+    uses: actions/upload-artifact@v3
     with:
       name: docs.tar.xz
       path: ~/docs.tar.xz

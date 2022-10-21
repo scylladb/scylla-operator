@@ -50,7 +50,7 @@ func IdentityService(c *scyllav1.ScyllaCluster) *corev1.Service {
 			Namespace: c.Namespace,
 			Labels:    labels,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(c, controllerGVK),
+				*metav1.NewControllerRef(c, scyllaClusterControllerGVK),
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -99,7 +99,7 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 			Name:      name,
 			Namespace: sc.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(sc, controllerGVK),
+				*metav1.NewControllerRef(sc, scyllaClusterControllerGVK),
 			},
 			Labels: labels,
 		},
@@ -199,7 +199,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 			Namespace: c.Namespace,
 			Labels:    rackLabels,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(c, controllerGVK),
+				*metav1.NewControllerRef(c, scyllaClusterControllerGVK),
 			},
 		},
 		Spec: appsv1.StatefulSetSpec{
@@ -624,7 +624,7 @@ func MakePodDisruptionBudget(c *scyllav1.ScyllaCluster) *policyv1.PodDisruptionB
 			Name:      naming.PodDisruptionBudgetName(c),
 			Namespace: c.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(c, controllerGVK),
+				*metav1.NewControllerRef(c, scyllaClusterControllerGVK),
 			},
 			Labels: naming.ClusterLabels(c),
 		},
@@ -699,7 +699,7 @@ func MakeIngresses(c *scyllav1.ScyllaCluster, services map[string]*corev1.Servic
 					Labels:      labels,
 					Annotations: ip.ingressOptions.Annotations,
 					OwnerReferences: []metav1.OwnerReference{
-						*metav1.NewControllerRef(c, controllerGVK),
+						*metav1.NewControllerRef(c, scyllaClusterControllerGVK),
 					},
 				},
 				Spec: networkingv1.IngressSpec{
@@ -761,7 +761,7 @@ func MakeAgentAuthTokenSecret(c *scyllav1.ScyllaCluster, authToken string) (*cor
 			Name:      naming.AgentAuthTokenSecretName(c.Name),
 			Namespace: c.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(c, controllerGVK),
+				*metav1.NewControllerRef(c, scyllaClusterControllerGVK),
 			},
 			Labels: naming.ClusterLabels(c),
 		},
@@ -793,7 +793,7 @@ func MakeServiceAccount(sc *scyllav1.ScyllaCluster) *corev1.ServiceAccount {
 			Name:      naming.MemberServiceAccountNameForScyllaCluster(sc.Name),
 			Namespace: sc.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(sc, controllerGVK),
+				*metav1.NewControllerRef(sc, scyllaClusterControllerGVK),
 			},
 			Labels: naming.ClusterLabels(sc),
 		},
@@ -807,7 +807,7 @@ func MakeRoleBinding(sc *scyllav1.ScyllaCluster) *rbacv1.RoleBinding {
 			Name:      saName,
 			Namespace: sc.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(sc, controllerGVK),
+				*metav1.NewControllerRef(sc, scyllaClusterControllerGVK),
 			},
 			Labels: naming.ClusterLabels(sc),
 		},

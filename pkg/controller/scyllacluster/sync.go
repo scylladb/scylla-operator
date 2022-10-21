@@ -6,7 +6,9 @@ import (
 	"time"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
+	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -14,6 +16,7 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -54,7 +57,7 @@ func (scc *Controller) getStatefulSets(ctx context.Context, sc *scyllav1.ScyllaC
 	cm := controllertools.NewStatefulSetControllerRefManager(
 		ctx,
 		sc,
-		controllerGVK,
+		scyllaClusterControllerGVK,
 		selector,
 		canAdoptFunc,
 		controllertools.RealStatefulSetControl{
@@ -98,7 +101,7 @@ func (scc *Controller) getServices(ctx context.Context, sc *scyllav1.ScyllaClust
 	cm := controllertools.NewServiceControllerRefManager(
 		ctx,
 		sc,
-		controllerGVK,
+		scyllaClusterControllerGVK,
 		selector,
 		canAdoptFunc,
 		controllertools.RealServiceControl{
@@ -142,7 +145,7 @@ func (scc *Controller) getSecrets(ctx context.Context, sc *scyllav1.ScyllaCluste
 	cm := controllertools.NewSecretControllerRefManager(
 		ctx,
 		sc,
-		controllerGVK,
+		scyllaClusterControllerGVK,
 		selector,
 		canAdoptFunc,
 		controllertools.RealSecretControl{
@@ -153,10 +156,10 @@ func (scc *Controller) getSecrets(ctx context.Context, sc *scyllav1.ScyllaCluste
 	return cm.ClaimSecrets(secrets)
 }
 
-func (sac *Controller) getServiceAccounts(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*corev1.ServiceAccount, error) {
+func (scc *Controller) getServiceAccounts(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*corev1.ServiceAccount, error) {
 	// List all ServiceAccounts to find even those that no longer match our selector.
 	// They will be orphaned in ClaimServiceAccount().
-	serviceAccounts, err := sac.serviceAccountLister.ServiceAccounts(sc.Namespace).List(labels.Everything())
+	serviceAccounts, err := scc.serviceAccountLister.ServiceAccounts(sc.Namespace).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +171,7 @@ func (sac *Controller) getServiceAccounts(ctx context.Context, sc *scyllav1.Scyl
 	// If any adoptions are attempted, we should first recheck for deletion with
 	// an uncached quorum read sometime after listing StatefulSets.
 	canAdoptFunc := func() error {
-		fresh, err := sac.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
+		fresh, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -186,21 +189,21 @@ func (sac *Controller) getServiceAccounts(ctx context.Context, sc *scyllav1.Scyl
 	cm := controllertools.NewServiceAccountControllerRefManager(
 		ctx,
 		sc,
-		controllerGVK,
+		scyllaClusterControllerGVK,
 		selector,
 		canAdoptFunc,
 		controllertools.RealServiceAccountControl{
-			KubeClient: sac.kubeClient,
-			Recorder:   sac.eventRecorder,
+			KubeClient: scc.kubeClient,
+			Recorder:   scc.eventRecorder,
 		},
 	)
 	return cm.ClaimServiceAccounts(serviceAccounts)
 }
 
-func (sac *Controller) getRoleBindings(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*rbacv1.RoleBinding, error) {
+func (scc *Controller) getRoleBindings(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*rbacv1.RoleBinding, error) {
 	// List all RoleBindings to find even those that no longer match our selector.
 	// They will be orphaned in ClaimRoleBindings().
-	roleBindings, err := sac.roleBindingLister.RoleBindings(sc.Namespace).List(labels.Everything())
+	roleBindings, err := scc.roleBindingLister.RoleBindings(sc.Namespace).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +215,7 @@ func (sac *Controller) getRoleBindings(ctx context.Context, sc *scyllav1.ScyllaC
 	// If any adoptions are attempted, we should first recheck for deletion with
 	// an uncached quorum read sometime after listing RoleBindings.
 	canAdoptFunc := func() error {
-		fresh, err := sac.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
+		fresh, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -230,12 +233,12 @@ func (sac *Controller) getRoleBindings(ctx context.Context, sc *scyllav1.ScyllaC
 	cm := controllertools.NewRoleBindingControllerRefManager(
 		ctx,
 		sc,
-		controllerGVK,
+		scyllaClusterControllerGVK,
 		selector,
 		canAdoptFunc,
 		controllertools.RealRoleBindingControl{
-			KubeClient: sac.kubeClient,
-			Recorder:   sac.eventRecorder,
+			KubeClient: scc.kubeClient,
+			Recorder:   scc.eventRecorder,
 		},
 	)
 	return cm.ClaimRoleBindings(roleBindings)
@@ -274,7 +277,7 @@ func (scc *Controller) getPDBs(ctx context.Context, sc *scyllav1.ScyllaCluster) 
 	cm := controllertools.NewPodDisruptionBudgetControllerRefManager(
 		ctx,
 		sc,
-		controllerGVK,
+		scyllaClusterControllerGVK,
 		selector,
 		canAdoptFunc,
 		controllertools.RealPodDisruptionBudgetControl{
@@ -318,7 +321,7 @@ func (scc *Controller) getIngresses(ctx context.Context, sc *scyllav1.ScyllaClus
 	cm := controllertools.NewIngressControllerRefManager(
 		ctx,
 		sc,
-		controllerGVK,
+		scyllaClusterControllerGVK,
 		selector,
 		canAdoptFunc,
 		controllertools.RealIngressControl{
@@ -327,6 +330,31 @@ func (scc *Controller) getIngresses(ctx context.Context, sc *scyllav1.ScyllaClus
 		},
 	)
 	return cm.ClaimIngresss(ingresses)
+}
+
+func runSync(conditions *[]metav1.Condition, progressingConditionType, degradedCondType string, observedGeneration int64, syncFn func() ([]metav1.Condition, error)) error {
+	progressingConditions, err := syncFn()
+	controllerhelpers.SetStatusConditionFromError(conditions, err, degradedCondType, observedGeneration)
+	if err != nil {
+		return err
+	}
+
+	progressingCondition, err := controllerhelpers.AggregateStatusConditions(
+		progressingConditions,
+		metav1.Condition{
+			Type:               progressingConditionType,
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: observedGeneration,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("can't aggregate progressing conditions %q: %w", progressingConditionType, err)
+	}
+	apimeta.SetStatusCondition(conditions, progressingCondition)
+
+	return nil
 }
 
 func (scc *Controller) sync(ctx context.Context, key string) error {
@@ -394,46 +422,148 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 
 	var errs []error
 
-	err = scc.syncServiceAccounts(ctx, sc, serviceAccounts)
+	err = runSync(
+		&status.Conditions,
+		serviceAccountControllerProgressingCondition,
+		serviceAccountControllerDegradedCondition,
+		sc.Generation,
+		func() ([]metav1.Condition, error) {
+			return scc.syncServiceAccounts(ctx, sc, serviceAccounts)
+		},
+	)
 	if err != nil {
-		errs = append(errs, fmt.Errorf("can't sync serviceaccounts: %w", err))
-		// TODO: Set degraded condition
+		errs = append(errs, fmt.Errorf("can't sync service accounts: %w", err))
 	}
 
-	err = scc.syncRoleBindings(ctx, sc, roleBindings)
+	err = runSync(
+		&status.Conditions,
+		roleBindingControllerProgressingCondition,
+		roleBindingControllerDegradedCondition,
+		sc.Generation,
+		func() ([]metav1.Condition, error) {
+			return scc.syncRoleBindings(ctx, sc, roleBindings)
+		},
+	)
 	if err != nil {
-		errs = append(errs, fmt.Errorf("can't sync rolebindings: %w", err))
-		// TODO: Set degraded condition
+		errs = append(errs, fmt.Errorf("can't sync role bindings: %w", err))
 	}
 
-	status, err = scc.syncAgentToken(ctx, sc, status, secretMap)
+	err = runSync(
+		&status.Conditions,
+		agentTokenControllerProgressingCondition,
+		agentTokenControllerDegradedCondition,
+		sc.Generation,
+		func() ([]metav1.Condition, error) {
+			return scc.syncAgentToken(ctx, sc, secretMap)
+		},
+	)
 	if err != nil {
-		errs = append(errs, err)
-		// TODO: Set degraded condition
+		errs = append(errs, fmt.Errorf("can't sync agent token: %w", err))
 	}
 
-	status, err = scc.syncStatefulSets(ctx, key, sc, status, statefulSetMap, serviceMap)
+	err = runSync(
+		&status.Conditions,
+		statefulSetControllerProgressingCondition,
+		statefulSetControllerDegradedCondition,
+		sc.Generation,
+		func() ([]metav1.Condition, error) {
+			return scc.syncStatefulSets(ctx, key, sc, status, statefulSetMap, serviceMap)
+		},
+	)
 	if err != nil {
-		errs = append(errs, err)
-		// TODO: Set degraded condition
+		errs = append(errs, fmt.Errorf("can't sync stateful sets: %w", err))
+	}
+	// Ideally, this would be projected in calculateStatus but because we are updating the status based on applied
+	// StatefulSets, the rack status can change afterwards. Overtime we should consider adding a status.progressing
+	// field (to allow determining cluster status without conditions) and wait for the status to be updated
+	// in a single place, on the next resync.
+	scc.setStatefulSetsAvailableStatusCondition(sc, status)
+
+	err = runSync(
+		&status.Conditions,
+		serviceControllerProgressingCondition,
+		serviceControllerDegradedCondition,
+		sc.Generation,
+		func() ([]metav1.Condition, error) {
+			return scc.syncServices(ctx, sc, status, serviceMap, statefulSetMap)
+		},
+	)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't sync services: %w", err))
 	}
 
-	status, err = scc.syncServices(ctx, sc, status, serviceMap, statefulSetMap)
+	err = runSync(
+		&status.Conditions,
+		pdbControllerProgressingCondition,
+		pdbControllerDegradedCondition,
+		sc.Generation,
+		func() ([]metav1.Condition, error) {
+			return scc.syncPodDisruptionBudgets(ctx, sc, pdbMap)
+		},
+	)
 	if err != nil {
-		errs = append(errs, err)
-		// TODO: Set degraded condition
+		errs = append(errs, fmt.Errorf("can't sync pdbs: %w", err))
 	}
 
-	status, err = scc.syncPodDisruptionBudgets(ctx, sc, status, pdbMap)
+	err = runSync(
+		&status.Conditions,
+		ingressControllerProgressingCondition,
+		ingressControllerDegradedCondition,
+		sc.Generation,
+		func() ([]metav1.Condition, error) {
+			return scc.syncIngresses(ctx, sc, ingressMap, serviceMap)
+		},
+	)
 	if err != nil {
-		errs = append(errs, err)
-		// TODO: Set degraded condition
+		errs = append(errs, fmt.Errorf("can't sync ingresses: %w", err))
 	}
-	status, err = scc.syncIngresses(ctx, sc, status, ingressMap, serviceMap)
+
+	// Aggregate conditions.
+
+	availableCondition, err := controllerhelpers.AggregateStatusConditions(
+		controllerhelpers.FindStatusConditionsWithSuffix(status.Conditions, scyllav1.AvailableCondition),
+		metav1.Condition{
+			Type:               scyllav1.AvailableCondition,
+			Status:             metav1.ConditionTrue,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: sc.Generation,
+		},
+	)
 	if err != nil {
-		errs = append(errs, err)
-		// TODO: Set degraded condition
+		return fmt.Errorf("can't aggregate status conditions: %w", err)
 	}
+	apimeta.SetStatusCondition(&status.Conditions, availableCondition)
+
+	progressingCondition, err := controllerhelpers.AggregateStatusConditions(
+		controllerhelpers.FindStatusConditionsWithSuffix(status.Conditions, scyllav1.ProgressingCondition),
+		metav1.Condition{
+			Type:               scyllav1.ProgressingCondition,
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: sc.Generation,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("can't aggregate status conditions: %w", err)
+	}
+	apimeta.SetStatusCondition(&status.Conditions, progressingCondition)
+
+	degradedCondition, err := controllerhelpers.AggregateStatusConditions(
+		controllerhelpers.FindStatusConditionsWithSuffix(status.Conditions, scyllav1.DegradedCondition),
+		metav1.Condition{
+			Type:               scyllav1.DegradedCondition,
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: sc.Generation,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("can't aggregate status conditions: %w", err)
+	}
+	apimeta.SetStatusCondition(&status.Conditions, degradedCondition)
 
 	err = scc.updateStatus(ctx, sc, status)
 	errs = append(errs, err)

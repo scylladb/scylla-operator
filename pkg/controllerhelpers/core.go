@@ -3,10 +3,16 @@ package controllerhelpers
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/resource"
+	outilerrors "github.com/scylladb/scylla-operator/pkg/util/errors"
 	corev1 "k8s.io/api/core/v1"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	corev1schedulinghelpers "k8s.io/component-helpers/scheduling/corev1"
 	"k8s.io/klog/v2"
@@ -29,6 +35,137 @@ func IsPodReady(pod *corev1.Pod) bool {
 
 	condition := GetPodCondition(pod.Status.Conditions, corev1.PodReady)
 	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// FindStatusConditionsWithSuffix finds all conditions that end with the suffix, except the identity.
+func FindStatusConditionsWithSuffix(conditions []metav1.Condition, suffix string) []metav1.Condition {
+	var res []metav1.Condition
+
+	suffixLen := len(suffix)
+	for _, c := range conditions {
+		// Filter out identity and optimize filtering out shorter strings.
+		if len(c.Type) <= suffixLen {
+			continue
+		}
+
+		if strings.HasSuffix(c.Type, suffix) {
+			res = append(res, c)
+		}
+	}
+
+	return res
+}
+
+func aggregateStatusConditionInfo(conditions []metav1.Condition) (string, string) {
+	reasons := make([]string, 0, len(conditions))
+	messages := make([]string, 0, len(conditions))
+
+	for _, c := range conditions {
+		reasons = append(reasons, fmt.Sprintf("%s_%s", c.Type, c.Reason))
+
+		for _, line := range strings.Split(c.Message, "\n") {
+			messages = append(messages, fmt.Sprintf("%s: %s", c.Type, line))
+		}
+	}
+
+	// TODO: Strip aggregated reasons and messages to fit into API limits.
+	return strings.Join(reasons, ","), strings.Join(messages, "\n")
+}
+
+func AggregateStatusConditions(conditions []metav1.Condition, condition metav1.Condition) (metav1.Condition, error) {
+	var defaultVal bool
+	switch condition.Status {
+	case metav1.ConditionTrue:
+		defaultVal = true
+
+	case metav1.ConditionFalse:
+		defaultVal = false
+
+	default:
+		return metav1.Condition{}, fmt.Errorf("unsupported default value %q", condition.Status)
+	}
+
+	var trueConditions, falseConditions, unknownConditions []metav1.Condition
+	for _, c := range conditions {
+		switch c.Status {
+		case metav1.ConditionUnknown:
+			unknownConditions = append(unknownConditions, c)
+
+		case metav1.ConditionTrue:
+			trueConditions = append(trueConditions, c)
+
+		case metav1.ConditionFalse:
+			falseConditions = append(falseConditions, c)
+
+		default:
+			return metav1.Condition{}, fmt.Errorf("unknown condition status %q", c.Status)
+		}
+	}
+
+	if defaultVal == true && len(falseConditions) > 0 {
+		reason, message := aggregateStatusConditionInfo(falseConditions)
+		return metav1.Condition{
+			Type:               condition.Type,
+			Status:             metav1.ConditionFalse,
+			Reason:             reason,
+			Message:            message,
+			ObservedGeneration: condition.ObservedGeneration,
+		}, nil
+	}
+
+	if defaultVal == false && len(trueConditions) > 0 {
+		reason, message := aggregateStatusConditionInfo(trueConditions)
+		return metav1.Condition{
+			Type:               condition.Type,
+			Status:             metav1.ConditionTrue,
+			Reason:             reason,
+			Message:            message,
+			ObservedGeneration: condition.ObservedGeneration,
+		}, nil
+	}
+
+	if len(unknownConditions) > 0 {
+		reason, message := aggregateStatusConditionInfo(unknownConditions)
+		return metav1.Condition{
+			Type:               condition.Type,
+			Status:             metav1.ConditionUnknown,
+			Reason:             reason,
+			Message:            message,
+			ObservedGeneration: condition.ObservedGeneration,
+		}, nil
+	}
+
+	return condition, nil
+}
+
+func SetStatusConditionFromError(conditions *[]metav1.Condition, err error, conditionType string, observedGeneration int64) {
+	if err != nil {
+		apimeta.SetStatusCondition(conditions, metav1.Condition{
+			Type:               conditionType,
+			Status:             metav1.ConditionTrue,
+			Reason:             internalapi.ErrorReason,
+			Message:            outilerrors.NewMultilineAggregate([]error{err}).Error(),
+			ObservedGeneration: observedGeneration,
+		})
+	} else {
+		apimeta.SetStatusCondition(conditions, metav1.Condition{
+			Type:               conditionType,
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: observedGeneration,
+		})
+	}
+}
+
+func AddGenericProgressingStatusCondition(conditions *[]metav1.Condition, conditionType string, obj runtime.Object, verb string, observedGeneration int64) {
+	*conditions = append(*conditions, metav1.Condition{
+		Type:               conditionType,
+		Status:             metav1.ConditionTrue,
+		Reason:             internalapi.ProgressingReason,
+		Message:            fmt.Sprintf("Progressing: Running %q on %q", verb, resource.GetObjectGVKOrUnknown(obj)),
+		ObservedGeneration: observedGeneration,
+	})
 }
 
 func IsPodReadyWithPositiveLiveCheck(ctx context.Context, client corev1client.PodsGetter, pod *corev1.Pod) (bool, *corev1.Pod, error) {

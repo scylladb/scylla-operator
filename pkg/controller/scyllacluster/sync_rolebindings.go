@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,8 +16,9 @@ func (scc *Controller) syncRoleBindings(
 	ctx context.Context,
 	sc *scyllav1.ScyllaCluster,
 	roleBindings map[string]*rbacv1.RoleBinding,
-) error {
+) ([]metav1.Condition, error) {
 	var err error
+	var progressingConditions []metav1.Condition
 
 	requiredRoleBinding := MakeRoleBinding(sc)
 
@@ -33,6 +35,7 @@ func (scc *Controller) syncRoleBindings(
 		}
 
 		propagationPolicy := metav1.DeletePropagationBackground
+		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, roleBindingControllerProgressingCondition, rb, "delete", sc.Generation)
 		err = scc.kubeClient.RbacV1().RoleBindings(rb.Namespace).Delete(ctx, rb.Name, metav1.DeleteOptions{
 			Preconditions: &metav1.Preconditions{
 				UID: &rb.UID,
@@ -43,13 +46,16 @@ func (scc *Controller) syncRoleBindings(
 	}
 	err = utilerrors.NewAggregate(deletionErrors)
 	if err != nil {
-		return fmt.Errorf("can't delete role binding(s): %w", err)
+		return progressingConditions, fmt.Errorf("can't delete role binding(s): %w", err)
 	}
 
-	_, _, err = resourceapply.ApplyRoleBinding(ctx, scc.kubeClient.RbacV1(), scc.roleBindingLister, scc.eventRecorder, requiredRoleBinding, true, false)
+	_, changed, err := resourceapply.ApplyRoleBinding(ctx, scc.kubeClient.RbacV1(), scc.roleBindingLister, scc.eventRecorder, requiredRoleBinding, true, false)
+	if changed {
+		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, roleBindingControllerProgressingCondition, requiredRoleBinding, "apply", sc.Generation)
+	}
 	if err != nil {
-		return fmt.Errorf("can't apply role binding: %w", err)
+		return progressingConditions, fmt.Errorf("can't apply role binding: %w", err)
 	}
 
-	return nil
+	return progressingConditions, nil
 }

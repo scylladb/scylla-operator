@@ -83,8 +83,117 @@ func verifyPodDisruptionBudget(sc *scyllav1.ScyllaCluster, pdb *policyv1.PodDisr
 func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, sc *scyllav1.ScyllaCluster) {
 	framework.By("Verifying the ScyllaCluster")
 
+	sc = sc.DeepCopy()
+
+	o.Expect(sc.CreationTimestamp).NotTo(o.BeNil())
 	o.Expect(sc.Status.ObservedGeneration).NotTo(o.BeNil())
+	o.Expect(*sc.Status.ObservedGeneration).To(o.BeNumerically(">=", sc.Generation))
 	o.Expect(sc.Status.Racks).To(o.HaveLen(len(sc.Spec.Datacenter.Racks)))
+
+	for i := range sc.Status.Conditions {
+		c := &sc.Status.Conditions[i]
+		o.Expect(c.LastTransitionTime).NotTo(o.BeNil())
+		o.Expect(c.LastTransitionTime.Time.Before(sc.CreationTimestamp.Time)).NotTo(o.BeTrue())
+
+		// To be able to compare the statuses we need to remove the random timestamp.
+		c.LastTransitionTime = metav1.Time{}
+	}
+	o.Expect(sc.Status.Conditions).To(o.ConsistOf(func() []interface{} {
+		type condValue struct {
+			condType string
+			status   metav1.ConditionStatus
+		}
+		condList := []condValue{
+			// Aggregated conditions
+			{
+				condType: "Available",
+				status:   metav1.ConditionTrue,
+			},
+			{
+				condType: "Progressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "Degraded",
+				status:   metav1.ConditionFalse,
+			},
+
+			// Controller conditions
+			{
+				condType: "ServiceAccountControllerProgressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "ServiceAccountControllerDegraded",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "RoleBindingControllerProgressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "RoleBindingControllerDegraded",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "AgentTokenControllerProgressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "AgentTokenControllerDegraded",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "StatefulSetControllerAvailable",
+				status:   metav1.ConditionTrue,
+			},
+			{
+				condType: "StatefulSetControllerProgressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "StatefulSetControllerDegraded",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "ServiceControllerProgressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "ServiceControllerDegraded",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "PDBControllerProgressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "PDBControllerDegraded",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "IngressControllerProgressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "IngressControllerDegraded",
+				status:   metav1.ConditionFalse,
+			},
+		}
+
+		expectedConditions := make([]interface{}, 0, len(condList))
+		for _, item := range condList {
+			expectedConditions = append(expectedConditions, metav1.Condition{
+				Type:               item.condType,
+				Status:             item.status,
+				Reason:             "AsExpected",
+				Message:            "",
+				ObservedGeneration: sc.Generation,
+			})
+		}
+
+		return expectedConditions
+	}()...))
 
 	statefulsets, err := utils.GetStatefulSetsForScyllaCluster(ctx, kubeClient.AppsV1(), sc)
 	o.Expect(err).NotTo(o.HaveOccurred())

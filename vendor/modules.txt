@@ -44,6 +44,9 @@ github.com/ProtonMail/go-crypto/openpgp/s2k
 # github.com/acomagu/bufpipe v1.0.3
 ## explicit; go 1.12
 github.com/acomagu/bufpipe
+# github.com/ajg/form v1.5.1
+## explicit
+github.com/ajg/form
 # github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 ## explicit; go 1.13
 github.com/asaskevich/govalidator
@@ -191,6 +194,9 @@ github.com/fsnotify/fsnotify
 # github.com/ghodss/yaml v1.0.0
 ## explicit
 github.com/ghodss/yaml
+# github.com/go-chi/render v1.0.2
+## explicit; go 1.16
+github.com/go-chi/render
 # github.com/go-git/gcfg v1.5.0
 ## explicit
 github.com/go-git/gcfg
@@ -350,6 +356,7 @@ github.com/google/gnostic/openapiv3
 # github.com/google/go-cmp v0.5.8
 ## explicit; go 1.13
 github.com/google/go-cmp/cmp
+github.com/google/go-cmp/cmp/cmpopts
 github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
@@ -523,6 +530,9 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
+# github.com/robfig/cron/v3 v3.0.1
+## explicit; go 1.12
+github.com/robfig/cron/v3
 # github.com/rogpeppe/go-internal v1.9.0
 ## explicit; go 1.17
 github.com/rogpeppe/go-internal/fmtsort

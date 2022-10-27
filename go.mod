@@ -6,11 +6,13 @@ require (
 	cloud.google.com/go/compute v1.9.0
 	github.com/aws/aws-sdk-go-v2/config v1.17.2
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.13
+	github.com/aws/smithy-go v1.13.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/evanphx/json-patch v4.12.0+incompatible
 	github.com/ghodss/yaml v1.0.0
+	github.com/go-chi/render v1.0.2
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/go-openapi/errors v0.20.3
 	github.com/go-openapi/runtime v0.24.1
@@ -27,6 +29,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.1.5
 	github.com/onsi/gomega v1.20.1
 	github.com/pkg/errors v0.9.1
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/scylladb/go-log v0.0.7
 	github.com/scylladb/go-set v1.0.2
 	github.com/scylladb/gocqlx/v2 v2.7.0
@@ -41,6 +44,7 @@ require (
 	google.golang.org/grpc v1.49.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.25.0
+	k8s.io/apiextensions-apiserver v0.20.2
 	k8s.io/apimachinery v0.25.0
 	k8s.io/apiserver v0.25.0
 	k8s.io/client-go v0.25.0
@@ -64,6 +68,7 @@ require (
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20220824120805-4b6e5c587895 // indirect
 	github.com/acomagu/bufpipe v1.0.3 // indirect
+	github.com/ajg/form v1.5.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/aws/aws-sdk-go-v2 v1.16.12 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.12.15 // indirect
@@ -74,7 +79,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.11.18 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.13.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.16.14 // indirect
-	github.com/aws/smithy-go v1.13.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
@@ -165,7 +169,6 @@ require (
 	gopkg.in/ini.v1 v1.66.4 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.20.2 // indirect
 	k8s.io/gengo v0.0.0-20211129171323-c02415ce4185 // indirect
 	k8s.io/kube-openapi v0.0.0-20220803164354-a70c9af30aea // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect

@@ -157,12 +157,11 @@ func TestMemberService(t *testing.T) {
 			oldService: nil,
 			expectedService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: basicSVCName,
-					Labels: func() map[string]string {
-						labels := basicSVCLabels()
-						labels[naming.ReplaceLabel] = "10.0.0.1"
-						return labels
-					}(),
+					Name:   basicSVCName,
+					Labels: basicSVCLabels(),
+					Annotations: map[string]string{
+						naming.ReplaceAnnotation: "10.0.0.1",
+					},
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -188,19 +187,18 @@ func TestMemberService(t *testing.T) {
 			svcName:  basicSVCName,
 			oldService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						naming.ReplaceLabel: "10.0.0.1",
+					Annotations: map[string]string{
+						naming.ReplaceAnnotation: "10.0.0.1",
 					},
 				},
 			},
 			expectedService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: basicSVCName,
-					Labels: func() map[string]string {
-						labels := basicSVCLabels()
-						labels[naming.ReplaceLabel] = "10.0.0.1"
-						return labels
-					}(),
+					Name:   basicSVCName,
+					Labels: basicSVCLabels(),
+					Annotations: map[string]string{
+						naming.ReplaceAnnotation: "10.0.0.1",
+					},
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -218,19 +216,18 @@ func TestMemberService(t *testing.T) {
 			svcName:       basicSVCName,
 			oldService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						naming.ReplaceLabel: "10.0.0.1",
+					Annotations: map[string]string{
+						naming.ReplaceAnnotation: "10.0.0.1",
 					},
 				},
 			},
 			expectedService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: basicSVCName,
-					Labels: func() map[string]string {
-						labels := basicSVCLabels()
-						labels[naming.ReplaceLabel] = "10.0.0.1"
-						return labels
-					}(),
+					Name:   basicSVCName,
+					Labels: basicSVCLabels(),
+					Annotations: map[string]string{
+						naming.ReplaceAnnotation: "10.0.0.1",
+					},
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -248,19 +245,18 @@ func TestMemberService(t *testing.T) {
 			svcName:       basicSVCName,
 			oldService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						naming.ReplaceLabel: "",
+					Annotations: map[string]string{
+						naming.ReplaceAnnotation: "",
 					},
 				},
 			},
 			expectedService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: basicSVCName,
-					Labels: func() map[string]string {
-						labels := basicSVCLabels()
-						labels[naming.ReplaceLabel] = ""
-						return labels
-					}(),
+					Name:   basicSVCName,
+					Labels: basicSVCLabels(),
+					Annotations: map[string]string{
+						naming.ReplaceAnnotation: "",
+					},
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -286,19 +282,18 @@ func TestMemberService(t *testing.T) {
 			svcName:  basicSVCName,
 			oldService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						naming.ReplaceLabel: "",
+					Annotations: map[string]string{
+						naming.ReplaceAnnotation: "",
 					},
 				},
 			},
 			expectedService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: basicSVCName,
-					Labels: func() map[string]string {
-						labels := basicSVCLabels()
-						labels[naming.ReplaceLabel] = ""
-						return labels
-					}(),
+					Name:   basicSVCName,
+					Labels: basicSVCLabels(),
+					Annotations: map[string]string{
+						naming.ReplaceAnnotation: "",
+					},
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{

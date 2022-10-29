@@ -60,8 +60,8 @@ var _ = g.Describe("ScyllaCluster replace", func() {
 			pod.Name,
 			types.MergePatchType,
 			[]byte(fmt.Sprintf(
-				`{"metadata":{"labels": {"%s": ""}}}`,
-				naming.ReplaceLabel,
+				`{"metadata":{"annotations": {"%s": ""}}}`,
+				naming.ReplaceAnnotation,
 			)),
 			metav1.PatchOptions{},
 		)

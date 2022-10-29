@@ -72,13 +72,15 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 	labels[naming.RackNameLabel] = rackName
 	labels[naming.ScyllaServiceTypeLabel] = string(naming.ScyllaServiceTypeMember)
 
+	annotations := map[string]string{}
+
 	// Copy the old replace label, if present.
 	var replaceAddr string
-	var hasReplaceLabel bool
+	var hasReplaceAnnotation bool
 	if oldService != nil {
-		replaceAddr, hasReplaceLabel = oldService.Labels[naming.ReplaceLabel]
-		if hasReplaceLabel {
-			labels[naming.ReplaceLabel] = replaceAddr
+		replaceAddr, hasReplaceAnnotation = oldService.Annotations[naming.ReplaceAnnotation]
+		if hasReplaceAnnotation {
+			annotations[naming.ReplaceAnnotation] = replaceAddr
 		}
 
 		// Copy the maintenance label, if present
@@ -89,12 +91,12 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 	}
 
 	// Only new service should get the replace address, old service keeps "" until deleted.
-	if !hasReplaceLabel || len(replaceAddr) != 0 {
+	if !hasReplaceAnnotation || len(replaceAddr) != 0 {
 		rackStatus, ok := sc.Status.Racks[rackName]
 		if ok {
 			replaceAddr := rackStatus.ReplaceAddressFirstBoot[name]
 			if len(replaceAddr) != 0 {
-				labels[naming.ReplaceLabel] = replaceAddr
+				annotations[naming.ReplaceAnnotation] = replaceAddr
 			}
 		}
 	}
@@ -106,7 +108,8 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(sc, scyllaClusterControllerGVK),
 			},
-			Labels: labels,
+			Labels:      labels,
+			Annotations: annotations,
 		},
 		Spec: corev1.ServiceSpec{
 			Type:                     corev1.ServiceTypeClusterIP,

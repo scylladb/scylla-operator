@@ -23,28 +23,30 @@ type Member struct {
 	// IP of the Pod
 	IP string
 	// ClusterIP of the member's Service
-	StaticIP      string
-	Rack          string
-	Datacenter    string
-	Cluster       string
-	ServiceLabels map[string]string
-	PodID         string
+	StaticIP           string
+	Rack               string
+	Datacenter         string
+	Cluster            string
+	ServiceLabels      map[string]string
+	ServiceAnnotations map[string]string
+	PodID              string
 
 	Overprovisioned bool
 }
 
 func NewMemberFromObjects(service *corev1.Service, pod *corev1.Pod) *Member {
 	return &Member{
-		Namespace:       service.Namespace,
-		Name:            service.Name,
-		IP:              pod.Status.PodIP,
-		StaticIP:        service.Spec.ClusterIP,
-		Rack:            pod.Labels[naming.RackNameLabel],
-		Datacenter:      pod.Labels[naming.DatacenterNameLabel],
-		Cluster:         pod.Labels[naming.ClusterNameLabel],
-		ServiceLabels:   service.Labels,
-		PodID:           string(pod.UID),
-		Overprovisioned: pod.Status.QOSClass != corev1.PodQOSGuaranteed,
+		Namespace:          service.Namespace,
+		Name:               service.Name,
+		IP:                 pod.Status.PodIP,
+		StaticIP:           service.Spec.ClusterIP,
+		Rack:               pod.Labels[naming.RackNameLabel],
+		Datacenter:         pod.Labels[naming.DatacenterNameLabel],
+		Cluster:            pod.Labels[naming.ClusterNameLabel],
+		ServiceLabels:      service.Labels,
+		ServiceAnnotations: service.Annotations,
+		PodID:              string(pod.UID),
+		Overprovisioned:    pod.Status.QOSClass != corev1.PodQOSGuaranteed,
 	}
 }
 

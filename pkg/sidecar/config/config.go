@@ -245,7 +245,7 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		}
 	}
 	// If node is being replaced
-	if addr, ok := m.ServiceLabels[naming.ReplaceLabel]; ok {
+	if addr, ok := m.ServiceAnnotations[naming.ReplaceAnnotation]; ok {
 		args["replace-address-first-boot"] = pointer.StringPtr(addr)
 	}
 	// See if we need to use cpu-pinning

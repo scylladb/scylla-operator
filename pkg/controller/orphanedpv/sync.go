@@ -148,7 +148,7 @@ func (opc *Controller) sync(ctx context.Context, key string) error {
 			ctx,
 			pi.ServiceName,
 			types.MergePatchType,
-			[]byte(fmt.Sprintf(`{"metadata": {"labels": {%q: ""} } }`, naming.ReplaceLabel)),
+			[]byte(fmt.Sprintf(`{"metadata": {"annotations": {%q: ""} } }`, naming.ReplaceAnnotation)),
 			metav1.PatchOptions{},
 		)
 		if err != nil {

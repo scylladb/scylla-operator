@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -15,6 +16,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	featuregatetesting "k8s.io/component-base/featuregate/testing"
 	"k8s.io/utils/pointer"
 )
 
@@ -344,6 +347,8 @@ func TestMemberService(t *testing.T) {
 }
 
 func TestStatefulSetForRack(t *testing.T) {
+	t.Logf("Running TestStatefulSetForRack with TLS feature enabled: %t", utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates))
+
 	newBasicRack := func() scyllav1.RackSpec {
 		return scyllav1.RackSpec{
 			Name: "rack",
@@ -425,51 +430,84 @@ func TestStatefulSetForRack(t *testing.T) {
 							RunAsUser:  pointer.Int64(0),
 							RunAsGroup: pointer.Int64(0),
 						},
-						Volumes: []corev1.Volume{
-							{
-								Name: "shared",
-								VolumeSource: corev1.VolumeSource{
-									EmptyDir: &corev1.EmptyDirVolumeSource{},
+						Volumes: func() []corev1.Volume {
+							volumes := []corev1.Volume{
+								{
+									Name: "shared",
+									VolumeSource: corev1.VolumeSource{
+										EmptyDir: &corev1.EmptyDirVolumeSource{},
+									},
 								},
-							},
-							{
-								Name: "scylla-config-volume",
-								VolumeSource: corev1.VolumeSource{
-									ConfigMap: &corev1.ConfigMapVolumeSource{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "scylla-config",
+								{
+									Name: "scylla-config-volume",
+									VolumeSource: corev1.VolumeSource{
+										ConfigMap: &corev1.ConfigMapVolumeSource{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "scylla-config",
+											},
+											Optional: pointer.Bool(true),
 										},
-										Optional: pointer.Bool(true),
 									},
 								},
-							},
-							{
-								Name: "scylla-agent-config-volume",
-								VolumeSource: corev1.VolumeSource{
-									Secret: &corev1.SecretVolumeSource{
-										SecretName: "scylla-agent-config-secret",
-										Optional:   pointer.Bool(true),
+								{
+									Name: "scylla-agent-config-volume",
+									VolumeSource: corev1.VolumeSource{
+										Secret: &corev1.SecretVolumeSource{
+											SecretName: "scylla-agent-config-secret",
+											Optional:   pointer.Bool(true),
+										},
 									},
 								},
-							},
-							{
-								Name: "scylla-client-config-volume",
-								VolumeSource: corev1.VolumeSource{
-									Secret: &corev1.SecretVolumeSource{
-										SecretName: "scylla-client-config-secret",
-										Optional:   pointer.Bool(true),
+								{
+									Name: "scylla-client-config-volume",
+									VolumeSource: corev1.VolumeSource{
+										Secret: &corev1.SecretVolumeSource{
+											SecretName: "scylla-client-config-secret",
+											Optional:   pointer.Bool(true),
+										},
 									},
 								},
-							},
-							{
-								Name: "scylla-agent-auth-token-volume",
-								VolumeSource: corev1.VolumeSource{
-									Secret: &corev1.SecretVolumeSource{
-										SecretName: "basic-auth-token",
+								{
+									Name: "scylla-agent-auth-token-volume",
+									VolumeSource: corev1.VolumeSource{
+										Secret: &corev1.SecretVolumeSource{
+											SecretName: "basic-auth-token",
+										},
 									},
 								},
-							},
-						},
+							}
+
+							if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {
+								volumes = append(volumes, []corev1.Volume{
+									{
+										Name: "scylladb-serving-certs",
+										VolumeSource: corev1.VolumeSource{
+											Secret: &corev1.SecretVolumeSource{
+												SecretName: "basic-local-serving-certs",
+											},
+										},
+									},
+									{
+										Name: "scylladb-client-ca",
+										VolumeSource: corev1.VolumeSource{
+											Secret: &corev1.SecretVolumeSource{
+												SecretName: "basic-local-client-ca",
+											},
+										},
+									},
+									{
+										Name: "scylladb-user-admin",
+										VolumeSource: corev1.VolumeSource{
+											Secret: &corev1.SecretVolumeSource{
+												SecretName: "basic-local-user-admin",
+											},
+										},
+									},
+								}...)
+							}
+
+							return volumes
+						}(),
 						InitContainers: []corev1.Container{
 							{
 								Name:            "sidecar-injection",
@@ -538,13 +576,23 @@ func TestStatefulSetForRack(t *testing.T) {
 										ContainerPort: 9160,
 									},
 								},
-								Command: []string{
-									"/mnt/shared/scylla-operator",
-									"sidecar",
-									"--service-name=$(SERVICE_NAME)",
-									"--cpu-count=$(CPU_COUNT)",
-									"--loglevel=2",
-								},
+								Command: func() []string {
+									featureGatesFlagString := "--feature-gates=AllAlpha=false,AllBeta=false"
+									if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {
+										featureGatesFlagString += ",AutomaticTLSCertificates=true"
+									} else {
+										featureGatesFlagString += ",AutomaticTLSCertificates=false"
+									}
+
+									return []string{
+										"/mnt/shared/scylla-operator",
+										"sidecar",
+										featureGatesFlagString,
+										"--service-name=$(SERVICE_NAME)",
+										"--cpu-count=$(CPU_COUNT)",
+										"--loglevel=2",
+									}
+								}(),
 								Env: []corev1.EnvVar{
 									{
 										Name: "SERVICE_NAME",
@@ -566,27 +614,51 @@ func TestStatefulSetForRack(t *testing.T) {
 									},
 								},
 								Resources: newBasicRack().Resources,
-								VolumeMounts: []corev1.VolumeMount{
-									{
-										Name:      "data",
-										MountPath: "/var/lib/scylla",
-									},
-									{
-										Name:      "shared",
-										MountPath: "/mnt/shared",
-										ReadOnly:  true,
-									},
-									{
-										Name:      "scylla-config-volume",
-										MountPath: "/mnt/scylla-config",
-										ReadOnly:  true,
-									},
-									{
-										Name:      "scylla-client-config-volume",
-										MountPath: "/mnt/scylla-client-config",
-										ReadOnly:  true,
-									},
-								},
+								VolumeMounts: func() []corev1.VolumeMount {
+									mounts := []corev1.VolumeMount{
+										{
+											Name:      "data",
+											MountPath: "/var/lib/scylla",
+										},
+										{
+											Name:      "shared",
+											MountPath: "/mnt/shared",
+											ReadOnly:  true,
+										},
+										{
+											Name:      "scylla-config-volume",
+											MountPath: "/mnt/scylla-config",
+											ReadOnly:  true,
+										},
+										{
+											Name:      "scylla-client-config-volume",
+											MountPath: "/mnt/scylla-client-config",
+											ReadOnly:  true,
+										},
+									}
+
+									if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {
+										mounts = append(mounts, []corev1.VolumeMount{
+											{
+												Name:      "scylladb-serving-certs",
+												MountPath: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs",
+												ReadOnly:  true,
+											},
+											{
+												Name:      "scylladb-client-ca",
+												MountPath: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/client-ca",
+												ReadOnly:  true,
+											},
+											{
+												Name:      "scylladb-user-admin",
+												MountPath: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/user-admin",
+												ReadOnly:  true,
+											},
+										}...)
+									}
+
+									return mounts
+								}(),
 								SecurityContext: &corev1.SecurityContext{
 									RunAsUser:  pointer.Int64(0),
 									RunAsGroup: pointer.Int64(0),
@@ -933,6 +1005,17 @@ func TestStatefulSetForRack(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestStatefulSetForRackWithReversedTLSFeature(t *testing.T) {
+	defer featuregatetesting.SetFeatureGateDuringTest(
+		t,
+		utilfeature.DefaultMutableFeatureGate,
+		features.AutomaticTLSCertificates,
+		!utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates),
+	)()
+
+	t.Run("", TestStatefulSetForRack)
 }
 
 func TestMakeIngresses(t *testing.T) {

@@ -45,8 +45,6 @@ type ScyllaIngressType string
 const (
 	ScyllaIngressTypeNode    ScyllaIngressType = "Node"
 	ScyllaIngressTypeAnyNode ScyllaIngressType = "AnyNode"
-
-	ScyllaIngressSubdomainAny = "any"
 )
 
 // Generic Labels used on objects created by the operator.

@@ -10,6 +10,10 @@ inputs:
   suite:
     description: "E2E suite name"
     required: true
+  featureGates:
+    description: "FeatureGate string"
+    required: false
+    default: ""
   extraArgs:
     description: "Extra arguments for the E2E binary"
     required: false
@@ -60,11 +64,11 @@ runs:
   - name: Deploy scylla-operator
     shell: bash
     working-directory: ${{ inputs.repositoryPath }}
+    env:
+      SCYLLA_OPERATOR_FEATURE_GATES: '${{ inputs.featureGates }}'
     run: |
       set -x
       
-      SCYLLA_OPERATOR_FEATURE_GATES="${SCYLLA_OPERATOR_FEATURE_GATES}"
-      export SCYLLA_OPERATOR_FEATURE_GATES
       timeout 10m ./hack/ci-deploy.sh '${{ env.image_repo_ref }}:ci'
       
       # Raise loglevel in CI.
@@ -102,6 +106,7 @@ runs:
       --artifacts-dir="${ARTIFACTS_DIR}" \
       --flake-attempts="${flake_attempts}" \
       --timeout="${e2e_timeout_minutes}m" \
+      --feature-gates='${{ inputs.featureGates }}'
       ${{ inputs.extraArgs }}
   - name: Dump cluster state
     if: ${{ always() }}

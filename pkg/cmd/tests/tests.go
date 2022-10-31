@@ -4,6 +4,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/spf13/cobra"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubectl/pkg/util/templates"
 )
 
@@ -33,6 +34,8 @@ func NewTestsCommand(streams genericclioptions.IOStreams) *cobra.Command {
 	// TODO: wrap help func for the root command and every subcommand to add a line about automatic env vars and the prefix.
 
 	cmdutil.InstallKlog(cmd)
+
+	utilfeature.DefaultMutableFeatureGate.AddFlag(cmd.PersistentFlags())
 
 	return cmd
 }

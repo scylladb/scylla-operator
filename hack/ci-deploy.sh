@@ -44,6 +44,10 @@ done
 
 yq e --inplace '.spec.template.spec.containers[0].args += ["--qps=200", "--burst=400"]' "${deploy_dir}/operator/50_operator.deployment.yaml"
 
+if [[ -n ${SCYLLA_OPERATOR_FEATURE_GATES+x} ]]; then
+    yq e --inplace '.spec.template.spec.containers[0].args += "--feature-gates="+ strenv(SCYLLA_OPERATOR_FEATURE_GATES)' "${deploy_dir}/operator/50_operator.deployment.yaml"
+fi
+
 kubectl_create -f "${deploy_dir}"/cert-manager.yaml
 
 # Wait for cert-manager

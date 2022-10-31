@@ -186,8 +186,42 @@ jobs:
       uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/run-e2e
       with:
         repositoryPath: ${{ env.git_repo_path }}
+        jobSuffix: "serial-alpha"
+        suite: "scylla-operator/conformance/serial"
+
+  test-e2e-parallel-alpha:
+    name: Test e2e parallel (with alpha features)
+    runs-on: ubuntu-20.04
+    needs: images
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: ${{ env.git_repo_path }}
+        fetch-depth: 0  # also fetch tags
+    - name: Run e2e
+      uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/run-e2e
+      with:
+        repositoryPath: ${{ env.git_repo_path }}
+        jobSuffix: "parallel-alpha"
+        suite: "scylla-operator/conformance/parallel"
+        featureGates: "AllAlpha=true,AllBeta=true"
+
+  test-e2e-serial-alpha:
+    name: Test e2e serial (with alpha features)
+    runs-on: ubuntu-20.04
+    needs: images
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: ${{ env.git_repo_path }}
+        fetch-depth: 0  # also fetch tags
+    - name: Run e2e
+      uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/run-e2e
+      with:
+        repositoryPath: ${{ env.git_repo_path }}
         jobSuffix: "serial"
         suite: "scylla-operator/conformance/serial"
+        featureGates: "AllAlpha=true,AllBeta=true"
 
   # TODO: Add upgrade-e2e - use the same image sha from images step
 
@@ -203,6 +237,8 @@ jobs:
     - charts
     - test-e2e-parallel
     - test-e2e-serial
+    - test-e2e-parallel-alpha
+    - test-e2e-serial-alpha
     # TODO: Depend on upgrade-e2e when available
     steps:
     - name: Always succeed

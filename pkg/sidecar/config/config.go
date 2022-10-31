@@ -14,12 +14,16 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/magiconair/properties"
 	"github.com/pkg/errors"
+	scylladbassets "github.com/scylladb/scylla-operator/assets/scylladb"
+	"github.com/scylladb/scylla-operator/pkg/assets"
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
+	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/semver"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/util/cpuset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
@@ -37,6 +41,21 @@ const (
 )
 
 var scyllaJMXPaths = []string{"/usr/lib/scylla/jmx/scylla-jmx", "/opt/scylladb/jmx/scylla-jmx"}
+
+func makeOperatorConfigOverrides(clusterName string) ([]byte, error) {
+	data, err := assets.RenderTemplate(
+		scylladbassets.DefaultConfigTemplate,
+		map[string]any{
+			"clusterName": clusterName,
+			"enableTLS":   utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates),
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
 
 type ScyllaConfig struct {
 	member                              *identity.Member
@@ -91,40 +110,31 @@ func (s *ScyllaConfig) Setup(ctx context.Context) (*exec.Cmd, error) {
 // - endpoint_snitch
 func (s *ScyllaConfig) setupScyllaYAML(configFilePath, configMapPath string) error {
 	// Read default scylla.yaml
-	configFileBytes, err := ioutil.ReadFile(configFilePath)
+	configFileBytes, err := os.ReadFile(configFilePath)
 	if err != nil {
-		return errors.Wrap(err, "failed to open scylla.yaml")
+		return fmt.Errorf("can't read file %q: %w", configFilePath, err)
+	}
+
+	operatorConfigOverrides, err := makeOperatorConfigOverrides(s.member.Cluster)
+	if err != nil {
+		return fmt.Errorf("can't make scylladb config overrides: %w", err)
 	}
 
 	// Read config map scylla.yaml
-	configMapBytes, err := ioutil.ReadFile(configMapPath)
+	configMapBytes, err := os.ReadFile(configMapPath)
 	if err != nil {
 		klog.InfoS("no scylla.yaml config map available")
 	}
-	// Custom options
-	var cfg = make(map[string]interface{})
-	m := s.member
-	cfg["cluster_name"] = m.Cluster
-	cfg["rpc_address"] = "0.0.0.0"
-	cfg["endpoint_snitch"] = "GossipingPropertyFileSnitch"
 
-	overrideBytes, err := yaml.Marshal(cfg)
+	desiredConfigBytes, err := mergeYAMLs(configFileBytes, operatorConfigOverrides, configMapBytes)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse override options for scylla.yaml")
-	}
-	overwrittenBytes, err := mergeYAMLs(configFileBytes, overrideBytes)
-	if err != nil {
-		return errors.Wrap(err, "failed to merge scylla yaml with operator pre-sets")
-	}
-
-	customConfigBytesBytes, err := mergeYAMLs(overwrittenBytes, configMapBytes)
-	if err != nil {
-		return errors.Wrap(err, "failed to merge overwritten scylla yaml with user config map")
+		return fmt.Errorf("can't merge scylladb configs: %w", err)
 	}
 
 	// Write result to file
-	if err = ioutil.WriteFile(configFilePath, customConfigBytesBytes, os.ModePerm); err != nil {
-		return errors.Wrap(err, "error trying to write scylla.yaml")
+	err = os.WriteFile(configFilePath, desiredConfigBytes, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("can't write file %q: %w", configFilePath, err)
 	}
 
 	return nil
@@ -321,25 +331,32 @@ func setupIOTuneCache() error {
 	return nil
 }
 
-// mergeYAMLs merges two arbitrary YAML structures at the top level.
-func mergeYAMLs(initialYAML, overrideYAML []byte) ([]byte, error) {
-
-	var initial, override map[string]interface{}
-	if err := yaml.Unmarshal(initialYAML, &initial); err != nil {
-		return nil, errors.WithStack(err)
-	}
-	if err := yaml.Unmarshal(overrideYAML, &override); err != nil {
-		return nil, errors.WithStack(err)
+// mergeYAMLs merges arbitrary YAML structures on the top level keys.
+func mergeYAMLs(initialYAML []byte, overrideYAMLs ...[]byte) ([]byte, error) {
+	var result map[string]interface{}
+	err := yaml.Unmarshal(initialYAML, &result)
+	if err != nil {
+		return nil, fmt.Errorf("can't unmarshal inititial yaml for overriding: %w", err)
 	}
 
-	if initial == nil {
-		initial = make(map[string]interface{})
+	if result == nil {
+		result = map[string]interface{}{}
 	}
-	// Overwrite the values onto initial
-	for k, v := range override {
-		initial[k] = v
+
+	for i, overrideYAML := range overrideYAMLs {
+		var override map[string]interface{}
+		err := yaml.Unmarshal(overrideYAML, &override)
+		if err != nil {
+			return nil, fmt.Errorf("can't unmarshal override yaml (%d) for overriding: %w", i, err)
+		}
+
+		// Overwrite the values onto initial
+		for k, v := range override {
+			result[k] = v
+		}
 	}
-	return yaml.Marshal(initial)
+
+	return yaml.Marshal(result)
 }
 
 func getCPUsAllowedList(procFile string) (string, error) {

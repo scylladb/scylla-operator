@@ -7,6 +7,8 @@ const (
 	roleBindingControllerDegradedCondition       = "RoleBindingControllerDegraded"
 	agentTokenControllerProgressingCondition     = "AgentTokenControllerProgressing"
 	agentTokenControllerDegradedCondition        = "AgentTokenControllerDegraded"
+	certControllerProgressingCondition           = "CertControllerProgressing"
+	certControllerDegradedCondition              = "CertControllerDegraded"
 	statefulSetControllerAvailableCondition      = "StatefulSetControllerAvailable"
 	statefulSetControllerProgressingCondition    = "StatefulSetControllerProgressing"
 	statefulSetControllerDegradedCondition       = "StatefulSetControllerDegraded"

@@ -82,7 +82,7 @@ func IsNodeConfigDoneWithNodeTuningFunc(nodes []*corev1.Node) func(nc *scyllav1a
 }
 
 func RolloutTimeoutForScyllaCluster(sc *scyllav1.ScyllaCluster) time.Duration {
-	return syncTimeout + time.Duration(GetMemberCount(sc))*memberRolloutTimeout
+	return SyncTimeout + time.Duration(GetMemberCount(sc))*memberRolloutTimeout
 }
 
 func GetMemberCount(sc *scyllav1.ScyllaCluster) int32 {
@@ -224,6 +224,10 @@ func WaitForConfigMapState(ctx context.Context, client corev1client.ConfigMapInt
 	return WaitForObjectState[*corev1.ConfigMap, *corev1.ConfigMapList](ctx, client, name, options, condition, additionalConditions...)
 }
 
+func WaitForSecretState(ctx context.Context, client corev1client.SecretInterface, name string, options WaitForStateOptions, condition func(*corev1.Secret) (bool, error), additionalConditions ...func(*corev1.Secret) (bool, error)) (*corev1.Secret, error) {
+	return WaitForObjectState[*corev1.Secret, *corev1.SecretList](ctx, client, name, options, condition, additionalConditions...)
+}
+
 func RunEphemeralContainerAndWaitForCompletion(ctx context.Context, client corev1client.PodInterface, podName string, ec *corev1.EphemeralContainer) (*corev1.Pod, error) {
 	ephemeralPod := &corev1.Pod{
 		Spec: corev1.PodSpec{
@@ -363,28 +367,35 @@ func GetScyllaClient(ctx context.Context, client corev1client.CoreV1Interface, s
 	return scyllaClient, hosts, nil
 }
 
-func GetHosts(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
+func GetHostsAndUUIDs(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, []string, error) {
 	serviceList, err := client.Services(sc.Namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: GetMemberServiceSelector(sc.Name).String(),
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var hosts []string
+	var uuids []string
 	for _, s := range serviceList.Items {
 		if s.Spec.Type != corev1.ServiceTypeClusterIP {
-			return nil, fmt.Errorf("service %s/%s is of type %q instead of %q", s.Namespace, s.Name, s.Spec.Type, corev1.ServiceTypeClusterIP)
+			return nil, nil, fmt.Errorf("service %s/%s is of type %q instead of %q", s.Namespace, s.Name, s.Spec.Type, corev1.ServiceTypeClusterIP)
 		}
 
 		if s.Spec.ClusterIP == corev1.ClusterIPNone {
-			return nil, fmt.Errorf("service %s/%s doesn't have a ClusterIP", s.Namespace, s.Name)
+			return nil, nil, fmt.Errorf("service %s/%s doesn't have a ClusterIP", s.Namespace, s.Name)
 		}
 
 		hosts = append(hosts, s.Spec.ClusterIP)
+		uuids = append(uuids, s.Annotations[naming.HostIDAnnotation])
 	}
 
-	return hosts, nil
+	return hosts, uuids, nil
+}
+
+func GetHosts(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
+	hosts, _, err := GetHostsAndUUIDs(ctx, client, sc)
+	return hosts, err
 }
 
 // GetManagerClient gets managerClient using IP address. E2E tests shouldn't rely on InCluster DNS.

@@ -3,6 +3,7 @@ package tests
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -334,15 +335,17 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 					gomega.Expect(err).NotTo(gomega.HaveOccurred())
 				}
 
-				f, err := os.Create(path.Join(d, fmt.Sprintf("%d.log", o.ParallelShard)))
+				f, err := os.Create(path.Join(d, fmt.Sprintf("%d.log", suiteConfig.ParallelProcess)))
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				ginkgo.GinkgoWriter.TeeTo(f)
 
 				ginkgo.DeferCleanup(func() {
 					ginkgo.GinkgoWriter.ClearTeeWriters()
-					// Ignoring the error as there's nowhere to log it.
-					_ = f.Close()
+					err := f.Close()
+					if err != nil {
+						klog.ErrorS(err, "Can't close a file")
+					}
 				})
 			})
 		}
@@ -425,7 +428,9 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 
 			klog.V(2).InfoS("Waiting for process", "ID", e.id, "Command", e.cmd.String())
 			err := e.cmd.Wait()
-			if err != nil {
+			// We'll handle exit codes separately.
+			var exitError *exec.ExitError
+			if err != nil && !errors.As(err, &exitError) {
 				errs[entryIndex] = fmt.Errorf("can't wait for command %q with args %q: %w", e.cmd.Path, e.cmd.Args, err)
 			}
 			klog.V(2).InfoS("Process finished", "ID", e.id, "Command", e.cmd.String(), "ProcessState", e.cmd.ProcessState.String())
@@ -436,7 +441,23 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 
 	err = apierrors.NewAggregate(errs)
 	if err != nil {
-		klog.ErrorS(err, "Processes encountered errors")
+		return fmt.Errorf("can't wait for processes: %w", err)
+	}
+
+	// Aggregate exit code.
+	hasProgrammaticFocus := false
+	passed := true
+	for _, e := range cmdEntries {
+		exitCode := e.cmd.ProcessState.ExitCode()
+		switch exitCode {
+		case 0:
+			break
+		case types.GINKGO_FOCUS_EXIT_CODE:
+			hasProgrammaticFocus = true
+		default:
+			passed = false
+			klog.ErrorS(errors.New("process failed"), "Process failed", "ID", e.id, "Command", e.cmd.String(), "ProcessState", e.cmd.ProcessState.String(), "Logs", e.out.String())
+		}
 	}
 
 	select {
@@ -447,40 +468,15 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 		break
 
 	default:
-		for _, e := range cmdEntries {
-			exitCode := e.cmd.ProcessState.ExitCode()
-			switch exitCode {
-			case 0, types.GINKGO_FOCUS_EXIT_CODE:
-				break
-			default:
-				klog.ErrorS(nil, "Process failed", "ID", e.id, "Command", e.cmd.String(), "ProcessState", e.cmd.ProcessState.String(), "Logs", e.out.String())
-			}
-		}
-
 		return fmt.Errorf("all processes have finished but the suite still isn't done")
-	}
-
-	// Aggregate exit code.
-	hasProgramaticFocus := false
-	passed := true
-	for _, e := range cmdEntries {
-		exitCode := e.cmd.ProcessState.ExitCode()
-		switch exitCode {
-		case 0:
-			break
-		case types.GINKGO_FOCUS_EXIT_CODE:
-			hasProgramaticFocus = true
-		default:
-			passed = false
-		}
 	}
 
 	if !passed {
 		return fmt.Errorf("test suite failed")
 	}
 
-	if hasProgramaticFocus {
-		return fmt.Errorf("test suite has programatic focus")
+	if hasProgrammaticFocus {
+		return fmt.Errorf("test suite has programmatic focus")
 	}
 
 	return nil

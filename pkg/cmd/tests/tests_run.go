@@ -36,8 +36,9 @@ import (
 )
 
 const (
-	parallelShardFlagKey         = "parallel-shard"
-	parallelServerAddressFlagKey = "parallel-server-address"
+	parallelShardFlagKey            = "parallel-shard"
+	parallelServerAddressFlagKey    = "parallel-server-address"
+	ginkgoOutputInterceptorModeNone = "none"
 )
 
 var suites = ginkgotest.TestSuites{
@@ -271,6 +272,7 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 	suiteConfig.FailFast = o.FailFast
 	suiteConfig.RandomSeed = o.RandomSeed
 	suiteConfig.DryRun = o.DryRun
+	suiteConfig.OutputInterceptorMode = ginkgoOutputInterceptorModeNone
 	reporterConfig.Verbose = !o.Quiet
 	reporterConfig.NoColor = !o.Color
 
@@ -324,30 +326,8 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 			suiteConfig.ParallelHost = o.ParallelServerAddress
 			suiteConfig.ParallelProcess = o.ParallelShard
 
-			ginkgo.BeforeSuite(func() {
-				if len(o.ArtifactsDir) < 1 {
-					return
-				}
-
-				d := path.Join(o.ArtifactsDir, "e2e-parallel-processes-logs")
-				err := os.Mkdir(d, 0777)
-				if err != nil && !os.IsExist(err) {
-					gomega.Expect(err).NotTo(gomega.HaveOccurred())
-				}
-
-				f, err := os.Create(path.Join(d, fmt.Sprintf("%d.log", suiteConfig.ParallelProcess)))
-				gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-				ginkgo.GinkgoWriter.TeeTo(f)
-
-				ginkgo.DeferCleanup(func() {
-					ginkgo.GinkgoWriter.ClearTeeWriters()
-					err := f.Close()
-					if err != nil {
-						klog.ErrorS(err, "Can't close a file")
-					}
-				})
-			})
+			ginkgo.GinkgoWriter.TeeTo(os.Stdout)
+			defer ginkgo.GinkgoWriter.ClearTeeWriters()
 		}
 
 		klog.InfoS("Running specs")

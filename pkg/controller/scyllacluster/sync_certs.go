@@ -10,16 +10,113 @@ import (
 	"time"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	okubecrypto "github.com/scylladb/scylla-operator/pkg/kubecrypto"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/resourceapply"
+	"github.com/scylladb/scylla-operator/pkg/scheme"
+	cqlclientv1alpha1 "github.com/scylladb/scylla-operator/pkg/scylla/api/cqlclient/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	apierrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 )
+
+func getHostPort(host string, port int) string {
+	if port == 0 {
+		return host
+	}
+
+	return fmt.Sprintf("%s:%d", host, port)
+}
+
+func makeScyllaConnectionConfig(
+	sc *scyllav1.ScyllaCluster,
+	secrets map[string]*corev1.Secret,
+	configMaps map[string]*corev1.ConfigMap,
+	cqlsIngressPort int,
+) (*corev1.Secret, error) {
+	clientCertSecretName := naming.GetScyllaClusterLocalUserAdminCertName(sc.Name)
+	clientCertSecret, found := secrets[clientCertSecretName]
+	if !found {
+		return nil, fmt.Errorf("secret %q doesn't exist or is not own by this object", naming.ManualRef(sc.Namespace, clientCertSecretName))
+	}
+
+	clientCertsBytes, clientKeyBytes, err := okubecrypto.GetCertKeyDataFromSecret(clientCertSecret)
+	if err != nil {
+		return nil, fmt.Errorf("can't get cert and key bytes from secret %q: %w", clientCertSecretName, err)
+	}
+
+	servingCAConfigMapName := naming.GetScyllaClusterLocalServingCAName(sc.Name)
+	servingCAConfigMap, found := configMaps[servingCAConfigMapName]
+	if !found {
+		return nil, fmt.Errorf("configmap %q doesn't exist or is not own by this object", naming.ManualRef(sc.Namespace, servingCAConfigMapName))
+	}
+
+	servingCABytes, err := okubecrypto.GetCABundleDataFromConfigMap(servingCAConfigMap)
+	if err != nil {
+		return nil, fmt.Errorf("can't get ca bundle bytes from configmap %q: %w", servingCAConfigMapName, err)
+	}
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: sc.Namespace,
+			Name:      naming.GetScyllaClusterLocalAdminCQLConnectionConfigsName(sc.Name),
+			Labels:    naming.ClusterLabels(sc),
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(sc, scyllaClusterControllerGVK),
+			},
+		},
+		Data: make(map[string][]byte, len(sc.Spec.DNSDomains)),
+		Type: corev1.SecretTypeOpaque,
+	}
+
+	for _, domain := range sc.Spec.DNSDomains {
+		scyllaConnectionConfig := &cqlclientv1alpha1.CQLConnectionConfig{
+			AuthInfos: map[string]*cqlclientv1alpha1.AuthInfo{
+				"admin": {
+					ClientCertificateData: clientCertsBytes,
+					ClientKeyData:         clientKeyBytes,
+					Username:              "cassandra",
+					Password:              "cassandra",
+				},
+			},
+			Datacenters: map[string]*cqlclientv1alpha1.Datacenter{
+				sc.Spec.Datacenter.Name: {
+					Server:                   getHostPort(naming.GetCQLProtocolSubDomain(domain), cqlsIngressPort),
+					NodeDomain:               naming.GetCQLProtocolSubDomain(domain),
+					CertificateAuthorityData: servingCABytes,
+				},
+			},
+			Contexts: map[string]*cqlclientv1alpha1.Context{
+				"default": {
+					AuthInfoName:   "admin",
+					DatacenterName: sc.Spec.Datacenter.Name,
+				},
+			},
+			CurrentContext: "default",
+			Parameters: &cqlclientv1alpha1.CQLParameters{
+				DefaultConsistency:       cqlclientv1alpha1.CQLDefaultQuorumConsistency,
+				DefaultSerialConsistency: cqlclientv1alpha1.CQLDefaultSerialConsistency,
+			},
+		}
+
+		encoder := scheme.Codecs.EncoderForVersion(scheme.DefaultYamlSerializer, schema.GroupVersions(scheme.Scheme.PrioritizedVersionsAllGroups()))
+		scyllaConnectionConfigData, err := runtime.Encode(encoder, scyllaConnectionConfig)
+		if err != nil {
+			return nil, fmt.Errorf("can't encode scylla connection config: %w", err)
+		}
+
+		secret.Data[domain] = scyllaConnectionConfigData
+	}
+
+	return secret, nil
+}
 
 func (scc *Controller) syncCerts(
 	ctx context.Context,
@@ -198,6 +295,21 @@ func (scc *Controller) syncCerts(
 		secrets,
 		configMaps,
 	))
+
+	// Build connection bundle.
+
+	scyllaConnectionConfigSecret, err := makeScyllaConnectionConfig(sc, secrets, configMaps, scc.cqlsIngressPort)
+	if err != nil {
+		errors = append(errors, err)
+	} else {
+		_, changed, err := resourceapply.ApplySecret(ctx, scc.kubeClient.CoreV1(), scc.secretLister, scc.eventRecorder, scyllaConnectionConfigSecret, false)
+		if changed {
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, certControllerProgressingCondition, scyllaConnectionConfigSecret, "apply", sc.Generation)
+		}
+		if err != nil {
+			return progressingConditions, fmt.Errorf("can't apply secret %q: %w", naming.ObjRef(scyllaConnectionConfigSecret), err)
+		}
+	}
 
 	return progressingConditions, apierrors.NewAggregate(errors)
 }

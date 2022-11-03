@@ -12,12 +12,15 @@ import (
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	cqlclientv1alpha1 "github.com/scylladb/scylla-operator/pkg/scylla/api/cqlclient/v1alpha1"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
+	"github.com/scylladb/scylla-operator/test/e2e/scheme"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -307,7 +310,7 @@ func verifyAndParseTLSCert(secret *corev1.Secret, options verifyTLSCertOptions) 
 	return certs, certsBytes, key, keyBytes
 }
 
-func verifyAndParseCABundle(cm *corev1.ConfigMap) []*x509.Certificate {
+func verifyAndParseCABundle(cm *corev1.ConfigMap) ([]*x509.Certificate, []byte) {
 	o.Expect(cm.Data).To(o.HaveKey("ca-bundle.crt"))
 
 	bundleBytes := cm.Data["ca-bundle.crt"]
@@ -316,5 +319,69 @@ func verifyAndParseCABundle(cm *corev1.ConfigMap) []*x509.Certificate {
 	certs, err := ocrypto.DecodeCertificates([]byte(bundleBytes))
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	return certs
+	return certs, []byte(bundleBytes)
+}
+
+type verifyCQLConnectionConfigsOptions struct {
+	domains               []string
+	datacenters           []string
+	ServingCAData         []byte
+	ClientCertificateData []byte
+	ClientKeyData         []byte
+}
+
+func verifyAndParseCQLConnectionConfigs(secret *corev1.Secret, options verifyCQLConnectionConfigsOptions) map[string]*cqlclientv1alpha1.CQLConnectionConfig {
+	o.Expect(secret.Type).To(o.Equal(corev1.SecretType("Opaque")))
+	o.Expect(secret.Data).To(o.HaveLen(len(options.domains)))
+
+	connectionConfigs := make(map[string]*cqlclientv1alpha1.CQLConnectionConfig, len(secret.Data))
+	for _, domain := range options.domains {
+		o.Expect(secret.Data).To(o.HaveKey(domain))
+		obj, err := runtime.Decode(
+			scheme.Codecs.DecoderToVersion(scheme.Codecs.UniversalDeserializer(), cqlclientv1alpha1.GroupVersion),
+			secret.Data[domain],
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		cfg := obj.(*cqlclientv1alpha1.CQLConnectionConfig)
+
+		o.Expect(cfg.Datacenters).NotTo(o.BeEmpty())
+		o.Expect(cfg.Datacenters).To(o.HaveLen(len(options.datacenters)))
+		for _, dcName := range options.datacenters {
+			o.Expect(cfg.Datacenters).To(o.HaveKey(dcName))
+			dc := cfg.Datacenters[dcName]
+			o.Expect(dc.Server).To(o.Equal("cql." + domain))
+			o.Expect(dc.NodeDomain).To(o.Equal("cql." + domain))
+			o.Expect(dc.InsecureSkipTLSVerify).To(o.BeFalse())
+			o.Expect(dc.CertificateAuthorityData).To(o.Equal(options.ServingCAData))
+			o.Expect(dc.CertificateAuthorityPath).To(o.BeEmpty())
+			o.Expect(dc.ProxyURL).To(o.BeEmpty())
+		}
+
+		o.Expect(cfg.AuthInfos).To(o.HaveLen(1))
+		o.Expect(cfg.AuthInfos).To(o.HaveKey("admin"))
+		admAuthInfo := cfg.AuthInfos["admin"]
+		o.Expect(admAuthInfo.Username).To(o.Equal("cassandra"))
+		o.Expect(admAuthInfo.Password).To(o.Equal("cassandra"))
+		o.Expect(admAuthInfo.ClientCertificateData).To(o.Equal(options.ClientCertificateData))
+		o.Expect(admAuthInfo.ClientCertificatePath).To(o.BeEmpty())
+		o.Expect(admAuthInfo.ClientKeyData).To(o.Equal(options.ClientKeyData))
+		o.Expect(admAuthInfo.ClientKeyPath).To(o.BeEmpty())
+
+		o.Expect(cfg.Contexts).To(o.HaveLen(1))
+		o.Expect(cfg.Contexts).To(o.HaveKey("default"))
+		defaultContext := cfg.Contexts["default"]
+		o.Expect(defaultContext.DatacenterName).To(o.Equal(options.datacenters[0]))
+		o.Expect(defaultContext.AuthInfoName).To(o.Equal("admin"))
+
+		o.Expect(cfg.CurrentContext).To(o.Equal("default"))
+
+		o.Expect(cfg.Parameters).NotTo(o.BeNil())
+		o.Expect(cfg.Parameters.DefaultConsistency).To(o.BeEquivalentTo("QUORUM"))
+		o.Expect(cfg.Parameters.DefaultSerialConsistency).To(o.BeEquivalentTo("SERIAL"))
+
+		connectionConfigs[domain] = cfg
+	}
+
+	return connectionConfigs
 }

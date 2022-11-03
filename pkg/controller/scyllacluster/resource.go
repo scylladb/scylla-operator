@@ -715,7 +715,7 @@ func MakeIngresses(c *scyllav1.ScyllaCluster, services map[string]*corev1.Servic
 	type params struct {
 		ingressNameSuffix     string
 		portName              string
-		identitySubdomainFunc func(string) string
+		protocolSubdomainFunc func(string) string
 		memberSubdomainFunc   func(string, string) string
 		ingressOptions        *scyllav1.IngressOptions
 	}
@@ -725,7 +725,7 @@ func MakeIngresses(c *scyllav1.ScyllaCluster, services map[string]*corev1.Servic
 		ingressParams = append(ingressParams, params{
 			ingressNameSuffix:     "cql",
 			portName:              portNameCQLSSL,
-			identitySubdomainFunc: naming.GetCQLAnySubDomain,
+			protocolSubdomainFunc: naming.GetCQLProtocolSubDomain,
 			memberSubdomainFunc:   naming.GetCQLHostIDSubDomain,
 			ingressOptions:        c.Spec.ExposeOptions.CQL.Ingress,
 		})
@@ -741,7 +741,7 @@ func MakeIngresses(c *scyllav1.ScyllaCluster, services map[string]*corev1.Servic
 			switch naming.ScyllaServiceType(service.Labels[naming.ScyllaServiceTypeLabel]) {
 			case naming.ScyllaServiceTypeIdentity:
 				for _, domain := range c.Spec.DNSDomains {
-					hosts = append(hosts, ip.identitySubdomainFunc(domain))
+					hosts = append(hosts, ip.protocolSubdomainFunc(domain))
 				}
 				labels[naming.ScyllaIngressTypeLabel] = string(naming.ScyllaIngressTypeAnyNode)
 

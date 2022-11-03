@@ -169,7 +169,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 				var sniHosts []string
 				for _, domain := range sc.Spec.DNSDomains {
-					sniHosts = append(sniHosts, fmt.Sprintf("any.cql.%s", domain))
+					sniHosts = append(sniHosts, fmt.Sprintf("cql.%s", domain))
 
 					for _, nodeID := range nodeIDs {
 						sniHosts = append(sniHosts, fmt.Sprintf("%s.cql.%s", nodeID, domain))

@@ -1153,7 +1153,7 @@ func TestMakeIngresses(t *testing.T) {
 						IngressClassName: pointer.String("cql-ingress-class"),
 						Rules: []networkingv1.IngressRule{
 							{
-								Host: "any.cql.public.scylladb.com",
+								Host: "cql.public.scylladb.com",
 								IngressRuleValue: networkingv1.IngressRuleValue{
 									HTTP: &networkingv1.HTTPIngressRuleValue{
 										Paths: []networkingv1.HTTPIngressPath{
@@ -1174,7 +1174,7 @@ func TestMakeIngresses(t *testing.T) {
 								},
 							},
 							{
-								Host: "any.cql.private.scylladb.com",
+								Host: "cql.private.scylladb.com",
 								IngressRuleValue: networkingv1.IngressRuleValue{
 									HTTP: &networkingv1.HTTPIngressRuleValue{
 										Paths: []networkingv1.HTTPIngressPath{

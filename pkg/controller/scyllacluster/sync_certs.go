@@ -137,10 +137,10 @@ func (scc *Controller) syncCerts(
 		hostIDs = append(hostIDs, hostID)
 	}
 
-	// For every cluster domain we'll create the "any.nodes" subdomain and "UUID" subdomains for every node.
+	// For every cluster domain we'll create "cql" subdomain and "UUID.cql" subdomains for every node.
 	var servingDNSNames []string
 	for _, domain := range sc.Spec.DNSDomains {
-		servingDNSNames = append(servingDNSNames, naming.GetCQLAnySubDomain(domain))
+		servingDNSNames = append(servingDNSNames, naming.GetCQLProtocolSubDomain(domain))
 
 		for _, hostID := range hostIDs {
 			servingDNSNames = append(servingDNSNames, naming.GetCQLHostIDSubDomain(hostID, domain))

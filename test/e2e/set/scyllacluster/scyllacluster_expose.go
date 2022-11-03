@@ -86,8 +86,8 @@ var _ = g.Describe("ScyllaCluster Ingress", func() {
 			sc.Spec.ExposeOptions.CQL.Ingress.IngressClassName,
 			&services.Items[0],
 			[]string{
-				"any.cql.private.nodes.scylladb.com",
-				"any.cql.public.nodes.scylladb.com",
+				"cql.private.nodes.scylladb.com",
+				"cql.public.nodes.scylladb.com",
 			},
 			"cql-ssl",
 		)

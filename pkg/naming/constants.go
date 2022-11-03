@@ -140,3 +140,9 @@ const (
 const (
 	ScyllaRuntimeConfigKey string = "ScyllaRuntimeConfig"
 )
+
+type ProtocolDNSLabel string
+
+const (
+	CQLProtocolDNSLabel = "cql"
+)

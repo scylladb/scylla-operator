@@ -74,11 +74,20 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 
 	annotations := map[string]string{}
 
-	// Copy the old replace label, if present.
+	// Copy the old replace annotation, if present.
 	var replaceAddr string
 	var hasReplaceAnnotation bool
 	if oldService != nil {
 		replaceAddr, hasReplaceAnnotation = oldService.Annotations[naming.ReplaceAnnotation]
+
+		// Maintain backwards compatibility
+		replaceAddrLabel, hasReplaceLabel := oldService.Labels[naming.ReplaceAnnotation]
+		if hasReplaceLabel && !hasReplaceAnnotation {
+			// The annotation should take precendence over the label.
+			hasReplaceAnnotation = true
+			replaceAddr = replaceAddrLabel
+		}
+
 		if hasReplaceAnnotation {
 			annotations[naming.ReplaceAnnotation] = replaceAddr
 		}

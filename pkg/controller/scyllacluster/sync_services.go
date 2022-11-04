@@ -204,9 +204,14 @@ func (scc *Controller) syncServices(
 
 	// Replace members.
 	for _, svc := range services {
-		replaceAddr, ok := svc.Annotations[naming.ReplaceAnnotation]
-		if !ok {
+		replaceAddr, hasReplaceAnnotation := svc.Annotations[naming.ReplaceAnnotation]
+		// Maintain backwards compatibility
+		replaceAddrLabel, hasReplaceLabel := svc.Labels[naming.ReplaceAnnotation]
+		if !hasReplaceLabel && !hasReplaceAnnotation {
 			continue
+		}
+		if hasReplaceLabel && !hasReplaceAnnotation {
+			replaceAddr = replaceAddrLabel
 		}
 
 		rackName, ok := svc.Labels[naming.RackNameLabel]
@@ -383,7 +388,12 @@ func (scc *Controller) syncServices(
 				if podReady {
 					scc.eventRecorder.Eventf(svc, corev1.EventTypeNormal, "FinishedReplacingNode", "New pod %s/%s is ready.", pod.Namespace, pod.Name)
 					svcCopy := svc.DeepCopy()
-					delete(svcCopy.Annotations, naming.ReplaceAnnotation)
+					if hasReplaceAnnotation {
+						delete(svcCopy.Annotations, naming.ReplaceAnnotation)
+					}
+					if hasReplaceLabel {
+						delete(svcCopy.Labels, naming.ReplaceAnnotation)
+					}
 					controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, svcCopy, "update", sc.Generation)
 					_, err := scc.kubeClient.CoreV1().Services(svcCopy.Namespace).Update(ctx, svcCopy, metav1.UpdateOptions{})
 					resourceapply.ReportUpdateEvent(scc.eventRecorder, svc, err)

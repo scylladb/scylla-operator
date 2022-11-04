@@ -1,3 +1,32 @@
+# v1.17.1 (2022-10-24)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.17.0 (2022-10-21)
+
+* **Feature**: Add presign functionality for sts:AssumeRole operation
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.16.19 (2022-09-20)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.16.18 (2022-09-14)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.16.17 (2022-09-02)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.16.16 (2022-08-31)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.16.15 (2022-08-30)
+
+* No change notes available for this release.
+
 # v1.16.14 (2022-08-29)
 
 * **Dependency Update**: Updated to the latest SDK module versions

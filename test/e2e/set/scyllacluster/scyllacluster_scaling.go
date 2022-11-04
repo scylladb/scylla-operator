@@ -7,16 +7,21 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controller/scyllacluster"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
+	"github.com/scylladb/scylla-operator/test/e2e/scheme"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/pointer"
 )
 
 var _ = g.Describe("ScyllaCluster", func() {
@@ -24,7 +29,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 	f := framework.NewFramework("scyllacluster")
 
-	g.It("should support scaling", func() {
+	g.It("should support horizontal scaling", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
@@ -210,5 +215,66 @@ var _ = g.Describe("ScyllaCluster", func() {
 		verifyCQLData(ctx, diRF1)
 		verifyCQLData(ctx, diRF2)
 		verifyCQLData(ctx, diRF3)
+	})
+
+	g.It("should support vertical scaling", func() {
+		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+		defer cancel()
+
+		const membersCount = 3
+		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
+		sc.Spec.Datacenter.Racks[0].Members = membersCount
+		o.Expect(sc.Spec.Datacenter.Racks[0].Resources.Limits).NotTo(o.BeNil())
+		sc.Spec.Datacenter.Racks[0].Resources.Limits[corev1.ResourceCPU] = *resource.NewQuantity(1, resource.DecimalSI)
+
+		framework.By("Creating a ScyllaCluster with %d members using 1 cpu each", membersCount)
+		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", sc.ResourceVersion)
+		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
+		defer waitCtx1Cancel()
+		sc, err = utils.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(hosts).To(o.HaveLen(membersCount))
+		di := insertAndVerifyCQLData(ctx, hosts)
+		defer di.Close()
+
+		framework.By("Raising CPU limits to 2 cpu each")
+		sc.ManagedFields = nil
+		sc.ResourceVersion = ""
+		sc.Spec.Datacenter.Racks[0].Resources.Limits[corev1.ResourceCPU] = *resource.NewQuantity(2, resource.DecimalSI)
+		scData, err := runtime.Encode(scheme.Codecs.LegacyCodec(scyllav1.GroupVersion), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		// TODO: Use generated Apply method when our clients have it.
+		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(ctx, sc.Name, types.ApplyPatchType, scData, metav1.PatchOptions{
+			FieldManager: f.FieldManager(),
+			Force:        pointer.Bool(true),
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
+		o.Expect(sc.Spec.Datacenter.Racks[0].Resources.Limits).To(o.HaveKeyWithValue(
+			corev1.ResourceCPU,
+			resource.MustParse("2"),
+		))
+
+		framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", sc.ResourceVersion)
+		waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc)
+		defer waitCtx2Cancel()
+		sc, err = utils.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+
+		oldHosts := hosts
+		hosts = getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(hosts).To(o.HaveLen(membersCount))
+		o.Expect(hosts).To(o.ConsistOf(oldHosts))
+
+		verifyCQLData(ctx, di)
 	})
 })

@@ -55,7 +55,8 @@ var (
 )
 
 type Controller struct {
-	operatorImage string
+	operatorImage   string
+	cqlsIngressPort int
 
 	kubeClient   kubernetes.Interface
 	scyllaClient scyllav1client.ScyllaV1Interface
@@ -92,6 +93,7 @@ func NewController(
 	ingressInformer networkingv1informers.IngressInformer,
 	scyllaClusterInformer scyllav1informers.ScyllaClusterInformer,
 	operatorImage string,
+	cqlsIngressPort int,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
@@ -108,7 +110,8 @@ func NewController(
 	}
 
 	scc := &Controller{
-		operatorImage: operatorImage,
+		operatorImage:   operatorImage,
+		cqlsIngressPort: cqlsIngressPort,
 
 		kubeClient:   kubeClient,
 		scyllaClient: scyllaClient,

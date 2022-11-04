@@ -70,7 +70,7 @@ func wrapCertProjectionsForCertKey(
 	return res
 }
 
-func GetCABundleFromConfigMap(cm *corev1.ConfigMap) ([]*x509.Certificate, error) {
+func GetCABundleDataFromConfigMap(cm *corev1.ConfigMap) ([]byte, error) {
 	if cm.Data == nil {
 		return nil, fmt.Errorf("configMap %q doesn't contain any data", naming.ObjRef(cm))
 	}
@@ -78,14 +78,22 @@ func GetCABundleFromConfigMap(cm *corev1.ConfigMap) ([]*x509.Certificate, error)
 	caBundle, found := cm.Data[CABundleKey]
 	if !found {
 		return nil, fmt.Errorf("configMap %q is missing data for key %q", naming.ObjRef(cm), CABundleKey)
-
 	}
 
 	if len(caBundle) == 0 {
 		return nil, fmt.Errorf("configMap %q is missing ca-bundle content", naming.ObjRef(cm))
 	}
 
-	return ocrypto.DecodeCertificates([]byte(caBundle))
+	return []byte(caBundle), nil
+}
+
+func GetCABundleFromConfigMap(cm *corev1.ConfigMap) ([]*x509.Certificate, error) {
+	caBundleData, err := GetCABundleDataFromConfigMap(cm)
+	if err != nil {
+		return nil, err
+	}
+
+	return ocrypto.DecodeCertificates(caBundleData)
 }
 
 func GetCertDataFromSecret(secret *corev1.Secret) ([]byte, error) {
@@ -139,6 +147,20 @@ func GetKeyDataFromSecret(secret *corev1.Secret) ([]byte, error) {
 	}
 
 	return keyBytes, nil
+}
+
+func GetCertKeyDataFromSecret(secret *corev1.Secret) ([]byte, []byte, error) {
+	certBytes, err := GetCertDataFromSecret(secret)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	keyBytes, err := GetKeyDataFromSecret(secret)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return certBytes, keyBytes, nil
 }
 
 func GetKeyFromSecret(secret *corev1.Secret) (*rsa.PrivateKey, error) {

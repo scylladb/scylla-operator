@@ -22,6 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	apierrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	cliflag "k8s.io/component-base/cli/flag"
@@ -38,6 +39,7 @@ type OperatorOptions struct {
 
 	ConcurrentSyncs int
 	OperatorImage   string
+	CQLSIngressPort int
 }
 
 func NewOperatorOptions(streams genericclioptions.IOStreams) *OperatorOptions {
@@ -48,6 +50,7 @@ func NewOperatorOptions(streams genericclioptions.IOStreams) *OperatorOptions {
 
 		ConcurrentSyncs: 50,
 		OperatorImage:   "",
+		CQLSIngressPort: 0,
 	}
 }
 
@@ -87,6 +90,7 @@ func NewOperatorCmd(streams genericclioptions.IOStreams) *cobra.Command {
 
 	cmd.Flags().IntVarP(&o.ConcurrentSyncs, "concurrent-syncs", "", o.ConcurrentSyncs, "The number of ScyllaCluster objects that are allowed to sync concurrently.")
 	cmd.Flags().StringVarP(&o.OperatorImage, "image", "", o.OperatorImage, "Image of the operator used.")
+	cmd.Flags().IntVarP(&o.CQLSIngressPort, "cqls-ingress-port", "", o.CQLSIngressPort, "Port on which is the ingress controller listening for secure CQL connections.")
 
 	return cmd
 }
@@ -99,7 +103,12 @@ func (o *OperatorOptions) Validate() error {
 	errs = append(errs, o.LeaderElection.Validate())
 
 	if len(o.OperatorImage) == 0 {
-		return errors.New("operator image can't be empty")
+		errs = append(errs, errors.New("operator image can't be empty"))
+	}
+
+	msg := validation.IsInRange(o.CQLSIngressPort, 0, 65535)
+	if len(msg) != 0 {
+		errs = append(errs, fmt.Errorf("invalid secure cql ingress port %d: %s", o.CQLSIngressPort, msg))
 	}
 
 	return apierrors.NewAggregate(errs)
@@ -188,6 +197,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		kubeInformers.Networking().V1().Ingresses(),
 		scyllaInformers.Scylla().V1().ScyllaClusters(),
 		o.OperatorImage,
+		o.CQLSIngressPort,
 	)
 	if err != nil {
 		return err

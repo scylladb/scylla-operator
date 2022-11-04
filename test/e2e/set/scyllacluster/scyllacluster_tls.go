@@ -143,7 +143,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 				servingCABundleConfigMap, err := f.KubeClient().CoreV1().ConfigMaps(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-serving-ca", sc.Name), metav1.GetOptions{})
 				o.Expect(err).NotTo(o.HaveOccurred())
-				servingCACerts := verifyAndParseCABundle(servingCABundleConfigMap)
+				servingCACerts, servingCACertBytes := verifyAndParseCABundle(servingCABundleConfigMap)
 				o.Expect(servingCACerts).To(o.HaveLen(1))
 
 				servingCertSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-serving-certs", sc.Name), metav1.GetOptions{})
@@ -158,6 +158,16 @@ var _ = g.Describe("ScyllaCluster", func() {
 				_, adminClientCertBytes, _, adminClientKeyBytes := verifyAndParseTLSCert(adminClientSecret, verifyTLSCertOptions{
 					isCA:     pointer.Bool(false),
 					keyUsage: opointer.KeyUsage(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
+				})
+
+				adminClientConnectionConfigsSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-cql-connection-configs-admin", sc.Name), metav1.GetOptions{})
+				o.Expect(err).NotTo(o.HaveOccurred())
+				_ = verifyAndParseCQLConnectionConfigs(adminClientConnectionConfigsSecret, verifyCQLConnectionConfigsOptions{
+					domains:               sc.Spec.DNSDomains,
+					datacenters:           []string{sc.Spec.Datacenter.Name},
+					ServingCAData:         servingCACertBytes,
+					ClientCertificateData: adminClientCertBytes,
+					ClientKeyData:         adminClientKeyBytes,
 				})
 
 				framework.By("Verifying certificates")

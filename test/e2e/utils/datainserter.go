@@ -33,12 +33,20 @@ type TestData struct {
 	Data string `db:"data"`
 }
 
-func NewDataInserter(hosts []string) (*DataInserter, error) {
+type DataInserterOption func(*DataInserter)
+
+func WithSession(session *gocqlx.Session) func(*DataInserter) {
+	return func(di *DataInserter) {
+		di.session = session
+	}
+}
+
+func NewDataInserter(hosts []string, options ...DataInserterOption) (*DataInserter, error) {
 	// Instead of specifying hosts for the provided datacenter, use 'replication_factor' as a single key to specify a default RF.
 	return NewMultiDCDataInserter(map[string][]string{"replication_factor": hosts})
 }
 
-func NewMultiDCDataInserter(dcHosts map[string][]string) (*DataInserter, error) {
+func NewMultiDCDataInserter(dcHosts map[string][]string, options ...DataInserterOption) (*DataInserter, error) {
 	keyspace := utilrand.String(8)
 	table := table.New(table.Metadata{
 		Name:    fmt.Sprintf(`"%s"."test"`, keyspace),
@@ -62,9 +70,15 @@ func NewMultiDCDataInserter(dcHosts map[string][]string) (*DataInserter, error) 
 		replicationFactor: replicationFactor,
 	}
 
-	err := di.SetClientEndpoints(slices.Flatten(helpers.GetMapValues(dcHosts)))
-	if err != nil {
-		return nil, fmt.Errorf("can't set client endpoints: %w", err)
+	for _, option := range options {
+		option(di)
+	}
+
+	if di.session == nil {
+		err := di.SetClientEndpoints(slices.Flatten(helpers.GetMapValues(dcHosts)))
+		if err != nil {
+			return nil, fmt.Errorf("can't set client endpoints: %w", err)
+		}
 	}
 
 	return di, nil

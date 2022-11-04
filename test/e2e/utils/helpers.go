@@ -4,6 +4,8 @@ package utils
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"net/http"
@@ -19,6 +21,7 @@ import (
 	scyllav1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1"
 	scyllav1alpha1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -677,4 +680,68 @@ func PodIsRunning(pod *corev1.Pod) (bool, error) {
 		return false, fmt.Errorf("pod ran to completion")
 	}
 	return false, nil
+}
+
+func WaitUntilServingCertificateIsLive(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) error {
+	servingCertSecret, err := client.Secrets(sc.Namespace).Get(ctx, fmt.Sprintf("%s-local-serving-certs", sc.Name), metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("can't get serving cert secret: %w", err)
+	}
+	servingCerts, err := ocrypto.DecodeCertificates(servingCertSecret.Data["tls.crt"])
+	if err != nil {
+		return fmt.Errorf("can't decode serving certificate: %w", err)
+	}
+	if len(servingCerts) != 1 {
+		return fmt.Errorf("expected 1 serving certificate, got %d", len(servingCerts))
+	}
+	servingCert := servingCerts[0]
+
+	adminClientSecret, err := client.Secrets(sc.Namespace).Get(ctx, fmt.Sprintf("%s-local-user-admin", sc.Name), metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("can't get client certificate secret: %w", err)
+	}
+
+	adminTLSCert, err := tls.X509KeyPair(adminClientSecret.Data["tls.crt"], adminClientSecret.Data["tls.key"])
+	if err != nil {
+		return fmt.Errorf("can't parse client certificate: %w", err)
+	}
+
+	servingCABundleConfigMap, err := client.ConfigMaps(sc.Namespace).Get(ctx, fmt.Sprintf("%s-local-serving-ca", sc.Name), metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("can't get serving CA configmap: %w", err)
+	}
+
+	caBundleCerts, err := ocrypto.DecodeCertificates([]byte(servingCABundleConfigMap.Data["ca-bundle.crt"]))
+	if err != nil {
+		return fmt.Errorf("can't decode serving CA certificate: %w", err)
+	}
+
+	servingCAPool := x509.NewCertPool()
+	for _, caCert := range caBundleCerts {
+		servingCAPool.AddCert(caCert)
+	}
+
+	hosts, err := GetHosts(ctx, client, sc)
+	if err != nil {
+		return fmt.Errorf("can't get v1.ScyllaCluster %q hosts: %w", naming.ObjRef(sc), err)
+	}
+
+	for _, host := range hosts {
+		o.Eventually(func(eo o.Gomega) {
+			serverCerts, err := GetServerTLSCertificates(fmt.Sprintf("%s:9142", host), &tls.Config{
+				ServerName:         host,
+				InsecureSkipVerify: false,
+				Certificates:       []tls.Certificate{adminTLSCert},
+				RootCAs:            servingCAPool,
+			})
+			eo.Expect(err).NotTo(o.HaveOccurred())
+			eo.Expect(serverCerts).NotTo(o.BeEmpty())
+			eo.Expect(serverCerts).To(o.HaveLen(1))
+
+			eo.Expect(serverCerts[0].Raw).NotTo(o.BeEmpty())
+			eo.Expect(serverCerts[0].Raw).To(o.Equal(servingCert.Raw))
+		}).WithTimeout(5 * 60 * time.Second).WithPolling(1 * time.Second).Should(o.Succeed())
+	}
+
+	return nil
 }

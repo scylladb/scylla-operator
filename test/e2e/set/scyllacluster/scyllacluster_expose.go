@@ -7,14 +7,21 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net"
+	"os"
+	"path"
+	"time"
 
+	"github.com/gocql/gocql/scyllacloud"
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	"github.com/scylladb/gocqlx/v2"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
+	"github.com/scylladb/scylla-operator/pkg/scheme"
+	cqlclientv1alpha1 "github.com/scylladb/scylla-operator/pkg/scylla/api/cqlclient/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
@@ -24,6 +31,8 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
@@ -34,6 +43,98 @@ var _ = g.Describe("ScyllaCluster", func() {
 	defer g.GinkgoRecover()
 
 	f := framework.NewFramework("scyllacluster")
+
+	g.It("should connect to cluster via Ingresses", func() {
+		if !utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {
+			g.Skip(fmt.Sprintf("Skipping because %q feature is disabled", features.AutomaticTLSCertificates))
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+		defer cancel()
+
+		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+
+		sc.Spec.DNSDomains = []string{fmt.Sprintf("%s.private.nodes.scylladb.com", f.Namespace()), fmt.Sprintf("%s.public.nodes.scylladb.com", f.Namespace())}
+		if framework.TestContext.IngressController != nil {
+			sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+				CQL: &scyllav1.CQLExposeOptions{
+					Ingress: &scyllav1.IngressOptions{
+						IngressClassName: framework.TestContext.IngressController.IngressClassName,
+						Annotations:      framework.TestContext.IngressController.CustomAnnotations,
+					},
+				},
+			}
+		}
+
+		framework.By("Creating a ScyllaCluster")
+		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for ScyllaCluster to deploy")
+		waitCtx, waitCtxCancel := utils.ContextForRollout(ctx, sc)
+		defer waitCtxCancel()
+
+		sc, err = utils.WaitForScyllaClusterState(waitCtx, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+
+		// Wait until node picks up regenerated certificate.
+		err = utils.WaitUntilServingCertificateIsLive(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		framework.By("Nodes reloaded the certificate")
+
+		hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(hosts).To(o.HaveLen(int(sc.Spec.Datacenter.Racks[0].Members)))
+
+		connectionBundleDir, err := os.MkdirTemp(os.TempDir(), fmt.Sprintf("connection-bundle-%s-", f.Namespace()))
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer func() {
+			err := os.RemoveAll(connectionBundleDir)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}()
+
+		var groupVersioner runtime.GroupVersioner = schema.GroupVersions([]schema.GroupVersion{cqlclientv1alpha1.GroupVersion})
+		decoder := scheme.Codecs.DecoderToVersion(scheme.Codecs.UniversalDeserializer(), groupVersioner)
+		encoder := scheme.Codecs.EncoderForVersion(scheme.DefaultYamlSerializer, groupVersioner)
+
+		// Connect to nodes via Ingresses
+		for _, dnsDomain := range sc.Spec.DNSDomains {
+			framework.By("Connecting via %s domain", dnsDomain)
+
+			framework.By("Injecting ingress controller address into the CQL connection bundle")
+			bundleSecret, err := f.KubeClient().CoreV1().Secrets(sc.Namespace).Get(ctx, naming.GetScyllaClusterLocalAdminCQLConnectionConfigsName(sc.Name), metav1.GetOptions{})
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			cqlConnectionConfig := &cqlclientv1alpha1.CQLConnectionConfig{}
+			_, _, err = decoder.Decode(bundleSecret.Data[dnsDomain], nil, cqlConnectionConfig)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			ingressAddress := f.GetIngressAddress(cqlConnectionConfig.Datacenters[sc.Spec.Datacenter.Name].Server)
+			cqlConnectionConfig.Datacenters[sc.Spec.Datacenter.Name].Server = ingressAddress
+
+			cqlConnectionConfigData, err := runtime.Encode(encoder, cqlConnectionConfig)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			cqlConnectionConfigFilePath := path.Join(connectionBundleDir, fmt.Sprintf("%s.yaml", dnsDomain))
+			framework.By("Saving CQL Connection Config in %s", cqlConnectionConfigFilePath)
+			err = os.WriteFile(cqlConnectionConfigFilePath, cqlConnectionConfigData, 0600)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			framework.By("Connecting to cluster via Ingress")
+			cluster, err := scyllacloud.NewCloudCluster(cqlConnectionConfigFilePath)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			// Increase default timeout, due to additional hop on the route to host.
+			cluster.Timeout = 10 * time.Second
+
+			session, err := gocqlx.WrapSession(cluster.CreateSession())
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			di := insertAndVerifyCQLData(ctx, hosts, utils.WithSession(&session))
+			di.Close()
+		}
+	})
 
 	type entry struct {
 		exposeOptions                            *scyllav1.ExposeOptions
@@ -70,7 +171,6 @@ var _ = g.Describe("ScyllaCluster", func() {
 		}
 
 		framework.By("Waiting for ScyllaCluster to deploy")
-
 		sc, err = utils.WaitForScyllaClusterState(waitCtx, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -281,7 +381,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
 		sc.Spec.Datacenter.Racks[0].Members = 1
-		sc.Spec.DNSDomains = []string{"private.nodes.scylladb.com", "public.nodes.scylladb.com"}
+		sc.Spec.DNSDomains = []string{fmt.Sprintf("%s.private.nodes.scylladb.com", f.Namespace()), fmt.Sprintf("%s.public.nodes.scylladb.com", f.Namespace())}
 		sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
 			CQL: &scyllav1.CQLExposeOptions{
 				Ingress: &scyllav1.IngressOptions{
@@ -297,8 +397,6 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		// TODO: In theory Ingresses may not be created when ScyllaCluster is rolled out making this test flaky.
-		//       Wait for condition when it's available.
 		framework.By("Waiting for ScyllaCluster to deploy")
 		waitCtx, waitCtxCancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtxCancel()
@@ -307,11 +405,6 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
-
-		hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
-		o.Expect(hosts).To(o.HaveLen(1))
-		di := insertAndVerifyCQLData(ctx, hosts)
-		defer di.Close()
 
 		framework.By("Verifying AnyNode Ingresses")
 		services, err := f.KubeClient().CoreV1().Services(sc.Namespace).List(ctx, metav1.ListOptions{
@@ -337,8 +430,8 @@ var _ = g.Describe("ScyllaCluster", func() {
 			sc.Spec.ExposeOptions.CQL.Ingress.IngressClassName,
 			&services.Items[0],
 			[]string{
-				"cql.private.nodes.scylladb.com",
-				"cql.public.nodes.scylladb.com",
+				fmt.Sprintf("cql.%s", sc.Spec.DNSDomains[0]),
+				fmt.Sprintf("cql.%s", sc.Spec.DNSDomains[1]),
 			},
 			"cql-ssl",
 		)
@@ -373,14 +466,11 @@ var _ = g.Describe("ScyllaCluster", func() {
 			sc.Spec.ExposeOptions.CQL.Ingress.IngressClassName,
 			&services.Items[0],
 			[]string{
-				fmt.Sprintf("%s.cql.private.nodes.scylladb.com", nodeHostIDs[0]),
-				fmt.Sprintf("%s.cql.public.nodes.scylladb.com", nodeHostIDs[0]),
+				fmt.Sprintf("%s.cql.%s", nodeHostIDs[0], sc.Spec.DNSDomains[0]),
+				fmt.Sprintf("%s.cql.%s", nodeHostIDs[0], sc.Spec.DNSDomains[1]),
 			},
 			"cql-ssl",
 		)
-
-		// TODO: extend the test with a connection to ScyllaCluster via these Ingresses.
-		//       Ref: https://github.com/scylladb/scylla-operator/issues/1015
 	})
 })
 

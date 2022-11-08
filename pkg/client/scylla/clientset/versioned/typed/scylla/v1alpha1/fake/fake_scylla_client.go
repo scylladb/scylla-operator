@@ -16,6 +16,10 @@ func (c *FakeScyllaV1alpha1) NodeConfigs() v1alpha1.NodeConfigInterface {
 	return &FakeNodeConfigs{c}
 }
 
+func (c *FakeScyllaV1alpha1) ScyllaManagers(namespace string) v1alpha1.ScyllaManagerInterface {
+	return &FakeScyllaManagers{c, namespace}
+}
+
 func (c *FakeScyllaV1alpha1) ScyllaOperatorConfigs() v1alpha1.ScyllaOperatorConfigInterface {
 	return &FakeScyllaOperatorConfigs{c}
 }

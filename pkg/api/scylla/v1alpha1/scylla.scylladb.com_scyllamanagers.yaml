@@ -1,0 +1,460 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.5.0
+  creationTimestamp: null
+  name: scyllamanagers.scylla.scylladb.com
+spec:
+  group: scylla.scylladb.com
+  names:
+    kind: ScyllaManager
+    listKind: ScyllaManagerList
+    plural: scyllamanagers
+    singular: scyllamanager
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      schema:
+        openAPIV3Schema:
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: spec defines the desired state of the operator.
+              properties:
+                backups:
+                  description: Backup tasks to be executed by manager.
+                  items:
+                    properties:
+                      cron:
+                        description: cron describes the scheduler when a given task shall be run. It supports the extended syntax including @monthly, @weekly, @daily, @midnight, @hourly, @every <time.Duration>.
+                        type: string
+                      dc:
+                        description: DC is a list of datacenter glob patterns, e.g. 'dc1,!otherdc*' used to specify the DCs to include or exclude from backup.
+                        items:
+                          type: string
+                        type: array
+                      disable:
+                        description: Disable flag allows to disable task manually.
+                        type: boolean
+                      keyspace:
+                        description: Keyspace is a list of keyspace/tables glob patterns, e.g. 'keyspace,!keyspace.table_prefix_*' used to include or exclude keyspaces from repair.
+                        items:
+                          type: string
+                        type: array
+                      location:
+                        description: 'Location is a list of backup locations in the format [<dc>:]<provider>:<name> ex. s3:my-bucket. The <dc>: part is optional and is only needed when different datacenters are being used to upload data to different locations. <name> must be an alphanumeric string and may contain a dash and or a dot, but other characters are forbidden. The only supported storage <provider> at the moment are s3 and gcs.'
+                        items:
+                          type: string
+                        type: array
+                      name:
+                        description: name is a unique name of a task.
+                        type: string
+                      numRetries:
+                        default: 3
+                        description: numRetries indicates how many times a scheduled task will be retried before failing.
+                        format: int64
+                        type: integer
+                      rateLimit:
+                        description: 'RateLimit is a list of megabytes (MiB) per second rate limits expressed in the format [<dc>:]<limit>. The <dc>: part is optional and only needed when different datacenters need different upload limits. Set to 0 for no limit (default 100).'
+                        items:
+                          type: string
+                        type: array
+                      retention:
+                        default: 3
+                        description: Retention is the number of backups which are to be stored.
+                        format: int64
+                        type: integer
+                      snapshotParallel:
+                        description: 'SnapshotParallel is a list of snapshot parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set, the limit is global (e.g. ''dc1:2,5'') the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters.'
+                        items:
+                          type: string
+                        type: array
+                      timeWindow:
+                        description: TimeWindow indicates when the task can be run.
+                        type: string
+                      timezone:
+                        description: The time zone in which the task will be run.
+                        type: string
+                      uploadParallel:
+                        description: 'UploadParallel is a list of upload parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set the limit is global (e.g. ''dc1:2,5'') the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters.'
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  type: array
+                database:
+                  description: The internal Database of this Scylla Manager.
+                  properties:
+                    clientOptions:
+                      properties:
+                        localDatacenter:
+                          type: string
+                      type: object
+                    connection:
+                      properties:
+                        password:
+                          description: Password is the password for basic authentication to the Scylla cluster.
+                          type: string
+                        server:
+                          description: Address of a database server.
+                          type: string
+                        tlsConfig:
+                          description: Configuration of a TLS.
+                          properties:
+                            certificateAuthorityConfigMapRef:
+                              description: LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.
+                              properties:
+                                name:
+                                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                                  type: string
+                              type: object
+                            clientCertSecretRef:
+                              description: LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.
+                              properties:
+                                name:
+                                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                                  type: string
+                              type: object
+                            insecureSkipTlsVerify:
+                              type: boolean
+                          type: object
+                        tlsServerName:
+                          type: string
+                        username:
+                          description: Username is the username for basic authentication to the Scylla cluster.
+                          type: string
+                      type: object
+                    keyspaceOptions:
+                      properties:
+                        keyspacePrefix:
+                          type: string
+                        replicationFactor:
+                          description: ReplicationFactor of a keyspace.
+                          format: int32
+                          type: integer
+                      type: object
+                  type: object
+                image:
+                  description: Image is an image of Scylla Manager to use.
+                  type: string
+                imagePullSecrets:
+                  description: ImagePullSecrets is an optional list of references to secrets in the same namespace used for pulling Scylla Manager and Agent images.
+                  items:
+                    description: LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.
+                    properties:
+                      name:
+                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                        type: string
+                    type: object
+                  type: array
+                repairs:
+                  description: Repair tasks to be executed by manager.
+                  items:
+                    properties:
+                      cron:
+                        description: cron describes the scheduler when a given task shall be run. It supports the extended syntax including @monthly, @weekly, @daily, @midnight, @hourly, @every <time.Duration>.
+                        type: string
+                      dc:
+                        description: DC is a list of datacenter glob patterns, e.g. 'dc1', '!otherdc*' used to specify the DCs to include or exclude from backup.
+                        items:
+                          type: string
+                        type: array
+                      disable:
+                        description: Disable flag allows to disable task manually.
+                        type: boolean
+                      failFast:
+                        description: FailFast indicates if a repair should be stopped on first error.
+                        type: boolean
+                      host:
+                        description: Host specifies a host to repair. If empty, all hosts are repaired.
+                        type: string
+                      intensity:
+                        default: "1"
+                        description: Intensity indicates how many token ranges (per shard) to repair in a single Scylla repair job. By default this is 1. If you set it to 0 the number of token ranges is adjusted to the maximum supported by node (see max_repair_ranges_in_parallel in Scylla logs). Valid values are 0 and integers >= 1. Higher values will result in increased cluster load and slightly faster repairs. Changing the intensity impacts repair granularity if you need to resume it, the higher the value the more work on resume. For Scylla clusters that *do not support row-level repair*, intensity can be a decimal between (0,1). In that case it specifies percent of shards that can be repaired in parallel on a repair master node. For Scylla clusters that are row-level repair enabled, setting intensity below 1 has the same effect as setting intensity 1.
+                        type: string
+                      keyspace:
+                        description: Keyspace is a list of keyspace/tables glob patterns, e.g. 'keyspace,!keyspace.table_prefix_*' used to include or exclude keyspaces from repair.
+                        items:
+                          type: string
+                        type: array
+                      name:
+                        description: name is a unique name of a task.
+                        type: string
+                      numRetries:
+                        default: 3
+                        description: numRetries indicates how many times a scheduled task will be retried before failing.
+                        format: int64
+                        type: integer
+                      parallel:
+                        default: 0
+                        description: 'Parallel is the maximum number of Scylla repair jobs that can run at the same time (on different token ranges and replicas). Each node can take part in at most one repair at any given moment. By default the maximum possible parallelism is used. The effective parallelism depends on a keyspace replication factor (RF) and the number of nodes. The formula to calculate it is as follows: number of nodes / RF, ex. for 6 node cluster with RF=3 the maximum parallelism is 2.'
+                        format: int64
+                        type: integer
+                      smallTableThreshold:
+                        default: 1GiB
+                        description: SmallTableThreshold enables small table optimization for tables of size lower than given threshold. Supported units [B, MiB, GiB, TiB].
+                        type: string
+                      timeWindow:
+                        description: TimeWindow indicates when the task can be run.
+                        type: string
+                      timezone:
+                        description: The time zone in which the task will be run.
+                        type: string
+                    type: object
+                  type: array
+                replicas:
+                  description: Replicas is a total number of desired Scylla Managers.
+                  format: int32
+                  type: integer
+                resource:
+                  description: Resources per one Scylla Manager deployment.
+                  properties:
+                    limits:
+                      additionalProperties:
+                        anyOf:
+                          - type: integer
+                          - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                      type: object
+                    requests:
+                      additionalProperties:
+                        anyOf:
+                          - type: integer
+                          - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                      type: object
+                  type: object
+                scyllaClusterSelector:
+                  description: ScyllaClusterSelector targets clusters which will be watched by this Scylla Manager.
+                  properties:
+                    matchExpressions:
+                      description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                      items:
+                        description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                        properties:
+                          key:
+                            description: key is the label key that the selector applies to.
+                            type: string
+                          operator:
+                            description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                            type: string
+                          values:
+                            description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                            items:
+                              type: string
+                            type: array
+                        required:
+                          - key
+                          - operator
+                        type: object
+                      type: array
+                    matchLabels:
+                      additionalProperties:
+                        type: string
+                      description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                      type: object
+                  type: object
+                serverOptions:
+                  properties:
+                    clientCaConfigMapRef:
+                      description: LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.
+                      properties:
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                      type: object
+                    servingSecretRef:
+                      description: LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.
+                      properties:
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                      type: object
+                  type: object
+                taskStatusRefreshTime:
+                  default: 15000000000
+                  description: TaskStatusRefreshTime indicates how often the status of a task will be updated during run.
+                  format: int64
+                  type: integer
+              type: object
+            status:
+              description: status defines the observed state of the operator.
+              properties:
+                conditions:
+                  description: Conditions of a ScyllaManager.
+                  items:
+                    description: "Condition contains details for one aspect of the current state of this API Resource. --- This struct is intended for direct use as an array at the field path .status.conditions.  For example, \n \ttype FooStatus struct{ \t    // Represents the observations of a foo's current state. \t    // Known .status.conditions.type are: \"Available\", \"Progressing\", and \"Degraded\" \t    // +patchMergeKey=type \t    // +patchStrategy=merge \t    // +listType=map \t    // +listMapKey=type \t    Conditions []metav1.Condition `json:\"conditions,omitempty\" patchStrategy:\"merge\" patchMergeKey:\"type\" protobuf:\"bytes,1,rep,name=conditions\"` \n \t    // other fields \t}"
+                    properties:
+                      lastTransitionTime:
+                        description: lastTransitionTime is the last time the condition transitioned from one status to another. This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                        format: date-time
+                        type: string
+                      message:
+                        description: message is a human readable message indicating details about the transition. This may be an empty string.
+                        maxLength: 32768
+                        type: string
+                      observedGeneration:
+                        description: observedGeneration represents the .metadata.generation that the condition was set based upon. For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance.
+                        format: int64
+                        minimum: 0
+                        type: integer
+                      reason:
+                        description: reason contains a programmatic identifier indicating the reason for the condition's last transition. Producers of specific condition types may define expected values and meanings for this field, and whether the values are considered a guaranteed API. The value should be a CamelCase string. This field may not be empty.
+                        maxLength: 1024
+                        minLength: 1
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                        type: string
+                      status:
+                        description: status of the condition, one of True, False, Unknown.
+                        enum:
+                          - "True"
+                          - "False"
+                          - Unknown
+                        type: string
+                      type:
+                        description: type of condition in CamelCase or in foo.example.com/CamelCase. --- Many .condition.type values are consistent across resources like Available, but because arbitrary conditions can be useful (see .node.status.conditions), the ability to deconflict is important. The regex it matches is (dns1123SubdomainFmt/)?(qualifiedNameFmt)
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                        type: string
+                    required:
+                      - lastTransitionTime
+                      - message
+                      - reason
+                      - status
+                      - type
+                    type: object
+                  type: array
+                managedClusters:
+                  description: Statuses of a clusters, that match this manager's selector.
+                  items:
+                    properties:
+                      backups:
+                        description: Statuses of all the backups in this cluster.
+                        items:
+                          properties:
+                            id:
+                              description: ID of a task in ScyllaManager
+                              type: string
+                            name:
+                              description: Name of a task in ScyllaManager
+                              type: string
+                            reason:
+                              type: string
+                            status:
+                              description: Status of a task from ScyllaManager.
+                              type: string
+                          type: object
+                        type: array
+                      conditions:
+                        description: Conditions of a ManagedCluster.
+                        items:
+                          description: "Condition contains details for one aspect of the current state of this API Resource. --- This struct is intended for direct use as an array at the field path .status.conditions.  For example, \n \ttype FooStatus struct{ \t    // Represents the observations of a foo's current state. \t    // Known .status.conditions.type are: \"Available\", \"Progressing\", and \"Degraded\" \t    // +patchMergeKey=type \t    // +patchStrategy=merge \t    // +listType=map \t    // +listMapKey=type \t    Conditions []metav1.Condition `json:\"conditions,omitempty\" patchStrategy:\"merge\" patchMergeKey:\"type\" protobuf:\"bytes,1,rep,name=conditions\"` \n \t    // other fields \t}"
+                          properties:
+                            lastTransitionTime:
+                              description: lastTransitionTime is the last time the condition transitioned from one status to another. This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                              format: date-time
+                              type: string
+                            message:
+                              description: message is a human readable message indicating details about the transition. This may be an empty string.
+                              maxLength: 32768
+                              type: string
+                            observedGeneration:
+                              description: observedGeneration represents the .metadata.generation that the condition was set based upon. For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance.
+                              format: int64
+                              minimum: 0
+                              type: integer
+                            reason:
+                              description: reason contains a programmatic identifier indicating the reason for the condition's last transition. Producers of specific condition types may define expected values and meanings for this field, and whether the values are considered a guaranteed API. The value should be a CamelCase string. This field may not be empty.
+                              maxLength: 1024
+                              minLength: 1
+                              pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                              type: string
+                            status:
+                              description: status of the condition, one of True, False, Unknown.
+                              enum:
+                                - "True"
+                                - "False"
+                                - Unknown
+                              type: string
+                            type:
+                              description: type of condition in CamelCase or in foo.example.com/CamelCase. --- Many .condition.type values are consistent across resources like Available, but because arbitrary conditions can be useful (see .node.status.conditions), the ability to deconflict is important. The regex it matches is (dns1123SubdomainFmt/)?(qualifiedNameFmt)
+                              maxLength: 316
+                              pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                              type: string
+                          required:
+                            - lastTransitionTime
+                            - message
+                            - reason
+                            - status
+                            - type
+                          type: object
+                        type: array
+                      id:
+                        description: ID is assigned to cluster by manager.
+                        type: string
+                      name:
+                        description: Name of this Scylla Cluster.
+                        type: string
+                      repairs:
+                        description: Statuses of all the repairs in this cluster.
+                        items:
+                          properties:
+                            id:
+                              description: ID of a task in ScyllaManager
+                              type: string
+                            name:
+                              description: Name of a task in ScyllaManager
+                              type: string
+                            reason:
+                              type: string
+                            status:
+                              description: Status of a task from ScyllaManager.
+                              type: string
+                          type: object
+                        type: array
+                    type: object
+                  type: array
+                observedGeneration:
+                  description: observedGeneration is the most recent generation observed for this ScyllaManager. It corresponds to the ScyllaManager's generation, which is updated on mutation by the API Server.
+                  format: int64
+                  type: integer
+                readyReplicas:
+                  description: Total number of ready Scylla Managers.
+                  format: int32
+                  type: integer
+                replicas:
+                  description: Total number of desired Scylla Managers.
+                  format: int32
+                  type: integer
+                unavailableReplicas:
+                  description: Total number of Scylla Managers that are not ready.
+                  format: int32
+                  type: integer
+                updatedReplicas:
+                  description: Total number of Scylla Managers that have the desired template spec.
+                  format: int32
+                  type: integer
+              type: object
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

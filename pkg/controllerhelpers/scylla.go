@@ -5,8 +5,8 @@ import (
 	"sort"
 
 	"github.com/scylladb/go-log"
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"go.uber.org/zap"
@@ -45,12 +45,15 @@ func GetScyllaHost(statefulsetName string, ordinal int32, services map[string]*c
 	return ip, nil
 }
 
-func GetRequiredScyllaHosts(sc *scyllav1.ScyllaCluster, services map[string]*corev1.Service) ([]string, error) {
+func GetRequiredScyllaHosts(sd *scyllav1alpha1.ScyllaDatacenter, services map[string]*corev1.Service) ([]string, error) {
 	var hosts []string
 	var errs []error
-	for _, rack := range sc.Spec.Datacenter.Racks {
-		for ord := int32(0); ord < rack.Members; ord++ {
-			stsName := naming.StatefulSetNameForRack(rack, sc)
+	for _, rack := range sd.Spec.Racks {
+		if rack.Nodes == nil {
+			continue
+		}
+		for ord := int32(0); ord < *rack.Nodes; ord++ {
+			stsName := naming.StatefulSetNameForRack(rack, sd)
 			host, err := GetScyllaHost(stsName, ord, services)
 			if err != nil {
 				errs = append(errs, err)
@@ -93,19 +96,6 @@ func NewScyllaClientForLocalhost() (*scyllaclient.Client, error) {
 	t.TLSClientConfig = nil
 	cfg.Transport = t
 	return NewScyllaClient(cfg)
-}
-
-func SetRackCondition(rackStatus *scyllav1.RackStatus, newCondition scyllav1.RackConditionType) {
-	for i := range rackStatus.Conditions {
-		if rackStatus.Conditions[i].Type == newCondition {
-			rackStatus.Conditions[i].Status = corev1.ConditionTrue
-			return
-		}
-	}
-	rackStatus.Conditions = append(
-		rackStatus.Conditions,
-		scyllav1.RackCondition{Type: newCondition, Status: corev1.ConditionTrue},
-	)
 }
 
 func FindNodeStatus(nodeStatuses []scyllav1alpha1.NodeConfigNodeStatus, nodeName string) *scyllav1alpha1.NodeConfigNodeStatus {
@@ -217,4 +207,20 @@ func EnsureNodeConfigCondition(status *scyllav1alpha1.NodeConfigStatus, cond *sc
 	}
 
 	*existingCond = *cond
+}
+
+func IsScyllaDatacenterRolledOut(sd *scyllav1alpha1.ScyllaDatacenter) bool {
+	if !helpers.IsStatusConditionPresentAndTrue(sd.Status.Conditions, scyllav1alpha1.AvailableCondition, sd.Generation) {
+		return false
+	}
+
+	if !helpers.IsStatusConditionPresentAndFalse(sd.Status.Conditions, scyllav1alpha1.ProgressingCondition, sd.Generation) {
+		return false
+	}
+
+	if !helpers.IsStatusConditionPresentAndFalse(sd.Status.Conditions, scyllav1alpha1.DegradedCondition, sd.Generation) {
+		return false
+	}
+
+	return true
 }

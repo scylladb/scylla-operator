@@ -1,1 +1,1 @@
-../../../pkg/api/scylla/v1alpha1/scylla.scylladb.com_nodeconfigs.yaml
+../../../deploy/operator/00_scylla.scylladb.com_nodeconfigs.yaml

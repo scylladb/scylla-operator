@@ -1,4 +1,4 @@
-// Copyright (c) 2021 ScyllaDB
+// Copyright (c) 2021-2022 ScyllaDB.
 
 package utils
 

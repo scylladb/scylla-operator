@@ -145,7 +145,7 @@ func (c *Controller) sync(ctx context.Context) error {
 
 	svc, err := c.singleServiceLister.Services(c.namespace).Get(c.serviceName)
 	if errors.IsNotFound(err) {
-		klog.V(2).InfoS("Service has been deleted", "ScyllaCluster", klog.KObj(svc))
+		klog.V(2).InfoS("Service has been deleted", "Service", klog.KObj(svc))
 		return nil
 	}
 	if err != nil {

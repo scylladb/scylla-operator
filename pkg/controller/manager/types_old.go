@@ -8,13 +8,13 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-	"github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
 	"github.com/scylladb/scylla-operator/pkg/util/duration"
 	"k8s.io/utils/pointer"
 )
 
-type RepairTask v1.RepairTaskStatus
+type RepairTask scyllav1.RepairTaskStatus
 
 func (r RepairTask) ToManager() (*mermaidclient.Task, error) {
 	t := &mermaidclient.Task{
@@ -86,7 +86,7 @@ func (r *RepairTask) FromManager(t *mermaidclient.ExtendedTask) error {
 	return nil
 }
 
-type BackupTask v1.BackupTaskStatus
+type BackupTask scyllav1.BackupTaskStatus
 
 func (b BackupTask) ToManager() (*mermaidclient.Task, error) {
 	t := &mermaidclient.Task{

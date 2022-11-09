@@ -1,0 +1,32 @@
+apiVersion: scylla.scylladb.com/v2alpha1
+kind: ScyllaCluster
+metadata:
+  generateName: basic-
+spec:
+  scylla:
+    image: docker.io/scylladb/scylla:5.0.0
+    enableDeveloperMode: true
+  scyllaManagerAgent:
+    image: docker.io/scylladb/scylla-manager-agent:3.0.0
+  datacenters:
+  - name: us-east-1
+    nodesPerRack: 1
+    scyllaManagerAgent:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 10Mi
+    scylla:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 100Mi
+        limits:
+          cpu: 200m
+          memory: 200Mi
+      storage:
+        resources:
+          requests:
+            storage: 100Mi
+    racks:
+    - name: a

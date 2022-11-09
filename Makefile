@@ -51,7 +51,8 @@ CODEGEN_PKG ?=./vendor/k8s.io/code-generator
 CODEGEN_HEADER_FILE ?=/dev/null
 
 # API_PACKAGES is a list of comma separated full api package refs (like golang import strings)
-API_PACKAGES ?=$(shell $(GO) list -json ./pkg/api/... | $(JQ) -sr 'map(select(.Name | test("^v[0-9]+.*$$"))) | reduce .[] as $$item ([]; . + [$$item.ImportPath]) | join(",")')$(if $(filter $(.SHELLSTATUS),0),,$(error failed to list api packages))
+SCYLLA_API_DIR ?=./pkg/api/scylla
+API_PACKAGES ?=$(shell $(GO) list -json $(SCYLLA_API_DIR)/... | $(JQ) -sr 'map(select(.Name | test("^v[0-9]+.*$$"))) | reduce .[] as $$item ([]; . + [$$item.ImportPath]) | join(",")')$(if $(filter $(.SHELLSTATUS),0),,$(error failed to list api packages))
 ifeq "$(API_PACKAGES)" ""
 	$(error "API_PACKAGES can't be empty")
 endif
@@ -77,7 +78,8 @@ HELM_REPOSITORY ?=https://scylla-operator-charts.storage.googleapis.com/$(HELM_C
 HELM_MANIFEST_CACHE_CONTROL ?=public, max-age=600
 
 CONTROLLER_GEN ?=$(GO) run ./vendor/sigs.k8s.io/controller-tools/cmd/controller-gen --
-CRD_PATH ?= pkg/api/scylla/v1/scylla.scylladb.com_scyllaclusters.yaml
+SC_CRD_FILENAME ?=scylla.scylladb.com_scyllaclusters.yaml
+SC_CRD_PATH ?=pkg/api/scylla/$(SC_CRD_FILENAME)
 
 define version-ldflags
 -X $(1).versionFromGit="$(GIT_TAG)" \
@@ -264,32 +266,43 @@ verify-codegen:
 	$(call run-informer-gen,--verify-only)
 .PHONY: verify-codegen
 
-# $1 - api package
+# $1 - api packages
 # $2 - output dir
 # We need to cleanup `---` in the yaml output manually because it shouldn't be there and it breaks opm.
 define run-crd-gen
-	$(CONTROLLER_GEN) crd paths='$(1)' output:dir='$(2)'
+	$(CONTROLLER_GEN) crd $(foreach p,$(1), paths='$(p)') output:dir='$(2)'
 	find '$(2)' -mindepth 1 -maxdepth 1 -type f -name '*.yaml' -exec $(YQ) -i eval '.' {} \;
 
 endef
 
-# $1 - dir prefix
+# $1 - api packages
+# $2 - output dir
 define generate-crds
-	$(foreach p,$(api_package_dirs),$(call run-crd-gen,$(p),$(1)$(p)))
+	$(call run-crd-gen,$(1),$(2))
+
+endef
+
+# $1 - crd path
+define add-scylla-cluster-conversion-webhook
+	$(YQ) eval -i '.spec.conversion = {"strategy":"Webhook","webhook":{"conversionReviewVersions":["v1","v2alpha1"],"clientConfig":{"caBundle":"Cg==","service":{"namespace":"scylla-operator","name":"scylla-operator-webhook","path":"/convert"}}}}' '$(1)'
+
+	$(YQ) eval -i '.metadata.annotations += {"cert-manager.io/inject-ca-from": "scylla-operator/scylla-operator-serving-cert"}' '$(1)'
 
 endef
 
 update-crds:
-	$(call generate-crds,)
+	$(call generate-crds,$(api_package_dirs),$(SCYLLA_API_DIR))
+	$(call add-scylla-cluster-conversion-webhook,$(SC_CRD_PATH))
 .PHONY: update-crds
 
 verify-crds: tmp_dir :=$(shell mktemp -d)
 verify-crds:
 	mkdir '$(tmp_dir)'/{original,generated}
 
-	find $(api_package_dirs) -type f -name '*.yaml' -exec cp --parent {} '$(tmp_dir)'/original \;
+	find $(SCYLLA_API_DIR) -type f -name '*.yaml' -exec cp {} '$(tmp_dir)'/original \;
 
-	$(call generate-crds,$(tmp_dir)/generated/)
+	$(call generate-crds,$(api_package_dirs),$(tmp_dir)/generated/)
+	$(call add-scylla-cluster-conversion-webhook,$(tmp_dir)/generated/$(SC_CRD_FILENAME))
 
 	$(diff) -r '$(tmp_dir)'/{original,generated} || (echo 'CRD definitions are not up-to date. Please run `make update-crds` to update it or manually remove the ones that should no longer be generated.' && false)
 .PHONY: verify-crds
@@ -299,7 +312,7 @@ define generate-helm-schema-scylla
 	$(YQ) eval -j '{"$$schema": "http://json-schema.org/schema#"} * (.spec.versions[] | select(.name == "v1") | \
 	 .schema.openAPIV3Schema.properties.spec) | \
 	 .properties.racks=.properties.datacenter.properties.racks | \
-	 .properties.datacenter={"type": "string"}' $(CRD_PATH) > '$(1)'
+	 .properties.datacenter={"type": "string"}' $(SC_CRD_PATH) > '$(1)'
 endef
 
 # $1 - Scylla schema
@@ -341,12 +354,16 @@ endef
 define generate-operator-manifests
 	$(call generate-manifests-from-helm,scylla-operator,helm/scylla-operator,$(1),$(3))
 
-	mv '$(3)'/scylla-operator/templates/clusterrole.yaml '$(2)'/00_clusterrole.yaml
-	mv '$(3)'/scylla-operator/templates/clusterrole_def.yaml '$(2)'/00_clusterrole_def.yaml
-	mv '$(3)'/scylla-operator/templates/view_clusterrole.yaml '$(2)'/00_scyllacluster_clusterrole_view.yaml
-	mv '$(3)'/scylla-operator/templates/edit_clusterrole.yaml '$(2)'/00_scyllacluster_clusterrole_edit.yaml
-	mv '$(3)'/scylla-operator/templates/scyllacluster_member_clusterrole.yaml '$(2)'/00_scyllacluster_member_clusterrole.yaml
-	mv '$(3)'/scylla-operator/templates/scyllacluster_member_clusterrole_def.yaml '$(2)'/00_scyllacluster_member_clusterrole_def.yaml
+	mv '$(3)'/scylla-operator/templates/operator.clusterrole.yaml '$(2)'/00_operator.clusterrole.yaml
+	mv '$(3)'/scylla-operator/templates/operator.clusterrole_def.yaml '$(2)'/00_operator.clusterrole_def.yaml
+	mv '$(3)'/scylla-operator/templates/multiregion_operator.clusterrole.yaml '$(2)'/00_multiregion_operator.clusterrole.yaml
+	mv '$(3)'/scylla-operator/templates/multiregion_operator.clusterrole_def.yaml '$(2)'/00_multiregion_operator.clusterrole_def.yaml
+	mv '$(3)'/scylla-operator/templates/scyllacluster_view.clusterrole.yaml '$(2)'/00_scyllacluster_view.clusterrole.yaml
+	mv '$(3)'/scylla-operator/templates/scyllacluster_edit.clusterrole.yaml '$(2)'/00_scyllacluster_edit.clusterrole.yaml
+	mv '$(3)'/scylla-operator/templates/scylladatacenter_view.clusterrole.yaml '$(2)'/00_scylladatacenter_view.clusterrole.yaml
+	mv '$(3)'/scylla-operator/templates/scylladatacenter_edit.clusterrole.yaml '$(2)'/00_scylladatacenter_edit.clusterrole.yaml
+	mv '$(3)'/scylla-operator/templates/scylladatacenter_member.clusterrole.yaml '$(2)'/00_scylladatacenter_member.clusterrole.yaml
+	mv '$(3)'/scylla-operator/templates/scylladatacenter_member.clusterrole_def.yaml '$(2)'/00_scylladatacenter_member.clusterrole_def.yaml
 
 	mv '$(3)'/scylla-operator/templates/issuer.yaml '$(2)'/10_issuer.yaml
 	mv '$(3)'/scylla-operator/templates/certificate.yaml '$(2)'/10_certificate.yaml
@@ -356,10 +373,14 @@ define generate-operator-manifests
 	mv '$(3)'/scylla-operator/templates/operator.serviceaccount.yaml '$(2)'/10_operator.serviceaccount.yaml
 	mv '$(3)'/scylla-operator/templates/operator.pdb.yaml '$(2)'/10_operator.pdb.yaml
 	mv '$(3)'/scylla-operator/templates/webhookserver.pdb.yaml '$(2)'/10_webhookserver.pdb.yaml
+	mv '$(3)'/scylla-operator/templates/multiregion_operator.serviceaccount.yaml '$(2)'/10_multiregion_operator.serviceaccount.yaml
+	mv '$(3)'/scylla-operator/templates/multiregion_operator.pdb.yaml '$(2)'/10_multiregion_operator.pdb.yaml
 
-	mv '$(3)'/scylla-operator/templates/clusterrolebinding.yaml '$(2)'/20_clusterrolebinding.yaml
+	mv '$(3)'/scylla-operator/templates/operator.clusterrolebinding.yaml '$(2)'/20_operator.clusterrolebinding.yaml
+	mv '$(3)'/scylla-operator/templates/multiregion_operator.clusterrolebinding.yaml '$(2)'/20_multiregion_operator.clusterrolebinding.yaml
 
 	mv '$(3)'/scylla-operator/templates/operator.deployment.yaml '$(2)'/50_operator.deployment.yaml
+	mv '$(3)'/scylla-operator/templates/multiregion_operator.deployment.yaml '$(2)'/50_multiregion_operator.deployment.yaml
 	mv '$(3)'/scylla-operator/templates/webhookserver.deployment.yaml '$(2)'/50_webhookserver.deployment.yaml
 
 	@leftovers=$$( find '$(3)'/scylla-operator/ -mindepth 1 -type f ) && [[ "$${leftovers}" == "" ]] || \

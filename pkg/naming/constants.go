@@ -63,6 +63,13 @@ const (
 	ConfigMapTypeLabel           = "scylla-operator.scylladb.com/config-map-type"
 	OwnerUIDLabel                = "scylla-operator.scylladb.com/owner-uid"
 
+	ParentClusterNameLabel           = "scylla-operator.scylladb.com/parent-scyllacluster-name"
+	ParentClusterNamespaceLabel      = "scylla-operator.scylladb.com/parent-scyllacluster-namespace"
+	ParentClusterDatacenterNameLabel = "scylla-operator.scylladb.com/parent-scyllacluster-datacenter-name"
+
+	ScyllaClusterFinalizer           = "scylla-operator-multiregion.scylladb.com/scyllacluster-protection"
+	RemoteKubeClusterConfigFinalizer = "scylla-operator-multiregion.scylladb.com/remotekubeclusterconfig-protection"
+
 	AppName           = "scylla"
 	OperatorAppName   = "scylla-operator"
 	ManagerAppName    = "scylla-manager"
@@ -75,14 +82,22 @@ const (
 )
 
 const (
+	ScyllaClusterV1Annotation                                 = "internal.scylla-operator.scylladb.com/scylla-cluster-v1"
+	ScyllaClusterV2alpha1RemoteKubeClusterConfigRefAnnotation = "internal.scylla-operator.scylladb.com/scylla-cluster-v2alpha1-remote-kube-cluster-config-ref"
+	ScyllaClusterV2alpha1ScyllaDatacenterStaleAnnotation      = "internal.scylla-operator.scylladb.com/scylla-cluster-v2alpha1-scylla-datacenter-stale"
+	ScyllaClusterV2alpha1ScyllaClusterConditionsAnnotation    = "internal.scylla-operator.scylladb.com/scylla-cluster-v2alpha1-scylla-cluster-conditions"
+)
+
+const (
 	NodeConfigJobForNodeKey = "scylla-operator.scylladb.com/node-config-job-for-node"
 )
 
 // Configuration Values
 const (
-	ScyllaContainerName          = "scylla"
-	SidecarInjectorContainerName = "sidecar-injection"
-	PerftuneContainerName        = "perftune"
+	ScyllaContainerName             = "scylla"
+	ScyllaManagerAgentContainerName = "scylla-manager-agent"
+	SidecarInjectorContainerName    = "sidecar-injection"
+	PerftuneContainerName           = "perftune"
 
 	PVCTemplateName = "data"
 
@@ -100,10 +115,11 @@ const (
 
 	DataDir = "/var/lib/scylla"
 
-	ReadinessProbePath = "/readyz"
-	LivenessProbePath  = "/healthz"
-	ProbePort          = 8080
-	ScyllaAPIPort      = 10000
+	ReadinessProbePath    = "/readyz"
+	LivenessProbePath     = "/healthz"
+	ProbePort             = 8080
+	ScyllaAPIPort         = 10000
+	DefaultAlternatorPort = 8000
 
 	OperatorEnvVarPrefix = "SCYLLA_OPERATOR_"
 )
@@ -114,7 +130,7 @@ const (
 
 	ScyllaOperatorNodeTuningNamespace = "scylla-operator-node-tuning"
 
-	ScyllaClusterMemberClusterRoleName = "scyllacluster-member"
+	ScyllaDatacenterMemberClusterRoleName = "scylladatacenter-member"
 
 	SingletonName = "cluster"
 
@@ -145,4 +161,8 @@ type ProtocolDNSLabel string
 
 const (
 	CQLProtocolDNSLabel = "cql"
+)
+
+const (
+	KubeConfigSecretKey string = "config"
 )

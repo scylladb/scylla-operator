@@ -7,6 +7,8 @@ import (
 
 	"github.com/pkg/errors"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllav2alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v2alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -28,8 +30,8 @@ func ObjRefWithUID(obj metav1.Object) string {
 	return fmt.Sprintf("%s(UID=%s)", ObjRef(obj), obj.GetUID())
 }
 
-func StatefulSetNameForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) string {
-	return fmt.Sprintf("%s-%s-%s", c.Name, c.Spec.Datacenter.Name, r.Name)
+func StatefulSetNameForRack(r scyllav1alpha1.RackSpec, sd *scyllav1alpha1.ScyllaDatacenter) string {
+	return fmt.Sprintf("%s-%s-%s", sd.Name, sd.Spec.DatacenterName, r.Name)
 }
 
 func ServiceNameFromPod(pod *corev1.Pod) string {
@@ -41,28 +43,28 @@ func AgentAuthTokenSecretName(clusterName string) string {
 	return fmt.Sprintf("%s-auth-token", clusterName)
 }
 
-func MemberServiceName(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, idx int) string {
-	return fmt.Sprintf("%s-%d", StatefulSetNameForRack(r, c), idx)
+func MemberServiceName(r scyllav1alpha1.RackSpec, sd *scyllav1alpha1.ScyllaDatacenter, idx int) string {
+	return fmt.Sprintf("%s-%d", StatefulSetNameForRack(r, sd), idx)
 }
 
-func ServiceDNSName(service string, c *scyllav1.ScyllaCluster) string {
-	return fmt.Sprintf("%s.%s", service, CrossNamespaceServiceNameForCluster(c))
+func HeadlessServiceNameForCluster(sc *scyllav1.ScyllaCluster) string {
+	return fmt.Sprintf("%s-client", sc.Name)
 }
 
-func HeadlessServiceNameForCluster(c *scyllav1.ScyllaCluster) string {
-	return fmt.Sprintf("%s-client", c.Name)
+func HeadlessServiceNameForDatacenter(sd *scyllav1alpha1.ScyllaDatacenter) string {
+	return fmt.Sprintf("%s-client", sd.Name)
 }
 
-func PodDisruptionBudgetName(c *scyllav1.ScyllaCluster) string {
-	return c.Name
+func PodDisruptionBudgetName(sd *scyllav1alpha1.ScyllaDatacenter) string {
+	return sd.Name
 }
 
-func CrossNamespaceServiceNameForCluster(c *scyllav1.ScyllaCluster) string {
-	return fmt.Sprintf("%s.%s.svc", HeadlessServiceNameForCluster(c), c.Namespace)
+func CrossNamespaceServiceNameForCluster(sc *scyllav1.ScyllaCluster) string {
+	return fmt.Sprintf("%s.%s.svc", HeadlessServiceNameForCluster(sc), sc.Namespace)
 }
 
-func ManagerClusterName(c *scyllav1.ScyllaCluster) string {
-	return c.Namespace + "/" + c.Name
+func ManagerClusterName(sc *scyllav1.ScyllaCluster) string {
+	return sc.Namespace + "/" + sc.Name
 }
 
 func PVCNameForPod(podName string) string {
@@ -73,7 +75,7 @@ func PVCNameForService(svcName string) string {
 	return PVCNameForPod(svcName)
 }
 
-func PVCNamePrefixForScyllaCluster(scName string) string {
+func PVCNamePrefixForScyllaDatacenter(scName string) string {
 	return fmt.Sprintf("%s-%s-", PVCTemplateName, scName)
 }
 
@@ -128,18 +130,14 @@ func FindContainerWithName(containers []corev1.Container, name string) (int, err
 	return 0, errors.Errorf(" '%s' container not found", name)
 }
 
-// ScyllaVersion returns version of Scylla container.
-func ScyllaVersion(containers []corev1.Container) (string, error) {
+// ScyllaImage returns image of Scylla container.
+func ScyllaImage(containers []corev1.Container) (string, error) {
 	idx, err := FindScyllaContainer(containers)
 	if err != nil {
 		return "", errors.Wrap(err, "find scylla container")
 	}
 
-	version, err := ImageToVersion(containers[idx].Image)
-	if err != nil {
-		return "", errors.Wrap(err, "parse scylla container version")
-	}
-	return version, nil
+	return containers[idx].Image, nil
 }
 
 // SidecarVersion returns version of sidecar container.
@@ -164,7 +162,7 @@ func GetTuningConfigMapNameForPod(pod *corev1.Pod) string {
 	return fmt.Sprintf("nodeconfig-podinfo-%s", pod.UID)
 }
 
-func MemberServiceAccountNameForScyllaCluster(scName string) string {
+func MemberServiceAccountNameForScyllaDatacenter(scName string) string {
 	return fmt.Sprintf("%s-member", scName)
 }
 
@@ -202,4 +200,22 @@ func GetCQLProtocolSubDomain(domain string) string {
 
 func GetCQLHostIDSubDomain(hostID, domain string) string {
 	return fmt.Sprintf("%s.%s", hostID, GetCQLProtocolSubDomain(domain))
+}
+
+func RemoteNamespace(sc *scyllav2alpha1.ScyllaCluster, dc scyllav2alpha1.Datacenter) string {
+	const (
+		namespaceLengthLimit = 63
+	)
+	if dc.RemoteKubeClusterConfigRef == nil {
+		return sc.Namespace
+	}
+	remoteNamespace := fmt.Sprintf("%s-%s-%s-%s", dc.RemoteKubeClusterConfigRef.Name, sc.Namespace, sc.Name, dc.Name)
+	if len(remoteNamespace) >= namespaceLengthLimit {
+		remoteNamespace = remoteNamespace[len(remoteNamespace)-namespaceLengthLimit:]
+		if strings.HasPrefix(remoteNamespace, "-") {
+			remoteNamespace = remoteNamespace[1:]
+		}
+	}
+
+	return remoteNamespace
 }

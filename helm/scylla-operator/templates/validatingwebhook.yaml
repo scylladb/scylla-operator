@@ -26,3 +26,12 @@ webhooks:
     - UPDATE
     resources:
     - scyllaclusters
+  - apiGroups:
+    - scylla.scylladb.com
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - scylladatacenters

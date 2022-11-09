@@ -1,0 +1,12 @@
+{{- if gt .Values.replicas 1.0 }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: scylla-operator-multiregion
+  namespace: scylla-operator
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: scylla-operator-multiregion
+{{- end }}

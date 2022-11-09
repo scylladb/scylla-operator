@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -19,14 +18,12 @@ import (
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	"github.com/scylladb/scylla-operator/pkg/semver"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/util/cpuset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/pointer"
 )
 
 const (
@@ -192,16 +189,6 @@ func convertScyllaArguments(scyllaArguments string) map[string]string {
 	return output
 }
 
-func appendScyllaArguments(ctx context.Context, s *ScyllaConfig, scyllaArgs string, scyllaFinalArgs map[string]*string) {
-	for argName, argValue := range convertScyllaArguments(scyllaArgs) {
-		if existing := scyllaFinalArgs[argName]; existing == nil {
-			scyllaFinalArgs[argName] = pointer.StringPtr(strings.TrimSpace(argValue))
-		} else {
-			klog.Infof("ScyllaArgs: argument '%s' is ignored, it is already in the list", argName)
-		}
-	}
-}
-
 func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	m := s.member
 	// Get seeds
@@ -212,11 +199,11 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 
 	// Check if we need to run in developer mode
 	devMode := "0"
-	cluster, err := s.scyllaClient.ScyllaV1().ScyllaClusters(s.member.Namespace).Get(ctx, s.member.Cluster, metav1.GetOptions{})
+	sd, err := s.scyllaClient.ScyllaV1alpha1().ScyllaDatacenters(s.member.Namespace).Get(ctx, s.member.Cluster, metav1.GetOptions{})
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting cluster")
 	}
-	if cluster.Spec.DeveloperMode {
+	if sd.Spec.Scylla.EnableDeveloperMode != nil && *sd.Spec.Scylla.EnableDeveloperMode {
 		devMode = "1"
 	}
 
@@ -228,71 +215,54 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	// Listen on all interfaces so users or a service mesh can use localhost.
 	listenAddress := "0.0.0.0"
 	prometheusAddress := "0.0.0.0"
-	args := map[string]*string{
-		"listen-address":        &listenAddress,
-		"broadcast-address":     &m.StaticIP,
-		"broadcast-rpc-address": &m.StaticIP,
-		"seeds":                 pointer.StringPtr(seed),
-		"developer-mode":        &devMode,
-		"overprovisioned":       &overprovisioned,
-		"smp":                   pointer.StringPtr(strconv.Itoa(s.cpuCount)),
-		"prometheus-address":    &prometheusAddress,
+	args := []string{
+		fmt.Sprintf("--listen-address=%s", listenAddress),
+		fmt.Sprintf("--broadcast-address=%s", m.StaticIP),
+		fmt.Sprintf("--broadcast-rpc-address=%s", m.StaticIP),
+		fmt.Sprintf("--seeds=%s", seed),
+		fmt.Sprintf("--developer-mode=%s", devMode),
+		fmt.Sprintf("--overprovisioned=%s", overprovisioned),
+		fmt.Sprintf("--smp=%d", s.cpuCount),
+		fmt.Sprintf("--prometheus-address=%s", prometheusAddress),
 	}
-	if cluster.Spec.Alternator.Enabled() {
-		args["alternator-port"] = pointer.StringPtr(strconv.Itoa(int(cluster.Spec.Alternator.Port)))
-		if cluster.Spec.Alternator.WriteIsolation != "" {
-			args["alternator-write-isolation"] = pointer.StringPtr(cluster.Spec.Alternator.WriteIsolation)
+	if sd.Spec.Scylla.AlternatorOptions != nil && sd.Spec.Scylla.AlternatorOptions.Enabled != nil && *sd.Spec.Scylla.AlternatorOptions.Enabled {
+		args = append(args, fmt.Sprintf("--alternator-port=%d", naming.DefaultAlternatorPort))
+		if sd.Spec.Scylla.AlternatorOptions.WriteIsolation != "" {
+			args = append(args, fmt.Sprintf("--alternator-write-isolation=%s", sd.Spec.Scylla.AlternatorOptions.WriteIsolation))
 		}
 	}
 	// If node is being replaced
 	if addr, ok := m.ServiceLabels[naming.ReplaceLabel]; ok {
-		args["replace-address-first-boot"] = pointer.StringPtr(addr)
+		args = append(args, fmt.Sprintf("--replace-address-first-boot=%s", addr))
 	}
-	// See if we need to use cpu-pinning
-	// TODO: Add more checks to make sure this is valid.
-	// eg. parse the cpuset and check the number of cpus is the same as cpu limits
-	// Now we rely completely on the user to have the cpu policy correctly
-	// configured in the kubelet, otherwise scylla will crash.
-	if cluster.Spec.CpuSet {
-		cpusAllowed, err := getCPUsAllowedList("/proc/1/status")
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		if err := s.validateCpuSet(ctx, cpusAllowed, s.cpuCount); err != nil {
-			return nil, errors.WithStack(err)
-		}
-		args["cpuset"] = &cpusAllowed
-	}
+	// // See if we need to use cpu-pinning
+	// // TODO: Add more checks to make sure this is valid.
+	// // eg. parse the cpuset and check the number of cpus is the same as cpu limits
+	// // Now we rely completely on the user to have the cpu policy correctly
+	// // configured in the kubelet, otherwise scylla will crash.
+	// if sd.Spec.CpuSet != nil && *sd.Spec.CpuSet {
+	// 	cpusAllowed, err := getCPUsAllowedList("/proc/1/status")
+	// 	if err != nil {
+	// 		return nil, errors.WithStack(err)
+	// 	}
+	// 	if err := s.validateCpuSet(cpusAllowed, s.cpuCount); err != nil {
+	// 		return nil, errors.WithStack(err)
+	// 	}
+	// 	args = append(args, fmt.Sprintf("--cpuset=%s", cpusAllowed))
+	// }
 
-	version := semver.NewScyllaVersion(cluster.Spec.Version)
+	args = append(args, sd.Spec.Scylla.UnsupportedScyllaArgsOverrides...)
 
-	klog.InfoS("Scylla version detected", "version", version)
+	// TODO: apply values from scyllaclusterv1 annotation
 
-	if len(cluster.Spec.ScyllaArgs) > 0 {
-		if !version.SupportFeatureUnsafe(semver.ScyllaVersionThatSupportsArgs) {
-			klog.InfoS("This scylla version does not support ScyllaArgs. ScyllaArgs is ignored", "version", cluster.Spec.Version)
-		} else {
-			appendScyllaArguments(ctx, s, cluster.Spec.ScyllaArgs, args)
-		}
-	}
-
-	if _, err := os.Stat(scyllaIOPropertiesPath); err == nil && version.SupportFeatureSafe(semver.ScyllaVersionThatSupportsDisablingIOTuning) {
+	if _, err := os.Stat(scyllaIOPropertiesPath); err == nil {
 		klog.InfoS("Scylla IO properties are already set, skipping io tuning")
-		ioSetup := "0"
-		args["io-setup"] = &ioSetup
-		args["io-properties-file"] = pointer.StringPtr(scyllaIOPropertiesPath)
+
+		args = append(args, "--io-setup=0")
+		args = append(args, fmt.Sprintf("--io-properties-file=%s", scyllaIOPropertiesPath))
 	}
 
-	var argsList []string
-	for key, value := range args {
-		if value == nil {
-			argsList = append(argsList, fmt.Sprintf("--%s", key))
-		} else {
-			argsList = append(argsList, fmt.Sprintf("--%s=%s", key, *value))
-		}
-	}
-
-	scyllaCmd := exec.Command(entrypointPath, argsList...)
+	scyllaCmd := exec.Command(entrypointPath, args...)
 	scyllaCmd.Stderr = os.Stderr
 	scyllaCmd.Stdout = os.Stdout
 	klog.InfoS("Scylla entrypoint", "Command", scyllaCmd)
@@ -300,7 +270,7 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	return scyllaCmd, nil
 }
 
-func (s *ScyllaConfig) validateCpuSet(ctx context.Context, cpusAllowed string, shards int) error {
+func (s *ScyllaConfig) validateCpuSet(cpusAllowed string, shards int) error {
 	cpuSet, err := cpuset.Parse(cpusAllowed)
 	if err != nil {
 		return err

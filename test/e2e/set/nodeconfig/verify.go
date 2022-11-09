@@ -8,7 +8,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
-	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	"github.com/scylladb/scylla-operator/test/e2e/utils/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -26,7 +26,7 @@ func verifyNodeConfig(ctx context.Context, kubeClient kubernetes.Interface, nc *
 
 	o.Expect(nc.Status.ObservedGeneration).NotTo(o.BeNil())
 
-	daemonSets, err := utils.GetDaemonSetsForNodeConfig(ctx, kubeClient.AppsV1(), nc)
+	daemonSets, err := v1alpha1.GetDaemonSetsForNodeConfig(ctx, kubeClient.AppsV1(), nc)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(daemonSets).To(o.HaveLen(1))
 

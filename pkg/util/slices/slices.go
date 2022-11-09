@@ -11,3 +11,14 @@ func ContainsString(value string, array []string) bool {
 	}
 	return false
 }
+
+func RemoveString[T comparable](value T, array []T) []T {
+	var filtered []T
+	for _, v := range array {
+		if v == value {
+			continue
+		}
+		filtered = append(filtered, v)
+	}
+	return filtered
+}

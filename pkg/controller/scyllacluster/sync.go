@@ -1,381 +1,148 @@
+// Copyright (c) 2022 ScyllaDB.
+
 package scyllacluster
 
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllav2alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v2alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/controllertools"
-	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	appsv1 "k8s.io/api/apps/v1"
+	"github.com/scylladb/scylla-operator/pkg/scheme"
+	"github.com/scylladb/scylla-operator/pkg/util/parallel"
 	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
-	policyv1 "k8s.io/api/policy/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
 
-func (scc *Controller) getStatefulSets(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*appsv1.StatefulSet, error) {
-	// List all StatefulSets to find even those that no longer match our selector.
-	// They will be orphaned in ClaimStatefulSets().
-	statefulSets, err := scc.statefulSetLister.StatefulSets(sc.Namespace).List(labels.Everything())
+func (scc *Controller) sync(ctx context.Context, key string) error {
+	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		return nil, err
+		klog.ErrorS(err, "Failed to split meta namespace cache key", "cacheKey", key)
+		return err
 	}
 
-	selector := labels.SelectorFromSet(labels.Set{
-		naming.ClusterNameLabel: sc.Name,
-	})
+	startTime := time.Now()
+	klog.V(4).InfoS("Started syncing ScyllaCluster", "ScyllaCluster", klog.KRef(namespace, name), "startTime", startTime)
+	defer func() {
+		klog.V(4).InfoS("Finished syncing ScyllaCluster", "ScyllaCluster", klog.KRef(namespace, name), "duration", time.Since(startTime))
+	}()
 
-	// If any adoptions are attempted, we should first recheck for deletion with
-	// an uncached quorum read sometime after listing StatefulSets.
-	canAdoptFunc := func() error {
-		fresh, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		if fresh.UID != sc.UID {
-			return fmt.Errorf("original ScyllaCluster %v/%v is gone: got uid %v, wanted %v", sc.Namespace, sc.Name, fresh.UID, sc.UID)
-		}
-
-		if fresh.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%v/%v has just been deleted at %v", sc.Namespace, sc.Name, sc.DeletionTimestamp)
-		}
-
+	sc, err := scc.scyllaClusterLister.ScyllaClusters(namespace).Get(name)
+	if errors.IsNotFound(err) {
+		klog.V(2).InfoS("ScyllaCluster has been deleted", "ScyllaCluster", klog.KObj(sc))
 		return nil
 	}
-	cm := controllertools.NewStatefulSetControllerRefManager(
-		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		selector,
-		canAdoptFunc,
-		controllertools.RealStatefulSetControl{
-			KubeClient: scc.kubeClient,
-			Recorder:   scc.eventRecorder,
-		},
-	)
-	return cm.ClaimStatefulSets(statefulSets)
-}
-
-func (scc *Controller) getServices(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*corev1.Service, error) {
-	// List all Services to find even those that no longer match our selector.
-	// They will be orphaned in ClaimServices().
-	services, err := scc.serviceLister.Services(sc.Namespace).List(labels.Everything())
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	selector := labels.SelectorFromSet(labels.Set{
-		naming.ClusterNameLabel: sc.Name,
-	})
-
-	// If any adoptions are attempted, we should first recheck for deletion with
-	// an uncached quorum read sometime after listing Services.
-	canAdoptFunc := func() error {
-		fresh, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		if fresh.UID != sc.UID {
-			return fmt.Errorf("original ScyllaCluster %v/%v is gone: got uid %v, wanted %v", sc.Namespace, sc.Name, fresh.UID, sc.UID)
-		}
-
-		if fresh.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%v/%v has just been deleted at %v", sc.Namespace, sc.Name, sc.DeletionTimestamp)
-		}
-
-		return nil
-	}
-	cm := controllertools.NewServiceControllerRefManager(
-		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		selector,
-		canAdoptFunc,
-		controllertools.RealServiceControl{
-			KubeClient: scc.kubeClient,
-			Recorder:   scc.eventRecorder,
-		},
-	)
-	return cm.ClaimServices(services)
-}
-
-func (scc *Controller) getSecrets(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*corev1.Secret, error) {
-	// List all Secrets to find even those that no longer match our selector.
-	// They will be orphaned in ClaimSecrets().
-	secrets, err := scc.secretLister.Secrets(sc.Namespace).List(labels.Everything())
+	namespaces, err := scc.getNamespaces(sc)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	selector := labels.SelectorFromSet(labels.Set{
-		naming.ClusterNameLabel: sc.Name,
-	})
-
-	// If any adoptions are attempted, we should first recheck for deletion with
-	// an uncached quorum read sometime after listing Secrets.
-	canAdoptFunc := func() error {
-		fresh, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		if fresh.UID != sc.UID {
-			return fmt.Errorf("original ScyllaCluster %v/%v is gone: got uid %v, wanted %v", sc.Namespace, sc.Name, fresh.UID, sc.UID)
-		}
-
-		if fresh.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%v/%v has just been deleted at %v", sc.Namespace, sc.Name, sc.DeletionTimestamp)
-		}
-
-		return nil
-	}
-	cm := controllertools.NewSecretControllerRefManager(
-		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		selector,
-		canAdoptFunc,
-		controllertools.RealSecretControl{
-			KubeClient: scc.kubeClient,
-			Recorder:   scc.eventRecorder,
-		},
-	)
-	return cm.ClaimSecrets(secrets)
-}
-
-func (scc *Controller) getConfigMaps(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*corev1.ConfigMap, error) {
-	// List all ConfigMaps to find even those that no longer match our selector.
-	// They will be orphaned in ClaimConfigMaps().
-	configMaps, err := scc.configMapLister.ConfigMaps(sc.Namespace).List(labels.Everything())
+	scyllaDatacenters, err := scc.getScyllaDatacenters(sc)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	selector := labels.SelectorFromSet(labels.Set{
-		naming.ClusterNameLabel: sc.Name,
-	})
+	status := scc.calculateStatus(sc, scyllaDatacenters)
 
-	// If any adoptions are attempted, we should first recheck for deletion with
-	// an uncached quorum read sometime after listing ConfigMaps.
-	canAdoptFunc := func() error {
-		fresh, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		if fresh.UID != sc.UID {
-			return fmt.Errorf("original ScyllaCluster %v/%v is gone: got uid %v, wanted %v", sc.Namespace, sc.Name, fresh.UID, sc.UID)
-		}
-
-		if fresh.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%v/%v has just been deleted at %v", sc.Namespace, sc.Name, sc.DeletionTimestamp)
-		}
-
-		return nil
+	if sc.DeletionTimestamp != nil {
+		return scc.updateStatus(ctx, sc, status)
 	}
-	cm := controllertools.NewConfigMapControllerRefManager(
-		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		selector,
-		canAdoptFunc,
-		controllertools.RealConfigMapControl{
-			KubeClient: scc.kubeClient,
-			Recorder:   scc.eventRecorder,
+
+	var errs []error
+
+	err = runSync(
+		&status.Conditions,
+		namespaceControllerProgressingCondition,
+		namespaceControllerDegradedCondition,
+		sc.Generation,
+		func() ([]metav1.Condition, error) {
+			return scc.syncNamespaces(ctx, sc, namespaces)
 		},
 	)
-	return cm.ClaimConfigMaps(configMaps)
-}
-
-func (scc *Controller) getServiceAccounts(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*corev1.ServiceAccount, error) {
-	// List all ServiceAccounts to find even those that no longer match our selector.
-	// They will be orphaned in ClaimServiceAccount().
-	serviceAccounts, err := scc.serviceAccountLister.ServiceAccounts(sc.Namespace).List(labels.Everything())
 	if err != nil {
-		return nil, err
+		errs = append(errs, fmt.Errorf("can't sync remote namespaces: %w", err))
 	}
 
-	selector := labels.SelectorFromSet(labels.Set{
-		naming.ClusterNameLabel: sc.Name,
-	})
-
-	// If any adoptions are attempted, we should first recheck for deletion with
-	// an uncached quorum read sometime after listing StatefulSets.
-	canAdoptFunc := func() error {
-		fresh, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		if fresh.UID != sc.UID {
-			return fmt.Errorf("original ScyllaCluster %v/%v is gone: got uid %v, wanted %v", sc.Namespace, sc.Name, fresh.UID, sc.UID)
-		}
-
-		if fresh.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%v/%v has just been deleted at %v", sc.Namespace, sc.Name, sc.DeletionTimestamp)
-		}
-
-		return nil
-	}
-	cm := controllertools.NewServiceAccountControllerRefManager(
-		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		selector,
-		canAdoptFunc,
-		controllertools.RealServiceAccountControl{
-			KubeClient: scc.kubeClient,
-			Recorder:   scc.eventRecorder,
+	err = runSync(
+		&status.Conditions,
+		scyllaDatacenterControllerProgressingCondition,
+		scyllaDatacenterControllerDegradedCondition,
+		sc.Generation,
+		func() ([]metav1.Condition, error) {
+			return scc.syncScyllaDatacenters(ctx, sc, scyllaDatacenters, status)
 		},
 	)
-	return cm.ClaimServiceAccounts(serviceAccounts)
-}
-
-func (scc *Controller) getRoleBindings(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*rbacv1.RoleBinding, error) {
-	// List all RoleBindings to find even those that no longer match our selector.
-	// They will be orphaned in ClaimRoleBindings().
-	roleBindings, err := scc.roleBindingLister.RoleBindings(sc.Namespace).List(labels.Everything())
 	if err != nil {
-		return nil, err
+		errs = append(errs, fmt.Errorf("can't sync remote scylladatacenters: %w", err))
 	}
 
-	selector := labels.SelectorFromSet(labels.Set{
-		naming.ClusterNameLabel: sc.Name,
-	})
+	// Aggregate conditions.
 
-	// If any adoptions are attempted, we should first recheck for deletion with
-	// an uncached quorum read sometime after listing RoleBindings.
-	canAdoptFunc := func() error {
-		fresh, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		if fresh.UID != sc.UID {
-			return fmt.Errorf("original ScyllaCluster %v/%v is gone: got uid %v, wanted %v", sc.Namespace, sc.Name, fresh.UID, sc.UID)
-		}
-
-		if fresh.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%v/%v has just been deleted at %v", sc.Namespace, sc.Name, sc.DeletionTimestamp)
-		}
-
-		return nil
-	}
-	cm := controllertools.NewRoleBindingControllerRefManager(
-		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		selector,
-		canAdoptFunc,
-		controllertools.RealRoleBindingControl{
-			KubeClient: scc.kubeClient,
-			Recorder:   scc.eventRecorder,
+	availableCondition, err := controllerhelpers.AggregateStatusConditions(
+		controllerhelpers.FindStatusConditionsWithSuffix(status.Conditions, scyllav2alpha1.AvailableCondition),
+		metav1.Condition{
+			Type:               scyllav2alpha1.AvailableCondition,
+			Status:             metav1.ConditionTrue,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: sc.Generation,
 		},
 	)
-	return cm.ClaimRoleBindings(roleBindings)
-}
-
-func (scc *Controller) getPDBs(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*policyv1.PodDisruptionBudget, error) {
-	// List all Pdbs to find even those that no longer match our selector.
-	// They will be orphaned in ClaimPdbs().
-	pdbs, err := scc.pdbLister.PodDisruptionBudgets(sc.Namespace).List(labels.Everything())
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("can't aggregate status conditions: %w", err)
 	}
 
-	selector := labels.SelectorFromSet(labels.Set{
-		naming.ClusterNameLabel: sc.Name,
-	})
+	apimeta.SetStatusCondition(&status.Conditions, availableCondition)
 
-	// If any adoptions are attempted, we should first recheck for deletion with
-	// an uncached quorum read sometime after listing Pdbs.
-	canAdoptFunc := func() error {
-		fresh, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		if fresh.UID != sc.UID {
-			return fmt.Errorf("original ScyllaCluster %v/%v is gone: got uid %v, wanted %v", sc.Namespace, sc.Name, fresh.UID, sc.UID)
-		}
-
-		if fresh.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%v/%v has just been deleted at %v", sc.Namespace, sc.Name, sc.DeletionTimestamp)
-		}
-
-		return nil
-	}
-	cm := controllertools.NewPodDisruptionBudgetControllerRefManager(
-		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		selector,
-		canAdoptFunc,
-		controllertools.RealPodDisruptionBudgetControl{
-			KubeClient: scc.kubeClient,
-			Recorder:   scc.eventRecorder,
+	progressingCondition, err := controllerhelpers.AggregateStatusConditions(
+		controllerhelpers.FindStatusConditionsWithSuffix(status.Conditions, scyllav2alpha1.ProgressingCondition),
+		metav1.Condition{
+			Type:               scyllav2alpha1.ProgressingCondition,
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: sc.Generation,
 		},
 	)
-	return cm.ClaimPodDisruptionBudgets(pdbs)
-}
-
-func (scc *Controller) getIngresses(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*networkingv1.Ingress, error) {
-	// List all Ingresses to find even those that no longer match our selector.
-	// They will be orphaned in ClaimIngress().
-	ingresses, err := scc.ingressLister.Ingresses(sc.Namespace).List(labels.Everything())
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("can't aggregate status conditions: %w", err)
 	}
+	apimeta.SetStatusCondition(&status.Conditions, progressingCondition)
 
-	selector := labels.SelectorFromSet(labels.Set{
-		naming.ClusterNameLabel: sc.Name,
-	})
-
-	// If any adoptions are attempted, we should first recheck for deletion with
-	// an uncached quorum read sometime after listing Ingresses.
-	canAdoptFunc := func() error {
-		fresh, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		if fresh.UID != sc.UID {
-			return fmt.Errorf("original ScyllaCluster %v/%v is gone: got uid %v, wanted %v", sc.Namespace, sc.Name, fresh.UID, sc.UID)
-		}
-
-		if fresh.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%v/%v has just been deleted at %v", sc.Namespace, sc.Name, sc.DeletionTimestamp)
-		}
-
-		return nil
-	}
-	cm := controllertools.NewIngressControllerRefManager(
-		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		selector,
-		canAdoptFunc,
-		controllertools.RealIngressControl{
-			KubeClient: scc.kubeClient,
-			Recorder:   scc.eventRecorder,
+	degradedCondition, err := controllerhelpers.AggregateStatusConditions(
+		controllerhelpers.FindStatusConditionsWithSuffix(status.Conditions, scyllav2alpha1.DegradedCondition),
+		metav1.Condition{
+			Type:               scyllav2alpha1.DegradedCondition,
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: sc.Generation,
 		},
 	)
-	return cm.ClaimIngresss(ingresses)
+	if err != nil {
+		return fmt.Errorf("can't aggregate status conditions: %w", err)
+	}
+	apimeta.SetStatusCondition(&status.Conditions, degradedCondition)
+
+	err = scc.updateStatus(ctx, sc, status)
+	errs = append(errs, err)
+
+	return utilerrors.NewAggregate(errs)
 }
 
 func runSync(conditions *[]metav1.Condition, progressingConditionType, degradedCondType string, observedGeneration int64, syncFn func() ([]metav1.Condition, error)) error {
@@ -403,236 +170,108 @@ func runSync(conditions *[]metav1.Condition, progressingConditionType, degradedC
 	return nil
 }
 
-func (scc *Controller) sync(ctx context.Context, key string) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		klog.ErrorS(err, "Failed to split meta namespace cache key", "cacheKey", key)
-		return err
-	}
+func (scc *Controller) getScyllaDatacenters(sc *scyllav2alpha1.ScyllaCluster) (map[string]map[string]*scyllav1alpha1.ScyllaDatacenter, error) {
+	multiRegionScyllaDatacenterMap := make(map[string]map[string]*scyllav1alpha1.ScyllaDatacenter, len(sc.Spec.Datacenters))
+	var mu sync.Mutex
+	err := parallel.ForEach(len(sc.Spec.Datacenters), func(i int) error {
+		dc := sc.Spec.Datacenters[i]
 
-	startTime := time.Now()
-	klog.V(4).InfoS("Started syncing ScyllaCluster", "ScyllaCluster", klog.KRef(namespace, name), "startTime", startTime)
-	defer func() {
-		klog.V(4).InfoS("Finished syncing ScyllaCluster", "ScyllaCluster", klog.KRef(namespace, name), "duration", time.Since(startTime))
-	}()
+		// List all ScyllaClusters matching our selector.
+		// Because objects lies in remote cluster, we cannot manage controllerRef and hence control adoption.
+		selector := labels.SelectorFromSet(labels.Set{
+			naming.ParentClusterNamespaceLabel:      sc.Namespace,
+			naming.ParentClusterNameLabel:           sc.Name,
+			naming.ParentClusterDatacenterNameLabel: dc.Name,
+		})
 
-	sc, err := scc.scyllaLister.ScyllaClusters(namespace).Get(name)
-	if errors.IsNotFound(err) {
-		klog.V(2).InfoS("ScyllaCluster has been deleted", "ScyllaCluster", klog.KObj(sc))
-		return nil
-	}
-	if err != nil {
-		return err
-	}
+		var remoteName string
+		namespace := sc.Namespace
+		var scyllaDatacenters []*scyllav1alpha1.ScyllaDatacenter
 
-	statefulSetMap, err := scc.getStatefulSets(ctx, sc)
-	if err != nil {
-		return err
-	}
+		if dc.RemoteKubeClusterConfigRef != nil {
+			remoteName = dc.RemoteKubeClusterConfigRef.Name
+			namespace = naming.RemoteNamespace(sc, dc)
 
-	serviceMap, err := scc.getServices(ctx, sc)
-	if err != nil {
-		return err
-	}
+			scyllaDatacentersRaw, err := scc.remoteScyllaDatacenterLister.Region(remoteName).ByNamespace(namespace).List(selector)
+			if err != nil {
+				return err
+			}
 
-	secretMap, err := scc.getSecrets(ctx, sc)
-	if err != nil {
-		return err
-	}
-
-	configMapMap, err := scc.getConfigMaps(ctx, sc)
-	if err != nil {
-		return err
-	}
-
-	serviceAccounts, err := scc.getServiceAccounts(ctx, sc)
-	if err != nil {
-		return fmt.Errorf("can't get serviceaccounts: %w", err)
-	}
-
-	roleBindings, err := scc.getRoleBindings(ctx, sc)
-	if err != nil {
-		return fmt.Errorf("can't get rolebindings: %w", err)
-	}
-
-	pdbMap, err := scc.getPDBs(ctx, sc)
-	if err != nil {
-		return err
-	}
-
-	ingressMap, err := scc.getIngresses(ctx, sc)
-	if err != nil {
-		return fmt.Errorf("can't get ingresses: %w", err)
-	}
-
-	status := scc.calculateStatus(sc, statefulSetMap, serviceMap)
-
-	if sc.DeletionTimestamp != nil {
-		return scc.updateStatus(ctx, sc, status)
-	}
-
-	var errs []error
-
-	err = runSync(
-		&status.Conditions,
-		serviceAccountControllerProgressingCondition,
-		serviceAccountControllerDegradedCondition,
-		sc.Generation,
-		func() ([]metav1.Condition, error) {
-			return scc.syncServiceAccounts(ctx, sc, serviceAccounts)
-		},
-	)
-	if err != nil {
-		errs = append(errs, fmt.Errorf("can't sync service accounts: %w", err))
-	}
-
-	err = runSync(
-		&status.Conditions,
-		roleBindingControllerProgressingCondition,
-		roleBindingControllerDegradedCondition,
-		sc.Generation,
-		func() ([]metav1.Condition, error) {
-			return scc.syncRoleBindings(ctx, sc, roleBindings)
-		},
-	)
-	if err != nil {
-		errs = append(errs, fmt.Errorf("can't sync role bindings: %w", err))
-	}
-
-	err = runSync(
-		&status.Conditions,
-		agentTokenControllerProgressingCondition,
-		agentTokenControllerDegradedCondition,
-		sc.Generation,
-		func() ([]metav1.Condition, error) {
-			return scc.syncAgentToken(ctx, sc, secretMap)
-		},
-	)
-	if err != nil {
-		errs = append(errs, fmt.Errorf("can't sync agent token: %w", err))
-	}
-
-	if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {
-		err = runSync(
-			&status.Conditions,
-			certControllerProgressingCondition,
-			certControllerDegradedCondition,
-			sc.Generation,
-			func() ([]metav1.Condition, error) {
-				return scc.syncCerts(ctx, sc, secretMap, configMapMap, serviceMap)
-			},
-		)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("can't sync certificates: %w", err))
+			for _, obj := range scyllaDatacentersRaw {
+				sd := &scyllav1alpha1.ScyllaDatacenter{}
+				if err := scheme.Scheme.Convert(obj, sd, nil); err != nil {
+					return fmt.Errorf("object returned by lister for scyllav1alpha1.ScyllaDatacenter (%T) cannot be converted to it", obj)
+				}
+				scyllaDatacenters = append(scyllaDatacenters, sd)
+			}
+		} else {
+			var err error
+			scyllaDatacenters, err = scc.scyllaDatacenterLister.ScyllaDatacenters(sc.Namespace).List(selector)
+			if err != nil {
+				return err
+			}
 		}
-	}
 
-	err = runSync(
-		&status.Conditions,
-		statefulSetControllerProgressingCondition,
-		statefulSetControllerDegradedCondition,
-		sc.Generation,
-		func() ([]metav1.Condition, error) {
-			return scc.syncStatefulSets(ctx, key, sc, status, statefulSetMap, serviceMap)
-		},
-	)
+		sdMap := make(map[string]*scyllav1alpha1.ScyllaDatacenter, len(scyllaDatacenters))
+		for _, sd := range scyllaDatacenters {
+			sdMap[sd.Name] = sd
+		}
+
+		mu.Lock()
+		defer mu.Unlock()
+		multiRegionScyllaDatacenterMap[remoteName] = sdMap
+
+		return nil
+	})
 	if err != nil {
-		errs = append(errs, fmt.Errorf("can't sync stateful sets: %w", err))
+		return nil, err
 	}
-	// Ideally, this would be projected in calculateStatus but because we are updating the status based on applied
-	// StatefulSets, the rack status can change afterwards. Overtime we should consider adding a status.progressing
-	// field (to allow determining cluster status without conditions) and wait for the status to be updated
-	// in a single place, on the next resync.
-	scc.setStatefulSetsAvailableStatusCondition(sc, status)
 
-	err = runSync(
-		&status.Conditions,
-		serviceControllerProgressingCondition,
-		serviceControllerDegradedCondition,
-		sc.Generation,
-		func() ([]metav1.Condition, error) {
-			return scc.syncServices(ctx, sc, status, serviceMap, statefulSetMap)
-		},
-	)
+	return multiRegionScyllaDatacenterMap, nil
+}
+
+func (scc *Controller) getNamespaces(sc *scyllav2alpha1.ScyllaCluster) (map[string]map[string]*corev1.Namespace, error) {
+	multiRegionNamespaceMap := make(map[string]map[string]*corev1.Namespace, len(sc.Spec.Datacenters))
+	var mu sync.Mutex
+	err := parallel.ForEach(len(sc.Spec.Datacenters), func(i int) error {
+		dc := sc.Spec.Datacenters[i]
+
+		// Ignore local deployments
+		if dc.RemoteKubeClusterConfigRef == nil {
+			return nil
+		}
+
+		// List all ScyllaClusters matching our selector. Because objects lies in remote cluster, we cannot manage controllerRef
+		// TODO(zimnx): figure out solution for above.
+		selector := labels.SelectorFromSet(labels.Set{
+			naming.ParentClusterNamespaceLabel:      sc.Namespace,
+			naming.ParentClusterNameLabel:           sc.Name,
+			naming.ParentClusterDatacenterNameLabel: dc.Name,
+		})
+		regionLister := scc.remoteNamespaceLister.Region(dc.RemoteKubeClusterConfigRef.Name)
+		namespacesRaw, err := regionLister.List(selector)
+		if err != nil {
+			return err
+		}
+
+		nsMap := make(map[string]*corev1.Namespace, len(namespacesRaw))
+		for _, nsRaw := range namespacesRaw {
+			ns := &corev1.Namespace{}
+			if err := scheme.Scheme.Convert(nsRaw, ns, nil); err != nil {
+				return fmt.Errorf("object returned by lister for corev1.Namespace (%T) cannot be converrted to it", nsRaw)
+			}
+			nsMap[ns.Name] = ns
+		}
+
+		mu.Lock()
+		defer mu.Unlock()
+		multiRegionNamespaceMap[dc.RemoteKubeClusterConfigRef.Name] = nsMap
+
+		return nil
+	})
 	if err != nil {
-		errs = append(errs, fmt.Errorf("can't sync services: %w", err))
+		return nil, err
 	}
 
-	err = runSync(
-		&status.Conditions,
-		pdbControllerProgressingCondition,
-		pdbControllerDegradedCondition,
-		sc.Generation,
-		func() ([]metav1.Condition, error) {
-			return scc.syncPodDisruptionBudgets(ctx, sc, pdbMap)
-		},
-	)
-	if err != nil {
-		errs = append(errs, fmt.Errorf("can't sync pdbs: %w", err))
-	}
-
-	err = runSync(
-		&status.Conditions,
-		ingressControllerProgressingCondition,
-		ingressControllerDegradedCondition,
-		sc.Generation,
-		func() ([]metav1.Condition, error) {
-			return scc.syncIngresses(ctx, sc, ingressMap, serviceMap)
-		},
-	)
-	if err != nil {
-		errs = append(errs, fmt.Errorf("can't sync ingresses: %w", err))
-	}
-
-	// Aggregate conditions.
-
-	availableCondition, err := controllerhelpers.AggregateStatusConditions(
-		controllerhelpers.FindStatusConditionsWithSuffix(status.Conditions, scyllav1.AvailableCondition),
-		metav1.Condition{
-			Type:               scyllav1.AvailableCondition,
-			Status:             metav1.ConditionTrue,
-			Reason:             internalapi.AsExpectedReason,
-			Message:            "",
-			ObservedGeneration: sc.Generation,
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("can't aggregate status conditions: %w", err)
-	}
-	apimeta.SetStatusCondition(&status.Conditions, availableCondition)
-
-	progressingCondition, err := controllerhelpers.AggregateStatusConditions(
-		controllerhelpers.FindStatusConditionsWithSuffix(status.Conditions, scyllav1.ProgressingCondition),
-		metav1.Condition{
-			Type:               scyllav1.ProgressingCondition,
-			Status:             metav1.ConditionFalse,
-			Reason:             internalapi.AsExpectedReason,
-			Message:            "",
-			ObservedGeneration: sc.Generation,
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("can't aggregate status conditions: %w", err)
-	}
-	apimeta.SetStatusCondition(&status.Conditions, progressingCondition)
-
-	degradedCondition, err := controllerhelpers.AggregateStatusConditions(
-		controllerhelpers.FindStatusConditionsWithSuffix(status.Conditions, scyllav1.DegradedCondition),
-		metav1.Condition{
-			Type:               scyllav1.DegradedCondition,
-			Status:             metav1.ConditionFalse,
-			Reason:             internalapi.AsExpectedReason,
-			Message:            "",
-			ObservedGeneration: sc.Generation,
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("can't aggregate status conditions: %w", err)
-	}
-	apimeta.SetStatusCondition(&status.Conditions, degradedCondition)
-
-	err = scc.updateStatus(ctx, sc, status)
-	errs = append(errs, err)
-
-	return utilerrors.NewAggregate(errs)
+	return multiRegionNamespaceMap, nil
 }

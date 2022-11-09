@@ -34,6 +34,10 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&NodeConfigList{},
 		&ScyllaOperatorConfig{},
 		&ScyllaOperatorConfigList{},
+		&ScyllaDatacenter{},
+		&ScyllaDatacenterList{},
+		&RemoteKubeClusterConfig{},
+		&RemoteKubeClusterConfigList{},
 	)
 	metav1.AddToGroupVersion(scheme, GroupVersion)
 	return nil

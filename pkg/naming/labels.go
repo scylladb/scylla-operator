@@ -1,34 +1,35 @@
 package naming
 
 import (
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllav2alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v2alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
 // ClusterLabels returns a map of label keys and values
 // for the given Cluster.
-func ClusterLabels(c *scyllav1.ScyllaCluster) map[string]string {
+func ClusterLabels(sd *scyllav1alpha1.ScyllaDatacenter) map[string]string {
 	labels := ScyllaLabels()
-	labels[ClusterNameLabel] = c.Name
+	labels[ClusterNameLabel] = sd.Name
 	return labels
 }
 
 // DatacenterLabels returns a map of label keys and values
 // for the given Datacenter.
-func DatacenterLabels(c *scyllav1.ScyllaCluster) map[string]string {
+func DatacenterLabels(sd *scyllav1alpha1.ScyllaDatacenter) map[string]string {
 	recLabels := ScyllaLabels()
-	dcLabels := ClusterLabels(c)
-	dcLabels[DatacenterNameLabel] = c.Spec.Datacenter.Name
+	dcLabels := ClusterLabels(sd)
+	dcLabels[DatacenterNameLabel] = sd.Spec.DatacenterName
 
 	return mergeLabels(dcLabels, recLabels)
 }
 
 // RackLabels returns a map of label keys and values
 // for the given Rack.
-func RackLabels(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) map[string]string {
+func RackLabels(r scyllav1alpha1.RackSpec, sd *scyllav1alpha1.ScyllaDatacenter) map[string]string {
 	recLabels := ScyllaLabels()
-	rackLabels := DatacenterLabels(c)
+	rackLabels := DatacenterLabels(sd)
 	rackLabels[RackNameLabel] = r.Name
 
 	return mergeLabels(rackLabels, recLabels)
@@ -43,9 +44,9 @@ func StatefulSetPodLabel(name string) map[string]string {
 }
 
 // RackSelector returns a LabelSelector for the given rack.
-func RackSelector(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) labels.Selector {
+func RackSelector(r scyllav1alpha1.RackSpec, sd *scyllav1alpha1.ScyllaDatacenter) labels.Selector {
 
-	rackLabelsSet := labels.Set(RackLabels(r, c))
+	rackLabelsSet := labels.Set(RackLabels(r, sd))
 	sel := labels.SelectorFromSet(rackLabelsSet)
 
 	return sel
@@ -80,4 +81,11 @@ func mergeLabels(l1, l2 map[string]string) map[string]string {
 		res[k] = v
 	}
 	return res
+}
+
+func ParentClusterSelector(sc *scyllav2alpha1.ScyllaCluster) labels.Selector {
+	return labels.SelectorFromSet(map[string]string{
+		ParentClusterNamespaceLabel: sc.Namespace,
+		ParentClusterNameLabel:      sc.Name,
+	})
 }

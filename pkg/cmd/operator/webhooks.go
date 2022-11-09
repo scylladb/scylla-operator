@@ -1,6 +1,7 @@
 package operator
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
@@ -15,16 +16,24 @@ import (
 	"time"
 
 	"github.com/scylladb/scylla-operator/pkg/admissionreview"
+	"github.com/scylladb/scylla-operator/pkg/api/conversion"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	"github.com/scylladb/scylla-operator/pkg/api/validation"
+
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllav2alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v2alpha1"
+	validationv1 "github.com/scylladb/scylla-operator/pkg/api/validation/v1"
+	validationv1alpha1 "github.com/scylladb/scylla-operator/pkg/api/validation/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/conversionreview"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	admissionv1 "k8s.io/api/admission/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	apijson "k8s.io/apimachinery/pkg/runtime/serializer/json"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apiserver/pkg/server/dynamiccertificates"
@@ -199,6 +208,7 @@ func (o *WebhookOptions) run(ctx context.Context, streams genericclioptions.IOSt
 		}
 	})
 	handler.Handle("/validate", admissionreview.NewHandler(validate))
+	handler.Handle("/convert", conversionreview.NewHandler(convert))
 
 	server := http.Server{
 		Handler:   handler,
@@ -269,13 +279,26 @@ func validate(ar *admissionv1.AdmissionReview) error {
 	}
 
 	switch gvr {
+	case scyllav1alpha1.GroupVersion.WithResource("scylladatacenters"):
+		var errList field.ErrorList
+		switch ar.Request.Operation {
+		case admissionv1.Create:
+			errList = validationv1alpha1.ValidateScyllaDatacenter(obj.(*scyllav1alpha1.ScyllaDatacenter))
+		case admissionv1.Update:
+			errList = validationv1alpha1.ValidateScyllaDatacenterUpdate(obj.(*scyllav1alpha1.ScyllaDatacenter), oldObj.(*scyllav1alpha1.ScyllaDatacenter))
+		}
+
+		if len(errList) > 0 {
+			return apierrors.NewInvalid(obj.(*scyllav1alpha1.ScyllaDatacenter).GroupVersionKind().GroupKind(), obj.(*scyllav1alpha1.ScyllaDatacenter).Name, errList)
+		}
+		return nil
 	case scyllav1.GroupVersion.WithResource("scyllaclusters"):
 		var errList field.ErrorList
 		switch ar.Request.Operation {
 		case admissionv1.Create:
-			errList = validation.ValidateScyllaCluster(obj.(*scyllav1.ScyllaCluster))
+			errList = validationv1.ValidateScyllaCluster(obj.(*scyllav1.ScyllaCluster))
 		case admissionv1.Update:
-			errList = validation.ValidateScyllaClusterUpdate(obj.(*scyllav1.ScyllaCluster), oldObj.(*scyllav1.ScyllaCluster))
+			errList = validationv1.ValidateScyllaClusterUpdate(obj.(*scyllav1.ScyllaCluster), oldObj.(*scyllav1.ScyllaCluster))
 		}
 
 		if len(errList) > 0 {
@@ -285,4 +308,74 @@ func validate(ar *admissionv1.AdmissionReview) error {
 	default:
 		return fmt.Errorf("unsupported GVR %q", gvr)
 	}
+}
+
+func convert(cr *apiextensionsv1.ConversionReview) error {
+	deserializer := codecs.UniversalDeserializer()
+	serializer := apijson.NewSerializerWithOptions(apijson.DefaultMetaFactory, scheme, scheme, apijson.SerializerOptions{})
+
+	desiredGV, err := schema.ParseGroupVersion(cr.Request.DesiredAPIVersion)
+	if err != nil {
+		return fmt.Errorf("can't parse desired group version %q: %w", cr.Request.DesiredAPIVersion, err)
+	}
+
+	encoder := codecs.EncoderForVersion(serializer, desiredGV)
+
+	var errs []error
+	buf := bytes.Buffer{}
+
+	for i, obj := range cr.Request.Objects {
+		decodedObject, _, err := deserializer.Decode(obj.Raw, nil, nil)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("can't decode %d'th object: %w", i, err))
+			continue
+		}
+		gvk := decodedObject.GetObjectKind().GroupVersionKind()
+
+		klog.Infof("Converting %q into %q", gvk, desiredGV)
+
+		var convertedObj runtime.Object
+
+		switch gvk.Kind {
+		case "ScyllaCluster":
+			switch cr.Request.DesiredAPIVersion {
+			case scyllav2alpha1.GroupVersion.String():
+				switch gvk.Version {
+				case "v1":
+					convertedObj, err = conversion.ScyllaClusterFromV1ToV2Alpha1(decodedObject.(*scyllav1.ScyllaCluster))
+					if err != nil {
+						errs = append(errs, fmt.Errorf("can't convert %d'ith obj to v2alpha1.ScyllaCluster: %w", i, err))
+						continue
+					}
+				default:
+					return fmt.Errorf("unsupported conversion from %q to %q", gvk.Version, cr.Request.DesiredAPIVersion)
+				}
+			case scyllav1.GroupVersion.String():
+				switch gvk.Version {
+				case "v2alpha1":
+					convertedObj, err = conversion.ScyllaClusterFromV2Alpha1oV1(decodedObject.(*scyllav2alpha1.ScyllaCluster))
+					if err != nil {
+						errs = append(errs, fmt.Errorf("can't convert %d'ith obj to v1.ScyllaCluster: %w", i, err))
+						continue
+					}
+				default:
+					return fmt.Errorf("unsupported conversion from %q to %q", gvk.Version, cr.Request.DesiredAPIVersion)
+				}
+			default:
+				return fmt.Errorf("unsupported desired API version %q", cr.Request.DesiredAPIVersion)
+			}
+		default:
+			return fmt.Errorf("unsupported GVK %q", gvk)
+		}
+
+		buf.Reset()
+		if err := encoder.Encode(convertedObj, &buf); err != nil {
+			errs = append(errs, fmt.Errorf("can't convert to desired apiVersion: %v", err))
+			continue
+		}
+
+		cr.Response.ConvertedObjects = append(cr.Response.ConvertedObjects, runtime.RawExtension{Raw: buf.Bytes()})
+	}
+
+	return utilerrors.NewAggregate(errs)
 }

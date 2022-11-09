@@ -2,6 +2,8 @@ package scheme
 
 import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllav2alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v2alpha1"
 	cqlclientv1alpha1 "github.com/scylladb/scylla-operator/pkg/scylla/api/cqlclient/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -29,5 +31,7 @@ func init() {
 	utilruntime.Must(kscheme.AddToScheme(Scheme))
 
 	utilruntime.Must(scyllav1.Install(Scheme))
+	utilruntime.Must(scyllav1alpha1.Install(Scheme))
+	utilruntime.Must(scyllav2alpha1.Install(Scheme))
 	utilruntime.Must(cqlclientv1alpha1.Install(Scheme))
 }

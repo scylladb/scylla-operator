@@ -8,6 +8,7 @@ import (
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1alpha1"
+	scyllav2alpha1 "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v2alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -17,6 +18,7 @@ type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	ScyllaV1() scyllav1.ScyllaV1Interface
 	ScyllaV1alpha1() scyllav1alpha1.ScyllaV1alpha1Interface
+	ScyllaV2alpha1() scyllav2alpha1.ScyllaV2alpha1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
@@ -25,6 +27,7 @@ type Clientset struct {
 	*discovery.DiscoveryClient
 	scyllaV1       *scyllav1.ScyllaV1Client
 	scyllaV1alpha1 *scyllav1alpha1.ScyllaV1alpha1Client
+	scyllaV2alpha1 *scyllav2alpha1.ScyllaV2alpha1Client
 }
 
 // ScyllaV1 retrieves the ScyllaV1Client
@@ -35,6 +38,11 @@ func (c *Clientset) ScyllaV1() scyllav1.ScyllaV1Interface {
 // ScyllaV1alpha1 retrieves the ScyllaV1alpha1Client
 func (c *Clientset) ScyllaV1alpha1() scyllav1alpha1.ScyllaV1alpha1Interface {
 	return c.scyllaV1alpha1
+}
+
+// ScyllaV2alpha1 retrieves the ScyllaV2alpha1Client
+func (c *Clientset) ScyllaV2alpha1() scyllav2alpha1.ScyllaV2alpha1Interface {
+	return c.scyllaV2alpha1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -89,6 +97,10 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 	if err != nil {
 		return nil, err
 	}
+	cs.scyllaV2alpha1, err = scyllav2alpha1.NewForConfigAndClient(&configShallowCopy, httpClient)
+	if err != nil {
+		return nil, err
+	}
 
 	cs.DiscoveryClient, err = discovery.NewDiscoveryClientForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
@@ -112,6 +124,7 @@ func New(c rest.Interface) *Clientset {
 	var cs Clientset
 	cs.scyllaV1 = scyllav1.New(c)
 	cs.scyllaV1alpha1 = scyllav1alpha1.New(c)
+	cs.scyllaV2alpha1 = scyllav2alpha1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

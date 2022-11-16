@@ -24,13 +24,14 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
-	watchtools "k8s.io/client-go/tools/watch"
 	"k8s.io/klog/v2"
 )
 
 const (
-	ServiceAccountName        = "e2e-user"
-	serviceAccountWaitTimeout = 1 * time.Minute
+	ServiceAccountName                   = "e2e-user"
+	ServiceAccountTokenSecretName        = "e2e-user-token"
+	serviceAccountWaitTimeout            = 1 * time.Minute
+	serviceAccountTokenSecretWaitTimeout = 1 * time.Minute
 )
 
 type Framework struct {
@@ -193,39 +194,35 @@ func (f *Framework) setupNamespace(ctx context.Context) {
 	}, metav1.CreateOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	// Wait for user ServiceAccount.
-	By(fmt.Sprintf("Waiting for ServiceAccount %q in namespace %q.", userSA.Name, userSA.Namespace))
-	ctxUserSa, ctxUserSaCancel := watchtools.ContextWithOptionalTimeout(ctx, serviceAccountWaitTimeout)
-	defer ctxUserSaCancel()
-	userSA, err = WaitForServiceAccount(ctxUserSa, f.KubeAdminClient().CoreV1(), userSA.Namespace, userSA.Name)
+	// Create a service account token Secret for the user ServiceAccount.
+	userSATokenSecret, err := f.KubeAdminClient().CoreV1().Secrets(ns.Name).Create(ctx, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: ServiceAccountTokenSecretName,
+			Annotations: map[string]string{
+				corev1.ServiceAccountNameKey: userSA.Name,
+			},
+		},
+		Type: corev1.SecretTypeServiceAccountToken,
+	}, metav1.CreateOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	// Create a restricted client using the default SA.
-	var token []byte
-	for _, secretName := range userSA.Secrets {
-		secret, err := f.KubeAdminClient().CoreV1().Secrets(userSA.Namespace).Get(ctx, secretName.Name, metav1.GetOptions{})
-		o.Expect(err).NotTo(o.HaveOccurred())
+	By("Waiting for service account token Secret %q in namespace %q.", userSATokenSecret.Name, userSATokenSecret.Namespace)
+	ctxUserSATokenSecret, ctxUserSATokenSecretCancel := context.WithTimeout(ctx, serviceAccountTokenSecretWaitTimeout)
+	defer ctxUserSATokenSecretCancel()
+	userSATokenSecret, err = WaitForServiceAccountTokenSecret(ctxUserSATokenSecret, f.KubeAdminClient().CoreV1(), userSATokenSecret.Namespace, userSATokenSecret.Name)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(userSATokenSecret.Data).To(o.HaveKey(corev1.ServiceAccountTokenKey))
 
-		if secret.Type == corev1.SecretTypeServiceAccountToken {
-			name := secret.Annotations[corev1.ServiceAccountNameKey]
-			uid := secret.Annotations[corev1.ServiceAccountUIDKey]
-			if name == userSA.Name && uid == string(userSA.UID) {
-				t, found := secret.Data[corev1.ServiceAccountTokenKey]
-				if found {
-					token = t
-					break
-				}
-			}
-		}
-	}
-	o.Expect(token).NotTo(o.HaveLen(0))
+	token := userSATokenSecret.Data[corev1.ServiceAccountTokenKey]
+	o.Expect(token).NotTo(o.BeEmpty())
 
+	// Create a restricted client using the user SA.
 	f.clientConfig = restclient.AnonymousClientConfig(f.AdminClientConfig())
 	f.clientConfig.BearerToken = string(token)
 
 	// Wait for default ServiceAccount.
-	By(fmt.Sprintf("Waiting for default ServiceAccount in namespace %q.", ns.Name))
-	ctxSa, ctxSaCancel := watchtools.ContextWithOptionalTimeout(ctx, serviceAccountWaitTimeout)
+	By("Waiting for default ServiceAccount in namespace %q.", ns.Name)
+	ctxSa, ctxSaCancel := context.WithTimeout(ctx, serviceAccountWaitTimeout)
 	defer ctxSaCancel()
 	_, err = WaitForServiceAccount(ctxSa, f.KubeAdminClient().CoreV1(), ns.Namespace, "default")
 	o.Expect(err).NotTo(o.HaveOccurred())

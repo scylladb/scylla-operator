@@ -72,6 +72,47 @@ jobs:
     - name: Verify dependencies
       run: make verify-deps --warn-undefined-variables
 
+  verify-vendorability:
+    name: Verify scylla-operator repo can be vendored by someone else
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-20.04
+    env:
+      github_self_ref: 'github.com/${{ github.repository }}@${{ github.sha }}'
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        path: ${{ env.git_repo_path }}
+    - name: Setup go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ env.go_version }}
+    - name: Override repository ref on pull requests
+      if: ${{ github.event_name == 'pull_request' }}
+      run: |
+        echo "Initial github_self_ref=${github_self_ref}"
+        echo 'github_self_ref=github.com/${{ github.event.pull_request.head.repo.full_name }}@${{ github.event.pull_request.head.sha }}' | tee -a ${GITHUB_ENV}
+    - name: Verify vendorability
+      run: |
+        set -x
+        pushd "$( mktemp -d )"
+        
+        go mod init foo.com
+        go get "${github_self_ref}"
+        cat go.mod
+        
+        cat > ./main.go <<EOF                                       
+        package main
+        import _ "github.com/scylladb/scylla-operator/pkg/scheme"
+        func main() {}
+        EOF
+        
+        go mod tidy
+        cat go.mod
+        
+        go mod vendor
+        
+        go build ./...
+
   build-and-test:
     name: Build and test
     runs-on: ubuntu-20.04

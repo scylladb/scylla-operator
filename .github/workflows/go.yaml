@@ -73,7 +73,7 @@ jobs:
       run: make verify-deps --warn-undefined-variables
 
   verify-vendorability:
-    name: Verify scylla-operator repo can be vendored by someone else
+    name: Verify vendorability
     if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-20.04
     env:
@@ -96,18 +96,18 @@ jobs:
         set -x
         pushd "$( mktemp -d )"
         
-        go mod init foo.com
-        go get "${github_self_ref}"
-        cat go.mod
-        
         cat > ./main.go <<EOF                                       
         package main
         import _ "github.com/scylladb/scylla-operator/pkg/scheme"
         func main() {}
         EOF
         
-        go mod tidy
+        go mod init foo.com
+        go mod edit -replace "github.com/scylladb/scylla-operator=${github_self_ref}"
         cat go.mod
+        
+        go mod tidy
+        cat go.{mod,sum}
         
         go mod vendor
         

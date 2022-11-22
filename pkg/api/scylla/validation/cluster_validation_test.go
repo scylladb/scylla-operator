@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	v1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	"github.com/scylladb/scylla-operator/pkg/api/validation"
+	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

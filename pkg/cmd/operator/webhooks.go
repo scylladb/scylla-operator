@@ -16,7 +16,7 @@ import (
 
 	"github.com/scylladb/scylla-operator/pkg/admissionreview"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	"github.com/scylladb/scylla-operator/pkg/api/validation"
+	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/scylladb/scylla-operator/pkg/version"

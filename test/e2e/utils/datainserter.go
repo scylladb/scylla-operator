@@ -19,11 +19,14 @@ import (
 const nRows = 10
 
 type DataInserter struct {
-	session           *gocqlx.Session
-	keyspace          string
-	table             *table.Table
-	data              []*TestData
-	replicationFactor int
+	session               *gocqlx.Session
+	keyspace              string
+	table                 *table.Table
+	data                  []*TestData
+	replicationFactor     int
+	readConsistency       gocql.Consistency
+	clusterConfigModifier func(*gocql.ClusterConfig) *gocql.ClusterConfig
+	verbose               bool
 }
 
 type TestData struct {
@@ -31,7 +34,21 @@ type TestData struct {
 	Data string `db:"data"`
 }
 
-func NewDataInserter(hosts []string) (*DataInserter, error) {
+type DataInserterOption func(*DataInserter)
+
+func WithClusterConfigModifier(clusterConfigModifier func(*gocql.ClusterConfig) *gocql.ClusterConfig) func(*DataInserter) {
+	return func(di *DataInserter) {
+		di.clusterConfigModifier = clusterConfigModifier
+	}
+}
+
+func WithReadConsistency(readConsistency gocql.Consistency) func(inserter *DataInserter) {
+	return func(di *DataInserter) {
+		di.readConsistency = readConsistency
+	}
+}
+
+func NewDataInserter(hosts []string, verbose bool, options ...DataInserterOption) (*DataInserter, error) {
 	keyspace := utilrand.String(8)
 	table := table.New(table.Metadata{
 		Name:    fmt.Sprintf(`"%s"."test"`, keyspace),
@@ -48,6 +65,12 @@ func NewDataInserter(hosts []string) (*DataInserter, error) {
 		table:             table,
 		data:              data,
 		replicationFactor: len(hosts),
+		readConsistency:   gocql.All,
+		verbose:           verbose,
+	}
+
+	for _, option := range options {
+		option(di)
 	}
 
 	err := di.SetClientEndpoints(hosts)
@@ -73,7 +96,9 @@ func (di *DataInserter) SetClientEndpoints(hosts []string) error {
 		return fmt.Errorf("at least one enpoint is required")
 	}
 
-	framework.Infof("Creating CQL session (hosts=%q)", strings.Join(hosts, ", "))
+	if di.verbose {
+		framework.Infof("Creating CQL session (hosts=%q)", strings.Join(hosts, ", "))
+	}
 	err := di.createSession(hosts)
 	if err != nil {
 		return fmt.Errorf("can't create session: %w", err)
@@ -83,7 +108,9 @@ func (di *DataInserter) SetClientEndpoints(hosts []string) error {
 }
 
 func (di *DataInserter) Insert() error {
-	framework.Infof("Creating keyspace %q with RF %d", di.keyspace, di.replicationFactor)
+	if di.verbose {
+		framework.Infof("Creating keyspace %q with RF %d", di.keyspace, di.replicationFactor)
+	}
 	err := di.session.ExecStmt(fmt.Sprintf(
 		`CREATE KEYSPACE %q WITH replication = {'class': 'NetworkTopologyStrategy', 'replication_factor': %d}`,
 		di.keyspace,
@@ -93,7 +120,9 @@ func (di *DataInserter) Insert() error {
 		return fmt.Errorf("can't create keyspace: %w", err)
 	}
 
-	framework.Infof("Creating table %s", di.table.Name())
+	if di.verbose {
+		framework.Infof("Creating table %s", di.table.Name())
+	}
 	err = di.session.ExecStmt(fmt.Sprintf(
 		`CREATE TABLE %s (id int primary key, data text)`,
 		di.table.Name(),
@@ -102,7 +131,9 @@ func (di *DataInserter) Insert() error {
 		return fmt.Errorf("can't create table: %w", err)
 	}
 
-	framework.Infof("Inserting data into table %s", di.table.Name())
+	if di.verbose {
+		framework.Infof("Inserting data into table %s", di.table.Name())
+	}
 	for _, t := range di.data {
 		q := di.session.Query(di.table.Insert()).BindStruct(t)
 		err = q.ExecRelease()
@@ -125,10 +156,15 @@ func (di *DataInserter) AwaitSchemaAgreement(ctx context.Context) error {
 	return nil
 }
 
-func (di *DataInserter) Read() ([]*TestData, error) {
-	framework.Infof("Reading data from table %s", di.table.Name())
+func (di *DataInserter) Read(ctx context.Context) ([]*TestData, error) {
+	if di.verbose {
+		framework.Infof("Reading data from table %s", di.table.Name())
+	}
 
-	q := di.session.Query(di.table.SelectAll()).BindStruct(&TestData{})
+	q := di.session.Query(di.table.SelectAll()).
+		WithContext(ctx).
+		Consistency(di.readConsistency).
+		BindStruct(&TestData{})
 	var res []*TestData
 	err := q.SelectRelease(&res)
 	if err != nil {
@@ -146,12 +182,21 @@ func (di *DataInserter) GetExpected() []*TestData {
 	return di.data
 }
 
-func (di *DataInserter) createSession(hosts []string) error {
+func defaultClusterConfig(hosts []string) *gocql.ClusterConfig {
 	clusterConfig := gocql.NewCluster(hosts...)
 	clusterConfig.Timeout = 3 * time.Second
 	clusterConfig.ConnectTimeout = 3 * time.Second
 	// Set a small reconnect interval to avoid flakes, if not reconnected in time.
 	clusterConfig.ReconnectInterval = 500 * time.Millisecond
+
+	return clusterConfig
+}
+
+func (di *DataInserter) createSession(hosts []string) error {
+	clusterConfig := defaultClusterConfig(hosts)
+	if di.clusterConfigModifier != nil {
+		clusterConfig = di.clusterConfigModifier(clusterConfig)
+	}
 
 	session, err := gocqlx.WrapSession(clusterConfig.CreateSession())
 	if err != nil {

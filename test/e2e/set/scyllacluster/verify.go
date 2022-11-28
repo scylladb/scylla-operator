@@ -6,7 +6,10 @@ import (
 	"crypto/x509"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 
+	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
@@ -25,6 +28,10 @@ import (
 	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/utils/pointer"
+)
+
+const (
+	quorumMonitoringFrequency = 1 * time.Second
 )
 
 func verifyPersistentVolumeClaims(ctx context.Context, coreClient corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) {
@@ -268,14 +275,14 @@ func verifyCQLData(ctx context.Context, di *utils.DataInserter) {
 	o.Expect(err).NotTo(o.HaveOccurred())
 
 	framework.By("Verifying the data")
-	data, err := di.Read()
+	data, err := di.Read(ctx)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(data).To(o.Equal(di.GetExpected()))
 }
 
 func insertAndVerifyCQLData(ctx context.Context, hosts []string) *utils.DataInserter {
 	framework.By("Inserting data")
-	di, err := utils.NewDataInserter(hosts)
+	di, err := utils.NewDataInserter(hosts, true)
 	o.Expect(err).NotTo(o.HaveOccurred())
 
 	err = di.Insert()
@@ -284,6 +291,40 @@ func insertAndVerifyCQLData(ctx context.Context, hosts []string) *utils.DataInse
 	verifyCQLData(ctx, di)
 
 	return di
+}
+
+func monitorQuorumAchievability(ctx context.Context, wg *sync.WaitGroup, hosts []string) {
+	framework.By("Creating a quorum monitor")
+	qm, err := utils.NewQuorumMonitor(hosts)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	framework.By("Inserting data for quorum monitoring")
+	err = qm.Insert()
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	wg.Add(1)
+	go func() {
+		defer g.GinkgoRecover()
+		defer wg.Done()
+		defer qm.Close()
+
+		framework.By("Starting to monitor quorum achievability")
+		defer framework.By("Stopping quorum achievability monitoring")
+
+		stopCh := ctx.Done()
+		ticker := time.NewTicker(quorumMonitoringFrequency)
+
+		for {
+			select {
+			case <-stopCh:
+				return
+			case <-ticker.C:
+				data, err := qm.Read(ctx)
+				o.Expect(err).NotTo(o.HaveOccurred())
+				o.Expect(data).To(o.Equal(qm.GetExpected()))
+			}
+		}
+	}()
 }
 
 type verifyTLSCertOptions struct {

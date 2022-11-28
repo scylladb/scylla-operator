@@ -5,6 +5,7 @@ package scyllacluster
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	g "github.com/onsi/ginkgo/v2"
@@ -28,7 +29,7 @@ var _ = g.Describe("ScyllaCluster replace", func() {
 		defer cancel()
 
 		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
-		sc.Spec.Datacenter.Racks[0].Members = 2
+		sc.Spec.Datacenter.Racks[0].Members = 3
 
 		framework.By("Creating a ScyllaCluster")
 		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
@@ -42,9 +43,16 @@ var _ = g.Describe("ScyllaCluster replace", func() {
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
 		hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
-		o.Expect(hosts).To(o.HaveLen(2))
+		o.Expect(hosts).To(o.HaveLen(3))
 		di := insertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
+
+		var wg sync.WaitGroup
+		defer wg.Wait()
+
+		mqCtx, mqCancel := context.WithCancel(ctx)
+		monitorQuorumAchievability(mqCtx, &wg, hosts)
+		defer mqCancel()
 
 		framework.By("Replacing a node #0")
 		pod, err := f.KubeClient().CoreV1().Pods(f.Namespace()).Get(

@@ -5,6 +5,7 @@ package scyllacluster
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
@@ -26,6 +27,7 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 		rackCount      int32
 		initialVersion string
 		updatedVersion string
+		monitorQuorum  bool
 	}
 
 	describeEntry := func(e *entry) string {
@@ -67,6 +69,15 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			di := insertAndVerifyCQLData(ctx, hosts)
 			defer di.Close()
 
+			if e.monitorQuorum {
+				var wg sync.WaitGroup
+				defer wg.Wait()
+
+				mqCtx, mqCancel := context.WithCancel(ctx)
+				monitorQuorumAchievability(mqCtx, &wg, hosts)
+				defer mqCancel()
+			}
+
 			framework.By("triggering and update")
 			sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
 				ctx,
@@ -98,30 +109,35 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			rackSize:       1,
 			initialVersion: updateFromScyllaVersion,
 			updatedVersion: updateToScyllaVersion,
+			monitorQuorum:  false,
 		}),
 		g.Entry(describeEntry, &entry{
 			rackCount:      1,
 			rackSize:       3,
 			initialVersion: updateFromScyllaVersion,
 			updatedVersion: updateToScyllaVersion,
+			monitorQuorum:  true,
 		}),
 		g.Entry(describeEntry, &entry{
 			rackCount:      1,
 			rackSize:       1,
 			initialVersion: upgradeFromScyllaVersion,
 			updatedVersion: upgradeToScyllaVersion,
+			monitorQuorum:  false,
 		}),
 		g.Entry(describeEntry, &entry{
 			rackCount:      1,
 			rackSize:       3,
 			initialVersion: upgradeFromScyllaVersion,
 			updatedVersion: upgradeToScyllaVersion,
+			monitorQuorum:  true,
 		}),
 		g.Entry(describeEntry, &entry{
 			rackCount:      2,
 			rackSize:       3,
 			initialVersion: upgradeFromScyllaVersion,
 			updatedVersion: upgradeToScyllaVersion,
+			monitorQuorum:  true,
 		}),
 	)
 })

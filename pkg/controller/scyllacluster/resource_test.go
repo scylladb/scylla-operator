@@ -92,6 +92,10 @@ func TestMemberService(t *testing.T) {
 			Port: 9100,
 		},
 		{
+			Name: "prober",
+			Port: 8080,
+		},
+		{
 			Name: "cql",
 			Port: 9042,
 		},

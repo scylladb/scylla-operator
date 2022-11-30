@@ -148,6 +148,10 @@ func servicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 			Port: 9100,
 		},
 		{
+			Name: "prober",
+			Port: naming.ProbePort,
+		},
+		{
 			Name: portNameCQL,
 			Port: 9042,
 		},

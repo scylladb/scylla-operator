@@ -391,6 +391,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 
 		http.HandleFunc(naming.LivenessProbePath, prober.Healthz)
 		http.HandleFunc(naming.ReadinessProbePath, prober.Readyz)
+		http.HandleFunc(naming.InternalNodeStatusesPath, prober.InternalNodeStatuses)
 
 		err := server.ListenAndServe()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {

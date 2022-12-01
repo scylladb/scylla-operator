@@ -6,7 +6,6 @@ aggregationRule:
   clusterRoleSelectors:
     - matchLabels:
         rbac.operator.scylladb.com/aggregate-to-scylla-operator: "true"
-rules: []
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -2427,7 +2426,6 @@ aggregationRule:
   clusterRoleSelectors:
     - matchLabels:
         rbac.operator.scylladb.com/aggregate-to-scylla-member: "true"
-rules: []
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -2542,7 +2540,6 @@ metadata:
 webhooks:
 - name: webhook.scylla.scylladb.com
   clientConfig:
-    caBundle: Cg==
     service:
       name: scylla-operator-webhook
       namespace: scylla-operator

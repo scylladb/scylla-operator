@@ -6,4 +6,3 @@ aggregationRule:
   clusterRoleSelectors:
     - matchLabels:
         rbac.operator.scylladb.com/aggregate-to-scylla-operator: "true"
-rules: []

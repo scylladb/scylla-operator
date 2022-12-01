@@ -7,7 +7,6 @@ metadata:
 webhooks:
 - name: webhook.scylla.scylladb.com
   clientConfig:
-    caBundle: Cg==
     service:
       name: {{ include "scylla-operator.webhookServiceName" . }}
       namespace: scylla-operator

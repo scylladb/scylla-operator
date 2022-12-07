@@ -16,6 +16,10 @@ spec:
       app.kubernetes.io/instance: webhook-server
   template:
     metadata:
+    {{- with .Values.webhookServerPodAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
       labels:
         app.kubernetes.io/name: webhook-server
         app.kubernetes.io/instance: webhook-server

@@ -64,6 +64,9 @@ webhookServerNodeSelector: { }
 # Tolerations for Webhook Server pods
 webhookServerTolerations: [ ]
 
+# Pod annotations for the webhook deployment
+webhookServerPodAnnotations: {}
+
 # Affinity for Webhook Server pods
 webhookServerAffinity:
   podAntiAffinity:

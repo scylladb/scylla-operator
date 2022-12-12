@@ -175,7 +175,7 @@ func (ncpc *Controller) enqueueOwner(obj metav1.Object) {
 	}
 
 	klog.V(4).InfoS("Enqueuing owner", gvk.Kind, klog.KObj(obj), "Pod", klog.KObj(pod))
-	ncpc.enqueue(pod)
+	ncpc.addPod(pod)
 }
 
 func (ncpc *Controller) enqueueAllScyllaPodsOnNode(node *corev1.Node) {

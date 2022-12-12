@@ -1,0 +1,4 @@
+name: scylla-operator-fix
+version: 0.0.1
+deployable_type: image
+CX_PRODUCT: datafusion

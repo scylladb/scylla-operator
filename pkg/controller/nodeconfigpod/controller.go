@@ -168,6 +168,10 @@ func (ncpc *Controller) enqueueOwner(obj metav1.Object) {
 		return
 	}
 
+	if !isScyllaPod(pod) {
+		return
+	}
+
 	gvk, err := resource.GetObjectGVK(obj.(runtime.Object))
 	if err != nil {
 		utilruntime.HandleError(err)
@@ -228,18 +232,24 @@ func (ncpc *Controller) enqueueAllScyllaPodsForNodeConfig(nodeConfig *scyllav1al
 func (ncpc *Controller) addPod(obj interface{}) {
 	pod := obj.(*corev1.Pod)
 
-	// TODO: extract and use a better label, verify the container
-	if pod.Labels == nil {
-		return
-	}
-
-	_, isScyllaPod := pod.Labels[naming.ClusterNameLabel]
-	if !isScyllaPod {
+	if !isScyllaPod(pod) {
 		return
 	}
 
 	klog.V(4).InfoS("Observed addition of Pod", "Pod", klog.KObj(pod))
 	ncpc.enqueue(pod)
+}
+
+func isScyllaPod(pod *corev1.Pod) bool {
+
+	// TODO: extract and use a better label, verify the container
+	if pod.Labels == nil {
+		return false
+	}
+
+	_, isScyllaPod := pod.Labels[naming.ClusterNameLabel]
+
+	return isScyllaPod
 }
 
 func (ncpc *Controller) updatePod(old, cur interface{}) {

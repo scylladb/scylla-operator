@@ -14,7 +14,7 @@ func makeConfigMap(pod *corev1.Pod, data map[string]string) *corev1.ConfigMap {
 			Namespace: pod.Namespace,
 			Name:      naming.GetTuningConfigMapNameForPod(pod),
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(pod, controllerGVK),
+				*metav1.NewControllerRef(pod, podControllerGVK),
 			},
 			Labels: map[string]string{
 				naming.OwnerUIDLabel:      string(pod.UID),

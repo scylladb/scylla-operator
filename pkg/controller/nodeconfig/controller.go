@@ -12,14 +12,13 @@ import (
 	scyllav1alpha1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1alpha1"
 	scyllav1alpha1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1alpha1"
 	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
-	"github.com/scylladb/scylla-operator/pkg/util/resource"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -47,9 +46,9 @@ const (
 )
 
 var (
-	keyFunc                = cache.DeletionHandlingMetaNamespaceKeyFunc
-	controllerGVK          = scyllav1alpha1.GroupVersion.WithKind("NodeConfig")
-	daemonSetControllerGVK = appsv1.SchemeGroupVersion.WithKind("DaemonSet")
+	keyFunc                 = cache.DeletionHandlingMetaNamespaceKeyFunc
+	nodeConfigControllerGVK = scyllav1alpha1.GroupVersion.WithKind("NodeConfig")
+	daemonSetControllerGVK  = appsv1.SchemeGroupVersion.WithKind("DaemonSet")
 )
 
 type Controller struct {
@@ -69,7 +68,8 @@ type Controller struct {
 
 	eventRecorder record.EventRecorder
 
-	queue workqueue.RateLimitingInterface
+	queue    workqueue.RateLimitingInterface
+	handlers *controllerhelpers.Handlers[*scyllav1alpha1.NodeConfig]
 
 	operatorImage string
 }
@@ -131,6 +131,25 @@ func NewController(
 		operatorImage: operatorImage,
 	}
 
+	var err error
+	ncc.handlers, err = controllerhelpers.NewHandlers[*scyllav1alpha1.NodeConfig](
+		ncc.queue,
+		keyFunc,
+		scheme.Scheme,
+		nodeConfigControllerGVK,
+		kubeinterfaces.GlobalGetList[*scyllav1alpha1.NodeConfig]{
+			GetFunc: func(name string) (*scyllav1alpha1.NodeConfig, error) {
+				return ncc.nodeConfigLister.Get(name)
+			},
+			ListFunc: func(selector labels.Selector) (ret []*scyllav1alpha1.NodeConfig, err error) {
+				return ncc.nodeConfigLister.List(selector)
+			},
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("can't create handlers: %w", err)
+	}
+
 	nodeConfigInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ncc.addNodeConfig,
 		UpdateFunc: ncc.updateNodeConfig,
@@ -145,8 +164,8 @@ func NewController(
 	// })
 
 	scyllaOperatorConfigInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    ncc.addOperatorConfig,
-		UpdateFunc: ncc.updateOperatorConfig,
+		AddFunc:    ncc.addScyllaOperatorConfig,
+		UpdateFunc: ncc.updateScyllaOperatorConfig,
 	})
 
 	clusterRoleInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -177,297 +196,134 @@ func NewController(
 }
 
 func (ncc *Controller) addDaemonSet(obj interface{}) {
-	ds := obj.(*appsv1.DaemonSet)
-	klog.V(4).InfoS("Observed addition of DaemonSet", "DaemonSet", klog.KObj(ds))
-	ncc.enqueueOwner(ds)
+	ncc.handlers.HandleAdd(
+		obj.(*appsv1.DaemonSet),
+		ncc.handlers.EnqueueOwner,
+	)
 }
 
 func (ncc *Controller) updateDaemonSet(old, cur interface{}) {
-	oldDaemonSet := old.(*appsv1.DaemonSet)
-	currentDaemonSet := cur.(*appsv1.DaemonSet)
-
-	if currentDaemonSet.UID != oldDaemonSet.UID {
-		key, err := keyFunc(oldDaemonSet)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldDaemonSet, err))
-			return
-		}
-		ncc.deleteDaemonSet(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldDaemonSet,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of DaemonSet", "DaemonSet", klog.KObj(oldDaemonSet))
-	ncc.enqueueOwner(currentDaemonSet)
+	ncc.handlers.HandleUpdate(
+		old.(*appsv1.DaemonSet),
+		cur.(*appsv1.DaemonSet),
+		ncc.handlers.EnqueueOwner,
+		ncc.deleteDaemonSet,
+	)
 }
 
 func (ncc *Controller) deleteDaemonSet(obj interface{}) {
-	ds, ok := obj.(*appsv1.DaemonSet)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		ds, ok = tombstone.Obj.(*appsv1.DaemonSet)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a DaemonSet %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of DaemonSet", "DaemonSet", klog.KObj(ds))
-	ncc.enqueueOwner(ds)
+	ncc.handlers.HandleDelete(
+		obj,
+		ncc.handlers.EnqueueOwner,
+	)
 }
 
 func (ncc *Controller) addServiceAccount(obj interface{}) {
-	sa := obj.(*corev1.ServiceAccount)
-	klog.V(4).InfoS("Observed addition of ServiceAccount", "ServiceAccount", klog.KObj(sa))
-	ncc.enqueueOwner(sa)
+	ncc.handlers.HandleAdd(
+		obj.(*corev1.ServiceAccount),
+		ncc.handlers.EnqueueOwner,
+	)
 }
 
 func (ncc *Controller) updateServiceAccount(old, cur interface{}) {
-	oldServiceAccount := old.(*corev1.ServiceAccount)
-	currentServiceAccount := cur.(*corev1.ServiceAccount)
-
-	if currentServiceAccount.UID != oldServiceAccount.UID {
-		key, err := keyFunc(oldServiceAccount)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldServiceAccount, err))
-			return
-		}
-		ncc.deleteServiceAccount(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldServiceAccount,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of ServiceAccount", "ServiceAccount", klog.KObj(oldServiceAccount))
-	ncc.enqueueOwner(currentServiceAccount)
+	ncc.handlers.HandleUpdate(
+		old.(*corev1.ServiceAccount),
+		cur.(*corev1.ServiceAccount),
+		ncc.handlers.EnqueueOwner,
+		ncc.deleteServiceAccount,
+	)
 }
 
 func (ncc *Controller) deleteServiceAccount(obj interface{}) {
-	sa, ok := obj.(*corev1.ServiceAccount)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		sa, ok = tombstone.Obj.(*corev1.ServiceAccount)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ServiceAccount %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of ServiceAccount", "ServiceAccount", klog.KObj(sa))
-	ncc.enqueueOwner(sa)
+	ncc.handlers.HandleDelete(
+		obj,
+		ncc.handlers.EnqueueOwner,
+	)
 }
 
 func (ncc *Controller) addClusterRoleBinding(obj interface{}) {
-	crb := obj.(*rbacv1.ClusterRoleBinding)
-	klog.V(4).InfoS("Observed addition of ClusterRoleBinding", "ClusterRoleBinding", klog.KObj(crb))
-	ncc.enqueueOwner(crb)
+	ncc.handlers.HandleAdd(
+		obj.(*rbacv1.ClusterRoleBinding),
+		ncc.handlers.EnqueueOwner,
+	)
 }
 
 func (ncc *Controller) updateClusterRoleBinding(old, cur interface{}) {
-	oldClusterRoleBinding := old.(*rbacv1.ClusterRoleBinding)
-	currentClusterRoleBinding := cur.(*rbacv1.ClusterRoleBinding)
-
-	if currentClusterRoleBinding.UID != oldClusterRoleBinding.UID {
-		key, err := keyFunc(oldClusterRoleBinding)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldClusterRoleBinding, err))
-			return
-		}
-		ncc.deleteClusterRoleBinding(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldClusterRoleBinding,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of ClusterRoleBinding", "ClusterRoleBinding", klog.KObj(oldClusterRoleBinding))
-	ncc.enqueueOwner(currentClusterRoleBinding)
+	ncc.handlers.HandleUpdate(
+		old.(*rbacv1.ClusterRoleBinding),
+		cur.(*rbacv1.ClusterRoleBinding),
+		ncc.handlers.EnqueueOwner,
+		ncc.deleteClusterRoleBinding,
+	)
 }
 
 func (ncc *Controller) deleteClusterRoleBinding(obj interface{}) {
-	crb, ok := obj.(*rbacv1.ClusterRoleBinding)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		crb, ok = tombstone.Obj.(*rbacv1.ClusterRoleBinding)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ClusterRoleBinding %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of ClusterRoleBinding", "ClusterRoleBinding", klog.KObj(crb))
-	ncc.enqueueOwner(crb)
+	ncc.handlers.HandleDelete(
+		obj,
+		ncc.handlers.EnqueueOwner,
+	)
 }
 
 func (ncc *Controller) addClusterRole(obj interface{}) {
-	cr := obj.(*rbacv1.ClusterRole)
-	klog.V(4).InfoS("Observed addition of ClusterRole", "ClusterRole", klog.KObj(cr))
-	ncc.enqueueOwner(cr)
+	ncc.handlers.HandleAdd(
+		obj.(*rbacv1.ClusterRole),
+		ncc.handlers.EnqueueOwner,
+	)
 }
 
 func (ncc *Controller) updateClusterRole(old, cur interface{}) {
-	oldClusterRole := old.(*rbacv1.ClusterRole)
-	currentClusterRole := cur.(*rbacv1.ClusterRole)
-
-	if currentClusterRole.UID != oldClusterRole.UID {
-		key, err := keyFunc(oldClusterRole)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldClusterRole, err))
-			return
-		}
-		ncc.deleteClusterRole(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldClusterRole,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of ClusterRole", "ClusterRole", klog.KObj(oldClusterRole))
-	ncc.enqueueOwner(currentClusterRole)
+	ncc.handlers.HandleUpdate(
+		old.(*rbacv1.ClusterRole),
+		cur.(*rbacv1.ClusterRole),
+		ncc.handlers.EnqueueOwner,
+		ncc.deleteClusterRole,
+	)
 }
 
 func (ncc *Controller) deleteClusterRole(obj interface{}) {
-	cr, ok := obj.(*rbacv1.ClusterRole)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		cr, ok = tombstone.Obj.(*rbacv1.ClusterRole)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ClusterRole %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of ClusterRole", "ClusterRole", klog.KObj(cr))
-	ncc.enqueueOwner(cr)
+	ncc.handlers.HandleDelete(
+		obj,
+		ncc.handlers.EnqueueOwner,
+	)
 }
 
 func (ncc *Controller) addNodeConfig(obj interface{}) {
-	nodeConfig := obj.(*scyllav1alpha1.NodeConfig)
-	klog.V(4).InfoS("Observed addition of NodeConfig", "NodeConfig", klog.KObj(nodeConfig))
-	ncc.enqueue(nodeConfig)
+	ncc.handlers.HandleAdd(
+		obj.(*scyllav1alpha1.NodeConfig),
+		ncc.handlers.Enqueue,
+	)
 }
 
 func (ncc *Controller) updateNodeConfig(old, cur interface{}) {
-	oldNodeConfig := old.(*scyllav1alpha1.NodeConfig)
-	currentNodeConfig := cur.(*scyllav1alpha1.NodeConfig)
-
-	if currentNodeConfig.UID != oldNodeConfig.UID {
-		key, err := keyFunc(oldNodeConfig)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldNodeConfig, err))
-			return
-		}
-		ncc.deleteNodeConfig(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldNodeConfig,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of NodeConfig", "NodeConfig", klog.KObj(oldNodeConfig))
-	ncc.enqueue(currentNodeConfig)
+	ncc.handlers.HandleUpdate(
+		old.(*scyllav1alpha1.NodeConfig),
+		cur.(*scyllav1alpha1.NodeConfig),
+		ncc.handlers.Enqueue,
+		ncc.deleteNodeConfig,
+	)
 }
 
 func (ncc *Controller) deleteNodeConfig(obj interface{}) {
-	nodeConfig, ok := obj.(*scyllav1alpha1.NodeConfig)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		nodeConfig, ok = tombstone.Obj.(*scyllav1alpha1.NodeConfig)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a NodeConfig %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of NodeConfig", "NodeConfig", klog.KObj(nodeConfig))
-	ncc.enqueue(nodeConfig)
+	ncc.handlers.HandleDelete(
+		obj,
+		ncc.handlers.Enqueue,
+	)
 }
 
-func (ncc *Controller) addOperatorConfig(obj interface{}) {
-	operatorConfig := obj.(*scyllav1alpha1.ScyllaOperatorConfig)
-	klog.V(4).InfoS("Observed addition of ScyllaOperatorConfig", "ScyllaOperatorConfig", klog.KObj(operatorConfig))
-	ncc.enqueueAll()
+func (ncc *Controller) addScyllaOperatorConfig(obj interface{}) {
+	ncc.handlers.HandleAdd(
+		obj.(*scyllav1alpha1.ScyllaOperatorConfig),
+		ncc.handlers.EnqueueAll,
+	)
 }
 
-func (ncc *Controller) updateOperatorConfig(old, cur interface{}) {
-	oldOperatorConfig := old.(*scyllav1alpha1.ScyllaOperatorConfig)
-
-	klog.V(4).InfoS("Observed update of ScyllaOperatorConfig", "ScyllaOperatorConfig", klog.KObj(oldOperatorConfig))
-	ncc.enqueueAll()
-}
-
-func (ncc *Controller) resolveNodeConfigController(obj metav1.Object) *scyllav1alpha1.NodeConfig {
-	controllerRef := metav1.GetControllerOf(obj)
-	if controllerRef == nil {
-		return nil
-	}
-
-	if controllerRef.Kind != controllerGVK.Kind {
-		return nil
-	}
-
-	nc, err := ncc.nodeConfigLister.Get(controllerRef.Name)
-	if err != nil {
-		return nil
-	}
-
-	if nc.UID != controllerRef.UID {
-		return nil
-	}
-
-	return nc
-}
-
-func (ncc *Controller) enqueueOwner(obj metav1.Object) {
-	nc := ncc.resolveNodeConfigController(obj)
-	if nc == nil {
-		return
-	}
-
-	gvk, err := resource.GetObjectGVK(obj.(runtime.Object))
-	if err != nil {
-		utilruntime.HandleError(err)
-		return
-	}
-
-	klog.V(4).InfoS("Enqueuing owner", gvk.Kind, klog.KObj(obj), "NodeConfig", klog.KObj(nc))
-	ncc.enqueue(nc)
-}
-
-func (ncc *Controller) enqueue(soc *scyllav1alpha1.NodeConfig) {
-	key, err := keyFunc(soc)
-	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", soc, err))
-		return
-	}
-
-	klog.V(4).InfoS("Enqueuing", "NodeConfig", klog.KObj(soc))
-	ncc.queue.Add(key)
-}
-
-func (ncc *Controller) enqueueAll() {
-	ncs, err := ncc.nodeConfigLister.List(labels.Everything())
-	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("couldn't list all NodeConfigs: %w", err))
-		return
-	}
-
-	for _, soc := range ncs {
-		ncc.enqueue(soc)
-	}
+func (ncc *Controller) updateScyllaOperatorConfig(old, cur interface{}) {
+	ncc.handlers.HandleUpdate(
+		old.(*scyllav1alpha1.ScyllaOperatorConfig),
+		cur.(*scyllav1alpha1.ScyllaOperatorConfig),
+		ncc.handlers.EnqueueAll,
+		nil,
+	)
 }
 
 func (ncc *Controller) processNextItem(ctx context.Context) bool {

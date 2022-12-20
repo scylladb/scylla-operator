@@ -7,15 +7,18 @@ import (
 	"sync"
 	"time"
 
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	scyllav1alpha1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1alpha1"
 	scyllav1alpha1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1alpha1"
 	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -36,7 +39,8 @@ const (
 )
 
 var (
-	keyFunc = cache.DeletionHandlingMetaNamespaceKeyFunc
+	keyFunc                           = cache.DeletionHandlingMetaNamespaceKeyFunc
+	scyllaOperatorConfigControllerGVK = scyllav1.GroupVersion.WithKind("ScyllaOperatorConfig")
 )
 
 type Controller struct {
@@ -49,7 +53,8 @@ type Controller struct {
 
 	eventRecorder record.EventRecorder
 
-	queue workqueue.RateLimitingInterface
+	queue    workqueue.RateLimitingInterface
+	handlers *controllerhelpers.Handlers[*scyllav1alpha1.ScyllaOperatorConfig]
 
 	wg sync.WaitGroup
 }
@@ -86,6 +91,25 @@ func NewController(
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "orphanedpv-controller"}),
 
 		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "orphanedpv"),
+	}
+
+	var err error
+	opc.handlers, err = controllerhelpers.NewHandlers[*scyllav1alpha1.ScyllaOperatorConfig](
+		opc.queue,
+		keyFunc,
+		scheme.Scheme,
+		scyllaOperatorConfigControllerGVK,
+		kubeinterfaces.GlobalGetList[*scyllav1alpha1.ScyllaOperatorConfig]{
+			GetFunc: func(name string) (*scyllav1alpha1.ScyllaOperatorConfig, error) {
+				return opc.scyllaOperatorConfigLister.Get(name)
+			},
+			ListFunc: func(selector labels.Selector) (ret []*scyllav1alpha1.ScyllaOperatorConfig, err error) {
+				return opc.scyllaOperatorConfigLister.List(selector)
+			},
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("can't create handlers: %w", err)
 	}
 
 	scyllaOperatorConfigInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -175,50 +199,25 @@ func (opc *Controller) Run(ctx context.Context, workers int) {
 	<-ctx.Done()
 }
 
-func (opc *Controller) enqueue() {
-	opc.queue.Add(naming.SingletonName)
-}
-
 func (opc *Controller) addScyllaOperatorConfig(obj interface{}) {
-	soc := obj.(*scyllav1alpha1.ScyllaOperatorConfig)
-	klog.V(4).InfoS("Observed addition of ScyllaOperatorConfig", "ScyllaOperatorConfig", klog.KObj(soc))
-	opc.enqueue()
+	opc.handlers.HandleAdd(
+		obj.(*scyllav1alpha1.ScyllaOperatorConfig),
+		opc.handlers.Enqueue,
+	)
 }
 
 func (opc *Controller) updateScyllaOperatorConfig(old, cur interface{}) {
-	oldSoc := old.(*scyllav1alpha1.ScyllaOperatorConfig)
-	currentSoc := cur.(*scyllav1alpha1.ScyllaOperatorConfig)
-
-	if currentSoc.UID != oldSoc.UID {
-		key, err := keyFunc(oldSoc)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldSoc, err))
-			return
-		}
-		opc.deleteScyllaOperatorConfig(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldSoc,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of ScyllaOperatorConfig", "ScyllaOperatorConfig", klog.KObj(oldSoc))
-	opc.enqueue()
+	opc.handlers.HandleUpdate(
+		old.(*scyllav1alpha1.ScyllaOperatorConfig),
+		cur.(*scyllav1alpha1.ScyllaOperatorConfig),
+		opc.handlers.Enqueue,
+		opc.deleteScyllaOperatorConfig,
+	)
 }
 
 func (opc *Controller) deleteScyllaOperatorConfig(obj interface{}) {
-	soc, ok := obj.(*scyllav1alpha1.ScyllaOperatorConfig)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		soc, ok = tombstone.Obj.(*scyllav1alpha1.ScyllaOperatorConfig)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ScyllaOperatorConfig %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of ScyllaOperatorConfig", "ScyllaOperatorConfig", klog.KObj(soc))
-	opc.enqueue()
+	opc.handlers.HandleDelete(
+		obj,
+		opc.handlers.Enqueue,
+	)
 }

@@ -10,13 +10,13 @@ import (
 	scyllav1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1"
 	scyllav1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1"
 	scyllav1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
-	"github.com/scylladb/scylla-operator/pkg/resource"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -56,7 +56,8 @@ type Controller struct {
 
 	eventRecorder record.EventRecorder
 
-	queue workqueue.RateLimitingInterface
+	queue    workqueue.RateLimitingInterface
+	handlers *controllerhelpers.Handlers[*scyllav1.ScyllaCluster]
 }
 
 func NewController(
@@ -97,6 +98,25 @@ func NewController(
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "manager-controller"}),
 
 		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "manager"),
+	}
+
+	var err error
+	c.handlers, err = controllerhelpers.NewHandlers[*scyllav1.ScyllaCluster](
+		c.queue,
+		keyFunc,
+		scheme.Scheme,
+		scyllaClusterControllerGVK,
+		kubeinterfaces.NamespacedGetList[*scyllav1.ScyllaCluster]{
+			GetFunc: func(namespace, name string) (*scyllav1.ScyllaCluster, error) {
+				return c.scyllaLister.ScyllaClusters(namespace).Get(name)
+			},
+			ListFunc: func(namespace string, selector labels.Selector) (ret []*scyllav1.ScyllaCluster, err error) {
+				return c.scyllaLister.ScyllaClusters(namespace).List(selector)
+			},
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("can't create handlers: %w", err)
 	}
 
 	scyllaClusterInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -179,139 +199,48 @@ func (c *Controller) Run(ctx context.Context, workers int) {
 	<-ctx.Done()
 }
 
-func (c *Controller) resolveScyllaClusterController(obj metav1.Object) *scyllav1.ScyllaCluster {
-	controllerRef := metav1.GetControllerOf(obj)
-	if controllerRef == nil {
-		return nil
-	}
-
-	if controllerRef.Kind != scyllaClusterControllerGVK.Kind {
-		return nil
-	}
-
-	sc, err := c.scyllaLister.ScyllaClusters(obj.GetNamespace()).Get(controllerRef.Name)
-	if err != nil {
-		return nil
-	}
-
-	if sc.UID != controllerRef.UID {
-		return nil
-	}
-
-	return sc
-}
-
-func (c *Controller) enqueueOwner(obj metav1.Object) {
-	sc := c.resolveScyllaClusterController(obj)
-	if sc == nil {
-		return
-	}
-
-	gvk, err := resource.GetObjectGVK(obj.(runtime.Object))
-	if err != nil {
-		utilruntime.HandleError(err)
-		return
-	}
-
-	klog.V(4).InfoS("Enqueuing owner", gvk.Kind, klog.KObj(obj), "ScyllaCluster", klog.KObj(sc))
-	c.enqueue(sc)
-}
-
-func (c *Controller) enqueue(sc *scyllav1.ScyllaCluster) {
-	key, err := keyFunc(sc)
-	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", sc, err))
-		return
-	}
-
-	klog.V(4).InfoS("Enqueuing", "ScyllaCluster", klog.KObj(sc))
-	c.queue.Add(key)
-}
-
 func (c *Controller) addScyllaCluster(obj interface{}) {
-	sc := obj.(*scyllav1.ScyllaCluster)
-	klog.V(4).InfoS("Observed addition of ScyllaCluster", "ScyllaCluster", klog.KObj(sc))
-	c.enqueue(sc)
+	c.handlers.HandleAdd(
+		obj.(*scyllav1.ScyllaCluster),
+		c.handlers.Enqueue,
+	)
 }
 
 func (c *Controller) updateScyllaCluster(old, cur interface{}) {
-	oldSC := old.(*scyllav1.ScyllaCluster)
-	currentSC := cur.(*scyllav1.ScyllaCluster)
-
-	if currentSC.UID != oldSC.UID {
-		key, err := keyFunc(oldSC)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldSC, err))
-			return
-		}
-		c.deleteScyllaCluster(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldSC,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of ScyllaCluster", "ScyllaCluster", klog.KObj(oldSC))
-	c.enqueue(currentSC)
+	c.handlers.HandleUpdate(
+		old.(*scyllav1.ScyllaCluster),
+		cur.(*scyllav1.ScyllaCluster),
+		c.handlers.Enqueue,
+		c.deleteScyllaCluster,
+	)
 }
 
 func (c *Controller) deleteScyllaCluster(obj interface{}) {
-	sc, ok := obj.(*scyllav1.ScyllaCluster)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		sc, ok = tombstone.Obj.(*scyllav1.ScyllaCluster)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ScyllaCluster %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of ScyllaCluster", "ScyllaCluster", klog.KObj(sc))
-	c.enqueue(sc)
+	c.handlers.HandleDelete(
+		obj,
+		c.handlers.Enqueue,
+	)
 }
 
 func (c *Controller) addSecret(obj interface{}) {
-	secret := obj.(*corev1.Secret)
-	klog.V(4).InfoS("Observed addition of Secret", "Secret", klog.KObj(secret))
-	c.enqueueOwner(secret)
+	c.handlers.HandleAdd(
+		obj.(*corev1.Secret),
+		c.handlers.EnqueueOwner,
+	)
 }
 
 func (c *Controller) updateSecret(old, cur interface{}) {
-	oldSecret := old.(*corev1.Secret)
-	currentSecret := cur.(*corev1.Secret)
-
-	if currentSecret.UID != oldSecret.UID {
-		key, err := keyFunc(oldSecret)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldSecret, err))
-			return
-		}
-		c.deleteSecret(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldSecret,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of Secret", "Secret", klog.KObj(oldSecret))
-	c.enqueueOwner(currentSecret)
+	c.handlers.HandleUpdate(
+		old.(*corev1.Secret),
+		cur.(*corev1.Secret),
+		c.handlers.EnqueueOwner,
+		c.deleteSecret,
+	)
 }
 
 func (c *Controller) deleteSecret(obj interface{}) {
-	secret, ok := obj.(*corev1.Secret)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		secret, ok = tombstone.Obj.(*corev1.Secret)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a Secret %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of Secret", "Secret", klog.KObj(secret))
-	c.enqueueOwner(secret)
+	c.handlers.HandleDelete(
+		obj,
+		c.handlers.EnqueueOwner,
+	)
 }

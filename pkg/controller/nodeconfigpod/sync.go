@@ -52,7 +52,7 @@ func (ncpc *Controller) getConfigMaps(ctx context.Context, pod *corev1.Pod) (map
 	cm := controllertools.NewConfigMapControllerRefManager(
 		ctx,
 		pod,
-		controllerGVK,
+		podControllerGVK,
 		selector,
 		canAdoptFunc,
 		controllertools.RealConfigMapControl{

@@ -264,6 +264,9 @@ func getScyllaHostsAndWaitForFullQuorum(ctx context.Context, client corev1client
 }
 
 func verifyCQLData(ctx context.Context, di *utils.DataInserter) {
+	err := di.AwaitSchemaAgreement(ctx)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
 	framework.By("Verifying the data")
 	data, err := di.Read()
 	o.Expect(err).NotTo(o.HaveOccurred())

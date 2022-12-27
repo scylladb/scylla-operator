@@ -3,6 +3,7 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -110,6 +111,17 @@ func (di *DataInserter) Insert() error {
 		}
 	}
 
+	return nil
+}
+
+func (di *DataInserter) AwaitSchemaAgreement(ctx context.Context) error {
+	framework.Infof("Awaiting schema agreement")
+	err := di.session.AwaitSchemaAgreement(ctx)
+	if err != nil {
+		return fmt.Errorf("can't await schema agreement: %w", err)
+	}
+
+	framework.Infof("Schema agreement reached")
 	return nil
 }
 

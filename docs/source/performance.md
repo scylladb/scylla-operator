@@ -71,6 +71,7 @@ metadata:
 spec:
   version: 4.5.1
   agentVersion: 2.5.2
+  cpuset: true
   datacenter:
     name: us-east-1
     racks:

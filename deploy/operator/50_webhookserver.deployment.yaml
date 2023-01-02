@@ -23,7 +23,7 @@ spec:
       serviceAccountName: "webhook-server"
       containers:
       - name: webhook-server
-        image: docker.io/scylladb/scylla-operator:latest
+        image: docker.io/scylladb/scylla-operator:1.8
         imagePullPolicy: IfNotPresent
         args:
         - run-webhook-server

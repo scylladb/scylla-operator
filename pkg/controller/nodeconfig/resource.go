@@ -132,7 +132,7 @@ func makeNodeConfigDaemonSet(nc *scyllav1alpha1.NodeConfig, operatorImage, scyll
 			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
 			Labels:    labels,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(nc, controllerGVK),
+				*metav1.NewControllerRef(nc, nodeConfigControllerGVK),
 			},
 		},
 		Spec: appsv1.DaemonSetSpec{

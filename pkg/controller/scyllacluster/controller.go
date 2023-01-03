@@ -10,7 +10,8 @@ import (
 	scyllav1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1"
 	scyllav1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1"
 	scyllav1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1"
-	"github.com/scylladb/scylla-operator/pkg/resource"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -19,7 +20,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -76,7 +77,8 @@ type Controller struct {
 
 	eventRecorder record.EventRecorder
 
-	queue workqueue.RateLimitingInterface
+	queue    workqueue.RateLimitingInterface
+	handlers *controllerhelpers.Handlers[*scyllav1.ScyllaCluster]
 }
 
 func NewController(
@@ -143,6 +145,25 @@ func NewController(
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scyllacluster-controller"}),
 
 		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "scyllacluster"),
+	}
+
+	var err error
+	scc.handlers, err = controllerhelpers.NewHandlers[*scyllav1.ScyllaCluster](
+		scc.queue,
+		keyFunc,
+		scheme.Scheme,
+		scyllaClusterControllerGVK,
+		kubeinterfaces.NamespacedGetList[*scyllav1.ScyllaCluster]{
+			GetFunc: func(namespace, name string) (*scyllav1.ScyllaCluster, error) {
+				return scc.scyllaLister.ScyllaClusters(namespace).Get(name)
+			},
+			ListFunc: func(namespace string, selector labels.Selector) (ret []*scyllav1.ScyllaCluster, err error) {
+				return scc.scyllaLister.ScyllaClusters(namespace).List(selector)
+			},
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("can't create handlers: %w", err)
 	}
 
 	serviceInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -329,495 +350,247 @@ func (scc *Controller) resolveScyllaClusterControllerThroughStatefulSet(obj meta
 	return sc
 }
 
-func (scc *Controller) enqueue(sc *scyllav1.ScyllaCluster) {
-	key, err := keyFunc(sc)
-	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", sc, err))
+func (scc *Controller) enqueueOwnerThroughStatefulSetOwner(depth int, obj kubeinterfaces.ObjectInterface, op controllerhelpers.HandlerOperationType) {
+	sts := scc.resolveStatefulSetController(obj)
+	if sts == nil {
 		return
 	}
 
-	klog.V(4).InfoS("Enqueuing", "ScyllaCluster", klog.KObj(sc))
-	scc.queue.Add(key)
-}
-
-func (scc *Controller) enqueueOwner(obj metav1.Object) {
-	sc := scc.resolveScyllaClusterController(obj)
+	sc := scc.resolveScyllaClusterController(sts)
 	if sc == nil {
 		return
 	}
 
-	gvk, err := resource.GetObjectGVK(obj.(runtime.Object))
-	if err != nil {
-		utilruntime.HandleError(err)
-		return
-	}
-
-	klog.V(4).InfoS("Enqueuing owner", gvk.Kind, klog.KObj(obj), "ScyllaCluster", klog.KObj(sc))
-	scc.enqueue(sc)
-}
-
-func (scc *Controller) enqueueOwnerThroughStatefulSet(obj metav1.Object) {
-	sc := scc.resolveScyllaClusterControllerThroughStatefulSet(obj)
-	if sc == nil {
-		return
-	}
-
-	gvk, err := resource.GetObjectGVK(obj.(runtime.Object))
-	if err != nil {
-		utilruntime.HandleError(err)
-		return
-	}
-
-	klog.V(4).InfoS(fmt.Sprintf("%s added", gvk.Kind), gvk.Kind, klog.KObj(obj))
-	scc.enqueue(sc)
-}
-
-func (scc *Controller) enqueueScyllaClusterFromPod(pod *corev1.Pod) {
-	sc := scc.resolveScyllaClusterControllerThroughStatefulSet(pod)
-	if sc == nil {
-		return
-	}
-
-	klog.V(4).InfoS("Pod added", "ScyllaCluster", klog.KObj(sc))
-	scc.enqueue(sc)
+	klog.V(4).InfoS("Enqueuing owner of StatefulSet", "StatefulSet", klog.KObj(sc), "ScyllaCluster", klog.KObj(sc))
+	scc.handlers.EnqueueWithDepth(depth+1, sc, op)
 }
 
 func (scc *Controller) addService(obj interface{}) {
-	svc := obj.(*corev1.Service)
-	klog.V(4).InfoS("Observed addition of Service", "Service", klog.KObj(svc))
-	scc.enqueueOwner(svc)
+	scc.handlers.HandleAdd(
+		obj.(*corev1.Service),
+		scc.handlers.EnqueueOwner,
+	)
 }
 
 func (scc *Controller) updateService(old, cur interface{}) {
-	oldService := old.(*corev1.Service)
-	currentService := cur.(*corev1.Service)
-
-	if currentService.UID != oldService.UID {
-		key, err := keyFunc(oldService)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldService, err))
-			return
-		}
-		scc.deleteService(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldService,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of Service", "Service", klog.KObj(oldService))
-	scc.enqueueOwner(currentService)
+	scc.handlers.HandleUpdate(
+		old.(*corev1.Service),
+		cur.(*corev1.Service),
+		scc.handlers.EnqueueOwner,
+		scc.deleteService,
+	)
 }
 
 func (scc *Controller) deleteService(obj interface{}) {
-	svc, ok := obj.(*corev1.Service)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		svc, ok = tombstone.Obj.(*corev1.Service)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a Service %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of Service", "Service", klog.KObj(svc))
-	scc.enqueueOwner(svc)
+	scc.handlers.HandleDelete(
+		obj,
+		scc.handlers.EnqueueOwner,
+	)
 }
 
 func (scc *Controller) addSecret(obj interface{}) {
-	secret := obj.(*corev1.Secret)
-	klog.V(4).InfoS("Observed addition of Secret", "Secret", klog.KObj(secret))
-	scc.enqueueOwner(secret)
+	scc.handlers.HandleAdd(
+		obj.(*corev1.Secret),
+		scc.handlers.EnqueueOwner,
+	)
 }
 
 func (scc *Controller) updateSecret(old, cur interface{}) {
-	oldSecret := old.(*corev1.Secret)
-	currentSecret := cur.(*corev1.Secret)
-
-	if currentSecret.UID != oldSecret.UID {
-		key, err := keyFunc(oldSecret)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldSecret, err))
-			return
-		}
-		scc.deleteSecret(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldSecret,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of Secret", "Secret", klog.KObj(oldSecret))
-	scc.enqueueOwner(currentSecret)
+	scc.handlers.HandleUpdate(
+		old.(*corev1.Secret),
+		cur.(*corev1.Secret),
+		scc.handlers.EnqueueOwner,
+		scc.deleteSecret,
+	)
 }
 
 func (scc *Controller) deleteSecret(obj interface{}) {
-	secret, ok := obj.(*corev1.Secret)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		secret, ok = tombstone.Obj.(*corev1.Secret)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a Secret %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of Secret", "Secret", klog.KObj(secret))
-	scc.enqueueOwner(secret)
+	scc.handlers.HandleDelete(
+		obj,
+		scc.handlers.EnqueueOwner,
+	)
 }
 
 func (scc *Controller) addConfigMap(obj interface{}) {
-	configMap := obj.(*corev1.ConfigMap)
-	klog.V(4).InfoS("Observed addition of ConfigMap", "ConfigMap", klog.KObj(configMap))
-	scc.enqueueOwner(configMap)
+	scc.handlers.HandleAdd(
+		obj.(*corev1.ConfigMap),
+		scc.handlers.EnqueueOwner,
+	)
 }
 
 func (scc *Controller) updateConfigMap(old, cur interface{}) {
-	oldConfigMap := old.(*corev1.ConfigMap)
-	currentConfigMap := cur.(*corev1.ConfigMap)
-
-	if currentConfigMap.UID != oldConfigMap.UID {
-		key, err := keyFunc(oldConfigMap)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldConfigMap, err))
-			return
-		}
-		scc.deleteConfigMap(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldConfigMap,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of ConfigMap", "ConfigMap", klog.KObj(oldConfigMap))
-	scc.enqueueOwner(currentConfigMap)
+	scc.handlers.HandleUpdate(
+		old.(*corev1.ConfigMap),
+		cur.(*corev1.ConfigMap),
+		scc.handlers.EnqueueOwner,
+		scc.deleteConfigMap,
+	)
 }
 
 func (scc *Controller) deleteConfigMap(obj interface{}) {
-	configMap, ok := obj.(*corev1.ConfigMap)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		configMap, ok = tombstone.Obj.(*corev1.ConfigMap)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ConfigMap %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of ConfigMap", "ConfigMap", klog.KObj(configMap))
-	scc.enqueueOwner(configMap)
+	scc.handlers.HandleDelete(
+		obj,
+		scc.handlers.EnqueueOwner,
+	)
 }
 
 func (scc *Controller) addServiceAccount(obj interface{}) {
-	sa := obj.(*corev1.ServiceAccount)
-	klog.V(4).InfoS("Observed addition of ServiceAccount", "ServiceAccount", klog.KObj(sa))
-	scc.enqueueOwner(sa)
+	scc.handlers.HandleAdd(
+		obj.(*corev1.ServiceAccount),
+		scc.handlers.EnqueueOwner,
+	)
 }
 
 func (scc *Controller) updateServiceAccount(old, cur interface{}) {
-	oldSA := old.(*corev1.ServiceAccount)
-	currentSA := cur.(*corev1.ServiceAccount)
-
-	if currentSA.UID != oldSA.UID {
-		key, err := keyFunc(oldSA)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldSA, err))
-			return
-		}
-		scc.deleteServiceAccount(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldSA,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of ServiceAccount", "ServiceAccount", klog.KObj(oldSA))
-	scc.enqueueOwner(currentSA)
+	scc.handlers.HandleUpdate(
+		old.(*corev1.ServiceAccount),
+		cur.(*corev1.ServiceAccount),
+		scc.handlers.EnqueueOwner,
+		scc.deleteServiceAccount,
+	)
 }
 
 func (scc *Controller) deleteServiceAccount(obj interface{}) {
-	svc, ok := obj.(*corev1.ServiceAccount)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		svc, ok = tombstone.Obj.(*corev1.ServiceAccount)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ServiceAccount %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of ServiceAccount", "ServiceAccount", klog.KObj(svc))
-	scc.enqueueOwner(svc)
+	scc.handlers.HandleDelete(
+		obj,
+		scc.handlers.EnqueueOwner,
+	)
 }
 
 func (scc *Controller) addRoleBinding(obj interface{}) {
-	roleBinding := obj.(*rbacv1.RoleBinding)
-	klog.V(4).InfoS("Observed addition of RoleBinding", "RoleBinding", klog.KObj(roleBinding))
-	scc.enqueueOwner(roleBinding)
+	scc.handlers.HandleAdd(
+		obj.(*rbacv1.RoleBinding),
+		scc.handlers.EnqueueOwner,
+	)
 }
 
 func (scc *Controller) updateRoleBinding(old, cur interface{}) {
-	oldRoleBinding := old.(*rbacv1.RoleBinding)
-	currentRoleBinding := cur.(*rbacv1.RoleBinding)
-
-	if currentRoleBinding.UID != oldRoleBinding.UID {
-		key, err := keyFunc(oldRoleBinding)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldRoleBinding, err))
-			return
-		}
-		scc.deleteRoleBinding(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldRoleBinding,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of RoleBinding", "RoleBinding", klog.KObj(oldRoleBinding))
-	scc.enqueueOwner(currentRoleBinding)
+	scc.handlers.HandleUpdate(
+		old.(*rbacv1.RoleBinding),
+		cur.(*rbacv1.RoleBinding),
+		scc.handlers.EnqueueOwner,
+		scc.deleteRoleBinding,
+	)
 }
 
 func (scc *Controller) deleteRoleBinding(obj interface{}) {
-	roleBinding, ok := obj.(*rbacv1.RoleBinding)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		roleBinding, ok = tombstone.Obj.(*rbacv1.RoleBinding)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a RoleBinding %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of RoleBinding", "RoleBinding", klog.KObj(roleBinding))
-	scc.enqueueOwner(roleBinding)
+	scc.handlers.HandleDelete(
+		obj,
+		scc.handlers.EnqueueOwner,
+	)
 }
 
 func (scc *Controller) addPod(obj interface{}) {
-	pod := obj.(*corev1.Pod)
-	klog.V(4).InfoS("Observed addition of Pod", "Pod", klog.KObj(pod))
-	scc.enqueueScyllaClusterFromPod(pod)
+	scc.handlers.HandleAdd(
+		obj.(*corev1.Pod),
+		scc.enqueueOwnerThroughStatefulSetOwner,
+	)
 }
 
 func (scc *Controller) updatePod(old, cur interface{}) {
-	oldPod := old.(*corev1.Pod)
-	currentPod := cur.(*corev1.Pod)
-
-	if currentPod.UID != oldPod.UID {
-		key, err := keyFunc(oldPod)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldPod, err))
-			return
-		}
-		scc.deletePod(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldPod,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of Pod", "Pod", klog.KObj(oldPod))
-	scc.enqueueScyllaClusterFromPod(currentPod)
+	scc.handlers.HandleUpdate(
+		old.(*corev1.Pod),
+		cur.(*corev1.Pod),
+		scc.enqueueOwnerThroughStatefulSetOwner,
+		scc.deletePod,
+	)
 }
 
 func (scc *Controller) deletePod(obj interface{}) {
-	pod, ok := obj.(*corev1.Pod)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		pod, ok = tombstone.Obj.(*corev1.Pod)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a Pod %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of Pod", "Pod", klog.KObj(pod), "RV", pod.ResourceVersion)
-	scc.enqueueScyllaClusterFromPod(pod)
+	scc.handlers.HandleDelete(
+		obj,
+		scc.enqueueOwnerThroughStatefulSetOwner,
+	)
 }
 
 func (scc *Controller) addStatefulSet(obj interface{}) {
-	sts := obj.(*appsv1.StatefulSet)
-	klog.V(4).InfoS("Observed addition of StatefulSet", "StatefulSet", klog.KObj(sts), "RV", sts.ResourceVersion)
-	scc.enqueueOwner(sts)
+	scc.handlers.HandleAdd(
+		obj.(*appsv1.StatefulSet),
+		scc.handlers.EnqueueOwner,
+	)
 }
 
 func (scc *Controller) updateStatefulSet(old, cur interface{}) {
-	oldSts := old.(*appsv1.StatefulSet)
-	currentSts := cur.(*appsv1.StatefulSet)
-
-	if currentSts.UID != oldSts.UID {
-		key, err := keyFunc(oldSts)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldSts, err))
-			return
-		}
-		scc.deleteStatefulSet(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldSts,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of StatefulSet", "StatefulSet", klog.KObj(oldSts), "NewRV", currentSts.ResourceVersion)
-	scc.enqueueOwner(currentSts)
+	scc.handlers.HandleUpdate(
+		old.(*appsv1.StatefulSet),
+		cur.(*appsv1.StatefulSet),
+		scc.handlers.EnqueueOwner,
+		scc.deleteStatefulSet,
+	)
 }
 
 func (scc *Controller) deleteStatefulSet(obj interface{}) {
-	sts, ok := obj.(*appsv1.StatefulSet)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		sts, ok = tombstone.Obj.(*appsv1.StatefulSet)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a StatefulSet %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of StatefulSet", "StatefulSet", klog.KObj(sts), "RV", sts.ResourceVersion)
-	scc.enqueueOwner(sts)
+	scc.handlers.HandleDelete(
+		obj,
+		scc.handlers.EnqueueOwner,
+	)
 }
 
 func (scc *Controller) addPodDisruptionBudget(obj interface{}) {
-	pdb := obj.(*policyv1.PodDisruptionBudget)
-	klog.V(4).InfoS("Observed addition of PodDisruptionBudget", "PodDisruptionBudget", klog.KObj(pdb))
-	scc.enqueueOwner(pdb)
+	scc.handlers.HandleAdd(
+		obj.(*policyv1.PodDisruptionBudget),
+		scc.handlers.EnqueueOwner,
+	)
 }
 
 func (scc *Controller) updatePodDisruptionBudget(old, cur interface{}) {
-	oldPDB := old.(*policyv1.PodDisruptionBudget)
-	currentPDB := cur.(*policyv1.PodDisruptionBudget)
-
-	if currentPDB.UID != oldPDB.UID {
-		key, err := keyFunc(oldPDB)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldPDB, err))
-			return
-		}
-		scc.deletePodDisruptionBudget(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldPDB,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of PodDisruptionBudget", "PodDisruptionBudget", klog.KObj(oldPDB))
-	scc.enqueueOwner(currentPDB)
+	scc.handlers.HandleUpdate(
+		old.(*policyv1.PodDisruptionBudget),
+		cur.(*policyv1.PodDisruptionBudget),
+		scc.handlers.EnqueueOwner,
+		scc.deletePodDisruptionBudget,
+	)
 }
 
 func (scc *Controller) deletePodDisruptionBudget(obj interface{}) {
-	pdb, ok := obj.(*policyv1.PodDisruptionBudget)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		pdb, ok = tombstone.Obj.(*policyv1.PodDisruptionBudget)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a PodDisruptionBudget %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of PodDisruptionBudget", "PodDisruptionBudget", klog.KObj(pdb))
-	scc.enqueueOwner(pdb)
+	scc.handlers.HandleDelete(
+		obj,
+		scc.handlers.EnqueueOwner,
+	)
 }
 
 func (scc *Controller) addIngress(obj interface{}) {
-	ingress := obj.(*networkingv1.Ingress)
-	klog.V(4).InfoS("Observed addition of Ingress", "Ingress", klog.KObj(ingress))
-	scc.enqueueOwner(ingress)
+	scc.handlers.HandleAdd(
+		obj.(*networkingv1.Ingress),
+		scc.handlers.EnqueueOwner,
+	)
 }
 
 func (scc *Controller) updateIngress(old, cur interface{}) {
-	oldIngress := old.(*networkingv1.Ingress)
-	currentIngress := cur.(*networkingv1.Ingress)
-
-	if currentIngress.UID != oldIngress.UID {
-		key, err := keyFunc(oldIngress)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldIngress, err))
-			return
-		}
-		scc.deleteIngress(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldIngress,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of Ingress", "Ingress", klog.KObj(oldIngress))
-	scc.enqueueOwner(currentIngress)
+	scc.handlers.HandleUpdate(
+		old.(*networkingv1.Ingress),
+		cur.(*networkingv1.Ingress),
+		scc.handlers.EnqueueOwner,
+		scc.deleteIngress,
+	)
 }
 
 func (scc *Controller) deleteIngress(obj interface{}) {
-	ingress, ok := obj.(*networkingv1.Ingress)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		ingress, ok = tombstone.Obj.(*networkingv1.Ingress)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a Ingress %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of Ingress", "Ingress", klog.KObj(ingress))
-	scc.enqueueOwner(ingress)
+	scc.handlers.HandleDelete(
+		obj,
+		scc.handlers.EnqueueOwner,
+	)
 }
 
 func (scc *Controller) addScyllaCluster(obj interface{}) {
-	sc := obj.(*scyllav1.ScyllaCluster)
-	klog.V(4).InfoS("Observed addition of ScyllaCluster", "ScyllaCluster", klog.KObj(sc))
-	scc.enqueue(sc)
+	scc.handlers.HandleAdd(
+		obj.(*scyllav1.ScyllaCluster),
+		scc.handlers.Enqueue,
+	)
 }
 
 func (scc *Controller) updateScyllaCluster(old, cur interface{}) {
-	oldSC := old.(*scyllav1.ScyllaCluster)
-	currentSC := cur.(*scyllav1.ScyllaCluster)
-
-	if currentSC.UID != oldSC.UID {
-		key, err := keyFunc(oldSC)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldSC, err))
-			return
-		}
-		scc.deleteScyllaCluster(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldSC,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of ScyllaCluster", "ScyllaCluster", klog.KObj(oldSC))
-	scc.enqueue(currentSC)
+	scc.handlers.HandleUpdate(
+		old.(*scyllav1.ScyllaCluster),
+		cur.(*scyllav1.ScyllaCluster),
+		scc.handlers.Enqueue,
+		scc.deleteScyllaCluster,
+	)
 }
 
 func (scc *Controller) deleteScyllaCluster(obj interface{}) {
-	sc, ok := obj.(*scyllav1.ScyllaCluster)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		sc, ok = tombstone.Obj.(*scyllav1.ScyllaCluster)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ScyllaCluster %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of ScyllaCluster", "ScyllaCluster", klog.KObj(sc))
-	scc.enqueue(sc)
+	scc.handlers.HandleDelete(
+		obj,
+		scc.handlers.Enqueue,
+	)
 }

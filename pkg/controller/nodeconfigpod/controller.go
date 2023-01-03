@@ -13,13 +13,11 @@ import (
 	scyllav1alpha1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1alpha1"
 	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	"github.com/scylladb/scylla-operator/pkg/util/resource"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -43,8 +41,8 @@ const (
 )
 
 var (
-	keyFunc       = cache.DeletionHandlingMetaNamespaceKeyFunc
-	controllerGVK = corev1.SchemeGroupVersion.WithKind("Pod")
+	keyFunc          = cache.DeletionHandlingMetaNamespaceKeyFunc
+	podControllerGVK = corev1.SchemeGroupVersion.WithKind("Pod")
 )
 
 type Controller struct {
@@ -60,7 +58,8 @@ type Controller struct {
 
 	eventRecorder record.EventRecorder
 
-	queue workqueue.RateLimitingInterface
+	queue    workqueue.RateLimitingInterface
+	handlers *controllerhelpers.Handlers[*corev1.Pod]
 }
 
 func NewController(
@@ -105,6 +104,25 @@ func NewController(
 		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "NodeConfigCM"),
 	}
 
+	var err error
+	ncpc.handlers, err = controllerhelpers.NewHandlers[*corev1.Pod](
+		ncpc.queue,
+		keyFunc,
+		scheme.Scheme,
+		podControllerGVK,
+		kubeinterfaces.NamespacedGetList[*corev1.Pod]{
+			GetFunc: func(namespace, name string) (*corev1.Pod, error) {
+				return ncpc.podLister.Pods(namespace).Get(name)
+			},
+			ListFunc: func(namespace string, selector labels.Selector) (ret []*corev1.Pod, err error) {
+				return ncpc.podLister.Pods(namespace).List(selector)
+			},
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("can't create handlers: %w", err)
+	}
+
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ncpc.addPod,
 		UpdateFunc: ncpc.updatePod,
@@ -129,56 +147,9 @@ func NewController(
 	return ncpc, nil
 }
 
-func (ncpc *Controller) enqueue(pod *corev1.Pod) {
-	key, err := keyFunc(pod)
-	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", pod, err))
-		return
-	}
+func (ncpc *Controller) enqueueAllScyllaPodsOnNode(depth int, obj kubeinterfaces.ObjectInterface, op controllerhelpers.HandlerOperationType) {
+	node := obj.(*corev1.Node)
 
-	klog.V(4).InfoS("Enqueuing Pod", "Pod", klog.KObj(pod))
-	ncpc.queue.Add(key)
-}
-
-func (ncpc *Controller) resolvePod(obj metav1.Object) *corev1.Pod {
-	controllerRef := metav1.GetControllerOf(obj)
-	if controllerRef == nil {
-		return nil
-	}
-
-	if controllerRef.Kind != controllerGVK.Kind {
-		return nil
-	}
-
-	pod, err := ncpc.podLister.Pods(obj.GetNamespace()).Get(controllerRef.Name)
-	if err != nil {
-		return nil
-	}
-
-	if pod.UID != controllerRef.UID {
-		return nil
-	}
-
-	return pod
-}
-
-func (ncpc *Controller) enqueueOwner(obj metav1.Object) {
-	pod := ncpc.resolvePod(obj)
-	if pod == nil {
-		return
-	}
-
-	gvk, err := resource.GetObjectGVK(obj.(runtime.Object))
-	if err != nil {
-		utilruntime.HandleError(err)
-		return
-	}
-
-	klog.V(4).InfoS("Enqueuing owner", gvk.Kind, klog.KObj(obj), "Pod", klog.KObj(pod))
-	ncpc.enqueue(pod)
-}
-
-func (ncpc *Controller) enqueueAllScyllaPodsOnNode(node *corev1.Node) {
 	allPods, err := ncpc.podLister.List(naming.ScyllaSelector())
 	if err != nil {
 		utilruntime.HandleError(err)
@@ -192,14 +163,17 @@ func (ncpc *Controller) enqueueAllScyllaPodsOnNode(node *corev1.Node) {
 		}
 	}
 
-	klog.V(4).InfoS("Enqueuing all Scylla pods on Node", "Node", klog.KObj(node), "Count", len(pods))
-
+	klog.V(4).InfoSDepth(depth, "Enqueuing all pods on Node", "Pods", len(pods), "Node", klog.KObj(node))
 	for _, pod := range pods {
-		ncpc.enqueue(pod)
+		ncpc.handlers.EnqueueWithDepth(depth+1, pod, op)
 	}
+
+	return
 }
 
-func (ncpc *Controller) enqueueAllScyllaPodsForNodeConfig(nodeConfig *scyllav1alpha1.NodeConfig) {
+func (ncpc *Controller) enqueueAllScyllaPodsForNodeConfig(depth int, obj kubeinterfaces.ObjectInterface, op controllerhelpers.HandlerOperationType) {
+	nodeConfig := obj.(*scyllav1alpha1.NodeConfig)
+
 	allNodes, err := ncpc.nodeLister.List(labels.Everything())
 	if err != nil {
 		utilruntime.HandleError(err)
@@ -219,13 +193,13 @@ func (ncpc *Controller) enqueueAllScyllaPodsForNodeConfig(nodeConfig *scyllav1al
 		}
 	}
 
-	klog.V(4).InfoS("Enqueuing all Scylla pods for NodeConfig", "NodeConfig", klog.KObj(nodeConfig), "NodeCount", len(nodes))
+	klog.V(4).InfoS("Enqueuing all Scylla Pods for NodeConfig", "NodeConfig", klog.KObj(nodeConfig), "NodeCount", len(nodes))
 	for _, node := range nodes {
-		ncpc.enqueueAllScyllaPodsOnNode(node)
+		ncpc.enqueueAllScyllaPodsOnNode(depth+1, node, op)
 	}
 }
 
-func (ncpc *Controller) addPod(obj interface{}) {
+func (ncpc *Controller) enqueueScyllaPod(depth int, obj kubeinterfaces.ObjectInterface, op controllerhelpers.HandlerOperationType) {
 	pod := obj.(*corev1.Pod)
 
 	// TODO: extract and use a better label, verify the container
@@ -238,122 +212,78 @@ func (ncpc *Controller) addPod(obj interface{}) {
 		return
 	}
 
-	klog.V(4).InfoS("Observed addition of Pod", "Pod", klog.KObj(pod))
-	ncpc.enqueue(pod)
+	ncpc.handlers.EnqueueWithDepth(depth+1, pod, op)
+}
+
+func (ncpc *Controller) addPod(obj interface{}) {
+	ncpc.handlers.HandleAdd(
+		obj.(*corev1.Pod),
+		ncpc.enqueueScyllaPod,
+	)
 }
 
 func (ncpc *Controller) updatePod(old, cur interface{}) {
-	oldPod := old.(*corev1.Pod)
-	currentPod := cur.(*corev1.Pod)
-
-	// TODO: extract and use a better label, verify the container
-	if currentPod.Labels == nil {
-		return
-	}
-
-	_, isScyllaPod := currentPod.Labels[naming.ClusterNameLabel]
-	if !isScyllaPod {
-		return
-	}
-
-	klog.V(4).InfoS("Observed update of Pod", "Pod", klog.KObj(oldPod))
-	ncpc.enqueue(currentPod)
+	ncpc.handlers.HandleUpdate(
+		old.(*corev1.Pod),
+		cur.(*corev1.Pod),
+		ncpc.enqueueScyllaPod,
+		nil,
+	)
 }
 
 func (ncpc *Controller) addConfigMap(obj interface{}) {
-	cm := obj.(*corev1.ConfigMap)
-	klog.V(4).InfoS("Observed addition of ConfigMap", "ConfigMap", klog.KObj(cm))
-	ncpc.enqueueOwner(cm)
+	ncpc.handlers.HandleAdd(
+		obj.(*corev1.ConfigMap),
+		ncpc.handlers.EnqueueOwner,
+	)
 }
 
 func (ncpc *Controller) updateConfigMap(old, cur interface{}) {
-	oldCM := old.(*corev1.ConfigMap)
-	currentCM := cur.(*corev1.ConfigMap)
-
-	if currentCM.UID != oldCM.UID {
-		key, err := keyFunc(oldCM)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldCM, err))
-			return
-		}
-		ncpc.deleteConfigMap(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldCM,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of ConfigMap", "ConfigMap", klog.KObj(oldCM))
-	ncpc.enqueueOwner(currentCM)
+	ncpc.handlers.HandleUpdate(
+		old.(*corev1.ConfigMap),
+		cur.(*corev1.ConfigMap),
+		ncpc.handlers.EnqueueOwner,
+		ncpc.deleteConfigMap,
+	)
 }
 
 func (ncpc *Controller) deleteConfigMap(obj interface{}) {
-	cm, ok := obj.(*corev1.ConfigMap)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		cm, ok = tombstone.Obj.(*corev1.ConfigMap)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ConfigMap %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of ConfigMap", "ConfigMap", klog.KObj(cm))
-	ncpc.enqueueOwner(cm)
+	ncpc.handlers.HandleDelete(
+		obj,
+		ncpc.handlers.EnqueueOwner,
+	)
 }
 
 func (ncpc *Controller) updateNode(old, cur interface{}) {
-	oldNode := old.(*corev1.Node)
-	currentNode := cur.(*corev1.Node)
-
-	klog.V(4).InfoS("Observed update of Node", "Node", klog.KObj(oldNode))
-	ncpc.enqueueAllScyllaPodsOnNode(currentNode)
+	ncpc.handlers.HandleUpdate(
+		old.(*corev1.Node),
+		cur.(*corev1.Node),
+		ncpc.enqueueAllScyllaPodsOnNode,
+		nil,
+	)
 }
 
 func (ncpc *Controller) addNodeConfig(obj interface{}) {
-	nodeConfig := obj.(*scyllav1alpha1.NodeConfig)
-	klog.V(4).InfoS("Observed addition of NodeConfig", "NodeConfig", klog.KObj(nodeConfig))
-	ncpc.enqueueAllScyllaPodsForNodeConfig(nodeConfig)
+	ncpc.handlers.HandleAdd(
+		obj.(*scyllav1alpha1.NodeConfig),
+		ncpc.enqueueAllScyllaPodsForNodeConfig,
+	)
 }
 
 func (ncpc *Controller) updateNodeConfig(old, cur interface{}) {
-	oldNodeConfig := old.(*scyllav1alpha1.NodeConfig)
-	currentNodeConfig := cur.(*scyllav1alpha1.NodeConfig)
-
-	if currentNodeConfig.UID != oldNodeConfig.UID {
-		key, err := keyFunc(oldNodeConfig)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldNodeConfig, err))
-			return
-		}
-		ncpc.deleteNodeConfig(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldNodeConfig,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of NodeConfig", "NodeConfig", klog.KObj(oldNodeConfig))
-	ncpc.enqueueAllScyllaPodsForNodeConfig(currentNodeConfig)
+	ncpc.handlers.HandleUpdate(
+		old.(*scyllav1alpha1.NodeConfig),
+		cur.(*scyllav1alpha1.NodeConfig),
+		ncpc.enqueueAllScyllaPodsForNodeConfig,
+		ncpc.deleteNodeConfig,
+	)
 }
 
 func (ncpc *Controller) deleteNodeConfig(obj interface{}) {
-	nodeConfig, ok := obj.(*scyllav1alpha1.NodeConfig)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		nodeConfig, ok = tombstone.Obj.(*scyllav1alpha1.NodeConfig)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a NodeConfig %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of NodeConfig", "NodeConfig", klog.KObj(nodeConfig))
-	ncpc.enqueueAllScyllaPodsForNodeConfig(nodeConfig)
+	ncpc.handlers.HandleDelete(
+		obj,
+		ncpc.enqueueAllScyllaPodsForNodeConfig,
+	)
 }
 
 func (ncpc *Controller) processNextItem(ctx context.Context) bool {

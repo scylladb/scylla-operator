@@ -144,7 +144,7 @@ func (ncc *Controller) getDaemonSets(ctx context.Context, nc *scyllav1alpha1.Nod
 	cm := controllertools.NewDaemonSetControllerRefManager(
 		ctx,
 		nc,
-		controllerGVK,
+		nodeConfigControllerGVK,
 		selector,
 		canAdoptFunc,
 		controllertools.RealDaemonSetControl{

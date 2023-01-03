@@ -7,7 +7,6 @@ import (
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -25,358 +24,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
-
-func (scc *Controller) getStatefulSets(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*appsv1.StatefulSet, error) {
-	// List all StatefulSets to find even those that no longer match our selector.
-	// They will be orphaned in ClaimStatefulSets().
-	statefulSets, err := scc.statefulSetLister.StatefulSets(sc.Namespace).List(labels.Everything())
-	if err != nil {
-		return nil, err
-	}
-
-	selector := labels.SelectorFromSet(labels.Set{
-		naming.ClusterNameLabel: sc.Name,
-	})
-
-	// If any adoptions are attempted, we should first recheck for deletion with
-	// an uncached quorum read sometime after listing StatefulSets.
-	canAdoptFunc := func() error {
-		fresh, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		if fresh.UID != sc.UID {
-			return fmt.Errorf("original ScyllaCluster %v/%v is gone: got uid %v, wanted %v", sc.Namespace, sc.Name, fresh.UID, sc.UID)
-		}
-
-		if fresh.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%v/%v has just been deleted at %v", sc.Namespace, sc.Name, sc.DeletionTimestamp)
-		}
-
-		return nil
-	}
-	cm := controllertools.NewStatefulSetControllerRefManager(
-		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		selector,
-		canAdoptFunc,
-		controllertools.RealStatefulSetControl{
-			KubeClient: scc.kubeClient,
-			Recorder:   scc.eventRecorder,
-		},
-	)
-	return cm.ClaimStatefulSets(statefulSets)
-}
-
-func (scc *Controller) getServices(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*corev1.Service, error) {
-	// List all Services to find even those that no longer match our selector.
-	// They will be orphaned in ClaimServices().
-	services, err := scc.serviceLister.Services(sc.Namespace).List(labels.Everything())
-	if err != nil {
-		return nil, err
-	}
-
-	selector := labels.SelectorFromSet(labels.Set{
-		naming.ClusterNameLabel: sc.Name,
-	})
-
-	// If any adoptions are attempted, we should first recheck for deletion with
-	// an uncached quorum read sometime after listing Services.
-	canAdoptFunc := func() error {
-		fresh, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		if fresh.UID != sc.UID {
-			return fmt.Errorf("original ScyllaCluster %v/%v is gone: got uid %v, wanted %v", sc.Namespace, sc.Name, fresh.UID, sc.UID)
-		}
-
-		if fresh.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%v/%v has just been deleted at %v", sc.Namespace, sc.Name, sc.DeletionTimestamp)
-		}
-
-		return nil
-	}
-	cm := controllertools.NewServiceControllerRefManager(
-		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		selector,
-		canAdoptFunc,
-		controllertools.RealServiceControl{
-			KubeClient: scc.kubeClient,
-			Recorder:   scc.eventRecorder,
-		},
-	)
-	return cm.ClaimServices(services)
-}
-
-func (scc *Controller) getSecrets(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*corev1.Secret, error) {
-	// List all Secrets to find even those that no longer match our selector.
-	// They will be orphaned in ClaimSecrets().
-	secrets, err := scc.secretLister.Secrets(sc.Namespace).List(labels.Everything())
-	if err != nil {
-		return nil, err
-	}
-
-	selector := labels.SelectorFromSet(labels.Set{
-		naming.ClusterNameLabel: sc.Name,
-	})
-
-	// If any adoptions are attempted, we should first recheck for deletion with
-	// an uncached quorum read sometime after listing Secrets.
-	canAdoptFunc := func() error {
-		fresh, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		if fresh.UID != sc.UID {
-			return fmt.Errorf("original ScyllaCluster %v/%v is gone: got uid %v, wanted %v", sc.Namespace, sc.Name, fresh.UID, sc.UID)
-		}
-
-		if fresh.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%v/%v has just been deleted at %v", sc.Namespace, sc.Name, sc.DeletionTimestamp)
-		}
-
-		return nil
-	}
-	cm := controllertools.NewSecretControllerRefManager(
-		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		selector,
-		canAdoptFunc,
-		controllertools.RealSecretControl{
-			KubeClient: scc.kubeClient,
-			Recorder:   scc.eventRecorder,
-		},
-	)
-	return cm.ClaimSecrets(secrets)
-}
-
-func (scc *Controller) getConfigMaps(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*corev1.ConfigMap, error) {
-	// List all ConfigMaps to find even those that no longer match our selector.
-	// They will be orphaned in ClaimConfigMaps().
-	configMaps, err := scc.configMapLister.ConfigMaps(sc.Namespace).List(labels.Everything())
-	if err != nil {
-		return nil, err
-	}
-
-	selector := labels.SelectorFromSet(labels.Set{
-		naming.ClusterNameLabel: sc.Name,
-	})
-
-	// If any adoptions are attempted, we should first recheck for deletion with
-	// an uncached quorum read sometime after listing ConfigMaps.
-	canAdoptFunc := func() error {
-		fresh, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		if fresh.UID != sc.UID {
-			return fmt.Errorf("original ScyllaCluster %v/%v is gone: got uid %v, wanted %v", sc.Namespace, sc.Name, fresh.UID, sc.UID)
-		}
-
-		if fresh.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%v/%v has just been deleted at %v", sc.Namespace, sc.Name, sc.DeletionTimestamp)
-		}
-
-		return nil
-	}
-	cm := controllertools.NewConfigMapControllerRefManager(
-		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		selector,
-		canAdoptFunc,
-		controllertools.RealConfigMapControl{
-			KubeClient: scc.kubeClient,
-			Recorder:   scc.eventRecorder,
-		},
-	)
-	return cm.ClaimConfigMaps(configMaps)
-}
-
-func (scc *Controller) getServiceAccounts(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*corev1.ServiceAccount, error) {
-	// List all ServiceAccounts to find even those that no longer match our selector.
-	// They will be orphaned in ClaimServiceAccount().
-	serviceAccounts, err := scc.serviceAccountLister.ServiceAccounts(sc.Namespace).List(labels.Everything())
-	if err != nil {
-		return nil, err
-	}
-
-	selector := labels.SelectorFromSet(labels.Set{
-		naming.ClusterNameLabel: sc.Name,
-	})
-
-	// If any adoptions are attempted, we should first recheck for deletion with
-	// an uncached quorum read sometime after listing StatefulSets.
-	canAdoptFunc := func() error {
-		fresh, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		if fresh.UID != sc.UID {
-			return fmt.Errorf("original ScyllaCluster %v/%v is gone: got uid %v, wanted %v", sc.Namespace, sc.Name, fresh.UID, sc.UID)
-		}
-
-		if fresh.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%v/%v has just been deleted at %v", sc.Namespace, sc.Name, sc.DeletionTimestamp)
-		}
-
-		return nil
-	}
-	cm := controllertools.NewServiceAccountControllerRefManager(
-		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		selector,
-		canAdoptFunc,
-		controllertools.RealServiceAccountControl{
-			KubeClient: scc.kubeClient,
-			Recorder:   scc.eventRecorder,
-		},
-	)
-	return cm.ClaimServiceAccounts(serviceAccounts)
-}
-
-func (scc *Controller) getRoleBindings(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*rbacv1.RoleBinding, error) {
-	// List all RoleBindings to find even those that no longer match our selector.
-	// They will be orphaned in ClaimRoleBindings().
-	roleBindings, err := scc.roleBindingLister.RoleBindings(sc.Namespace).List(labels.Everything())
-	if err != nil {
-		return nil, err
-	}
-
-	selector := labels.SelectorFromSet(labels.Set{
-		naming.ClusterNameLabel: sc.Name,
-	})
-
-	// If any adoptions are attempted, we should first recheck for deletion with
-	// an uncached quorum read sometime after listing RoleBindings.
-	canAdoptFunc := func() error {
-		fresh, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		if fresh.UID != sc.UID {
-			return fmt.Errorf("original ScyllaCluster %v/%v is gone: got uid %v, wanted %v", sc.Namespace, sc.Name, fresh.UID, sc.UID)
-		}
-
-		if fresh.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%v/%v has just been deleted at %v", sc.Namespace, sc.Name, sc.DeletionTimestamp)
-		}
-
-		return nil
-	}
-	cm := controllertools.NewRoleBindingControllerRefManager(
-		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		selector,
-		canAdoptFunc,
-		controllertools.RealRoleBindingControl{
-			KubeClient: scc.kubeClient,
-			Recorder:   scc.eventRecorder,
-		},
-	)
-	return cm.ClaimRoleBindings(roleBindings)
-}
-
-func (scc *Controller) getPDBs(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*policyv1.PodDisruptionBudget, error) {
-	// List all Pdbs to find even those that no longer match our selector.
-	// They will be orphaned in ClaimPdbs().
-	pdbs, err := scc.pdbLister.PodDisruptionBudgets(sc.Namespace).List(labels.Everything())
-	if err != nil {
-		return nil, err
-	}
-
-	selector := labels.SelectorFromSet(labels.Set{
-		naming.ClusterNameLabel: sc.Name,
-	})
-
-	// If any adoptions are attempted, we should first recheck for deletion with
-	// an uncached quorum read sometime after listing Pdbs.
-	canAdoptFunc := func() error {
-		fresh, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		if fresh.UID != sc.UID {
-			return fmt.Errorf("original ScyllaCluster %v/%v is gone: got uid %v, wanted %v", sc.Namespace, sc.Name, fresh.UID, sc.UID)
-		}
-
-		if fresh.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%v/%v has just been deleted at %v", sc.Namespace, sc.Name, sc.DeletionTimestamp)
-		}
-
-		return nil
-	}
-	cm := controllertools.NewPodDisruptionBudgetControllerRefManager(
-		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		selector,
-		canAdoptFunc,
-		controllertools.RealPodDisruptionBudgetControl{
-			KubeClient: scc.kubeClient,
-			Recorder:   scc.eventRecorder,
-		},
-	)
-	return cm.ClaimPodDisruptionBudgets(pdbs)
-}
-
-func (scc *Controller) getIngresses(ctx context.Context, sc *scyllav1.ScyllaCluster) (map[string]*networkingv1.Ingress, error) {
-	// List all Ingresses to find even those that no longer match our selector.
-	// They will be orphaned in ClaimIngress().
-	ingresses, err := scc.ingressLister.Ingresses(sc.Namespace).List(labels.Everything())
-	if err != nil {
-		return nil, err
-	}
-
-	selector := labels.SelectorFromSet(labels.Set{
-		naming.ClusterNameLabel: sc.Name,
-	})
-
-	// If any adoptions are attempted, we should first recheck for deletion with
-	// an uncached quorum read sometime after listing Ingresses.
-	canAdoptFunc := func() error {
-		fresh, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		if fresh.UID != sc.UID {
-			return fmt.Errorf("original ScyllaCluster %v/%v is gone: got uid %v, wanted %v", sc.Namespace, sc.Name, fresh.UID, sc.UID)
-		}
-
-		if fresh.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%v/%v has just been deleted at %v", sc.Namespace, sc.Name, sc.DeletionTimestamp)
-		}
-
-		return nil
-	}
-	cm := controllertools.NewIngressControllerRefManager(
-		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		selector,
-		canAdoptFunc,
-		controllertools.RealIngressControl{
-			KubeClient: scc.kubeClient,
-			Recorder:   scc.eventRecorder,
-		},
-	)
-	return cm.ClaimIngresss(ingresses)
-}
 
 func runSync(conditions *[]metav1.Condition, progressingConditionType, degradedCondType string, observedGeneration int64, syncFn func() ([]metav1.Condition, error)) error {
 	progressingConditions, err := syncFn()
@@ -425,44 +72,136 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		return err
 	}
 
-	statefulSetMap, err := scc.getStatefulSets(ctx, sc)
+	scSelector := labels.SelectorFromSet(labels.Set{
+		naming.ClusterNameLabel: sc.Name,
+	})
+
+	type CT = *scyllav1.ScyllaCluster
+	var objectErrs []error
+
+	statefulSetMap, err := controllerhelpers.GetObjects[CT, *appsv1.StatefulSet](
+		ctx,
+		sc,
+		scyllaClusterControllerGVK,
+		scSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *appsv1.StatefulSet]{
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaClusters(sc.Namespace).Get,
+			ListObjectsFunc:           scc.statefulSetLister.StatefulSets(sc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.AppsV1().StatefulSets(sc.Namespace).Patch,
+		},
+	)
 	if err != nil {
-		return err
+		objectErrs = append(objectErrs, err)
 	}
 
-	serviceMap, err := scc.getServices(ctx, sc)
+	serviceMap, err := controllerhelpers.GetObjects[CT, *corev1.Service](
+		ctx,
+		sc,
+		scyllaClusterControllerGVK,
+		scSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.Service]{
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaClusters(sc.Namespace).Get,
+			ListObjectsFunc:           scc.serviceLister.Services(sc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.CoreV1().Services(sc.Namespace).Patch,
+		},
+	)
 	if err != nil {
-		return err
+		objectErrs = append(objectErrs, err)
 	}
 
-	secretMap, err := scc.getSecrets(ctx, sc)
+	secretMap, err := controllerhelpers.GetObjects[CT, *corev1.Secret](
+		ctx,
+		sc,
+		scyllaClusterControllerGVK,
+		scSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.Secret]{
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaClusters(sc.Namespace).Get,
+			ListObjectsFunc:           scc.secretLister.Secrets(sc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.CoreV1().Secrets(sc.Namespace).Patch,
+		},
+	)
 	if err != nil {
-		return err
+		objectErrs = append(objectErrs, err)
 	}
 
-	configMapMap, err := scc.getConfigMaps(ctx, sc)
+	configMapMap, err := controllerhelpers.GetObjects[CT, *corev1.ConfigMap](
+		ctx,
+		sc,
+		scyllaClusterControllerGVK,
+		scSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.ConfigMap]{
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaClusters(sc.Namespace).Get,
+			ListObjectsFunc:           scc.configMapLister.ConfigMaps(sc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.CoreV1().ConfigMaps(sc.Namespace).Patch,
+		},
+	)
 	if err != nil {
-		return err
+		objectErrs = append(objectErrs, err)
 	}
 
-	serviceAccounts, err := scc.getServiceAccounts(ctx, sc)
+	serviceAccounts, err := controllerhelpers.GetObjects[CT, *corev1.ServiceAccount](
+		ctx,
+		sc,
+		scyllaClusterControllerGVK,
+		scSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.ServiceAccount]{
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaClusters(sc.Namespace).Get,
+			ListObjectsFunc:           scc.serviceAccountLister.ServiceAccounts(sc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.CoreV1().ServiceAccounts(sc.Namespace).Patch,
+		},
+	)
 	if err != nil {
-		return fmt.Errorf("can't get serviceaccounts: %w", err)
+		objectErrs = append(objectErrs, err)
 	}
 
-	roleBindings, err := scc.getRoleBindings(ctx, sc)
+	roleBindings, err := controllerhelpers.GetObjects[CT, *rbacv1.RoleBinding](
+		ctx,
+		sc,
+		scyllaClusterControllerGVK,
+		scSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *rbacv1.RoleBinding]{
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaClusters(sc.Namespace).Get,
+			ListObjectsFunc:           scc.roleBindingLister.RoleBindings(sc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.RbacV1().RoleBindings(sc.Namespace).Patch,
+		},
+	)
 	if err != nil {
-		return fmt.Errorf("can't get rolebindings: %w", err)
+		objectErrs = append(objectErrs, err)
 	}
 
-	pdbMap, err := scc.getPDBs(ctx, sc)
+	pdbMap, err := controllerhelpers.GetObjects[CT, *policyv1.PodDisruptionBudget](
+		ctx,
+		sc,
+		scyllaClusterControllerGVK,
+		scSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *policyv1.PodDisruptionBudget]{
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaClusters(sc.Namespace).Get,
+			ListObjectsFunc:           scc.pdbLister.PodDisruptionBudgets(sc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.PolicyV1().PodDisruptionBudgets(sc.Namespace).Patch,
+		},
+	)
 	if err != nil {
-		return err
+		objectErrs = append(objectErrs, err)
 	}
 
-	ingressMap, err := scc.getIngresses(ctx, sc)
+	ingressMap, err := controllerhelpers.GetObjects[CT, *networkingv1.Ingress](
+		ctx,
+		sc,
+		scyllaClusterControllerGVK,
+		scSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *networkingv1.Ingress]{
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaClusters(sc.Namespace).Get,
+			ListObjectsFunc:           scc.ingressLister.Ingresses(sc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.NetworkingV1().Ingresses(sc.Namespace).Patch,
+		},
+	)
 	if err != nil {
-		return fmt.Errorf("can't get ingresses: %w", err)
+		objectErrs = append(objectErrs, err)
+	}
+
+	objectErr := utilerrors.NewAggregate(objectErrs)
+	if objectErr != nil {
+		return objectErr
 	}
 
 	status := scc.calculateStatus(sc, statefulSetMap, serviceMap)

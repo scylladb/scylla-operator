@@ -9,8 +9,8 @@ import (
 
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,56 +36,6 @@ func (ncdc *Controller) getCanAdoptFunc(ctx context.Context) func() error {
 
 		return nil
 	}
-}
-
-func (ncdc *Controller) getJobs(ctx context.Context) (map[string]*batchv1.Job, error) {
-	// List all Job to find even those that no longer match our selector.
-	// They will be orphaned in ClaimJob().
-	allJobs, err := ncdc.namespacedJobLister.Jobs(ncdc.namespace).List(labels.Everything())
-	if err != nil {
-		return nil, fmt.Errorf("can't list Jobs: %w", err)
-	}
-
-	// This is a special case where the ownership is sharded between different nodes,
-	// so we have to limit the set for orphaning.
-	var jobs []*batchv1.Job
-	for _, j := range allJobs {
-		if j.Spec.Template.Spec.NodeName == ncdc.nodeName {
-			jobs = append(jobs, j)
-		}
-	}
-
-	selector := labels.SelectorFromSet(labels.Set{
-		naming.NodeConfigJobForNodeUIDLabel: string(ncdc.nodeUID),
-	})
-
-	cr, err := ncdc.newOwningDSControllerRef()
-	if err != nil {
-		return nil, fmt.Errorf("can't get controller ref: %w", err)
-	}
-
-	cm := controllertools.NewJobControllerRefManager(
-		ctx,
-		&metav1.ObjectMeta{
-			Name:              cr.Name,
-			UID:               cr.UID,
-			DeletionTimestamp: nil,
-		},
-		daemonSetControllerGVK,
-		selector,
-		ncdc.getCanAdoptFunc(ctx),
-		controllertools.RealJobControl{
-			KubeClient: ncdc.kubeClient,
-			Recorder:   ncdc.eventRecorder,
-		},
-	)
-
-	claimedJobs, err := cm.ClaimJobs(jobs)
-	if err != nil {
-		return nil, fmt.Errorf("can't claim jobs in %q namespace, %w", ncdc.namespace, err)
-	}
-
-	return claimedJobs, nil
 }
 
 func (ncdc *Controller) getCurrentNodeConfig(ctx context.Context) (*v1alpha1.NodeConfig, error) {
@@ -135,9 +85,40 @@ func (ncdc *Controller) sync(ctx context.Context) error {
 		klog.V(4).InfoS("Finished sync", "duration", time.Since(startTime))
 	}()
 
-	jobs, err := ncdc.getJobs(ctx)
+	type CT = *appsv1.DaemonSet
+	var objectErrs []error
+
+	dsControllerRef, err := ncdc.newOwningDSControllerRef()
 	if err != nil {
-		return fmt.Errorf("can't get Jobs: %w", err)
+		return fmt.Errorf("can't get controller ref: %w", err)
+	}
+
+	selector := labels.SelectorFromSet(labels.Set{
+		naming.NodeConfigJobForNodeUIDLabel: string(ncdc.nodeUID),
+	})
+
+	jobs, err := controllerhelpers.GetObjects[CT, *batchv1.Job](
+		ctx,
+		&metav1.ObjectMeta{
+			Name:              dsControllerRef.Name,
+			UID:               dsControllerRef.UID,
+			DeletionTimestamp: nil,
+		},
+		daemonSetControllerGVK,
+		selector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *batchv1.Job]{
+			GetControllerUncachedFunc: ncdc.kubeClient.AppsV1().DaemonSets(ncdc.namespace).Get,
+			ListObjectsFunc:           ncdc.namespacedJobLister.Jobs(ncdc.namespace).List,
+			PatchObjectFunc:           ncdc.kubeClient.BatchV1().Jobs(ncdc.namespace).Patch,
+		},
+	)
+	if err != nil {
+		objectErrs = append(objectErrs, err)
+	}
+
+	objectErr := utilerrors.NewAggregate(objectErrs)
+	if objectErr != nil {
+		return objectErr
 	}
 
 	nodeStatus := &v1alpha1.NodeConfigNodeStatus{

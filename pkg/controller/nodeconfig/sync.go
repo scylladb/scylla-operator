@@ -8,13 +8,12 @@ import (
 	"time"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	"github.com/scylladb/scylla-operator/pkg/controllertools"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/cache"
@@ -47,29 +46,51 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 		return fmt.Errorf("can't get ScyllaOperatorConfig: %w", err)
 	}
 
+	ncSelector := labels.SelectorFromSet(labels.Set{
+		naming.NodeConfigNameLabel: nc.Name,
+	})
+
+	type CT = *scyllav1alpha1.NodeConfig
+	var objectErrs []error
+
 	namespaces, err := ncc.getNamespaces()
 	if err != nil {
-		return fmt.Errorf("get Namespaces: %w", err)
+		objectErrs = append(objectErrs, err)
 	}
 
 	clusterRoles, err := ncc.getClusterRoles()
 	if err != nil {
-		return fmt.Errorf("get ClusterRoles: %w", err)
+		objectErrs = append(objectErrs, err)
 	}
 
 	serviceAccounts, err := ncc.getServiceAccounts()
 	if err != nil {
-		return fmt.Errorf("get ServiceAccounts: %w", err)
+		objectErrs = append(objectErrs, err)
 	}
 
 	clusterRoleBindings, err := ncc.getClusterRoleBindings()
 	if err != nil {
-		return fmt.Errorf("get ClusterRoleBindings: %w", err)
+		objectErrs = append(objectErrs, err)
 	}
 
-	daemonSets, err := ncc.getDaemonSets(ctx, nc)
+	daemonSets, err := controllerhelpers.GetObjects[CT, *appsv1.DaemonSet](
+		ctx,
+		nc,
+		nodeConfigControllerGVK,
+		ncSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *appsv1.DaemonSet]{
+			GetControllerUncachedFunc: ncc.scyllaClient.NodeConfigs().Get,
+			ListObjectsFunc:           ncc.daemonSetLister.DaemonSets(naming.ScyllaOperatorNodeTuningNamespace).List,
+			PatchObjectFunc:           ncc.kubeClient.AppsV1().DaemonSets(naming.ScyllaOperatorNodeTuningNamespace).Patch,
+		},
+	)
 	if err != nil {
-		return fmt.Errorf("get DaemonSets: %w", err)
+		objectErrs = append(objectErrs, err)
+	}
+
+	objectErr := utilerrors.NewAggregate(objectErrs)
+	if objectErr != nil {
+		return objectErr
 	}
 
 	status, err := ncc.calculateStatus(nc, daemonSets, ncc.operatorImage)
@@ -112,47 +133,6 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 	errs = append(errs, err)
 
 	return utilerrors.NewAggregate(errs)
-}
-
-func (ncc *Controller) getDaemonSets(ctx context.Context, nc *scyllav1alpha1.NodeConfig) (map[string]*appsv1.DaemonSet, error) {
-	dss, err := ncc.daemonSetLister.DaemonSets(naming.ScyllaOperatorNodeTuningNamespace).List(labels.Everything())
-	if err != nil {
-		return nil, fmt.Errorf("list daemonsets: %w", err)
-	}
-
-	selector := labels.SelectorFromSet(labels.Set{
-		naming.NodeConfigNameLabel: nc.Name,
-	})
-
-	canAdoptFunc := func() error {
-		fresh, err := ncc.scyllaClient.NodeConfigs().Get(ctx, nc.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		if fresh.UID != nc.UID {
-			return fmt.Errorf("original NodeConfig %q is gone: got uid %v, wanted %v", nc.Name, fresh.UID, nc.UID)
-		}
-
-		if fresh.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%q has just been deleted at %v", nc.Name, nc.DeletionTimestamp)
-		}
-
-		return nil
-	}
-
-	cm := controllertools.NewDaemonSetControllerRefManager(
-		ctx,
-		nc,
-		nodeConfigControllerGVK,
-		selector,
-		canAdoptFunc,
-		controllertools.RealDaemonSetControl{
-			KubeClient: ncc.kubeClient,
-			Recorder:   ncc.eventRecorder,
-		},
-	)
-	return cm.ClaimDaemonSets(dss)
 }
 
 func (ncc *Controller) getNamespaces() (map[string]*corev1.Namespace, error) {

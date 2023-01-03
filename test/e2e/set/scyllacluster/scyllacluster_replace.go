@@ -86,6 +86,23 @@ var _ = g.Describe("ScyllaCluster replace", func() {
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
 
+		framework.By("Waiting for the other nodes to acknowledge the replace")
+
+		client, _, err := utils.GetScyllaClient(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		replacedNodeService, err := f.KubeClient().CoreV1().Services(sc.Namespace).Get(ctx, utils.GetNodeName(sc, 0), metav1.GetOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		otherNodeService, err := f.KubeClient().CoreV1().Services(sc.Namespace).Get(ctx, utils.GetNodeName(sc, 1), metav1.GetOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		o.Eventually(func(g o.Gomega) {
+			status, err := client.Status(ctx, otherNodeService.Spec.ClusterIP)
+			g.Expect(err).NotTo(o.HaveOccurred())
+			g.Expect(status.LiveHosts()).To(o.ContainElement(replacedNodeService.Spec.ClusterIP))
+		}).WithPolling(time.Second).WithTimeout(5 * time.Minute).Should(o.Succeed())
+
 		oldHosts := hosts
 		hosts = getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(hosts).To(o.HaveLen(len(oldHosts)))

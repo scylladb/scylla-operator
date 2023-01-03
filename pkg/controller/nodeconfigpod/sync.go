@@ -7,61 +7,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/scylladb/scylla-operator/pkg/controllertools"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
-
-func (ncpc *Controller) getConfigMaps(ctx context.Context, pod *corev1.Pod) (map[string]*corev1.ConfigMap, error) {
-	// List all ConfigMaps to find even those that no longer match our selector.
-	// They will be orphaned in ClaimConfigMaps().
-	configMaps, err := ncpc.configMapLister.ConfigMaps(pod.Namespace).List(labels.Everything())
-	if err != nil {
-		return nil, err
-	}
-
-	selector := labels.SelectorFromSet(labels.Set{
-		naming.OwnerUIDLabel:      string(pod.UID),
-		naming.ConfigMapTypeLabel: string(naming.NodeConfigDataConfigMapType),
-	})
-
-	// If any adoptions are attempted, we should first recheck for deletion with
-	// an uncached quorum read sometime after listing Pods.
-	canAdoptFunc := func() error {
-		fresh, err := ncpc.kubeClient.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		if fresh.UID != pod.UID {
-			return fmt.Errorf("original Pod %v/%v is gone: got uid %v, wanted %v", pod.Namespace, pod.Name, fresh.UID, pod.UID)
-		}
-
-		if fresh.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%v/%v has just been deleted at %v", pod.Namespace, pod.Name, pod.DeletionTimestamp)
-		}
-
-		return nil
-	}
-	cm := controllertools.NewConfigMapControllerRefManager(
-		ctx,
-		pod,
-		podControllerGVK,
-		selector,
-		canAdoptFunc,
-		controllertools.RealConfigMapControl{
-			KubeClient: ncpc.kubeClient,
-			Recorder:   ncpc.eventRecorder,
-		},
-	)
-	return cm.ClaimConfigMaps(configMaps)
-}
 
 func (ncpc *Controller) sync(ctx context.Context, key string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
@@ -89,9 +43,32 @@ func (ncpc *Controller) sync(ctx context.Context, key string) error {
 		return nil
 	}
 
-	configMaps, err := ncpc.getConfigMaps(ctx, pod)
+	podSelector := labels.SelectorFromSet(labels.Set{
+		naming.OwnerUIDLabel:      string(pod.UID),
+		naming.ConfigMapTypeLabel: string(naming.NodeConfigDataConfigMapType),
+	})
+
+	type CT = *corev1.Pod
+	var objectErrs []error
+
+	configMaps, err := controllerhelpers.GetObjects[CT, *corev1.ConfigMap](
+		ctx,
+		pod,
+		podControllerGVK,
+		podSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.ConfigMap]{
+			GetControllerUncachedFunc: ncpc.kubeClient.CoreV1().Pods(pod.Namespace).Get,
+			ListObjectsFunc:           ncpc.configMapLister.ConfigMaps(pod.Namespace).List,
+			PatchObjectFunc:           ncpc.kubeClient.CoreV1().ConfigMaps(pod.Namespace).Patch,
+		},
+	)
 	if err != nil {
-		return err
+		objectErrs = append(objectErrs, err)
+	}
+
+	objectErr := utilerrors.NewAggregate(objectErrs)
+	if objectErr != nil {
+		return objectErr
 	}
 
 	var errs []error

@@ -47,8 +47,7 @@ func WaitForServiceAccount(ctx context.Context, c corev1client.CoreV1Interface, 
 		func(e watch.Event) (bool, error) {
 			switch t := e.Type; t {
 			case watch.Added, watch.Modified:
-				sa := e.Object.(*corev1.ServiceAccount)
-				return len(sa.Secrets) > 0, nil
+				return true, nil
 			case watch.Deleted, watch.Bookmark:
 				return false, nil
 			case watch.Error:
@@ -63,6 +62,44 @@ func WaitForServiceAccount(ctx context.Context, c corev1client.CoreV1Interface, 
 	}
 
 	return event.Object.(*corev1.ServiceAccount), nil
+}
+
+func WaitForServiceAccountTokenSecret(ctx context.Context, c corev1client.CoreV1Interface, namespace, name string) (*corev1.Secret, error) {
+	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
+	lw := &cache.ListWatch{
+		ListFunc: helpers.UncachedListFunc(func(options metav1.ListOptions) (runtime.Object, error) {
+			options.FieldSelector = fieldSelector
+			return c.Secrets(namespace).List(ctx, options)
+		}),
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			options.FieldSelector = fieldSelector
+			return c.Secrets(namespace).Watch(ctx, options)
+		},
+	}
+	event, err := watchtools.UntilWithSync(
+		ctx,
+		lw,
+		&corev1.Secret{},
+		nil,
+		func(e watch.Event) (bool, error) {
+			switch t := e.Type; t {
+			case watch.Added, watch.Modified:
+				s := e.Object.(*corev1.Secret)
+				return len(s.Data[corev1.ServiceAccountTokenKey]) > 0, nil
+			case watch.Deleted, watch.Bookmark:
+				return false, nil
+			case watch.Error:
+				return true, apierrors.FromObject(e.Object)
+			default:
+				return true, fmt.Errorf("unexpected event type %v", t)
+			}
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return event.Object.(*corev1.Secret), nil
 }
 
 func WaitForObjectDeletion(ctx context.Context, dynamicClient dynamic.Interface, resource schema.GroupVersionResource, namespace, name string, uid *types.UID) error {

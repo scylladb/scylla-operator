@@ -50,23 +50,33 @@ runs:
       set -euExo pipefail
       shopt -s inherit_errexit
       
-      unlz4 ~/operatorimage.tar.lz4 - | docker load
-      # docker looses the registry part on save/load
-      docker tag "$( echo "${image_repo_ref}:ci" | sed -E -e 's~[^/]+/(.*)~\1~' )" "${image_repo_ref}:ci"
-      docker images '${{ env.image_repo_ref }}:ci'
+      unlz4 ~/operatorimage.tar.lz4 - | sudo podman load
+      
+      sudo podman images '${{ env.image_repo_ref }}:ci'
   - name: Setup go
     uses: actions/setup-go@v3
     with:
       go-version: ${{ env.go_version }}
-  - name: Install tools
+  - name: Setup Kubernetes
+    uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/setup-kubernetes
+  - name: Setup Local Volume Provisioner
+    uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/setup-local-volume-provisioner
+    with:
+      repositoryPath: ${{ inputs.repositoryPath }}
+      numberOfPersistentVolumes: 100
+  - name: Tweak node and Kubernetes
     shell: bash
     run: |
       set -euExo pipefail
       shopt -s inherit_errexit
       
-      go install github.com/mikefarah/yq/v4@v4.6.1
-  - name: Setup minikube
-    uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/setup-minikube
+      # Label nodes with label required by e2e tests.
+      kubectl label nodes scylla.scylladb.com/node-type=scylla --all
+      
+      # Increase sysctl required by ScyllaDB
+      echo 'fs.aio-max-nr = 300000000' | sudo tee /etc/sysctl.d/90-scylla.conf >/dev/null
+      
+      sudo sysctl --system
   - name: Deploy scylla-operator
     shell: bash
     working-directory: ${{ inputs.repositoryPath }}
@@ -99,18 +109,19 @@ runs:
     run: |
       set -euExo pipefail
       shopt -s inherit_errexit
-
+      
       e2e_timeout_minutes='${{ inputs.baseTimeoutMinutes }}'
       flake_attempts=0
       if [[ -v 'FLAKE_ATTEMPTS' ]]; then
         flake_attempts="${FLAKE_ATTEMPTS}"
         e2e_timeout_minutes="$(( ${e2e_timeout_minutes} + ${flake_attempts} * 10 ))"
       fi
-
+      
       user="$( id -u )"
       group="$( id -g )"
       ingress_address="$( kubectl -n haproxy-ingress get svc haproxy-ingress --template='{{ .spec.clusterIP }}' )"
-      docker run --user="${user}:${group}" --rm \
+      
+      sudo podman run --user="${user}:${group}" --rm \
       --entrypoint=/usr/bin/scylla-operator-tests \
       -v="${ARTIFACTS_DIR}:${ARTIFACTS_DIR}:rw" \
       -v="${HOME}/.kube/config:/kubeconfig:ro" -e='KUBECONFIG=/kubeconfig' \
@@ -139,15 +150,19 @@ runs:
     run: |
       set -euExo pipefail
       shopt -s inherit_errexit
-
-      docker info > docker.info
-      docker images -a > docker.images
-      docker stats -a --no-stream --no-trunc > docker.stats
+      
+      sudo podman info > podman.info
+      sudo podman images -a > podman.images
+      sudo crictl images > crictl.images
+      sudo podman stats -a --no-stream --no-reset > podman.stats
       free -h > free
       journalctl -u kubelet > kubelet.log
-
+      journalctl -u crio > crio.log
+      sudo iptables -L > iptables.log
+      sysctl --all > sysctls.log
+      
       sudo tar -c --use-compress-program=lz4 -f ./kubernetes.tar.lz4 "/etc/kubernetes"
-
+      
       mkdir container-logs
       for ns in kube-system; do
         mkdir "container-logs/${ns}"

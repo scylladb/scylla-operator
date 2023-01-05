@@ -1,0 +1,155 @@
+name: "Setup Kubernetes"
+description: 'Installs Kubernetes cluster'
+inputs:
+  kubernetesVersion:
+    description: "Kubernetes version"
+    default: 1.24.9
+runs:
+  using: "composite"
+  steps:
+  - name: Configure system
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      # Github Action workers have DROP on FORWARD policy by default, Kube requires packet forwarding
+      sudo iptables -w -P FORWARD ACCEPT
+      
+      # Required by kubeadm
+      sudo modprobe overlay
+      sudo modprobe br_netfilter
+      sudo swapoff -a
+      echo 'net.ipv4.ip_forward = 1' | sudo tee /etc/sysctl.d/90-kube.conf >/dev/null
+      echo 'net.bridge.bridge-nf-call-iptables  = 1' | sudo tee -a /etc/sysctl.d/90-kube.conf >/dev/null
+      echo 'net.bridge.bridge-nf-call-ip6tables = 1' | sudo tee -a /etc/sysctl.d/90-kube.conf >/dev/null
+      
+      sudo sysctl --system
+
+  - name: Install cri-o
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      source /etc/os-release
+      KUBERNETES_VERSION_SHORT=$( echo ${{ inputs.kubernetesVersion }} | cut -d'.' -f1-2 )
+      export KUBERNETES_VERSION_SHORT
+      export KUBERNETES_VERSION=${{ inputs.kubernetesVersion }}
+      
+      sudo apt-get update
+      sudo apt-get install -y apt-transport-https ca-certificates curl gpg
+      
+      sudo mkdir -p /etc/apt/keyrings/
+      
+      curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/libcontainers-archive-keyring.gpg
+      curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/${KUBERNETES_VERSION_SHORT}/xUbuntu_${VERSION_ID}/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/libcontainers-crio-archive-keyring.gpg
+      
+      echo "deb [signed-by=/etc/apt/keyrings/libcontainers-archive-keyring.gpg] https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
+      echo "deb [signed-by=/etc/apt/keyrings/libcontainers-crio-archive-keyring.gpg] https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/${KUBERNETES_VERSION_SHORT}/xUbuntu_${VERSION_ID}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable:cri-o:${KUBERNETES_VERSION_SHORT}.list
+      
+      sudo apt-get update
+      sudo apt-get install -y --no-install-recommends cri-o cri-o-runc
+      
+      cat << EOF | sudo tee /etc/crio/crio.conf.d/02-cgroup-manager.conf
+      [crio.runtime]
+      conmon_cgroup = "pod"
+      cgroup_manager = "systemd"
+      EOF
+      
+      sudo systemctl enable --now crio
+
+  - name: Install kubernetes
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      export KUBERNETES_PKG_VERSION=${{ inputs.kubernetesVersion }}-00
+      
+      sudo apt-get update
+      sudo apt-get install -y --no-install-recommends conntrack socat ebtables
+      
+      sudo curl -fsSLo /etc/apt/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+      echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+      sudo apt-get update
+      
+      # Remove conflicting package
+      sudo apt remove containernetworking-plugins
+      
+      sudo apt-get install -y --no-install-recommends kubelet="${KUBERNETES_PKG_VERSION}" kubeadm="${KUBERNETES_PKG_VERSION}" kubectl="${KUBERNETES_PKG_VERSION}"
+
+  - name: Start Kubernetes
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      cat << EOF | sudo tee /etc/ssl/certs/audit-policy.yaml > /dev/null
+      apiVersion: audit.k8s.io/v1
+      kind: Policy
+      rules:
+      - level: RequestResponse
+      EOF
+      
+      cat << EOF | sudo tee /root/kubeadm-config.yaml > /dev/null
+      kind: ClusterConfiguration
+      apiVersion: kubeadm.k8s.io/v1beta3
+      kubernetesVersion: v${{ inputs.kubernetesVersion }}
+      apiServer:
+        extraArgs:
+          event-ttl: 24h
+          audit-policy-file: /etc/ssl/certs/audit-policy.yaml
+          audit-log-path: /var/log/kube-apiserver-audit.log
+        extraVolumes:
+        - name: logs
+          hostPath: /var/log
+          mountPath: /var/log
+      ---
+      apiVersion: kubeadm.k8s.io/v1beta3
+      kind: InitConfiguration
+      nodeRegistration:
+        criSocket: "unix:///var/run/crio/crio.sock"
+      ---
+      kind: KubeletConfiguration
+      apiVersion: kubelet.config.k8s.io/v1beta1
+      cgroupDriver: systemd
+      EOF
+      
+      sudo kubeadm init --config=/root/kubeadm-config.yaml
+      
+      mkdir -p "${HOME}/.kube"
+      sudo cat /etc/kubernetes/admin.conf > "${HOME}/.kube/config"
+      sudo chown $( id -u ):$( id -g ) "${HOME}/.kube/config"
+      
+      kubectl version
+      
+      # master taint is deprecated in 1.24 and removed in 1.25
+      # control-plane taint is added in 1.25
+      kubectl taint nodes --selector node-role.kubernetes.io/control-plane= node-role.kubernetes.io/control-plane-
+      kubectl taint nodes --selector node-role.kubernetes.io/control-plane= node-role.kubernetes.io/master-
+      
+      kubectl -n kube-system rollout status --timeout=5m deployment.apps/coredns
+
+  - name: Tweak Kubernetes
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      # Allow admin to use ephemeralcontainers
+      kubectl apply --server-side -f - <<EOF
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRole
+        metadata:
+          name: scylladb-e2e:hotfixes
+          labels:
+            rbac.authorization.k8s.io/aggregate-to-admin: "true"
+        rules:
+        - apiGroups:
+          - ""
+          resources:
+          - pods/ephemeralcontainers
+          verbs:
+          - patch
+      EOF

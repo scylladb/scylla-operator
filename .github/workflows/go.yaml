@@ -235,7 +235,7 @@ jobs:
     runs-on: ubuntu-20.04
     needs: images
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         path: ${{ env.git_repo_path }}
         fetch-depth: 0  # also fetch tags
@@ -252,7 +252,7 @@ jobs:
     runs-on: ubuntu-20.04
     needs: images
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         path: ${{ env.git_repo_path }}
         fetch-depth: 0  # also fetch tags

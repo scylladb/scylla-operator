@@ -134,6 +134,13 @@ func (f *Framework) ScyllaAdminClient() *scyllaclientset.Clientset {
 	return client
 }
 
+func (f *Framework) CommonLabels() map[string]string {
+	return map[string]string{
+		"e2e":       "scylla-operator",
+		"framework": f.name,
+	}
+}
+
 func (f *Framework) setupNamespace(ctx context.Context) {
 	By("Creating a new namespace")
 	var ns *corev1.Namespace
@@ -148,11 +155,8 @@ func (f *Framework) setupNamespace(ctx context.Context) {
 			ctx,
 			&corev1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: name,
-					Labels: map[string]string{
-						"e2e":       "scylla-operator",
-						"framework": f.name,
-					},
+					Name:   name,
+					Labels: f.CommonLabels(),
 				},
 			},
 			metav1.CreateOptions{},

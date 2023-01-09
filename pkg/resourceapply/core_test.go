@@ -114,7 +114,7 @@ func TestApplyService(t *testing.T) {
 			}(),
 			expectedService: nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`service "default/test" is missing controllerRef`),
+			expectedErr:     fmt.Errorf(`/v1, Kind=Service "default/test" is missing controllerRef`),
 			expectedEvents:  nil,
 		},
 		{
@@ -226,7 +226,7 @@ func TestApplyService(t *testing.T) {
 			}(),
 			expectedService: nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf("can't update service: %w", apierrors.NewNotFound(corev1.Resource("services"), "test")),
+			expectedErr:     fmt.Errorf(`can't update /v1, Kind=Service "default/test": %w`, apierrors.NewNotFound(corev1.Resource("services"), "test")),
 			expectedEvents:  []string{`Warning UpdateServiceFailed Failed to update Service default/test: services "test" not found`},
 		},
 		{
@@ -246,8 +246,8 @@ func TestApplyService(t *testing.T) {
 			}(),
 			expectedService: nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`service "default/test" isn't controlled by us`),
-			expectedEvents:  []string{`Warning UpdateServiceFailed Failed to update Service default/test: service "default/test" isn't controlled by us`},
+			expectedErr:     fmt.Errorf(`/v1, Kind=Service "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateServiceFailed Failed to update Service default/test: /v1, Kind=Service "default/test" isn't controlled by us`},
 		},
 		{
 			name: "forced update succeeds if the existing object has no ownerRef",
@@ -315,8 +315,8 @@ func TestApplyService(t *testing.T) {
 			}(),
 			expectedService: nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`service "default/test" isn't controlled by us`),
-			expectedEvents:  []string{`Warning UpdateServiceFailed Failed to update Service default/test: service "default/test" isn't controlled by us`},
+			expectedErr:     fmt.Errorf(`/v1, Kind=Service "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateServiceFailed Failed to update Service default/test: /v1, Kind=Service "default/test" isn't controlled by us`},
 		},
 		{
 			name: "forced update fails if the existing object is owned by someone else",
@@ -336,8 +336,8 @@ func TestApplyService(t *testing.T) {
 			forceOwnership:  true,
 			expectedService: nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`service "default/test" isn't controlled by us`),
-			expectedEvents:  []string{`Warning UpdateServiceFailed Failed to update Service default/test: service "default/test" isn't controlled by us`},
+			expectedErr:     fmt.Errorf(`/v1, Kind=Service "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateServiceFailed Failed to update Service default/test: /v1, Kind=Service "default/test" isn't controlled by us`},
 		},
 		{
 			name: "all label and annotation keys are kept when the hash matches",
@@ -514,7 +514,9 @@ func TestApplyService(t *testing.T) {
 						}
 					}
 
-					gotSts, gotChanged, gotErr := ApplyService(ctx, client.CoreV1(), svcLister, recorder, tc.required, tc.forceOwnership)
+					gotSts, gotChanged, gotErr := ApplyService(ctx, client.CoreV1(), svcLister, recorder, tc.required, ApplyOptions{
+						ForceOwnership: tc.forceOwnership,
+					})
 					if !reflect.DeepEqual(gotErr, tc.expectedErr) {
 						t.Fatalf("expected %v, got %v", tc.expectedErr, gotErr)
 					}
@@ -656,7 +658,7 @@ func TestApplySecret(t *testing.T) {
 			}(),
 			expectedSecret:  nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`secret "default/test" is missing controllerRef`),
+			expectedErr:     fmt.Errorf(`/v1, Kind=Secret "default/test" is missing controllerRef`),
 			expectedEvents:  nil,
 		},
 		{
@@ -760,7 +762,7 @@ func TestApplySecret(t *testing.T) {
 			}(),
 			expectedSecret:  nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf("can't update secret: %w", apierrors.NewNotFound(corev1.Resource("secrets"), "test")),
+			expectedErr:     fmt.Errorf(`can't update /v1, Kind=Secret "default/test": %w`, apierrors.NewNotFound(corev1.Resource("secrets"), "test")),
 			expectedEvents:  []string{`Warning UpdateSecretFailed Failed to update Secret default/test: secrets "test" not found`},
 		},
 		{
@@ -780,8 +782,8 @@ func TestApplySecret(t *testing.T) {
 			}(),
 			expectedSecret:  nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`secret "default/test" isn't controlled by us`),
-			expectedEvents:  []string{`Warning UpdateSecretFailed Failed to update Secret default/test: secret "default/test" isn't controlled by us`},
+			expectedErr:     fmt.Errorf(`/v1, Kind=Secret "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateSecretFailed Failed to update Secret default/test: /v1, Kind=Secret "default/test" isn't controlled by us`},
 		},
 		{
 			name: "forced update succeeds if the existing object has no ownerRef",
@@ -849,8 +851,8 @@ func TestApplySecret(t *testing.T) {
 			}(),
 			expectedSecret:  nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`secret "default/test" isn't controlled by us`),
-			expectedEvents:  []string{`Warning UpdateSecretFailed Failed to update Secret default/test: secret "default/test" isn't controlled by us`},
+			expectedErr:     fmt.Errorf(`/v1, Kind=Secret "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateSecretFailed Failed to update Secret default/test: /v1, Kind=Secret "default/test" isn't controlled by us`},
 		},
 		{
 			name: "forced update fails if the existing object is owned by someone else",
@@ -870,8 +872,8 @@ func TestApplySecret(t *testing.T) {
 			forceOwnership:  true,
 			expectedSecret:  nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`secret "default/test" isn't controlled by us`),
-			expectedEvents:  []string{`Warning UpdateSecretFailed Failed to update Secret default/test: secret "default/test" isn't controlled by us`},
+			expectedErr:     fmt.Errorf(`/v1, Kind=Secret "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateSecretFailed Failed to update Secret default/test: /v1, Kind=Secret "default/test" isn't controlled by us`},
 		},
 		{
 			name: "all label and annotation keys are kept when the hash matches",
@@ -1048,7 +1050,9 @@ func TestApplySecret(t *testing.T) {
 						}
 					}
 
-					gotSts, gotChanged, gotErr := ApplySecret(ctx, client.CoreV1(), secretLister, recorder, tc.required, tc.forceOwnership)
+					gotSts, gotChanged, gotErr := ApplySecret(ctx, client.CoreV1(), secretLister, recorder, tc.required, ApplyOptions{
+						ForceOwnership: tc.forceOwnership,
+					})
 					if !reflect.DeepEqual(gotErr, tc.expectedErr) {
 						t.Fatalf("expected %v, got %v", tc.expectedErr, gotErr)
 					}
@@ -1201,7 +1205,7 @@ func TestApplyServiceAccount(t *testing.T) {
 			}(),
 			expectedSA:      nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`ServiceAccount "default/test" is missing controllerRef`),
+			expectedErr:     fmt.Errorf(`/v1, Kind=ServiceAccount "default/test" is missing controllerRef`),
 			expectedEvents:  nil,
 		},
 		{
@@ -1310,7 +1314,7 @@ func TestApplyServiceAccount(t *testing.T) {
 			}(),
 			expectedSA:      nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf("can't update serviceaccount: %w", apierrors.NewNotFound(corev1.Resource("serviceaccounts"), "test")),
+			expectedErr:     fmt.Errorf(`can't update /v1, Kind=ServiceAccount "default/test": %w`, apierrors.NewNotFound(corev1.Resource("serviceaccounts"), "test")),
 			expectedEvents:  []string{`Warning UpdateServiceAccountFailed Failed to update ServiceAccount default/test: serviceaccounts "test" not found`},
 		},
 		{
@@ -1326,8 +1330,8 @@ func TestApplyServiceAccount(t *testing.T) {
 			required:                  newSA(),
 			expectedSA:                nil,
 			expectedChanged:           false,
-			expectedErr:               fmt.Errorf(`serviceAccount "default/test" isn't controlled by us`),
-			expectedEvents:            []string{`Warning UpdateServiceAccountFailed Failed to update ServiceAccount default/test: serviceAccount "default/test" isn't controlled by us`},
+			expectedErr:               fmt.Errorf(`/v1, Kind=ServiceAccount "default/test" isn't controlled by us`),
+			expectedEvents:            []string{`Warning UpdateServiceAccountFailed Failed to update ServiceAccount default/test: /v1, Kind=ServiceAccount "default/test" isn't controlled by us`},
 		},
 		{
 			name: "forced update succeeds if the existing object has no ownerRef",
@@ -1394,8 +1398,8 @@ func TestApplyServiceAccount(t *testing.T) {
 			}(),
 			expectedSA:      nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`serviceAccount "default/test" isn't controlled by us`),
-			expectedEvents:  []string{`Warning UpdateServiceAccountFailed Failed to update ServiceAccount default/test: serviceAccount "default/test" isn't controlled by us`},
+			expectedErr:     fmt.Errorf(`/v1, Kind=ServiceAccount "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateServiceAccountFailed Failed to update ServiceAccount default/test: /v1, Kind=ServiceAccount "default/test" isn't controlled by us`},
 		},
 		{
 			name: "forced update fails if the existing object is owned by someone else",
@@ -1415,8 +1419,8 @@ func TestApplyServiceAccount(t *testing.T) {
 			forceOwnership:  true,
 			expectedSA:      nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`serviceAccount "default/test" isn't controlled by us`),
-			expectedEvents:  []string{`Warning UpdateServiceAccountFailed Failed to update ServiceAccount default/test: serviceAccount "default/test" isn't controlled by us`},
+			expectedErr:     fmt.Errorf(`/v1, Kind=ServiceAccount "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateServiceAccountFailed Failed to update ServiceAccount default/test: /v1, Kind=ServiceAccount "default/test" isn't controlled by us`},
 		},
 		{
 			name: "all label and annotation keys are kept when the hash matches",
@@ -1593,7 +1597,10 @@ func TestApplyServiceAccount(t *testing.T) {
 						}
 					}
 
-					gotSA, gotChanged, gotErr := ApplyServiceAccount(ctx, client.CoreV1(), crbLister, recorder, tc.required, tc.forceOwnership, tc.allowMissingControllerRef)
+					gotSA, gotChanged, gotErr := ApplyServiceAccount(ctx, client.CoreV1(), crbLister, recorder, tc.required, ApplyOptions{
+						ForceOwnership:            tc.forceOwnership,
+						AllowMissingControllerRef: tc.allowMissingControllerRef,
+					})
 					if !reflect.DeepEqual(gotErr, tc.expectedErr) {
 						t.Fatalf("expected %v, got %v", tc.expectedErr, gotErr)
 					}
@@ -1734,7 +1741,7 @@ func TestApplyConfigMap(t *testing.T) {
 			}(),
 			expectedCM:      nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`ConfigMap "default/test" is missing controllerRef`),
+			expectedErr:     fmt.Errorf(`/v1, Kind=ConfigMap "default/test" is missing controllerRef`),
 			expectedEvents:  nil,
 		},
 		{
@@ -1838,7 +1845,7 @@ func TestApplyConfigMap(t *testing.T) {
 			}(),
 			expectedCM:      nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf("can't update configmap: %w", apierrors.NewNotFound(corev1.Resource("configmaps"), "test")),
+			expectedErr:     fmt.Errorf(`can't update /v1, Kind=ConfigMap "default/test": %w`, apierrors.NewNotFound(corev1.Resource("configmaps"), "test")),
 			expectedEvents:  []string{`Warning UpdateConfigMapFailed Failed to update ConfigMap default/test: configmaps "test" not found`},
 		},
 		{
@@ -1858,8 +1865,8 @@ func TestApplyConfigMap(t *testing.T) {
 			}(),
 			expectedCM:      nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`configmap "default/test" isn't controlled by us`),
-			expectedEvents:  []string{`Warning UpdateConfigMapFailed Failed to update ConfigMap default/test: configmap "default/test" isn't controlled by us`},
+			expectedErr:     fmt.Errorf(`/v1, Kind=ConfigMap "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateConfigMapFailed Failed to update ConfigMap default/test: /v1, Kind=ConfigMap "default/test" isn't controlled by us`},
 		},
 		{
 			name: "update succeeds to replace ownerRef kind",
@@ -1901,8 +1908,8 @@ func TestApplyConfigMap(t *testing.T) {
 			}(),
 			expectedCM:      nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`configmap "default/test" isn't controlled by us`),
-			expectedEvents:  []string{`Warning UpdateConfigMapFailed Failed to update ConfigMap default/test: configmap "default/test" isn't controlled by us`},
+			expectedErr:     fmt.Errorf(`/v1, Kind=ConfigMap "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateConfigMapFailed Failed to update ConfigMap default/test: /v1, Kind=ConfigMap "default/test" isn't controlled by us`},
 		},
 		{
 			name: "all label and annotation keys are kept when the hash matches",
@@ -2077,7 +2084,7 @@ func TestApplyConfigMap(t *testing.T) {
 						}
 					}
 
-					gotSts, gotChanged, gotErr := ApplyConfigMap(ctx, client.CoreV1(), configmapLister, recorder, tc.required)
+					gotSts, gotChanged, gotErr := ApplyConfigMap(ctx, client.CoreV1(), configmapLister, recorder, tc.required, ApplyOptions{})
 					if !reflect.DeepEqual(gotErr, tc.expectedErr) {
 						t.Fatalf("expected %v, got %v", tc.expectedErr, gotErr)
 					}
@@ -2214,7 +2221,7 @@ func TestApplyNamespace(t *testing.T) {
 			}(),
 			expectedNS:      nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`namespace "test" is missing controllerRef`),
+			expectedErr:     fmt.Errorf(`/v1, Kind=Namespace "test" is missing controllerRef`),
 			expectedEvents:  nil,
 		},
 		{
@@ -2323,7 +2330,7 @@ func TestApplyNamespace(t *testing.T) {
 			}(),
 			expectedNS:      nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf("can't update namespace: %w", apierrors.NewNotFound(corev1.Resource("namespaces"), "test")),
+			expectedErr:     fmt.Errorf(`can't update /v1, Kind=Namespace "test": %w`, apierrors.NewNotFound(corev1.Resource("namespaces"), "test")),
 			expectedEvents:  []string{`Warning UpdateNamespaceFailed Failed to update Namespace test: namespaces "test" not found`},
 		},
 		{
@@ -2349,8 +2356,8 @@ func TestApplyNamespace(t *testing.T) {
 			required:                  newNS(),
 			expectedNS:                nil,
 			expectedChanged:           false,
-			expectedErr:               fmt.Errorf(`namespace "test" isn't controlled by us`),
-			expectedEvents:            []string{`Warning UpdateNamespaceFailed Failed to update Namespace test: namespace "test" isn't controlled by us`},
+			expectedErr:               fmt.Errorf(`/v1, Kind=Namespace "test" isn't controlled by us`),
+			expectedEvents:            []string{`Warning UpdateNamespaceFailed Failed to update Namespace test: /v1, Kind=Namespace "test" isn't controlled by us`},
 		},
 		{
 			name: "all label and annotation keys are kept when the hash matches",
@@ -2527,7 +2534,9 @@ func TestApplyNamespace(t *testing.T) {
 						}
 					}
 
-					gotNS, gotChanged, gotErr := ApplyNamespace(ctx, client.CoreV1(), nsLister, recorder, tc.required, tc.allowMissingControllerRef)
+					gotNS, gotChanged, gotErr := ApplyNamespace(ctx, client.CoreV1(), nsLister, recorder, tc.required, ApplyOptions{
+						AllowMissingControllerRef: tc.allowMissingControllerRef,
+					})
 					if !reflect.DeepEqual(gotErr, tc.expectedErr) {
 						t.Fatalf("expected %v, got %v", tc.expectedErr, gotErr)
 					}

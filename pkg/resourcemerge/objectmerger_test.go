@@ -232,7 +232,7 @@ func TestMergeMapInPlaceWithoutRemovalKeys(t *testing.T) {
 					got[k] = v
 				}
 			}
-			MergeMapInPlaceWithoutRemovalKeys(&got, tc.existing)
+			MergeMapInPlaceWithoutRemovalKeys(got, tc.existing)
 
 			if !reflect.DeepEqual(got, tc.expected) {
 				t.Errorf("expected and got differs: %s", cmp.Diff(tc.expected, got))
@@ -245,8 +245,8 @@ func TestMergeMetadataInPlace(t *testing.T) {
 	tt := []struct {
 		name     string
 		required *metav1.ObjectMeta
-		existing metav1.ObjectMeta
-		expected metav1.ObjectMeta
+		existing *metav1.ObjectMeta
+		expected *metav1.ObjectMeta
 	}{
 		{
 			name: "nil maps",
@@ -254,11 +254,11 @@ func TestMergeMetadataInPlace(t *testing.T) {
 				Annotations: nil,
 				Labels:      nil,
 			},
-			existing: metav1.ObjectMeta{
+			existing: &metav1.ObjectMeta{
 				Annotations: nil,
 				Labels:      nil,
 			},
-			expected: metav1.ObjectMeta{
+			expected: &metav1.ObjectMeta{
 				Annotations: nil,
 				Labels:      nil,
 			},
@@ -275,7 +275,7 @@ func TestMergeMetadataInPlace(t *testing.T) {
 					"l-2-": "",
 				},
 			},
-			existing: metav1.ObjectMeta{
+			existing: &metav1.ObjectMeta{
 				Annotations: map[string]string{
 					"a-1": "foo",
 					"a-2": "old",
@@ -285,7 +285,7 @@ func TestMergeMetadataInPlace(t *testing.T) {
 					"l-2": "old",
 				},
 			},
-			expected: metav1.ObjectMeta{
+			expected: &metav1.ObjectMeta{
 				Annotations: map[string]string{
 					"a-1": "foo",
 				},
@@ -304,11 +304,11 @@ func TestMergeMetadataInPlace(t *testing.T) {
 					"l-1": "bar",
 				},
 			},
-			existing: metav1.ObjectMeta{
+			existing: &metav1.ObjectMeta{
 				Annotations: nil,
 				Labels:      nil,
 			},
-			expected: metav1.ObjectMeta{
+			expected: &metav1.ObjectMeta{
 				Annotations: map[string]string{
 					"a-1": "foo",
 				},
@@ -327,7 +327,7 @@ func TestMergeMetadataInPlace(t *testing.T) {
 					"l-1": "bar",
 				},
 			},
-			existing: metav1.ObjectMeta{
+			existing: &metav1.ObjectMeta{
 				Annotations: map[string]string{
 					"user-annotation": "ua",
 				},
@@ -335,7 +335,7 @@ func TestMergeMetadataInPlace(t *testing.T) {
 					"user-label": "ul",
 				},
 			},
-			expected: metav1.ObjectMeta{
+			expected: &metav1.ObjectMeta{
 				Annotations: map[string]string{
 					"a-1":             "foo",
 					"user-annotation": "ua",
@@ -353,7 +353,7 @@ func TestMergeMetadataInPlace(t *testing.T) {
 			got := tc.required.DeepCopy()
 			MergeMetadataInPlace(got, tc.existing)
 
-			if !reflect.DeepEqual(*got, tc.expected) {
+			if !reflect.DeepEqual(got, tc.expected) {
 				t.Errorf("expected and got differs: %s", cmp.Diff(tc.expected, got))
 			}
 		})

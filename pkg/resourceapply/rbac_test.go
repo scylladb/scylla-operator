@@ -117,7 +117,7 @@ func TestApplyClusterRole(t *testing.T) {
 			}(),
 			expectedCr:      nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`ClusterRole "test" is missing controllerRef`),
+			expectedErr:     fmt.Errorf(`rbac.authorization.k8s.io/v1, Kind=ClusterRole "test" is missing controllerRef`),
 			expectedEvents:  nil,
 		},
 		{
@@ -255,7 +255,7 @@ func TestApplyClusterRole(t *testing.T) {
 			}(),
 			expectedCr:      nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf("can't update clusterrole: %w", apierrors.NewNotFound(rbacv1.Resource("clusterroles"), "test")),
+			expectedErr:     fmt.Errorf(`can't update rbac.authorization.k8s.io/v1, Kind=ClusterRole "test": %w`, apierrors.NewNotFound(rbacv1.Resource("clusterroles"), "test")),
 			expectedEvents:  []string{`Warning UpdateClusterRoleFailed Failed to update ClusterRole test: clusterroles.rbac.authorization.k8s.io "test" not found`},
 		},
 		{
@@ -279,8 +279,8 @@ func TestApplyClusterRole(t *testing.T) {
 			required:                  newCr(),
 			expectedCr:                nil,
 			expectedChanged:           false,
-			expectedErr:               fmt.Errorf(`clusterrole "test" is controlled by someone else`),
-			expectedEvents:            []string{`Warning UpdateClusterRoleFailed Failed to update ClusterRole test: clusterrole "test" is controlled by someone else`},
+			expectedErr:               fmt.Errorf(`rbac.authorization.k8s.io/v1, Kind=ClusterRole "test" isn't controlled by us`),
+			expectedEvents:            []string{`Warning UpdateClusterRoleFailed Failed to update ClusterRole test: rbac.authorization.k8s.io/v1, Kind=ClusterRole "test" isn't controlled by us`},
 		},
 		{
 			name: "all label and annotation keys are kept when the hash matches",
@@ -457,7 +457,9 @@ func TestApplyClusterRole(t *testing.T) {
 						}
 					}
 
-					gotCr, gotChanged, gotErr := ApplyClusterRole(ctx, client.RbacV1(), crLister, recorder, tc.required, tc.allowMissingControllerRef)
+					gotCr, gotChanged, gotErr := ApplyClusterRole(ctx, client.RbacV1(), crLister, recorder, tc.required, ApplyOptions{
+						AllowMissingControllerRef: tc.allowMissingControllerRef,
+					})
 					if !reflect.DeepEqual(gotErr, tc.expectedErr) {
 						t.Fatalf("expected %v, got %v", tc.expectedErr, gotErr)
 					}
@@ -606,7 +608,7 @@ func TestApplyClusterRoleBinding(t *testing.T) {
 			}(),
 			expectedCrb:     nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`ClusterRoleBinding "test" is missing controllerRef`),
+			expectedErr:     fmt.Errorf(`rbac.authorization.k8s.io/v1, Kind=ClusterRoleBinding "test" is missing controllerRef`),
 			expectedEvents:  nil,
 		},
 		{
@@ -747,7 +749,7 @@ func TestApplyClusterRoleBinding(t *testing.T) {
 			}(),
 			expectedCrb:     nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf("can't update clusterrolebinding: %w", apierrors.NewNotFound(rbacv1.Resource("clusterrolebindings"), "test")),
+			expectedErr:     fmt.Errorf(`can't update rbac.authorization.k8s.io/v1, Kind=ClusterRoleBinding "test": %w`, apierrors.NewNotFound(rbacv1.Resource("clusterrolebindings"), "test")),
 			expectedEvents:  []string{`Warning UpdateClusterRoleBindingFailed Failed to update ClusterRoleBinding test: clusterrolebindings.rbac.authorization.k8s.io "test" not found`},
 		},
 		{
@@ -773,8 +775,8 @@ func TestApplyClusterRoleBinding(t *testing.T) {
 			required:                  newCrb(),
 			expectedCrb:               nil,
 			expectedChanged:           false,
-			expectedErr:               fmt.Errorf(`clusterrolebinding "test" is controlled by someone else`),
-			expectedEvents:            []string{`Warning UpdateClusterRoleBindingFailed Failed to update ClusterRoleBinding test: clusterrolebinding "test" is controlled by someone else`},
+			expectedErr:               fmt.Errorf(`rbac.authorization.k8s.io/v1, Kind=ClusterRoleBinding "test" isn't controlled by us`),
+			expectedEvents:            []string{`Warning UpdateClusterRoleBindingFailed Failed to update ClusterRoleBinding test: rbac.authorization.k8s.io/v1, Kind=ClusterRoleBinding "test" isn't controlled by us`},
 		},
 		{
 			name: "all label and annotation keys are kept when the hash matches",
@@ -951,7 +953,9 @@ func TestApplyClusterRoleBinding(t *testing.T) {
 						}
 					}
 
-					gotCrb, gotChanged, gotErr := ApplyClusterRoleBinding(ctx, client.RbacV1(), crbLister, recorder, tc.required, tc.allowMissingControllerRef)
+					gotCrb, gotChanged, gotErr := ApplyClusterRoleBinding(ctx, client.RbacV1(), crbLister, recorder, tc.required, ApplyOptions{
+						AllowMissingControllerRef: tc.allowMissingControllerRef,
+					})
 					if !reflect.DeepEqual(gotErr, tc.expectedErr) {
 						t.Fatalf("expected %v, got %v", tc.expectedErr, gotErr)
 					}
@@ -1104,7 +1108,7 @@ func TestApplyRoleBinding(t *testing.T) {
 			}(),
 			expectedRB:      nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`RoleBinding "default/test" is missing controllerRef`),
+			expectedErr:     fmt.Errorf(`rbac.authorization.k8s.io/v1, Kind=RoleBinding "default/test" is missing controllerRef`),
 			expectedEvents:  nil,
 		},
 		{
@@ -1213,7 +1217,7 @@ func TestApplyRoleBinding(t *testing.T) {
 			}(),
 			expectedRB:      nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf("can't update roleBinding: %w", apierrors.NewNotFound(rbacv1.Resource("rolebindings"), "test")),
+			expectedErr:     fmt.Errorf(`can't update rbac.authorization.k8s.io/v1, Kind=RoleBinding "default/test": %w`, apierrors.NewNotFound(rbacv1.Resource("rolebindings"), "test")),
 			expectedEvents:  []string{`Warning UpdateRoleBindingFailed Failed to update RoleBinding default/test: rolebindings.rbac.authorization.k8s.io "test" not found`},
 		},
 		{
@@ -1229,8 +1233,8 @@ func TestApplyRoleBinding(t *testing.T) {
 			required:                  newRB(),
 			expectedRB:                nil,
 			expectedChanged:           false,
-			expectedErr:               fmt.Errorf(`roleBinding "default/test" isn't controlled by us`),
-			expectedEvents:            []string{`Warning UpdateRoleBindingFailed Failed to update RoleBinding default/test: roleBinding "default/test" isn't controlled by us`},
+			expectedErr:               fmt.Errorf(`rbac.authorization.k8s.io/v1, Kind=RoleBinding "default/test" isn't controlled by us`),
+			expectedEvents:            []string{`Warning UpdateRoleBindingFailed Failed to update RoleBinding default/test: rbac.authorization.k8s.io/v1, Kind=RoleBinding "default/test" isn't controlled by us`},
 		},
 		{
 			name: "forced update succeeds if the existing object has no ownerRef",
@@ -1297,8 +1301,8 @@ func TestApplyRoleBinding(t *testing.T) {
 			}(),
 			expectedRB:      nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`roleBinding "default/test" isn't controlled by us`),
-			expectedEvents:  []string{`Warning UpdateRoleBindingFailed Failed to update RoleBinding default/test: roleBinding "default/test" isn't controlled by us`},
+			expectedErr:     fmt.Errorf(`rbac.authorization.k8s.io/v1, Kind=RoleBinding "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateRoleBindingFailed Failed to update RoleBinding default/test: rbac.authorization.k8s.io/v1, Kind=RoleBinding "default/test" isn't controlled by us`},
 		},
 		{
 			name: "forced update fails if the existing object is owned by someone else",
@@ -1318,8 +1322,8 @@ func TestApplyRoleBinding(t *testing.T) {
 			forceOwnership:  true,
 			expectedRB:      nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`roleBinding "default/test" isn't controlled by us`),
-			expectedEvents:  []string{`Warning UpdateRoleBindingFailed Failed to update RoleBinding default/test: roleBinding "default/test" isn't controlled by us`},
+			expectedErr:     fmt.Errorf(`rbac.authorization.k8s.io/v1, Kind=RoleBinding "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateRoleBindingFailed Failed to update RoleBinding default/test: rbac.authorization.k8s.io/v1, Kind=RoleBinding "default/test" isn't controlled by us`},
 		},
 		{
 			name: "all label and annotation keys are kept when the hash matches",
@@ -1498,7 +1502,10 @@ func TestApplyRoleBinding(t *testing.T) {
 						}
 					}
 
-					gotRB, gotChanged, gotErr := ApplyRoleBinding(ctx, client.RbacV1(), rbLister, recorder, tc.required, tc.forceOwnership, tc.allowMissingControllerRef)
+					gotRB, gotChanged, gotErr := ApplyRoleBinding(ctx, client.RbacV1(), rbLister, recorder, tc.required, ApplyOptions{
+						ForceOwnership:            tc.forceOwnership,
+						AllowMissingControllerRef: tc.allowMissingControllerRef,
+					})
 					if !reflect.DeepEqual(gotErr, tc.expectedErr) {
 						t.Fatalf("expected %v, got %v", tc.expectedErr, gotErr)
 					}

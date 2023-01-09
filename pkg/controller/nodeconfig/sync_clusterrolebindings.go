@@ -67,7 +67,9 @@ func (ncc *Controller) syncClusterRoleBindings(
 
 	var errs []error
 	for _, crb := range requiredClusterRoleBindings {
-		_, _, err := resourceapply.ApplyClusterRoleBinding(ctx, ncc.kubeClient.RbacV1(), ncc.clusterRoleBindingLister, ncc.eventRecorder, crb, true)
+		_, _, err := resourceapply.ApplyClusterRoleBinding(ctx, ncc.kubeClient.RbacV1(), ncc.clusterRoleBindingLister, ncc.eventRecorder, crb, resourceapply.ApplyOptions{
+			AllowMissingControllerRef: true,
+		})
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't create missing clusterrole: %w", err))
 			continue

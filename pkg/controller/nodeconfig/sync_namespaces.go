@@ -65,7 +65,9 @@ func (ncc *Controller) syncNamespaces(ctx context.Context, namespaces map[string
 
 	var errs []error
 	for _, ns := range requiredNamespaces {
-		_, _, err := resourceapply.ApplyNamespace(ctx, ncc.kubeClient.CoreV1(), ncc.namespaceLister, ncc.eventRecorder, ns, true)
+		_, _, err := resourceapply.ApplyNamespace(ctx, ncc.kubeClient.CoreV1(), ncc.namespaceLister, ncc.eventRecorder, ns, resourceapply.ApplyOptions{
+			AllowMissingControllerRef: true,
+		})
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't create missing Namespace: %w", err))
 			continue

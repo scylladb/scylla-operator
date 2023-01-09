@@ -137,7 +137,7 @@ func (ncpc *Controller) syncConfigMaps(
 	}
 
 	if required != nil {
-		_, _, err := resourceapply.ApplyConfigMap(ctx, ncpc.kubeClient.CoreV1(), ncpc.configMapLister, ncpc.eventRecorder, required)
+		_, _, err := resourceapply.ApplyConfigMap(ctx, ncpc.kubeClient.CoreV1(), ncpc.configMapLister, ncpc.eventRecorder, required, resourceapply.ApplyOptions{})
 		if err != nil {
 			return fmt.Errorf("can't apply configmap: %w", err)
 		}

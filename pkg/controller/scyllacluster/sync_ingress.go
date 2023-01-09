@@ -58,7 +58,7 @@ func (scc *Controller) syncIngresses(
 	}
 
 	for _, requiredIngress := range requiredIngresses {
-		_, changed, err := resourceapply.ApplyIngress(ctx, scc.kubeClient.NetworkingV1(), scc.ingressLister, scc.eventRecorder, requiredIngress)
+		_, changed, err := resourceapply.ApplyIngress(ctx, scc.kubeClient.NetworkingV1(), scc.ingressLister, scc.eventRecorder, requiredIngress, resourceapply.ApplyOptions{})
 		if changed {
 			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, ingressControllerProgressingCondition, requiredIngress, "apply", sc.Generation)
 		}

@@ -130,7 +130,7 @@ func TestApplyStatefulSet(t *testing.T) {
 			}(),
 			expectedSts:     nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`StatefulSet "default/test" is missing controllerRef`),
+			expectedErr:     fmt.Errorf(`apps/v1, Kind=StatefulSet "default/test" is missing controllerRef`),
 			expectedEvents:  nil,
 		},
 		{
@@ -254,7 +254,7 @@ func TestApplyStatefulSet(t *testing.T) {
 			}(),
 			expectedSts:     nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf("can't update statefulset: %w", apierrors.NewNotFound(appsv1.Resource("statefulsets"), "test")),
+			expectedErr:     fmt.Errorf(`can't update apps/v1, Kind=StatefulSet "default/test": %w`, apierrors.NewNotFound(appsv1.Resource("statefulsets"), "test")),
 			expectedEvents:  []string{`Warning UpdateStatefulSetFailed Failed to update StatefulSet default/test: statefulsets.apps "test" not found`},
 		},
 		{
@@ -274,8 +274,8 @@ func TestApplyStatefulSet(t *testing.T) {
 			}(),
 			expectedSts:     nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`statefulset "default/test" isn't controlled by anyone, won't adopt it in apply`),
-			expectedEvents:  []string{`Warning UpdateStatefulSetFailed Failed to update StatefulSet default/test: statefulset "default/test" isn't controlled by anyone, won't adopt it in apply`},
+			expectedErr:     fmt.Errorf(`apps/v1, Kind=StatefulSet "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateStatefulSetFailed Failed to update StatefulSet default/test: apps/v1, Kind=StatefulSet "default/test" isn't controlled by us`},
 		},
 		{
 			name: "forced update succeeds if the existing object has no ownerRef",
@@ -343,8 +343,8 @@ func TestApplyStatefulSet(t *testing.T) {
 			}(),
 			expectedSts:     nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`statefulset "default/test" is controlled by someone else`),
-			expectedEvents:  []string{`Warning UpdateStatefulSetFailed Failed to update StatefulSet default/test: statefulset "default/test" is controlled by someone else`},
+			expectedErr:     fmt.Errorf(`apps/v1, Kind=StatefulSet "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateStatefulSetFailed Failed to update StatefulSet default/test: apps/v1, Kind=StatefulSet "default/test" isn't controlled by us`},
 		},
 		{
 			name: "forced update fails if the existing object is owned by someone else",
@@ -364,8 +364,8 @@ func TestApplyStatefulSet(t *testing.T) {
 			forceOwnership:  true,
 			expectedSts:     nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`statefulset "default/test" is controlled by someone else`),
-			expectedEvents:  []string{`Warning UpdateStatefulSetFailed Failed to update StatefulSet default/test: statefulset "default/test" is controlled by someone else`},
+			expectedErr:     fmt.Errorf(`apps/v1, Kind=StatefulSet "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateStatefulSetFailed Failed to update StatefulSet default/test: apps/v1, Kind=StatefulSet "default/test" isn't controlled by us`},
 		},
 		{
 			name: "all label and annotation keys are kept when the hash matches",
@@ -500,7 +500,7 @@ func TestApplyStatefulSet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			// Client holds the state so it has to persists the iterations.
+			// Client holds the state, so it has to persist the iterations.
 			client := fake.NewSimpleClientset(tc.existing...)
 
 			// ApplyStatefulSet needs to be reentrant so running it the second time should give the same results.
@@ -542,7 +542,9 @@ func TestApplyStatefulSet(t *testing.T) {
 						}
 					}
 
-					gotSts, gotChanged, gotErr := ApplyStatefulSet(ctx, client.AppsV1(), stsLister, recorder, tc.required, tc.forceOwnership)
+					gotSts, gotChanged, gotErr := ApplyStatefulSet(ctx, client.AppsV1(), stsLister, recorder, tc.required, ApplyOptions{
+						ForceOwnership: tc.forceOwnership,
+					})
 					if !reflect.DeepEqual(gotErr, tc.expectedErr) {
 						t.Fatalf("expected %v, got %v", tc.expectedErr, gotErr)
 					}
@@ -698,7 +700,7 @@ func TestApplyDaemonSet(t *testing.T) {
 			}(),
 			expectedDaemonSet: nil,
 			expectedChanged:   false,
-			expectedErr:       fmt.Errorf(`DaemonSet "default/test" is missing controllerRef`),
+			expectedErr:       fmt.Errorf(`apps/v1, Kind=DaemonSet "default/test" is missing controllerRef`),
 			expectedEvents:    nil,
 		},
 		{
@@ -802,7 +804,7 @@ func TestApplyDaemonSet(t *testing.T) {
 			}(),
 			expectedDaemonSet: nil,
 			expectedChanged:   false,
-			expectedErr:       fmt.Errorf("can't update daemonset: %w", apierrors.NewNotFound(appsv1.Resource("daemonsets"), "test")),
+			expectedErr:       fmt.Errorf(`can't update apps/v1, Kind=DaemonSet "default/test": %w`, apierrors.NewNotFound(appsv1.Resource("daemonsets"), "test")),
 			expectedEvents:    []string{`Warning UpdateDaemonSetFailed Failed to update DaemonSet default/test: daemonsets.apps "test" not found`},
 		},
 		{
@@ -822,8 +824,8 @@ func TestApplyDaemonSet(t *testing.T) {
 			}(),
 			expectedDaemonSet: nil,
 			expectedChanged:   false,
-			expectedErr:       fmt.Errorf(`daemonset "default/test" isn't controlled by us`),
-			expectedEvents:    []string{`Warning UpdateDaemonSetFailed Failed to update DaemonSet default/test: daemonset "default/test" isn't controlled by us`},
+			expectedErr:       fmt.Errorf(`apps/v1, Kind=DaemonSet "default/test" isn't controlled by us`),
+			expectedEvents:    []string{`Warning UpdateDaemonSetFailed Failed to update DaemonSet default/test: apps/v1, Kind=DaemonSet "default/test" isn't controlled by us`},
 		},
 		{
 			name: "update succeeds to replace ownerRef kind",
@@ -865,8 +867,8 @@ func TestApplyDaemonSet(t *testing.T) {
 			}(),
 			expectedDaemonSet: nil,
 			expectedChanged:   false,
-			expectedErr:       fmt.Errorf(`daemonset "default/test" isn't controlled by us`),
-			expectedEvents:    []string{`Warning UpdateDaemonSetFailed Failed to update DaemonSet default/test: daemonset "default/test" isn't controlled by us`},
+			expectedErr:       fmt.Errorf(`apps/v1, Kind=DaemonSet "default/test" isn't controlled by us`),
+			expectedEvents:    []string{`Warning UpdateDaemonSetFailed Failed to update DaemonSet default/test: apps/v1, Kind=DaemonSet "default/test" isn't controlled by us`},
 		},
 		{
 			name: "all label and annotation keys are kept when the hash matches",
@@ -1041,7 +1043,7 @@ func TestApplyDaemonSet(t *testing.T) {
 						}
 					}
 
-					gotDs, gotChanged, gotErr := ApplyDaemonSet(ctx, client.AppsV1(), dsLister, recorder, tc.required)
+					gotDs, gotChanged, gotErr := ApplyDaemonSet(ctx, client.AppsV1(), dsLister, recorder, tc.required, ApplyOptions{})
 					if !reflect.DeepEqual(gotErr, tc.expectedErr) {
 						t.Fatalf("expected %v, got %v", tc.expectedErr, gotErr)
 					}

@@ -49,7 +49,9 @@ func (scc *Controller) syncServiceAccounts(
 		return progressingConditions, fmt.Errorf("can't delete service account(s): %w", err)
 	}
 
-	_, changed, err := resourceapply.ApplyServiceAccount(ctx, scc.kubeClient.CoreV1(), scc.serviceAccountLister, scc.eventRecorder, requiredServiceAccount, true, false)
+	_, changed, err := resourceapply.ApplyServiceAccount(ctx, scc.kubeClient.CoreV1(), scc.serviceAccountLister, scc.eventRecorder, requiredServiceAccount, resourceapply.ApplyOptions{
+		ForceOwnership: true,
+	})
 	if changed {
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceAccountControllerProgressingCondition, requiredServiceAccount, "apply", sc.Generation)
 	}

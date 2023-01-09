@@ -213,7 +213,7 @@ func (ncdc *Controller) syncJobs(ctx context.Context, jobs map[string]*batchv1.J
 	finished := true
 	klog.V(4).InfoS("Required jobs", "Count", len(required))
 	for _, j := range required {
-		fresh, _, err := resourceapply.ApplyJob(ctx, ncdc.kubeClient.BatchV1(), ncdc.namespacedJobLister, ncdc.eventRecorder, j)
+		fresh, _, err := resourceapply.ApplyJob(ctx, ncdc.kubeClient.BatchV1(), ncdc.namespacedJobLister, ncdc.eventRecorder, j, resourceapply.ApplyOptions{})
 		if err != nil {
 			return fmt.Errorf("can't create job %s: %w", naming.ObjRef(j), err)
 		}

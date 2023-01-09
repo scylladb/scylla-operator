@@ -50,7 +50,9 @@ func (scc *Controller) syncPodDisruptionBudgets(
 	}
 
 	// TODO: Remove forced ownership in v1.5 (#672)
-	_, changed, err := resourceapply.ApplyPodDisruptionBudget(ctx, scc.kubeClient.PolicyV1(), scc.pdbLister, scc.eventRecorder, requiredPDB, true)
+	_, changed, err := resourceapply.ApplyPodDisruptionBudget(ctx, scc.kubeClient.PolicyV1(), scc.pdbLister, scc.eventRecorder, requiredPDB, resourceapply.ApplyOptions{
+		ForceOwnership: true,
+	})
 	if changed {
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, pdbControllerProgressingCondition, requiredPDB, "apply", sc.Generation)
 	}

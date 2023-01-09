@@ -59,7 +59,7 @@ func (ncc *Controller) syncDaemonSet(
 	}
 
 	if requiredDaemonSet != nil {
-		updatedDaemonSet, _, err := resourceapply.ApplyDaemonSet(ctx, ncc.kubeClient.AppsV1(), ncc.daemonSetLister, ncc.eventRecorder, requiredDaemonSet)
+		updatedDaemonSet, _, err := resourceapply.ApplyDaemonSet(ctx, ncc.kubeClient.AppsV1(), ncc.daemonSetLister, ncc.eventRecorder, requiredDaemonSet, resourceapply.ApplyOptions{})
 		if err != nil {
 			return fmt.Errorf("can't apply statefulset update: %w", err)
 		}

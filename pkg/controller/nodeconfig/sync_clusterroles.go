@@ -64,7 +64,9 @@ func (ncc *Controller) syncClusterRoles(ctx context.Context, clusterRoles map[st
 
 	var errs []error
 	for _, cr := range requiredClusterRoles {
-		_, _, err := resourceapply.ApplyClusterRole(ctx, ncc.kubeClient.RbacV1(), ncc.clusterRoleLister, ncc.eventRecorder, cr, true)
+		_, _, err := resourceapply.ApplyClusterRole(ctx, ncc.kubeClient.RbacV1(), ncc.clusterRoleLister, ncc.eventRecorder, cr, resourceapply.ApplyOptions{
+			AllowMissingControllerRef: true,
+		})
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't create missing clusterrole: %w", err))
 			continue

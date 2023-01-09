@@ -2,166 +2,73 @@ package resourceapply
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/scylladb/scylla-operator/pkg/naming"
-	"github.com/scylladb/scylla-operator/pkg/resourcemerge"
 	appsv1 "k8s.io/api/apps/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	appv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
-	appv1listers "k8s.io/client-go/listers/apps/v1"
+	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
+	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/klog/v2"
 )
 
-// ApplyStatefulSet will apply the StatefulSet to match the required object.
-// forceOwnership allows to apply objects without an ownerReference. Normally such objects
-// would be adopted but the old objects may not have correct labels that we need to fix in the new version.
-func ApplyStatefulSet(
+func ApplyStatefulSetWithControl(
 	ctx context.Context,
-	client appv1client.StatefulSetsGetter,
-	lister appv1listers.StatefulSetLister,
+	control ApplyControlInterface[*appsv1.StatefulSet],
 	recorder record.EventRecorder,
 	required *appsv1.StatefulSet,
-	forceOwnership bool,
+	options ApplyOptions,
 ) (*appsv1.StatefulSet, bool, error) {
-	requiredControllerRef := metav1.GetControllerOfNoCopy(required)
-	if requiredControllerRef == nil {
-		return nil, false, fmt.Errorf("StatefulSet %q is missing controllerRef", naming.ObjRef(required))
-	}
-
-	requiredCopy := required.DeepCopy()
-	err := SetHashAnnotation(requiredCopy)
-	if err != nil {
-		return nil, false, err
-	}
-
-	existing, err := lister.StatefulSets(requiredCopy.Namespace).Get(requiredCopy.Name)
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return nil, false, err
-		}
-
-		resourcemerge.SanitizeObject(requiredCopy)
-		actual, err := client.StatefulSets(requiredCopy.Namespace).Create(ctx, requiredCopy, metav1.CreateOptions{})
-		if apierrors.IsAlreadyExists(err) {
-			klog.V(2).InfoS("Already exists (stale cache)", "StatefulSet", klog.KObj(requiredCopy))
-		} else {
-			ReportCreateEvent(recorder, requiredCopy, err)
-		}
-		return actual, true, err
-	}
-
-	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
-	if existingControllerRef == nil {
-		if !forceOwnership {
-			// This is not the place to handle adoption.
-			err = fmt.Errorf("statefulset %q isn't controlled by anyone, won't adopt it in apply", naming.ObjRef(requiredCopy))
-			ReportUpdateEvent(recorder, requiredCopy, err)
-			return nil, false, err
-		}
-		klog.V(2).InfoS("Forcing apply to claim the StatefulSet", "StatefulSet", naming.ObjRef(requiredCopy))
-	} else if existingControllerRef.UID != requiredControllerRef.UID {
-		err = fmt.Errorf("statefulset %q is controlled by someone else", naming.ObjRef(requiredCopy))
-		ReportUpdateEvent(recorder, requiredCopy, err)
-		return nil, false, err
-	}
-
-	existingHash := existing.Annotations[naming.ManagedHash]
-	requiredHash := requiredCopy.Annotations[naming.ManagedHash]
-
-	// If they are the same do nothing.
-	if existingHash == requiredHash {
-		return existing, false, nil
-	}
-
-	resourcemerge.MergeMetadataInPlace(&requiredCopy.ObjectMeta, existing.ObjectMeta)
-
-	// TODO: Handle immutable fields. Maybe orphan delete + recreate.
-
-	// Honor the required RV if it was already set.
-	// Required objects set RV in case their input is based on a previous version of itself.
-	if len(requiredCopy.ResourceVersion) == 0 {
-		requiredCopy.ResourceVersion = existing.ResourceVersion
-	}
-	actual, err := client.StatefulSets(requiredCopy.Namespace).Update(ctx, requiredCopy, metav1.UpdateOptions{})
-	if apierrors.IsConflict(err) {
-		klog.V(2).InfoS("Hit update conflict, will retry.", "StatefulSet", klog.KObj(requiredCopy))
-	} else {
-		ReportUpdateEvent(recorder, requiredCopy, err)
-	}
-	if err != nil {
-		return nil, false, fmt.Errorf("can't update statefulset: %w", err)
-	}
-	return actual, true, nil
+	return ApplyGeneric[*appsv1.StatefulSet](ctx, control, recorder, required, options)
 }
 
-// ApplyDaemonSet will apply the DaemonSet to match the required object.
-func ApplyDaemonSet(
+func ApplyStatefulSet(
 	ctx context.Context,
-	client appv1client.DaemonSetsGetter,
-	lister appv1listers.DaemonSetLister,
+	client appsv1client.StatefulSetsGetter,
+	lister appsv1listers.StatefulSetLister,
+	recorder record.EventRecorder,
+	required *appsv1.StatefulSet,
+	options ApplyOptions,
+) (*appsv1.StatefulSet, bool, error) {
+	return ApplyStatefulSetWithControl(
+		ctx,
+		ApplyControlFuncs[*appsv1.StatefulSet]{
+			GetCachedFunc: lister.StatefulSets(required.Namespace).Get,
+			CreateFunc:    client.StatefulSets(required.Namespace).Create,
+			UpdateFunc:    client.StatefulSets(required.Namespace).Update,
+			DeleteFunc:    client.StatefulSets(required.Namespace).Delete,
+		},
+		recorder,
+		required,
+		options,
+	)
+}
+
+func ApplyDaemonSetWithControl(
+	ctx context.Context,
+	control ApplyControlInterface[*appsv1.DaemonSet],
 	recorder record.EventRecorder,
 	required *appsv1.DaemonSet,
+	options ApplyOptions,
 ) (*appsv1.DaemonSet, bool, error) {
-	requiredControllerRef := metav1.GetControllerOfNoCopy(required)
-	if requiredControllerRef == nil {
-		return nil, false, fmt.Errorf("DaemonSet %q is missing controllerRef", naming.ObjRef(required))
-	}
+	return ApplyGeneric[*appsv1.DaemonSet](ctx, control, recorder, required, options)
+}
 
-	requiredCopy := required.DeepCopy()
-	err := SetHashAnnotation(requiredCopy)
-	if err != nil {
-		return nil, false, err
-	}
-
-	existing, err := lister.DaemonSets(requiredCopy.Namespace).Get(requiredCopy.Name)
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return nil, false, err
-		}
-
-		resourcemerge.SanitizeObject(requiredCopy)
-		actual, err := client.DaemonSets(requiredCopy.Namespace).Create(ctx, requiredCopy, metav1.CreateOptions{})
-		if apierrors.IsAlreadyExists(err) {
-			klog.V(2).InfoS("Already exists (stale cache)", "DaemonSet", klog.KObj(requiredCopy))
-		} else {
-			ReportCreateEvent(recorder, requiredCopy, err)
-		}
-		return actual, true, err
-	}
-
-	existingControllerRef := metav1.GetControllerOfNoCopy(existing)
-	if existingControllerRef == nil || existingControllerRef.UID != requiredControllerRef.UID {
-		err = fmt.Errorf("daemonset %q isn't controlled by us", naming.ObjRef(requiredCopy))
-		ReportUpdateEvent(recorder, requiredCopy, err)
-		return nil, false, err
-	}
-
-	existingHash := existing.Annotations[naming.ManagedHash]
-	requiredHash := requiredCopy.Annotations[naming.ManagedHash]
-
-	// If they are the same do nothing.
-	if existingHash == requiredHash {
-		return existing, false, nil
-	}
-
-	resourcemerge.MergeMetadataInPlace(&requiredCopy.ObjectMeta, existing.ObjectMeta)
-
-	// Honor the required RV if it was already set.
-	// Required objects set RV in case their input is based on a previous version of itself.
-	if len(requiredCopy.ResourceVersion) == 0 {
-		requiredCopy.ResourceVersion = existing.ResourceVersion
-	}
-	actual, err := client.DaemonSets(requiredCopy.Namespace).Update(ctx, requiredCopy, metav1.UpdateOptions{})
-	if apierrors.IsConflict(err) {
-		klog.V(2).InfoS("Hit update conflict, will retry.", "DaemonSet", klog.KObj(requiredCopy))
-	} else {
-		ReportUpdateEvent(recorder, requiredCopy, err)
-	}
-	if err != nil {
-		return nil, false, fmt.Errorf("can't update daemonset: %w", err)
-	}
-	return actual, true, nil
+func ApplyDaemonSet(
+	ctx context.Context,
+	client appsv1client.DaemonSetsGetter,
+	lister appsv1listers.DaemonSetLister,
+	recorder record.EventRecorder,
+	required *appsv1.DaemonSet,
+	options ApplyOptions,
+) (*appsv1.DaemonSet, bool, error) {
+	return ApplyDaemonSetWithControl(
+		ctx,
+		ApplyControlFuncs[*appsv1.DaemonSet]{
+			GetCachedFunc: lister.DaemonSets(required.Namespace).Get,
+			CreateFunc:    client.DaemonSets(required.Namespace).Create,
+			UpdateFunc:    client.DaemonSets(required.Namespace).Update,
+			DeleteFunc:    client.DaemonSets(required.Namespace).Delete,
+		},
+		recorder,
+		required,
+		options,
+	)
 }

@@ -30,26 +30,26 @@ func SanitizeObject(obj metav1.Object) {
 }
 
 // MergeMapInPlaceWithoutRemovalKeys merges keys from existing into the required object.
-func MergeMapInPlaceWithoutRemovalKeys(required *map[string]string, existing map[string]string) {
+func MergeMapInPlaceWithoutRemovalKeys(required map[string]string, existing map[string]string) {
 	for existingKey, existingValue := range existing {
 		// Don't copy removed keys.
-		_, isRemoved := (*required)[toRemovalKey(existingKey)]
+		_, isRemoved := required[toRemovalKey(existingKey)]
 		if isRemoved {
 			continue
 		}
 
 		// Copy only keys not present in the required object.
-		_, found := (*required)[existingKey]
+		_, found := required[existingKey]
 		if !found {
-			(*required)[existingKey] = existingValue
+			required[existingKey] = existingValue
 		}
 	}
 
-	cleanRemovalKeys(*required)
+	cleanRemovalKeys(required)
 }
 
 // MergeMetadataInPlace merges metadata from existing into the required.
-func MergeMetadataInPlace(required *metav1.ObjectMeta, existing metav1.ObjectMeta) {
-	MergeMapInPlaceWithoutRemovalKeys(&required.Annotations, existing.Annotations)
-	MergeMapInPlaceWithoutRemovalKeys(&required.Labels, existing.Labels)
+func MergeMetadataInPlace(required metav1.Object, existing metav1.Object) {
+	MergeMapInPlaceWithoutRemovalKeys(required.GetAnnotations(), existing.GetAnnotations())
+	MergeMapInPlaceWithoutRemovalKeys(required.GetLabels(), existing.GetLabels())
 }

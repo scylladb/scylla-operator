@@ -49,7 +49,9 @@ func (scc *Controller) syncRoleBindings(
 		return progressingConditions, fmt.Errorf("can't delete role binding(s): %w", err)
 	}
 
-	_, changed, err := resourceapply.ApplyRoleBinding(ctx, scc.kubeClient.RbacV1(), scc.roleBindingLister, scc.eventRecorder, requiredRoleBinding, true, false)
+	_, changed, err := resourceapply.ApplyRoleBinding(ctx, scc.kubeClient.RbacV1(), scc.roleBindingLister, scc.eventRecorder, requiredRoleBinding, resourceapply.ApplyOptions{
+		ForceOwnership: true,
+	})
 	if changed {
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, roleBindingControllerProgressingCondition, requiredRoleBinding, "apply", sc.Generation)
 	}

@@ -122,7 +122,7 @@ func TestApplyIngress(t *testing.T) {
 			}(),
 			expectedIngress: nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`ingress "default/test" is missing controllerRef`),
+			expectedErr:     fmt.Errorf(`networking.k8s.io/v1, Kind=Ingress "default/test" is missing controllerRef`),
 			expectedEvents:  nil,
 		},
 		{
@@ -226,7 +226,7 @@ func TestApplyIngress(t *testing.T) {
 			}(),
 			expectedIngress: nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf("can't update ingress: %w", apierrors.NewNotFound(networkingv1.Resource("ingresses"), "test")),
+			expectedErr:     fmt.Errorf(`can't update networking.k8s.io/v1, Kind=Ingress "default/test": %w`, apierrors.NewNotFound(networkingv1.Resource("ingresses"), "test")),
 			expectedEvents:  []string{`Warning UpdateIngressFailed Failed to update Ingress default/test: ingresses.networking.k8s.io "test" not found`},
 		},
 		{
@@ -246,8 +246,8 @@ func TestApplyIngress(t *testing.T) {
 			}(),
 			expectedIngress: nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`ingress "default/test" isn't controlled by us`),
-			expectedEvents:  []string{`Warning UpdateIngressFailed Failed to update Ingress default/test: ingress "default/test" isn't controlled by us`},
+			expectedErr:     fmt.Errorf(`networking.k8s.io/v1, Kind=Ingress "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateIngressFailed Failed to update Ingress default/test: networking.k8s.io/v1, Kind=Ingress "default/test" isn't controlled by us`},
 		},
 		{
 			name: "update fails if the existing object is owned by someone else",
@@ -266,8 +266,8 @@ func TestApplyIngress(t *testing.T) {
 			}(),
 			expectedIngress: nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf(`ingress "default/test" isn't controlled by us`),
-			expectedEvents:  []string{`Warning UpdateIngressFailed Failed to update Ingress default/test: ingress "default/test" isn't controlled by us`},
+			expectedErr:     fmt.Errorf(`networking.k8s.io/v1, Kind=Ingress "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateIngressFailed Failed to update Ingress default/test: networking.k8s.io/v1, Kind=Ingress "default/test" isn't controlled by us`},
 		},
 		{
 			name: "all label and annotation keys are kept when the hash matches",
@@ -442,7 +442,7 @@ func TestApplyIngress(t *testing.T) {
 						}
 					}
 
-					gotObj, gotChanged, gotErr := ApplyIngress(ctx, client.NetworkingV1(), ingressLister, recorder, tc.required)
+					gotObj, gotChanged, gotErr := ApplyIngress(ctx, client.NetworkingV1(), ingressLister, recorder, tc.required, ApplyOptions{})
 					if !reflect.DeepEqual(gotErr, tc.expectedErr) {
 						t.Fatalf("expected %v, got %v", tc.expectedErr, gotErr)
 					}

@@ -68,7 +68,9 @@ func (scc *Controller) syncAgentToken(
 	}
 
 	// TODO: Remove forced ownership in v1.5 (#672)
-	_, changed, err := resourceapply.ApplySecret(ctx, scc.kubeClient.CoreV1(), scc.secretLister, scc.eventRecorder, secret, true)
+	_, changed, err := resourceapply.ApplySecret(ctx, scc.kubeClient.CoreV1(), scc.secretLister, scc.eventRecorder, secret, resourceapply.ApplyOptions{
+		ForceOwnership: true,
+	})
 	if changed {
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, agentTokenControllerProgressingCondition, secret, "apply", sc.Generation)
 	}

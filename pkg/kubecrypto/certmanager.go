@@ -82,7 +82,7 @@ func (cm *CertificateManager) ManageCertificates(ctx context.Context, nowFunc fu
 	caSecret.Annotations = helpers.MergeMaps(caSecret.Annotations, caConfig.Annotations)
 	caSecret.Labels = helpers.MergeMaps(caSecret.Labels, caConfig.Labels)
 
-	updatedCASecret, caSecretChanged, err := resourceapply.ApplySecret(ctx, cm.secretsClient, cm.secretLister, cm.eventRecorder, caSecret, false)
+	updatedCASecret, caSecretChanged, err := resourceapply.ApplySecret(ctx, cm.secretsClient, cm.secretLister, cm.eventRecorder, caSecret, resourceapply.ApplyOptions{})
 	if err != nil {
 		return fmt.Errorf("can't apply secret %q: %w", naming.ObjRef(caSecret), err)
 	}
@@ -98,7 +98,7 @@ func (cm *CertificateManager) ManageCertificates(ctx context.Context, nowFunc fu
 	caBundleCM.Annotations = helpers.MergeMaps(caBundleCM.Annotations, caBundleConfig.Annotations)
 	caBundleCM.Labels = helpers.MergeMaps(caBundleCM.Labels, caBundleConfig.Labels)
 
-	_, _, err = resourceapply.ApplyConfigMap(ctx, cm.configMapClient, cm.configMapLister, cm.eventRecorder, caBundleCM)
+	_, _, err = resourceapply.ApplyConfigMap(ctx, cm.configMapClient, cm.configMapLister, cm.eventRecorder, caBundleCM, resourceapply.ApplyOptions{})
 	if err != nil {
 		return fmt.Errorf("can't apply ConfigMap %q: %w", naming.ObjRef(caBundleCM), err)
 	}
@@ -113,7 +113,7 @@ func (cm *CertificateManager) ManageCertificates(ctx context.Context, nowFunc fu
 		secret.Annotations = helpers.MergeMaps(secret.Annotations, cc.Annotations)
 		secret.Labels = helpers.MergeMaps(secret.Labels, cc.Labels)
 
-		_, _, err = resourceapply.ApplySecret(ctx, cm.secretsClient, cm.secretLister, cm.eventRecorder, secret, false)
+		_, _, err = resourceapply.ApplySecret(ctx, cm.secretsClient, cm.secretLister, cm.eventRecorder, secret, resourceapply.ApplyOptions{})
 		if err != nil {
 			return fmt.Errorf("can't apply secret %q: %w", naming.ObjRef(secret), err)
 		}

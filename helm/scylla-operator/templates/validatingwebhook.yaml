@@ -2,11 +2,16 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   annotations:
+  {{- if .Values.webhook.createSelfSignedCertificate }}
     cert-manager.io/inject-ca-from: scylla-operator/{{ include "scylla-operator.certificateName" . }}
+  {{- end }}
   name: scylla-operator
 webhooks:
 - name: webhook.scylla.scylladb.com
   clientConfig:
+  {{- if not .Values.webhook.createSelfSignedCertificate }}
+    caBundle: {{ required "If self signed certificate is turned off, you need to provide caBundle for validating webhook" .Values.webhook.caBundle  | quote }}
+  {{- end }}
     service:
       name: {{ include "scylla-operator.webhookServiceName" . }}
       namespace: scylla-operator

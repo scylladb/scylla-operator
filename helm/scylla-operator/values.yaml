@@ -41,6 +41,10 @@ webhook:
   # Name of a secret containing custom certificate
   # If not set and createSelfSignedCertificate is true, a name is generated using fullname
   certificateSecretName: ""
+  # If createSelfSignedCertificate=false, you need to supply your own certificate and also
+  # provide CA for the API server, so that it accepts your certificate. The value holds base64-encoded
+  # CA in PEM format.
+  caBundle: ""
 
 serviceAccount:
   # Specifies whether a service account should be created

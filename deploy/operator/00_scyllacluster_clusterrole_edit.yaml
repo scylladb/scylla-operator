@@ -10,6 +10,7 @@ rules:
   - scylla.scylladb.com
   resources:
   - scyllaclusters
+  - scylladbmonitorings
   verbs:
   - create
   - patch

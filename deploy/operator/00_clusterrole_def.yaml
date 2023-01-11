@@ -17,6 +17,7 @@ rules:
   - ""
   resources:
   - nodes
+  - endpoints
   verbs:
   - get
   - list
@@ -65,6 +66,7 @@ rules:
   - list
   - watch
   - create
+  - delete
   - update
   - patch
 - apiGroups:
@@ -83,14 +85,16 @@ rules:
   - apps
   resources:
   - statefulsets
+  - daemonsets
+  - deployments
   verbs:
   - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
+  - update
+  - patch
+  - delete
 - apiGroups:
   - apps
   resources:
@@ -101,6 +105,7 @@ rules:
   - scylla.scylladb.com
   resources:
   - scyllaclusters
+  - scylladbmonitorings
   verbs:
   - create
   - delete
@@ -113,6 +118,7 @@ rules:
   - scylla.scylladb.com
   resources:
   - scyllaclusters/status
+  - scylladbmonitorings/status
   verbs:
   - get
   - list
@@ -147,18 +153,6 @@ rules:
   - policy
   resources:
   - poddisruptionbudgets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps
-  resources:
-  - daemonsets
   verbs:
   - create
   - delete
@@ -265,3 +259,17 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - monitoring.coreos.com
+  resources:
+  - prometheuses
+  - prometheusrules
+  - servicemonitors
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - patch
+  - update
+  - delete

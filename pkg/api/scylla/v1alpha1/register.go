@@ -34,6 +34,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&NodeConfigList{},
 		&ScyllaOperatorConfig{},
 		&ScyllaOperatorConfigList{},
+		&ScyllaDBMonitoring{},
+		&ScyllaDBMonitoringList{},
 	)
 	metav1.AddToGroupVersion(scheme, GroupVersion)
 	return nil

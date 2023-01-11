@@ -2,9 +2,13 @@ package controllerhelpers
 
 import (
 	"context"
+	"fmt"
 
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
+	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -92,4 +96,78 @@ func GetObjects[CT, T kubeinterfaces.ObjectInterface](
 		},
 		control,
 	)
+}
+
+func RunSync(conditions *[]metav1.Condition, progressingConditionType, degradedCondType string, observedGeneration int64, syncFn func() ([]metav1.Condition, error)) error {
+	progressingConditions, err := syncFn()
+	SetStatusConditionFromError(conditions, err, degradedCondType, observedGeneration)
+	if err != nil {
+		return err
+	}
+
+	progressingCondition, err := AggregateStatusConditions(
+		progressingConditions,
+		metav1.Condition{
+			Type:               progressingConditionType,
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: observedGeneration,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("can't aggregate progressing conditions %q: %w", progressingConditionType, err)
+	}
+	apimeta.SetStatusCondition(conditions, progressingCondition)
+
+	return nil
+}
+
+func SetAggregatedWorkloadConditions(conditions *[]metav1.Condition, generation int64) error {
+	availableCondition, err := AggregateStatusConditions(
+		FindStatusConditionsWithSuffix(*conditions, scyllav1.AvailableCondition),
+		metav1.Condition{
+			Type:               scyllav1.AvailableCondition,
+			Status:             metav1.ConditionTrue,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: generation,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("can't aggregate status conditions: %w", err)
+	}
+	apimeta.SetStatusCondition(conditions, availableCondition)
+
+	progressingCondition, err := AggregateStatusConditions(
+		FindStatusConditionsWithSuffix(*conditions, scyllav1.ProgressingCondition),
+		metav1.Condition{
+			Type:               scyllav1.ProgressingCondition,
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: generation,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("can't aggregate status conditions: %w", err)
+	}
+	apimeta.SetStatusCondition(conditions, progressingCondition)
+
+	degradedCondition, err := AggregateStatusConditions(
+		FindStatusConditionsWithSuffix(*conditions, scyllav1.DegradedCondition),
+		metav1.Condition{
+			Type:               scyllav1.DegradedCondition,
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: generation,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("can't aggregate status conditions: %w", err)
+	}
+	apimeta.SetStatusCondition(conditions, degradedCondition)
+
+	return nil
 }

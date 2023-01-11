@@ -12,7 +12,7 @@ import (
 
 var (
 	Scheme                = runtime.NewScheme()
-	Codecs                = serializer.NewCodecFactory(Scheme)
+	Codecs                = serializer.NewCodecFactory(Scheme, serializer.EnableStrict)
 	DefaultYamlSerializer = json.NewSerializerWithOptions(
 		json.DefaultMetaFactory,
 		Scheme,
@@ -20,7 +20,7 @@ var (
 		json.SerializerOptions{
 			Yaml:   true,
 			Pretty: false,
-			Strict: false,
+			Strict: true,
 		},
 	)
 )

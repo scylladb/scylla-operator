@@ -62,6 +62,18 @@ func NewHandlers[T kubeinterfaces.ObjectInterface](queue workqueue.RateLimitingI
 	}, nil
 }
 
+func (h *Handlers[T]) EnqueueWithFilterFunc(filterFunc func(T) bool) EnqueueFuncType {
+	return func(depth int, untypedObj kubeinterfaces.ObjectInterface, op HandlerOperationType) {
+		obj := untypedObj.(T)
+
+		if !filterFunc(obj) {
+			return
+		}
+
+		h.Enqueue(depth+1, untypedObj, op)
+	}
+}
+
 func (h *Handlers[T]) Enqueue(depth int, untypedObj kubeinterfaces.ObjectInterface, op HandlerOperationType) {
 	obj := untypedObj.(T)
 
@@ -89,29 +101,35 @@ func (h *Handlers[T]) EnqueueAll(depth int, untypedObj kubeinterfaces.ObjectInte
 	}
 }
 
+func (h *Handlers[QT]) EnqueueOwnerFunc(enqueueFunc EnqueueFuncType) EnqueueFuncType {
+	return func(depth int, obj kubeinterfaces.ObjectInterface, operation HandlerOperationType) {
+		controllerRef := metav1.GetControllerOf(obj)
+		if controllerRef == nil {
+			return
+		}
+
+		if controllerRef.Kind != h.gvk.Kind {
+			return
+		}
+
+		owner, err := h.getterLister.Get(obj.GetNamespace(), controllerRef.Name)
+		if err != nil {
+			utilruntime.HandleError(err)
+			return
+		}
+
+		if owner.GetUID() != controllerRef.UID {
+			utilruntime.HandleError(err)
+			return
+		}
+
+		klog.V(4).InfoSDepth(depth, "Enqueuing owner", append([]any{"OwnerGVK", h.gvk, "OwnerRef", klog.KObj(owner), "OwnerUID", owner.GetUID()}, getObjectLogContext(obj, nil)...)...)
+		enqueueFunc(depth+1, owner, operation)
+	}
+}
+
 func (h *Handlers[QT]) EnqueueOwner(depth int, obj kubeinterfaces.ObjectInterface, operation HandlerOperationType) {
-	controllerRef := metav1.GetControllerOf(obj)
-	if controllerRef == nil {
-		return
-	}
-
-	if controllerRef.Kind != h.gvk.Kind {
-		return
-	}
-
-	owner, err := h.getterLister.Get(obj.GetNamespace(), controllerRef.Name)
-	if err != nil {
-		utilruntime.HandleError(err)
-		return
-	}
-
-	if owner.GetUID() != controllerRef.UID {
-		utilruntime.HandleError(err)
-		return
-	}
-
-	klog.V(4).InfoSDepth(depth, "Enqueuing owner", append([]any{"OwnerGVK", h.gvk, "OwnerRef", klog.KObj(owner), "OwnerUID", owner.GetUID()}, getObjectLogContext(obj, nil)...)...)
-	h.Enqueue(depth+1, owner, operation)
+	h.EnqueueOwnerFunc(h.Enqueue)(depth+1, obj, operation)
 }
 
 func (h *Handlers[T]) HandleAdd(obj kubeinterfaces.ObjectInterface, enqueueFunc EnqueueFuncType) {

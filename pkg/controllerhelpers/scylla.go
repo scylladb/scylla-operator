@@ -218,3 +218,17 @@ func EnsureNodeConfigCondition(status *scyllav1alpha1.NodeConfigStatus, cond *sc
 
 	*existingCond = *cond
 }
+
+func IsScyllaPod(pod *corev1.Pod) bool {
+	// TODO: use a better label, verify the container
+	if pod.Labels == nil {
+		return false
+	}
+
+	_, ok := pod.Labels[naming.ClusterNameLabel]
+	if !ok {
+		return false
+	}
+
+	return true
+}

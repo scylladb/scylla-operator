@@ -39,6 +39,11 @@ func (ncpc *Controller) sync(ctx context.Context, key string) error {
 		return fmt.Errorf("can't list pods: %w", err)
 	}
 
+	if !controllerhelpers.IsScyllaPod(pod) {
+		klog.Warningf("Non-Scylla Pod %q enqueued for sync by NodeConfigPod controller", klog.KObj(pod))
+		return nil
+	}
+
 	if pod.DeletionTimestamp != nil {
 		return nil
 	}

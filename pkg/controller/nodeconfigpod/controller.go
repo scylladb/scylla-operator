@@ -165,7 +165,7 @@ func (ncpc *Controller) enqueueAllScyllaPodsOnNode(depth int, obj kubeinterfaces
 
 	klog.V(4).InfoSDepth(depth, "Enqueuing all pods on Node", "Pods", len(pods), "Node", klog.KObj(node))
 	for _, pod := range pods {
-		ncpc.handlers.EnqueueWithDepth(depth+1, pod, op)
+		ncpc.handlers.Enqueue(depth+1, pod, op)
 	}
 
 	return
@@ -212,7 +212,7 @@ func (ncpc *Controller) enqueueScyllaPod(depth int, obj kubeinterfaces.ObjectInt
 		return
 	}
 
-	ncpc.handlers.EnqueueWithDepth(depth+1, pod, op)
+	ncpc.handlers.Enqueue(depth+1, pod, op)
 }
 
 func (ncpc *Controller) addPod(obj interface{}) {

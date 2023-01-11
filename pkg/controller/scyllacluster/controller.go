@@ -362,7 +362,7 @@ func (scc *Controller) enqueueOwnerThroughStatefulSetOwner(depth int, obj kubein
 	}
 
 	klog.V(4).InfoS("Enqueuing owner of StatefulSet", "StatefulSet", klog.KObj(sc), "ScyllaCluster", klog.KObj(sc))
-	scc.handlers.EnqueueWithDepth(depth+1, sc, op)
+	scc.handlers.Enqueue(depth+1, sc, op)
 }
 
 func (scc *Controller) addService(obj interface{}) {

@@ -72,10 +72,14 @@ func Run(ctx context.Context, programName, lockName, lockNamespace string, clien
 
 				criticalSectionTokenChan <- struct{}{} // Acquire token
 				fErr = f(mergedCtx)
-				if err != nil {
+				if fErr != nil {
 					// We are passing it on but just in case there would be a failure on the way we should log it.
-					klog.Error(err)
+					klog.Error(fErr)
 				}
+				// TODO: Handle the exit more gracefully, if possible, to also release the lock.
+				//       At this point canceling the context prevents any new calls to kube apiserver as well.
+				//       (We need to cancel the context so the program exits on setup errors.)
+				leCtxCancel()
 				<-criticalSectionTokenChan // release token
 			},
 			OnStoppedLeading: func() {

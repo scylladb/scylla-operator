@@ -72,21 +72,22 @@ type RunOptions struct {
 	genericclioptions.ClientConfig
 	TestFrameworkOptions
 
-	Timeout               time.Duration
-	Quiet                 bool
-	ShowProgress          bool
-	FlakeAttempts         int
-	FailFast              bool
-	LabelFilter           string
-	FocusStrings          []string
-	SkipStrings           []string
-	RandomSeed            int64
-	DryRun                bool
-	Color                 bool
-	Parallelism           int
-	ParallelShard         int
-	ParallelServerAddress string
-	ParallelLogLevel      int32
+	Timeout                time.Duration
+	Quiet                  bool
+	ShowProgress           bool
+	FlakeAttempts          int
+	FailFast               bool
+	LabelFilter            string
+	FocusStrings           []string
+	SkipStrings            []string
+	RandomSeed             int64
+	DryRun                 bool
+	Color                  bool
+	OverrideIngressAddress string
+	Parallelism            int
+	ParallelShard          int
+	ParallelServerAddress  string
+	ParallelLogLevel       int32
 
 	SelectedSuite *ginkgotest.TestSuite
 }
@@ -160,6 +161,7 @@ func NewRunCommand(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd.Flags().Int64VarP(&o.RandomSeed, "random-seed", "", o.RandomSeed, "Seed for the test suite.")
 	cmd.Flags().BoolVarP(&o.DryRun, "dry-run", "", o.DryRun, "Doesn't execute the tests, only prints. Limited to serial execution.")
 	cmd.Flags().BoolVarP(&o.Color, "color", "", o.Color, "Colors the output.")
+	cmd.Flags().StringVarP(&o.OverrideIngressAddress, "override-ingress-address", "", o.OverrideIngressAddress, "This flag will override destination address when sending testing data to applications behind ingresses.")
 	cmd.Flags().IntVarP(&o.Parallelism, "parallelism", "", o.Parallelism, "Determines how many workers are going to run in parallel. If not specified or if zero, the default parallelism for the suite will be chosen.")
 	cmd.Flags().Int32Var(&o.ParallelLogLevel, "parallel-loglevel", o.ParallelLogLevel, "Set the level of log output for parallel processes (0-10).")
 	cmd.Flags().IntVarP(&o.ParallelShard, parallelShardFlagKey, "", o.ParallelShard, "")
@@ -256,9 +258,10 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 	const suite = "Scylla operator E2E tests"
 
 	framework.TestContext = &framework.TestContextType{
-		RestConfig:            o.RestConfig,
-		ArtifactsDir:          o.ArtifactsDir,
-		DeleteTestingNSPolicy: o.DeleteTestingNSPolicy,
+		RestConfig:             o.RestConfig,
+		ArtifactsDir:           o.ArtifactsDir,
+		DeleteTestingNSPolicy:  o.DeleteTestingNSPolicy,
+		OverrideIngressAddress: o.OverrideIngressAddress,
 	}
 
 	suiteConfig, reporterConfig := ginkgo.GinkgoConfiguration()

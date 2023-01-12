@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: haproxy-ingress
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 50%
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: haproxy-ingress
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: haproxy-ingress
+    spec:
+      terminationGracePeriodSeconds: 70
+      serviceAccountName: haproxy-ingress
+      containers:
+      - name: haproxy-ingress
+        image: haproxytech/kubernetes-ingress:1.9.0
+        args:
+        - --disable-ipv6
+        - --ipv4-bind-address=0.0.0.0
+        - --http-bind-port=8080
+        - --https-bind-port=8443
+        - --configmap=haproxy-ingress/haproxy-ingress
+        - --default-backend-service=haproxy-ingress/ingress-default-backend
+        - --default-ssl-certificate=haproxy-ingress/ingress-default-ssl-certificate
+        - --log=trace
+        securityContext:
+          runAsUser:  1000
+          runAsGroup: 1000
+          capabilities:
+            drop:
+            - ALL
+            add:
+            - NET_BIND_SERVICE
+        resources:
+          requests:
+            cpu: 100m
+            memory: 50M
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 1042
+        ports:
+        - name: http
+          containerPort: 8080
+        - name: https
+          containerPort: 8443
+        - name: stat
+          containerPort: 1024
+        env:
+        - name: TZ
+          value: "Etc/UTC"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace

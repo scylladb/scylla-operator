@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: haproxy-ingress
+data:
+  hard-stop-after: "66s"
+  scale-server-slots: "2"
+  timeout-client: "61"
+  timeout-connect: "7s"
+  timeout-http-request: "5m"
+  timeout-http-keep-alive: "62s"
+  timeout-queue: "8s"
+  timeout-server: "4s"
+  timeout-tunnel: "29m"
+  dontlognull: "true"
+  src-ip-header: "True-Client-IP"
+  forwarded-for: "true"
+  http-keep-alive: "true"
+  http-server-close: "false"
+  load-balance: "roundrobin"
+  logasap: "true"
+  syslog-server: "address:stdout, format: raw, facility:daemon, level: debug"
+  global-config-snippet: |
+    tune.bufsize 32768
+    tune.idletimer 0
+    tune.ssl.cachesize 200000
+    tune.ssl.lifetime 300000
+    tune.pipesize 10485760
+    maxpipes 400000
+  backend-config-snippet: |
+    option splice-auto
+    option splice-request
+    option splice-response
+    option tcplog
+  stats-config-snippet: |
+    option dontlog-normal

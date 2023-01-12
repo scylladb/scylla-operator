@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-cfg
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 10s
+      scrape_timeout: 10s
+    scrape_configs:
+    - job_name: haproxy
+      kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+          - haproxy-controller
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_run]
+        regex: haproxy-ingress
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_container_port_number]
+        regex: 1024
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_node_name]
+        target_label: hostname

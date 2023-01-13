@@ -1016,6 +1016,9 @@ func TestApplyRoleBinding(t *testing.T) {
 				ResourceVersion: "42",
 				Labels:          map[string]string{},
 			},
+			RoleRef: rbacv1.RoleRef{
+				Name: "test",
+			},
 		}
 	}
 	newRBWithControllerRef := func() *rbacv1.RoleBinding {
@@ -1112,25 +1115,28 @@ func TestApplyRoleBinding(t *testing.T) {
 			expectedEvents:  nil,
 		},
 		{
-			name: "updates the RB when AutomountRoleBindingToken differ",
+			name: "recreates the RB when roleRef changes",
 			existing: []runtime.Object{
 				newRB(),
 			},
 			allowMissingControllerRef: true,
 			required: func() *rbacv1.RoleBinding {
 				rb := newRB()
-				rb.RoleRef.Name = "foo"
+				rb.RoleRef.Name = "changed"
 				return rb
 			}(),
 			expectedRB: func() *rbacv1.RoleBinding {
 				rb := newRB()
-				rb.RoleRef.Name = "foo"
+				rb.RoleRef.Name = "changed"
 				utilruntime.Must(SetHashAnnotation(rb))
 				return rb
 			}(),
 			expectedChanged: true,
 			expectedErr:     nil,
-			expectedEvents:  []string{"Normal RoleBindingUpdated RoleBinding default/test updated"},
+			expectedEvents: []string{
+				"Normal RoleBindingDeleted RoleBinding default/test deleted",
+				"Normal RoleBindingCreated RoleBinding default/test created",
+			},
 		},
 		{
 			name: "updates the RB if labels differ",
@@ -1159,7 +1165,11 @@ func TestApplyRoleBinding(t *testing.T) {
 				func() *rbacv1.RoleBinding {
 					rb := newRBWithHash()
 					// Simulate admission by changing a value after the hash is computed.
-					rb.RoleRef.Name = "foo"
+					rb.Subjects = []rbacv1.Subject{
+						{
+							Name: "changed",
+						},
+					}
 					return rb
 				}(),
 			},
@@ -1168,7 +1178,11 @@ func TestApplyRoleBinding(t *testing.T) {
 			expectedRB: func() *rbacv1.RoleBinding {
 				rb := newRBWithHash()
 				// Simulate admission by changing a value after the hash is computed.
-				rb.RoleRef.Name = "foo"
+				rb.Subjects = []rbacv1.Subject{
+					{
+						Name: "changed",
+					},
+				}
 				return rb
 			}(),
 			expectedChanged: false,
@@ -1189,13 +1203,13 @@ func TestApplyRoleBinding(t *testing.T) {
 			required: func() *rbacv1.RoleBinding {
 				rb := newRB()
 				rb.ResourceVersion = ""
-				rb.RoleRef.Name = "foo"
+				rb.Labels = map[string]string{"changed": "changed"}
 				return rb
 			}(),
 			expectedRB: func() *rbacv1.RoleBinding {
 				rb := newRB()
 				rb.ResourceVersion = "21"
-				rb.RoleRef.Name = "foo"
+				rb.Labels = map[string]string{"changed": "changed"}
 				utilruntime.Must(SetHashAnnotation(rb))
 				return rb
 			}(),
@@ -1212,7 +1226,7 @@ func TestApplyRoleBinding(t *testing.T) {
 			allowMissingControllerRef: true,
 			required: func() *rbacv1.RoleBinding {
 				rb := newRB()
-				rb.RoleRef.Name = "foo"
+				rb.Labels = map[string]string{"changed": "changed"}
 				return rb
 			}(),
 			expectedRB:      nil,

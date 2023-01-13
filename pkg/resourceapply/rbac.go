@@ -49,7 +49,20 @@ func ApplyRoleBindingWithControl(
 	required *rbacv1.RoleBinding,
 	options ApplyOptions,
 ) (*rbacv1.RoleBinding, bool, error) {
-	return ApplyGeneric[*rbacv1.RoleBinding](ctx, control, recorder, required, options)
+	return ApplyGenericWithHandlers[*rbacv1.RoleBinding](
+		ctx,
+		control,
+		recorder,
+		required,
+		options,
+		nil,
+		func(required *rbacv1.RoleBinding, existing *rbacv1.RoleBinding) string {
+			if !equality.Semantic.DeepEqual(existing.RoleRef, (*required).RoleRef) {
+				return "roleRef is immutable"
+			}
+			return ""
+		},
+	)
 }
 
 func ApplyRoleBinding(

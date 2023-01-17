@@ -37,18 +37,26 @@ func (f ControlleeManagerGetObjectsFuncs[CT, T]) PatchObject(ctx context.Context
 
 var _ ControlleeManagerGetObjectsInterface[kubeinterfaces.ObjectInterface, kubeinterfaces.ObjectInterface] = ControlleeManagerGetObjectsFuncs[kubeinterfaces.ObjectInterface, kubeinterfaces.ObjectInterface]{}
 
-func GetObjects[CT, T kubeinterfaces.ObjectInterface](
+func GetObjectsWithFilter[CT, T kubeinterfaces.ObjectInterface](
 	ctx context.Context,
 	controller metav1.Object,
 	controllerGVK schema.GroupVersionKind,
 	selector labels.Selector,
+	filterFunc func(T) bool,
 	control ControlleeManagerGetObjectsInterface[CT, T],
 ) (map[string]T, error) {
 	// List all objects to find even those that no longer match our selector.
 	// They will be orphaned in ClaimObjects().
-	objects, err := control.ListObjects(labels.Everything())
+	allObjects, err := control.ListObjects(labels.Everything())
 	if err != nil {
 		return nil, err
+	}
+
+	var objects []T
+	for i := range allObjects {
+		if filterFunc(allObjects[i]) {
+			objects = append(objects, allObjects[i])
+		}
 	}
 
 	return controllertools.NewControllerRefManager[T](
@@ -65,4 +73,23 @@ func GetObjects[CT, T kubeinterfaces.ObjectInterface](
 			},
 		}.Convert(),
 	).ClaimObjects(objects)
+}
+
+func GetObjects[CT, T kubeinterfaces.ObjectInterface](
+	ctx context.Context,
+	controller metav1.Object,
+	controllerGVK schema.GroupVersionKind,
+	selector labels.Selector,
+	control ControlleeManagerGetObjectsInterface[CT, T],
+) (map[string]T, error) {
+	return GetObjectsWithFilter(
+		ctx,
+		controller,
+		controllerGVK,
+		selector,
+		func(T) bool {
+			return true
+		},
+		control,
+	)
 }

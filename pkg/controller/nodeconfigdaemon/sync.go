@@ -97,7 +97,7 @@ func (ncdc *Controller) sync(ctx context.Context) error {
 		naming.NodeConfigJobForNodeUIDLabel: string(ncdc.nodeUID),
 	})
 
-	jobs, err := controllerhelpers.GetObjects[CT, *batchv1.Job](
+	jobs, err := controllerhelpers.GetObjectsWithFilter[CT, *batchv1.Job](
 		ctx,
 		&metav1.ObjectMeta{
 			Name:              dsControllerRef.Name,
@@ -106,6 +106,9 @@ func (ncdc *Controller) sync(ctx context.Context) error {
 		},
 		daemonSetControllerGVK,
 		selector,
+		func(job *batchv1.Job) bool {
+			return job.Spec.Template.Spec.NodeName == ncdc.nodeName
+		},
 		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *batchv1.Job]{
 			GetControllerUncachedFunc: ncdc.kubeClient.AppsV1().DaemonSets(ncdc.namespace).Get,
 			ListObjectsFunc:           ncdc.namespacedJobLister.Jobs(ncdc.namespace).List,

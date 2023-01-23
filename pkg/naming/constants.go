@@ -62,6 +62,8 @@ const (
 	NodeConfigNameLabel          = "scylla-operator.scylladb.com/node-config-name"
 	ConfigMapTypeLabel           = "scylla-operator.scylladb.com/config-map-type"
 	OwnerUIDLabel                = "scylla-operator.scylladb.com/owner-uid"
+	ScyllaDBMonitoringNameLabel  = "scylla-operator.scylladb.com/scylladbmonitoring-name"
+	ControllerNameLabel          = "scylla-operator.scylladb.com/controller-name"
 
 	AppName           = "scylla"
 	OperatorAppName   = "scylla-operator"

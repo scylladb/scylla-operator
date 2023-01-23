@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "{{ .scyllaDBMonitoringName }}-grafana-provisioning"
+data:
+  access-control.yaml: ""
+  alerting.yaml: ""
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+    - name: dashboards
+      type: file
+      updateIntervalSeconds: 30
+      options:
+        path: /var/run/dashboards
+        foldersFromFilesStructure: true
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+    - name: prometheus
+      type: prometheus
+      access: proxy
+      url: "https://{{ .scyllaDBMonitoringName }}-prometheus:9090"
+      isDefault: true
+      version: 1
+      editable: false
+      jsonData:
+        timeInterval: "5s"
+        tlsAuthWithCACert: true
+      secureJsonData:
+        tlsCACert: "$__file{/var/run/configmaps/prometheus-serving-ca/ca-bundle.crt}"
+        tlsClientCert: "$__file{/var/run/secrets/prometheus-client-certs/tls.crt}"
+        tlsClientKey: "$__file{/var/run/secrets/prometheus-client-certs/tls.key}"
+  notifiers.yaml: ""
+  plugins.yaml: ""

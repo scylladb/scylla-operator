@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .scyllaDBMonitoringName }}-grafana"
+spec:
+  type: ClusterIP
+  selector:
+    scylla-operator.scylladb.com/deployment-name: "{{ .scyllaDBMonitoringName }}-grafana"
+  ports:
+  - port: 3000
+    protocol: TCP
+    targetPort: grafana

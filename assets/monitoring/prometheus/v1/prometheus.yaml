@@ -1,0 +1,50 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: "{{ .scyllaDBMonitoringName }}"
+spec:
+  serviceAccountName: "{{ .scyllaDBMonitoringName }}-prometheus"
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    fsGroup: 65534
+  web:
+    pageTitle: "ScyllaDB Prometheus"
+    tlsConfig:
+      cert:
+        secret:
+          name: "{{ .scyllaDBMonitoringName }}-prometheus-serving-certs"
+          key: "tls.crt"
+      keySecret:
+        name: "{{ .scyllaDBMonitoringName }}-prometheus-serving-certs"
+        key: "tls.key"
+#      clientAuthType: "RequireAndVerifyClientCert"
+#      TODO: we need the prometheus-operator not to require certs only for /-/readyz or to do exec probes that can read certs
+      clientAuthType: "RequestClientCert"
+      client_ca:
+        configMap:
+          name: "{{ .scyllaDBMonitoringName }}-prometheus-client-ca"
+          key: "ca-bundle.crt"
+    httpConfig:
+      http2: true
+  serviceMonitorSelector:
+    matchLabels: {}
+  affinity:
+    {{- .affinity | toYAML | nindent 4 }}
+  tolerations:
+    {{- .tolerations | toYAML | nindent 4 }}
+  resources:
+    {{- .resources | toYAML | nindent 4 }}
+  alerting:
+    alertmanagers:
+    - namespace: "{{ .namespace }}"
+      name: "{{ .scyllaDBMonitoringName }}"
+      port: web
+  ruleSelector:
+    matchLabels:
+      scylla-operator.scylladb.com/scylladbmonitoring-name: "{{ .scyllaDBMonitoringName }}"
+  {{- if .volumeClaimTemplate }}
+  storage:
+    volumeClaimTemplate:
+      {{- .volumeClaimTemplate | toYAML | nindent 6 }}
+  {{- end }}

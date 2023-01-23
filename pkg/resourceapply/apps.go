@@ -72,3 +72,35 @@ func ApplyDaemonSet(
 		options,
 	)
 }
+
+func ApplyDeploymentWithControl(
+	ctx context.Context,
+	control ApplyControlInterface[*appsv1.Deployment],
+	recorder record.EventRecorder,
+	required *appsv1.Deployment,
+	options ApplyOptions,
+) (*appsv1.Deployment, bool, error) {
+	return ApplyGeneric[*appsv1.Deployment](ctx, control, recorder, required, options)
+}
+
+func ApplyDeployment(
+	ctx context.Context,
+	client appsv1client.DeploymentsGetter,
+	lister appsv1listers.DeploymentLister,
+	recorder record.EventRecorder,
+	required *appsv1.Deployment,
+	options ApplyOptions,
+) (*appsv1.Deployment, bool, error) {
+	return ApplyDeploymentWithControl(
+		ctx,
+		ApplyControlFuncs[*appsv1.Deployment]{
+			GetCachedFunc: lister.Deployments(required.Namespace).Get,
+			CreateFunc:    client.Deployments(required.Namespace).Create,
+			UpdateFunc:    client.Deployments(required.Namespace).Update,
+			DeleteFunc:    client.Deployments(required.Namespace).Delete,
+		},
+		recorder,
+		required,
+		options,
+	)
+}

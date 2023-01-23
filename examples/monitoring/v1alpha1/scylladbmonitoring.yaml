@@ -1,0 +1,28 @@
+apiVersion: scylla.scylladb.com/v1alpha1
+kind: ScyllaDBMonitoring
+metadata:
+  name: example
+spec:
+  endpointsSelector:
+    matchLabels:
+      app.kubernetes.io/name: scylla
+      scylla-operator.scylladb.com/scylla-service-type: identity
+      scylla/cluster: replace-with-your-scyllacluster-name
+  components:
+    prometheus:
+      storage:
+        volumeClaimTemplate:
+          spec:
+            resources:
+              requests:
+                storage: 1Gi
+    grafana:
+      exposeOptions:
+        webInterface:
+          ingress:
+            ingressClassName: haproxy
+            dnsDomains:
+            - test-grafana.test.svc.cluster.local
+            annotations:
+              haproxy-ingress.github.io/ssl-passthrough: "true"
+

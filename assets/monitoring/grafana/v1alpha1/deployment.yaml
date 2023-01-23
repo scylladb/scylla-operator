@@ -1,0 +1,124 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .scyllaDBMonitoringName }}-grafana"
+spec:
+  selector:
+    matchLabels:
+      scylla-operator.scylladb.com/deployment-name: "{{ .scyllaDBMonitoringName }}-grafana"
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        scylla-operator.scylladb.com/inputs-hash: "{{ .restartTriggerHash }}"
+      labels:
+        scylla-operator.scylladb.com/deployment-name: "{{ .scyllaDBMonitoringName }}-grafana"
+    spec:
+      securityContext:
+        fsGroup: 472
+        supplementalGroups:
+        - 0
+      affinity:
+        {{- .affinity | toYAML | nindent 8 }}
+      tolerations:
+        {{- .tolerations | toYAML | nindent 8 }}
+      containers:
+      - name: grafana
+        image: docker.io/grafana/grafana:9.3.1
+        command:
+        - grafana-server
+        - --packaging=docker
+        - --homepath=/usr/share/grafana
+        - --config=/var/run/configmaps/grafana-configs/grafana.ini
+        env:
+        - name: GF_PATHS_PROVISIONING
+        - name: GF_PATHS_HOME
+        - name: GF_PATHS_DATA
+        - name: GF_PATHS_LOGS
+        - name: GF_PATHS_PLUGINS
+        - name: GF_PATHS_CONFIG
+        ports:
+        - containerPort: 3000
+          name: grafana
+          protocol: TCP
+        readinessProbe:
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 1
+          httpGet:
+            path: /api/health
+            port: 3000
+            scheme: HTTPS
+        livenessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 10
+          httpGet:
+            path: /api/health
+            port: 3000
+            scheme: HTTPS
+        resources:
+          {{- .resources | toYAML | nindent 10 }}
+        volumeMounts:
+        - name: grafana-configs
+          mountPath: /var/run/configmaps/grafana-configs
+        - name: grafana-scylladb-dashboards
+          mountPath: /var/run/dashboards/scylladb
+        - name: grafana-provisioning
+          mountPath: /var/run/configmaps/grafana-provisioning/access-control/access-control.yaml
+          subPath: access-control.yaml
+        - name: grafana-provisioning
+          mountPath: /var/run/configmaps/grafana-provisioning/alerting/alerting.yaml
+          subPath: alerting.yaml
+        - name: grafana-provisioning
+          mountPath: /var/run/configmaps/grafana-provisioning/dashboards/dashboards.yaml
+          subPath: dashboards.yaml
+        - name: grafana-provisioning
+          mountPath: /var/run/configmaps/grafana-provisioning/datasources/datasources.yaml
+          subPath: datasources.yaml
+        - name: grafana-provisioning
+          mountPath: /var/run/configmaps/grafana-provisioning/notifiers/notifiers.yaml
+          subPath: notifiers.yaml
+        - name: grafana-provisioning
+          mountPath: /var/run/configmaps/grafana-provisioning/plugins/plugins.yaml
+          subPath: plugins.yaml
+        - name: grafana-admin-credentials
+          mountPath: /var/run/secrets/grafana-admin-credentials
+        - name: grafana-serving-certs
+          mountPath: /var/run/secrets/grafana-serving-certs
+        - name: prometheus-client-certs
+          mountPath: /var/run/secrets/prometheus-client-certs
+        - name: prometheus-serving-ca
+          mountPath: /var/run/configmaps/prometheus-serving-ca
+        - name: grafana-storage
+          mountPath: /var/lib/grafana
+      volumes:
+      - name: grafana-configs
+        configMap:
+          name: "{{ .scyllaDBMonitoringName }}-grafana-configs"
+      - name: grafana-scylladb-dashboards
+        configMap:
+          name: "{{ .scyllaDBMonitoringName }}-grafana-scylladb-dashboards"
+      - name: grafana-provisioning
+        configMap:
+          name: "{{ .scyllaDBMonitoringName }}-grafana-provisioning"
+      - name: grafana-admin-credentials
+        secret:
+          secretName: "{{ .scyllaDBMonitoringName }}-grafana-admin-credentials"
+      - name: grafana-serving-certs
+        secret:
+          secretName: "{{ .servingCertSecretName }}"
+      - name: prometheus-client-certs
+        secret:
+          secretName: "{{ .scyllaDBMonitoringName }}-prometheus-client-grafana"
+      - name: prometheus-serving-ca
+        configMap:
+          name: "{{ .scyllaDBMonitoringName }}-prometheus-serving-ca"
+      - name: grafana-storage
+        emptyDir:
+          sizeLimit: 100Mi

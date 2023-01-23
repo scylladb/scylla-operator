@@ -12,7 +12,10 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controller/nodeconfigpod"
 	"github.com/scylladb/scylla-operator/pkg/controller/orphanedpv"
 	"github.com/scylladb/scylla-operator/pkg/controller/scyllacluster"
+	"github.com/scylladb/scylla-operator/pkg/controller/scylladbmonitoring"
 	"github.com/scylladb/scylla-operator/pkg/controller/scyllaoperatorconfig"
+	monitoringversionedclient "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/clientset/versioned"
+	monitoringinformers "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/informers/externalversions"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/leaderelection"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -34,8 +37,9 @@ type OperatorOptions struct {
 	genericclioptions.InClusterReflection
 	genericclioptions.LeaderElection
 
-	kubeClient   kubernetes.Interface
-	scyllaClient scyllaversionedclient.Interface
+	kubeClient       kubernetes.Interface
+	scyllaClient     scyllaversionedclient.Interface
+	monitoringClient monitoringversionedclient.Interface
 
 	ConcurrentSyncs int
 	OperatorImage   string
@@ -140,6 +144,11 @@ func (o *OperatorOptions) Complete() error {
 		return fmt.Errorf("can't build scylla clientset: %w", err)
 	}
 
+	o.monitoringClient, err = monitoringversionedclient.NewForConfig(o.RestConfig)
+	if err != nil {
+		return fmt.Errorf("can't build monitoring clientset: %w", err)
+	}
+
 	return nil
 }
 
@@ -183,6 +192,8 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		},
 	))
 
+	monitoringInformers := monitoringinformers.NewSharedInformerFactory(o.monitoringClient, resyncPeriod)
+
 	scc, err := scyllacluster.NewController(
 		o.kubeClient,
 		o.scyllaClient.ScyllaV1(),
@@ -200,7 +211,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		o.CQLSIngressPort,
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("can't create scyllacluster controller: %w", err)
 	}
 
 	opc, err := orphanedpv.NewController(
@@ -211,7 +222,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		scyllaInformers.Scylla().V1().ScyllaClusters(),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("can't create orphanpv controller: %w", err)
 	}
 
 	ncc, err := nodeconfig.NewController(
@@ -227,6 +238,9 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		kubeInformers.Core().V1().ServiceAccounts(),
 		o.OperatorImage,
 	)
+	if err != nil {
+		return fmt.Errorf("can't create nodeconfig controller: %w", err)
+	}
 
 	ncpc, err := nodeconfigpod.NewController(
 		o.kubeClient,
@@ -236,12 +250,39 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		kubeInformers.Core().V1().Nodes(),
 		scyllaInformers.Scylla().V1alpha1().NodeConfigs(),
 	)
+	if err != nil {
+		return fmt.Errorf("can't create nodeconfigpod controller: %w", err)
+	}
 
 	socc, err := scyllaoperatorconfig.NewController(
 		o.kubeClient,
 		o.scyllaClient.ScyllaV1alpha1(),
 		scyllaOperatorConfigInformers.Scylla().V1alpha1().ScyllaOperatorConfigs(),
 	)
+	if err != nil {
+		return fmt.Errorf("can't create scyllaoperatorconfig controller: %w", err)
+	}
+
+	mc, err := scylladbmonitoring.NewController(
+		o.kubeClient,
+		o.scyllaClient.ScyllaV1alpha1(),
+		o.monitoringClient.MonitoringV1(),
+		kubeInformers.Core().V1().ConfigMaps(),
+		kubeInformers.Core().V1().Secrets(),
+		kubeInformers.Core().V1().Services(),
+		kubeInformers.Core().V1().ServiceAccounts(),
+		kubeInformers.Rbac().V1().RoleBindings(),
+		kubeInformers.Policy().V1().PodDisruptionBudgets(),
+		kubeInformers.Apps().V1().Deployments(),
+		kubeInformers.Networking().V1().Ingresses(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBMonitorings(),
+		monitoringInformers.Monitoring().V1().Prometheuses(),
+		monitoringInformers.Monitoring().V1().PrometheusRules(),
+		monitoringInformers.Monitoring().V1().ServiceMonitors(),
+	)
+	if err != nil {
+		return fmt.Errorf("can't create scylladbmonitoring controller: %w", err)
+	}
 
 	var wg sync.WaitGroup
 	defer wg.Wait()
@@ -262,6 +303,12 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 	go func() {
 		defer wg.Done()
 		scyllaOperatorConfigInformers.Start(ctx.Done())
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		monitoringInformers.Start(ctx.Done())
 	}()
 
 	wg.Add(1)
@@ -292,6 +339,12 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 	go func() {
 		defer wg.Done()
 		socc.Run(ctx, o.ConcurrentSyncs)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		mc.Run(ctx, o.ConcurrentSyncs)
 	}()
 
 	<-ctx.Done()

@@ -203,6 +203,35 @@ func (acf ApplyControlFuncs[T]) ToUntyped() ApplyControlUntypedFuncs {
 
 var _ ApplyControlInterface[*corev1.Service] = ApplyControlFuncs[*corev1.Service]{}
 
+func TypeApplyControlInterface[T kubeinterfaces.ObjectInterface](untyped ApplyControlUntypedInterface) ApplyControlInterface[T] {
+	return ApplyControlFuncs[T]{
+		GetCachedFunc: func(name string) (T, error) {
+			res, err := untyped.GetCached(name)
+			if res == nil {
+				return *new(T), err
+			}
+			return res.(T), err
+		},
+		CreateFunc: func(ctx context.Context, obj T, opts metav1.CreateOptions) (T, error) {
+			res, err := untyped.Create(ctx, obj, opts)
+			if res == nil {
+				return *new(T), err
+			}
+			return res.(T), err
+		},
+		UpdateFunc: func(ctx context.Context, obj T, opts metav1.UpdateOptions) (T, error) {
+			res, err := untyped.Update(ctx, obj, opts)
+			if res == nil {
+				return *new(T), err
+			}
+			return res.(T), err
+		},
+		DeleteFunc: func(ctx context.Context, name string, opts metav1.DeleteOptions) error {
+			return untyped.Delete(ctx, name, opts)
+		},
+	}
+}
+
 type ApplyOptions struct {
 	ForceOwnership            bool
 	AllowMissingControllerRef bool

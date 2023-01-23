@@ -1,0 +1,74 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: "{{ .scyllaDBMonitoringName }}-scylladb"
+spec:
+  selector:
+    {{- .endpointsSelector | toYAML | nindent 4 }}
+  jobLabel: scylla/cluster
+  endpoints:
+  - port: node-exporter
+    honorLabels: false
+    relabelings:
+    - sourceLabels: [__address__]
+      regex: '(.*):\d+'
+      targetLabel: instance
+      replacement: '${1}'
+    - sourceLabels: [__address__]
+      regex: '([^:]+)'
+      targetLabel: instance
+      replacement: '${1}'
+    - sourceLabels: [instance]
+      regex: '(.*)'
+      targetLabel: __address__
+      replacement: '${1}:9100'
+    - sourceLabels: [__meta_kubernetes_service_label_scylla_cluster]
+      regex:  '(.+)'
+      targetLabel: cluster
+      replacement: '${1}'
+    - sourceLabels: [__meta_kubernetes_pod_label_scylla_datacenter]
+      regex:  '(.+)'
+      targetLabel: dc
+      replacement: '${1}'
+  - port: prometheus
+    honorLabels: false
+    metricRelabelings:
+    - sourceLabels: [version]
+      regex:  '(.+)'
+      targetLabel: CPU
+      replacement: 'cpu'
+    - sourceLabels: [version]
+      regex:  '(.+)'
+      targetLabel: CQL
+      replacement: 'cql'
+    - sourceLabels: [version]
+      regex:  '(.+)'
+      targetLabel: OS
+      replacement: 'os'
+    - sourceLabels: [version]
+      regex:  '(.+)'
+      targetLabel: IO
+      replacement: 'io'
+    - sourceLabels: [version]
+      regex:  '(.+)'
+      targetLabel: Errors
+      replacement: 'errors'
+    - regex: 'help|exported_instance'
+      action: labeldrop
+    - sourceLabels: [version]
+      regex: '([0-9]+\.[0-9]+)(\.?[0-9]*).*'
+      replacement: '$1$2'
+      targetLabel: svr
+    relabelings:
+    - sourceLabels: [__address__]
+      regex:  '(.*):.+'
+      targetLabel: instance
+      replacement: '${1}'
+    - sourceLabels: [__meta_kubernetes_service_label_scylla_cluster]
+      regex:  '(.+)'
+      targetLabel: cluster
+      replacement: '${1}'
+    - sourceLabels: [__meta_kubernetes_pod_label_scylla_datacenter]
+      regex:  '(.+)'
+      targetLabel: dc
+      replacement: '${1}'

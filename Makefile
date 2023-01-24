@@ -50,18 +50,12 @@ GSUTIL ?=gsutil -m -q
 CODEGEN_PKG ?=./vendor/k8s.io/code-generator
 CODEGEN_HEADER_FILE ?=/dev/null
 
-# API_PACKAGES is a list of comma separated full api package refs (like golang import strings)
-API_PACKAGES ?=$(shell $(GO) list -json ./pkg/api/... | $(JQ) -sr 'map(select(.Name | test("^v[0-9]+.*$$"))) | reduce .[] as $$item ([]; . + [$$item.ImportPath]) | join(",")')$(if $(filter $(.SHELLSTATUS),0),,$(error failed to list api packages))
-ifeq "$(API_PACKAGES)" ""
-	$(error "API_PACKAGES can't be empty")
-endif
-NONREST_API_PACKAGES ?=$(shell $(GO) list -json ./pkg/scylla/api/... | $(JQ) -sr 'map(select(.Name | test("^v[0-9]+.*$$"))) | reduce .[] as $$item ([]; . + [$$item.ImportPath]) | join(",")')$(if $(filter $(.SHELLSTATUS),0),,$(error failed to list non-rest api packages))
-ifeq "$(NONREST_API_PACKAGES)" ""
-	$(error "NONREST_API_PACKAGES can't be empty")
-endif
+api_groups :=$(patsubst %/,%,$(wildcard ./pkg/api/*/))
+external_api_groups :=$(patsubst %/.,%,$(wildcard ./pkg/externalapi/*/.))
+nonrest_api_groups :=$(patsubst %/.,%,$(wildcard ./pkg/scylla/api/*/.))
 
-api_package_array :=$(subst $(comma), ,$(API_PACKAGES))
-api_package_dirs :=$(foreach p,$(api_package_array),$(subst $(GO_MODULE)/,,./$(p)))
+api_package_dirs :=$(api_groups) $(external_api_groups)
+api_packages =$(call expand_go_packages_with_spaces,$(addsuffix /...,$(api_package_dirs)))
 
 HELM ?=helm
 HELM_CHANNEL ?=latest
@@ -233,35 +227,67 @@ define run-deepcopy-gen
 
 endef
 
+# $1 - group
+# $2 - api packages
+# $3 - client dir
+# $4 - extra args
 define run-client-gen
-	$(call run-codegen,client-gen,--clientset-name=versioned --input-base="./" --input='$(API_PACKAGES)' --output-package='github.com/scylladb/scylla-operator/pkg/client/scylla/clientset' $(1))
+	$(call run-codegen,client-gen,--clientset-name=versioned --input-base='./' --input='$(2)' --output-package='$(GO_PACKAGE)/$(3)/$(1)/clientset' $(4))
 
 endef
 
+# $1 - group
+# $2 - api packages
+# $3 - client dir
+# $4 - extra args
 define run-lister-gen
-	$(call run-codegen,lister-gen,--input-dirs='$(API_PACKAGES)' --output-package='github.com/scylladb/scylla-operator/pkg/client/scylla/listers' $(1))
+	$(call run-codegen,lister-gen,--input-dirs='$(2)' --output-package='$(GO_PACKAGE)/$(3)/$(1)/listers' $(4))
 
 endef
 
+# $1 - group
+# $2 - api packages
+# $3 - client dir
+# $4 - extra args
 define run-informer-gen
-	$(call run-codegen,informer-gen,--input-dirs='$(API_PACKAGES)' --output-package='github.com/scylladb/scylla-operator/pkg/client/scylla/informers' --versioned-clientset-package "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned" --listers-package="github.com/scylladb/scylla-operator/pkg/client/scylla/listers" $(1))
+	$(call run-codegen,informer-gen,--input-dirs='$(2)' --output-package='$(GO_PACKAGE)/$(3)/$(1)/informers' --versioned-clientset-package '$(GO_PACKAGE)/$(3)/$(1)/clientset/versioned' --listers-package='$(GO_PACKAGE)/$(3)/$(1)/listers' $(4))
+
+endef
+
+# $1 - packages
+expand_go_packages_to_json=$(shell $(GO) list -json $(1) | $(JQ) -sr 'map(select(.Name | test("^v[0-9]+.*$$"))) | reduce .[] as $$item ([]; . + [$$item.ImportPath])')$(if $(filter $(.SHELLSTATUS),0),,$(error failed to expand packages to json: $(1)))
+
+# $1 - packages
+expand_go_packages_with_commas=$(shell echo '$(call expand_go_packages_to_json,$(1))' | $(JQ) -r '. | join(",")')$(if $(filter $(.SHELLSTATUS),0),,$(error failed to expand packages with commas: $(1)))
+
+# $1 - packages
+expand_go_packages_with_spaces=$(shell echo '$(call expand_go_packages_to_json,$(1))' | $(JQ) -r '. | join(" ")')$(if $(filter $(.SHELLSTATUS),0),,$(error failed to expand packages with spaces: $(1)))
+
+# $1 - group
+# $2 - api packages
+# $3 - client dir
+# $4 - extra args
+define run-client-generators
+	$(call run-client-gen,$(1),$(2),$(3),$(4))
+	$(call run-lister-gen,$(1),$(2),$(3),$(4))
+	$(call run-informer-gen,$(1),$(2),$(3),$(4))
+
+endef
+
+# $1 - extra args
+define run-update-codegen
+	$(call run-deepcopy-gen,$(call expand_go_packages_with_commas,$(addsuffix /...,$(api_groups)) $(addsuffix /...,$(nonrest_api_groups)) $(addsuffix /...,$(external_api_groups))),$(1))
+	$(foreach group,$(api_groups),$(call run-client-generators,$(notdir $(group)),$(call expand_go_packages_with_commas,$(group)/...),pkg/client,$(1)))
+	$(foreach group,$(external_api_groups),$(call run-client-generators,$(notdir $(group)),$(call expand_go_packages_with_commas,$(group)/...),pkg/externalclient,$(1)))
 
 endef
 
 update-codegen:
-	$(call run-deepcopy-gen,$(NONREST_API_PACKAGES),)
-	$(call run-deepcopy-gen,$(API_PACKAGES),)
-	$(call run-client-gen,)
-	$(call run-lister-gen,)
-	$(call run-informer-gen,)
+	$(call run-update-codegen,)
 .PHONY: update-codegen
 
 verify-codegen:
-	$(call run-deepcopy-gen,$(NONREST_API_PACKAGES),--verify-only)
-	$(call run-deepcopy-gen,$(API_PACKAGES),--verify-only)
-	$(call run-client-gen,--verify-only)
-	$(call run-lister-gen,--verify-only)
-	$(call run-informer-gen,--verify-only)
+	$(call run-update-codegen,--verify-only)
 .PHONY: verify-codegen
 
 # $1 - api package
@@ -275,7 +301,7 @@ endef
 
 # $1 - dir prefix
 define generate-crds
-	$(foreach p,$(api_package_dirs),$(call run-crd-gen,$(p),$(1)$(p)))
+	$(foreach p,$(api_packages),$(call run-crd-gen,$(subst $(GO_MODULE)/,,./$(p)),$(1)$(subst $(GO_MODULE)/,,./$(p))))
 
 endef
 

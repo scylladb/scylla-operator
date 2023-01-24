@@ -23,6 +23,7 @@ import (
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/scheme"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	"github.com/scylladb/scylla-operator/test/e2e/verification"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -128,36 +129,36 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 				clientCASecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-client-ca", sc.Name), metav1.GetOptions{})
 				o.Expect(err).NotTo(o.HaveOccurred())
-				clientCACerts, _, _, _ := verifyAndParseTLSCert(clientCASecret, verifyTLSCertOptions{
-					isCA:     pointer.Bool(true),
-					keyUsage: opointer.KeyUsage(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign),
+				clientCACerts, _, _, _ := verification.VerifyAndParseTLSCert(clientCASecret, verification.TLSCertOptions{
+					IsCA:     pointer.Bool(true),
+					KeyUsage: opointer.KeyUsage(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign),
 				})
 				o.Expect(clientCACerts).To(o.HaveLen(1))
 
 				servingCASecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-serving-ca", sc.Name), metav1.GetOptions{})
 				o.Expect(err).NotTo(o.HaveOccurred())
-				_, _, _, _ = verifyAndParseTLSCert(servingCASecret, verifyTLSCertOptions{
-					isCA:     pointer.Bool(true),
-					keyUsage: opointer.KeyUsage(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign),
+				_, _, _, _ = verification.VerifyAndParseTLSCert(servingCASecret, verification.TLSCertOptions{
+					IsCA:     pointer.Bool(true),
+					KeyUsage: opointer.KeyUsage(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign),
 				})
 
 				servingCABundleConfigMap, err := f.KubeClient().CoreV1().ConfigMaps(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-serving-ca", sc.Name), metav1.GetOptions{})
 				o.Expect(err).NotTo(o.HaveOccurred())
-				servingCACerts, servingCACertBytes := verifyAndParseCABundle(servingCABundleConfigMap)
+				servingCACerts, servingCACertBytes := verification.VerifyAndParseCABundle(servingCABundleConfigMap)
 				o.Expect(servingCACerts).To(o.HaveLen(1))
 
 				servingCertSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-serving-certs", sc.Name), metav1.GetOptions{})
 				o.Expect(err).NotTo(o.HaveOccurred())
-				servingCerts, _, _, _ := verifyAndParseTLSCert(servingCertSecret, verifyTLSCertOptions{
-					isCA:     pointer.Bool(false),
-					keyUsage: opointer.KeyUsage(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
+				servingCerts, _, _, _ := verification.VerifyAndParseTLSCert(servingCertSecret, verification.TLSCertOptions{
+					IsCA:     pointer.Bool(false),
+					KeyUsage: opointer.KeyUsage(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
 				})
 
 				adminClientSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-user-admin", sc.Name), metav1.GetOptions{})
 				o.Expect(err).NotTo(o.HaveOccurred())
-				_, adminClientCertBytes, _, adminClientKeyBytes := verifyAndParseTLSCert(adminClientSecret, verifyTLSCertOptions{
-					isCA:     pointer.Bool(false),
-					keyUsage: opointer.KeyUsage(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
+				_, adminClientCertBytes, _, adminClientKeyBytes := verification.VerifyAndParseTLSCert(adminClientSecret, verification.TLSCertOptions{
+					IsCA:     pointer.Bool(false),
+					KeyUsage: opointer.KeyUsage(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
 				})
 
 				adminClientConnectionConfigsSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-cql-connection-configs-admin", sc.Name), metav1.GetOptions{})

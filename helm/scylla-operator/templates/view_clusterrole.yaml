@@ -11,6 +11,7 @@ rules:
   - scylla.scylladb.com
   resources:
   - scyllaclusters
+  - scylladbmonitorings
   verbs:
   - get
   - list

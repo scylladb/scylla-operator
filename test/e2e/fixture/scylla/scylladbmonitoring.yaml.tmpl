@@ -1,0 +1,35 @@
+apiVersion: scylla.scylladb.com/v1alpha1
+kind: ScyllaDBMonitoring
+metadata:
+  name: "{{ .name }}"
+spec:
+  endpointsSelector:
+    matchLabels:
+      app.kubernetes.io/name: scylla
+      scylla-operator.scylladb.com/scylla-service-type: identity
+      scylla/cluster: "{{ .scyllaClusterName }}"
+  components:
+    prometheus:
+      exposeOptions:
+        webInterface:
+          ingress:
+            ingressClassName: haproxy
+            dnsDomains:
+            - "{{ .name }}-prometheus.{{ .namespace }}.apps.cluster.scylladb.com"
+            annotations:
+              haproxy-ingress.github.io/ssl-passthrough: "true"
+      storage:
+        volumeClaimTemplate:
+          spec:
+            resources:
+              requests:
+                storage: 1Gi
+    grafana:
+      exposeOptions:
+        webInterface:
+          ingress:
+            ingressClassName: haproxy
+            dnsDomains:
+            - "{{ .name }}-grafana.{{ .namespace }}.apps.cluster.scylladb.com"
+            annotations:
+              haproxy-ingress.github.io/ssl-passthrough: "true"

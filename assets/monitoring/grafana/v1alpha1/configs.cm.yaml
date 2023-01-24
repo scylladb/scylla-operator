@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "{{ .scyllaDBMonitoringName }}-grafana-configs"
+data:
+  grafana.ini: |
+    [auth]
+    disable_login_form = false
+    disable_signout_menu = false
+
+    {{ if .enableAnonymousAccess -}}
+    [auth.anonymous]
+    enabled = true
+    {{- end }}
+
+    [dashboards]
+    default_home_dashboard_path = /var/run/dashboards/scylladb/overview.json
+
+    [log]
+    level = error
+    mode = console
+
+    [log.frontend]
+    enabled = true
+
+    [paths]
+    data = /var/lib/grafana
+    logs = /var/log/grafana
+    plugins = /var/lib/grafana/plugins
+    provisioning = /var/run/configmaps/grafana-provisioning
+
+    [security]
+    admin_user = $__file{/var/run/secrets/grafana-admin-credentials/username}
+    admin_password = $__file{/var/run/secrets/grafana-admin-credentials/password}
+
+    [server]
+    protocol = https
+    cert_file = /var/run/secrets/grafana-serving-certs/tls.crt
+    cert_key = /var/run/secrets/grafana-serving-certs/tls.key
+
+    [panels]
+    disable_sanitize_html = true

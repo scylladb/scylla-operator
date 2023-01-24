@@ -24,14 +24,34 @@ type MetaConfig struct {
 	Annotations map[string]string
 }
 
+func (c *MetaConfig) GetObjectMeta() *metav1.ObjectMeta {
+	return (&metav1.ObjectMeta{
+		Name:        c.Name,
+		Labels:      c.Labels,
+		Annotations: c.Annotations,
+	}).DeepCopy()
+}
+
 type CAConfig struct {
 	MetaConfig
 	Validity time.Duration
 	Refresh  time.Duration
 }
 
+func (c *CAConfig) GetMetaSecret() *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: *c.GetObjectMeta(),
+	}
+}
+
 type CABundleConfig struct {
 	MetaConfig
+}
+
+func (c *CABundleConfig) GetMetaConfigMap() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: *c.GetObjectMeta(),
+	}
 }
 
 type CertificateConfig struct {
@@ -39,6 +59,57 @@ type CertificateConfig struct {
 	Validity    time.Duration
 	Refresh     time.Duration
 	CertCreator ocrypto.CertCreator
+}
+
+func (c *CertificateConfig) GetMetaSecret() *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: *c.GetObjectMeta(),
+	}
+}
+
+type CertChainConfig struct {
+	CAConfig       *CAConfig
+	CABundleConfig *CABundleConfig
+	CertConfigs    []*CertificateConfig
+}
+
+func (c *CertChainConfig) GetMetaSecrets() []*corev1.Secret {
+	secrets := make([]*corev1.Secret, 0, len(c.CertConfigs)+1)
+	secrets = append(secrets, c.CAConfig.GetMetaSecret())
+
+	for _, cc := range c.CertConfigs {
+		secrets = append(secrets, cc.GetMetaSecret())
+	}
+
+	return secrets
+}
+
+func (c *CertChainConfig) GetMetaConfigMaps() []*corev1.ConfigMap {
+	return []*corev1.ConfigMap{
+		c.CABundleConfig.GetMetaConfigMap(),
+	}
+}
+
+type CertChainConfigs []*CertChainConfig
+
+func (configs CertChainConfigs) GetMetaSecrets() []*corev1.Secret {
+	secrets := make([]*corev1.Secret, 0, len(configs)*2)
+
+	for _, c := range configs {
+		secrets = append(secrets, c.GetMetaSecrets()...)
+	}
+
+	return secrets
+}
+
+func (configs CertChainConfigs) GetMetaConfigMaps() []*corev1.ConfigMap {
+	configMaps := make([]*corev1.ConfigMap, 0, len(configs)*2)
+
+	for _, c := range configs {
+		configMaps = append(configMaps, c.GetMetaConfigMaps()...)
+	}
+
+	return configMaps
 }
 
 type CertificateManager struct {
@@ -120,4 +191,8 @@ func (cm *CertificateManager) ManageCertificates(ctx context.Context, nowFunc fu
 	}
 
 	return nil
+}
+
+func (cm *CertificateManager) ManageCertificateChain(ctx context.Context, nowFunc func() time.Time, controller *metav1.ObjectMeta, controllerGVK schema.GroupVersionKind, certChainConfig *CertChainConfig, existingSecrets map[string]*corev1.Secret, existingConfigMaps map[string]*corev1.ConfigMap) error {
+	return cm.ManageCertificates(ctx, nowFunc, controller, controllerGVK, certChainConfig.CAConfig, certChainConfig.CABundleConfig, certChainConfig.CertConfigs, existingSecrets, existingConfigMaps)
 }

@@ -1,0 +1,12 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: "{{ .scyllaDBMonitoringName }}-prometheus"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: scylladb:monitoring:prometheus
+subjects:
+- kind: ServiceAccount
+  name: "{{ .scyllaDBMonitoringName }}-prometheus"
+  namespace: "{{ .namespace }}"

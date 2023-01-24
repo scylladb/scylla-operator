@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+spec:
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: prometheus
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: prometheus
+      name: prometheus
+    spec:
+      containers:
+      - name: prometheus
+        image: prom/prometheus
+        imagePullPolicy: IfNotPresent
+        args:
+        - --config.file=/etc/prometheus/config/prometheus.yml
+        readinessProbe:
+          failureThreshold: 1
+          httpGet:
+            path: /-/ready
+            port: 9090
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /etc/prometheus/config
+          name: prometheus-cfg
+      serviceAccountName: prometheus
+      volumes:
+      - configMap:
+          name: prometheus-cfg
+        name: prometheus-cfg

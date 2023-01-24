@@ -10,6 +10,8 @@ import (
 type Interface interface {
 	// NodeConfigs returns a NodeConfigInformer.
 	NodeConfigs() NodeConfigInformer
+	// ScyllaDBMonitorings returns a ScyllaDBMonitoringInformer.
+	ScyllaDBMonitorings() ScyllaDBMonitoringInformer
 	// ScyllaOperatorConfigs returns a ScyllaOperatorConfigInformer.
 	ScyllaOperatorConfigs() ScyllaOperatorConfigInformer
 }
@@ -28,6 +30,11 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // NodeConfigs returns a NodeConfigInformer.
 func (v *version) NodeConfigs() NodeConfigInformer {
 	return &nodeConfigInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// ScyllaDBMonitorings returns a ScyllaDBMonitoringInformer.
+func (v *version) ScyllaDBMonitorings() ScyllaDBMonitoringInformer {
+	return &scyllaDBMonitoringInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // ScyllaOperatorConfigs returns a ScyllaOperatorConfigInformer.

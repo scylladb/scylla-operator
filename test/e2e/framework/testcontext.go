@@ -17,7 +17,8 @@ var (
 )
 
 type TestContextType struct {
-	RestConfig            *restclient.Config
-	ArtifactsDir          string
-	DeleteTestingNSPolicy DeleteTestingNSPolicyType
+	RestConfig             *restclient.Config
+	ArtifactsDir           string
+	DeleteTestingNSPolicy  DeleteTestingNSPolicyType
+	OverrideIngressAddress string
 }

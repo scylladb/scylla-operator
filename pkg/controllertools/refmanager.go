@@ -141,7 +141,7 @@ func (m *ControllerRefManager[T]) AdoptObject(obj T) error {
 		return err
 	}
 
-	return m.Control.PatchObject(m.ctx, obj.GetNamespace(), obj.GetName(), types.StrategicMergePatchType, patchBytes, metav1.PatchOptions{})
+	return m.Control.PatchObject(m.ctx, obj.GetNamespace(), obj.GetName(), types.MergePatchType, patchBytes, metav1.PatchOptions{})
 }
 
 func (m *ControllerRefManager[T]) ReleaseObject(obj T) error {

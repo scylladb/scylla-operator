@@ -8,7 +8,6 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/features"
-	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -16,7 +15,6 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -24,31 +22,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
-
-func runSync(conditions *[]metav1.Condition, progressingConditionType, degradedCondType string, observedGeneration int64, syncFn func() ([]metav1.Condition, error)) error {
-	progressingConditions, err := syncFn()
-	controllerhelpers.SetStatusConditionFromError(conditions, err, degradedCondType, observedGeneration)
-	if err != nil {
-		return err
-	}
-
-	progressingCondition, err := controllerhelpers.AggregateStatusConditions(
-		progressingConditions,
-		metav1.Condition{
-			Type:               progressingConditionType,
-			Status:             metav1.ConditionFalse,
-			Reason:             internalapi.AsExpectedReason,
-			Message:            "",
-			ObservedGeneration: observedGeneration,
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("can't aggregate progressing conditions %q: %w", progressingConditionType, err)
-	}
-	apimeta.SetStatusCondition(conditions, progressingCondition)
-
-	return nil
-}
 
 func (scc *Controller) sync(ctx context.Context, key string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
@@ -212,7 +185,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 
 	var errs []error
 
-	err = runSync(
+	err = controllerhelpers.RunSync(
 		&status.Conditions,
 		serviceAccountControllerProgressingCondition,
 		serviceAccountControllerDegradedCondition,
@@ -225,7 +198,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		errs = append(errs, fmt.Errorf("can't sync service accounts: %w", err))
 	}
 
-	err = runSync(
+	err = controllerhelpers.RunSync(
 		&status.Conditions,
 		roleBindingControllerProgressingCondition,
 		roleBindingControllerDegradedCondition,
@@ -238,7 +211,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		errs = append(errs, fmt.Errorf("can't sync role bindings: %w", err))
 	}
 
-	err = runSync(
+	err = controllerhelpers.RunSync(
 		&status.Conditions,
 		agentTokenControllerProgressingCondition,
 		agentTokenControllerDegradedCondition,
@@ -252,7 +225,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 	}
 
 	if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {
-		err = runSync(
+		err = controllerhelpers.RunSync(
 			&status.Conditions,
 			certControllerProgressingCondition,
 			certControllerDegradedCondition,
@@ -266,7 +239,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		}
 	}
 
-	err = runSync(
+	err = controllerhelpers.RunSync(
 		&status.Conditions,
 		statefulSetControllerProgressingCondition,
 		statefulSetControllerDegradedCondition,
@@ -284,7 +257,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 	// in a single place, on the next resync.
 	scc.setStatefulSetsAvailableStatusCondition(sc, status)
 
-	err = runSync(
+	err = controllerhelpers.RunSync(
 		&status.Conditions,
 		serviceControllerProgressingCondition,
 		serviceControllerDegradedCondition,
@@ -297,7 +270,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		errs = append(errs, fmt.Errorf("can't sync services: %w", err))
 	}
 
-	err = runSync(
+	err = controllerhelpers.RunSync(
 		&status.Conditions,
 		pdbControllerProgressingCondition,
 		pdbControllerDegradedCondition,
@@ -310,7 +283,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		errs = append(errs, fmt.Errorf("can't sync pdbs: %w", err))
 	}
 
-	err = runSync(
+	err = controllerhelpers.RunSync(
 		&status.Conditions,
 		ingressControllerProgressingCondition,
 		ingressControllerDegradedCondition,
@@ -324,54 +297,13 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 	}
 
 	// Aggregate conditions.
-
-	availableCondition, err := controllerhelpers.AggregateStatusConditions(
-		controllerhelpers.FindStatusConditionsWithSuffix(status.Conditions, scyllav1.AvailableCondition),
-		metav1.Condition{
-			Type:               scyllav1.AvailableCondition,
-			Status:             metav1.ConditionTrue,
-			Reason:             internalapi.AsExpectedReason,
-			Message:            "",
-			ObservedGeneration: sc.Generation,
-		},
-	)
+	err = controllerhelpers.SetAggregatedWorkloadConditions(&status.Conditions, sc.Generation)
 	if err != nil {
-		return fmt.Errorf("can't aggregate status conditions: %w", err)
+		errs = append(errs, fmt.Errorf("can't aggregate workload conditions: %w", err))
+	} else {
+		err = scc.updateStatus(ctx, sc, status)
+		errs = append(errs, err)
 	}
-	apimeta.SetStatusCondition(&status.Conditions, availableCondition)
-
-	progressingCondition, err := controllerhelpers.AggregateStatusConditions(
-		controllerhelpers.FindStatusConditionsWithSuffix(status.Conditions, scyllav1.ProgressingCondition),
-		metav1.Condition{
-			Type:               scyllav1.ProgressingCondition,
-			Status:             metav1.ConditionFalse,
-			Reason:             internalapi.AsExpectedReason,
-			Message:            "",
-			ObservedGeneration: sc.Generation,
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("can't aggregate status conditions: %w", err)
-	}
-	apimeta.SetStatusCondition(&status.Conditions, progressingCondition)
-
-	degradedCondition, err := controllerhelpers.AggregateStatusConditions(
-		controllerhelpers.FindStatusConditionsWithSuffix(status.Conditions, scyllav1.DegradedCondition),
-		metav1.Condition{
-			Type:               scyllav1.DegradedCondition,
-			Status:             metav1.ConditionFalse,
-			Reason:             internalapi.AsExpectedReason,
-			Message:            "",
-			ObservedGeneration: sc.Generation,
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("can't aggregate status conditions: %w", err)
-	}
-	apimeta.SetStatusCondition(&status.Conditions, degradedCondition)
-
-	err = scc.updateStatus(ctx, sc, status)
-	errs = append(errs, err)
 
 	return utilerrors.NewAggregate(errs)
 }

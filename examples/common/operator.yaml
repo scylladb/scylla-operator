@@ -325,6 +325,71 @@ spec:
                 disableOptimizations:
                   description: disableOptimizations controls if nodes matching placement requirements are going to be optimized. Turning off optimizations on already optimized Nodes does not revert changes.
                   type: boolean
+                localDiskSetup:
+                  description: localDiskSetup contains options of automatic local disk setup.
+                  properties:
+                    filesystems:
+                      description: filesystems is a list of filesystem configurations.
+                      items:
+                        description: FilesystemConfiguration specifies filesystem configuration options.
+                        properties:
+                          device:
+                            description: device is a path to the device where the desired filesystem should be created.
+                            type: string
+                          type:
+                            description: type is a desired filesystem type.
+                            type: string
+                        type: object
+                      type: array
+                    mounts:
+                      description: mounts is a list of mount configuration.
+                      items:
+                        description: MountConfiguration specifies mount configuration options.
+                        properties:
+                          device:
+                            description: device is path to a device that should be mounted.
+                            type: string
+                          fsType:
+                            description: fsType specifies the filesystem on the device.
+                            type: string
+                          mountPoint:
+                            description: mountPoint is a path where the device should be mounted at.
+                            type: string
+                          unsupportedOptions:
+                            description: unsupportedOptions is a list of mount options used during device mounting. unsupported in this field name means that we won't support all the available options passed down using this field.
+                            items:
+                              type: string
+                            type: array
+                        type: object
+                      type: array
+                    raids:
+                      description: raids is a list of raid configurations.
+                      items:
+                        description: RAIDConfiguration is a configuration of a raid array.
+                        properties:
+                          RAID0:
+                            description: RAID0 specifies RAID0 options.
+                            properties:
+                              devices:
+                                description: devices defines which devices constitute the raid array.
+                                properties:
+                                  modelRegex:
+                                    description: modelRegex is a regular expression filtering devices by their model name.
+                                    type: string
+                                  nameRegex:
+                                    description: nameRegex is a regular expression filtering devices by their name.
+                                    type: string
+                                type: object
+                            type: object
+                          name:
+                            description: name specifies the name of the raid device to be created under in `/dev/md/`.
+                            type: string
+                          type:
+                            description: type is a type of raid array.
+                            type: string
+                        type: object
+                      type: array
+                  type: object
                 placement:
                   description: placement contains scheduling rules for NodeConfig Pods.
                   properties:
@@ -847,6 +912,11 @@ spec:
                       message:
                         description: message is a human-readable message indicating details about the transition.
                         type: string
+                      observedGeneration:
+                        description: observedGeneration represents the .metadata.generation that the condition was set based upon. For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance.
+                        format: int64
+                        minimum: 0
+                        type: integer
                       reason:
                         description: reason is the reason for condition's last transition.
                         type: string
@@ -4683,6 +4753,15 @@ webhooks:
     - UPDATE
     resources:
     - scyllaclusters
+  - apiGroups:
+    - scylla.scylladb.com
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - nodeconfigs
 
 ---
 apiVersion: policy/v1

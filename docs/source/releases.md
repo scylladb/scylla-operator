@@ -4,22 +4,23 @@
 We are aiming to ship a new release approximately every 6 weeks. The following release schedule is only advisory, there are no commitments made to hitting these dates.
 
 | Release | Code freeze | General availability |
-| :-----: | :---------: | :------------------: |
-| 1.8     | 2022-03-02  | 2021-03-16           |
+|:-------:|:-----------:|:--------------------:|
+|   1.9   | 2022-03-01  |      2021-03-08      |
 
 ## Supported releases
 We support the latest 2 releases of the operator to give everyone time to upgrade.
 
-| Release | General availability      | Support ends   |
-| :-----: | :-----------------------: | :------------: |
-| 1.7     | 2022-01-27                | Release of 1.9 |
-| 1.6     | 2021-12-03                | Release of 1.8 |
-| 1.5     | 2021-09-16                | 2022-01-27     |
-| 1.4     | 2021-08-10                | 2021-12-03     |
-| 1.3     | 2021-06-17                | 2021-09-16     |
-| 1.2     | 2021-05-06                | 2021-08-10     |
-| 1.1     | 2021-03-22                | 2021-06-17     |
-| 1.0     | 2021-01-21                | 2021-05-06     |
+| Release | General availability |  Support ends   |
+|:-------:|:--------------------:|:---------------:|
+|   1.8   |      2023-01-25      | Release of 1.10 |
+|   1.7   |      2022-01-27      | Release of 1.9  |
+|   1.6   |      2021-12-03      |   2023-01-25    |
+|   1.5   |      2021-09-16      |   2022-01-27    |
+|   1.4   |      2021-08-10      |   2021-12-03    |
+|   1.3   |      2021-06-17      |   2021-09-16    |
+|   1.2   |      2021-05-06      |   2021-08-10    |
+|   1.1   |      2021-03-22      |   2021-06-17    |
+|   1.0   |      2021-01-21      |   2021-05-06    |
 
 ### Backport policy
 Usually, only important bug fixes are eligible for being backported.

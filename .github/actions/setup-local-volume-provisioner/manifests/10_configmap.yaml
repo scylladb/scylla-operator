@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: local-provisioner-config
+data:
+  storageClassMap: |
+    local-storage:
+      hostDir: /mnt/persistent-volumes
+      mountDir: /mnt/persistent-volumes
+      blockCleanerCommand:
+      - "/scripts/shred.sh"
+      - "2"
+      volumeMode: Filesystem
+      fsType: ext4
+      namePattern: "disk_*"

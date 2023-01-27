@@ -1,0 +1,34 @@
+name: "Setup Local Volume Provisioner"
+description: 'Installs Local Volume Provisioner'
+inputs:
+  repositoryPath:
+    description: "Path to where the project code lives"
+    required: true
+  numberOfPersistentVolumes:
+    description: "Number of persistent volumes that will be provisioned"
+    required: true
+runs:
+  using: "composite"
+  steps:
+  - name: Prepare host directories
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      sudo mkdir /mnt/persistent-volumes
+      
+      for i in $( seq 1 "${{ inputs.numberOfPersistentVolumes }}" ); do
+        sudo mkdir "/mnt/persistent-volumes/vol${i}" "/mnt/persistent-volumes/disk_vol${i}"
+        sudo mount --bind "/mnt/persistent-volumes/vol${i}" "/mnt/persistent-volumes/disk_vol${i}"
+      done
+
+  - name: Install Local Static Provisioner
+    shell: bash
+    working-directory: ${{ inputs.repositoryPath }}
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      kubectl -n local-volume-provisioner apply --server-side -f ./.github/actions/setup-local-volume-provisioner/manifests/
+      kubectl -n local-volume-provisioner rollout status --timeout=5m daemonset.apps/local-volume-provisioner

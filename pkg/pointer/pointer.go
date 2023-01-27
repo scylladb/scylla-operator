@@ -13,3 +13,7 @@ func KeyUsage(u x509.KeyUsage) *x509.KeyUsage {
 func Time(t metav1.Time) *metav1.Time {
 	return &t
 }
+
+func Ptr[T any](v T) *T {
+	return &v
+}

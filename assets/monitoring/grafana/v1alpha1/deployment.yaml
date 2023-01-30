@@ -25,7 +25,7 @@ spec:
         {{- .tolerations | toYAML | nindent 8 }}
       containers:
       - name: grafana
-        image: docker.io/grafana/grafana:9.3.1
+        image: docker.io/grafana/grafana:9.3.4
         command:
         - grafana-server
         - --packaging=docker

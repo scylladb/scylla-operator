@@ -1349,6 +1349,13 @@ spec:
                       type: object
                   type: object
                   x-kubernetes-map-type: atomic
+                type:
+                  default: SaaS
+                  description: type determines the platform type of the monitoring setup.
+                  enum:
+                    - SaaS
+                    - Platform
+                  type: string
               required:
                 - endpointsSelector
               type: object

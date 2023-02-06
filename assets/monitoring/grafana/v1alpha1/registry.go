@@ -36,9 +36,13 @@ var (
 	grafanaProvisioningConfigMapTemplateString string
 	GrafanaProvisioningConfigMapTemplate       = ParseObjectTemplateOrDie[*corev1.ConfigMap]("grafana-provisioning-cm", grafanaProvisioningConfigMapTemplateString)
 
-	//go:embed "dashboards.cm.yaml"
-	grafanaDashboardsConfigMapTemplateString string
-	GrafanaDashboardsConfigMapTemplate       = ParseObjectTemplateOrDie[*corev1.ConfigMap]("grafana-dashboard-cm", grafanaDashboardsConfigMapTemplateString)
+	//go:embed "dashboards-platform.cm.yaml"
+	grafanaDashboardsPlatformConfigMapTemplateString string
+	GrafanaDashboardsPlatformConfigMapTemplate       = ParseObjectTemplateOrDie[*corev1.ConfigMap]("grafana-dashboards-platform-cm", grafanaDashboardsPlatformConfigMapTemplateString)
+
+	//go:embed "dashboards-saas.cm.yaml"
+	grafanaDashboardsSAASConfigMapTemplateString string
+	GrafanaDashboardsSAASConfigMapTemplate       = ParseObjectTemplateOrDie[*corev1.ConfigMap]("grafana-dashboards-saas-cm", grafanaDashboardsSAASConfigMapTemplateString)
 
 	//go:embed "service.yaml"
 	grafanaServiceTemplateString string

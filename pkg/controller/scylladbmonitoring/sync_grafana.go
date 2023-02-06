@@ -140,9 +140,24 @@ func makeGrafanaConfigs(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.ConfigMa
 }
 
 func makeGrafanaDashboards(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.ConfigMap, string, error) {
-	return grafanav1alpha1assets.GrafanaDashboardsConfigMapTemplate.RenderObject(map[string]any{
-		"scyllaDBMonitoringName": sm.Name,
-	})
+	t := scyllav1alpha1.ScyllaDBMonitoringTypeSAAS
+	// It should have a default value, but it can be nil due to a version skew.
+	if sm.Spec.Type != nil {
+		t = *sm.Spec.Type
+	}
+
+	switch t {
+	case scyllav1alpha1.ScyllaDBMonitoringTypePlatform:
+		return grafanav1alpha1assets.GrafanaDashboardsPlatformConfigMapTemplate.RenderObject(map[string]any{
+			"scyllaDBMonitoringName": sm.Name,
+		})
+	case scyllav1alpha1.ScyllaDBMonitoringTypeSAAS:
+		return grafanav1alpha1assets.GrafanaDashboardsSAASConfigMapTemplate.RenderObject(map[string]any{
+			"scyllaDBMonitoringName": sm.Name,
+		})
+	default:
+		return nil, "", fmt.Errorf("unkown monitoring type: %q", t)
+	}
 }
 
 func makeGrafanaProvisionings(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.ConfigMap, string, error) {

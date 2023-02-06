@@ -3,6 +3,7 @@ kind: ScyllaDBMonitoring
 metadata:
   name: example
 spec:
+  type: Platform
   endpointsSelector:
     matchLabels:
       app.kubernetes.io/name: scylla
@@ -25,4 +26,3 @@ spec:
             - test-grafana.test.svc.cluster.local
             annotations:
               haproxy-ingress.github.io/ssl-passthrough: "true"
-

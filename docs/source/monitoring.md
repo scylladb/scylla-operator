@@ -1,76 +1,180 @@
-### Setting up Monitoring
+# Monitoring
 
-Both Prometheus, Grafana and AlertManager were configured with specific rules for Scylla Monitoring.
-All of them will be available under the `scylla-monitoring` namespace.
-Customization can be done in `examples/common/monitoring/values.yaml`
+Scylla Operator 1.8 introduced a new API resource `ScyllaDBMonitoring`, allowing users to deploy a managed monitoring 
+setup for their Scylla Clusters.
 
+```yaml
+apiVersion: scylla.scylladb.com/v1alpha1
+kind: ScyllaDBMonitoring
+metadata:
+  name: example
+spec:
+  type: Platform
+  endpointsSelector:
+    matchLabels:
+      app.kubernetes.io/name: scylla
+      scylla-operator.scylladb.com/scylla-service-type: identity
+      scylla/cluster: replace-with-your-scyllacluster-name
+  components:
+    prometheus:
+      storage:
+        volumeClaimTemplate:
+          spec:
+            resources:
+              requests:
+                storage: 1Gi
+    grafana:
+      exposeOptions:
+        webInterface:
+          ingress:
+            ingressClassName: haproxy
+            dnsDomains:
+            - test-grafana.test.svc.cluster.local
+            annotations:
+              haproxy-ingress.github.io/ssl-passthrough: "true"
+```
 
-1. Download Scylla Monitoring
+For details, refer to the below command:
+```console
+$ kubectl explain scylladbmonitorings.scylla.scylladb.com/v1alpha1
+```
 
-   First you need to download Scylla Monitoring, which contains Grafana dashboards and custom Prometheus rules.
-   You can do this by running the following command:
-   ```
-   mkdir scylla-monitoring
-   curl -L https://github.com/scylladb/scylla-monitoring/tarball/branch-4.0 | tar -xzf - -C scylla-monitoring --strip-components=1
-   ```
+## Deploy managed monitoring
 
-1. Add monitoring stack charts repository
+**Note**: as of v1.8, ScyllaDBMonitoring is experimental. The API is currently in version v1alpha1 and may change in future versions.
 
-   ```
-   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-   helm repo update
-   ```
+### Requirements
 
-1. Install monitoring stack
+Before you can set up your ScyllaDB monitoring, you need Scylla Operator already installed in your Kubernetes cluster.
+For more information on how to deploy Scylla Operator, see:
+* [Deploying Scylla on a Kubernetes Cluster](generic.md)
+* [Deploying Scylla stack using Helm Charts](helm.md)
 
-   ```
-   helm install monitoring prometheus-community/kube-prometheus-stack --create-namespace --namespace scylla-monitoring -f examples/common/monitoring/values.yaml -f <( cd scylla-monitoring/prometheus/prom_rules && find * -maxdepth 1 -type f -iregex '.*\.\(yaml\|yml\)' -print0 | xargs -0 yq ea '{(filename | sub("\/", "-")): .} | . as $item ireduce ({}; . * $item) | {"additionalPrometheusRulesMap": .}' )
-   ```
+The above example of the monitoring setup also makes use of HAProxy Ingress and Prometheus Operator.
+You can deploy them in your Kubernetes cluster using the provided third party examples. If you already have them deployed
+in your cluster, you can skip the below steps.
 
-   If you want to tweak the Prometheus properties, for example it's assigned memory,
-   you can override it by adding a command line argument like this: `--set prometheus.resources.limits.memory=4Gi`
-   or edit values file located at `examples/common/monitoring/values.yaml`.
+#### Deploy Prometheus Operator
+Deploy Prometheus Operator using kubectl:
+```console
+$ kubectl -n prometheus-operator apply --server-side -f ./examples/third-party/prometheus-operator
+```
 
-   The `yq` command prepares and formats custom Prometheus rules included in Scylla Monitoring and passes them as
-   additional values to `helm install` command.
-   It results in creating additional PrometheusRules: custom resources used to mount the rules into Prometheus.
+##### Wait for Prometheus Operator to roll out
+```console
+$ kubectl -n prometheus-operator rollout status --timeout=5m deployments.apps/prometheus-operator
+deployment "prometheus-operator" successfully rolled out
+```
 
-1. Install Service Monitors
+#### Deploy HAProxy Ingress
+Deploy HAProxy Ingress using kubectl:
+```console
+$ kubectl -n haproxy-ingress apply --server-side -f ./examples/third-party/haproxy-ingress
+```
 
-    ServiceMonitors are used by the Prometheus to discover applications exposing metrics.
+##### Wait for HAProxy Ingress to roll out
+```console
+$ kubectl -n haproxy-ingress rollout status --timeout=5m deployments.apps/haproxy-ingress
+deployment "haproxy-ingress" successfully rolled out
+```
 
-    ```
-    # Scylla Service Monitor
-    kubectl apply -f examples/common/monitoring/scylla-service-monitor.yaml
+### Deploy ScyllaDBMonitoring
 
-    # Scylla Manager Service Monitor
-    kubectl apply -f examples/common/monitoring/scylla-manager-service-monitor.yaml
-    ```
+First, update the `endpointsSelector` in `examples/monitoring/v1alpha1/scylladbmonitoring.yaml` with a label
+matching your ScyllaCluster instance name.
 
-1. Install dashboards
+Deploy the monitoring setup using kubectl:
+```console
+$ kubectl -n scylla apply --server-side -f ./examples/monitoring/v1alpha1/scylladbmonitoring.yaml
+```
 
-    Scylla Monitoring comes with pre generated dashboards suitable for multiple Scylla versions.
-    In this example we will use dashboards for Scylla 4.6, and Scylla Manager 3.0.
-    Amend directory path to generated dashboards to version suitable for your deployment.
+Scylla Operator will notice the new ScyllaDBMonitoring object, and it will reconcile all necessary resources.
 
-   Now the dashboards can be created like this:
-   ```
-   # Scylla dashboards
-   for f in scylla-monitoring/grafana/build/ver_4.6/*.json; do
-     kubectl -n scylla-monitoring create configmap scylla-dashboard-"$( basename "${f}" '.json' )" --from-file="${f}" --dry-run=client -o yaml | kubectl label -f- --dry-run=client -o yaml --local grafana_dashboard=1 | kubectl apply --server-side -f-
-   done
+#### Wait for ScyllaDBMonitoring to roll out
+```console
+$ kubectl wait --for='condition=Progressing=False' scylladbmonitorings.scylla.scylladb.com/example
+scylladbmonitoring.scylla.scylladb.com/example condition met
 
-   # Scylla Manager dashboards
-   for f in scylla-monitoring/grafana/build/manager_3.0/*.json; do
-     kubectl -n scylla-monitoring create configmap scylla-manager-dashboard-"$( basename "${f}" '.json' )" --from-file="${f}" --dry-run=client -o yaml | kubectl label -f- --dry-run=client -o yaml --local grafana_dashboard=1 | kubectl apply --server-side -f-
-   done
-    ```
+$ kubectl wait --for='condition=Degraded=False' scylladbmonitorings.scylla.scylladb.com/example
+scylladbmonitoring.scylla.scylladb.com/example condition met
 
-    Once Grafana sidecar picks up these dashboards they should be accessible in Grafana.
+$ kubectl wait --for='condition=Available=True' scylladbmonitorings.scylla.scylladb.com/example
+scylladbmonitoring.scylla.scylladb.com/example condition met
+```
 
-To access Grafana locally, run:
-    ```
-    kubectl -n scylla-monitoring port-forward deployment.apps/monitoring-grafana 3000
-    ```
+#### Wait for Prometheus to roll out
+```console
+$ kubectl rollout status --timeout=5m statefulset.apps/prometheus-example
+statefulset rolling update complete 1 pods at revision prometheus-example-65b89d55bb...
+```
 
-   You can find it on `http://127.0.0.1:3000` and login with the credentials `admin`:`admin`.
+#### Wait for Grafana to roll out
+```console
+$ kubectl rollout status --timeout=5m deployments.apps/example-grafana
+deployment "example-grafana" successfully rolled out
+```
+
+### Accessing Grafana
+
+For accessing Grafana service from outside the Kubernetes cluster we recommend using an Ingress, although there are many other ways to do so.
+When using Ingress, what matters is to direct your packets to the ingress controller Service/Pods and have the correct TLS SNI field set by the caller when reaching out to the service, so it is routed properly, and your client can successfully validate the grafana serving certificate.
+This is easier when you are using a real DNS domain that resolves to your Ingress controller's IP address but most clients and tools allow setting the SNI field manually.
+
+### Prerequisites
+
+To access Grafana, you first need to collect the serving CA and the credentials.
+
+```console
+$ GRAFANA_SERVING_CERT="$( kubectl -n scylla get secret/example-grafana-serving-ca --template '{{ index .data "tls.crt" }}' | base64 -d )"
+$ GRAFANA_USER="$( kubectl -n scylla get secret/example-grafana-admin-credentials --template '{{ index .data "username" }}' | base64 -d )"
+$ GRAFANA_PASSWORD="$( kubectl -n scylla get secret/example-grafana-admin-credentials --template '{{ index .data "password" }}' | base64 -d )"
+```
+
+### Connecting through Ingress using a resolvable domain
+
+In production clusters, the Ingress controller and appropriate DNS records should be set up already. Often there is already a generic wildcard record like `*.app.mydomain` pointing to the Ingress controller's external IP. For custom service domains, it is usually a CNAME pointing to the Ingress controller's A record.
+
+Note: The ScyllaDBMonitoring example creates an Ingress object with `test-grafana.test.svc.cluster.local` DNS domain that you should adjust to your domain. Below examples use `example-grafana.apps.mydomain`.
+
+Note: To test a resolvable domain from your machine without creating DNS records, you can adjust `/etc/hosts` or similar.
+
+```console
+$ curl --fail -s -o /dev/null -w '%{http_code}' -L --cacert <( echo "${GRAFANA_SERVING_CERT}" ) "https://example-grafana.apps.mydomain" --user "${GRAFANA_USER}:${GRAFANA_PASSWORD}"
+200
+```
+
+### Connecting through Ingress using an unresolvable domain
+
+To connect to an Ingress without a resolvable domain you first need to find out your Ingress controller's IP that can be resolved externally. Again, there are many ways to do so beyond the below examples.
+
+Unless stated otherwise, we assume your Ingress is running on port 443.
+
+```console
+$ INGRESS_PORT=443
+```
+
+#### Variants
+
+##### Ingress ExternalIP
+
+When you are running in a real cluster there is usually a cloud LoadBalancer or a bare metal alternative providing you with an externally reachable IP address.
+
+```console
+$ INGRESS_IP="$( kubectl -n=haproxy-ingress get service/haproxy-ingress --template='{{ ( index .loadBalancer.ingress 0 ).ip }}' )"
+```
+
+##### Ingress NodePort
+
+NodePort is slightly less convenient, but it's available in development clusters as well.
+
+```console
+$ INGRESS_IP="$( kubectl get nodes --template='{{ $internal_ip := "" }}{{ $external_ip := "" }}{{ range ( index .items 0 ).status.addresses }}{{ if eq .type "InternalIP" }}{{ $internal_ip = .address }}{{ else if eq .type "ExternalIP" }}{{ $external_ip = .address }}{{ end }}{{ end }}{{ if $external_ip }}{{ $external_ip }}{{ else }}{{ $internal_ip }}{{ end }}' )"
+$ INGRESS_PORT="$( kubectl -n=haproxy-ingress get services/haproxy-ingress --template='{{ range .spec.ports }}{{ if eq .port 443 }}{{ .nodePort }}{{ end }}{{ end }}' )"
+```
+
+##### Connection
+
+```console
+$ curl --fail -s -o /dev/null -w '%{http_code}' -L --cacert <( echo "${GRAFANA_SERVING_CERT}" ) "https://test-grafana.test.svc.cluster.local:${INGRESS_PORT}" --resolve "test-grafana.test.svc.cluster.local:${INGRESS_PORT}:${INGRESS_IP}" --user "${GRAFANA_USER}:${GRAFANA_PASSWORD}"
+200
+```

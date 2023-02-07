@@ -23,7 +23,7 @@ on:
 jobs:
   title:
     name: Verify PR title
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
     - name: Verify PR title
       run: |
@@ -54,7 +54,7 @@ jobs:
         fi
   labels:
     name: Verify PR labels
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
     - name: Verify PR labels
       run: |
@@ -71,7 +71,7 @@ jobs:
   milestone:
     name: Verify PR milestone
     if: ${{ github.event.pull_request.base.ref == 'master' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v3
       with:

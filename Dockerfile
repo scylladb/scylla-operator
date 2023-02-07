@@ -3,7 +3,7 @@ WORKDIR /go/src/github.com/scylladb/scylla-operator
 COPY . .
 RUN make build --warn-undefined-variables
 
-FROM quay.io/scylladb/scylla-operator-images:base-ubuntu
+FROM quay.io/scylladb/scylla-operator-images:base-ubuntu-22.04
 # sidecar-injection container and existing installations use binary from root,
 # we have to keep it there until we figure out how to properly upgrade them.
 COPY --from=builder /go/src/github.com/scylladb/scylla-operator/scylla-operator /usr/bin/

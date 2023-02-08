@@ -131,11 +131,13 @@ func cpusetFromCRI(ctx context.Context, client cri.Client, cid string) (cpuset.C
 
 func podCpusetPaths(podID, containerID, cgroupMountpoint string) []string {
 	// AWS, minikube (docker): /sys/fs/cgroup/cpuset/kubepods.slice/kubepods-pode0c9e8dc_4bfa_4d34_9e03_746a0fab90a5.slice/docker-7b4acc0e8a0d0090396906d500710f121851c487ca1a9f889215200bc377b5fb.scope/cpuset.cpus
+	// AWS (containerd): /sys/fs/cgroup/cpuset/kubepods.slice/kubepods-podb8a21eda_8c00_4101_b28f_134ea0449719.slice/cri-containerd-c6757375573c0b64c26bc65654d460ede027b83e660490e12c16cef73c5594d0.scope/cpuset.cpus
 	// GKE: /sys/fs/cgroup/cpuset/kubepods/podfc060df5-82a2-4a5e-86c0-40aec54b2a09/e3e0fc65ca5a88c9f47078aa0f097053f4c0620b2134a903c124a9b015386505/cpuset.cpus
 	// minikube (cri-o): /sys/fs/cgroup/cpuset/kubepods.slice/kubepods-pod74298416_16b6_47bb_ae8f_01ee4f91c525.slice/crio-4a839ac8074c771bd0f6d3732e4d5acd3e27acb818ae6895d767f06198a19596.scope/cpuset.cpus
 
 	return []string{
 		path.Join(cgroupMountpoint, fmt.Sprintf("/cpuset/kubepods.slice/kubepods-pod%s.slice/docker-%s.scope/cpuset.cpus", strings.ReplaceAll(podID, "-", "_"), containerID)),
+		path.Join(cgroupMountpoint, fmt.Sprintf("/cpuset/kubepods.slice/kubepods-pod%s.slice/cri-containerd-%s.scope/cpuset.cpus", strings.ReplaceAll(podID, "-", "_"), containerID)),
 		path.Join(cgroupMountpoint, fmt.Sprintf("/cpuset/kubepods/pod%s/%s/cpuset.cpus", podID, containerID)),
 		path.Join(cgroupMountpoint, fmt.Sprintf("/cpuset/kubepods.slice/kubepods-pod%s.slice/crio-%s.scope/cpuset.cpus", strings.ReplaceAll(podID, "-", "_"), containerID)),
 	}

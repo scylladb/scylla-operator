@@ -160,19 +160,19 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 			framework.Infof("Listing grafana rules: err: %v, groupCount: %d", err, len(rulesResult.Groups))
 			eo.Expect(err).NotTo(o.HaveOccurred())
 
-			o.Expect(rulesResult.Groups).NotTo(o.HaveLen(0))
-			o.Expect(rulesResult.Groups[0].Name).To(o.Equal("scylla.rules"))
-			o.Expect(rulesResult.Groups[0].Rules).NotTo(o.BeEmpty())
+			eo.Expect(rulesResult.Groups).NotTo(o.HaveLen(0))
+			eo.Expect(rulesResult.Groups[0].Name).To(o.Equal("scylla.rules"))
+			eo.Expect(rulesResult.Groups[0].Rules).NotTo(o.BeEmpty())
 			for _, rule := range rulesResult.Groups[0].Rules {
-				switch rule.(type) {
+				switch r := rule.(type) {
 				case promeheusappv1api.AlertingRule:
-					o.Expect(rule.(promeheusappv1api.AlertingRule).Health).To(o.BeEquivalentTo(promeheusappv1api.RuleHealthGood))
+					eo.Expect(r.Health).To(o.BeEquivalentTo(promeheusappv1api.RuleHealthGood))
 
 				case promeheusappv1api.RecordingRule:
-					o.Expect(rule.(promeheusappv1api.RecordingRule).Health).To(o.BeEquivalentTo(promeheusappv1api.RuleHealthGood))
+					eo.Expect(r.Health).To(o.BeEquivalentTo(promeheusappv1api.RuleHealthGood))
 
 				default:
-					o.Expect(fmt.Errorf("unexpected rule type %t", rule)).NotTo(o.HaveOccurred())
+					eo.Expect(fmt.Errorf("unexpected rule type %t", rule)).NotTo(o.HaveOccurred())
 				}
 			}
 

@@ -54,7 +54,7 @@ runs:
       cat << EOF | sudo tee /etc/crio/crio.conf.d/02-cgroup-manager.conf
       [crio.runtime]
       conmon_cgroup = "pod"
-      cgroup_manager = "systemd"
+      cgroup_manager = "cgroupfs"
       EOF
       
       sudo systemctl enable --now crio
@@ -113,7 +113,7 @@ runs:
       ---
       kind: KubeletConfiguration
       apiVersion: kubelet.config.k8s.io/v1beta1
-      cgroupDriver: systemd
+      cgroupDriver: cgroupfs
       EOF
       
       sudo kubeadm init --config=/root/kubeadm-config.yaml

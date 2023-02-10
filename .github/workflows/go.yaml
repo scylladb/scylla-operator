@@ -96,7 +96,7 @@ jobs:
         set -x
         pushd "$( mktemp -d )"
         
-        cat > ./main.go <<EOF                                       
+        cat > ./main.go <<EOF
         package main
         import _ "github.com/scylladb/scylla-operator/pkg/scheme"
         func main() {}
@@ -227,7 +227,7 @@ jobs:
       uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/run-e2e
       with:
         repositoryPath: ${{ env.git_repo_path }}
-        jobSuffix: "serial-alpha"
+        jobSuffix: "serial"
         suite: "scylla-operator/conformance/serial"
 
   test-e2e-parallel-alpha:
@@ -260,7 +260,7 @@ jobs:
       uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/run-e2e
       with:
         repositoryPath: ${{ env.git_repo_path }}
-        jobSuffix: "serial"
+        jobSuffix: "serial-alpha"
         suite: "scylla-operator/conformance/serial"
         featureGates: "AllAlpha=true,AllBeta=true"
 

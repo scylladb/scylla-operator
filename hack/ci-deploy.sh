@@ -32,12 +32,13 @@ ARTIFACTS_DIR=${ARTIFACTS_DIR:-$( mktemp -d )}
 OPERATOR_IMAGE_REF=${1}
 
 deploy_dir=${ARTIFACTS_DIR}/deploy
-mkdir -p "${deploy_dir}/"{operator,manager,prometheus-operator,haproxy-ingress}
+mkdir -p "${deploy_dir}/"{operator,manager,haproxy-ingress,kube-prometheus-setup,kube-prometheus-manifests}
 
 cp ./deploy/manager/dev/*.yaml "${deploy_dir}/manager"
 cp ./deploy/operator/*.yaml "${deploy_dir}/operator"
-cp ./examples/third-party/prometheus-operator/*.yaml "${deploy_dir}/prometheus-operator"
 cp ./examples/third-party/haproxy-ingress/*.yaml "${deploy_dir}/haproxy-ingress"
+cp ./examples/third-party/kube-prometheus/manifests/setup/*.yaml "${deploy_dir}/kube-prometheus-setup"
+cp ./examples/third-party/kube-prometheus/manifests/*.yaml "${deploy_dir}/kube-prometheus-manifests"
 cp ./examples/common/cert-manager.yaml "${deploy_dir}/"
 
 for f in $( find "${deploy_dir}"/ -type f -name '*.yaml' ); do
@@ -50,7 +51,6 @@ if [[ -n ${SCYLLA_OPERATOR_FEATURE_GATES+x} ]]; then
     yq e --inplace '.spec.template.spec.containers[0].args += "--feature-gates="+ strenv(SCYLLA_OPERATOR_FEATURE_GATES)' "${deploy_dir}/operator/50_operator.deployment.yaml"
 fi
 
-kubectl_create -n prometheus-operator -f "${deploy_dir}/prometheus-operator"
 kubectl_create -n haproxy-ingress -f "${deploy_dir}/haproxy-ingress"
 kubectl_create -f "${deploy_dir}"/cert-manager.yaml
 
@@ -61,6 +61,22 @@ for d in cert-manager{,-cainjector,-webhook}; do
     kubectl -n cert-manager rollout status --timeout=5m deployment.apps/"${d}"
 done
 wait-for-object-creation cert-manager secret/cert-manager-webhook-ca
+
+# Deploy cluster monitoring
+kubectl_create -f "${deploy_dir}/kube-prometheus-setup"
+
+kubectl wait \
+	--for condition=Established \
+	--all CustomResourceDefinition \
+	--namespace=monitoring
+
+kubectl_create -f "${deploy_dir}/kube-prometheus-manifests"
+
+wait-for-object-creation monitoring deployment.apps/prometheus-operator
+kubectl -n monitoring rollout status --timeout=5m deployment.apps/prometheus-operator
+
+wait-for-object-creation monitoring statefulset.apps/prometheus-k8s
+kubectl -n monitoring rollout status --timeout=5m statefulset.apps/prometheus-k8s
 
 kubectl_create -f "${deploy_dir}"/operator
 
@@ -81,4 +97,3 @@ kubectl -n haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-i
 kubectl wait --for condition=established crd/nodeconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scyllaoperatorconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scylladbmonitorings.scylla.scylladb.com
-kubectl wait --for condition=established $( find "${deploy_dir}/prometheus-operator/" -name '*.crd.yaml' -printf '-f=%p\n' )

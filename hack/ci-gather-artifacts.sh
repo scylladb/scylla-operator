@@ -7,6 +7,13 @@
 
 set -euxEo pipefail
 
+if [[ -z ${1+x} ]]; then
+    echo "Missing operator image ref.\nUsage: ${0} <operator_image_ref>" >&2 >/dev/null
+    exit 1
+fi
+
+OPERATOR_IMAGE_REF=${1}
+
 ARTIFACTS_DIR=${ARTIFACTS_DIR:-$( mktemp -d )}
 mkdir -p "${ARTIFACTS_DIR}"
 cd "${ARTIFACTS_DIR}"
@@ -15,6 +22,32 @@ kubectl version > kubectl.version
 
 namespaced_resources=$( kubectl api-resources --namespaced=true --verbs=get,list -o name )
 cluster_scoped_resources=$( kubectl api-resources --namespaced=false --verbs=list -o name )
+
+mkdir prometheus-snapshots
+pushd prometheus-snapshots
+kubectl -n monitoring apply --server-side -f - <<EOF
+  apiVersion: batch/v1
+  kind: Job
+  metadata:
+    name: snapshotter
+    namespace: monitoring
+    labels:
+      app: snapshotter
+  spec:
+    template:
+      spec:
+        containers:
+        - name: snapshotter
+          image: docker.io/scylladb/scylla-operator:latest
+          command:
+          - curl
+          - -XPOST
+          - http://prometheus-k8s.monitoring.svc.cluster.local:9090/api/v1/admin/tsdb/snapshot
+        restartPolicy: OnFailure
+EOF
+kubectl wait -n monitoring --for=condition=complete --timeout=300s jobs.batch/snapshotter
+kubectl cp -n monitoring prometheus-k8s-0:/prometheus/snapshots -c prometheus .
+popd
 
 mkdir cluster-scoped-resources
 pushd cluster-scoped-resources

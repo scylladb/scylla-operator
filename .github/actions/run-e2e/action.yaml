@@ -142,7 +142,7 @@ runs:
       set -euExo pipefail
       shopt -s inherit_errexit
       
-      timeout 10m ${{ inputs.repositoryPath }}/hack/ci-gather-artifacts.sh
+      timeout 10m ${{ inputs.repositoryPath }}/hack/ci-gather-artifacts.sh '${{ env.image_repo_ref }}:ci'
   - name: Get machine logs and info
     if: ${{ always() }}
     working-directory: ${{ runner.temp }}/e2e-artifacts

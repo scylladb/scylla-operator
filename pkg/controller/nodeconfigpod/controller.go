@@ -147,6 +147,10 @@ func NewController(
 	return ncpc, nil
 }
 
+func (ncpc *Controller) enqueueScyllaPodFunc() controllerhelpers.EnqueueFuncType {
+	return ncpc.handlers.EnqueueWithFilterFunc(controllerhelpers.IsScyllaPod)
+}
+
 func (ncpc *Controller) enqueueAllScyllaPodsOnNode(depth int, obj kubeinterfaces.ObjectInterface, op controllerhelpers.HandlerOperationType) {
 	node := obj.(*corev1.Node)
 
@@ -165,7 +169,7 @@ func (ncpc *Controller) enqueueAllScyllaPodsOnNode(depth int, obj kubeinterfaces
 
 	klog.V(4).InfoSDepth(depth, "Enqueuing all pods on Node", "Pods", len(pods), "Node", klog.KObj(node))
 	for _, pod := range pods {
-		ncpc.handlers.EnqueueWithDepth(depth+1, pod, op)
+		ncpc.handlers.Enqueue(depth+1, pod, op)
 	}
 
 	return
@@ -199,26 +203,10 @@ func (ncpc *Controller) enqueueAllScyllaPodsForNodeConfig(depth int, obj kubeint
 	}
 }
 
-func (ncpc *Controller) enqueueScyllaPod(depth int, obj kubeinterfaces.ObjectInterface, op controllerhelpers.HandlerOperationType) {
-	pod := obj.(*corev1.Pod)
-
-	// TODO: extract and use a better label, verify the container
-	if pod.Labels == nil {
-		return
-	}
-
-	_, isScyllaPod := pod.Labels[naming.ClusterNameLabel]
-	if !isScyllaPod {
-		return
-	}
-
-	ncpc.handlers.EnqueueWithDepth(depth+1, pod, op)
-}
-
 func (ncpc *Controller) addPod(obj interface{}) {
 	ncpc.handlers.HandleAdd(
 		obj.(*corev1.Pod),
-		ncpc.enqueueScyllaPod,
+		ncpc.enqueueScyllaPodFunc(),
 	)
 }
 
@@ -226,7 +214,7 @@ func (ncpc *Controller) updatePod(old, cur interface{}) {
 	ncpc.handlers.HandleUpdate(
 		old.(*corev1.Pod),
 		cur.(*corev1.Pod),
-		ncpc.enqueueScyllaPod,
+		ncpc.enqueueScyllaPodFunc(),
 		nil,
 	)
 }
@@ -234,7 +222,7 @@ func (ncpc *Controller) updatePod(old, cur interface{}) {
 func (ncpc *Controller) addConfigMap(obj interface{}) {
 	ncpc.handlers.HandleAdd(
 		obj.(*corev1.ConfigMap),
-		ncpc.handlers.EnqueueOwner,
+		ncpc.handlers.EnqueueOwnerFunc(ncpc.enqueueScyllaPodFunc()),
 	)
 }
 
@@ -242,7 +230,7 @@ func (ncpc *Controller) updateConfigMap(old, cur interface{}) {
 	ncpc.handlers.HandleUpdate(
 		old.(*corev1.ConfigMap),
 		cur.(*corev1.ConfigMap),
-		ncpc.handlers.EnqueueOwner,
+		ncpc.handlers.EnqueueOwnerFunc(ncpc.enqueueScyllaPodFunc()),
 		ncpc.deleteConfigMap,
 	)
 }
@@ -250,7 +238,7 @@ func (ncpc *Controller) updateConfigMap(old, cur interface{}) {
 func (ncpc *Controller) deleteConfigMap(obj interface{}) {
 	ncpc.handlers.HandleDelete(
 		obj,
-		ncpc.handlers.EnqueueOwner,
+		ncpc.handlers.EnqueueOwnerFunc(ncpc.enqueueScyllaPodFunc()),
 	)
 }
 

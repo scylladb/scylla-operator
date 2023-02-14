@@ -363,7 +363,7 @@ jobs:
         set +x
         curl -X POST -H 'Content-type: application/json' --data @<( cat <<-EOF
         {
-          "text": ":warning: CI workflow \"${{ github.workflow }}\" triggered on \"${{ github.event_name }}\" event from ${{ github.ref }} (${{ github.sha }}) failed!\n:fire_extinguisher: See https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }} for details.:fire:\ncc: <@U01L8R3RYFN> <@UN90LVATC>"
+          "text": ":warning: CI workflow \"${{ github.workflow }}\" triggered on \"${{ github.event_name }}\" event from ${{ github.ref }} (${{ github.sha }}) failed!\n:fire_extinguisher: See https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }} for details.:fire:"
         }
         EOF
         ) '${{ secrets.SLACK_WEBHOOK_URL }}'

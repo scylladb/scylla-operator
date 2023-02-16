@@ -43,6 +43,7 @@ jobs:
   verify:
     name: Verify
     runs-on: ubuntu-20.04
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v3
       with:
@@ -61,6 +62,7 @@ jobs:
   verify-deps:
     name: Verify dependencies
     runs-on: ubuntu-20.04
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v3
       with:
@@ -76,6 +78,7 @@ jobs:
     name: Verify vendorability
     if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-20.04
+    timeout-minutes: 15
     env:
       github_self_ref: 'github.com/${{ github.repository }}@${{ github.sha }}'
     steps:
@@ -116,6 +119,7 @@ jobs:
   build-and-test:
     name: Build and test
     runs-on: ubuntu-20.04
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v3
       with:
@@ -140,6 +144,7 @@ jobs:
   images:
     name: Build images
     runs-on: ubuntu-20.04
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v3
       with:
@@ -176,6 +181,7 @@ jobs:
   charts:
     name: Build Helm charts
     runs-on: ubuntu-20.04
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v3
       with:
@@ -202,6 +208,7 @@ jobs:
     name: Test e2e parallel
     runs-on: ubuntu-20.04
     needs: images
+    timeout-minutes: 90
     steps:
     - uses: actions/checkout@v3
       with:
@@ -218,6 +225,7 @@ jobs:
     name: Test e2e serial
     runs-on: ubuntu-20.04
     needs: images
+    timeout-minutes: 90
     steps:
     - uses: actions/checkout@v3
       with:
@@ -234,6 +242,7 @@ jobs:
     name: Test e2e parallel (with alpha features)
     runs-on: ubuntu-20.04
     needs: images
+    timeout-minutes: 90
     steps:
     - uses: actions/checkout@v3
       with:
@@ -251,6 +260,7 @@ jobs:
     name: Test e2e serial (with alpha features)
     runs-on: ubuntu-20.04
     needs: images
+    timeout-minutes: 90
     steps:
     - uses: actions/checkout@v3
       with:
@@ -281,6 +291,7 @@ jobs:
     - test-e2e-parallel-alpha
     - test-e2e-serial-alpha
     # TODO: Depend on upgrade-e2e when available
+    timeout-minutes: 15
     steps:
     - name: Always succeed
       working-directory: .
@@ -290,6 +301,7 @@ jobs:
     name: Promote artifacts
     runs-on: ubuntu-20.04
     needs: [success]
+    timeout-minutes: 15
     if: ${{ github.event_name != 'pull_request' }}
     steps:
     - uses: actions/checkout@v3
@@ -353,6 +365,7 @@ jobs:
     needs:
     - success
     - promote
+    timeout-minutes: 15
     if: ${{ failure() && github.event_name != 'pull_request' }}
     steps:
     - name: Report failures to Slack

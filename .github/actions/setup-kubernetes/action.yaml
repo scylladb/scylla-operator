@@ -54,7 +54,7 @@ runs:
       cat << EOF | sudo tee /etc/crio/crio.conf.d/02-cgroup-manager.conf
       [crio.runtime]
       conmon_cgroup = "pod"
-      cgroup_manager = "cgroupfs"
+      cgroup_manager = "systemd"
       EOF
       
       sudo systemctl enable --now crio
@@ -110,10 +110,21 @@ runs:
       kind: InitConfiguration
       nodeRegistration:
         criSocket: "unix:///var/run/crio/crio.sock"
+        kubeletExtraArgs:
+          runtime-cgroups: /system.slice/crio.service
       ---
-      kind: KubeletConfiguration
       apiVersion: kubelet.config.k8s.io/v1beta1
-      cgroupDriver: cgroupfs
+      kind: KubeletConfiguration
+      cgroupDriver: systemd
+      cgroupRoot: /
+      systemCgroups: /system.slice
+      kubeletCgroups: /system.slice/kubelet.service
+      enforceNodeAllocatable:
+      - pods
+      systemReservedCgroup: /system.slice
+      kubeReservedCgroup: /system.slice/kubelet.service
+      systemReserved:
+        ephemeral-storage: 1Gi
       EOF
       
       sudo kubeadm init --config=/root/kubeadm-config.yaml

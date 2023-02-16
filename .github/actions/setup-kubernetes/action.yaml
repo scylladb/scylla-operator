@@ -125,6 +125,12 @@ runs:
       kubeReservedCgroup: /system.slice/kubelet.service
       systemReserved:
         ephemeral-storage: 1Gi
+      serializeImagePulls: false
+      containerLogMaxSize: 50Mi
+      maxPods: 50
+      kubeAPIQPS: 30
+      kubeAPIBurst: 50
+      hairpinMode: hairpin-veth
       EOF
       
       sudo kubeadm init --config=/root/kubeadm-config.yaml

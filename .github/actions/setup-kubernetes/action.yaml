@@ -123,12 +123,14 @@ runs:
       kubeletCgroups: /system.slice/kubelet.service
       enforceNodeAllocatable:
       - pods
+      - system-reserved
       systemReservedCgroup: /system.slice
-      kubeReservedCgroup: /system.slice/kubelet.service
       systemReserved:
+        cpu: "200m"
         ephemeral-storage: 1Gi
       serializeImagePulls: false
       containerLogMaxSize: 50Mi
+      cpuManagerPolicy: static
       maxPods: 50
       kubeAPIQPS: 30
       kubeAPIBurst: 50

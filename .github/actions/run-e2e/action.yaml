@@ -49,7 +49,7 @@ runs:
       curl 'https://api.ipify.org?format=json'
       id
       sudo systemctl status sshd
-      sudo systemctl enable --now sshd
+      sudo systemctl enable --now ssh
       sudo systemctl status firewalld
       mkdir ~/.ssh
       cat << EOF >> ~/.ssh/authorized_keys

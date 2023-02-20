@@ -21,7 +21,7 @@ inputs:
   baseTimeoutMinutes:
     description: "Default timeout in minutes. Can be extended to accommodate for flake retries."
     required: false
-    default: 120
+    default: 60
 runs:
   using: "composite"
   steps:

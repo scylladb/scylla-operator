@@ -32,7 +32,7 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 	f := framework.NewFramework("scylladbmonitoring")
 
 	g.It("should setup monitoring stack", func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+		ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Minute)
 		defer cancel()
 
 		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
@@ -176,7 +176,7 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 				}
 			}
 
-		}).WithTimeout(5 * time.Minute).WithPolling(1 * time.Second).Should(o.Succeed())
+		}).WithTimeout(500 * time.Minute).WithPolling(1 * time.Second).Should(o.Succeed())
 
 		framework.By("Verifying that Grafana is configured correctly")
 

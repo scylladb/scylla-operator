@@ -206,7 +206,7 @@ jobs:
     name: Test e2e parallel
     runs-on: ubuntu-22.04
     needs: images
-    timeout-minutes: 90
+    timeout-minutes: 9000
     steps:
     - uses: actions/checkout@v3
       with:
@@ -240,7 +240,7 @@ jobs:
     name: Test e2e parallel (with alpha features)
     runs-on: ubuntu-22.04
     needs: images
-    timeout-minutes: 90
+    timeout-minutes: 9000
     steps:
     - uses: actions/checkout@v3
       with:

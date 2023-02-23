@@ -49,7 +49,7 @@ runs:
       echo "deb [signed-by=/etc/apt/keyrings/libcontainers-crio-archive-keyring.gpg] https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/${KUBERNETES_VERSION_SHORT}/xUbuntu_${VERSION_ID}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable:cri-o:${KUBERNETES_VERSION_SHORT}.list
       
       sudo apt-get update
-      sudo apt-get install -y --no-install-recommends cri-o cri-o-runc
+      sudo apt-get install -y --no-install-recommends cri-o cri-o-runc conmon
       
       cat << EOF | sudo tee /etc/crio/crio.conf.d/02-cgroup-manager.conf
       [crio.runtime]

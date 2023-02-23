@@ -75,7 +75,7 @@ runs:
       sudo apt-get update
       
       # Remove conflicting package
-      sudo apt remove containernetworking-plugins
+      sudo apt-get remove containernetworking-plugins
       
       sudo apt-get install -y --no-install-recommends kubelet="${KUBERNETES_PKG_VERSION}" kubeadm="${KUBERNETES_PKG_VERSION}" kubectl="${KUBERNETES_PKG_VERSION}"
 

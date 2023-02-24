@@ -127,7 +127,7 @@ runs:
         ephemeral-storage: 1Gi
       serializeImagePulls: false
       containerLogMaxSize: 50Mi
-      maxPods: 50
+      maxPods: 1024
       kubeAPIQPS: 30
       kubeAPIBurst: 50
       hairpinMode: hairpin-veth

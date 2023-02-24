@@ -159,7 +159,7 @@ runs:
       journalctl -u kubelet > kubelet.log
       journalctl -u crio > crio.log
       sudo iptables -L > iptables.log
-      sysctl --all > sysctls.log
+      sudo sysctl --all > sysctls.log
       
       sudo tar -c --use-compress-program=lz4 -f ./kubernetes.tar.lz4 "/etc/kubernetes"
       

@@ -50,11 +50,16 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Creating a ScyllaDBMonitoring")
-		sm, _, err := scyllafixture.ScyllaDBMonitoringTemplate.RenderObject(map[string]string{
+		renderArgs := map[string]any{
 			"name":              sc.Name,
 			"namespace":         sc.Namespace,
 			"scyllaClusterName": sc.Name,
-		})
+		}
+		if framework.TestContext.IngressController != nil {
+			renderArgs["ingressClassName"] = framework.TestContext.IngressController.IngressClassName
+			renderArgs["ingressCustomAnnotations"] = framework.TestContext.IngressController.CustomAnnotations
+		}
+		sm, _, err := scyllafixture.ScyllaDBMonitoringTemplate.RenderObject(renderArgs)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		sm, err = f.ScyllaClient().ScyllaV1alpha1().ScyllaDBMonitorings(sc.Namespace).Create(

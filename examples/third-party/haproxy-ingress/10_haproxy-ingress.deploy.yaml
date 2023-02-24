@@ -43,6 +43,10 @@ spec:
           requests:
             cpu: 100m
             memory: 50M
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 1042
         livenessProbe:
           httpGet:
             path: /healthz

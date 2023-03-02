@@ -173,3 +173,22 @@ runs:
           verbs:
           - patch
       EOF
+      
+      # Force default resources
+      kubectl apply --server-side -f - <<EOF
+        apiVersion: v1
+        kind: LimitRange
+        metadata:
+          name: cpu-resource-constraint
+        spec:
+          limits:
+          - type: Container
+            default:
+              cpu: "1"
+              memory: 1Gi
+            defaultRequest:
+              cpu: 100m
+              memory: 100Mi
+            max:
+              cpu: "1"
+      EOF

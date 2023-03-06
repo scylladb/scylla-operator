@@ -42,6 +42,11 @@ webhook:
   # If not set and createSelfSignedCertificate is true, a name is generated using fullname
   certificateSecretName: ""
 
+  resources:
+    requests:
+      cpu: 100m
+      memory: 20Mi
+
 serviceAccount:
   # Specifies whether a service account should be created
   create: true

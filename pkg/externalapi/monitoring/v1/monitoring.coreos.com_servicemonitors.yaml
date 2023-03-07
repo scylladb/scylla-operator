@@ -1,8 +1,9 @@
+---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.5.0
+    controller-gen.kubebuilder.io/version: v0.11.3
   creationTimestamp: null
   name: servicemonitors.monitoring.coreos.com
 spec:
@@ -64,6 +65,7 @@ spec:
                             required:
                               - key
                             type: object
+                            x-kubernetes-map-type: atomic
                           type:
                             description: Set the authentication type. Defaults to Bearer, Basic will cause an error
                             type: string
@@ -86,6 +88,7 @@ spec:
                             required:
                               - key
                             type: object
+                            x-kubernetes-map-type: atomic
                           username:
                             description: The secret in the service monitor namespace that contains the username for authentication.
                             properties:
@@ -101,6 +104,7 @@ spec:
                             required:
                               - key
                             type: object
+                            x-kubernetes-map-type: atomic
                         type: object
                       bearerTokenFile:
                         description: File to read bearer token for scraping targets.
@@ -120,6 +124,7 @@ spec:
                         required:
                           - key
                         type: object
+                        x-kubernetes-map-type: atomic
                       enableHttp2:
                         description: Whether to enable HTTP2.
                         type: boolean
@@ -213,6 +218,7 @@ spec:
                                 required:
                                   - key
                                 type: object
+                                x-kubernetes-map-type: atomic
                               secret:
                                 description: Secret containing data to use for the targets.
                                 properties:
@@ -228,6 +234,7 @@ spec:
                                 required:
                                   - key
                                 type: object
+                                x-kubernetes-map-type: atomic
                             type: object
                           clientSecret:
                             description: The secret containing the OAuth2 client secret
@@ -244,6 +251,7 @@ spec:
                             required:
                               - key
                             type: object
+                            x-kubernetes-map-type: atomic
                           endpointParams:
                             additionalProperties:
                               type: string
@@ -362,6 +370,7 @@ spec:
                                 required:
                                   - key
                                 type: object
+                                x-kubernetes-map-type: atomic
                               secret:
                                 description: Secret containing data to use for the targets.
                                 properties:
@@ -377,6 +386,7 @@ spec:
                                 required:
                                   - key
                                 type: object
+                                x-kubernetes-map-type: atomic
                             type: object
                           caFile:
                             description: Path to the CA cert in the Prometheus container to use for the targets.
@@ -399,6 +409,7 @@ spec:
                                 required:
                                   - key
                                 type: object
+                                x-kubernetes-map-type: atomic
                               secret:
                                 description: Secret containing data to use for the targets.
                                 properties:
@@ -414,6 +425,7 @@ spec:
                                 required:
                                   - key
                                 type: object
+                                x-kubernetes-map-type: atomic
                             type: object
                           certFile:
                             description: Path to the client cert file in the Prometheus container for the targets.
@@ -439,6 +451,7 @@ spec:
                             required:
                               - key
                             type: object
+                            x-kubernetes-map-type: atomic
                           serverName:
                             description: Used to verify the hostname for the targets.
                             type: string
@@ -511,6 +524,7 @@ spec:
                       description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
                       type: object
                   type: object
+                  x-kubernetes-map-type: atomic
                 targetLabels:
                   description: TargetLabels transfers labels from the Kubernetes `Service` onto the created metrics.
                   items:
@@ -524,9 +538,3 @@ spec:
           type: object
       served: true
       storage: true
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []

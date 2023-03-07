@@ -192,3 +192,11 @@ runs:
             max:
               cpu: "1"
       EOF
+
+  - name: Make extra disk space
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+
+      sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc

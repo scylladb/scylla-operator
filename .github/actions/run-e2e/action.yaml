@@ -151,11 +151,16 @@ runs:
       set -euExo pipefail
       shopt -s inherit_errexit
       
+      sudo dmesg > dmesg
+      sudo free -h > free
+      sudo df -h > df
+      sudo mount > mount
+      sudo lsblk > lsblk
+      
       sudo podman info > podman.info
       sudo podman images -a > podman.images
       sudo crictl images > crictl.images
       sudo podman stats -a --no-stream --no-reset > podman.stats
-      free -h > free
       journalctl -u kubelet > kubelet.log
       journalctl -u crio > crio.log
       sudo iptables -L > iptables.log

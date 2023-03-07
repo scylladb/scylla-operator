@@ -121,7 +121,7 @@ runs:
       group="$( id -g )"
       ingress_address="$( kubectl -n haproxy-ingress get svc haproxy-ingress --template='{{ .spec.clusterIP }}' )"
       
-      sudo podman run --user="${user}:${group}" --rm \
+      sudo timeout "$(( ${e2e_timeout_minutes} + 5 ))m" podman run --user="${user}:${group}" --rm \
       --entrypoint=/usr/bin/scylla-operator-tests \
       -v="${ARTIFACTS_DIR}:${ARTIFACTS_DIR}:rw" \
       -v="${HOME}/.kube/config:/kubeconfig:ro" -e='KUBECONFIG=/kubeconfig' \

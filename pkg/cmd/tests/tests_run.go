@@ -303,7 +303,6 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 	suiteConfig.RandomizeAllSpecs = true
 	// Better context and it's required for nested assertions. Offset doesn't really solve it as it omits the nested function line.
 	reporterConfig.FullTrace = true
-	reporterConfig.SlowSpecThreshold = 10 * time.Minute
 	gomegaformat.MaxLength = 0
 	gomegaformat.MaxDepth = 20
 	gomegaformat.TruncatedDiff = false

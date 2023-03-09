@@ -25,7 +25,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/component-base/metrics/prometheus/ratelimiter"
 	"k8s.io/klog/v2"
 )
 
@@ -79,16 +78,6 @@ func NewController(
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
 	eventBroadcaster.StartRecordingToSink(&corev1client.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
-
-	if kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
-		err := ratelimiter.RegisterMetricAndTrackRateLimiterUsage(
-			"orphanedpv_controller",
-			kubeClient.CoreV1().RESTClient().GetRateLimiter(),
-		)
-		if err != nil {
-			return nil, err
-		}
-	}
 
 	opc := &Controller{
 		kubeClient:   kubeClient,

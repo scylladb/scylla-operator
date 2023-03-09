@@ -10,5 +10,5 @@ Contributions to this library offering support for the [Terraform provider for G
 To run the tests:
 
 ```
-go test
+make test
 ```

@@ -34,7 +34,9 @@ type Config struct {
 	HTTPHeaders map[string]string
 	// Client provides an optional HTTP client, otherwise a default will be used.
 	Client *http.Client
-	// OrgID provides an optional organization ID, ignored when using APIKey, BasicAuth defaults to last used org
+	// OrgID provides an optional organization ID
+	// with BasicAuth, it defaults to last used org
+	// with APIKey, it is disallowed because API keys are scoped to a single org
 	OrgID int64
 	// NumRetries contains the number of attempted retries
 	NumRetries int
@@ -61,6 +63,12 @@ func New(baseURL string, cfg Config) (*Client, error) {
 		baseURL: *u,
 		client:  cli,
 	}, nil
+}
+
+// WithOrgID returns a new client with the provided organization ID.
+func (c Client) WithOrgID(orgID int64) *Client {
+	c.config.OrgID = orgID
+	return &c
 }
 
 func (c *Client) request(method, requestPath string, query url.Values, body io.Reader, responseStruct interface{}) error {
@@ -153,10 +161,14 @@ func (c *Client) newRequest(method, requestPath string, query url.Values, body i
 	}
 
 	if c.config.APIKey != "" {
+		if c.config.OrgID != 0 {
+			return req, fmt.Errorf("cannot use both API key and org ID. API keys are scoped to single org")
+		}
 		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.config.APIKey))
 	} else if c.config.OrgID != 0 {
 		req.Header.Add("X-Grafana-Org-Id", strconv.FormatInt(c.config.OrgID, 10))
 	}
+
 	if c.config.HTTPHeaders != nil {
 		for k, v := range c.config.HTTPHeaders {
 			req.Header.Add(k, v)

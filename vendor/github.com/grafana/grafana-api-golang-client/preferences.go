@@ -21,7 +21,7 @@ type QueryHistoryPreference struct {
 // Preferences represents Grafana preferences.
 type Preferences struct {
 	Theme            string                 `json:"theme"`
-	HomeDashboardID  int64                  `json:"homeDashboardId"`
+	HomeDashboardID  int64                  `json:"homeDashboardId,omitempty"`
 	HomeDashboardUID string                 `json:"homeDashboardUID,omitempty"`
 	Timezone         string                 `json:"timezone,omitempty"`
 	WeekStart        string                 `json:"weekStart,omitempty"`

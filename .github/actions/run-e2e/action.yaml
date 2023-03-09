@@ -21,7 +21,7 @@ inputs:
   baseTimeoutMinutes:
     description: "Default timeout in minutes. Can be extended to accommodate for flake retries."
     required: false
-    default: 120
+    default: 60
 runs:
   using: "composite"
   steps:
@@ -121,7 +121,7 @@ runs:
       group="$( id -g )"
       ingress_address="$( kubectl -n haproxy-ingress get svc haproxy-ingress --template='{{ .spec.clusterIP }}' )"
       
-      sudo podman run --user="${user}:${group}" --rm \
+      sudo timeout "$(( ${e2e_timeout_minutes} + 5 ))m" podman run --user="${user}:${group}" --rm \
       --entrypoint=/usr/bin/scylla-operator-tests \
       -v="${ARTIFACTS_DIR}:${ARTIFACTS_DIR}:rw" \
       -v="${HOME}/.kube/config:/kubeconfig:ro" -e='KUBECONFIG=/kubeconfig' \
@@ -151,15 +151,20 @@ runs:
       set -euExo pipefail
       shopt -s inherit_errexit
       
+      sudo dmesg > dmesg
+      sudo free -h > free
+      sudo df -h > df
+      sudo mount > mount
+      sudo lsblk > lsblk
+      
       sudo podman info > podman.info
       sudo podman images -a > podman.images
       sudo crictl images > crictl.images
       sudo podman stats -a --no-stream --no-reset > podman.stats
-      free -h > free
       journalctl -u kubelet > kubelet.log
       journalctl -u crio > crio.log
       sudo iptables -L > iptables.log
-      sysctl --all > sysctls.log
+      sudo sysctl --all > sysctls.log
       
       sudo tar -c --use-compress-program=lz4 -f ./kubernetes.tar.lz4 "/etc/kubernetes"
       

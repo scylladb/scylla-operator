@@ -17,6 +17,9 @@ runs:
       shopt -s inherit_errexit
       
       sudo mkdir /mnt/persistent-volumes
+      # /mnt has limited space in GH Actions, use /
+      sudo mkdir /persistent-volumes
+      sudo mount --bind /persistent-volumes /mnt/persistent-volumes
       
       for i in $( seq 1 "${{ inputs.numberOfPersistentVolumes }}" ); do
         sudo mkdir "/mnt/persistent-volumes/vol${i}" "/mnt/persistent-volumes/disk_vol${i}"

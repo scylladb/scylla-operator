@@ -88,8 +88,20 @@ runs:
       cat << EOF | sudo tee /etc/ssl/certs/audit-policy.yaml > /dev/null
       apiVersion: audit.k8s.io/v1
       kind: Policy
+      omitStages:
+      - "RequestReceived"
       rules:
+      - level: Metadata
+        resources:
+        - group: ""
+          resources:
+          - "events"
       - level: RequestResponse
+        verbs:
+        - create
+        - update
+        - patch
+      - level: Metadata
       EOF
       
       cat << EOF | sudo tee /root/kubeadm-config.yaml > /dev/null
@@ -192,3 +204,11 @@ runs:
             max:
               cpu: "1"
       EOF
+
+  - name: Make extra disk space
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+
+      sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc

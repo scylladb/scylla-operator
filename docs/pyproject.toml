@@ -15,10 +15,10 @@ sphinx-sitemap = "2.2.0"
 sphinx-autobuild = "^2021.3.14"
 Sphinx = "^4.3.2"
 sphinx-multiversion-scylla = "~0.2.11"
-sphinx-markdown-tables = "0.0.15"
+sphinx-markdown-tables = "~0.0.17"
 
 [tool.poetry.dev-dependencies]
-pytest = "^6.2"
+pytest = "^7.2.0"
 
 [build-system]
 requires = ["poetry>=0.12"]

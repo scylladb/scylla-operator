@@ -21,7 +21,7 @@ clean:
 .PHONY: clean
 
 preview:
-	$(POETRY) run sphinx-autobuild -b dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/dirhtml --port 5500
+	$(POETRY) run sphinx-autobuild -b=dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/dirhtml --port=5500 --host=0.0.0.0
 .PHONY: preview
 
 dirhtml:

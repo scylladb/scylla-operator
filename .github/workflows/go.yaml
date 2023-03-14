@@ -42,7 +42,7 @@ defaults:
 jobs:
   verify:
     name: Verify
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@v3
@@ -61,7 +61,7 @@ jobs:
 
   verify-deps:
     name: Verify dependencies
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@v3
@@ -77,7 +77,7 @@ jobs:
   verify-vendorability:
     name: Verify vendorability
     if: ${{ github.event_name == 'pull_request' }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     env:
       github_self_ref: 'github.com/${{ github.repository }}@${{ github.sha }}'
@@ -118,7 +118,7 @@ jobs:
 
   build-and-test:
     name: Build and test
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@v3
@@ -143,7 +143,7 @@ jobs:
 
   images:
     name: Build images
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@v3
@@ -155,11 +155,9 @@ jobs:
       run: ./hack/ci-detect-tags.sh
     - name: Install podman
       run: |
-        set -x
-        # Install nativelly when we have Ubuntu >= 20.10
-        . /etc/os-release
-        echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
-        curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key | sudo apt-key add -
+        set -euExo pipefail
+        shopt -s inherit_errexit
+        
         sudo apt-get update
         sudo apt-get -y install podman
     - name: Build image
@@ -180,7 +178,7 @@ jobs:
 
   charts:
     name: Build Helm charts
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@v3
@@ -206,7 +204,7 @@ jobs:
 
   test-e2e-parallel:
     name: Test e2e parallel
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: images
     timeout-minutes: 90
     steps:
@@ -223,7 +221,7 @@ jobs:
 
   test-e2e-serial:
     name: Test e2e serial
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: images
     timeout-minutes: 90
     steps:
@@ -240,7 +238,7 @@ jobs:
 
   test-e2e-parallel-alpha:
     name: Test e2e parallel (with alpha features)
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: images
     timeout-minutes: 90
     steps:
@@ -258,7 +256,7 @@ jobs:
 
   test-e2e-serial-alpha:
     name: Test e2e serial (with alpha features)
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: images
     timeout-minutes: 90
     steps:
@@ -279,7 +277,7 @@ jobs:
   # Dummy step for different promotion jobs to depend on
   success:
     name: All tests successfull
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs:
     - verify
     - verify-deps
@@ -299,7 +297,7 @@ jobs:
 
   promote:
     name: Promote artifacts
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: [success]
     timeout-minutes: 15
     if: ${{ github.event_name != 'pull_request' }}
@@ -361,7 +359,7 @@ jobs:
 
   failure-notifications:
     name: Failure notifications
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs:
     - success
     - promote

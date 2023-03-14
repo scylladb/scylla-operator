@@ -21,6 +21,10 @@ runs:
       sudo modprobe br_netfilter
       sudo swapoff -a
       echo 'net.ipv4.ip_forward = 1' | sudo tee /etc/sysctl.d/90-kube.conf >/dev/null
+      # We need to raise `fs.nr_open` as it limits how high can systemd units configure LimitNOFILE
+      echo 'fs.nr_open = 10485760' | sudo tee /etc/sysctl.d/90-kube.conf >/dev/null
+      echo 'fs.aio-max-nr = 10485760' | sudo tee /etc/sysctl.d/90-kube.conf >/dev/null
+      echo 'fs.nr_open = 10485760' | sudo tee /etc/sysctl.d/90-kube.conf >/dev/null
       echo 'net.bridge.bridge-nf-call-iptables  = 1' | sudo tee -a /etc/sysctl.d/90-kube.conf >/dev/null
       echo 'net.bridge.bridge-nf-call-ip6tables = 1' | sudo tee -a /etc/sysctl.d/90-kube.conf >/dev/null
       
@@ -31,6 +35,14 @@ runs:
     run: |
       set -euExo pipefail
       shopt -s inherit_errexit
+      
+      # Raise crio limits
+      sudo mkdir /etc/systemd/system/cri-o.service.d
+      cat << EOF | sudo tee /etc/systemd/system/cri-o.service.d/override.conf
+      [Service]
+      LimitNOFILE=10485760
+      LimitNPROC=10485760
+      EOF
       
       source /etc/os-release
       KUBERNETES_VERSION_SHORT=$( echo ${{ inputs.kubernetesVersion }} | cut -d'.' -f1-2 )
@@ -57,6 +69,7 @@ runs:
       cgroup_manager = "systemd"
       EOF
       
+      sudo systemctl daemon-reload
       sudo systemctl enable --now crio
 
   - name: Install kubernetes
@@ -74,11 +87,13 @@ runs:
       echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
       sudo apt-get update
       
-      # Remove conflicting package
+      # Remove conflicting packages (also removes podman).
       sudo apt-get remove containernetworking-plugins
       
       sudo apt-get install -y --no-install-recommends kubelet="${KUBERNETES_PKG_VERSION}" kubeadm="${KUBERNETES_PKG_VERSION}" kubectl="${KUBERNETES_PKG_VERSION}"
 
+      # Podman got wiped by removing `containernetworking-plugins` so we have to install it from the new repo.
+      sudo apt-get install podman
   - name: Start Kubernetes
     shell: bash
     run: |
@@ -133,12 +148,14 @@ runs:
       kubeletCgroups: /system.slice/kubelet.service
       enforceNodeAllocatable:
       - pods
+      - system-reserved
       systemReservedCgroup: /system.slice
-      kubeReservedCgroup: /system.slice/kubelet.service
       systemReserved:
+        cpu: "200m"
         ephemeral-storage: 1Gi
       serializeImagePulls: false
       containerLogMaxSize: 50Mi
+      cpuManagerPolicy: static
       maxPods: 1024
       kubeAPIQPS: 30
       kubeAPIBurst: 50

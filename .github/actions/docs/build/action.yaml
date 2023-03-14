@@ -20,6 +20,8 @@ runs:
         exit 1
       fi
       
+      make -C ./docs/ redirects
+      
       tar -cJf ~/docs.tar.xz -C ./docs/_build .
 
   - name: Upload docs artifact

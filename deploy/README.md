@@ -1,15 +1,18 @@
 ## Prerequisites
 
-Scylla Operator has a Cert Manager dependency, you have to install it first. 
-It can be installed via following command executed in the root directory of repository:
+Scylla Operator has a Cert Manager dependency, you have to install it first. If you intend to use the managed monitoring you also need a Prometheus Operator. 
+They can be installed via the following commands executed in the root directory of Scylla Operator repository:
 ```shell
-kubectl apply -f examples/common/cert-manager.yaml
+kubectl apply --server-side -f ./examples/common/cert-manager.yaml
+kubectl apply -n prometheus-operator --server-side -f ./examples/third-party/prometheus-operator/
 ```
 
-Proceed to next steps once Cert Manager becomes ready. To wait for it execute the following command:
+Now you need to wait for them to register and start sucessfully:
 ```shell
 kubectl wait --for condition=established crd/certificates.cert-manager.io crd/issuers.cert-manager.io
-kubectl -n cert-manager rollout status deployment.apps/cert-manager-webhook
+kubectl wait --for condition=established "$( find ./examples/third-party/prometheus-operator/ -name '*.crd.yaml' -printf '-f=%p\n' )"
+kubectl -n cert-manager rollout status deployment.apps/cert-manager{,-cainjector,-webhook}
+kubectl -n prometheus-operator rollout status deployment.apps/prometheus-operator
 ```
 
 ---
@@ -18,7 +21,7 @@ kubectl -n cert-manager rollout status deployment.apps/cert-manager-webhook
 
 To deploy Scylla Operator, execute the following from root directory in the repository:
 ```shell
-kubectl apply -f deploy/operator
+kubectl apply -n scylla-operator --server-side -f ./deploy/operator/
 ```
 
 Before Scylla or Scylla Manager can be deployed, CRD must enter established mode and Scylla Operator needs to become ready.

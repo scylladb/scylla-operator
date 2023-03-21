@@ -11,4 +11,4 @@ run:
 	./run.sh
 
 record:
-	asciinema rec --overwrite --command "$(script)" "$(OUTPUT)"
+	asciinema rec --idle-time-limit=5 --overwrite --command "$(script)" "$(OUTPUT)"

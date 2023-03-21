@@ -71,68 +71,68 @@ EOF
 run <<< "# First we'll install our dependencies. If you already have them installed in your cluster, you can skip this step."
 sleep 1
 run <<'EOF'
-kubectl apply --server-side -f ./examples/common/cert-manager.yaml
+kubectl apply --server-side -f=./examples/common/cert-manager.yaml
 EOF
 run <<'EOF'
-kubectl -n prometheus-operator apply --server-side -f ./examples/third-party/prometheus-operator/
+kubectl -n=prometheus-operator apply --server-side -f=./examples/third-party/prometheus-operator/
 EOF
 run <<'EOF'
-kubectl wait --for condition=established crd/certificates.cert-manager.io crd/issuers.cert-manager.io
+kubectl wait --for='condition=established' crd/certificates.cert-manager.io crd/issuers.cert-manager.io
 EOF
 run <<'EOF'
 prometheus_crds="$( find ./examples/third-party/prometheus-operator/ -name '*.crd.yaml' -printf '-f=%p\n' )"
 EOF
 run <<'EOF'
-kubectl wait --for condition=established "${prometheus_crds}"
+kubectl wait --for='condition=established' "${prometheus_crds}"
 EOF
 run <<'EOF'
-kubectl -n cert-manager rollout status deployment.apps/cert-manager{,-cainjector,-webhook}
+kubectl -n=cert-manager rollout status --timeout=10m deployment.apps/cert-manager{,-cainjector,-webhook}
 EOF
 run <<'EOF'
-kubectl -n prometheus-operator rollout status deployment.apps/prometheus-operator
+kubectl -n=prometheus-operator rollout status --timeout=10m deployment.apps/prometheus-operator
 EOF
 
 run <<< "# Now let's deploy Scylla Operator"
 run <<'EOF'
-kubectl -n scylla-operator apply --server-side -f ./deploy/operator/
+kubectl -n=scylla-operator apply --server-side -f=./deploy/operator/
 EOF
 run <<'EOF'
-kubectl wait --for condition=established crd/nodeconfigs.scylla.scylladb.com
+kubectl wait --for='condition=established' crd/nodeconfigs.scylla.scylladb.com
 EOF
 run <<'EOF'
-kubectl wait --for condition=established crd/scyllaoperatorconfigs.scylla.scylladb.com
+kubectl wait --for='condition=established' crd/scyllaoperatorconfigs.scylla.scylladb.com
 EOF
 run <<'EOF'
-kubectl wait --for condition=established crd/scylladbmonitorings.scylla.scylladb.com
+kubectl wait --for='condition=established' crd/scylladbmonitorings.scylla.scylladb.com
 EOF
 run <<'EOF'
-kubectl -n scylla-operator rollout status deployment.apps/{scylla-operator,webhook-server}
+kubectl -n=scylla-operator rollout status --timeout=10m deployment.apps/{scylla-operator,webhook-server}
 EOF
 
 run <<< "# Optionally, deploy Scylla Manager"
 run <<'EOF'
-kubectl -n scylla-manager apply --server-side -f ./deploy/manager/dev/
+kubectl -n=scylla-manager apply --server-side -f=./deploy/manager/dev/
 EOF
 run <<'EOF'
-kubectl -n scylla-manager rollout status deployment.apps/scylla-manager{,-controller}
+kubectl -n=scylla-manager rollout status --timeout=10m deployment.apps/scylla-manager{,-controller}
 EOF
 
 run <<< "# Optionally, enable cluster tuning."
 run <<< "# Make sure your nodes are labeled the same way or adjust the node selector on the NodeConfig."
 sleep 3
 run <<'EOF'
-kubectl apply --server-side -f ./examples/common/nodeconfig-alpha.yaml
+kubectl apply --server-side -f=./examples/common/nodeconfig-alpha.yaml
 EOF
 run <<'EOF'
-kubectl get nodeconfigs.scylla.scylladb.com/cluster -o yaml
+kubectl get nodeconfigs.scylla.scylladb.com/cluster -o=yaml
 EOF
 run <<'EOF'
-kubectl wait --for condition=Reconciled nodeconfigs.scylla.scylladb.com/cluster
+kubectl wait --for='condition=Reconciled' nodeconfigs.scylla.scylladb.com/cluster
 EOF
 
 run <<< "# Create demo namespace"
 run <<'EOF'
-kubectl create namespace demo --dry-run=client -o yaml | kubectl apply --server-side -f -
+kubectl create namespace demo --dry-run=client -o=yaml | kubectl apply --server-side -f=-
 EOF
 
 run <<< "# Optionally, create a config for ScyllaDB cluster"
@@ -155,7 +155,7 @@ head -n 20 ./examples/scylladb/scylla-config.cm.yaml
 EOF
 sleep 5
 run <<'EOF'
-kubectl -n=demo apply --server-side --force-conflicts -f ./examples/scylladb/scylla-config.cm.yaml
+kubectl -n=demo apply --server-side --force-conflicts -f=./examples/scylladb/scylla-config.cm.yaml
 EOF
 
 run <<< "# Create a ScyllaDB cluster"
@@ -192,34 +192,39 @@ head -n 25 ./examples/scylladb/example.scyllacluster.yaml
 EOF
 sleep 5
 run <<'EOF'
-kubectl -n=demo apply --server-side --force-conflicts -f ./examples/scylladb/example.scyllacluster.yaml
-EOF
-out_file="$( mktemp -t wait_logs.XXXXX )"
-run <<'EOF'
-kubectl -n=demo wait --for='condition=Progressing=false' --timeout=10m scyllacluster.scylla.scylladb.com/example >>"${out_file}" 2>&1 &
-EOF
-wpids="${run_last_pid}"
-run <<'EOF'
-kubectl -n=demo wait --for='condition=Degraded=false' --timeout=10m scyllacluster.scylla.scylladb.com/example >>"${out_file}" 2>&1 &
-EOF
-wpids+=" ${run_last_pid}"
-run <<'EOF'
-kubectl -n=demo wait --for='condition=Available' --timeout=10m scyllacluster.scylla.scylladb.com/example >>"${out_file}" 2>&1 &
-EOF
-wpids+=" ${run_last_pid}"
-run-watch "${wpids}" <<'EOF'
-kubectl -n=demo get scyllacluster.scylla.scylladb.com,statefulsets,pods,pvc,configmaps,secrets
+kubectl -n=demo apply --server-side --force-conflicts -f=./examples/scylladb/example.scyllacluster.yaml
 EOF
 run <<'EOF'
-while [[ "$( wc -l < "${out_file}" )" < 3 ]]; do sleep 0.5; done && cat "${out_file}"
+kubectl -n=demo wait --for='condition=Progressing=false' --timeout=10m scyllacluster.scylla.scylladb.com/example
+EOF
+run <<'EOF'
+kubectl -n=demo wait --for='condition=Degraded=false' --timeout=10m scyllacluster.scylla.scylladb.com/example
+EOF
+run <<'EOF'
+kubectl -n=demo wait --for='condition=Available' --timeout=10m scyllacluster.scylla.scylladb.com/example
 EOF
 run <<'EOF'
 kubectl -n=demo get scyllacluster.scylla.scylladb.com/example --template='{{ printf "ScyllaCluster has %d ready member(s)\n" ( index .status.racks "us-east-1a" ).readyMembers }}'
 EOF
+run <<'EOF'
+kubectl -n=demo get scyllacluster.scylla.scylladb.com,statefulsets,pods,pvc
+EOF
+sleep 5
+run <<'EOF'
+kubectl -n=demo get configmaps,secrets
+EOF
+sleep 5
+
 
 run <<< "# Create ScyllaDBMonitoring"
 run <<'EOF'
-kubectl -n=demo apply --server-side -f ./examples/monitoring/v1alpha1/scylladbmonitoring.yaml
+monitoring_manifest=$( mktemp )
+EOF
+run <<'EOF'
+yq e '. | .spec.endpointsSelector.matchLabels["scylla/cluster"] = "example"' ./examples/monitoring/v1alpha1/scylladbmonitoring.yaml | tee "${monitoring_manifest}"
+EOF
+run <<'EOF'
+kubectl -n=demo apply --server-side -f="${monitoring_manifest}"
 EOF
 run <<'EOF'
 kubectl -n=demo wait --for='condition=Progressing=false' --timeout=10m scylladbmonitoring.scylla.scylladb.com/example
@@ -231,7 +236,7 @@ run <<'EOF'
 kubectl -n=demo wait --for='condition=Available' --timeout=10m scylladbmonitoring.scylla.scylladb.com/example
 EOF
 run <<'EOF'
-kubectl -n=demo rollout status deployment.apps/example-grafana
+kubectl -n=demo rollout status --timeout=10m deployment.apps/example-grafana
 EOF
 run <<'EOF'
 kubectl -n=demo get svc/example-grafana
@@ -249,37 +254,35 @@ EOF
 run <<'EOF'
 grafana_password="$( kubectl -n=demo get secret/example-grafana-admin-credentials --template='{{ index .data "password" }}' | base64 -d )"
 EOF
+sleep 3
 run <<'EOF'
-curl --fail --retry-all-errors 10 --cacert <( echo "${grafana_serving_cert}" ) --resolve 'test-grafana.test.svc.cluster.local:5000:127.0.0.1' -IL 'https://test-grafana.test.svc.cluster.local:5000/' --user "${grafana_user}:${grafana_password}"
+curl --fail --retry-all-errors 10 --max-time 3 --retry-max-time 5 --cacert <( echo "${grafana_serving_cert}" ) --resolve 'test-grafana.test.svc.cluster.local:5000:127.0.0.1' -IL 'https://test-grafana.test.svc.cluster.local:5000/' --user "${grafana_user}:${grafana_password}"
 EOF
 sleep 3
 
 run <<< "# Scale the ScyllaDB cluster from 1 to 3 nodes"
 run <<'EOF'
-kubectl -n=demo patch scyllacluster.scylla.scylladb.com/example --type=json -p='[{"op": "replace", "path": "/spec/datacenter/racks/0/members", "value": 1}]' --template='{{ .metadata.generation }}'
+kubectl -n=demo patch scyllacluster.scylla.scylladb.com/example --type=json -p='[{"op": "replace", "path": "/spec/datacenter/racks/0/members", "value": 3}]'
 EOF
 run <<'EOF'
-out_file="$( mktemp -t wait_logs.XXXXX )"
+kubectl -n=demo wait --for='condition=Progressing=false' --timeout=10m scyllacluster.scylla.scylladb.com/example
 EOF
 run <<'EOF'
-kubectl -n=demo wait --for='condition=Progressing=false' --timeout=10m scyllacluster.scylla.scylladb.com/example >>"${out_file}" 2>&1 &
+kubectl -n=demo wait --for='condition=Degraded=false' --timeout=10m scyllacluster.scylla.scylladb.com/example
 EOF
-wpids="${run_last_pid}"
 run <<'EOF'
-kubectl -n=demo wait --for='condition=Degraded=false' --timeout=10m scyllacluster.scylla.scylladb.com/example >>"${out_file}" 2>&1 &
-EOF
-wpids+=" ${run_last_pid}"
-run <<'EOF'
-kubectl -n=demo wait --for='condition=Available' --timeout=10m scyllacluster.scylla.scylladb.com/example >>"${out_file}" 2>&1 &
-EOF
-wpids+=" ${run_last_pid}"
-run-watch "${wpids}" <<'EOF'
-kubectl -n=demo get scyllacluster.scylla.scylladb.com,statefulsets,pods,pvc,configmaps,secrets
-EOF
-# Sleep 1s so bash has time to write the redirected output.
-run <<'EOF'
-while [[ "$( wc -l < "${out_file}" )" < 3 ]]; do sleep 0.5; done && cat "${out_file}"
+kubectl -n=demo wait --for='condition=Available' --timeout=10m scyllacluster.scylla.scylladb.com/example
 EOF
 run <<'EOF'
 kubectl -n=demo get scyllacluster.scylla.scylladb.com/example --template='{{ printf "ScyllaCluster has %d ready member(s)\n" ( index .status.racks "us-east-1a" ).readyMembers }}'
 EOF
+sleep 5
+run <<'EOF'
+kubectl -n=demo get scyllacluster.scylla.scylladb.com,statefulsets,pods,pvc
+EOF
+sleep 5
+run <<'EOF'
+kubectl -n=demo get configmaps,secrets
+EOF
+
+run <<< "# Thanks for watching!"

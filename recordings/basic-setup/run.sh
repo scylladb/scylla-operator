@@ -5,7 +5,8 @@ shopt -s inherit_errexit
 
 trap 'rm -rf -- "${tmpdir}" && job_ids="$( jobs -p )" && if [[ -n "${job_ids}" ]]; then kill ${job_ids}; fi && wait' EXIT
 
-CUSTOM_PS1="${CUSTOM_PS1:-$ }"
+default_ps1="\n\e[0;34m\$ \e[0m"
+CUSTOM_PS1="${CUSTOM_PS1:-${default_ps1}}"
 CUSTOM_PS1_SLEEP_SEC="${CUSTOM_CHAR_SLEEP_SEC:-0.5}"
 CUSTOM_CHAR_SLEEP_SEC="${CUSTOM_CHAR_SLEEP_SEC:-0.03}"
 CUSTOM_ECHO_SLEEP_SEC="${CUSTOM_ECHO_SLEEP_SEC:-1}"
@@ -124,7 +125,7 @@ run <<'EOF'
 kubectl apply --server-side -f=./examples/common/nodeconfig-alpha.yaml
 EOF
 run <<'EOF'
-kubectl get nodeconfigs.scylla.scylladb.com/cluster -o=yaml
+kubectl get nodeconfigs.scylla.scylladb.com/cluster -o=yaml | yq e '.'
 EOF
 run <<'EOF'
 kubectl wait --for='condition=Reconciled' nodeconfigs.scylla.scylladb.com/cluster
@@ -188,7 +189,7 @@ spec:
 EOF
 fi
 run <<'EOF'
-head -n 25 ./examples/scylladb/example.scyllacluster.yaml
+yq e --colors '.' ./examples/scylladb/example.scyllacluster.yaml | head -n 25
 EOF
 sleep 5
 run <<'EOF'
@@ -218,10 +219,10 @@ sleep 5
 
 run <<< "# Create ScyllaDBMonitoring"
 run <<'EOF'
-monitoring_manifest=$( mktemp )
+monitoring_manifest="$( mktemp )"
 EOF
 run <<'EOF'
-yq e '. | .spec.endpointsSelector.matchLabels["scylla/cluster"] = "example"' ./examples/monitoring/v1alpha1/scylladbmonitoring.yaml | tee "${monitoring_manifest}"
+yq e '. | .spec.endpointsSelector.matchLabels["scylla/cluster"] = "example"' ./examples/monitoring/v1alpha1/scylladbmonitoring.yaml | tee "${monitoring_manifest}" | yq .
 EOF
 run <<'EOF'
 kubectl -n=demo apply --server-side -f="${monitoring_manifest}"
@@ -263,6 +264,7 @@ sleep 3
 run <<< "# Scale the ScyllaDB cluster from 1 to 3 nodes"
 run <<'EOF'
 kubectl -n=demo patch scyllacluster.scylla.scylladb.com/example --type=json -p='[{"op": "replace", "path": "/spec/datacenter/racks/0/members", "value": 3}]'
+kubectl -n=demo patch scyllacluster.scylla.scylladb.com/example --type=json -p='[{"op": "replace", "path": "/spec/datacenter/racks/0/members", "value": 1}]'
 EOF
 run <<'EOF'
 kubectl -n=demo wait --for='condition=Progressing=false' --timeout=10m scyllacluster.scylla.scylladb.com/example

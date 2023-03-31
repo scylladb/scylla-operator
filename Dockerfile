@@ -1,4 +1,4 @@
-FROM quay.io/scylladb/scylla-operator-images:golang-1.19 AS builder
+FROM quay.io/scylladb/scylla-operator-images:golang-1.20 AS builder
 WORKDIR /go/src/github.com/scylladb/scylla-operator
 COPY . .
 RUN make build --warn-undefined-variables

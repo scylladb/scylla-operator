@@ -8,8 +8,6 @@ rules:
 - apiGroups:
   - ""
   resources:
-#  - nodes
-#  - nodes/metrics
   - services
   - endpoints
   - pods
@@ -23,15 +21,3 @@ rules:
   - configmaps
   verbs:
   - get
-#- apiGroups:
-#  - networking.k8s.io
-#  resources:
-#  - ingresses
-#  verbs:
-#  - get
-#  - list
-#  - watch
-#- nonResourceURLs:
-#  - "/metrics"
-#  verbs:
-#  - get

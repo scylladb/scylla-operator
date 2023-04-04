@@ -403,7 +403,7 @@ func (in *PrometheusSpec) DeepCopyInto(out *PrometheusSpec) {
 	in.Resources.DeepCopyInto(&out.Resources)
 	if in.ExposeOptions != nil {
 		in, out := &in.ExposeOptions, &out.ExposeOptions
-		*out = new(GrafanaExposeOptions)
+		*out = new(PrometheusExposeOptions)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.Storage != nil {

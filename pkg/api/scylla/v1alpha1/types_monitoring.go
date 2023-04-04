@@ -103,7 +103,7 @@ type PrometheusSpec struct {
 
 	// exposeOptions specifies options for exposing Prometheus UI.
 	// +optional
-	ExposeOptions *GrafanaExposeOptions `json:"exposeOptions,omitempty"`
+	ExposeOptions *PrometheusExposeOptions `json:"exposeOptions,omitempty"`
 
 	// storage describes the underlying storage that Prometheus will consume.
 	// +optional

@@ -4602,7 +4602,7 @@ data:
                             ]
                         },
                         "datasource": "prometheus",
-                        "definition": "query_result(count(up{job=\"scylla\"}) by (dc))",
+                        "definition": "query_result(count(up{job=~\"$cluster|$^\"}) by (dc))",
                         "error": null,
                         "hide": 2,
                         "includeAll": true,
@@ -4610,7 +4610,7 @@ data:
                         "name": "count_dc",
                         "options": [],
                         "query": {
-                            "query": "query_result(count(up{job=\"scylla\"}) by (dc))",
+                            "query": "query_result(count(up{job=~\"$cluster|$^\"}) by (dc))",
                             "refId": "StandardVariableQuery"
                         },
                         "refresh": 2,

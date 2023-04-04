@@ -26,8 +26,9 @@ trap 'err_handler "${LINENO}"' ERR
 tmp_file=$( mktemp )
 
 function setup_fs {
-  dd if=/dev/zero of="${tmp_file}" bs=4096 count=4096 
-  mkfs -t "${1}" "${tmp_file}" 
+  dd if=/dev/zero of="${tmp_file}" bs=4096 count=4096
+  # Enable small filesystems with these 3 extra vars - https://lore.kernel.org/all/Yv4i0gWiHTkfWB5m@yuki/T/
+  TEST_DIR=1 TEST_DEV=1 QA_CHECK_FS=1 mkfs -t "${1}" "${tmp_file}"
 }
 
 echo "${message_prefix}..testing invalid parameters." >&2

@@ -373,6 +373,8 @@ define generate-operator-manifests
 	mv '$(3)'/scylla-operator/templates/edit_clusterrole.yaml '$(2)'/00_scyllacluster_clusterrole_edit.yaml
 	mv '$(3)'/scylla-operator/templates/scyllacluster_member_clusterrole.yaml '$(2)'/00_scyllacluster_member_clusterrole.yaml
 	mv '$(3)'/scylla-operator/templates/scyllacluster_member_clusterrole_def.yaml '$(2)'/00_scyllacluster_member_clusterrole_def.yaml
+	mv '$(3)'/scylla-operator/templates/scylladbmonitoring_prometheus_clusterrole.yaml '$(2)'/00_scylladbmonitoring_prometheus_clusterrole.yaml
+	mv '$(3)'/scylla-operator/templates/scylladbmonitoring_prometheus_clusterrole_def.yaml '$(2)'/00_scylladbmonitoring_prometheus_clusterrole_def.yaml
 
 	mv '$(3)'/scylla-operator/templates/issuer.yaml '$(2)'/10_issuer.yaml
 	mv '$(3)'/scylla-operator/templates/certificate.yaml '$(2)'/10_certificate.yaml

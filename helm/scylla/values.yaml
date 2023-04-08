@@ -42,6 +42,9 @@ backups: []
 # Scylla Manager Repair task definition
 repairs: []
 
+# ImagePullSecrets used for pulling Scylla and Agent images
+imagePullSecrets: []
+
 # Name of datacenter
 datacenter: "us-east-1"
 # List of racks

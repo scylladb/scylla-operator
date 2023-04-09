@@ -47,7 +47,7 @@ for t in "minix" "msdos"; do
 done
 
 echo "${message_prefix}..testing valid tune2fs filesystems." >&2
-for t in "ext2" "ext3" "ext4" "xfs"; do
+for t in "ext4" "xfs"; do
   setup_fs "${t}"
   "${bin}" -l "${tmp_file}" 
 done

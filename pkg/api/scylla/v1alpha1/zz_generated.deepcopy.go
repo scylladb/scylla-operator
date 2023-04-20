@@ -494,6 +494,11 @@ func (in *ScyllaDBMonitoringSpec) DeepCopyInto(out *ScyllaDBMonitoringSpec) {
 		*out = new(Components)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.Type != nil {
+		in, out := &in.Type, &out.Type
+		*out = new(ScyllaDBMonitoringType)
+		**out = **in
+	}
 	return
 }
 

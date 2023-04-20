@@ -152,6 +152,18 @@ type Components struct {
 	Grafana *GrafanaSpec `json:"grafana,omitempty"`
 }
 
+// ScyllaDBMonitoringType describes the platform type of the monitoring setup.
+// +kubebuilder:validation:Enum="SaaS";"Platform"
+type ScyllaDBMonitoringType string
+
+const (
+	// ScyllaDBMonitoringTypePlatform defines ScyllaDB monitoring setup that includes a view of the infrastructure.
+	ScyllaDBMonitoringTypePlatform ScyllaDBMonitoringType = "Platform"
+
+	// ScyllaDBMonitoringTypeSAAS defines ScyllaDB monitoring setup focused only on the ScyllaDB service.
+	ScyllaDBMonitoringTypeSAAS ScyllaDBMonitoringType = "SaaS"
+)
+
 // ScyllaDBMonitoringSpec defines the desired state of ScyllaDBMonitoring.
 type ScyllaDBMonitoringSpec struct {
 	// endpointsSelector select which Endpoints should be scraped.
@@ -162,6 +174,11 @@ type ScyllaDBMonitoringSpec struct {
 
 	// components hold additional config for the monitoring components in use.
 	Components *Components `json:"components"`
+
+	// type determines the platform type of the monitoring setup.
+	// +kubebuilder:default:="SaaS"
+	// +optional
+	Type *ScyllaDBMonitoringType `json:"type,omitempty"`
 }
 
 // ScyllaDBMonitoringStatus defines the observed state of ScyllaDBMonitoring.

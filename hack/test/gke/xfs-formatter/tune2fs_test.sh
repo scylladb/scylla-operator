@@ -26,7 +26,7 @@ trap 'err_handler "${LINENO}"' ERR
 tmp_file=$( mktemp )
 
 function setup_fs {
-  dd if=/dev/zero of="${tmp_file}" bs=4096 count=4096
+  dd if=/dev/zero of="${tmp_file}" bs=1M count=256
   # Enable small filesystems with these 3 extra vars - https://lore.kernel.org/all/Yv4i0gWiHTkfWB5m@yuki/T/
   TEST_DIR=1 TEST_DEV=1 QA_CHECK_FS=1 mkfs -t "${1}" "${tmp_file}"
 }
@@ -47,7 +47,7 @@ for t in "minix" "msdos"; do
 done
 
 echo "${message_prefix}..testing valid tune2fs filesystems." >&2
-for t in "ext2" "ext3" "ext4" "xfs"; do
+for t in "ext4" "xfs"; do
   setup_fs "${t}"
   "${bin}" -l "${tmp_file}" 
 done

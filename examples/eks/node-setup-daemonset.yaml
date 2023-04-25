@@ -93,7 +93,7 @@ spec:
       serviceAccountName: node-setup-daemonset
       containers:
       - name: node-setup
-        image: scylladb/scylla-machine-image:k8s-aws-666.development-20201023.0c4dfa1
+        image: docker.io/scylladb/scylla-machine-image:k8s-aws-node-setup-0.0.2@sha256:f588fb9223ace917a1075974bc0d37813f540b3c05dfdd183b1849ec2f83c879
         imagePullPolicy: Always
         args:
           - --all

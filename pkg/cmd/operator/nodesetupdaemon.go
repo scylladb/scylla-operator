@@ -1,15 +1,16 @@
-// Copyright (C) 2021 ScyllaDB
+// Copyright (c) 2023 ScyllaDB.
 
 package operator
 
 import (
 	"context"
 	"fmt"
-	"time"
+	"sync"
 
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
-	"github.com/scylladb/scylla-operator/pkg/controller/nodeconfigdaemon"
+	"github.com/scylladb/scylla-operator/pkg/controller/nodesetup"
+	"github.com/scylladb/scylla-operator/pkg/controller/nodetune"
 	"github.com/scylladb/scylla-operator/pkg/cri"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -29,11 +30,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-var (
-	resyncPeriod = 12 * time.Hour
-)
-
-type NodeConfigDaemonOptions struct {
+type NodeSetupDaemonOptions struct {
 	genericclioptions.ClientConfig
 	genericclioptions.InClusterReflection
 
@@ -50,9 +47,9 @@ type NodeConfigDaemonOptions struct {
 	scyllaClient scyllaversionedclient.Interface
 }
 
-func NewNodeConfigOptions(streams genericclioptions.IOStreams) *NodeConfigDaemonOptions {
-	return &NodeConfigDaemonOptions{
-		ClientConfig:        genericclioptions.NewClientConfig("node-config"),
+func NewNodeSetupOptions(streams genericclioptions.IOStreams) *NodeSetupDaemonOptions {
+	return &NodeSetupDaemonOptions{
+		ClientConfig:        genericclioptions.NewClientConfig("node-setup"),
 		InClusterReflection: genericclioptions.InClusterReflection{},
 		CRIEndpoints: []string{
 			"unix:///var/run/dockershim.sock",
@@ -62,13 +59,13 @@ func NewNodeConfigOptions(streams genericclioptions.IOStreams) *NodeConfigDaemon
 	}
 }
 
-func NewNodeConfigCmd(streams genericclioptions.IOStreams) *cobra.Command {
-	o := NewNodeConfigOptions(streams)
+func NewNodeSetupCmd(streams genericclioptions.IOStreams) *cobra.Command {
+	o := NewNodeSetupOptions(streams)
 
 	cmd := &cobra.Command{
-		Use:   "node-config-daemon",
-		Short: "Runs a controller for a particular Kubernetes node.",
-		Long:  "Runs a controller for a particular Kubernetes node that configures the node and adjusts configuration that depends on active pods on this node.",
+		Use:   "node-setup-daemon",
+		Short: "Runs a controller that configures this machine.",
+		Long:  "Runs a controller that configures this machine.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := o.Validate()
 			if err != nil {
@@ -106,7 +103,7 @@ func NewNodeConfigCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	return cmd
 }
 
-func (o *NodeConfigDaemonOptions) Validate() error {
+func (o *NodeSetupDaemonOptions) Validate() error {
 	var errs []error
 
 	errs = append(errs, o.ClientConfig.Validate())
@@ -124,6 +121,10 @@ func (o *NodeConfigDaemonOptions) Validate() error {
 		errs = append(errs, fmt.Errorf("node-config-name can't be empty"))
 	}
 
+	if len(o.NodeConfigUID) == 0 {
+		errs = append(errs, fmt.Errorf("node-config-uid can't be empty"))
+	}
+
 	if len(o.ScyllaImage) == 0 {
 		errs = append(errs, fmt.Errorf("scylla-image can't be empty"))
 	}
@@ -135,7 +136,7 @@ func (o *NodeConfigDaemonOptions) Validate() error {
 	return apierrors.NewAggregate(errs)
 }
 
-func (o *NodeConfigDaemonOptions) Complete() error {
+func (o *NodeSetupDaemonOptions) Complete() error {
 	err := o.ClientConfig.Complete()
 	if err != nil {
 		return err
@@ -159,7 +160,7 @@ func (o *NodeConfigDaemonOptions) Complete() error {
 	return nil
 }
 
-func (o *NodeConfigDaemonOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command) error {
+func (o *NodeSetupDaemonOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command) error {
 	klog.Infof("%s version %s", cmd.Name(), version.Get())
 	cliflag.PrintFlags(cmd.Flags())
 
@@ -176,8 +177,8 @@ func (o *NodeConfigDaemonOptions) Run(streams genericclioptions.IOStreams, cmd *
 		return fmt.Errorf("can't create cri client: %w", err)
 	}
 
+	scyllaInformers := scyllainformers.NewSharedInformerFactory(o.scyllaClient, resyncPeriod)
 	namespacedKubeInformers := informers.NewSharedInformerFactoryWithOptions(o.kubeClient, resyncPeriod, informers.WithNamespace(o.Namespace))
-	nodeConfigInformers := scyllainformers.NewSharedInformerFactory(o.scyllaClient, resyncPeriod)
 	localNodeScyllaCoreInformers := informers.NewSharedInformerFactoryWithOptions(o.kubeClient, resyncPeriod, informers.WithTweakListOptions(
 		func(options *metav1.ListOptions) {
 			options.LabelSelector = naming.ScyllaSelector().String()
@@ -204,11 +205,26 @@ func (o *NodeConfigDaemonOptions) Run(streams genericclioptions.IOStreams, cmd *
 		return fmt.Errorf("can't get node %q: %w", o.NodeName, err)
 	}
 
-	ncdc, err := nodeconfigdaemon.NewController(
+	nsc, err := nodesetup.NewController(
+		ctx,
+		o.kubeClient,
+		o.scyllaClient.ScyllaV1alpha1(),
+		scyllaInformers.Scylla().V1alpha1().NodeConfigs(),
+		node.Name,
+		node.UID,
+		o.NodeConfigName,
+		types.UID(o.NodeConfigUID),
+	)
+	if err != nil {
+		return fmt.Errorf("can't create node config instance controller: %w", err)
+	}
+	defer nsc.Close()
+
+	ntc, err := nodetune.NewController(
 		o.kubeClient,
 		o.scyllaClient,
 		criClient,
-		nodeConfigInformers.Scylla().V1alpha1().NodeConfigs(),
+		scyllaInformers.Scylla().V1alpha1().NodeConfigs(),
 		localNodeScyllaCoreInformers.Core().V1().Pods(),
 		namespacedKubeInformers.Apps().V1().DaemonSets(),
 		namespacedKubeInformers.Batch().V1().Jobs(),
@@ -225,16 +241,27 @@ func (o *NodeConfigDaemonOptions) Run(streams genericclioptions.IOStreams, cmd *
 		return fmt.Errorf("can't create node config instance controller: %w", err)
 	}
 
-	// Start informers.
+	scyllaInformers.Start(ctx.Done())
 	namespacedKubeInformers.Start(ctx.Done())
-	nodeConfigInformers.Start(ctx.Done())
 	localNodeScyllaCoreInformers.Start(ctx.Done())
 	selfPodInformers.Start(ctx.Done())
 
-	// Run the controller to configure and reconcile pod specific options.
-	ncdc.Run(ctx)
+	var wg sync.WaitGroup
+	defer wg.Wait()
 
-	<-ctx.Done()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		nsc.Run(ctx)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ntc.Run(ctx)
+	}()
+
+	wg.Wait()
 
 	return nil
 }

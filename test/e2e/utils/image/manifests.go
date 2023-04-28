@@ -7,6 +7,7 @@ import "fmt"
 // RegistryList holds public and private image registries
 type RegistryList struct {
 	DockerLibraryRegistry string `json:"dockerLibraryRegistry"`
+	QuayScyllaDB          string `json:"quayScyllaDB"`
 }
 
 // Config holds an images registry, name, and version
@@ -25,6 +26,7 @@ var (
 func initRegistry() RegistryList {
 	return RegistryList{
 		DockerLibraryRegistry: "docker.io/library",
+		QuayScyllaDB:          "quay.io/scylladb",
 	}
 }
 
@@ -34,11 +36,15 @@ const (
 
 	// BusyBox image
 	BusyBox
+
+	// OperatorNodeSetup image
+	OperatorNodeSetup
 )
 
 func initImageConfigs(list RegistryList) map[int]Config {
 	configs := map[int]Config{}
-	configs[BusyBox] = Config{list.DockerLibraryRegistry, "busybox", "1.35"}
+	configs[BusyBox] = Config{registry: list.DockerLibraryRegistry, name: "busybox", version: "1.35"}
+	configs[OperatorNodeSetup] = Config{registry: list.QuayScyllaDB, name: "scylla-operator-images", version: "node-setup-v0.0.1@sha256:a25e77c769605bbb1f9c8b0b29723bb6b1d9990982d43c908779a0717dc10cb4"}
 
 	return configs
 }

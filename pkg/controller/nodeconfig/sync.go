@@ -124,7 +124,7 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 		errs = append(errs, fmt.Errorf("sync ClusterRoleBinding(s): %w", err))
 	}
 
-	err = ncc.syncDaemonSet(ctx, nc, soc, status, daemonSets)
+	err = ncc.syncDaemonSet(ctx, nc, soc, daemonSets)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("sync DaemonSet(s): %w", err))
 	}

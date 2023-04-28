@@ -7,12 +7,12 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
 )
 
 func makeScyllaOperatorNodeTuningNamespace() *corev1.Namespace {
@@ -116,8 +116,8 @@ func makeNodeConfigClusterRoleBinding() *rbacv1.ClusterRoleBinding {
 	}
 }
 
-func makeNodeConfigDaemonSet(nc *scyllav1alpha1.NodeConfig, operatorImage, scyllaImage string) *appsv1.DaemonSet {
-	if nc.Spec.DisableOptimizations {
+func makeNodeSetupDaemonSet(nc *scyllav1alpha1.NodeConfig, operatorImage, scyllaImage string) *appsv1.DaemonSet {
+	if nc.Spec.LocalDiskSetup == nil && nc.Spec.DisableOptimizations {
 		return nil
 	}
 
@@ -128,7 +128,7 @@ func makeNodeConfigDaemonSet(nc *scyllav1alpha1.NodeConfig, operatorImage, scyll
 
 	return &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      nc.Name,
+			Name:      fmt.Sprintf("%s-node-setup", nc.Name),
 			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
 			Labels:    labels,
 			OwnerReferences: []metav1.OwnerReference{
@@ -151,7 +151,15 @@ func makeNodeConfigDaemonSet(nc *scyllav1alpha1.NodeConfig, operatorImage, scyll
 					Affinity:     &nc.Spec.Placement.Affinity,
 					Tolerations:  nc.Spec.Placement.Tolerations,
 					Volumes: []corev1.Volume{
-						makeHostDirVolume("hostfs", "/"),
+						{
+							Name: "hostfs",
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: "/",
+									Type: pointer.Ptr(corev1.HostPathDirectory),
+								},
+							},
+						},
 					},
 					Containers: []corev1.Container{
 						{
@@ -162,17 +170,20 @@ func makeNodeConfigDaemonSet(nc *scyllav1alpha1.NodeConfig, operatorImage, scyll
 								"/usr/bin/bash",
 								"-euExo",
 								"pipefail",
+								"-O",
+								"inherit_errexit",
 								"-c",
 							},
 							Args: []string{
 								`
-shopt -s inherit_errexit
-
+# Create a temporary root that will represent the host file system and devices.
 cd "$( mktemp -d )"
 
-for f in $( find /host -mindepth 1 -maxdepth 1 -type d -printf '%f\n' ); do
-	mkdir -p "./${f}"
-	mount --rbind "/host/${f}" "./${f}"
+# Skip mounting entire /var, /run, /tmp to prevent from polluting host with files created in runtime in the container.
+# Required directories originating from these are mounted explicitly below.
+for d in $( find /host -mindepth 1 -maxdepth 1 -type d -not -path /host/var -not -path /host/run -not -path /host/tmp -printf '%f\n' ); do
+	mkdir -p "./${d}"
+	mount --rbind "/host/${d}" "./${d}"
 done
 
 for f in $( find /host -mindepth 1 -maxdepth 1 -type f -printf '%f\n' ); do
@@ -182,67 +193,72 @@ done
 
 find /host -mindepth 1 -maxdepth 1 -type l -exec cp -P "{}" ./ \;
 
+# Required for node setup
+for dir in "run/udev" "run/mdadm" "run/dbus"; do
+	if [ -d "/host/${dir}" ]; then
+		mkdir -p "./${dir}"
+		mount --rbind "/host/${dir}" "./${dir}"
+	fi
+done
+
+# Required by CRI client
+for dir in "run/crio" "run/containerd"; do
+	if [ -d "/host/${dir}" ]; then
+		mkdir -p "./${dir}"
+		mount --rbind "/host/${dir}" "./${dir}"
+	fi
+done
+
+if [ -f "/host/run/dockershim.sock" ]; then
+	touch "./run/dockershim.sock"
+	mount --bind "/host/run/dockershim.sock" "./run/dockershim.sock"
+fi
+
+# Required by node tuning
+if [ -d "/host/var/lib/kubelet" ]; then
+	mkdir -p "./var/lib/kubelet"
+	mount --rbind "/host/var/lib/kubelet" "./var/lib/kubelet"
+fi
+
+# Mount operator binary
 mkdir -p ./scylla-operator
 touch ./scylla-operator/scylla-operator
 mount --bind /usr/bin/scylla-operator ./scylla-operator/scylla-operator
 
+# Mount service account
+mkdir -p "./run/secrets/kubernetes.io/serviceaccount"
 for f in ca.crt token; do
-	touch "./scylla-operator/${f}"
-	mount --bind "/var/run/secrets/kubernetes.io/serviceaccount/${f}" "./scylla-operator/${f}"
+	touch "./run/secrets/kubernetes.io/serviceaccount/${f}"
+	mount --bind "/run/secrets/kubernetes.io/serviceaccount/${f}" "./run/secrets/kubernetes.io/serviceaccount/${f}"
 done
 
-cat <<EOF > ./scylla-operator/kubeconfig
-apiVersion: v1
-kind: Config
-clusters:
-- name: in-cluster
-  cluster:
-    server: https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}
-    certificate-authority: /scylla-operator/ca.crt
+# Create special symlink
+if [ -L "/host/var/run" ]; then
+	mkdir -p "./var"
+	ln -s "../run" "./var/run"
+fi
 
-users:
-- name: scylla-operator
-  user: 
-    tokenFile: /scylla-operator/token
-
-contexts:
-- name: in-cluster 
-  context:
-    cluster: in-cluster
-    user: scylla-operator
-
-current-context: in-cluster
-
-EOF
-
-exec chroot ./ /scylla-operator/scylla-operator node-config-daemon \
---kubeconfig=/scylla-operator/kubeconfig \
+exec chroot ./ /scylla-operator/scylla-operator node-setup-daemon \
+--namespace="$(NAMESPACE)" \
 --pod-name="$(POD_NAME)" \
---namespace="$(POD_NAMESPACE)" \
 --node-name="$(NODE_NAME)" \
 --node-config-name=` + fmt.Sprintf("%q", nc.Name) + ` \
 --node-config-uid=` + fmt.Sprintf("%q", nc.UID) + ` \
 --scylla-image=` + fmt.Sprintf("%q", scyllaImage) + ` \
 --disable-optimizations=` + fmt.Sprintf("%t", nc.Spec.DisableOptimizations) + ` \
 --loglevel=` + fmt.Sprintf("%d", 4) + `
-							`,
-							},
+							`},
 							Env: []corev1.EnvVar{
+								{
+									Name:  "SYSTEMD_IGNORE_CHROOT",
+									Value: "1",
+								},
 								{
 									Name: "POD_NAME",
 									ValueFrom: &corev1.EnvVarSource{
 										FieldRef: &corev1.ObjectFieldSelector{
 											APIVersion: "v1",
 											FieldPath:  "metadata.name",
-										},
-									},
-								},
-								{
-									Name: "POD_NAMESPACE",
-									ValueFrom: &corev1.EnvVarSource{
-										FieldRef: &corev1.ObjectFieldSelector{
-											APIVersion: "v1",
-											FieldPath:  "metadata.namespace",
 										},
 									},
 								},
@@ -255,6 +271,15 @@ exec chroot ./ /scylla-operator/scylla-operator node-config-daemon \
 										},
 									},
 								},
+								{
+									Name: "NAMESPACE",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											APIVersion: "v1",
+											FieldPath:  "metadata.namespace",
+										},
+									},
+								},
 							},
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
@@ -263,10 +288,14 @@ exec chroot ./ /scylla-operator/scylla-operator node-config-daemon \
 								},
 							},
 							SecurityContext: &corev1.SecurityContext{
-								Privileged: pointer.BoolPtr(true),
+								Privileged: pointer.Ptr(true),
 							},
 							VolumeMounts: []corev1.VolumeMount{
-								makeVolumeMount("hostfs", "/host", false),
+								{
+									Name:             "hostfs",
+									MountPath:        "/host",
+									MountPropagation: pointer.Ptr(corev1.MountPropagationBidirectional),
+								},
 							},
 						},
 					},
@@ -274,29 +303,4 @@ exec chroot ./ /scylla-operator/scylla-operator node-config-daemon \
 			},
 		},
 	}
-}
-
-func makeVolumeMount(name, mountPath string, readonly bool) corev1.VolumeMount {
-	return corev1.VolumeMount{
-		Name:      name,
-		MountPath: mountPath,
-		ReadOnly:  readonly,
-	}
-}
-
-func makeHostVolume(name, hostPath string, volumeType *corev1.HostPathType) corev1.Volume {
-	return corev1.Volume{
-		Name: name,
-		VolumeSource: corev1.VolumeSource{
-			HostPath: &corev1.HostPathVolumeSource{
-				Path: hostPath,
-				Type: volumeType,
-			},
-		},
-	}
-}
-
-func makeHostDirVolume(name, hostPath string) corev1.Volume {
-	volumeType := corev1.HostPathDirectory
-	return makeHostVolume(name, hostPath, &volumeType)
 }

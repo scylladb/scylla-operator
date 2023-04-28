@@ -1,4 +1,4 @@
-package nodeconfigdaemon
+package nodetune
 
 import (
 	"encoding/json"

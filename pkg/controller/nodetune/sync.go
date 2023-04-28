@@ -1,6 +1,6 @@
 // Copyright (C) 2021 ScyllaDB
 
-package nodeconfigdaemon
+package nodetune
 
 import (
 	"context"

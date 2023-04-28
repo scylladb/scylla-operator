@@ -162,7 +162,7 @@ func TestIsNodeConfigSelectingNode(t *testing.T) {
 	}
 }
 
-func TestEnsureNodeConfigCondition(t *testing.T) {
+func TestSetNodeConfigStatusCondition(t *testing.T) {
 	now := metav1.Now()
 	old := metav1.NewTime(now.Add(-1 * time.Hour))
 
@@ -257,10 +257,58 @@ func TestEnsureNodeConfigCondition(t *testing.T) {
 			}
 			status = status.DeepCopy()
 
-			EnsureNodeConfigCondition(status, &tc.cond)
+			SetNodeConfigStatusCondition(&status.Conditions, tc.cond)
 
 			if !reflect.DeepEqual(status.Conditions, tc.expected) {
 				t.Errorf("expected and actual conditions differ: %s", cmp.Diff(tc.expected, status.Conditions))
+			}
+		})
+	}
+}
+
+func TestFindNodeConfigCondition(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name          string
+		conditions    []scyllav1alpha1.NodeConfigCondition
+		conditionType scyllav1alpha1.NodeConfigConditionType
+		expected      *scyllav1alpha1.NodeConfigCondition
+	}{
+		{
+			name: "no matching condition type",
+			conditions: []scyllav1alpha1.NodeConfigCondition{
+				{
+					Type: scyllav1alpha1.AvailableCondition,
+				},
+			},
+			conditionType: scyllav1alpha1.DegradedCondition,
+			expected:      nil,
+		},
+		{
+			name: "no matching condition type",
+			conditions: []scyllav1alpha1.NodeConfigCondition{
+				{
+					Type: scyllav1alpha1.AvailableCondition,
+				},
+				{
+					Type: scyllav1alpha1.DegradedCondition,
+				},
+			},
+			conditionType: scyllav1alpha1.DegradedCondition,
+			expected:      &scyllav1alpha1.NodeConfigCondition{Type: scyllav1alpha1.DegradedCondition},
+		},
+	}
+
+	for i := range tt {
+		tc := tt[i]
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			actual := FindNodeConfigCondition(tc.conditions, tc.conditionType)
+
+			if !reflect.DeepEqual(actual, tc.expected) {
+				t.Errorf("expected and actual conditions differ: %s", cmp.Diff(tc.expected, actual))
 			}
 		})
 	}

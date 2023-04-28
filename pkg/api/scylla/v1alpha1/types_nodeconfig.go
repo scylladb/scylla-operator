@@ -35,6 +35,13 @@ type NodeConfigCondition struct {
 	// status represents the state of the condition, one of True, False, or Unknown.
 	Status corev1.ConditionStatus `json:"status"`
 
+	// observedGeneration represents the .metadata.generation that the condition was set based upon.
+	// For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+	// with respect to the current state of the instance.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
 	// lastTransitionTime is last time the condition transitioned from one status to another.
 	LastTransitionTime metav1.Time `json:"lastTransitionTime"`
 
@@ -76,6 +83,90 @@ type NodeConfigPlacement struct {
 	NodeSelector map[string]string `json:"nodeSelector"`
 }
 
+// DeviceDiscovery specifies options for device discovery.
+type DeviceDiscovery struct {
+	// nameRegex is a regular expression filtering devices by their name.
+	// +optional
+	NameRegex string `json:"nameRegex"`
+
+	// modelRegex is a regular expression filtering devices by their model name.
+	// +optional
+	ModelRegex string `json:"modelRegex"`
+}
+
+// RAID0Options specifies raid0 options.
+type RAID0Options struct {
+	// devices defines which devices constitute the raid array.
+	Devices DeviceDiscovery `json:"devices"`
+}
+
+// RAIDType is a raid array type.
+type RAIDType string
+
+const (
+	// RAID0Type represents RAID0 array type.
+	RAID0Type RAIDType = "RAID0"
+)
+
+// RAIDConfiguration is a configuration of a raid array.
+type RAIDConfiguration struct {
+	// name specifies the name of the raid device to be created under in `/dev/md/`.
+	Name string `json:"name"`
+
+	// type is a type of raid array.
+	Type RAIDType `json:"type"`
+
+	// RAID0 specifies RAID0 options.
+	// +optional
+	RAID0 *RAID0Options `json:"RAID0,omitempty"`
+}
+
+// FilesystemType is a type of filesystem.
+type FilesystemType string
+
+const (
+	// XFSFilesystem represents an XFS filesystem type.
+	XFSFilesystem FilesystemType = "xfs"
+)
+
+// FilesystemConfiguration specifies filesystem configuration options.
+type FilesystemConfiguration struct {
+	// device is a path to the device where the desired filesystem should be created.
+	Device string `json:"device"`
+
+	// type is a desired filesystem type.
+	Type FilesystemType `json:"type"`
+}
+
+// MountConfiguration specifies mount configuration options.
+type MountConfiguration struct {
+	// device is path to a device that should be mounted.
+	Device string `json:"device"`
+
+	// mountPoint is a path where the device should be mounted at.
+	MountPoint string `json:"mountPoint"`
+
+	// fsType specifies the filesystem on the device.
+	FSType string `json:"fsType"`
+
+	// unsupportedOptions is a list of mount options used during device mounting.
+	// unsupported in this field name means that we won't support all the available options passed down using this field.
+	// +optional
+	UnsupportedOptions []string `json:"unsupportedOptions"`
+}
+
+// LocalDiskSetup specifies configuration of local disk setup.
+type LocalDiskSetup struct {
+	// raids is a list of raid configurations.
+	RAIDs []RAIDConfiguration `json:"raids"`
+
+	// filesystems is a list of filesystem configurations.
+	Filesystems []FilesystemConfiguration `json:"filesystems"`
+
+	// mounts is a list of mount configuration.
+	Mounts []MountConfiguration `json:"mounts"`
+}
+
 type NodeConfigSpec struct {
 	// placement contains scheduling rules for NodeConfig Pods.
 	// +kubebuilder:validation:Required
@@ -85,6 +176,10 @@ type NodeConfigSpec struct {
 	// are going to be optimized. Turning off optimizations on already optimized
 	// Nodes does not revert changes.
 	DisableOptimizations bool `json:"disableOptimizations"`
+
+	// localDiskSetup contains options of automatic local disk setup.
+	// +optional
+	LocalDiskSetup *LocalDiskSetup `json:"localDiskSetup"`
 }
 
 // +kubebuilder:object:root=true

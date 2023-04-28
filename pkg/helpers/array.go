@@ -15,6 +15,10 @@ func ConvertToArray[To, From any](convert func(From) To, objs ...From) []To {
 	return res
 }
 
+func ConvertSlice[To, From any](slice []From, convert func(From) To) []To {
+	return ConvertToArray(convert, slice...)
+}
+
 func Filter[T any](array []T, filterFunc func(T) bool) []T {
 	res := make([]T, 0, len(array))
 
@@ -37,4 +41,24 @@ func FilterOutNil[T any](array []*T) []*T {
 	return FilterOut[*T](array, func(item *T) bool {
 		return item == nil
 	})
+}
+
+func Contains[T any](array []T, cmp func(v T) bool) bool {
+	for _, item := range array {
+		if cmp(item) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func IdentityFunc[T comparable](item T) func(T) bool {
+	return func(v T) bool {
+		return v == item
+	}
+}
+
+func ContainsItem[T comparable](slice []T, item T) bool {
+	return Contains(slice, IdentityFunc(item))
 }

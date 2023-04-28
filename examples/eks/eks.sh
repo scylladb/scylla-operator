@@ -122,10 +122,9 @@ EKS_ZONES_QUOTED=$(printf ',"%s"' "${EKS_ZONES[@]}")
 EKS_ZONES_QUOTED="${EKS_ZONES_QUOTED:1}"
 yq eval -P ".metadata.region = \"${EKS_REGION}\" | .metadata.name = \"${CLUSTER_NAME}\" | .availabilityZones |= [${EKS_ZONES_QUOTED}] | (.nodeGroups[] | select(.name==\"scylla-pool\") | .availabilityZones) |= [${EKS_ZONES_QUOTED}]" eks-cluster.yaml | eksctl create cluster -f -
 
-# Configure node disks and network
-kubectl apply -f node-setup-daemonset.yaml
-wait-for-object-creation default daemonset.apps/node-setup
-kubectl rollout status --timeout=5m daemonset.apps/node-setup
+# Configure nodes
+kubectl apply -f nodeconfig-alpha.yaml
+wait-for-object-creation default nodeconfig.scylla.scylladb.com/cluster
 
 # Install local volume provisioner
 echo "Installing local volume provisioner..."

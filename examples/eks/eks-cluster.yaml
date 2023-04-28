@@ -10,12 +10,10 @@ availabilityZones:
 
 nodeGroups:
 - name: scylla-pool
-  instanceType: i3.2xlarge
+  instanceType: i4i.2xlarge
   desiredCapacity: 3
   labels:
-    pool: "scylla-pool"
-  taints:
-    role: "scylla-clusters:NoSchedule"
+    scylla.scylladb.com/node-type: scylla
   ssh:
     allow: true
   kubeletExtraConfig:
@@ -32,9 +30,6 @@ nodeGroups:
     role: "cassandra-stress:NoSchedule"
   ssh:
     allow: true
-  preBootstrapCommands:
-  - curl -o /etc/yum.repos.d/scylla.repo -L http://repositories.scylladb.com/scylla/repo/3e3ec6ec-92b2-46ec-b64f-5b2338bc47de/centos/scylladb-4.0.repo
-  - yum install -y scylla-tools
 
 - name: monitoring-pool
   instanceType: i3.large

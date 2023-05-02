@@ -63,7 +63,6 @@ runs:
     uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/setup-local-volume-provisioner
     with:
       repositoryPath: ${{ inputs.repositoryPath }}
-      numberOfPersistentVolumes: 100
   - name: Tweak node and Kubernetes
     shell: bash
     run: |

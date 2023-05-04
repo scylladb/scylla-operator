@@ -160,7 +160,7 @@ $ INGRESS_PORT=443
 When you are running in a real cluster there is usually a cloud LoadBalancer or a bare metal alternative providing you with an externally reachable IP address.
 
 ```console
-$ INGRESS_IP="$( kubectl -n=haproxy-ingress get service/haproxy-ingress --template='{{ ( index .loadBalancer.ingress 0 ).ip }}' )"
+$ INGRESS_IP="$( kubectl -n=haproxy-ingress get service/haproxy-ingress --template='{{ ( index .status.loadBalancer.ingress 0 ).ip }}' )"
 ```
 
 ##### Ingress NodePort

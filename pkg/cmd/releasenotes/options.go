@@ -16,9 +16,8 @@ import (
 type GenerateOptions struct {
 	genericclioptions.IOStreams
 
-	OrganizationName string
-	RepositoryName   string
-	RepositoryPath   string
+	Repository     string
+	RepositoryPath string
 
 	GithubToken string
 
@@ -32,10 +31,9 @@ type GenerateOptions struct {
 
 func NewGitGenerateOptions(streams genericclioptions.IOStreams) *GenerateOptions {
 	return &GenerateOptions{
-		IOStreams:        streams,
-		OrganizationName: "scylladb",
-		RepositoryName:   "scylla-operator",
-		RepositoryPath:   ".",
+		IOStreams:      streams,
+		Repository:     "scylladb/scylla-operator",
+		RepositoryPath: ".",
 	}
 }
 
@@ -64,6 +62,14 @@ func (o *GenerateOptions) Validate() error {
 
 	if len(o.GithubToken) == 0 {
 		errs = append(errs, fmt.Errorf("github-token can't be empty"))
+	}
+
+	if len(o.Repository) == 0 {
+		errs = append(errs, fmt.Errorf("repository can't be empty"))
+	}
+
+	if len(strings.Split(o.Repository, "/")) != 2 {
+		errs = append(errs, fmt.Errorf(`repository must be in "owner/name" format`))
 	}
 
 	return errors.NewAggregate(errs)

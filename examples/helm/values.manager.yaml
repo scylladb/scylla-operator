@@ -1,6 +1,6 @@
 # Scylla Manager image
 image:
-  tag: 2.6.3
+  tag: 3.1.0
 
 # Resources allocated to Scylla Manager pods
 resources:
@@ -23,9 +23,9 @@ controllerResources:
 scylla:
   developerMode: true
   scyllaImage:
-    tag: 5.0.5
+    tag: 5.1.9
   agentImage:
-    tag: 3.0.1
+    tag: 3.1.0
   datacenter: manager-dc
   racks:
     - name: manager-rack

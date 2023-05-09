@@ -13,7 +13,7 @@ data:
       - role: pod
         namespaces:
           names:
-          - haproxy-controller
+          - haproxy-ingress
       relabel_configs:
       - source_labels: [__meta_kubernetes_pod_label_run]
         regex: haproxy-ingress

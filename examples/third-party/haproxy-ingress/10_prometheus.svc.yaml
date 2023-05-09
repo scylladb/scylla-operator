@@ -6,4 +6,4 @@ spec:
   ports:
   - port: 9090
   selector:
-    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/instance: prometheus

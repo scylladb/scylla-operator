@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: prometheus
-        image: prom/prometheus
+        image: docker.io/prom/prometheus:v2.43.1@sha256:3760d0bcb02f439394aa172eaadafbb9e657baff6a995458a6e82fdb38c5b6b5
         imagePullPolicy: IfNotPresent
         args:
         - --config.file=/etc/prometheus/config/prometheus.yml

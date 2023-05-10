@@ -13,8 +13,8 @@ metadata:
   name: scylla-cluster
   namespace: scylla
 spec:
-  version: 5.0.5
-  agentVersion: 3.0.1
+  version: 5.2.0
+  agentVersion: 3.1.0
   cpuset: true
   network:
     hostNetworking: true

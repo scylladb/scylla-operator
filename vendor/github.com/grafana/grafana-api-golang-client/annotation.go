@@ -9,22 +9,23 @@ import (
 
 // Annotation represents a Grafana API Annotation
 type Annotation struct {
-	ID          int64    `json:"id,omitempty"`
-	AlertID     int64    `json:"alertId,omitempty"`
-	DashboardID int64    `json:"dashboardId"`
-	PanelID     int64    `json:"panelId"`
-	UserID      int64    `json:"userId,omitempty"`
-	UserName    string   `json:"userName,omitempty"`
-	NewState    string   `json:"newState,omitempty"`
-	PrevState   string   `json:"prevState,omitempty"`
-	Time        int64    `json:"time"`
-	TimeEnd     int64    `json:"timeEnd,omitempty"`
-	Text        string   `json:"text"`
-	Metric      string   `json:"metric,omitempty"`
-	RegionID    int64    `json:"regionId,omitempty"`
-	Type        string   `json:"type,omitempty"`
-	Tags        []string `json:"tags,omitempty"`
-	IsRegion    bool     `json:"isRegion,omitempty"`
+	ID           int64    `json:"id,omitempty"`
+	AlertID      int64    `json:"alertId,omitempty"`
+	DashboardID  int64    `json:"dashboardId,omitempty"`
+	DashboardUID string   `json:"dashboardUID,omitempty"`
+	PanelID      int64    `json:"panelId"`
+	UserID       int64    `json:"userId,omitempty"`
+	UserName     string   `json:"userName,omitempty"`
+	NewState     string   `json:"newState,omitempty"`
+	PrevState    string   `json:"prevState,omitempty"`
+	Time         int64    `json:"time"`
+	TimeEnd      int64    `json:"timeEnd,omitempty"`
+	Text         string   `json:"text"`
+	Metric       string   `json:"metric,omitempty"`
+	RegionID     int64    `json:"regionId,omitempty"`
+	Type         string   `json:"type,omitempty"`
+	Tags         []string `json:"tags,omitempty"`
+	IsRegion     bool     `json:"isRegion,omitempty"`
 }
 
 // GraphiteAnnotation represents a Grafana API annotation in Graphite format

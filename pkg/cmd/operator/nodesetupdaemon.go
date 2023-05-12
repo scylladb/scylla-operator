@@ -192,8 +192,8 @@ func (o *NodeSetupDaemonOptions) Run(streams genericclioptions.IOStreams, cmd *c
 	))
 
 	var node *corev1.Node
-	err = wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
-		node, err = o.kubeClient.CoreV1().Nodes().Get(ctx, o.NodeName, metav1.GetOptions{})
+	err = wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func(fCtx context.Context) (bool, error) {
+		node, err = o.kubeClient.CoreV1().Nodes().Get(fCtx, o.NodeName, metav1.GetOptions{})
 		if err != nil {
 			klog.V(2).InfoS("Can't get Node", "Node", o.NodeName, "Error", err.Error())
 			return false, nil

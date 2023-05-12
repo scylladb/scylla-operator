@@ -1,0 +1,122 @@
+name: "Generate and publish release notes"
+description: 'Generate and publish release notes'
+inputs:
+  githubRepository:
+    description: "Name of repository which release notes should be generated and published in 'owner/repository' format"
+    required: true
+  githubRef:
+    description: "The fully-formed ref of the branch or tag for publishing a release"
+    required: true
+  githubToken:
+    description: "Token with access to pull permissions to scylladb/scylla-operator and release permissions to repository which release is published"
+    required: true
+  goVersion:
+    description: "Version of Go"
+    required: true
+  genReleaseNotesVersionRef:
+    description: "Version ref of gen-release-notes"
+    required: true
+runs:
+  using: "composite"
+  steps:
+  - name: Setup go
+    uses: actions/setup-go@v3
+    with:
+      go-version: ${{ inputs.goVersion }}
+  
+  - uses: actions/checkout@v3
+    with:
+      ref: ${{ inputs.genReleaseNotesVersionRef }}
+      repository: scylladb/scylla-operator
+      path: ${{ github.workspace }}/go/src/github.com/scylladb/scylla-operator
+      fetch-depth: 0
+  
+  - name: Install release notes generator
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      cd ${{ github.workspace }}/go/src/github.com/scylladb/scylla-operator
+      make build GO_BUILD_PACKAGES=./cmd/gen-release-notes --warn-undefined-variables
+      
+      echo "${{ github.workspace }}/go/src/github.com/scylladb/scylla-operator" >> ${GITHUB_PATH}
+  
+  - uses: actions/checkout@v3
+    with:
+      repository: ${{ inputs.githubRepository }}
+      path: ${{ github.workspace }}/go/src/github.com/${{ inputs.githubRepository }}
+      fetch-depth: 0
+  
+  - name: Create release
+    working-directory: ${{ github.workspace }}/go/src/github.com/${{ inputs.githubRepository }}
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      source ${{ github.workspace }}/go/src/github.com/scylladb/scylla-operator/hack/lib/semver.sh
+      
+      current_tag='${{ inputs.githubRef }}'
+      [[ "${current_tag}" != "" ]]
+      echo "${current_tag}" | grep -E -e '^v[0-9]+\.[0-9]+\.[0-9]+(-(beta|rc).[0-9]+)?$'
+      
+      prerelease=$( echo "${current_tag}" | sed -E -e 's/^[^-]+(-(beta|rc)\..*)?$/\2/' )
+      case "${prerelease}" in
+        "beta" | "rc")
+          # Pre-releases diff to a closest pre-release of the same type.
+          tags=$( git tag -l | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(-'"${prerelease}"'.[0-9]+)?$' )
+          ;;
+      
+        "")
+          # Releases diff to a closest release.
+          tags=$( git tag -l | grep -E '^v[0-9]+\.[0-9]+\.[0-9]$' )
+          ;;
+      
+        *)
+          exit 1
+          ;;
+      esac
+      
+      previous_tag="$( find_previous_semver "${tags}" "${current_tag}" )"
+      [[ "${previous_tag}" != "" ]]
+      
+      release_name="${current_tag#v}"
+      previous_release_name="${previous_tag#v}"
+      
+      gen-release-notes \
+      --start-ref="$( git merge-base "${current_tag}" "${previous_tag}" )" \
+      --end-ref="${current_tag}" \
+      --release-name="${release_name}" \
+      --previous-release-name="${previous_release_name}" \
+      --github-token="${{ inputs.githubToken }}" \
+      --repository="${{ inputs.githubRepository }}" \
+      --loglevel=2 > ~/release_notes.md
+      
+      data="$( jq -n \
+        --arg current_tag "${current_tag}" \
+        --arg github_ref "${{ inputs.githubRef }}" \
+        --arg release_name "${release_name}" \
+        --arg prerelease "${prerelease}" \
+        --arg body "$( cat ~/release_notes.md )" \
+        '{
+          "tag_name": $current_tag,
+          "name": $current_tag,
+          "draft": false,
+          "prerelease": $prerelease | test("^$") | not,
+          "body": $body
+      }' )"
+      curl --fail -X POST \
+      -H "Authorization: Bearer ${{ inputs.githubToken }}" \
+      -H "Accept: application/vnd.github.v3+json" \
+      https://api.github.com/repos/${{ inputs.githubRepository }}/releases \
+      --data "${data}"
+  
+  - name: Upload artifact
+    if: ${{ always() }}
+    uses: actions/upload-artifact@v3
+    with:
+      name: release_notes.md
+      path: ~/release_notes.md
+      if-no-files-found: error
+      retention-days: 90

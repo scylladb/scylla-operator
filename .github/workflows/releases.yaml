@@ -19,95 +19,39 @@ on:
 
 env:
   go_version: '1.20'
-  git_repo_path: ${{ github.workspace }}/go/src/github.com/scylladb/scylla-operator
-  retention_days: 90
 
 defaults:
   run:
     shell: bash
-    working-directory: "./go/src/github.com/scylladb/scylla-operator"
 
 jobs:
   release-notes:
     name: Publish release notes
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v3
-      with:
-        path: ${{ env.git_repo_path }}
-        fetch-depth: 0
-    - name: Setup go
-      uses: actions/setup-go@v3
-      with:
-        go-version: ${{ env.go_version }}
-    - name: Create release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Determine current tag
       run: |
         set -euExo pipefail
         shopt -s inherit_errexit
-
-        source ./hack/lib/semver.sh
-
+        
         if [[ -n '${{ github.event.inputs.tag }}' ]]; then
           current_tag='${{ github.event.inputs.tag }}'
         else
           current_tag="${GITHUB_REF#refs/*/}"
         fi
-        [[ "${current_tag}" != "" ]]
-        echo "${current_tag}" | grep -E -e '^v[0-9]+\.[0-9]+\.[0-9]+(-(beta|rc).[0-9]+)?$'
+        
+        echo "current_tag=${current_tag}" | tee -a ${GITHUB_ENV}
 
-        prerelease=$( echo "${current_tag}" | sed -E -e 's/^[^-]+(-(beta|rc)\..*)?$/\2/' )
-        case "${prerelease}" in
-          "beta" | "rc")
-            # Pre-releases diff to a closest pre-release of the same type.
-            tags=$( git tag -l | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(-'"${prerelease}"'.[0-9]+)?$' )
-            ;;
-
-          "")
-            # Releases diff to a closest release.
-            tags=$( git tag -l | grep -E '^v[0-9]+\.[0-9]+\.[0-9]$' )
-            ;;
-
-          *)
-            exit 1
-            ;;
-        esac
-
-        previous_tag="$( find_previous_semver "${tags}" "${current_tag}" )"
-        [[ "${previous_tag}" != "" ]]
-
-        release_name="${current_tag#v}"
-        previous_release_name="${previous_tag#v}"
-        make build GO_BUILD_PACKAGES=./cmd/gen-release-notes --warn-undefined-variables
-        ./gen-release-notes --start-ref="$( git merge-base "${current_tag}" "${previous_tag}" )" \
-        --end-ref="${current_tag}" --release-name="${release_name}" --previous-release-name="${previous_release_name}" --github-token="${GITHUB_TOKEN}" \
-        --loglevel=2 > ~/release_notes.md
-
-        data="$( jq -n \
-          --arg current_tag "${current_tag}" \
-          --arg github_ref "${GITHUB_REF}" \
-          --arg release_name "${release_name}" \
-          --arg prerelease "${prerelease}" \
-          --arg body "$( cat ~/release_notes.md )" \
-          '{
-            "tag_name": $current_tag,
-            "name": $current_tag,
-            "draft": false,
-            "prerelease": $prerelease | test("^$") | not,
-            "body": $body
-        }' )"
-        curl --fail -X POST \
-        -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-        -H "Accept: application/vnd.github.v3+json" \
-        https://api.github.com/repos/scylladb/scylla-operator/releases \
-        --data "${data}"
-
-    - name: Upload artifact
-      if: ${{ always() }}
-      uses: actions/upload-artifact@v3
+    - uses: actions/checkout@v3
       with:
-        name: release_notes.md
-        path: ~/release_notes.md
-        if-no-files-found: error
-        retention-days: ${{ env.retention_days }}
+        path: ${{ github.workspace }}/go/src/github.com/scylladb/scylla-operator
+        fetch-depth: 0
+
+    - name: Generate and publish release notes
+      uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/release-notes
+      with:
+        githubRepository: ${{ github.repository }}
+        githubRef: ${{ env.current_tag }}
+        githubToken: ${{ secrets.GITHUB_TOKEN }}
+        goVersion: ${{ env.go_version }}
+        genReleaseNotesVersionRef: master

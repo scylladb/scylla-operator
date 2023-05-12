@@ -72,12 +72,8 @@ func dateToken(start, end time.Time) string {
 	return fmt.Sprintf("merged:%s..%s", startString, endString)
 }
 
-func repoToken(owner, name string) string {
-	return fmt.Sprintf("repo:%s/%s", owner, name)
-}
-
-func listPullRequests(ctx context.Context, ghClient *githubql.Client, owner, repoName string, start, end time.Time) ([]PullRequest, error) {
-	params := []string{"is:pr", "is:merged", repoToken(owner, repoName), dateToken(start, end)}
+func listPullRequests(ctx context.Context, ghClient *githubql.Client, repository string, start, end time.Time) ([]PullRequest, error) {
+	params := []string{"is:pr", "is:merged", fmt.Sprintf("repo:%s", repository), dateToken(start, end)}
 
 	var cursor *githubql.String
 	var sq searchQuery

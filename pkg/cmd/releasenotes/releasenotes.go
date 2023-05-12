@@ -44,7 +44,7 @@ func (o *GenerateOptions) Run(ctx context.Context) error {
 	} else {
 		startDate, endDate := commits[0].Committer.When, commits[len(commits)-1].Committer.When
 
-		prs, err = listPullRequests(ctx, o.ghClient, o.OrganizationName, o.RepositoryName, startDate, endDate)
+		prs, err = listPullRequests(ctx, o.ghClient, o.Repository, startDate, endDate)
 		if err != nil {
 			return err
 		}

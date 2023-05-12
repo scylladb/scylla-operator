@@ -55,3 +55,4 @@ jobs:
         githubToken: ${{ secrets.GITHUB_TOKEN }}
         goVersion: ${{ env.go_version }}
         genReleaseNotesVersionRef: master
+        containerImageName: docker.io/scylladb/scylla-operator

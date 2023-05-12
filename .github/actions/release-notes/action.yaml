@@ -16,6 +16,9 @@ inputs:
   genReleaseNotesVersionRef:
     description: "Version ref of gen-release-notes"
     required: true
+  containerImageName:
+    description: "Full name of the container image"
+    required: true
 runs:
   using: "composite"
   steps:
@@ -91,6 +94,7 @@ runs:
       --previous-release-name="${previous_release_name}" \
       --github-token="${{ inputs.githubToken }}" \
       --repository="${{ inputs.githubRepository }}" \
+      --container-image-name="${{ inputs.containerImageName }}" \
       --loglevel=2 > ~/release_notes.md
       
       data="$( jq -n \

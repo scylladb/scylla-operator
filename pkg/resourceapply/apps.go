@@ -4,6 +4,7 @@ import (
 	"context"
 
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/tools/record"
@@ -48,7 +49,20 @@ func ApplyDaemonSetWithControl(
 	required *appsv1.DaemonSet,
 	options ApplyOptions,
 ) (*appsv1.DaemonSet, bool, error) {
-	return ApplyGeneric[*appsv1.DaemonSet](ctx, control, recorder, required, options)
+	return ApplyGenericWithHandlers[*appsv1.DaemonSet](
+		ctx,
+		control,
+		recorder,
+		required,
+		options,
+		nil,
+		func(required *appsv1.DaemonSet, existing *appsv1.DaemonSet) string {
+			if !equality.Semantic.DeepEqual(existing.Spec.Selector, required.Spec.Selector) {
+				return "spec.selector is immutable"
+			}
+			return ""
+		},
+	)
 }
 
 func ApplyDaemonSet(

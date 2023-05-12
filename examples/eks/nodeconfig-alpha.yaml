@@ -1,0 +1,24 @@
+apiVersion: scylla.scylladb.com/v1alpha1
+kind: NodeConfig
+metadata:
+  name: cluster
+spec:
+  localDiskSetup:
+    filesystems:
+    - device: /dev/md/nvmes
+      type: xfs
+    mounts:
+    - device: /dev/md/nvmes
+      mountPoint: /mnt/raid-disks/local
+      unsupportedOptions:
+      - prjquota
+    raids:
+    - name: nvmes
+      type: RAID0
+      RAID0:
+        devices:
+          modelRegex: Amazon EC2 NVMe Instance Storage
+          nameRegex: ^/dev/nvme\d+n\d+$
+  placement:
+    nodeSelector:
+      scylla.scylladb.com/node-type: scylla

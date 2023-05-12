@@ -48,7 +48,7 @@ import (
 func IsNodeConfigRolledOut(nc *scyllav1alpha1.NodeConfig) (bool, error) {
 	cond := controllerhelpers.FindNodeConfigCondition(nc.Status.Conditions, scyllav1alpha1.NodeConfigReconciledConditionType)
 	return nc.Status.ObservedGeneration >= nc.Generation &&
-		cond != nil && cond.Status == corev1.ConditionTrue, nil
+		cond != nil && cond.ObservedGeneration >= nc.Generation && cond.Status == corev1.ConditionTrue, nil
 }
 
 func GetMatchingNodesForNodeConfig(ctx context.Context, nodeGetter corev1client.NodesGetter, nc *scyllav1alpha1.NodeConfig) ([]*corev1.Node, error) {
@@ -68,6 +68,40 @@ func GetMatchingNodesForNodeConfig(ctx context.Context, nodeGetter corev1client.
 	}
 
 	return matchingNodes, nil
+}
+
+func IsNodeConfigDoneWithNodes(nodes []*corev1.Node) func(nc *scyllav1alpha1.NodeConfig) (bool, error) {
+	const (
+		nodeAvailableConditionFormat   = "Node%sAvailable"
+		nodeProgressingConditionFormat = "Node%sProgressing"
+		nodeDegradedConditionFormat    = "Node%sDegraded"
+	)
+
+	return func(nc *scyllav1alpha1.NodeConfig) (bool, error) {
+		for _, node := range nodes {
+			if nc.Status.ObservedGeneration < nc.Generation {
+				return false, nil
+			}
+			if !controllerhelpers.IsNodeTuned(nc.Status.NodeStatuses, node.Name) {
+				return false, nil
+			}
+
+			availableNodeConditionType := scyllav1alpha1.NodeConfigConditionType(fmt.Sprintf(nodeAvailableConditionFormat, node.Name))
+			progressingNodeConditionType := scyllav1alpha1.NodeConfigConditionType(fmt.Sprintf(nodeProgressingConditionFormat, node.Name))
+			degradedNodeConditionType := scyllav1alpha1.NodeConfigConditionType(fmt.Sprintf(nodeDegradedConditionFormat, node.Name))
+
+			if !helpers.IsStatusNodeConfigConditionPresentAndTrue(nc.Status.Conditions, availableNodeConditionType, nc.Generation) {
+				return false, nil
+			}
+			if !helpers.IsStatusNodeConfigConditionPresentAndFalse(nc.Status.Conditions, progressingNodeConditionType, nc.Generation) {
+				return false, nil
+			}
+			if !helpers.IsStatusNodeConfigConditionPresentAndFalse(nc.Status.Conditions, degradedNodeConditionType, nc.Generation) {
+				return false, nil
+			}
+		}
+		return true, nil
+	}
 }
 
 func IsNodeConfigDoneWithNodeTuningFunc(nodes []*corev1.Node) func(nc *scyllav1alpha1.NodeConfig) (bool, error) {
@@ -105,6 +139,10 @@ func SyncTimeoutForScyllaCluster(sc *scyllav1.ScyllaCluster) time.Duration {
 
 func ContextForManagerSync(parent context.Context, sc *scyllav1.ScyllaCluster) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(parent, SyncTimeoutForScyllaCluster(sc))
+}
+
+func ContextForPodStartup(parent context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(parent, imagePullTimeout)
 }
 
 func IsScyllaClusterRolledOut(sc *scyllav1.ScyllaCluster) (bool, error) {
@@ -517,4 +555,14 @@ func GetScyllaHostsAndWaitForFullQuorum(ctx context.Context, client corev1client
 	framework.Infof("ScyllaDB nodes have reached status consistency.")
 
 	return hosts, nil
+}
+
+func PodIsRunning(pod *corev1.Pod) (bool, error) {
+	switch pod.Status.Phase {
+	case corev1.PodRunning:
+		return true, nil
+	case corev1.PodFailed, corev1.PodSucceeded:
+		return false, fmt.Errorf("pod ran to completion")
+	}
+	return false, nil
 }

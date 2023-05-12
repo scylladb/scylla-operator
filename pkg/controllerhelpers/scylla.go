@@ -3,15 +3,19 @@ package controllerhelpers
 import (
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/scylladb/go-log"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/errors"
 	corev1schedulinghelpers "k8s.io/component-helpers/scheduling/corev1"
@@ -136,6 +140,108 @@ func SetNodeStatus(nodeStatuses []scyllav1alpha1.NodeConfigNodeStatus, status *s
 	return nodeStatuses
 }
 
+func SetAggregatedNodeConditions(nodeName string, conditions *[]metav1.Condition, generation int64) error {
+	const (
+		nodeAvailableConditionFormat   = "Node%sAvailable"
+		nodeProgressingConditionFormat = "Node%sProgressing"
+		nodeDegradedConditionFormat    = "Node%sDegraded"
+	)
+
+	nodeAvailableConditionType := fmt.Sprintf(nodeAvailableConditionFormat, nodeName)
+	availableCondition, err := AggregateStatusConditions(
+		FindStatusConditionsWithSuffix(*conditions, nodeAvailableConditionType),
+		metav1.Condition{
+			Type:               nodeAvailableConditionType,
+			Status:             metav1.ConditionTrue,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: generation,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("can't aggregate status conditions: %w", err)
+	}
+	apimeta.SetStatusCondition(conditions, availableCondition)
+
+	nodeProgressingConditionType := fmt.Sprintf(nodeProgressingConditionFormat, nodeName)
+	progressingCondition, err := AggregateStatusConditions(
+		FindStatusConditionsWithSuffix(*conditions, nodeProgressingConditionType),
+		metav1.Condition{
+			Type:               nodeProgressingConditionType,
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: generation,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("can't aggregate status conditions: %w", err)
+	}
+	apimeta.SetStatusCondition(conditions, progressingCondition)
+
+	nodeDegradedConditionType := fmt.Sprintf(nodeDegradedConditionFormat, nodeName)
+	degradedCondition, err := AggregateStatusConditions(
+		FindStatusConditionsWithSuffix(*conditions, nodeDegradedConditionType),
+		metav1.Condition{
+			Type:               nodeDegradedConditionType,
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: generation,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("can't aggregate status conditions: %w", err)
+	}
+	apimeta.SetStatusCondition(conditions, degradedCondition)
+
+	return nil
+}
+
+// SetNodeConfigStatusCondition sets the corresponding condition in conditions to newCondition.
+// conditions must be non-nil.
+// If the condition of the specified type already exists (all fields of the existing condition are updated to
+// newCondition, LastTransitionTime is set to now if the new status differs from the old status)
+// If a condition of the specified type does not exist (LastTransitionTime is set to now() if unset, and newCondition is appended)
+func SetNodeConfigStatusCondition(conditions *[]scyllav1alpha1.NodeConfigCondition, newCondition scyllav1alpha1.NodeConfigCondition) {
+	if conditions == nil {
+		return
+	}
+
+	existingCondition := FindNodeConfigCondition(*conditions, newCondition.Type)
+	if existingCondition == nil {
+		if newCondition.LastTransitionTime.IsZero() {
+			newCondition.LastTransitionTime = metav1.NewTime(time.Now())
+		}
+		*conditions = append(*conditions, newCondition)
+		return
+	}
+
+	if existingCondition.Status != newCondition.Status {
+		existingCondition.Status = newCondition.Status
+		if !newCondition.LastTransitionTime.IsZero() {
+			existingCondition.LastTransitionTime = newCondition.LastTransitionTime
+		} else {
+			existingCondition.LastTransitionTime = metav1.NewTime(time.Now())
+		}
+	}
+
+	existingCondition.Reason = newCondition.Reason
+	existingCondition.Message = newCondition.Message
+	existingCondition.ObservedGeneration = newCondition.ObservedGeneration
+}
+
+// FindNodeConfigCondition finds the conditionType in conditions.
+func FindNodeConfigCondition(conditions []scyllav1alpha1.NodeConfigCondition, conditionType scyllav1alpha1.NodeConfigConditionType) *scyllav1alpha1.NodeConfigCondition {
+	for i := range conditions {
+		if conditions[i].Type == conditionType {
+			return &conditions[i]
+		}
+	}
+
+	return nil
+}
+
 func IsNodeConfigSelectingNode(nc *scyllav1alpha1.NodeConfig, node *corev1.Node) (bool, error) {
 	// Check nodeSelector.
 
@@ -192,31 +298,6 @@ func IsNodeTunedForContainer(nc *scyllav1alpha1.NodeConfig, nodeName string, con
 func IsNodeTuned(ncnss []scyllav1alpha1.NodeConfigNodeStatus, nodeName string) bool {
 	ns := FindNodeStatus(ncnss, nodeName)
 	return ns != nil && ns.TunedNode
-}
-
-func FindNodeConfigCondition(conditions []scyllav1alpha1.NodeConfigCondition, t scyllav1alpha1.NodeConfigConditionType) *scyllav1alpha1.NodeConfigCondition {
-	for i := range conditions {
-		c := &conditions[i]
-		if c.Type == t {
-			return c
-		}
-	}
-
-	return nil
-}
-
-func EnsureNodeConfigCondition(status *scyllav1alpha1.NodeConfigStatus, cond *scyllav1alpha1.NodeConfigCondition) {
-	existingCond := FindNodeConfigCondition(status.Conditions, cond.Type)
-	if existingCond == nil {
-		status.Conditions = append(status.Conditions, *cond)
-		return
-	}
-
-	if cond.Status == existingCond.Status {
-		cond.LastTransitionTime = existingCond.LastTransitionTime
-	}
-
-	*existingCond = *cond
 }
 
 func IsScyllaPod(pod *corev1.Pod) bool {

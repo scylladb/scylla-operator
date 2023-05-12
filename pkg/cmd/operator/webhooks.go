@@ -16,6 +16,7 @@ import (
 
 	"github.com/scylladb/scylla-operator/pkg/admissionreview"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/signals"
@@ -280,6 +281,19 @@ func validate(ar *admissionv1.AdmissionReview) error {
 
 		if len(errList) > 0 {
 			return apierrors.NewInvalid(obj.(*scyllav1.ScyllaCluster).GroupVersionKind().GroupKind(), obj.(*scyllav1.ScyllaCluster).Name, errList)
+		}
+		return nil
+	case scyllav1alpha1.GroupVersion.WithResource("nodeconfigs"):
+		var errList field.ErrorList
+		switch ar.Request.Operation {
+		case admissionv1.Create:
+			errList = validation.ValidateNodeConfig(obj.(*scyllav1alpha1.NodeConfig))
+		case admissionv1.Update:
+			errList = validation.ValidateNodeConfigUpdate(obj.(*scyllav1alpha1.NodeConfig), oldObj.(*scyllav1alpha1.NodeConfig))
+		}
+
+		if len(errList) > 0 {
+			return apierrors.NewInvalid(obj.(*scyllav1alpha1.NodeConfig).GroupVersionKind().GroupKind(), obj.(*scyllav1alpha1.NodeConfig).Name, errList)
 		}
 		return nil
 	default:

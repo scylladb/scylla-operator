@@ -2,15 +2,17 @@ package nodeconfig
 
 import (
 	"context"
+	"fmt"
 
 	o "github.com/onsi/gomega"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -33,12 +35,91 @@ func verifyNodeConfig(ctx context.Context, kubeClient kubernetes.Interface, nc *
 	ds := daemonSets[0]
 	verifyDaemonSet(ds)
 
-	o.Expect(nc.Status.Conditions).To(o.HaveLen(1))
+	for i := range nc.Status.Conditions {
+		c := &nc.Status.Conditions[i]
+		o.Expect(c.LastTransitionTime).NotTo(o.BeNil())
+		o.Expect(c.LastTransitionTime.Time.Before(nc.CreationTimestamp.Time)).NotTo(o.BeTrue())
 
-	reconciledCond := controllerhelpers.FindNodeConfigCondition(nc.Status.Conditions, scyllav1alpha1.NodeConfigReconciledConditionType)
-	o.Expect(reconciledCond).NotTo(o.BeNil())
-	o.Expect(reconciledCond.Status).To(o.Equal(corev1.ConditionTrue))
-	o.Expect(reconciledCond.Reason).To(o.Equal("FullyReconciledAndUp"))
-	o.Expect(reconciledCond.Message).To(o.Equal("All operands are reconciled and available."))
-	o.Expect(reconciledCond.LastTransitionTime).NotTo(o.BeNil())
+		// To be able to compare the statuses we need to remove the random timestamp.
+		c.LastTransitionTime = metav1.Time{}
+	}
+
+	o.Expect(nc.Status.Conditions).To(o.ConsistOf(func() []interface{} {
+		var expectedConditions []interface{}
+
+		dsPods, err := kubeClient.CoreV1().Pods(ds.Namespace).List(ctx, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(ds.Spec.Selector.MatchLabels).String()})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		dsNodeNames := make([]string, 0, len(dsPods.Items))
+		for _, dsPod := range dsPods.Items {
+			dsNodeNames = append(dsNodeNames, dsPod.Spec.NodeName)
+		}
+
+		type condValue struct {
+			condType string
+			status   corev1.ConditionStatus
+		}
+		for _, nodeName := range dsNodeNames {
+			condList := []condValue{
+				// Node aggregated conditions
+				{
+					condType: fmt.Sprintf("Node%sAvailable", nodeName),
+					status:   corev1.ConditionTrue,
+				},
+				{
+					condType: fmt.Sprintf("Node%sProgressing", nodeName),
+					status:   corev1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("Node%sDegraded", nodeName),
+					status:   corev1.ConditionFalse,
+				},
+				// Controller conditions
+				{
+					condType: fmt.Sprintf("FilesystemControllerNode%sProgressing", nodeName),
+					status:   corev1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("FilesystemControllerNode%sDegraded", nodeName),
+					status:   corev1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("MountControllerNode%sProgressing", nodeName),
+					status:   corev1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("MountControllerNode%sDegraded", nodeName),
+					status:   corev1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("RaidControllerNode%sProgressing", nodeName),
+					status:   corev1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("RaidControllerNode%sDegraded", nodeName),
+					status:   corev1.ConditionFalse,
+				},
+			}
+
+			for _, item := range condList {
+				expectedConditions = append(expectedConditions, scyllav1alpha1.NodeConfigCondition{
+					Type:               scyllav1alpha1.NodeConfigConditionType(item.condType),
+					Status:             item.status,
+					Reason:             "AsExpected",
+					Message:            "",
+					ObservedGeneration: nc.Generation,
+				})
+			}
+
+			expectedConditions = append(expectedConditions, scyllav1alpha1.NodeConfigCondition{
+				Type:               scyllav1alpha1.NodeConfigReconciledConditionType,
+				Status:             corev1.ConditionTrue,
+				Reason:             "FullyReconciledAndUp",
+				Message:            "All operands are reconciled and available.",
+				ObservedGeneration: nc.Generation,
+			})
+		}
+
+		return expectedConditions
+	}()...))
 }

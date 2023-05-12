@@ -22,7 +22,7 @@ func (ncc *Controller) calculateStatus(nc *scyllav1alpha1.NodeConfig, daemonSets
 
 	// TODO: We need to restructure the pattern so status update already know the desired object and we don't
 	// 		 construct it twice.
-	requiredDaemonSet := makeNodeConfigDaemonSet(nc, ncc.operatorImage, scyllaUtilsImage)
+	requiredDaemonSet := makeNodeSetupDaemonSet(nc, ncc.operatorImage, scyllaUtilsImage)
 	ds, found := daemonSets[requiredDaemonSet.Name]
 	if !found {
 		klog.V(4).InfoS("Existing DaemonSet not found", "DaemonSet", klog.KObj(ds))
@@ -34,8 +34,9 @@ func (ncc *Controller) calculateStatus(nc *scyllav1alpha1.NodeConfig, daemonSets
 		return nil, fmt.Errorf("can't determine is a daemonset %q is reconiled: %w", naming.ObjRef(ds), err)
 	}
 
-	cond := &scyllav1alpha1.NodeConfigCondition{
-		Type: scyllav1alpha1.NodeConfigReconciledConditionType,
+	cond := scyllav1alpha1.NodeConfigCondition{
+		Type:               scyllav1alpha1.NodeConfigReconciledConditionType,
+		ObservedGeneration: nc.Generation,
 	}
 
 	if reconciled {
@@ -48,7 +49,7 @@ func (ncc *Controller) calculateStatus(nc *scyllav1alpha1.NodeConfig, daemonSets
 		cond.Message = "DaemonSet isn't reconciled and fully rolled out yet."
 	}
 
-	controllerhelpers.EnsureNodeConfigCondition(status, cond)
+	controllerhelpers.SetNodeConfigStatusCondition(&status.Conditions, cond)
 
 	return status, nil
 }

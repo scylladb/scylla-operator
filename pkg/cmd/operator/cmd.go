@@ -19,7 +19,7 @@ func NewOperatorCommand(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd.AddCommand(NewWebhookCmd(streams))
 	cmd.AddCommand(NewSidecarCmd(streams))
 	cmd.AddCommand(NewManagerControllerCmd(streams))
-	cmd.AddCommand(NewNodeConfigCmd(streams))
+	cmd.AddCommand(NewNodeSetupCmd(streams))
 
 	// TODO: wrap help func for the root command and every subcommand to add a line about automatic env vars and the prefix.
 

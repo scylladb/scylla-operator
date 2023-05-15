@@ -63,6 +63,8 @@ type Report struct {
 	Options            ReportOptions  `json:"options"`
 	EnableDashboardURL bool           `json:"enableDashboardUrl"`
 	EnableCSV          bool           `json:"enableCsv"`
+	Formats            []string       `json:"formats"`
+	ScaleFactor        int64          `json:"scaleFactor"`
 }
 
 // Report fetches and returns a Grafana report.

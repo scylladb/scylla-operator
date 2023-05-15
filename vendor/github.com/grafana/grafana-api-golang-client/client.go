@@ -26,7 +26,7 @@ type Client struct {
 
 // Config contains client configuration.
 type Config struct {
-	// APIKey is an optional API key.
+	// APIKey is an optional API key or service account token.
 	APIKey string
 	// BasicAuth is optional basic auth credentials.
 	BasicAuth *url.Userinfo
@@ -36,7 +36,7 @@ type Config struct {
 	Client *http.Client
 	// OrgID provides an optional organization ID
 	// with BasicAuth, it defaults to last used org
-	// with APIKey, it is disallowed because API keys are scoped to a single org
+	// with APIKey, it is disallowed because service account tokens are scoped to a single org
 	OrgID int64
 	// NumRetries contains the number of attempted retries
 	NumRetries int
@@ -160,12 +160,11 @@ func (c *Client) newRequest(method, requestPath string, query url.Values, body i
 		return req, err
 	}
 
+	// cannot use both API key and org ID. API keys are scoped to single org
 	if c.config.APIKey != "" {
-		if c.config.OrgID != 0 {
-			return req, fmt.Errorf("cannot use both API key and org ID. API keys are scoped to single org")
-		}
 		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.config.APIKey))
-	} else if c.config.OrgID != 0 {
+	}
+	if c.config.OrgID != 0 {
 		req.Header.Add("X-Grafana-Org-Id", strconv.FormatInt(c.config.OrgID, 10))
 	}
 

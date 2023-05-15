@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/url"
 )
 
 // Folder represents a Grafana folder.
@@ -22,13 +23,28 @@ type FolderPayload struct {
 
 // Folders fetches and returns Grafana folders.
 func (c *Client) Folders() ([]Folder, error) {
-	folders := make([]Folder, 0)
-	err := c.request("GET", "/api/folders/", nil, nil, &folders)
-	if err != nil {
-		return folders, err
-	}
+	const limit = 1000
+	var (
+		page       = 0
+		newFolders []Folder
+		folders    []Folder
+		query      = make(url.Values)
+	)
+	query.Set("limit", fmt.Sprint(limit))
+	for {
+		page++
+		query.Set("page", fmt.Sprint(page))
 
-	return folders, err
+		if err := c.request("GET", "/api/folders/", query, nil, &newFolders); err != nil {
+			return nil, err
+		}
+
+		folders = append(folders, newFolders...)
+
+		if len(newFolders) < limit {
+			return folders, nil
+		}
+	}
 }
 
 // Folder fetches and returns the Grafana folder whose ID it's passed.
@@ -96,7 +112,20 @@ func (c *Client) UpdateFolder(uid string, title string, newUID ...string) error 
 	return c.request("PUT", fmt.Sprintf("/api/folders/%s", uid), nil, bytes.NewBuffer(data), nil)
 }
 
+func ForceDeleteFolderRules() url.Values {
+	query := make(url.Values)
+	query.Set("forceDeleteRules", "true")
+	return query
+}
+
 // DeleteFolder deletes the folder whose ID it's passed.
-func (c *Client) DeleteFolder(id string) error {
-	return c.request("DELETE", fmt.Sprintf("/api/folders/%s", id), nil, nil, nil)
+func (c *Client) DeleteFolder(id string, optionalQueryParams ...url.Values) error {
+	query := url.Values{}
+	for _, param := range optionalQueryParams {
+		for paramKey := range param {
+			query.Set(paramKey, param.Get(paramKey))
+		}
+	}
+
+	return c.request("DELETE", fmt.Sprintf("/api/folders/%s", id), query, nil, nil)
 }

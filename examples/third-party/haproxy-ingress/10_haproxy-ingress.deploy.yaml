@@ -21,7 +21,7 @@ spec:
       serviceAccountName: haproxy-ingress
       containers:
       - name: haproxy-ingress
-        image: haproxytech/kubernetes-ingress:1.9.0
+        image: docker.io/haproxytech/kubernetes-ingress:1.10.1@sha256:39eb1a1443e42dc4dc9883bbc764b21f7c7d507af277656551af39ff3faf7635
         args:
         - --disable-ipv6
         - --ipv4-bind-address=0.0.0.0

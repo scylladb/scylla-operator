@@ -294,7 +294,7 @@ verify-codegen:
 # $2 - output dir
 # We need to cleanup `---` in the yaml output manually because it shouldn't be there and it breaks opm.
 define run-crd-gen
-	$(CONTROLLER_GEN) crd paths='$(1)' output:dir='$(2)'
+	$(CONTROLLER_GEN) crd paths='$(1)' output:dir='$(2)' crd:generateEmbeddedObjectMeta=true
 	find '$(2)' -mindepth 1 -maxdepth 1 -type f -name '*.yaml' -exec $(YQ) -i eval '.' {} \;
 
 endef

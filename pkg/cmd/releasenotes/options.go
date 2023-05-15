@@ -26,14 +26,17 @@ type GenerateOptions struct {
 	StartRef            string
 	EndRef              string
 
+	ContainerImageName string
+
 	ghClient *githubql.Client
 }
 
 func NewGitGenerateOptions(streams genericclioptions.IOStreams) *GenerateOptions {
 	return &GenerateOptions{
-		IOStreams:      streams,
-		Repository:     "scylladb/scylla-operator",
-		RepositoryPath: ".",
+		IOStreams:          streams,
+		Repository:         "scylladb/scylla-operator",
+		ContainerImageName: "docker.io/scylladb/scylla-operator",
+		RepositoryPath:     ".",
 	}
 }
 
@@ -62,6 +65,10 @@ func (o *GenerateOptions) Validate() error {
 
 	if len(o.GithubToken) == 0 {
 		errs = append(errs, fmt.Errorf("github-token can't be empty"))
+	}
+
+	if len(o.ContainerImageName) == 0 {
+		errs = append(errs, fmt.Errorf("container-image-name can't be empty"))
 	}
 
 	if len(o.Repository) == 0 {

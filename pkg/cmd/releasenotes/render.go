@@ -17,7 +17,7 @@ const releaseNotesTemplate = `
 # Release notes for {{ .Release }}
 ## Container images
 
-` + "```\ndocker.io/scylladb/scylla-operator:{{ .Release }}\n```" + `
+` + "```\n{{ .ContainerImageName }}:{{ .Release }}\n```" + `
 
 ## Changes By Kind (since {{ .PreviousRelease }})
 
@@ -102,12 +102,13 @@ func categorizePullRequests(prs []*PullRequest) []section {
 }
 
 type releaseNoteData struct {
-	Sections        []section
-	Release         string
-	PreviousRelease string
+	Sections           []section
+	Release            string
+	PreviousRelease    string
+	ContainerImageName string
 }
 
-func renderReleaseNotes(out io.Writer, release, previousRelease string, pullRequests []*PullRequest) error {
+func renderReleaseNotes(out io.Writer, containerImageName, release, previousRelease string, pullRequests []*PullRequest) error {
 	// Render in the order of merge date.
 	sort.Slice(pullRequests, func(i, j int) bool {
 		return pullRequests[i].MergedAt.Before(pullRequests[j].MergedAt.Time)
@@ -116,9 +117,10 @@ func renderReleaseNotes(out io.Writer, release, previousRelease string, pullRequ
 	sections := categorizePullRequests(pullRequests)
 
 	data := releaseNoteData{
-		Release:         release,
-		PreviousRelease: previousRelease,
-		Sections:        sections,
+		Release:            release,
+		PreviousRelease:    previousRelease,
+		Sections:           sections,
+		ContainerImageName: containerImageName,
 	}
 
 	t := template.New("release-notes").Funcs(map[string]interface{}{

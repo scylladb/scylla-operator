@@ -78,6 +78,8 @@ type Storage struct {
 	// and services.
 	// More info: http://kubernetes.io/docs/user-guide/labels
 	// +optional
+	//
+	// Deprecated: Use volumeClaimTemplate.metadata.labels on volumeClaimTemplate.
 	Labels map[string]string `json:"labels,omitempty"`
 
 	// Annotations is an unstructured key value map stored with a resource that may be
@@ -85,6 +87,8 @@ type Storage struct {
 	// queryable and should be preserved when modifying objects.
 	// More info: http://kubernetes.io/docs/user-guide/annotations
 	// +optional
+	//
+	// Deprecated: Use volumeClaimTemplate.metadata.annotations.
 	Annotations map[string]string `json:"annotations,omitempty"`
 
 	// volumeClaimTemplates is a PVC template defining storage to be used by Prometheus.

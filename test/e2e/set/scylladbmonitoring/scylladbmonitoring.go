@@ -62,8 +62,9 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 			ctx,
 			sm,
 			metav1.CreateOptions{
-				FieldManager:    f.FieldManager(),
-				FieldValidation: metav1.FieldValidationStrict,
+				FieldManager: f.FieldManager(),
+				// Disable strict validation until https://github.com/scylladb/scylla-operator/issues/1251 is fixed
+				FieldValidation: metav1.FieldValidationWarn,
 			},
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
@@ -14,6 +15,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controller/scyllacluster"
 	"github.com/scylladb/scylla-operator/pkg/controller/scylladbmonitoring"
 	"github.com/scylladb/scylla-operator/pkg/controller/scyllaoperatorconfig"
+	"github.com/scylladb/scylla-operator/pkg/crypto"
 	monitoringversionedclient "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/clientset/versioned"
 	monitoringinformers "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/informers/externalversions"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
@@ -32,6 +34,10 @@ import (
 	"k8s.io/klog/v2"
 )
 
+const (
+	cryptoKeyBufferSizeMaxFlagKey = "crypto-key-buffer-size-max"
+)
+
 type OperatorOptions struct {
 	genericclioptions.ClientConfig
 	genericclioptions.InClusterReflection
@@ -44,6 +50,10 @@ type OperatorOptions struct {
 	ConcurrentSyncs int
 	OperatorImage   string
 	CQLSIngressPort int
+
+	CryptoKeyBufferSizeMin int
+	CryptoKeyBufferSizeMax int
+	CryptoKeyBufferDelay   time.Duration
 }
 
 func NewOperatorOptions(streams genericclioptions.IOStreams) *OperatorOptions {
@@ -55,6 +65,10 @@ func NewOperatorOptions(streams genericclioptions.IOStreams) *OperatorOptions {
 		ConcurrentSyncs: 50,
 		OperatorImage:   "",
 		CQLSIngressPort: 0,
+
+		CryptoKeyBufferSizeMin: 10,
+		CryptoKeyBufferSizeMax: 30,
+		CryptoKeyBufferDelay:   200 * time.Millisecond,
 	}
 }
 
@@ -66,12 +80,12 @@ func NewOperatorCmd(streams genericclioptions.IOStreams) *cobra.Command {
 		Short: "Run the scylla operator.",
 		Long:  `Run the scylla operator.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := o.Validate()
+			err := o.Complete(cmd)
 			if err != nil {
 				return err
 			}
 
-			err = o.Complete()
+			err = o.Validate()
 			if err != nil {
 				return err
 			}
@@ -95,6 +109,9 @@ func NewOperatorCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd.Flags().IntVarP(&o.ConcurrentSyncs, "concurrent-syncs", "", o.ConcurrentSyncs, "The number of ScyllaCluster objects that are allowed to sync concurrently.")
 	cmd.Flags().StringVarP(&o.OperatorImage, "image", "", o.OperatorImage, "Image of the operator used.")
 	cmd.Flags().IntVarP(&o.CQLSIngressPort, "cqls-ingress-port", "", o.CQLSIngressPort, "Port on which is the ingress controller listening for secure CQL connections.")
+	cmd.Flags().IntVarP(&o.CryptoKeyBufferSizeMin, "crypto-key-buffer-size-min", "", o.CryptoKeyBufferSizeMin, "Minimal number of pre-generated crypto keys that are used for quick certificate issuance. The minimum size is 1.")
+	cmd.Flags().IntVarP(&o.CryptoKeyBufferSizeMax, cryptoKeyBufferSizeMaxFlagKey, "", o.CryptoKeyBufferSizeMax, "Maximum number of pre-generated crypto keys that are used for quick certificate issuance. The minimum size is 1. If not set, it will adjust to be at least the size of crypto-key-buffer-size-min.")
+	cmd.Flags().DurationVarP(&o.CryptoKeyBufferDelay, "crypto-key-buffer-delay", "", o.CryptoKeyBufferDelay, "Delay is the time to wait when generating next certificate in the (min, max) range. Certificate generation bellow the min threshold is not affected.")
 
 	return cmd
 }
@@ -110,6 +127,26 @@ func (o *OperatorOptions) Validate() error {
 		errs = append(errs, errors.New("operator image can't be empty"))
 	}
 
+	if len(o.OperatorImage) == 0 {
+		errs = append(errs, errors.New("operator image can't be empty"))
+	}
+
+	if o.CryptoKeyBufferSizeMin < 1 {
+		errs = append(errs, fmt.Errorf("crypto-key-buffer-size-min (%d) has to be at least 1", o.CryptoKeyBufferSizeMin))
+	}
+
+	if o.CryptoKeyBufferSizeMax < 1 {
+		errs = append(errs, fmt.Errorf("crypto-key-buffer-size-max (%d) has to be at least 1", o.CryptoKeyBufferSizeMax))
+	}
+
+	if o.CryptoKeyBufferSizeMax < o.CryptoKeyBufferSizeMin {
+		errs = append(errs, fmt.Errorf(
+			"crypto-key-buffer-size-max (%d) can't be lower then crypto-key-buffer-size-min (%d)",
+			o.CryptoKeyBufferSizeMax,
+			o.CryptoKeyBufferSizeMin,
+		))
+	}
+
 	msg := validation.IsInRange(o.CQLSIngressPort, 0, 65535)
 	if len(msg) != 0 {
 		errs = append(errs, fmt.Errorf("invalid secure cql ingress port %d: %s", o.CQLSIngressPort, msg))
@@ -118,7 +155,7 @@ func (o *OperatorOptions) Validate() error {
 	return apierrors.NewAggregate(errs)
 }
 
-func (o *OperatorOptions) Complete() error {
+func (o *OperatorOptions) Complete(cmd *cobra.Command) error {
 	err := o.ClientConfig.Complete()
 	if err != nil {
 		return err
@@ -147,6 +184,11 @@ func (o *OperatorOptions) Complete() error {
 	o.monitoringClient, err = monitoringversionedclient.NewForConfig(o.RestConfig)
 	if err != nil {
 		return fmt.Errorf("can't build monitoring clientset: %w", err)
+	}
+
+	maxChanged := cmd.Flags().Lookup(cryptoKeyBufferSizeMaxFlagKey).Changed
+	if !maxChanged && o.CryptoKeyBufferSizeMin > o.CryptoKeyBufferSizeMax {
+		o.CryptoKeyBufferSizeMax = o.CryptoKeyBufferSizeMin
 	}
 
 	return nil
@@ -183,6 +225,16 @@ func (o *OperatorOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Co
 }
 
 func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOStreams) error {
+	rsaKeyGenerator, err := crypto.NewRSAKeyGenerator(
+		o.CryptoKeyBufferSizeMin,
+		o.CryptoKeyBufferSizeMax,
+		o.CryptoKeyBufferDelay,
+	)
+	if err != nil {
+		return fmt.Errorf("can't create rsa key generator: %w", err)
+	}
+	defer rsaKeyGenerator.Close()
+
 	kubeInformers := informers.NewSharedInformerFactory(o.kubeClient, resyncPeriod)
 	scyllaInformers := scyllainformers.NewSharedInformerFactory(o.scyllaClient, resyncPeriod)
 
@@ -209,6 +261,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		scyllaInformers.Scylla().V1().ScyllaClusters(),
 		o.OperatorImage,
 		o.CQLSIngressPort,
+		rsaKeyGenerator,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create scyllacluster controller: %w", err)
@@ -279,6 +332,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		monitoringInformers.Monitoring().V1().Prometheuses(),
 		monitoringInformers.Monitoring().V1().PrometheusRules(),
 		monitoringInformers.Monitoring().V1().ServiceMonitors(),
+		rsaKeyGenerator,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create scylladbmonitoring controller: %w", err)
@@ -286,6 +340,12 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 
 	var wg sync.WaitGroup
 	defer wg.Wait()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		rsaKeyGenerator.Run(ctx)
+	}()
 
 	wg.Add(1)
 	go func() {

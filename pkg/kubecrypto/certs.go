@@ -1,6 +1,7 @@
 package kubecrypto
 
 import (
+	"context"
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/x509"
@@ -130,7 +131,7 @@ func getAuthorityKeyIDFromSignerKey(key *rsa.PublicKey) []byte {
 	return h[:]
 }
 
-func makeCertificate(name string, certCreator ocrypto.CertCreator, signer ocrypto.Signer, validity, refresh time.Duration, controller metav1.Object, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret) (*TLSSecret, error) {
+func makeCertificate(ctx context.Context, name string, certCreator ocrypto.CertCreator, keyGetter ocrypto.RSAKeyGetter, signer ocrypto.Signer, validity, refresh time.Duration, controller metav1.Object, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret) (*TLSSecret, error) {
 	if certCreator == nil {
 		return nil, fmt.Errorf("missing cert creator")
 	}
@@ -198,7 +199,7 @@ func makeCertificate(name string, certCreator ocrypto.CertCreator, signer ocrypt
 
 	if len(refreshReason) != 0 {
 		klog.V(2).InfoS("Creating certificate", "Secret", naming.ObjRef(tlsSecret.GetSecret()), "Reason", refreshReason)
-		cert, key, err := certCreator.MakeCertificate(signer, validity)
+		cert, key, err := certCreator.MakeCertificate(ctx, keyGetter, signer, validity)
 		if err != nil {
 			return nil, fmt.Errorf("can't create certificate: %w", err)
 		}
@@ -236,9 +237,9 @@ func makeCertificate(name string, certCreator ocrypto.CertCreator, signer ocrypt
 	return tlsSecret, nil
 }
 
-func MakeSelfSignedCA(name string, certCreator ocrypto.CertCreator, nowFunc func() time.Time, validity, refresh time.Duration, controller metav1.Object, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret) (*SigningTLSSecret, error) {
+func MakeSelfSignedCA(ctx context.Context, name string, certCreator ocrypto.CertCreator, keyGetter ocrypto.RSAKeyGetter, nowFunc func() time.Time, validity, refresh time.Duration, controller metav1.Object, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret) (*SigningTLSSecret, error) {
 	signer := ocrypto.NewSelfSignedSigner(nowFunc)
-	tlsSecret, err := makeCertificate(name, certCreator, signer, validity, refresh, controller, controllerGVK, existingSecret)
+	tlsSecret, err := makeCertificate(ctx, name, certCreator, keyGetter, signer, validity, refresh, controller, controllerGVK, existingSecret)
 	if err != nil {
 		return nil, err
 	}

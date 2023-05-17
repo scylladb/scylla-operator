@@ -1,10 +1,12 @@
 package crypto
 
 import (
+	"context"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"math/big"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -79,9 +81,30 @@ func TestX509CertCreator_MakeCertificate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			cert, key, err := tc.certCreator.MakeCertificate(ca, tc.lifetime)
+			keygen, err := NewRSAKeyGenerator(1, 1, 42*time.Hour)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer keygen.Close()
+
+			var wg sync.WaitGroup
+			defer wg.Wait()
+
+			ctx, ctxCancel := context.WithCancel(context.Background())
+			defer ctxCancel()
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				keygen.Run(ctx)
+			}()
+			cert, key, err := tc.certCreator.MakeCertificate(ctx, keygen, ca, tc.lifetime)
 			if !reflect.DeepEqual(err, tc.expectedErr) {
 				t.Errorf("expected and actual error differ: %s", cmp.Diff(tc.expectedErr, err))
+			}
+
+			if err != nil {
+				return
 			}
 
 			certPool := x509.NewCertPool()

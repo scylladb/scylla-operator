@@ -1,11 +1,13 @@
 package kubecrypto
 
 import (
+	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"math/rand"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -725,9 +727,29 @@ func Test_makeCertificate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
+			keygen, err := ocrypto.NewRSAKeyGenerator(1, 1, 42*time.Hour)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer keygen.Close()
+
+			var wg sync.WaitGroup
+			defer wg.Wait()
+
+			ctx, ctxCancel := context.WithCancel(context.Background())
+			defer ctxCancel()
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				keygen.Run(ctx)
+			}()
+
 			got, err := makeCertificate(
+				ctx,
 				tc.caName,
 				tc.certCreator,
+				keygen,
 				tc.signer,
 				tc.validity,
 				tc.refresh,

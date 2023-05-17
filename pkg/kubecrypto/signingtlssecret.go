@@ -1,6 +1,7 @@
 package kubecrypto
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -37,13 +38,13 @@ func (s *SigningTLSSecret) AsCertificateAuthority() (*ocrypto.CertificateAuthori
 	return ca, nil
 }
 
-func (s *SigningTLSSecret) MakeCertificate(name string, certCreator ocrypto.CertCreator, controller *metav1.ObjectMeta, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret, validity, refresh time.Duration) (*TLSSecret, error) {
+func (s *SigningTLSSecret) MakeCertificate(ctx context.Context, name string, certCreator ocrypto.CertCreator, keyGetter ocrypto.RSAKeyGetter, controller *metav1.ObjectMeta, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret, validity, refresh time.Duration) (*TLSSecret, error) {
 	ca, err := s.AsCertificateAuthority()
 	if err != nil {
 		return nil, err
 	}
 
-	cert, err := makeCertificate(name, certCreator, ca, validity, refresh, controller, controllerGVK, existingSecret)
+	cert, err := makeCertificate(ctx, name, certCreator, keyGetter, ca, validity, refresh, controller, controllerGVK, existingSecret)
 	if err != nil {
 		return nil, err
 	}

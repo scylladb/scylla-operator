@@ -11,6 +11,7 @@ import (
 	scyllav1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1"
 	scyllav1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	appsv1 "k8s.io/api/apps/v1"
@@ -78,6 +79,8 @@ type Controller struct {
 
 	queue    workqueue.RateLimitingInterface
 	handlers *controllerhelpers.Handlers[*scyllav1.ScyllaCluster]
+
+	keyGetter crypto.RSAKeyGetter
 }
 
 func NewController(
@@ -95,6 +98,7 @@ func NewController(
 	scyllaClusterInformer scyllav1informers.ScyllaClusterInformer,
 	operatorImage string,
 	cqlsIngressPort int,
+	keyGetter crypto.RSAKeyGetter,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
@@ -134,6 +138,8 @@ func NewController(
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scyllacluster-controller"}),
 
 		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "scyllacluster"),
+
+		keyGetter: keyGetter,
 	}
 
 	var err error

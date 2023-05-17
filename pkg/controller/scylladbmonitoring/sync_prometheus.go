@@ -516,6 +516,7 @@ func (smc *Controller) syncPrometheus(
 	}
 
 	cm := okubecrypto.NewCertificateManager(
+		smc.keyGetter,
 		smc.kubeClient.CoreV1(),
 		smc.secretLister,
 		smc.kubeClient.CoreV1(),

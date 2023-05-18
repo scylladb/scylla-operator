@@ -11,6 +11,7 @@ import (
 	scyllav1alpha1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1alpha1"
 	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/crypto"
 	monitoringv1 "github.com/scylladb/scylla-operator/pkg/externalapi/monitoring/v1"
 	monitoringv1client "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/clientset/versioned/typed/monitoring/v1"
 	monitoringv1informers "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/informers/externalversions/monitoring/v1"
@@ -79,6 +80,8 @@ type Controller struct {
 
 	queue    workqueue.RateLimitingInterface
 	handlers *controllerhelpers.Handlers[*scyllav1alpha1.ScyllaDBMonitoring]
+
+	keyGetter crypto.RSAKeyGetter
 }
 
 func NewController(
@@ -97,6 +100,7 @@ func NewController(
 	prometheusInformer monitoringv1informers.PrometheusInformer,
 	prometheusRuleInformer monitoringv1informers.PrometheusRuleInformer,
 	serviceMonitorInformer monitoringv1informers.ServiceMonitorInformer,
+	keyGetter crypto.RSAKeyGetter,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
@@ -142,6 +146,8 @@ func NewController(
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scylladbmonitoring-controller"}),
 
 		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "scylladbmonitoring"),
+
+		keyGetter: keyGetter,
 	}
 
 	var err error

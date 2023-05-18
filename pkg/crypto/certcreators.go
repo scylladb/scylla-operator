@@ -3,7 +3,7 @@
 package crypto
 
 import (
-	"crypto/rand"
+	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -14,7 +14,7 @@ import (
 
 type CertCreator interface {
 	MakeCertificateTemplate(now time.Time, validity time.Duration) *x509.Certificate
-	MakeCertificate(signer Signer, validity time.Duration) (*x509.Certificate, *rsa.PrivateKey, error)
+	MakeCertificate(ctx context.Context, keyGetter RSAKeyGetter, signer Signer, validity time.Duration) (*x509.Certificate, *rsa.PrivateKey, error)
 }
 
 type X509CertCreator struct {
@@ -43,10 +43,10 @@ func (c *X509CertCreator) MakeCertificateTemplate(now time.Time, validity time.D
 	}
 }
 
-func (c *X509CertCreator) MakeCertificate(signer Signer, validity time.Duration) (*x509.Certificate, *rsa.PrivateKey, error) {
-	privateKey, err := rsa.GenerateKey(rand.Reader, keySize)
+func (c *X509CertCreator) MakeCertificate(ctx context.Context, keyGetter RSAKeyGetter, signer Signer, validity time.Duration) (*x509.Certificate, *rsa.PrivateKey, error) {
+	privateKey, err := keyGetter.GetNewKey(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("can't generate key: %w", err)
+		return nil, nil, fmt.Errorf("can't get generated key: %w", err)
 	}
 
 	selfSignedSigner, ok := signer.(*SelfSignedSigner)

@@ -494,6 +494,7 @@ func (smc *Controller) syncGrafana(
 	}
 
 	cm := okubecrypto.NewCertificateManager(
+		smc.keyGetter,
 		smc.kubeClient.CoreV1(),
 		smc.secretLister,
 		smc.kubeClient.CoreV1(),

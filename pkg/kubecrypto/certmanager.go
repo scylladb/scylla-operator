@@ -113,6 +113,7 @@ func (configs CertChainConfigs) GetMetaConfigMaps() []*corev1.ConfigMap {
 }
 
 type CertificateManager struct {
+	keyGetter       ocrypto.RSAKeyGetter
 	secretsClient   corev1client.SecretsGetter
 	secretLister    corev1listers.SecretLister
 	configMapClient corev1client.ConfigMapsGetter
@@ -120,13 +121,16 @@ type CertificateManager struct {
 	eventRecorder   record.EventRecorder
 }
 
-func NewCertificateManager(secretsClient corev1client.SecretsGetter,
+func NewCertificateManager(
+	keyGetter ocrypto.RSAKeyGetter,
+	secretsClient corev1client.SecretsGetter,
 	secretLister corev1listers.SecretLister,
 	configMapClient corev1client.ConfigMapsGetter,
 	configMapLister corev1listers.ConfigMapLister,
 	eventRecorder record.EventRecorder,
 ) *CertificateManager {
 	return &CertificateManager{
+		keyGetter:       keyGetter,
 		secretsClient:   secretsClient,
 		secretLister:    secretLister,
 		configMapClient: configMapClient,
@@ -144,7 +148,7 @@ func (cm *CertificateManager) ManageCertificates(ctx context.Context, nowFunc fu
 			CommonName: caConfig.Name,
 		},
 	}
-	caTLSSecret, err := MakeSelfSignedCA(caConfig.Name, caCertCreatorConfig.ToCreator(), nowFunc, caConfig.Validity, caConfig.Refresh, controller, controllerGVK, existingSecrets[caConfig.Name])
+	caTLSSecret, err := MakeSelfSignedCA(ctx, caConfig.Name, caCertCreatorConfig.ToCreator(), cm.keyGetter, nowFunc, caConfig.Validity, caConfig.Refresh, controller, controllerGVK, existingSecrets[caConfig.Name])
 	if err != nil {
 		return fmt.Errorf("can't make selfsigned CA %q: %w", caConfig.Name, err)
 	}
@@ -175,7 +179,7 @@ func (cm *CertificateManager) ManageCertificates(ctx context.Context, nowFunc fu
 	}
 
 	for _, cc := range certConfigs {
-		tlsSecret, err := caTLSSecret.MakeCertificate(cc.Name, cc.CertCreator, controller, controllerGVK, existingSecrets[cc.Name], cc.Validity, cc.Refresh)
+		tlsSecret, err := caTLSSecret.MakeCertificate(ctx, cc.Name, cc.CertCreator, cm.keyGetter, controller, controllerGVK, existingSecrets[cc.Name], cc.Validity, cc.Refresh)
 		if err != nil {
 			return fmt.Errorf("can't make certificate %q: %w", cc.Name, err)
 		}

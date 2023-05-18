@@ -132,6 +132,7 @@ func (scc *Controller) syncCerts(
 	var progressingConditions []metav1.Condition
 
 	cm := okubecrypto.NewCertificateManager(
+		scc.keyGetter,
 		scc.kubeClient.CoreV1(),
 		scc.secretLister,
 		scc.kubeClient.CoreV1(),

@@ -44,13 +44,16 @@ func (server *httpServer) Start() {
 	mux := http.NewServeMux()
 	httpServer.Handler = mux
 
-	//streaming endpoints
+	// streaming endpoints
 	mux.HandleFunc("/suite-will-begin", server.specSuiteWillBegin)
 	mux.HandleFunc("/did-run", server.didRun)
 	mux.HandleFunc("/suite-did-end", server.specSuiteDidEnd)
 	mux.HandleFunc("/emit-output", server.emitOutput)
+	mux.HandleFunc("/progress-report", server.emitProgressReport)
 
-	//synchronization endpoints
+	// synchronization endpoints
+	mux.HandleFunc("/report-before-suite-completed", server.handleReportBeforeSuiteCompleted)
+	mux.HandleFunc("/report-before-suite-state", server.handleReportBeforeSuiteState)
 	mux.HandleFunc("/before-suite-completed", server.handleBeforeSuiteCompleted)
 	mux.HandleFunc("/before-suite-state", server.handleBeforeSuiteState)
 	mux.HandleFunc("/have-nonprimary-procs-finished", server.handleHaveNonprimaryProcsFinished)
@@ -153,6 +156,31 @@ func (server *httpServer) emitOutput(writer http.ResponseWriter, request *http.R
 	}
 	var n int
 	server.handleError(server.handler.EmitOutput(output, &n), writer)
+}
+
+func (server *httpServer) emitProgressReport(writer http.ResponseWriter, request *http.Request) {
+	var report types.ProgressReport
+	if !server.decode(writer, request, &report) {
+		return
+	}
+	server.handleError(server.handler.EmitProgressReport(report, voidReceiver), writer)
+}
+
+func (server *httpServer) handleReportBeforeSuiteCompleted(writer http.ResponseWriter, request *http.Request) {
+	var state types.SpecState
+	if !server.decode(writer, request, &state) {
+		return
+	}
+
+	server.handleError(server.handler.ReportBeforeSuiteCompleted(state, voidReceiver), writer)
+}
+
+func (server *httpServer) handleReportBeforeSuiteState(writer http.ResponseWriter, request *http.Request) {
+	var state types.SpecState
+	if server.handleError(server.handler.ReportBeforeSuiteState(voidSender, &state), writer) {
+		return
+	}
+	json.NewEncoder(writer).Encode(state)
 }
 
 func (server *httpServer) handleBeforeSuiteCompleted(writer http.ResponseWriter, request *http.Request) {

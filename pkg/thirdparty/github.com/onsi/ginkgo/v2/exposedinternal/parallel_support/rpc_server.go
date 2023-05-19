@@ -40,7 +40,7 @@ func newRPCServer(parallelTotal int, reporter reporters.Reporter) (*RPCServer, e
 // Start the server.  You don't need to `go s.Start()`, just `s.Start()`
 func (server *RPCServer) Start() {
 	rpcServer := rpc.NewServer()
-	rpcServer.RegisterName("Server", server.handler) //register the handler's methods as the server
+	rpcServer.RegisterName("Server", server.handler) // register the handler's methods as the server
 
 	httpServer := &http.Server{}
 	httpServer.Handler = rpcServer

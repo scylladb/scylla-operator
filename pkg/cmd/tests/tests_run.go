@@ -428,9 +428,6 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 	}
 	cmdEntries := make([]*cmdEntry, 0, suiteConfig.ParallelTotal)
 	for i := 1; i <= suiteConfig.ParallelTotal; i++ {
-		suiteConfig := suiteConfig
-		suiteConfig.ParallelProcess = i
-
 		args := make([]string, 0, len(commonArgs)+1)
 		args = append(args, commonArgs...)
 		args = append(args, fmt.Sprintf("--%s=%v", parallelShardFlagKey, i))

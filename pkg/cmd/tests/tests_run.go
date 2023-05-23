@@ -20,6 +20,7 @@ import (
 	gomegaformat "github.com/onsi/gomega/format"
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	ginkgotest "github.com/scylladb/scylla-operator/pkg/test/ginkgo"
 	"github.com/scylladb/scylla-operator/pkg/thirdparty/github.com/onsi/ginkgo/v2/exposedinternal/parallel_support"
@@ -38,6 +39,7 @@ import (
 const (
 	parallelShardFlagKey            = "parallel-shard"
 	parallelServerAddressFlagKey    = "parallel-server-address"
+	randomSeedFlagKey               = "random-seed"
 	ginkgoOutputInterceptorModeNone = "none"
 )
 
@@ -158,7 +160,7 @@ func NewRunCommand(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd.Flags().StringVarP(&o.LabelFilter, "label-filter", "", o.LabelFilter, "Ginkgo label filter.")
 	cmd.Flags().StringSliceVarP(&o.FocusStrings, "focus", "", o.FocusStrings, "Regex to select a subset of tests to run.")
 	cmd.Flags().StringSliceVarP(&o.SkipStrings, "skip", "", o.SkipStrings, "Regex to select a subset of tests to skip.")
-	cmd.Flags().Int64VarP(&o.RandomSeed, "random-seed", "", o.RandomSeed, "Seed for the test suite.")
+	cmd.Flags().Int64VarP(&o.RandomSeed, randomSeedFlagKey, "", o.RandomSeed, "Seed for the test suite.")
 	cmd.Flags().BoolVarP(&o.DryRun, "dry-run", "", o.DryRun, "Doesn't execute the tests, only prints. Limited to serial execution.")
 	cmd.Flags().BoolVarP(&o.Color, "color", "", o.Color, "Colors the output.")
 	cmd.Flags().StringVarP(&o.OverrideIngressAddress, "override-ingress-address", "", o.OverrideIngressAddress, "This flag will override destination address when sending testing data to applications behind ingresses.")
@@ -412,6 +414,13 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 	commonArgs = append(commonArgs, fmt.Sprintf("--%s=%v", parallelServerAddressFlagKey, server.Address()))
 	commonArgs = append(commonArgs, fmt.Sprintf("--%s=%v", cmdutil.FlagLogLevelKey, o.ParallelLogLevel))
 
+	// Propagate random seed to child processes.
+	if !helpers.Contains(commonArgs, func(arg string) bool {
+		return strings.HasPrefix(arg, fmt.Sprintf("--%s", randomSeedFlagKey))
+	}) {
+		commonArgs = append(commonArgs, fmt.Sprintf("--%s=%v", randomSeedFlagKey, suiteConfig.RandomSeed))
+	}
+
 	type cmdEntry struct {
 		id  int
 		cmd *exec.Cmd
@@ -419,9 +428,6 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 	}
 	cmdEntries := make([]*cmdEntry, 0, suiteConfig.ParallelTotal)
 	for i := 1; i <= suiteConfig.ParallelTotal; i++ {
-		suiteConfig := suiteConfig
-		suiteConfig.ParallelProcess = i
-
 		args := make([]string, 0, len(commonArgs)+1)
 		args = append(args, commonArgs...)
 		args = append(args, fmt.Sprintf("--%s=%v", parallelShardFlagKey, i))

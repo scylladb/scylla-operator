@@ -311,63 +311,6 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 
 	gomega.RegisterFailHandler(ginkgo.Fail)
 
-	// Temporary workaround for https://github.com/scylladb/scylla-operator/issues/1176.
-	// Run a check after suite has completed to verify whether all specs were run by a single process.
-	// TODO: remove once #1176 has been fixed.
-	ginkgo.ReportAfterSuite("Verify report", func(r ginkgo.Report) {
-		expectedSpecs := []string{
-			"Node Setup should make RAID0, format it to XFS, and mount at desired location out of one loop device",
-			"Node Setup should make RAID0, format it to XFS, and mount at desired location out of three loop devices",
-			"NodeConfig Optimizations should correctly project state for each scylla pod",
-			"NodeConfig Optimizations should create tuning resources and tune nodes",
-			"Scylla Manager integration should discover cluster and sync tasks",
-			"ScyllaCluster HostID should be reflected as a Service annotation",
-			"ScyllaCluster Ingress should create ingress objects when ingress exposeOptions are provided",
-			"ScyllaCluster Orphaned PV controller should replace a node with orphaned PV",
-			"ScyllaCluster authentication agent requires authentication",
-			"ScyllaCluster evictions should allow one disruption",
-			"ScyllaCluster replace should replace a node",
-			"ScyllaCluster should allow to build connection pool using shard aware ports",
-			"ScyllaCluster should claim preexisting member ServiceAccount and RoleBinding",
-			"ScyllaCluster should re-bootstrap from old PVCs",
-			"ScyllaCluster should reconcile resource changes",
-			"ScyllaCluster should rotate TLS certificates before they expire",
-			"ScyllaCluster should setup and maintain up to date TLS certificates",
-			"ScyllaCluster should support scaling",
-			"ScyllaCluster sysctl should set container sysctl",
-			"ScyllaCluster upgrades should deploy and update with 1 member(s) and 1 rack(s) from 5.0.12 to 5.1.9",
-			"ScyllaCluster upgrades should deploy and update with 1 member(s) and 1 rack(s) from 5.1.8 to 5.1.9",
-			"ScyllaCluster upgrades should deploy and update with 3 member(s) and 1 rack(s) from 5.0.12 to 5.1.9",
-			"ScyllaCluster upgrades should deploy and update with 3 member(s) and 1 rack(s) from 5.1.8 to 5.1.9",
-			"ScyllaCluster upgrades should deploy and update with 3 member(s) and 2 rack(s) from 5.0.12 to 5.1.9",
-			"ScyllaCluster webhook should forbid invalid requests",
-			"ScyllaDBMonitoring should setup monitoring stack",
-		}
-
-		specsRan := make(map[string][]int, 0)
-		for _, sr := range r.SpecReports {
-			specsRan[sr.FullText()] = append(specsRan[sr.FullText()], sr.ParallelProcess)
-		}
-
-		specsRanKeys := make([]string, 0, len(specsRan))
-		for k := range specsRan {
-			specsRanKeys = append(specsRanKeys, k)
-		}
-		gomega.Expect(specsRanKeys).To(gomega.ConsistOf(expectedSpecs))
-
-		var errs []error
-		for k, v := range specsRan {
-			if len(v) == 1 {
-				continue
-			}
-
-			errs = append(errs, fmt.Errorf("expected spec %q to be run by a single process, but it was run by processes %v", k, v))
-		}
-
-		err := errors.Join(errs...)
-		gomega.Expect(err).NotTo(gomega.HaveOccurred())
-	})
-
 	if len(o.ArtifactsDir) > 0 {
 		reporterConfig.JUnitReport = path.Join(o.ArtifactsDir, "e2e.junit.xml")
 		reporterConfig.JSONReport = path.Join(o.ArtifactsDir, "e2e.json")

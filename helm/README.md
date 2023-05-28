@@ -25,10 +25,11 @@ You can then run `helm search repo scylla-operator` to see the charts.
 
 ```console
 # Install Scylla Operator
-$ helm install [NAME] scylla-operator/scylla-operator --create-namespace --namespace scylla-operator
+$ helm install [NAME] scylla-operator/scylla-operator --create-namespace --namespace scylla-operator     
 
 # Install Scylla Manager
 $ helm install [NAME] scylla-operator/scylla-manager --create-namespace --namespace scylla-manager
+    # scylla-manager imports scylla chart so you dont need to install `scylla` seperatley if you install it
 
 # Install Scylla 
 $ helm install [NAME] scylla-operator/scylla --create-namespace --namespace scylla

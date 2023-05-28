@@ -23,6 +23,13 @@ nodeSelector: { }
 # Tolerations for Scylla Operator pods
 tolerations: [ ]
 
+storageClass:
+  create: true
+  type: standard
+  provisioner: ''
+  volumeBindingMode: 'WaitForFirstConsumer'
+  allowVolumeExpansion: true
+
 # Affinity for Scylla Operator pods
 affinity:
   podAntiAffinity:

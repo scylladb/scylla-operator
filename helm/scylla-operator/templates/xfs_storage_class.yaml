@@ -1,0 +1,18 @@
+{{- if .Values.storageClass.create }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: xfs-class-{{.Release.Name}}
+{{- if .Values.storageClass.create }}
+provisioner: {{ .Values.storageClass.provisioner }}
+{{- end }}
+parameters:
+  type: {{.Values.storageClass.type}}
+  csi.storage.k8s.io/fstype: xfs
+{{- if .Values.storageClass.volumeBindingMode }}
+volumeBindingMode: {{.Values.storageClass.volumeBindingMode}}
+{{- end}}
+{{- if .Values.storageClass.allowVolumeExpansion }}
+allowVolumeExpansion: {{ .Values.storageClass.allowVolumeExpansion }}
+{{- end}}
+{{- end }}

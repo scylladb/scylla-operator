@@ -24,7 +24,7 @@ nodeSelector: { }
 tolerations: [ ]
 
 storageClass:
-  create: true
+  create: false
   type: standard
   provisioner: ''
   volumeBindingMode: 'WaitForFirstConsumer'

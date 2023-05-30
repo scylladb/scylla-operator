@@ -1,0 +1,81 @@
+name: "Collects and uploads E2E artifacts"
+description: "Collects and uploads E2E artifacts"
+inputs:
+  repositoryPath:
+    description: "Path to where the project code lives"
+    required: true
+  jobSuffix:
+    description: "E2E job suffix"
+    required: true
+runs:
+  using: "composite"
+  steps:
+  - name: Dump cluster state
+    if: ${{ always() }}
+    working-directory: ${{ runner.temp }}
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      timeout 10m ${{ inputs.repositoryPath }}/hack/ci-gather-artifacts.sh
+  - name: Get machine logs and info
+    if: ${{ always() }}
+    working-directory: ${{ runner.temp }}/e2e-artifacts
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      sudo dmesg > dmesg
+      sudo free -h > free
+      sudo df -h > df
+      sudo mount > mount
+      sudo lsblk > lsblk
+      
+      sudo podman info > podman.info
+      sudo podman images -a > podman.images
+      sudo crictl images > crictl.images
+      sudo podman stats -a --no-stream --no-reset > podman.stats
+      journalctl -u kubelet > kubelet.log
+      journalctl -u crio > crio.log
+      sudo iptables -L > iptables.log
+      sudo sysctl --all > sysctls.log
+      
+      sudo tar -c --use-compress-program=lz4 -f ./kubernetes.tar.lz4 "/etc/kubernetes"
+      
+      mkdir container-logs
+      for ns in kube-system; do
+        mkdir "container-logs/${ns}"
+        for cid in $( sudo crictl ps --label="io.kubernetes.pod.namespace=${ns}" -a -q ); do
+          cname=$( sudo crictl inspect -o go-template --template='{{ .status.metadata.name }}' "${cid}" )
+          sudo crictl logs "${cid}" 1>"container-logs/${ns}/${cname}_${cid}.log" 2>&1
+        done
+      done
+  - name: Collect audit logs
+    if: ${{ always() }}
+    working-directory: ${{ runner.temp }}/e2e-artifacts
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      sudo cat $( ls /var/log/kube-apiserver-audit*.log | sort -n ) > ./kube-apiserver-audit.log
+      jq -s 'group_by(.user.username) | map({"user": .[0].user.username, "total": length, "verbs": (group_by(.verb) | map({"key":.[0].verb, "value": length}) | from_entries)}) | sort_by(.total) | reverse' ./kube-apiserver-audit.log > ./api-call-stats.json
+  - name: Compress artifacts
+    if: ${{ always() }}
+    working-directory: ${{ runner.temp }}
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      tar -c --use-compress-program=lz4 -f ./e2e-artifacts.tar.lz4 "e2e-artifacts/"
+  - name: Upload artifacts
+    if: ${{ always() }}
+    uses: actions/upload-artifact@v3
+    with:
+      name: e2e-artifacts-${{ inputs.jobSuffix }}.tar.lz4
+      path: ${{ runner.temp }}/e2e-artifacts.tar.lz4
+      if-no-files-found: error
+      retention-days: ${{ env.retention_days }}

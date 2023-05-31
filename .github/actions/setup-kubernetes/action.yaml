@@ -161,6 +161,10 @@ runs:
       hairpinMode: hairpin-veth
       EOF
       
+      # After kubelet installation, kubelet service is started with the default config.
+      # Resetting using kubeadm clears kubelet config and state directories which allows for start from scratch.
+      sudo kubeadm reset --force --cri-socket=unix:///var/run/crio/crio.sock
+      
       sudo kubeadm init --config=/root/kubeadm-config.yaml
       
       mkdir -p "${HOME}/.kube"

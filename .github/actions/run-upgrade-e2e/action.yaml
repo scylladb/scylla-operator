@@ -1,0 +1,139 @@
+name: "Run Upgrade E2E"
+description: "Runs Upgrade E2E test suite"
+inputs:
+  repositoryPath:
+    description: "Path to where the project code lives"
+    required: true
+  jobSuffix:
+    description: "E2E job suffix"
+    required: true
+  featureGates:
+    description: "FeatureGate string"
+    required: false
+    default: ""
+  suite:
+    description: "E2E suite name"
+    default: "scylla-operator/upgrade"
+    required: false
+  extraArgs:
+    description: "Extra arguments for the E2E binary"
+    required: false
+    default: ""
+  baseTimeoutMinutes:
+    description: "Default timeout in minutes. Can be extended to accommodate for flake retries."
+    required: false
+    default: 60
+runs:
+  using: "composite"
+  steps:
+  - name: Prepare E2E environment
+    uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/prepare-e2e-env
+    with:
+      repositoryPath: ${{ inputs.repositoryPath }}
+      goVersion: ${{ env.go_version }}
+      artifactsDir: ${{ runner.temp }}/e2e-artifacts
+  
+  - name: Determine base ref and image version
+    shell: bash
+    working-directory: ${{ env.git_repo_path }}
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      source ./hack/lib/semver.sh
+      
+      if [[ -n '${{ github.event.inputs.tag }}' ]]; then
+        current_tag='${{ github.event.inputs.tag }}'
+      else
+        current_tag=$( git describe --abbrev=0 | grep -Eo '^v[0-9]+\.[0-9]+\.[0-9]' )
+      fi
+      tags=$( git tag -l | grep -E '^v[0-9]+\.[0-9]+\.[0-9]$' )
+      previous_tag="$( find_previous_semver "${tags}" "${current_tag}" )"
+      [[ "${previous_tag}" != "" ]]
+      
+      base_ref="${previous_tag}"
+      base_image_version=${base_ref#v}
+      
+      echo "base_ref=${base_ref}" | tee -a ${GITHUB_ENV}
+      echo "base_image_version=${base_image_version}" | tee -a ${GITHUB_ENV}
+      echo "base_repo_path=${{ github.workspace }}/go/src/github.com/scylladb/scylla-operator-base" | tee -a ${GITHUB_ENV}
+      
+  - name: Checkout base version
+    uses: actions/checkout@v3
+    with:
+      path: ${{ env.base_repo_path }}
+      fetch-depth: 0  # also fetch tags
+      ref: ${{ env.base_ref }}
+  
+  - name: Tweak node and Kubernetes
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+    
+      # Increase sysctl required by ScyllaDB
+      echo 'fs.aio-max-nr = 300000000' | sudo tee /etc/sysctl.d/90-scylla.conf >/dev/null
+      
+      sudo sysctl --system
+  
+  - name: Deploy base scylla-operator
+    shell: bash
+    working-directory: ${{ env.base_repo_path }}
+    env:
+      SCYLLA_OPERATOR_FEATURE_GATES: '${{ inputs.featureGates }}'
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      timeout 10m ./hack/ci-deploy.sh '${{ env.image_repo_ref }}:${{ env.base_image_version }}'
+      
+      # Raise loglevel in CI.
+      # TODO: Replace it with ScyllaOperatorConfig field when available.
+      kubectl -n scylla-operator patch deployment/scylla-operator --type=json -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--loglevel=4"}]'
+      kubectl -n scylla-operator rollout status deployment/scylla-operator
+      kubectl -n scylla-manager patch deployment/scylla-manager-controller --type=json -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--loglevel=4"}]'
+      kubectl -n scylla-manager rollout status deployment/scylla-manager-controller
+      
+      kubectl get pods -A
+  
+  - name: Run e2e
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      e2e_timeout_minutes='${{ inputs.baseTimeoutMinutes }}'
+      flake_attempts=0
+      if [[ -v 'FLAKE_ATTEMPTS' ]]; then
+        flake_attempts="${FLAKE_ATTEMPTS}"
+        e2e_timeout_minutes="$(( ${e2e_timeout_minutes} + ${flake_attempts} * 10 ))"
+      fi
+      
+      user="$( id -u )"
+      group="$( id -g )"
+      
+      sudo timeout "$(( ${e2e_timeout_minutes} + 5 ))m" podman run --user="${user}:${group}" --rm \
+      --entrypoint=/usr/bin/scylla-operator-tests \
+      -v="${ARTIFACTS_DIR}:${ARTIFACTS_DIR}:rw" \
+      -v="$( which yq ):/usr/bin/yq" \
+      -v="$( which kubectl ):/usr/bin/kubectl" \
+      -v="/:/hostfs:ro" \
+      -v="${HOME}/.kube/config:/kubeconfig:ro" -e='KUBECONFIG=/kubeconfig' \
+      '${{ env.image_repo_ref }}:ci' \
+      run '${{ inputs.suite }}' \
+      --loglevel=2 \
+      --artifacts-dir="${ARTIFACTS_DIR}" \
+      --flake-attempts="${flake_attempts}" \
+      --timeout="${e2e_timeout_minutes}m" \
+      --feature-gates='${{ inputs.featureGates }}' \
+      --operator-upgrade-repo-path='/hostfs${{ env.git_repo_path }}/' \
+      --operator-upgrade-deploy-script='/hostfs${{ env.git_repo_path }}/hack/ci-deploy.sh' \
+      --operator-upgrade-target-image='${{ env.image_repo_ref }}:ci' \
+      ${{ inputs.extraArgs }}
+    
+  - name: Collect and upload E2E artifacts
+    uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/collect-e2e-artifacts
+    if: ${{ always() }}
+    with:
+      repositoryPath: ${{ inputs.repositoryPath }}
+      jobSuffix: ${{ inputs.jobSuffix }}

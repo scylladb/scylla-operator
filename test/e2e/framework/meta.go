@@ -7,12 +7,17 @@ import (
 )
 
 const (
-	SerialLabelName = "Serial"
+	SerialLabelName  = "Serial"
+	UpgradeLabelName = "Upgrade"
 )
 
 var (
 	Serial = []interface{}{
 		g.Serial,
 		g.Label(SerialLabelName),
+	}
+
+	Upgrade = []interface{}{
+		g.Label(UpgradeLabelName),
 	}
 )

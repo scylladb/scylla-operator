@@ -23,6 +23,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
@@ -574,6 +575,16 @@ func GetMemberServiceSelector(scyllaClusterName string) labels.Selector {
 		naming.ClusterNameLabel:       scyllaClusterName,
 		naming.ScyllaServiceTypeLabel: string(naming.ScyllaServiceTypeMember),
 	}.AsSelector()
+}
+
+func GetScyllaHostsAndWaitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
+	dcClientMap := make(map[string]corev1client.CoreV1Interface, 1)
+	dcClientMap[sc.Spec.Datacenter.Name] = client
+	hosts, err := GetScyllaHostsByDCAndWaitForFullQuorum(ctx, dcClientMap, []*scyllav1.ScyllaCluster{sc})
+	if err != nil {
+		return nil, err
+	}
+	return slices.Flatten(helpers.GetMapValues(hosts)), nil
 }
 
 func GetScyllaHostsByDCAndWaitForFullQuorum(ctx context.Context, dcClientMap map[string]corev1client.CoreV1Interface, scs []*scyllav1.ScyllaCluster) (map[string][]string, error) {

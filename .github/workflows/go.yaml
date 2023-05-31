@@ -265,8 +265,42 @@ jobs:
         jobSuffix: "serial-alpha"
         suite: "scylla-operator/conformance/serial"
         featureGates: "AllAlpha=true,AllBeta=true"
-
-  # TODO: Add upgrade-e2e - use the same image sha from images step
+  
+  test-e2e-upgrade:
+    name: Test e2e upgrade
+    runs-on: ubuntu-22.04
+    needs: images
+    timeout-minutes: 90
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        path: ${{ env.git_repo_path }}
+        fetch-depth: 0  # also fetch tags
+    - name: Run e2e
+      uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/run-upgrade-e2e
+      with:
+        repositoryPath: ${{ env.git_repo_path }}
+        jobSuffix: "upgrade"
+        suite: "scylla-operator/upgrade"
+  
+  
+  test-e2e-upgrade-alpha:
+    name: Test e2e upgrade (with alpha features)
+    runs-on: ubuntu-22.04
+    needs: images
+    timeout-minutes: 90
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        path: ${{ env.git_repo_path }}
+        fetch-depth: 0  # also fetch tags
+    - name: Run e2e
+      uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/run-upgrade-e2e
+      with:
+        repositoryPath: ${{ env.git_repo_path }}
+        jobSuffix: "upgrade-alpha"
+        suite: "scylla-operator/upgrade"
+        featureGates: "AllAlpha=true,AllBeta=true"
 
   # Dummy step for different promotion jobs to depend on
   success:
@@ -282,7 +316,8 @@ jobs:
     - test-e2e-serial
     - test-e2e-parallel-alpha
     - test-e2e-serial-alpha
-    # TODO: Depend on upgrade-e2e when available
+    - test-e2e-upgrade
+    - test-e2e-upgrade-alpha
     timeout-minutes: 15
     steps:
     - name: Always succeed

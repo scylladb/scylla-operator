@@ -26,6 +26,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/thirdparty/github.com/onsi/ginkgo/v2/exposedinternal/parallel_support"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
+	"github.com/scylladb/scylla-operator/test/e2e/set/upgrade"
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/util/errors"
 	cliflag "k8s.io/component-base/cli/flag"
@@ -56,7 +57,7 @@ var suites = ginkgotest.TestSuites{
 		Description: templates.LongDesc(`
 		Tests that ensure an Scylla Operator is working properly.
 		`),
-		LabelFilter:        fmt.Sprintf("!%s", framework.SerialLabelName),
+		LabelFilter:        fmt.Sprintf("!%s && !%s", framework.SerialLabelName, framework.UpgradeLabelName),
 		DefaultParallelism: 42,
 	},
 	{
@@ -65,6 +66,12 @@ var suites = ginkgotest.TestSuites{
 		Tests that ensure an Scylla Operator is working properly.
 		`),
 		LabelFilter:        fmt.Sprintf("%s", framework.SerialLabelName),
+		DefaultParallelism: 1,
+	},
+	{
+		Name:               "scylla-operator/upgrade",
+		Description:        templates.LongDesc("Tests that validates Scylla Operator upgrades"),
+		LabelFilter:        fmt.Sprintf("%s", framework.UpgradeLabelName),
 		DefaultParallelism: 1,
 	},
 }
@@ -168,6 +175,8 @@ func NewRunCommand(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd.Flags().MarkHidden(parallelShardFlagKey)
 	cmd.Flags().StringVarP(&o.ParallelServerAddress, parallelServerAddressFlagKey, "", o.ParallelServerAddress, "")
 	cmd.Flags().MarkHidden(parallelServerAddressFlagKey)
+
+	upgrade.AddFlags(cmd.Flags())
 
 	return cmd
 }

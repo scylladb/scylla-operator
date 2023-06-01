@@ -333,6 +333,32 @@ func TestMemberService(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:          "existing service with maintenance mode label, it is not carried over into required object - #1252",
+			scyllaCluster: basicSC,
+			rackName:      basicRackName,
+			svcName:       basicSVCName,
+			oldService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						naming.NodeMaintenanceLabel: "42",
+					},
+				},
+			},
+			expectedService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            basicSVCName,
+					Labels:          basicSVCLabels(),
+					OwnerReferences: basicSCOwnerRefs,
+				},
+				Spec: corev1.ServiceSpec{
+					Type:                     corev1.ServiceTypeClusterIP,
+					Selector:                 basicSVCSelector,
+					PublishNotReadyAddresses: true,
+					Ports:                    basicPorts,
+				},
+			},
+		},
 	}
 
 	for _, tc := range tt {

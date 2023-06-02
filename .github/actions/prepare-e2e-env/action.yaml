@@ -1,0 +1,65 @@
+name: "Prepares environment for running E2E suites"
+description: "Prepares environment for running E2E suites"
+inputs:
+  repositoryPath:
+    description: "Path to where the project code lives"
+    required: true
+  goVersion:
+    description: "Version of Go"
+    required: true
+  artifactsDir:
+    description: "Directory where E2E artifacts will be stored"
+    required: true
+runs:
+  using: "composite"
+  steps:
+  - name: Setup git tags
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    shell: bash
+    working-directory: ${{ inputs.repositoryPath }}
+    run: ./hack/ci-detect-tags.sh
+  
+  - name: Create artifacts dir
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      mkdir "${{ inputs.artifactsDir }}"
+      echo "ARTIFACTS_DIR=${{ inputs.artifactsDir }}" | tee -a ${GITHUB_ENV}
+  
+  - uses: actions/download-artifact@v3
+    with:
+      name: operatorimage.tar.lz4
+      path: ~/
+  
+  - name: Load image
+    shell: bash
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      unlz4 ~/operatorimage.tar.lz4 - | sudo podman load
+  
+  - name: Setup go
+    uses: actions/setup-go@v3
+    with:
+      go-version: ${{ inputs.goVersion }}
+  
+  - name: Tolerate flakes on promotion jobs
+    shell: bash
+    if: ${{ github.event_name != 'pull_request' }}
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      echo "FLAKE_ATTEMPTS=5" | tee -a ${GITHUB_ENV}
+  
+  - name: Setup Kubernetes
+    uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/setup-kubernetes
+  
+  - name: Setup Local Volume Provisioner
+    uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/setup-local-volume-provisioner
+    with:
+      repositoryPath: ${{ inputs.repositoryPath }}
+      numberOfPersistentVolumes: 100

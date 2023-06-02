@@ -25,44 +25,13 @@ inputs:
 runs:
   using: "composite"
   steps:
-  - name: Setup git tags
-    if: ${{ startsWith(github.ref, 'refs/tags/') }}
-    shell: bash
-    working-directory: ${{ inputs.repositoryPath }}
-    run: ./hack/ci-detect-tags.sh
-  - name: Create artifacts dir
-    shell: bash
-    env:
-      ARTIFACTS_DIR: ${{ runner.temp }}/e2e-artifacts
-    run: |
-      set -euExo pipefail
-      shopt -s inherit_errexit
-      
-      mkdir "${ARTIFACTS_DIR}"
-      echo "ARTIFACTS_DIR=${ARTIFACTS_DIR}" | tee -a ${GITHUB_ENV}
-  - uses: actions/download-artifact@v3
-    with:
-      name: operatorimage.tar.lz4
-      path: ~/
-  - name: Load image
-    shell: bash
-    run: |
-      set -euExo pipefail
-      shopt -s inherit_errexit
-      
-      unlz4 ~/operatorimage.tar.lz4 - | sudo podman load
-      
-      sudo podman images '${{ env.image_repo_ref }}:ci'
-  - name: Setup go
-    uses: actions/setup-go@v3
-    with:
-      go-version: ${{ env.go_version }}
-  - name: Setup Kubernetes
-    uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/setup-kubernetes
-  - name: Setup Local Volume Provisioner
-    uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/setup-local-volume-provisioner
+  - name: Prepare E2E environment
+    uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/prepare-e2e-env
     with:
       repositoryPath: ${{ inputs.repositoryPath }}
+      goVersion: ${{ env.go_version }}
+      artifactsDir: ${{ runner.temp }}/e2e-artifacts
+
   - name: Tweak node and Kubernetes
     shell: bash
     run: |
@@ -76,6 +45,7 @@ runs:
       echo 'fs.aio-max-nr = 300000000' | sudo tee /etc/sysctl.d/90-scylla.conf >/dev/null
       
       sudo sysctl --system
+  
   - name: Deploy scylla-operator
     shell: bash
     working-directory: ${{ inputs.repositoryPath }}
@@ -95,14 +65,7 @@ runs:
       kubectl -n scylla-manager rollout status deployment/scylla-manager-controller
       
       kubectl get pods -A
-  - name: Tolerate flakes on promotion jobs
-    shell: bash
-    if: ${{ github.event_name != 'pull_request' }}
-    run: |
-      set -euExo pipefail
-      shopt -s inherit_errexit
-      
-      echo "FLAKE_ATTEMPTS=5" | tee -a ${GITHUB_ENV}
+  
   - name: Run e2e
     shell: bash
     run: |
@@ -138,6 +101,7 @@ runs:
       --ingress-controller-ingress-class-name="${ingress_class_name}" \
       --ingress-controller-custom-annotations="${ingress_custom_annotations}" \
       ${{ inputs.extraArgs }}
+  
   - name: Collect and upload E2E artifacts
     uses: ./go/src/github.com/scylladb/scylla-operator/.github/actions/collect-e2e-artifacts
     if: ${{ always() }}

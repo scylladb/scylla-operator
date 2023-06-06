@@ -22,3 +22,8 @@ spec:
   placement:
     nodeSelector:
       scylla.scylladb.com/node-type: scylla
+    tolerations:
+    - effect: NoSchedule
+      key: role
+      operator: Equal
+      value: scylla-clusters

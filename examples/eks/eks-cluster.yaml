@@ -14,6 +14,8 @@ nodeGroups:
   desiredCapacity: 3
   labels:
     scylla.scylladb.com/node-type: scylla
+  taints:
+    role: "scylla-clusters:NoSchedule"
   ssh:
     allow: true
   kubeletExtraConfig:

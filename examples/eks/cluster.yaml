@@ -41,6 +41,10 @@ spec:
                   operator: In
                   values:
                     - us-east-1a
+                - key: scylla.scylladb.com/node-type
+                  operator: In
+                  values:
+                  - scylla
         tolerations:
           - key: role
             operator: Equal
@@ -64,6 +68,10 @@ spec:
                 operator: In
                 values:
                 - us-east-1b
+              - key: scylla.scylladb.com/node-type
+                operator: In
+                values:
+                - scylla
         tolerations:
         - key: role
           operator: Equal
@@ -87,6 +95,10 @@ spec:
                 operator: In
                 values:
                 - us-east-1c
+              - key: scylla.scylladb.com/node-type
+                operator: In
+                values:
+                - scylla
         tolerations:
         - key: role
           operator: Equal

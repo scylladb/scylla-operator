@@ -81,6 +81,10 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 		if hasReplaceLabel {
 			svcLabels[naming.ReplaceLabel] = replaceAddr
 		}
+
+		if decommissionLabel, ok := oldService.Labels[naming.DecommissionedLabel]; ok {
+			svcLabels[naming.DecommissionedLabel] = decommissionLabel
+		}
 	}
 
 	// Only new service should get the replace address, old service keeps "" until deleted.

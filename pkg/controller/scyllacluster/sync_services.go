@@ -3,8 +3,6 @@ package scyllacluster
 import (
 	"context"
 	"fmt"
-	"regexp"
-	"strconv"
 	"time"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
@@ -22,24 +20,49 @@ import (
 	"k8s.io/klog/v2"
 )
 
-var serviceOrdinalRegex = regexp.MustCompile("^.*-([0-9]+)$")
-
-func (scc *Controller) makeServices(sc *scyllav1.ScyllaCluster, oldServices map[string]*corev1.Service, jobs map[string]*batchv1.Job) []*corev1.Service {
+func (scc *Controller) makeServices(sc *scyllav1.ScyllaCluster, oldServices map[string]*corev1.Service, statefulSets map[string]*appsv1.StatefulSet, jobs map[string]*batchv1.Job) ([]*corev1.Service, error) {
+	var errs []error
 	services := []*corev1.Service{
 		IdentityService(sc),
 	}
 
 	for _, rack := range sc.Spec.Datacenter.Racks {
 		stsName := naming.StatefulSetNameForRack(rack, sc)
+		sts, ok := statefulSets[stsName]
+		if !ok {
+			errs = append(errs, fmt.Errorf("statefulset %s/%s is missing", sc.Namespace, stsName))
+			continue
+		}
 
-		for ord := int32(0); ord < rack.Members; ord++ {
+		for ord := int32(0); ord < *sts.Spec.Replicas; ord++ {
 			svcName := fmt.Sprintf("%s-%d", stsName, ord)
 			oldSvc := oldServices[svcName]
-			services = append(services, MemberService(sc, rack.Name, svcName, oldSvc, jobs))
+			svc := MemberService(sc, rack.Name, svcName, oldSvc, jobs)
+
+			// Services for nodes which were successfully decommissioned are not required.
+			if decommissionLabel, ok := svc.Labels[naming.DecommissionedLabel]; ok {
+				if decommissionLabel == naming.LabelValueTrue {
+					continue
+				}
+			}
+
+			// Mark last node for decommission
+			if rack.Members < *sts.Spec.Replicas && ord == *sts.Spec.Replicas-1 {
+				if len(svc.Labels[naming.DecommissionedLabel]) == 0 {
+					svc.Labels[naming.DecommissionedLabel] = naming.LabelValueFalse
+				}
+			}
+
+			services = append(services, svc)
 		}
 	}
 
-	return services
+	err := utilerrors.NewAggregate(errs)
+	if err != nil {
+		return nil, err
+	}
+
+	return services, nil
 }
 
 func (scc *Controller) pruneServices(
@@ -47,7 +70,6 @@ func (scc *Controller) pruneServices(
 	sc *scyllav1.ScyllaCluster,
 	requiredServices []*corev1.Service,
 	services map[string]*corev1.Service,
-	statefulSets map[string]*appsv1.StatefulSet,
 ) ([]metav1.Condition, error) {
 	var errs []error
 	var progressingConditions []metav1.Condition
@@ -66,43 +88,8 @@ func (scc *Controller) pruneServices(
 			continue
 		}
 
-		// Do not delete services for scale down.
-		rackName, ok := svc.Labels[naming.RackNameLabel]
-		if !ok {
-			errs = append(errs, fmt.Errorf("service %s/%s is missing %q label", svc.Namespace, svc.Name, naming.RackNameLabel))
-			continue
-		}
-		stsName := fmt.Sprintf("%s-%s-%s", sc.Name, sc.Spec.Datacenter.Name, rackName)
-		sts, ok := statefulSets[stsName]
-		if !ok {
-			errs = append(errs, fmt.Errorf("statefulset %s/%s is missing", sc.Namespace, stsName))
-			continue
-		}
-		// TODO: Label services with the ordinal instead of parsing.
-		// TODO: Move it to a function and unit test it.
-		svcOrdinalStrings := serviceOrdinalRegex.FindStringSubmatch(svc.Name)
-		if len(svcOrdinalStrings) != 2 {
-			errs = append(errs, fmt.Errorf("can't parse ordinal from service %s/%s", svc.Namespace, svc.Name))
-			continue
-		}
-		svcOrdinal, err := strconv.Atoi(svcOrdinalStrings[1])
-		if err != nil {
-			errs = append(errs, err)
-			continue
-		}
-		if int32(svcOrdinal) < *sts.Spec.Replicas {
-			progressingConditions = append(progressingConditions, metav1.Condition{
-				Type:               serviceControllerProgressingCondition,
-				Status:             metav1.ConditionTrue,
-				Reason:             "WaitingForAnotherService",
-				Message:            fmt.Sprintf("Service %q is waiting for another service to be decommissioned first.", naming.ObjRef(svc)),
-				ObservedGeneration: sc.Generation,
-			})
-			continue
-		}
-
-		// Do not delete services that weren't properly decommissioned.
-		if svc.Labels[naming.DecommissionedLabel] != naming.LabelValueTrue {
+		// Do not delete services that were bootstrapped but weren't properly decommissioned.
+		if svc.Annotations[naming.NodeInitialized] != "" && svc.Labels[naming.DecommissionedLabel] != naming.LabelValueTrue {
 			klog.Warningf("Refusing to cleanup service %s/%s whose member wasn't decommissioned.", svc.Namespace, svc.Name)
 			progressingConditions = append(progressingConditions, metav1.Condition{
 				Type:               serviceControllerProgressingCondition,
@@ -135,7 +122,7 @@ func (scc *Controller) pruneServices(
 				continue
 			}
 
-			if freshSvc.Labels[naming.DecommissionedLabel] != naming.LabelValueTrue {
+			if freshSvc.Annotations[naming.NodeInitialized] != "" && freshSvc.Labels[naming.DecommissionedLabel] != naming.LabelValueTrue {
 				klog.V(2).InfoS("Stale caches, won't delete the pvc because the service is no longer decommissioned.", "Service", klog.KObj(svc))
 				progressingConditions = append(progressingConditions, metav1.Condition{
 					Type:               serviceControllerProgressingCondition,
@@ -152,7 +139,7 @@ func (scc *Controller) pruneServices(
 
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, &corev1.PersistentVolumeClaim{}, "delete", sc.Generation)
 		pvcName := naming.PVCNameForService(svc.Name)
-		err = scc.kubeClient.CoreV1().PersistentVolumeClaims(svc.Namespace).Delete(ctx, pvcName, metav1.DeleteOptions{
+		err := scc.kubeClient.CoreV1().PersistentVolumeClaims(svc.Namespace).Delete(ctx, pvcName, metav1.DeleteOptions{
 			PropagationPolicy: &backgroundPropagationPolicy,
 		})
 		if err != nil && !apierrors.IsNotFound(err) {
@@ -186,11 +173,14 @@ func (scc *Controller) syncServices(
 ) ([]metav1.Condition, error) {
 	var err error
 
-	requiredServices := scc.makeServices(sc, services, jobs)
+	requiredServices, err := scc.makeServices(sc, services, statefulSets, jobs)
+	if err != nil {
+		return nil, fmt.Errorf("can't make Service(s): %w", err)
+	}
 
 	// Delete any excessive Services.
 	// Delete has to be the fist action to avoid getting stuck on quota.
-	progressingConditions, err := scc.pruneServices(ctx, sc, requiredServices, services, statefulSets)
+	progressingConditions, err := scc.pruneServices(ctx, sc, requiredServices, services)
 	if err != nil {
 		return nil, fmt.Errorf("can't delete Service(s): %w", err)
 	}

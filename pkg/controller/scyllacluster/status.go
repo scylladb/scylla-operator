@@ -96,22 +96,12 @@ func (scc *Controller) calculateRackStatus(sc *scyllav1.ScyllaCluster, rackName 
 		controllerhelpers.SetRackCondition(status, scyllav1.RackConditionTypeUpgrading)
 	}
 
-	// Update Scaling Down condition
+	// Set decommissioning condition
 	for _, svc := range serviceMap {
-		// Check if there is a decommission in progress
-		if _, ok := svc.Labels[naming.DecommissionedLabel]; ok {
-			// Add MemberLeaving Condition to rack status
+		if svc.Labels[naming.RackNameLabel] == rackName && len(svc.Labels[naming.DecommissionedLabel]) != 0 {
+			// TODO: Deprecated condition can be removed in 1.11.
 			controllerhelpers.SetRackCondition(status, scyllav1.RackConditionTypeMemberLeaving)
-			// Sanity check. Only the last member should be decommissioning.
-			index, err := naming.IndexFromName(svc.Name)
-			if err != nil {
-				klog.ErrorS(err, "Can't determine service index from its name", "Service", klog.KObj(svc))
-				continue
-			}
-			if index != status.Members-1 {
-				klog.Errorf("only last member of each rack should be decommissioning, but %d-th member of %s found decommissioning while rack had %d members", index, rackName, status.Members)
-				continue
-			}
+			controllerhelpers.SetRackCondition(status, scyllav1.RackConditionTypeMemberDecommissioning)
 		}
 	}
 

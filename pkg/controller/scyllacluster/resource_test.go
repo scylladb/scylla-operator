@@ -380,7 +380,8 @@ func TestMemberService(t *testing.T) {
 						"internal.scylla-operator.scylladb.com/current-token-ring-hash": "abc",
 					},
 				},
-			}, jobs: nil,
+			},
+			jobs: nil,
 			expectedService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   basicSVCName,
@@ -430,6 +431,29 @@ func TestMemberService(t *testing.T) {
 					Selector:                 basicSVCSelector,
 					PublishNotReadyAddresses: true,
 					Ports:                    basicPorts,
+				},
+			},
+		},
+		{
+			name:          "existing service with decommission label carries it over into required object",
+			scyllaCluster: basicSC,
+			rackName:      basicRackName,
+			svcName:       basicSVCName,
+			oldService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						naming.DecommissionedLabel: naming.LabelValueFalse,
+					},
+				},
+			},
+			expectedService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: basicSVCName,
+					Labels: func() map[string]string {
+						labels := basicSVCLabels()
+						labels[naming.DecommissionedLabel] = naming.LabelValueFalse
+						return labels
+					}(),
 				},
 			},
 		},

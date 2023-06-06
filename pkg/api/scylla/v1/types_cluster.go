@@ -514,6 +514,7 @@ type RackCondition struct {
 type RackConditionType string
 
 const (
+	// Deprecated: in favor of RackConditionTypeMemberDecommissioning.
 	RackConditionTypeMemberLeaving         RackConditionType = "MemberLeaving"
 	RackConditionTypeUpgrading             RackConditionType = "RackUpgrading"
 	RackConditionTypeMemberReplacing       RackConditionType = "MemberReplacing"

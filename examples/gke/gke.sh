@@ -154,15 +154,16 @@ node-pools create "cassandra-stress-pool" \
 --no-enable-autorepair
 
 # Nodepool for scylla clusters
-gcloud beta container \
+gcloud container \
 node-pools create "scylla-pool" \
 --cluster "${CLUSTER_NAME}" \
 --node-version "${CLUSTER_VERSION}" \
 --machine-type "n1-standard-32" \
 --num-nodes "4" \
 --disk-type "pd-ssd" --disk-size "20" \
---ephemeral-storage local-ssd-count="8" \
+--local-nvme-ssd-block count="8" \
 --node-taints role=scylla-clusters:NoSchedule \
+--node-labels scylla.scylladb.com/node-type=scylla \
 --image-type "UBUNTU_CONTAINERD" \
 --no-enable-autoupgrade \
 --no-enable-autorepair
@@ -183,17 +184,6 @@ gcloud container clusters get-credentials "${CLUSTER_NAME}"
 echo "Setting up GKE RBAC..."
 kubectl create clusterrolebinding cluster-admin-binding --clusterrole cluster-admin --user "${GCP_USER}"
 
-# Install xfs-formatter Daemonset
-echo "Installing xfs-format Daemonset..."
-kubectl apply -f xfs-formatter-daemonset.yaml
-wait-for-object-creation default daemonset.apps/xfs-formatter
-kubectl rollout status --timeout=5m daemonset.apps/xfs-formatter
-
-# Install local volume provisioner
-echo "Installing local volume provisioner..."
-helm install local-provisioner ../common/provisioner
-echo "Your disks are ready to use."
-
 echo "Starting the cert manger..."
 kubectl apply -f ../common/cert-manager.yaml
 kubectl wait --for condition=established --timeout=60s crd/certificates.cert-manager.io crd/issuers.cert-manager.io
@@ -204,9 +194,19 @@ kubectl -n cert-manager rollout status --timeout=5m deployment.apps/cert-manager
 echo "Starting the scylla operator..."
 kubectl apply -f ../common/operator.yaml
 
+kubectl wait --for condition=established crd/nodeconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scyllaclusters.scylla.scylladb.com
 wait-for-object-creation scylla-operator deployment.apps/scylla-operator
 kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/scylla-operator
+kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/webhook-server
+
+echo "Configuring nodes..."
+kubectl apply -f nodeconfig-alpha.yaml
+
+# Install local volume provisioner
+echo "Installing local volume provisioner..."
+helm install local-provisioner ../common/provisioner
+echo "Your disks are ready to use."
 
 echo "Starting the scylla cluster..."
 sed "s/<gcp_region>/${GCP_REGION}/g;s/<gcp_zone>/${GCP_ZONE}/g" cluster.yaml | kubectl apply -f -

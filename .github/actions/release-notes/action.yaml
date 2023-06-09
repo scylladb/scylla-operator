@@ -43,7 +43,7 @@ runs:
       cd ${{ github.workspace }}/go/src/github.com/scylladb/scylla-operator
       make build GO_BUILD_PACKAGES=./cmd/gen-release-notes --warn-undefined-variables
       
-      echo "${{ github.workspace }}/go/src/github.com/scylladb/scylla-operator" >> ${GITHUB_PATH}
+      sudo mv ./gen-release-notes /usr/local/bin/gen-release-notes
   
   - uses: actions/checkout@v3
     with:

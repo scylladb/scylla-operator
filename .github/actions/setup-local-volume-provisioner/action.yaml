@@ -4,34 +4,51 @@ inputs:
   repositoryPath:
     description: "Path to where the project code lives"
     required: true
-  numberOfPersistentVolumes:
-    description: "Number of persistent volumes that will be provisioned"
-    required: true
 runs:
   using: "composite"
   steps:
-  - name: Prepare host directories
-    shell: bash
-    run: |
-      set -euExo pipefail
-      shopt -s inherit_errexit
-      
-      sudo mkdir /mnt/persistent-volumes
-      # /mnt has limited space in GH Actions, use /
-      sudo mkdir /persistent-volumes
-      sudo mount --bind /persistent-volumes /mnt/persistent-volumes
-      
-      for i in $( seq 1 "${{ inputs.numberOfPersistentVolumes }}" ); do
-        sudo mkdir "/mnt/persistent-volumes/vol${i}" "/mnt/persistent-volumes/disk_vol${i}"
-        sudo mount --bind "/mnt/persistent-volumes/vol${i}" "/mnt/persistent-volumes/disk_vol${i}"
-      done
-
-  - name: Install Local Static Provisioner
+  
+  - name: Create XFS volume
     shell: bash
     working-directory: ${{ inputs.repositoryPath }}
     run: |
       set -euExo pipefail
       shopt -s inherit_errexit
       
-      kubectl -n local-volume-provisioner apply --server-side -f ./.github/actions/setup-local-volume-provisioner/manifests/
-      kubectl -n local-volume-provisioner rollout status --timeout=5m daemonset.apps/local-volume-provisioner
+      # /mnt has limited space in GH Actions, use /var
+      img_path="/var/persistent-volumes/persistent-volume.img"
+      mount_path="/mnt/persistent-volumes"
+      
+      img_dir=$( dirname "${img_path}" )
+  
+      sudo mkdir -p "${img_dir}"
+      if [[ ! -f "${img_path}" ]]; then
+        sudo dd if=/dev/zero of="${img_path}" bs=1024 count=0 seek=20971520
+      fi
+  
+      FS=$( sudo blkid -o value -s TYPE "${img_path}" || true )
+      if [[ "${FS}" != "xfs" ]]; then
+        sudo mkfs --type=xfs "${img_path}"
+      fi
+      
+      sudo mkdir -p "${mount_path}"
+      sudo mount -t xfs -o prjquota "${img_path}" "${mount_path}"
+      
+  - name: Install Dynamic Local Volume Provisioner
+    shell: bash
+    working-directory: ${{ inputs.repositoryPath }}
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      kubectl -n local-csi-driver apply --server-side -f ./.github/actions/setup-local-volume-provisioner/manifests/local-csi-driver
+      kubectl -n local-csi-driver rollout status --timeout=5m daemonset.apps/local-csi-driver
+  
+  - name: Install default Storage Class
+    shell: bash
+    working-directory: ${{ inputs.repositoryPath }}
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+      
+      kubectl apply --server-side -f ./.github/actions/setup-local-volume-provisioner/manifests/storageclass_xfs.yaml

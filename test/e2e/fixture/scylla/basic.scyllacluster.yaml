@@ -12,7 +12,7 @@ spec:
     - name: us-east-1a
       members: 1
       storage:
-        capacity: 100Mi
+        capacity: 300Mi
       resources:
         requests:
           cpu: 10m

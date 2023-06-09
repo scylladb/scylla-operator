@@ -92,12 +92,6 @@ check_prerequisites() {
         echo "You need to install kubectl. See: https://kubernetes.io/docs/tasks/tools/install-kubectl/"
         exit 1
     fi
-
-    echo "Checking if helm is present on the machine..."
-    if ! hash helm 2>/dev/null; then
-        echo "You need to install helm. See: https://docs.helm.sh/using_helm/#installing-helm"
-        exit 1
-    fi
 }
 
 check_cluster_readiness() {

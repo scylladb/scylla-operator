@@ -85,12 +85,6 @@ check_prerequisites() {
         exit 1
     fi
 
-    echo "Checking if helm is present on the machine..."
-    if ! hash helm 2>/dev/null; then
-        echo "You need to install helm. See: https://docs.helm.sh/using_helm/#installing-helm"
-        exit 1
-    fi
-
     echo "Checking if aws is present on the machine..."
     if ! hash aws 2>/dev/null; then
         echo "You need to install AWS CLI. See: https://aws.amazon.com/cli/"

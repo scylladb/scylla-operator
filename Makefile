@@ -499,21 +499,10 @@ verify-example-manager:
 	$(diff) '$(tmp_file)' examples/common/manager.yaml || (echo 'Manager example is not up-to date. Please run `make update-examples-manager` to update it.' && false)
 .PHONY: verify-example-manager
 
-update-example-xfs-formatter:
-	$(call replace-template-container-image-ref,examples/gke/xfs-formatter-daemonset.yaml,xfs-formatter,$(IMAGE_REF))
-.PHONY: update-example-xfs-formatter
-
-verify-example-xfs-formatter: tmp_dir :=$(shell mktemp -d)
-verify-example-xfs-formatter:
-	cp examples/gke/xfs-formatter-daemonset.yaml $(tmp_dir)/xfs-formatter-daemonset.yaml
-	$(call replace-template-container-image-ref,$(tmp_dir)/xfs-formatter-daemonset.yaml,xfs-formatter,$(IMAGE_REF))
-	$(diff) '$(tmp_dir)/xfs-formatter-daemonset.yaml' examples/gke/xfs-formatter-daemonset.yaml || (echo 'xfs-formatter example is not up-to date. Please run `make update-example-xfs-formatter` to update it.' && false)
-.PHONY: verify-example-xfs-formatter
-
-update-examples: update-examples-manager update-examples-operator update-example-xfs-formatter
+update-examples: update-examples-manager update-examples-operator
 .PHONY: update-examples
 
-verify-examples: verify-example-manager verify-example-operator verify-example-xfs-formatter
+verify-examples: verify-example-manager verify-example-operator
 .PHONY: verify-examples
 
 verify-links:
@@ -548,7 +537,6 @@ test-e2e:
 
 test-scripts:
 	./hack/lib/tag-from-gh-ref.sh
-	./hack/test/gke/xfs-formatter/tune2fs_test.sh
 .PHONY: test-scripts
 
 test: test-unit test-scripts

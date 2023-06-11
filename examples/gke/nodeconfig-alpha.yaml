@@ -1,0 +1,29 @@
+apiVersion: scylla.scylladb.com/v1alpha1
+kind: NodeConfig
+metadata:
+  name: cluster
+spec:
+  localDiskSetup:
+    filesystems:
+    - device: /dev/md/nvmes
+      type: xfs
+    mounts:
+    - device: /dev/md/nvmes
+      mountPoint: /mnt/raid-disks/local
+      unsupportedOptions:
+      - prjquota
+    raids:
+    - name: nvmes
+      type: RAID0
+      RAID0:
+        devices:
+          modelRegex: nvme_card
+          nameRegex: ^/dev/nvme\d+n\d+$
+  placement:
+    nodeSelector:
+      scylla.scylladb.com/node-type: scylla
+    tolerations:
+    - effect: NoSchedule
+      key: role
+      operator: Equal
+      value: scylla-clusters

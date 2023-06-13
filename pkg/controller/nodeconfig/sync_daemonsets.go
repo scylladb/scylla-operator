@@ -8,6 +8,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	appsv1 "k8s.io/api/apps/v1"
 )
@@ -30,7 +31,7 @@ func (ncc *Controller) syncDaemonSet(
 		requiredDaemonSets,
 		daemonSets,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: ncc.scyllaClient.NodeConfigs().Delete,
+			DeleteFunc: ncc.kubeClient.AppsV1().DaemonSets(naming.ScyllaOperatorNodeTuningNamespace).Delete,
 		},
 		ncc.eventRecorder)
 	if err != nil {

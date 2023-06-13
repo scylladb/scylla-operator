@@ -85,12 +85,6 @@ check_prerequisites() {
         exit 1
     fi
 
-    echo "Checking if helm is present on the machine..."
-    if ! hash helm 2>/dev/null; then
-        echo "You need to install helm. See: https://docs.helm.sh/using_helm/#installing-helm"
-        exit 1
-    fi
-
     echo "Checking if aws is present on the machine..."
     if ! hash aws 2>/dev/null; then
         echo "You need to install AWS CLI. See: https://aws.amazon.com/cli/"
@@ -142,7 +136,10 @@ wait-for-object-creation default nodeconfig.scylla.scylladb.com/cluster
 
 # Install local volume provisioner
 echo "Installing local volume provisioner..."
-helm install local-provisioner ../common/provisioner
+kubectl -n local-csi-driver apply --server-side -f ../common/local-volume-provisioner/local-csi-driver/
+wait-for-object-creation local-csi-driver daemonset.apps/local-csi-driver
+kubectl -n local-csi-driver rollout status --timeout=5m daemonset.apps/local-csi-driver
+kubectl apply --server-side -f ../common/local-volume-provisioner/storageclass_xfs.yaml
 echo "Your disks are ready to use."
 
 echo "Starting the scylla cluster..."

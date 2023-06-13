@@ -29,7 +29,7 @@ spec:
         scyllaAgentConfig: "scylla-agent-config"
         members: 2
         storage:
-          storageClassName: local-raid-disks
+          storageClassName: scylladb-local-xfs
           capacity: 2995G
         resources:
           limits:

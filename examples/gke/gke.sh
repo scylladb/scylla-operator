@@ -92,12 +92,6 @@ check_prerequisites() {
         echo "You need to install kubectl. See: https://kubernetes.io/docs/tasks/tools/install-kubectl/"
         exit 1
     fi
-
-    echo "Checking if helm is present on the machine..."
-    if ! hash helm 2>/dev/null; then
-        echo "You need to install helm. See: https://docs.helm.sh/using_helm/#installing-helm"
-        exit 1
-    fi
 }
 
 check_cluster_readiness() {
@@ -205,7 +199,10 @@ kubectl apply -f nodeconfig-alpha.yaml
 
 # Install local volume provisioner
 echo "Installing local volume provisioner..."
-helm install local-provisioner ../common/provisioner
+kubectl -n local-csi-driver apply --server-side -f ../common/local-volume-provisioner/local-csi-driver/
+wait-for-object-creation local-csi-driver daemonset.apps/local-csi-driver
+kubectl -n local-csi-driver rollout status --timeout=5m daemonset.apps/local-csi-driver
+kubectl apply --server-side -f ../common/local-volume-provisioner/storageclass_xfs.yaml
 echo "Your disks are ready to use."
 
 echo "Starting the scylla cluster..."

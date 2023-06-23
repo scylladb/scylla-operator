@@ -70,43 +70,44 @@ Add `oauth` section to `grafana/authentication` configuration located in `Scylla
 ```yaml
 authentication:
     insecureEnableAnonymousAccess: true
-    oauth:
-        providers:
-        -   name: generic
-            enabled: true
-            allowSignUp: true
-            autoLogin: false
-            clientId: clientId
-            clientSecret:
-                valueFrom:
-                    secretKeyRef:
-                        name: 'generic-client-secret'
-                        key: 'clientSecret'
-            scopes: openid email name
-            authUrl: https://<onelogin domain>.onelogin.com/oidc/2/auth
-            tokenUrl: https://<onelogin domain>.onelogin.com/oidc/2/token
-            apiUrl: https://<onelogin domain>.onelogin.com/oidc/2/me
-            teamIds:
-            allowedOrganizations:
-            roleAttributePath: #JMESPath
-        -   name: okta
-            icon: okta
-            enabled: true
-            allowSignUp: true
-            clientId: clientId
-            clientSecret:
-                valueFrom:
-                    secretKeyRef:
-                        name: 'okta-client-secret'
-                        key: 'clientSecret'
-            scopes: openid profile email groups
-            authUrl: https://<tenant-id>.okta.com/oauth2/v1/authorize
-            tokenUrl: https://<tenant-id>.okta.com/oauth2/v1/token
-            apiUrl: https://<tenant-id>.okta.com/oauth2/v1/userinfo
-            allowedDomains:
-            allowedGroups: 
-            usePkce: true
-            roleAttributePath: #JMESPath
+    providers:
+    -   name: generic
+        type: generic
+        enabled: true
+        allowSignUp: true
+        autoLogin: false
+        clientId: clientId
+        clientSecret:
+            valueFrom:
+                secretKeyRef:
+                    name: 'generic-client-secret'
+                    key: 'clientSecret'
+        scopes: 'openid email name'
+        authUrl: https://<onelogin domain>.onelogin.com/oidc/2/auth
+        tokenUrl: https://<onelogin domain>.onelogin.com/oidc/2/token
+        apiUrl: https://<onelogin domain>.onelogin.com/oidc/2/me
+        teamIds:
+        allowedOrganizations:
+        roleAttributePath: #JMESPath
+    -   name: okta
+        type: okta
+        icon: okta
+        enabled: true
+        allowSignUp: true
+        clientId: clientId
+        clientSecret:
+            valueFrom:
+                secretKeyRef:
+                    name: 'okta-client-secret'
+                    key: 'clientSecret'
+        scopes: 'openid profile email groups'
+        authUrl: https://<tenant-id>.okta.com/oauth2/v1/authorize
+        tokenUrl: https://<tenant-id>.okta.com/oauth2/v1/token
+        apiUrl: https://<tenant-id>.okta.com/oauth2/v1/userinfo
+        allowedDomains: #
+        allowedGroups: 
+        usePkce: true
+        roleAttributePath: #JMESPath
 ```
 
 Properties for each OAuth provider are described in [Grafana documentation](https://grafana.com/docs/grafana/latest/setup-grafana/configure-security/configure-authentication/). This probably needs to follow the same structure as the `grafana.ini` file unless there's a reason to come up with a new API for this purpose.

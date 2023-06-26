@@ -360,13 +360,13 @@ func (scc *Controller) syncServices(
 
 				klog.V(2).InfoS("Pod has not been recreated by the StatefulSet controller yet",
 					"ScyllaCluster", klog.KObj(sc),
-					"Pod", klog.KObj(pod),
+					"Pod", klog.KObj(svc),
 				)
 				progressingConditions = append(progressingConditions, metav1.Condition{
 					Type:               serviceControllerProgressingCondition,
 					Status:             metav1.ConditionTrue,
 					Reason:             "WaitingForPodRecreation",
-					Message:            fmt.Sprintf("Service %q is waiting for StatefulSet controller to recreate pod %q.", naming.ObjRef(svc), naming.ObjRef(pod)),
+					Message:            fmt.Sprintf("Service %q is waiting for StatefulSet controller to recreate pod.", naming.ObjRef(svc)),
 					ObservedGeneration: sc.Generation,
 				})
 			} else {

@@ -12,6 +12,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,7 +22,7 @@ import (
 
 var serviceOrdinalRegex = regexp.MustCompile("^.*-([0-9]+)$")
 
-func (scc *Controller) makeServices(sc *scyllav1.ScyllaCluster, oldServices map[string]*corev1.Service) []*corev1.Service {
+func (scc *Controller) makeServices(sc *scyllav1.ScyllaCluster, oldServices map[string]*corev1.Service, jobs map[string]*batchv1.Job) []*corev1.Service {
 	services := []*corev1.Service{
 		IdentityService(sc),
 	}
@@ -32,7 +33,7 @@ func (scc *Controller) makeServices(sc *scyllav1.ScyllaCluster, oldServices map[
 		for ord := int32(0); ord < rack.Members; ord++ {
 			svcName := fmt.Sprintf("%s-%d", stsName, ord)
 			oldSvc := oldServices[svcName]
-			services = append(services, MemberService(sc, rack.Name, svcName, oldSvc))
+			services = append(services, MemberService(sc, rack.Name, svcName, oldSvc, jobs))
 		}
 	}
 
@@ -179,10 +180,11 @@ func (scc *Controller) syncServices(
 	status *scyllav1.ScyllaClusterStatus,
 	services map[string]*corev1.Service,
 	statefulSets map[string]*appsv1.StatefulSet,
+	jobs map[string]*batchv1.Job,
 ) ([]metav1.Condition, error) {
 	var err error
 
-	requiredServices := scc.makeServices(sc, services)
+	requiredServices := scc.makeServices(sc, services, jobs)
 
 	// Delete any excessive Services.
 	// Delete has to be the fist action to avoid getting stuck on quota.

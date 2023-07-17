@@ -542,6 +542,32 @@ func (scc *Controller) syncStatefulSets(
 
 				return progressingConditions, nil
 			}
+
+			requiredAnnotationsBeforeScaling := []string{
+				// We need to ensure token ring annotation is noticed by the cleanup logic before we scale the rack.
+				// Otherwise, new node could start joining, changing the ring hash and causing cleanup to be missed.
+				naming.LastCleanedUpTokenRingHashAnnotation,
+			}
+
+			for _, requiredAnnotation := range requiredAnnotationsBeforeScaling {
+				ord, err := naming.IndexFromName(svc.Name)
+				if err != nil {
+					return nil, fmt.Errorf("can't determine ordinal from Service name %q: %w", svc.Name, err)
+				}
+
+				if ord < *sts.Spec.Replicas {
+					_, ok := svc.Annotations[requiredAnnotation]
+					if !ok {
+						progressingConditions = append(progressingConditions, metav1.Condition{
+							Type:               statefulSetControllerProgressingCondition,
+							Status:             metav1.ConditionTrue,
+							Reason:             "WaitingForServiceState",
+							Message:            fmt.Sprintf("Statusfulset %q is waiting for Service %q to have required annotation %q before scaling", naming.ObjRef(req), naming.ObjRef(svc), requiredAnnotation),
+							ObservedGeneration: sc.Generation,
+						})
+					}
+				}
+			}
 		}
 
 		if scale.Spec.Replicas == *sts.Spec.Replicas {

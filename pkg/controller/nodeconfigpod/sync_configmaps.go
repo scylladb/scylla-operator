@@ -24,6 +24,10 @@ func (ncpc *Controller) makeConfigMap(ctx context.Context, pod *corev1.Pod) (*co
 		return nil, nil
 	}
 
+	if !controllerhelpers.IsScyllaPod(pod) {
+		return nil, nil
+	}
+
 	node, err := ncpc.nodeLister.Get(pod.Spec.NodeName)
 	if err != nil {
 		return nil, fmt.Errorf("can't get node: %w", err)

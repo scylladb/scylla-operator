@@ -14,7 +14,7 @@ type agentAuthTokenSecret struct {
 	AuthToken string `yaml:"auth_token"`
 }
 
-func parseTokenFromConfig(data []byte) (string, error) {
+func ParseTokenFromConfig(data []byte) (string, error) {
 	config := &agentAuthTokenSecret{}
 	err := yaml.Unmarshal(data, config)
 	if err != nil {
@@ -30,7 +30,7 @@ func GetAgentAuthTokenFromAgentConfigSecret(secret *corev1.Secret) (string, erro
 		return "", fmt.Errorf("secret %q is missing %q data", naming.ObjRef(secret), naming.ScyllaAgentAuthTokenFileName)
 	}
 
-	return parseTokenFromConfig(configData)
+	return ParseTokenFromConfig(configData)
 }
 
 func GetAgentAuthTokenFromSecret(secret *corev1.Secret) (string, error) {
@@ -39,7 +39,7 @@ func GetAgentAuthTokenFromSecret(secret *corev1.Secret) (string, error) {
 		return "", fmt.Errorf("secret %q is missing %q data", naming.ObjRef(secret), naming.ScyllaAgentAuthTokenFileName)
 	}
 
-	return parseTokenFromConfig(configData)
+	return ParseTokenFromConfig(configData)
 }
 
 func GetAgentAuthTokenConfig(token string) ([]byte, error) {

@@ -18,4 +18,6 @@ const (
 	pdbControllerDegradedCondition               = "PDBControllerDegraded"
 	ingressControllerProgressingCondition        = "IngressControllerProgressing"
 	ingressControllerDegradedCondition           = "IngressControllerDegraded"
+	jobControllerProgressingCondition            = "JobControllerProgressing"
+	jobControllerDegradedCondition               = "JobControllerDegraded"
 )

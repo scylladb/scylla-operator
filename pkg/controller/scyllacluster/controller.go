@@ -15,6 +15,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
@@ -26,6 +27,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	appsv1informers "k8s.io/client-go/informers/apps/v1"
+	batchv1informers "k8s.io/client-go/informers/batch/v1"
 	corev1informers "k8s.io/client-go/informers/core/v1"
 	networkingv1informers "k8s.io/client-go/informers/networking/v1"
 	policyv1informers "k8s.io/client-go/informers/policy/v1"
@@ -33,6 +35,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	appsv1listers "k8s.io/client-go/listers/apps/v1"
+	batchv1listers "k8s.io/client-go/listers/batch/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	networkingv1listers "k8s.io/client-go/listers/networking/v1"
 	policyv1listers "k8s.io/client-go/listers/policy/v1"
@@ -72,6 +75,7 @@ type Controller struct {
 	pdbLister            policyv1listers.PodDisruptionBudgetLister
 	ingressLister        networkingv1listers.IngressLister
 	scyllaLister         scyllav1listers.ScyllaClusterLister
+	jobLister            batchv1listers.JobLister
 
 	cachesToSync []cache.InformerSynced
 
@@ -95,6 +99,7 @@ func NewController(
 	statefulSetInformer appsv1informers.StatefulSetInformer,
 	pdbInformer policyv1informers.PodDisruptionBudgetInformer,
 	ingressInformer networkingv1informers.IngressInformer,
+	jobInformer batchv1informers.JobInformer,
 	scyllaClusterInformer scyllav1informers.ScyllaClusterInformer,
 	operatorImage string,
 	cqlsIngressPort int,
@@ -121,6 +126,7 @@ func NewController(
 		pdbLister:            pdbInformer.Lister(),
 		ingressLister:        ingressInformer.Lister(),
 		scyllaLister:         scyllaClusterInformer.Lister(),
+		jobLister:            jobInformer.Lister(),
 
 		cachesToSync: []cache.InformerSynced{
 			podInformer.Informer().HasSynced,
@@ -133,6 +139,7 @@ func NewController(
 			pdbInformer.Informer().HasSynced,
 			ingressInformer.Informer().HasSynced,
 			scyllaClusterInformer.Informer().HasSynced,
+			jobInformer.Informer().HasSynced,
 		},
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scyllacluster-controller"}),
@@ -220,6 +227,12 @@ func NewController(
 		AddFunc:    scc.addScyllaCluster,
 		UpdateFunc: scc.updateScyllaCluster,
 		DeleteFunc: scc.deleteScyllaCluster,
+	})
+
+	jobInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    scc.addJob,
+		UpdateFunc: scc.updateJob,
+		DeleteFunc: scc.deleteJob,
 	})
 
 	return scc, nil
@@ -587,5 +600,28 @@ func (scc *Controller) deleteScyllaCluster(obj interface{}) {
 	scc.handlers.HandleDelete(
 		obj,
 		scc.handlers.Enqueue,
+	)
+}
+
+func (scc *Controller) addJob(obj interface{}) {
+	scc.handlers.HandleAdd(
+		obj.(*batchv1.Job),
+		scc.handlers.EnqueueOwner,
+	)
+}
+
+func (scc *Controller) updateJob(old, cur interface{}) {
+	scc.handlers.HandleUpdate(
+		old.(*batchv1.Job),
+		cur.(*batchv1.Job),
+		scc.handlers.EnqueueOwner,
+		scc.deleteJob,
+	)
+}
+
+func (scc *Controller) deleteJob(obj interface{}) {
+	scc.handlers.HandleDelete(
+		obj,
+		scc.handlers.EnqueueOwner,
 	)
 }

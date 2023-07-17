@@ -10,6 +10,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -106,33 +107,71 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 	return nil
 }
 
-func (c *Controller) syncHostIDAnnotation(ctx context.Context, svc *corev1.Service) error {
+func (c *Controller) syncAnnotations(ctx context.Context, svc *corev1.Service) error {
 	startTime := time.Now()
-	klog.V(4).InfoS("Started syncing HostID annotation", "Service", klog.KObj(svc), "startTime", startTime)
+	klog.V(4).InfoS("Started syncing Service annotation", "Service", klog.KObj(svc), "startTime", startTime)
 	defer func() {
-		klog.V(4).InfoS("Finished syncing HostID annotation", "Service", klog.KObj(svc), "duration", time.Since(startTime))
+		klog.V(4).InfoS("Finished syncing Service annotation", "Service", klog.KObj(svc), "duration", time.Since(startTime))
 	}()
 
-	hostID, err := c.getHostID(ctx)
+	scyllaClient, err := controllerhelpers.NewScyllaClientForLocalhost()
+	if err != nil {
+		return fmt.Errorf("can't create a new ScyllaClient for localhost: %w", err)
+	}
+	defer scyllaClient.Close()
+
+	hostID, err := c.getHostID(ctx, scyllaClient)
 	if err != nil {
 		return fmt.Errorf("can't get HostID: %w", err)
 	}
 
-	hostIDValue, hasHostIDAnnotation := svc.Annotations[naming.HostIDAnnotation]
-	klog.V(4).InfoS("Syncing HostID annotation", "Service", klog.KObj(svc), "required", hostID, "existing", hostIDValue)
-	if hasHostIDAnnotation && hostIDValue == hostID {
-		klog.V(4).InfoS("Existing HostID matches the required one. Skipping update.", "Service", klog.KObj(svc))
-		return nil
+	ipToHostIDMap, err := scyllaClient.GetIPToHostIDMap(ctx, localhost)
+	if err != nil {
+		return fmt.Errorf("can't get host id to ip mapping: %w", err)
+	}
+
+	var localIP string
+	for ip, id := range ipToHostIDMap {
+		if id == hostID {
+			localIP = ip
+			break
+		}
+	}
+
+	if len(localIP) == 0 {
+		return fmt.Errorf("local host ID %q not found in IP to hostID mapping: %v", hostID, ipToHostIDMap)
+	}
+
+	nodeTokens, err := scyllaClient.GetNodeTokens(ctx, localhost, localIP)
+	if err != nil {
+		return fmt.Errorf("can't get node tokens: %w", err)
 	}
 
 	svcCopy := svc.DeepCopy()
 	svcCopy.Annotations[naming.HostIDAnnotation] = hostID
-	_, err = c.kubeClient.CoreV1().Services(svcCopy.Namespace).Update(ctx, svcCopy, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("can't update service %q: %w", naming.ObjRef(svc), err)
+
+	var currentTokenRingHash string
+	if len(nodeTokens) == 0 {
+		klog.V(4).InfoS("Node doesn't have any tokens assigned, looks like it's still bootstrapping, requeueing")
+		c.queue.AddAfter(c.key, requeueWaitDuration)
+	} else {
+		currentTokenRingHash, err = c.getTokenRingHash(ctx, scyllaClient)
+		if err != nil {
+			return fmt.Errorf("can't get token hash: %w", err)
+		}
+
+		svcCopy.Annotations[naming.CurrentTokenRingHashAnnotation] = currentTokenRingHash
 	}
 
-	klog.V(2).InfoS("Successfully updated HostID annotation", "Service", klog.KObj(svc), "HostID", hostID)
+	if !equality.Semantic.DeepEqual(svc, svcCopy) {
+		_, err = c.kubeClient.CoreV1().Services(svcCopy.Namespace).Update(ctx, svcCopy, metav1.UpdateOptions{})
+		if err != nil {
+			return fmt.Errorf("can't update service %q: %w", naming.ObjRef(svc), err)
+		}
+
+		klog.V(2).InfoS("Successfully updated service annotations", "Service", klog.KObj(svc))
+	}
+
 	return nil
 }
 
@@ -158,7 +197,7 @@ func (c *Controller) sync(ctx context.Context) error {
 
 	var errs []error
 
-	err = c.syncHostIDAnnotation(ctx, svc)
+	err = c.syncAnnotations(ctx, svc)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't sync the HostID annotation: %w", err))
 	}

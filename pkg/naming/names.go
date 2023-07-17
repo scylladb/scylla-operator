@@ -203,3 +203,7 @@ func GetCQLProtocolSubDomain(domain string) string {
 func GetCQLHostIDSubDomain(hostID, domain string) string {
 	return fmt.Sprintf("%s.%s", hostID, GetCQLProtocolSubDomain(domain))
 }
+
+func CleanupJobForService(svcName string) string {
+	return fmt.Sprintf("cleanup-%s", svcName)
+}

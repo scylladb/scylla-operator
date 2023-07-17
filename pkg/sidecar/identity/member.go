@@ -49,10 +49,11 @@ func NewMemberFromObjects(service *corev1.Service, pod *corev1.Pod) *Member {
 }
 
 func (m *Member) GetSeed(ctx context.Context, coreClient v1.CoreV1Interface) (string, error) {
+	clusterLabels := naming.ScyllaLabels()
+	clusterLabels[naming.ClusterNameLabel] = m.Cluster
+
 	podList, err := coreClient.Pods(m.Namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labels.Set{
-			naming.ClusterNameLabel: m.Cluster,
-		}).String(),
+		LabelSelector: labels.SelectorFromSet(clusterLabels).String(),
 	})
 	if err != nil {
 		return "", err

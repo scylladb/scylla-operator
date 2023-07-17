@@ -27,10 +27,19 @@ const (
 	LabelValueFalse = "false"
 )
 
-// Annotations used internally by sidecar controller.
+// Annotations used internally.
 const (
 	// HostIDAnnotation reflects the host_id of the scylla node.
 	HostIDAnnotation = "internal.scylla-operator.scylladb.com/host-id"
+
+	// CurrentTokenRingHashAnnotation reflects the current hash of token ring of the scylla node.
+	CurrentTokenRingHashAnnotation = "internal.scylla-operator.scylladb.com/current-token-ring-hash"
+
+	// LastCleanedUpTokenRingHashAnnotation reflects the last cleaned up hash of token ring of the scylla node.
+	LastCleanedUpTokenRingHashAnnotation = "internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash"
+
+	// CleanupJobTokenRingHashAnnotation reflects which version of token ring cleanup Job is cleaning.
+	CleanupJobTokenRingHashAnnotation = "internal.scylla-operator.scylladb.com/cleanup-token-ring-hash"
 )
 
 type ScyllaServiceType string
@@ -64,6 +73,8 @@ const (
 	OwnerUIDLabel                = "scylla-operator.scylladb.com/owner-uid"
 	ScyllaDBMonitoringNameLabel  = "scylla-operator.scylladb.com/scylladbmonitoring-name"
 	ControllerNameLabel          = "scylla-operator.scylladb.com/controller-name"
+	NodeJobLabel                 = "scylla-operator.scylladb.com/node-job"
+	NodeJobTypeLabel             = "scylla-operator.scylladb.com/node-job-type"
 
 	AppName           = "scylla"
 	OperatorAppName   = "scylla-operator"
@@ -85,6 +96,7 @@ const (
 	ScyllaContainerName          = "scylla"
 	SidecarInjectorContainerName = "sidecar-injection"
 	PerftuneContainerName        = "perftune"
+	CleanupContainerName         = "cleanup"
 
 	PVCTemplateName = "data"
 
@@ -147,4 +159,10 @@ type ProtocolDNSLabel string
 
 const (
 	CQLProtocolDNSLabel = "cql"
+)
+
+type NodeJobType string
+
+const (
+	JobTypeCleanup NodeJobType = "Cleanup"
 )

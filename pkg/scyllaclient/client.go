@@ -156,6 +156,75 @@ func (c *Client) GetLocalHostId(ctx context.Context, host string, retry bool) (s
 	return resp.GetPayload(), nil
 }
 
+func (c *Client) GetIPToHostIDMap(ctx context.Context, host string) (map[string]string, error) {
+	if len(host) > 0 {
+		ctx = forceHost(ctx, host)
+	}
+
+	resp, err := c.scyllaClient.Operations.StorageServiceHostIDGet(&scyllaoperations.StorageServiceHostIDGetParams{
+		Context: ctx,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	mapping := make(map[string]string, len(resp.Payload))
+
+	for _, e := range resp.Payload {
+		mapping[e.Key] = e.Value
+	}
+
+	return mapping, nil
+}
+
+func (c *Client) GetTokenRing(ctx context.Context, host string) ([]string, error) {
+	if len(host) > 0 {
+		ctx = forceHost(ctx, host)
+	}
+
+	resp, err := c.scyllaClient.Operations.StorageServiceTokensGet(&scyllaoperations.StorageServiceTokensGetParams{Context: ctx})
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.GetPayload(), nil
+}
+
+func (c *Client) GetNodeTokens(ctx context.Context, host, endpoint string) ([]string, error) {
+	ctx = forceHost(ctx, host)
+
+	resp, err := c.scyllaClient.Operations.StorageServiceTokensByEndpointGet(&scyllaoperations.StorageServiceTokensByEndpointGetParams{
+		Endpoint: endpoint,
+		Context:  ctx,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.GetPayload(), nil
+}
+
+func (c *Client) Cleanup(ctx context.Context, host string, keyspace string) error {
+	const (
+		// Cleanup is synchronous call and may take a long time to finish.
+		// Default request timeout in client is not big enough to clean huge keyspace.
+		cleanupTimeout = 24 * time.Hour
+	)
+
+	ctx = forceHost(ctx, host)
+	ctx = customTimeout(ctx, cleanupTimeout)
+
+	_, err := c.scyllaClient.Operations.StorageServiceKeyspaceCleanupByKeyspacePost(&scyllaoperations.StorageServiceKeyspaceCleanupByKeyspacePostParams{
+		Context:  ctx,
+		Keyspace: keyspace,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 const (
 	snapshotTimeout = 5 * time.Minute
 	drainTimeout    = 5 * time.Minute

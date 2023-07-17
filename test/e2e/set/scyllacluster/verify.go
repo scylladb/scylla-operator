@@ -185,6 +185,14 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 				condType: "IngressControllerDegraded",
 				status:   metav1.ConditionFalse,
 			},
+			{
+				condType: "JobControllerProgressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "JobControllerDegraded",
+				status:   metav1.ConditionFalse,
+			},
 		}
 
 		if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {

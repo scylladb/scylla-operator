@@ -93,9 +93,9 @@ func (p *Prober) Readyz(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	nodeAddress, err := p.getNodeAddress()
+	hostID, err := scyllaClient.GetLocalHostId(ctx, localhost, false)
 	if err != nil {
-		klog.ErrorS(err, "readyz probe: can't get scylla node address", "Service", p.serviceRef())
+		klog.ErrorS(err, "readyz probe: can't get host id")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -103,7 +103,7 @@ func (p *Prober) Readyz(w http.ResponseWriter, req *http.Request) {
 	for _, s := range nodeStatuses {
 		klog.V(4).InfoS("readyz probe: node state", "Node", s.Addr, "Status", s.Status, "State", s.State)
 
-		if s.Addr == nodeAddress && s.IsUN() {
+		if s.HostID == hostID && s.IsUN() {
 			transportEnabled, err := scyllaClient.IsNativeTransportEnabled(ctx, localhost)
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)

@@ -9,6 +9,7 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -18,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
-	"k8s.io/utils/pointer"
 )
 
 func TestMemberService(t *testing.T) {
@@ -42,8 +42,8 @@ func TestMemberService(t *testing.T) {
 			Kind:               "ScyllaCluster",
 			Name:               "basic",
 			UID:                "the-uid",
-			Controller:         pointer.Bool(true),
-			BlockOwnerDeletion: pointer.Bool(true),
+			Controller:         pointer.Ptr(true),
+			BlockOwnerDeletion: pointer.Ptr(true),
 		},
 	}
 	basicRackName := "rack"
@@ -433,13 +433,13 @@ func TestStatefulSetForRack(t *testing.T) {
 						Kind:               "ScyllaCluster",
 						Name:               "basic",
 						UID:                "the-uid",
-						Controller:         pointer.Bool(true),
-						BlockOwnerDeletion: pointer.Bool(true),
+						Controller:         pointer.Ptr(true),
+						BlockOwnerDeletion: pointer.Ptr(true),
 					},
 				},
 			},
 			Spec: appsv1.StatefulSetSpec{
-				Replicas: pointer.Int32(0),
+				Replicas: pointer.Ptr(int32(0)),
 				Selector: &metav1.LabelSelector{
 					MatchLabels: newBasicStatefulSetLabels(),
 				},
@@ -453,8 +453,8 @@ func TestStatefulSetForRack(t *testing.T) {
 					},
 					Spec: corev1.PodSpec{
 						SecurityContext: &corev1.PodSecurityContext{
-							RunAsUser:  pointer.Int64(0),
-							RunAsGroup: pointer.Int64(0),
+							RunAsUser:  pointer.Ptr(int64(0)),
+							RunAsGroup: pointer.Ptr(int64(0)),
 						},
 						Volumes: func() []corev1.Volume {
 							volumes := []corev1.Volume{
@@ -471,7 +471,7 @@ func TestStatefulSetForRack(t *testing.T) {
 											LocalObjectReference: corev1.LocalObjectReference{
 												Name: "scylla-config",
 											},
-											Optional: pointer.Bool(true),
+											Optional: pointer.Ptr(true),
 										},
 									},
 								},
@@ -480,7 +480,7 @@ func TestStatefulSetForRack(t *testing.T) {
 									VolumeSource: corev1.VolumeSource{
 										Secret: &corev1.SecretVolumeSource{
 											SecretName: "scylla-agent-config-secret",
-											Optional:   pointer.Bool(true),
+											Optional:   pointer.Ptr(true),
 										},
 									},
 								},
@@ -489,7 +489,7 @@ func TestStatefulSetForRack(t *testing.T) {
 									VolumeSource: corev1.VolumeSource{
 										Secret: &corev1.SecretVolumeSource{
 											SecretName: "scylla-client-config-secret",
-											Optional:   pointer.Bool(true),
+											Optional:   pointer.Ptr(true),
 										},
 									},
 								},
@@ -686,8 +686,8 @@ func TestStatefulSetForRack(t *testing.T) {
 									return mounts
 								}(),
 								SecurityContext: &corev1.SecurityContext{
-									RunAsUser:  pointer.Int64(0),
-									RunAsGroup: pointer.Int64(0),
+									RunAsUser:  pointer.Ptr(int64(0)),
+									RunAsGroup: pointer.Ptr(int64(0)),
 									Capabilities: &corev1.Capabilities{
 										Add: []corev1.Capability{"SYS_NICE"},
 									},
@@ -777,7 +777,7 @@ func TestStatefulSetForRack(t *testing.T) {
 						DNSPolicy:                     "ClusterFirstWithHostNet",
 						ServiceAccountName:            "basic-member",
 						Affinity:                      &corev1.Affinity{},
-						TerminationGracePeriodSeconds: pointer.Int64(900),
+						TerminationGracePeriodSeconds: pointer.Ptr(int64(900)),
 					},
 				},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -802,7 +802,7 @@ func TestStatefulSetForRack(t *testing.T) {
 				UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 					Type: appsv1.RollingUpdateStatefulSetStrategyType,
 					RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
-						Partition: pointer.Int32(0),
+						Partition: pointer.Ptr(int32(0)),
 					},
 				},
 			},
@@ -1112,7 +1112,7 @@ func TestMakeIngresses(t *testing.T) {
 				cluster.Spec.ExposeOptions = &scyllav1.ExposeOptions{
 					CQL: &scyllav1.CQLExposeOptions{
 						Ingress: &scyllav1.IngressOptions{
-							Disabled:         pointer.Bool(true),
+							Disabled:         pointer.Ptr(true),
 							IngressClassName: "cql-ingress-class",
 							Annotations: map[string]string{
 								"my-cql-custom-annotation": "my-cql-custom-annotation-value",
@@ -1170,13 +1170,13 @@ func TestMakeIngresses(t *testing.T) {
 								Kind:               "ScyllaCluster",
 								Name:               "basic",
 								UID:                "the-uid",
-								Controller:         pointer.BoolPtr(true),
-								BlockOwnerDeletion: pointer.BoolPtr(true),
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
 							},
 						},
 					},
 					Spec: networkingv1.IngressSpec{
-						IngressClassName: pointer.String("cql-ingress-class"),
+						IngressClassName: pointer.Ptr("cql-ingress-class"),
 						Rules: []networkingv1.IngressRule{
 							{
 								Host: "cql.public.scylladb.com",
@@ -1242,13 +1242,13 @@ func TestMakeIngresses(t *testing.T) {
 								Kind:               "ScyllaCluster",
 								Name:               "basic",
 								UID:                "the-uid",
-								Controller:         pointer.BoolPtr(true),
-								BlockOwnerDeletion: pointer.BoolPtr(true),
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
 							},
 						},
 					},
 					Spec: networkingv1.IngressSpec{
-						IngressClassName: pointer.String("cql-ingress-class"),
+						IngressClassName: pointer.Ptr("cql-ingress-class"),
 						Rules: []networkingv1.IngressRule{
 							{
 								Host: "host-id-1.cql.public.scylladb.com",
@@ -1314,13 +1314,13 @@ func TestMakeIngresses(t *testing.T) {
 								Kind:               "ScyllaCluster",
 								Name:               "basic",
 								UID:                "the-uid",
-								Controller:         pointer.BoolPtr(true),
-								BlockOwnerDeletion: pointer.BoolPtr(true),
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
 							},
 						},
 					},
 					Spec: networkingv1.IngressSpec{
-						IngressClassName: pointer.String("cql-ingress-class"),
+						IngressClassName: pointer.Ptr("cql-ingress-class"),
 						Rules: []networkingv1.IngressRule{
 							{
 								Host: "host-id-2.cql.public.scylladb.com",
@@ -1386,13 +1386,13 @@ func TestMakeIngresses(t *testing.T) {
 								Kind:               "ScyllaCluster",
 								Name:               "basic",
 								UID:                "the-uid",
-								Controller:         pointer.BoolPtr(true),
-								BlockOwnerDeletion: pointer.BoolPtr(true),
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
 							},
 						},
 					},
 					Spec: networkingv1.IngressSpec{
-						IngressClassName: pointer.String("cql-ingress-class"),
+						IngressClassName: pointer.Ptr("cql-ingress-class"),
 						Rules: []networkingv1.IngressRule{
 							{
 								Host: "host-id-3.cql.public.scylladb.com",

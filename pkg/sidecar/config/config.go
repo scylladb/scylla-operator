@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ghodss/yaml"
 	"github.com/magiconair/properties"
 	"github.com/pkg/errors"
 	scylladbassets "github.com/scylladb/scylla-operator/assets/scylladb"
@@ -27,6 +26,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/yaml"
 )
 
 const (

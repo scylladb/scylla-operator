@@ -11,7 +11,6 @@ require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/evanphx/json-patch v4.12.0+incompatible
-	github.com/ghodss/yaml v1.0.0
 	github.com/go-git/go-git/v5 v5.6.1
 	github.com/go-openapi/errors v0.20.3
 	github.com/go-openapi/runtime v0.26.0

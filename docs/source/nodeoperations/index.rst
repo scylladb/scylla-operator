@@ -6,17 +6,17 @@ Node operations using Scylla Operator
    :hidden:
    :maxdepth: 2
 
-   scylla_upgrade
-   replace_node
-   automatic_cleanup
-   maintenance_mode
+   scylla-upgrade
+   replace-node
+   automatic-cleanup
+   maintenance-mode
    restore
 
 
 Choose a topic:
 
-* :doc:`Scylla version upgrade <scylla_upgrade>`
-* :doc:`Replace Scylla node <replace_node>`
-* :doc:`Automatic cleanup and replacement when k8s node is lost <automatic_cleanup>`
-* :doc:`Maintenance mode <maintenance_mode>`
+* :doc:`Scylla version upgrade <scylla-upgrade>`
+* :doc:`Replace Scylla node <replace-node>`
+* :doc:`Automatic cleanup and replacement when k8s node is lost <automatic-cleanup>`
+* :doc:`Maintenance mode <maintenance-mode>`
 * :doc:`Restore from backup <restore>`

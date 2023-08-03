@@ -17,8 +17,8 @@ Scylla Operator Documentation
    performance
    upgrade
    releases
-   known_issues
-   scylla_cluster_crd
+   known-issues
+   scylla-cluster-crd
    contributing
 
 Scylla Operator is an open source project which helps users of Scylla Open Source and Scylla Enterprise run Scylla on Kubernetes (K8s)
@@ -57,6 +57,6 @@ Currently it supports:
 * :doc:`Performance tuning [Experimental] <performance>`
 * :doc:`Upgrade procedures <upgrade>`
 * :doc:`Releases <releases>`
-* :doc:`Known issues <known_issues>`
-* :doc:`Scylla Cluster Custom Resource Definition (CRD) <scylla_cluster_crd>`
+* :doc:`Known issues <known-issues>`
+* :doc:`Scylla Cluster Custom Resource Definition (CRD) <scylla-cluster-crd>`
 * :doc:`Contributing to the Scylla Operator Project <contributing>`

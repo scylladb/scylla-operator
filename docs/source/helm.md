@@ -163,7 +163,7 @@ racks:
 Above cluster will use 4.3.0 Scylla, 2.2.1 Scylla Manager Agent sidecar and will have a single rack having 2 nodes. 
 Each node will have a single CPU and 1 GiB of memory.
 
-For other customizable fields, please refer to [ScyllaCluster CRD definition](scylla_cluster_crd.md).
+For other customizable fields, please refer to [ScyllaCluster CRD definition](scylla-cluster-crd.md).
 CRD Rack Spec and Helm Chart Rack should have the same fields.
 
 #### Installation

@@ -12,33 +12,30 @@ require (
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/evanphx/json-patch v4.12.0+incompatible
 	github.com/go-git/go-git/v5 v5.6.1
-	github.com/go-openapi/errors v0.20.3
+	github.com/go-openapi/errors v0.20.4
 	github.com/go-openapi/runtime v0.26.0
 	github.com/go-openapi/strfmt v0.21.7
-	github.com/go-openapi/swag v0.22.3
+	github.com/go-openapi/swag v0.22.4
 	github.com/go-openapi/validate v0.22.1
 	github.com/gocql/gocql v1.4.0
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/google/go-cmp v0.5.9
 	github.com/grafana/grafana-api-golang-client v0.21.0
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed
-	github.com/hashicorp/go-version v1.6.0
 	github.com/magiconair/properties v1.8.7
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/onsi/ginkgo/v2 v2.9.4
 	github.com/onsi/gomega v1.27.6
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.15.1
-	github.com/scylladb/go-log v0.0.7
 	github.com/scylladb/go-set v1.0.2
 	github.com/scylladb/gocqlx/v2 v2.8.0
+	github.com/scylladb/scylladb-swagger-go-client v0.2.0
 	github.com/shurcooL/githubv4 v0.0.0-20230424031643-6cea62ecd5a9
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
 	go.uber.org/atomic v1.11.0
 	go.uber.org/config v1.4.0
-	go.uber.org/multierr v1.11.0
-	go.uber.org/zap v1.24.0
 	golang.org/x/oauth2 v0.8.0
 	golang.org/x/sys v0.8.0
 	google.golang.org/grpc v1.55.0
@@ -132,10 +129,12 @@ require (
 	github.com/sergi/go-diff v1.3.1 // indirect
 	github.com/shurcooL/graphql v0.0.0-20220606043923-3cf50f8a0a29 // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect
+	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	go.mongodb.org/mongo-driver v1.11.6 // indirect
 	go.opentelemetry.io/otel v1.15.1 // indirect
 	go.opentelemetry.io/otel/trace v1.15.1 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.9.0 // indirect
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 	golang.org/x/mod v0.10.0 // indirect
@@ -143,7 +142,7 @@ require (
 	golang.org/x/term v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.9.1 // indirect
+	golang.org/x/tools v0.9.3 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect

@@ -516,6 +516,8 @@ github.com/scylladb/gocqlx/v2/table
 github.com/scylladb/scylladb-swagger-go-client/scylladb/gen/v1/client
 github.com/scylladb/scylladb-swagger-go-client/scylladb/gen/v1/client/operations
 github.com/scylladb/scylladb-swagger-go-client/scylladb/gen/v1/models
+github.com/scylladb/scylladb-swagger-go-client/scylladb/gen/v2/client
+github.com/scylladb/scylladb-swagger-go-client/scylladb/gen/v2/client/config
 github.com/scylladb/scylladb-swagger-go-client/scylladb/gen/v2/models
 # github.com/sergi/go-diff v1.3.1
 ## explicit; go 1.12

@@ -13,7 +13,6 @@ import (
 	"time"
 
 	o "github.com/onsi/gomega"
-	"github.com/scylladb/go-log"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	scyllav1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1"
@@ -24,8 +23,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -413,13 +410,8 @@ func GetScyllaClient(ctx context.Context, client corev1client.CoreV1Interface, s
 		return nil, nil, fmt.Errorf("can't get auth token: %w", err)
 	}
 
-	// TODO: unify logging
-	logger, _ := log.NewProduction(log.Config{
-		Level: zap.NewAtomicLevelAt(zapcore.InfoLevel),
-	})
 	cfg := scyllaclient.DefaultConfig(authToken, hosts...)
-
-	scyllaClient, err := scyllaclient.NewClient(cfg, logger.Named("scylla_client"))
+	scyllaClient, err := scyllaclient.NewClient(cfg)
 	if err != nil {
 		return nil, nil, err
 	}

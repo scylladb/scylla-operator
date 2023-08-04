@@ -5,14 +5,11 @@ import (
 	"sort"
 	"time"
 
-	"github.com/scylladb/go-log"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -73,11 +70,7 @@ func GetRequiredScyllaHosts(sc *scyllav1.ScyllaCluster, services map[string]*cor
 }
 
 func NewScyllaClient(cfg *scyllaclient.Config) (*scyllaclient.Client, error) {
-	// TODO: unify logging
-	logger, _ := log.NewProduction(log.Config{
-		Level: zap.NewAtomicLevelAt(zapcore.InfoLevel),
-	})
-	scyllaClient, err := scyllaclient.NewClient(cfg, logger.Named("scylla_client"))
+	scyllaClient, err := scyllaclient.NewClient(cfg)
 	if err != nil {
 		return nil, err
 	}

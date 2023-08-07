@@ -9,7 +9,6 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	"github.com/scylladb/go-log"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
@@ -165,7 +164,7 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 func getScyllaClientStatus(ctx context.Context, hosts []string, authToken string) (scyllaclient.NodeStatusInfoSlice, error) {
 	cfg := scyllaclient.DefaultConfig(authToken, hosts...)
 
-	client, err := scyllaclient.NewClient(cfg, log.NopLogger)
+	client, err := scyllaclient.NewClient(cfg)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	defer client.Close()
 

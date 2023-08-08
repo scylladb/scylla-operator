@@ -19,6 +19,9 @@ const (
 	// ReplaceLabel express the intent to replace pod under the specific member.
 	ReplaceLabel = "scylla/replace"
 
+	// ReplacingNodeHostIDLabel contains the Host ID of node labelled node is replacing.
+	ReplacingNodeHostIDLabel = "internal.scylla-operator.scylladb.com/replacing-node-hostid"
+
 	// NodeMaintenanceLabel means that node is under maintenance.
 	// Readiness check will always fail when this label is added to member service.
 	NodeMaintenanceLabel = "scylla/node-maintenance"

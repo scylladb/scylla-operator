@@ -11,6 +11,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
@@ -66,11 +67,11 @@ func IdentityService(c *scyllav1.ScyllaCluster) *corev1.Service {
 	}
 }
 
-func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService *corev1.Service) *corev1.Service {
-	labels := naming.ClusterLabels(sc)
-	labels[naming.DatacenterNameLabel] = sc.Spec.Datacenter.Name
-	labels[naming.RackNameLabel] = rackName
-	labels[naming.ScyllaServiceTypeLabel] = string(naming.ScyllaServiceTypeMember)
+func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService *corev1.Service, jobs map[string]*batchv1.Job) *corev1.Service {
+	svcLabels := naming.ClusterLabels(sc)
+	svcLabels[naming.DatacenterNameLabel] = sc.Spec.Datacenter.Name
+	svcLabels[naming.RackNameLabel] = rackName
+	svcLabels[naming.ScyllaServiceTypeLabel] = string(naming.ScyllaServiceTypeMember)
 
 	// Copy the old replace label, if present.
 	var replaceAddr string
@@ -78,7 +79,7 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 	if oldService != nil {
 		replaceAddr, hasReplaceLabel = oldService.Labels[naming.ReplaceLabel]
 		if hasReplaceLabel {
-			labels[naming.ReplaceLabel] = replaceAddr
+			svcLabels[naming.ReplaceLabel] = replaceAddr
 		}
 	}
 
@@ -88,8 +89,24 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 		if ok {
 			replaceAddr := rackStatus.ReplaceAddressFirstBoot[name]
 			if len(replaceAddr) != 0 {
-				labels[naming.ReplaceLabel] = replaceAddr
+				svcLabels[naming.ReplaceLabel] = replaceAddr
 			}
+		}
+	}
+
+	svcAnnotations := make(map[string]string)
+	if oldService != nil {
+		_, hasLastCleanedUpRingHash := oldService.Annotations[naming.LastCleanedUpTokenRingHashAnnotation]
+		currentTokenRingHash, hasCurrentRingHash := oldService.Annotations[naming.CurrentTokenRingHashAnnotation]
+		if !hasLastCleanedUpRingHash && hasCurrentRingHash {
+			svcAnnotations[naming.LastCleanedUpTokenRingHashAnnotation] = currentTokenRingHash
+		}
+	}
+
+	cleanupJob, ok := jobs[naming.CleanupJobForService(name)]
+	if ok {
+		if len(cleanupJob.Annotations[naming.CleanupJobTokenRingHashAnnotation]) != 0 && cleanupJob.Status.CompletionTime != nil {
+			svcAnnotations[naming.LastCleanedUpTokenRingHashAnnotation] = cleanupJob.Annotations[naming.CleanupJobTokenRingHashAnnotation]
 		}
 	}
 
@@ -100,7 +117,8 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(sc, scyllaClusterControllerGVK),
 			},
-			Labels: labels,
+			Labels:      svcLabels,
+			Annotations: svcAnnotations,
 		},
 		Spec: corev1.ServiceSpec{
 			Type:                     corev1.ServiceTypeClusterIP,
@@ -894,4 +912,145 @@ func MakeRoleBinding(sc *scyllav1.ScyllaCluster) *rbacv1.RoleBinding {
 			Name:     naming.ScyllaClusterMemberClusterRoleName,
 		},
 	}
+}
+
+func MakeJobs(sc *scyllav1.ScyllaCluster, services map[string]*corev1.Service, image string) ([]*batchv1.Job, []metav1.Condition) {
+	var jobs []*batchv1.Job
+	var progressingConditions []metav1.Condition
+
+	for _, rack := range sc.Spec.Datacenter.Racks {
+		for i := int32(0); i < rack.Members; i++ {
+			svcName := naming.MemberServiceName(rack, sc, int(i))
+			svc, ok := services[svcName]
+			if !ok {
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               jobControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "WaitingForService",
+					Message:            fmt.Sprintf("Waiting for Service %q", naming.ManualRef(sc.Namespace, svcName)),
+					ObservedGeneration: sc.Generation,
+				})
+				continue
+			}
+
+			currentTokenRingHash, ok := svc.Annotations[naming.CurrentTokenRingHashAnnotation]
+			if !ok {
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               jobControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "WaitingForServiceState",
+					Message:            fmt.Sprintf("Service %q is missing current token ring hash annotation", naming.ObjRef(svc)),
+					ObservedGeneration: sc.Generation,
+				})
+				continue
+			}
+
+			if len(currentTokenRingHash) == 0 {
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               jobControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "UnexpectedServiceState",
+					Message:            fmt.Sprintf("Service %q has unexpected empty current token ring hash annotation, can't create cleanup Job", naming.ObjRef(svc)),
+					ObservedGeneration: sc.Generation,
+				})
+				klog.Warningf("Can't create cleanup Job for Service %s because it has unexpected empty current token ring hash annotation", klog.KObj(svc))
+				continue
+			}
+
+			lastCleanedUpTokenRingHash, ok := svc.Annotations[naming.LastCleanedUpTokenRingHashAnnotation]
+			if !ok {
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               jobControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "WaitingForServiceState",
+					Message:            fmt.Sprintf("Service %q is missing last cleaned up token ring hash annotation", naming.ObjRef(svc)),
+					ObservedGeneration: sc.Generation,
+				})
+				continue
+			}
+
+			if len(lastCleanedUpTokenRingHash) == 0 {
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               jobControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "UnexpectedServiceState",
+					Message:            fmt.Sprintf("Service %q has unexpected empty last cleaned up token ring hash annotation, can't create cleanup Job", naming.ObjRef(svc)),
+					ObservedGeneration: sc.Generation,
+				})
+				klog.Warningf("Can't create cleanup Job for Service %s because it has unexpected empty last cleaned up token ring hash annotation", klog.KObj(svc))
+				continue
+			}
+
+			if currentTokenRingHash == lastCleanedUpTokenRingHash {
+				klog.V(4).Infof("Node %q already cleaned up", naming.ObjRef(svc))
+				continue
+			}
+
+			klog.InfoS("Node requires a cleanup", "Node", naming.ObjRef(svc), "CurrentHash", currentTokenRingHash, "LastCleanedUpHash", lastCleanedUpTokenRingHash)
+
+			jobLabels := map[string]string{
+				naming.ClusterNameLabel: sc.Name,
+				naming.NodeJobLabel:     svcName,
+				naming.NodeJobTypeLabel: string(naming.JobTypeCleanup),
+			}
+			annotations := map[string]string{
+				naming.CleanupJobTokenRingHashAnnotation: currentTokenRingHash,
+			}
+
+			jobs = append(jobs, &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      naming.CleanupJobForService(svc.Name),
+					Namespace: sc.Namespace,
+					OwnerReferences: []metav1.OwnerReference{
+						*metav1.NewControllerRef(sc, scyllaClusterControllerGVK),
+					},
+					Labels:      jobLabels,
+					Annotations: annotations,
+				},
+				Spec: batchv1.JobSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels:      jobLabels,
+							Annotations: annotations,
+						},
+						Spec: corev1.PodSpec{
+							RestartPolicy: corev1.RestartPolicyOnFailure,
+							Containers: []corev1.Container{
+								{
+									Name:            naming.CleanupContainerName,
+									Image:           image,
+									ImagePullPolicy: corev1.PullIfNotPresent,
+									Args: []string{
+										"cleanup-job",
+										"--manager-auth-config-path=/etc/scylla-cleanup-job/auth-token.yaml",
+										fmt.Sprintf("--node-address=%s", fmt.Sprintf("%s.%s.svc", svcName, sc.Namespace)),
+									},
+									VolumeMounts: []corev1.VolumeMount{
+										{
+											Name:      "scylla-manager-agent-token",
+											ReadOnly:  true,
+											MountPath: "/etc/scylla-cleanup-job/auth-token.yaml",
+											SubPath:   naming.ScyllaAgentAuthTokenFileName,
+										},
+									},
+								},
+							},
+							Volumes: []corev1.Volume{
+								{
+									Name: "scylla-manager-agent-token",
+									VolumeSource: corev1.VolumeSource{
+										Secret: &corev1.SecretVolumeSource{
+											SecretName: naming.AgentAuthTokenSecretName(sc.Name),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			})
+		}
+	}
+
+	return jobs, progressingConditions
 }

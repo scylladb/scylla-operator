@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -24,7 +23,10 @@ func TestMember_GetSeeds(t *testing.T) {
 				Name:      name,
 				Namespace: "namespace",
 				Labels: map[string]string{
-					naming.ClusterNameLabel: "my-cluster",
+					"scylla/cluster":               "my-cluster",
+					"app":                          "scylla",
+					"app.kubernetes.io/name":       "scylla",
+					"app.kubernetes.io/managed-by": "scylla-operator",
 				},
 				CreationTimestamp: metav1.NewTime(creationTimestamp),
 			},

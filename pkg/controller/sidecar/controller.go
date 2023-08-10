@@ -6,8 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
+	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
+	"github.com/scylladb/scylla-operator/pkg/util/hash"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,7 +29,8 @@ const (
 	ControllerName = "SidecarController"
 	// maxSyncDuration enforces preemption. Do not raise the value! Controllers shouldn't actively wait,
 	// but rather use the queue.
-	maxSyncDuration = 30 * time.Second
+	maxSyncDuration          = 30 * time.Second
+	scyllaAPIPollingInterval = 30 * time.Second
 )
 
 var (
@@ -174,6 +176,23 @@ func (c *Controller) Run(ctx context.Context) {
 		wait.UntilWithContext(ctx, c.runWorker, time.Second)
 	}()
 
+	// Periodically reconcile Member Service to make sure values projected from Scylla API are up-to-date.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		wait.UntilWithContext(ctx, func(ctx context.Context) {
+			klog.V(4).InfoS("Periodically enqueuing Member Service")
+
+			svc, err := c.singleServiceLister.Services(c.namespace).Get(c.serviceName)
+			if err != nil {
+				utilruntime.HandleError(err)
+				return
+			}
+
+			c.enqueue(svc)
+		}, scyllaAPIPollingInterval)
+	}()
+
 	<-ctx.Done()
 }
 
@@ -232,7 +251,7 @@ func (c *Controller) deleteService(obj interface{}) {
 	c.enqueue(svc)
 }
 
-func (c *Controller) getHostID(ctx context.Context) (string, error) {
+func (c *Controller) getHostID(ctx context.Context, scyllaClient *scyllaclient.Client) (string, error) {
 	c.hostID.RLock()
 	v := c.hostID.v
 	c.hostID.RUnlock()
@@ -249,13 +268,7 @@ func (c *Controller) getHostID(ctx context.Context) (string, error) {
 		return v, nil
 	}
 
-	scyllaClient, err := controllerhelpers.NewScyllaClientForLocalhost()
-	if err != nil {
-		return "", fmt.Errorf("can't create a new ScyllaClient for localhost: %w", err)
-	}
-	defer scyllaClient.Close()
-
-	v, err = scyllaClient.GetLocalHostId(ctx, localhost, false)
+	v, err := scyllaClient.GetLocalHostId(ctx, localhost, false)
 	if err != nil {
 		return "", fmt.Errorf("can't get local HostID: %w", err)
 	}
@@ -267,4 +280,18 @@ func (c *Controller) getHostID(ctx context.Context) (string, error) {
 	c.hostID.v = v
 
 	return v, nil
+}
+
+func (c *Controller) getTokenRingHash(ctx context.Context, scyllaClient *scyllaclient.Client) (string, error) {
+	tokenRing, err := scyllaClient.GetTokenRing(ctx, localhost)
+	if err != nil {
+		return "", fmt.Errorf("can't get token ring: %w", err)
+	}
+
+	h, err := hash.HashObjects(tokenRing)
+	if err != nil {
+		return "", fmt.Errorf("can't hash token ring: %w", err)
+	}
+
+	return h, nil
 }

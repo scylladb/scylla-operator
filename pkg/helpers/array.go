@@ -62,3 +62,13 @@ func IdentityFunc[T comparable](item T) func(T) bool {
 func ContainsItem[T comparable](slice []T, item T) bool {
 	return Contains(slice, IdentityFunc(item))
 }
+
+func Find[T comparable](slice []T, filterFunc func(T) bool) (T, bool) {
+	for i := range slice {
+		if filterFunc(slice[i]) {
+			return slice[i], true
+		}
+	}
+
+	return *new(T), false
+}

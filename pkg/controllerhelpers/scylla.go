@@ -299,6 +299,10 @@ func IsScyllaPod(pod *corev1.Pod) bool {
 		return false
 	}
 
+	if !labels.SelectorFromSet(naming.ScyllaLabels()).Matches(labels.Set(pod.Labels)) {
+		return false
+	}
+
 	_, ok := pod.Labels[naming.ClusterNameLabel]
 	if !ok {
 		return false

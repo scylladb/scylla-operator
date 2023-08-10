@@ -10,6 +10,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
@@ -172,6 +173,21 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		objectErrs = append(objectErrs, err)
 	}
 
+	jobMap, err := controllerhelpers.GetObjects[CT, *batchv1.Job](
+		ctx,
+		sc,
+		scyllaClusterControllerGVK,
+		scSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *batchv1.Job]{
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaClusters(sc.Namespace).Get,
+			ListObjectsFunc:           scc.jobLister.Jobs(sc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.BatchV1().Jobs(sc.Namespace).Patch,
+		},
+	)
+	if err != nil {
+		objectErrs = append(objectErrs, err)
+	}
+
 	objectErr := utilerrors.NewAggregate(objectErrs)
 	if objectErr != nil {
 		return objectErr
@@ -263,7 +279,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		serviceControllerDegradedCondition,
 		sc.Generation,
 		func() ([]metav1.Condition, error) {
-			return scc.syncServices(ctx, sc, status, serviceMap, statefulSetMap)
+			return scc.syncServices(ctx, sc, status, serviceMap, statefulSetMap, jobMap)
 		},
 	)
 	if err != nil {
@@ -294,6 +310,19 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 	)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't sync ingresses: %w", err))
+	}
+
+	err = controllerhelpers.RunSync(
+		&status.Conditions,
+		jobControllerProgressingCondition,
+		jobControllerDegradedCondition,
+		sc.Generation,
+		func() ([]metav1.Condition, error) {
+			return scc.syncJobs(ctx, sc, serviceMap, jobMap)
+		},
+	)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't sync jobs: %w", err))
 	}
 
 	// Aggregate conditions.

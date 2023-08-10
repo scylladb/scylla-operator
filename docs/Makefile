@@ -6,6 +6,11 @@ PAPER         :=
 BUILDDIR      := _build
 SOURCEDIR     := source
 
+# For Windows users
+ifeq ($(OS),Windows_NT)
+    POETRY = $(APPDATA)\Python\Scripts\poetry
+endif
+
 # Internal variables.
 PAPEROPT_a4     := -D latex_paper_size=a4
 PAPEROPT_letter := -D latex_paper_size=letter
@@ -74,3 +79,7 @@ redirects:
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/dirhtml."
 .PHONY: redirects
+
+setup:
+	$(POETRY) install
+.PHONY: setup

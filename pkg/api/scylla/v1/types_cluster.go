@@ -106,6 +106,9 @@ type ScyllaClusterSpec struct {
 	// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
 	// +optional
 	ExposeOptions *ExposeOptions `json:"exposeOptions,omitempty"`
+
+	// externalSeeds specifies the external seeds to propagate to ScyllaDB binary on startup as "seeds" parameter of seed-provider.
+	ExternalSeeds []string `json:"externalSeeds,omitempty"`
 }
 
 // ExposeOptions hold options related to exposing ScyllaCluster backends.

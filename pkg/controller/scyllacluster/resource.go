@@ -364,23 +364,31 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 							ImagePullPolicy: corev1.PullIfNotPresent,
 							Ports:           containerPorts(c),
 							// TODO: unprivileged entrypoint
-							Command: []string{
-								path.Join(naming.SharedDirName, "scylla-operator"),
-								"sidecar",
-								fmt.Sprintf("--feature-gates=%s", func() string {
-									features := utilfeature.DefaultMutableFeatureGate.GetAll()
-									res := make([]string, 0, len(features))
-									for name := range features {
-										res = append(res, fmt.Sprintf("%s=%t", name, utilfeature.DefaultMutableFeatureGate.Enabled(name)))
-									}
-									sort.Strings(res)
-									return strings.Join(res, ",")
-								}()),
-								"--service-name=$(SERVICE_NAME)",
-								"--cpu-count=$(CPU_COUNT)",
-								// TODO: make it configurable
-								"--loglevel=2",
-							},
+							Command: func() []string {
+								cmd := []string{
+									path.Join(naming.SharedDirName, "scylla-operator"),
+									"sidecar",
+									fmt.Sprintf("--feature-gates=%s", func() string {
+										features := utilfeature.DefaultMutableFeatureGate.GetAll()
+										res := make([]string, 0, len(features))
+										for name := range features {
+											res = append(res, fmt.Sprintf("%s=%t", name, utilfeature.DefaultMutableFeatureGate.Enabled(name)))
+										}
+										sort.Strings(res)
+										return strings.Join(res, ",")
+									}()),
+									"--service-name=$(SERVICE_NAME)",
+									"--cpu-count=$(CPU_COUNT)",
+									// TODO: make it configurable
+									"--loglevel=2",
+								}
+
+								if len(c.Spec.ExternalSeeds) > 0 {
+									cmd = append(cmd, fmt.Sprintf("--external-seeds=%s", strings.Join(c.Spec.ExternalSeeds, ",")))
+								}
+
+								return cmd
+							}(),
 							Env: []corev1.EnvVar{
 								{
 									Name: "SERVICE_NAME",

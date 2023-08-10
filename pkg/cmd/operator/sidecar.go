@@ -44,8 +44,9 @@ type SidecarOptions struct {
 	genericclioptions.ClientConfig
 	genericclioptions.InClusterReflection
 
-	ServiceName string
-	CPUCount    int
+	ServiceName   string
+	CPUCount      int
+	ExternalSeeds []string
 
 	kubeClient   kubernetes.Interface
 	scyllaClient scyllaversionedclient.Interface
@@ -97,6 +98,7 @@ func NewSidecarCmd(streams genericclioptions.IOStreams) *cobra.Command {
 
 	cmd.Flags().StringVarP(&o.ServiceName, "service-name", "", o.ServiceName, "Name of the service corresponding to the managed node.")
 	cmd.Flags().IntVarP(&o.CPUCount, "cpu-count", "", o.CPUCount, "Number of cpus to use.")
+	cmd.Flags().StringSliceVar(&o.ExternalSeeds, "external-seeds", o.ExternalSeeds, "The external seeds to propagate to ScyllaDB binary on startup as \"seeds\" parameter of seed-provider.")
 
 	return cmd
 }
@@ -359,7 +361,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 
 	klog.V(2).InfoS("Starting scylla")
 
-	cfg := config.NewScyllaConfig(member, o.kubeClient, o.scyllaClient, o.CPUCount)
+	cfg := config.NewScyllaConfig(member, o.kubeClient, o.scyllaClient, o.CPUCount, o.ExternalSeeds)
 	scyllaCmd, err := cfg.Setup(ctx)
 	if err != nil {
 		return fmt.Errorf("can't set up scylla: %w", err)

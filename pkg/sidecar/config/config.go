@@ -64,9 +64,10 @@ type ScyllaConfig struct {
 	scyllaRackDCPropertiesPath          string
 	scyllaRackDCPropertiesConfigMapPath string
 	cpuCount                            int
+	externalSeeds                       []string
 }
 
-func NewScyllaConfig(m *identity.Member, kubeClient kubernetes.Interface, scyllaClient scyllaversionedclient.Interface, cpuCount int) *ScyllaConfig {
+func NewScyllaConfig(m *identity.Member, kubeClient kubernetes.Interface, scyllaClient scyllaversionedclient.Interface, cpuCount int, externalSeeds []string) *ScyllaConfig {
 	return &ScyllaConfig{
 		member:                              m,
 		kubeClient:                          kubeClient,
@@ -74,6 +75,7 @@ func NewScyllaConfig(m *identity.Member, kubeClient kubernetes.Interface, scylla
 		scyllaRackDCPropertiesPath:          scyllaRackDCPropertiesPath,
 		scyllaRackDCPropertiesConfigMapPath: scyllaRackDCPropertiesConfigMapPath,
 		cpuCount:                            cpuCount,
+		externalSeeds:                       externalSeeds,
 	}
 }
 
@@ -204,10 +206,9 @@ func appendScyllaArguments(ctx context.Context, s *ScyllaConfig, scyllaArgs stri
 
 func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	m := s.member
-	// Get seeds
-	seed, err := m.GetSeed(ctx, s.kubeClient.CoreV1())
+	seeds, err := m.GetSeeds(ctx, s.kubeClient.CoreV1(), s.externalSeeds)
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting seeds")
+		return nil, fmt.Errorf("can't get seeds: %w", err)
 	}
 
 	// Check if we need to run in developer mode
@@ -232,7 +233,7 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		"listen-address":        &listenAddress,
 		"broadcast-address":     &m.StaticIP,
 		"broadcast-rpc-address": &m.StaticIP,
-		"seeds":                 pointer.StringPtr(seed),
+		"seeds":                 pointer.String(strings.Join(seeds, ",")),
 		"developer-mode":        &devMode,
 		"overprovisioned":       &overprovisioned,
 		"smp":                   pointer.StringPtr(strconv.Itoa(s.cpuCount)),

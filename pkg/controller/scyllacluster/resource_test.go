@@ -929,6 +929,8 @@ func TestStatefulSetForRack(t *testing.T) {
 		}
 	}
 
+	const scyllaContainerIndex = 0
+
 	tt := []struct {
 		name                string
 		rack                scyllav1.RackSpec
@@ -1081,6 +1083,24 @@ func TestStatefulSetForRack(t *testing.T) {
 			expectedStatefulSet: func() *appsv1.StatefulSet {
 				sts := newBasicStatefulSet()
 				sts.Spec.Template.Annotations[naming.ForceRedeploymentReasonAnnotation] = "reason"
+				return sts
+			}(),
+			expectedError: nil,
+		},
+		{
+			name: "new StatefulSet with non-empty externalSeeds in scylla container",
+			rack: newBasicRack(),
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := newBasicScyllaCluster()
+				sc.Spec.ExternalSeeds = []string{"10.0.1.1", "10.0.1.2", "10.0.1.3"}
+				return sc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+
+				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command = append(sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command, "--external-seeds=10.0.1.1,10.0.1.2,10.0.1.3")
+
 				return sts
 			}(),
 			expectedError: nil,

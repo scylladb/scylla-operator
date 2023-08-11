@@ -48,7 +48,7 @@ For this guide, we'll create an EKS cluster with the following:
     instanceType: i3.2xlarge
     desiredCapacity: 3
     labels:
-      pool: "scylla-pool"
+      scylla.scylladb.com/node-type: scylla
     taints:
       role: "scylla-clusters:NoSchedule"
     ssh:
@@ -82,28 +82,30 @@ For this guide, we'll create an EKS cluster with the following:
       allow: true
 ```
 
-### Installing Required Tools
+### Prerequisites
 
 #### Installing script third party dependencies
 
 Script requires several dependencies:
-- Helm - See: https://docs.helm.sh/using_helm/#installing-helm
 - eksctl - See: https://docs.aws.amazon.com/eks/latest/userguide/getting-started-eksctl.html
 - kubectl - See: https://kubernetes.io/docs/tasks/tools/install-kubectl/
 
+#### Setting up nodes for ScyllaDB
 
-#### Install the local provisioner
+ScyllaDB, except when in developer mode, requires storage with XFS filesystem. The local NVMes from the cloud provider usually come as individual devices. To use their full capacity together, you'll first need to form a RAID array from those disks.
+`NodeConfig` performs the necessary RAID configuration and XFS filesystem creation, as well as it optimizes the nodes. You can read more about it in [Performance tuning](performance.md) section of ScyllaDB Operator's documentation.
 
-We deploy the local volume provisioner, which will discover their mount points and make them available as PersistentVolumes.
+Deploy `NodeConfig` to let it take care of the above operations:
 ```
-helm install local-provisioner examples/common/provisioner
+kubectl apply --server-side -f examples/gke/nodeconfig-alpha.yaml
 ```
 
-#### Deploy tuning DaemonSet
+#### Deploying Local Volume Provisioner
 
-Deploy tuning DaemonSet, this will configure your disks and apply several optimizations
+Afterwards, deploy ScyllaDB's [Local Volume Provisioner](https://github.com/scylladb/k8s-local-volume-provisioner), capable of dynamically provisioning PersistentVolumes for your ScyllaDB clusters on mounted XFS filesystems, earlier created over the configured RAID0 arrays.
 ```
-kubectl apply -f node-setup-daemonset.yaml
+kubectl -n local-csi-driver apply --server-side -f examples/common/local-volume-provisioner/local-csi-driver/
+kubectl apply --server-side -f examples/common/local-volume-provisioner/storageclass_xfs.yaml
 ```
 
 ### Installing the Scylla Operator and Scylla

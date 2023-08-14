@@ -7,12 +7,12 @@ fullnameOverride: ""
 scyllaImage:
   repository: scylladb/scylla
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 5.0.5
+  tag: 5.1.15
 # Allows to customize Scylla image
 agentImage:
   repository: scylladb/scylla-manager-agent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 3.0.1
+  tag: 3.1.2
 
 serviceAccount:
   # Specifies whether a service account should be created

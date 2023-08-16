@@ -6,7 +6,7 @@ authors = ["ScyllaDB Documentation Contributors"]
 
 # Pin dependencies to exact versions so CI always produces the same artifacts.
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.8"
 pyyaml = "^6.0"
 pygments = "2.15.1"
 recommonmark = "^0.7.1"

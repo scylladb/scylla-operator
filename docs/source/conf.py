@@ -109,6 +109,7 @@ html_theme_options = {
     'conf_py_path': 'docs/source/',
     'default_branch': 'master',
     'hide_edit_this_page_button': 'false',
+    "hide_feedback_buttons": 'false',
     'github_repository': 'scylladb/scylla-operator',
     'github_issues_repository': 'scylladb/scylla-operator',
     "versions_unstable": UNSTABLE_VERSIONS,
@@ -133,4 +134,4 @@ html_baseurl = 'https://operator.docs.scylladb.com'
 # Dictionary of values to pass into the template engine’s context for all pages
 html_context = {'html_baseurl': html_baseurl}
 
-sitemap_url_scheme = "stable/{link}"
+sitemap_url_scheme = "/stable/{link}"

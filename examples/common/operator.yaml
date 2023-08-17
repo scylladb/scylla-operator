@@ -4844,11 +4844,11 @@ spec:
       serviceAccountName: scylla-operator
       containers:
       - name: scylla-operator
-        image: docker.io/scylladb/scylla-operator:latest
+        image: docker.io/scylladb/scylla-operator:1.10
         imagePullPolicy: IfNotPresent
         env:
         - name: SCYLLA_OPERATOR_IMAGE
-          value: docker.io/scylladb/scylla-operator:latest
+          value: docker.io/scylladb/scylla-operator:1.10
         args:
         - operator
         - --loglevel=2
@@ -4894,7 +4894,7 @@ spec:
       serviceAccountName: "webhook-server"
       containers:
       - name: webhook-server
-        image: docker.io/scylladb/scylla-operator:latest
+        image: docker.io/scylladb/scylla-operator:1.10
         imagePullPolicy: IfNotPresent
         args:
         - run-webhook-server

@@ -1,0 +1,16 @@
+# See the OWNERS docs at https://go.k8s.io/owners
+
+filters:
+  ".*":
+    approvers:
+    - tnozicka
+    - zimnx
+    reviewers:
+    - tnozicka
+    - zimnx
+    - rzetelskik
+  "go\\.(mod|sum)$":
+    required_reviewers:
+    - tnozicka
+    labels:
+    - area/dependency

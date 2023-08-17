@@ -20,7 +20,7 @@ mkdir cluster-scoped-resources
 pushd cluster-scoped-resources
 for r in ${cluster_scoped_resources}; do
   for f in yaml wide; do
-    kubectl get "${r}" -o "${f}" > "${r}.${f}" &
+    kubectl get --ignore-not-found=true "${r}" -o "${f}" > "${r}.${f}" &
   done
 done
 wait
@@ -31,7 +31,8 @@ mkdir namespaced-resources
 pushd namespaced-resources
 for r in ${namespaced_resources}; do
   for f in yaml wide; do
-    kubectl get "${r}" -A -o "${f}" > "${r}.${f}" &
+    # Ignore not found to tolerate objects with delayed deletion or TTL.
+    kubectl get --ignore-not-found=true "${r}" -A -o "${f}" > "${r}.${f}" &
   done
 done
 wait
@@ -54,7 +55,8 @@ for n in ${namespaces}; do
         mkdir "${r}"
         pushd "${r}"
         for o in ${objects}; do
-            kubectl -n "${n}" get "${r}"/"${o}" -o yaml > "${o}".yaml
+            # Ignore not found to tolerate objects with delayed deletion or TTL.
+            kubectl -n "${n}" get --ignore-not-found=true "${r}"/"${o}" -o yaml > "${o}".yaml
 
             case "${r}" in
             "pods")

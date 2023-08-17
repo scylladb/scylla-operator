@@ -246,8 +246,20 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	}
 	// If node is being replaced
 	if addr, ok := m.ServiceLabels[naming.ReplaceLabel]; ok {
-		args["replace-address-first-boot"] = pointer.StringPtr(addr)
+		if len(addr) == 0 {
+			klog.Warningf("Service %q have unexpectedly empty label %q, skipping replace", m.Name, naming.ReplaceLabel)
+		} else {
+			args["replace-address-first-boot"] = pointer.StringPtr(addr)
+		}
 	}
+	if hostID, ok := m.ServiceLabels[naming.ReplacingNodeHostIDLabel]; ok {
+		if len(hostID) == 0 {
+			klog.Warningf("Service %q have unexpectedly empty label %q, skipping replace", m.Name, naming.ReplacingNodeHostIDLabel)
+		} else {
+			args["replace-node-first-boot"] = pointer.String(hostID)
+		}
+	}
+
 	// See if we need to use cpu-pinning
 	// TODO: Add more checks to make sure this is valid.
 	// eg. parse the cpuset and check the number of cpus is the same as cpu limits

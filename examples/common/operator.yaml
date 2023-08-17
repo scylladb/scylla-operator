@@ -2965,7 +2965,7 @@ spec:
                       replace_address_first_boot:
                         additionalProperties:
                           type: string
-                        description: replace_address_first_boot holds addresses which should be replaced by new nodes.
+                        description: 'replace_address_first_boot holds addresses which should be replaced by new nodes. DEPRECATED: since Scylla Operator 1.10 it''s only used for deprecated replace node procedure (ScyllaDB OS <5.2, Enterprise <2023.1). With Scylla Operator 1.11+ this field may be empty.'
                         type: object
                       stale:
                         description: stale indicates if the current rack status is collected for a previous generation. stale should eventually become false when the appropriate controller writes a fresh status.

@@ -493,10 +493,9 @@ type RackStatus struct {
 	// conditions are the latest available observations of a rack's state.
 	Conditions []RackCondition `json:"conditions,omitempty"`
 
-	// FIXME: The json value should have been a camelCase string.
-	//        We need to deprecate this value and introduce a new one.
-
 	// replace_address_first_boot holds addresses which should be replaced by new nodes.
+	// DEPRECATED: since Scylla Operator 1.10 it's only used for deprecated replace node procedure (ScyllaDB OS <5.2, Enterprise <2023.1).
+	//             With Scylla Operator 1.11+ this field may be empty.
 	ReplaceAddressFirstBoot map[string]string `json:"replace_address_first_boot,omitempty"`
 }
 

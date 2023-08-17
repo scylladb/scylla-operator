@@ -419,6 +419,21 @@ func GetScyllaClient(ctx context.Context, client corev1client.CoreV1Interface, s
 	return scyllaClient, hosts, nil
 }
 
+func GetScyllaConfigClient(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, host string) (*scyllaclient.ConfigClient, error) {
+	tokenSecret, err := client.Secrets(sc.Namespace).Get(ctx, naming.AgentAuthTokenSecretName(sc.Name), metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("can't get Secret %q: %w", naming.ManualRef(sc.Namespace, naming.AgentAuthTokenSecretName(sc.Name)), err)
+	}
+
+	authToken, err := helpers.GetAgentAuthTokenFromSecret(tokenSecret)
+	if err != nil {
+		return nil, fmt.Errorf("can't get auth token: %w", err)
+	}
+
+	configClient := scyllaclient.NewConfigClient(host, authToken)
+	return configClient, nil
+}
+
 func GetHostsAndUUIDs(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, []string, error) {
 	serviceList, err := client.Services(sc.Namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: GetMemberServiceSelector(sc.Name).String(),

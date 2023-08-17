@@ -49,7 +49,7 @@ var suites = ginkgotest.TestSuites{
 		Description: templates.LongDesc(`
 		Runs all tests.
 		`),
-		DefaultParallelism: 15,
+		DefaultParallelism: 8,
 	},
 	{
 		Name: "scylla-operator/conformance/parallel",
@@ -57,7 +57,7 @@ var suites = ginkgotest.TestSuites{
 		Tests that ensure an Scylla Operator is working properly.
 		`),
 		LabelFilter:        fmt.Sprintf("!%s", framework.SerialLabelName),
-		DefaultParallelism: 15,
+		DefaultParallelism: 8,
 	},
 	{
 		Name: "scylla-operator/conformance/serial",

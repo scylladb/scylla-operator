@@ -186,9 +186,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 			scyllaVersion:         "5.2.6",
 			validateScyllaConfig:  validateReplaceViaHostID,
 		}),
-		// TODO: Enable test when ScyllaDB Enterprise 2023.1 is released
-		//       Ref: https://github.com/scylladb/scylla-operator/issues/1325
-		g.PEntry(describeEntry, &entry{
+		g.Entry(describeEntry, &entry{
 			procedure:             "HostID",
 			scyllaImageRepository: scyllaEnterpriseImageRepository,
 			scyllaVersion:         "2023.1.0",

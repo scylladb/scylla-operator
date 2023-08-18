@@ -32,7 +32,7 @@ func (nsc *Controller) syncMounts(ctx context.Context, nc *scyllav1alpha1.NodeCo
 				Device:      device,
 				MountPoint:  mc.MountPoint,
 				FSType:      mc.FSType,
-				Options:     mc.UnsupportedOptions,
+				Options:     append([]string{"X-mount.mkdir"}, mc.UnsupportedOptions...),
 			}
 
 			mountUnit, err := mount.MakeUnit()
@@ -51,6 +51,9 @@ func (nsc *Controller) syncMounts(ctx context.Context, nc *scyllav1alpha1.NodeCo
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't ensure units: %w", err))
 	}
+
+	// TODO: Check mount units for failures.
+	//       https://github.com/scylladb/scylla-operator/issues/1334
 
 	err = utilerrors.NewAggregate(errs)
 	if err != nil {

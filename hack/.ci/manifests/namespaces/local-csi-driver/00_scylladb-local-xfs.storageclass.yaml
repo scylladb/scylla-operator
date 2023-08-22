@@ -1,0 +1,10 @@
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: scylladb-local-xfs
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: local.csi.scylladb.com
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+  csi.storage.k8s.io/fstype: xfs

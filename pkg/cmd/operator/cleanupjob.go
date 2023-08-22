@@ -16,8 +16,13 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/wait"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
+)
+
+const (
+	stopCleanupOperationTimeout = 10 * time.Second
 )
 
 type CleanupJobOptions struct {
@@ -118,10 +123,56 @@ func (o *CleanupJobOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.
 	stopCh := signals.StopChannel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
 	go func() {
 		<-stopCh
 		cancel()
 	}()
+
+	var errs []error
+
+	cleanupErr := o.runCleanup(ctx)
+	if cleanupErr != nil {
+		errs = append(errs, fmt.Errorf("can't run the cleanup: %w", cleanupErr))
+	} else {
+		klog.InfoS("Node cleanup finished successfully")
+	}
+
+	select {
+	case <-stopCh:
+		if cleanupErr == nil {
+			break
+		}
+
+		klog.InfoS("Stopping any ongoing cleanup due to stop signal")
+		stopCleanupCtx, stopCleanupCtxCancel := context.WithTimeout(context.Background(), stopCleanupOperationTimeout)
+		defer stopCleanupCtxCancel()
+
+		wait.UntilWithContext(stopCleanupCtx, func(ctx context.Context) {
+			err := o.scyllaClient.StopCleanup(ctx, o.NodeAddress)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("can't stop the cleanup: %w", err))
+			} else {
+				stopCleanupCtxCancel()
+			}
+		}, time.Second)
+	default:
+	}
+
+	err := apierrors.NewAggregate(errs)
+	if err != nil {
+		return fmt.Errorf("can't clean up: %w", err)
+	}
+
+	return nil
+}
+
+func (o *CleanupJobOptions) runCleanup(ctx context.Context) error {
+	klog.InfoS("Stopping any ongoing cleanup")
+	err := o.scyllaClient.StopCleanup(ctx, o.NodeAddress)
+	if err != nil {
+		return fmt.Errorf("can't stop the cleanup: %w", err)
+	}
 
 	keyspaces, err := o.scyllaClient.Keyspaces(ctx)
 	if err != nil {

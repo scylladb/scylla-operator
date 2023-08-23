@@ -16,14 +16,6 @@ on:
     - 'v[0-9]+.[0-9]+.[0-9]+-alpha.[0-9]+'
     - 'v[0-9]+.[0-9]+.[0-9]+-beta.[0-9]+'
     - 'v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+'
-  pull_request:
-    branches:
-    - '**'
-    types:
-    - opened
-    - edited
-    - reopened
-    - synchronize
   schedule:
   - cron:  '0 23 * * *' # daily at 11pm
 

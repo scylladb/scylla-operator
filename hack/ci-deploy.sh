@@ -24,7 +24,7 @@ function kubectl_create {
         kubectl create "$@"
     else
         # For development iterations we want to update the objects.
-        kubectl apply --server-side=true "$@"
+        kubectl apply --server-side=true --force-conflicts "$@"
     fi
 }
 

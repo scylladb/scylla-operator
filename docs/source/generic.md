@@ -261,7 +261,7 @@ To configure the agent you just create a new secret called _scylla-agent-config-
 kubectl create secret -n scylla generic scylla-agent-config-secret --from-file scylla-manager-agent.yaml
 ```
 
-See [Scylla Manager Agent configuration](https://docs.scylladb.com/operating-scylla/manager/2.0/agent-configuration-file/) for a complete reference of the Scylla Manager agent config file.
+See [Scylla Manager Agent configuration](https://manager.docs.scylladb.com/stable/config/scylla-manager-config.html) for a complete reference of the Scylla Manager agent config file.
 
 ### Scylla Manager Agent auth token
 

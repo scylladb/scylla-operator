@@ -87,7 +87,7 @@ kubectl create namespace e2e --dry-run=client -o yaml | kubectl_create -f -
 kubectl create clusterrolebinding e2e --clusterrole=cluster-admin --serviceaccount=e2e:default --dry-run=client -o yaml | kubectl_create -f -
 kubectl create -n e2e pdb my-pdb --selector='app=e2e' --min-available=1 --dry-run=client -o yaml | kubectl_create -f -
 
-kubectl -n e2e run --restart=Never --image="${SO_IMAGE}" --labels='app=e2e' --command=true e2e -- bash -euExo pipefail -O inherit_errexit -c "mkdir /tmp/artifacts && scylla-operator-tests run '${SO_SUITE}' --loglevel=2 --color=false --artifacts-dir=/tmp/artifacts --feature-gates='${SCYLLA_OPERATOR_FEATURE_GATES}' --override-ingress-address='${ingress_address}' && touch /tmp/done && until [[ -f '/tmp/exit' ]]; do sleep 1; done"
+kubectl -n e2e run --restart=Never --image="${SO_IMAGE}" --labels='app=e2e' --command=true e2e -- bash -euExo pipefail -O inherit_errexit -c "function wait-for-artifacts { touch /tmp/done && until [[ -f '/tmp/exit' ]]; do sleep 1; done } && trap wait-for-artifacts EXIT && mkdir /tmp/artifacts && scylla-operator-tests run '${SO_SUITE}' --loglevel=2 --color=false --artifacts-dir=/tmp/artifacts --feature-gates='${SCYLLA_OPERATOR_FEATURE_GATES}' --override-ingress-address='${ingress_address}'"
 kubectl -n e2e wait --for=condition=Ready pod/e2e
 
 # Setup artifacts transfer when finished and unblock the e2e pod when done.
@@ -103,8 +103,11 @@ kubectl -n e2e logs -f pod/e2e
 exit_code=$( kubectl -n e2e get pods/e2e --output='jsonpath={.status.containerStatuses[0].state.terminated.exitCode}' )
 kubectl -n e2e delete pod/e2e --wait=false
 
-wait "${bg_pid}"
+wait "${bg_pid}" || ( echo "Collecting e2e artifacts failed" && exit 2 )
 
 if [[ "${exit_code}" != "0" ]]; then
+  echo "E2E tests failed"
   exit "${exit_code}"
 fi
+
+echo "E2E tests finished successfully"

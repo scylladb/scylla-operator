@@ -225,6 +225,20 @@ func (c *Client) Cleanup(ctx context.Context, host string, keyspace string) erro
 	return nil
 }
 
+func (c *Client) StopCleanup(ctx context.Context, host string) error {
+	ctx = forceHost(ctx, host)
+
+	_, err := c.scyllaClient.Operations.CompactionManagerStopCompactionPost(&scyllaoperations.CompactionManagerStopCompactionPostParams{
+		Context: ctx,
+		Type:    string(CleanupCompactionType),
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 const (
 	snapshotTimeout = 5 * time.Minute
 	drainTimeout    = 5 * time.Minute

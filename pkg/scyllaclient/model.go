@@ -117,6 +117,16 @@ func operationalModeFromString(str string) OperationalMode {
 	return OperationalModeUnknown
 }
 
+type CompactionType string
+
+const (
+	CompactionCompactionType CompactionType = "COMPACTION"
+	CleanupCompactionType    CompactionType = "CLEANUP"
+	ScrubCompactionType      CompactionType = "SCRUB"
+	UpgradeCompactionType    CompactionType = "UPGRADE"
+	ReshapeCompactionType    CompactionType = "RESHAPE"
+)
+
 // NodeStatusInfo represents a nodetool status line.
 type NodeStatusInfo struct {
 	HostID string

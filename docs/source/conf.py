@@ -85,7 +85,7 @@ UNSTABLE_VERSIONS = ["master"]
 smv_branch_whitelist = multiversion_regex_builder(BRANCHES)
 # Defines which version is considered to be the latest stable version.
 # Must be listed in smv_tag_whitelist or smv_branch_whitelist.
-smv_latest_version = 'v1.9'
+smv_latest_version = 'v1.10'
 smv_rename_latest_version = 'stable'
 # Whitelist pattern for remotes (set to None to use local branches only)
 smv_remote_whitelist = r"^origin$"

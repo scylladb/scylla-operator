@@ -210,6 +210,7 @@ jobs:
         repositoryPath: ${{ env.git_repo_path }}
         jobSuffix: "parallel"
         suite: "scylla-operator/conformance/parallel"
+        extraArgs: "--parallelism=8"
 
   test-e2e-serial:
     name: Test e2e serial
@@ -245,6 +246,7 @@ jobs:
         jobSuffix: "parallel-alpha"
         suite: "scylla-operator/conformance/parallel"
         featureGates: "AllAlpha=true,AllBeta=true"
+        extraArgs: "--parallelism=8"
 
   test-e2e-serial-alpha:
     name: Test e2e serial (with alpha features)

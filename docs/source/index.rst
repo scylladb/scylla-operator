@@ -43,7 +43,6 @@ Currently it supports:
 * Backup
 * Repairs
 * Autohealing
-* Monitoring with Prometheus and Grafana
 
 **Choose a topic to begin**:
 

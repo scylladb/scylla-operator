@@ -16,7 +16,8 @@ var (
 type ScyllaFeature string
 
 const (
-	ReplacingNodeUsingHostID ScyllaFeature = "ReplacingNodeUsingHostID"
+	ReplacingNodeUsingHostID                          ScyllaFeature = "ReplacingNodeUsingHostID"
+	ExposingScyllaClusterViaServiceOtherThanClusterIP ScyllaFeature = "ExposingScyllaClusterViaServiceOtherThanClusterIP"
 )
 
 type scyllaDBVersionMinimalConstraint struct {
@@ -29,28 +30,37 @@ var featureMinimalVersionConstraints = map[ScyllaFeature]scyllaDBVersionMinimalC
 		openSource: semver.MustParse("5.2.0"),
 		enterprise: semver.MustParse("2023.1.0"),
 	},
+	// Exposing requires ReplacingNodeUsingHostID, so minimal values should be the same.
+	ExposingScyllaClusterViaServiceOtherThanClusterIP: {
+		openSource: semver.MustParse("5.2.0"),
+		enterprise: semver.MustParse("2023.1.0"),
+	},
 }
 
-func Supports(sc *scyllav1.ScyllaCluster, feature ScyllaFeature) (bool, error) {
+func VersionSupports(version string, feature ScyllaFeature) (bool, error) {
 	constraints, ok := featureMinimalVersionConstraints[feature]
 	if !ok {
 		return false, fmt.Errorf("unable to find minimal version constraints, unknown feature %q", feature)
 	}
 
-	version, err := semver.Parse(sc.Spec.Version)
+	parsedVersion, err := semver.Parse(version)
 	if err != nil {
-		return false, fmt.Errorf("can't parse ScyllaCluster version %q: %w", sc.Spec.Version, err)
+		return false, fmt.Errorf("can't parse ScyllaCluster version %q: %w", version, err)
 	}
 
-	if isOpenSource(version) && version.GTE(constraints.openSource) {
+	if isOpenSource(parsedVersion) && parsedVersion.GTE(constraints.openSource) {
 		return true, nil
 	}
 
-	if isEnterprise(version) && version.GTE(constraints.enterprise) {
+	if isEnterprise(parsedVersion) && parsedVersion.GTE(constraints.enterprise) {
 		return true, nil
 	}
 
 	return false, nil
+}
+
+func Supports(sc *scyllav1.ScyllaCluster, feature ScyllaFeature) (bool, error) {
+	return VersionSupports(sc.Spec.Version, feature)
 }
 
 func isEnterprise(v semver.Version) bool {

@@ -67,7 +67,7 @@ func IdentityService(c *scyllav1.ScyllaCluster) *corev1.Service {
 	}
 }
 
-func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService *corev1.Service, jobs map[string]*batchv1.Job) *corev1.Service {
+func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService *corev1.Service, jobs map[string]*batchv1.Job) (*corev1.Service, error) {
 	svcLabels := naming.ClusterLabels(sc)
 	svcLabels[naming.DatacenterNameLabel] = sc.Spec.Datacenter.Name
 	svcLabels[naming.RackNameLabel] = rackName
@@ -110,7 +110,7 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 		}
 	}
 
-	return &corev1.Service{
+	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: sc.Namespace,
@@ -127,6 +127,30 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 			PublishNotReadyAddresses: true,
 		},
 	}
+
+	if sc.Spec.ExposeOptions != nil && sc.Spec.ExposeOptions.NodeService != nil {
+		ns := sc.Spec.ExposeOptions.NodeService
+
+		switch ns.Type {
+		case scyllav1.NodeServiceTypeClusterIP:
+			svc.Spec.Type = corev1.ServiceTypeClusterIP
+		case scyllav1.NodeServiceTypeLoadBalancer:
+			svc.Spec.Type = corev1.ServiceTypeLoadBalancer
+		case scyllav1.NodeServiceTypeHeadless:
+			svc.Spec.Type = corev1.ServiceTypeClusterIP
+			svc.Spec.ClusterIP = corev1.ClusterIPNone
+		default:
+			return nil, fmt.Errorf("unsupported node service type %q", ns.Type)
+		}
+
+		svc.Annotations = helpers.MergeMaps(svcAnnotations, ns.Annotations)
+		svc.Spec.InternalTrafficPolicy = copyReferencedValue(ns.InternalTrafficPolicy)
+		svc.Spec.AllocateLoadBalancerNodePorts = copyReferencedValue(ns.AllocateLoadBalancerNodePorts)
+		svc.Spec.LoadBalancerClass = copyReferencedValue(ns.LoadBalancerClass)
+		svc.Spec.ExternalTrafficPolicy = getValueOrDefault(ns.ExternalTrafficPolicy, "")
+	}
+
+	return svc, nil
 }
 
 func servicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
@@ -380,6 +404,18 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 										sort.Strings(res)
 										return strings.Join(res, ",")
 									}()),
+									fmt.Sprintf("--nodes-broadcast-address-type=%s", func() scyllav1.BroadcastAddressType {
+										if c.Spec.ExposeOptions != nil && c.Spec.ExposeOptions.BroadcastOptions != nil {
+											return c.Spec.ExposeOptions.BroadcastOptions.Nodes.Type
+										}
+										return scyllav1.BroadcastAddressTypeServiceClusterIP
+									}()),
+									fmt.Sprintf("--clients-broadcast-address-type=%s", func() scyllav1.BroadcastAddressType {
+										if c.Spec.ExposeOptions != nil && c.Spec.ExposeOptions.BroadcastOptions != nil {
+											return c.Spec.ExposeOptions.BroadcastOptions.Clients.Type
+										}
+										return scyllav1.BroadcastAddressTypeServiceClusterIP
+									}()),
 									"--service-name=$(SERVICE_NAME)",
 									"--cpu-count=$(CPU_COUNT)",
 									// TODO: make it configurable
@@ -455,7 +491,6 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 										},
 									}...)
 								}
-
 								return mounts
 							}(),
 							// Add CAP_SYS_NICE as instructed by scylla logs
@@ -883,6 +918,20 @@ func stringOrDefault(str, def string) string {
 		return str
 	}
 	return def
+}
+
+func getValueOrDefault[T any](v *T, def T) T {
+	if v != nil {
+		return *v
+	}
+	return def
+}
+
+func copyReferencedValue[T any](v *T) *T {
+	if v != nil {
+		return pointer.Ptr(*v)
+	}
+	return nil
 }
 
 func MakeServiceAccount(sc *scyllav1.ScyllaCluster) *corev1.ServiceAccount {

@@ -88,3 +88,7 @@ func Flatten[T any](xs [][]T) []T {
 
 	return res
 }
+
+func ToString[T ~string](v T) string {
+	return string(v)
+}

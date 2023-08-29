@@ -285,6 +285,10 @@ func WaitForSecretState(ctx context.Context, client corev1client.SecretInterface
 	return WaitForObjectState[*corev1.Secret, *corev1.SecretList](ctx, client, name, options, condition, additionalConditions...)
 }
 
+func WaitForServiceState(ctx context.Context, client corev1client.ServiceInterface, name string, options WaitForStateOptions, condition func(*corev1.Service) (bool, error), additionalConditions ...func(*corev1.Service) (bool, error)) (*corev1.Service, error) {
+	return WaitForObjectState[*corev1.Service, *corev1.ServiceList](ctx, client, name, options, condition, additionalConditions...)
+}
+
 func RunEphemeralContainerAndWaitForCompletion(ctx context.Context, client corev1client.PodInterface, podName string, ec *corev1.EphemeralContainer) (*corev1.Pod, error) {
 	ephemeralPod := &corev1.Pod{
 		Spec: corev1.PodSpec{
@@ -445,19 +449,89 @@ func GetHostsAndUUIDs(ctx context.Context, client corev1client.CoreV1Interface, 
 	var hosts []string
 	var uuids []string
 	for _, s := range serviceList.Items {
-		if s.Spec.Type != corev1.ServiceTypeClusterIP {
-			return nil, nil, fmt.Errorf("service %s/%s is of type %q instead of %q", s.Namespace, s.Name, s.Spec.Type, corev1.ServiceTypeClusterIP)
+		host := s.Spec.ClusterIP
+
+		if host == corev1.ClusterIPNone {
+			pod, err := client.Pods(sc.Namespace).Get(ctx, s.Name, metav1.GetOptions{})
+			if err != nil {
+				return nil, nil, fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sc.Namespace, s.Name), err)
+			}
+			host = pod.Status.PodIP
 		}
 
-		if s.Spec.ClusterIP == corev1.ClusterIPNone {
-			return nil, nil, fmt.Errorf("service %s/%s doesn't have a ClusterIP", s.Namespace, s.Name)
+		configClient, err := GetScyllaConfigClient(ctx, client, sc, host)
+		if err != nil {
+			return nil, nil, fmt.Errorf("can't create scylla config client with host %q: %w", host, err)
+		}
+		clientBroadcastedAddress, err := configClient.BroadcastRPCAddress(ctx)
+		if err != nil {
+			return nil, nil, fmt.Errorf("can't get broadcast_rpc_address of host %q: %w", host, err)
 		}
 
-		hosts = append(hosts, s.Spec.ClusterIP)
+		hosts = append(hosts, clientBroadcastedAddress)
 		uuids = append(uuids, s.Annotations[naming.HostIDAnnotation])
 	}
 
 	return hosts, uuids, nil
+}
+
+func GetNodesServiceAndPodIPs(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
+	serviceIPs, err := GetNodesServiceIPs(ctx, client, sc)
+	if err != nil {
+		return nil, fmt.Errorf("can't get nodes service IPs: %w", err)
+	}
+
+	podIPs, err := GetNodesPodIPs(ctx, client, sc)
+	if err != nil {
+		return nil, fmt.Errorf("can't get nodes pod IPs: %w", err)
+	}
+
+	ipAddresses := make([]string, 0, len(serviceIPs)+len(podIPs))
+	ipAddresses = append(ipAddresses, serviceIPs...)
+	ipAddresses = append(ipAddresses, podIPs...)
+	return ipAddresses, nil
+}
+
+func GetNodesServiceIPs(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
+	serviceList, err := client.Services(sc.Namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: GetMemberServiceSelector(sc.Name).String(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("can't get member services: %w", err)
+	}
+
+	var ipAddresses []string
+
+	for _, svc := range serviceList.Items {
+		if svc.Spec.ClusterIP != corev1.ClusterIPNone {
+			ipAddresses = append(ipAddresses, svc.Spec.ClusterIP)
+		}
+
+		for _, ingressStatus := range svc.Status.LoadBalancer.Ingress {
+			ipAddresses = append(ipAddresses, ingressStatus.IP)
+		}
+	}
+
+	return ipAddresses, nil
+}
+
+func GetNodesPodIPs(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
+	clusterPods, err := client.Pods(sc.Namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(map[string]string{
+			naming.ClusterNameLabel: sc.Name,
+		}).String(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("can't get cluster pods: %w", err)
+	}
+
+	ipAddresses := make([]string, 0, len(clusterPods.Items))
+
+	for _, pod := range clusterPods.Items {
+		ipAddresses = append(ipAddresses, pod.Status.PodIP)
+	}
+
+	return ipAddresses, nil
 }
 
 func GetHosts(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {

@@ -15,6 +15,8 @@ import (
 )
 
 func TestValidateScyllaCluster(t *testing.T) {
+	t.Parallel()
+
 	validCluster := unit.NewSingleRackCluster(3)
 	validCluster.Spec.Datacenter.Racks[0].Resources = corev1.ResourceRequirements{
 		Limits: map[corev1.ResourceName]resource.Quantity{
@@ -113,10 +115,177 @@ func TestValidateScyllaCluster(t *testing.T) {
 			},
 			expectedErrorString: `spec.dnsDomains[0]: Invalid value: "-hello": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')`,
 		},
+		{
+			name: "unsupported type of node service",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Version = "5.2.0"
+				cluster.Spec.ExposeOptions = &v1.ExposeOptions{
+					NodeService: &v1.NodeServiceTemplate{
+						Type: "foo",
+					},
+				}
+
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeNotSupported, Field: "spec.exposeOptions.nodeService.type", BadValue: v1.NodeServiceType("foo"), Detail: `supported values: "Headless", "ClusterIP", "LoadBalancer"`},
+			},
+			expectedErrorString: `spec.exposeOptions.nodeService.type: Unsupported value: "foo": supported values: "Headless", "ClusterIP", "LoadBalancer"`,
+		},
+		{
+			name: "invalid load balancer class name in node service template",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.ExposeOptions = &v1.ExposeOptions{
+					NodeService: &v1.NodeServiceTemplate{
+						Type:              v1.NodeServiceTypeClusterIP,
+						LoadBalancerClass: pointer.Ptr("-hello"),
+					},
+				}
+
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.nodeService.loadBalancerClass", BadValue: "-hello", Detail: `a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')`},
+			},
+			expectedErrorString: `spec.exposeOptions.nodeService.loadBalancerClass: Invalid value: "-hello": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')`,
+		},
+		{
+			name: "unsupported type of client broadcast address",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Version = "5.2.0"
+				cluster.Spec.ExposeOptions = &v1.ExposeOptions{
+					BroadcastOptions: &v1.NodeBroadcastOptions{
+						Nodes: v1.BroadcastOptions{
+							Type: v1.BroadcastAddressTypeServiceClusterIP,
+						},
+						Clients: v1.BroadcastOptions{
+							Type: "foo",
+						},
+					},
+				}
+
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeNotSupported, Field: "spec.exposeOptions.broadcastOptions.clients.type", BadValue: v1.BroadcastAddressType("foo"), Detail: `supported values: "PodIP", "ServiceClusterIP", "ServiceLoadBalancerIngress"`},
+			},
+			expectedErrorString: `spec.exposeOptions.broadcastOptions.clients.type: Unsupported value: "foo": supported values: "PodIP", "ServiceClusterIP", "ServiceLoadBalancerIngress"`,
+		},
+		{
+			name: "unsupported type of node broadcast address",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Version = "5.2.0"
+				cluster.Spec.ExposeOptions = &v1.ExposeOptions{
+					BroadcastOptions: &v1.NodeBroadcastOptions{
+						Nodes: v1.BroadcastOptions{
+							Type: "foo",
+						},
+						Clients: v1.BroadcastOptions{
+							Type: v1.BroadcastAddressTypeServiceClusterIP,
+						},
+					},
+				}
+
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeNotSupported, Field: "spec.exposeOptions.broadcastOptions.nodes.type", BadValue: v1.BroadcastAddressType("foo"), Detail: `supported values: "PodIP", "ServiceClusterIP", "ServiceLoadBalancerIngress"`},
+			},
+			expectedErrorString: `spec.exposeOptions.broadcastOptions.nodes.type: Unsupported value: "foo": supported values: "PodIP", "ServiceClusterIP", "ServiceLoadBalancerIngress"`,
+		},
+		{
+			name: "invalid ClusterIP broadcast type when node service is Headless",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Version = "5.2.0"
+				cluster.Spec.ExposeOptions = &v1.ExposeOptions{
+					NodeService: &v1.NodeServiceTemplate{
+						Type: v1.NodeServiceTypeHeadless,
+					},
+					BroadcastOptions: &v1.NodeBroadcastOptions{
+						Clients: v1.BroadcastOptions{
+							Type: v1.BroadcastAddressTypeServiceClusterIP,
+						},
+						Nodes: v1.BroadcastOptions{
+							Type: v1.BroadcastAddressTypeServiceClusterIP,
+						},
+					},
+				}
+
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.clients.type", BadValue: v1.BroadcastAddressTypeServiceClusterIP, Detail: `can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [ClusterIP LoadBalancer]`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.nodes.type", BadValue: v1.BroadcastAddressTypeServiceClusterIP, Detail: `can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [ClusterIP LoadBalancer]`},
+			},
+			expectedErrorString: `[spec.exposeOptions.broadcastOptions.clients.type: Invalid value: "ServiceClusterIP": can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [ClusterIP LoadBalancer], spec.exposeOptions.broadcastOptions.nodes.type: Invalid value: "ServiceClusterIP": can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [ClusterIP LoadBalancer]]`,
+		},
+		{
+			name: "invalid LoadBalancerIngressIP broadcast type when node service is Headless",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Version = "5.2.0"
+				cluster.Spec.ExposeOptions = &v1.ExposeOptions{
+					NodeService: &v1.NodeServiceTemplate{
+						Type: v1.NodeServiceTypeHeadless,
+					},
+					BroadcastOptions: &v1.NodeBroadcastOptions{
+						Clients: v1.BroadcastOptions{
+							Type: v1.BroadcastAddressTypeServiceLoadBalancerIngress,
+						},
+						Nodes: v1.BroadcastOptions{
+							Type: v1.BroadcastAddressTypeServiceLoadBalancerIngress,
+						},
+					},
+				}
+
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.clients.type", BadValue: v1.BroadcastAddressTypeServiceLoadBalancerIngress, Detail: `can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer]`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.nodes.type", BadValue: v1.BroadcastAddressTypeServiceLoadBalancerIngress, Detail: `can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer]`},
+			},
+			expectedErrorString: `[spec.exposeOptions.broadcastOptions.clients.type: Invalid value: "ServiceLoadBalancerIngress": can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer], spec.exposeOptions.broadcastOptions.nodes.type: Invalid value: "ServiceLoadBalancerIngress": can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer]]`,
+		},
+		{
+			name: "invalid LoadBalancerIngressIP broadcast type when node service is ClusterIP",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Version = "5.2.0"
+				cluster.Spec.ExposeOptions = &v1.ExposeOptions{
+					NodeService: &v1.NodeServiceTemplate{
+						Type: v1.NodeServiceTypeClusterIP,
+					},
+					BroadcastOptions: &v1.NodeBroadcastOptions{
+						Clients: v1.BroadcastOptions{
+							Type: v1.BroadcastAddressTypeServiceLoadBalancerIngress,
+						},
+						Nodes: v1.BroadcastOptions{
+							Type: v1.BroadcastAddressTypeServiceLoadBalancerIngress,
+						},
+					},
+				}
+
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.clients.type", BadValue: v1.BroadcastAddressTypeServiceLoadBalancerIngress, Detail: `can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer]`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.nodes.type", BadValue: v1.BroadcastAddressTypeServiceLoadBalancerIngress, Detail: `can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer]`},
+			},
+			expectedErrorString: `[spec.exposeOptions.broadcastOptions.clients.type: Invalid value: "ServiceLoadBalancerIngress": can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer], spec.exposeOptions.broadcastOptions.nodes.type: Invalid value: "ServiceLoadBalancerIngress": can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer]]`,
+		},
 	}
 
-	for _, test := range tests {
+	for i := range tests {
+		test := tests[i]
+
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
 			errList := validation.ValidateScyllaCluster(test.cluster)
 			if !reflect.DeepEqual(errList, test.expectedErrorList) {
 				t.Errorf("expected and actual error lists differ: %s", cmp.Diff(test.expectedErrorList, errList))
@@ -252,6 +421,126 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.datacenter.racks[2]", BadValue: "", Detail: `rack "rack-2" can't be removed because it still has members that have to be scaled down to zero first`},
 			},
 			expectedErrorString: `[spec.datacenter.racks[0]: Forbidden: rack "rack-0" can't be removed because it still has members that have to be scaled down to zero first, spec.datacenter.racks[1]: Forbidden: rack "rack-1" can't be removed because it still has members that have to be scaled down to zero first, spec.datacenter.racks[2]: Forbidden: rack "rack-2" can't be removed because it still has members that have to be scaled down to zero first]`,
+		},
+		{
+			name: "node service type cannot be unset",
+			old: func() *v1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.ExposeOptions = &v1.ExposeOptions{
+					NodeService: &v1.NodeServiceTemplate{
+						Type: v1.NodeServiceTypeClusterIP,
+					},
+				}
+				return sc
+			}(),
+			new: func() *v1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.ExposeOptions = nil
+				return sc
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.nodeService.type", BadValue: (*v1.NodeServiceType)(nil), Detail: `field is immutable`},
+			},
+			expectedErrorString: `spec.exposeOptions.nodeService.type: Invalid value: "null": field is immutable`,
+		},
+		{
+			name: "node service type cannot be changed",
+			old: func() *v1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.ExposeOptions = &v1.ExposeOptions{
+					NodeService: &v1.NodeServiceTemplate{
+						Type: v1.NodeServiceTypeHeadless,
+					},
+				}
+				return sc
+			}(),
+			new: func() *v1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.ExposeOptions = &v1.ExposeOptions{
+					NodeService: &v1.NodeServiceTemplate{
+						Type: v1.NodeServiceTypeClusterIP,
+					},
+				}
+				return sc
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.nodeService.type", BadValue: pointer.Ptr(v1.NodeServiceTypeClusterIP), Detail: `field is immutable`},
+			},
+			expectedErrorString: `spec.exposeOptions.nodeService.type: Invalid value: "ClusterIP": field is immutable`,
+		},
+		{
+			name: "clients broadcast address type cannot be changed",
+			old: func() *v1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.Version = "5.2.0"
+				sc.Spec.ExposeOptions = &v1.ExposeOptions{
+					BroadcastOptions: &v1.NodeBroadcastOptions{
+						Clients: v1.BroadcastOptions{
+							Type: v1.BroadcastAddressTypeServiceClusterIP,
+						},
+						Nodes: v1.BroadcastOptions{
+							Type: v1.BroadcastAddressTypeServiceClusterIP,
+						},
+					},
+				}
+				return sc
+			}(),
+			new: func() *v1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.Version = "5.2.0"
+				sc.Spec.ExposeOptions = &v1.ExposeOptions{
+					BroadcastOptions: &v1.NodeBroadcastOptions{
+						Clients: v1.BroadcastOptions{
+							Type: v1.BroadcastAddressTypePodIP,
+						},
+						Nodes: v1.BroadcastOptions{
+							Type: v1.BroadcastAddressTypeServiceClusterIP,
+						},
+					},
+				}
+				return sc
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.clients.type", BadValue: pointer.Ptr(v1.BroadcastAddressTypePodIP), Detail: `field is immutable`},
+			},
+			expectedErrorString: `spec.exposeOptions.broadcastOptions.clients.type: Invalid value: "PodIP": field is immutable`,
+		},
+		{
+			name: "nodes broadcast address type cannot be changed",
+			old: func() *v1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.Version = "5.2.0"
+				sc.Spec.ExposeOptions = &v1.ExposeOptions{
+					BroadcastOptions: &v1.NodeBroadcastOptions{
+						Nodes: v1.BroadcastOptions{
+							Type: v1.BroadcastAddressTypeServiceClusterIP,
+						},
+						Clients: v1.BroadcastOptions{
+							Type: v1.BroadcastAddressTypeServiceClusterIP,
+						},
+					},
+				}
+				return sc
+			}(),
+			new: func() *v1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.Version = "5.2.0"
+				sc.Spec.ExposeOptions = &v1.ExposeOptions{
+					BroadcastOptions: &v1.NodeBroadcastOptions{
+						Nodes: v1.BroadcastOptions{
+							Type: v1.BroadcastAddressTypePodIP,
+						},
+						Clients: v1.BroadcastOptions{
+							Type: v1.BroadcastAddressTypeServiceClusterIP,
+						},
+					},
+				}
+				return sc
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.nodes.type", BadValue: pointer.Ptr(v1.BroadcastAddressTypePodIP), Detail: `field is immutable`},
+			},
+			expectedErrorString: `spec.exposeOptions.broadcastOptions.nodes.type: Invalid value: "PodIP": field is immutable`,
 		},
 	}
 

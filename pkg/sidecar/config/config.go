@@ -231,14 +231,15 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	prometheusAddress := "0.0.0.0"
 	args := map[string]*string{
 		"listen-address":        &listenAddress,
-		"broadcast-address":     &m.StaticIP,
-		"broadcast-rpc-address": &m.StaticIP,
 		"seeds":                 pointer.Ptr(strings.Join(seeds, ",")),
 		"developer-mode":        &devMode,
 		"overprovisioned":       &overprovisioned,
 		"smp":                   pointer.Ptr(strconv.Itoa(s.cpuCount)),
 		"prometheus-address":    &prometheusAddress,
+		"broadcast-address":     &m.BroadcastAddress,
+		"broadcast-rpc-address": &m.BroadcastRPCAddress,
 	}
+
 	if cluster.Spec.Alternator.Enabled() {
 		args["alternator-port"] = pointer.Ptr(strconv.Itoa(int(cluster.Spec.Alternator.Port)))
 		if cluster.Spec.Alternator.WriteIsolation != "" {

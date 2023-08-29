@@ -24,7 +24,7 @@ import (
 
 var serviceOrdinalRegex = regexp.MustCompile("^.*-([0-9]+)$")
 
-func (scc *Controller) makeServices(sc *scyllav1.ScyllaCluster, oldServices map[string]*corev1.Service, jobs map[string]*batchv1.Job) []*corev1.Service {
+func (scc *Controller) makeServices(sc *scyllav1.ScyllaCluster, oldServices map[string]*corev1.Service, jobs map[string]*batchv1.Job) ([]*corev1.Service, error) {
 	services := []*corev1.Service{
 		IdentityService(sc),
 	}
@@ -35,11 +35,15 @@ func (scc *Controller) makeServices(sc *scyllav1.ScyllaCluster, oldServices map[
 		for ord := int32(0); ord < rack.Members; ord++ {
 			svcName := fmt.Sprintf("%s-%d", stsName, ord)
 			oldSvc := oldServices[svcName]
-			services = append(services, MemberService(sc, rack.Name, svcName, oldSvc, jobs))
+			svc, err := MemberService(sc, rack.Name, svcName, oldSvc, jobs)
+			if err != nil {
+				return nil, fmt.Errorf("can't create member service for %d'th node: %w", ord, err)
+			}
+			services = append(services, svc)
 		}
 	}
 
-	return services
+	return services, nil
 }
 
 func (scc *Controller) pruneServices(
@@ -184,9 +188,27 @@ func (scc *Controller) syncServices(
 	statefulSets map[string]*appsv1.StatefulSet,
 	jobs map[string]*batchv1.Job,
 ) ([]metav1.Condition, error) {
-	var err error
+	if sc.Spec.ExposeOptions != nil && sc.Spec.ExposeOptions.NodeService != nil && sc.Spec.ExposeOptions.NodeService.Type != scyllav1.NodeServiceTypeClusterIP {
+		supportsExposing, err := scyllafeatures.Supports(sc, scyllafeatures.ExposingScyllaClusterViaServiceOtherThanClusterIP)
+		if err != nil {
+			return nil, fmt.Errorf("can't determine if ScyllaDB version %q supports exposing via Service other than ClusterIP: %w", sc.Spec.Version, err)
+		}
 
-	requiredServices := scc.makeServices(sc, services, jobs)
+		if !supportsExposing {
+			scc.eventRecorder.Eventf(
+				sc,
+				corev1.EventTypeWarning,
+				"InvalidScyllaDBVersion",
+				fmt.Sprintf("Requested ScyllaDB version %q does not support exposing via Service other than ClusterIP, use the latest one", sc.Spec.Version),
+			)
+			return nil, fmt.Errorf("requested ScyllaDB version %q does not support exposing via Service other than ClusterIP, use the latest one", sc.Spec.Version)
+		}
+	}
+
+	requiredServices, err := scc.makeServices(sc, services, jobs)
+	if err != nil {
+		return nil, fmt.Errorf("can't make services: %w", err)
+	}
 
 	// Delete any excessive Services.
 	// Delete has to be the fist action to avoid getting stuck on quota.

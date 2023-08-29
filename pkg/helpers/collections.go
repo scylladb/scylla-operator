@@ -10,3 +10,11 @@ func MergeMaps[Key comparable, Value any](maps ...map[Key]Value) map[Key]Value {
 	}
 	return res
 }
+
+func GetMapValues[M ~map[K]V, K comparable, V any](m M) []V {
+	res := make([]V, 0, len(m))
+	for _, v := range m {
+		res = append(res, v)
+	}
+	return res
+}

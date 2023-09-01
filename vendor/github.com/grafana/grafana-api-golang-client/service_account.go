@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -81,7 +80,7 @@ func (c *Client) CreateServiceAccount(request CreateServiceAccountRequest) (*Ser
 		return nil, err
 	}
 
-	err = c.request(http.MethodPost, "/api/serviceaccounts/", nil, bytes.NewBuffer(data), &response)
+	err = c.request(http.MethodPost, "/api/serviceaccounts/", nil, data, &response)
 	return &response, err
 }
 
@@ -96,7 +95,7 @@ func (c *Client) CreateServiceAccountToken(request CreateServiceAccountTokenRequ
 
 	err = c.request(http.MethodPost,
 		fmt.Sprintf("/api/serviceaccounts/%d/tokens", request.ServiceAccountID),
-		nil, bytes.NewBuffer(data), &response)
+		nil, data, &response)
 	return &response, err
 }
 
@@ -111,7 +110,7 @@ func (c *Client) UpdateServiceAccount(serviceAccountID int64, request UpdateServ
 
 	err = c.request(http.MethodPatch,
 		fmt.Sprintf("/api/serviceaccounts/%d", serviceAccountID),
-		nil, bytes.NewBuffer(data), &response)
+		nil, data, &response)
 	return &response, err
 }
 

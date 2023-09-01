@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -78,7 +77,7 @@ func (c *Client) NewLibraryPanel(panel LibraryPanel) (*LibraryPanel, error) {
 	}
 
 	resp := &LibraryPanelCreateResponse{}
-	err = c.request("POST", "/api/library-elements", nil, bytes.NewBuffer(data), &resp)
+	err = c.request("POST", "/api/library-elements", nil, data, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +150,7 @@ func (c *Client) PatchLibraryPanel(uid string, panel LibraryPanel) (*LibraryPane
 	}
 
 	resp := &LibraryPanelCreateResponse{}
-	err = c.request("PATCH", path, nil, bytes.NewBuffer(data), &resp)
+	err = c.request("PATCH", path, nil, data, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +163,7 @@ func (c *Client) DeleteLibraryPanel(uid string) (*LibraryPanelDeleteResponse, er
 	path := fmt.Sprintf("/api/library-elements/%s", uid)
 
 	resp := &LibraryPanelDeleteResponse{}
-	err := c.request("DELETE", path, nil, bytes.NewBuffer(nil), &resp)
+	err := c.request("DELETE", path, nil, nil, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +179,7 @@ func (c *Client) LibraryPanelConnections(uid string) (*[]LibraryPanelConnection,
 		Result []LibraryPanelConnection `json:"result"`
 	}{}
 
-	err := c.request("GET", path, nil, bytes.NewBuffer(nil), &resp)
+	err := c.request("GET", path, nil, nil, &resp)
 	if err != nil {
 		return nil, err
 	}

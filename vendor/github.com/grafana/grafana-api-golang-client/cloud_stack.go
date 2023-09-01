@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -155,7 +154,7 @@ func (c *Client) NewStack(stack *CreateStackInput) (int64, error) {
 		ID int64 `json:"id"`
 	}{}
 
-	err = c.request("POST", "/api/instances", nil, bytes.NewBuffer(data), &result)
+	err = c.request("POST", "/api/instances", nil, data, &result)
 	if err != nil {
 		return 0, err
 	}
@@ -171,7 +170,7 @@ func (c *Client) UpdateStack(id int64, stack *UpdateStackInput) error {
 		return err
 	}
 
-	return c.request("POST", fmt.Sprintf("/api/instances/%d", id), nil, bytes.NewBuffer(data), nil)
+	return c.request("POST", fmt.Sprintf("/api/instances/%d", id), nil, data, nil)
 }
 
 // DeleteStack deletes the Grafana stack whose slug it passed in.

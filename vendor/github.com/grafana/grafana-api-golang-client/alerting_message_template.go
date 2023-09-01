@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -44,7 +43,7 @@ func (c *Client) SetMessageTemplate(name, content string) error {
 	}
 
 	uri := fmt.Sprintf("/api/v1/provisioning/templates/%s", name)
-	return c.request("PUT", uri, nil, bytes.NewBuffer(body), nil)
+	return c.request("PUT", uri, nil, body, nil)
 }
 
 // DeleteMessageTemplate deletes a message template.

@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 )
 
@@ -28,7 +27,7 @@ func (c *Client) NewSnapshot(snapshot Snapshot) (*SnapshotCreateResponse, error)
 	}
 
 	result := &SnapshotCreateResponse{}
-	err = c.request("POST", "/api/snapshots", nil, bytes.NewBuffer(data), &result)
+	err = c.request("POST", "/api/snapshots", nil, data, &result)
 	if err != nil {
 		return nil, err
 	}

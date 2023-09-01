@@ -98,7 +98,7 @@ func (c *controlConn) heartBeat() {
 	reconn:
 		// try to connect a bit faster
 		sleepTime = 1 * time.Second
-		c.reconnect(true)
+		c.reconnect()
 		continue
 	}
 }
@@ -167,28 +167,6 @@ func shuffleHosts(hosts []*HostInfo) []*HostInfo {
 	return shuffled
 }
 
-func (c *controlConn) shuffleDial(endpoints []*HostInfo) (*Conn, error) {
-	// shuffle endpoints so not all drivers will connect to the same initial
-	// node.
-	shuffled := shuffleHosts(endpoints)
-
-	cfg := *c.session.connCfg
-	cfg.disableCoalesce = true
-
-	var err error
-	for _, host := range shuffled {
-		var conn *Conn
-		conn, err = c.session.dial(c.session.ctx, host, &cfg, c)
-		if err == nil {
-			return conn, nil
-		}
-
-		c.session.logger.Printf("gocql: unable to dial control conn %v:%v: %v\n", host.ConnectAddress(), host.Port(), err)
-	}
-
-	return nil, err
-}
-
 // this is going to be version dependant and a nightmare to maintain :(
 var protocolSupportRe = regexp.MustCompile(`the lowest supported version is \d+ and the greatest is (\d+)$`)
 
@@ -249,14 +227,31 @@ func (c *controlConn) connect(hosts []*HostInfo) error {
 		return errors.New("control: no endpoints specified")
 	}
 
-	conn, err := c.shuffleDial(hosts)
-	if err != nil {
-		return fmt.Errorf("control: unable to connect to initial hosts: %v", err)
-	}
+	// shuffle endpoints so not all drivers will connect to the same initial
+	// node.
+	hosts = shuffleHosts(hosts)
 
-	if err := c.setupConn(conn); err != nil {
+	cfg := *c.session.connCfg
+	cfg.disableCoalesce = true
+
+	var conn *Conn
+	var err error
+	for _, host := range hosts {
+		conn, err = c.session.dial(c.session.ctx, host, &cfg, c)
+		if err != nil {
+			c.session.logger.Printf("gocql: unable to dial control conn %v:%v: %v\n", host.ConnectAddress(), host.Port(), err)
+			continue
+		}
+		err = c.setupConn(conn)
+		if err == nil {
+			break
+		}
+		c.session.logger.Printf("gocql: unable setup control conn %v:%v: %v\n", host.ConnectAddress(), host.Port(), err)
 		conn.Close()
-		return fmt.Errorf("control: unable to setup connection: %v", err)
+		conn = nil
+	}
+	if conn == nil {
+		return fmt.Errorf("unable to connect to initial hosts: %v", err)
 	}
 
 	// we could fetch the initial ring here and update initial host data. So that
@@ -273,16 +268,21 @@ type connHost struct {
 }
 
 func (c *controlConn) setupConn(conn *Conn) error {
-	if err := c.registerEvents(conn); err != nil {
-		conn.Close()
+	// we need up-to-date host info for the filterHost call below
+	iter := conn.querySystemLocal(context.TODO())
+	host, err := c.session.hostInfoFromIter(iter, conn.host.connectAddress, conn.conn.RemoteAddr().(*net.TCPAddr).Port)
+	if err != nil {
 		return err
 	}
 
-	// TODO(zariel): do we need to fetch host info everytime
-	// the control conn connects? Surely we have it cached?
-	host, err := conn.localHostInfo(context.TODO())
-	if err != nil {
-		return err
+	host = c.session.ring.addOrUpdate(host)
+
+	if c.session.cfg.filterHost(host) {
+		return fmt.Errorf("host was filtered: %v", host.ConnectAddress())
+	}
+
+	if err := c.registerEvents(conn); err != nil {
+		return fmt.Errorf("register events: %v", err)
 	}
 
 	ch := &connHost{
@@ -338,7 +338,7 @@ func (c *controlConn) registerEvents(conn *Conn) error {
 	return nil
 }
 
-func (c *controlConn) reconnect(refreshring bool) {
+func (c *controlConn) reconnect() {
 	if atomic.LoadInt32(&c.state) == controlConnClosing {
 		return
 	}
@@ -346,57 +346,73 @@ func (c *controlConn) reconnect(refreshring bool) {
 		return
 	}
 	defer atomic.StoreInt32(&c.reconnecting, 0)
-	// TODO: simplify this function, use session.ring to get hosts instead of the
-	// connection pool
 
-	var host *HostInfo
-	ch := c.getConn()
-	if ch != nil {
-		host = ch.host
-		ch.conn.Close()
-	}
+	conn, err := c.attemptReconnect()
 
-	var newConn *Conn
-	if host != nil {
-		// try to connect to the old host
-		conn, err := c.session.connect(c.session.ctx, host, c)
-		if err != nil {
-			// host is dead
-			// TODO: this is replicated in a few places
-			if c.session.cfg.ConvictionPolicy.AddFailure(err, host) {
-				c.session.handleNodeDown(host.ConnectAddress(), host.Port())
-			}
-		} else {
-			newConn = conn
-		}
-	}
-
-	// TODO: should have our own round-robin for hosts so that we can try each
-	// in succession and guarantee that we get a different host each time.
-	if newConn == nil {
-		host := c.session.ring.rrHost()
-		if host == nil {
-			c.connect(c.session.ring.endpoints)
-			return
-		}
-
-		var err error
-		newConn, err = c.session.connect(c.session.ctx, host, c)
-		if err != nil {
-			// TODO: add log handler for things like this
-			return
-		}
-	}
-
-	if err := c.setupConn(newConn); err != nil {
-		newConn.Close()
-		c.session.logger.Printf("gocql: control unable to register events: %v\n", err)
+	if conn == nil {
+		c.session.logger.Printf("gocql: unable to reconnect control connection: %v\n", err)
 		return
 	}
 
-	if refreshring {
-		c.session.hostSource.refreshRing()
+	err = c.session.refreshRing()
+	if err != nil {
+		c.session.logger.Printf("gocql: unable to refresh ring: %v\n", err)
 	}
+}
+
+func (c *controlConn) attemptReconnect() (*Conn, error) {
+	hosts := c.session.ring.allHosts()
+	hosts = shuffleHosts(hosts)
+
+	// keep the old behavior of connecting to the old host first by moving it to
+	// the front of the slice
+	ch := c.getConn()
+	if ch != nil {
+		for i := range hosts {
+			if hosts[i].Equal(ch.host) {
+				hosts[0], hosts[i] = hosts[i], hosts[0]
+				break
+			}
+		}
+		ch.conn.Close()
+	}
+
+	conn, err := c.attemptReconnectToAnyOfHosts(hosts)
+
+	if conn != nil {
+		return conn, err
+	}
+
+	c.session.logger.Printf("gocql: unable to connect to any ring node: %v\n", err)
+	c.session.logger.Printf("gocql: control falling back to initial contact points.\n")
+	// Fallback to initial contact points, as it may be the case that all known initialHosts
+	// changed their IPs while keeping the same hostname(s).
+	initialHosts, resolvErr := addrsToHosts(c.session.cfg.Hosts, c.session.cfg.Port, c.session.logger)
+	if resolvErr != nil {
+		return nil, fmt.Errorf("resolve contact points' hostnames: %v", resolvErr)
+	}
+
+	return c.attemptReconnectToAnyOfHosts(initialHosts)
+}
+
+func (c *controlConn) attemptReconnectToAnyOfHosts(hosts []*HostInfo) (*Conn, error) {
+	var conn *Conn
+	var err error
+	for _, host := range hosts {
+		conn, err = c.session.connect(c.session.ctx, host, c)
+		if err != nil {
+			c.session.logger.Printf("gocql: unable to dial control conn %v:%v: %v\n", host.ConnectAddress(), host.Port(), err)
+			continue
+		}
+		err = c.setupConn(conn)
+		if err == nil {
+			break
+		}
+		c.session.logger.Printf("gocql: unable setup control conn %v:%v: %v\n", host.ConnectAddress(), host.Port(), err)
+		conn.Close()
+		conn = nil
+	}
+	return conn, err
 }
 
 func (c *controlConn) HandleError(conn *Conn, err error, closed bool) {
@@ -412,14 +428,14 @@ func (c *controlConn) HandleError(conn *Conn, err error, closed bool) {
 		return
 	}
 
-	c.reconnect(false)
+	c.reconnect()
 }
 
 func (c *controlConn) getConn() *connHost {
 	return c.conn.Load().(*connHost)
 }
 
-func (c *controlConn) writeFrame(w frameWriter) (frame, error) {
+func (c *controlConn) writeFrame(w frameBuilder) (frame, error) {
 	ch := c.getConn()
 	if ch == nil {
 		return nil, errNoControl
@@ -446,7 +462,7 @@ func (c *controlConn) withConnHost(fn func(*connHost) *Iter) *Iter {
 
 			connectAttempts++
 
-			c.reconnect(false)
+			c.reconnect()
 			continue
 		}
 

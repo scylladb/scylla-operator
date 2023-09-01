@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -68,7 +67,7 @@ func (c *Client) PauseAlert(id int64) (PauseAlertResponse, error) {
 		return result, err
 	}
 
-	err = c.request("POST", path, nil, bytes.NewBuffer(data), &result)
+	err = c.request("POST", path, nil, data, &result)
 	if err != nil {
 		return result, err
 	}

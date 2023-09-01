@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -59,7 +58,7 @@ func (c *Client) NewAlertNotification(a *AlertNotification) (int64, error) {
 		ID int64 `json:"id"`
 	}{}
 
-	err = c.request("POST", "/api/alert-notifications", nil, bytes.NewBuffer(data), &result)
+	err = c.request("POST", "/api/alert-notifications", nil, data, &result)
 	if err != nil {
 		return 0, err
 	}
@@ -75,7 +74,7 @@ func (c *Client) UpdateAlertNotification(a *AlertNotification) error {
 	if err != nil {
 		return err
 	}
-	err = c.request("PUT", path, nil, bytes.NewBuffer(data), nil)
+	err = c.request("PUT", path, nil, data, nil)
 
 	return err
 }

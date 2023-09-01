@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -60,7 +59,7 @@ func (c *Client) NewOrg(name string) (int64, error) {
 		ID int64 `json:"orgId"`
 	}{}
 
-	err = c.request("POST", "/api/orgs", nil, bytes.NewBuffer(data), &tmp)
+	err = c.request("POST", "/api/orgs", nil, data, &tmp)
 	if err != nil {
 		return id, err
 	}
@@ -78,7 +77,7 @@ func (c *Client) UpdateOrg(id int64, name string) error {
 		return err
 	}
 
-	return c.request("PUT", fmt.Sprintf("/api/orgs/%d", id), nil, bytes.NewBuffer(data), nil)
+	return c.request("PUT", fmt.Sprintf("/api/orgs/%d", id), nil, data, nil)
 }
 
 // DeleteOrg deletes the Grafana org whose ID it's passed.

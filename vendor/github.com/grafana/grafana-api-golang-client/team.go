@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -90,7 +89,7 @@ func (c *Client) AddTeam(name string, email string) (int64, error) {
 		ID int64 `json:"teamId"`
 	}{}
 
-	err = c.request("POST", path, nil, bytes.NewBuffer(data), &tmp)
+	err = c.request("POST", path, nil, data, &tmp)
 	if err != nil {
 		return id, err
 	}
@@ -113,7 +112,7 @@ func (c *Client) UpdateTeam(id int64, name string, email string) error {
 		return err
 	}
 
-	return c.request("PUT", path, nil, bytes.NewBuffer(data), nil)
+	return c.request("PUT", path, nil, data, nil)
 }
 
 // DeleteTeam deletes the Grafana team whose ID it's passed.
@@ -141,7 +140,7 @@ func (c *Client) AddTeamMember(id int64, userID int64) error {
 		return err
 	}
 
-	return c.request("POST", path, nil, bytes.NewBuffer(data), nil)
+	return c.request("POST", path, nil, data, nil)
 }
 
 // RemoveMemberFromTeam removes a user from the Grafana team whose ID it's passed.
@@ -170,5 +169,5 @@ func (c *Client) UpdateTeamPreferences(id int64, preferences Preferences) error 
 		return err
 	}
 
-	return c.request("PUT", path, nil, bytes.NewBuffer(data), nil)
+	return c.request("PUT", path, nil, data, nil)
 }

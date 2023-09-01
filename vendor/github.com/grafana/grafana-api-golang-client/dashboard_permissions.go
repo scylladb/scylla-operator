@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -39,7 +38,7 @@ func (c *Client) UpdateDashboardPermissions(id int64, items *PermissionItems) er
 		return err
 	}
 
-	return c.request("POST", path, nil, bytes.NewBuffer(data), nil)
+	return c.request("POST", path, nil, data, nil)
 }
 
 // DashboardPermissionsByUID fetches and returns the permissions for the dashboard whose UID it's passed.
@@ -57,5 +56,5 @@ func (c *Client) UpdateDashboardPermissionsByUID(uid string, items *PermissionIt
 		return err
 	}
 
-	return c.request("POST", path, nil, bytes.NewBuffer(data), nil)
+	return c.request("POST", path, nil, data, nil)
 }

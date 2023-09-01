@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -90,7 +89,7 @@ func (c *Client) NewReport(report Report) (int64, error) {
 		ID int64
 	}{}
 
-	err = c.request("POST", "/api/reports", nil, bytes.NewBuffer(data), &result)
+	err = c.request("POST", "/api/reports", nil, data, &result)
 	if err != nil {
 		return 0, err
 	}
@@ -106,7 +105,7 @@ func (c *Client) UpdateReport(report Report) error {
 		return err
 	}
 
-	return c.request("PUT", path, nil, bytes.NewBuffer(data), nil)
+	return c.request("PUT", path, nil, data, nil)
 }
 
 // DeleteReport deletes the Grafana report whose ID it's passed.

@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -44,7 +43,7 @@ func (c *Client) InstallCloudPlugin(stackSlug string, pluginSlug string, pluginV
 
 	var installation CloudPluginInstallation
 
-	err = c.request("POST", fmt.Sprintf("/api/instances/%s/plugins", stackSlug), nil, bytes.NewBuffer(data), &installation)
+	err = c.request("POST", fmt.Sprintf("/api/instances/%s/plugins", stackSlug), nil, data, &installation)
 	if err != nil {
 		return nil, err
 	}

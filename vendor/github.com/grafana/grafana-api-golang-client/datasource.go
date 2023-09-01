@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -46,7 +45,7 @@ func (c *Client) NewDataSource(s *DataSource) (int64, error) {
 		ID int64 `json:"id"`
 	}{}
 
-	err = c.request("POST", "/api/datasources", nil, bytes.NewBuffer(data), &result)
+	err = c.request("POST", "/api/datasources", nil, data, &result)
 	if err != nil {
 		return 0, err
 	}
@@ -62,7 +61,7 @@ func (c *Client) UpdateDataSource(s *DataSource) error {
 		return err
 	}
 
-	return c.request("PUT", path, nil, bytes.NewBuffer(data), nil)
+	return c.request("PUT", path, nil, data, nil)
 }
 
 func (c *Client) UpdateDataSourceByUID(s *DataSource) error {
@@ -72,7 +71,7 @@ func (c *Client) UpdateDataSourceByUID(s *DataSource) error {
 		return err
 	}
 
-	return c.request("PUT", path, nil, bytes.NewBuffer(data), nil)
+	return c.request("PUT", path, nil, data, nil)
 }
 
 // DataSource fetches and returns the Grafana data source whose ID it's passed.

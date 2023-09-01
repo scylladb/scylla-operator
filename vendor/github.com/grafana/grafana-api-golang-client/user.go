@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -83,5 +82,5 @@ func (c *Client) UserUpdate(u User) error {
 	if err != nil {
 		return err
 	}
-	return c.request("PUT", fmt.Sprintf("/api/users/%d", u.ID), nil, bytes.NewBuffer(data), nil)
+	return c.request("PUT", fmt.Sprintf("/api/users/%d", u.ID), nil, data, nil)
 }

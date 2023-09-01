@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -33,7 +32,7 @@ func (c *Client) NewBuiltInRoleAssignment(builtInRoleAssignment BuiltInRoleAssig
 
 	br := &BuiltInRoleAssignment{}
 
-	err = c.request("POST", baseURL, nil, bytes.NewBuffer(body), &br)
+	err = c.request("POST", baseURL, nil, body, &br)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +51,7 @@ func (c *Client) DeleteBuiltInRoleAssignment(builtInRole BuiltInRoleAssignment) 
 		"global": {fmt.Sprint(builtInRole.Global)},
 	}
 	url := fmt.Sprintf("%s/%s/roles/%s", baseURL, builtInRole.BuiltinRole, builtInRole.RoleUID)
-	err = c.request("DELETE", url, qp, bytes.NewBuffer(data), nil)
+	err = c.request("DELETE", url, qp, data, nil)
 
 	return err
 }

@@ -4,7 +4,7 @@ services:
   node_1:
     image: ${SCYLLA_IMAGE}
     privileged: true
-    command: --smp 2 --memory 512M --seeds 192.168.100.11 --overprovisioned 1
+    command: --smp 2 --memory 768M --seeds 192.168.100.11 --overprovisioned 1
     networks:
       public:
         ipv4_address: 192.168.100.11
@@ -21,6 +21,11 @@ services:
     - type: bind
       source: ./testdata/pki/cassandra.key
       target: /etc/scylla/db.key
+    healthcheck:
+      test: [ "CMD", "cqlsh", "-e", "select * from system.local" ]
+      interval: 5s
+      timeout: 5s
+      retries: 18
 networks:
   public:
     driver: bridge

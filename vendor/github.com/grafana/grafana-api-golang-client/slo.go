@@ -2,7 +2,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -147,7 +146,7 @@ func (c *Client) CreateSlo(slo Slo) (CreateSLOResponse, error) {
 		return response, err
 	}
 
-	if err := c.request("POST", sloPath, nil, bytes.NewBuffer(data), &response); err != nil {
+	if err := c.request("POST", sloPath, nil, data, &response); err != nil {
 		return CreateSLOResponse{}, err
 	}
 
@@ -169,7 +168,7 @@ func (c *Client) UpdateSlo(uuid string, slo Slo) error {
 		return err
 	}
 
-	if err := c.request("PUT", path, nil, bytes.NewBuffer(data), nil); err != nil {
+	if err := c.request("PUT", path, nil, data, nil); err != nil {
 		return err
 	}
 

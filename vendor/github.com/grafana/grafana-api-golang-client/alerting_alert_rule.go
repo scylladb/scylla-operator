@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -93,7 +92,7 @@ func (c *Client) SetAlertRuleGroup(group RuleGroup) error {
 	}
 
 	uri := fmt.Sprintf("/api/v1/provisioning/folder/%s/rule-groups/%s", folderUID, name)
-	return c.request("PUT", uri, nil, bytes.NewBuffer(req), nil)
+	return c.request("PUT", uri, nil, req, nil)
 }
 
 // NewAlertRule creates a new alert rule and returns its UID.
@@ -104,7 +103,7 @@ func (c *Client) NewAlertRule(ar *AlertRule) (string, error) {
 		return "", err
 	}
 	result := AlertRule{}
-	err = c.request("POST", "/api/v1/provisioning/alert-rules", nil, bytes.NewBuffer(req), &result)
+	err = c.request("POST", "/api/v1/provisioning/alert-rules", nil, req, &result)
 	if err != nil {
 		return "", err
 	}
@@ -120,7 +119,7 @@ func (c *Client) UpdateAlertRule(ar *AlertRule) error {
 		return err
 	}
 
-	return c.request("PUT", uri, nil, bytes.NewBuffer(req), nil)
+	return c.request("PUT", uri, nil, req, nil)
 }
 
 // DeleteAlertRule deletes a alert rule, identified by the alert rule's UID.

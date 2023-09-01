@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -17,7 +16,7 @@ func (c *Client) CreateGrafanaServiceAccountFromCloud(stack string, input *Creat
 	}
 
 	resp := &ServiceAccountDTO{}
-	err = c.request(http.MethodPost, fmt.Sprintf("/api/instances/%s/api/serviceaccounts", stack), nil, bytes.NewBuffer(data), resp)
+	err = c.request(http.MethodPost, fmt.Sprintf("/api/instances/%s/api/serviceaccounts", stack), nil, data, resp)
 	return resp, err
 }
 
@@ -30,7 +29,7 @@ func (c *Client) CreateGrafanaServiceAccountTokenFromCloud(stack string, input *
 	}
 
 	resp := &CreateServiceAccountTokenResponse{}
-	err = c.request(http.MethodPost, fmt.Sprintf("/api/instances/%s/api/serviceaccounts/%d/tokens", stack, input.ServiceAccountID), nil, bytes.NewBuffer(data), resp)
+	err = c.request(http.MethodPost, fmt.Sprintf("/api/instances/%s/api/serviceaccounts/%d/tokens", stack, input.ServiceAccountID), nil, data, resp)
 	return resp, err
 }
 

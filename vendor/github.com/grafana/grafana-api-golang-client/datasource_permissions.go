@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -81,7 +80,7 @@ func (c *Client) AddDatasourcePermission(id int64, item *DatasourcePermissionAdd
 		return fmt.Errorf("marshal err: %w", err)
 	}
 
-	if err = c.request("POST", path, nil, bytes.NewBuffer(data), nil); err != nil {
+	if err = c.request("POST", path, nil, data, nil); err != nil {
 		return fmt.Errorf("error adding permissions at %s: %w", path, err)
 	}
 

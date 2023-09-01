@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -46,5 +45,5 @@ func (c *Client) UpdateServiceAccountPermissions(id int64, items *ServiceAccount
 		return err
 	}
 
-	return c.request("POST", path, nil, bytes.NewBuffer(data), nil)
+	return c.request("POST", path, nil, data, nil)
 }

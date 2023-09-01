@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -87,7 +86,7 @@ func (c *Client) NewFolder(title string, uid ...string) (Folder, error) {
 		return folder, err
 	}
 
-	err = c.request("POST", "/api/folders", nil, bytes.NewBuffer(data), &folder)
+	err = c.request("POST", "/api/folders", nil, data, &folder)
 	if err != nil {
 		return folder, err
 	}
@@ -109,7 +108,7 @@ func (c *Client) UpdateFolder(uid string, title string, newUID ...string) error 
 		return err
 	}
 
-	return c.request("PUT", fmt.Sprintf("/api/folders/%s", uid), nil, bytes.NewBuffer(data), nil)
+	return c.request("PUT", fmt.Sprintf("/api/folders/%s", uid), nil, data, nil)
 }
 
 func ForceDeleteFolderRules() url.Values {

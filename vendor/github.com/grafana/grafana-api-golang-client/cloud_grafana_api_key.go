@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -17,6 +16,6 @@ func (c *Client) CreateGrafanaAPIKeyFromCloud(stack string, input *CreateAPIKeyR
 	}
 
 	resp := &CreateAPIKeyResponse{}
-	err = c.request("POST", fmt.Sprintf("/api/instances/%s/api/auth/keys", stack), nil, bytes.NewBuffer(data), resp)
+	err = c.request("POST", fmt.Sprintf("/api/instances/%s/api/auth/keys", stack), nil, data, resp)
 	return resp, err
 }

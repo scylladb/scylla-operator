@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -65,7 +64,7 @@ func (c *Client) CreateCloudAccessPolicyToken(region string, input CreateCloudAc
 
 	err = c.request("POST", "/api/v1/tokens", url.Values{
 		"region": []string{region},
-	}, bytes.NewBuffer(data), &token)
+	}, data, &token)
 
 	return token, err
 }
@@ -80,7 +79,7 @@ func (c *Client) UpdateCloudAccessPolicyToken(region, id string, input UpdateClo
 
 	err = c.request("POST", fmt.Sprintf("/api/v1/tokens/%s", id), url.Values{
 		"region": []string{region},
-	}, bytes.NewBuffer(data), &token)
+	}, data, &token)
 
 	return token, err
 }

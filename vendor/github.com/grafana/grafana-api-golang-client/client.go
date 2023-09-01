@@ -40,6 +40,10 @@ type Config struct {
 	OrgID int64
 	// NumRetries contains the number of attempted retries
 	NumRetries int
+	// RetryTimeout says how long to wait before retrying a request
+	RetryTimeout time.Duration
+	// RetryStatusCodes contains the list of status codes to retry, use "x" as a wildcard for a single digit (default: [429, 5xx])
+	RetryStatusCodes []string
 }
 
 // New creates a new Grafana client.
@@ -71,35 +75,31 @@ func (c Client) WithOrgID(orgID int64) *Client {
 	return &c
 }
 
-func (c *Client) request(method, requestPath string, query url.Values, body io.Reader, responseStruct interface{}) error {
+func (c *Client) request(method, requestPath string, query url.Values, body []byte, responseStruct interface{}) error {
 	var (
 		req          *http.Request
 		resp         *http.Response
 		err          error
 		bodyContents []byte
 	)
-
-	// If we want to retry a request that sends data, we'll need to stash the request data in memory. Otherwise, we lose it since readers cannot be replayed.
-	var bodyBuffer bytes.Buffer
-	if c.config.NumRetries > 0 && body != nil {
-		body = io.TeeReader(body, &bodyBuffer)
+	retryStatusCodes := c.config.RetryStatusCodes
+	if len(retryStatusCodes) == 0 {
+		retryStatusCodes = []string{"429", "5xx"}
 	}
 
 	// retry logic
 	for n := 0; n <= c.config.NumRetries; n++ {
-		// If it's not the first request, re-use the request body we stashed earlier.
-		if n > 0 {
-			body = bytes.NewReader(bodyBuffer.Bytes())
-		}
-
-		req, err = c.newRequest(method, requestPath, query, body)
+		req, err = c.newRequest(method, requestPath, query, bytes.NewReader(body))
 		if err != nil {
 			return err
 		}
 
 		// Wait a bit if that's not the first request
 		if n != 0 {
-			time.Sleep(time.Second * 5)
+			if c.config.RetryTimeout == 0 {
+				c.config.RetryTimeout = time.Second * 5
+			}
+			time.Sleep(c.config.RetryTimeout)
 		}
 
 		resp, err = c.client.Do(req)
@@ -121,8 +121,11 @@ func (c *Client) request(method, requestPath string, query url.Values, body io.R
 			continue
 		}
 
-		// Exit the loop if we have something final to return. This is anything < 500, if it's not a 429.
-		if resp.StatusCode < http.StatusInternalServerError && resp.StatusCode != http.StatusTooManyRequests {
+		shouldRetry, err := matchRetryCode(resp.StatusCode, retryStatusCodes)
+		if err != nil {
+			return err
+		}
+		if !shouldRetry {
 			break
 		}
 	}
@@ -184,4 +187,30 @@ func (c *Client) newRequest(method, requestPath string, query url.Values, body i
 
 	req.Header.Add("Content-Type", "application/json")
 	return req, err
+}
+
+// matchRetryCode checks if the status code matches any of the configured retry status codes.
+func matchRetryCode(gottenCode int, retryCodes []string) (bool, error) {
+	gottenCodeStr := strconv.Itoa(gottenCode)
+	for _, retryCode := range retryCodes {
+		if len(retryCode) != 3 {
+			return false, fmt.Errorf("invalid retry status code: %s", retryCode)
+		}
+		matched := true
+		for i := range retryCode {
+			c := retryCode[i]
+			if c == 'x' {
+				continue
+			}
+			if gottenCodeStr[i] != c {
+				matched = false
+				break
+			}
+		}
+		if matched {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

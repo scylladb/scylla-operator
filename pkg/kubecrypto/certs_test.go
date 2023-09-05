@@ -15,11 +15,11 @@ import (
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/crypto/testfiles"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/utils/pointer"
 )
 
 type testSecretData struct {
@@ -187,8 +187,8 @@ func Test_makeCertificate(t *testing.T) {
 							Kind:               "ScyllaCluster",
 							Name:               "sc",
 							UID:                "42",
-							Controller:         pointer.BoolPtr(true),
-							BlockOwnerDeletion: pointer.BoolPtr(true),
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
 						},
 					},
 					Annotations: map[string]string{
@@ -244,8 +244,8 @@ func Test_makeCertificate(t *testing.T) {
 							Kind:               "ScyllaCluster",
 							Name:               "sc",
 							UID:                "42",
-							Controller:         pointer.BoolPtr(true),
-							BlockOwnerDeletion: pointer.BoolPtr(true),
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
 						},
 					},
 					Annotations: map[string]string{
@@ -309,8 +309,8 @@ func Test_makeCertificate(t *testing.T) {
 							Kind:               "ScyllaCluster",
 							Name:               "sc",
 							UID:                "42",
-							Controller:         pointer.BoolPtr(true),
-							BlockOwnerDeletion: pointer.BoolPtr(true),
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
 						},
 					},
 					UID: "uid-that-should-never-make-it-to-the-desired-object",
@@ -334,8 +334,8 @@ func Test_makeCertificate(t *testing.T) {
 							Kind:               "ScyllaCluster",
 							Name:               "sc",
 							UID:                "42",
-							Controller:         pointer.BoolPtr(true),
-							BlockOwnerDeletion: pointer.BoolPtr(true),
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
 						},
 					},
 					Annotations: map[string]string{
@@ -402,8 +402,8 @@ func Test_makeCertificate(t *testing.T) {
 							Kind:               "ScyllaCluster",
 							Name:               "sc",
 							UID:                "42",
-							Controller:         pointer.BoolPtr(true),
-							BlockOwnerDeletion: pointer.BoolPtr(true),
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
 						},
 					},
 					UID: "uid-that-should-never-make-it-to-the-desired-object",
@@ -427,8 +427,8 @@ func Test_makeCertificate(t *testing.T) {
 							Kind:               "ScyllaCluster",
 							Name:               "sc",
 							UID:                "42",
-							Controller:         pointer.BoolPtr(true),
-							BlockOwnerDeletion: pointer.BoolPtr(true),
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
 						},
 					},
 					Annotations: map[string]string{
@@ -486,8 +486,8 @@ func Test_makeCertificate(t *testing.T) {
 							Kind:               "ScyllaCluster",
 							Name:               "sc",
 							UID:                "42",
-							Controller:         pointer.BoolPtr(true),
-							BlockOwnerDeletion: pointer.BoolPtr(true),
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
 						},
 					},
 					UID: "uid-that-should-never-make-it-to-the-desired-object",
@@ -511,8 +511,8 @@ func Test_makeCertificate(t *testing.T) {
 							Kind:               "ScyllaCluster",
 							Name:               "sc",
 							UID:                "42",
-							Controller:         pointer.BoolPtr(true),
-							BlockOwnerDeletion: pointer.BoolPtr(true),
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
 						},
 					},
 					Annotations: map[string]string{
@@ -578,8 +578,8 @@ func Test_makeCertificate(t *testing.T) {
 							Kind:               "ScyllaCluster",
 							Name:               "sc",
 							UID:                "42",
-							Controller:         pointer.BoolPtr(true),
-							BlockOwnerDeletion: pointer.BoolPtr(true),
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
 						},
 					},
 					UID: "uid-that-should-never-make-it-to-the-desired-object",
@@ -603,8 +603,8 @@ func Test_makeCertificate(t *testing.T) {
 							Kind:               "ScyllaCluster",
 							Name:               "sc",
 							UID:                "42",
-							Controller:         pointer.BoolPtr(true),
-							BlockOwnerDeletion: pointer.BoolPtr(true),
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
 						},
 					},
 					Annotations: map[string]string{
@@ -671,8 +671,8 @@ func Test_makeCertificate(t *testing.T) {
 							Kind:               "ScyllaCluster",
 							Name:               "sc",
 							UID:                "42",
-							Controller:         pointer.BoolPtr(true),
-							BlockOwnerDeletion: pointer.BoolPtr(true),
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
 						},
 					},
 					UID: "uid-that-should-never-make-it-to-the-desired-object",
@@ -696,8 +696,8 @@ func Test_makeCertificate(t *testing.T) {
 							Kind:               "ScyllaCluster",
 							Name:               "sc",
 							UID:                "42",
-							Controller:         pointer.BoolPtr(true),
-							BlockOwnerDeletion: pointer.BoolPtr(true),
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
 						},
 					},
 					Annotations: map[string]string{

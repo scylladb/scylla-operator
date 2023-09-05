@@ -14,6 +14,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	okubecrypto "github.com/scylladb/scylla-operator/pkg/kubecrypto"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/resource"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	"github.com/scylladb/scylla-operator/pkg/resourcemerge"
@@ -23,7 +24,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	kutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/utils/pointer"
 )
 
 func getPrometheusLabels(sm *scyllav1alpha1.ScyllaDBMonitoring) labels.Set {
@@ -499,8 +499,8 @@ func (smc *Controller) syncPrometheus(
 				Kind:               scylladbMonitoringControllerGVK.Kind,
 				Name:               sm.Name,
 				UID:                sm.UID,
-				Controller:         pointer.Bool(true),
-				BlockOwnerDeletion: pointer.Bool(true),
+				Controller:         pointer.Ptr(true),
+				BlockOwnerDeletion: pointer.Ptr(true),
 			},
 		})
 

@@ -10,8 +10,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/util/duration"
-	"k8s.io/utils/pointer"
 )
 
 type RepairTask v1.RepairTaskStatus
@@ -76,7 +76,7 @@ func (r *RepairTask) FromManager(t *mermaidclient.ExtendedTask) error {
 	r.Name = t.Name
 	r.Interval = t.Schedule.Interval
 	r.StartDate = t.Schedule.StartDate.String()
-	r.NumRetries = pointer.Int64Ptr(t.Schedule.NumRetries)
+	r.NumRetries = pointer.Ptr(t.Schedule.NumRetries)
 
 	props := t.Properties.(map[string]interface{})
 	if err := mapstructure.Decode(props, r); err != nil {
@@ -143,7 +143,7 @@ func (b *BackupTask) FromManager(t *mermaidclient.ExtendedTask) error {
 	b.Name = t.Name
 	b.Interval = t.Schedule.Interval
 	b.StartDate = t.Schedule.StartDate.String()
-	b.NumRetries = pointer.Int64Ptr(t.Schedule.NumRetries)
+	b.NumRetries = pointer.Ptr(t.Schedule.NumRetries)
 
 	props := t.Properties.(map[string]interface{})
 	if err := mapstructure.Decode(props, b); err != nil {

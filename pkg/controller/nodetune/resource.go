@@ -8,12 +8,12 @@ import (
 	"path"
 
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
 )
 
 // TODO: set anti affinities so config jobs don't run on the same node at the same time
@@ -47,7 +47,7 @@ func makePerftuneJobForNode(controllerRef *metav1.OwnerReference, namespace, nod
 		},
 		Spec: batchv1.JobSpec{
 			// TODO: handle failed jobs and retry.
-			BackoffLimit: pointer.Int32Ptr(math.MaxInt32),
+			BackoffLimit: pointer.Ptr(int32(math.MaxInt32)),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      labels,
@@ -73,7 +73,7 @@ func makePerftuneJobForNode(controllerRef *metav1.OwnerReference, namespace, nod
 								},
 							},
 							SecurityContext: &corev1.SecurityContext{
-								Privileged: pointer.BoolPtr(true),
+								Privileged: pointer.Ptr(true),
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								makeVolumeMount("host-sys-class", "/sys/class", false),
@@ -157,7 +157,7 @@ func makePerftuneJobForContainers(controllerRef *metav1.OwnerReference, namespac
 		},
 		Spec: batchv1.JobSpec{
 			// TODO: handle failed jobs and retry.
-			BackoffLimit: pointer.Int32Ptr(math.MaxInt32),
+			BackoffLimit: pointer.Ptr(int32(math.MaxInt32)),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      labels,
@@ -183,7 +183,7 @@ func makePerftuneJobForContainers(controllerRef *metav1.OwnerReference, namespac
 								},
 							},
 							SecurityContext: &corev1.SecurityContext{
-								Privileged: pointer.BoolPtr(true),
+								Privileged: pointer.Ptr(true),
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								makeVolumeMount("hostfs", "/host", false),

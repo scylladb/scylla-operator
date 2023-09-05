@@ -7,9 +7,9 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
 )
 
 func Test_makeScyllaConnectionConfig(t *testing.T) {
@@ -69,8 +69,8 @@ func Test_makeScyllaConnectionConfig(t *testing.T) {
 							APIVersion:         "scylla.scylladb.com/v1",
 							Kind:               "ScyllaCluster",
 							Name:               "bar",
-							Controller:         pointer.Bool(true),
-							BlockOwnerDeletion: pointer.Bool(true),
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
 						},
 					},
 				},
@@ -151,8 +151,8 @@ parameters:
 							APIVersion:         "scylla.scylladb.com/v1",
 							Kind:               "ScyllaCluster",
 							Name:               "bar",
-							Controller:         pointer.Bool(true),
-							BlockOwnerDeletion: pointer.Bool(true),
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
 						},
 					},
 				},

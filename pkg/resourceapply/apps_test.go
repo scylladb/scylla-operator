@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -20,7 +21,6 @@ import (
 	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/utils/pointer"
 )
 
 func TestApplyStatefulSet(t *testing.T) {
@@ -35,17 +35,17 @@ func TestApplyStatefulSet(t *testing.T) {
 				Labels:          map[string]string{},
 				OwnerReferences: []metav1.OwnerReference{
 					{
-						Controller:         pointer.BoolPtr(true),
+						Controller:         pointer.Ptr(true),
 						UID:                "abcdefgh",
 						APIVersion:         "scylla.scylladb.com/v1",
 						Kind:               "ScyllaCluster",
 						Name:               "basic",
-						BlockOwnerDeletion: pointer.BoolPtr(true),
+						BlockOwnerDeletion: pointer.Ptr(true),
 					},
 				},
 			},
 			Spec: appsv1.StatefulSetSpec{
-				Replicas: pointer.Int32Ptr(3),
+				Replicas: pointer.Ptr(int32(3)),
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{},
 					Spec: corev1.PodSpec{
@@ -140,12 +140,12 @@ func TestApplyStatefulSet(t *testing.T) {
 			},
 			required: func() *appsv1.StatefulSet {
 				sts := newSts()
-				sts.Spec.Replicas = pointer.Int32Ptr(*sts.Spec.Replicas + 1)
+				sts.Spec.Replicas = pointer.Ptr(*sts.Spec.Replicas + 1)
 				return sts
 			}(),
 			expectedSts: func() *appsv1.StatefulSet {
 				sts := newSts()
-				sts.Spec.Replicas = pointer.Int32Ptr(*sts.Spec.Replicas + 1)
+				sts.Spec.Replicas = pointer.Ptr(*sts.Spec.Replicas + 1)
 				utilruntime.Must(SetHashAnnotation(sts))
 				return sts
 			}(),
@@ -606,12 +606,12 @@ func TestApplyDaemonSet(t *testing.T) {
 				Labels:          map[string]string{},
 				OwnerReferences: []metav1.OwnerReference{
 					{
-						Controller:         pointer.BoolPtr(true),
+						Controller:         pointer.Ptr(true),
 						UID:                "abcdefgh",
 						APIVersion:         "scylla.scylladb.com/v1",
 						Kind:               "ScyllaCluster",
 						Name:               "basic",
-						BlockOwnerDeletion: pointer.BoolPtr(true),
+						BlockOwnerDeletion: pointer.Ptr(true),
 					},
 				},
 			},

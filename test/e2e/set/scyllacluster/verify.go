@@ -10,6 +10,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	cqlclientv1alpha1 "github.com/scylladb/scylla-operator/pkg/scylla/api/cqlclient/v1alpha1"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/scheme"
@@ -22,7 +23,6 @@ import (
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/utils/pointer"
 )
 
 func verifyPersistentVolumeClaims(ctx context.Context, coreClient corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) {
@@ -78,8 +78,8 @@ func verifyPodDisruptionBudget(sc *scyllav1.ScyllaCluster, pdb *policyv1.PodDisr
 				Kind:               "ScyllaCluster",
 				Name:               sc.Name,
 				UID:                sc.UID,
-				BlockOwnerDeletion: pointer.Bool(true),
-				Controller:         pointer.Bool(true),
+				BlockOwnerDeletion: pointer.Ptr(true),
+				Controller:         pointer.Ptr(true),
 			},
 		}),
 	)

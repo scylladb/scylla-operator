@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -19,7 +20,6 @@ import (
 	policyv1listers "k8s.io/client-go/listers/policy/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/utils/pointer"
 )
 
 func TestApplyPodDisruptionBudget(t *testing.T) {
@@ -32,12 +32,12 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 				Labels:    map[string]string{},
 				OwnerReferences: []metav1.OwnerReference{
 					{
-						Controller:         pointer.BoolPtr(true),
+						Controller:         pointer.Ptr(true),
 						UID:                "abcdefgh",
 						APIVersion:         "scylla.scylladb.com/v1",
 						Kind:               "ScyllaCluster",
 						Name:               "basic",
-						BlockOwnerDeletion: pointer.BoolPtr(true),
+						BlockOwnerDeletion: pointer.Ptr(true),
 					},
 				},
 			},

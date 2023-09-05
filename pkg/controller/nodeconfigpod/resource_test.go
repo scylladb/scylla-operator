@@ -4,10 +4,10 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
 )
 
 func TestMakeConfigMap(t *testing.T) {
@@ -39,8 +39,8 @@ func TestMakeConfigMap(t *testing.T) {
 							Kind:               "Pod",
 							Name:               "bar",
 							UID:                "42",
-							BlockOwnerDeletion: pointer.BoolPtr(true),
-							Controller:         pointer.Bool(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+							Controller:         pointer.Ptr(true),
 						},
 					},
 					Labels: map[string]string{

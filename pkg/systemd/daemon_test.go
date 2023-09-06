@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	godbus "github.com/godbus/dbus/v5"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
@@ -26,6 +27,17 @@ func TestSystemdControl_ErrNotExist(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer sc.Close()
+
+	// FIXME: We should either use fake systemd, or somehow enable it.
+	//        Ref: https://github.com/scylladb/scylla-operator/issues/1379
+	_, err = sc.conn.GetServicePropertyContext(ctx, "systemd1", "ActiveState")
+	if err != nil {
+		var godbusErr godbus.Error
+		if errors.As(err, &godbusErr) && godbusErr.Name == "org.freedesktop.DBus.Error.ServiceUnknown" {
+			t.Skip("systemd is not available, skipping the test")
+		}
+		t.Fatal(err)
+	}
 
 	notExistingUnitName := fmt.Sprintf("%s.mount", rand.String(32))
 

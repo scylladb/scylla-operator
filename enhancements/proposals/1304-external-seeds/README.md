@@ -132,6 +132,8 @@ In case of a new operator, if the `externalSeeds` are nil, the operator won't ta
 ## Implementation History
 
 - 2023-07-31: Initial enhancement proposal
+- 2023-08-23: Enhancement proposal merged
+- 2023-08-24: Initial enhancement implementation
 
 ## Drawbacks
 

@@ -72,3 +72,13 @@ func Find[T comparable](slice []T, filterFunc func(T) bool) (T, bool) {
 
 	return *new(T), false
 }
+
+func Flatten[T any](xs [][]T) []T {
+	var res []T
+
+	for _, x := range xs {
+		res = append(res, x...)
+	}
+
+	return res
+}

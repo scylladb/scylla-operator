@@ -239,6 +239,18 @@ func (c *Client) StopCleanup(ctx context.Context, host string) error {
 	return nil
 }
 
+func (c *Client) GetSnitchDatacenter(ctx context.Context, host string) (string, error) {
+	resp, err := c.scyllaClient.Operations.SnitchDatacenterGet(&scyllaoperations.SnitchDatacenterGetParams{
+		Context: ctx,
+		Host:    &host,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return resp.GetPayload(), nil
+}
+
 const (
 	snapshotTimeout = 5 * time.Minute
 	drainTimeout    = 5 * time.Minute

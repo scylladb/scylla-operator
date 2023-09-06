@@ -17,6 +17,8 @@ import (
 )
 
 func TestMember_GetSeeds(t *testing.T) {
+	t.Parallel()
+
 	createPodAndSvc := func(name, ip string, creationTimestamp time.Time) (*corev1.Pod, *corev1.Service) {
 		pod := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -49,12 +51,13 @@ func TestMember_GetSeeds(t *testing.T) {
 	thirdPod, thirdService := createPodAndSvc("pod-2", "3.3.3.3", now.Add(2*time.Second))
 
 	ts := []struct {
-		name        string
-		memberName  string
-		memberIP    string
-		objects     []runtime.Object
-		expectSeed  string
-		expectError error
+		name          string
+		memberName    string
+		memberIP      string
+		objects       []runtime.Object
+		externalSeeds []string
+		expectSeeds   []string
+		expectError   error
 	}{
 		{
 			name:        "error when no pods are found",
@@ -64,38 +67,64 @@ func TestMember_GetSeeds(t *testing.T) {
 			expectError: fmt.Errorf("internal error: can't find any pod for this cluster, including itself"),
 		},
 		{
-			name:       "bootstraps with itself when cluster is empty",
-			memberName: firstPod.Name,
-			memberIP:   firstService.Spec.ClusterIP,
-			objects:    []runtime.Object{firstPod, firstService},
-			expectSeed: firstService.Spec.ClusterIP,
+			name:        "bootstraps with itself when cluster is empty",
+			memberName:  firstPod.Name,
+			memberIP:    firstService.Spec.ClusterIP,
+			objects:     []runtime.Object{firstPod, firstService},
+			expectSeeds: []string{firstService.Spec.ClusterIP},
 		},
 		{
-			name:       "bootstrap with first created UN node",
-			memberName: firstPod.Name,
-			memberIP:   firstService.Spec.ClusterIP,
-			objects:    []runtime.Object{firstPod, firstService, markPodReady(secondPod), secondService, markPodReady(thirdPod), thirdService},
-			expectSeed: secondService.Spec.ClusterIP,
+			name:        "bootstrap with first created UN node",
+			memberName:  firstPod.Name,
+			memberIP:    firstService.Spec.ClusterIP,
+			objects:     []runtime.Object{firstPod, firstService, markPodReady(secondPod), secondService, markPodReady(thirdPod), thirdService},
+			expectSeeds: []string{secondService.Spec.ClusterIP},
 		},
 		{
-			name:       "bootstrap only with UN node",
-			memberName: firstPod.Name,
-			memberIP:   firstService.Spec.ClusterIP,
-			objects:    []runtime.Object{firstPod, firstService, secondPod, secondService, markPodReady(thirdPod), thirdService},
-			expectSeed: thirdService.Spec.ClusterIP,
+			name:        "bootstrap only with UN node",
+			memberName:  firstPod.Name,
+			memberIP:    firstService.Spec.ClusterIP,
+			objects:     []runtime.Object{firstPod, firstService, secondPod, secondService, markPodReady(thirdPod), thirdService},
+			expectSeeds: []string{thirdService.Spec.ClusterIP},
 		},
 		{
-			name:       "bootstrap with first created Pod when all are down",
-			memberName: firstPod.Name,
-			memberIP:   firstService.Spec.ClusterIP,
-			objects:    []runtime.Object{firstPod, firstService, secondPod, secondService, thirdPod, thirdService},
-			expectSeed: secondService.Spec.ClusterIP,
+			name:        "bootstrap with first created Pod when all are down",
+			memberName:  firstPod.Name,
+			memberIP:    firstService.Spec.ClusterIP,
+			objects:     []runtime.Object{firstPod, firstService, secondPod, secondService, thirdPod, thirdService},
+			expectSeeds: []string{secondService.Spec.ClusterIP},
+		},
+		{
+			name:          "bootstrap with external seeds only when cluster is empty and external seeds are provided",
+			memberName:    firstPod.Name,
+			memberIP:      firstService.Spec.ClusterIP,
+			objects:       []runtime.Object{firstPod, firstService},
+			externalSeeds: []string{"10.0.1.1", "10.0.1.2"},
+			expectSeeds:   []string{"10.0.1.1", "10.0.1.2"},
+		},
+		{
+			name:          "bootstrap with external seeds and first created UN node when external seeds are provided",
+			memberName:    firstPod.Name,
+			memberIP:      firstService.Spec.ClusterIP,
+			objects:       []runtime.Object{firstPod, firstService, markPodReady(secondPod), secondService, markPodReady(thirdPod), thirdService},
+			externalSeeds: []string{"10.0.1.1", "10.0.1.2"},
+			expectSeeds:   []string{"10.0.1.1", "10.0.1.2", secondService.Spec.ClusterIP},
+		},
+		{
+			name:          "bootstrap with external seeds and first created Pod when all Pods from DC are down and external seeds are provided",
+			memberName:    firstPod.Name,
+			memberIP:      firstService.Spec.ClusterIP,
+			objects:       []runtime.Object{firstPod, firstService, secondPod, secondService, thirdPod, thirdService},
+			externalSeeds: []string{"10.0.1.1", "10.0.1.2"},
+			expectSeeds:   []string{"10.0.1.1", "10.0.1.2", secondService.Spec.ClusterIP},
 		},
 	}
 
 	for i := range ts {
 		test := ts[i]
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
@@ -107,12 +136,12 @@ func TestMember_GetSeeds(t *testing.T) {
 			}
 
 			fakeClient := fake.NewSimpleClientset(test.objects...)
-			seed, err := member.GetSeed(ctx, fakeClient.CoreV1())
+			seeds, err := member.GetSeeds(ctx, fakeClient.CoreV1(), test.externalSeeds)
 			if !reflect.DeepEqual(err, test.expectError) {
 				t.Errorf("expected error %v, got %v", test.expectError, err)
 			}
-			if seed != test.expectSeed {
-				t.Errorf("expected seed %v, got %v", test.expectSeed, seed)
+			if !reflect.DeepEqual(seeds, test.expectSeeds) {
+				t.Errorf("expected seeds %v, got %v", test.expectSeeds, seeds)
 			}
 		})
 	}

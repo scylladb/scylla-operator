@@ -48,7 +48,7 @@ func NewMemberFromObjects(service *corev1.Service, pod *corev1.Pod) *Member {
 	}
 }
 
-func (m *Member) GetSeed(ctx context.Context, coreClient v1.CoreV1Interface) (string, error) {
+func (m *Member) GetSeeds(ctx context.Context, coreClient v1.CoreV1Interface, externalSeeds []string) ([]string, error) {
 	clusterLabels := naming.ScyllaLabels()
 	clusterLabels[naming.ClusterNameLabel] = m.Cluster
 
@@ -56,11 +56,11 @@ func (m *Member) GetSeed(ctx context.Context, coreClient v1.CoreV1Interface) (st
 		LabelSelector: labels.SelectorFromSet(clusterLabels).String(),
 	})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if len(podList.Items) == 0 {
-		return "", fmt.Errorf("internal error: can't find any pod for this cluster, including itself")
+		return nil, fmt.Errorf("internal error: can't find any pod for this cluster, including itself")
 	}
 
 	var otherPods []*corev1.Pod
@@ -73,7 +73,11 @@ func (m *Member) GetSeed(ctx context.Context, coreClient v1.CoreV1Interface) (st
 
 	if len(otherPods) == 0 {
 		// We are the only one, assuming first bootstrap.
-		return m.StaticIP, nil
+		if len(externalSeeds) > 0 {
+			return externalSeeds, nil
+		}
+
+		return []string{m.StaticIP}, nil
 	}
 
 	sort.Slice(otherPods, func(i, j int) bool {
@@ -88,8 +92,12 @@ func (m *Member) GetSeed(ctx context.Context, coreClient v1.CoreV1Interface) (st
 
 	svc, err := coreClient.Services(m.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return svc.Spec.ClusterIP, nil
+	res := make([]string, 0, len(externalSeeds)+1)
+	res = append(res, externalSeeds...)
+	res = append(res, svc.Spec.ClusterIP)
+
+	return res, nil
 }

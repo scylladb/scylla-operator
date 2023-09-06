@@ -4,6 +4,7 @@ package utils
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -31,7 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	apierrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	appv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
@@ -506,24 +506,69 @@ func GetMemberServiceSelector(scyllaClusterName string) labels.Selector {
 	}.AsSelector()
 }
 
-func GetScyllaHostsAndWaitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
+func GetScyllaHostsByDCAndWaitForFullQuorum(ctx context.Context, dcClientMap map[string]corev1client.CoreV1Interface, scs []*scyllav1.ScyllaCluster) (map[string][]string, error) {
+	allHosts := map[string][]string{}
+	var sortedAllHosts []string
+
+	var errs []error
+	for _, sc := range scs {
+		client, ok := dcClientMap[sc.Spec.Datacenter.Name]
+		if !ok {
+			errs = append(errs, fmt.Errorf("client is missing for datacenter %q of ScyllaCluster %q", sc.Spec.Datacenter.Name, naming.ObjRef(sc)))
+			continue
+		}
+
+		hosts, err := GetHosts(ctx, client, sc)
+		if err != nil {
+			return nil, fmt.Errorf("can't get hosts for ScyllaCluster %q: %w", sc.Name, err)
+		}
+		allHosts[sc.Spec.Datacenter.Name] = hosts
+		sortedAllHosts = append(sortedAllHosts, hosts...)
+	}
+	err := errors.Join(errs...)
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Strings(sortedAllHosts)
+
+	for _, sc := range scs {
+		client, ok := dcClientMap[sc.Spec.Datacenter.Name]
+		if !ok {
+			errs = append(errs, fmt.Errorf("client is missing for datacenter %q of ScyllaCluster %q", sc.Spec.Datacenter.Name, naming.ObjRef(sc)))
+			continue
+		}
+
+		err = waitForFullQuorum(ctx, client, sc, sortedAllHosts)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	err = errors.Join(errs...)
+	if err != nil {
+		return nil, fmt.Errorf("can't wait for scylla nodes to reach status consistency: %w", err)
+	}
+
+	framework.Infof("ScyllaDB nodes have reached status consistency.")
+
+	return allHosts, nil
+}
+
+func waitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, sortedExpectedHosts []string) error {
 	scyllaClient, hosts, err := GetScyllaClient(ctx, client, sc)
 	if err != nil {
-		return nil, fmt.Errorf("can't get scylla client: %w", err)
+		return fmt.Errorf("can't get scylla client: %w", err)
 	}
 	defer scyllaClient.Close()
 
-	sortedHosts := make([]string, len(hosts))
-	copy(sortedHosts, hosts)
-	sort.Strings(sortedHosts)
-
 	// Wait for node status to propagate and reach consistency.
 	// This can take a while so let's set a large enough timeout to avoid flakes.
-	err = wait.PollImmediateWithContext(ctx, 1*time.Second, 5*time.Minute, func(ctx context.Context) (done bool, err error) {
+	return wait.PollImmediateWithContext(ctx, 1*time.Second, 5*time.Minute, func(ctx context.Context) (done bool, err error) {
 		allSeeAllAsUN := true
 		infoMessages := make([]string, 0, len(hosts))
 		var errs []error
-		for _, h := range sortedHosts {
+		for _, h := range hosts {
 			s, err := scyllaClient.Status(ctx, h)
 			if err != nil {
 				return true, fmt.Errorf("can't get scylla status on node %q: %w", h, err)
@@ -531,7 +576,7 @@ func GetScyllaHostsAndWaitForFullQuorum(ctx context.Context, client corev1client
 
 			sHosts := s.Hosts()
 			sort.Strings(sHosts)
-			if !reflect.DeepEqual(sHosts, sortedHosts) {
+			if !reflect.DeepEqual(sHosts, sortedExpectedHosts) {
 				errs = append(errs, fmt.Errorf("node %q thinks the cluster consists of different nodes: %s", h, sHosts))
 			}
 
@@ -547,7 +592,7 @@ func GetScyllaHostsAndWaitForFullQuorum(ctx context.Context, client corev1client
 			framework.Infof("ScyllaDB nodes have not reached status consistency yet. Statuses:\n%s", strings.Join(infoMessages, ","))
 		}
 
-		err = apierrors.NewAggregate(errs)
+		err = errors.Join(errs...)
 		if err != nil {
 			framework.Infof("ScyllaDB nodes encountered an error. Statuses:\n%s", strings.Join(infoMessages, ","))
 			return true, err
@@ -555,13 +600,6 @@ func GetScyllaHostsAndWaitForFullQuorum(ctx context.Context, client corev1client
 
 		return allSeeAllAsUN, nil
 	})
-	if err != nil {
-		return nil, fmt.Errorf("can't wait for scylla nodes to reach status consistency: %w", err)
-	}
-
-	framework.Infof("ScyllaDB nodes have reached status consistency.")
-
-	return hosts, nil
 }
 
 func PodIsRunning(pod *corev1.Pod) (bool, error) {

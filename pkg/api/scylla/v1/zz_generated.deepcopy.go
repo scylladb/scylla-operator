@@ -534,6 +534,11 @@ func (in *ScyllaClusterSpec) DeepCopyInto(out *ScyllaClusterSpec) {
 		*out = new(ExposeOptions)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ExternalSeeds != nil {
+		in, out := &in.ExternalSeeds, &out.ExternalSeeds
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

@@ -2717,6 +2717,11 @@ spec:
                           type: object
                       type: object
                   type: object
+                externalSeeds:
+                  description: externalSeeds specifies the external seeds to propagate to ScyllaDB binary on startup as "seeds" parameter of seed-provider.
+                  items:
+                    type: string
+                  type: array
                 forceRedeploymentReason:
                   description: forceRedeploymentReason can be used to force a rolling update of all racks by providing a unique string.
                   type: string

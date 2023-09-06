@@ -7,11 +7,11 @@ import (
 	"github.com/google/go-cmp/cmp"
 	v1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/utils/pointer"
 )
 
 func TestValidateScyllaCluster(t *testing.T) {
@@ -226,7 +226,7 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 		},
 		{
 			name: "empty rack with stale status",
-			old:  withStatus(unit.NewSingleRackCluster(0), v1.ScyllaClusterStatus{Racks: map[string]v1.RackStatus{"test-rack": {Stale: pointer.Bool(true), Members: 0}}}),
+			old:  withStatus(unit.NewSingleRackCluster(0), v1.ScyllaClusterStatus{Racks: map[string]v1.RackStatus{"test-rack": {Stale: pointer.Ptr(true), Members: 0}}}),
 			new:  racksDeleted(unit.NewSingleRackCluster(0)),
 			expectedErrorList: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeInternal, Field: "spec.datacenter.racks[0]", Detail: `rack "test-rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`},
@@ -235,7 +235,7 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 		},
 		{
 			name: "empty rack with not reconciled generation",
-			old:  withStatus(withGeneration(unit.NewSingleRackCluster(0), 123), v1.ScyllaClusterStatus{ObservedGeneration: pointer.Int64(321), Racks: map[string]v1.RackStatus{"test-rack": {Members: 0}}}),
+			old:  withStatus(withGeneration(unit.NewSingleRackCluster(0), 123), v1.ScyllaClusterStatus{ObservedGeneration: pointer.Ptr(int64(321)), Racks: map[string]v1.RackStatus{"test-rack": {Members: 0}}}),
 			new:  racksDeleted(unit.NewSingleRackCluster(0)),
 			expectedErrorList: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeInternal, Field: "spec.datacenter.racks[0]", Detail: `rack "test-rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`},

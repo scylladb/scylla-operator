@@ -9,8 +9,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
 )
 
 func TestManagerSynchronization(t *testing.T) {
@@ -69,7 +69,7 @@ func TestManagerSynchronization(t *testing.T) {
 			Name: "Cluster registered in manager but auth token is different, update and requeue",
 			Spec: v1.ScyllaClusterSpec{},
 			Status: v1.ScyllaClusterStatus{
-				ManagerID: pointer.StringPtr(clusterID),
+				ManagerID: pointer.Ptr(clusterID),
 			},
 			State: state{
 				Clusters: []*mermaidclient.Cluster{{
@@ -86,7 +86,7 @@ func TestManagerSynchronization(t *testing.T) {
 			Name: "Name collision, delete old one, add new and requeue",
 			Spec: v1.ScyllaClusterSpec{},
 			Status: v1.ScyllaClusterStatus{
-				ManagerID: pointer.StringPtr(clusterID),
+				ManagerID: pointer.Ptr(clusterID),
 			},
 			State: state{
 				Clusters: []*mermaidclient.Cluster{{
@@ -120,7 +120,7 @@ func TestManagerSynchronization(t *testing.T) {
 				},
 			},
 			Status: v1.ScyllaClusterStatus{
-				ManagerID: pointer.StringPtr(clusterID),
+				ManagerID: pointer.Ptr(clusterID),
 			},
 			State: state{
 				Clusters: []*mermaidclient.Cluster{{
@@ -153,7 +153,7 @@ func TestManagerSynchronization(t *testing.T) {
 				},
 			},
 			Status: v1.ScyllaClusterStatus{
-				ManagerID: pointer.StringPtr(clusterID),
+				ManagerID: pointer.Ptr(clusterID),
 			},
 			State: state{
 				Clusters: []*mermaidclient.Cluster{{
@@ -181,7 +181,7 @@ func TestManagerSynchronization(t *testing.T) {
 				},
 			},
 			Status: v1.ScyllaClusterStatus{
-				ManagerID: pointer.StringPtr(clusterID),
+				ManagerID: pointer.Ptr(clusterID),
 				Repairs: []v1.RepairTaskStatus{
 					{
 						ID: "repair-id",
@@ -237,7 +237,7 @@ func TestManagerSynchronization(t *testing.T) {
 				},
 			},
 			Status: v1.ScyllaClusterStatus{
-				ManagerID: pointer.StringPtr(clusterID),
+				ManagerID: pointer.Ptr(clusterID),
 				Repairs: []v1.RepairTaskStatus{
 					{
 						ID: "repair-id",
@@ -281,7 +281,7 @@ func TestManagerSynchronization(t *testing.T) {
 			Name: "Delete tasks from Manager unknown to spec",
 			Spec: v1.ScyllaClusterSpec{},
 			Status: v1.ScyllaClusterStatus{
-				ManagerID: pointer.StringPtr(clusterID),
+				ManagerID: pointer.Ptr(clusterID),
 			},
 			State: state{
 				Clusters: []*mermaidclient.Cluster{{

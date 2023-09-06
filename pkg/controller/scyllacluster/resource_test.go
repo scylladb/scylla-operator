@@ -412,7 +412,7 @@ func TestMemberService(t *testing.T) {
 						},
 					},
 					Status: batchv1.JobStatus{
-						CompletionTime: pointer.Time(metav1.Now()),
+						CompletionTime: pointer.Ptr(metav1.Now()),
 					},
 				},
 			},

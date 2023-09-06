@@ -10,6 +10,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -21,7 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/pointer"
 )
 
 const (
@@ -33,8 +33,8 @@ const (
 )
 
 const (
-	rootUID = 0
-	rootGID = 0
+	rootUID int64 = 0
+	rootGID int64 = 0
 )
 
 const (
@@ -220,7 +220,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 			},
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: pointer.Int32(r.Members),
+			Replicas: pointer.Ptr(r.Members),
 			// Use a common Headless Service for all StatefulSets
 			ServiceName: naming.HeadlessServiceNameForCluster(c),
 			Selector: &metav1.LabelSelector{
@@ -230,7 +230,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: appsv1.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
-					Partition: pointer.Int32(0),
+					Partition: pointer.Ptr(int32(0)),
 				},
 			},
 			// Template for Pods
@@ -246,8 +246,8 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 					HostNetwork: c.Spec.Network.HostNetworking,
 					DNSPolicy:   c.Spec.Network.GetDNSPolicy(),
 					SecurityContext: &corev1.PodSecurityContext{
-						RunAsUser:  pointer.Int64(rootUID),
-						RunAsGroup: pointer.Int64(rootGID),
+						RunAsUser:  pointer.Ptr(rootUID),
+						RunAsGroup: pointer.Ptr(rootGID),
 					},
 					Volumes: func() []corev1.Volume {
 						volumes := []corev1.Volume{
@@ -457,8 +457,8 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 							}(),
 							// Add CAP_SYS_NICE as instructed by scylla logs
 							SecurityContext: &corev1.SecurityContext{
-								RunAsUser:  pointer.Int64(rootUID),
-								RunAsGroup: pointer.Int64(rootGID),
+								RunAsUser:  pointer.Ptr(rootUID),
+								RunAsGroup: pointer.Ptr(rootGID),
 								Capabilities: &corev1.Capabilities{
 									Add: []corev1.Capability{"SYS_NICE"},
 								},
@@ -528,7 +528,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 						PodAntiAffinity: placement.PodAntiAffinity,
 					},
 					ImagePullSecrets:              c.Spec.ImagePullSecrets,
-					TerminationGracePeriodSeconds: pointer.Int64(900),
+					TerminationGracePeriodSeconds: pointer.Ptr(int64(900)),
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -567,7 +567,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 
 	// Make sure we adjust if it was scaled in between.
 	if *sts.Spec.UpdateStrategy.RollingUpdate.Partition > *sts.Spec.Replicas {
-		sts.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32(*sts.Spec.Replicas)
+		sts.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Ptr(*sts.Spec.Replicas)
 	}
 
 	sysctlContainer := sysctlInitContainer(c.Spec.Sysctls, sidecarImage)
@@ -798,7 +798,7 @@ func MakeIngresses(c *scyllav1.ScyllaCluster, services map[string]*corev1.Servic
 					},
 				},
 				Spec: networkingv1.IngressSpec{
-					IngressClassName: pointer.String(ip.ingressOptions.IngressClassName),
+					IngressClassName: pointer.Ptr(ip.ingressOptions.IngressClassName),
 				},
 			}
 

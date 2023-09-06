@@ -3,11 +3,11 @@ package controllerhelpers
 import (
 	"testing"
 
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/pointer"
 )
 
 func TestGenerateMergePatch(t *testing.T) {
@@ -25,13 +25,13 @@ func TestGenerateMergePatch(t *testing.T) {
 					Name:      "bar",
 				},
 				Spec: corev1.PodSpec{
-					ActiveDeadlineSeconds: pointer.Int64Ptr(30),
+					ActiveDeadlineSeconds: pointer.Ptr(int64(30)),
 					NodeName:              "node",
 				},
 			},
 			modifyFn: func(obj runtime.Object) {
 				pod := obj.(*corev1.Pod)
-				pod.Spec.ActiveDeadlineSeconds = pointer.Int64Ptr(10)
+				pod.Spec.ActiveDeadlineSeconds = pointer.Ptr(int64(10))
 			},
 			expected: []byte(`{"spec":{"activeDeadlineSeconds":10}}`),
 		},

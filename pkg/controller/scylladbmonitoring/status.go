@@ -4,10 +4,10 @@ import (
 	"context"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/pointer"
 )
 
 // calculateStatus calculates the ScyllaDBMonitoring status.
@@ -15,7 +15,7 @@ import (
 // If a particular object can be missing, it should be reflected in the value itself, like "Unknown" or "".
 func (smc *Controller) calculateStatus(sm *scyllav1alpha1.ScyllaDBMonitoring) *scyllav1alpha1.ScyllaDBMonitoringStatus {
 	status := sm.Status.DeepCopy()
-	status.ObservedGeneration = pointer.Int64(sm.Generation)
+	status.ObservedGeneration = pointer.Ptr(sm.Generation)
 
 	return status
 }

@@ -26,7 +26,7 @@ func verifyDesiredObject(obj metav1.Object) error {
 		return fmt.Errorf("desired objects are not allowed to have UID set")
 	}
 
-	if !pointer.Time(obj.GetCreationTimestamp()).IsZero() {
+	if !pointer.Ptr(obj.GetCreationTimestamp()).IsZero() {
 		return fmt.Errorf("desired objects are not allowed to have creationTimestamp set")
 	}
 

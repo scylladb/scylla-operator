@@ -5,9 +5,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
 )
 
 func TestIsStatefulSetRolledOut(t *testing.T) {
@@ -24,7 +24,7 @@ func TestIsStatefulSetRolledOut(t *testing.T) {
 					Generation: 42,
 				},
 				Spec: appsv1.StatefulSetSpec{
-					Replicas: pointer.Int32Ptr(3),
+					Replicas: pointer.Ptr(int32(3)),
 					UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 						Type: appsv1.OnDeleteStatefulSetStrategyType,
 						RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
@@ -43,7 +43,7 @@ func TestIsStatefulSetRolledOut(t *testing.T) {
 					Generation: 42,
 				},
 				Spec: appsv1.StatefulSetSpec{
-					Replicas: pointer.Int32Ptr(3),
+					Replicas: pointer.Ptr(int32(3)),
 					UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 						Type: appsv1.RollingUpdateStatefulSetStrategyType,
 						RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
@@ -71,7 +71,7 @@ func TestIsStatefulSetRolledOut(t *testing.T) {
 					Generation: 42,
 				},
 				Spec: appsv1.StatefulSetSpec{
-					Replicas: pointer.Int32Ptr(3),
+					Replicas: pointer.Ptr(int32(3)),
 					UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 						Type: appsv1.RollingUpdateStatefulSetStrategyType,
 						RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
@@ -99,11 +99,11 @@ func TestIsStatefulSetRolledOut(t *testing.T) {
 					Generation: 42,
 				},
 				Spec: appsv1.StatefulSetSpec{
-					Replicas: pointer.Int32Ptr(3),
+					Replicas: pointer.Ptr(int32(3)),
 					UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 						Type: appsv1.RollingUpdateStatefulSetStrategyType,
 						RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
-							Partition: pointer.Int32Ptr(1),
+							Partition: pointer.Ptr(int32(1)),
 						},
 					},
 				},
@@ -127,7 +127,7 @@ func TestIsStatefulSetRolledOut(t *testing.T) {
 					Generation: 42,
 				},
 				Spec: appsv1.StatefulSetSpec{
-					Replicas: pointer.Int32Ptr(3),
+					Replicas: pointer.Ptr(int32(3)),
 					UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 						Type: appsv1.RollingUpdateStatefulSetStrategyType,
 						RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
@@ -155,11 +155,11 @@ func TestIsStatefulSetRolledOut(t *testing.T) {
 					Generation: 42,
 				},
 				Spec: appsv1.StatefulSetSpec{
-					Replicas: pointer.Int32Ptr(3),
+					Replicas: pointer.Ptr(int32(3)),
 					UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 						Type: appsv1.RollingUpdateStatefulSetStrategyType,
 						RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
-							Partition: pointer.Int32Ptr(1),
+							Partition: pointer.Ptr(int32(1)),
 						},
 					},
 				},

@@ -7,12 +7,12 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/pointer"
 )
 
 func (scc *Controller) updateStatus(ctx context.Context, currentSC *scyllav1.ScyllaCluster, status *scyllav1.ScyllaClusterStatus) error {
@@ -73,8 +73,8 @@ func (scc *Controller) calculateRackStatus(sc *scyllav1.ScyllaCluster, rackName 
 
 	status.Members = *sts.Spec.Replicas
 	status.ReadyMembers = sts.Status.ReadyReplicas
-	status.UpdatedMembers = pointer.Int32Ptr(sts.Status.UpdatedReplicas)
-	status.Stale = pointer.BoolPtr(sts.Status.ObservedGeneration < sts.Generation)
+	status.UpdatedMembers = pointer.Ptr(sts.Status.UpdatedReplicas)
+	status.Stale = pointer.Ptr(sts.Status.ObservedGeneration < sts.Generation)
 
 	// Update Rack Version
 	if status.Members == 0 {
@@ -123,7 +123,7 @@ func (scc *Controller) calculateRackStatus(sc *scyllav1.ScyllaCluster, rackName 
 // If a particular object can be missing, it should be reflected in the value itself, like "Unknown" or "".
 func (scc *Controller) calculateStatus(sc *scyllav1.ScyllaCluster, statefulSetMap map[string]*appsv1.StatefulSet, serviceMap map[string]*corev1.Service) *scyllav1.ScyllaClusterStatus {
 	status := sc.Status.DeepCopy()
-	status.ObservedGeneration = pointer.Int64Ptr(sc.Generation)
+	status.ObservedGeneration = pointer.Ptr(sc.Generation)
 
 	// Clear the previous rack status.
 	status.Racks = map[string]scyllav1.RackStatus{}

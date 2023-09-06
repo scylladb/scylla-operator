@@ -13,6 +13,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/pkg/util/parallel"
@@ -28,7 +29,6 @@ import (
 	setsutil "k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/pointer"
 )
 
 type UpgradePhase string
@@ -701,8 +701,8 @@ func (scc *Controller) syncStatefulSets(
 				// It also forces our informers to be up-to-date.
 				required.ResourceVersion = existing.ResourceVersion
 				// Avoid scaling.
-				required.Spec.Replicas = pointer.Int32Ptr(*existing.Spec.Replicas)
-				required.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(*existing.Spec.Replicas)
+				required.Spec.Replicas = pointer.Ptr(*existing.Spec.Replicas)
+				required.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Ptr(*existing.Spec.Replicas)
 				// Use apply to also update the spec.template
 				updatedSts, changed, err := resourceapply.ApplyStatefulSet(ctx, scc.kubeClient.AppsV1(), scc.statefulSetLister, scc.eventRecorder, required, resourceapply.ApplyOptions{})
 				if err != nil {
@@ -808,7 +808,7 @@ func (scc *Controller) syncStatefulSets(
 
 					}
 
-					freshSts.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(nextPartition)
+					freshSts.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Ptr(nextPartition)
 					_, err = scc.kubeClient.AppsV1().StatefulSets(freshSts.Namespace).Update(ctx, freshSts, metav1.UpdateOptions{})
 					if err != nil {
 						return err

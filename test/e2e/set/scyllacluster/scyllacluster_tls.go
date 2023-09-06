@@ -18,7 +18,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/kubecrypto"
-	opointer "github.com/scylladb/scylla-operator/pkg/pointer"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/scheme"
@@ -30,7 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	"k8s.io/utils/pointer"
 )
 
 var _ = g.Describe("ScyllaCluster", func() {
@@ -109,7 +108,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 				// TODO: Use generated Apply method when our clients have it.
 				sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(ctx, sc.Name, types.ApplyPatchType, scData, metav1.PatchOptions{
 					FieldManager: f.FieldManager(),
-					Force:        pointer.Bool(true),
+					Force:        pointer.Ptr(true),
 				})
 				o.Expect(err).NotTo(o.HaveOccurred())
 				o.Expect(sc.Spec.Datacenter.Racks[0].Members).To(o.BeEquivalentTo(tc.replicas))
@@ -130,16 +129,16 @@ var _ = g.Describe("ScyllaCluster", func() {
 				clientCASecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-client-ca", sc.Name), metav1.GetOptions{})
 				o.Expect(err).NotTo(o.HaveOccurred())
 				clientCACerts, _, _, _ := verification.VerifyAndParseTLSCert(clientCASecret, verification.TLSCertOptions{
-					IsCA:     pointer.Bool(true),
-					KeyUsage: opointer.KeyUsage(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign),
+					IsCA:     pointer.Ptr(true),
+					KeyUsage: pointer.Ptr(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign),
 				})
 				o.Expect(clientCACerts).To(o.HaveLen(1))
 
 				servingCASecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-serving-ca", sc.Name), metav1.GetOptions{})
 				o.Expect(err).NotTo(o.HaveOccurred())
 				_, _, _, _ = verification.VerifyAndParseTLSCert(servingCASecret, verification.TLSCertOptions{
-					IsCA:     pointer.Bool(true),
-					KeyUsage: opointer.KeyUsage(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign),
+					IsCA:     pointer.Ptr(true),
+					KeyUsage: pointer.Ptr(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign),
 				})
 
 				servingCABundleConfigMap, err := f.KubeClient().CoreV1().ConfigMaps(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-serving-ca", sc.Name), metav1.GetOptions{})
@@ -150,15 +149,15 @@ var _ = g.Describe("ScyllaCluster", func() {
 				servingCertSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-serving-certs", sc.Name), metav1.GetOptions{})
 				o.Expect(err).NotTo(o.HaveOccurred())
 				servingCerts, _, _, _ := verification.VerifyAndParseTLSCert(servingCertSecret, verification.TLSCertOptions{
-					IsCA:     pointer.Bool(false),
-					KeyUsage: opointer.KeyUsage(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
+					IsCA:     pointer.Ptr(false),
+					KeyUsage: pointer.Ptr(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
 				})
 
 				adminClientSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-user-admin", sc.Name), metav1.GetOptions{})
 				o.Expect(err).NotTo(o.HaveOccurred())
 				_, adminClientCertBytes, _, adminClientKeyBytes := verification.VerifyAndParseTLSCert(adminClientSecret, verification.TLSCertOptions{
-					IsCA:     pointer.Bool(false),
-					KeyUsage: opointer.KeyUsage(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
+					IsCA:     pointer.Ptr(false),
+					KeyUsage: pointer.Ptr(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
 				})
 
 				adminClientConnectionConfigsSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-cql-connection-configs-admin", sc.Name), metav1.GetOptions{})

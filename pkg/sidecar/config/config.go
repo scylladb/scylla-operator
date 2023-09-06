@@ -18,6 +18,7 @@ import (
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/semver"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/util/cpuset"
@@ -25,7 +26,6 @@ import (
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/pointer"
 	"sigs.k8s.io/yaml"
 )
 
@@ -197,7 +197,7 @@ func convertScyllaArguments(scyllaArguments string) map[string]string {
 func appendScyllaArguments(ctx context.Context, s *ScyllaConfig, scyllaArgs string, scyllaFinalArgs map[string]*string) {
 	for argName, argValue := range convertScyllaArguments(scyllaArgs) {
 		if existing := scyllaFinalArgs[argName]; existing == nil {
-			scyllaFinalArgs[argName] = pointer.StringPtr(strings.TrimSpace(argValue))
+			scyllaFinalArgs[argName] = pointer.Ptr(strings.TrimSpace(argValue))
 		} else {
 			klog.Infof("ScyllaArgs: argument '%s' is ignored, it is already in the list", argName)
 		}
@@ -233,16 +233,16 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		"listen-address":        &listenAddress,
 		"broadcast-address":     &m.StaticIP,
 		"broadcast-rpc-address": &m.StaticIP,
-		"seeds":                 pointer.String(strings.Join(seeds, ",")),
+		"seeds":                 pointer.Ptr(strings.Join(seeds, ",")),
 		"developer-mode":        &devMode,
 		"overprovisioned":       &overprovisioned,
-		"smp":                   pointer.StringPtr(strconv.Itoa(s.cpuCount)),
+		"smp":                   pointer.Ptr(strconv.Itoa(s.cpuCount)),
 		"prometheus-address":    &prometheusAddress,
 	}
 	if cluster.Spec.Alternator.Enabled() {
-		args["alternator-port"] = pointer.StringPtr(strconv.Itoa(int(cluster.Spec.Alternator.Port)))
+		args["alternator-port"] = pointer.Ptr(strconv.Itoa(int(cluster.Spec.Alternator.Port)))
 		if cluster.Spec.Alternator.WriteIsolation != "" {
-			args["alternator-write-isolation"] = pointer.StringPtr(cluster.Spec.Alternator.WriteIsolation)
+			args["alternator-write-isolation"] = pointer.Ptr(cluster.Spec.Alternator.WriteIsolation)
 		}
 	}
 	// If node is being replaced
@@ -250,14 +250,14 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		if len(addr) == 0 {
 			klog.Warningf("Service %q have unexpectedly empty label %q, skipping replace", m.Name, naming.ReplaceLabel)
 		} else {
-			args["replace-address-first-boot"] = pointer.StringPtr(addr)
+			args["replace-address-first-boot"] = pointer.Ptr(addr)
 		}
 	}
 	if hostID, ok := m.ServiceLabels[naming.ReplacingNodeHostIDLabel]; ok {
 		if len(hostID) == 0 {
 			klog.Warningf("Service %q have unexpectedly empty label %q, skipping replace", m.Name, naming.ReplacingNodeHostIDLabel)
 		} else {
-			args["replace-node-first-boot"] = pointer.String(hostID)
+			args["replace-node-first-boot"] = pointer.Ptr(hostID)
 		}
 	}
 
@@ -293,7 +293,7 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		klog.InfoS("Scylla IO properties are already set, skipping io tuning")
 		ioSetup := "0"
 		args["io-setup"] = &ioSetup
-		args["io-properties-file"] = pointer.StringPtr(scyllaIOPropertiesPath)
+		args["io-properties-file"] = pointer.Ptr(scyllaIOPropertiesPath)
 	}
 
 	var argsList []string

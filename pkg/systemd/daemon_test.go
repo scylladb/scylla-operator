@@ -30,7 +30,7 @@ func TestSystemdControl_ErrNotExist(t *testing.T) {
 
 	// FIXME: We should either use fake systemd, or somehow enable it.
 	//        Ref: https://github.com/scylladb/scylla-operator/issues/1379
-	_, err = sc.conn.GetServicePropertyContext(ctx, "systemd1", "ActiveState")
+	_, err = sc.conn.GetAllPropertiesContext(ctx, "systemd1.service")
 	if err != nil {
 		var godbusErr godbus.Error
 		if errors.As(err, &godbusErr) && godbusErr.Name == "org.freedesktop.DBus.Error.ServiceUnknown" {

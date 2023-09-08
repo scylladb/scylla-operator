@@ -281,7 +281,10 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 		return fmt.Errorf("can't wait for pod's ContainerID: %w", err)
 	}
 
-	member := identity.NewMemberFromObjects(service, pod)
+	member, err := identity.NewMemberFromObjects(service, pod)
+	if err != nil {
+		return fmt.Errorf("can't create new member from objects: %w", err)
+	}
 
 	labelSelector := labels.Set{
 		naming.OwnerUIDLabel:      string(pod.UID),

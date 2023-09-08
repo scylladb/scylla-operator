@@ -65,14 +65,18 @@ func ContainsItem[T comparable](slice []T, item T) bool {
 	return Contains(slice, IdentityFunc(item))
 }
 
-func Find[T comparable](slice []T, filterFunc func(T) bool) (T, bool) {
+func Find[T any](slice []T, filterFunc func(T) bool) (T, int, bool) {
 	for i := range slice {
 		if filterFunc(slice[i]) {
-			return slice[i], true
+			return slice[i], i, true
 		}
 	}
 
-	return *new(T), false
+	return *new(T), 0, false
+}
+
+func FindItem[T comparable](slice []T, item T) (T, int, bool) {
+	return Find(slice, IdentityFunc(item))
 }
 
 func Flatten[T any](xs [][]T) []T {

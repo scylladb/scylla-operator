@@ -51,13 +51,14 @@ func TestMember_GetSeeds(t *testing.T) {
 	thirdPod, thirdService := createPodAndSvc("pod-2", "3.3.3.3", now.Add(2*time.Second))
 
 	ts := []struct {
-		name          string
-		memberName    string
-		memberIP      string
-		objects       []runtime.Object
-		externalSeeds []string
-		expectSeeds   []string
-		expectError   error
+		name              string
+		memberName        string
+		memberIP          string
+		memberRackOrdinal int
+		objects           []runtime.Object
+		externalSeeds     []string
+		expectSeeds       []string
+		expectError       error
 	}{
 		{
 			name:        "error when no pods are found",
@@ -118,6 +119,32 @@ func TestMember_GetSeeds(t *testing.T) {
 			externalSeeds: []string{"10.0.1.1", "10.0.1.2"},
 			expectSeeds:   []string{"10.0.1.1", "10.0.1.2", secondService.Spec.ClusterIP},
 		},
+		{
+			name:              "error when node is not first in rack, but there are no other pods",
+			memberName:        secondPod.Name,
+			memberIP:          secondService.Spec.ClusterIP,
+			memberRackOrdinal: 0,
+			objects:           []runtime.Object{secondPod, secondService},
+			expectSeeds:       nil,
+			expectError:       fmt.Errorf("pod is not first in the cluster, but there are no other pods"),
+		},
+		{
+			name:              "error when node is first in rack of ordinal > 0, but there are no other pods",
+			memberName:        firstPod.Name,
+			memberIP:          firstService.Spec.ClusterIP,
+			memberRackOrdinal: 1,
+			objects:           []runtime.Object{firstPod, firstService},
+			expectSeeds:       nil,
+			expectError:       fmt.Errorf("pod is not first in the cluster, but there are no other pods"),
+		},
+		{
+			name:              "bootstrap with other pod when node is first in rack of ordinal > 0 and there are other pods",
+			memberName:        secondPod.Name,
+			memberIP:          secondService.Spec.ClusterIP,
+			memberRackOrdinal: 1,
+			objects:           []runtime.Object{firstPod, firstService, secondPod, secondService},
+			expectSeeds:       []string{firstService.Spec.ClusterIP},
+		},
 	}
 
 	for i := range ts {
@@ -129,10 +156,11 @@ func TestMember_GetSeeds(t *testing.T) {
 			defer cancel()
 
 			member := Member{
-				Cluster:   "my-cluster",
-				Namespace: "namespace",
-				Name:      test.memberName,
-				StaticIP:  test.memberIP,
+				Cluster:     "my-cluster",
+				Namespace:   "namespace",
+				Name:        test.memberName,
+				RackOrdinal: test.memberRackOrdinal,
+				StaticIP:    test.memberIP,
 			}
 
 			fakeClient := fake.NewSimpleClientset(test.objects...)

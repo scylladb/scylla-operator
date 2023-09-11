@@ -60,6 +60,45 @@ kubectl_create -f - <<EOF
     - patch
 EOF
 
+# FIXME: remove the workaround once https://github.com/scylladb/scylla-operator/issues/749 is done
+kubectl_create -n default -f - <<EOF
+  apiVersion: apps/v1
+  kind: DaemonSet
+  metadata:
+    name: sysctl
+  spec:
+    selector:
+      matchLabels:
+        app.kubernetes.io/name: sysctl
+    template:
+      metadata:
+        labels:
+          app.kubernetes.io/name: sysctl
+      spec:
+        containers:
+        - name: sysctl
+          securityContext:
+            privileged: true
+          image: "${SO_IMAGE}"
+          imagePullPolicy: IfNotPresent
+          command:
+          - /usr/bin/bash
+          - -euExo
+          - pipefail
+          - -O
+          - inherit_errexit
+          - -c
+          args:
+          - |
+            sysctl fs.aio-max-nr=0xffffffff
+
+            sleep infinity &
+            wait
+        nodeSelector:
+          scylla.scylladb.com/node-type: scylla
+EOF
+kubectl -n default rollout status daemonset/sysctl
+
 kubectl apply --server-side -f ./pkg/api/scylla/v1alpha1/scylla.scylladb.com_nodeconfigs.yaml
 kubectl wait --for condition=established crd/nodeconfigs.scylla.scylladb.com
 

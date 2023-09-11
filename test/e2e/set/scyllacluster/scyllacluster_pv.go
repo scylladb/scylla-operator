@@ -99,10 +99,12 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 		// ScyllaCluster is going to request a PVC from that StorageClass, and the test is going to request a clone of the original PVC
 		// from the default StorageClass to get any storage. Then the bound PV is rebounded to the original PVC
 		// but with empty NodeAffinity. This allows the test to trigger the orphaned PV cleanup logic.
-		provisionerCtx, provisionerCancel := context.WithCancel(ctx)
+		var wg sync.WaitGroup
+		defer wg.Wait()
+
+		provisionerCtx, provisionerCancel := context.WithCancel(context.Background())
 		defer provisionerCancel()
 
-		var wg sync.WaitGroup
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -252,7 +254,6 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 			}
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}()
-		defer wg.Wait()
 
 		framework.By("Creating a ScyllaCluster")
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})

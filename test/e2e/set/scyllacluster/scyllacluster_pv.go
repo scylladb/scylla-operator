@@ -344,7 +344,7 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 		oldHosts := hosts
 		hosts = getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(hosts).To(o.HaveLen(len(oldHosts)))
-		o.Expect(hosts).NotTo(o.ConsistOf(oldHosts))
+		o.Expect(hosts).To(o.ConsistOf(oldHosts))
 		err = di.SetClientEndpoints(hosts)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		verifyCQLData(ctx, di)

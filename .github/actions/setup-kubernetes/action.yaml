@@ -77,13 +77,14 @@ runs:
       set -euExo pipefail
       shopt -s inherit_errexit
       
-      export KUBERNETES_PKG_VERSION=${{ inputs.kubernetesVersion }}-00
+      export KUBERNETES_VERSION_SHORT=$( echo ${{ inputs.kubernetesVersion }} | cut -d'.' -f1-2 )
+      export KUBERNETES_PKG_VERSION=${{ inputs.kubernetesVersion }}-1.1
       
       sudo apt-get update
       sudo apt-get install -y --no-install-recommends conntrack socat ebtables
       
-      sudo curl -fsSLo /etc/apt/keyrings/kubernetes-archive-keyring.asc https://packages.cloud.google.com/apt/doc/apt-key.gpg
-      echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.asc] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+      curl -fsSL https://pkgs.k8s.io/core:/stable:/v${KUBERNETES_VERSION_SHORT}/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+      echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v${KUBERNETES_VERSION_SHORT}/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
       sudo apt-get update
       
       # Remove conflicting packages (also removes podman).

@@ -11,6 +11,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	okubecrypto "github.com/scylladb/scylla-operator/pkg/kubecrypto"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -303,7 +304,7 @@ func (smc *Controller) syncGrafana(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		helpers.ToArray(requiredGrafanaSA),
+		slices.ToSlice(requiredGrafanaSA),
 		serviceAccounts,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Delete,
@@ -343,7 +344,7 @@ func (smc *Controller) syncGrafana(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		helpers.ToArray(requiredService),
+		slices.ToSlice(requiredService),
 		services,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.CoreV1().Services(sm.Namespace).Delete,
@@ -354,7 +355,7 @@ func (smc *Controller) syncGrafana(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		helpers.ToArray(requiredDeployment),
+		slices.ToSlice(requiredDeployment),
 		deployments,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.AppsV1().Deployments(sm.Namespace).Delete,
@@ -365,7 +366,7 @@ func (smc *Controller) syncGrafana(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		helpers.FilterOutNil(helpers.ToArray(requiredIngress)),
+		slices.FilterOutNil(slices.ToSlice(requiredIngress)),
 		ingresses,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.NetworkingV1().Ingresses(sm.Namespace).Delete,

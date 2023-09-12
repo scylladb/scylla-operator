@@ -1,11 +1,13 @@
-package helpers
+// Copyright (c) 2023 ScyllaDB
 
-func ToArray[T any](objs ...T) []T {
+package slices
+
+func ToSlice[T any](objs ...T) []T {
 	res := make([]T, 0, len(objs))
 	return append(res, objs...)
 }
 
-func ConvertToArray[To, From any](convert func(From) To, objs ...From) []To {
+func ConvertToSlice[To, From any](convert func(From) To, objs ...From) []To {
 	res := make([]To, 0, len(objs))
 
 	for i := range objs {
@@ -16,7 +18,7 @@ func ConvertToArray[To, From any](convert func(From) To, objs ...From) []To {
 }
 
 func ConvertSlice[To, From any](slice []From, convert func(From) To) []To {
-	return ConvertToArray(convert, slice...)
+	return ConvertToSlice(convert, slice...)
 }
 
 func Filter[T any](array []T, filterFunc func(T) bool) []T {

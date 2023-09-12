@@ -13,6 +13,7 @@ import (
 	"github.com/scylladb/gocqlx/v2"
 	"github.com/scylladb/gocqlx/v2/table"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	utilrand "k8s.io/apimachinery/pkg/util/rand"
 )
@@ -61,7 +62,7 @@ func NewMultiDCDataInserter(dcHosts map[string][]string) (*DataInserter, error) 
 		replicationFactor: replicationFactor,
 	}
 
-	err := di.SetClientEndpoints(helpers.Flatten(helpers.GetMapValues(dcHosts)))
+	err := di.SetClientEndpoints(slices.Flatten(helpers.GetMapValues(dcHosts)))
 	if err != nil {
 		return nil, fmt.Errorf("can't set client endpoints: %w", err)
 	}

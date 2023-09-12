@@ -8,6 +8,7 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
@@ -101,7 +102,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 			}
 		}
 
-		cleanupJobsCreated := helpers.Filter(jobEvents, func(e utils.ObserverEvent[*batchv1.Job]) bool {
+		cleanupJobsCreated := slices.Filter(jobEvents, func(e utils.ObserverEvent[*batchv1.Job]) bool {
 			return e.Action == watch.Added && e.Obj.Labels[naming.NodeJobTypeLabel] == string(naming.JobTypeCleanup)
 		})
 
@@ -142,7 +143,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 		o.Expect(jobEvents).NotTo(o.BeEmpty())
 
-		cleanupJobsCreated = helpers.Filter(jobEvents, func(e utils.ObserverEvent[*batchv1.Job]) bool {
+		cleanupJobsCreated = slices.Filter(jobEvents, func(e utils.ObserverEvent[*batchv1.Job]) bool {
 			return e.Action == watch.Added && e.Obj.Labels[naming.NodeJobTypeLabel] == string(naming.JobTypeCleanup)
 		})
 

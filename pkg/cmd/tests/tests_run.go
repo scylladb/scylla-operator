@@ -20,7 +20,7 @@ import (
 	gomegaformat "github.com/onsi/gomega/format"
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
-	"github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	ginkgotest "github.com/scylladb/scylla-operator/pkg/test/ginkgo"
 	"github.com/scylladb/scylla-operator/pkg/thirdparty/github.com/onsi/ginkgo/v2/exposedinternal/parallel_support"
@@ -358,7 +358,7 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 	commonArgs = append(commonArgs, fmt.Sprintf("--%s=%v", cmdutil.FlagLogLevelKey, o.ParallelLogLevel))
 
 	// Propagate random seed to child processes.
-	if !helpers.Contains(commonArgs, func(arg string) bool {
+	if !slices.Contains(commonArgs, func(arg string) bool {
 		return strings.HasPrefix(arg, fmt.Sprintf("--%s", randomSeedFlagKey))
 	}) {
 		commonArgs = append(commonArgs, fmt.Sprintf("--%s=%v", randomSeedFlagKey, suiteConfig.RandomSeed))

@@ -64,6 +64,7 @@ const (
 	ClusterNameLabel             = "scylla/cluster"
 	DatacenterNameLabel          = "scylla/datacenter"
 	RackNameLabel                = "scylla/rack"
+	RackOrdinalLabel             = "scylla/rack-ordinal"
 	ScyllaVersionLabel           = "scylla/scylla-version"
 	ScyllaServiceTypeLabel       = "scylla-operator.scylladb.com/scylla-service-type"
 	ScyllaIngressTypeLabel       = "scylla-operator.scylladb.com/scylla-ingress-type"

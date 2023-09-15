@@ -486,6 +486,7 @@ func TestStatefulSetForRack(t *testing.T) {
 			"scylla/cluster":               "basic",
 			"scylla/datacenter":            "dc",
 			"scylla/rack":                  "rack",
+			"scylla/rack-ordinal":          "0",
 		}
 	}
 

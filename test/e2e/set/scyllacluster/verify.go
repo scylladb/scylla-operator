@@ -9,6 +9,7 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	cqlclientv1alpha1 "github.com/scylladb/scylla-operator/pkg/scylla/api/cqlclient/v1alpha1"
@@ -264,7 +265,7 @@ func getScyllaHostsAndWaitForFullQuorum(ctx context.Context, client corev1client
 	dcClientMap := make(map[string]corev1client.CoreV1Interface, 1)
 	dcClientMap[sc.Spec.Datacenter.Name] = client
 	hosts := getScyllaHostsByDCAndWaitForFullQuorum(ctx, dcClientMap, []*scyllav1.ScyllaCluster{sc})
-	return helpers.Flatten(helpers.GetMapValues(hosts))
+	return slices.Flatten(helpers.GetMapValues(hosts))
 }
 
 func getScyllaHostsByDCAndWaitForFullQuorum(ctx context.Context, dcClientMap map[string]corev1client.CoreV1Interface, scs []*scyllav1.ScyllaCluster) map[string][]string {

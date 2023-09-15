@@ -1,7 +1,11 @@
 package naming
 
 import (
+	"fmt"
+	"strconv"
+
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -26,12 +30,19 @@ func DatacenterLabels(c *scyllav1.ScyllaCluster) map[string]string {
 
 // RackLabels returns a map of label keys and values
 // for the given Rack.
-func RackLabels(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) map[string]string {
+func RackLabels(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) (map[string]string, error) {
 	recLabels := ScyllaLabels()
 	rackLabels := DatacenterLabels(c)
 	rackLabels[RackNameLabel] = r.Name
+	_, rackOrdinal, ok := slices.Find(c.Spec.Datacenter.Racks, func(rack scyllav1.RackSpec) bool {
+		return rack.Name == r.Name
+	})
+	if !ok {
+		return nil, fmt.Errorf("can't find ordinal of rack %q in ScyllaCluster %q", r.Name, ObjRef(c))
+	}
+	rackLabels[RackOrdinalLabel] = strconv.Itoa(rackOrdinal)
 
-	return mergeLabels(rackLabels, recLabels)
+	return mergeLabels(rackLabels, recLabels), nil
 }
 
 // StatefulSetPodLabel returns a map of labels to uniquely
@@ -43,12 +54,16 @@ func StatefulSetPodLabel(name string) map[string]string {
 }
 
 // RackSelector returns a LabelSelector for the given rack.
-func RackSelector(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) labels.Selector {
+func RackSelector(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) (labels.Selector, error) {
+	rackLabels, err := RackLabels(r, c)
+	if err != nil {
+		return nil, fmt.Errorf("can't get rack labels: %w", err)
+	}
 
-	rackLabelsSet := labels.Set(RackLabels(r, c))
+	rackLabelsSet := labels.Set(rackLabels)
 	sel := labels.SelectorFromSet(rackLabelsSet)
 
-	return sel
+	return sel, nil
 }
 
 func ScyllaLabels() map[string]string {

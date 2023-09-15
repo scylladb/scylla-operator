@@ -1,11 +1,13 @@
-package helpers
+// Copyright (c) 2023 ScyllaDB
 
-func ToArray[T any](objs ...T) []T {
+package slices
+
+func ToSlice[T any](objs ...T) []T {
 	res := make([]T, 0, len(objs))
 	return append(res, objs...)
 }
 
-func ConvertToArray[To, From any](convert func(From) To, objs ...From) []To {
+func ConvertToSlice[To, From any](convert func(From) To, objs ...From) []To {
 	res := make([]To, 0, len(objs))
 
 	for i := range objs {
@@ -16,7 +18,7 @@ func ConvertToArray[To, From any](convert func(From) To, objs ...From) []To {
 }
 
 func ConvertSlice[To, From any](slice []From, convert func(From) To) []To {
-	return ConvertToArray(convert, slice...)
+	return ConvertToSlice(convert, slice...)
 }
 
 func Filter[T any](array []T, filterFunc func(T) bool) []T {
@@ -63,14 +65,18 @@ func ContainsItem[T comparable](slice []T, item T) bool {
 	return Contains(slice, IdentityFunc(item))
 }
 
-func Find[T comparable](slice []T, filterFunc func(T) bool) (T, bool) {
+func Find[T any](slice []T, filterFunc func(T) bool) (T, int, bool) {
 	for i := range slice {
 		if filterFunc(slice[i]) {
-			return slice[i], true
+			return slice[i], i, true
 		}
 	}
 
-	return *new(T), false
+	return *new(T), 0, false
+}
+
+func FindItem[T comparable](slice []T, item T) (T, int, bool) {
+	return Find(slice, IdentityFunc(item))
 }
 
 func Flatten[T any](xs [][]T) []T {

@@ -195,8 +195,11 @@ func servicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 // StatefulSetForRack make a StatefulSet for the rack.
 // existingSts may be nil if it doesn't exist yet.
 func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existingSts *appsv1.StatefulSet, sidecarImage string) (*appsv1.StatefulSet, error) {
-	matchLabels := naming.RackLabels(r, c)
-	rackLabels := naming.RackLabels(r, c)
+	rackLabels, err := naming.RackLabels(r, c)
+	if err != nil {
+		return nil, fmt.Errorf("can't get rack labels: %w", err)
+	}
+	matchLabels := helpers.ShallowCopyMap(rackLabels)
 	rackLabels[naming.ScyllaVersionLabel] = c.Spec.Version
 
 	placement := r.Placement

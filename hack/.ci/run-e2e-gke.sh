@@ -31,10 +31,28 @@ function kubectl_create {
 }
 
 function gather-artifacts {
-  ARTIFACTS_DIR="${ARTIFACTS}" timeout -v 50m ./hack/ci-gather-artifacts.sh
-  # Events are costly to gather, so we'll erase them for now. (e2e namespaces are collected separately)
-  kubectl delete --raw /api/v1/namespaces/default/events || true
-  kubectl delete --raw /api/v1/namespaces/kube-system/events || true
+  kubectl -n e2e run --restart=Never --image="${SO_IMAGE}" --labels='app=must-gather' --command=true must-gather -- bash -euExo pipefail -O inherit_errexit -c "function wait-for-artifacts { touch /tmp/done && until [[ -f '/tmp/exit' ]]; do sleep 1; done } && trap wait-for-artifacts EXIT && mkdir /tmp/artifacts && scylla-operator must-gather --all-resources --loglevel=2 --dest-dir=/tmp/artifacts"
+  kubectl -n e2e wait --for=condition=Ready pod/must-gather
+
+  # Setup artifacts transfer when finished and unblock the must-gather pod when done.
+  (
+    kubectl -n e2e exec pod/must-gather -- bash -euEo pipefail -O inherit_errexit -c "until [[ -f /tmp/done ]]; do sleep 1; done; ls -l /tmp/artifacts"
+    kubectl -n e2e cp --retries=42 must-gather:/tmp/artifacts "${ARTIFACTS}/must-gather"
+    ls -l "${ARTIFACTS}"
+    kubectl -n e2e exec pod/must-gather -- bash -euEo pipefail -O inherit_errexit -c "touch /tmp/exit"
+  ) &
+  must_gather_bg_pid=$!
+
+  kubectl -n e2e logs -f pod/must-gather
+  exit_code=$( kubectl -n e2e get pods/must-gather --output='jsonpath={.status.containerStatuses[0].state.terminated.exitCode}' )
+  kubectl -n e2e delete pod/must-gather --wait=false
+
+  if [[ "${exit_code}" != "0" ]]; then
+    echo "Collecting artifacts using must-gather failed"
+    exit "${exit_code}"
+  fi
+
+  wait "${must_gather_bg_pid}"
 }
 
 function handle-exit {
@@ -136,13 +154,13 @@ kubectl -n e2e wait --for=condition=Ready pod/e2e
   ls -l "${ARTIFACTS}"
   kubectl -n e2e exec pod/e2e -- bash -euEo pipefail -O inherit_errexit -c "touch /tmp/exit"
 ) &
-bg_pid=$!
+e2e_bg_pid=$!
 
 kubectl -n e2e logs -f pod/e2e
 exit_code=$( kubectl -n e2e get pods/e2e --output='jsonpath={.status.containerStatuses[0].state.terminated.exitCode}' )
 kubectl -n e2e delete pod/e2e --wait=false
 
-wait "${bg_pid}" || ( echo "Collecting e2e artifacts failed" && exit 2 )
+wait "${e2e_bg_pid}" || ( echo "Collecting e2e artifacts failed" && exit 2 )
 
 if [[ "${exit_code}" != "0" ]]; then
   echo "E2E tests failed"

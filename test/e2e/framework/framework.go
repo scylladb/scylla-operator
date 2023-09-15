@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/storage/names"
 	"k8s.io/client-go/discovery"
+	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
@@ -320,13 +321,13 @@ func (f *Framework) afterEach() {
 	if len(TestContext.ArtifactsDir) != 0 {
 		By(fmt.Sprintf("Collecting dumps from namespace %q.", f.namespace.Name))
 
-		d := path.Join(TestContext.ArtifactsDir, "e2e-namespaces")
+		d := path.Join(TestContext.ArtifactsDir, "e2e")
 		err := os.Mkdir(d, 0777)
 		if err != nil && !os.IsExist(err) {
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
 
-		err = DumpNamespace(ctx, f.KubeAdminClient().Discovery(), f.DynamicAdminClient(), f.KubeAdminClient().CoreV1(), d, f.Namespace())
+		err = DumpNamespace(ctx, cacheddiscovery.NewMemCacheClient(f.KubeAdminClient().Discovery()), f.DynamicAdminClient(), f.KubeAdminClient().CoreV1(), d, f.Namespace())
 		o.Expect(err).NotTo(o.HaveOccurred())
 	}
 }

@@ -23,6 +23,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
+	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
@@ -73,7 +74,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 				o.Expect(err).NotTo(o.HaveOccurred())
 			}
 
-			err = framework.DumpNamespace(ctx, f.KubeAdminClient().Discovery(), f.DynamicAdminClient(), f.KubeAdminClient().CoreV1(), dir, naming.ScyllaOperatorNodeTuningNamespace)
+			err = framework.DumpNamespace(ctx, cacheddiscovery.NewMemCacheClient(f.KubeAdminClient().Discovery()), f.DynamicAdminClient(), f.KubeAdminClient().CoreV1(), dir, naming.ScyllaOperatorNodeTuningNamespace)
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
 

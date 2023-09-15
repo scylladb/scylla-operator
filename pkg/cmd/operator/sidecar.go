@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/informers"
@@ -229,7 +230,18 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 	if err != nil {
 		return fmt.Errorf("can't wait for service %q: %w", naming.ManualRef(o.Namespace, o.ServiceName), err)
 	}
+
 	service := event.Object.(*corev1.Service)
+	service, err = o.kubeClient.CoreV1().Services(service.Namespace).Patch(
+		ctx,
+		service.Name,
+		types.MergePatchType,
+		[]byte(fmt.Sprintf(`{"metadata": {"annotations": {%q: %q} } }`, naming.NodeInitialized, naming.LabelValueTrue)),
+		metav1.PatchOptions{},
+	)
+	if err != nil {
+		return fmt.Errorf("can't add node initialized annotation in service: %w", err)
+	}
 
 	// Wait for this Pod to have ContainerID set.
 	podFieldSelector := fields.OneTermEqualSelector("metadata.name", o.ServiceName)

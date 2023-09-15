@@ -519,37 +519,110 @@ func (scc *Controller) syncStatefulSets(
 			}
 		}
 
-		// Wait if any decommissioning is in progress.
-		for _, svc := range rackServices {
-			if svc.Labels[naming.DecommissionedLabel] == naming.LabelValueFalse {
-				klog.V(4).InfoS("Waiting for service to be decommissioned")
-				progressingConditions = append(progressingConditions, metav1.Condition{
-					Type:               statefulSetControllerProgressingCondition,
-					Status:             metav1.ConditionTrue,
-					Reason:             "WaitingForRackServiceDecommission",
-					Message:            fmt.Sprintf("Waiting for rack service %q to decommission.", naming.ObjRef(svc)),
-					ObservedGeneration: sc.Generation,
-				})
+		if *req.Spec.Replicas == *sts.Spec.Replicas {
+			// Wait if any decommissioning is in progress.
+			for _, svc := range rackServices {
+				if _, ok := svc.Labels[naming.DecommissionedLabel]; ok {
+					klog.V(4).InfoS("Waiting for service to be decommissioned")
+					progressingConditions = append(progressingConditions, metav1.Condition{
+						Type:               statefulSetControllerProgressingCondition,
+						Status:             metav1.ConditionTrue,
+						Reason:             "WaitingForRackServiceDecommission",
+						Message:            fmt.Sprintf("Waiting for rack service %q to decommission.", naming.ObjRef(svc)),
+						ObservedGeneration: sc.Generation,
+					})
 
-				rackName, ok := sts.Labels[naming.RackNameLabel]
-				if ok && len(rackName) != 0 {
-					rackStatus := status.Racks[rackName]
-					controllerhelpers.SetRackCondition(&rackStatus, scyllav1.RackConditionTypeMemberDecommissioning)
-					status.Racks[rackName] = rackStatus
-				} else {
-					klog.Warningf("Can't set decommissioning condition sts %s/%s because it's missing rack label.", sts.Namespace, sts.Name)
+					return progressingConditions, nil
+				}
+			}
+		}
+
+		// Scale up is required
+		if *req.Spec.Replicas > *sts.Spec.Replicas {
+			// Finish ongoing scale down
+			for _, svc := range rackServices {
+				if decommissionLabel, ok := svc.Labels[naming.DecommissionedLabel]; ok {
+					// Wait if decommission is in progress
+					if decommissionLabel == naming.LabelValueFalse {
+						klog.V(4).InfoS("Waiting for service to be decommissioned")
+						progressingConditions = append(progressingConditions, metav1.Condition{
+							Type:               statefulSetControllerProgressingCondition,
+							Status:             metav1.ConditionTrue,
+							Reason:             "WaitingForRackServiceDecommission",
+							Message:            fmt.Sprintf("Waiting for rack service %q to decommission.", naming.ObjRef(svc)),
+							ObservedGeneration: sc.Generation,
+						})
+
+						return progressingConditions, nil
+					}
+
+					// It's finished, remove last node
+					if decommissionLabel == naming.LabelValueTrue {
+						ord, err := naming.IndexFromName(svc.Name)
+						if err != nil {
+							return progressingConditions, err
+						}
+
+						// Sanity check: only last node is decommissioning
+						if ord != *sts.Spec.Replicas-1 {
+							return progressingConditions, fmt.Errorf("only last member of each rack should be decommissioning, but %d-th member of %s rack found decommissioning while rack had %d members", ord, sts.Labels[naming.RackNameLabel], sts.Spec.Replicas)
+						}
+
+						scale.Spec.Replicas = ord
+					}
+				}
+			}
+		}
+
+		// Scale down is required
+		if *req.Spec.Replicas < *sts.Spec.Replicas {
+			// Stop ongoing scaling up
+			if sts.Status.Replicas < *sts.Spec.Replicas {
+				scale.Spec.Replicas = sts.Status.Replicas
+			} else {
+				// Scale bootstrapped nodes one by one.
+				scale.Spec.Replicas = *sts.Spec.Replicas - 1
+
+				lastSvcName := fmt.Sprintf("%s-%d", sts.Name, scale.Spec.Replicas)
+				lastSvc, ok := rackServices[lastSvcName]
+				if !ok {
+					klog.V(4).InfoS("Missing service", "ScyllaCluster", klog.KObj(sc), "ServiceName", lastSvcName)
+					progressingConditions = append(progressingConditions, metav1.Condition{
+						Type:               statefulSetControllerProgressingCondition,
+						Status:             metav1.ConditionTrue,
+						Reason:             "WaitingForMissingService",
+						Message:            fmt.Sprintf("Statusfulset %q is waiting for service %q to be created", naming.ObjRef(req), lastSvcName),
+						ObservedGeneration: sc.Generation,
+					})
+					// Services are managed in the other loop.
+					// When informers see the new service, will get re-queued.
+					return progressingConditions, nil
 				}
 
-				return progressingConditions, nil
+				if lastSvc.Labels[naming.DecommissionedLabel] != naming.LabelValueTrue {
+					klog.V(4).InfoS("Node decommission required", "ScyllaCluster", klog.KObj(sc), "ServiceName", lastSvcName)
+					progressingConditions = append(progressingConditions, metav1.Condition{
+						Type:               statefulSetControllerProgressingCondition,
+						Status:             metav1.ConditionTrue,
+						Reason:             "WaitingForNodeDecommission",
+						Message:            fmt.Sprintf("Statusfulset %q is waiting node %q to be decommissioned", naming.ObjRef(req), lastSvcName),
+						ObservedGeneration: sc.Generation,
+					})
+					// Services are managed in the other loop.
+					// When informers see the new service, will get re-queued.
+					return progressingConditions, nil
+				}
 			}
+		}
 
-			requiredAnnotationsBeforeScaling := []string{
-				// We need to ensure token ring annotation is noticed by the cleanup logic before we scale the rack.
-				// Otherwise, new node could start joining, changing the ring hash and causing cleanup to be missed.
-				naming.LastCleanedUpTokenRingHashAnnotation,
-			}
+		requiredAnnotationsBeforeScaling := []string{
+			// We need to ensure token ring annotation is noticed by the cleanup logic before we scale the rack.
+			// Otherwise, new node could start joining, changing the ring hash and causing cleanup to be missed.
+			naming.LastCleanedUpTokenRingHashAnnotation,
+		}
 
-			for _, requiredAnnotation := range requiredAnnotationsBeforeScaling {
+		for _, requiredAnnotation := range requiredAnnotationsBeforeScaling {
+			for _, svc := range rackServices {
 				ord, err := naming.IndexFromName(svc.Name)
 				if err != nil {
 					return nil, fmt.Errorf("can't determine ordinal from Service name %q: %w", svc.Name, err)
@@ -565,47 +638,10 @@ func (scc *Controller) syncStatefulSets(
 							Message:            fmt.Sprintf("Statusfulset %q is waiting for Service %q to have required annotation %q before scaling", naming.ObjRef(req), naming.ObjRef(svc), requiredAnnotation),
 							ObservedGeneration: sc.Generation,
 						})
+
+						return progressingConditions, nil
 					}
 				}
-			}
-		}
-
-		if scale.Spec.Replicas == *sts.Spec.Replicas {
-			continue
-		}
-
-		if scale.Spec.Replicas < *sts.Spec.Replicas {
-			// Make sure we always scale down by 1 member.
-			scale.Spec.Replicas = *sts.Spec.Replicas - 1
-
-			lastSvcName := fmt.Sprintf("%s-%d", sts.Name, *sts.Spec.Replicas-1)
-			lastSvc, ok := rackServices[lastSvcName]
-			if !ok {
-				klog.V(4).InfoS("Missing service", "ScyllaCluster", klog.KObj(sc), "ServiceName", lastSvcName)
-				progressingConditions = append(progressingConditions, metav1.Condition{
-					Type:               statefulSetControllerProgressingCondition,
-					Status:             metav1.ConditionTrue,
-					Reason:             "WaitingForMissingService",
-					Message:            fmt.Sprintf("Statusfulset %q is waiting for service %q to be created", naming.ObjRef(req), lastSvcName),
-					ObservedGeneration: sc.Generation,
-				})
-				// Services are managed in the other loop.
-				// When informers see the new service, will get re-queued.
-				return progressingConditions, nil
-			}
-
-			if len(lastSvc.Labels[naming.DecommissionedLabel]) == 0 {
-				lastSvcCopy := lastSvc.DeepCopy()
-				// Record the intent to decommission the member.
-				// TODO: Move this into syncServices so it reconciles properly. This is edge triggered
-				//  and nothing will reconcile the label if something goes wrong or the flow changes.
-				lastSvcCopy.Labels[naming.DecommissionedLabel] = naming.LabelValueFalse
-				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, lastSvcCopy, "update", sc.Generation)
-				_, err := scc.kubeClient.CoreV1().Services(lastSvcCopy.Namespace).Update(ctx, lastSvcCopy, metav1.UpdateOptions{})
-				if err != nil {
-					return progressingConditions, err
-				}
-				return progressingConditions, nil
 			}
 		}
 

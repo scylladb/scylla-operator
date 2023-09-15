@@ -611,3 +611,38 @@ func PodIsRunning(pod *corev1.Pod) (bool, error) {
 	}
 	return false, nil
 }
+
+func NodeIndexToHostID(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, rack scyllav1.RackSpec, idx int) (string, error) {
+	svcName := naming.MemberServiceName(rack, sc, idx)
+
+	s, err := client.Services(sc.Namespace).Get(ctx, svcName, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	hostID := s.Annotations[naming.HostIDAnnotation]
+	if len(hostID) == 0 {
+		return "", fmt.Errorf("missing host id in annotation")
+	}
+
+	return hostID, nil
+}
+
+func NodeIndexToIP(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, rack scyllav1.RackSpec, idx int) (string, error) {
+	svcName := naming.MemberServiceName(rack, sc, idx)
+
+	s, err := client.Services(sc.Namespace).Get(ctx, svcName, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	if s.Spec.Type != corev1.ServiceTypeClusterIP {
+		return "", fmt.Errorf("service %s/%s is of type %q instead of %q", s.Namespace, s.Name, s.Spec.Type, corev1.ServiceTypeClusterIP)
+	}
+
+	if s.Spec.ClusterIP == corev1.ClusterIPNone {
+		return "", fmt.Errorf("service %s/%s doesn't have a ClusterIP", s.Namespace, s.Name)
+	}
+
+	return s.Spec.ClusterIP, nil
+}

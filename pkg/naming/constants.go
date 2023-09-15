@@ -43,6 +43,9 @@ const (
 
 	// CleanupJobTokenRingHashAnnotation reflects which version of token ring cleanup Job is cleaning.
 	CleanupJobTokenRingHashAnnotation = "internal.scylla-operator.scylladb.com/cleanup-token-ring-hash"
+
+	// NodeInitialized means given node was started.
+	NodeInitialized = "internal.scylla-operator.scylladb.com/node-initialized"
 )
 
 type ScyllaServiceType string

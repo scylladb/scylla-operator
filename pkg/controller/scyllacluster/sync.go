@@ -199,6 +199,12 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		return scc.updateStatus(ctx, sc, status)
 	}
 
+	err = runPreRolloutChecks(sc, scc.eventRecorder)
+	if err != nil {
+		statusUpdateErr := scc.updateStatus(ctx, sc, status)
+		return utilerrors.NewAggregate([]error{statusUpdateErr, fmt.Errorf("ScyllaCluster %q did not pass pre-rollout check: %w", naming.ObjRef(sc), err)})
+	}
+
 	var errs []error
 
 	err = controllerhelpers.RunSync(

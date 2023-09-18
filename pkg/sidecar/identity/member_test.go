@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,6 +30,7 @@ func TestMember_GetSeeds(t *testing.T) {
 					"app":                          "scylla",
 					"app.kubernetes.io/name":       "scylla",
 					"app.kubernetes.io/managed-by": "scylla-operator",
+					"scylla/rack-ordinal":          "0",
 				},
 				CreationTimestamp: metav1.NewTime(creationTimestamp),
 			},
@@ -51,99 +53,287 @@ func TestMember_GetSeeds(t *testing.T) {
 	thirdPod, thirdService := createPodAndSvc("pod-2", "3.3.3.3", now.Add(2*time.Second))
 
 	ts := []struct {
-		name              string
-		memberName        string
-		memberIP          string
-		memberRackOrdinal int
-		objects           []runtime.Object
-		externalSeeds     []string
-		expectSeeds       []string
-		expectError       error
+		name                       string
+		memberService              *corev1.Service
+		memberPod                  *corev1.Pod
+		memberClientsBroadcastType scyllav1.BroadcastAddressType
+		memberNodesBroadcastType   scyllav1.BroadcastAddressType
+		externalSeeds              []string
+		objects                    []runtime.Object
+		expectSeeds                []string
+		expectError                error
 	}{
 		{
-			name:        "error when no pods are found",
-			memberName:  firstPod.Name,
-			memberIP:    firstService.Spec.ClusterIP,
-			objects:     []runtime.Object{},
-			expectError: fmt.Errorf("internal error: can't find any pod for this cluster, including itself"),
+			name:                       "error when no pods are found",
+			memberPod:                  firstPod,
+			memberService:              firstService,
+			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			objects:                    []runtime.Object{},
+			expectError:                fmt.Errorf("internal error: can't find any pod for this cluster, including itself"),
 		},
 		{
-			name:        "bootstraps with itself when cluster is empty",
-			memberName:  firstPod.Name,
-			memberIP:    firstService.Spec.ClusterIP,
-			objects:     []runtime.Object{firstPod, firstService},
-			expectSeeds: []string{firstService.Spec.ClusterIP},
+			name:                       "bootstrap with external seeds only when cluster is empty and external seeds are provided",
+			memberPod:                  firstPod,
+			memberService:              firstService,
+			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			objects:                    []runtime.Object{firstPod, firstService},
+			externalSeeds:              []string{"10.0.1.1", "10.0.1.2"},
+			expectSeeds:                []string{"10.0.1.1", "10.0.1.2"},
 		},
 		{
-			name:        "bootstrap with first created UN node",
-			memberName:  firstPod.Name,
-			memberIP:    firstService.Spec.ClusterIP,
-			objects:     []runtime.Object{firstPod, firstService, markPodReady(secondPod), secondService, markPodReady(thirdPod), thirdService},
-			expectSeeds: []string{secondService.Spec.ClusterIP},
+			name:                       "bootstrap with external seeds and first created UN node when external seeds are provided",
+			memberPod:                  firstPod,
+			memberService:              firstService,
+			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			objects:                    []runtime.Object{firstPod, firstService, markPodReady(secondPod), secondService, markPodReady(thirdPod), thirdService},
+			externalSeeds:              []string{"10.0.1.1", "10.0.1.2"},
+			expectSeeds:                []string{"10.0.1.1", "10.0.1.2", secondService.Spec.ClusterIP},
 		},
 		{
-			name:        "bootstrap only with UN node",
-			memberName:  firstPod.Name,
-			memberIP:    firstService.Spec.ClusterIP,
-			objects:     []runtime.Object{firstPod, firstService, secondPod, secondService, markPodReady(thirdPod), thirdService},
-			expectSeeds: []string{thirdService.Spec.ClusterIP},
+			name:                       "bootstrap with external seeds and first created Pod when all Pods from DC are down and external seeds are provided",
+			memberPod:                  firstPod,
+			memberService:              firstService,
+			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			objects:                    []runtime.Object{firstPod, firstService, secondPod, secondService, thirdPod, thirdService},
+			externalSeeds:              []string{"10.0.1.1", "10.0.1.2"},
+			expectSeeds:                []string{"10.0.1.1", "10.0.1.2", secondService.Spec.ClusterIP},
 		},
 		{
-			name:        "bootstrap with first created Pod when all are down",
-			memberName:  firstPod.Name,
-			memberIP:    firstService.Spec.ClusterIP,
-			objects:     []runtime.Object{firstPod, firstService, secondPod, secondService, thirdPod, thirdService},
-			expectSeeds: []string{secondService.Spec.ClusterIP},
+			name:                       "bootstraps with itself using node-to-node identifier of ClusterIP type when cluster is empty",
+			memberPod:                  firstPod,
+			memberService:              firstService,
+			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			objects:                    []runtime.Object{firstPod, firstService},
+			expectSeeds:                []string{firstService.Spec.ClusterIP},
 		},
 		{
-			name:          "bootstrap with external seeds only when cluster is empty and external seeds are provided",
-			memberName:    firstPod.Name,
-			memberIP:      firstService.Spec.ClusterIP,
-			objects:       []runtime.Object{firstPod, firstService},
-			externalSeeds: []string{"10.0.1.1", "10.0.1.2"},
-			expectSeeds:   []string{"10.0.1.1", "10.0.1.2"},
+			name:                       "bootstraps with itself using node-to-node identifier of ClusterIP type when cluster is empty",
+			memberPod:                  firstPod,
+			memberService:              firstService,
+			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			objects:                    []runtime.Object{firstPod, firstService},
+			expectSeeds:                []string{firstService.Spec.ClusterIP},
 		},
 		{
-			name:          "bootstrap with external seeds and first created UN node when external seeds are provided",
-			memberName:    firstPod.Name,
-			memberIP:      firstService.Spec.ClusterIP,
-			objects:       []runtime.Object{firstPod, firstService, markPodReady(secondPod), secondService, markPodReady(thirdPod), thirdService},
-			externalSeeds: []string{"10.0.1.1", "10.0.1.2"},
-			expectSeeds:   []string{"10.0.1.1", "10.0.1.2", secondService.Spec.ClusterIP},
+			name: "bootstraps with itself using node-to-node identifier of PodIP type when cluster is empty",
+			memberPod: func() *corev1.Pod {
+				pod := firstPod.DeepCopy()
+				pod.Status.PodIP = "1.2.3.4"
+				return pod
+			}(),
+			memberService:              firstService,
+			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypePodIP,
+			objects:                    []runtime.Object{firstPod, firstService},
+			expectSeeds:                []string{"1.2.3.4"},
 		},
 		{
-			name:          "bootstrap with external seeds and first created Pod when all Pods from DC are down and external seeds are provided",
-			memberName:    firstPod.Name,
-			memberIP:      firstService.Spec.ClusterIP,
-			objects:       []runtime.Object{firstPod, firstService, secondPod, secondService, thirdPod, thirdService},
-			externalSeeds: []string{"10.0.1.1", "10.0.1.2"},
-			expectSeeds:   []string{"10.0.1.1", "10.0.1.2", secondService.Spec.ClusterIP},
+			name:      "bootstraps with itself using node-to-node identifier of LoadBalancer External IP type when cluster is empty",
+			memberPod: firstPod,
+			memberService: func() *corev1.Service {
+				svc := firstService.DeepCopy()
+				svc.Spec.Type = corev1.ServiceTypeLoadBalancer
+				svc.Status.LoadBalancer = corev1.LoadBalancerStatus{
+					Ingress: []corev1.LoadBalancerIngress{
+						{
+							IP: "4.3.2.1",
+						},
+					},
+				}
+				return svc
+			}(),
+			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
+			objects:                    []runtime.Object{firstPod, firstService},
+			expectSeeds:                []string{"4.3.2.1"},
 		},
 		{
-			name:              "error when node is not first in rack, but there are no other pods",
-			memberName:        secondPod.Name,
-			memberIP:          secondService.Spec.ClusterIP,
-			memberRackOrdinal: 0,
-			objects:           []runtime.Object{secondPod, secondService},
-			expectSeeds:       nil,
-			expectError:       fmt.Errorf("pod is not first in the cluster, but there are no other pods"),
+			name:      "bootstraps with itself using node-to-node identifier of LoadBalancer hostname when cluster is empty",
+			memberPod: firstPod,
+			memberService: func() *corev1.Service {
+				svc := firstService.DeepCopy()
+				svc.Spec.Type = corev1.ServiceTypeLoadBalancer
+				svc.Status.LoadBalancer = corev1.LoadBalancerStatus{
+					Ingress: []corev1.LoadBalancerIngress{
+						{
+							Hostname: "node-1-hostname.scylladb.com",
+						},
+					},
+				}
+				return svc
+			}(),
+			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
+			objects:                    []runtime.Object{firstPod, firstService},
+			expectSeeds:                []string{"node-1-hostname.scylladb.com"},
 		},
 		{
-			name:              "error when node is first in rack of ordinal > 0, but there are no other pods",
-			memberName:        firstPod.Name,
-			memberIP:          firstService.Spec.ClusterIP,
-			memberRackOrdinal: 1,
-			objects:           []runtime.Object{firstPod, firstService},
-			expectSeeds:       nil,
-			expectError:       fmt.Errorf("pod is not first in the cluster, but there are no other pods"),
+			name:                       "bootstrap with first created UN node",
+			memberPod:                  firstPod,
+			memberService:              firstService,
+			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			objects:                    []runtime.Object{firstPod, firstService, markPodReady(secondPod), secondService, markPodReady(thirdPod), thirdService},
+			expectSeeds:                []string{secondService.Spec.ClusterIP},
 		},
 		{
-			name:              "bootstrap with other pod when node is first in rack of ordinal > 0 and there are other pods",
-			memberName:        secondPod.Name,
-			memberIP:          secondService.Spec.ClusterIP,
-			memberRackOrdinal: 1,
-			objects:           []runtime.Object{firstPod, firstService, secondPod, secondService},
-			expectSeeds:       []string{firstService.Spec.ClusterIP},
+			name:                       "bootstrap only with UN node",
+			memberPod:                  firstPod,
+			memberService:              firstService,
+			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			objects:                    []runtime.Object{firstPod, firstService, secondPod, secondService, markPodReady(thirdPod), thirdService},
+			expectSeeds:                []string{thirdService.Spec.ClusterIP},
+		},
+		{
+			name:                       "bootstrap with first created Pod when all are down",
+			memberPod:                  firstPod,
+			memberService:              firstService,
+			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			objects:                    []runtime.Object{firstPod, firstService, secondPod, secondService, thirdPod, thirdService},
+			expectSeeds:                []string{secondService.Spec.ClusterIP},
+		},
+		{
+			name:                       "use PodIP from status when node broadcast address type is PodIP",
+			memberPod:                  firstPod,
+			memberService:              firstService,
+			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypePodIP,
+			objects: []runtime.Object{
+				firstPod,
+				firstService,
+				func() runtime.Object {
+					pod := secondPod.DeepCopy()
+					pod.Status.PodIP = "1.2.3.4"
+					pod = markPodReady(pod)
+					return pod
+				}(),
+				func() runtime.Object {
+					svc := secondService.DeepCopy()
+					svc.Spec.ClusterIP = corev1.ClusterIPNone
+					return svc
+				}(),
+				thirdPod,
+				thirdService,
+			},
+			expectSeeds: []string{"1.2.3.4"},
+		},
+		{
+			name:                       "use ClusterIP from Service when node broadcast address type is ClusterIP",
+			memberPod:                  firstPod,
+			memberService:              firstService,
+			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			objects: []runtime.Object{
+				firstPod,
+				firstService,
+				secondPod,
+				func() runtime.Object {
+					svc := secondService.DeepCopy()
+					svc.Spec.ClusterIP = "1.2.3.4"
+					return svc
+				}(),
+				thirdPod,
+				thirdService,
+			},
+			expectSeeds: []string{"1.2.3.4"},
+		},
+		{
+			name:                       "use preferred IP address from first Service ingress status when node broadcast address type is LoadBalancer Ingress",
+			memberPod:                  firstPod,
+			memberService:              firstService,
+			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
+			objects: []runtime.Object{
+				firstPod,
+				firstService,
+				secondPod,
+				func() runtime.Object {
+					svc := secondService.DeepCopy()
+					svc.Status.LoadBalancer = corev1.LoadBalancerStatus{
+						Ingress: []corev1.LoadBalancerIngress{
+							{
+								IP:       "1.2.3.4",
+								Hostname: "second.service.scylladb.com",
+							},
+						},
+					}
+					return svc
+				}(),
+				thirdPod,
+				thirdService,
+			},
+			expectSeeds: []string{"1.2.3.4"},
+		},
+		{
+			name:                       "use hostname from first Service ingress status when node broadcast address type is LoadBalancer Ingress and IP is not available",
+			memberPod:                  firstPod,
+			memberService:              firstService,
+			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
+			objects: []runtime.Object{
+				firstPod,
+				firstService,
+				secondPod,
+				func() runtime.Object {
+					svc := secondService.DeepCopy()
+					svc.Status.LoadBalancer = corev1.LoadBalancerStatus{
+						Ingress: []corev1.LoadBalancerIngress{
+							{
+								Hostname: "second.service.scylladb.com",
+							},
+						},
+					}
+					return svc
+				}(),
+				thirdPod,
+				thirdService,
+			},
+			expectSeeds: []string{"second.service.scylladb.com"},
+		},
+		{
+			name:                       "error when node is not first in rack, but there are no other pods",
+			memberPod:                  secondPod,
+			memberService:              secondService,
+			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			objects:                    []runtime.Object{secondPod, secondService},
+			expectSeeds:                nil,
+			expectError:                fmt.Errorf("pod is not first in the cluster, but there are no other pods"),
+		},
+		{
+			name: "error when node is first in rack of ordinal > 0, but there are no other pods",
+			memberPod: func() *corev1.Pod {
+				pod := firstPod.DeepCopy()
+				pod.Labels["scylla/rack-ordinal"] = "1"
+				return pod
+			}(),
+			memberService:              firstService,
+			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			objects:                    []runtime.Object{firstPod, firstService},
+			expectSeeds:                nil,
+			expectError:                fmt.Errorf("pod is not first in the cluster, but there are no other pods"),
+		},
+		{
+			name: "bootstrap with other pod when node is first in rack of ordinal > 0 and there are other pods",
+			memberPod: func() *corev1.Pod {
+				pod := secondPod.DeepCopy()
+				pod.Labels["scylla/rack-ordinal"] = "1"
+				return pod
+			}(),
+			memberService:              secondService,
+			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			objects:                    []runtime.Object{firstPod, firstService, secondPod, secondService},
+			expectSeeds:                []string{firstService.Spec.ClusterIP},
 		},
 	}
 
@@ -155,12 +345,9 @@ func TestMember_GetSeeds(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			member := Member{
-				Cluster:     "my-cluster",
-				Namespace:   "namespace",
-				Name:        test.memberName,
-				RackOrdinal: test.memberRackOrdinal,
-				StaticIP:    test.memberIP,
+			member, err := NewMember(test.memberService, test.memberPod, test.memberNodesBroadcastType, test.memberClientsBroadcastType)
+			if err != nil {
+				t.Fatal(err)
 			}
 
 			fakeClient := fake.NewSimpleClientset(test.objects...)

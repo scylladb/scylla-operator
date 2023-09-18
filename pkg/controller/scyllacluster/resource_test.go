@@ -433,11 +433,149 @@ func TestMemberService(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Service properties are taken from ExposeOptions.NodeService",
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := basicSC.DeepCopy()
+				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					NodeService: &scyllav1.NodeServiceTemplate{
+						Annotations: map[string]string{
+							"foo": "bar",
+						},
+						Type:                          scyllav1.NodeServiceTypeLoadBalancer,
+						ExternalTrafficPolicy:         pointer.Ptr(corev1.ServiceExternalTrafficPolicyLocal),
+						AllocateLoadBalancerNodePorts: pointer.Ptr(true),
+						LoadBalancerClass:             pointer.Ptr("my-lb-class"),
+						InternalTrafficPolicy:         pointer.Ptr(corev1.ServiceInternalTrafficPolicyCluster),
+					},
+				}
+
+				return sc
+			}(),
+			rackName:   basicRackName,
+			svcName:    basicSVCName,
+			oldService: nil,
+			jobs:       nil,
+			expectedService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   basicSVCName,
+					Labels: basicSVCLabels(),
+					Annotations: map[string]string{
+						"foo": "bar",
+					},
+					OwnerReferences: basicSCOwnerRefs,
+				},
+				Spec: corev1.ServiceSpec{
+					Type:                          corev1.ServiceTypeLoadBalancer,
+					Selector:                      basicSVCSelector,
+					PublishNotReadyAddresses:      true,
+					Ports:                         basicPorts,
+					ExternalTrafficPolicy:         corev1.ServiceExternalTrafficPolicyLocal,
+					AllocateLoadBalancerNodePorts: pointer.Ptr(true),
+					LoadBalancerClass:             pointer.Ptr("my-lb-class"),
+					InternalTrafficPolicy:         pointer.Ptr(corev1.ServiceInternalTrafficPolicyCluster),
+				},
+			},
+		},
+		{
+			name: "headless service type in node service template",
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := basicSC.DeepCopy()
+				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					NodeService: &scyllav1.NodeServiceTemplate{
+						Type: scyllav1.NodeServiceTypeHeadless,
+					},
+				}
+
+				return sc
+			}(),
+			rackName:   basicRackName,
+			svcName:    basicSVCName,
+			oldService: nil,
+			jobs:       nil,
+			expectedService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            basicSVCName,
+					Labels:          basicSVCLabels(),
+					OwnerReferences: basicSCOwnerRefs,
+				},
+				Spec: corev1.ServiceSpec{
+					Type:                     corev1.ServiceTypeClusterIP,
+					Selector:                 basicSVCSelector,
+					PublishNotReadyAddresses: true,
+					Ports:                    basicPorts,
+					ClusterIP:                corev1.ClusterIPNone,
+				},
+			},
+		},
+		{
+			name: "ClusterIP service type in node service template",
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := basicSC.DeepCopy()
+				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					NodeService: &scyllav1.NodeServiceTemplate{
+						Type: scyllav1.NodeServiceTypeClusterIP,
+					},
+				}
+
+				return sc
+			}(),
+			rackName:   basicRackName,
+			svcName:    basicSVCName,
+			oldService: nil,
+			jobs:       nil,
+			expectedService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            basicSVCName,
+					Labels:          basicSVCLabels(),
+					OwnerReferences: basicSCOwnerRefs,
+				},
+				Spec: corev1.ServiceSpec{
+					Type:                     corev1.ServiceTypeClusterIP,
+					Selector:                 basicSVCSelector,
+					PublishNotReadyAddresses: true,
+					Ports:                    basicPorts,
+				},
+			},
+		},
+		{
+			name: "LoadBalancer service type in node service template",
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := basicSC.DeepCopy()
+				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					NodeService: &scyllav1.NodeServiceTemplate{
+						Type: scyllav1.NodeServiceTypeLoadBalancer,
+					},
+				}
+
+				return sc
+			}(),
+			rackName:   basicRackName,
+			svcName:    basicSVCName,
+			oldService: nil,
+			jobs:       nil,
+			expectedService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            basicSVCName,
+					Labels:          basicSVCLabels(),
+					OwnerReferences: basicSCOwnerRefs,
+				},
+				Spec: corev1.ServiceSpec{
+					Type:                     corev1.ServiceTypeLoadBalancer,
+					Selector:                 basicSVCSelector,
+					PublishNotReadyAddresses: true,
+					Ports:                    basicPorts,
+				},
+			},
+		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			got := MemberService(tc.scyllaCluster, tc.rackName, tc.svcName, tc.oldService, tc.jobs)
+			got, err := MemberService(tc.scyllaCluster, tc.rackName, tc.svcName, tc.oldService, tc.jobs)
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			if !apiequality.Semantic.DeepEqual(got, tc.expectedService) {
 				t.Errorf("expected and actual services differ: %s", cmp.Diff(tc.expectedService, got))
@@ -689,6 +827,8 @@ func TestStatefulSetForRack(t *testing.T) {
 										"/mnt/shared/scylla-operator",
 										"sidecar",
 										featureGatesFlagString,
+										"--nodes-broadcast-address-type=ServiceClusterIP",
+										"--clients-broadcast-address-type=ServiceClusterIP",
 										"--service-name=$(SERVICE_NAME)",
 										"--cpu-count=$(CPU_COUNT)",
 										"--loglevel=2",

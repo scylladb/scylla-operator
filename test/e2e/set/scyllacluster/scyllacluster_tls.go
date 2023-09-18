@@ -18,6 +18,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/kubecrypto"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
@@ -27,6 +28,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
@@ -172,9 +174,8 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 				framework.By("Verifying certificates")
 
-				nodeClusterIPs, nodeIDs, err := utils.GetHostsAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+				_, nodeIDs, err := utils.GetHostsAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
 				o.Expect(err).NotTo(o.HaveOccurred())
-				o.Expect(nodeClusterIPs).To(o.HaveLen(tc.replicas))
 				o.Expect(nodeIDs).To(o.HaveLen(tc.replicas))
 
 				var sniHosts []string
@@ -187,13 +188,31 @@ var _ = g.Describe("ScyllaCluster", func() {
 				}
 				o.Expect(sniHosts).To(o.HaveLen(len(sc.Spec.DNSDomains) + len(sc.Spec.DNSDomains)*tc.replicas))
 
-				nodeIPs, err := helpers.ParseClusterIPs(nodeClusterIPs)
+				var serviceServingDNSNames []string
+				services, err := f.KubeClient().CoreV1().Services(sc.Namespace).List(ctx, metav1.ListOptions{
+					LabelSelector: labels.SelectorFromSet(naming.ClusterLabels(sc)).String(),
+				})
 				o.Expect(err).NotTo(o.HaveOccurred())
+
+				for _, svc := range services.Items {
+					serviceServingDNSNames = append(serviceServingDNSNames, fmt.Sprintf("%s.%s.svc", svc.Name, svc.Namespace))
+				}
+
+				serviceAndPodIPs, err := utils.GetNodesServiceAndPodIPs(ctx, f.KubeClient().CoreV1(), sc)
+				o.Expect(err).NotTo(o.HaveOccurred())
+				o.Expect(serviceAndPodIPs).To(o.HaveLen(2 * int(utils.GetMemberCount(sc))))
+
+				hostsIPs, err := helpers.ParseClusterIPs(serviceAndPodIPs)
+				o.Expect(err).NotTo(o.HaveOccurred())
+
+				servingDNSNames := make([]string, 0, len(sniHosts)+len(serviceServingDNSNames))
+				servingDNSNames = append(servingDNSNames, sniHosts...)
+				servingDNSNames = append(servingDNSNames, serviceServingDNSNames...)
 
 				// Check the serving cert content first to distinguish whether the cert was correctly reloaded by ScyllaDB or not.
 				o.Expect(servingCerts[0].Subject.CommonName).To(o.BeEmpty())
-				o.Expect(helpers.NormalizeIPs(servingCerts[0].IPAddresses)).To(o.ConsistOf(nodeIPs))
-				o.Expect(servingCerts[0].DNSNames).To(o.ConsistOf(sniHosts))
+				o.Expect(helpers.NormalizeIPs(servingCerts[0].IPAddresses)).To(o.ConsistOf(hostsIPs))
+				o.Expect(servingCerts[0].DNSNames).To(o.ConsistOf(servingDNSNames))
 
 				// Now check the cert used by ScyllaDB.
 				servingCAPool := x509.NewCertPool()
@@ -201,7 +220,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 				adminTLSCert, err := tls.X509KeyPair(adminClientCertBytes, adminClientKeyBytes)
 				o.Expect(err).NotTo(o.HaveOccurred())
 
-				for _, nodeAddress := range nodeClusterIPs {
+				for _, nodeAddress := range hosts {
 					framework.Infof("Starting to probe node %q for correct certs", nodeAddress)
 
 					o.Eventually(func(eo o.Gomega) {
@@ -215,8 +234,8 @@ var _ = g.Describe("ScyllaCluster", func() {
 						eo.Expect(serverCerts).NotTo(o.BeEmpty())
 
 						eo.Expect(serverCerts[0].Subject.CommonName).To(o.BeEmpty())
-						eo.Expect(helpers.NormalizeIPs(serverCerts[0].IPAddresses)).To(o.ConsistOf(nodeIPs))
-						eo.Expect(serverCerts[0].DNSNames).To(o.ConsistOf(sniHosts))
+						eo.Expect(helpers.NormalizeIPs(serverCerts[0].IPAddresses)).To(o.ConsistOf(hostsIPs))
+						eo.Expect(serverCerts[0].DNSNames).To(o.ConsistOf(servingDNSNames))
 					}).WithTimeout(5 * 60 * time.Second).WithPolling(1 * time.Second).Should(o.Succeed())
 
 					framework.Infof("Node %q has correct certs", nodeAddress)
@@ -292,7 +311,6 @@ var _ = g.Describe("ScyllaCluster", func() {
 				o.Expect(initialSecret.Data).To(o.HaveKey("tls.key"))
 				o.Expect(initialSecret.Data["tls.crt"]).NotTo(o.BeEmpty())
 				o.Expect(initialSecret.Data["tls.key"]).NotTo(o.BeEmpty())
-				o.Expect(initialSecret.Annotations).To(o.HaveKeyWithValue("certificates.internal.scylla-operator.scylladb.com/refresh-reason", "needs new cert"))
 
 				var configMap *corev1.ConfigMap
 				var initialBundleCert *x509.Certificate

@@ -46,6 +46,14 @@ func NewConfigClient(host, authToken string) *ConfigClient {
 	}
 }
 
+func (c *ConfigClient) BroadcastRPCAddress(ctx context.Context) (string, error) {
+	resp, err := c.client.Config.FindConfigBroadcastRPCAddress(config.NewFindConfigBroadcastRPCAddressParamsWithContext(ctx))
+	if err != nil {
+		return "", fmt.Errorf("can't get broadcast_rpc_address: %w", err)
+	}
+	return resp.Payload, nil
+}
+
 func (c *ConfigClient) BroadcastAddress(ctx context.Context) (string, error) {
 	resp, err := c.client.Config.FindConfigBroadcastAddress(config.NewFindConfigBroadcastAddressParamsWithContext(ctx))
 	if err != nil {

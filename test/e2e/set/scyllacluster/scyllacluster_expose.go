@@ -4,25 +4,276 @@ package scyllacluster
 
 import (
 	"context"
+	"crypto/x509"
 	"fmt"
+	"net"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/features"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
+	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	"github.com/scylladb/scylla-operator/test/e2e/verification"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/rand"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
-var _ = g.Describe("ScyllaCluster Ingress", func() {
+var _ = g.Describe("ScyllaCluster", func() {
 	defer g.GinkgoRecover()
 
 	f := framework.NewFramework("scyllacluster")
+
+	type entry struct {
+		exposeOptions                            *scyllav1.ExposeOptions
+		memberServiceCreatedHook                 func(ctx context.Context, client corev1client.CoreV1Interface, svc *corev1.Service)
+		validateService                          func(svc *corev1.Service)
+		validateScyllaConfig                     func(ctx context.Context, configClient *scyllaclient.ConfigClient, svc *corev1.Service, pod *corev1.Pod)
+		expectedNumberOfIPAddressesInServingCert func(nodes int) int
+	}
+
+	g.DescribeTable("should be exposed", func(e *entry) {
+		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+		defer cancel()
+
+		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc.Spec.Datacenter.Racks[0].Members = 1
+		sc.Spec.ExposeOptions = e.exposeOptions
+
+		framework.By("Creating a ScyllaCluster")
+		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for member Service to be created")
+		waitCtx, waitCtxCancel := utils.ContextForRollout(ctx, sc)
+		defer waitCtxCancel()
+
+		svcName := naming.MemberServiceName(sc.Spec.Datacenter.Racks[0], sc, 0)
+		svc, err := utils.WaitForServiceState(waitCtx, f.KubeClient().CoreV1().Services(sc.Namespace), svcName, utils.WaitForStateOptions{}, func(svc *corev1.Service) (bool, error) {
+			return svc != nil, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		if e.memberServiceCreatedHook != nil {
+			e.memberServiceCreatedHook(ctx, f.KubeAdminClient().CoreV1(), svc)
+		}
+
+		framework.By("Waiting for ScyllaCluster to deploy")
+
+		sc, err = utils.WaitForScyllaClusterState(waitCtx, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+
+		svc, err = f.KubeClient().CoreV1().Services(sc.Namespace).Get(ctx, svcName, metav1.GetOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		e.validateService(svc)
+
+		pod, err := f.KubeClient().CoreV1().Pods(sc.Namespace).Get(ctx, svcName, metav1.GetOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		configClient, err := utils.GetScyllaConfigClient(ctx, f.KubeClient().CoreV1(), sc, pod.Status.PodIP)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		e.validateScyllaConfig(ctx, configClient, svc, pod)
+
+		if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {
+			serviceAndPodIPs, err := utils.GetNodesServiceAndPodIPs(ctx, f.KubeClient().CoreV1(), sc)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(serviceAndPodIPs).To(o.HaveLen(e.expectedNumberOfIPAddressesInServingCert(int(utils.GetMemberCount(sc)))))
+
+			hostsIPs, err := helpers.ParseClusterIPs(serviceAndPodIPs)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			var servingDNSNames []string
+			services, err := f.KubeClient().CoreV1().Services(sc.Namespace).List(ctx, metav1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(naming.ClusterLabels(sc)).String(),
+			})
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(services.Items).To(o.HaveLen(int(utils.GetMemberCount(sc)) + 1))
+			for _, svc := range services.Items {
+				servingDNSNames = append(servingDNSNames, fmt.Sprintf("%s.%s.svc", svc.Name, svc.Namespace))
+			}
+
+			servingCertSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-serving-certs", sc.Name), metav1.GetOptions{})
+			o.Expect(err).NotTo(o.HaveOccurred())
+			servingCerts, _, _, _ := verification.VerifyAndParseTLSCert(servingCertSecret, verification.TLSCertOptions{
+				IsCA:     pointer.Ptr(false),
+				KeyUsage: pointer.Ptr(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
+			})
+			o.Expect(servingCerts).To(o.HaveLen(1))
+			o.Expect(servingCerts[0].Subject.CommonName).To(o.BeEmpty())
+			o.Expect(helpers.NormalizeIPs(servingCerts[0].IPAddresses)).To(o.ConsistOf(hostsIPs))
+			o.Expect(servingCerts[0].DNSNames).To(o.ConsistOf(servingDNSNames))
+		}
+	},
+		g.Entry("using ClusterIP Service, and broadcast it to both client and nodes", &entry{
+			exposeOptions: &scyllav1.ExposeOptions{
+				NodeService: &scyllav1.NodeServiceTemplate{
+					Type: scyllav1.NodeServiceTypeClusterIP,
+				},
+				BroadcastOptions: &scyllav1.NodeBroadcastOptions{
+					Nodes: scyllav1.BroadcastOptions{
+						Type: scyllav1.BroadcastAddressTypeServiceClusterIP,
+					},
+					Clients: scyllav1.BroadcastOptions{
+						Type: scyllav1.BroadcastAddressTypeServiceClusterIP,
+					},
+				},
+			},
+			validateService: func(svc *corev1.Service) {
+				o.Expect(svc.Spec.Type).To(o.Equal(corev1.ServiceTypeClusterIP))
+				o.Expect(svc.Spec.ClusterIP).NotTo(o.BeEmpty())
+				parsedClusterIP := net.ParseIP(svc.Spec.ClusterIP)
+				o.Expect(parsedClusterIP).ToNot(o.BeNil())
+			},
+			validateScyllaConfig: func(ctx context.Context, configClient *scyllaclient.ConfigClient, svc *corev1.Service, pod *corev1.Pod) {
+				broadcastAddress, err := configClient.BroadcastAddress(ctx)
+				o.Expect(err).NotTo(o.HaveOccurred())
+				o.Expect(broadcastAddress).To(o.Equal(svc.Spec.ClusterIP))
+
+				broadcastRPCAddress, err := configClient.BroadcastRPCAddress(ctx)
+				o.Expect(err).NotTo(o.HaveOccurred())
+				o.Expect(broadcastRPCAddress).To(o.Equal(svc.Spec.ClusterIP))
+			},
+			expectedNumberOfIPAddressesInServingCert: func(nodes int) int {
+				// Each node have 1 PodIP and 1 Service ClusterIP
+				return 2 * nodes
+			},
+		}),
+		g.Entry("using ClusterIP Service, and broadcast it to nodes, and PodIP from Pod Status to clients", &entry{
+			exposeOptions: &scyllav1.ExposeOptions{
+				NodeService: &scyllav1.NodeServiceTemplate{
+					Type: scyllav1.NodeServiceTypeClusterIP,
+				},
+				BroadcastOptions: &scyllav1.NodeBroadcastOptions{
+					Nodes: scyllav1.BroadcastOptions{
+						Type: scyllav1.BroadcastAddressTypeServiceClusterIP,
+					},
+					Clients: scyllav1.BroadcastOptions{
+						Type: scyllav1.BroadcastAddressTypePodIP,
+						PodIP: &scyllav1.PodIPAddressOptions{
+							Source: scyllav1.StatusPodIPSource,
+						},
+					},
+				},
+			},
+			validateService: func(svc *corev1.Service) {
+				o.Expect(svc.Spec.Type).To(o.Equal(corev1.ServiceTypeClusterIP))
+				o.Expect(svc.Spec.ClusterIP).NotTo(o.BeEmpty())
+				parsedClusterIP := net.ParseIP(svc.Spec.ClusterIP)
+				o.Expect(parsedClusterIP).ToNot(o.BeNil())
+			},
+			validateScyllaConfig: func(ctx context.Context, configClient *scyllaclient.ConfigClient, svc *corev1.Service, pod *corev1.Pod) {
+				broadcastAddress, err := configClient.BroadcastAddress(ctx)
+				o.Expect(err).NotTo(o.HaveOccurred())
+				o.Expect(broadcastAddress).To(o.Equal(svc.Spec.ClusterIP))
+
+				broadcastRPCAddress, err := configClient.BroadcastRPCAddress(ctx)
+				o.Expect(err).NotTo(o.HaveOccurred())
+				o.Expect(broadcastRPCAddress).To(o.Equal(pod.Status.PodIP))
+			},
+			expectedNumberOfIPAddressesInServingCert: func(nodes int) int {
+				// Each node have 1 PodIP and 1 Service ClusterIP
+				return 2 * nodes
+			},
+		}),
+		g.Entry("using Headless Service, and broadcast PodIP from Pod Status to both client and nodes", &entry{
+			exposeOptions: &scyllav1.ExposeOptions{
+				NodeService: &scyllav1.NodeServiceTemplate{
+					Type: scyllav1.NodeServiceTypeHeadless,
+				},
+				BroadcastOptions: &scyllav1.NodeBroadcastOptions{
+					Nodes: scyllav1.BroadcastOptions{
+						Type: scyllav1.BroadcastAddressTypePodIP,
+						PodIP: &scyllav1.PodIPAddressOptions{
+							Source: scyllav1.StatusPodIPSource,
+						},
+					},
+					Clients: scyllav1.BroadcastOptions{
+						Type: scyllav1.BroadcastAddressTypePodIP,
+						PodIP: &scyllav1.PodIPAddressOptions{
+							Source: scyllav1.StatusPodIPSource,
+						},
+					},
+				},
+			},
+			validateService: func(svc *corev1.Service) {
+				o.Expect(svc.Spec.Type).To(o.Equal(corev1.ServiceTypeClusterIP))
+				o.Expect(svc.Spec.ClusterIP).To(o.Equal(corev1.ClusterIPNone))
+			},
+			validateScyllaConfig: func(ctx context.Context, configClient *scyllaclient.ConfigClient, svc *corev1.Service, pod *corev1.Pod) {
+				broadcastAddress, err := configClient.BroadcastAddress(ctx)
+				o.Expect(err).NotTo(o.HaveOccurred())
+				o.Expect(broadcastAddress).To(o.Equal(pod.Status.PodIP))
+
+				broadcastRPCAddress, err := configClient.BroadcastRPCAddress(ctx)
+				o.Expect(err).NotTo(o.HaveOccurred())
+				o.Expect(broadcastRPCAddress).To(o.Equal(pod.Status.PodIP))
+			},
+			expectedNumberOfIPAddressesInServingCert: func(nodes int) int {
+				// Each node have only PodIP
+				return nodes
+			},
+		}),
+		g.Entry("using LoadBalancer Service, and broadcast external IP to client and PodIP to nodes", &entry{
+			exposeOptions: &scyllav1.ExposeOptions{
+				NodeService: &scyllav1.NodeServiceTemplate{
+					Type: scyllav1.NodeServiceTypeLoadBalancer,
+					// Change to non-default LB class to avoid conflicts on status when running in cloud
+					LoadBalancerClass: pointer.Ptr(fmt.Sprintf("lb-class-%s", rand.String(6))),
+				},
+				BroadcastOptions: &scyllav1.NodeBroadcastOptions{
+					Nodes: scyllav1.BroadcastOptions{
+						Type: scyllav1.BroadcastAddressTypePodIP,
+					},
+					Clients: scyllav1.BroadcastOptions{
+						Type: scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
+					},
+				},
+			},
+			memberServiceCreatedHook: func(ctx context.Context, client corev1client.CoreV1Interface, svc *corev1.Service) {
+				framework.By("Patching member Service with dummy external IP")
+				_, err := f.KubeAdminClient().CoreV1().Services(svc.Namespace).Patch(
+					ctx,
+					svc.Name,
+					types.MergePatchType,
+					[]byte(`{"status":{"loadBalancer":{"ingress":[{"ip":"123.123.123.123"}]}}}`),
+					metav1.PatchOptions{},
+					"status",
+				)
+				o.Expect(err).NotTo(o.HaveOccurred())
+			},
+			validateService: func(svc *corev1.Service) {
+				o.Expect(svc.Spec.Type).To(o.Equal(corev1.ServiceTypeLoadBalancer))
+			},
+			validateScyllaConfig: func(ctx context.Context, configClient *scyllaclient.ConfigClient, svc *corev1.Service, pod *corev1.Pod) {
+				broadcastAddress, err := configClient.BroadcastAddress(ctx)
+				o.Expect(err).NotTo(o.HaveOccurred())
+				o.Expect(broadcastAddress).To(o.Equal(pod.Status.PodIP))
+
+				broadcastRPCAddress, err := configClient.BroadcastRPCAddress(ctx)
+				o.Expect(err).NotTo(o.HaveOccurred())
+				o.Expect(broadcastRPCAddress).To(o.Equal("123.123.123.123"))
+			},
+			expectedNumberOfIPAddressesInServingCert: func(nodes int) int {
+				// Each node have 1 PodIP, 1 Service ClusterIP and External IP
+				return 3 * nodes
+			},
+		}),
+	)
 
 	g.It("should create ingress objects when ingress exposeOptions are provided", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)

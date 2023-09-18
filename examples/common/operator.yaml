@@ -2697,6 +2697,44 @@ spec:
                 exposeOptions:
                   description: exposeOptions specifies options for exposing ScyllaCluster services. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
                   properties:
+                    broadcastOptions:
+                      description: BroadcastOptions defines how ScyllaDB node publishes its IP address to other nodes and clients.
+                      properties:
+                        clients:
+                          default:
+                            type: ServiceClusterIP
+                          description: clients specifies options related to the address that is broadcasted for communication with clients. This field controls the `broadcast_rpc_address` value in ScyllaDB config.
+                          properties:
+                            podIP:
+                              description: podIP holds options related to Pod IP address.
+                              properties:
+                                source:
+                                  default: Status
+                                  description: sourceType specifies source of the Pod IP.
+                                  type: string
+                              type: object
+                            type:
+                              description: type of the address that is broadcasted.
+                              type: string
+                          type: object
+                        nodes:
+                          default:
+                            type: ServiceClusterIP
+                          description: nodes specifies options related to the address that is broadcasted for communication with other nodes. This field controls the `broadcast_address` value in ScyllaDB config.
+                          properties:
+                            podIP:
+                              description: podIP holds options related to Pod IP address.
+                              properties:
+                                source:
+                                  default: Status
+                                  description: sourceType specifies source of the Pod IP.
+                                  type: string
+                              type: object
+                            type:
+                              description: type of the address that is broadcasted.
+                              type: string
+                          type: object
+                      type: object
                     cql:
                       description: cql specifies expose options for CQL SSL backend. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
                       properties:
@@ -2715,6 +2753,34 @@ spec:
                               description: ingressClassName specifies Ingress class name. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
                               type: string
                           type: object
+                      type: object
+                    nodeService:
+                      default:
+                        type: ClusterIP
+                      description: nodeService controls properties of Service dedicated for each ScyllaCluster node.
+                      properties:
+                        allocateLoadBalancerNodePorts:
+                          description: allocateLoadBalancerNodePorts controls value of service.spec.allocateLoadBalancerNodePorts of each node Service. Check Kubernetes corev1.Service documentation about semantic of this field.
+                          type: boolean
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: annotations is a custom key value map merged with every node Service annotations.
+                          type: object
+                        externalTrafficPolicy:
+                          description: externalTrafficPolicy controls value of service.spec.externalTrafficPolicy of each node Service. Check Kubernetes corev1.Service documentation about semantic of this field.
+                          type: string
+                        internalTrafficPolicy:
+                          description: internalTrafficPolicy controls value of service.spec.internalTrafficPolicy of each node Service. Check Kubernetes corev1.Service documentation about semantic of this field.
+                          type: string
+                        loadBalancerClass:
+                          description: loadBalancerClass controls value of service.spec.loadBalancerClass of each node Service. Check Kubernetes corev1.Service documentation about semantic of this field.
+                          type: string
+                        type:
+                          description: type is the Kubernetes Service type.
+                          type: string
+                      required:
+                        - type
                       type: object
                   type: object
                 externalSeeds:

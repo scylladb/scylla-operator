@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strconv"
 	"time"
 
 	g "github.com/onsi/ginkgo/v2"
@@ -148,6 +149,7 @@ func (f *Framework) setupNamespace(ctx context.Context) {
 		return names.SimpleNameGenerator.GenerateName(fmt.Sprintf("e2e-test-%s-", f.name))
 	}
 	name := generateName()
+	sr := g.CurrentSpecReport()
 	err := wait.PollImmediate(2*time.Second, 30*time.Second, func() (bool, error) {
 		var err error
 		// We want to know the name ahead, even if the api call fails.
@@ -157,6 +159,10 @@ func (f *Framework) setupNamespace(ctx context.Context) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   name,
 					Labels: f.CommonLabels(),
+					Annotations: map[string]string{
+						"ginkgo-parallel-process": strconv.Itoa(sr.ParallelProcess),
+						"ginkgo-full-text":        sr.FullText(),
+					},
 				},
 			},
 			metav1.CreateOptions{},

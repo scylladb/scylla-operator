@@ -16,14 +16,15 @@ const (
 	//
 	// owner: @tnozicka
 	// alpha: v1.8
+	// beta: v1.11
 	AutomaticTLSCertificates featuregate.Feature = "AutomaticTLSCertificates"
 )
 
 func init() {
 	runtime.Must(utilfeature.DefaultMutableFeatureGate.Add(map[featuregate.Feature]featuregate.FeatureSpec{
 		AutomaticTLSCertificates: {
-			Default:    false,
-			PreRelease: featuregate.Alpha,
+			Default:    true,
+			PreRelease: featuregate.Beta,
 		},
 	}))
 }

@@ -195,7 +195,7 @@ You can specify whichever port you want.
 You must provide desired write isolation, supported values are: "always", "forbid_rmw", "only_rmw_uses_lwt".
 Difference between those isolation levels can be found in Scylla Alternator documentation.
 
-Once this is done the regular CQL ports will no longer be available, the cluster is a pure Alienator cluster.
+Once this is done the regular CQL ports will no longer be available, the cluster is a pure Alternator cluster.
 
 ## Accessing the Database
 
@@ -266,7 +266,7 @@ See [Scylla Manager Agent configuration](https://manager.docs.scylladb.com/stabl
 ### Scylla Manager Agent auth token
 
 Operator provisions Agent auth token by copying value from user provided config secret or auto generates it if it's empty.
-To check which value is being used, decode content of `<cluster-name>-auth-token` secret. 
+To check which value is being used, decode content of `<cluster-name>-auth-token` secret.
 To change it simply remove the secret. Operator will create a new one. To pick up the change in the cluster, initiate a rolling restart.
 
 ## Set up monitoring

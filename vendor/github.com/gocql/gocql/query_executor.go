@@ -7,15 +7,12 @@ import (
 )
 
 type ExecutableQuery interface {
-	borrowForExecution()    // Used to ensure that the query stays alive for lifetime of a particular execution goroutine.
-	releaseAfterExecution() // Used when a goroutine finishes its execution attempts, either with ok result or an error.
 	execute(ctx context.Context, conn *Conn) *Iter
 	attempt(keyspace string, end, start time.Time, iter *Iter, host *HostInfo)
 	retryPolicy() RetryPolicy
 	speculativeExecutionPolicy() SpeculativeExecutionPolicy
 	GetRoutingKey() ([]byte, error)
 	Keyspace() string
-	Table() string
 	IsIdempotent() bool
 	IsLWT() bool
 	GetCustomPartitioner() partitioner
@@ -48,7 +45,6 @@ func (q *queryExecutor) speculate(ctx context.Context, qry ExecutableQuery, sp S
 	for i := 0; i < sp.Attempts(); i++ {
 		select {
 		case <-ticker.C:
-			qry.borrowForExecution() // ensure liveness in case of executing Query to prevent races with Query.Release().
 			go q.run(ctx, qry, hostIter, results)
 		case <-ctx.Done():
 			return &Iter{err: ctx.Err()}
@@ -86,7 +82,6 @@ func (q *queryExecutor) executeQuery(qry ExecutableQuery) (*Iter, error) {
 	results := make(chan *Iter, 1)
 
 	// Launch the main execution
-	qry.borrowForExecution() // ensure liveness in case of executing Query to prevent races with Query.Release().
 	go q.run(ctx, qry, hostIter, results)
 
 	// The speculative executions are launched _in addition_ to the main
@@ -178,5 +173,4 @@ func (q *queryExecutor) run(ctx context.Context, qry ExecutableQuery, hostIter N
 	case results <- q.do(ctx, qry, hostIter):
 	case <-ctx.Done():
 	}
-	qry.releaseAfterExecution()
 }

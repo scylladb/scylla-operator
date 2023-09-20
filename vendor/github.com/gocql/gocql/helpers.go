@@ -20,64 +20,52 @@ type RowData struct {
 	Values  []interface{}
 }
 
-func goType(t TypeInfo) (reflect.Type, error) {
+func goType(t TypeInfo) reflect.Type {
 	switch t.Type() {
 	case TypeVarchar, TypeAscii, TypeInet, TypeText:
-		return reflect.TypeOf(*new(string)), nil
+		return reflect.TypeOf(*new(string))
 	case TypeBigInt, TypeCounter:
-		return reflect.TypeOf(*new(int64)), nil
+		return reflect.TypeOf(*new(int64))
 	case TypeTime:
-		return reflect.TypeOf(*new(time.Duration)), nil
+		return reflect.TypeOf(*new(time.Duration))
 	case TypeTimestamp:
-		return reflect.TypeOf(*new(time.Time)), nil
+		return reflect.TypeOf(*new(time.Time))
 	case TypeBlob:
-		return reflect.TypeOf(*new([]byte)), nil
+		return reflect.TypeOf(*new([]byte))
 	case TypeBoolean:
-		return reflect.TypeOf(*new(bool)), nil
+		return reflect.TypeOf(*new(bool))
 	case TypeFloat:
-		return reflect.TypeOf(*new(float32)), nil
+		return reflect.TypeOf(*new(float32))
 	case TypeDouble:
-		return reflect.TypeOf(*new(float64)), nil
+		return reflect.TypeOf(*new(float64))
 	case TypeInt:
-		return reflect.TypeOf(*new(int)), nil
+		return reflect.TypeOf(*new(int))
 	case TypeSmallInt:
-		return reflect.TypeOf(*new(int16)), nil
+		return reflect.TypeOf(*new(int16))
 	case TypeTinyInt:
-		return reflect.TypeOf(*new(int8)), nil
+		return reflect.TypeOf(*new(int8))
 	case TypeDecimal:
-		return reflect.TypeOf(*new(*inf.Dec)), nil
+		return reflect.TypeOf(*new(*inf.Dec))
 	case TypeUUID, TypeTimeUUID:
-		return reflect.TypeOf(*new(UUID)), nil
+		return reflect.TypeOf(*new(UUID))
 	case TypeList, TypeSet:
-		elemType, err := goType(t.(CollectionType).Elem)
-		if err != nil {
-			return nil, err
-		}
-		return reflect.SliceOf(elemType), nil
+		return reflect.SliceOf(goType(t.(CollectionType).Elem))
 	case TypeMap:
-		keyType, err := goType(t.(CollectionType).Key)
-		if err != nil {
-			return nil, err
-		}
-		valueType, err := goType(t.(CollectionType).Elem)
-		if err != nil {
-			return nil, err
-		}
-		return reflect.MapOf(keyType, valueType), nil
+		return reflect.MapOf(goType(t.(CollectionType).Key), goType(t.(CollectionType).Elem))
 	case TypeVarint:
-		return reflect.TypeOf(*new(*big.Int)), nil
+		return reflect.TypeOf(*new(*big.Int))
 	case TypeTuple:
 		// what can we do here? all there is to do is to make a list of interface{}
 		tuple := t.(TupleTypeInfo)
-		return reflect.TypeOf(make([]interface{}, len(tuple.Elems))), nil
+		return reflect.TypeOf(make([]interface{}, len(tuple.Elems)))
 	case TypeUDT:
-		return reflect.TypeOf(make(map[string]interface{})), nil
+		return reflect.TypeOf(make(map[string]interface{}))
 	case TypeDate:
-		return reflect.TypeOf(*new(time.Time)), nil
+		return reflect.TypeOf(*new(time.Time))
 	case TypeDuration:
-		return reflect.TypeOf(*new(Duration)), nil
+		return reflect.TypeOf(*new(Duration))
 	default:
-		return nil, fmt.Errorf("cannot create Go type for unknown CQL type %s", t)
+		return nil
 	}
 }
 
@@ -312,20 +300,13 @@ func (iter *Iter) RowData() (RowData, error) {
 
 	for _, column := range iter.Columns() {
 		if c, ok := column.TypeInfo.(TupleTypeInfo); !ok {
-			val, err := column.TypeInfo.NewWithError()
-			if err != nil {
-				return RowData{}, err
-			}
+			val := column.TypeInfo.New()
 			columns = append(columns, column.Name)
 			values = append(values, val)
 		} else {
 			for i, elem := range c.Elems {
 				columns = append(columns, TupleColumnName(column.Name, i))
-				val, err := elem.NewWithError()
-				if err != nil {
-					return RowData{}, err
-				}
-				values = append(values, val)
+				values = append(values, elem.New())
 			}
 		}
 	}

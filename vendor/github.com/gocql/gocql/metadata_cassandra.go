@@ -136,7 +136,7 @@ type ColumnOrder bool
 
 const (
 	ASC  ColumnOrder = false
-	DESC ColumnOrder = true
+	DESC             = true
 )
 
 type ColumnIndexMetadata struct {

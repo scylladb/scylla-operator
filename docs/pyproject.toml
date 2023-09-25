@@ -9,7 +9,6 @@ authors = ["ScyllaDB Documentation Contributors"]
 python = "^3.8"
 pyyaml = "^6.0"
 pygments = "2.15.1"
-recommonmark = "^0.7.1"
 sphinx-scylladb-theme = "~1.5.1"
 sphinx-sitemap = "2.5.0"
 sphinx-autobuild = "^2021.3.14"
@@ -17,6 +16,7 @@ Sphinx = "^4.3.2"
 sphinx-multiversion-scylla = "~0.2.11"
 sphinx-markdown-tables = "~0.0.17"
 redirects_cli ="~0.1.3"
+myst-parser = "0.18.1"
 
 [build-system]
 requires = ["poetry>=0.12"]

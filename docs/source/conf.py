@@ -3,8 +3,6 @@ import os
 import sys
 from datetime import date
 
-import recommonmark
-from recommonmark.transform import AutoStructify
 from sphinx_scylladb_theme.utils import multiversion_regex_builder
 
 # -- General configuration ------------------------------------------------
@@ -19,9 +17,9 @@ extensions = [
     'sphinx.ext.extlinks',
     'sphinx_scylladb_theme',
     'sphinx_multiversion',
-    'recommonmark',
     'sphinx_markdown_tables',
     "sphinx_sitemap",
+    "myst_parser",
 ]
 
 # The suffix(es) of source filenames.
@@ -53,13 +51,12 @@ pygments_style = 'sphinx'
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
-# Setup Sphinx
-def setup(sphinx):
-    sphinx.add_config_value('recommonmark_config', {
-        'enable_eval_rst': True,
-        'enable_auto_toc_tree': False,
-    }, True)
-    sphinx.add_transform(AutoStructify)
+# -- Options for myst parser ----------------------------------------
+
+myst_enable_extensions = ["colon_fence"]
+# TODO: https://github.com/scylladb/scylla-operator/issues/1421
+# TODO: https://github.com/scylladb/scylla-operator/issues/1422
+suppress_warnings = ["ref.myst", "myst.header"]
 
 # -- Options for not found extension -------------------------------------------
 

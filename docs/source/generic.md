@@ -250,6 +250,17 @@ kubectl create configmap scylla-config -n scylla --from-file=/tmp/scylla.yaml --
 ```
 The operator will then apply the overridable properties `prefer_local` and `dc_suffix` if they are available in the provided mounted file.
 
+``` note::
+  If you want to enable authentication, you first need to adjust ``system_auth`` keyspace replication factor to the number of nodes in the datacenter via cqlsh. It allows you to ensure that the user’s information is kept highly available for the cluster. If ``system_auth`` is not equal to the number of nodes and a node fails, the user whose information is on that node will be denied access.
+  For production environments only use ``NetworkTopologyStrategy``.
+
+  .. code-block:: console
+
+    kubectl -n scylla exec -it pods/simple-cluster-us-east-1-us-east-1a-0 -c scylla -- cqlsh -e "ALTER KEYSPACE system_auth WITH REPLICATION = {'class' : 'NetworkTopologyStrategy', 'us-east-1' : <replication_factor>};"
+
+  You can read more about enabling authentication in the `Enable authentication <https://opensource.docs.scylladb.com/stable/operating-scylla/security/authentication.html>`_ section of ScyllaDB's documentation.
+```
+
 ## Configure Scylla Manager Agent
 
 The operator creates a second container for each scylla instance that runs [Scylla Manager Agent](https://hub.docker.com/r/scylladb/scylla-manager-agent).
@@ -273,17 +284,30 @@ To change it simply remove the secret. Operator will create a new one. To pick u
 
 To set up monitoring using Prometheus and Grafana follow [this guide](monitoring.md).
 
-## Scale Up
+## Scale a ScyllaCluster
 
-The operator supports scale up of a rack as well as addition of new racks. To make the changes, you can use:
+The operator supports adding new nodes to existing racks, adding new racks to the cluster, as well as removing both single nodes and entire racks. To introduce the changes, edit the cluster with:
 ```console
-kubectl -n scylla edit ScyllaCluster simple-cluster
+kubectl -n scylla edit scyllaclusters.scylla.scylladb.com/simple-cluster
 ```
-* To scale up a rack, change the `Spec.Members` field of the rack to the desired value.
-* To add a new rack, append the `racks` list with a new rack. Remember to choose a different rack name for the new rack.
-* After editing and saving the yaml, check your cluster's Status and Events for information on what's happening:
+* To modify the number of nodes in a rack, update the `members` field of the selected rack to a desired value.
+* To add a new rack, append it to the `.spec.datacenter.racks` list. Remember to choose a unique rack name for the new rack.
+* To remove a rack, first scale it down to zero nodes, and then remove it from `.spec.datacenter.racks` list.
+
+Having edited and saved the yaml, you can check your cluster's Status and Events to retrieve information about what's happening:
 ```console
-kubectl -n scylla describe ScyllaCluster simple-cluster
+kubectl -n scylla describe scyllaclusters.scylla.scylladb.com/simple-cluster
+```
+
+``` note::
+  If you have configured ScyllaDB with ``authenticator`` set to ``PasswordAuthenticator``, you need to manually configure the replication factor of the ``system_auth`` keyspace with every scaling operation.
+
+  .. code-block:: console
+
+    kubectl -n scylla exec -it pods/simple-cluster-us-east-1-us-east-1a-0 -c scylla -- cqlsh -u <username> -p <password> -e "ALTER KEYSPACE system_auth WITH REPLICATION = {'class' : 'NetworkTopologyStrategy', 'us-east-1' : <new_replication_factor>};"
+
+
+  It is recommended to set ``system_auth`` replication factor to the number of nodes in each datacenter.
 ```
 
 ## Benchmark with cassandra-stress
@@ -334,18 +358,6 @@ While the benchmark is running, open up Grafana and take a look at the monitorin
 After the Jobs finish, clean them up with:
 ```bash
 kubectl delete -f scripts/cassandra-stress.yaml
-```
-
-## Scale Down
-
-The operator supports scale down of a rack. To make the changes, you can use:
-```console
-kubectl -n scylla edit ScyllaCluster simple-cluster
-```
-* To scale down a rack, change the `Spec.Members` field of the rack to the desired value.
-* After editing and saving the yaml, check your cluster's Status and Events for information on what's happening:
-```console
-kubectl -n scylla describe ScyllaCluster simple-cluster
 ```
 
 ## Clean Up

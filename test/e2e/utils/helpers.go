@@ -157,11 +157,6 @@ func IsScyllaClusterRolledOut(sc *scyllav1.ScyllaCluster) (bool, error) {
 
 	framework.Infof("ScyllaCluster %s (RV=%s) is rolled out", klog.KObj(sc), sc.ResourceVersion)
 
-	// Allow CI to remove stale conntrack entries.
-	// https://github.com/scylladb/scylla-operator/issues/975
-	// TODO: remove when GitHub Actions upgrades to kernel version 5.14.
-	time.Sleep(5 * time.Second)
-
 	return true, nil
 }
 

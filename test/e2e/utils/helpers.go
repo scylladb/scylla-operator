@@ -512,9 +512,7 @@ func GetNodesServiceIPs(ctx context.Context, client corev1client.CoreV1Interface
 
 func GetNodesPodIPs(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
 	clusterPods, err := client.Pods(sc.Namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(map[string]string{
-			naming.ClusterNameLabel: sc.Name,
-		}).String(),
+		LabelSelector: naming.ClusterSelector(sc).String(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("can't get cluster pods: %w", err)

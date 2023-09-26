@@ -18,6 +18,11 @@ func ClusterLabels(c *scyllav1.ScyllaCluster) map[string]string {
 	return labels
 }
 
+// ClusterSelector returns a labels selector for the given ScyllaCluster.
+func ClusterSelector(c *scyllav1.ScyllaCluster) labels.Selector {
+	return labels.SelectorFromSet(ClusterLabels(c))
+}
+
 // DatacenterLabels returns a map of label keys and values
 // for the given Datacenter.
 func DatacenterLabels(c *scyllav1.ScyllaCluster) map[string]string {

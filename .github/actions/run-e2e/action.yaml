@@ -141,7 +141,17 @@ runs:
       set -euExo pipefail
       shopt -s inherit_errexit
       
-      timeout 10m ${{ inputs.repositoryPath }}/hack/ci-gather-artifacts.sh
+      user="$( id -u )"
+      group="$( id -g )"
+      sudo timeout -v 10m podman run --user="${user}:${group}" --rm \
+      --entrypoint=/usr/bin/scylla-operator \
+      -v="${ARTIFACTS_DIR}:${ARTIFACTS_DIR}:rw" \
+      -v="${HOME}/.kube/config:/kubeconfig:ro" -e='KUBECONFIG=/kubeconfig' \
+      '${{ env.image_repo_ref }}:ci' \
+      run must-gather \
+      --all-resources \
+      --dest-dir="${ARTIFACTS_DIR}/must-gather" \
+      --loglevel=2
   - name: Get machine logs and info
     if: ${{ always() }}
     working-directory: ${{ runner.temp }}/e2e-artifacts

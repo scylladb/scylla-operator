@@ -141,6 +141,8 @@ runs:
       set -euExo pipefail
       shopt -s inherit_errexit
       
+      mkdir "${ARTIFACTS_DIR}"/must-gather
+
       user="$( id -u )"
       group="$( id -g )"
       sudo timeout -v 10m podman run --user="${user}:${group}" --rm \
@@ -148,7 +150,7 @@ runs:
       -v="${ARTIFACTS_DIR}:${ARTIFACTS_DIR}:rw" \
       -v="${HOME}/.kube/config:/kubeconfig:ro" -e='KUBECONFIG=/kubeconfig' \
       '${{ env.image_repo_ref }}:ci' \
-      run must-gather \
+      must-gather \
       --all-resources \
       --dest-dir="${ARTIFACTS_DIR}/must-gather" \
       --loglevel=2

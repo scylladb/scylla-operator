@@ -81,7 +81,7 @@ func (opc *Controller) sync(ctx context.Context, key string) error {
 
 	sc, err := opc.scyllaLister.ScyllaClusters(namespace).Get(name)
 	if apierrors.IsNotFound(err) {
-		klog.V(2).InfoS("ScyllaCluster has been deleted", "ScyllaCluster", klog.KObj(sc))
+		klog.V(2).InfoS("ScyllaCluster has been deleted", "ScyllaCluster", klog.KRef(namespace, name))
 		return nil
 	}
 	if err != nil {
@@ -93,7 +93,7 @@ func (opc *Controller) sync(ctx context.Context, key string) error {
 	}
 
 	if !sc.Spec.AutomaticOrphanedNodeCleanup {
-		klog.V(4).InfoS("ScyllaCluster doesn't have AutomaticOrphanedNodeCleanup enabled", "ScyllaCluster", klog.KRef(namespace, name))
+		klog.V(4).InfoS("ScyllaCluster doesn't have AutomaticOrphanedNodeCleanup enabled", "ScyllaCluster", klog.KObj(sc))
 		return nil
 	}
 
@@ -121,7 +121,7 @@ func (opc *Controller) sync(ctx context.Context, key string) error {
 			continue
 		}
 
-		klog.V(2).InfoS("PV is orphaned", "ScyllaCluster", sc, "PV", klog.KObj(pi.PV))
+		klog.V(2).InfoS("PV is orphaned", "ScyllaCluster", klog.KObj(sc), "PV", klog.KObj(pi.PV))
 
 		// Verify that the node doesn't exist with a live call.
 		freshNodes, err := opc.kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{
@@ -142,7 +142,7 @@ func (opc *Controller) sync(ctx context.Context, key string) error {
 			continue
 		}
 
-		klog.V(2).InfoS("PV is verified as orphaned.", "ScyllaCluster", sc, "PV", klog.KObj(pi.PV))
+		klog.V(2).InfoS("PV is verified as orphaned.", "ScyllaCluster", klog.KObj(sc), "PV", klog.KObj(pi.PV))
 
 		_, err = opc.kubeClient.CoreV1().Services(sc.Namespace).Patch(
 			ctx,
@@ -156,7 +156,7 @@ func (opc *Controller) sync(ctx context.Context, key string) error {
 			continue
 		}
 
-		klog.V(2).InfoS("Marked service for replacement", "ScyllaCluster", sc, "Service", pi.ServiceName)
+		klog.V(2).InfoS("Marked service for replacement", "ScyllaCluster", klog.KObj(sc), "Service", klog.KRef(sc.Namespace, pi.ServiceName))
 	}
 
 	err = utilerrors.NewAggregate(errs)

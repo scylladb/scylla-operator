@@ -34,8 +34,10 @@ spec:
         image: {{ .Values.image.repository }}/scylla-operator:{{ .Values.image.tag | default .Chart.AppVersion }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         env:
-        - name: SCYLLA_OPERATOR_IMAGE
-          value: {{ .Values.image.repository }}/scylla-operator:{{ .Values.image.tag | default .Chart.AppVersion }}
+        - name: SCYLLA_OPERATOR_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
         args:
         - operator
         - --loglevel={{ .Values.logLevel }}

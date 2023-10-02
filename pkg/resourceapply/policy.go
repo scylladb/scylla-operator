@@ -7,11 +7,11 @@ import (
 	"fmt"
 
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	policyv1beta1client "k8s.io/client-go/kubernetes/typed/policy/v1beta1"
-	policyv1beta1listers "k8s.io/client-go/listers/policy/v1beta1"
+	policyv1client "k8s.io/client-go/kubernetes/typed/policy/v1"
+	policyv1listers "k8s.io/client-go/listers/policy/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 )
@@ -21,12 +21,12 @@ import (
 // would be adopted but the old objects may not have correct labels that we need to fix in the new version.
 func ApplyPodDisruptionBudget(
 	ctx context.Context,
-	client policyv1beta1client.PodDisruptionBudgetsGetter,
-	lister policyv1beta1listers.PodDisruptionBudgetLister,
+	client policyv1client.PodDisruptionBudgetsGetter,
+	lister policyv1listers.PodDisruptionBudgetLister,
 	recorder record.EventRecorder,
-	required *policyv1beta1.PodDisruptionBudget,
+	required *policyv1.PodDisruptionBudget,
 	forceOwnership bool,
-) (*policyv1beta1.PodDisruptionBudget, bool, error) {
+) (*policyv1.PodDisruptionBudget, bool, error) {
 	requiredControllerRef := metav1.GetControllerOfNoCopy(required)
 	if requiredControllerRef == nil {
 		return nil, false, fmt.Errorf("poddisruptionbudget %q is missing controllerRef", naming.ObjRef(required))

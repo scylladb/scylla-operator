@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	kubecontroller "github.com/scylladb/scylla-operator/pkg/thirdparty/k8s.io/kubernetes/pkg/controller"
-	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -29,7 +29,7 @@ type RealPodDisruptionBudgetControl struct {
 var _ PodDisruptionBudgetControlInterface = &RealPodDisruptionBudgetControl{}
 
 func (r RealPodDisruptionBudgetControl) PatchPodDisruptionBudget(ctx context.Context, namespace, name string, pt types.PatchType, data []byte, options metav1.PatchOptions) error {
-	_, err := r.KubeClient.PolicyV1beta1().PodDisruptionBudgets(namespace).Patch(ctx, name, pt, data, options)
+	_, err := r.KubeClient.PolicyV1().PodDisruptionBudgets(namespace).Patch(ctx, name, pt, data, options)
 	return err
 }
 
@@ -60,18 +60,18 @@ func NewPodDisruptionBudgetControllerRefManager(
 	}
 }
 
-func (m *PodDisruptionBudgetControllerRefManager) ClaimPodDisruptionBudgets(podDisruptionBudgets []*policyv1beta1.PodDisruptionBudget) (map[string]*policyv1beta1.PodDisruptionBudget, error) {
+func (m *PodDisruptionBudgetControllerRefManager) ClaimPodDisruptionBudgets(podDisruptionBudgets []*policyv1.PodDisruptionBudget) (map[string]*policyv1.PodDisruptionBudget, error) {
 	match := func(obj metav1.Object) bool {
 		return m.Selector.Matches(labels.Set(obj.GetLabels()))
 	}
 	adopt := func(obj metav1.Object) error {
-		return m.AdoptPodDisruptionBudget(obj.(*policyv1beta1.PodDisruptionBudget))
+		return m.AdoptPodDisruptionBudget(obj.(*policyv1.PodDisruptionBudget))
 	}
 	release := func(obj metav1.Object) error {
-		return m.ReleasePodDisruptionBudget(obj.(*policyv1beta1.PodDisruptionBudget))
+		return m.ReleasePodDisruptionBudget(obj.(*policyv1.PodDisruptionBudget))
 	}
 
-	claimedMap := make(map[string]*policyv1beta1.PodDisruptionBudget, len(podDisruptionBudgets))
+	claimedMap := make(map[string]*policyv1.PodDisruptionBudget, len(podDisruptionBudgets))
 	var errors []error
 	for _, podDisruptionBudget := range podDisruptionBudgets {
 		ok, err := m.ClaimObject(podDisruptionBudget, match, adopt, release)
@@ -86,7 +86,7 @@ func (m *PodDisruptionBudgetControllerRefManager) ClaimPodDisruptionBudgets(podD
 	return claimedMap, utilerrors.NewAggregate(errors)
 }
 
-func (m *PodDisruptionBudgetControllerRefManager) AdoptPodDisruptionBudget(podDisruptionBudget *policyv1beta1.PodDisruptionBudget) error {
+func (m *PodDisruptionBudgetControllerRefManager) AdoptPodDisruptionBudget(podDisruptionBudget *policyv1.PodDisruptionBudget) error {
 	err := m.CanAdopt()
 	if err != nil {
 		return fmt.Errorf("can't adopt PodDisruptionBudget %v/%v (%v): %v", podDisruptionBudget.Namespace, podDisruptionBudget.Name, podDisruptionBudget.UID, err)
@@ -102,7 +102,7 @@ func (m *PodDisruptionBudgetControllerRefManager) AdoptPodDisruptionBudget(podDi
 	return m.PodDisruptionBudgetControl.PatchPodDisruptionBudget(m.ctx, podDisruptionBudget.Namespace, podDisruptionBudget.Name, types.StrategicMergePatchType, patchBytes, metav1.PatchOptions{})
 }
 
-func (m *PodDisruptionBudgetControllerRefManager) ReleasePodDisruptionBudget(podDisruptionBudget *policyv1beta1.PodDisruptionBudget) error {
+func (m *PodDisruptionBudgetControllerRefManager) ReleasePodDisruptionBudget(podDisruptionBudget *policyv1.PodDisruptionBudget) error {
 	klog.V(2).InfoS("Patching PodDisruptionBudget to remove its controllerRef",
 		"PodDisruptionBudget",
 		klog.KObj(podDisruptionBudget),

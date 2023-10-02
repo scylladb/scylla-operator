@@ -5,7 +5,7 @@ metadata:
 aggregationRule:
   clusterRoleSelectors:
     - matchLabels:
-        rbac.operator.scylladb.com/aggregate-to-scylla-operator: "true"
+        rbac.operator.scylladb.com/aggregate-to-scylla-operator: 'true'
 rules: []
 
 ---
@@ -14,266 +14,266 @@ kind: ClusterRole
 metadata:
   name: scylladb:controller:aggregate-to-operator
   labels:
-    rbac.operator.scylladb.com/aggregate-to-scylla-operator: "true"
+    rbac.operator.scylladb.com/aggregate-to-scylla-operator: 'true'
 rules:
-- apiGroups:
-  - ""
-  resources:
-  - events
-  verbs:
-  - create
-  - patch
-  - update
-- apiGroups:
-  - ""
-  resources:
-  - nodes
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - persistentvolumeclaims
-  verbs:
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-  - patch
-- apiGroups:
-  - ""
-  resources:
-  - persistentvolumes
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - delete
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - pods/eviction
-  verbs:
-  - create
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-- apiGroups:
-  - ""
-  resources:
-  - services
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps
-  resources:
-  - statefulsets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps
-  resources:
-  - statefulsets/scale
-  verbs:
-  - update
-- apiGroups:
-  - scylla.scylladb.com
-  resources:
-  - scyllaclusters
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - scylla.scylladb.com
-  resources:
-  - scyllaclusters/status
-  verbs:
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - coordination.k8s.io
-  resources:
-  - leases
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - policy
-  resources:
-  - poddisruptionbudgets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps
-  resources:
-  - daemonsets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - scylla.scylladb.com
-  resources:
-  - nodeconfigs
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - serviceaccounts
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resources:
-  - clusterroles
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resources:
-  - clusterrolebindings
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - scylla.scylladb.com
-  resources:
-  - nodeconfigs/status
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - batch
-  resources:
-  - jobs
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - namespaces
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - scylla.scylladb.com
-  resources:
-  - scyllaoperatorconfigs
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
+  - apiGroups:
+      - ''
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+      - update
+  - apiGroups:
+      - ''
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ''
+    resources:
+      - persistentvolumeclaims
+    verbs:
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+      - patch
+  - apiGroups:
+      - ''
+    resources:
+      - persistentvolumes
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ''
+    resources:
+      - pods
+    verbs:
+      - delete
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ''
+    resources:
+      - pods/eviction
+    verbs:
+      - create
+  - apiGroups:
+      - ''
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+  - apiGroups:
+      - ''
+    resources:
+      - services
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - statefulsets
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - statefulsets/scale
+    verbs:
+      - update
+  - apiGroups:
+      - scylla.scylladb.com
+    resources:
+      - scyllaclusters
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - scylla.scylladb.com
+    resources:
+      - scyllaclusters/status
+    verbs:
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - ''
+    resources:
+      - configmaps
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - policy
+    resources:
+      - poddisruptionbudgets
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - daemonsets
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - scylla.scylladb.com
+    resources:
+      - nodeconfigs
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - ''
+    resources:
+      - serviceaccounts
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - clusterroles
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - clusterrolebindings
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - scylla.scylladb.com
+    resources:
+      - nodeconfigs/status
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - ''
+    resources:
+      - namespaces
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - scylla.scylladb.com
+    resources:
+      - scyllaoperatorconfigs
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
 
 ---
 apiVersion: v1
@@ -346,7 +346,7 @@ spec:
                           type: string
                         type: array
                       interval:
-                        default: "0"
+                        default: '0'
                         description: interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
                         type: string
                       keyspace:
@@ -378,7 +378,7 @@ spec:
                         format: int64
                         type: integer
                       snapshotParallel:
-                        description: 'snapshotParallel is a list of snapshot parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set, the limit is global (e.g. ''dc1:2,5'') the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters.'
+                        description: "snapshotParallel is a list of snapshot parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set, the limit is global (e.g. 'dc1:2,5') the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters."
                         items:
                           type: string
                         type: array
@@ -387,7 +387,7 @@ spec:
                         description: startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.
                         type: string
                       uploadParallel:
-                        description: 'uploadParallel is a list of upload parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set the limit is global (e.g. ''dc1:2,5'') the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters.'
+                        description: "uploadParallel is a list of upload parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set the limit is global (e.g. 'dc1:2,5') the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters."
                         items:
                           type: string
                         type: array
@@ -1024,7 +1024,7 @@ spec:
                               description: Volume represents a named volume in a pod that may be accessed by any container in the pod.
                               properties:
                                 awsElasticBlockStore:
-                                  description: 'AWSElasticBlockStore represents an AWS Disk resource that is attached to a kubelet''s host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore'
+                                  description: "AWSElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore"
                                   properties:
                                     fsType:
                                       description: 'Filesystem type of the volume that you want to mount. Tip: Ensure that the filesystem type is supported by the host operating system. Examples: "ext4", "xfs", "ntfs". Implicitly inferred to be "ext4" if unspecified. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore TODO: how do we prevent errors in the filesystem from compromising the machine'
@@ -1225,7 +1225,7 @@ spec:
                                             format: int32
                                             type: integer
                                           path:
-                                            description: 'Required: Path is  the relative path name of the file to be created. Must not be absolute or contain the ''..'' path. Must be utf-8 encoded. The first item of the relative path must not start with ''..'''
+                                            description: "Required: Path is  the relative path name of the file to be created. Must not be absolute or contain the '..' path. Must be utf-8 encoded. The first item of the relative path must not start with '..'"
                                             type: string
                                           resourceFieldRef:
                                             description: 'Selects a resource of the container: only resources limits and requests (limits.cpu, limits.memory, requests.cpu and requests.memory) are currently supported.'
@@ -1252,7 +1252,7 @@ spec:
                                       type: array
                                   type: object
                                 emptyDir:
-                                  description: 'EmptyDir represents a temporary directory that shares a pod''s lifetime. More info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir'
+                                  description: "EmptyDir represents a temporary directory that shares a pod's lifetime. More info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir"
                                   properties:
                                     medium:
                                       description: 'What type of storage medium should back this directory. The default is "" which means to use the node''s default medium. Must be an empty string (default) or Memory. More info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir'
@@ -1442,7 +1442,7 @@ spec:
                                       type: string
                                   type: object
                                 gcePersistentDisk:
-                                  description: 'GCEPersistentDisk represents a GCE Disk resource that is attached to a kubelet''s host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk'
+                                  description: "GCEPersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk"
                                   properties:
                                     fsType:
                                       description: 'Filesystem type of the volume that you want to mount. Tip: Ensure that the filesystem type is supported by the host operating system. Examples: "ext4", "xfs", "ntfs". Implicitly inferred to be "ext4" if unspecified. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk TODO: how do we prevent errors in the filesystem from compromising the machine'
@@ -1461,7 +1461,7 @@ spec:
                                     - pdName
                                   type: object
                                 gitRepo:
-                                  description: 'GitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod''s container.'
+                                  description: "GitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container."
                                   properties:
                                     directory:
                                       description: Target directory name. Must not contain or start with '..'.  If '.' is supplied, the volume directory will be the git repository.  Otherwise, if specified, the volume will contain the git repository in the subdirectory with the given name.
@@ -1476,7 +1476,7 @@ spec:
                                     - repository
                                   type: object
                                 glusterfs:
-                                  description: 'Glusterfs represents a Glusterfs mount on the host that shares a pod''s lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md'
+                                  description: "Glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md"
                                   properties:
                                     endpoints:
                                       description: 'EndpointsName is the endpoint name that details Glusterfs topology. More info: https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod'
@@ -1504,7 +1504,7 @@ spec:
                                     - path
                                   type: object
                                 iscsi:
-                                  description: 'ISCSI represents an ISCSI Disk resource that is attached to a kubelet''s host machine and then exposed to the pod. More info: https://examples.k8s.io/volumes/iscsi/README.md'
+                                  description: "ISCSI represents an ISCSI Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://examples.k8s.io/volumes/iscsi/README.md"
                                   properties:
                                     chapAuthDiscovery:
                                       description: whether support iSCSI Discovery CHAP authentication
@@ -1552,10 +1552,10 @@ spec:
                                     - targetPortal
                                   type: object
                                 name:
-                                  description: 'Volume''s name. Must be a DNS_LABEL and unique within the pod. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                                  description: "Volume's name. Must be a DNS_LABEL and unique within the pod. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names"
                                   type: string
                                 nfs:
-                                  description: 'NFS represents an NFS mount on the host that shares a pod''s lifetime More info: https://kubernetes.io/docs/concepts/storage/volumes#nfs'
+                                  description: "NFS represents an NFS mount on the host that shares a pod's lifetime More info: https://kubernetes.io/docs/concepts/storage/volumes#nfs"
                                   properties:
                                     path:
                                       description: 'Path that is exported by the NFS server. More info: https://kubernetes.io/docs/concepts/storage/volumes#nfs'
@@ -1676,7 +1676,7 @@ spec:
                                                       format: int32
                                                       type: integer
                                                     path:
-                                                      description: 'Required: Path is  the relative path name of the file to be created. Must not be absolute or contain the ''..'' path. Must be utf-8 encoded. The first item of the relative path must not start with ''..'''
+                                                      description: "Required: Path is  the relative path name of the file to be created. Must not be absolute or contain the '..' path. Must be utf-8 encoded. The first item of the relative path must not start with '..'"
                                                       type: string
                                                     resourceFieldRef:
                                                       description: 'Selects a resource of the container: only resources limits and requests (limits.cpu, limits.memory, requests.cpu and requests.memory) are currently supported.'
@@ -1777,7 +1777,7 @@ spec:
                                     - volume
                                   type: object
                                 rbd:
-                                  description: 'RBD represents a Rados Block Device mount on the host that shares a pod''s lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md'
+                                  description: "RBD represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md"
                                   properties:
                                     fsType:
                                       description: 'Filesystem type of the volume that you want to mount. Tip: Ensure that the filesystem type is supported by the host operating system. Examples: "ext4", "xfs", "ntfs". Implicitly inferred to be "ext4" if unspecified. More info: https://kubernetes.io/docs/concepts/storage/volumes#rbd TODO: how do we prevent errors in the filesystem from compromising the machine'
@@ -1886,7 +1886,7 @@ spec:
                                       description: Specify whether the Secret or its keys must be defined
                                       type: boolean
                                     secretName:
-                                      description: 'Name of the secret in the pod''s namespace to use. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret'
+                                      description: "Name of the secret in the pod's namespace to use. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret"
                                       type: string
                                   type: object
                                 storageos:
@@ -1991,11 +1991,11 @@ spec:
                         description: host specifies a host to repair. If empty, all hosts are repaired.
                         type: string
                       intensity:
-                        default: "1"
+                        default: '1'
                         description: intensity indicates how many token ranges (per shard) to repair in a single Scylla repair job. By default this is 1. If you set it to 0 the number of token ranges is adjusted to the maximum supported by node (see max_repair_ranges_in_parallel in Scylla logs). Valid values are 0 and integers >= 1. Higher values will result in increased cluster load and slightly faster repairs. Changing the intensity impacts repair granularity if you need to resume it, the higher the value the more work on resume. For Scylla clusters that *do not support row-level repair*, intensity can be a decimal between (0,1). In that case it specifies percent of shards that can be repaired in parallel on a repair master node. For Scylla clusters that are row-level repair enabled, setting intensity below 1 has the same effect as setting intensity 1.
                         type: string
                       interval:
-                        default: "0"
+                        default: '0'
                         description: interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
                         type: string
                       keyspace:
@@ -2061,7 +2061,7 @@ spec:
                         description: id is the identification number of the backup task.
                         type: string
                       interval:
-                        default: "0"
+                        default: '0'
                         description: interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
                         type: string
                       keyspace:
@@ -2093,7 +2093,7 @@ spec:
                         format: int64
                         type: integer
                       snapshotParallel:
-                        description: 'snapshotParallel is a list of snapshot parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set, the limit is global (e.g. ''dc1:2,5'') the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters.'
+                        description: "snapshotParallel is a list of snapshot parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set, the limit is global (e.g. 'dc1:2,5') the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters."
                         items:
                           type: string
                         type: array
@@ -2102,7 +2102,7 @@ spec:
                         description: startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.
                         type: string
                       uploadParallel:
-                        description: 'uploadParallel is a list of upload parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set the limit is global (e.g. ''dc1:2,5'') the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters.'
+                        description: "uploadParallel is a list of upload parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set the limit is global (e.g. 'dc1:2,5') the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters."
                         items:
                           type: string
                         type: array
@@ -2180,11 +2180,11 @@ spec:
                         description: id is the identification number of the repair task.
                         type: string
                       intensity:
-                        default: "1"
+                        default: '1'
                         description: intensity indicates how many token ranges (per shard) to repair in a single Scylla repair job. By default this is 1. If you set it to 0 the number of token ranges is adjusted to the maximum supported by node (see max_repair_ranges_in_parallel in Scylla logs). Valid values are 0 and integers >= 1. Higher values will result in increased cluster load and slightly faster repairs. Changing the intensity impacts repair granularity if you need to resume it, the higher the value the more work on resume. For Scylla clusters that *do not support row-level repair*, intensity can be a decimal between (0,1). In that case it specifies percent of shards that can be repaired in parallel on a repair master node. For Scylla clusters that are row-level repair enabled, setting intensity below 1 has the same effect as setting intensity 1.
                         type: string
                       interval:
-                        default: "0"
+                        default: '0'
                         description: interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
                         type: string
                       keyspace:
@@ -2248,8 +2248,8 @@ spec:
         status: {}
 status:
   acceptedNames:
-    kind: ""
-    plural: ""
+    kind: ''
+    plural: ''
   conditions: []
   storedVersions: []
 
@@ -2300,8 +2300,8 @@ spec:
         status: {}
 status:
   acceptedNames:
-    kind: ""
-    plural: ""
+    kind: ''
+    plural: ''
   conditions: []
   storedVersions: []
 
@@ -2311,19 +2311,19 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: scyllacluster-edit
   labels:
-    rbac.authorization.k8s.io/aggregate-to-admin: "true"
-    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+    rbac.authorization.k8s.io/aggregate-to-admin: 'true'
+    rbac.authorization.k8s.io/aggregate-to-edit: 'true'
 rules:
-- apiGroups:
-  - scylla.scylladb.com
-  resources:
-  - scyllaclusters
-  verbs:
-  - create
-  - patch
-  - update
-  - delete
-  - deletecollection
+  - apiGroups:
+      - scylla.scylladb.com
+    resources:
+      - scyllaclusters
+    verbs:
+      - create
+      - patch
+      - update
+      - delete
+      - deletecollection
 
 ---
 kind: ClusterRole
@@ -2331,18 +2331,18 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: scyllacluster-view
   labels:
-    rbac.authorization.k8s.io/aggregate-to-admin: "true"
-    rbac.authorization.k8s.io/aggregate-to-edit: "true"
-    rbac.authorization.k8s.io/aggregate-to-view: "true"
+    rbac.authorization.k8s.io/aggregate-to-admin: 'true'
+    rbac.authorization.k8s.io/aggregate-to-edit: 'true'
+    rbac.authorization.k8s.io/aggregate-to-view: 'true'
 rules:
-- apiGroups:
-  - scylla.scylladb.com
-  resources:
-  - scyllaclusters
-  verbs:
-  - get
-  - list
-  - watch
+  - apiGroups:
+      - scylla.scylladb.com
+    resources:
+      - scyllaclusters
+    verbs:
+      - get
+      - list
+      - watch
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -2352,7 +2352,7 @@ metadata:
 aggregationRule:
   clusterRoleSelectors:
     - matchLabels:
-        rbac.operator.scylladb.com/aggregate-to-scylla-member: "true"
+        rbac.operator.scylladb.com/aggregate-to-scylla-member: 'true'
 rules: []
 
 ---
@@ -2361,56 +2361,56 @@ kind: ClusterRole
 metadata:
   name: scylladb:aggregate-to-scyllacluster-member
   labels:
-    rbac.operator.scylladb.com/aggregate-to-scylla-member: "true"
+    rbac.operator.scylladb.com/aggregate-to-scylla-member: 'true'
 rules:
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - get
-  - list
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - services
-  verbs:
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - "apps"
-  resources:
-  - statefulsets
-  verbs:
-  - get
-  - list
-  - patch
-  - watch
-- apiGroups:
-  - scylla.scylladb.com
-  resources:
-  - scyllaclusters
-  verbs:
-  - get
+  - apiGroups:
+      - ''
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - ''
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ''
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ''
+    resources:
+      - services
+    verbs:
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - 'apps'
+    resources:
+      - statefulsets
+    verbs:
+      - get
+      - list
+      - patch
+      - watch
+  - apiGroups:
+      - scylla.scylladb.com
+    resources:
+      - scyllaclusters
+    verbs:
+      - get
 
 ---
 apiVersion: cert-manager.io/v1
@@ -2420,7 +2420,7 @@ metadata:
   namespace: scylla-operator
 spec:
   dnsNames:
-  - scylla-operator-webhook.scylla-operator.svc
+    - scylla-operator-webhook.scylla-operator.svc
   issuerRef:
     kind: Issuer
     name: scylla-operator-selfsigned-issuer
@@ -2436,7 +2436,7 @@ spec:
   selfSigned: {}
 
 ---
-apiVersion: policy/v1beta1
+apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: scylla-operator
@@ -2466,30 +2466,30 @@ metadata:
     cert-manager.io/inject-ca-from: scylla-operator/scylla-operator-serving-cert
   name: scylla-operator
 webhooks:
-- name: webhook.scylla.scylladb.com
-  clientConfig:
-    caBundle: Cg==
-    service:
-      name: scylla-operator-webhook
-      namespace: scylla-operator
-      path: /validate
-  admissionReviewVersions:
-  - v1
-  sideEffects: None
-  failurePolicy: Fail
-  rules:
-  - apiGroups:
-    - scylla.scylladb.com
-    apiVersions:
-    - v1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - scyllaclusters
+  - name: webhook.scylla.scylladb.com
+    clientConfig:
+      caBundle: Cg==
+      service:
+        name: scylla-operator-webhook
+        namespace: scylla-operator
+        path: /validate
+    admissionReviewVersions:
+      - v1
+    sideEffects: None
+    failurePolicy: Fail
+    rules:
+      - apiGroups:
+          - scylla.scylladb.com
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - scyllaclusters
 
 ---
-apiVersion: policy/v1beta1
+apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: webhook-server
@@ -2512,9 +2512,9 @@ metadata:
     app.kubernetes.io/instance: webhook-server
 spec:
   ports:
-  - port: 443
-    targetPort: 5000
-    name: webhook
+    - port: 443
+      targetPort: 5000
+      name: webhook
   selector:
     app.kubernetes.io/name: webhook-server
     app.kubernetes.io/instance: webhook-server
@@ -2539,9 +2539,9 @@ roleRef:
   kind: ClusterRole
   name: scylladb:controller:operator
 subjects:
-- kind: ServiceAccount
-  name: scylla-operator
-  namespace: scylla-operator
+  - kind: ServiceAccount
+    name: scylla-operator
+    namespace: scylla-operator
 
 ---
 apiVersion: apps/v1
@@ -2568,30 +2568,30 @@ spec:
     spec:
       serviceAccountName: scylla-operator
       containers:
-      - name: scylla-operator
-        image: docker.io/scylladb/scylla-operator:latest
-        imagePullPolicy: IfNotPresent
-        env:
-        - name: SCYLLA_OPERATOR_IMAGE
-          value: docker.io/scylladb/scylla-operator:latest
-        args:
-        - operator
-        - --loglevel=2
-        resources:
-          requests:
-            cpu: 10m
-            memory: 20Mi
+        - name: scylla-operator
+          image: docker.io/scylladb/scylla-operator:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SCYLLA_OPERATOR_IMAGE
+              value: docker.io/scylladb/scylla-operator:latest
+          args:
+            - operator
+            - --loglevel=2
+          resources:
+            requests:
+              cpu: 10m
+              memory: 20Mi
       terminationGracePeriodSeconds: 10
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-          - podAffinityTerm:
-              labelSelector:
-                matchLabels:
-                  app.kubernetes.io/instance: scylla-operator
-                  app.kubernetes.io/name: scylla-operator
-              topologyKey: kubernetes.io/hostname
-            weight: 1
+            - podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/instance: scylla-operator
+                    app.kubernetes.io/name: scylla-operator
+                topologyKey: kubernetes.io/hostname
+              weight: 1
 
 ---
 apiVersion: apps/v1
@@ -2616,62 +2616,62 @@ spec:
         app.kubernetes.io/name: webhook-server
         app.kubernetes.io/instance: webhook-server
     spec:
-      serviceAccountName: "webhook-server"
+      serviceAccountName: 'webhook-server'
       containers:
-      - name: webhook-server
-        image: docker.io/scylladb/scylla-operator:latest
-        imagePullPolicy: IfNotPresent
-        args:
-        - run-webhook-server
-        - --loglevel=2
-        - --tls-cert-file=/tmp/serving-certs/tls.crt
-        - --tls-private-key-file=/tmp/serving-certs/tls.key
-        livenessProbe:
-          httpGet:
-            path: /readyz
-            port: 5000
-            scheme: HTTPS
-        readinessProbe:
-          httpGet:
-            path: /readyz
-            port: 5000
-            scheme: HTTPS
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        lifecycle:
-          preStop:
-            exec:
-              command:
-              - /usr/bin/sleep
-              - 15s
-        ports:
-        - containerPort: 5000
-          name: webhook-server
-          protocol: TCP
-        resources:
-          requests:
-            cpu: 10m
-            memory: 20Mi
-        volumeMounts:
-        - mountPath: /tmp/serving-certs
-          name: cert
-          readOnly: true
+        - name: webhook-server
+          image: docker.io/scylladb/scylla-operator:latest
+          imagePullPolicy: IfNotPresent
+          args:
+            - run-webhook-server
+            - --loglevel=2
+            - --tls-cert-file=/tmp/serving-certs/tls.crt
+            - --tls-private-key-file=/tmp/serving-certs/tls.key
+          livenessProbe:
+            httpGet:
+              path: /readyz
+              port: 5000
+              scheme: HTTPS
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 5000
+              scheme: HTTPS
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /usr/bin/sleep
+                  - 15s
+          ports:
+            - containerPort: 5000
+              name: webhook-server
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 10m
+              memory: 20Mi
+          volumeMounts:
+            - mountPath: /tmp/serving-certs
+              name: cert
+              readOnly: true
       terminationGracePeriodSeconds: 75
       volumes:
-      - name: cert
-        secret:
-          defaultMode: 420
-          secretName: scylla-operator-serving-cert
+        - name: cert
+          secret:
+            defaultMode: 420
+            secretName: scylla-operator-serving-cert
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-          - podAffinityTerm:
-              labelSelector:
-                matchLabels:
-                  app.kubernetes.io/instance: webhook-server
-                  app.kubernetes.io/name: webhook-server
-              topologyKey: kubernetes.io/hostname
-            weight: 1
+            - podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/instance: webhook-server
+                    app.kubernetes.io/name: webhook-server
+                topologyKey: kubernetes.io/hostname
+              weight: 1
 
 ---
 apiVersion: apiextensions.k8s.io/v1
@@ -3255,9 +3255,10 @@ spec:
         status: {}
 status:
   acceptedNames:
-    kind: ""
-    plural: ""
+    kind: ''
+    plural: ''
   conditions: []
   storedVersions: []
 
 ---
+

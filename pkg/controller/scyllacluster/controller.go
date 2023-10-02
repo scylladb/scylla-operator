@@ -14,7 +14,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,12 +23,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	appsv1informers "k8s.io/client-go/informers/apps/v1"
 	corev1informers "k8s.io/client-go/informers/core/v1"
-	policyv1beta1informers "k8s.io/client-go/informers/policy/v1beta1"
+	policyv1informers "k8s.io/client-go/informers/policy/v1"
 	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
-	policyv1beta1listers "k8s.io/client-go/listers/policy/v1beta1"
+	policyv1listers "k8s.io/client-go/listers/policy/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
@@ -61,7 +61,7 @@ type Controller struct {
 	serviceLister     corev1listers.ServiceLister
 	secretLister      corev1listers.SecretLister
 	statefulSetLister appsv1listers.StatefulSetLister
-	pdbLister         policyv1beta1listers.PodDisruptionBudgetLister
+	pdbLister         policyv1listers.PodDisruptionBudgetLister
 	scyllaLister      scyllav1listers.ScyllaClusterLister
 
 	cachesToSync []cache.InformerSynced
@@ -78,7 +78,7 @@ func NewController(
 	serviceInformer corev1informers.ServiceInformer,
 	secretInformer corev1informers.SecretInformer,
 	statefulSetInformer appsv1informers.StatefulSetInformer,
-	pdbInformer policyv1beta1informers.PodDisruptionBudgetInformer,
+	pdbInformer policyv1informers.PodDisruptionBudgetInformer,
 	scyllaClusterInformer scyllav1informers.ScyllaClusterInformer,
 	operatorImage string,
 ) (*Controller, error) {
@@ -515,14 +515,14 @@ func (scc *Controller) deleteStatefulSet(obj interface{}) {
 }
 
 func (scc *Controller) addPodDisruptionBudget(obj interface{}) {
-	pdb := obj.(*policyv1beta1.PodDisruptionBudget)
+	pdb := obj.(*policyv1.PodDisruptionBudget)
 	klog.V(4).InfoS("Observed addition of PodDisruptionBudget", "PodDisruptionBudget", klog.KObj(pdb))
 	scc.enqueueOwner(pdb)
 }
 
 func (scc *Controller) updatePodDisruptionBudget(old, cur interface{}) {
-	oldPDB := old.(*policyv1beta1.PodDisruptionBudget)
-	currentPDB := cur.(*policyv1beta1.PodDisruptionBudget)
+	oldPDB := old.(*policyv1.PodDisruptionBudget)
+	currentPDB := cur.(*policyv1.PodDisruptionBudget)
 
 	if currentPDB.UID != oldPDB.UID {
 		key, err := keyFunc(oldPDB)
@@ -541,14 +541,14 @@ func (scc *Controller) updatePodDisruptionBudget(old, cur interface{}) {
 }
 
 func (scc *Controller) deletePodDisruptionBudget(obj interface{}) {
-	pdb, ok := obj.(*policyv1beta1.PodDisruptionBudget)
+	pdb, ok := obj.(*policyv1.PodDisruptionBudget)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
 			return
 		}
-		pdb, ok = tombstone.Obj.(*policyv1beta1.PodDisruptionBudget)
+		pdb, ok = tombstone.Obj.(*policyv1.PodDisruptionBudget)
 		if !ok {
 			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a PodDisruptionBudget %#v", obj))
 			return

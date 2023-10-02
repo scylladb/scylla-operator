@@ -1,4 +1,4 @@
-apiVersion: policy/v1beta1
+apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: scylla-manager-controller
@@ -7,4 +7,4 @@ spec:
   minAvailable: 1
   selector:
     matchLabels:
-      {{- include "scylla-manager.controllerSelectorLabels" . | nindent 6 }}
+      { { - include "scylla-manager.controllerSelectorLabels" . | nindent 6 } }

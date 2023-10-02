@@ -10,7 +10,7 @@ import (
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
-	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -49,23 +49,23 @@ var _ = g.Describe("ScyllaCluster evictions", func() {
 		verifyScyllaCluster(ctx, f.KubeClient(), sc, di)
 
 		framework.By("Allowing the first pod to be evicted")
-		e := &policyv1beta1.Eviction{
+		e := &policyv1.Eviction{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      utils.GetNodeName(sc, 0),
 				Namespace: f.Namespace(),
 			},
 		}
-		err = f.KubeAdminClient().CoreV1().Pods(f.Namespace()).Evict(ctx, e)
+		err = f.KubeAdminClient().CoreV1().Pods(f.Namespace()).EvictV1(ctx, e)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Forbidding to evict a second pod")
-		e = &policyv1beta1.Eviction{
+		e = &policyv1.Eviction{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      utils.GetNodeName(sc, 1),
 				Namespace: f.Namespace(),
 			},
 		}
-		err = f.KubeAdminClient().CoreV1().Pods(f.Namespace()).Evict(ctx, e)
+		err = f.KubeAdminClient().CoreV1().Pods(f.Namespace()).EvictV1(ctx, e)
 		o.Expect(err).Should(o.MatchError("Cannot evict pod as it would violate the pod's disruption budget."))
 	})
 })

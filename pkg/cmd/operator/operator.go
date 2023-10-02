@@ -181,7 +181,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		kubeInformers.Core().V1().Services(),
 		kubeInformers.Core().V1().Secrets(),
 		kubeInformers.Apps().V1().StatefulSets(),
-		kubeInformers.Policy().V1beta1().PodDisruptionBudgets(),
+		kubeInformers.Policy().V1().PodDisruptionBudgets(),
 		scyllaInformers.Scylla().V1().ScyllaClusters(),
 		o.OperatorImage,
 	)

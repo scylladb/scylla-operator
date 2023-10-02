@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/fake"
-	policyv1beta1listers "k8s.io/client-go/listers/policy/v1beta1"
+	policyv1listers "k8s.io/client-go/listers/policy/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
@@ -24,8 +24,8 @@ import (
 
 func TestApplyPodDisruptionBudget(t *testing.T) {
 	// Using a generating function prevents unwanted mutations.
-	newPDB := func() *policyv1beta1.PodDisruptionBudget {
-		return &policyv1beta1.PodDisruptionBudget{
+	newPDB := func() *policyv1.PodDisruptionBudget {
+		return &policyv1.PodDisruptionBudget{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "default",
 				Name:      "test",
@@ -41,7 +41,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 					},
 				},
 			},
-			Spec: policyv1beta1.PodDisruptionBudgetSpec{
+			Spec: policyv1.PodDisruptionBudgetSpec{
 				Selector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{},
 				},
@@ -49,7 +49,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 		}
 	}
 
-	newPDBWithHash := func() *policyv1beta1.PodDisruptionBudget {
+	newPDBWithHash := func() *policyv1.PodDisruptionBudget {
 		pdb := newPDB()
 		utilruntime.Must(SetHashAnnotation(pdb))
 		return pdb
@@ -59,9 +59,9 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 		name            string
 		existing        []runtime.Object
 		cache           []runtime.Object // nil cache means autofill from the client
-		required        *policyv1beta1.PodDisruptionBudget
+		required        *policyv1.PodDisruptionBudget
 		forceOwnership  bool
-		expectedPDB     *policyv1beta1.PodDisruptionBudget
+		expectedPDB     *policyv1.PodDisruptionBudget
 		expectedChanged bool
 		expectedErr     error
 		expectedEvents  []string
@@ -111,7 +111,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 		{
 			name:     "fails to create the pdb without a controllerRef",
 			existing: nil,
-			required: func() *policyv1beta1.PodDisruptionBudget {
+			required: func() *policyv1.PodDisruptionBudget {
 				pdb := newPDB()
 				pdb.OwnerReferences = nil
 				return pdb
@@ -126,12 +126,12 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 			existing: []runtime.Object{
 				newPDB(),
 			},
-			required: func() *policyv1beta1.PodDisruptionBudget {
+			required: func() *policyv1.PodDisruptionBudget {
 				pdb := newPDB()
 				pdb.Spec.Selector.MatchLabels["foo"] = "bar"
 				return pdb
 			}(),
-			expectedPDB: func() *policyv1beta1.PodDisruptionBudget {
+			expectedPDB: func() *policyv1.PodDisruptionBudget {
 				pdb := newPDB()
 				pdb.Spec.Selector.MatchLabels["foo"] = "bar"
 				utilruntime.Must(SetHashAnnotation(pdb))
@@ -146,12 +146,12 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 			existing: []runtime.Object{
 				newPDBWithHash(),
 			},
-			required: func() *policyv1beta1.PodDisruptionBudget {
+			required: func() *policyv1.PodDisruptionBudget {
 				pdb := newPDB()
 				pdb.Labels["foo"] = "bar"
 				return pdb
 			}(),
-			expectedPDB: func() *policyv1beta1.PodDisruptionBudget {
+			expectedPDB: func() *policyv1.PodDisruptionBudget {
 				pdb := newPDB()
 				pdb.Labels["foo"] = "bar"
 				utilruntime.Must(SetHashAnnotation(pdb))
@@ -164,7 +164,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 		{
 			name: "won't update the pdb if an admission changes the sts",
 			existing: []runtime.Object{
-				func() *policyv1beta1.PodDisruptionBudget {
+				func() *policyv1.PodDisruptionBudget {
 					pdb := newPDBWithHash()
 					// Simulate admission by changing a value after the hash is computed.
 					pdb.Spec.Selector.MatchLabels["foo"] = "admissionchange"
@@ -172,7 +172,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 				}(),
 			},
 			required: newPDB(),
-			expectedPDB: func() *policyv1beta1.PodDisruptionBudget {
+			expectedPDB: func() *policyv1.PodDisruptionBudget {
 				pdb := newPDBWithHash()
 				// Simulate admission by changing a value after the hash is computed.
 				pdb.Spec.Selector.MatchLabels["foo"] = "admissionchange"
@@ -186,19 +186,19 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 			// We test propagating the RV from required in all the other tests.
 			name: "specifying no RV will use the one from the existing object",
 			existing: []runtime.Object{
-				func() *policyv1beta1.PodDisruptionBudget {
+				func() *policyv1.PodDisruptionBudget {
 					pdb := newPDBWithHash()
 					pdb.ResourceVersion = "21"
 					return pdb
 				}(),
 			},
-			required: func() *policyv1beta1.PodDisruptionBudget {
+			required: func() *policyv1.PodDisruptionBudget {
 				pdb := newPDB()
 				pdb.ResourceVersion = ""
 				pdb.Labels["foo"] = "bar"
 				return pdb
 			}(),
-			expectedPDB: func() *policyv1beta1.PodDisruptionBudget {
+			expectedPDB: func() *policyv1.PodDisruptionBudget {
 				pdb := newPDB()
 				pdb.ResourceVersion = "21"
 				pdb.Labels["foo"] = "bar"
@@ -215,27 +215,27 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 			cache: []runtime.Object{
 				newPDBWithHash(),
 			},
-			required: func() *policyv1beta1.PodDisruptionBudget {
+			required: func() *policyv1.PodDisruptionBudget {
 				pdb := newPDB()
 				pdb.Labels["foo"] = "bar"
 				return pdb
 			}(),
 			expectedPDB:     nil,
 			expectedChanged: false,
-			expectedErr:     fmt.Errorf("can't update pdb: %w", apierrors.NewNotFound(policyv1beta1.Resource("poddisruptionbudgets"), "test")),
+			expectedErr:     fmt.Errorf("can't update pdb: %w", apierrors.NewNotFound(policyv1.Resource("poddisruptionbudgets"), "test")),
 			expectedEvents:  []string{`Warning UpdatePodDisruptionBudgetFailed Failed to update PodDisruptionBudget default/test: poddisruptionbudgets.policy "test" not found`},
 		},
 		{
 			name: "update fails if the existing object has no ownerRef",
 			existing: []runtime.Object{
-				func() *policyv1beta1.PodDisruptionBudget {
+				func() *policyv1.PodDisruptionBudget {
 					pdb := newPDB()
 					pdb.OwnerReferences = nil
 					utilruntime.Must(SetHashAnnotation(pdb))
 					return pdb
 				}(),
 			},
-			required: func() *policyv1beta1.PodDisruptionBudget {
+			required: func() *policyv1.PodDisruptionBudget {
 				pdb := newPDB()
 				pdb.Labels["foo"] = "bar"
 				return pdb
@@ -248,20 +248,20 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 		{
 			name: "forced update succeeds if the existing object has no ownerRef",
 			existing: []runtime.Object{
-				func() *policyv1beta1.PodDisruptionBudget {
+				func() *policyv1.PodDisruptionBudget {
 					pdb := newPDB()
 					pdb.OwnerReferences = nil
 					utilruntime.Must(SetHashAnnotation(pdb))
 					return pdb
 				}(),
 			},
-			required: func() *policyv1beta1.PodDisruptionBudget {
+			required: func() *policyv1.PodDisruptionBudget {
 				pdb := newPDB()
 				pdb.Labels["foo"] = "bar"
 				return pdb
 			}(),
 			forceOwnership: true,
-			expectedPDB: func() *policyv1beta1.PodDisruptionBudget {
+			expectedPDB: func() *policyv1.PodDisruptionBudget {
 				pdb := newPDB()
 				pdb.Labels["foo"] = "bar"
 				utilruntime.Must(SetHashAnnotation(pdb))
@@ -274,18 +274,18 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 		{
 			name: "update succeeds to replace ownerRef kind",
 			existing: []runtime.Object{
-				func() *policyv1beta1.PodDisruptionBudget {
+				func() *policyv1.PodDisruptionBudget {
 					pdb := newPDB()
 					pdb.OwnerReferences[0].Kind = "WrongKind"
 					utilruntime.Must(SetHashAnnotation(pdb))
 					return pdb
 				}(),
 			},
-			required: func() *policyv1beta1.PodDisruptionBudget {
+			required: func() *policyv1.PodDisruptionBudget {
 				pdb := newPDB()
 				return pdb
 			}(),
-			expectedPDB: func() *policyv1beta1.PodDisruptionBudget {
+			expectedPDB: func() *policyv1.PodDisruptionBudget {
 				pdb := newPDB()
 				utilruntime.Must(SetHashAnnotation(pdb))
 				return pdb
@@ -297,14 +297,14 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 		{
 			name: "update fails if the existing object is owned by someone else",
 			existing: []runtime.Object{
-				func() *policyv1beta1.PodDisruptionBudget {
+				func() *policyv1.PodDisruptionBudget {
 					pdb := newPDB()
 					pdb.OwnerReferences[0].UID = "42"
 					utilruntime.Must(SetHashAnnotation(pdb))
 					return pdb
 				}(),
 			},
-			required: func() *policyv1beta1.PodDisruptionBudget {
+			required: func() *policyv1.PodDisruptionBudget {
 				pdb := newPDB()
 				pdb.Labels["foo"] = "bar"
 				return pdb
@@ -317,14 +317,14 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 		{
 			name: "forced update fails if the existing object is owned by someone else",
 			existing: []runtime.Object{
-				func() *policyv1beta1.PodDisruptionBudget {
+				func() *policyv1.PodDisruptionBudget {
 					pdb := newPDB()
 					pdb.OwnerReferences[0].UID = "42"
 					utilruntime.Must(SetHashAnnotation(pdb))
 					return pdb
 				}(),
 			},
-			required: func() *policyv1beta1.PodDisruptionBudget {
+			required: func() *policyv1.PodDisruptionBudget {
 				pdb := newPDB()
 				pdb.Labels["foo"] = "bar"
 				return pdb
@@ -359,7 +359,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 					recorder := record.NewFakeRecorder(10)
 
 					pdbCache := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
-					pdbLister := policyv1beta1listers.NewPodDisruptionBudgetLister(pdbCache)
+					pdbLister := policyv1listers.NewPodDisruptionBudgetLister(pdbCache)
 
 					if tc.cache != nil {
 						for _, obj := range tc.cache {
@@ -369,7 +369,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 							}
 						}
 					} else {
-						pdbList, err := client.PolicyV1beta1().PodDisruptionBudgets("").List(ctx, metav1.ListOptions{
+						pdbList, err := client.PolicyV1().PodDisruptionBudgets("").List(ctx, metav1.ListOptions{
 							LabelSelector: labels.Everything().String(),
 						})
 						if err != nil {
@@ -384,7 +384,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 						}
 					}
 
-					gotSts, gotChanged, gotErr := ApplyPodDisruptionBudget(ctx, client.PolicyV1beta1(), pdbLister, recorder, tc.required, tc.forceOwnership)
+					gotSts, gotChanged, gotErr := ApplyPodDisruptionBudget(ctx, client.PolicyV1(), pdbLister, recorder, tc.required, tc.forceOwnership)
 					if !reflect.DeepEqual(gotErr, tc.expectedErr) {
 						t.Fatalf("expected %v, got %v", tc.expectedErr, gotErr)
 					}
@@ -395,7 +395,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 
 					// Make sure such object was actually created.
 					if gotSts != nil {
-						createdSts, err := client.PolicyV1beta1().PodDisruptionBudgets(gotSts.Namespace).Get(ctx, gotSts.Name, metav1.GetOptions{})
+						createdSts, err := client.PolicyV1().PodDisruptionBudgets(gotSts.Namespace).Get(ctx, gotSts.Name, metav1.GetOptions{})
 						if err != nil {
 							t.Error(err)
 						}

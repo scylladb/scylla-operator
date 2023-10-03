@@ -16,9 +16,15 @@ var (
 	DeleteTestingNSPolicyNever     DeleteTestingNSPolicyType = "Never"
 )
 
+type IngressController struct {
+	IngressClassName  string
+	Address           string
+	CustomAnnotations map[string]string
+}
+
 type TestContextType struct {
-	RestConfig             *restclient.Config
-	ArtifactsDir           string
-	DeleteTestingNSPolicy  DeleteTestingNSPolicyType
-	OverrideIngressAddress string
+	RestConfig            *restclient.Config
+	ArtifactsDir          string
+	DeleteTestingNSPolicy DeleteTestingNSPolicyType
+	IngressController     *IngressController
 }

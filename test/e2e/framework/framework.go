@@ -74,11 +74,11 @@ func (f *Framework) Username() string {
 }
 
 func (f *Framework) GetIngressAddress(hostname string) string {
-	if len(TestContext.OverrideIngressAddress) == 0 {
+	if TestContext.IngressController == nil || len(TestContext.IngressController.Address) == 0 {
 		return hostname
 	}
 
-	return TestContext.OverrideIngressAddress
+	return TestContext.IngressController.Address
 }
 
 func (f *Framework) FieldManager() string {

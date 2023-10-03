@@ -291,8 +291,9 @@ func verifyCQLData(ctx context.Context, di *utils.DataInserter) {
 	o.Expect(data).To(o.Equal(di.GetExpected()))
 }
 
-func insertAndVerifyCQLData(ctx context.Context, hosts []string) *utils.DataInserter {
-	di, err := utils.NewDataInserter(hosts)
+func insertAndVerifyCQLData(ctx context.Context, hosts []string, options ...utils.DataInserterOption) *utils.DataInserter {
+	framework.By("Inserting data")
+	di, err := utils.NewDataInserter(hosts, options...)
 	o.Expect(err).NotTo(o.HaveOccurred())
 
 	insertAndVerifyCQLDataUsingDataInserter(ctx, di)

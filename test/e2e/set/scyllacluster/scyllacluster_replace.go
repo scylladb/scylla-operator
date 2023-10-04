@@ -27,6 +27,8 @@ var _ = g.Describe("ScyllaCluster", func() {
 	const (
 		scyllaOSImageRepository         = "docker.io/scylladb/scylla"
 		scyllaEnterpriseImageRepository = "docker.io/scylladb/scylla-enterprise"
+		clusterIPProcedure              = "ClusterIP"
+		hostIDProcedure                 = "HostID"
 	)
 
 	validateReplaceViaClusterIPAddress := func(ctx context.Context, configClient *scyllaclient.ConfigClient, preReplaceService *corev1.Service) error {
@@ -95,6 +97,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		preReplaceService := replacedNodeService.DeepCopy()
+		framework.Infof("Initial service %q UID is %q", preReplaceService.Name, preReplaceService.UID)
 
 		framework.By("Replacing a node #0")
 		pod, err := f.KubeClient().CoreV1().Pods(f.Namespace()).Get(
@@ -103,7 +106,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 			metav1.GetOptions{},
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		framework.Infof("Initial pod %q has UID is %q", pod.Name, pod.UID)
+		framework.Infof("Initial pod %q UID is %q", pod.Name, pod.UID)
 
 		_, err = f.KubeClient().CoreV1().Services(f.Namespace()).Patch(
 			ctx,
@@ -117,9 +120,18 @@ var _ = g.Describe("ScyllaCluster", func() {
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		framework.By("Waiting for the pod to be replaced")
 		waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx2Cancel()
+
+		if e.procedure == clusterIPProcedure {
+			framework.By("Waiting for the service to be replaced")
+			_, err := utils.WaitForServiceState(waitCtx2, f.KubeClient().CoreV1().Services(preReplaceService.Namespace), preReplaceService.Name, utils.WaitForStateOptions{TolerateDelete: true}, func(svc *corev1.Service) (bool, error) {
+				return svc.UID != preReplaceService.UID, nil
+			})
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		framework.By("Waiting for the pod to be replaced")
 		_, err = utils.WaitForPodState(waitCtx2, f.KubeClient().CoreV1().Pods(pod.Namespace), pod.Name, utils.WaitForStateOptions{TolerateDelete: true}, func(p *corev1.Pod) (bool, error) {
 			return p.UID != pod.UID, nil
 		})
@@ -169,25 +181,25 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 	},
 		g.Entry(describeEntry, &entry{
-			procedure:             "ClusterIP",
+			procedure:             clusterIPProcedure,
 			scyllaImageRepository: scyllaOSImageRepository,
 			scyllaVersion:         "5.1.15",
 			validateScyllaConfig:  validateReplaceViaClusterIPAddress,
 		}),
 		g.Entry(describeEntry, &entry{
-			procedure:             "ClusterIP",
+			procedure:             clusterIPProcedure,
 			scyllaImageRepository: scyllaEnterpriseImageRepository,
 			scyllaVersion:         "2022.2.12",
 			validateScyllaConfig:  validateReplaceViaClusterIPAddress,
 		}),
 		g.Entry(describeEntry, &entry{
-			procedure:             "HostID",
+			procedure:             hostIDProcedure,
 			scyllaImageRepository: scyllaOSImageRepository,
 			scyllaVersion:         "5.2.6",
 			validateScyllaConfig:  validateReplaceViaHostID,
 		}),
 		g.Entry(describeEntry, &entry{
-			procedure:             "HostID",
+			procedure:             hostIDProcedure,
 			scyllaImageRepository: scyllaEnterpriseImageRepository,
 			scyllaVersion:         "2023.1.0",
 			validateScyllaConfig:  validateReplaceViaHostID,

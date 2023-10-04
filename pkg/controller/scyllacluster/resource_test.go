@@ -216,8 +216,10 @@ func TestMemberService(t *testing.T) {
 				},
 			},
 		},
+		// This behaviour is based on the fact the we merge labels on apply.
+		// TODO: to be addressed with https://github.com/scylladb/scylla-operator/issues/1440.
 		{
-			name:          "new service with unsaved IP and existing replace address",
+			name:          "new service with unsaved IP and existing replace label",
 			scyllaCluster: basicSC,
 			rackName:      basicRackName,
 			svcName:       basicSVCName,
@@ -231,43 +233,8 @@ func TestMemberService(t *testing.T) {
 			jobs: nil,
 			expectedService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: basicSVCName,
-					Labels: func() map[string]string {
-						labels := basicSVCLabels()
-						labels[naming.ReplaceLabel] = "10.0.0.1"
-						return labels
-					}(),
-					OwnerReferences: basicSCOwnerRefs,
-				},
-				Spec: corev1.ServiceSpec{
-					Type:                     corev1.ServiceTypeClusterIP,
-					Selector:                 basicSVCSelector,
-					PublishNotReadyAddresses: true,
-					Ports:                    basicPorts,
-				},
-			},
-		},
-		{
-			name:          "existing initial service",
-			scyllaCluster: basicSC,
-			rackName:      basicRackName,
-			svcName:       basicSVCName,
-			oldService: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						naming.ReplaceLabel: "",
-					},
-				},
-			},
-			jobs: nil,
-			expectedService: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: basicSVCName,
-					Labels: func() map[string]string {
-						labels := basicSVCLabels()
-						labels[naming.ReplaceLabel] = ""
-						return labels
-					}(),
+					Name:            basicSVCName,
+					Labels:          basicSVCLabels(),
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -301,12 +268,8 @@ func TestMemberService(t *testing.T) {
 			jobs: nil,
 			expectedService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: basicSVCName,
-					Labels: func() map[string]string {
-						labels := basicSVCLabels()
-						labels[naming.ReplaceLabel] = ""
-						return labels
-					}(),
+					Name:            basicSVCName,
+					Labels:          basicSVCLabels(),
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{

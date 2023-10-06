@@ -354,6 +354,7 @@ cluster_name: "foo"
 rpc_address: "0.0.0.0"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 native_transport_port_ssl: 9142
+native_shard_aware_transport_port_ssl: 19142
 client_encryption_options:
   enabled: true
   optional: false

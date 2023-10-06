@@ -25,8 +25,8 @@ import (
 )
 
 type GatherBaseOptions struct {
-	gathererName string
-	configFlags  *kgenericclioptions.ConfigFlags
+	GathererName string
+	ConfigFlags  *kgenericclioptions.ConfigFlags
 
 	kubeClient      kubernetes.Interface
 	dynamicClient   dynamic.Interface
@@ -40,8 +40,8 @@ type GatherBaseOptions struct {
 
 func NewGatherBaseOptions(gathererName string, keepGoing bool) *GatherBaseOptions {
 	return &GatherBaseOptions{
-		gathererName: gathererName,
-		configFlags: kgenericclioptions.NewConfigFlags(true).WithWrapConfigFn(func(c *rest.Config) *rest.Config {
+		GathererName: gathererName,
+		ConfigFlags: kgenericclioptions.NewConfigFlags(true).WithWrapConfigFn(func(c *rest.Config) *rest.Config {
 			c.UserAgent = genericclioptions.MakeVersionedUserAgent(fmt.Sprintf("scylla-operator-%s", gathererName))
 			// Don't slow down artificially.
 			c.QPS = math.MaxFloat32
@@ -56,7 +56,7 @@ func NewGatherBaseOptions(gathererName string, keepGoing bool) *GatherBaseOption
 }
 
 func (o *GatherBaseOptions) AddFlags(flagset *pflag.FlagSet) {
-	o.configFlags.AddFlags(flagset)
+	o.ConfigFlags.AddFlags(flagset)
 
 	flagset.StringVarP(&o.DestDir, "dest-dir", "", o.DestDir, "Destination directory where to store the artifacts.")
 	flagset.Int64VarP(&o.LogsLimitBytes, "log-limit-bytes", "", o.LogsLimitBytes, "Maximum number of bytes collected for each log file, 0 means unlimited.")
@@ -90,7 +90,7 @@ func (o *GatherBaseOptions) Validate() error {
 }
 
 func (o *GatherBaseOptions) Complete() error {
-	restConfig, err := o.configFlags.ToRESTConfig()
+	restConfig, err := o.ConfigFlags.ToRESTConfig()
 	if err != nil {
 		return fmt.Errorf("can't create RESTConfig: %w", err)
 	}
@@ -108,7 +108,7 @@ func (o *GatherBaseOptions) Complete() error {
 	o.discoveryClient = cacheddiscovery.NewMemCacheClient(o.kubeClient.Discovery())
 
 	if len(o.DestDir) == 0 {
-		o.DestDir = fmt.Sprintf("%s-%s", o.gathererName, utilrand.String(12))
+		o.DestDir = fmt.Sprintf("%s-%s", o.GathererName, utilrand.String(12))
 		err := os.Mkdir(o.DestDir, 0770)
 		if err != nil {
 			return fmt.Errorf("can't create destination directory %q: %w", o.DestDir, err)
@@ -130,7 +130,7 @@ func (o *GatherBaseOptions) RunInit(originalStreams genericclioptions.IOStreams,
 		return fmt.Errorf("can't set alsologtostderr flag: %w", err)
 	}
 
-	err = flag.Set("log_file", filepath.Join(o.DestDir, fmt.Sprintf("%s.log", o.gathererName)))
+	err = flag.Set("log_file", filepath.Join(o.DestDir, fmt.Sprintf("%s.log", o.GathererName)))
 	if err != nil {
 		return fmt.Errorf("can't set log_file flag: %w", err)
 	}

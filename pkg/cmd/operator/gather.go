@@ -124,7 +124,7 @@ func (o *GatherOptions) Complete(args []string) error {
 		return fmt.Errorf("can't complete gather base: %w", err)
 	}
 
-	o.builder = o.builderFlags.ToBuilder(o.configFlags, args)
+	o.builder = o.builderFlags.ToBuilder(o.ConfigFlags, args)
 
 	return nil
 }

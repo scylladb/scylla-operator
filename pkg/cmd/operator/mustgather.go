@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -30,6 +31,12 @@ var (
 	mustGatherExample = templates.Examples(`
 		# Collect archive of all resources related to scyllacluster and its APIs.
 		scylla-operator must-gather
+	
+		# Collect archive of all resources related to scyllacluster and its APIs.
+		# Namespaced APIs targeted for collection will be limited to the supplied namespace.
+		# (E.g. this will limit ScyllaClusters to the supplied namespace, 
+		#       unless some other resource requests them collected.)
+		scylla-operator must-gather -n my-namespace
 		
 		# Collect archive of all resources present in the Kubernetes cluster.
 		scylla-operator must-gather --all-resources
@@ -262,9 +269,16 @@ func (o *MustGatherOptions) run(ctx context.Context) error {
 				return fmt.Errorf("can't find resource in preferred resources: %w", err)
 			}
 
+			namespace := s.Namespace
+			if ri.Scope.Name() == meta.RESTScopeNameNamespace &&
+				s.Namespace == corev1.NamespaceAll &&
+				o.GatherBaseOptions.ConfigFlags.Namespace != nil {
+				namespace = *o.GatherBaseOptions.ConfigFlags.Namespace
+			}
+
 			resourceSpecs = append(resourceSpecs, resourceSpec{
 				ResourceInfo: *ri,
-				Namespace:    s.Namespace,
+				Namespace:    namespace,
 				Name:         s.Name,
 			})
 		}

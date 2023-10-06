@@ -22,6 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	kgenericclioptions "k8s.io/cli-runtime/pkg/genericclioptions"
 	fakediscovery "k8s.io/client-go/discovery/fake"
 	dynamicfakeclient "k8s.io/client-go/dynamic/fake"
 	kubefakeclient "k8s.io/client-go/kubernetes/fake"
@@ -89,11 +90,13 @@ func TestMustGatherOptions_Run(t *testing.T) {
 		name            string
 		existingObjects []runtime.Object
 		allResources    bool
+		namespace       string
 		expectedDump    *testhelpers.GatherDump
 		expectedError   error
 	}{
 		{
-			name: "smoke test",
+			name:      "gathers objects in all namespaces",
+			namespace: corev1.NamespaceAll,
 			existingObjects: []runtime.Object{
 				&corev1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{
@@ -107,6 +110,18 @@ func TestMustGatherOptions_Run(t *testing.T) {
 					},
 					Data: map[string][]byte{
 						"secret-key": []byte("secret-value"),
+					},
+				},
+				&scyllav1.ScyllaCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "my-namespace",
+						Name:      "scylla",
+					},
+				},
+				&scyllav1.ScyllaCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "my-other-namespace",
+						Name:      "other-scylla",
 					},
 				},
 				&apiserverinternalv1alpha1.StorageVersion{
@@ -133,6 +148,44 @@ status: {}
 `, "\n"),
 					},
 					{
+						Name: "namespaces/my-namespace/scyllaclusters.scylla.scylladb.com/scylla.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  creationTimestamp: null
+  name: scylla
+  namespace: my-namespace
+spec:
+  agentVersion: ""
+  datacenter:
+    name: ""
+    racks: null
+  network: {}
+  version: ""
+status: {}
+`, "\n"),
+					},
+					{
+						Name: "namespaces/my-other-namespace/scyllaclusters.scylla.scylladb.com/other-scylla.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  creationTimestamp: null
+  name: other-scylla
+  namespace: my-other-namespace
+spec:
+  agentVersion: ""
+  datacenter:
+    name: ""
+    racks: null
+  network: {}
+  version: ""
+status: {}
+`, "\n"),
+					},
+					{
 						Name: "namespaces/scylla-operator/secrets/my-secret.yaml",
 						Content: strings.TrimPrefix(`
 apiVersion: v1
@@ -152,7 +205,77 @@ metadata:
 			},
 		},
 		{
-			name: "gathers all resources",
+			name:      "gathers objects only in selected namespace",
+			namespace: "my-namespace",
+			existingObjects: []runtime.Object{
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "scylla-operator",
+					},
+				},
+				&scyllav1.ScyllaCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "my-namespace",
+						Name:      "scylla",
+					},
+				},
+				&scyllav1.ScyllaCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "my-other-namespace",
+						Name:      "do-not-collect",
+					},
+				},
+				&apiserverinternalv1alpha1.StorageVersion{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "my-non-standard-resource-that-should-not-be-collected",
+					},
+				},
+			},
+			allResources:  false,
+			expectedError: nil,
+			expectedDump: &testhelpers.GatherDump{
+				EmptyDirs: nil,
+				Files: []testhelpers.File{
+					{
+						Name: "cluster-scoped/namespaces/scylla-operator.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: v1
+kind: Namespace
+metadata:
+  creationTimestamp: null
+  name: scylla-operator
+spec: {}
+status: {}
+`, "\n"),
+					},
+					{
+						Name: "namespaces/my-namespace/scyllaclusters.scylla.scylladb.com/scylla.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  creationTimestamp: null
+  name: scylla
+  namespace: my-namespace
+spec:
+  agentVersion: ""
+  datacenter:
+    name: ""
+    racks: null
+  network: {}
+  version: ""
+status: {}
+`, "\n"),
+					},
+					{
+						Name: "scylla-operator-must-gather.log",
+					},
+				},
+			},
+		},
+		{
+			name:      "gathers all resources",
+			namespace: corev1.NamespaceAll,
 			existingObjects: []runtime.Object{
 				&apiserverinternalv1alpha1.StorageVersion{
 					ObjectMeta: metav1.ObjectMeta{
@@ -214,7 +337,9 @@ status: {}
 
 			tmpDir := t.TempDir()
 
-			fakeKubeClient := kubefakeclient.NewSimpleClientset(tc.existingObjects...)
+			// We don't actually list objects using this client and it can only work with native APIs,
+			// so we can leave it empty.
+			fakeKubeClient := kubefakeclient.NewSimpleClientset()
 			fakeKubeClient.Resources = apiResources
 			simpleFakeDiscoveryClient := fakeKubeClient.Discovery()
 			fakeDiscoveryClient := &testhelpers.FakeDiscoveryWithSPR{
@@ -241,6 +366,8 @@ status: {}
 			o.discoveryClient = fakeDiscoveryClient
 			o.dynamicClient = fakeDynamicClient
 			o.AllResources = tc.allResources
+			o.GatherBaseOptions.ConfigFlags = kgenericclioptions.NewConfigFlags(false)
+			*o.GatherBaseOptions.ConfigFlags.Namespace = tc.namespace
 
 			cmd := &cobra.Command{
 				Use: "must-gather",

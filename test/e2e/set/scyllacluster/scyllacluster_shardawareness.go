@@ -13,6 +13,7 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	"github.com/scylladb/gocqlx/v2"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllaclusterfixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
@@ -28,14 +29,10 @@ var _ = g.Describe("ScyllaCluster", func() {
 	f := framework.NewFramework("scyllacluster")
 
 	g.It("should allow to build connection pool using shard aware ports", func() {
-		g.Skip("Shardawareness doesn't work on setups NATting traffic, and our CI does it when traffic is going through ClusterIPs." +
-			"It's shall be reenabled once we switch client-node communication to PodIPs.",
-		)
-
 		const (
 			nonShardAwarePort = 9042
 			shardAwarePort    = 19042
-			nrShards          = 2
+			nrShards          = 4
 		)
 
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
@@ -43,8 +40,18 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 		sc := scyllaclusterfixture.BasicScyllaCluster.ReadOrFail()
 		sc.Spec.Datacenter.Racks[0].Members = 1
+		sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+			BroadcastOptions: &scyllav1.NodeBroadcastOptions{
+				Clients: scyllav1.BroadcastOptions{
+					Type: scyllav1.BroadcastAddressTypePodIP,
+				},
+				Nodes: scyllav1.BroadcastOptions{
+					Type: scyllav1.BroadcastAddressTypePodIP,
+				},
+			},
+		}
 
-		// Ensure 2 shards.
+		// Ensure number of shards.
 		sc.Spec.Datacenter.Racks[0].Resources.Limits[corev1.ResourceCPU] = resource.MustParse(fmt.Sprintf("%d", nrShards))
 
 		framework.By("Creating a ScyllaCluster")
@@ -59,8 +66,6 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 		hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(hosts).To(o.HaveLen(1))
-		di := insertAndVerifyCQLData(ctx, hosts)
-		defer di.Close()
 
 		connections := make(map[uint16]string)
 		var connectionsMut sync.Mutex
@@ -87,7 +92,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer session.Close()
 
-		err = wait.PollImmediate(100*time.Millisecond, 5*time.Second, func() (done bool, err error) {
+		err = wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, 5*time.Second, true, func(context.Context) (done bool, err error) {
 			return len(connections) == nrShards, nil
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())

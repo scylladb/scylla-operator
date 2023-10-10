@@ -6,15 +6,15 @@ authors = ["ScyllaDB Documentation Contributors"]
 
 # Pin dependencies to exact versions so CI always produces the same artifacts.
 [tool.poetry.dependencies]
-python = "^3.8"
-pyyaml = "^6.0"
+python = "^3.9"
+pyyaml = "6.0.1"
 pygments = "2.15.1"
 recommonmark = "^0.7.1"
-sphinx-scylladb-theme = "~1.5.1"
-sphinx-sitemap = "2.5.0"
-sphinx-autobuild = "^2021.3.14"
-Sphinx = "^4.3.2"
-sphinx-multiversion-scylla = "~0.2.11"
+sphinx-scylladb-theme = "~1.6.1"
+sphinx-sitemap = "2.5.1"
+sphinx-autobuild = "2021.3.14"
+Sphinx = "7.2.6"
+sphinx-multiversion-scylla = "~0.3.1"
 sphinx-markdown-tables = "~0.0.17"
 redirects_cli ="~0.1.3"
 

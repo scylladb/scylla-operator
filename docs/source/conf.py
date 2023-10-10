@@ -1,13 +1,10 @@
 # -*- coding: utf-8 -*-
-import os
-import sys
 from datetime import date
 
-import recommonmark
 from recommonmark.transform import AutoStructify
 from sphinx_scylladb_theme.utils import multiversion_regex_builder
 
-# -- General configuration ------------------------------------------------
+# -- General configuration
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
@@ -69,12 +66,12 @@ notfound_template =  '404.html'
 # Prefix added to all the URLs generated in the 404 page.
 notfound_urls_prefix = ''
 
-# -- Options for redirect extension ---------------------------------------
+# -- Options for redirect extension
 
 # Read a YAML dictionary of redirections and generate an HTML file for each
 redirects_file = "./redirections.yaml"
 
-# -- Options for multiversion extension ----------------------------------
+# -- Options for multiversion extension
 # Whitelist pattern for tags (set to None to ignore all tags)
 TAGS = []
 smv_tag_whitelist = multiversion_regex_builder(TAGS)
@@ -94,7 +91,7 @@ smv_released_pattern = r'^tags/.*$'
 # Format for versioned output directories inside the build directory
 smv_outputdir_format = '{ref.name}'
 
-# -- Options for HTML output ----------------------------------------------
+# -- Options for HTML output
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
@@ -104,7 +101,6 @@ html_theme = 'sphinx_scylladb_theme'
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#
 html_theme_options = {
     'conf_py_path': 'docs/source/',
     'default_branch': 'master',

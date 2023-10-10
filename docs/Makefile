@@ -1,7 +1,7 @@
 # You can set these variables from the command line.
 POETRY ?= poetry
 SPHINXBUILD ?= $(POETRY) run sphinx-build
-SPHINXOPTS ?=
+SPHINXOPTS ?= -j auto
 PAPER ?=
 BUILDDIR ?= _build
 SOURCEDIR ?= source

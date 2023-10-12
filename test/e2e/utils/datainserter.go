@@ -21,6 +21,7 @@ import (
 const nRows = 10
 
 type DataInserter struct {
+	clusterConfig     *gocql.ClusterConfig
 	session           *gocqlx.Session
 	keyspace          string
 	table             *table.Table
@@ -35,9 +36,9 @@ type TestData struct {
 
 type DataInserterOption func(*DataInserter)
 
-func WithSession(session *gocqlx.Session) func(*DataInserter) {
+func WithClusterConfig(clusterConfig *gocql.ClusterConfig) func(*DataInserter) {
 	return func(di *DataInserter) {
-		di.session = session
+		di.clusterConfig = clusterConfig
 	}
 }
 
@@ -74,11 +75,9 @@ func NewMultiDCDataInserter(dcHosts map[string][]string, options ...DataInserter
 		option(di)
 	}
 
-	if di.session == nil {
-		err := di.SetClientEndpoints(slices.Flatten(helpers.GetMapValues(dcHosts)))
-		if err != nil {
-			return nil, fmt.Errorf("can't set client endpoints: %w", err)
-		}
+	err := di.SetClientEndpoints(slices.Flatten(helpers.GetMapValues(dcHosts)))
+	if err != nil {
+		return nil, fmt.Errorf("can't set client endpoints: %w", err)
 	}
 
 	return di, nil
@@ -179,9 +178,14 @@ func (di *DataInserter) GetExpected() []*TestData {
 }
 
 func (di *DataInserter) createSession(hosts []string) error {
-	clusterConfig := gocql.NewCluster(hosts...)
-	// Set a small reconnect interval to avoid flakes, if not reconnected in time.
-	clusterConfig.ReconnectInterval = 500 * time.Millisecond
+	var clusterConfig *gocql.ClusterConfig
+	if di.clusterConfig != nil {
+		clusterConfig = di.clusterConfig
+	} else {
+		clusterConfig = gocql.NewCluster(hosts...)
+		// Set a small reconnect interval to avoid flakes, if not reconnected in time.
+		clusterConfig.ReconnectInterval = 500 * time.Millisecond
+	}
 
 	session, err := gocqlx.WrapSession(clusterConfig.CreateSession())
 	if err != nil {

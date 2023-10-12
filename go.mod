@@ -1,6 +1,6 @@
 module github.com/scylladb/scylla-operator
 
-go 1.20
+go 1.21
 
 require (
 	cloud.google.com/go/compute/metadata v0.2.3

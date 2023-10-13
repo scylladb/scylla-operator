@@ -248,6 +248,7 @@ kind: Prometheus
 metadata:
   name: "sm-name"
 spec:
+  version: "v2.44.0"
   serviceAccountName: "sm-name-prometheus"
   securityContext:
     runAsNonRoot: true
@@ -323,6 +324,7 @@ kind: Prometheus
 metadata:
   name: "sm-name"
 spec:
+  version: "v2.44.0"
   serviceAccountName: "sm-name-prometheus"
   securityContext:
     runAsNonRoot: true

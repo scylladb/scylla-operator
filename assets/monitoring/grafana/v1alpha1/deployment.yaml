@@ -23,9 +23,35 @@ spec:
         {{- .affinity | toYAML | nindent 8 }}
       tolerations:
         {{- .tolerations | toYAML | nindent 8 }}
+      initContainers:
+      - name: gzip
+        image: registry.access.redhat.com/ubi9/ubi:9.2-755.1696515532@sha256:762ee03f2cce3af7f8c8f3eda26f2aeb50678fb7cc3b78f856546970faa04c67
+        command:
+        - /usr/bin/bash
+        - -euExo
+        - pipefail
+        - -O
+        - inherit_errexit
+        - -c
+        args:
+        - |
+          find /var/run/configmaps -type d -mindepth 1 -maxdepth 1 | while read -r d; do
+            mkdir /var/run/decompressed-configmaps/"${d##*/}"
+            find "${d}" -maxdepth 1 -name '*.gz.base64' -exec cp -L -t /var/run/decompressed-configmaps/"${d##*/}" {} +
+          done
+          find /var/run/decompressed-configmaps -name '*.gz.base64' | while read -r f; do
+            base64 -d "${f}" > "${f%.base64}"
+            rm "${f}"
+          done
+          find /var/run/decompressed-configmaps -name '*.gz' -exec gzip -d {} +
+        volumeMounts:
+        - name: decompressed-configmaps
+          mountPath: /var/run/decompressed-configmaps
+        - name: grafana-scylladb-dashboards
+          mountPath: /var/run/configmaps/grafana-scylladb-dashboards
       containers:
       - name: grafana
-        image: docker.io/grafana/grafana:9.3.4
+        image: docker.io/grafana/grafana:9.5.12@sha256:7d2f2a8b7aebe30bf3f9ae0f190e508e571b43f65753ba3b1b1adf0800bc9256
         command:
         - grafana-server
         - --packaging=docker
@@ -67,8 +93,9 @@ spec:
         volumeMounts:
         - name: grafana-configs
           mountPath: /var/run/configmaps/grafana-configs
-        - name: grafana-scylladb-dashboards
+        - name: decompressed-configmaps
           mountPath: /var/run/dashboards/scylladb
+          subPath: grafana-scylladb-dashboards
         - name: grafana-provisioning
           mountPath: /var/run/configmaps/grafana-provisioning/access-control/access-control.yaml
           subPath: access-control.yaml
@@ -98,6 +125,9 @@ spec:
         - name: grafana-storage
           mountPath: /var/lib/grafana
       volumes:
+      - name: decompressed-configmaps
+        emptyDir:
+          sizeLimit: 50Mi
       - name: grafana-configs
         configMap:
           name: "{{ .scyllaDBMonitoringName }}-grafana-configs"

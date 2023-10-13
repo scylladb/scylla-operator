@@ -1,9 +1,17 @@
 package v1alpha1
 
 import (
+	"bytes"
+	"compress/gzip"
+	"embed"
 	_ "embed"
+	"encoding/base64"
+	"fmt"
+	"io/fs"
+	"path/filepath"
 
 	"github.com/scylladb/scylla-operator/pkg/assets"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -36,13 +44,17 @@ var (
 	grafanaProvisioningConfigMapTemplateString string
 	GrafanaProvisioningConfigMapTemplate       = ParseObjectTemplateOrDie[*corev1.ConfigMap]("grafana-provisioning-cm", grafanaProvisioningConfigMapTemplateString)
 
-	//go:embed "dashboards-platform.cm.yaml"
-	grafanaDashboardsPlatformConfigMapTemplateString string
-	GrafanaDashboardsPlatformConfigMapTemplate       = ParseObjectTemplateOrDie[*corev1.ConfigMap]("grafana-dashboards-platform-cm", grafanaDashboardsPlatformConfigMapTemplateString)
+	//go:embed "dashboards.cm.yaml"
+	grafanaDashboardsConfigMapTemplateString string
+	GrafanaDashboardsConfigMapTemplate       = ParseObjectTemplateOrDie[*corev1.ConfigMap]("grafana-dashboards-cm", grafanaDashboardsConfigMapTemplateString)
 
-	//go:embed "dashboards-saas.cm.yaml"
-	grafanaDashboardsSAASConfigMapTemplateString string
-	GrafanaDashboardsSAASConfigMapTemplate       = ParseObjectTemplateOrDie[*corev1.ConfigMap]("grafana-dashboards-saas-cm", grafanaDashboardsSAASConfigMapTemplateString)
+	//go:embed "dashboards/platform/*.json"
+	grafanaDashboardsPlatformFS embed.FS
+	GrafanaDashboardsPlatform   = helpers.Must(gzipMapData(helpers.Must(parseDashboardsFromFS(grafanaDashboardsPlatformFS, "dashboards/platform"))))
+
+	//go:embed "dashboards/saas/*.json"
+	grafanaDashboardsSAASFS embed.FS
+	GrafanaDashboardsSAAS   = helpers.Must(gzipMapData(helpers.Must(parseDashboardsFromFS(grafanaDashboardsSAASFS, "dashboards/saas"))))
 
 	//go:embed "service.yaml"
 	grafanaServiceTemplateString string
@@ -52,3 +64,65 @@ var (
 	grafanaIngressTemplateString string
 	GrafanaIngressTemplate       = ParseObjectTemplateOrDie[*networkingv1.Ingress]("grafana-ingress", grafanaIngressTemplateString)
 )
+
+func parseDashboardsFromFS(files embed.FS, root string) (map[string]string, error) {
+	res := map[string]string{}
+
+	err := fs.WalkDir(files, root, func(p string, de fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if p == root || de.IsDir() {
+			return nil
+		}
+
+		data, err := fs.ReadFile(files, p)
+		if err != nil {
+			return fmt.Errorf("can't read file %q: %w", p, err)
+		}
+		relPath, err := filepath.Rel(root, p)
+		if err != nil {
+			return fmt.Errorf("can't compute relative path to file %q: %w", p, err)
+		}
+		res[relPath] = string(data)
+
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("can't walk fs at root %q: %w", root, err)
+	}
+
+	return res, nil
+}
+
+func gzipMapData(uncompressedMap map[string]string) (map[string]string, error) {
+	res := make(map[string]string, len(uncompressedMap))
+	for k, v := range uncompressedMap {
+		var buf bytes.Buffer
+		b64Writer := base64.NewEncoder(base64.StdEncoding, &buf)
+
+		zw, err := gzip.NewWriterLevel(b64Writer, gzip.BestCompression)
+		if err != nil {
+			return nil, fmt.Errorf("can't create gzip writer: %w", err)
+		}
+
+		_, err = zw.Write([]byte(v))
+		if err != nil {
+			return nil, fmt.Errorf("can't write value of key %q into gzip writer: %w", k, err)
+		}
+		err = zw.Close()
+		if err != nil {
+			return nil, fmt.Errorf("can't close gzip writer for key %q: %w", k, err)
+		}
+
+		err = b64Writer.Close()
+		if err != nil {
+			return nil, fmt.Errorf("can't close base64 writer for key %q: %w", k, err)
+		}
+
+		res[fmt.Sprintf("%s.gz.base64", k)] = buf.String()
+	}
+
+	return res, nil
+}

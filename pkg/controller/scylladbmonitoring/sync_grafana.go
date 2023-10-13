@@ -147,18 +147,20 @@ func makeGrafanaDashboards(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.Confi
 		t = *sm.Spec.Type
 	}
 
+	var dashboards map[string]string
 	switch t {
 	case scyllav1alpha1.ScyllaDBMonitoringTypePlatform:
-		return grafanav1alpha1assets.GrafanaDashboardsPlatformConfigMapTemplate.RenderObject(map[string]any{
-			"scyllaDBMonitoringName": sm.Name,
-		})
+		dashboards = grafanav1alpha1assets.GrafanaDashboardsPlatform
 	case scyllav1alpha1.ScyllaDBMonitoringTypeSAAS:
-		return grafanav1alpha1assets.GrafanaDashboardsSAASConfigMapTemplate.RenderObject(map[string]any{
-			"scyllaDBMonitoringName": sm.Name,
-		})
+		dashboards = grafanav1alpha1assets.GrafanaDashboardsSAAS
 	default:
 		return nil, "", fmt.Errorf("unkown monitoring type: %q", t)
 	}
+
+	return grafanav1alpha1assets.GrafanaDashboardsConfigMapTemplate.RenderObject(map[string]any{
+		"scyllaDBMonitoringName": sm.Name,
+		"dashboards":             dashboards,
+	})
 }
 
 func makeGrafanaProvisionings(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.ConfigMap, string, error) {
@@ -280,7 +282,7 @@ func (smc *Controller) syncGrafana(
 
 	var requiredDeployment *appsv1.Deployment
 	// Trigger restart for inputs that are not live reloaded.
-	grafanaRestartHash, hashErr := hash.HashObjects(requiredConfigsCM, requiredProvisioningsCM)
+	grafanaRestartHash, hashErr := hash.HashObjects(requiredConfigsCM, requiredProvisioningsCM, requiredDahsboardsCM)
 	if hashErr != nil {
 		renderErrors = append(renderErrors, hashErr)
 	} else {

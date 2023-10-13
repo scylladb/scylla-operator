@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: '{{ .scyllaDBMonitoringName }}-grafana-scylladb-dashboards'
+data:
+{{- range $key, $value := .dashboards }}
+  "{{ $key }}": "{{ $value }}"
+{{ else }}
+--- Can't read dashboards ---
+{{ end }}

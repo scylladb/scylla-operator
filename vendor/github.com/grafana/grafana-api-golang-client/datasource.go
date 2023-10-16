@@ -3,6 +3,7 @@ package gapi
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // DataSource represents a Grafana data source.
@@ -19,16 +20,12 @@ type DataSource struct {
 
 	Database string `json:"database,omitempty"`
 	User     string `json:"user,omitempty"`
-	// Deprecated: Use secureJsonData.password instead.
-	Password string `json:"password,omitempty"`
 
 	OrgID     int64 `json:"orgId,omitempty"`
 	IsDefault bool  `json:"isDefault"`
 
 	BasicAuth     bool   `json:"basicAuth"`
 	BasicAuthUser string `json:"basicAuthUser,omitempty"`
-	// Deprecated: Use secureJsonData.basicAuthPassword instead.
-	BasicAuthPassword string `json:"basicAuthPassword,omitempty"`
 
 	JSONData       map[string]interface{} `json:"jsonData,omitempty"`
 	SecureJSONData map[string]interface{} `json:"secureJsonData,omitempty"`
@@ -137,4 +134,50 @@ func (c *Client) DeleteDataSourceByName(name string) error {
 	path := fmt.Sprintf("/api/datasources/name/%s", name)
 
 	return c.request("DELETE", path, nil, nil, nil)
+}
+
+func cloneMap(m map[string]interface{}) map[string]interface{} {
+	clone := make(map[string]interface{})
+	for k, v := range m {
+		clone[k] = v
+	}
+	return clone
+}
+
+func JSONDataWithHeaders(jsonData, secureJSONData map[string]interface{}, headers map[string]string) (map[string]interface{}, map[string]interface{}) {
+	// Clone the maps so we don't modify the original
+	jsonData = cloneMap(jsonData)
+	secureJSONData = cloneMap(secureJSONData)
+
+	idx := 1
+	for name, value := range headers {
+		jsonData[fmt.Sprintf("httpHeaderName%d", idx)] = name
+		secureJSONData[fmt.Sprintf("httpHeaderValue%d", idx)] = value
+		idx += 1
+	}
+
+	return jsonData, secureJSONData
+}
+
+func ExtractHeadersFromJSONData(jsonData, secureJSONData map[string]interface{}) (map[string]interface{}, map[string]interface{}, map[string]string) {
+	// Clone the maps so we don't modify the original
+	jsonData = cloneMap(jsonData)
+	secureJSONData = cloneMap(secureJSONData)
+	headers := make(map[string]string)
+
+	for dataName, dataValue := range jsonData {
+		if strings.HasPrefix(dataName, "httpHeaderName") {
+			// Remove the header name from JSON data
+			delete(jsonData, dataName)
+
+			// Remove the header value from secure JSON data
+			secureDataName := strings.Replace(dataName, "httpHeaderName", "httpHeaderValue", 1)
+			delete(secureJSONData, secureDataName)
+
+			headerName := dataValue.(string)
+			headers[headerName] = "true" // We can't retrieve the headers, so we just set a dummy value
+		}
+	}
+
+	return jsonData, secureJSONData, headers
 }

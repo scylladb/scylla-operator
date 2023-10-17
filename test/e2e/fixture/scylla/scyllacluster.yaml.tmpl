@@ -6,6 +6,14 @@ spec:
   agentVersion: 3.1.0
   version: 5.4.0
   developerMode: true
+  exposeOptions:
+    nodeService:
+      type: {{ .nodeServiceType }}
+    broadcastOptions:
+      nodes:
+        type: {{ .nodesBroadcastAddressType }}
+      clients:
+        type: {{ .clientsBroadcastAddressType }}
   datacenter:
     name: us-east-1
     racks:

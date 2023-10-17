@@ -14,7 +14,6 @@ import (
 	o "github.com/onsi/gomega"
 	"github.com/scylladb/gocqlx/v2"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	scyllaclusterfixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	corev1 "k8s.io/api/core/v1"
@@ -38,7 +37,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		sc := scyllaclusterfixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 		sc.Spec.Datacenter.Racks[0].Members = 1
 		sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
 			BroadcastOptions: &scyllav1.NodeBroadcastOptions{
@@ -64,7 +63,11 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = utils.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(1))
 
 		connections := make(map[uint16]string)

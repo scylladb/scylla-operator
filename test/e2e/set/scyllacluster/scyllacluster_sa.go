@@ -8,7 +8,6 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	corev1 "k8s.io/api/core/v1"
@@ -27,7 +26,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 		sc.Name = names.SimpleNameGenerator.GenerateName(sc.GenerateName)
 		sc.GenerateName = ""
 

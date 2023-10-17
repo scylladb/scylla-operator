@@ -8,8 +8,6 @@ import (
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/features"
-	"github.com/scylladb/scylla-operator/pkg/helpers"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	cqlclientv1alpha1 "github.com/scylladb/scylla-operator/pkg/scylla/api/cqlclient/v1alpha1"
@@ -261,24 +259,16 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 	o.Expect(hosts).To(o.HaveLen(memberCount))
 }
 
-func getScyllaHostsAndWaitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) []string {
+func waitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) {
 	dcClientMap := make(map[string]corev1client.CoreV1Interface, 1)
 	dcClientMap[sc.Spec.Datacenter.Name] = client
-	hosts := getScyllaHostsByDCAndWaitForFullQuorum(ctx, dcClientMap, []*scyllav1.ScyllaCluster{sc})
-	return slices.Flatten(helpers.GetMapValues(hosts))
+	waitForFullMultiDCQuorum(ctx, dcClientMap, []*scyllav1.ScyllaCluster{sc})
 }
 
-func getScyllaHostsByDCAndWaitForFullQuorum(ctx context.Context, dcClientMap map[string]corev1client.CoreV1Interface, scs []*scyllav1.ScyllaCluster) map[string][]string {
+func waitForFullMultiDCQuorum(ctx context.Context, dcClientMap map[string]corev1client.CoreV1Interface, scs []*scyllav1.ScyllaCluster) {
 	framework.By("Waiting for the ScyllaCluster(s) to reach consistency ALL")
-	dcHosts, err := utils.GetScyllaHostsByDCAndWaitForFullQuorum(ctx, dcClientMap, scs)
+	err := utils.WaitForFullMultiDCQuorum(ctx, dcClientMap, scs)
 	o.Expect(err).NotTo(o.HaveOccurred())
-
-	for _, sc := range scs {
-		o.Expect(dcHosts).To(o.HaveKey(sc.Spec.Datacenter.Name))
-		o.Expect(dcHosts[sc.Spec.Datacenter.Name]).To(o.HaveLen(int(utils.GetMemberCount(sc))))
-	}
-
-	return dcHosts
 }
 
 func verifyCQLData(ctx context.Context, di *utils.DataInserter) {

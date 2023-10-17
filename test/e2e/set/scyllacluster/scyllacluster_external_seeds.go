@@ -9,7 +9,6 @@ import (
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,7 +25,7 @@ var _ = g.Describe("MultiDC cluster", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		sc1 := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc1 := f1.GetDefaultScyllaCluster()
 		sc1.Name = "basic-cluster"
 		sc1.Spec.Datacenter.Name = "us-east-1"
 		sc1.Spec.Datacenter.Racks[0].Name = "us-east-1a"
@@ -43,11 +42,14 @@ var _ = g.Describe("MultiDC cluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f1.KubeClient(), sc1)
-		hosts1 := getScyllaHostsAndWaitForFullQuorum(ctx, f1.KubeClient().CoreV1(), sc1)
+		waitForFullQuorum(ctx, f1.KubeClient().CoreV1(), sc1)
+
+		hosts1, hostIDs1, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f1.KubeClient().CoreV1(), sc1)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		di1 := insertAndVerifyCQLData(ctx, hosts1)
 		defer di1.Close()
 
-		sc2 := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc2 := f2.GetDefaultScyllaCluster()
 		sc2.Name = "basic-cluster"
 		sc2.Spec.Datacenter.Name = "us-east-2"
 		sc2.Spec.Datacenter.Racks[0].Name = "us-east-2a"
@@ -72,8 +74,15 @@ var _ = g.Describe("MultiDC cluster", func() {
 		dcClientMap := make(map[string]corev1client.CoreV1Interface, 2)
 		dcClientMap[sc1.Spec.Datacenter.Name] = f1.KubeClient().CoreV1()
 		dcClientMap[sc2.Spec.Datacenter.Name] = f2.KubeClient().CoreV1()
-		hostsByDC := getScyllaHostsByDCAndWaitForFullQuorum(ctx, dcClientMap, []*scyllav1.ScyllaCluster{sc1, sc2})
-		o.Expect(hostsByDC[sc1.Spec.Datacenter.Name]).To(o.ConsistOf(hosts1))
+
+		waitForFullMultiDCQuorum(ctx, dcClientMap, []*scyllav1.ScyllaCluster{sc1, sc2})
+
+		hostsByDC, hostIDsByDC, err := utils.GetBroadcastRPCAddressesAndUUIDsByDC(ctx, dcClientMap, []*scyllav1.ScyllaCluster{sc1, sc2})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(hostsByDC).To(o.HaveKey(sc1.Spec.Datacenter.Name))
+		o.Expect(hostsByDC).To(o.HaveKey(sc2.Spec.Datacenter.Name))
+		o.Expect(hostIDsByDC[sc1.Spec.Datacenter.Name]).To(o.ConsistOf(hostIDs1))
+		o.Expect(hostIDsByDC[sc2.Spec.Datacenter.Name]).To(o.HaveLen(int(utils.GetMemberCount(sc2))))
 
 		di2 := insertAndVerifyCQLDataByDC(ctx, hostsByDC)
 		defer di2.Close()

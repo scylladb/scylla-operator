@@ -10,7 +10,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	batchv1 "k8s.io/api/batch/v1"
@@ -30,7 +29,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 		sc.Spec.Datacenter.Racks[0].Members = 1
 
 		jobListWatcher := &cache.ListWatch{

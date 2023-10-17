@@ -14,7 +14,9 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllaclientset "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
+	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -141,6 +143,19 @@ func (f *Framework) CommonLabels() map[string]string {
 		"e2e":       "scylla-operator",
 		"framework": f.name,
 	}
+}
+
+func (f *Framework) GetDefaultScyllaCluster() *scyllav1.ScyllaCluster {
+	renderArgs := map[string]any{
+		"nodeServiceType":             TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
+		"nodesBroadcastAddressType":   TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
+		"clientsBroadcastAddressType": TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
+	}
+
+	sc, _, err := scyllafixture.ScyllaClusterTemplate.RenderObject(renderArgs)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	return sc
 }
 
 func (f *Framework) setupNamespace(ctx context.Context) {

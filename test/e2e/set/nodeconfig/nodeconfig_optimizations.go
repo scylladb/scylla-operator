@@ -183,7 +183,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		nc, err = f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Create(ctx, nc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 
 		framework.By("Creating a ScyllaCluster")
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})

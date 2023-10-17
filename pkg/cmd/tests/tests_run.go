@@ -261,6 +261,7 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 		RestConfig:            o.RestConfig,
 		ArtifactsDir:          o.ArtifactsDir,
 		DeleteTestingNSPolicy: o.DeleteTestingNSPolicy,
+		ScyllaClusterOptions:  o.scyllaClusterOptions,
 	}
 	if o.IngressController != nil {
 		framework.TestContext.IngressController = &framework.IngressController{

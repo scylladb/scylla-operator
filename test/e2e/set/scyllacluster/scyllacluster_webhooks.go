@@ -9,7 +9,6 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -27,7 +26,7 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		validSC := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		validSC := f.GetDefaultScyllaCluster()
 		validSC.Name = names.SimpleNameGenerator.GenerateName(validSC.GenerateName)
 
 		framework.By("Rejecting a creation of ScyllaCluster with duplicated racks")
@@ -91,7 +90,10 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), validSC)
-		hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), validSC)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), validSC)
+
+		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), validSC)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(1))
 		di := insertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()

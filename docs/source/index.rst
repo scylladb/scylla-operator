@@ -15,6 +15,7 @@ Scylla Operator Documentation
    migration
    nodeoperations/index
    exposing
+   multidc/index
    performance
    upgrade
    releases
@@ -55,6 +56,7 @@ Currently it supports:
 * :doc:`Setting up Monitoring using Prometheus and Grafana <monitoring>`
 * :doc:`Node operations <nodeoperations/index>`
 * :doc:`Exposing ScyllaCluster to other networks <exposing>`
+* :doc:`Deploying multi-datacenter ScyllaDB clusters in Kubernetes <multidc/index>`
 * :doc:`Performance tuning [Experimental] <performance>`
 * :doc:`Upgrade procedures <upgrade>`
 * :doc:`Releases <releases>`

@@ -9,7 +9,6 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/tools"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
@@ -25,7 +24,7 @@ var _ = g.Describe("ScyllaCluster sysctl", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 		fsAIOMaxNRKey := "fs.aio-max-nr"
 		fsAIOMaxNRValue := 2424242 // A unique value.
 		o.Expect(sc.Spec.Sysctls).To(o.BeEmpty())
@@ -42,7 +41,10 @@ var _ = g.Describe("ScyllaCluster sysctl", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
-		hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(1))
 		di := insertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()

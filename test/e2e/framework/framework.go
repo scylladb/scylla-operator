@@ -14,6 +14,7 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllaclientset "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -141,6 +142,10 @@ func (f *Framework) CommonLabels() map[string]string {
 		"e2e":       "scylla-operator",
 		"framework": f.name,
 	}
+}
+
+func (f *Framework) GetDefaultScyllaCluster() *scyllav1.ScyllaCluster {
+	return TestContext.DefaultScyllaCluster.DeepCopy()
 }
 
 func (f *Framework) setupNamespace(ctx context.Context) {

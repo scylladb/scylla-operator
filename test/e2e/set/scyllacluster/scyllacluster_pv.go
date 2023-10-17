@@ -16,7 +16,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
-	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"github.com/scylladb/scylla-operator/test/e2e/utils/image"
@@ -78,7 +77,7 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 
 		testStorageClassName := f.Namespace()
 
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 		sc.Spec.AutomaticOrphanedNodeCleanup = true
 		sc.Spec.Datacenter.Racks[0].Members = 3
 		sc.Spec.Datacenter.Racks[0].Storage.StorageClassName = pointer.Ptr(testStorageClassName)
@@ -273,7 +272,10 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
-		hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(3))
 		di := insertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
@@ -348,11 +350,12 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		oldHosts := hosts
-		hosts = getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		hosts, err = utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(len(oldHosts)))
-		o.Expect(hosts).To(o.ConsistOf(oldHosts))
 		err = di.SetClientEndpoints(hosts)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		verifyCQLData(ctx, di)

@@ -9,7 +9,7 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
+	"github.com/scylladb/scylla-operator/pkg/scyllafeatures"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,8 +37,27 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 			defer cancel()
 
-			sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+			sc := f.GetDefaultScyllaCluster()
 			sc.Spec.Version = e.initialVersion
+
+			supportsExposing, err := scyllafeatures.Supports(sc, scyllafeatures.ExposingScyllaClusterViaServiceOtherThanClusterIP)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			if !supportsExposing {
+				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					NodeService: &scyllav1.NodeServiceTemplate{
+						Type: scyllav1.NodeServiceTypeClusterIP,
+					},
+					BroadcastOptions: &scyllav1.NodeBroadcastOptions{
+						Nodes: scyllav1.BroadcastOptions{
+							Type: scyllav1.BroadcastAddressTypeServiceClusterIP,
+						},
+						Clients: scyllav1.BroadcastOptions{
+							Type: scyllav1.BroadcastAddressTypeServiceClusterIP,
+						},
+					},
+				}
+			}
 
 			o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
 			rack := &sc.Spec.Datacenter.Racks[0]
@@ -51,7 +70,7 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			}
 
 			framework.By("Creating a ScyllaCluster")
-			sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+			sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(sc.Spec.Version).To(o.Equal(e.initialVersion))
 
@@ -62,8 +81,15 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			verifyScyllaCluster(ctx, f.KubeClient(), sc)
-			hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
-			o.Expect(hosts).To(o.HaveLen(int(e.rackCount * e.rackSize)))
+			waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+			hosts, hostIDs, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			numNodes := int(e.rackCount * e.rackSize)
+			o.Expect(hosts).To(o.HaveLen(numNodes))
+			o.Expect(hostIDs).To(o.HaveLen(numNodes))
+
 			di := insertAndVerifyCQLData(ctx, hosts)
 			defer di.Close()
 
@@ -89,7 +115,19 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			verifyScyllaCluster(ctx, f.KubeClient(), sc)
-			o.Expect(hosts).To(o.ConsistOf(getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)))
+			waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+			oldHosts := hosts
+			oldHostIDs := hostIDs
+			hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(hosts).To(o.HaveLen(len(oldHosts)))
+			o.Expect(hostIDs).To(o.ConsistOf(oldHostIDs))
+			// Reset hosts if there's only one node as the client won't be able to discover it.
+			if numNodes == 1 {
+				err = di.SetClientEndpoints(hosts)
+				o.Expect(err).NotTo(o.HaveOccurred())
+			}
 			verifyCQLData(ctx, di)
 		},
 		// Test 1 and 3 member rack to cover e.g. handling PDBs correctly.

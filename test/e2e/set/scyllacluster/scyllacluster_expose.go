@@ -23,7 +23,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	cqlclientv1alpha1 "github.com/scylladb/scylla-operator/pkg/scylla/api/cqlclient/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
-	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"github.com/scylladb/scylla-operator/test/e2e/verification"
@@ -52,16 +51,17 @@ var _ = g.Describe("ScyllaCluster", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 
 		sc.Spec.DNSDomains = []string{fmt.Sprintf("%s.private.nodes.scylladb.com", f.Namespace()), fmt.Sprintf("%s.public.nodes.scylladb.com", f.Namespace())}
 		if framework.TestContext.IngressController != nil {
-			sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
-				CQL: &scyllav1.CQLExposeOptions{
-					Ingress: &scyllav1.IngressOptions{
-						IngressClassName: framework.TestContext.IngressController.IngressClassName,
-						Annotations:      framework.TestContext.IngressController.CustomAnnotations,
-					},
+			if sc.Spec.ExposeOptions == nil {
+				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{}
+			}
+			sc.Spec.ExposeOptions.CQL = &scyllav1.CQLExposeOptions{
+				Ingress: &scyllav1.IngressOptions{
+					IngressClassName: framework.TestContext.IngressController.IngressClassName,
+					Annotations:      framework.TestContext.IngressController.CustomAnnotations,
 				},
 			}
 		}
@@ -84,7 +84,10 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		framework.By("Nodes reloaded the certificate")
 
-		hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(int(sc.Spec.Datacenter.Racks[0].Members)))
 
 		connectionBundleDir, err := os.MkdirTemp(os.TempDir(), fmt.Sprintf("connection-bundle-%s-", f.Namespace()))
@@ -148,7 +151,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 		sc.Spec.Datacenter.Racks[0].Members = 1
 		sc.Spec.ExposeOptions = e.exposeOptions
 
@@ -194,7 +197,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(serviceAndPodIPs).To(o.HaveLen(e.expectedNumberOfIPAddressesInServingCert(int(utils.GetMemberCount(sc)))))
 
-			hostsIPs, err := helpers.ParseClusterIPs(serviceAndPodIPs)
+			hostsIPs, err := helpers.ParseIPs(serviceAndPodIPs)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			var servingDNSNames []string
@@ -379,16 +382,17 @@ var _ = g.Describe("ScyllaCluster", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 		sc.Spec.Datacenter.Racks[0].Members = 1
 		sc.Spec.DNSDomains = []string{fmt.Sprintf("%s.private.nodes.scylladb.com", f.Namespace()), fmt.Sprintf("%s.public.nodes.scylladb.com", f.Namespace())}
-		sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
-			CQL: &scyllav1.CQLExposeOptions{
-				Ingress: &scyllav1.IngressOptions{
-					IngressClassName: "my-cql-ingress-class",
-					Annotations: map[string]string{
-						"my-cql-annotation-key": "my-cql-annotation-value",
-					},
+		if sc.Spec.ExposeOptions == nil {
+			sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{}
+		}
+		sc.Spec.ExposeOptions.CQL = &scyllav1.CQLExposeOptions{
+			Ingress: &scyllav1.IngressOptions{
+				IngressClassName: "my-cql-ingress-class",
+				Annotations: map[string]string{
+					"my-cql-annotation-key": "my-cql-annotation-value",
 				},
 			},
 		}

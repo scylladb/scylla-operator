@@ -18,6 +18,7 @@ import (
 	"github.com/onsi/ginkgo/v2/types"
 	"github.com/onsi/gomega"
 	gomegaformat "github.com/onsi/gomega/format"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
@@ -25,6 +26,7 @@ import (
 	ginkgotest "github.com/scylladb/scylla-operator/pkg/test/ginkgo"
 	"github.com/scylladb/scylla-operator/pkg/thirdparty/github.com/onsi/ginkgo/v2/exposedinternal/parallel_support"
 	"github.com/scylladb/scylla-operator/pkg/version"
+	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/util/errors"
@@ -269,6 +271,45 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 			CustomAnnotations: o.IngressController.CustomAnnotations,
 		}
 	}
+
+	renderArgs := map[string]any{}
+	switch e := o.ScyllaDBClusterExposure; e {
+	case ScyllaDBClusterExposureTypePodIP:
+		renderArgs["exposeOptions"] = scyllav1.ExposeOptions{
+			NodeService: &scyllav1.NodeServiceTemplate{
+				Type: scyllav1.NodeServiceTypeHeadless,
+			},
+			BroadcastOptions: &scyllav1.NodeBroadcastOptions{
+				Nodes: scyllav1.BroadcastOptions{
+					Type: scyllav1.BroadcastAddressTypePodIP,
+				},
+				Clients: scyllav1.BroadcastOptions{
+					Type: scyllav1.BroadcastAddressTypePodIP,
+				},
+			},
+		}
+	case ScyllaDBClusterExposureTypeClusterIP:
+		renderArgs["exposeOptions"] = scyllav1.ExposeOptions{
+			NodeService: &scyllav1.NodeServiceTemplate{
+				Type: scyllav1.NodeServiceTypeClusterIP,
+			},
+			BroadcastOptions: &scyllav1.NodeBroadcastOptions{
+				Nodes: scyllav1.BroadcastOptions{
+					Type: scyllav1.BroadcastAddressTypeServiceClusterIP,
+				},
+				Clients: scyllav1.BroadcastOptions{
+					Type: scyllav1.BroadcastAddressTypeServiceClusterIP,
+				},
+			},
+		}
+	default:
+	}
+
+	sc, _, err := scyllafixture.ScyllaClusterTemplate.RenderObject(renderArgs)
+	if err != nil {
+		return fmt.Errorf("can't render ScyllaClusterTemplate: %w", err)
+	}
+	framework.TestContext.DefaultScyllaCluster = sc
 
 	suiteConfig, reporterConfig := ginkgo.GinkgoConfiguration()
 

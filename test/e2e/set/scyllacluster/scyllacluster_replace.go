@@ -9,9 +9,10 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
-	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
+	"github.com/scylladb/scylla-operator/pkg/scyllafeatures"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	corev1 "k8s.io/api/core/v1"
@@ -72,13 +73,32 @@ var _ = g.Describe("ScyllaCluster", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 		sc.Spec.Repository = e.scyllaImageRepository
 		sc.Spec.Version = e.scyllaVersion
 		sc.Spec.Datacenter.Racks[0].Members = 3
 
+		supportsExposing, err := scyllafeatures.Supports(sc, scyllafeatures.ExposingScyllaClusterViaServiceOtherThanClusterIP)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		if !supportsExposing {
+			sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+				NodeService: &scyllav1.NodeServiceTemplate{
+					Type: scyllav1.NodeServiceTypeClusterIP,
+				},
+				BroadcastOptions: &scyllav1.NodeBroadcastOptions{
+					Nodes: scyllav1.BroadcastOptions{
+						Type: scyllav1.BroadcastAddressTypeServiceClusterIP,
+					},
+					Clients: scyllav1.BroadcastOptions{
+						Type: scyllav1.BroadcastAddressTypeServiceClusterIP,
+					},
+				},
+			}
+		}
+
 		framework.By("Creating a ScyllaCluster")
-		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", sc.ResourceVersion)
@@ -88,7 +108,10 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
-		hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(int(utils.GetMemberCount(sc))))
 		di := insertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
@@ -156,17 +179,24 @@ var _ = g.Describe("ScyllaCluster", func() {
 		replacedNodeService, err = f.KubeClient().CoreV1().Services(sc.Namespace).Get(ctx, utils.GetNodeName(sc, 0), metav1.GetOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
+		replacedNodeBroadcastAddress, err := utils.GetBroadcastAddress(ctx, f.KubeClient().CoreV1(), sc, replacedNodeService)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
 		otherNodeService, err := f.KubeClient().CoreV1().Services(sc.Namespace).Get(ctx, utils.GetNodeName(sc, 1), metav1.GetOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		o.Eventually(func(g o.Gomega) {
-			status, err := client.Status(ctx, otherNodeService.Spec.ClusterIP)
+			otherNodeBroadcastRPCAddress, err := utils.GetBroadcastRPCAddress(ctx, f.KubeClient().CoreV1(), sc, otherNodeService)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			status, err := client.Status(ctx, otherNodeBroadcastRPCAddress)
 			g.Expect(err).NotTo(o.HaveOccurred())
-			g.Expect(status.LiveHosts()).To(o.ContainElement(replacedNodeService.Spec.ClusterIP))
+			g.Expect(status.LiveHosts()).To(o.ContainElement(replacedNodeBroadcastAddress))
 		}).WithPolling(time.Second).WithTimeout(5 * time.Minute).Should(o.Succeed())
 
 		oldHosts := hosts
-		hosts = getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		hosts, err = utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(len(oldHosts)))
 		err = di.SetClientEndpoints(hosts)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -174,7 +204,10 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 		framework.By("Verifying ScyllaDB config")
 
-		configClient, err := utils.GetScyllaConfigClient(ctx, f.KubeClient().CoreV1(), sc, replacedNodeService.Spec.ClusterIP)
+		replacedNodeBroadcastRPCAddress, err := utils.GetBroadcastRPCAddress(ctx, f.KubeClient().CoreV1(), sc, replacedNodeService)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		configClient, err := utils.GetScyllaConfigClient(ctx, f.KubeClient().CoreV1(), sc, replacedNodeBroadcastRPCAddress)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		err = e.validateScyllaConfig(ctx, configClient, preReplaceService)

@@ -6,6 +6,10 @@ spec:
   version: 5.2.7
   agentVersion: 3.1.0
   developerMode: true
+  {{ with .exposeOptions }}
+  exposeOptions:
+    {{- . | toYAML | nindent 4 }}
+  {{ end }}
   datacenter:
     name: us-east-1
     racks:

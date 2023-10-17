@@ -12,7 +12,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
-	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"gopkg.in/yaml.v2"
@@ -30,7 +29,7 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 		sc.Spec.Datacenter.Racks[0].Members = 1
 
 		framework.By("Creating a ScyllaCluster")
@@ -44,7 +43,10 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
-		hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		hosts, hostIDs, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(1))
 		di := insertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
@@ -117,7 +119,18 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
-		o.Expect(hosts).To(o.ConsistOf(getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)))
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		oldHosts := hosts
+		oldHostIDs := hostIDs
+		hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(hosts).To(o.HaveLen(len(oldHosts)))
+		o.Expect(hostIDs).To(o.ConsistOf(oldHostIDs))
+
+		// Reset hosts as the client won't be able to discover a single node after rollout.
+		err = di.SetClientEndpoints(hosts)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		verifyCQLData(ctx, di)
 
 		framework.By("Accepting requests authorized using token from user agent config")
@@ -152,7 +165,18 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
-		o.Expect(hosts).To(o.ConsistOf(getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)))
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		oldHosts = hosts
+		oldHostIDs = hostIDs
+		hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(hosts).To(o.HaveLen(len(oldHosts)))
+		o.Expect(hostIDs).To(o.ConsistOf(oldHostIDs))
+
+		// Reset hosts as the client won't be able to discover a single node after rollout.
+		err = di.SetClientEndpoints(hosts)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		verifyCQLData(ctx, di)
 
 		framework.By("Accepting requests authorized using token from user agent config")

@@ -34,7 +34,7 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 		defer cancel()
 
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 		o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
 		sc.Spec.Datacenter.Racks[0].Members = 1
 

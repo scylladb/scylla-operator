@@ -3,6 +3,7 @@
 package framework
 
 import (
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	restclient "k8s.io/client-go/rest"
 )
 
@@ -27,4 +28,5 @@ type TestContextType struct {
 	ArtifactsDir          string
 	DeleteTestingNSPolicy DeleteTestingNSPolicyType
 	IngressController     *IngressController
+	DefaultScyllaCluster  *scyllav1.ScyllaCluster
 }

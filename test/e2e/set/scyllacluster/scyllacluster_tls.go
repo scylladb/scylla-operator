@@ -20,7 +20,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/kubecrypto"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
-	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/scheme"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
@@ -47,7 +46,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 		o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
 		sc.Spec.Datacenter.Racks[0].Members = 1
 
@@ -68,9 +67,12 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
-		initialHost := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
-		o.Expect(initialHost).To(o.HaveLen(1))
-		di := insertAndVerifyCQLData(ctx, initialHost)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		initialHosts, initialHostIDs, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(initialHosts).To(o.HaveLen(1))
+		di := insertAndVerifyCQLData(ctx, initialHosts)
 		defer di.Close()
 
 		for _, tc := range []struct {
@@ -122,9 +124,14 @@ var _ = g.Describe("ScyllaCluster", func() {
 				sc, err = utils.WaitForScyllaClusterState(waitCtxL1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 				o.Expect(err).NotTo(o.HaveOccurred())
 
-				hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+				verifyScyllaCluster(ctx, f.KubeClient(), sc)
+				waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+				hosts, hostIDs, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+				o.Expect(err).NotTo(o.HaveOccurred())
 				o.Expect(hosts).To(o.HaveLen(tc.replicas))
-				o.Expect(hosts).To(o.ContainElements(initialHost))
+				o.Expect(hostIDs).To(o.HaveLen(tc.replicas))
+				o.Expect(hostIDs).To(o.ContainElements(initialHostIDs))
 
 				framework.By("Verifying TLS API objects")
 
@@ -174,16 +181,12 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 				framework.By("Verifying certificates")
 
-				_, nodeIDs, err := utils.GetHostsAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
-				o.Expect(err).NotTo(o.HaveOccurred())
-				o.Expect(nodeIDs).To(o.HaveLen(tc.replicas))
-
 				var sniHosts []string
 				for _, domain := range sc.Spec.DNSDomains {
 					sniHosts = append(sniHosts, fmt.Sprintf("cql.%s", domain))
 
-					for _, nodeID := range nodeIDs {
-						sniHosts = append(sniHosts, fmt.Sprintf("%s.cql.%s", nodeID, domain))
+					for _, hostID := range hostIDs {
+						sniHosts = append(sniHosts, fmt.Sprintf("%s.cql.%s", hostID, domain))
 					}
 				}
 				o.Expect(sniHosts).To(o.HaveLen(len(sc.Spec.DNSDomains) + len(sc.Spec.DNSDomains)*tc.replicas))
@@ -200,9 +203,14 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 				serviceAndPodIPs, err := utils.GetNodesServiceAndPodIPs(ctx, f.KubeClient().CoreV1(), sc)
 				o.Expect(err).NotTo(o.HaveOccurred())
-				o.Expect(serviceAndPodIPs).To(o.HaveLen(2 * int(utils.GetMemberCount(sc))))
 
-				hostsIPs, err := helpers.ParseClusterIPs(serviceAndPodIPs)
+				expectedServiceAndPodIPsNum := 2 * int(utils.GetMemberCount(sc))
+				if sc.Spec.ExposeOptions != nil && sc.Spec.ExposeOptions.NodeService != nil && sc.Spec.ExposeOptions.NodeService.Type == scyllav1.NodeServiceTypeHeadless {
+					expectedServiceAndPodIPsNum = int(utils.GetMemberCount(sc))
+				}
+				o.Expect(serviceAndPodIPs).To(o.HaveLen(expectedServiceAndPodIPsNum))
+
+				hostsIPs, err := helpers.ParseIPs(serviceAndPodIPs)
 				o.Expect(err).NotTo(o.HaveOccurred())
 
 				servingDNSNames := make([]string, 0, len(sniHosts)+len(serviceServingDNSNames))
@@ -252,7 +260,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 		o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
 		sc.Spec.Datacenter.Racks[0].Members = 1
 
@@ -267,9 +275,12 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
-		initialHost := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
-		o.Expect(initialHost).To(o.HaveLen(1))
-		di := insertAndVerifyCQLData(ctx, initialHost)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		initialHosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(initialHosts).To(o.HaveLen(1))
+		di := insertAndVerifyCQLData(ctx, initialHosts)
 		defer di.Close()
 
 		// This test rotates CAs which makes it dependent on the order.

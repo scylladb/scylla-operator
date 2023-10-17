@@ -9,7 +9,6 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	corev1 "k8s.io/api/core/v1"
@@ -38,7 +37,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		defer cancel()
 
 		framework.By("Creating a ScyllaCluster")
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 		o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
 		o.Expect(sc.Spec.Datacenter.Racks[0].Members).To(o.BeEquivalentTo(1))
 
@@ -52,7 +51,10 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
-		hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		hosts, hostIDs, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(1))
 		di := insertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
@@ -98,7 +100,18 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
-		o.Expect(hosts).To(o.ConsistOf(getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)))
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		oldHosts := hosts
+		oldHostIDs := hostIDs
+		hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(hosts).To(o.HaveLen(len(oldHosts)))
+		o.Expect(hostIDs).To(o.ConsistOf(oldHostIDs))
+
+		// Reset hosts as the client won't be able to discover a single node after rollout.
+		err = di.SetClientEndpoints(hosts)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		verifyCQLData(ctx, di)
 
 		framework.By("Scaling the ScyllaCluster up to create a new replica")
@@ -124,12 +137,15 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
-		oldHosts := hosts
-		hosts = getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
-		o.Expect(oldHosts).To(o.HaveLen(int(oldMembers)))
-		o.Expect(hosts).To(o.HaveLen(int(newMebmers)))
-		o.Expect(hosts).To(o.ContainElements(oldHosts))
+		oldHostIDs = hostIDs
+		hostIDs, err = utils.GetUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(oldHostIDs).To(o.HaveLen(int(oldMembers)))
+		o.Expect(hostIDs).To(o.HaveLen(int(newMebmers)))
+		o.Expect(hostIDs).To(o.ContainElements(oldHostIDs))
 		verifyCQLData(ctx, di)
 	})
 })

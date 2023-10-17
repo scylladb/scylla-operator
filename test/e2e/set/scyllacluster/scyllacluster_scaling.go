@@ -11,7 +11,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	corev1 "k8s.io/api/core/v1"
@@ -28,7 +27,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 		sc.Spec.Datacenter.Racks[0].Members = 1
 
 		framework.By("Creating a ScyllaCluster with 1 member")
@@ -42,8 +41,12 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
-		hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		hosts, hostIDs, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(1))
+		o.Expect(hostIDs).To(o.HaveLen(1))
 		diRF1 := insertAndVerifyCQLData(ctx, hosts)
 		defer diRF1.Close()
 
@@ -66,12 +69,17 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		oldHosts := hosts
-		hosts = getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		oldHostIDs := hostIDs
+		hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(oldHosts).To(o.HaveLen(1))
+		o.Expect(oldHostIDs).To(o.HaveLen(1))
 		o.Expect(hosts).To(o.HaveLen(3))
-		o.Expect(hosts).To(o.ContainElements(oldHosts))
+		o.Expect(hostIDs).To(o.HaveLen(3))
+		o.Expect(hostIDs).To(o.ContainElements(oldHostIDs))
 
 		verifyCQLData(ctx, diRF1)
 
@@ -101,12 +109,17 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		oldHosts = hosts
-		hosts = getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		oldHostIDs = hostIDs
+		hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(oldHosts).To(o.HaveLen(3))
+		o.Expect(oldHostIDs).To(o.HaveLen(3))
 		o.Expect(hosts).To(o.HaveLen(2))
-		o.Expect(oldHosts).To(o.ContainElements(hosts))
+		o.Expect(hostIDs).To(o.HaveLen(2))
+		o.Expect(oldHostIDs).To(o.ContainElements(hostIDs))
 
 		verifyCQLData(ctx, diRF1)
 
@@ -173,12 +186,17 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		oldHosts = hosts
-		hosts = getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		oldHostIDs = hostIDs
+		hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(oldHosts).To(o.HaveLen(2))
+		o.Expect(oldHostIDs).To(o.HaveLen(2))
 		o.Expect(hosts).To(o.HaveLen(1))
-		o.Expect(oldHosts).To(o.ContainElements(hosts))
+		o.Expect(hostIDs).To(o.HaveLen(1))
+		o.Expect(oldHostIDs).To(o.ContainElements(hostIDs))
 
 		verifyCQLData(ctx, diRF1)
 
@@ -200,12 +218,17 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		oldHosts = hosts
-		hosts = getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		oldHostIDs = hostIDs
+		hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(oldHosts).To(o.HaveLen(1))
+		o.Expect(oldHostIDs).To(o.HaveLen(1))
 		o.Expect(hosts).To(o.HaveLen(3))
-		o.Expect(hosts).To(o.ContainElements(oldHosts))
+		o.Expect(hostIDs).To(o.HaveLen(3))
+		o.Expect(hostIDs).To(o.ContainElements(oldHostIDs))
 
 		verifyCQLData(ctx, diRF1)
 		verifyCQLData(ctx, diRF2)

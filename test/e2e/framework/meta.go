@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	SerialLabelName = "Serial"
+	SerialLabelName            = "Serial"
+	RequiresClusterIPLabelName = "RequiresClusterIP"
 )
 
 var (
@@ -15,4 +16,5 @@ var (
 		g.Serial,
 		g.Label(SerialLabelName),
 	}
+	RequiresClusterIP = g.Label(RequiresClusterIPLabelName)
 )

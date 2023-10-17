@@ -54,6 +54,10 @@ spec:
   exposeOptions:
     {{- toYaml . | nindent 4 }}
   {{- end }}
+  {{- with .Values.externalSeeds }}
+  externalSeeds:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   datacenter:
     name: {{ .Values.datacenter }}
     racks:

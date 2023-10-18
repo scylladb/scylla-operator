@@ -181,7 +181,19 @@ func (c *Client) newRequest(method, requestPath string, query url.Values, body i
 		if body == nil {
 			log.Printf("request (%s) to %s with no body data", method, url.String())
 		} else {
-			log.Printf("request (%s) to %s with body data: %s", method, url.String(), body.(*bytes.Buffer).String())
+			reader := body.(*bytes.Reader)
+			if reader.Len() == 0 {
+				log.Printf("request (%s) to %s with no body data", method, url.String())
+			} else {
+				contents := make([]byte, reader.Len())
+				if _, err := reader.Read(contents); err != nil {
+					return nil, fmt.Errorf("cannot read body contents for logging: %w", err)
+				}
+				if _, err := reader.Seek(0, io.SeekStart); err != nil {
+					return nil, fmt.Errorf("failed to seek body reader to start after logging: %w", err)
+				}
+				log.Printf("request (%s) to %s with body data: %s", method, url.String(), string(contents))
+			}
 		}
 	}
 

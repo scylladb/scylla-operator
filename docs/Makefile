@@ -3,7 +3,7 @@ ifeq ($(OS),Windows_NT)
 # For Windows users
 POETRY ?= $(APPDATA)\Python\Scripts\poetry
 else
-POETRY ?= $(HOME)/.poetry/bin/poetry
+POETRY ?=poetry
 endif
 
 SPHINXBUILD ?= $(POETRY) run sphinx-build

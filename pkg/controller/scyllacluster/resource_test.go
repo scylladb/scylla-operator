@@ -1876,6 +1876,382 @@ func TestMakeJobs(t *testing.T) {
 			},
 			expectedConditions: nil,
 		},
+		{
+			name: "cleanup job has the same placement requirements as ScyllaCluster",
+			cluster: func() *scyllav1.ScyllaCluster {
+				cluster := basicScyllaCluster.DeepCopy()
+				cluster.Spec.Datacenter.Racks[0].Placement = &scyllav1.PlacementSpec{
+					NodeAffinity: &corev1.NodeAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+							NodeSelectorTerms: []corev1.NodeSelectorTerm{
+								{
+									MatchExpressions: []corev1.NodeSelectorRequirement{
+										{
+											Key:      "topology.kubernetes.io/zone",
+											Operator: corev1.NodeSelectorOpIn,
+											Values:   []string{"zone-1", "zone-2"},
+										},
+									},
+								},
+							},
+						},
+					},
+					PodAffinity: &corev1.PodAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+							{
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"app.kubernetes.io/name": "scylla",
+										"scylla/rack":            "rack",
+									},
+								},
+								TopologyKey: "kubernetes.io/hostname",
+							},
+						},
+					},
+					PodAntiAffinity: &corev1.PodAntiAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+							{
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+									},
+								},
+								TopologyKey: "kubernetes.io/hostname",
+							},
+						},
+					},
+					Tolerations: []corev1.Toleration{
+						{
+							Key:      "role",
+							Operator: corev1.TolerationOpEqual,
+							Value:    "scylla-clusters",
+							Effect:   corev1.TaintEffectNoSchedule,
+						},
+					},
+				}
+				cluster.Spec.Datacenter.Racks = append(cluster.Spec.Datacenter.Racks,
+					scyllav1.RackSpec{
+						Name: "rack-2",
+						Storage: scyllav1.StorageSpec{
+							Capacity: "1Gi",
+						},
+						Members: 1,
+						Placement: &scyllav1.PlacementSpec{
+							NodeAffinity: &corev1.NodeAffinity{
+								RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+									NodeSelectorTerms: []corev1.NodeSelectorTerm{
+										{
+											MatchExpressions: []corev1.NodeSelectorRequirement{
+												{
+													Key:      "topology.kubernetes.io/zone",
+													Operator: corev1.NodeSelectorOpIn,
+													Values:   []string{"zone-3", "zone-4"},
+												},
+											},
+										},
+									},
+								},
+							},
+							PodAffinity: &corev1.PodAffinity{
+								RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+									{
+										LabelSelector: &metav1.LabelSelector{
+											MatchLabels: map[string]string{
+												"app.kubernetes.io/name": "scylla",
+												"scylla/rack":            "rack-2",
+											},
+										},
+										TopologyKey: "kubernetes.io/hostname",
+									},
+								},
+							},
+							PodAntiAffinity: &corev1.PodAntiAffinity{
+								RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+									{
+										LabelSelector: &metav1.LabelSelector{
+											MatchLabels: map[string]string{
+												"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+												"scylla/rack-ordinal":                        "0",
+											},
+										},
+										TopologyKey: "kubernetes.io/hostname",
+									},
+								},
+							},
+							Tolerations: []corev1.Toleration{
+								{
+									Key:      "role",
+									Operator: corev1.TolerationOpEqual,
+									Value:    "scylla-clusters-rack-2",
+									Effect:   corev1.TaintEffectNoSchedule,
+								},
+							},
+						},
+					},
+				)
+
+				return cluster
+			}(),
+			services: func() map[string]*corev1.Service {
+				return map[string]*corev1.Service{
+					"basic-dc-rack-0": newMemberService("basic-dc-rack-0", map[string]string{
+						"internal.scylla-operator.scylladb.com/current-token-ring-hash":         "abc",
+						"internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash": "def",
+					}),
+					"basic-dc-rack-2-0": newMemberService("basic-dc-rack-2-0", map[string]string{
+						"internal.scylla-operator.scylladb.com/current-token-ring-hash":         "abc",
+						"internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash": "def",
+					}),
+				}
+			}(),
+			expectedJobs: []*batchv1.Job{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cleanup-basic-dc-rack-0",
+						Namespace: "default",
+						Annotations: map[string]string{
+							"internal.scylla-operator.scylladb.com/cleanup-token-ring-hash": "abc",
+						},
+						Labels: map[string]string{
+							"scylla/cluster":                             "basic",
+							"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-0",
+							"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1",
+								Kind:               "ScyllaCluster",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Spec: batchv1.JobSpec{
+						Template: corev1.PodTemplateSpec{
+							ObjectMeta: metav1.ObjectMeta{
+								Annotations: map[string]string{
+									"internal.scylla-operator.scylladb.com/cleanup-token-ring-hash": "abc",
+								},
+								Labels: map[string]string{
+									"scylla/cluster":                             "basic",
+									"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-0",
+									"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+								},
+							},
+							Spec: corev1.PodSpec{
+								RestartPolicy: corev1.RestartPolicyOnFailure,
+								Tolerations: []corev1.Toleration{
+									{
+										Key:      "role",
+										Operator: corev1.TolerationOpEqual,
+										Value:    "scylla-clusters",
+										Effect:   corev1.TaintEffectNoSchedule,
+									},
+								},
+								Affinity: &corev1.Affinity{
+									NodeAffinity: &corev1.NodeAffinity{
+										RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+											NodeSelectorTerms: []corev1.NodeSelectorTerm{
+												{
+													MatchExpressions: []corev1.NodeSelectorRequirement{
+														{
+															Key:      "topology.kubernetes.io/zone",
+															Operator: corev1.NodeSelectorOpIn,
+															Values:   []string{"zone-1", "zone-2"},
+														},
+													},
+												},
+											},
+										},
+									},
+									PodAffinity: &corev1.PodAffinity{
+										RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+											{
+												LabelSelector: &metav1.LabelSelector{
+													MatchLabels: map[string]string{
+														"app.kubernetes.io/name": "scylla",
+														"scylla/rack":            "rack",
+													},
+												},
+												TopologyKey: "kubernetes.io/hostname",
+											},
+										},
+									},
+									PodAntiAffinity: &corev1.PodAntiAffinity{
+										RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+											{
+												LabelSelector: &metav1.LabelSelector{
+													MatchLabels: map[string]string{
+														"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+													},
+												},
+												TopologyKey: "kubernetes.io/hostname",
+											},
+										},
+									},
+								},
+								Containers: []corev1.Container{
+									{
+										Name:            naming.CleanupContainerName,
+										Image:           "scylladb/scylla-operator:latest",
+										ImagePullPolicy: corev1.PullIfNotPresent,
+										Args: []string{
+											"cleanup-job",
+											"--manager-auth-config-path=/etc/scylla-cleanup-job/auth-token.yaml",
+											"--node-address=basic-dc-rack-0.default.svc",
+										},
+										VolumeMounts: []corev1.VolumeMount{
+											{
+												Name:      "scylla-manager-agent-token",
+												ReadOnly:  true,
+												MountPath: "/etc/scylla-cleanup-job/auth-token.yaml",
+												SubPath:   "auth-token.yaml",
+											},
+										},
+									},
+								},
+								Volumes: []corev1.Volume{
+									{
+										Name: "scylla-manager-agent-token",
+										VolumeSource: corev1.VolumeSource{
+											Secret: &corev1.SecretVolumeSource{
+												SecretName: "basic-auth-token",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cleanup-basic-dc-rack-2-0",
+						Namespace: "default",
+						Annotations: map[string]string{
+							"internal.scylla-operator.scylladb.com/cleanup-token-ring-hash": "abc",
+						},
+						Labels: map[string]string{
+							"scylla/cluster":                             "basic",
+							"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-2-0",
+							"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1",
+								Kind:               "ScyllaCluster",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Spec: batchv1.JobSpec{
+						Template: corev1.PodTemplateSpec{
+							ObjectMeta: metav1.ObjectMeta{
+								Annotations: map[string]string{
+									"internal.scylla-operator.scylladb.com/cleanup-token-ring-hash": "abc",
+								},
+								Labels: map[string]string{
+									"scylla/cluster":                             "basic",
+									"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-2-0",
+									"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+								},
+							},
+							Spec: corev1.PodSpec{
+								RestartPolicy: corev1.RestartPolicyOnFailure,
+								Tolerations: []corev1.Toleration{
+									{
+										Key:      "role",
+										Operator: corev1.TolerationOpEqual,
+										Value:    "scylla-clusters-rack-2",
+										Effect:   corev1.TaintEffectNoSchedule,
+									},
+								},
+								Affinity: &corev1.Affinity{
+									NodeAffinity: &corev1.NodeAffinity{
+										RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+											NodeSelectorTerms: []corev1.NodeSelectorTerm{
+												{
+													MatchExpressions: []corev1.NodeSelectorRequirement{
+														{
+															Key:      "topology.kubernetes.io/zone",
+															Operator: corev1.NodeSelectorOpIn,
+															Values:   []string{"zone-3", "zone-4"},
+														},
+													},
+												},
+											},
+										},
+									},
+									PodAffinity: &corev1.PodAffinity{
+										RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+											{
+												LabelSelector: &metav1.LabelSelector{
+													MatchLabels: map[string]string{
+														"app.kubernetes.io/name": "scylla",
+														"scylla/rack":            "rack-2",
+													},
+												},
+												TopologyKey: "kubernetes.io/hostname",
+											},
+										},
+									},
+									PodAntiAffinity: &corev1.PodAntiAffinity{
+										RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+											{
+												LabelSelector: &metav1.LabelSelector{
+													MatchLabels: map[string]string{
+														"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+														"scylla/rack-ordinal":                        "0",
+													},
+												},
+												TopologyKey: "kubernetes.io/hostname",
+											},
+										},
+									},
+								},
+								Containers: []corev1.Container{
+									{
+										Name:            naming.CleanupContainerName,
+										Image:           "scylladb/scylla-operator:latest",
+										ImagePullPolicy: corev1.PullIfNotPresent,
+										Args: []string{
+											"cleanup-job",
+											"--manager-auth-config-path=/etc/scylla-cleanup-job/auth-token.yaml",
+											"--node-address=basic-dc-rack-2-0.default.svc",
+										},
+										VolumeMounts: []corev1.VolumeMount{
+											{
+												Name:      "scylla-manager-agent-token",
+												ReadOnly:  true,
+												MountPath: "/etc/scylla-cleanup-job/auth-token.yaml",
+												SubPath:   "auth-token.yaml",
+											},
+										},
+									},
+								},
+								Volumes: []corev1.Volume{
+									{
+										Name: "scylla-manager-agent-token",
+										VolumeSource: corev1.VolumeSource{
+											Secret: &corev1.SecretVolumeSource{
+												SecretName: "basic-auth-token",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedConditions: nil,
+		},
 	}
 
 	for i := range tt {

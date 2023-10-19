@@ -97,7 +97,7 @@ ScyllaDB, except when in developer mode, requires storage with XFS filesystem. T
 
 Deploy `NodeConfig` to let it take care of the above operations:
 ```
-kubectl apply --server-side -f examples/gke/nodeconfig-alpha.yaml
+kubectl apply --server-side -f examples/eks/nodeconfig-alpha.yaml
 ```
 
 #### Deploying Local Volume Provisioner

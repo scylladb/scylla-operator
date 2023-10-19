@@ -123,6 +123,10 @@ kubectl create clusterrolebinding cluster-admin-binding --clusterrole cluster-ad
 
 ### Prerequisites
 
+### Deploying ScyllaDB Operator
+
+Refer to [Deploying Scylla on a Kubernetes Cluster](generic.md) in the ScyllaDB Operator documentation to deploy the ScyllaDB Operator and its prerequisites.
+
 #### Setting up nodes for ScyllaDB
 
 ScyllaDB, except when in developer mode, requires storage with XFS filesystem. The local NVMes from the cloud provider usually come as individual devices. To use their full capacity together, you'll first need to form a RAID array from those disks.
@@ -150,9 +154,9 @@ sed -i "s/<gcp_region>/${GCP_REGION}/g;s/<gcp_zone>/${GCP_ZONE}/g" examples/gke/
 
 This will inject your region and zone into the cluster definition so that it matches the kubernetes cluster you just created.
 
-### Installing the Scylla Operator and Scylla
+### Deploying ScyllaDB
 
-Now you can follow the [generic guide](generic.md) to install the operator and launch your Scylla cluster in a highly performant environment.
+Now you can follow the steps described in [Deploying Scylla on a Kubernetes Cluster](generic.md) to launch your ScyllaDB cluster in a highly performant environment.
 
 #### Accessing the database
 

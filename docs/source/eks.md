@@ -90,6 +90,10 @@ Script requires several dependencies:
 - eksctl - See: https://docs.aws.amazon.com/eks/latest/userguide/getting-started-eksctl.html
 - kubectl - See: https://kubernetes.io/docs/tasks/tools/install-kubectl/
 
+### Deploying ScyllaDB Operator
+
+Refer to [Deploying Scylla on a Kubernetes Cluster](generic.md) in the ScyllaDB Operator documentation to deploy the ScyllaDB Operator and its prerequisites.
+
 #### Setting up nodes for ScyllaDB
 
 ScyllaDB, except when in developer mode, requires storage with XFS filesystem. The local NVMes from the cloud provider usually come as individual devices. To use their full capacity together, you'll first need to form a RAID array from those disks.
@@ -108,9 +112,9 @@ kubectl -n local-csi-driver apply --server-side -f examples/common/local-volume-
 kubectl apply --server-side -f examples/common/local-volume-provisioner/storageclass_xfs.yaml
 ```
 
-### Installing the Scylla Operator and Scylla
+### Deploying ScyllaDB
 
-Now you can follow the [generic guide](generic.md) to launch your Scylla cluster in a highly performant environment.
+Now you can follow the steps described in [Deploying Scylla on a Kubernetes Cluster](generic.md) to launch your ScyllaDB cluster in a highly performant environment.
 
 #### Accessing the database
 

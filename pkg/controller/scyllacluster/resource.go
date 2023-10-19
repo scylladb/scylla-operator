@@ -1053,6 +1053,17 @@ func MakeJobs(sc *scyllav1.ScyllaCluster, services map[string]*corev1.Service, i
 				naming.CleanupJobTokenRingHashAnnotation: currentTokenRingHash,
 			}
 
+			var tolerations []corev1.Toleration
+			var affinity *corev1.Affinity
+			if rack.Placement != nil {
+				tolerations = rack.Placement.Tolerations
+				affinity = &corev1.Affinity{
+					NodeAffinity:    rack.Placement.NodeAffinity,
+					PodAffinity:     rack.Placement.PodAffinity,
+					PodAntiAffinity: rack.Placement.PodAntiAffinity,
+				}
+			}
+
 			jobs = append(jobs, &batchv1.Job{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      naming.CleanupJobForService(svc.Name),
@@ -1070,6 +1081,8 @@ func MakeJobs(sc *scyllav1.ScyllaCluster, services map[string]*corev1.Service, i
 							Annotations: annotations,
 						},
 						Spec: corev1.PodSpec{
+							Tolerations:   tolerations,
+							Affinity:      affinity,
 							RestartPolicy: corev1.RestartPolicyOnFailure,
 							Containers: []corev1.Container{
 								{

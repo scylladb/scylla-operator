@@ -1,13 +1,7 @@
 # You can set these variables from the command line.
-ifeq ($(OS),Windows_NT)
-# For Windows users
-POETRY ?= $(APPDATA)\Python\Scripts\poetry
-else
-POETRY ?=poetry
-endif
-
+POETRY ?= poetry
 SPHINXBUILD ?= $(POETRY) run sphinx-build
-SPHINXOPTS ?=
+SPHINXOPTS ?= -j auto
 PAPER ?=
 BUILDDIR ?= _build
 SOURCEDIR ?= source

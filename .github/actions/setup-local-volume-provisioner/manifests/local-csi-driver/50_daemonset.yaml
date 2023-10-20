@@ -23,7 +23,7 @@ spec:
       - name: local-csi-driver
         securityContext:
           privileged: true
-        image: docker.io/scylladb/k8s-local-volume-provisioner:0.1.0@sha256:d8c12e96d352077fd4b639c8e4fb050e49e0be11161d78d9339b69f73466f59a
+        image: docker.io/scylladb/k8s-local-volume-provisioner:0.2.0-rc.0@sha256:a3d0b75d15d7daf2cebc8ae77025344669dd4dc0c12231b9a128c84f93de6b39
         imagePullPolicy: Always
         args:
         - --listen=/csi/csi.sock

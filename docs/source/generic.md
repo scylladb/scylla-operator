@@ -250,16 +250,16 @@ kubectl create configmap scylla-config -n scylla --from-file=/tmp/scylla.yaml --
 ```
 The operator will then apply the overridable properties `prefer_local` and `dc_suffix` if they are available in the provided mounted file.
 
-``` note::
-  If you want to enable authentication, you first need to adjust ``system_auth`` keyspace replication factor to the number of nodes in the datacenter via cqlsh. It allows you to ensure that the user’s information is kept highly available for the cluster. If ``system_auth`` is not equal to the number of nodes and a node fails, the user whose information is on that node will be denied access.
-  For production environments only use ``NetworkTopologyStrategy``.
+:::{note}
+If you want to enable authentication, you first need to adjust `system_auth` keyspace replication factor to the number of nodes in the datacenter via cqlsh. It allows you to ensure that the user’s information is kept highly available for the cluster. If `system_auth` is not equal to the number of nodes and a node fails, the user whose information is on that node will be denied access.
+For production environments only use `NetworkTopologyStrategy`.
 
-  .. code-block:: console
-
-    kubectl -n scylla exec -it pods/simple-cluster-us-east-1-us-east-1a-0 -c scylla -- cqlsh -e "ALTER KEYSPACE system_auth WITH REPLICATION = {'class' : 'NetworkTopologyStrategy', 'us-east-1' : <replication_factor>};"
-
-  You can read more about enabling authentication in the `Enable authentication <https://opensource.docs.scylladb.com/stable/operating-scylla/security/authentication.html>`_ section of ScyllaDB's documentation.
+```shell
+kubectl -n scylla exec -it pods/simple-cluster-us-east-1-us-east-1a-0 -c scylla -- cqlsh -e "ALTER KEYSPACE system_auth WITH REPLICATION = {'class' : 'NetworkTopologyStrategy', 'us-east-1' : <replication_factor>};"
 ```
+
+You can read more about enabling authentication in the [Enable authentication](https://opensource.docs.scylladb.com/stable/operating-scylla/security/authentication.html) section of ScyllaDB's documentation.
+:::
 
 ## Configure Scylla Manager Agent
 
@@ -299,16 +299,15 @@ Having edited and saved the yaml, you can check your cluster's Status and Events
 kubectl -n scylla describe scyllaclusters.scylla.scylladb.com/simple-cluster
 ```
 
-``` note::
-  If you have configured ScyllaDB with ``authenticator`` set to ``PasswordAuthenticator``, you need to manually configure the replication factor of the ``system_auth`` keyspace with every scaling operation.
+:::{note}
+If you have configured ScyllaDB with `authenticator` set to `PasswordAuthenticator`, you need to manually configure the replication factor of the `system_auth` keyspace with every scaling operation.
 
-  .. code-block:: console
-
-    kubectl -n scylla exec -it pods/simple-cluster-us-east-1-us-east-1a-0 -c scylla -- cqlsh -u <username> -p <password> -e "ALTER KEYSPACE system_auth WITH REPLICATION = {'class' : 'NetworkTopologyStrategy', 'us-east-1' : <new_replication_factor>};"
-
-
-  It is recommended to set ``system_auth`` replication factor to the number of nodes in each datacenter.
+```shell
+kubectl -n scylla exec -it pods/simple-cluster-us-east-1-us-east-1a-0 -c scylla -- cqlsh -u <username> -p <password> -e "ALTER KEYSPACE system_auth WITH REPLICATION = {'class' : 'NetworkTopologyStrategy', 'us-east-1' : <new_replication_factor>};"
 ```
+
+It is recommended to set `system_auth` replication factor to the number of nodes in each datacenter.
+:::
 
 ## Benchmark with cassandra-stress
 

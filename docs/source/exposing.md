@@ -3,9 +3,9 @@
 This document explains how ScyllaDB Operator exposes ScyllaClusters in different network setups.
 A ScyllaCluster can be exposed in various network configurations, independently to clients and nodes.
 
-``` note::
+:::{note}
 ScyllaClusters can be only exposed when the ScyllaDB version used version is `>=2023.1` ScyllaDB Enterprise or `>=5.2` ScyllaDB Open Source.
-```
+:::
 
 ## Expose Options
 

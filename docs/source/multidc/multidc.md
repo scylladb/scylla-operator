@@ -4,10 +4,10 @@ This document describes the process of deploying a Multi Datacenter ScyllaDB clu
 
 This guide will walk you through the example procedure of deploying two datacenters in distinct regions of a selected cloud provider.
 
-``` note::
-    This guide is dedicated to deploying multi-datacenter ScyllaDB clusters and does not discuss unrelated configuration options.
-    For details of ScyllaDB cluster deployments and their configuration, refer to `Deploying Scylla on a Kubernetes Cluster <../generic.md>`_ in ScyllaDB Operator documentation.
-```
+:::{note}
+This guide is dedicated to deploying multi-datacenter ScyllaDB clusters and does not discuss unrelated configuration options.
+For details of ScyllaDB cluster deployments and their configuration, refer to [Deploying Scylla on a Kubernetes Cluster](../generic.md) in ScyllaDB Operator documentation.
+:::
 
 ## Prerequisites
 
@@ -30,13 +30,13 @@ See [Install Tools](https://kubernetes.io/docs/tasks/tools/) in Kubernetes docum
 
 In v1.11, ScyllaDB Operator introduced support for manual multi-datacenter ScyllaDB cluster deployments.
 
-``` warning::
-    ScyllaDB Operator only supports *manual configuration* of multi-datacenter ScyllaDB clusters.
-    In other words, although ScyllaCluster API exposes the machinery necessary for setting up multi-datacenter ScylaDB clusters, the ScyllaDB Operator only automates operations for a single datacenter.
+:::{warning}
+ScyllaDB Operator only supports *manual configuration* of multi-datacenter ScyllaDB clusters.
+In other words, although ScyllaCluster API exposes the machinery necessary for setting up multi-datacenter ScylaDB clusters, the ScyllaDB Operator only automates operations for a single datacenter.
 
-    Operations related to multiple datacenters may require manual intervention of a human operator.
-    Most notably, destroying one of the Kubernetes clusters or ScyllaDB datacenters is going to leave DN nodes behind in other datacenters, and their removal has to be carried out manually.
-```
+Operations related to multiple datacenters may require manual intervention of a human operator.
+Most notably, destroying one of the Kubernetes clusters or ScyllaDB datacenters is going to leave DN nodes behind in other datacenters, and their removal has to be carried out manually.
+:::
 
 The main mechanism used to set up a manual multi-datacenter ScyllaDB cluster is a field in ScyllaCluster's specification - `externalSeeds`.
 
@@ -92,12 +92,12 @@ kubectl --context="${CONTEXT_DC1}" create ns scylla
 
 For this guide, let's assume that your cluster is running in `us-east-1` region and the nodes dedicated to running ScyllaDB nodes are running in zones `us-east-1a`, `us-east-1b` and `us-east-1c` correspondingly. If that is not the case, adjust the manifest accordingly.
 
-``` caution::
-    The ``.spec.name`` field of the ScyllaCluster objects represents the ScyllaDB cluster name and has to be consistent across all datacenters of this ScyllaDB cluster.
-    The names of the datacenters, specified in ``.spec.datacenter.name``, have to be unique across the entire multi-datacenter cluster.
-    
-    For more information see `Create a ScyllaDB Cluster - Multi Data Centers (DC) <https://opensource.docs.scylladb.com/stable/operating-scylla/procedures/cluster-management/create-cluster-multidc.html>`_ in ScyllaDB documentation.
-```
+:::{caution}
+The `.spec.name` field of the ScyllaCluster objects represents the ScyllaDB cluster name and has to be consistent across all datacenters of this ScyllaDB cluster.
+The names of the datacenters, specified in `.spec.datacenter.name`, have to be unique across the entire multi-datacenter cluster.
+
+For more information see [Create a ScyllaDB Cluster - Multi Data Centers (DC)](https://opensource.docs.scylladb.com/stable/operating-scylla/procedures/cluster-management/create-cluster-multidc.html) in ScyllaDB documentation.
+:::
 
 Save the ScyllaCluster manifest in `dc1.yaml`:
 ```yaml
@@ -304,13 +304,13 @@ UN  10.0.19.237  107 KB     256          ?       64b6292a-327f-4128-852a-6004039
 
 ##### Retrieve PodIPs of ScyllaDB nodes for use as external seeds
 
-``` warning::
-    Due to the ephemeral nature of PodIPs, it is ill-advised to use them as seeds in production environments. 
-    This is because there is a high likelihood that the Pods of your ScyllaDB clusters will change their IPs during the cluster's lifecycle, and so the provided seeds will no longer point to the ScyllaDB nodes.
-    It is undesired, as the seeds provided on node's startup may serve as fallback contact points when all of the node's peers are unreachable.
-    In production environments, it is recommended that you use domain names or non-ephemeral IP addresses as external seeds.
-    PodIPs are being used in this example for the sheer simplicity of this setup.
-```
+:::{warning}
+Due to the ephemeral nature of PodIPs, it is ill-advised to use them as seeds in production environments. 
+This is because there is a high likelihood that the Pods of your ScyllaDB clusters will change their IPs during the cluster's lifecycle, and so the provided seeds will no longer point to the ScyllaDB nodes.
+It is undesired, as the seeds provided on node's startup may serve as fallback contact points when all of the node's peers are unreachable.
+In production environments, it is recommended that you use domain names or non-ephemeral IP addresses as external seeds.
+PodIPs are being used in this example for the sheer simplicity of this setup.
+:::
 
 Use the below commands and their expected outputs as a reference for retrieving the PodIPs used by the cluster for inter-node communication.
 ```shell

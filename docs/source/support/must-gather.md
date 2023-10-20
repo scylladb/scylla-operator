@@ -24,12 +24,12 @@ export KUBECONFIG=~/.kube/config
 ls -l "${KUBECONFIG}"
 ```
 
-```note::
+:::{note}
    There can be slight deviations in the arguments for your container tool, depending on the container runtime, whether you use SELinux or similar factors.
 
    As an example, the need for the `Z` option on volume mounts depends on whether you use SELinux and what context is applied on your file or directory.
    If you get an error mentioning `Error: lsetxattr <path>: operation not supported`, try it without the `Z` option.
-```
+:::
 
 Let's also check whether your kubeconfig uses [external authentication plugin](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#client-go-credential-plugins).
 You can determine that by running
@@ -63,9 +63,9 @@ kubectl config view --minify --raw -o yaml | yq -e '.users[0].user = {"token": e
 KUBECONFIG="${kubeconfig}"
 ```
 
-```note::
+:::{note}
    If you don't have `yq` installed, you can get it at https://github.com/mikefarah/yq/#install or you can replace the user authentication settings manually.
-```
+:::
 
 ### Podman
 ```bash
@@ -86,10 +86,10 @@ Unless you hit scale issues, we advise not to use this mode, as sometimes the Sc
 scylla-operator must-gather --namespace="<namespace_with_broken_scyllacluster>"
 ```
 
-```note::
+:::{note}
    The `--namespace` flag affects only `ScyllaClusters`.
    Other resources related to the operator installation or cluster state will still be collected from other namespaces.
-```
+:::
 
 ### Collecting every resource in the cluster
 

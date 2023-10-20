@@ -48,9 +48,9 @@ gcloud compute networks subnets create scylladb-us-west1 \
     --secondary-range='cluster=172.17.0.0/16,services=172.18.0.0/20'
 ```
 
-``` caution::
-    It is required that the IPv4 address ranges of the subnets allocated for the GKE clusters do not overlap.
-```
+:::{caution}
+It is required that the IPv4 address ranges of the subnets allocated for the GKE clusters do not overlap.
+:::
 
 Refer to [Create a VPC-native cluster](https://cloud.google.com/kubernetes-engine/docs/how-to/alias-ips) and [Alias IP ranges](https://cloud.google.com/vpc/docs/alias-ip) in GKE documentation for more information about VPC native clusters and alias IP ranges.
 
@@ -79,7 +79,7 @@ gcloud container clusters create scylladb-us-east1 \
     --services-secondary-range-name=services
 ```
 
-Refer to [Creating a GKE cluster](../../gke#creating-a-gke-cluster) section of ScyllaDB Operator documentation for more information regarding the configuration and deployment of additional node pools, including the one dedicated for ScyllaDB nodes.
+Refer to [Creating a GKE cluster](../gke.md#creating-a-gke-cluster) section of ScyllaDB Operator documentation for more information regarding the configuration and deployment of additional node pools, including the one dedicated for ScyllaDB nodes.
 
 You will need to get the cluster's context for future operations. To do so, use the below command:
 ```shell

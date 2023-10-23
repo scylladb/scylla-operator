@@ -40,10 +40,17 @@
    git push upstream vX.Y.Z-beta.0
    ```
 
+1. Ask QA to run smoke test on beta before preparing release candidate.
+
 ## Updating `master` branch for the next release
 1. Enable building docs from `vX.Y` branch by adding an entry to `docs/source/conf.py`.
    ```
    BRANCHES = ['master', 'v0.3', 'v1.0', 'v1.1', 'vX.Y']
+   ```
+
+1. Set new version as unstable:
+   ```
+   UNSTABLE_VERSIONS = ['master', 'vX.Y']
    ```
 
 1. Send the PR to `master` branch.
@@ -103,10 +110,12 @@
 
 1. Ask QA to smoke test vX.Y.Z helm charts.
 
-1. Mark docs as latest in `docs/source/conf.py` in the master branch:
+1. Mark docs as latest, and remove from unstable versions list in `docs/source/conf.py` in the master branch:
    ```
    smv_latest_version = 'vX.Y'
+   UNSTABLE_VERSIONS = ['master']
    ```
+
 1. Submit a PR using `master` as target branch.
 
 1. (optional) Update the release schedule in `docs/source/release.md`.

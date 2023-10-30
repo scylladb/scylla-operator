@@ -79,7 +79,7 @@ gcloud container clusters create scylladb-us-east1 \
     --services-secondary-range-name=services
 ```
 
-Refer to [Creating a GKE cluster](../../gke#creating-a-gke-cluster) section of ScyllaDB Operator documentation for more information regarding the configuration and deployment of additional node pools, including the one dedicated for ScyllaDB nodes.
+Refer to [Creating a GKE cluster](../gke.html#creating-a-gke-cluster) section of ScyllaDB Operator documentation for more information regarding the configuration and deployment of additional node pools, including the one dedicated for ScyllaDB nodes.
 
 You will need to get the cluster's context for future operations. To do so, use the below command:
 ```shell

@@ -17,6 +17,7 @@ sphinx-multiversion-scylla = "~0.3.1"
 sphinx-markdown-tables = "~0.0.17"
 redirects_cli ="~0.1.3"
 myst-parser = "^2.0.0"
+recommonmark = "^0.7.1"
 
 [build-system]
 requires = ["poetry>=0.12"]

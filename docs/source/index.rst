@@ -19,7 +19,7 @@ Scylla Operator Documentation
    performance
    upgrade
    releases
-   known-issues
+   support/index
    scylla-cluster-crd
    contributing
 
@@ -60,6 +60,6 @@ Currently it supports:
 * :doc:`Performance tuning [Experimental] <performance>`
 * :doc:`Upgrade procedures <upgrade>`
 * :doc:`Releases <releases>`
-* :doc:`Known issues <known-issues>`
+* :doc:`Support <support/index>`
 * :doc:`Scylla Cluster Custom Resource Definition (CRD) <scylla-cluster-crd>`
 * :doc:`Contributing to the Scylla Operator Project <contributing>`

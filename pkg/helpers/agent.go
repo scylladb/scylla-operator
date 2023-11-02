@@ -27,7 +27,7 @@ func ParseTokenFromConfig(data []byte) (string, error) {
 func GetAgentAuthTokenFromAgentConfigSecret(secret *corev1.Secret) (string, error) {
 	configData, ok := secret.Data[naming.ScyllaAgentConfigFileName]
 	if !ok {
-		return "", fmt.Errorf("secret %q is missing %q data", naming.ObjRef(secret), naming.ScyllaAgentAuthTokenFileName)
+		return "", fmt.Errorf("secret %q is missing %q data", naming.ObjRef(secret), naming.ScyllaAgentConfigFileName)
 	}
 
 	return ParseTokenFromConfig(configData)

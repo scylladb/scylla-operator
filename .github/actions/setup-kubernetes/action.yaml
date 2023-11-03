@@ -83,13 +83,14 @@ runs:
       sudo apt-get update
       sudo apt-get install -y --no-install-recommends conntrack socat ebtables
       
-      curl -fsSL https://pkgs.k8s.io/core:/stable:/v${KUBERNETES_VERSION_SHORT}/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
       echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v${KUBERNETES_VERSION_SHORT}/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
       sudo apt-get update
       
       # Remove conflicting packages (also removes podman).
       sudo apt-get remove containernetworking-plugins
       
+      sudo apt-get remove kubelet kubeadm kubectl
+      sudo apt-get autoremove
       sudo apt-get install -y --no-install-recommends kubelet="${KUBERNETES_PKG_VERSION}" kubeadm="${KUBERNETES_PKG_VERSION}" kubectl="${KUBERNETES_PKG_VERSION}"
 
       # Podman got wiped by removing `containernetworking-plugins` so we have to install it from the new repo.

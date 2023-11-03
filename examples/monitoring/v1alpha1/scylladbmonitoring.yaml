@@ -7,7 +7,7 @@ spec:
   endpointsSelector:
     matchLabels:
       app.kubernetes.io/name: scylla
-      scylla-operator.scylladb.com/scylla-service-type: identity
+      scylla-operator.scylladb.com/scylla-service-type: member
       scylla/cluster: replace-with-your-scyllacluster-name
   components:
     prometheus:

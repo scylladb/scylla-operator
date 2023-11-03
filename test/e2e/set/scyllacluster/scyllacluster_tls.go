@@ -202,7 +202,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 				o.Expect(err).NotTo(o.HaveOccurred())
 				o.Expect(serviceAndPodIPs).To(o.HaveLen(2 * int(utils.GetMemberCount(sc))))
 
-				hostsIPs, err := helpers.ParseClusterIPs(serviceAndPodIPs)
+				hostsIPs, err := helpers.ParseIPs(serviceAndPodIPs)
 				o.Expect(err).NotTo(o.HaveOccurred())
 
 				servingDNSNames := make([]string, 0, len(sniHosts)+len(serviceServingDNSNames))

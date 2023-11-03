@@ -207,7 +207,7 @@ func (scc *Controller) syncCerts(
 		}
 
 		if svc.Spec.ClusterIP != corev1.ClusterIPNone {
-			parsedIP, err := helpers.ParseClusterIP(svc.Spec.ClusterIP)
+			parsedIP, err := helpers.ParseIP(svc.Spec.ClusterIP)
 			if err != nil {
 				return progressingConditions, fmt.Errorf("can't parse Service %q ClusterIP %q: %w", naming.ObjRef(svc), svc.Spec.ClusterIP, err)
 			}

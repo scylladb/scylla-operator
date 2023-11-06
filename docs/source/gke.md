@@ -23,7 +23,9 @@ cd examples/gke
 # ./gke.sh -u yanniszark@arrikto.com -p gke-demo-226716 -z us-west1-b
 ```
 
-:warning: Make sure to pass a ZONE (ex.: us-west1-b) and not a REGION (ex.: us-west1) or it will deploy nodes in each ZONE available in the region.
+:::{warning}
+Make sure to pass a ZONE (ex.: us-west1-b) and not a REGION (ex.: us-west1) or it will deploy nodes in each ZONE available in the region.
+:::
 
 After you deploy, see how you can [benchmark your cluster with cassandra-stress](#benchmark-with-cassandra-stress).
 

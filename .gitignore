@@ -18,3 +18,4 @@ examples/common/grafana/values.yaml
 # additions for docs
 docs/_build
 source/.doctrees
+docs/**/*.pyc

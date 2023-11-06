@@ -20,7 +20,7 @@ cd examples/eks
 ./eks.sh -z "$EKS_ZONES" -r "$EKS_REGION"
 ```
 
-After you deploy, see how you can [benchmark your cluster with cassandra-stress](#benchmark-with-cassandra-stress).
+After you deploy, see how you can [benchmark your cluster with cassandra-stress](generic.md#benchmark-with-cassandra-stress).
 
 ## Walkthrough
 

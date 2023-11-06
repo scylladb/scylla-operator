@@ -561,3 +561,41 @@ UN  172.16.39.209  336 KB     256          ?       7c30ea55-7a4f-4d93-86f7-c8817
 UN  172.16.25.18   759 KB     256          ?       665dde7e-e420-4db3-8c54-ca71efd39b2e  a
 UN  172.16.87.27   503 KB     256          ?       c19c89cb-e24c-4062-9df4-2aa90ab29a99  c
 ```
+
+## Scylla Manager
+
+To integrate a multi-datacenter ScyllaDB cluster with Scylla Manager, you must deploy the Scylla Manager in only one datacenter.
+
+In this example, let's choose the Kubernetes cluster deployed in the first datacenter to host it.
+To deploy Scylla Manager, follow the steps described in [Deploying Scylla Manager on a Kubernetes Cluster](../manager.md)
+in ScyllaDB Operator documentation. 
+
+In order to define the Scylla Manager tasks, add them to the ScyllaCluster object deployed in the same Kubernetes cluster 
+in which your Scylla Manager is running.
+
+Every datacenter (represented by ScyllaCluster CR) is, by default, provisioned with a new, random Scylla Manager Agent auth token.
+To use Scylla Manager with multiple datacenter (represented by ScyllaClusters), you have to make sure they all use the same token.
+
+Extract it from the first datacenter with the below command:
+```shell
+kubectl --context="${CONTEXT_DC1}" -n=scylla get secrets/scylla-cluster-auth-token --template='{{ index .data "auth-token.yaml" }}' | base64 -d
+```
+```console
+auth_token: 84qtsfvm98qzmps8s65zr2vtpb8rg4sdzcbg4pbmg2pfhxwpg952654gj86tzdljfqnsghndljm58mmhpmwfgpsvjx2kkmnns8bnblmgkbl9n8l9f64rs6tcvttm7kmf
+```
+
+Save the output, replace the token with your own, and patch the secret in the second datacenter with the below command:
+```shell
+kubectl --context="${CONTEXT_DC2}"-n=scylla patch secret/scylla-cluster-auth-token --type='json' -p='[{"op": "replace", "path": "/data/auth-token.yaml", "value": "auth_token: 84qtsfvm98qzmps8s65zr2vtpb8rg4sdzcbg4pbmg2pfhxwpg952654gj86tzdljfqnsghndljm58mmhpmwfgpsvjx2kkmnns8bnblmgkbl9n8l9f64rs6tcvttm7kmf"}]'
+```
+
+Execute a rolling restart of the nodes in DC2 to make sure they pick up the new token:
+```shell
+kubectl --context="${CONTEXT_DC2}" patch scyllacluster/scylla-cluster --type merge -p '{"spec": {"forceRedeploymentReason": "sync scylla-manager-agent token ('$(date)')"}}'
+```
+
+
+## ScyllaDBMonitoring
+
+To monitor your cluster, deploy ScyllaDBMonitoring in every datacenter independently.
+To deploy ScyllaDB Monitoring, follow the steps described in [Deploy managed monitoring](../monitoring#deploy-managed-monitoring) in ScyllaDB Operator documentation.

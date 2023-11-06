@@ -174,4 +174,4 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.3.0 // indirect
 )
 
-replace github.com/gocql/gocql => github.com/scylladb/gocql v1.7.3
+replace github.com/gocql/gocql => github.com/scylladb/gocql v1.12.0

@@ -27,7 +27,7 @@ cd examples/gke
 Make sure to pass a ZONE (ex.: us-west1-b) and not a REGION (ex.: us-west1) or it will deploy nodes in each ZONE available in the region.
 :::
 
-After you deploy, see how you can [benchmark your cluster with cassandra-stress](#benchmark-with-cassandra-stress).
+After you deploy, see how you can [benchmark your cluster with cassandra-stress](generic.md#benchmark-with-cassandra-stress).
 
 ## Walkthrough
 

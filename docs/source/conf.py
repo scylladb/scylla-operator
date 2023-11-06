@@ -65,7 +65,7 @@ redirects_file = "./redirections.yaml"
 
 # -- Options for markdown extension
 scylladb_markdown_enable = True
-scylladb_markdown_recommonmark_versions = ['v1.8', 'v1.9', 'v1.10', 'v1.11']
+scylladb_markdown_recommonmark_versions = ['v1.8', 'v1.9', 'v1.10']
 
 # -- Options for multiversion extension
 # Whitelist pattern for tags (set to None to ignore all tags)

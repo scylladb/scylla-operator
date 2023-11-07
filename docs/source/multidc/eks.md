@@ -41,7 +41,7 @@ nodeGroups:
 ```
 
 Specify the first cluster's configuration file and save it as `cluster-us-east-1.yaml`.
-Refer to [Creating an EKS cluster](../../eks#creating-an-eks-cluster) section of ScyllaDB Operator documentation for the reference of the configuration of node groups.
+Refer to [Creating an EKS cluster](../eks.md#creating-an-eks-cluster) section of ScyllaDB Operator documentation for the reference of the configuration of node groups.
 
 To deploy the first cluster, use the below command:
 ```shell
@@ -66,15 +66,15 @@ Once the cluster is ready, refer to [Deploying Scylla on a Kubernetes Cluster](.
 
 #### Prepare nodes for running ScyllaDB
 
-Then, prepare the nodes for running ScyllaDB workloads and deploy a volume provisioner following the steps described in [Deploying Scylla on EKS](../../eks#prerequisites) in ScyllaDB Operator documentation.
+Then, prepare the nodes for running ScyllaDB workloads and deploy a volume provisioner following the steps described in [Deploying Scylla on EKS](../eks.md#prerequisites) in ScyllaDB Operator documentation.
 
 ### Create the second EKS cluster
 
 Below is the required specification for the second cluster. As was the case with the first cluster, the provided values are only exemplary and can be adjusted according to your needs.
 
-``` caution::
-    It is required that the VPCs of the two EKS clusters have non-overlapping IPv4 network ranges.
-```
+:::{caution}
+It is required that the VPCs of the two EKS clusters have non-overlapping IPv4 network ranges.
+:::
 
 ```yaml
 apiVersion: eksctl.io/v1alpha5

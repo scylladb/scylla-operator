@@ -6,23 +6,23 @@ Scylla Operator provides several custom API resources that use webhooks to funct
 Unfortunately, it is often the case that user's clusters have modified SDN, that doesn't extend to the control plane, and Kubernetes apiserver is not able to reach the pods that serve the webhook traffic.
 Another common case are firewall rules that block the webhook traffic.
 
-```note::
+:::{note}
    To be called a Kubernetes cluster, clusters are required to pass Kubernetes conformance test suite.
    This suite includes tests that require Kubernetes apiserver to be able to reach webhook services.
-```
+:::
 
-```note::
+:::{note}
    Before filing an issue, please make sure your cluster webhook traffic can reach your webhook services, independently of Scylla Operator resources.
-```
+:::
 
 ### EKS
 
 #### Custom CNI
 EKS is currently breaking Kubernetes webhooks [when used with custom CNI networking](https://github.com/aws/containers-roadmap/issues/1215).
 
-```note::
+:::{note}
    We advise you to avoid using such setups and use a conformant Kubernetes cluster that supports webhooks.
-```
+:::
 
 There are some workarounds where you can reconfigure the webhook to use Ingress or hostNetwork instead, but it's beyond a standard configuration that we support and not specific to the Scylla Operator.
 

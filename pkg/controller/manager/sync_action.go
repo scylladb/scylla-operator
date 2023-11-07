@@ -121,7 +121,8 @@ func syncBackupTasks(clusterID string, cluster *scyllav1.ScyllaCluster, syncer s
 	var actions []action
 
 	for _, bt := range cluster.Spec.Backups {
-		backupTask := &BackupTask{BackupTaskSpec: bt}
+		btCopy := *bt.DeepCopy()
+		backupTask := &BackupTask{BackupTaskSpec: btCopy}
 
 		for _, managerTask := range managerState.BackupTasks {
 			if syncer.taskID(backupTask.Name) == managerTask.ID {
@@ -137,7 +138,7 @@ func syncBackupTasks(clusterID string, cluster *scyllav1.ScyllaCluster, syncer s
 			actions = append(actions, &addTaskAction{
 				clusterID: clusterID,
 				task:      mt,
-				taskSpec:  bt,
+				taskSpec:  btCopy,
 			})
 		} else if syncer.shouldUpdateTask(backupTask.Name) {
 			backupTask.ID = syncer.taskID(backupTask.Name)
@@ -158,7 +159,7 @@ func syncBackupTasks(clusterID string, cluster *scyllav1.ScyllaCluster, syncer s
 				actions = append(actions, &updateTaskAction{
 					clusterID: clusterID,
 					task:      mt,
-					taskSpec:  bt,
+					taskSpec:  btCopy,
 				})
 			}
 		}
@@ -171,7 +172,8 @@ func syncRepairTasks(clusterID string, cluster *scyllav1.ScyllaCluster, syncer s
 	var actions []action
 
 	for _, rt := range cluster.Spec.Repairs {
-		repairTask := &RepairTask{RepairTaskSpec: rt}
+		rtCopy := *rt.DeepCopy()
+		repairTask := &RepairTask{RepairTaskSpec: rtCopy}
 
 		for _, managerTask := range managerState.RepairTasks {
 			if syncer.taskID(repairTask.Name) == managerTask.ID {
@@ -187,7 +189,7 @@ func syncRepairTasks(clusterID string, cluster *scyllav1.ScyllaCluster, syncer s
 			actions = append(actions, &addTaskAction{
 				clusterID: clusterID,
 				task:      mt,
-				taskSpec:  rt,
+				taskSpec:  rtCopy,
 			})
 		} else if syncer.shouldUpdateTask(rt.Name) {
 			repairTask.ID = syncer.taskID(rt.Name)
@@ -207,7 +209,7 @@ func syncRepairTasks(clusterID string, cluster *scyllav1.ScyllaCluster, syncer s
 				actions = append(actions, &updateTaskAction{
 					clusterID: clusterID,
 					task:      mt,
-					taskSpec:  rt,
+					taskSpec:  rtCopy,
 				})
 			}
 		}

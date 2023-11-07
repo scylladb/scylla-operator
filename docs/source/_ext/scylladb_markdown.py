@@ -27,10 +27,10 @@ class MystParser(BaseParser):
         try:
             self.app.setup_extension('myst_parser')
             self.app.config.myst_enable_extensions = ["colon_fence"]
+            self.app.config.myst_heading_anchors = 6
 
-            # TODO: https://github.com/scylladb/scylla-operator/issues/1421
             # TODO: https://github.com/scylladb/scylla-operator/issues/1422
-            self.app.config.suppress_warnings = ["myst.xref_missing", "myst.header"]
+            self.app.config.suppress_warnings = ["myst.header"]
 
         except ImportError:
             raise RuntimeError("myst-parser is not installed")

@@ -21,6 +21,7 @@ type ScyllaOperatorConfigStatus struct {
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// ScyllaOperatorConfig describes the Scylla Operator configuration.
 type ScyllaOperatorConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

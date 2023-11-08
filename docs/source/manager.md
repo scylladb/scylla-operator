@@ -160,7 +160,7 @@ Add following task definition to Cluster spec:
       interval: "1d"
 ```
 
-For full task definition configuration consult [Scylla Cluster CRD](scylla-cluster-crd.md).
+For full task definition configuration consult [ScyllaCluster CRD](api-reference/groups/scylla.scylladb.com/scyllaclusters.rst).
 
 **Note**: Scylla Manager Agent must have access to above bucket prior the update in order to schedule backup task.
 Consult Scylla Manager documentation for details on how to set it up.

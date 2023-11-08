@@ -20,7 +20,7 @@ Scylla Operator Documentation
    upgrade
    releases
    support/index
-   scylla-cluster-crd
+   api-reference/index
    contributing
 
 Scylla Operator is an open source project which helps users of Scylla Open Source and Scylla Enterprise run Scylla on Kubernetes (K8s)
@@ -61,5 +61,5 @@ Currently it supports:
 * :doc:`Upgrade procedures <upgrade>`
 * :doc:`Releases <releases>`
 * :doc:`Support <support/index>`
-* :doc:`Scylla Cluster Custom Resource Definition (CRD) <scylla-cluster-crd>`
+* :doc:`API Reference <api-reference/index>`
 * :doc:`Contributing to the Scylla Operator Project <contributing>`

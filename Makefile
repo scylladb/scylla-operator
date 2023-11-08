@@ -72,6 +72,7 @@ HELM_MANIFEST_CACHE_CONTROL ?=public, max-age=600
 
 CONTROLLER_GEN ?=$(GO) run ./vendor/sigs.k8s.io/controller-tools/cmd/controller-gen --
 CRD_PATH ?= pkg/api/scylla/v1/scylla.scylladb.com_scyllaclusters.yaml
+CRD_FILES ?=$(shell find ./pkg/api/ -name '*.yaml')$(if $(filter $(.SHELLSTATUS),0),,$(error "can't find CRDs"))
 
 define version-ldflags
 -X $(1).versionFromGit="$(GIT_TAG)" \
@@ -504,6 +505,22 @@ verify-examples:
 	$(diff) -r '$(tmp_dir)'/ ./examples
 .PHONY: verify-examples
 
+# $1 - extra flags
+define run-update-docs
+	$(GO) run ./cmd/gen-api-reference/ --templates-dir ./docs/source/api-reference/templates $(1) $(CRD_FILES)
+
+endef
+
+update-docs-api:
+	$(call run-update-docs,--output-dir=./docs/source/api-reference/groups --overwrite)
+.PHONY: update-docs-api
+
+verify-docs-api: tmp_dir :=$(shell mktemp -d)
+verify-docs-api:
+	$(call run-update-docs,--output-dir="$(tmp_dir)")
+	$(diff) -r '$(tmp_dir)' ./docs/source/api-reference/groups || (echo 'Generated API docs are not up-to date. Please run `make update-docs-api` to update it or remove the extra files.' && false)
+.PHONY: verify-docs-api
+
 verify-links:
 	@set -euEo pipefail; broken_links=( $$( find . -type l ! -exec test -e {} \; -print ) ); \
 	if [[ -n "$${broken_links[@]}" ]]; then \
@@ -513,10 +530,10 @@ verify-links:
 	fi;
 .PHONY: verify-links
 
-verify: verify-gofmt verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-govet verify-helm-lint verify-links verify-examples
+verify: verify-gofmt verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-govet verify-helm-lint verify-links verify-examples verify-docs-api
 .PHONY: verify
 
-update: update-gofmt update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples
+update: update-gofmt update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-docs-api
 .PHONY: update
 
 test-unit:

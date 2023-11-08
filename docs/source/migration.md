@@ -1,7 +1,7 @@
-## Version  migrations
+# Version  migrations
 
 
-### `v0.3.0` -> `v1.0.0` migration
+## `v0.3.0` -> `v1.0.0` migration
 
 `v0.3.0` used a very common name as a CRD kind (`Cluster`). In `v1.0.0` this issue was solved by using less common kind
 which is easier to disambiguate (`ScyllaCluster`).
@@ -18,7 +18,7 @@ out of the box on production. Make sure this procedure works well multiple times
 In case of any issues or questions regarding this procedure, you're welcomed on our [Scylla Users Slack](http://slack.scylladb.com/)
 on #kubernetes channel.
 
-### Procedure
+## Procedure
 
 1. Execute this whole procedure for each cluster sequentially. To get a list of existing clusters execute the following
     ```

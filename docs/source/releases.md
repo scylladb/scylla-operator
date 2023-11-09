@@ -5,15 +5,16 @@ We are aiming to ship a new release approximately every 6 weeks. The following r
 
 | Release | Code freeze | General availability |
 |:-------:|:-----------:|:--------------------:|
-|  1.11   | 2023-10-02  |      2023-10-16      |
+|  1.12   | 2023-12-18  |      2024-01-08      |
 
 ## Supported releases
 We support the latest 2 releases of the operator to give everyone time to upgrade.
 
 | Release | General availability |  Support ends   |
 |:-------:|:--------------------:|:---------------:|
+|  1.11   |      2023-11-09      | Release of 1.13 |
 |  1.10   |      2023-08-25      | Release of 1.12 |
-|   1.9   |      2023-07-04      | Release of 1.11 |
+|   1.9   |      2023-07-04      |   2023-11-09    |
 |   1.8   |      2023-01-25      |   2023-08-25    |
 |   1.7   |      2022-01-27      |   2023-07-04    |
 |   1.6   |      2021-12-03      |   2023-01-25    |

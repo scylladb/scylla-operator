@@ -56,7 +56,7 @@ kubectl -n cert-manager rollout status deployment.apps/cert-manager-webhook
 Deploy the Scylla Operator using the following commands:
 
 ```console
-kubectl apply -f examples/common/operator.yaml
+kubectl apply -f deploy/operator.yaml
 ```
 
 This will install the operator in namespace `scylla-operator`.
@@ -368,7 +368,7 @@ To clean up all resources associated with this walk-through, you can run the com
 
 ```console
 kubectl delete -f examples/generic/cluster.yaml
-kubectl delete -f examples/common/operator.yaml
+kubectl delete -f deploy/operator.yaml
 kubectl delete -f examples/common/cert-manager.yaml
 ```
 

@@ -456,9 +456,12 @@ verify-helm-charts:
 
 update-deploy: tmp_dir:=$(shell mktemp -d)
 update-deploy:
-	$(call generate-operator-manifests,helm/deploy/operator.yaml,deploy/operator,$(tmp_dir))
-	$(call generate-manager-manifests-prod,helm/deploy/manager_prod.yaml,deploy/manager/prod,$(tmp_dir))
-	$(call generate-manager-manifests-dev,deploy/manager/dev)
+	$(call generate-operator-manifests,helm/deploy/operator.yaml,./deploy/operator,$(tmp_dir))
+	$(call concat-manifests,$(sort $(wildcard deploy/operator/*.yaml)),./deploy/operator.yaml)
+	$(call generate-manager-manifests-prod,helm/deploy/manager_prod.yaml,./deploy/manager/prod,$(tmp_dir))
+	$(call concat-manifests,$(sort $(wildcard ./deploy/manager/prod/*.yaml)),./deploy/manager-prod.yaml)
+	$(call generate-manager-manifests-dev,./deploy/manager/dev)
+	$(call concat-manifests,$(sort $(wildcard ./deploy/manager/dev/*.yaml)),./deploy/manager-dev.yaml)
 .PHONY: update-deploy
 
 verify-deploy: tmp_dir :=$(shell mktemp -d)
@@ -469,41 +472,21 @@ verify-deploy:
 	cp -r deploy/operator/. $(tmp_dir)/operator/.
 	$(call generate-operator-manifests,helm/deploy/operator.yaml,$(tmp_dir)/operator,$(tmp_dir_generate))
 	$(diff) -r '$(tmp_dir)'/operator deploy/operator
+	$(call concat-manifests,$(sort $(wildcard ./deploy/operator/*.yaml)),'$(tmp_dir)'/operator.yaml)
+	$(diff) '$(tmp_dir)'/operator.yaml deploy/operator.yaml
 
 	cp -r deploy/manager/prod/. $(tmp_dir)/manager/prod/.
 	$(call generate-manager-manifests-prod,helm/deploy/manager_prod.yaml,$(tmp_dir)/manager/prod,$(tmp_dir_generate))
 	$(diff) -r '$(tmp_dir)'/manager/prod deploy/manager/prod
+	$(call concat-manifests,$(sort $(wildcard ./deploy/manager/prod/*.yaml)),'$(tmp_dir)'/manager-prod.yaml)
+	$(diff) '$(tmp_dir)'/manager-prod.yaml deploy/manager-prod.yaml
 
 	$(call generate-manager-manifests-dev,$(tmp_dir)/manager/dev)
 	$(diff) -r '$(tmp_dir)'/manager/dev deploy/manager/dev
+	$(call concat-manifests,$(sort $(wildcard ./deploy/manager/dev/*.yaml)),'$(tmp_dir)'/manager-dev.yaml)
+	$(diff) '$(tmp_dir)'/manager-dev.yaml deploy/manager-dev.yaml
 
 .PHONY: verify-deploy
-
-update-examples-operator:
-	$(call concat-manifests,$(sort $(wildcard deploy/operator/*.yaml)),examples/common/operator.yaml)
-.PHONY: update-examples-operator
-
-verify-example-operator: tmp_file := $(shell mktemp)
-verify-example-operator:
-	$(call concat-manifests,$(sort $(wildcard deploy/operator/*.yaml)),$(tmp_file))
-	$(diff) '$(tmp_file)' examples/common/operator.yaml || (echo 'Operator example is not up-to date. Please run `make update-examples-operator` to update it.' && false)
-.PHONY: verify-example-operator
-
-update-examples-manager:
-	$(call concat-manifests,$(sort $(wildcard deploy/manager/prod/*.yaml)),examples/common/manager.yaml)
-.PHONY: update-examples-manager
-
-verify-example-manager: tmp_file :=$(shell mktemp)
-verify-example-manager:
-	$(call concat-manifests,$(sort $(wildcard deploy/manager/prod/*.yaml)),$(tmp_file))
-	$(diff) '$(tmp_file)' examples/common/manager.yaml || (echo 'Manager example is not up-to date. Please run `make update-examples-manager` to update it.' && false)
-.PHONY: verify-example-manager
-
-update-examples: update-examples-manager update-examples-operator
-.PHONY: update-examples
-
-verify-examples: verify-example-manager verify-example-operator
-.PHONY: verify-examples
 
 verify-links:
 	@set -euEo pipefail; broken_links=( $$( find . -type l ! -exec test -e {} \; -print ) ); \
@@ -514,10 +497,10 @@ verify-links:
 	fi;
 .PHONY: verify-links
 
-verify: verify-gofmt verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-examples verify-govet verify-helm-lint verify-links
+verify: verify-gofmt verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-govet verify-helm-lint verify-links
 .PHONY: verify
 
-update: update-gofmt update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples
+update: update-gofmt update-codegen update-crds update-helm-schemas update-helm-charts update-deploy
 .PHONY: update
 
 test-unit:

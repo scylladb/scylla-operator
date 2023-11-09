@@ -309,7 +309,7 @@ update-crds:
 	$(call generate-crds,)
 .PHONY: update-crds
 
-verify-crds: tmp_dir :=$(shell mktemp -d)
+verify-crds: tmp_dir :=$(shell mktemp -d crd-XXXXXX)
 verify-crds:
 	mkdir '$(tmp_dir)'/{original,generated}
 

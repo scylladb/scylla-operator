@@ -65,20 +65,20 @@ redirects_file = "./redirections.yaml"
 
 # -- Options for markdown extension
 scylladb_markdown_enable = True
-scylladb_markdown_recommonmark_versions = ['v1.8', 'v1.9', 'v1.10']
+scylladb_markdown_recommonmark_versions = ['v1.9', 'v1.10']
 
 # -- Options for multiversion extension
 # Whitelist pattern for tags (set to None to ignore all tags)
 TAGS = []
 smv_tag_whitelist = multiversion_regex_builder(TAGS)
 # Whitelist pattern for branches (set to None to ignore all branches)
-BRANCHES = ['master', 'v1.8', 'v1.9', 'v1.10', 'v1.11']
+BRANCHES = ['master', 'v1.9', 'v1.10', 'v1.11']
 # Set which versions are not released yet.
 UNSTABLE_VERSIONS = ["master"]
 smv_branch_whitelist = multiversion_regex_builder(BRANCHES)
 # Defines which version is considered to be the latest stable version.
 # Must be listed in smv_tag_whitelist or smv_branch_whitelist.
-smv_latest_version = 'v1.10'
+smv_latest_version = 'v1.11'
 smv_rename_latest_version = 'stable'
 # Whitelist pattern for remotes (set to None to use local branches only)
 smv_remote_whitelist = r"^origin$"

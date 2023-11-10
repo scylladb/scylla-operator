@@ -488,6 +488,22 @@ verify-deploy:
 
 .PHONY: verify-deploy
 
+update-examples:
+update-examples:
+	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/haproxy-ingress/*.yaml)),./examples/third-party/haproxy-ingress.yaml)
+	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/prometheus-operator/*.yaml)),./examples/third-party/prometheus-operator.yaml)
+.PHONY: update-examples
+
+verify-examples: tmp_dir :=$(shell mktemp -d)
+verify-examples:
+	cp -r ./examples/. $(tmp_dir)/
+
+	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/haproxy-ingress/*.yaml)),$(tmp_dir)/third-party/haproxy-ingress.yaml)
+	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/prometheus-operator/*.yaml)),$(tmp_dir)/third-party/prometheus-operator.yaml)
+
+	$(diff) -r '$(tmp_dir)'/ ./examples
+.PHONY: verify-examples
+
 verify-links:
 	@set -euEo pipefail; broken_links=( $$( find . -type l ! -exec test -e {} \; -print ) ); \
 	if [[ -n "$${broken_links[@]}" ]]; then \
@@ -497,10 +513,10 @@ verify-links:
 	fi;
 .PHONY: verify-links
 
-verify: verify-gofmt verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-govet verify-helm-lint verify-links
+verify: verify-gofmt verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-govet verify-helm-lint verify-links verify-examples
 .PHONY: verify
 
-update: update-gofmt update-codegen update-crds update-helm-schemas update-helm-charts update-deploy
+update: update-gofmt update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples
 .PHONY: update
 
 test-unit:

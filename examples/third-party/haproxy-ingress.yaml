@@ -1,0 +1,407 @@
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: haproxy
+spec:
+  controller: haproxy.org/ingress-controller
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: haproxy-ingress
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: haproxy-ingress
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - endpoints
+  - nodes
+  - pods
+  - services
+  - namespaces
+  - events
+  - serviceaccounts
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - "extensions"
+  - "networking.k8s.io"
+  resources:
+  - ingresses
+  - ingresses/status
+  - ingressclasses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - "extensions"
+  - "networking.k8s.io"
+  resources:
+  - ingresses/status
+  verbs:
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - patch
+  - update
+- apiGroups:
+  - core.haproxy.org
+  resources:
+  - '*'
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+- apiGroups:
+  - "discovery.k8s.io"
+  resources:
+  - endpointslices
+  verbs:
+  - get
+  - list
+  - watch
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: haproxy-ingress
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: haproxy-ingress
+subjects:
+- kind: ServiceAccount
+  name: haproxy-ingress
+  namespace: haproxy-ingress
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: haproxy-ingress
+data:
+  hard-stop-after: "66s"
+  scale-server-slots: "2"
+  timeout-client: "61"
+  timeout-connect: "7s"
+  timeout-http-request: "5m"
+  timeout-http-keep-alive: "62s"
+  timeout-queue: "8s"
+  timeout-server: "4s"
+  timeout-tunnel: "29m"
+  dontlognull: "true"
+  src-ip-header: "True-Client-IP"
+  forwarded-for: "true"
+  http-keep-alive: "true"
+  http-server-close: "false"
+  load-balance: "roundrobin"
+  logasap: "true"
+  syslog-server: "address:stdout, format: raw, facility:daemon, level: debug"
+  global-config-snippet: |
+    tune.bufsize 32768
+    tune.idletimer 0
+    tune.ssl.cachesize 200000
+    tune.ssl.lifetime 300000
+  backend-config-snippet: |
+    option splice-auto
+    option splice-request
+    option splice-response
+    option tcplog
+  stats-config-snippet: |
+    option dontlog-normal
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: haproxy-ingress
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 50%
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: haproxy-ingress
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: haproxy-ingress
+    spec:
+      terminationGracePeriodSeconds: 70
+      serviceAccountName: haproxy-ingress
+      containers:
+      - name: haproxy-ingress
+        image: docker.io/haproxytech/kubernetes-ingress:1.10.1@sha256:39eb1a1443e42dc4dc9883bbc764b21f7c7d507af277656551af39ff3faf7635
+        args:
+        - --disable-ipv6
+        - --ipv4-bind-address=0.0.0.0
+        - --http-bind-port=8080
+        - --https-bind-port=8443
+        - --configmap=haproxy-ingress/haproxy-ingress
+        - --default-backend-service=haproxy-ingress/ingress-default-backend
+        - --default-ssl-certificate=haproxy-ingress/ingress-default-ssl-certificate
+        - --log=trace
+        securityContext:
+          runAsUser:  1000
+          runAsGroup: 1000
+          capabilities:
+            drop:
+            - ALL
+            add:
+            - NET_BIND_SERVICE
+        resources:
+          requests:
+            cpu: 100m
+            memory: 50M
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 1042
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 1042
+        ports:
+        - name: http
+          containerPort: 8080
+        - name: https
+          containerPort: 8443
+        - name: stat
+          containerPort: 1024
+        env:
+        - name: TZ
+          value: "Etc/UTC"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: haproxy-ingress
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: haproxy-ingress
+spec:
+  selector:
+    app.kubernetes.io/name: haproxy-ingress
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: 8443
+  - name: cql-ssl
+    port: 9142
+    protocol: TCP
+    targetPort: 8443
+  - name: stat
+    port: 1024
+    protocol: TCP
+    targetPort: 1024
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingress-default-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ingress-default-backend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ingress-default-backend
+    spec:
+      containers:
+      - name: ingress-default-backend
+        image: gcr.io/google_containers/defaultbackend:1.0
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            cpu: 10m
+            memory: 50Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-default-backend
+spec:
+  selector:
+    app.kubernetes.io/name: ingress-default-backend
+  ports:
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: 8080
+  - name: cql-ssl
+    port: 9142
+    protocol: TCP
+    targetPort: 8080
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ingress-default-ssl-certificate
+type: kubernetes.io/tls
+data:
+  tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR1ekNDQXFPZ0F3SUJBZ0lVY0lxVXJoVnkvKzlWdGVaMkFkQVFxb0FiVDl3d0RRWUpLb1pJaHZjTkFRRUwKQlFBd2JURUxNQWtHQTFVRUJoTUNRMW94RVRBUEJnTlZCQWdNQ0ZaNWMyOWphVzVoTVJBd0RnWURWUVFIREFkSwphV2hzWVhaaE1SVXdFd1lEVlFRS0RBeFRZM2xzYkdGRVFpQk1kR1F4RURBT0JnTlZCQXNNQjJoaGNISnZlSGt4CkVEQU9CZ05WQkFNTUIyaGhjSEp2ZUhrd0hoY05Nakl3TWpFMU1USTBNekF6V2hjTk1qSXdNekUzTVRJME16QXoKV2pCdE1Rc3dDUVlEVlFRR0V3SkRXakVSTUE4R0ExVUVDQXdJVm5semIyTnBibUV4RURBT0JnTlZCQWNNQjBwcAphR3hoZG1FeEZUQVRCZ05WQkFvTURGTmplV3hzWVVSQ0lFeDBaREVRTUE0R0ExVUVDd3dIYUdGd2NtOTRlVEVRCk1BNEdBMVVFQXd3SGFHRndjbTk0ZVRDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUIKQU1hUkhPWEV2Ri9pSy9LVXJwZWN4TFBkN0FqMjNlZHV3c3hiWnN5ZCtoRk53R1FYR2lhZTlydEMvYTJaMmxuTgpYRXdTdENGWlpEbkgxSXZIT0pHYkdEd2txam1tK0FrVzRjdEF2RzFoL0NMK3k1TkpPUWJjZ2NzZ1B3TVkzNXU2Cll3VVVGby8xZEVtV2pzSGE4NjZSdHFMdzZtR2lrdUcySlBRN0xpdnUvWXpXdTQ3TzdjS2oyanhoUGQxQ214NisKR1c3bm4xTEVWTW1BS21JRDVFUmZSdTJCWW40VEFnaDdhUlJTZHZ1UTNZZldoSUo2K3kyTHp5WGE5SmJPQlVrMwpUTEJ1QS9mTTNqSHRjdWJudjZHMHpHaEg5WmJFYmVmSVNnRnQ5cUtYMXdWb29nenZydktBZmFyREthSndCY3BPCkpnZFU4eCtBc3c4QVJISkJITUxWZ2FrQ0F3RUFBYU5UTUZFd0hRWURWUjBPQkJZRUZBVXAxaHFzRW43eXRoSkYKcXBGN2ZIUk0yNXFYTUI4R0ExVWRJd1FZTUJhQUZBVXAxaHFzRW43eXRoSkZxcEY3ZkhSTTI1cVhNQThHQTFVZApFd0VCL3dRRk1BTUJBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUNnRlNlVTZjQ2YzUmRjMVJPMGE0ck5nClQvZC80SE5qcE1UTXQ4TVhOLzBzQXdWNTg2UmRFWUVGRnhQSmQ4ZjhHUVMydVFBbUNRMDlZd1pyQXh3L2pFc24KamloTTRWdlJvOHJJcXlJZmlYTkpUNDgvd0lmVEc1T3d0UzJ5eExoQjdkRUtFTUhkL0loRjNDQ3ptTzQzV0xPaApRVVl6bUY1UXZEV2Q4eGJKelRjaHAxSy9tRG5BUE5vS1FxZ3RJTGg5ekpITndWOWNROUJhUmRQN1NueE1mQUcwCnAybllHcmhmcGlJZ2g4MTdWUVZ3SHZIODRLYlVjQzJRUlQrOG43T1dyUitRVVArdjJLYVFzKytGOVFpc1RrL0MKSGhDNlhDMGNWNHBHNmIvSlpmU2VCRWJDRDVMSzZ1aW1GSlB1T05SVXlrVzdWOGxMOXVKRHpkVlBNSGMvQTBRPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+  tls.key: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JSUV2UUlCQURBTkJna3Foa2lHOXcwQkFRRUZBQVNDQktjd2dnU2pBZ0VBQW9JQkFRREdrUnpseEx4ZjRpdnkKbEs2WG5NU3ozZXdJOXQzbmJzTE1XMmJNbmZvUlRjQmtGeG9tbnZhN1F2MnRtZHBaelZ4TUVyUWhXV1E1eDlTTAp4emlSbXhnOEpLbzVwdmdKRnVITFFMeHRZZndpL3N1VFNUa0czSUhMSUQ4REdOK2J1bU1GRkJhUDlYUkpsbzdCCjJ2T3VrYmFpOE9waG9wTGh0aVQwT3k0cjd2Mk0xcnVPenUzQ285bzhZVDNkUXBzZXZobHU1NTlTeEZUSmdDcGkKQStSRVgwYnRnV0orRXdJSWUya1VVbmI3a04ySDFvU0NldnN0aTg4bDJ2U1d6Z1ZKTjB5d2JnUDN6TjR4N1hMbQo1NytodE14b1IvV1d4RzNueUVvQmJmYWlsOWNGYUtJTTc2N3lnSDJxd3ltaWNBWEtUaVlIVlBNZmdMTVBBRVJ5ClFSekMxWUdwQWdNQkFBRUNnZ0VBQm1TWnA1UWo5SHBWcStPNWswd0swVGV0NThQNjlQNk42d0p1VnR3bk52Tm4KNUZFU0dIZzV2V0cweFNnVTdaczlBMzMrcXF3MEcrQWhLYmJxVFZYTysvQzZRa3pyNDI4SEtnSVZqdmYrcENuTAo2QndOWi9rbGZLSzNKS1JpWHFNcm1QaENtYlB2WUljbVpYdGxLUk9yNjZjU0JMNjFOK3NqV1hHbVZPZkc1Z2ZkClAwbnJqRDZMcmVNZmJyNkdlOXpRTHpuNkhCZjB5cUxxZmpEWThPVURsK0R4TlZwOGZkd2ZlcWZOUXBRQk04NHIKei90ZzFSK0hFYXBkWUR0WXhKNnV1SzVMTmdHVG1RWUlaZmFmVVp0YmlBWCtDdFVoZ3FiRXowdFVFUXpQQWRsSAphblpKc0FmbmVzTXJabkRjNERLaU0xUk9KNW1jNGNHNm51RVZDQmMxWVFLQmdRRDQzSG4zQjd3d2dialdCa2s1CjNPZlYxY0JXZElQdXdEY1NvWlJ0QUsrVEtSaUZPTG1oVTk4bVhnblJhVk9BSXY1cEVNa2VpSkFkZ2xZRGRTbFgKMVpzdzBhay9samtqanJQM2Q1aFVuY3Z1WnY3cUhKckVaSVRtVU1wWmdmVnlpTVo5MVc1RmY3TlhmWTIyZVVQZwpKVG9qTlExU0l5ZHZIR2RTZ3h5b1BHYXdKUUtCZ1FETVEwd2djbGNNN0EvYjJERklzN29jU0pLZVJobDNiM3AxCkNnb2tUdHFYd1BLUFY5UHYxRkxSRGpZM0hoaitTKzFEdE1QMlRoSEFpZDNlbmdtQUZGQTg4c2tsNUVXa2U3ZDkKWUdKdW9KVURjdWU3aXorenV3b3dQVnlYL0Y5cHZ0ZmJjN2c3eW5MdzlGbFh5Y2NMRVI1bGxncE15OWlacmxacApmU0dOM0l2Q05RS0JnRDlHRjRDV3ArT1JhQVNLenAxMnJEOXpQSmIrd3ZpMlNJcGxLTTdhS01uNjNmQXBieEUwCnVQMFJWZCszcnZKYWMyTVZVSDJCN1ZxRFpBazNCYzcrVVpvRkJNcFZFS3dZd1dzL0xpejlmZmRjbXAyOXJpQVgKQ3E5Z2hVSml4NXhhYUZWZ0tjeGozcDUxSHMzeFlTK2haM25DS0dQazZrYlc2dkpRd2IySXRmYzlBb0dCQUw5cQpaV0dXcE5yNE1OaGRYYm42cXZLc1U3RzhrVXJxamdBMSsxRVJFQ25iNTdMS3BGS0FUMmVYZ05qZi9KMzV1d3VTCnozejJwZzRmWkdxbEFOUWt0UmlZa0VWUkNLNWVQWkpoaTN5T1FYWnM3SnBFb05xbDhhTkpMWWRFT29tWERTT2EKNnRBbEpOZUd0RjdmT1FhMjhSeFRvYTFiN2N2K292M1NCR3F6ZmNqdEFvR0FYaW9oZWlFdk9jZFFPK3RmcHEwNApnR1pScXRwMzZBU3NxQ2RhN1pSelc0cFNqb0RzZ1VmRmZHMm1qYnBOeVdyTFByS041bjdoWHp5RUxxbExTNHh1CkllSkM4dHhyN0lhMUt5ZXNPbysyemxCeHdjWGNDbWZoVUV1RHRwN2RqdytBcFRNZ2dTK0R5MVhyck5hOXN0RGoKcnMvREMwb2R1UUlaV2trWllJQ2w4cFU9Ci0tLS0tRU5EIFBSSVZBVEUgS0VZLS0tLS0K
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-cfg
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 10s
+      scrape_timeout: 10s
+    scrape_configs:
+    - job_name: haproxy
+      kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+          - haproxy-ingress
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_run]
+        regex: haproxy-ingress
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_container_port_number]
+        regex: 1024
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_node_name]
+        target_label: hostname
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+spec:
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: prometheus
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: prometheus
+      name: prometheus
+    spec:
+      containers:
+      - name: prometheus
+        image: docker.io/prom/prometheus:v2.43.1@sha256:3760d0bcb02f439394aa172eaadafbb9e657baff6a995458a6e82fdb38c5b6b5
+        imagePullPolicy: IfNotPresent
+        args:
+        - --config.file=/etc/prometheus/config/prometheus.yml
+        readinessProbe:
+          failureThreshold: 1
+          httpGet:
+            path: /-/ready
+            port: 9090
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /etc/prometheus/config
+          name: prometheus-cfg
+      serviceAccountName: prometheus
+      volumes:
+      - configMap:
+          name: prometheus-cfg
+        name: prometheus-cfg
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: prometheus
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - services
+  - endpoints
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: prometheus
+subjects:
+- kind: ServiceAccount
+  name: prometheus
+  namespace: haproxy-ingress
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+spec:
+  ports:
+  - port: 9090
+  selector:
+    app.kubernetes.io/instance: prometheus
+
+---

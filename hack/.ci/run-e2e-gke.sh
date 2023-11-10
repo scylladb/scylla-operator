@@ -124,7 +124,6 @@ if [[ "${SO_DISABLE_NODECONFIG}" == "true" ]]; then
   echo "Skipping NodeConfig creation"
 else
   kubectl_create -f ./hack/.ci/manifests/cluster/nodeconfig.yaml
-  kubectl_create -n local-csi-driver -f ./hack/.ci/manifests/namespaces/local-csi-driver/
 fi
 
 SCYLLA_OPERATOR_FEATURE_GATES='AllAlpha=true,AllBeta=true'

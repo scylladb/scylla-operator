@@ -10,7 +10,7 @@ body:
     required: true
 
 - type: textarea
-  id: expected
+  id: useCase
   attributes:
     label: What is the use case behind this feature?
   validations:

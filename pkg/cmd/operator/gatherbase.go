@@ -77,12 +77,8 @@ func (o *GatherBaseOptions) Validate() error {
 			if len(files) > 0 {
 				errs = append(errs, fmt.Errorf("destination directory %q is not empty", o.DestDir))
 			}
-		} else {
-			if os.IsNotExist(err) {
-				errs = append(errs, fmt.Errorf("destination directory %q doesn't exist", o.DestDir))
-			} else {
-				errs = append(errs, fmt.Errorf("can't stat destination directory %q: %w", o.DestDir, err))
-			}
+		} else if !os.IsNotExist(err) {
+			errs = append(errs, fmt.Errorf("can't stat destination directory %q: %w", o.DestDir, err))
 		}
 	}
 
@@ -107,13 +103,24 @@ func (o *GatherBaseOptions) Complete() error {
 
 	o.discoveryClient = cacheddiscovery.NewMemCacheClient(o.kubeClient.Discovery())
 
+	ignoreDestDirExists := false
 	if len(o.DestDir) == 0 {
 		o.DestDir = fmt.Sprintf("%s-%s", o.GathererName, utilrand.String(12))
-		err := os.Mkdir(o.DestDir, 0770)
-		if err != nil {
-			return fmt.Errorf("can't create destination directory %q: %w", o.DestDir, err)
-		}
+	} else {
+		// We have already made sure that the dir doesn't exist or is empty in validation.
+		ignoreDestDirExists = true
+	}
+
+	err = os.Mkdir(o.DestDir, 0770)
+	if err == nil {
 		klog.InfoS("Created destination directory", "Path", o.DestDir)
+	} else if os.IsExist(err) {
+		// Just to be sure we cover it, but it's unlikely a dir with random suffix would already exist.
+		if !ignoreDestDirExists {
+			return fmt.Errorf("can't create destination directory %q because it already exists: %w", o.DestDir, err)
+		}
+	} else {
+		return fmt.Errorf("can't create destination directory %q: %w", o.DestDir, err)
 	}
 
 	return nil

@@ -19,6 +19,7 @@ import (
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	apiserverinternalv1alpha1 "k8s.io/api/apiserverinternal/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -39,6 +40,12 @@ func TestMustGatherOptions_Run(t *testing.T) {
 				{Name: "namespaces", Namespaced: false, Kind: "Namespace", Verbs: []string{"list"}},
 				{Name: "pods", Namespaced: true, Kind: "Pod", Verbs: []string{"list"}},
 				{Name: "secrets", Namespaced: true, Kind: "Secret", Verbs: []string{"list"}},
+			},
+		},
+		{
+			GroupVersion: apiextensions.SchemeGroupVersion.String(),
+			APIResources: []metav1.APIResource{
+				{Name: "customresourcedefinitions", Namespaced: false, Kind: "CustomResourceDefinition", Verbs: []string{"list"}},
 			},
 		},
 		{
@@ -72,6 +79,11 @@ func TestMustGatherOptions_Run(t *testing.T) {
 	testScheme := runtime.NewScheme()
 
 	err := kubefakeclient.AddToScheme(testScheme)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = apiextensions.AddToScheme(testScheme)
 	if err != nil {
 		t.Fatal(err)
 	}

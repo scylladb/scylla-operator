@@ -16,6 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 func (scc *Controller) syncJobs(
@@ -85,6 +86,10 @@ func (scc *Controller) syncJobs(
 				ObservedGeneration: sc.Generation,
 			})
 		}
+	}
+	err = utilerrors.NewAggregate(errs)
+	if err != nil {
+		return progressingConditions, err
 	}
 
 	return progressingConditions, nil

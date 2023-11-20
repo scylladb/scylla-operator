@@ -8,10 +8,14 @@ import (
 
 // DataSource represents a Grafana data source.
 type DataSource struct {
-	ID     int64  `json:"id,omitempty"`
-	UID    string `json:"uid,omitempty"`
-	Name   string `json:"name"`
-	Type   string `json:"type"`
+	ID   int64  `json:"id,omitempty"`
+	UID  string `json:"uid,omitempty"`
+	Name string `json:"name"`
+
+	Type string `json:"type"`
+	// This is only returned by the API. It depends on the Type.
+	TypeLogoURL string `json:"typeLogoUrl,omitempty"`
+
 	URL    string `json:"url"`
 	Access string `json:"access"`
 
@@ -27,8 +31,12 @@ type DataSource struct {
 	BasicAuth     bool   `json:"basicAuth"`
 	BasicAuthUser string `json:"basicAuthUser,omitempty"`
 
+	WithCredentials bool `json:"withCredentials,omitempty"`
+
 	JSONData       map[string]interface{} `json:"jsonData,omitempty"`
 	SecureJSONData map[string]interface{} `json:"secureJsonData,omitempty"`
+
+	Version int `json:"version,omitempty"`
 }
 
 // NewDataSource creates a new Grafana data source.
@@ -86,6 +94,18 @@ func (c *Client) DataSource(id int64) (*DataSource, error) {
 // DataSourceByUID fetches and returns the Grafana data source whose UID is passed.
 func (c *Client) DataSourceByUID(uid string) (*DataSource, error) {
 	path := fmt.Sprintf("/api/datasources/uid/%s", uid)
+	result := &DataSource{}
+	err := c.request("GET", path, nil, nil, result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, err
+}
+
+// DataSourceByName fetches and returns the Grafana data source whose name is passed.
+func (c *Client) DataSourceByName(name string) (*DataSource, error) {
+	path := fmt.Sprintf("/api/datasources/name/%s", name)
 	result := &DataSource{}
 	err := c.request("GET", path, nil, nil, result)
 	if err != nil {
@@ -153,7 +173,7 @@ func JSONDataWithHeaders(jsonData, secureJSONData map[string]interface{}, header
 	for name, value := range headers {
 		jsonData[fmt.Sprintf("httpHeaderName%d", idx)] = name
 		secureJSONData[fmt.Sprintf("httpHeaderValue%d", idx)] = value
-		idx += 1
+		idx++
 	}
 
 	return jsonData, secureJSONData

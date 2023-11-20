@@ -1,9 +1,6 @@
 [run]
 timeout = "10m"
 
-[linters-settings.golint]
-min-confidence = 3
-
 [linters-settings.goconst]
 min-len = 5
 min-occurrences = 5
@@ -13,14 +10,13 @@ disable-all = true
 enable = [
   "bodyclose",
   "deadcode",
-  "depguard",
   "dogsled",
   "errcheck",
   "gochecknoinits",
   "goconst",
   "gocritic",
   "goimports",
-  "golint",
+  "revive",
   "goprintffuncname",
   "gosec",
   "gosimple",
@@ -81,3 +77,4 @@ text = "404"
 [[issues.exclude-rules]]
 linters = ["misspell"]
 text = "Unknwon` is a misspelling of `Unknown"
+

@@ -3,7 +3,7 @@ package gapi
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -74,7 +74,7 @@ func (c *Client) IsCloudPluginInstalled(stackSlug string, pluginSlug string) (bo
 		if resp.StatusCode == http.StatusNotFound {
 			return false, nil
 		}
-		bodyContents, err := ioutil.ReadAll(resp.Body)
+		bodyContents, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return false, err
 		}

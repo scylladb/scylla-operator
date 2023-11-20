@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -111,10 +110,9 @@ func (c *Client) request(method, requestPath string, query url.Values, body []by
 			continue
 		}
 
-		defer resp.Body.Close()
-
 		// read the body (even on non-successful HTTP status codes), as that's what the unit tests expect
-		bodyContents, err = ioutil.ReadAll(resp.Body)
+		bodyContents, err = io.ReadAll(resp.Body)
+		resp.Body.Close() //nolint:errcheck
 
 		// if there was an error reading the body, try again
 		if err != nil {
@@ -138,7 +136,12 @@ func (c *Client) request(method, requestPath string, query url.Values, body []by
 	}
 
 	// check status code.
-	if resp.StatusCode >= 400 {
+	switch {
+	case resp.StatusCode == http.StatusNotFound:
+		return ErrNotFound{
+			BodyContents: bodyContents,
+		}
+	case resp.StatusCode >= 400:
 		return fmt.Errorf("status: %d, body: %v", resp.StatusCode, string(bodyContents))
 	}
 

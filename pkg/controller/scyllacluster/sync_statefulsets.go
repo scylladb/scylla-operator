@@ -876,7 +876,7 @@ func (scc *Controller) syncStatefulSets(
 		default:
 			// An old cluster with an old state machine can still be going through an update, or stuck.
 			// Given have to be reentrant we'll just start again to be sure no step is missed, even a new one.
-			klog.Warning("ScyllaCluster %q has an unknown upgrade phase %q. Resetting the phase.", klog.KObj(sc), status.Upgrade.State)
+			klog.Warningf("ScyllaCluster %q has an unknown upgrade phase %q. Resetting the phase.", klog.KObj(sc), status.Upgrade.State)
 			status.Upgrade.State = string(PreHooksUpgradePhase)
 			return progressingConditions, nil
 		}

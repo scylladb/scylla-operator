@@ -39,6 +39,20 @@ const (
 	serviceAccountTokenSecretWaitTimeout = 1 * time.Minute
 )
 
+type FrameworkSet []*Framework
+
+func NewFrameworkSet(generateName string) FrameworkSet {
+	// TODO: assert length?
+	fs := make(FrameworkSet, 0, len(TestContext.RestConfigs))
+
+	uniqueName := names.SimpleNameGenerator.GenerateName(fmt.Sprintf("%s-", generateName))
+	for _, restConfig := range TestContext.RestConfigs {
+		fs = append(fs, NewFramework(uniqueName, WithRestConfig(restConfig)))
+	}
+
+	return fs
+}
+
 type Framework struct {
 	name      string
 	namespace *corev1.Namespace
@@ -48,19 +62,35 @@ type Framework struct {
 	username          string
 }
 
-func NewFramework(name string) *Framework {
+type FrameworkOption func(*Framework)
+
+func WithRestConfig(config *restclient.Config) FrameworkOption {
+	return func(f *Framework) {
+		f.adminClientConfig = restclient.CopyConfig(config)
+	}
+}
+
+func NewFramework(name string, options ...FrameworkOption) *Framework {
 	uniqueName := names.SimpleNameGenerator.GenerateName(fmt.Sprintf("%s-", name))
 
-	adminClientConfig := restclient.CopyConfig(TestContext.RestConfig)
-	adminClientConfig.UserAgent = "scylla-operator-e2e"
-	adminClientConfig.QPS = 20
-	adminClientConfig.Burst = 50
-
 	f := &Framework{
-		name:              uniqueName,
-		username:          "admin",
-		adminClientConfig: adminClientConfig,
+		name:     uniqueName,
+		username: "admin",
 	}
+
+	for _, option := range options {
+		option(f)
+	}
+
+	if f.adminClientConfig == nil {
+		// TODO: assert length?
+		// Hardcode to first item in the slice for backwards compatibility.
+		f.adminClientConfig = restclient.CopyConfig(TestContext.RestConfigs[0])
+	}
+
+	f.adminClientConfig.UserAgent = "scylla-operator-e2e"
+	f.adminClientConfig.QPS = 20
+	f.adminClientConfig.Burst = 50
 
 	g.BeforeEach(f.beforeEach)
 	g.AfterEach(f.afterEach)

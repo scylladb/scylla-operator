@@ -34,7 +34,7 @@ type ExposeOptions struct {
 }
 
 type TestContextType struct {
-	RestConfig            *restclient.Config
+	RestConfigs           []*restclient.Config
 	ArtifactsDir          string
 	DeleteTestingNSPolicy DeleteTestingNSPolicyType
 	IngressController     *IngressController

@@ -16,6 +16,11 @@ if [ -z ${SO_IMAGE+x} ]; then
   exit 2
 fi
 
+if [ -z ${ARTIFACTS+x} ]; then
+  echo "ARTIFACTS can't be empty" > /dev/stderr
+  exit 2
+fi
+
 SO_DISABLE_NODECONFIG=${SO_DISABLE_NODECONFIG:-false}
 
 field_manager=run-e2e-script

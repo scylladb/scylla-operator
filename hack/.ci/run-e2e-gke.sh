@@ -41,10 +41,14 @@ function gather-artifacts {
 
   # Setup artifacts transfer when finished and unblock the must-gather pod when done.
   (
+    function unblock-must-gather-pod {
+      kubectl -n e2e exec pod/must-gather -- bash -euEo pipefail -O inherit_errexit -c "touch /tmp/exit"
+    }
+    trap unblock-must-gather-pod EXIT
+
     kubectl -n e2e exec pod/must-gather -- bash -euEo pipefail -O inherit_errexit -c "until [[ -f /tmp/done ]]; do sleep 1; done; ls -l /tmp/artifacts"
     kubectl -n e2e cp --retries=42 must-gather:/tmp/artifacts "${ARTIFACTS}/must-gather"
     ls -l "${ARTIFACTS}"
-    kubectl -n e2e exec pod/must-gather -- bash -euEo pipefail -O inherit_errexit -c "touch /tmp/exit"
   ) &
   must_gather_bg_pid=$!
 
@@ -156,10 +160,14 @@ kubectl -n e2e wait --for=condition=Ready pod/e2e
 
 # Setup artifacts transfer when finished and unblock the e2e pod when done.
 (
+  function unblock-e2e-pod {
+    kubectl -n e2e exec pod/e2e -- bash -euEo pipefail -O inherit_errexit -c "touch /tmp/exit"
+  }
+  trap unblock-e2e-pod EXIT
+
   kubectl -n e2e exec pod/e2e -- bash -euEo pipefail -O inherit_errexit -c "until [[ -f /tmp/done ]]; do sleep 1; done; ls -l /tmp/artifacts"
   kubectl -n e2e cp --retries=42 e2e:/tmp/artifacts "${ARTIFACTS}"
   ls -l "${ARTIFACTS}"
-  kubectl -n e2e exec pod/e2e -- bash -euEo pipefail -O inherit_errexit -c "touch /tmp/exit"
 ) &
 e2e_bg_pid=$!
 

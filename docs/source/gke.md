@@ -90,7 +90,7 @@ Then we'll create a GKE cluster with the following:
     --no-enable-autorepair
     ```
    
-3. A NodePool of 4 `n1-standard-32` Nodes, where the Scylla Pods will be deployed. Each of these Nodes has 8 local NVMe SSDs attached, which are provided as [raw block devices](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/local-ssd#raw-block). It is important to disable `autoupgrade` and `autorepair`. Automatic cluster upgrade or node repair has a hard timeout after which it no longer respect PDBs and force deletes the Compute Engine instances, which also deletes all data on the local SSDs. At this point, it's better to handle upgrades manually, with more control over the process and error handling.
+3. A NodePool of 4 `n1-standard-32` Nodes, where the Scylla Pods will be deployed. Each of these Nodes has 8 local NVMe SSDs attached, which are provided as [raw block devices](https://cloud.google.com/kubernetes-engine/docs/concepts/local-ssd#block). It is important to disable `autoupgrade` and `autorepair`. Automatic cluster upgrade or node repair has a hard timeout after which it no longer respect PDBs and force deletes the Compute Engine instances, which also deletes all data on the local SSDs. At this point, it's better to handle upgrades manually, with more control over the process and error handling.
    ```
    gcloud container \
    node-pools create "scylla-pool" \

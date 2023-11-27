@@ -586,12 +586,12 @@ auth_token: 84qtsfvm98qzmps8s65zr2vtpb8rg4sdzcbg4pbmg2pfhxwpg952654gj86tzdljfqns
 
 Save the output, replace the token with your own, and patch the secret in the second datacenter with the below command:
 ```shell
-kubectl --context="${CONTEXT_DC2}"-n=scylla patch secret/scylla-cluster-auth-token --type='json' -p='[{"op": "replace", "path": "/data/auth-token.yaml", "value": "auth_token: 84qtsfvm98qzmps8s65zr2vtpb8rg4sdzcbg4pbmg2pfhxwpg952654gj86tzdljfqnsghndljm58mmhpmwfgpsvjx2kkmnns8bnblmgkbl9n8l9f64rs6tcvttm7kmf"}]'
+kubectl --context="${CONTEXT_DC2}" -n=scylla patch secret/scylla-cluster-auth-token--type='json' -p='[{"op": "add", "path": "/stringData", "value": {"auth-token.yaml": "auth_token: 84qtsfvm98qzmps8s65zr2vtpb8rg4sdzcbg4pbmg2pfhxwpg952654gj86tzdljfqnsghndljm58mmhpmwfgpsvjx2kkmnns8bnblmgkbl9n8l9f64rs6tcvttm7kmf"}}]'
 ```
 
 Execute a rolling restart of the nodes in DC2 to make sure they pick up the new token:
 ```shell
-kubectl --context="${CONTEXT_DC2}" patch scyllacluster/scylla-cluster --type merge -p '{"spec": {"forceRedeploymentReason": "sync scylla-manager-agent token ('$(date)')"}}'
+kubectl --context="${CONTEXT_DC2}" -n=scylla patch scyllacluster/scylla-cluster --type='merge' -p='{"spec": {"forceRedeploymentReason": "sync scylla-manager-agent token ('"$( date )"')"}}'
 ```
 
 

@@ -86,6 +86,14 @@ func (r *RepairTask) FromManager(t *mermaidclient.ExtendedTask) error {
 	return nil
 }
 
+func (r *RepairTask) GetStartDate() string {
+	return r.StartDate
+}
+
+func (r *RepairTask) SetStartDate(sd string) {
+	r.StartDate = sd
+}
+
 type BackupTask v1.BackupTaskStatus
 
 func (b BackupTask) ToManager() (*mermaidclient.Task, error) {
@@ -151,6 +159,14 @@ func (b *BackupTask) FromManager(t *mermaidclient.ExtendedTask) error {
 	}
 
 	return nil
+}
+
+func (b *BackupTask) GetStartDate() string {
+	return b.StartDate
+}
+
+func (b *BackupTask) SetStartDate(sd string) {
+	b.StartDate = sd
 }
 
 // accommodate for escaping of bash expansions, we can safely remove '\'

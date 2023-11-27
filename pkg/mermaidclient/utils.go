@@ -53,12 +53,6 @@ func ParseStartDate(value string) (strfmt.DateTime, error) {
 		if err != nil {
 			return strfmt.DateTime{}, err
 		}
-		if d < 0 {
-			return strfmt.DateTime(time.Time{}), errors.New("start date cannot be in the past")
-		}
-		if d.Duration() < nowSafety {
-			return strfmt.DateTime(time.Time{}), errors.Errorf("start date must be at least in %s", nowSafety)
-		}
 		return strfmt.DateTime(now.Add(d.Duration())), nil
 	}
 
@@ -66,12 +60,6 @@ func ParseStartDate(value string) (strfmt.DateTime, error) {
 	t, err := timeutc.Parse(time.RFC3339, value)
 	if err != nil {
 		return strfmt.DateTime(t), err
-	}
-	if t.Before(now) {
-		return strfmt.DateTime(time.Time{}), errors.New("start date cannot be in the past")
-	}
-	if t.Before(now.Add(nowSafety)) {
-		return strfmt.DateTime(time.Time{}), errors.Errorf("start date must be at least in %s", nowSafety)
 	}
 	return strfmt.DateTime(t), nil
 }

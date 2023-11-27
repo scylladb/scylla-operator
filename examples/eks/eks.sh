@@ -123,7 +123,7 @@ wait-for-object-creation cert-manager deployment.apps/cert-manager-webhook
 kubectl -n cert-manager rollout status --timeout=5m deployment.apps/cert-manager-webhook
 
 echo "Starting the scylla operator..."
-kubectl apply -f ../common/operator.yaml
+kubectl apply -f ../../deploy/operator.yaml
 kubectl wait --for condition=established crd/nodeconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scyllaclusters.scylla.scylladb.com
 wait-for-object-creation scylla-operator deployment.apps/scylla-operator

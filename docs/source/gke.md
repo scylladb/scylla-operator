@@ -67,7 +67,6 @@ Then we'll create a GKE cluster with the following:
    --num-nodes "2" \
    --disk-type "pd-ssd" --disk-size "20" \
    --image-type "UBUNTU_CONTAINERD" \
-   --system-config-from-file=systemconfig.yaml \
    --enable-stackdriver-kubernetes \
    --no-enable-autoupgrade \
    --no-enable-autorepair
@@ -103,6 +102,7 @@ Then we'll create a GKE cluster with the following:
    --node-taints role=scylla-clusters:NoSchedule \
    --node-labels scylla.scylladb.com/node-type=scylla \
    --image-type "UBUNTU_CONTAINERD" \
+   --system-config-from-file=systemconfig.yaml \
    --no-enable-autoupgrade \
    --no-enable-autorepair
    ```

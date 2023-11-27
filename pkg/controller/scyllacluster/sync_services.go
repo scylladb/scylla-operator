@@ -16,6 +16,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -637,10 +638,13 @@ func (scc *Controller) removePodAndAssociatedPVC(ctx context.Context, sc *scylla
 		"Pod", klog.KObj(podMeta),
 	)
 	controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, podMeta, "delete", sc.Generation)
-	// TODO: Revert back to eviction when it's fixed in kubernetes 1.19.z (#732)
-	//       (https://github.com/kubernetes/kubernetes/issues/103970)
-	err = scc.kubeClient.CoreV1().Pods(podMeta.Namespace).Delete(ctx, podMeta.Name, metav1.DeleteOptions{
-		PropagationPolicy: &backgroundPropagationPolicy,
+	err = scc.kubeClient.CoreV1().Pods(podMeta.Namespace).EvictV1(ctx, &policyv1.Eviction{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: podMeta.Name,
+		},
+		DeleteOptions: &metav1.DeleteOptions{
+			PropagationPolicy: &backgroundPropagationPolicy,
+		},
 	})
 	if err != nil {
 		if !apierrors.IsNotFound(err) {

@@ -25,7 +25,7 @@ spec:
         {{- .tolerations | toYAML | nindent 8 }}
       initContainers:
       - name: gzip
-        image: registry.access.redhat.com/ubi9/ubi:9.2-755.1696515532@sha256:762ee03f2cce3af7f8c8f3eda26f2aeb50678fb7cc3b78f856546970faa04c67
+        image: registry.access.redhat.com/ubi9/ubi:9.3-1361.1699548029@sha256:6b95efc134c2af3d45472c0a2f88e6085433df058cc210abb2bb061ac4d74359
         command:
         - /usr/bin/bash
         - -euExo

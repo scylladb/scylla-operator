@@ -74,6 +74,40 @@ For the `LoadBalancer` type, Scylla Operator generates a LoadBalancer Service th
 On platforms with support for external load balancers, this Service provisions one. 
 The accessibility of this load balancer's address depends on the platform and any customizations made; in some cases it may be reachable from the internal network or public Internet.
 
+Customizations are usually managed via Service annotations, key-value pairs provided in `annotations` field are merged into each Service object.
+LoadBalancer Services should be configured to pass through entire traffic.  
+For example, to expose LoadBalancer only to internal network use the following annotations:
+
+::::{tab-set}
+:::{tab-item} EKS
+```yaml
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+spec:
+  exposeOptions:
+    nodeService:
+     type: LoadBalancer
+     annotations:
+       service.beta.kubernetes.io/aws-load-balancer-scheme: internal
+       service.beta.kubernetes.io/aws-load-balancer-backend-protocol: tcp
+```
+:::
+:::{tab-item} GKE
+```yaml
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+spec:
+  exposeOptions:
+    nodeService:
+     type: LoadBalancer
+     annotations:
+       networking.gke.io/load-balancer-type: Internal
+```
+:::
+::::
+
+Check platform-specific documentation regarding LoadBalancer configuration to learn more about available options.
+
 LoadBalancer Service is a superset of ClusterIP Service, implying that each LoadBalancer Service also contains an allocated ClusterIP. 
 They can be configured using the following fields, which propagate to every node Service:
 * externalTrafficPolicy

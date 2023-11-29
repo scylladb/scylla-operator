@@ -19,7 +19,8 @@ extensions = [
     'sphinx_scylladb_theme',
     'sphinx_multiversion',
     "sphinx_sitemap",
-    "scylladb_markdown"
+    "scylladb_markdown",
+    "sphinx_design"
 ]
 
 # The suffix(es) of source filenames.

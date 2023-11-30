@@ -54,6 +54,9 @@ spec:
   exposeOptions:
     {{- toYaml . | nindent 4 }}
   {{- end }}
+  {{- if .Values.scyllaArgs }}
+  scyllaArgs: {{ .Values.scyllaArgs }}
+  {{- end }}
   {{- with .Values.externalSeeds }}
   externalSeeds:
     {{- toYaml . | nindent 4 }}

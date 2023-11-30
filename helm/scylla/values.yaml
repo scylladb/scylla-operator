@@ -42,6 +42,9 @@ backups: []
 # Scylla Manager Repair task definition
 repairs: []
 
+# scyllaArgs will be appended to Scylla binary startup parameters.
+scyllaArgs: ""
+
 # ImagePullSecrets used for pulling Scylla and Agent images
 imagePullSecrets: []
 

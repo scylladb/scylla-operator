@@ -23,6 +23,7 @@ func NewOperatorCommand(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd.AddCommand(NewCleanupJobCmd(streams))
 	cmd.AddCommand(NewGatherCmd(streams))
 	cmd.AddCommand(NewMustGatherCmd(streams))
+	cmd.AddCommand(NewSidecarProbeCmd(streams))
 
 	// TODO: wrap help func for the root command and every subcommand to add a line about automatic env vars and the prefix.
 

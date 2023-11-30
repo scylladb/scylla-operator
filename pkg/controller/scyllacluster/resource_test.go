@@ -13,12 +13,15 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	corev1listers "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
 )
 
@@ -49,9 +52,6 @@ func TestMemberService(t *testing.T) {
 	}
 	basicRackName := "rack"
 	basicSVCName := "member"
-	basicSVCSelector := map[string]string{
-		"statefulset.kubernetes.io/pod-name": "member",
-	}
 	basicSVCLabels := func() map[string]string {
 		return map[string]string{
 			"app":                          "scylla",
@@ -65,11 +65,11 @@ func TestMemberService(t *testing.T) {
 	}
 	basicPorts := []corev1.ServicePort{
 		{
-			Name: "inter-node-communication",
+			Name: "inter-node",
 			Port: 7000,
 		},
 		{
-			Name: "ssl-inter-node-communication",
+			Name: "ssl-inter-node",
 			Port: 7001,
 		},
 		{
@@ -77,7 +77,7 @@ func TestMemberService(t *testing.T) {
 			Port: 7199,
 		},
 		{
-			Name: "agent-api",
+			Name: "agent-rest-api",
 			Port: 10001,
 		},
 		{
@@ -138,8 +138,8 @@ func TestMemberService(t *testing.T) {
 				},
 				Spec: corev1.ServiceSpec{
 					Type:                     corev1.ServiceTypeClusterIP,
-					Selector:                 basicSVCSelector,
-					PublishNotReadyAddresses: true,
+					Selector:                 nil,
+					PublishNotReadyAddresses: false,
 					Ports:                    basicPorts,
 				},
 			},
@@ -171,8 +171,8 @@ func TestMemberService(t *testing.T) {
 				},
 				Spec: corev1.ServiceSpec{
 					Type:                     corev1.ServiceTypeClusterIP,
-					Selector:                 basicSVCSelector,
-					PublishNotReadyAddresses: true,
+					Selector:                 nil,
+					PublishNotReadyAddresses: false,
 					Ports:                    basicPorts,
 				},
 			},
@@ -210,8 +210,8 @@ func TestMemberService(t *testing.T) {
 				},
 				Spec: corev1.ServiceSpec{
 					Type:                     corev1.ServiceTypeClusterIP,
-					Selector:                 basicSVCSelector,
-					PublishNotReadyAddresses: true,
+					Selector:                 nil,
+					PublishNotReadyAddresses: false,
 					Ports:                    basicPorts,
 				},
 			},
@@ -239,8 +239,8 @@ func TestMemberService(t *testing.T) {
 				},
 				Spec: corev1.ServiceSpec{
 					Type:                     corev1.ServiceTypeClusterIP,
-					Selector:                 basicSVCSelector,
-					PublishNotReadyAddresses: true,
+					Selector:                 nil,
+					PublishNotReadyAddresses: false,
 					Ports:                    basicPorts,
 				},
 			},
@@ -274,8 +274,8 @@ func TestMemberService(t *testing.T) {
 				},
 				Spec: corev1.ServiceSpec{
 					Type:                     corev1.ServiceTypeClusterIP,
-					Selector:                 basicSVCSelector,
-					PublishNotReadyAddresses: true,
+					Selector:                 nil,
+					PublishNotReadyAddresses: false,
 					Ports:                    basicPorts,
 				},
 			},
@@ -299,8 +299,8 @@ func TestMemberService(t *testing.T) {
 				},
 				Spec: corev1.ServiceSpec{
 					Type:                     corev1.ServiceTypeClusterIP,
-					Selector:                 basicSVCSelector,
-					PublishNotReadyAddresses: true,
+					Selector:                 nil,
+					PublishNotReadyAddresses: false,
 					Ports:                    basicPorts,
 				},
 			},
@@ -326,8 +326,8 @@ func TestMemberService(t *testing.T) {
 				},
 				Spec: corev1.ServiceSpec{
 					Type:                     corev1.ServiceTypeClusterIP,
-					Selector:                 basicSVCSelector,
-					PublishNotReadyAddresses: true,
+					Selector:                 nil,
+					PublishNotReadyAddresses: false,
 					Ports:                    basicPorts,
 				},
 			},
@@ -355,8 +355,8 @@ func TestMemberService(t *testing.T) {
 				},
 				Spec: corev1.ServiceSpec{
 					Type:                     corev1.ServiceTypeClusterIP,
-					Selector:                 basicSVCSelector,
-					PublishNotReadyAddresses: true,
+					Selector:                 nil,
+					PublishNotReadyAddresses: false,
 					Ports:                    basicPorts,
 				},
 			},
@@ -390,8 +390,8 @@ func TestMemberService(t *testing.T) {
 				},
 				Spec: corev1.ServiceSpec{
 					Type:                     corev1.ServiceTypeClusterIP,
-					Selector:                 basicSVCSelector,
-					PublishNotReadyAddresses: true,
+					Selector:                 nil,
+					PublishNotReadyAddresses: false,
 					Ports:                    basicPorts,
 				},
 			},
@@ -430,8 +430,8 @@ func TestMemberService(t *testing.T) {
 				},
 				Spec: corev1.ServiceSpec{
 					Type:                          corev1.ServiceTypeLoadBalancer,
-					Selector:                      basicSVCSelector,
-					PublishNotReadyAddresses:      true,
+					Selector:                      nil,
+					PublishNotReadyAddresses:      false,
 					Ports:                         basicPorts,
 					ExternalTrafficPolicy:         corev1.ServiceExternalTrafficPolicyLocal,
 					AllocateLoadBalancerNodePorts: pointer.Ptr(true),
@@ -464,8 +464,8 @@ func TestMemberService(t *testing.T) {
 				},
 				Spec: corev1.ServiceSpec{
 					Type:                     corev1.ServiceTypeClusterIP,
-					Selector:                 basicSVCSelector,
-					PublishNotReadyAddresses: true,
+					Selector:                 nil,
+					PublishNotReadyAddresses: false,
 					Ports:                    basicPorts,
 					ClusterIP:                corev1.ClusterIPNone,
 				},
@@ -495,8 +495,8 @@ func TestMemberService(t *testing.T) {
 				},
 				Spec: corev1.ServiceSpec{
 					Type:                     corev1.ServiceTypeClusterIP,
-					Selector:                 basicSVCSelector,
-					PublishNotReadyAddresses: true,
+					Selector:                 nil,
+					PublishNotReadyAddresses: false,
 					Ports:                    basicPorts,
 				},
 			},
@@ -525,8 +525,8 @@ func TestMemberService(t *testing.T) {
 				},
 				Spec: corev1.ServiceSpec{
 					Type:                     corev1.ServiceTypeLoadBalancer,
-					Selector:                 basicSVCSelector,
-					PublishNotReadyAddresses: true,
+					Selector:                 nil,
+					PublishNotReadyAddresses: false,
 					Ports:                    basicPorts,
 				},
 			},
@@ -746,14 +746,6 @@ func TestStatefulSetForRack(t *testing.T) {
 								ImagePullPolicy: corev1.PullIfNotPresent,
 								Ports: []corev1.ContainerPort{
 									{
-										Name:          "intra-node",
-										ContainerPort: 7000,
-									},
-									{
-										Name:          "tls-intra-node",
-										ContainerPort: 7001,
-									},
-									{
 										Name:          "jmx",
 										ContainerPort: 7199,
 									},
@@ -772,6 +764,14 @@ func TestStatefulSetForRack(t *testing.T) {
 									{
 										Name:          "cql-ssl",
 										ContainerPort: 9142,
+									},
+									{
+										Name:          "cql-sa",
+										ContainerPort: 19042,
+									},
+									{
+										Name:          "cql-ssl-sa",
+										ContainerPort: 19142,
 									},
 									{
 										Name:          "thrift",
@@ -907,8 +907,59 @@ func TestStatefulSetForRack(t *testing.T) {
 									PreStop: &corev1.LifecycleHandler{
 										Exec: &corev1.ExecAction{
 											Command: []string{
-												"/bin/sh", "-c", "PID=$(pgrep -x scylla);supervisorctl stop scylla; while kill -0 $PID; do sleep 1; done;",
+												"/bin/sh", "-c", "nodetool drain; sleep 15",
 											},
+										},
+									},
+								},
+							},
+							{
+								Name:            "sidecar-probe",
+								Image:           "scylladb/scylla-operator:latest",
+								ImagePullPolicy: corev1.PullIfNotPresent,
+								Ports: []corev1.ContainerPort{
+									{
+										Name:          "inter-node",
+										ContainerPort: 7000,
+									},
+									{
+										Name:          "ssl-inter-node",
+										ContainerPort: 7001,
+									},
+								},
+								Resources: corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("50m"),
+										corev1.ResourceMemory: resource.MustParse("50Mi"),
+									},
+									Requests: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("50m"),
+										corev1.ResourceMemory: resource.MustParse("50Mi"),
+									},
+								},
+								Command: []string{
+									"/usr/bin/scylla-operator",
+									"sidecar-probe",
+								},
+								LivenessProbe: &corev1.Probe{
+									TimeoutSeconds:   int32(10),
+									FailureThreshold: int32(2),
+									PeriodSeconds:    int32(10),
+									ProbeHandler: corev1.ProbeHandler{
+										HTTPGet: &corev1.HTTPGetAction{
+											Port: intstr.FromInt32(8081),
+											Path: "/healthz",
+										},
+									},
+								},
+								ReadinessProbe: &corev1.Probe{
+									TimeoutSeconds:   int32(30),
+									FailureThreshold: int32(1),
+									PeriodSeconds:    int32(10),
+									ProbeHandler: corev1.ProbeHandler{
+										HTTPGet: &corev1.HTTPGetAction{
+											Port: intstr.FromInt32(8081),
+											Path: "/readyz",
 										},
 									},
 								},
@@ -929,6 +980,10 @@ func TestStatefulSetForRack(t *testing.T) {
 									{
 										Name:          "agent-rest-api",
 										ContainerPort: 10001,
+									},
+									{
+										Name:          "agent-metrics",
+										ContainerPort: 5090,
 									},
 								},
 								VolumeMounts: []corev1.VolumeMount{
@@ -2265,6 +2320,619 @@ func TestMakeJobs(t *testing.T) {
 			}
 			if !reflect.DeepEqual(gotConditions, tc.expectedConditions) {
 				t.Fatalf("expected and actual conditions differ: %s", cmp.Diff(tc.expectedConditions, gotConditions))
+			}
+		})
+	}
+}
+
+func TestMakeEndpointSlices(t *testing.T) {
+	t.Parallel()
+
+	basicScyllaCluster := &scyllav1.ScyllaCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "basic",
+			Namespace: "default",
+			UID:       "the-uid",
+		},
+		Spec: scyllav1.ScyllaClusterSpec{
+			Datacenter: scyllav1.DatacenterSpec{
+				Name: "dc",
+				Racks: []scyllav1.RackSpec{
+					{
+						Name: "rack",
+						Storage: scyllav1.StorageSpec{
+							Capacity: "1Gi",
+						},
+						Members: 1,
+					},
+				},
+			},
+		},
+	}
+
+	tt := []struct {
+		name                   string
+		cluster                *scyllav1.ScyllaCluster
+		pods                   []*corev1.Pod
+		services               map[string]*corev1.Service
+		expectedEndpointSlices []*discoveryv1.EndpointSlice
+	}{
+		{
+			name:    "EndpointSlices for non-member Service is not reconciled",
+			cluster: basicScyllaCluster,
+			pods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "basic-dc-rack-0",
+						Namespace: "default",
+						UID:       "pod-uid",
+					},
+					Spec: corev1.PodSpec{
+						NodeName: "node-a",
+					},
+					Status: corev1.PodStatus{
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.PodReady,
+								Status: corev1.ConditionTrue,
+							},
+						},
+						PodIP: "1.1.1.1",
+					},
+				},
+			},
+			services: map[string]*corev1.Service{
+				"basic-dc-rack-0": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "basic-dc-rack-0",
+					},
+				},
+			},
+			expectedEndpointSlices: []*discoveryv1.EndpointSlice{},
+		},
+		{
+			name:    "no EndpointSlice when member Service doesn't have a backing Pod",
+			cluster: basicScyllaCluster,
+			pods:    []*corev1.Pod{},
+			services: map[string]*corev1.Service{
+				"basic-dc-rack-0": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "basic-dc-rack-0",
+						Labels: map[string]string{
+							"scylla-operator.scylladb.com/scylla-service-type": "member",
+						},
+					},
+				},
+			},
+			expectedEndpointSlices: []*discoveryv1.EndpointSlice{},
+		},
+		{
+			name:    "no EndpointSlice for Service which backing Pod is being terminated",
+			cluster: basicScyllaCluster,
+			pods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "basic-dc-rack-0",
+						Namespace:         "default",
+						DeletionTimestamp: pointer.Ptr(metav1.Now()),
+					},
+				},
+			},
+			services: map[string]*corev1.Service{
+				"basic-dc-rack-0": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "basic-dc-rack-0",
+						Labels: map[string]string{
+							"scylla-operator.scylladb.com/scylla-service-type": "member",
+						},
+					},
+				},
+			},
+			expectedEndpointSlices: []*discoveryv1.EndpointSlice{},
+		},
+		{
+			name:    "EndpointSlice for Service ports not backed by any container having readiness probe are ready when entire Pod is ready",
+			cluster: basicScyllaCluster,
+			pods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "basic-dc-rack-0",
+						Namespace: "default",
+						UID:       "pod-uid",
+					},
+					Spec: corev1.PodSpec{
+						NodeName: "node-a",
+					},
+					Status: corev1.PodStatus{
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.PodReady,
+								Status: corev1.ConditionTrue,
+							},
+						},
+						PodIP: "1.1.1.1",
+					},
+				},
+			},
+			services: map[string]*corev1.Service{
+				"basic-dc-rack-0": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "basic-dc-rack-0",
+						Labels: map[string]string{
+							"scylla-operator.scylladb.com/scylla-service-type": "member",
+						},
+					},
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							{
+								Name:     "port-1",
+								Port:     666,
+								Protocol: corev1.ProtocolTCP,
+							},
+						},
+					},
+				},
+			},
+			expectedEndpointSlices: []*discoveryv1.EndpointSlice{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "basic-dc-rack-0-534e4f77",
+						Namespace: "default",
+						Labels: map[string]string{
+							"scylla-operator.scylladb.com/scylla-service-type": "member",
+							"kubernetes.io/service-name":                       "basic-dc-rack-0",
+							"endpointslice.kubernetes.io/managed-by":           "scylla-operator",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1",
+								Kind:               "ScyllaCluster",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					AddressType: discoveryv1.AddressTypeIPv4,
+					Endpoints: []discoveryv1.Endpoint{
+						{
+							Addresses: []string{"1.1.1.1"},
+							Conditions: discoveryv1.EndpointConditions{
+								Ready:       pointer.Ptr(true),
+								Serving:     pointer.Ptr(true),
+								Terminating: pointer.Ptr(false),
+							},
+							TargetRef: &corev1.ObjectReference{
+								Kind:      "Pod",
+								Namespace: "default",
+								Name:      "basic-dc-rack-0",
+								UID:       "pod-uid",
+							},
+							NodeName: pointer.Ptr("node-a"),
+						},
+					},
+					Ports: []discoveryv1.EndpointPort{
+						{
+							Name:     pointer.Ptr("port-1"),
+							Protocol: pointer.Ptr(corev1.ProtocolTCP),
+							Port:     pointer.Ptr(int32(666)),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:    "EndpointSlices to Service ports backed by container having readiness probe are ready when container is ready regardless of Pod readiness",
+			cluster: basicScyllaCluster,
+			pods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "basic-dc-rack-0",
+						Namespace: "default",
+						UID:       "pod-uid",
+					},
+					Spec: corev1.PodSpec{
+						NodeName: "node-a",
+						Containers: []corev1.Container{
+							{
+								Name: "container-1",
+								Ports: []corev1.ContainerPort{
+									{
+										Name:          "port-2",
+										ContainerPort: 777,
+										Protocol:      corev1.ProtocolTCP,
+									},
+								},
+								ReadinessProbe: &corev1.Probe{},
+							},
+						},
+					},
+					Status: corev1.PodStatus{
+						PodIP: "1.1.1.1",
+						ContainerStatuses: []corev1.ContainerStatus{
+							{
+								Name:  "container-1",
+								Ready: true,
+							},
+						},
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.PodReady,
+								Status: corev1.ConditionFalse,
+							},
+						},
+					},
+				},
+			},
+			services: map[string]*corev1.Service{
+				"basic-dc-rack-0": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "basic-dc-rack-0",
+						Labels: map[string]string{
+							"scylla-operator.scylladb.com/scylla-service-type": "member",
+						},
+					},
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							{
+								Name:     "port-1",
+								Port:     666,
+								Protocol: corev1.ProtocolTCP,
+							},
+							{
+								Name:     "port-2",
+								Port:     777,
+								Protocol: corev1.ProtocolTCP,
+							},
+						},
+					},
+				},
+			},
+			expectedEndpointSlices: []*discoveryv1.EndpointSlice{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "basic-dc-rack-0-4152634e",
+						Namespace: "default",
+						Labels: map[string]string{
+							"scylla-operator.scylladb.com/scylla-service-type": "member",
+							"kubernetes.io/service-name":                       "basic-dc-rack-0",
+							"endpointslice.kubernetes.io/managed-by":           "scylla-operator",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1",
+								Kind:               "ScyllaCluster",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					AddressType: discoveryv1.AddressTypeIPv4,
+					Endpoints: []discoveryv1.Endpoint{
+						{
+							Addresses: []string{"1.1.1.1"},
+							Conditions: discoveryv1.EndpointConditions{
+								Ready:       pointer.Ptr(true),
+								Serving:     pointer.Ptr(true),
+								Terminating: pointer.Ptr(false),
+							},
+							TargetRef: &corev1.ObjectReference{
+								Kind:      "Pod",
+								Namespace: "default",
+								Name:      "basic-dc-rack-0",
+								UID:       "pod-uid",
+							},
+							NodeName: pointer.Ptr("node-a"),
+						},
+					},
+					Ports: []discoveryv1.EndpointPort{
+						{
+							Name:     pointer.Ptr("port-2"),
+							Protocol: pointer.Ptr(corev1.ProtocolTCP),
+							Port:     pointer.Ptr(int32(777)),
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "basic-dc-rack-0-534e4f77",
+						Namespace: "default",
+						Labels: map[string]string{
+							"scylla-operator.scylladb.com/scylla-service-type": "member",
+							"kubernetes.io/service-name":                       "basic-dc-rack-0",
+							"endpointslice.kubernetes.io/managed-by":           "scylla-operator",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1",
+								Kind:               "ScyllaCluster",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					AddressType: discoveryv1.AddressTypeIPv4,
+					Endpoints: []discoveryv1.Endpoint{
+						{
+							Addresses: []string{"1.1.1.1"},
+							Conditions: discoveryv1.EndpointConditions{
+								Ready:       pointer.Ptr(false),
+								Serving:     pointer.Ptr(false),
+								Terminating: pointer.Ptr(false),
+							},
+							TargetRef: &corev1.ObjectReference{
+								Kind:      "Pod",
+								Namespace: "default",
+								Name:      "basic-dc-rack-0",
+								UID:       "pod-uid",
+							},
+							NodeName: pointer.Ptr("node-a"),
+						},
+					},
+					Ports: []discoveryv1.EndpointPort{
+						{
+							Name:     pointer.Ptr("port-1"),
+							Protocol: pointer.Ptr(corev1.ProtocolTCP),
+							Port:     pointer.Ptr(int32(666)),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:    "Single EndpointSlice when all Service ports are backed by container having readiness probe in multi-container Pod",
+			cluster: basicScyllaCluster,
+			pods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "basic-dc-rack-0",
+						Namespace: "default",
+						UID:       "pod-uid",
+					},
+					Spec: corev1.PodSpec{
+						NodeName: "node-a",
+						Containers: []corev1.Container{
+							{
+								Name: "container-1",
+								Ports: []corev1.ContainerPort{
+									{
+										Name:          "port-1",
+										ContainerPort: 666,
+										Protocol:      corev1.ProtocolTCP,
+									},
+									{
+										Name:          "port-2",
+										ContainerPort: 777,
+										Protocol:      corev1.ProtocolTCP,
+									},
+								},
+								ReadinessProbe: &corev1.Probe{},
+							},
+							{
+								Name: "container-2",
+							},
+						},
+					},
+					Status: corev1.PodStatus{
+						PodIP: "1.1.1.1",
+						ContainerStatuses: []corev1.ContainerStatus{
+							{
+								Name:  "container-1",
+								Ready: true,
+							},
+							{
+								Name:  "container-2",
+								Ready: true,
+							},
+						},
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.PodReady,
+								Status: corev1.ConditionFalse,
+							},
+						},
+					},
+				},
+			},
+			services: map[string]*corev1.Service{
+				"basic-dc-rack-0": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "basic-dc-rack-0",
+						Labels: map[string]string{
+							"scylla-operator.scylladb.com/scylla-service-type": "member",
+						},
+					},
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							{
+								Name:     "port-1",
+								Port:     666,
+								Protocol: corev1.ProtocolTCP,
+							},
+							{
+								Name:     "port-2",
+								Port:     777,
+								Protocol: corev1.ProtocolTCP,
+							},
+						},
+					},
+				},
+			},
+			expectedEndpointSlices: []*discoveryv1.EndpointSlice{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "basic-dc-rack-0-39327268",
+						Namespace: "default",
+						Labels: map[string]string{
+							"scylla-operator.scylladb.com/scylla-service-type": "member",
+							"kubernetes.io/service-name":                       "basic-dc-rack-0",
+							"endpointslice.kubernetes.io/managed-by":           "scylla-operator",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1",
+								Kind:               "ScyllaCluster",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					AddressType: discoveryv1.AddressTypeIPv4,
+					Endpoints: []discoveryv1.Endpoint{
+						{
+							Addresses: []string{"1.1.1.1"},
+							Conditions: discoveryv1.EndpointConditions{
+								Ready:       pointer.Ptr(true),
+								Serving:     pointer.Ptr(true),
+								Terminating: pointer.Ptr(false),
+							},
+							TargetRef: &corev1.ObjectReference{
+								Kind:      "Pod",
+								Namespace: "default",
+								Name:      "basic-dc-rack-0",
+								UID:       "pod-uid",
+							},
+							NodeName: pointer.Ptr("node-a"),
+						},
+					},
+					Ports: []discoveryv1.EndpointPort{
+						{
+							Name:     pointer.Ptr("port-1"),
+							Protocol: pointer.Ptr(corev1.ProtocolTCP),
+							Port:     pointer.Ptr(int32(666)),
+						},
+						{
+							Name:     pointer.Ptr("port-2"),
+							Protocol: pointer.Ptr(corev1.ProtocolTCP),
+							Port:     pointer.Ptr(int32(777)),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:    "EndpointSlice have IPV6 AddressType when PodIP from Pod.Status is an IPv6 address",
+			cluster: basicScyllaCluster,
+			pods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "basic-dc-rack-0",
+						Namespace: "default",
+						UID:       "pod-uid",
+					},
+					Spec: corev1.PodSpec{
+						NodeName: "node-a",
+					},
+					Status: corev1.PodStatus{
+						PodIP: "2001:db8::",
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.PodReady,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				},
+			},
+			services: map[string]*corev1.Service{
+				"basic-dc-rack-0": &corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "basic-dc-rack-0",
+						Labels: map[string]string{
+							"scylla-operator.scylladb.com/scylla-service-type": "member",
+						},
+					},
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							{
+								Name:     "port-1",
+								Port:     666,
+								Protocol: corev1.ProtocolTCP,
+							},
+						},
+					},
+				},
+			},
+			expectedEndpointSlices: []*discoveryv1.EndpointSlice{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "basic-dc-rack-0-534e4f77",
+						Namespace: "default",
+						Labels: map[string]string{
+							"scylla-operator.scylladb.com/scylla-service-type": "member",
+							"kubernetes.io/service-name":                       "basic-dc-rack-0",
+							"endpointslice.kubernetes.io/managed-by":           "scylla-operator",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1",
+								Kind:               "ScyllaCluster",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					AddressType: discoveryv1.AddressTypeIPv6,
+					Endpoints: []discoveryv1.Endpoint{
+						{
+							Addresses: []string{"2001:db8::"},
+							Conditions: discoveryv1.EndpointConditions{
+								Ready:       pointer.Ptr(true),
+								Serving:     pointer.Ptr(true),
+								Terminating: pointer.Ptr(false),
+							},
+							TargetRef: &corev1.ObjectReference{
+								Kind:      "Pod",
+								Namespace: "default",
+								Name:      "basic-dc-rack-0",
+								UID:       "pod-uid",
+							},
+							NodeName: pointer.Ptr("node-a"),
+						},
+					},
+					Ports: []discoveryv1.EndpointPort{
+						{
+							Name:     pointer.Ptr("port-1"),
+							Protocol: pointer.Ptr(corev1.ProtocolTCP),
+							Port:     pointer.Ptr(int32(666)),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for i := range tt {
+		tc := tt[i]
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			podCache := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+
+			for _, obj := range tc.pods {
+				err := podCache.Add(obj)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			podLister := corev1listers.NewPodLister(podCache)
+
+			gotEndpointSlices, err := MakeEndpointSlices(tc.cluster, tc.services, podLister)
+			if err != nil {
+				t.Error(err)
+			}
+			if !apiequality.Semantic.DeepEqual(gotEndpointSlices, tc.expectedEndpointSlices) {
+				t.Errorf("expected and actual EndpointSlice(s) differ: %s", cmp.Diff(tc.expectedEndpointSlices, gotEndpointSlices))
 			}
 		})
 	}

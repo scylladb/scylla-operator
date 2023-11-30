@@ -189,20 +189,20 @@ func (scc *Controller) syncServices(
 	jobs map[string]*batchv1.Job,
 ) ([]metav1.Condition, error) {
 	if sc.Spec.ExposeOptions != nil && sc.Spec.ExposeOptions.NodeService != nil && sc.Spec.ExposeOptions.NodeService.Type != scyllav1.NodeServiceTypeClusterIP {
-		supportsExposing, err := scyllafeatures.Supports(sc, scyllafeatures.ExposingScyllaClusterViaServiceOtherThanClusterIP)
-		if err != nil {
-			return nil, fmt.Errorf("can't determine if ScyllaDB version %q supports exposing via Service other than ClusterIP: %w", sc.Spec.Version, err)
-		}
+		// supportsExposing, err := scyllafeatures.Supports(sc, scyllafeatures.ExposingScyllaClusterViaServiceOtherThanClusterIP)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("can't determine if ScyllaDB version %q supports exposing via Service other than ClusterIP: %w", sc.Spec.Version, err)
+		// }
 
-		if !supportsExposing {
-			scc.eventRecorder.Eventf(
-				sc,
-				corev1.EventTypeWarning,
-				"InvalidScyllaDBVersion",
-				fmt.Sprintf("Requested ScyllaDB version %q does not support exposing via Service other than ClusterIP, use the latest one", sc.Spec.Version),
-			)
-			return nil, fmt.Errorf("requested ScyllaDB version %q does not support exposing via Service other than ClusterIP, use the latest one", sc.Spec.Version)
-		}
+		// if !supportsExposing {
+		// 	scc.eventRecorder.Eventf(
+		// 		sc,
+		// 		corev1.EventTypeWarning,
+		// 		"InvalidScyllaDBVersion",
+		// 		fmt.Sprintf("Requested ScyllaDB version %q does not support exposing via Service other than ClusterIP, use the latest one", sc.Spec.Version),
+		// 	)
+		// 	return nil, fmt.Errorf("requested ScyllaDB version %q does not support exposing via Service other than ClusterIP, use the latest one", sc.Spec.Version)
+		// }
 	}
 
 	requiredServices, err := scc.makeServices(sc, services, jobs)

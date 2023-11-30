@@ -283,6 +283,18 @@ rules:
   - patch
   - update
   - delete
+- apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 
 ---
 apiVersion: v1
@@ -2814,6 +2826,9 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   type: array
+                minReadySeconds:
+                  format: int32
+                  type: integer
                 network:
                   description: network holds the networking config.
                   properties:
@@ -4673,6 +4688,7 @@ rules:
   verbs:
   - get
   - list
+  - watch
 - apiGroups:
   - ""
   resources:

@@ -23,6 +23,9 @@ import (
 
 // ScyllaClusterSpec defines the desired state of Cluster.
 type ScyllaClusterSpec struct {
+	// +optional
+	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
+
 	// version is a version tag of Scylla to use.
 	Version string `json:"version"`
 

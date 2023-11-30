@@ -85,6 +85,20 @@ func (c *Client) Close() {
 	}
 }
 
+func (c *Client) GossiperIsRunning(ctx context.Context, host string) (bool, error) {
+	if len(host) > 0 {
+		// Always query same host
+		ctx = forceHost(ctx, host)
+	}
+
+	resp, err := c.scyllaClient.Operations.StorageServiceGossipingGet(&scyllaoperations.StorageServiceGossipingGetParams{Context: ctx})
+	if err != nil {
+		return false, err
+	}
+
+	return resp.Payload, nil
+}
+
 func (c *Client) Status(ctx context.Context, host string) (NodeStatusInfoSlice, error) {
 	if len(host) > 0 {
 		// Always query same host
@@ -390,6 +404,21 @@ func (c *Client) HasSchemaAgreement(ctx context.Context) (bool, error) {
 	}
 
 	return len(versions) == 1, nil
+}
+
+func (c *Client) SetLogLevel(ctx context.Context, logger, level, host string) error {
+	ctx = forceHost(ctx, host)
+
+	_, err := c.scyllaClient.Operations.SystemLoggerByNamePost(&scyllaoperations.SystemLoggerByNamePostParams{
+		Name:    logger,
+		Level:   level,
+		Context: ctx,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func DefaultTransport() *http.Transport {

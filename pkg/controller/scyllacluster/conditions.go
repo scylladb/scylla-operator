@@ -20,4 +20,6 @@ const (
 	ingressControllerDegradedCondition           = "IngressControllerDegraded"
 	jobControllerProgressingCondition            = "JobControllerProgressing"
 	jobControllerDegradedCondition               = "JobControllerDegraded"
+	endpointSliceControllerProgressingCondition  = "EndpointSliceControllerProgressing"
+	endpointSliceControllerDegradedCondition     = "EndpointSliceControllerDegraded"
 )

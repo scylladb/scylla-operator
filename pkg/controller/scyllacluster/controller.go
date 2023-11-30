@@ -17,6 +17,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -29,6 +30,7 @@ import (
 	appsv1informers "k8s.io/client-go/informers/apps/v1"
 	batchv1informers "k8s.io/client-go/informers/batch/v1"
 	corev1informers "k8s.io/client-go/informers/core/v1"
+	discoveryv1informers "k8s.io/client-go/informers/discovery/v1"
 	networkingv1informers "k8s.io/client-go/informers/networking/v1"
 	policyv1informers "k8s.io/client-go/informers/policy/v1"
 	rbacv1informers "k8s.io/client-go/informers/rbac/v1"
@@ -37,6 +39,7 @@ import (
 	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	batchv1listers "k8s.io/client-go/listers/batch/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
+	discoveryv1listers "k8s.io/client-go/listers/discovery/v1"
 	networkingv1listers "k8s.io/client-go/listers/networking/v1"
 	policyv1listers "k8s.io/client-go/listers/policy/v1"
 	rbacv1listers "k8s.io/client-go/listers/rbac/v1"
@@ -76,6 +79,7 @@ type Controller struct {
 	ingressLister        networkingv1listers.IngressLister
 	scyllaLister         scyllav1listers.ScyllaClusterLister
 	jobLister            batchv1listers.JobLister
+	endpointSliceLister  discoveryv1listers.EndpointSliceLister
 
 	cachesToSync []cache.InformerSynced
 
@@ -100,6 +104,7 @@ func NewController(
 	pdbInformer policyv1informers.PodDisruptionBudgetInformer,
 	ingressInformer networkingv1informers.IngressInformer,
 	jobInformer batchv1informers.JobInformer,
+	endpointSliceInformer discoveryv1informers.EndpointSliceInformer,
 	scyllaClusterInformer scyllav1informers.ScyllaClusterInformer,
 	operatorImage string,
 	cqlsIngressPort int,
@@ -127,6 +132,7 @@ func NewController(
 		ingressLister:        ingressInformer.Lister(),
 		scyllaLister:         scyllaClusterInformer.Lister(),
 		jobLister:            jobInformer.Lister(),
+		endpointSliceLister:  endpointSliceInformer.Lister(),
 
 		cachesToSync: []cache.InformerSynced{
 			podInformer.Informer().HasSynced,
@@ -140,6 +146,7 @@ func NewController(
 			ingressInformer.Informer().HasSynced,
 			scyllaClusterInformer.Informer().HasSynced,
 			jobInformer.Informer().HasSynced,
+			endpointSliceInformer.Informer().HasSynced,
 		},
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scyllacluster-controller"}),
@@ -233,6 +240,12 @@ func NewController(
 		AddFunc:    scc.addJob,
 		UpdateFunc: scc.updateJob,
 		DeleteFunc: scc.deleteJob,
+	})
+
+	endpointSliceInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    scc.addEndpointSlice,
+		UpdateFunc: scc.updateEndpointSlice,
+		DeleteFunc: scc.deleteEndpointSlice,
 	})
 
 	return scc, nil
@@ -620,6 +633,29 @@ func (scc *Controller) updateJob(old, cur interface{}) {
 }
 
 func (scc *Controller) deleteJob(obj interface{}) {
+	scc.handlers.HandleDelete(
+		obj,
+		scc.handlers.EnqueueOwner,
+	)
+}
+
+func (scc *Controller) addEndpointSlice(obj interface{}) {
+	scc.handlers.HandleAdd(
+		obj.(*discoveryv1.EndpointSlice),
+		scc.handlers.EnqueueOwner,
+	)
+}
+
+func (scc *Controller) updateEndpointSlice(old, cur interface{}) {
+	scc.handlers.HandleUpdate(
+		old.(*discoveryv1.EndpointSlice),
+		cur.(*discoveryv1.EndpointSlice),
+		scc.handlers.EnqueueOwner,
+		scc.deleteJob,
+	)
+}
+
+func (scc *Controller) deleteEndpointSlice(obj interface{}) {
 	scc.handlers.HandleDelete(
 		obj,
 		scc.handlers.EnqueueOwner,

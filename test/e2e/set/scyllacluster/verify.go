@@ -18,8 +18,10 @@ import (
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/kubernetes"
@@ -242,6 +244,43 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 		o.Expect(sc.Status.Racks[r.Name].ReadyMembers).To(o.Equal(s.Status.ReadyReplicas))
 		o.Expect(sc.Status.Racks[r.Name].UpdatedMembers).NotTo(o.BeNil())
 		o.Expect(*sc.Status.Racks[r.Name].UpdatedMembers).To(o.Equal(s.Status.UpdatedReplicas))
+
+		for idx := 0; idx < int(r.Members); idx++ {
+			serviceName := naming.MemberServiceName(r, sc, idx)
+			service, err := kubeClient.CoreV1().Services(sc.Namespace).Get(ctx, serviceName, metav1.GetOptions{})
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			pod, err := kubeClient.CoreV1().Pods(sc.Namespace).Get(ctx, service.Name, metav1.GetOptions{})
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			o.Expect(pod.Status.PodIP).ToNot(o.BeEmpty())
+
+			endpointSlices, err := kubeClient.DiscoveryV1().EndpointSlices(sc.Namespace).List(ctx, metav1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(map[string]string{
+					discoveryv1.LabelManagedBy:   naming.OperatorAppName,
+					discoveryv1.LabelServiceName: service.Name,
+				}).String(),
+			})
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			o.Expect(endpointSlices.Items).ToNot(o.BeEmpty())
+
+			for _, es := range endpointSlices.Items {
+				o.Expect(es.Endpoints).NotTo(o.BeEmpty())
+
+				for _, ep := range es.Endpoints {
+					o.Expect(ep.Addresses).To(o.HaveLen(1))
+					o.Expect(ep.Addresses[0]).To(o.Equal(pod.Status.PodIP))
+
+					o.Expect(ep.Conditions.Ready).NotTo(o.BeNil())
+					o.Expect(*ep.Conditions.Ready).To(o.BeTrue())
+
+					o.Expect(ep.Conditions.Serving).NotTo(o.BeNil())
+					o.Expect(*ep.Conditions.Serving).To(o.BeTrue())
+				}
+			}
+		}
+
 	}
 
 	if sc.Status.Upgrade != nil {

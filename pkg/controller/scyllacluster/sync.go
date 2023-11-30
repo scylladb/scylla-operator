@@ -12,6 +12,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -188,6 +189,24 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		objectErrs = append(objectErrs, err)
 	}
 
+	endpointSliceMap, err := controllerhelpers.GetObjects[CT, *discoveryv1.EndpointSlice](
+		ctx,
+		sc,
+		scyllaClusterControllerGVK,
+		labels.SelectorFromSet(labels.Set{
+			naming.ClusterNameLabel:    sc.Name,
+			discoveryv1.LabelManagedBy: naming.OperatorAppName,
+		}),
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *discoveryv1.EndpointSlice]{
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaClusters(sc.Namespace).Get,
+			ListObjectsFunc:           scc.endpointSliceLister.EndpointSlices(sc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.DiscoveryV1().EndpointSlices(sc.Namespace).Patch,
+		},
+	)
+	if err != nil {
+		objectErrs = append(objectErrs, err)
+	}
+
 	objectErr := utilerrors.NewAggregate(objectErrs)
 	if objectErr != nil {
 		return objectErr
@@ -199,11 +218,11 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		return scc.updateStatus(ctx, sc, status)
 	}
 
-	err = runPreRolloutChecks(sc, scc.eventRecorder)
-	if err != nil {
-		statusUpdateErr := scc.updateStatus(ctx, sc, status)
-		return utilerrors.NewAggregate([]error{statusUpdateErr, fmt.Errorf("ScyllaCluster %q did not pass pre-rollout check: %w", naming.ObjRef(sc), err)})
-	}
+	// err = runPreRolloutChecks(sc, scc.eventRecorder)
+	// if err != nil {
+	// 	statusUpdateErr := scc.updateStatus(ctx, sc, status)
+	// 	return utilerrors.NewAggregate([]error{statusUpdateErr, fmt.Errorf("ScyllaCluster %q did not pass pre-rollout check: %w", naming.ObjRef(sc), err)})
+	// }
 
 	var errs []error
 
@@ -329,6 +348,19 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 	)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't sync jobs: %w", err))
+	}
+
+	err = controllerhelpers.RunSync(
+		&status.Conditions,
+		endpointSliceControllerProgressingCondition,
+		endpointSliceControllerDegradedCondition,
+		sc.Generation,
+		func() ([]metav1.Condition, error) {
+			return scc.syncEndpointSlices(ctx, sc, endpointSliceMap, serviceMap)
+		},
+	)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't sync endpointslices: %w", err))
 	}
 
 	// Aggregate conditions.

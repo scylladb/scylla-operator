@@ -25,6 +25,10 @@ func IsStatefulSetRolledOut(sts *appsv1.StatefulSet) (bool, error) {
 		return false, nil
 	}
 
+	if sts.Status.AvailableReplicas < *sts.Spec.Replicas {
+		return false, nil
+	}
+
 	if sts.Spec.UpdateStrategy.RollingUpdate != nil && sts.Spec.UpdateStrategy.RollingUpdate.Partition != nil {
 		return sts.Status.UpdatedReplicas == (*sts.Spec.Replicas - *sts.Spec.UpdateStrategy.RollingUpdate.Partition), nil
 	} else {

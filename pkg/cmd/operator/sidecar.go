@@ -178,7 +178,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 		cancel()
 	}()
 
-	singleServiceKubeInformers := informers.NewSharedInformerFactoryWithOptions(
+	singleNameKubernetesInformer := informers.NewSharedInformerFactoryWithOptions(
 		o.kubeClient,
 		12*time.Hour,
 		informers.WithNamespace(o.Namespace),
@@ -191,12 +191,14 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 
 	namespacedKubeInformers := informers.NewSharedInformerFactoryWithOptions(o.kubeClient, 12*time.Hour, informers.WithNamespace(o.Namespace))
 
-	singleServiceInformer := singleServiceKubeInformers.Core().V1().Services()
+	singleServiceInformer := singleNameKubernetesInformer.Core().V1().Services()
+	singlePodInformer := singleNameKubernetesInformer.Core().V1().Pods()
 
 	prober := sidecar.NewProber(
 		o.Namespace,
 		o.ServiceName,
 		singleServiceInformer.Lister(),
+		singlePodInformer.Lister(),
 	)
 
 	sc, err := sidecarcontroller.NewController(
@@ -210,11 +212,14 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 	}
 
 	// Start informers.
-	singleServiceKubeInformers.Start(ctx.Done())
+	singleNameKubernetesInformer.Start(ctx.Done())
 	namespacedKubeInformers.Start(ctx.Done())
 
-	klog.V(2).InfoS("Waiting for single service informer caches to sync")
-	if !cache.WaitForCacheSync(ctx.Done(), singleServiceInformer.Informer().HasSynced) {
+	klog.V(2).InfoS("Waiting for informer caches to sync")
+	if !cache.WaitForCacheSync(ctx.Done(), []cache.InformerSynced{
+		singleServiceInformer.Informer().HasSynced,
+		singlePodInformer.Informer().HasSynced,
+	}...) {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 

@@ -3,6 +3,7 @@ kind: ScyllaDBMonitoring
 metadata:
   name: "{{ .name }}"
 spec:
+  type: Platform
   endpointsSelector:
     matchLabels:
       app.kubernetes.io/name: scylla

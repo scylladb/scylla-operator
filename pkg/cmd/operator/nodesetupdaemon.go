@@ -5,6 +5,9 @@ package operator
 import (
 	"context"
 	"fmt"
+	"os"
+	"path"
+	"strconv"
 	"sync"
 
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
@@ -264,4 +267,8 @@ func (o *NodeSetupDaemonOptions) Run(streams genericclioptions.IOStreams, cmd *c
 	wg.Wait()
 
 	return nil
+}
+
+func SetSysctl(sysctl string, newVal int) error {
+	return os.WriteFile(path.Join("/proc/sys", sysctl), []byte(strconv.Itoa(newVal)), 0640)
 }

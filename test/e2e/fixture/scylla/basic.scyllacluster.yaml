@@ -1,9 +1,10 @@
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
 metadata:
-  generateName: basic-
+  name: scylla
 spec:
-  version: 5.2.7
+  repository: docker.io/scylladb/scylla-enterprise
+  version: 2023.1.2
   agentVersion: 3.1.0
   developerMode: true
   datacenter:
@@ -12,7 +13,7 @@ spec:
     - name: us-east-1a
       members: 1
       storage:
-        capacity: 500Mi
+        capacity: 1000Mi
       resources:
         requests:
           cpu: 10m

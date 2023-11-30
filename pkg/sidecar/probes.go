@@ -20,6 +20,7 @@ type Prober struct {
 	namespace     string
 	serviceName   string
 	serviceLister corev1.ServiceLister
+	podLister     corev1.PodLister
 	timeout       time.Duration
 }
 
@@ -27,11 +28,13 @@ func NewProber(
 	namespace string,
 	serviceName string,
 	serviceLister corev1.ServiceLister,
+	podLister corev1.PodLister,
 ) *Prober {
 	return &Prober{
 		namespace:     namespace,
 		serviceName:   serviceName,
 		serviceLister: serviceLister,
+		podLister:     podLister,
 		timeout:       60 * time.Second,
 	}
 }
@@ -50,6 +53,15 @@ func (p *Prober) isNodeUnderMaintenance() (bool, error) {
 	return hasLabel, nil
 }
 
+func (p *Prober) isPodBeingDeleted() (bool, error) {
+	pod, err := p.podLister.Pods(p.namespace).Get(p.serviceName)
+	if err != nil {
+		return false, err
+	}
+
+	return pod.DeletionTimestamp != nil, nil
+}
+
 func (p *Prober) getNodeAddress() (string, error) {
 	svc, err := p.serviceLister.Services(p.namespace).Get(p.serviceName)
 	if err != nil {
@@ -62,6 +74,19 @@ func (p *Prober) getNodeAddress() (string, error) {
 func (p *Prober) Readyz(w http.ResponseWriter, req *http.Request) {
 	ctx, ctxCancel := context.WithTimeout(req.Context(), p.timeout)
 	defer ctxCancel()
+
+	podDeleted, err := p.isPodBeingDeleted()
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		klog.ErrorS(err, "readyz probe: can't look up pod", "Pod", p.serviceRef())
+		return
+	}
+
+	if podDeleted {
+		klog.V(2).InfoS("readyz probe: node being terminated", "Service", p.serviceRef())
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
 
 	underMaintenance, err := p.isNodeUnderMaintenance()
 	if err != nil {

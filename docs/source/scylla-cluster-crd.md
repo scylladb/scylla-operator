@@ -14,7 +14,7 @@ metadata:
   name: simple-cluster
   namespace: scylla
 spec:
-  version: 2.3.1
+  version: 5.2.11
   repository: scylladb/scylla
   developerMode: true
   cpuset: false

@@ -172,8 +172,8 @@ This requires a small change in the cluster definition.
 Change the `cluster.yaml` file from this:
 ```yaml
 spec:
-  version: 4.0.0
   agentVersion: 2.0.2
+  version: 5.2.11
   developerMode: true
   datacenter:
     name: us-east-1
@@ -181,7 +181,7 @@ spec:
 to this:
 ```yaml
 spec:
-  version: 4.0.0
+  version: 5.2.11
   alternator:
     port: 8000
     writeIsolation: only_rmw_uses_lwt

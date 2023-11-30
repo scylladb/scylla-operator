@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"runtime"
 	"time"
 
 	cmd "github.com/scylladb/scylla-operator/pkg/cmd/tests"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
+	_ "go.uber.org/automaxprocs"
 	"k8s.io/klog/v2"
 )
 
@@ -24,10 +24,6 @@ func main() {
 		panic(err)
 	}
 	defer klog.Flush()
-
-	if len(os.Getenv("GOMAXPROCS")) == 0 {
-		runtime.GOMAXPROCS(runtime.NumCPU())
-	}
 
 	command := cmd.NewTestsCommand(genericclioptions.IOStreams{
 		In:     os.Stdin,

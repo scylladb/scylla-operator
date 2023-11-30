@@ -632,6 +632,12 @@ go.starlark.net/syntax
 # go.uber.org/atomic v1.11.0
 ## explicit; go 1.18
 go.uber.org/atomic
+# go.uber.org/automaxprocs v1.5.3
+## explicit; go 1.18
+go.uber.org/automaxprocs
+go.uber.org/automaxprocs/internal/cgroups
+go.uber.org/automaxprocs/internal/runtime
+go.uber.org/automaxprocs/maxprocs
 # go.uber.org/config v1.4.0
 ## explicit; go 1.13
 go.uber.org/config

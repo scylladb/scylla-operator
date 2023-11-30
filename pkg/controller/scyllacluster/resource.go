@@ -1,27 +1,36 @@
 package scyllacluster
 
 import (
+	"encoding/hex"
 	"fmt"
+	"maps"
 	"path"
 	"sort"
 	"strings"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
+	"github.com/scylladb/scylla-operator/pkg/util/hash"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
+	utilnet "k8s.io/utils/net"
 )
 
 const (
@@ -117,10 +126,8 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 			Annotations: svcAnnotations,
 		},
 		Spec: corev1.ServiceSpec{
-			Type:                     corev1.ServiceTypeClusterIP,
-			Selector:                 naming.StatefulSetPodLabel(name),
-			Ports:                    servicePorts(sc),
-			PublishNotReadyAddresses: true,
+			Type:  corev1.ServiceTypeClusterIP,
+			Ports: servicePorts(sc),
 		},
 	}
 
@@ -152,11 +159,11 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 func servicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 	ports := []corev1.ServicePort{
 		{
-			Name: "inter-node-communication",
+			Name: "inter-node",
 			Port: 7000,
 		},
 		{
-			Name: "ssl-inter-node-communication",
+			Name: "ssl-inter-node",
 			Port: 7001,
 		},
 		{
@@ -164,7 +171,7 @@ func servicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 			Port: 7199,
 		},
 		{
-			Name: "agent-api",
+			Name: "agent-rest-api",
 			Port: 10001,
 		},
 		{
@@ -256,6 +263,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 					Partition: pointer.Ptr(int32(0)),
 				},
 			},
+			MinReadySeconds: c.Spec.MinReadySeconds,
 			// Template for Pods
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -385,7 +393,54 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 							Name:            naming.ScyllaContainerName,
 							Image:           ImageForCluster(c),
 							ImagePullPolicy: corev1.PullIfNotPresent,
-							Ports:           containerPorts(c),
+							Ports: func() []corev1.ContainerPort {
+								ports := []corev1.ContainerPort{
+									{
+										Name:          "jmx",
+										ContainerPort: 7199,
+									},
+									{
+										Name:          "prometheus",
+										ContainerPort: 9180,
+									},
+									{
+										Name:          "node-exporter",
+										ContainerPort: 9100,
+									},
+								}
+
+								if c.Spec.Alternator.Enabled() {
+									ports = append(ports, corev1.ContainerPort{
+										Name:          "alternator",
+										ContainerPort: c.Spec.Alternator.Port,
+									})
+								} else {
+									ports = append(ports,
+										corev1.ContainerPort{
+											Name:          "cql",
+											ContainerPort: 9042,
+										},
+										corev1.ContainerPort{
+											Name:          "cql-ssl",
+											ContainerPort: 9142,
+										},
+										corev1.ContainerPort{
+											Name:          "cql-sa",
+											ContainerPort: 19042,
+										},
+										corev1.ContainerPort{
+											Name:          "cql-ssl-sa",
+											ContainerPort: 19142,
+										},
+										corev1.ContainerPort{
+											Name:          "thrift",
+											ContainerPort: 9160,
+										},
+									)
+								}
+
+								return ports
+							}(),
 							// TODO: unprivileged entrypoint
 							Command: func() []string {
 								cmd := []string{
@@ -541,15 +596,66 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								},
 							},
 							// Before a Scylla Pod is stopped, execute nodetool drain to
-							// flush the memtable to disk and stop listening for connections.
-							// This is necessary to ensure we don't lose any data and we don't
-							// need to replay the commitlog in the next startup.
+							// flush the memtable to disk, finish existing requests and stop listening for connections.
+							// Sleep is required to give chance to Load Balancers to acknowledge Pod going down with their
+							// probes.
 							Lifecycle: &corev1.Lifecycle{
 								PreStop: &corev1.LifecycleHandler{
 									Exec: &corev1.ExecAction{
 										Command: []string{
-											"/bin/sh", "-c", "PID=$(pgrep -x scylla);supervisorctl stop scylla; while kill -0 $PID; do sleep 1; done;",
+											"/bin/sh", "-c", "nodetool drain; sleep 15",
 										},
+									},
+								},
+							},
+						},
+						{
+							Name:            naming.SidecarProbeContainerName,
+							Image:           sidecarImage,
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Ports: []corev1.ContainerPort{
+								{
+									Name:          "inter-node",
+									ContainerPort: 7000,
+								},
+								{
+									Name:          "ssl-inter-node",
+									ContainerPort: 7001,
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("50m"),
+									corev1.ResourceMemory: resource.MustParse("50Mi"),
+								},
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("50m"),
+									corev1.ResourceMemory: resource.MustParse("50Mi"),
+								},
+							},
+							Command: []string{
+								"/usr/bin/scylla-operator",
+								"sidecar-probe",
+							},
+							LivenessProbe: &corev1.Probe{
+								TimeoutSeconds:   int32(10),
+								FailureThreshold: int32(2),
+								PeriodSeconds:    int32(10),
+								ProbeHandler: corev1.ProbeHandler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Port: intstr.FromInt32(8081),
+										Path: naming.LivenessProbePath,
+									},
+								},
+							},
+							ReadinessProbe: &corev1.Probe{
+								TimeoutSeconds:   int32(30),
+								FailureThreshold: int32(1),
+								PeriodSeconds:    int32(10),
+								ProbeHandler: corev1.ProbeHandler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Port: intstr.FromInt32(8081),
+										Path: naming.ReadinessProbePath,
 									},
 								},
 							},
@@ -620,51 +726,6 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 	return sts, nil
 }
 
-func containerPorts(c *scyllav1.ScyllaCluster) []corev1.ContainerPort {
-	ports := []corev1.ContainerPort{
-		{
-			Name:          "intra-node",
-			ContainerPort: 7000,
-		},
-		{
-			Name:          "tls-intra-node",
-			ContainerPort: 7001,
-		},
-		{
-			Name:          "jmx",
-			ContainerPort: 7199,
-		},
-		{
-			Name:          "prometheus",
-			ContainerPort: 9180,
-		},
-		{
-			Name:          "node-exporter",
-			ContainerPort: 9100,
-		},
-	}
-
-	if c.Spec.Alternator.Enabled() {
-		ports = append(ports, corev1.ContainerPort{
-			Name:          "alternator",
-			ContainerPort: c.Spec.Alternator.Port,
-		})
-	} else {
-		ports = append(ports, corev1.ContainerPort{
-			Name:          "cql",
-			ContainerPort: 9042,
-		}, corev1.ContainerPort{
-			Name:          "cql-ssl",
-			ContainerPort: 9142,
-		}, corev1.ContainerPort{
-			Name:          "thrift",
-			ContainerPort: 9160,
-		})
-	}
-
-	return ports
-}
-
 func sysctlInitContainer(sysctls []string, image string) *corev1.Container {
 	if len(sysctls) == 0 {
 		return nil
@@ -712,6 +773,10 @@ func agentContainer(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) corev1.Conta
 			{
 				Name:          "agent-rest-api",
 				ContainerPort: 10001,
+			},
+			{
+				Name:          "agent-metrics",
+				ContainerPort: 5090,
 			},
 		},
 		VolumeMounts: []corev1.VolumeMount{
@@ -1122,4 +1187,175 @@ func MakeJobs(sc *scyllav1.ScyllaCluster, services map[string]*corev1.Service, i
 	}
 
 	return jobs, progressingConditions
+}
+
+func MakeEndpointSlices(sc *scyllav1.ScyllaCluster, services map[string]*corev1.Service, podLister corev1listers.PodLister) ([]*discoveryv1.EndpointSlice, error) {
+	var endpointSlices []*discoveryv1.EndpointSlice
+
+	endpointPortsHash := func(name string, ports []discoveryv1.EndpointPort) (string, error) {
+		h, err := hash.HashObjects(name, ports)
+		if err != nil {
+			return h, err
+		}
+
+		return hex.EncodeToString([]byte(h)[0:])[:8], nil
+	}
+
+	for _, svc := range services {
+		if svc.Labels[naming.ScyllaServiceTypeLabel] != string(naming.ScyllaServiceTypeMember) {
+			continue
+		}
+
+		labels := maps.Clone(svc.Labels)
+		labels[discoveryv1.LabelManagedBy] = naming.OperatorAppName
+		labels[discoveryv1.LabelServiceName] = svc.Name
+
+		pod, err := podLister.Pods(sc.Namespace).Get(svc.Name)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return endpointSlices, fmt.Errorf("can't get Pod %q: %w", naming.ManualRef(sc.Namespace, svc.Name), err)
+		}
+
+		// Don't publish endpoints for deleted Pod (#1077)
+		if pod.DeletionTimestamp != nil {
+			continue
+		}
+
+		var podPorts []discoveryv1.EndpointPort
+		containerPortMap := map[string][]discoveryv1.EndpointPort{}
+
+		for _, servicePort := range svc.Spec.Ports {
+			ep := discoveryv1.EndpointPort{
+				Name:        pointer.Ptr(servicePort.Name),
+				Port:        pointer.Ptr(servicePort.Port),
+				Protocol:    pointer.Ptr(servicePort.Protocol),
+				AppProtocol: servicePort.AppProtocol,
+			}
+
+			containerServingPort, _, ok := slices.Find(pod.Spec.Containers, func(c corev1.Container) bool {
+				_, _, ok := slices.Find(c.Ports, func(cp corev1.ContainerPort) bool {
+					if servicePort.Name == cp.Name {
+						return true
+					}
+
+					if servicePort.Port == cp.ContainerPort {
+						return true
+					}
+
+					if servicePort.TargetPort.String() != "" {
+						switch servicePort.TargetPort.Type {
+						case intstr.String:
+							return cp.Name == servicePort.TargetPort.StrVal
+						case intstr.Int:
+							return cp.ContainerPort == servicePort.TargetPort.IntVal
+						default:
+							klog.Errorf("Unsupported type of intstr.IntOrString %d", servicePort.TargetPort.Type)
+						}
+					}
+
+					return false
+				})
+				return ok
+			})
+
+			// Container serves given Service port and decides about readiness
+			if ok && containerServingPort.ReadinessProbe != nil {
+				containerPortMap[containerServingPort.Name] = append(containerPortMap[containerServingPort.Name], ep)
+			} else {
+				podPorts = append(podPorts, ep)
+			}
+		}
+
+		type endpointPortsConditions struct {
+			Conditions discoveryv1.EndpointConditions
+			Ports      []discoveryv1.EndpointPort
+		}
+
+		epPortsConditions := make(map[string]*endpointPortsConditions)
+
+		for containerName, ports := range containerPortMap {
+			containerPortsHash, err := endpointPortsHash(containerName, ports)
+			if err != nil {
+				return endpointSlices, fmt.Errorf("can't hash container ports: %w", err)
+			}
+
+			var ready, serving bool
+
+			containerStatus, _, ok := slices.Find(pod.Status.ContainerStatuses, func(status corev1.ContainerStatus) bool {
+				return status.Name == containerName
+			})
+			if ok {
+				ready = containerStatus.Ready && pod.DeletionTimestamp == nil
+				serving = containerStatus.Ready
+			}
+
+			epPortsConditions[containerPortsHash] = &endpointPortsConditions{
+				Conditions: discoveryv1.EndpointConditions{
+					Ready:       pointer.Ptr(ready),
+					Serving:     pointer.Ptr(serving),
+					Terminating: pointer.Ptr(pod.DeletionTimestamp != nil),
+				},
+				Ports: ports,
+			}
+		}
+
+		if len(podPorts) != 0 {
+			podPortsHash, err := endpointPortsHash(pod.Name, podPorts)
+			if err != nil {
+				return endpointSlices, fmt.Errorf("can't hash pod ports: %w", err)
+			}
+
+			epPortsConditions[podPortsHash] = &endpointPortsConditions{
+				Conditions: discoveryv1.EndpointConditions{
+					Ready:       pointer.Ptr(controllerhelpers.IsPodReady(pod) && pod.DeletionTimestamp == nil),
+					Serving:     pointer.Ptr(controllerhelpers.IsPodReady(pod)),
+					Terminating: pointer.Ptr(pod.DeletionTimestamp != nil),
+				},
+				Ports: podPorts,
+			}
+		}
+
+		for epHash, epc := range epPortsConditions {
+			address := pod.Status.PodIP
+			addressType := discoveryv1.AddressTypeIPv4
+
+			if utilnet.IsIPv6String(address) {
+				addressType = discoveryv1.AddressTypeIPv6
+			}
+
+			endpointSlices = append(endpointSlices, &discoveryv1.EndpointSlice{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-%s", svc.Name, epHash),
+					Namespace: sc.Namespace,
+					Labels:    labels,
+					OwnerReferences: []metav1.OwnerReference{
+						*metav1.NewControllerRef(sc, scyllaClusterControllerGVK),
+					},
+				},
+				AddressType: addressType,
+				Ports:       epc.Ports,
+				Endpoints: []discoveryv1.Endpoint{
+					{
+						Addresses:  []string{pod.Status.PodIP},
+						Conditions: epc.Conditions,
+						TargetRef: &corev1.ObjectReference{
+							Kind:      "Pod",
+							Namespace: pod.Namespace,
+							Name:      pod.Name,
+							UID:       pod.UID,
+						},
+						NodeName: pointer.Ptr(pod.Spec.NodeName),
+					},
+				},
+			})
+		}
+	}
+
+	sort.Slice(endpointSlices, func(i, j int) bool {
+		return endpointSlices[i].Name < endpointSlices[j].Name
+	})
+
+	return endpointSlices, nil
 }

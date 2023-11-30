@@ -101,6 +101,7 @@ const (
 	SidecarInjectorContainerName = "sidecar-injection"
 	PerftuneContainerName        = "perftune"
 	CleanupContainerName         = "cleanup"
+	SidecarProbeContainerName    = "sidecar-probe"
 
 	PVCTemplateName = "data"
 
@@ -118,10 +119,13 @@ const (
 
 	DataDir = "/var/lib/scylla"
 
-	ReadinessProbePath = "/readyz"
-	LivenessProbePath  = "/healthz"
-	ProbePort          = 8080
-	ScyllaAPIPort      = 10000
+	ReadinessProbePath                   = "/readyz"
+	LivenessProbePath                    = "/healthz"
+	ScyllaManagerAgentReadinessProbePath = "/version"
+	ScyllaManagerAgentLivenessProbePath  = "/version"
+	ProbePort                            = 8080
+	ScyllaAPIPort                        = 10000
+	ScyllaManagerAgentAPIPort            = 10001
 
 	OperatorEnvVarPrefix = "SCYLLA_OPERATOR_"
 )

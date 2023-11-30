@@ -342,6 +342,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		kubeInformers.Policy().V1().PodDisruptionBudgets(),
 		kubeInformers.Networking().V1().Ingresses(),
 		kubeInformers.Batch().V1().Jobs(),
+		kubeInformers.Discovery().V1().EndpointSlices(),
 		scyllaInformers.Scylla().V1().ScyllaClusters(),
 		o.OperatorImage,
 		o.CQLSIngressPort,

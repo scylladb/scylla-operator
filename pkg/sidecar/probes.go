@@ -8,6 +8,7 @@ import (
 
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	corev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 )
@@ -62,6 +63,37 @@ func (p *Prober) isPodBeingDeleted() (bool, error) {
 	return pod.DeletionTimestamp != nil, nil
 }
 
+func (p *Prober) hasTokens(ctx context.Context, scyllaClient *scyllaclient.Client) (bool, error) {
+	hostID, err := scyllaClient.GetLocalHostId(ctx, localhost, false)
+	if err != nil {
+		return false, fmt.Errorf("can't get local HostID: %w", err)
+	}
+
+	ipToHostIDMap, err := scyllaClient.GetIPToHostIDMap(ctx, localhost)
+	if err != nil {
+		return false, fmt.Errorf("can't get host id to ip mapping: %w", err)
+	}
+
+	var localIP string
+	for ip, id := range ipToHostIDMap {
+		if id == hostID {
+			localIP = ip
+			break
+		}
+	}
+
+	if len(localIP) == 0 {
+		return false, fmt.Errorf("local host ID %q not found in IP to hostID mapping: %v", hostID, ipToHostIDMap)
+	}
+
+	nodeTokens, err := scyllaClient.GetNodeTokens(ctx, localhost, localIP)
+	if err != nil {
+		return false, fmt.Errorf("can't get node tokens: %w", err)
+	}
+
+	return len(nodeTokens) > 0, nil
+}
+
 func (p *Prober) getNodeAddress() (string, error) {
 	svc, err := p.serviceLister.Services(p.namespace).Get(p.serviceName)
 	if err != nil {
@@ -113,7 +145,7 @@ func (p *Prober) Readyz(w http.ResponseWriter, req *http.Request) {
 	// Contact Scylla to learn about the status of the member
 	nodeStatuses, err := scyllaClient.Status(ctx, localhost)
 	if err != nil {
-		klog.ErrorS(err, "readyz probe: can't get scylla node status", "Service", p.serviceRef())
+		klog.ErrorS(err, "readyz probe: can't get scylla node status")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -132,7 +164,7 @@ func (p *Prober) Readyz(w http.ResponseWriter, req *http.Request) {
 			transportEnabled, err := scyllaClient.IsNativeTransportEnabled(ctx, localhost)
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)
-				klog.ErrorS(err, "readyz probe: can't get scylla native transport", "Service", p.serviceRef(), "Node", s.Addr)
+				klog.ErrorS(err, "readyz probe: can't get scylla native transport", "Node", s.Addr)
 				return
 			}
 
@@ -144,7 +176,7 @@ func (p *Prober) Readyz(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	klog.V(2).InfoS("readyz probe: node is not ready", "Service", p.serviceRef())
+	klog.V(2).InfoS("readyz probe: node is not ready")
 	w.WriteHeader(http.StatusServiceUnavailable)
 }
 

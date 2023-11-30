@@ -9,14 +9,17 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/gocql/gocql"
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/kubecrypto"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -31,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/rand"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 )
 
@@ -108,6 +112,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 				scData, err := runtime.Encode(scheme.Codecs.LegacyCodec(scyllav1.GroupVersion), sc)
 				o.Expect(err).NotTo(o.HaveOccurred())
 				// TODO: Use generated Apply method when our clients have it.
+				//       Ref: https://github.com/scylladb/scylla-operator/issues/1474
 				sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(ctx, sc.Name, types.ApplyPatchType, scData, metav1.PatchOptions{
 					FieldManager: f.FieldManager(),
 					Force:        pointer.Ptr(true),
@@ -242,6 +247,128 @@ var _ = g.Describe("ScyllaCluster", func() {
 				}
 			}()
 		}
+	})
+
+	g.It("should rotate TLS certificate without disrupting ongoing CQL traffic", func() {
+		if !utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {
+			g.Skip(fmt.Sprintf("Skipping because %q feature is disabled", features.AutomaticTLSCertificates))
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+		defer cancel()
+
+		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
+		sc.Spec.Datacenter.Racks[0].Members = 1
+
+		framework.By("Creating a ScyllaCluster")
+		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", sc.ResourceVersion)
+		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
+		defer waitCtx1Cancel()
+		sc, err = utils.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(hosts).To(o.HaveLen(1))
+		host := hosts[0]
+
+		servingCABundleConfigMap, err := f.KubeClient().CoreV1().ConfigMaps(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-serving-ca", sc.Name), metav1.GetOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		servingCACerts, _ := verification.VerifyAndParseCABundle(servingCABundleConfigMap)
+		o.Expect(servingCACerts).To(o.HaveLen(1))
+
+		adminClientSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-user-admin", sc.Name), metav1.GetOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		_, adminClientCertBytes, _, adminClientKeyBytes := verification.VerifyAndParseTLSCert(adminClientSecret, verification.TLSCertOptions{
+			IsCA:     pointer.Ptr(false),
+			KeyUsage: pointer.Ptr(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
+		})
+
+		servingCAPool := x509.NewCertPool()
+		servingCAPool.AddCert(servingCACerts[0])
+		adminTLSCert, err := tls.X509KeyPair(adminClientCertBytes, adminClientKeyBytes)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		const loaders = 3
+
+		for i := 0; i < loaders; i++ {
+			clusterConfig := gocql.NewCluster(hosts...)
+			clusterConfig.Timeout = 3 * time.Second
+			clusterConfig.ConnectTimeout = 3 * time.Second
+			clusterConfig.Port = 9142
+			clusterConfig.SslOpts = &gocql.SslOptions{
+				Config: &tls.Config{
+					ServerName:         host,
+					InsecureSkipVerify: false,
+					Certificates:       []tls.Certificate{adminTLSCert},
+					RootCAs:            servingCAPool,
+				},
+			}
+
+			di := insertAndVerifyCQLData(ctx, hosts, utils.WithClusterConfig(clusterConfig))
+			defer di.Close()
+
+			trafficCtx, trafficCtxCancel := context.WithCancel(ctx)
+			defer trafficCtxCancel()
+
+			stopTraffic, err := di.StartContinuousReads(trafficCtx)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			defer func() {
+				err := stopTraffic()
+				o.Expect(err).NotTo(o.HaveOccurred())
+			}()
+		}
+
+		framework.By("Adding new DNS domain to rotate certificates")
+		testDNSDomain := fmt.Sprintf("%s.scylla-operator.scylladb.com", rand.String(6))
+
+		sc.ManagedFields = nil
+		sc.ResourceVersion = ""
+		sc.Spec.DNSDomains = append(sc.Spec.DNSDomains, testDNSDomain)
+		scData, err := runtime.Encode(scheme.Codecs.LegacyCodec(scyllav1.GroupVersion), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		// TODO: Use generated Apply method when our clients have it.
+		//       Ref: https://github.com/scylladb/scylla-operator/issues/1474
+		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(ctx, sc.Name, types.ApplyPatchType, scData, metav1.PatchOptions{
+			FieldManager: f.FieldManager(),
+			Force:        pointer.Ptr(true),
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Starting to probe node %q for updated certs", host)
+
+		o.Eventually(func(eo o.Gomega) {
+			serverCerts, err := utils.GetServerTLSCertificates(fmt.Sprintf("%s:9142", host), &tls.Config{
+				ServerName:         host,
+				InsecureSkipVerify: false,
+				Certificates:       []tls.Certificate{adminTLSCert},
+				RootCAs:            servingCAPool,
+			})
+			eo.Expect(err).NotTo(o.HaveOccurred())
+			eo.Expect(serverCerts).NotTo(o.BeEmpty())
+
+			eo.Expect(serverCerts[0].DNSNames).To(o.Satisfy(func(dnsNames []string) bool {
+				return slices.Contains(dnsNames, func(dnsName string) bool {
+					return strings.HasSuffix(dnsName, testDNSDomain)
+				})
+			}))
+		}).WithTimeout(5 * 60 * time.Second).WithPolling(1 * time.Second).Should(o.Succeed())
+		framework.Infof("Node %q reloaded certificates", host)
+
+		const trafficAfterCertUpdateDuration = 5 * time.Second
+		framework.By("Waiting %s before killing loaders", trafficAfterCertUpdateDuration)
+		select {
+		case <-ctx.Done():
+			g.Fail("Test ended prematurely")
+		case <-time.After(trafficAfterCertUpdateDuration):
+		}
+
+		framework.By("Killing loaders")
 	})
 
 	g.It("should rotate TLS certificates before they expire", func() {

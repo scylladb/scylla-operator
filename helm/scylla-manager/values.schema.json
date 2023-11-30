@@ -405,6 +405,10 @@
           },
           "type": "array"
         },
+        "minReadySeconds": {
+          "format": "int32",
+          "type": "integer"
+        },
         "network": {
           "description": "network holds the networking config.",
           "properties": {

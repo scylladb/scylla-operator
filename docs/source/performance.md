@@ -69,8 +69,8 @@ metadata:
   name: guaranteed-cluster
   namespace: scylla
 spec:
-  version: 4.5.1
   agentVersion: 2.5.2
+  version: 5.2.11
   datacenter:
     name: us-east-1
     racks:

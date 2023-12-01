@@ -107,8 +107,8 @@ metadata:
   name: scylla-cluster
   namespace: scylla
 spec:
-  version: 5.2.7
   agentVersion: 3.1.2
+  version: 5.2.11
   cpuset: true
   sysctls:
   - "fs.aio-max-nr=2097152"
@@ -357,8 +357,8 @@ metadata:
   name: scylla-cluster
   namespace: scylla
 spec:
-  version: 5.2.7
   agentVersion: 3.1.2
+  version: 5.2.11
   cpuset: true
   sysctls:
   - "fs.aio-max-nr=2097152"

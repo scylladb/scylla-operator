@@ -123,7 +123,12 @@ func (o *ManagerControllerOptions) Complete() error {
 
 	// TODO: Use https and wire certs.
 	url := fmt.Sprintf("http://%s/api/v1", naming.ScyllaManagerServiceName)
-	managerClient, err := mermaidclient.NewClient(url, &http.Transport{})
+	managerClient, err := mermaidclient.NewClient(url, &http.Client{
+		// Limit manager calls by default to a higher bound.
+		// Individual calls can still be further limited using context.
+		// Manager is prone to extremely long calls because it (unfortunately) retries errors internally.
+		Timeout: 15 * time.Second,
+	})
 	if err != nil {
 		return fmt.Errorf("can't build manager client: %w", err)
 	}

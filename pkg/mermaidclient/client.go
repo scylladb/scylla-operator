@@ -4,7 +4,6 @@ package mermaidclient
 
 import (
 	"context"
-	"crypto/tls"
 	"net/http"
 	"net/url"
 	"os"
@@ -30,15 +29,7 @@ type Client struct {
 	operations *operations.Client
 }
 
-// DefaultTLSConfig specifies default TLS configuration used when creating a new
-// client.
-var DefaultTLSConfig = func() *tls.Config {
-	return &tls.Config{
-		InsecureSkipVerify: true,
-	}
-}
-
-func NewClient(rawURL string, transport http.RoundTripper) (Client, error) {
+func NewClient(rawURL string, client *http.Client) (Client, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return Client{}, err
@@ -48,17 +39,7 @@ func NewClient(rawURL string, transport http.RoundTripper) (Client, error) {
 		middleware.Debug = false
 	})
 
-	if transport == nil {
-		transport = &http.Transport{
-			TLSClientConfig: DefaultTLSConfig(),
-		}
-	}
-
-	httpClient := &http.Client{
-		Transport: transport,
-	}
-
-	r := api.NewWithClient(u.Host, u.Path, []string{u.Scheme}, httpClient)
+	r := api.NewWithClient(u.Host, u.Path, []string{u.Scheme}, client)
 	// debug can be turned on by SWAGGER_DEBUG or DEBUG env variable
 	// we change that to SCTOOL_DUMP_HTTP
 	r.Debug, _ = strconv.ParseBool(os.Getenv("SCTOOL_DUMP_HTTP"))

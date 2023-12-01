@@ -551,7 +551,7 @@ func GetManagerClient(ctx context.Context, client corev1client.CoreV1Interface) 
 		Path:   "/api/v1",
 	}).String()
 
-	manager, err := mermaidclient.NewClient(apiAddress, &http.Transport{})
+	manager, err := mermaidclient.NewClient(apiAddress, &http.Client{})
 	if err != nil {
 		return nil, fmt.Errorf("create manager client, %w", err)
 	}

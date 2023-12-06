@@ -108,7 +108,7 @@ metadata:
   namespace: scylla
 spec:
   agentVersion: 3.1.2
-  version: 5.2.11
+  version: 5.4.0
   cpuset: true
   sysctls:
   - "fs.aio-max-nr=2097152"
@@ -358,7 +358,7 @@ metadata:
   namespace: scylla
 spec:
   agentVersion: 3.1.2
-  version: 5.2.11
+  version: 5.4.0
   cpuset: true
   sysctls:
   - "fs.aio-max-nr=2097152"

@@ -4,7 +4,7 @@ metadata:
   generateName: basic-
 spec:
   agentVersion: 3.1.0
-  version: 5.2.11
+  version: 5.4.0
   developerMode: true
   datacenter:
     name: us-east-1

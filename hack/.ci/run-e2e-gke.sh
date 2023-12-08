@@ -136,6 +136,9 @@ else
   kubectl_create -n local-csi-driver -f ./hack/.ci/manifests/namespaces/local-csi-driver/
 fi
 
+kubectl create namespace e2e --dry-run=client -o yaml | kubectl_create -f -
+kubectl create clusterrolebinding e2e --clusterrole=cluster-admin --serviceaccount=e2e:default --dry-run=client -o yaml | kubectl_create -f -
+
 SCYLLA_OPERATOR_FEATURE_GATES='AllAlpha=true,AllBeta=true'
 export SCYLLA_OPERATOR_FEATURE_GATES
 REENTRANT=true timeout -v 10m ./hack/ci-deploy.sh "${SO_IMAGE}"
@@ -151,8 +154,6 @@ ingress_class_name='haproxy'
 ingress_custom_annotations='haproxy.org/ssl-passthrough=true'
 ingress_controller_address="$( kubectl -n haproxy-ingress get svc haproxy-ingress --template='{{ .spec.clusterIP }}' ):9142"
 
-kubectl create namespace e2e --dry-run=client -o yaml | kubectl_create -f -
-kubectl create clusterrolebinding e2e --clusterrole=cluster-admin --serviceaccount=e2e:default --dry-run=client -o yaml | kubectl_create -f -
 kubectl create -n e2e pdb my-pdb --selector='app=e2e' --min-available=1 --dry-run=client -o yaml | kubectl_create -f -
 
 kubectl -n e2e run --restart=Never --image="${SO_IMAGE}" --labels='app=e2e' --command=true e2e -- bash -euExo pipefail -O inherit_errexit -c "function wait-for-artifacts { touch /tmp/done && until [[ -f '/tmp/exit' ]]; do sleep 1; done } && trap wait-for-artifacts EXIT && mkdir /tmp/artifacts && scylla-operator-tests run '${SO_SUITE}' --loglevel=2 --color=false --artifacts-dir=/tmp/artifacts --feature-gates='${SCYLLA_OPERATOR_FEATURE_GATES}' --ingress-controller-address='${ingress_controller_address}' --ingress-controller-ingress-class-name='${ingress_class_name}' --ingress-controller-custom-annotations='${ingress_custom_annotations}'"

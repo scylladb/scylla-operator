@@ -4,7 +4,7 @@ metadata:
   name: scylla
 spec:
   agentVersion: 3.1.0
-  version: 5.2.11
+  version: 5.4.0
   developerMode: true
   automaticOrphanedNodeCleanup: true
   sysctls:
@@ -15,7 +15,7 @@ spec:
     - name: us-east-1a
       members: 1
       storage:
-        capacity: 500Mi
+        capacity: 1Gi
       resources:
         requests:
           cpu: 10m

@@ -21,7 +21,15 @@ func IsStatefulSetRolledOut(sts *appsv1.StatefulSet) (bool, error) {
 		return false, nil
 	}
 
+	if sts.Status.Replicas != *sts.Spec.Replicas {
+		return false, nil
+	}
+
 	if sts.Status.ReadyReplicas < *sts.Spec.Replicas {
+		return false, nil
+	}
+
+	if sts.Status.AvailableReplicas < *sts.Spec.Replicas {
 		return false, nil
 	}
 

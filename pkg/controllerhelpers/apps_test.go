@@ -11,6 +11,8 @@ import (
 )
 
 func TestIsStatefulSetRolledOut(t *testing.T) {
+	t.Parallel()
+
 	tt := []struct {
 		name        string
 		sts         *appsv1.StatefulSet
@@ -143,6 +145,7 @@ func TestIsStatefulSetRolledOut(t *testing.T) {
 					CurrentRevision:    "bar",
 					UpdatedReplicas:    3,
 					UpdateRevision:     "bar",
+					AvailableReplicas:  3,
 				},
 			},
 			expected:    true,
@@ -167,6 +170,7 @@ func TestIsStatefulSetRolledOut(t *testing.T) {
 					ObservedGeneration: 42,
 					Replicas:           3,
 					ReadyReplicas:      3,
+					AvailableReplicas:  3,
 					CurrentReplicas:    1,
 					CurrentRevision:    "foo",
 					UpdatedReplicas:    2,
@@ -176,10 +180,90 @@ func TestIsStatefulSetRolledOut(t *testing.T) {
 			expected:    true,
 			expectedErr: nil,
 		},
+		{
+			name: "not available sts is not rolled out",
+			sts: &appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Generation: 42,
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: pointer.Ptr(int32(3)),
+					UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+						Type: appsv1.RollingUpdateStatefulSetStrategyType,
+					},
+				},
+				Status: appsv1.StatefulSetStatus{
+					ObservedGeneration: 42,
+					Replicas:           3,
+					ReadyReplicas:      3,
+					CurrentReplicas:    3,
+					CurrentRevision:    "foo",
+					UpdatedReplicas:    3,
+					UpdateRevision:     "foo",
+					AvailableReplicas:  2,
+				},
+			},
+			expected:    false,
+			expectedErr: nil,
+		},
+		{
+			name: "available sts is rolled out",
+			sts: &appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Generation: 42,
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: pointer.Ptr(int32(3)),
+					UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+						Type: appsv1.RollingUpdateStatefulSetStrategyType,
+					},
+				},
+				Status: appsv1.StatefulSetStatus{
+					ObservedGeneration: 42,
+					Replicas:           3,
+					ReadyReplicas:      3,
+					CurrentReplicas:    3,
+					CurrentRevision:    "foo",
+					UpdatedReplicas:    3,
+					UpdateRevision:     "foo",
+					AvailableReplicas:  3,
+				},
+			},
+			expected:    true,
+			expectedErr: nil,
+		},
+		{
+			name: "scaling down sts is not rolled out",
+			sts: &appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Generation: 42,
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: pointer.Ptr(int32(1)),
+					UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+						Type: appsv1.RollingUpdateStatefulSetStrategyType,
+					},
+				},
+				Status: appsv1.StatefulSetStatus{
+					ObservedGeneration: 42,
+					Replicas:           3,
+					ReadyReplicas:      3,
+					AvailableReplicas:  3,
+					CurrentReplicas:    3,
+					CurrentRevision:    "foo",
+					UpdatedReplicas:    1,
+					UpdateRevision:     "bar",
+				},
+			},
+			expected:    false,
+			expectedErr: nil,
+		},
 	}
 
-	for _, tc := range tt {
+	for i := range tt {
+		tc := tt[i]
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			got, gotErr := IsStatefulSetRolledOut(tc.sts)
 
 			if !reflect.DeepEqual(gotErr, tc.expectedErr) {
@@ -187,7 +271,7 @@ func TestIsStatefulSetRolledOut(t *testing.T) {
 			}
 
 			if got != tc.expected {
-				t.Errorf("expected %T, got %T", tc.expected, got)
+				t.Errorf("expected %v, got %v", tc.expected, got)
 			}
 		})
 	}

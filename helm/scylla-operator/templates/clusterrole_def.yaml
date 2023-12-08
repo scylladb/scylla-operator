@@ -17,7 +17,6 @@ rules:
   - ""
   resources:
   - nodes
-  - endpoints
   verbs:
   - get
   - list
@@ -273,3 +272,27 @@ rules:
   - patch
   - update
   - delete
+- apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resource"
@@ -13,6 +14,7 @@ import (
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	corev1schedulinghelpers "k8s.io/component-helpers/scheduling/corev1"
 	"k8s.io/klog/v2"
@@ -248,4 +250,39 @@ func GetScyllaContainerID(pod *corev1.Pod) (string, error) {
 	}
 
 	return cs.ContainerID, nil
+}
+
+func FindContainerServingPort(port corev1.ServicePort, containers []corev1.Container) (corev1.Container, bool, error) {
+	var err error
+
+	containerServingPort, _, ok := slices.Find(containers, func(c corev1.Container) bool {
+		_, _, ok := slices.Find(c.Ports, func(cp corev1.ContainerPort) bool {
+			if port.Name == cp.Name {
+				return true
+			}
+
+			if port.Port == cp.ContainerPort {
+				return true
+			}
+
+			if port.TargetPort.String() != "" {
+				switch port.TargetPort.Type {
+				case intstr.String:
+					return cp.Name == port.TargetPort.StrVal
+				case intstr.Int:
+					return cp.ContainerPort == port.TargetPort.IntVal
+				default:
+					err = fmt.Errorf("unsupported type of intstr.IntOrString %d", port.TargetPort.Type)
+				}
+			}
+
+			return false
+		})
+		return ok
+	})
+	if err != nil {
+		return corev1.Container{}, false, fmt.Errorf("can't find container serving port: %w", err)
+	}
+
+	return containerServingPort, ok, nil
 }

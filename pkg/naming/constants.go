@@ -80,10 +80,11 @@ const (
 	NodeJobLabel                 = "scylla-operator.scylladb.com/node-job"
 	NodeJobTypeLabel             = "scylla-operator.scylladb.com/node-job-type"
 
-	AppName           = "scylla"
-	OperatorAppName   = "scylla-operator"
-	ManagerAppName    = "scylla-manager"
-	NodeConfigAppName = "scylla-node-config"
+	AppName                   = "scylla"
+	OperatorAppName           = "scylla-operator"
+	ManagerAppName            = "scylla-manager"
+	NodeConfigAppName         = "scylla-node-config"
+	OperatorAppNameWithDomain = "scylla-operator.scylladb.com"
 
 	PrometheusScrapeAnnotation = "prometheus.io/scrape"
 	PrometheusPortAnnotation   = "prometheus.io/port"
@@ -98,10 +99,11 @@ const (
 
 // Configuration Values
 const (
-	ScyllaContainerName          = "scylla"
-	SidecarInjectorContainerName = "sidecar-injection"
-	PerftuneContainerName        = "perftune"
-	CleanupContainerName         = "cleanup"
+	ScyllaContainerName                = "scylla"
+	SidecarInjectorContainerName       = "sidecar-injection"
+	PerftuneContainerName              = "perftune"
+	CleanupContainerName               = "cleanup"
+	InterNodeTrafficProbeContainerName = "inter-node-traffic-probe"
 
 	PVCTemplateName = "data"
 
@@ -126,6 +128,7 @@ const (
 	LivenessProbePath          = "/healthz"
 	ScyllaDBAPIStatusProbePort = 8080
 	ScyllaAPIPort              = 10000
+	StoragePort                = 7000
 
 	OperatorEnvVarPrefix = "SCYLLA_OPERATOR_"
 )

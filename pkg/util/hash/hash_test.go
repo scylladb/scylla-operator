@@ -48,3 +48,47 @@ func TestHashObjects(t *testing.T) {
 		})
 	}
 }
+
+func TestHashObjectsShort(t *testing.T) {
+	tt := []struct {
+		name          string
+		sets          [][]interface{}
+		expectedHash  string
+		expectedError error
+	}{
+		{
+			name: "object's map order doesn't matter",
+			sets: [][]interface{}{
+				{
+					map[string]string{
+						"key_1": "val_1",
+						"key_2": "val_2",
+					},
+				},
+				{
+					map[string]string{
+						"key_2": "val_2",
+						"key_1": "val_1",
+					},
+				},
+			},
+			expectedHash:  "SK1zSQ==",
+			expectedError: nil,
+		},
+	}
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, objs := range tc.sets {
+				got, err := HashObjectsShort(objs...)
+
+				if !reflect.DeepEqual(err, tc.expectedError) {
+					t.Errorf("expected error %v, got %v", tc.expectedError, err)
+				}
+
+				if got != tc.expectedHash {
+					t.Errorf("expected hash %q, got %q", tc.expectedHash, got)
+				}
+			}
+		})
+	}
+}

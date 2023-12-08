@@ -6,8 +6,10 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func TestFindStatusConditionsWithSuffix(t *testing.T) {
@@ -354,6 +356,106 @@ func TestAggregateStatusConditions(t *testing.T) {
 
 			if !apiequality.Semantic.DeepEqual(got, tc.expectedCondition) {
 				t.Errorf("expected and got differ: %s", cmp.Diff(tc.expectedCondition, got))
+			}
+		})
+	}
+}
+
+func TestFindContainerServingPort(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name              string
+		port              corev1.ServicePort
+		containers        []corev1.Container
+		expectedContainer corev1.Container
+		expectedFound     bool
+		expectedError     error
+	}{
+		{
+			name: "finds container serving port by target port name",
+			port: corev1.ServicePort{
+				TargetPort: intstr.FromString("foo-port"),
+			},
+			containers: []corev1.Container{
+				{
+					Name: "foo-container",
+					Ports: []corev1.ContainerPort{
+						{
+							Name: "foo-port",
+						},
+					},
+				},
+				{
+					Name: "bar-container",
+					Ports: []corev1.ContainerPort{
+						{
+							Name: "bar-port",
+						},
+					},
+				},
+			},
+			expectedContainer: corev1.Container{
+				Name: "foo-container",
+				Ports: []corev1.ContainerPort{
+					{
+						Name: "foo-port",
+					},
+				},
+			},
+			expectedFound: true,
+			expectedError: nil,
+		},
+		{
+			name: "finds container serving port by port number",
+			port: corev1.ServicePort{
+				TargetPort: intstr.FromInt32(1234),
+			},
+			containers: []corev1.Container{
+				{
+					Name: "foo-container",
+					Ports: []corev1.ContainerPort{
+						{
+							ContainerPort: 1234,
+						},
+					},
+				},
+				{
+					Name: "bar-container",
+					Ports: []corev1.ContainerPort{
+						{
+							Name: "bar-port",
+						},
+					},
+				},
+			},
+			expectedContainer: corev1.Container{
+				Name: "foo-container",
+				Ports: []corev1.ContainerPort{
+					{
+						ContainerPort: 1234,
+					},
+				},
+			},
+			expectedFound: true,
+			expectedError: nil,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			container, found, err := FindContainerServingPort(tc.port, tc.containers)
+
+			if !reflect.DeepEqual(err, tc.expectedError) {
+				t.Errorf("expected error %#v, got %#v", tc.expectedError, err)
+			}
+			if !reflect.DeepEqual(found, tc.expectedFound) {
+				t.Errorf("expected found %#v, got %#v", tc.expectedFound, found)
+			}
+			if !reflect.DeepEqual(container, tc.expectedContainer) {
+				t.Errorf("expected and got container differ , diff: %s", cmp.Diff(tc.expectedContainer, container))
 			}
 		})
 	}

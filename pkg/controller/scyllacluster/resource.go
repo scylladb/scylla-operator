@@ -10,22 +10,29 @@ import (
 
 	scylladbassets "github.com/scylladb/scylla-operator/assets/scylladb"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
+	"github.com/scylladb/scylla-operator/pkg/util/hash"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/rand"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
+	utilnet "k8s.io/utils/net"
 )
 
 const (
@@ -146,10 +153,11 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 			Annotations: svcAnnotations,
 		},
 		Spec: corev1.ServiceSpec{
-			Type:                     corev1.ServiceTypeClusterIP,
-			Selector:                 naming.StatefulSetPodLabel(name),
-			Ports:                    servicePorts(sc),
-			PublishNotReadyAddresses: true,
+			Type:  corev1.ServiceTypeClusterIP,
+			Ports: servicePorts(sc),
+			// Disable Kubernetes Endpoints reconciliation by setting `nil` Selector.
+			// Operator reconciles Endpoints of these Services. Check sync loop for EndpointSlice/Endpoints for more details.
+			Selector: nil,
 		},
 	}
 
@@ -181,11 +189,11 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 func servicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 	ports := []corev1.ServicePort{
 		{
-			Name: "inter-node-communication",
+			Name: "inter-node",
 			Port: 7000,
 		},
 		{
-			Name: "ssl-inter-node-communication",
+			Name: "ssl-inter-node",
 			Port: 7001,
 		},
 		{
@@ -209,7 +217,7 @@ func servicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 			Port: 7199,
 		},
 		{
-			Name: "agent-api",
+			Name: "agent-rest-api",
 			Port: 10001,
 		},
 		{
@@ -539,7 +547,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 							Name:            naming.ScyllaContainerName,
 							Image:           ImageForCluster(c),
 							ImagePullPolicy: corev1.PullIfNotPresent,
-							Ports:           containerPorts(c),
+							Ports:           scyllaContainerPorts(c),
 							// TODO: unprivileged entrypoint
 							Command: func() []string {
 								cmd := []string{
@@ -773,6 +781,60 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								},
 							},
 						},
+						{
+							Name:            naming.InterNodeTrafficProbeContainerName,
+							Image:           sidecarImage,
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Ports: []corev1.ContainerPort{
+								{
+									Name:          "inter-node",
+									ContainerPort: naming.StoragePort,
+								},
+								{
+									Name:          "ssl-inter-node",
+									ContainerPort: 7001,
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("40Mi"),
+								},
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("40Mi"),
+								},
+							},
+							Command: []string{
+								"/usr/bin/bash",
+								"-euExo",
+								"pipefail",
+								"-O",
+								"inherit_errexit",
+								"-c",
+							},
+							Args: []string{
+								`
+function handle-exit {
+  echo "Shutting down"
+}
+
+trap handle-exit EXIT
+
+sleep infinity
+`,
+							},
+							ReadinessProbe: &corev1.Probe{
+								TimeoutSeconds:   int32(30),
+								FailureThreshold: int32(1),
+								PeriodSeconds:    int32(5),
+								ProbeHandler: corev1.ProbeHandler{
+									TCPSocket: &corev1.TCPSocketAction{
+										Port: intstr.FromInt32(naming.StoragePort),
+									},
+								},
+							},
+						},
 					},
 					ServiceAccountName: naming.MemberServiceAccountNameForScyllaCluster(c.Name),
 					Affinity: &corev1.Affinity{
@@ -840,16 +902,8 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 	return sts, nil
 }
 
-func containerPorts(c *scyllav1.ScyllaCluster) []corev1.ContainerPort {
+func scyllaContainerPorts(c *scyllav1.ScyllaCluster) []corev1.ContainerPort {
 	ports := []corev1.ContainerPort{
-		{
-			Name:          "intra-node",
-			ContainerPort: 7000,
-		},
-		{
-			Name:          "tls-intra-node",
-			ContainerPort: 7001,
-		},
 		{
 			Name:          "cql",
 			ContainerPort: 9042,
@@ -857,6 +911,14 @@ func containerPorts(c *scyllav1.ScyllaCluster) []corev1.ContainerPort {
 		{
 			Name:          "cql-ssl",
 			ContainerPort: 9142,
+		},
+		{
+			Name:          "cql-sa",
+			ContainerPort: 19042,
+		},
+		{
+			Name:          "cql-ssl-sa",
+			ContainerPort: 19142,
 		},
 		{
 			Name:          "jmx",
@@ -945,6 +1007,10 @@ func agentContainer(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) corev1.Conta
 			{
 				Name:          "agent-rest-api",
 				ContainerPort: 10001,
+			},
+			{
+				Name:          "agent-metrics",
+				ContainerPort: 5090,
 			},
 		},
 		VolumeMounts: []corev1.VolumeMount{
@@ -1439,4 +1505,200 @@ func MakeManagedScyllaDBConfig(sc *scyllav1.ScyllaCluster) (*corev1.ConfigMap, e
 	maps.Copy(cm.Annotations, sc.Annotations)
 
 	return cm, nil
+}
+
+func MakeEndpointSlices(sc *scyllav1.ScyllaCluster, services map[string]*corev1.Service, podLister corev1listers.PodLister) ([]*discoveryv1.EndpointSlice, error) {
+	var endpointSlices []*discoveryv1.EndpointSlice
+
+	for _, svc := range services {
+		if svc.Labels[naming.ScyllaServiceTypeLabel] != string(naming.ScyllaServiceTypeMember) {
+			continue
+		}
+
+		if svc.Spec.Selector != nil {
+			return endpointSlices, fmt.Errorf("member service %q has unexpected non-nil Selector %v", naming.ObjRef(svc), svc.Spec.Selector)
+		}
+
+		pod, err := podLister.Pods(sc.Namespace).Get(svc.Name)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				klog.V(4).InfoS("Pod behind %q Member Service doesn't exists yet", naming.ObjRef(svc))
+				continue
+			}
+			return endpointSlices, fmt.Errorf("can't get Pod %q: %w", naming.ManualRef(sc.Namespace, svc.Name), err)
+		}
+
+		// Don't publish endpoints for Pods that are being deleted.
+		// Removing endpoints prevents new connections being established while still allowing
+		// for existing connections to survive and finish their requests.
+		// We need to do this early, as a gap between when Pod is actually deleted and Endpoint
+		// is reconciled into forwarding rules, may cause connection to get stuck on SYN.
+		// A stale tuple entry prevents retransmissions from timing out early and leading
+		// to the next reconnection attempt (#1077).
+		if pod.DeletionTimestamp != nil {
+			continue
+		}
+
+		endpointSliceLabels := map[string]string{}
+		maps.Copy(endpointSliceLabels, svc.Labels)
+		endpointSliceLabels[discoveryv1.LabelManagedBy] = naming.OperatorAppNameWithDomain
+		endpointSliceLabels[discoveryv1.LabelServiceName] = svc.Name
+
+		endpointSliceAnnotations := map[string]string{}
+		maps.Copy(endpointSliceAnnotations, svc.Annotations)
+
+		podReference := &corev1.ObjectReference{
+			Kind:      "Pod",
+			Namespace: pod.Namespace,
+			Name:      pod.Name,
+			UID:       pod.UID,
+		}
+
+		containerPortMap, podPorts, err := mapServicePortsToReadinessResponsibleContainer(svc, pod.Spec.Containers)
+		if err != nil {
+			return endpointSlices, fmt.Errorf("can't map service ports to readiness responsible ")
+		}
+
+		type endpointPortsConditions struct {
+			Conditions discoveryv1.EndpointConditions
+			Ports      []discoveryv1.EndpointPort
+		}
+
+		epPortsConditions := make(map[string]*endpointPortsConditions)
+
+		for containerName, ports := range containerPortMap {
+			containerPortsHash, err := endpointPortsHash(containerName, ports)
+			if err != nil {
+				return endpointSlices, fmt.Errorf("can't hash container ports: %w", err)
+			}
+
+			var ready, serving bool
+
+			containerStatus, _, ok := slices.Find(pod.Status.ContainerStatuses, func(status corev1.ContainerStatus) bool {
+				return status.Name == containerName
+			})
+			if ok {
+				ready = containerStatus.Ready && pod.DeletionTimestamp == nil
+				serving = containerStatus.Ready
+			}
+
+			epPortsConditions[containerPortsHash] = &endpointPortsConditions{
+				Conditions: discoveryv1.EndpointConditions{
+					Ready:       pointer.Ptr(ready),
+					Serving:     pointer.Ptr(serving),
+					Terminating: pointer.Ptr(pod.DeletionTimestamp != nil),
+				},
+				Ports: ports,
+			}
+		}
+
+		if len(podPorts) != 0 {
+			podPortsHash, err := endpointPortsHash("", podPorts)
+			if err != nil {
+				return endpointSlices, fmt.Errorf("can't hash pod ports: %w", err)
+			}
+
+			epPortsConditions[podPortsHash] = &endpointPortsConditions{
+				Conditions: discoveryv1.EndpointConditions{
+					Ready:       pointer.Ptr(controllerhelpers.IsPodReady(pod) && pod.DeletionTimestamp == nil),
+					Serving:     pointer.Ptr(controllerhelpers.IsPodReady(pod)),
+					Terminating: pointer.Ptr(pod.DeletionTimestamp != nil),
+				},
+				Ports: podPorts,
+			}
+		}
+
+		for epHash, epc := range epPortsConditions {
+			addressType := discoveryv1.AddressTypeIPv4
+
+			if utilnet.IsIPv6String(pod.Status.PodIP) {
+				addressType = discoveryv1.AddressTypeIPv6
+			}
+
+			endpointSlices = append(endpointSlices, &discoveryv1.EndpointSlice{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        fmt.Sprintf("%s-%s", svc.Name, epHash),
+					Namespace:   sc.Namespace,
+					Labels:      endpointSliceLabels,
+					Annotations: endpointSliceAnnotations,
+					OwnerReferences: []metav1.OwnerReference{
+						*metav1.NewControllerRef(sc, scyllaClusterControllerGVK),
+					},
+				},
+				AddressType: addressType,
+				Ports:       epc.Ports,
+				Endpoints: func() []discoveryv1.Endpoint {
+					if len(pod.Status.PodIP) != 0 {
+						ep := discoveryv1.Endpoint{
+							Addresses:  []string{pod.Status.PodIP},
+							Conditions: epc.Conditions,
+							TargetRef:  podReference,
+							Hostname: func() *string {
+								if shouldSetHostname(pod, svc) {
+									return pointer.Ptr(pod.Spec.Hostname)
+								}
+								return nil
+							}(),
+						}
+
+						if len(pod.Spec.NodeName) != 0 {
+							ep.NodeName = pointer.Ptr(pod.Spec.NodeName)
+						}
+
+						return []discoveryv1.Endpoint{ep}
+					}
+					return nil
+				}(),
+			})
+		}
+	}
+
+	sort.Slice(endpointSlices, func(i, j int) bool {
+		return endpointSlices[i].Name < endpointSlices[j].Name
+	})
+
+	return endpointSlices, nil
+}
+
+// shouldSetHostname returns true if the Hostname attribute should be set on an
+// Endpoints Address or EndpointSlice Endpoint.
+func shouldSetHostname(pod *corev1.Pod, svc *corev1.Service) bool {
+	return len(pod.Spec.Hostname) > 0 && pod.Spec.Subdomain == svc.Name && svc.Namespace == pod.Namespace
+}
+
+func endpointPortsHash(name string, ports []discoveryv1.EndpointPort) (string, error) {
+	h, err := hash.HashObjectsShort(name, ports)
+	if err != nil {
+		return h, err
+	}
+
+	return rand.SafeEncodeString(h), nil
+}
+
+func mapServicePortsToReadinessResponsibleContainer(svc *corev1.Service, containers []corev1.Container) (map[string][]discoveryv1.EndpointPort, []discoveryv1.EndpointPort, error) {
+	var podPorts []discoveryv1.EndpointPort
+	containerPortMap := map[string][]discoveryv1.EndpointPort{}
+
+	for _, servicePort := range svc.Spec.Ports {
+		ep := discoveryv1.EndpointPort{
+			Name:        pointer.Ptr(servicePort.Name),
+			Port:        pointer.Ptr(servicePort.Port),
+			Protocol:    pointer.Ptr(servicePort.Protocol),
+			AppProtocol: servicePort.AppProtocol,
+		}
+
+		containerServingPort, ok, err := controllerhelpers.FindContainerServingPort(servicePort, containers)
+		if err != nil {
+			return containerPortMap, podPorts, fmt.Errorf("can't find container serving port: %w", err)
+		}
+
+		// Container serves given Service port and decides about readiness
+		if ok && containerServingPort.ReadinessProbe != nil {
+			containerPortMap[containerServingPort.Name] = append(containerPortMap[containerServingPort.Name], ep)
+		} else {
+			podPorts = append(podPorts, ep)
+		}
+	}
+
+	return containerPortMap, podPorts, nil
 }

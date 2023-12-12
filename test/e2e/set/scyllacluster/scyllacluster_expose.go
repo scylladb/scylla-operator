@@ -121,18 +121,21 @@ var _ = g.Describe("ScyllaCluster", func() {
 			err = os.WriteFile(cqlConnectionConfigFilePath, cqlConnectionConfigData, 0600)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			framework.By("Connecting to cluster via Ingress")
-			cluster, err := scyllacloud.NewCloudCluster(cqlConnectionConfigFilePath)
-			o.Expect(err).NotTo(o.HaveOccurred())
+			// Allow Ingress Controller to notice Ingresses and update internal proxying rules.
+			o.Eventually(func(g o.Gomega) {
+				framework.By("Connecting to cluster via Ingress")
+				cluster, err := scyllacloud.NewCloudCluster(cqlConnectionConfigFilePath)
+				g.Expect(err).NotTo(o.HaveOccurred())
 
-			// Increase default timeout, due to additional hop on the route to host.
-			cluster.Timeout = 10 * time.Second
+				// Increase default timeout, due to additional hop on the route to host.
+				cluster.Timeout = 10 * time.Second
 
-			session, err := gocqlx.WrapSession(cluster.CreateSession())
-			o.Expect(err).NotTo(o.HaveOccurred())
+				session, err := gocqlx.WrapSession(cluster.CreateSession())
+				g.Expect(err).NotTo(o.HaveOccurred())
 
-			di := insertAndVerifyCQLData(ctx, hosts, utils.WithSession(&session))
-			di.Close()
+				di := insertAndVerifyCQLData(ctx, hosts, utils.WithSession(&session))
+				di.Close()
+			}).WithTimeout(30 * time.Second).WithPolling(time.Second)
 		}
 	})
 

@@ -27,7 +27,7 @@ func DumpNamespace(ctx context.Context, discoveryClient discovery.DiscoveryInter
 		true,
 		true,
 		0,
-		false,
+		true,
 	)
 	err := collector.CollectResource(
 		ctx,

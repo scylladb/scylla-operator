@@ -36,7 +36,7 @@ function kubectl_create {
 }
 
 function gather-artifacts {
-  kubectl -n e2e run --restart=Never --image="${SO_IMAGE}" --labels='app=must-gather' --command=true must-gather -- bash -euExo pipefail -O inherit_errexit -c "function wait-for-artifacts { touch /tmp/done && until [[ -f '/tmp/exit' ]]; do sleep 1; done } && trap wait-for-artifacts EXIT && mkdir /tmp/artifacts && scylla-operator must-gather --all-resources --loglevel=2 --dest-dir=/tmp/artifacts"
+  kubectl -n e2e run --restart=Never --image="${SO_IMAGE}" --labels='app=must-gather' --command=true must-gather -- bash -euExo pipefail -O inherit_errexit -c "function wait-for-artifacts { touch /tmp/done && until [[ -f '/tmp/exit' ]]; do sleep 1; done } && trap wait-for-artifacts EXIT && mkdir /tmp/artifacts && scylla-operator must-gather --all-resources --loglevel=2 --dest-dir=/tmp/artifacts --disable-secret-redaction"
   kubectl -n e2e wait --for=condition=Ready pod/must-gather
 
   # Setup artifacts transfer when finished and unblock the must-gather pod when done.

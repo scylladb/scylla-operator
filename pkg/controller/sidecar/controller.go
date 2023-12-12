@@ -30,7 +30,7 @@ const (
 	// maxSyncDuration enforces preemption. Do not raise the value! Controllers shouldn't actively wait,
 	// but rather use the queue.
 	maxSyncDuration          = 30 * time.Second
-	scyllaAPIPollingInterval = 30 * time.Second
+	scyllaAPIPollingInterval = 20 * time.Second
 )
 
 var (

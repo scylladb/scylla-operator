@@ -107,7 +107,7 @@ metadata:
   name: scylla-cluster
   namespace: scylla
 spec:
-  agentVersion: 3.1.2
+  agentVersion: 3.2.5
   version: 5.4.0
   cpuset: true
   sysctls:
@@ -357,7 +357,7 @@ metadata:
   name: scylla-cluster
   namespace: scylla
 spec:
-  agentVersion: 3.1.2
+  agentVersion: 3.2.5
   version: 5.4.0
   cpuset: true
   sysctls:

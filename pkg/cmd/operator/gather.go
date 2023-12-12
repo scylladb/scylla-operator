@@ -156,6 +156,7 @@ func (o *GatherOptions) run(ctx context.Context) error {
 		o.CollectRelatedResources,
 		o.KeepGoing,
 		o.LogsLimitBytes,
+		o.DisableSecretRedaction,
 	)
 
 	startTime := time.Now()

@@ -32,10 +32,11 @@ type GatherBaseOptions struct {
 	dynamicClient   dynamic.Interface
 	discoveryClient discovery.DiscoveryInterface
 
-	DestDir              string
-	CollectManagedFields bool
-	LogsLimitBytes       int64
-	KeepGoing            bool
+	DestDir                string
+	CollectManagedFields   bool
+	LogsLimitBytes         int64
+	KeepGoing              bool
+	DisableSecretRedaction bool
 }
 
 func NewGatherBaseOptions(gathererName string, keepGoing bool) *GatherBaseOptions {
@@ -62,6 +63,7 @@ func (o *GatherBaseOptions) AddFlags(flagset *pflag.FlagSet) {
 	flagset.Int64VarP(&o.LogsLimitBytes, "log-limit-bytes", "", o.LogsLimitBytes, "Maximum number of bytes collected for each log file, 0 means unlimited.")
 	flagset.BoolVarP(&o.CollectManagedFields, "managed-fields", "", o.CollectManagedFields, "Controls whether metadata.managedFields should be collected in the resource dumps.")
 	flagset.BoolVarP(&o.KeepGoing, "keep-going", "", o.KeepGoing, "Controls whether the collection should proceed to other resources over collection errors, accumulating errors.")
+	flagset.BoolVarP(&o.DisableSecretRedaction, "disable-secret-redaction", "", o.DisableSecretRedaction, "Disables Secret data redaction. WARNING: Setting this causes that private data will be part of the dump.")
 }
 
 func (o *GatherBaseOptions) Validate() error {

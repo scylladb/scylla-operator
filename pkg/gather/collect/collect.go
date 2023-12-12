@@ -72,14 +72,15 @@ func getResourceKey(obj *unstructured.Unstructured, resourceInfo *ResourceInfo) 
 }
 
 type Collector struct {
-	baseDir          string
-	printers         []ResourcePrinterInterface
-	discoveryClient  discovery.DiscoveryInterface
-	corev1Client     corev1client.CoreV1Interface
-	dynamicClient    dynamic.Interface
-	relatedResources bool
-	keepGoing        bool
-	logsLimitBytes   int64
+	baseDir                string
+	printers               []ResourcePrinterInterface
+	discoveryClient        discovery.DiscoveryInterface
+	corev1Client           corev1client.CoreV1Interface
+	dynamicClient          dynamic.Interface
+	relatedResources       bool
+	keepGoing              bool
+	logsLimitBytes         int64
+	disableSecretRedaction bool
 
 	collectedResources sets.Set[string]
 }
@@ -93,17 +94,19 @@ func NewCollector(
 	relatedResources bool,
 	keepGoing bool,
 	logsLimitBytes int64,
+	disableSecretRedaction bool,
 ) *Collector {
 	return &Collector{
-		baseDir:            baseDir,
-		printers:           printers,
-		discoveryClient:    discoveryClient,
-		corev1Client:       corev1Client,
-		dynamicClient:      dynamicClient,
-		relatedResources:   relatedResources,
-		keepGoing:          keepGoing,
-		logsLimitBytes:     logsLimitBytes,
-		collectedResources: sets.Set[string]{},
+		baseDir:                baseDir,
+		printers:               printers,
+		discoveryClient:        discoveryClient,
+		corev1Client:           corev1Client,
+		dynamicClient:          dynamicClient,
+		relatedResources:       relatedResources,
+		keepGoing:              keepGoing,
+		logsLimitBytes:         logsLimitBytes,
+		disableSecretRedaction: disableSecretRedaction,
+		collectedResources:     sets.Set[string]{},
 	}
 }
 
@@ -191,9 +194,11 @@ func (c *Collector) collectSecret(ctx context.Context, u *unstructured.Unstructu
 		return fmt.Errorf("can't convert secret from unstructured: %w", err)
 	}
 
-	for k := range secret.Data {
-		if !isPublicSecretKey(k) {
-			secret.Data[k] = []byte("<redacted>")
+	if !c.disableSecretRedaction {
+		for k := range secret.Data {
+			if !isPublicSecretKey(k) {
+				secret.Data[k] = []byte("<redacted>")
+			}
 		}
 	}
 

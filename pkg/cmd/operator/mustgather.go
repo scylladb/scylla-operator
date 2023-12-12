@@ -234,6 +234,7 @@ func (o *MustGatherOptions) run(ctx context.Context) error {
 		true,
 		o.KeepGoing,
 		o.LogsLimitBytes,
+		o.DisableSecretRedaction,
 	)
 
 	var resourceSpecs []resourceSpec

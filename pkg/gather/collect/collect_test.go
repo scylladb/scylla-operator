@@ -39,13 +39,14 @@ func TestCollector_CollectObject(t *testing.T) {
 	}
 
 	tt := []struct {
-		name             string
-		targetedObject   runtime.Object
-		existingObjects  []runtime.Object
-		relatedResources bool
-		keepGoing        bool
-		expectedDump     *testhelpers.GatherDump
-		expectedError    error
+		name                   string
+		targetedObject         runtime.Object
+		existingObjects        []runtime.Object
+		relatedResources       bool
+		keepGoing              bool
+		disableSecretRedaction bool
+		expectedDump           *testhelpers.GatherDump
+		expectedError          error
 	}{
 		{
 			name: "pod logs are skipped if there is no status",
@@ -377,6 +378,59 @@ metadata:
 				},
 			},
 		},
+		{
+			name: "secrets are not redacted when secret redacting is disabled",
+			targetedObject: &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "my-namespace",
+				},
+			},
+			existingObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "my-namespace",
+						Name:      "my-secret",
+					},
+					Data: map[string][]byte{
+						"secret-key": []byte("secret-value"),
+					},
+				},
+			},
+			relatedResources:       true,
+			keepGoing:              false,
+			disableSecretRedaction: true,
+			expectedError:          nil,
+			expectedDump: &testhelpers.GatherDump{
+				EmptyDirs: nil,
+				Files: []testhelpers.File{
+					{
+						Name: "cluster-scoped/namespaces/my-namespace.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: v1
+kind: Namespace
+metadata:
+  creationTimestamp: null
+  name: my-namespace
+spec: {}
+status: {}
+`, "\n"),
+					},
+					{
+						Name: "namespaces/my-namespace/secrets/my-secret.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: v1
+data:
+  secret-key: c2VjcmV0LXZhbHVl
+kind: Secret
+metadata:
+  creationTimestamp: null
+  name: my-secret
+  namespace: my-namespace
+`, "\n"),
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range tt {
@@ -416,6 +470,7 @@ metadata:
 				tc.relatedResources,
 				tc.keepGoing,
 				0,
+				tc.disableSecretRedaction,
 			)
 
 			groupVersionKinds, _, err := scheme.ObjectKinds(tc.targetedObject)

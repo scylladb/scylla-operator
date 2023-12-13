@@ -235,6 +235,7 @@ func TypeApplyControlInterface[T kubeinterfaces.ObjectInterface](untyped ApplyCo
 type ApplyOptions struct {
 	ForceOwnership            bool
 	AllowMissingControllerRef bool
+	DeletePropagationPolicy   *metav1.DeletionPropagation
 }
 
 func ApplyGenericWithHandlers[T kubeinterfaces.ObjectInterface](
@@ -327,6 +328,9 @@ func ApplyGenericWithHandlers[T kubeinterfaces.ObjectInterface](
 		)
 
 		propagationPolicy := metav1.DeletePropagationBackground
+		if options.DeletePropagationPolicy != nil {
+			propagationPolicy = *options.DeletePropagationPolicy
+		}
 		err := control.Delete(ctx, existing.GetName(), metav1.DeleteOptions{
 			PropagationPolicy: &propagationPolicy,
 		})

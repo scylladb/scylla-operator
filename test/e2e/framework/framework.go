@@ -244,7 +244,7 @@ func (f *Framework) setupNamespace(ctx context.Context) {
 	By("Waiting for default ServiceAccount in namespace %q.", ns.Name)
 	ctxSa, ctxSaCancel := context.WithTimeout(ctx, serviceAccountWaitTimeout)
 	defer ctxSaCancel()
-	_, err = WaitForServiceAccount(ctxSa, f.KubeAdminClient().CoreV1(), ns.Namespace, "default")
+	_, err = WaitForServiceAccount(ctxSa, f.KubeAdminClient().CoreV1(), ns.Name, "default")
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 

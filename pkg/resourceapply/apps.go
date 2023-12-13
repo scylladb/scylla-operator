@@ -2,9 +2,13 @@ package resourceapply
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/tools/record"
@@ -17,7 +21,31 @@ func ApplyStatefulSetWithControl(
 	required *appsv1.StatefulSet,
 	options ApplyOptions,
 ) (*appsv1.StatefulSet, bool, error) {
-	return ApplyGeneric[*appsv1.StatefulSet](ctx, control, recorder, required, options)
+	return ApplyGenericWithHandlers[*appsv1.StatefulSet](
+		ctx,
+		control,
+		recorder,
+		required,
+		options,
+		nil,
+		func(required *appsv1.StatefulSet, existing *appsv1.StatefulSet) (string, *metav1.DeletionPropagation, error) {
+			if !equality.Semantic.DeepEqual(existing.Spec.Selector, required.Spec.Selector) {
+				existingPodLabels := existing.Spec.Template.Labels
+				requiredSelector, err := metav1.LabelSelectorAsSelector(required.Spec.Selector)
+				if err != nil {
+					return "", nil, fmt.Errorf("can't parse required StatefulSet selector: %w", err)
+				}
+
+				if !requiredSelector.Matches(labels.Set(existingPodLabels)) {
+					return "", nil, fmt.Errorf("required StatefulSet selector %q doesn't match existing Pod Labels set %v", requiredSelector, existingPodLabels)
+				}
+
+				return "spec.selector is immutable", pointer.Ptr(metav1.DeletePropagationOrphan), nil
+			}
+
+			return "", nil, nil
+		},
+	)
 }
 
 func ApplyStatefulSet(
@@ -56,11 +84,11 @@ func ApplyDaemonSetWithControl(
 		required,
 		options,
 		nil,
-		func(required *appsv1.DaemonSet, existing *appsv1.DaemonSet) string {
+		func(required *appsv1.DaemonSet, existing *appsv1.DaemonSet) (string, *metav1.DeletionPropagation, error) {
 			if !equality.Semantic.DeepEqual(existing.Spec.Selector, required.Spec.Selector) {
-				return "spec.selector is immutable"
+				return "spec.selector is immutable", nil, nil
 			}
-			return ""
+			return "", nil, nil
 		},
 	)
 }

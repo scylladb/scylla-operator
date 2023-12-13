@@ -244,7 +244,7 @@ func ApplyGenericWithHandlers[T kubeinterfaces.ObjectInterface](
 	required T,
 	options ApplyOptions,
 	projectFunc func(required *T, existing T),
-	getRecreateReasonFunc func(required T, existing T) string,
+	getRecreateReasonFunc func(required T, existing T) (string, *metav1.DeletionPropagation, error),
 ) (T, bool, error) {
 	gvk := resource.GetObjectGVKOrUnknown(required)
 
@@ -315,8 +315,12 @@ func ApplyGenericWithHandlers[T kubeinterfaces.ObjectInterface](
 	}
 
 	var recreateReason string
+	var propagationPolicy *metav1.DeletionPropagation
 	if getRecreateReasonFunc != nil {
-		recreateReason = getRecreateReasonFunc(requiredCopy, existing)
+		recreateReason, propagationPolicy, err = getRecreateReasonFunc(requiredCopy, existing)
+		if err != nil {
+			return *new(T), false, fmt.Errorf("can't get recreate reason: %w", err)
+		}
 	}
 	if len(recreateReason) > 0 {
 		klog.V(2).InfoS(
@@ -326,9 +330,12 @@ func ApplyGenericWithHandlers[T kubeinterfaces.ObjectInterface](
 			"Ref", naming.ObjRefWithUID(existing),
 		)
 
-		propagationPolicy := metav1.DeletePropagationBackground
+		if propagationPolicy == nil {
+			propagationPolicy = pointer.Ptr(metav1.DeletePropagationBackground)
+		}
+
 		err := control.Delete(ctx, existing.GetName(), metav1.DeleteOptions{
-			PropagationPolicy: &propagationPolicy,
+			PropagationPolicy: propagationPolicy,
 		})
 		ReportDeleteEvent(recorder, existing, err)
 		if err != nil {

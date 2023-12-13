@@ -19,40 +19,37 @@ import (
 	"k8s.io/component-helpers/scheduling/corev1/nodeaffinity"
 )
 
-func GetScyllaIPFromService(svc *corev1.Service) (string, error) {
-	if svc.Spec.Type != corev1.ServiceTypeClusterIP {
-		return "", fmt.Errorf("service %s is of type %q instead of %q", naming.ObjRef(svc), svc.Spec.Type, corev1.ServiceTypeClusterIP)
-	}
-
-	if svc.Spec.ClusterIP == corev1.ClusterIPNone {
-		return "", fmt.Errorf("service %s doesn't have a ClusterIP", naming.ObjRef(svc))
-	}
-
-	return svc.Spec.ClusterIP, nil
-}
-
-func GetScyllaHost(statefulsetName string, ordinal int32, services map[string]*corev1.Service) (string, error) {
+func GetScyllaHost(statefulsetName string, ordinal int32, services map[string]*corev1.Service, pods map[string]*corev1.Pod) (string, error) {
 	svcName := fmt.Sprintf("%s-%d", statefulsetName, ordinal)
 	svc, found := services[svcName]
 	if !found {
 		return "", fmt.Errorf("missing service %q", svcName)
 	}
 
-	ip, err := GetScyllaIPFromService(svc)
-	if err != nil {
-		return "", err
+	if svc.Spec.ClusterIP != corev1.ClusterIPNone {
+		return svc.Spec.ClusterIP, nil
 	}
 
-	return ip, nil
+	pod, found := pods[svcName]
+	if !found {
+		return "", fmt.Errorf("missing pod %q", svcName)
+	}
+
+	host := pod.Status.PodIP
+	if len(host) < 1 {
+		return "", fmt.Errorf("missing PodIP of pod %q", svcName)
+	}
+
+	return host, nil
 }
 
-func GetRequiredScyllaHosts(sc *scyllav1.ScyllaCluster, services map[string]*corev1.Service) ([]string, error) {
+func GetRequiredScyllaHosts(sc *scyllav1.ScyllaCluster, services map[string]*corev1.Service, pods map[string]*corev1.Pod) ([]string, error) {
 	var hosts []string
 	var errs []error
 	for _, rack := range sc.Spec.Datacenter.Racks {
 		for ord := int32(0); ord < rack.Members; ord++ {
 			stsName := naming.StatefulSetNameForRack(rack, sc)
-			host, err := GetScyllaHost(stsName, ord, services)
+			host, err := GetScyllaHost(stsName, ord, services, pods)
 			if err != nil {
 				errs = append(errs, err)
 				continue

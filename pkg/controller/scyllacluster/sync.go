@@ -188,6 +188,21 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		objectErrs = append(objectErrs, err)
 	}
 
+	podMap, err := controllerhelpers.GetObjects[CT, *corev1.Pod](
+		ctx,
+		sc,
+		scyllaClusterControllerGVK,
+		scSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.Pod]{
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaClusters(sc.Namespace).Get,
+			ListObjectsFunc:           scc.podLister.Pods(sc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.CoreV1().Pods(sc.Namespace).Patch,
+		},
+	)
+	if err != nil {
+		objectErrs = append(objectErrs, err)
+	}
+
 	objectErr := utilerrors.NewAggregate(objectErrs)
 	if objectErr != nil {
 		return objectErr
@@ -267,7 +282,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		statefulSetControllerDegradedCondition,
 		sc.Generation,
 		func() ([]metav1.Condition, error) {
-			return scc.syncStatefulSets(ctx, key, sc, status, statefulSetMap, serviceMap)
+			return scc.syncStatefulSets(ctx, key, sc, status, statefulSetMap, serviceMap, podMap)
 		},
 	)
 	if err != nil {

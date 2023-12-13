@@ -141,11 +141,11 @@ func (scc *Controller) removeSnapshot(ctx context.Context, scyllaClient *scyllac
 
 // beforeUpgrade runs hooks before a cluster upgrade starts.
 // It returns true if the action is done, false if the caller should repeat later.
-func (scc *Controller) beforeUpgrade(ctx context.Context, sc *scyllav1.ScyllaCluster, services map[string]*corev1.Service) (bool, error) {
+func (scc *Controller) beforeUpgrade(ctx context.Context, sc *scyllav1.ScyllaCluster, services map[string]*corev1.Service, pods map[string]*corev1.Pod) (bool, error) {
 	klog.V(2).InfoS("Running pre-upgrade hook", "ScyllaCluster", klog.KObj(sc))
 	defer klog.V(2).InfoS("Finished running pre-upgrade hook", "ScyllaCluster", klog.KObj(sc))
 
-	hosts, err := controllerhelpers.GetRequiredScyllaHosts(sc, services)
+	hosts, err := controllerhelpers.GetRequiredScyllaHosts(sc, services, pods)
 	if err != nil {
 		return true, err
 	}
@@ -180,11 +180,11 @@ func (scc *Controller) beforeUpgrade(ctx context.Context, sc *scyllav1.ScyllaClu
 	return true, nil
 }
 
-func (scc *Controller) afterUpgrade(ctx context.Context, sc *scyllav1.ScyllaCluster, services map[string]*corev1.Service) error {
+func (scc *Controller) afterUpgrade(ctx context.Context, sc *scyllav1.ScyllaCluster, services map[string]*corev1.Service, pods map[string]*corev1.Pod) error {
 	klog.V(2).InfoS("Running post-upgrade hook", "ScyllaCluster", klog.KObj(sc))
 	defer klog.V(2).InfoS("Finished running post-upgrade hook", "ScyllaCluster", klog.KObj(sc))
 
-	hosts, err := controllerhelpers.GetRequiredScyllaHosts(sc, services)
+	hosts, err := controllerhelpers.GetRequiredScyllaHosts(sc, services, pods)
 	if err != nil {
 		return err
 	}
@@ -206,7 +206,7 @@ func (scc *Controller) afterUpgrade(ctx context.Context, sc *scyllav1.ScyllaClus
 
 // beforeNodeUpgrade runs hooks before a node upgrade.
 // It returns true if the action is done, false if the caller should repeat later.
-func (scc *Controller) beforeNodeUpgrade(ctx context.Context, sc *scyllav1.ScyllaCluster, sts *appsv1.StatefulSet, ordinal int32, services map[string]*corev1.Service) (bool, error) {
+func (scc *Controller) beforeNodeUpgrade(ctx context.Context, sc *scyllav1.ScyllaCluster, sts *appsv1.StatefulSet, ordinal int32, services map[string]*corev1.Service, pods map[string]*corev1.Pod) (bool, error) {
 	klog.V(2).InfoS("Running node pre-upgrade hook", "ScyllaCluster", klog.KObj(sc))
 	defer klog.V(2).InfoS("Finished running node pre-upgrade hook", "ScyllaCluster", klog.KObj(sc))
 
@@ -231,7 +231,7 @@ func (scc *Controller) beforeNodeUpgrade(ctx context.Context, sc *scyllav1.Scyll
 
 	// Drain the node.
 
-	host, err := controllerhelpers.GetScyllaIPFromService(svc)
+	host, err := controllerhelpers.GetScyllaHost(sts.Name, ordinal, services, pods)
 	if err != nil {
 		return true, err
 	}
@@ -310,8 +310,8 @@ func (scc *Controller) beforeNodeUpgrade(ctx context.Context, sc *scyllav1.Scyll
 	return true, nil
 }
 
-func (scc *Controller) afterNodeUpgrade(ctx context.Context, sc *scyllav1.ScyllaCluster, sts *appsv1.StatefulSet, ordinal int32, services map[string]*corev1.Service) error {
-	host, err := controllerhelpers.GetScyllaHost(sts.Name, ordinal, services)
+func (scc *Controller) afterNodeUpgrade(ctx context.Context, sc *scyllav1.ScyllaCluster, sts *appsv1.StatefulSet, ordinal int32, services map[string]*corev1.Service, pods map[string]*corev1.Pod) error {
+	host, err := controllerhelpers.GetScyllaHost(sts.Name, ordinal, services, pods)
 	if err != nil {
 		return err
 	}
@@ -460,6 +460,7 @@ func (scc *Controller) syncStatefulSets(
 	status *scyllav1.ScyllaClusterStatus,
 	statefulSets map[string]*appsv1.StatefulSet,
 	services map[string]*corev1.Service,
+	pods map[string]*corev1.Pod,
 ) ([]metav1.Condition, error) {
 	var err error
 	var progressingConditions []metav1.Condition
@@ -695,7 +696,7 @@ func (scc *Controller) syncStatefulSets(
 		switch status.Upgrade.State {
 		case string(PreHooksUpgradePhase):
 			// TODO: Move the pre-upgrade hook into a Job.
-			done, err := scc.beforeUpgrade(ctx, sc, services)
+			done, err := scc.beforeUpgrade(ctx, sc, services, pods)
 			if err != nil {
 				return progressingConditions, err
 			}
@@ -790,7 +791,7 @@ func (scc *Controller) syncStatefulSets(
 
 				if partition < *sts.Spec.Replicas {
 					// TODO: Move the post-node-upgrade hook into a Job.
-					err = scc.afterNodeUpgrade(ctx, sc, sts, partition, services)
+					err = scc.afterNodeUpgrade(ctx, sc, sts, partition, services, pods)
 					if err != nil {
 						return progressingConditions, err
 					}
@@ -798,7 +799,7 @@ func (scc *Controller) syncStatefulSets(
 				}
 
 				// TODO: Move the pre-node-upgrade hook into a Job.
-				done, err := scc.beforeNodeUpgrade(ctx, sc, sts, nextPartition, services)
+				done, err := scc.beforeNodeUpgrade(ctx, sc, sts, nextPartition, services, pods)
 				if err != nil {
 					return progressingConditions, err
 				}
@@ -849,7 +850,7 @@ func (scc *Controller) syncStatefulSets(
 			return progressingConditions, nil
 
 		case string(PostHooksUpgradePhase):
-			err = scc.afterUpgrade(ctx, sc, services)
+			err = scc.afterUpgrade(ctx, sc, services, pods)
 			if err != nil {
 				return progressingConditions, err
 			}

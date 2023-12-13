@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"path"
 	"sort"
-	"strconv"
 	"strings"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	appsv1 "k8s.io/api/apps/v1"
@@ -221,13 +219,6 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 	if err != nil {
 		return nil, fmt.Errorf("can't get rack labels: %w", err)
 	}
-	_, rackOrdinal, ok := slices.Find(c.Spec.Datacenter.Racks, func(rack scyllav1.RackSpec) bool {
-		return rack.Name == r.Name
-	})
-	if !ok {
-		return nil, fmt.Errorf("can't find ordinal of rack %q in ScyllaCluster %q", r.Name, naming.ObjRef(c))
-	}
-	rackLabels[naming.RackOrdinalLabel] = strconv.Itoa(rackOrdinal)
 	rackLabels[naming.ScyllaVersionLabel] = c.Spec.Version
 
 	selectorLabels, err := naming.RackLabels(r, c)

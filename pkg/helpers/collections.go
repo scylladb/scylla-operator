@@ -18,11 +18,3 @@ func GetMapValues[M ~map[K]V, K comparable, V any](m M) []V {
 	}
 	return res
 }
-
-func ShallowCopyMap[M ~map[K]V, K comparable, V any](m M) M {
-	res := make(M, len(m))
-	for k, v := range m {
-		res[k] = v
-	}
-	return res
-}

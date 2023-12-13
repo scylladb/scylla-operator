@@ -2,10 +2,8 @@ package naming
 
 import (
 	"fmt"
-	"strconv"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -39,13 +37,6 @@ func RackLabels(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) (map[string]stri
 	recLabels := ScyllaLabels()
 	rackLabels := DatacenterLabels(c)
 	rackLabels[RackNameLabel] = r.Name
-	_, rackOrdinal, ok := slices.Find(c.Spec.Datacenter.Racks, func(rack scyllav1.RackSpec) bool {
-		return rack.Name == r.Name
-	})
-	if !ok {
-		return nil, fmt.Errorf("can't find ordinal of rack %q in ScyllaCluster %q", r.Name, ObjRef(c))
-	}
-	rackLabels[RackOrdinalLabel] = strconv.Itoa(rackOrdinal)
 
 	return mergeLabels(rackLabels, recLabels), nil
 }

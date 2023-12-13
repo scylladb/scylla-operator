@@ -49,9 +49,9 @@ func snapshotTag(prefix string, t time.Time) string {
 
 func (scc *Controller) makeRacks(sc *scyllav1.ScyllaCluster, statefulSets map[string]*appsv1.StatefulSet) ([]*appsv1.StatefulSet, error) {
 	sets := make([]*appsv1.StatefulSet, 0, len(sc.Spec.Datacenter.Racks))
-	for _, rack := range sc.Spec.Datacenter.Racks {
+	for i, rack := range sc.Spec.Datacenter.Racks {
 		oldSts := statefulSets[naming.StatefulSetNameForRack(rack, sc)]
-		sts, err := StatefulSetForRack(rack, sc, oldSts, scc.operatorImage)
+		sts, err := StatefulSetForRack(rack, sc, oldSts, scc.operatorImage, i)
 		if err != nil {
 			return nil, err
 		}

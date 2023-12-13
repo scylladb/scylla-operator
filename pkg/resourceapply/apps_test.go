@@ -493,6 +493,199 @@ func TestApplyStatefulSet(t *testing.T) {
 			expectedErr:     nil,
 			expectedEvents:  []string{"Normal StatefulSetUpdated StatefulSet default/test updated"},
 		},
+		{
+			name: "deletes and creates the StatefulSet when selector differs",
+			existing: []runtime.Object{
+				newSts(),
+			},
+			required: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.Selector = &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"foo": "bar",
+					},
+				}
+				return sts
+			}(),
+			expectedSts: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.Selector = &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"foo": "bar",
+					},
+				}
+				utilruntime.Must(SetHashAnnotation(sts))
+				return sts
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents: []string{
+				"Normal StatefulSetDeleted StatefulSet default/test deleted",
+				"Normal StatefulSetCreated StatefulSet default/test created",
+			},
+		},
+		{
+			name: "deletes and creates the StatefulSet when volumeClaimTemplate differs",
+			existing: []runtime.Object{
+				newSts(),
+			},
+			required: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								"foo": "bar",
+							},
+						},
+					},
+				}
+				return sts
+			}(),
+			expectedSts: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								"foo": "bar",
+							},
+						},
+					},
+				}
+				utilruntime.Must(SetHashAnnotation(sts))
+				return sts
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents: []string{
+				"Normal StatefulSetDeleted StatefulSet default/test deleted",
+				"Normal StatefulSetCreated StatefulSet default/test created",
+			},
+		},
+		{
+			name: "deletes and creates the StatefulSet when serviceName differs",
+			existing: []runtime.Object{
+				newSts(),
+			},
+			required: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.ServiceName = "foo"
+				return sts
+			}(),
+			expectedSts: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.ServiceName = "foo"
+				utilruntime.Must(SetHashAnnotation(sts))
+				return sts
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents: []string{
+				"Normal StatefulSetDeleted StatefulSet default/test deleted",
+				"Normal StatefulSetCreated StatefulSet default/test created",
+			},
+		},
+		{
+			name: "deletes and creates the StatefulSet when podManagementPolicy differs",
+			existing: []runtime.Object{
+				newSts(),
+			},
+			required: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
+				return sts
+			}(),
+			expectedSts: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
+				utilruntime.Must(SetHashAnnotation(sts))
+				return sts
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents: []string{
+				"Normal StatefulSetDeleted StatefulSet default/test deleted",
+				"Normal StatefulSetCreated StatefulSet default/test created",
+			},
+		},
+		{
+			name: "deletes and creates the StatefulSet when updateStrategy differs",
+			existing: []runtime.Object{
+				newSts(),
+			},
+			required: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.UpdateStrategy = appsv1.StatefulSetUpdateStrategy{
+					Type: appsv1.OnDeleteStatefulSetStrategyType,
+				}
+				return sts
+			}(),
+			expectedSts: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.UpdateStrategy = appsv1.StatefulSetUpdateStrategy{
+					Type: appsv1.OnDeleteStatefulSetStrategyType,
+				}
+				utilruntime.Must(SetHashAnnotation(sts))
+				return sts
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents: []string{
+				"Normal StatefulSetDeleted StatefulSet default/test deleted",
+				"Normal StatefulSetCreated StatefulSet default/test created",
+			},
+		},
+		{
+			name: "deletes and creates the StatefulSet when revisionHistoryLimit differs",
+			existing: []runtime.Object{
+				newSts(),
+			},
+			required: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.RevisionHistoryLimit = pointer.Ptr(int32(42))
+				return sts
+			}(),
+			expectedSts: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.RevisionHistoryLimit = pointer.Ptr(int32(42))
+				utilruntime.Must(SetHashAnnotation(sts))
+				return sts
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents: []string{
+				"Normal StatefulSetDeleted StatefulSet default/test deleted",
+				"Normal StatefulSetCreated StatefulSet default/test created",
+			},
+		},
+		{
+			name: "deletes and creates the StatefulSet when ordinals differs",
+			existing: []runtime.Object{
+				newSts(),
+			},
+			required: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.Ordinals = &appsv1.StatefulSetOrdinals{
+					Start: 42,
+				}
+				return sts
+			}(),
+			expectedSts: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.Ordinals = &appsv1.StatefulSetOrdinals{
+					Start: 42,
+				}
+				utilruntime.Must(SetHashAnnotation(sts))
+				return sts
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents: []string{
+				"Normal StatefulSetDeleted StatefulSet default/test deleted",
+				"Normal StatefulSetCreated StatefulSet default/test created",
+			},
+		},
 	}
 
 	for _, tc := range tt {

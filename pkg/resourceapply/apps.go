@@ -17,7 +17,39 @@ func ApplyStatefulSetWithControl(
 	required *appsv1.StatefulSet,
 	options ApplyOptions,
 ) (*appsv1.StatefulSet, bool, error) {
-	return ApplyGeneric[*appsv1.StatefulSet](ctx, control, recorder, required, options)
+	return ApplyGenericWithHandlers[*appsv1.StatefulSet](
+		ctx,
+		control,
+		recorder,
+		required,
+		options,
+		nil,
+		func(required *appsv1.StatefulSet, existing *appsv1.StatefulSet) string {
+			if !equality.Semantic.DeepEqual(existing.Spec.Selector, required.Spec.Selector) {
+				return "spec.selector is immutable"
+			}
+			if !equality.Semantic.DeepEqual(existing.Spec.VolumeClaimTemplates, required.Spec.VolumeClaimTemplates) {
+				return "spec.volumeClaimTemplates is immutable"
+			}
+			if !equality.Semantic.DeepEqual(existing.Spec.ServiceName, required.Spec.ServiceName) {
+				return "spec.serviceName is immutable"
+			}
+			if !equality.Semantic.DeepEqual(existing.Spec.PodManagementPolicy, required.Spec.PodManagementPolicy) {
+				return "spec.podManagementPolicy is immutable"
+			}
+			if !equality.Semantic.DeepEqual(existing.Spec.UpdateStrategy, required.Spec.UpdateStrategy) {
+				return "spec.updateStrategy is immutable"
+			}
+			if !equality.Semantic.DeepEqual(existing.Spec.RevisionHistoryLimit, required.Spec.RevisionHistoryLimit) {
+				return "spec.revisionHistoryLimit is immutable"
+			}
+			if !equality.Semantic.DeepEqual(existing.Spec.Ordinals, required.Spec.Ordinals) {
+				return "spec.ordinals is immutable"
+			}
+
+			return ""
+		},
+	)
 }
 
 func ApplyStatefulSet(

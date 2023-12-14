@@ -50,15 +50,6 @@ func (p *Prober) isNodeUnderMaintenance() (bool, error) {
 	return hasLabel, nil
 }
 
-func (p *Prober) getNodeAddress() (string, error) {
-	svc, err := p.serviceLister.Services(p.namespace).Get(p.serviceName)
-	if err != nil {
-		return "", err
-	}
-
-	return controllerhelpers.GetScyllaIPFromService(svc)
-}
-
 func (p *Prober) Readyz(w http.ResponseWriter, req *http.Request) {
 	ctx, ctxCancel := context.WithTimeout(req.Context(), p.timeout)
 	defer ctxCancel()

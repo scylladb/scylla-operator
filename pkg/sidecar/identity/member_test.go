@@ -201,13 +201,21 @@ func TestMember_GetSeeds(t *testing.T) {
 			expectSeeds:                []string{secondService.Spec.ClusterIP},
 		},
 		{
-			name:                       "use PodIP from status when node broadcast address type is PodIP",
-			memberPod:                  firstPod,
+			name: "use PodIP from status when node broadcast address type is PodIP",
+			memberPod: func() *corev1.Pod {
+				pod := firstPod.DeepCopy()
+				pod.Status.PodIP = "10.0.0.1"
+				return pod
+			}(),
 			memberService:              firstService,
 			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypePodIP,
 			objects: []runtime.Object{
-				firstPod,
+				func() runtime.Object {
+					pod := firstPod.DeepCopy()
+					pod.Status.PodIP = "10.0.0.1"
+					return pod
+				}(),
 				firstService,
 				func() runtime.Object {
 					pod := secondPod.DeepCopy()
@@ -246,17 +254,40 @@ func TestMember_GetSeeds(t *testing.T) {
 			expectSeeds: []string{"1.2.3.4"},
 		},
 		{
-			name:                       "use preferred IP address from first Service ingress status when node broadcast address type is LoadBalancer Ingress",
-			memberPod:                  firstPod,
-			memberService:              firstService,
+			name:      "use preferred IP address from first Service ingress status when node broadcast address type is LoadBalancer Ingress",
+			memberPod: firstPod,
+			memberService: func() *corev1.Service {
+				svc := firstService.DeepCopy()
+				svc.Spec.Type = corev1.ServiceTypeLoadBalancer
+				svc.Status.LoadBalancer = corev1.LoadBalancerStatus{
+					Ingress: []corev1.LoadBalancerIngress{
+						{
+							Hostname: "first.service.scylladb.com",
+						},
+					},
+				}
+				return svc
+			}(),
 			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
 			objects: []runtime.Object{
 				firstPod,
-				firstService,
+				func() runtime.Object {
+					svc := firstService.DeepCopy()
+					svc.Spec.Type = corev1.ServiceTypeLoadBalancer
+					svc.Status.LoadBalancer = corev1.LoadBalancerStatus{
+						Ingress: []corev1.LoadBalancerIngress{
+							{
+								Hostname: "first.service.scylladb.com",
+							},
+						},
+					}
+					return svc
+				}(),
 				secondPod,
 				func() runtime.Object {
 					svc := secondService.DeepCopy()
+					svc.Spec.Type = corev1.ServiceTypeLoadBalancer
 					svc.Status.LoadBalancer = corev1.LoadBalancerStatus{
 						Ingress: []corev1.LoadBalancerIngress{
 							{
@@ -273,17 +304,40 @@ func TestMember_GetSeeds(t *testing.T) {
 			expectSeeds: []string{"1.2.3.4"},
 		},
 		{
-			name:                       "use hostname from first Service ingress status when node broadcast address type is LoadBalancer Ingress and IP is not available",
-			memberPod:                  firstPod,
-			memberService:              firstService,
+			name:      "use hostname from first Service ingress status when node broadcast address type is LoadBalancer Ingress and IP is not available",
+			memberPod: firstPod,
+			memberService: func() *corev1.Service {
+				svc := firstService.DeepCopy()
+				svc.Spec.Type = corev1.ServiceTypeLoadBalancer
+				svc.Status.LoadBalancer = corev1.LoadBalancerStatus{
+					Ingress: []corev1.LoadBalancerIngress{
+						{
+							Hostname: "first.service.scylladb.com",
+						},
+					},
+				}
+				return svc
+			}(),
 			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
 			objects: []runtime.Object{
 				firstPod,
-				firstService,
+				func() runtime.Object {
+					svc := firstService.DeepCopy()
+					svc.Spec.Type = corev1.ServiceTypeLoadBalancer
+					svc.Status.LoadBalancer = corev1.LoadBalancerStatus{
+						Ingress: []corev1.LoadBalancerIngress{
+							{
+								Hostname: "first.service.scylladb.com",
+							},
+						},
+					}
+					return svc
+				}(),
 				secondPod,
 				func() runtime.Object {
 					svc := secondService.DeepCopy()
+					svc.Spec.Type = corev1.ServiceTypeLoadBalancer
 					svc.Status.LoadBalancer = corev1.LoadBalancerStatus{
 						Ingress: []corev1.LoadBalancerIngress{
 							{

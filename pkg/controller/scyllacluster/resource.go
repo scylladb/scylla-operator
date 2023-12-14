@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
@@ -214,13 +215,23 @@ func servicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 
 // StatefulSetForRack make a StatefulSet for the rack.
 // existingSts may be nil if it doesn't exist yet.
-func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existingSts *appsv1.StatefulSet, sidecarImage string) (*appsv1.StatefulSet, error) {
-	rackLabels, err := naming.RackLabels(r, c)
+func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existingSts *appsv1.StatefulSet, sidecarImage string, rackOrdinal int) (*appsv1.StatefulSet, error) {
+	rackLabels, err := naming.RackSelectorLabels(r, c)
 	if err != nil {
 		return nil, fmt.Errorf("can't get rack labels: %w", err)
 	}
-	matchLabels := helpers.ShallowCopyMap(rackLabels)
+	rackLabels[naming.RackOrdinalLabel] = strconv.Itoa(rackOrdinal)
 	rackLabels[naming.ScyllaVersionLabel] = c.Spec.Version
+
+	selectorLabels, err := naming.RackSelectorLabels(r, c)
+	if err != nil {
+		return nil, fmt.Errorf("can't get selector labels: %w", err)
+	}
+
+	pvcLabels, err := naming.RackSelectorLabels(r, c)
+	if err != nil {
+		return nil, fmt.Errorf("can't get PVC Template labels: %w", err)
+	}
 
 	placement := r.Placement
 	if placement == nil {
@@ -247,7 +258,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 			// Use a common Headless Service for all StatefulSets
 			ServiceName: naming.HeadlessServiceNameForCluster(c),
 			Selector: &metav1.LabelSelector{
-				MatchLabels: matchLabels,
+				MatchLabels: selectorLabels,
 			},
 			PodManagementPolicy: appsv1.OrderedReadyPodManagement,
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
@@ -569,7 +580,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:   naming.PVCTemplateName,
-						Labels: matchLabels,
+						Labels: pvcLabels,
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
 						AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},

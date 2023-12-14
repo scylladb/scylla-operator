@@ -579,7 +579,7 @@ func TestStatefulSetForRack(t *testing.T) {
 		}
 	}
 
-	newBasicStatefulSetLabels := func() map[string]string {
+	newBasicStatefulSetLabels := func(ordinal int) map[string]string {
 		return map[string]string{
 			"app":                          "scylla",
 			"app.kubernetes.io/managed-by": "scylla-operator",
@@ -587,21 +587,16 @@ func TestStatefulSetForRack(t *testing.T) {
 			"scylla/cluster":               "basic",
 			"scylla/datacenter":            "dc",
 			"scylla/rack":                  "rack",
-			"scylla/rack-ordinal":          "0",
+			"scylla/scylla-version":        "",
+			"scylla/rack-ordinal":          fmt.Sprintf("%d", ordinal),
 		}
-	}
-
-	newBasicStatefulSetLabelsWithVersion := func() map[string]string {
-		m := newBasicStatefulSetLabels()
-		m["scylla/scylla-version"] = ""
-		return m
 	}
 
 	newBasicStatefulSet := func() *appsv1.StatefulSet {
 		return &appsv1.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        "basic-dc-rack",
-				Labels:      newBasicStatefulSetLabelsWithVersion(),
+				Labels:      newBasicStatefulSetLabels(0),
 				Annotations: nil,
 				OwnerReferences: []metav1.OwnerReference{
 					{
@@ -617,11 +612,18 @@ func TestStatefulSetForRack(t *testing.T) {
 			Spec: appsv1.StatefulSetSpec{
 				Replicas: pointer.Ptr(int32(0)),
 				Selector: &metav1.LabelSelector{
-					MatchLabels: newBasicStatefulSetLabels(),
+					MatchLabels: map[string]string{
+						"app":                          "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"app.kubernetes.io/name":       "scylla",
+						"scylla/cluster":               "basic",
+						"scylla/datacenter":            "dc",
+						"scylla/rack":                  "rack",
+					},
 				},
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
-						Labels: newBasicStatefulSetLabelsWithVersion(),
+						Labels: newBasicStatefulSetLabels(0),
 						Annotations: map[string]string{
 							"prometheus.io/port":   "9180",
 							"prometheus.io/scrape": "true",
@@ -961,8 +963,15 @@ func TestStatefulSetForRack(t *testing.T) {
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:   "data",
-							Labels: newBasicStatefulSetLabels(),
+							Name: "data",
+							Labels: map[string]string{
+								"app":                          "scylla",
+								"app.kubernetes.io/managed-by": "scylla-operator",
+								"app.kubernetes.io/name":       "scylla",
+								"scylla/cluster":               "basic",
+								"scylla/datacenter":            "dc",
+								"scylla/rack":                  "rack",
+							},
 						},
 						Spec: corev1.PersistentVolumeClaimSpec{
 							AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
@@ -1216,7 +1225,7 @@ func TestStatefulSetForRack(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := StatefulSetForRack(tc.rack, tc.scyllaCluster, tc.existingStatefulSet, "scylladb/scylla-operator:latest")
+			got, err := StatefulSetForRack(tc.rack, tc.scyllaCluster, tc.existingStatefulSet, "scylladb/scylla-operator:latest", 0)
 
 			if !reflect.DeepEqual(err, tc.expectedError) {
 				t.Fatalf("expected and actual errors differ: %s",

@@ -21,13 +21,7 @@ type Member struct {
 	// Name of the Pod
 	Name string
 	// Namespace of the Pod
-	Namespace string
-	// PodIP IP of the Pod
-	PodIP string
-	// ExternalAddress is an external IP or hostname of a LoadBalancer Service
-	ExternalAddress string
-	// ClusterIP of the member's Service
-	ClusterIP     string
+	Namespace     string
 	Rack          string
 	RackOrdinal   int
 	Datacenter    string
@@ -52,32 +46,9 @@ func NewMember(service *corev1.Service, pod *corev1.Pod, nodesAddressType, clien
 		return nil, fmt.Errorf("can't get rack ordinal from label %q: %w", rackOrdinalString, err)
 	}
 
-	var externalIP string
-	if service.Spec.Type == corev1.ServiceTypeLoadBalancer {
-		if len(service.Status.LoadBalancer.Ingress) == 0 {
-			return nil, fmt.Errorf("LoadBalancer Service %q is missing endpoints in status", naming.ObjRef(service))
-		}
-
-		firstIngress := service.Status.LoadBalancer.Ingress[0]
-		if len(firstIngress.Hostname) != 0 {
-			externalIP = firstIngress.Hostname
-		}
-
-		if len(firstIngress.IP) != 0 {
-			externalIP = firstIngress.IP
-		}
-
-		if len(externalIP) == 0 {
-			return nil, fmt.Errorf("service first ingress status has empty external address")
-		}
-	}
-
 	m := &Member{
 		Namespace:                 service.Namespace,
 		Name:                      service.Name,
-		PodIP:                     pod.Status.PodIP,
-		ClusterIP:                 service.Spec.ClusterIP,
-		ExternalAddress:           externalIP,
 		Rack:                      pod.Labels[naming.RackNameLabel],
 		RackOrdinal:               rackOrdinal,
 		Datacenter:                pod.Labels[naming.DatacenterNameLabel],
@@ -88,26 +59,14 @@ func NewMember(service *corev1.Service, pod *corev1.Pod, nodesAddressType, clien
 		NodesBroadcastAddressType: nodesAddressType,
 	}
 
-	switch nodesAddressType {
-	case scyllav1.BroadcastAddressTypePodIP:
-		m.BroadcastAddress = m.PodIP
-	case scyllav1.BroadcastAddressTypeServiceClusterIP:
-		m.BroadcastAddress = m.ClusterIP
-	case scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress:
-		m.BroadcastAddress = m.ExternalAddress
-	default:
-		return nil, fmt.Errorf("unsupported nodes address type: %q", nodesAddressType)
+	m.BroadcastAddress, err = controllerhelpers.GetScyllaBroadcastAddress(nodesAddressType, service, pod)
+	if err != nil {
+		return nil, fmt.Errorf("can't get node broadcast address: %w", err)
 	}
 
-	switch clientAddressType {
-	case scyllav1.BroadcastAddressTypePodIP:
-		m.BroadcastRPCAddress = m.PodIP
-	case scyllav1.BroadcastAddressTypeServiceClusterIP:
-		m.BroadcastRPCAddress = m.ClusterIP
-	case scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress:
-		m.BroadcastRPCAddress = m.ExternalAddress
-	default:
-		return nil, fmt.Errorf("unsupported clients address type: %q", clientAddressType)
+	m.BroadcastRPCAddress, err = controllerhelpers.GetScyllaBroadcastAddress(clientAddressType, service, pod)
+	if err != nil {
+		return nil, fmt.Errorf("can't get client broadcast address: %w", err)
 	}
 
 	return m, nil
@@ -173,32 +132,13 @@ func (m *Member) GetSeeds(ctx context.Context, coreClient v1.CoreV1Interface, ex
 	res := make([]string, 0, len(externalSeeds)+1)
 	res = append(res, externalSeeds...)
 
-	// Assume nodes share broadcast address type, and it's immutable.
-	switch m.NodesBroadcastAddressType {
-	case scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress:
-		if len(svc.Status.LoadBalancer.Ingress) < 1 {
-			return nil, fmt.Errorf("service %q does not have ingress status, despite external address being set as broadcasted", naming.ObjRef(svc))
-		}
-		if len(svc.Status.LoadBalancer.Ingress[0].IP) != 0 {
-			res = append(res, svc.Status.LoadBalancer.Ingress[0].IP)
-		} else if len(svc.Status.LoadBalancer.Ingress[0].Hostname) != 0 {
-			res = append(res, svc.Status.LoadBalancer.Ingress[0].Hostname)
-		} else {
-			return nil, fmt.Errorf("service %q does not have external address, despite being set as broadcasted", naming.ObjRef(svc))
-		}
-	case scyllav1.BroadcastAddressTypeServiceClusterIP:
-		if svc.Spec.ClusterIP == corev1.ClusterIPNone {
-			return nil, fmt.Errorf("service %q does not have ClusterIP address, despite being set as broadcasted", naming.ObjRef(svc))
-		}
-		res = append(res, svc.Spec.ClusterIP)
-	case scyllav1.BroadcastAddressTypePodIP:
-		if len(pod.Status.PodIP) == 0 {
-			return nil, fmt.Errorf("pod %q does not have IP address, despite being set as broadcasted", naming.ObjRef(pod))
-		}
-		res = append(res, pod.Status.PodIP)
-	default:
-		return nil, fmt.Errorf("unsupported node broadcast address type %q", m.NodesBroadcastAddressType)
+	// Assume nodes share broadcast address type and it's immutable.
+	localSeed, err := controllerhelpers.GetScyllaBroadcastAddress(m.NodesBroadcastAddressType, svc, pod)
+	if err != nil {
+		return nil, fmt.Errorf("can't get node broadcast address for service %q: %w", naming.ObjRef(svc), err)
 	}
+
+	res = append(res, localSeed)
 
 	return res, nil
 }

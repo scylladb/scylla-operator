@@ -3,7 +3,6 @@ kind: ConfigMap
 metadata:
   name: haproxy-ingress
 data:
-  hard-stop-after: "66s"
   scale-server-slots: "2"
   timeout-client: "61"
   timeout-connect: "7s"

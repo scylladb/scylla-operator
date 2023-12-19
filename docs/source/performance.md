@@ -69,7 +69,7 @@ metadata:
   name: guaranteed-cluster
   namespace: scylla
 spec:
-  agentVersion: 2.5.2
+  agentVersion: 3.2.5
   version: 5.4.0
   datacenter:
     name: us-east-1

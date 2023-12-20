@@ -38,6 +38,11 @@ func ServiceNameFromPod(pod *corev1.Pod) string {
 	return pod.Name
 }
 
+func PodNameFromService(svc *corev1.Service) string {
+	// Pod and its corresponding Service have the same name
+	return svc.Name
+}
+
 func AgentAuthTokenSecretName(clusterName string) string {
 	return fmt.Sprintf("%s-auth-token", clusterName)
 }

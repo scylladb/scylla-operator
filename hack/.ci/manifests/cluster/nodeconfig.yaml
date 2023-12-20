@@ -14,9 +14,7 @@ spec:
       - prjquota
   placement:
     nodeSelector:
+      kubernetes.io/os: linux
       scylla.scylladb.com/node-type: scylla
     tolerations:
-    - effect: NoSchedule
-      key: role
-      operator: Equal
-      value: scylla-clusters
+    - operator: Exists

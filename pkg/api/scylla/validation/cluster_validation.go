@@ -190,7 +190,7 @@ func ValidateNodeService(nodeService *scyllav1.NodeServiceTemplate, fldPath *fie
 	}
 
 	if nodeService.LoadBalancerClass != nil && len(*nodeService.LoadBalancerClass) != 0 {
-		for _, msg := range apimachineryvalidation.NameIsDNSSubdomain(*nodeService.LoadBalancerClass, false) {
+		for _, msg := range apimachineryutilvalidation.IsQualifiedName(*nodeService.LoadBalancerClass) {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("loadBalancerClass"), *nodeService.LoadBalancerClass, msg))
 		}
 	}

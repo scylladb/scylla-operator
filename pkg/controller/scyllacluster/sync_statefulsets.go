@@ -145,7 +145,7 @@ func (scc *Controller) beforeUpgrade(ctx context.Context, sc *scyllav1.ScyllaClu
 	klog.V(2).InfoS("Running pre-upgrade hook", "ScyllaCluster", klog.KObj(sc))
 	defer klog.V(2).InfoS("Finished running pre-upgrade hook", "ScyllaCluster", klog.KObj(sc))
 
-	hosts, err := controllerhelpers.GetRequiredScyllaHosts(sc, services)
+	hosts, err := controllerhelpers.GetRequiredScyllaHosts(sc, services, scc.podLister)
 	if err != nil {
 		return true, err
 	}
@@ -184,7 +184,7 @@ func (scc *Controller) afterUpgrade(ctx context.Context, sc *scyllav1.ScyllaClus
 	klog.V(2).InfoS("Running post-upgrade hook", "ScyllaCluster", klog.KObj(sc))
 	defer klog.V(2).InfoS("Finished running post-upgrade hook", "ScyllaCluster", klog.KObj(sc))
 
-	hosts, err := controllerhelpers.GetRequiredScyllaHosts(sc, services)
+	hosts, err := controllerhelpers.GetRequiredScyllaHosts(sc, services, scc.podLister)
 	if err != nil {
 		return err
 	}
@@ -230,8 +230,13 @@ func (scc *Controller) beforeNodeUpgrade(ctx context.Context, sc *scyllav1.Scyll
 	}
 
 	// Drain the node.
+	podName := naming.PodNameFromService(svc)
+	pod, err := scc.podLister.Pods(sc.Namespace).Get(podName)
+	if err != nil {
+		return false, fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sc.Namespace, podName), err)
+	}
 
-	host, err := controllerhelpers.GetScyllaIPFromService(svc)
+	host, err := controllerhelpers.GetScyllaHost(sc, svc, pod)
 	if err != nil {
 		return true, err
 	}
@@ -294,7 +299,6 @@ func (scc *Controller) beforeNodeUpgrade(ctx context.Context, sc *scyllav1.Scyll
 	// https://github.com/kubernetes/kubernetes/issues/67250
 	// Kubernetes can't evict pods when DesiredHealthy == 0 and it's already down, so we need to use DELETE
 	// to succeed even when having just one replica.
-	podName := svcName
 	klog.V(2).InfoS("Deleting Pod", "ScyllaCluster", klog.KObj(sc), "Pod", naming.ManualRef(sc.Namespace, podName))
 	err = scc.kubeClient.CoreV1().Pods(sc.Namespace).Delete(ctx, podName, metav1.DeleteOptions{})
 	if err != nil {
@@ -311,7 +315,19 @@ func (scc *Controller) beforeNodeUpgrade(ctx context.Context, sc *scyllav1.Scyll
 }
 
 func (scc *Controller) afterNodeUpgrade(ctx context.Context, sc *scyllav1.ScyllaCluster, sts *appsv1.StatefulSet, ordinal int32, services map[string]*corev1.Service) error {
-	host, err := controllerhelpers.GetScyllaHost(sts.Name, ordinal, services)
+	svcName := fmt.Sprintf("%s-%d", sts.Name, ordinal)
+	svc, ok := services[svcName]
+	if !ok {
+		return fmt.Errorf("missing service %q", naming.ManualRef(sc.Namespace, svcName))
+	}
+
+	podName := naming.PodNameFromService(svc)
+	pod, err := scc.podLister.Pods(sc.Namespace).Get(podName)
+	if err != nil {
+		return fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sc.Namespace, podName), err)
+	}
+
+	host, err := controllerhelpers.GetScyllaHost(sc, svc, pod)
 	if err != nil {
 		return err
 	}

@@ -58,6 +58,15 @@ securityContext: {}
 # won't be HA; it won't react during operator upgrades or disruptions.
 webhookServerReplicas: 2
 
+
+webhookServerResources:
+  requests:
+    cpu: 10m
+    memory: 20Mi
+  limits:
+    cpu: 50m
+    memory: 64Mi
+
 # Node selector for Webhook Server pods
 webhookServerNodeSelector: { }
 

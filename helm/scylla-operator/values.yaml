@@ -58,7 +58,7 @@ securityContext: {}
 # won't be HA; it won't react during operator upgrades or disruptions.
 webhookServerReplicas: 2
 
-
+# Resources allocated to Webhook Server pods
 webhookServerResources:
   requests:
     cpu: 10m

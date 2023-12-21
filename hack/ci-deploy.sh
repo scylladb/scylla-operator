@@ -32,10 +32,11 @@ ARTIFACTS_DIR=${ARTIFACTS_DIR:-$( mktemp -d )}
 OPERATOR_IMAGE_REF=${1}
 
 deploy_dir=${ARTIFACTS_DIR}/deploy
-mkdir -p "${deploy_dir}/"{operator,manager,prometheus-operator,haproxy-ingress}
+mkdir -p "${deploy_dir}/"{operator,manager,scylla-local-csi-driver,prometheus-operator,haproxy-ingress}
 
 cp ./deploy/manager/dev/*.yaml "${deploy_dir}/manager"
 cp ./deploy/operator/*.yaml "${deploy_dir}/operator"
+cp ./deploy/scylla-local-csi-driver/*.yaml "${deploy_dir}/scylla-local-csi-driver"
 cp ./examples/third-party/prometheus-operator/*.yaml "${deploy_dir}/prometheus-operator"
 cp ./examples/third-party/haproxy-ingress/*.yaml "${deploy_dir}/haproxy-ingress"
 cp ./examples/common/cert-manager.yaml "${deploy_dir}/"
@@ -54,6 +55,7 @@ fi
 kubectl_create -n prometheus-operator -f "${deploy_dir}/prometheus-operator"
 kubectl_create -n haproxy-ingress -f "${deploy_dir}/haproxy-ingress"
 kubectl_create -f "${deploy_dir}"/cert-manager.yaml
+kubectl_create -n scylla-local-csi-driver -f "${deploy_dir}/scylla-local-csi-driver"
 
 # Wait for cert-manager
 kubectl wait --for condition=established --timeout=60s crd/certificates.cert-manager.io crd/issuers.cert-manager.io
@@ -64,6 +66,9 @@ done
 wait-for-object-creation cert-manager secret/cert-manager-webhook-ca
 
 kubectl_create -f "${deploy_dir}"/operator
+
+# Wait for local-csi-driver so manager can get the PVC
+kubectl -n scylla-local-csi-driver rollout status --timeout=5m daemonset.apps/local-csi-driver
 
 # Manager needs scylla CRD registered and the webhook running
 kubectl wait --for condition=established crd/scyllaclusters.scylla.scylladb.com

@@ -82,6 +82,7 @@ scylla:
     members: 1
     storage:
       capacity: 5Gi
+      storageClassName: scylladb-local-xfs
     resources:
       limits:
         cpu: 1

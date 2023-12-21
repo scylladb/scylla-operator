@@ -1,4 +1,4 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: local-csi-driver
+  name: scylla-local-csi-driver

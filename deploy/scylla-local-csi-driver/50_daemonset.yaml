@@ -2,7 +2,7 @@ kind: DaemonSet
 apiVersion: apps/v1
 metadata:
   name: local-csi-driver
-  namespace: local-csi-driver
+  namespace: scylla-local-csi-driver
   labels:
     app.kubernetes.io/name: local-csi-driver
 spec:

@@ -458,10 +458,14 @@ update-deploy: tmp_dir:=$(shell mktemp -d)
 update-deploy:
 	$(call generate-operator-manifests,helm/deploy/operator.yaml,./deploy/operator,$(tmp_dir))
 	$(call concat-manifests,$(sort $(wildcard deploy/operator/*.yaml)),./deploy/operator.yaml)
+
 	$(call generate-manager-manifests-prod,helm/deploy/manager_prod.yaml,./deploy/manager/prod,$(tmp_dir))
 	$(call concat-manifests,$(sort $(wildcard ./deploy/manager/prod/*.yaml)),./deploy/manager-prod.yaml)
+
 	$(call generate-manager-manifests-dev,./deploy/manager/dev)
 	$(call concat-manifests,$(sort $(wildcard ./deploy/manager/dev/*.yaml)),./deploy/manager-dev.yaml)
+
+	$(call concat-manifests,$(sort $(wildcard ./deploy/scylla-local-csi-driver/*.yaml)),./deploy/scylla-local-csi-driver.yaml)
 .PHONY: update-deploy
 
 verify-deploy: tmp_dir :=$(shell mktemp -d)
@@ -485,6 +489,9 @@ verify-deploy:
 	$(diff) -r '$(tmp_dir)'/manager/dev deploy/manager/dev
 	$(call concat-manifests,$(sort $(wildcard ./deploy/manager/dev/*.yaml)),'$(tmp_dir)'/manager-dev.yaml)
 	$(diff) '$(tmp_dir)'/manager-dev.yaml deploy/manager-dev.yaml
+
+	$(call concat-manifests,$(sort $(wildcard ./deploy/scylla-local-csi-driver/*.yaml)),'$(tmp_dir)'/scylla-local-csi-driver.yaml)
+	$(diff) '$(tmp_dir)'/scylla-local-csi-driver.yaml deploy/scylla-local-csi-driver.yaml
 
 .PHONY: verify-deploy
 

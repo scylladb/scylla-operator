@@ -5,7 +5,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: local-csi-driver
-  namespace: local-csi-driver
+  namespace: scylla-local-csi-driver
 roleRef:
   kind: ClusterRole
   name: scylladb:csi-external-provisioner

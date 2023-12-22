@@ -9,6 +9,7 @@ import (
 	"sort"
 
 	o "github.com/onsi/gomega"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -28,78 +29,27 @@ import (
 )
 
 func WaitForServiceAccount(ctx context.Context, c corev1client.CoreV1Interface, namespace, name string) (*corev1.ServiceAccount, error) {
-	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
-	lw := &cache.ListWatch{
-		ListFunc: helpers.UncachedListFunc(func(options metav1.ListOptions) (runtime.Object, error) {
-			options.FieldSelector = fieldSelector
-			return c.ServiceAccounts(namespace).List(ctx, options)
-		}),
-		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-			options.FieldSelector = fieldSelector
-			return c.ServiceAccounts(namespace).Watch(ctx, options)
-		},
-	}
-	event, err := watchtools.UntilWithSync(
+	return controllerhelpers.WaitForServiceAccountState(
 		ctx,
-		lw,
-		&corev1.ServiceAccount{},
-		nil,
-		func(e watch.Event) (bool, error) {
-			switch t := e.Type; t {
-			case watch.Added, watch.Modified:
-				return true, nil
-			case watch.Deleted, watch.Bookmark:
-				return false, nil
-			case watch.Error:
-				return true, apierrors.FromObject(e.Object)
-			default:
-				return true, fmt.Errorf("unexpected event type %v", t)
-			}
+		c.ServiceAccounts(namespace),
+		name,
+		controllerhelpers.WaitForStateOptions{},
+		func(sa *corev1.ServiceAccount) (bool, error) {
+			return true, nil
 		},
 	)
-	if err != nil {
-		return nil, err
-	}
-
-	return event.Object.(*corev1.ServiceAccount), nil
 }
 
 func WaitForServiceAccountTokenSecret(ctx context.Context, c corev1client.CoreV1Interface, namespace, name string) (*corev1.Secret, error) {
-	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
-	lw := &cache.ListWatch{
-		ListFunc: helpers.UncachedListFunc(func(options metav1.ListOptions) (runtime.Object, error) {
-			options.FieldSelector = fieldSelector
-			return c.Secrets(namespace).List(ctx, options)
-		}),
-		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-			options.FieldSelector = fieldSelector
-			return c.Secrets(namespace).Watch(ctx, options)
-		},
-	}
-	event, err := watchtools.UntilWithSync(
+	return controllerhelpers.WaitForSecretState(
 		ctx,
-		lw,
-		&corev1.Secret{},
-		nil,
-		func(e watch.Event) (bool, error) {
-			switch t := e.Type; t {
-			case watch.Added, watch.Modified:
-				s := e.Object.(*corev1.Secret)
-				return len(s.Data[corev1.ServiceAccountTokenKey]) > 0, nil
-			case watch.Deleted, watch.Bookmark:
-				return false, nil
-			case watch.Error:
-				return true, apierrors.FromObject(e.Object)
-			default:
-				return true, fmt.Errorf("unexpected event type %v", t)
-			}
+		c.Secrets(namespace),
+		name,
+		controllerhelpers.WaitForStateOptions{},
+		func(s *corev1.Secret) (bool, error) {
+			return len(s.Data[corev1.ServiceAccountTokenKey]) > 0, nil
 		},
 	)
-	if err != nil {
-		return nil, err
-	}
-
-	return event.Object.(*corev1.Secret), nil
 }
 
 func WaitForObjectDeletion(ctx context.Context, dynamicClient dynamic.Interface, resource schema.GroupVersionResource, namespace, name string, uid *types.UID) error {

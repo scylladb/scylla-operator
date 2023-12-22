@@ -16,6 +16,7 @@ import (
 	o "github.com/onsi/gomega"
 	"github.com/scylladb/gocqlx/v2"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -74,7 +75,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		waitCtx, waitCtxCancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtxCancel()
 
-		sc, err = utils.WaitForScyllaClusterState(waitCtx, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
@@ -167,7 +168,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		defer waitCtxCancel()
 
 		svcName := naming.MemberServiceName(sc.Spec.Datacenter.Racks[0], sc, 0)
-		svc, err := utils.WaitForServiceState(waitCtx, f.KubeClient().CoreV1().Services(sc.Namespace), svcName, utils.WaitForStateOptions{}, func(svc *corev1.Service) (bool, error) {
+		svc, err := controllerhelpers.WaitForServiceState(waitCtx, f.KubeClient().CoreV1().Services(sc.Namespace), svcName, controllerhelpers.WaitForStateOptions{}, func(svc *corev1.Service) (bool, error) {
 			return svc != nil, nil
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -177,7 +178,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		}
 
 		framework.By("Waiting for ScyllaCluster to deploy")
-		sc, err = utils.WaitForScyllaClusterState(waitCtx, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
@@ -408,7 +409,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		waitCtx, waitCtxCancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtxCancel()
 
-		sc, err = utils.WaitForScyllaClusterState(waitCtx, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)

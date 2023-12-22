@@ -12,6 +12,7 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
@@ -100,11 +101,11 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		framework.By("Waiting for the NodeConfig to deploy")
 		ctx1, ctx1Cancel := context.WithTimeout(ctx, nodeConfigRolloutTimeout)
 		defer ctx1Cancel()
-		nc, err = utils.WaitForNodeConfigState(
+		nc, err = controllerhelpers.WaitForNodeConfigState(
 			ctx1,
 			f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs(),
 			nc.Name,
-			utils.WaitForStateOptions{TolerateDelete: false},
+			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
 			utils.IsNodeConfigRolledOut,
 			utils.IsNodeConfigDoneWithNodeTuningFunc(matchingNodes),
 		)
@@ -193,7 +194,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		ctx1, ctx1Cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer ctx1Cancel()
 		podName := fmt.Sprintf("%s-%d", naming.StatefulSetNameForRack(sc.Spec.Datacenter.Racks[0], sc), 0)
-		pod, err := utils.WaitForPodState(ctx1, f.KubeClient().CoreV1().Pods(sc.Namespace), podName, utils.WaitForStateOptions{}, func(p *corev1.Pod) (bool, error) {
+		pod, err := controllerhelpers.WaitForPodState(ctx1, f.KubeClient().CoreV1().Pods(sc.Namespace), podName, controllerhelpers.WaitForStateOptions{}, func(p *corev1.Pod) (bool, error) {
 			return true, nil
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -202,7 +203,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		ctx2, ctx2Cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer ctx2Cancel()
 		src := &internalapi.SidecarRuntimeConfig{}
-		cm, err := utils.WaitForConfigMapState(ctx2, f.KubeClient().CoreV1().ConfigMaps(sc.Namespace), cmName, utils.WaitForStateOptions{}, func(cm *corev1.ConfigMap) (bool, error) {
+		cm, err := controllerhelpers.WaitForConfigMapState(ctx2, f.KubeClient().CoreV1().ConfigMaps(sc.Namespace), cmName, controllerhelpers.WaitForStateOptions{}, func(cm *corev1.ConfigMap) (bool, error) {
 			if cm.Data == nil {
 				return false, nil
 			}
@@ -243,11 +244,11 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		framework.By("Waiting for the NodeConfig to deploy")
 		ctx3, ctx3Cancel := context.WithTimeout(ctx, nodeConfigRolloutTimeout)
 		defer ctx3Cancel()
-		nc, err = utils.WaitForNodeConfigState(
+		nc, err = controllerhelpers.WaitForNodeConfigState(
 			ctx3,
 			f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs(),
 			nc.Name,
-			utils.WaitForStateOptions{TolerateDelete: false},
+			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
 			utils.IsNodeConfigRolledOut,
 			utils.IsNodeConfigDoneWithNodeTuningFunc(matchingNodes),
 		)
@@ -258,7 +259,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", sc.ResourceVersion)
 		ctx4, ctx4Cancel := utils.ContextForRollout(ctx, sc)
 		defer ctx4Cancel()
-		sc, err = utils.WaitForScyllaClusterState(ctx4, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		sc, err = controllerhelpers.WaitForScyllaClusterState(ctx4, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Verifying ConfigMap content")

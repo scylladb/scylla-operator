@@ -268,7 +268,7 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 		framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", sc.ResourceVersion)
 		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx1Cancel()
-		sc, err = utils.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
@@ -329,7 +329,7 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 		framework.By("Waiting for the PVC to be replaced")
 		waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx2Cancel()
-		pvc, err = utils.WaitForPVCState(waitCtx2, f.KubeClient().CoreV1(), pvc.Namespace, pvc.Name, utils.WaitForStateOptions{TolerateDelete: true}, func(freshPVC *corev1.PersistentVolumeClaim) (bool, error) {
+		pvc, err = controllerhelpers.WaitForPVCState(waitCtx2, f.KubeClient().CoreV1().PersistentVolumeClaims(pvc.Namespace), pvc.Name, controllerhelpers.WaitForStateOptions{TolerateDelete: true}, func(freshPVC *corev1.PersistentVolumeClaim) (bool, error) {
 			return freshPVC.UID != pvc.UID, nil
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -337,7 +337,7 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 		framework.By("Waiting for the ScyllaCluster to observe the degradation")
 		waitCtx3, waitCtx3Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx3Cancel()
-		sc, err = utils.WaitForScyllaClusterState(waitCtx3, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, func(sc *scyllav1.ScyllaCluster) (bool, error) {
+		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx3, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, func(sc *scyllav1.ScyllaCluster) (bool, error) {
 			rolledOut, err := utils.IsScyllaClusterRolledOut(sc)
 			return !rolledOut, err
 		})
@@ -346,7 +346,7 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 		framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", sc.ResourceVersion)
 		waitCtx4, waitCtx4Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx4Cancel()
-		sc, err = utils.WaitForScyllaClusterState(waitCtx4, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx4, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)

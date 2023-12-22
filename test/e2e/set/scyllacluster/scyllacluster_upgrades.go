@@ -9,6 +9,7 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -57,7 +58,7 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", sc.ResourceVersion)
 			waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
 			defer waitCtx1Cancel()
-			sc, err = utils.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+			sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			verifyScyllaCluster(ctx, f.KubeClient(), sc)
@@ -91,7 +92,7 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			framework.By("Waiting for the ScyllaCluster to re-deploy")
 			waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc)
 			defer waitCtx2Cancel()
-			sc, err = utils.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+			sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			verifyScyllaCluster(ctx, f.KubeClient(), sc)

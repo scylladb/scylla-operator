@@ -46,8 +46,17 @@ func TestApplyStatefulSet(t *testing.T) {
 			},
 			Spec: appsv1.StatefulSetSpec{
 				Replicas: pointer.Ptr(int32(3)),
+				Selector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"foo": "bar",
+					},
+				},
 				Template: corev1.PodTemplateSpec{
-					ObjectMeta: metav1.ObjectMeta{},
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: map[string]string{
+							"foo": "bar",
+						},
+					},
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
 							{
@@ -492,6 +501,93 @@ func TestApplyStatefulSet(t *testing.T) {
 			expectedChanged: true,
 			expectedErr:     nil,
 			expectedEvents:  []string{"Normal StatefulSetUpdated StatefulSet default/test updated"},
+		},
+		{
+			name: "deletes and creates the StatefulSet when selector is changed and still matches the old pods",
+			existing: []runtime.Object{
+				func() *appsv1.StatefulSet {
+					sts := newSts()
+					sts.Spec.Template.Labels = map[string]string{
+						"foo": "bar",
+						"bar": "foo",
+					}
+					sts.Spec.Selector = &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"foo": "bar",
+							"bar": "foo",
+						},
+					}
+					return sts
+				}(),
+			},
+			required: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.Template.Labels = map[string]string{
+					"foo": "bar",
+					"bar": "foo",
+				}
+				sts.Spec.Selector = &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"foo": "bar",
+					},
+				}
+				return sts
+			}(),
+			expectedSts: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.Template.Labels = map[string]string{
+					"foo": "bar",
+					"bar": "foo",
+				}
+				sts.Spec.Selector = &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"foo": "bar",
+					},
+				}
+				utilruntime.Must(SetHashAnnotation(sts))
+				return sts
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents: []string{
+				"Normal StatefulSetDeleted StatefulSet default/test deleted",
+				"Normal StatefulSetCreated StatefulSet default/test created",
+			},
+		},
+		{
+			name: "apply fails when StatefulSet selector differs and existing Pod labels doesn't match new selector",
+			existing: []runtime.Object{
+				func() *appsv1.StatefulSet {
+					sts := newSts()
+					sts.Spec.Template.Labels = map[string]string{
+						"foo": "bar",
+					}
+					sts.Spec.Selector = &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"foo": "bar",
+						},
+					}
+					return sts
+				}(),
+			},
+			required: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.Template.Labels = map[string]string{
+					"foo": "bar",
+					"bar": "foo",
+				}
+				sts.Spec.Selector = &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"foo": "bar",
+						"bar": "foo",
+					},
+				}
+				return sts
+			}(),
+			expectedSts:     nil,
+			expectedChanged: false,
+			expectedErr:     fmt.Errorf("can't get recreate reason: %w", fmt.Errorf(`required StatefulSet selector "bar=foo,foo=bar" doesn't match existing Pod Labels set map[foo:bar]`)),
+			expectedEvents:  nil,
 		},
 	}
 

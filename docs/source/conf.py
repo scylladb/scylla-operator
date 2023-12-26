@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
-import os
-import sys
 from datetime import date
 
 from sphinx_scylladb_theme.utils import multiversion_regex_builder
-sys.path.insert(0, os.path.abspath('./_ext'))
 
 # -- General configuration
 
@@ -19,7 +16,7 @@ extensions = [
     'sphinx_scylladb_theme',
     'sphinx_multiversion',
     "sphinx_sitemap",
-    "scylladb_markdown",
+    "sphinx_scylladb_markdown",
     "sphinx_design"
 ]
 

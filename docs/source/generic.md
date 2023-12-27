@@ -77,7 +77,7 @@ kubectl -n scylla-operator logs deployment.apps/scylla-operator
 
 Now that the operator is running, we can create an instance of a Scylla cluster by creating an instance of the `clusters.scylla.scylladb.com` resource.
 Some of that resource's values are configurable, so feel free to browse `cluster.yaml` and tweak the settings to your liking.
-Full details for all the configuration options can be found in the [Scylla Cluster CRD documentation](scylla-cluster-crd.md).
+Full details for all the configuration options can be found in the [Scylla Cluster CRD documentation](api-reference/groups/scylla.scylladb.com/scyllaclusters.rst).
 
 When you are ready to create a Scylla cluster, simply run:
 

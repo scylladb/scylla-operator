@@ -11,33 +11,67 @@ import (
 )
 
 var TemplateFuncs template.FuncMap = template.FuncMap{
-	"toYAML":   marshalYAML,
-	"indent":   indent,
-	"nindent":  nindent,
-	"toBytes":  toBytes,
-	"toBase64": toBase64,
+	"toYAML":     MarshalYAML,
+	"indent":     Indent,
+	"nindent":    NIndent,
+	"indentNext": IndentNext,
+	"toBytes":    ToBytes,
+	"toBase64":   ToBase64,
+	"map":        MakeMap,
+	"repeat":     Repeat,
 }
 
-func marshalYAML(v any) (string, error) {
+func MarshalYAML(v any) (string, error) {
 	bytes, err := yaml.Marshal(v)
 	return strings.TrimSpace(string(bytes)), err
 }
 
-func indent(spaceCount int, s string) string {
+func Indent(spaceCount int, s string) string {
 	spaces := strings.Repeat(" ", spaceCount)
 	return spaces + strings.Replace(s, "\n", "\n"+spaces, -1)
 }
 
-func nindent(spaceCount int, s string) string {
-	return "\n" + indent(spaceCount, s)
+func NIndent(spaceCount int, s string) string {
+	return "\n" + Indent(spaceCount, s)
 }
 
-func toBytes(s string) []byte {
+func IndentNext(spaceCount int, s string) string {
+	parts := strings.SplitAfterN(s, "\n", 2)
+	if len(parts) == 1 {
+		return parts[0]
+	}
+	return parts[0] + Indent(spaceCount, parts[1])
+}
+
+func Repeat(s string, count int) string {
+	var sb strings.Builder
+	sb.Grow(len(s) * count)
+	for i := 0; i < count; i++ {
+		sb.WriteString(s)
+	}
+	return sb.String()
+}
+
+func ToBytes(s string) []byte {
 	return []byte(s)
 }
 
-func toBase64(data []byte) string {
+func ToBase64(data []byte) string {
 	return base64.StdEncoding.EncodeToString(data)
+}
+
+func MakeMap(kvs ...any) (map[any]any, error) {
+	count := len(kvs)
+	if count%2 != 0 {
+		return nil, fmt.Errorf("map length %d isn't dividable into tuples", count)
+	}
+
+	m := make(map[any]any, count%2)
+	for i := 0; i+1 < count; i += 2 {
+		m[kvs[i]] = kvs[i+1]
+	}
+
+	return m, nil
 }
 
 func RenderTemplate(tmpl *template.Template, inputs any) ([]byte, error) {

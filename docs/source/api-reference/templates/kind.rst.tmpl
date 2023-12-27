@@ -1,0 +1,69 @@
+{{ with $title := printf "%s (%s)" .Names.Kind .APIVersion -}}
+{{ $title }}
+{{ repeat "=" (len $title) }}
+{{- end }}
+
+| **APIVersion**: {{ .APIVersion }}
+| **Kind**: {{ .Names.Kind }}
+| **PluralName**: {{ .Names.Plural }}
+| **SingularName**: {{ .Names.Singular }}
+| **Scope**: {{ .Scope }}
+| **ListKind**: {{ .Names.ListKind }}
+| **Served**: {{ .Served }}
+| **Storage**: {{ .Storage }}
+
+Description
+-----------
+{{ .Property.Description }}
+
+Specification
+-------------
+{{- define "nestedLink" }}
+
+{{- end }}
+{{- define "renderProps" }}
+    {{- with .props }}
+        {{- if or .Properties }}
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+
+            {{- range $key, $value := .Properties }}
+                {{- with objectLink $key $value }}
+   * - :ref:`{{ $key }}<api-{{ $.root.Group }}-{{ $.root.Names.Plural }}-{{ $.root.Version }}-{{ $.parent }}{{ . }}>`
+                {{- else }}
+   * - {{ $key }}
+                {{- end }}
+     - {{ $value.Type }}{{ if $value.Items }} ({{ $value.Items.Schema.Type }}){{ end }}
+     - {{ $value.Description | indentNext 7 }}
+            {{- end }}
+        {{- end }}
+    {{- end }}
+{{- end }}
+
+{{- template "renderProps" map "root" $ "parent" "" "props" .Property }}
+
+{{- range $key, $value := .NestedProperties }}
+
+.. _api-{{ $.Group }}-{{ $.Names.Plural }}-{{ $.Version }}-{{ $key }}:
+
+{{ $key }}
+{{ repeat "^" (len $key) }}
+
+Description
+"""""""""""
+{{ $value.Description }}
+
+Type
+""""
+{{ $value.Type }}{{ if eq $value.Type "array" }} ({{ $value.Items.Schema.Type }}){{ end }}
+{{ "" }}
+    {{- if eq $value.Type "object" }}
+        {{- template "renderProps"  map "root" $ "parent" $key "props" $value }}
+    {{- end }}
+{{- end }}

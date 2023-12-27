@@ -16,6 +16,21 @@ if [ -z ${SO_IMAGE+x} ]; then
   exit 2
 fi
 
+if [ -z ${SO_SCYLLACLUSTER_NODE_SERVICE_TYPE+x} ]; then
+  echo "SO_SCYLLACLUSTER_NODE_SERVICE_TYPE can't be empty" > /dev/stderr
+  exit 2
+fi
+
+if [ -z ${SO_SCYLLACLUSTER_NODES_BROADCAST_ADDRESS_TYPE+x} ]; then
+  echo "SO_SCYLLACLUSTER_NODES_BROADCAST_ADDRESS_TYPE can't be empty" > /dev/stderr
+  exit 2
+fi
+
+if [ -z ${SO_SCYLLACLUSTER_CLIENTS_BROADCAST_ADDRESS_TYPE+x} ]; then
+  echo "SO_SCYLLACLUSTER_CLIENTS_BROADCAST_ADDRESS_TYPE can't be empty" > /dev/stderr
+  exit 2
+fi
+
 if [ -z ${ARTIFACTS+x} ]; then
   echo "ARTIFACTS can't be empty" > /dev/stderr
   exit 2
@@ -156,7 +171,7 @@ ingress_controller_address="$( kubectl -n haproxy-ingress get svc haproxy-ingres
 
 kubectl create -n e2e pdb my-pdb --selector='app=e2e' --min-available=1 --dry-run=client -o yaml | kubectl_create -f -
 
-kubectl -n e2e run --restart=Never --image="${SO_IMAGE}" --labels='app=e2e' --command=true e2e -- bash -euExo pipefail -O inherit_errexit -c "function wait-for-artifacts { touch /tmp/done && until [[ -f '/tmp/exit' ]]; do sleep 1; done } && trap wait-for-artifacts EXIT && mkdir /tmp/artifacts && scylla-operator-tests run '${SO_SUITE}' --loglevel=2 --color=false --artifacts-dir=/tmp/artifacts --feature-gates='${SCYLLA_OPERATOR_FEATURE_GATES}' --ingress-controller-address='${ingress_controller_address}' --ingress-controller-ingress-class-name='${ingress_class_name}' --ingress-controller-custom-annotations='${ingress_custom_annotations}'"
+kubectl -n e2e run --restart=Never --image="${SO_IMAGE}" --labels='app=e2e' --command=true e2e -- bash -euExo pipefail -O inherit_errexit -c "function wait-for-artifacts { touch /tmp/done && until [[ -f '/tmp/exit' ]]; do sleep 1; done } && trap wait-for-artifacts EXIT && mkdir /tmp/artifacts && scylla-operator-tests run '${SO_SUITE}' --loglevel=2 --color=false --artifacts-dir=/tmp/artifacts --feature-gates='${SCYLLA_OPERATOR_FEATURE_GATES}' --ingress-controller-address='${ingress_controller_address}' --ingress-controller-ingress-class-name='${ingress_class_name}' --ingress-controller-custom-annotations='${ingress_custom_annotations}' --scyllacluster-node-service-type='${SO_SCYLLACLUSTER_NODE_SERVICE_TYPE}' --scyllacluster-nodes-broadcast-address-type='${SO_SCYLLACLUSTER_NODES_BROADCAST_ADDRESS_TYPE}' --scyllacluster-clients-broadcast-address-type='${SO_SCYLLACLUSTER_CLIENTS_BROADCAST_ADDRESS_TYPE}'"
 kubectl -n e2e wait --for=condition=Ready pod/e2e
 
 # Setup artifacts transfer when finished and unblock the e2e pod when done.

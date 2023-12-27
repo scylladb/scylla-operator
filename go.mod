@@ -12,7 +12,7 @@ require (
 	github.com/containers/image/v5 v5.29.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/evanphx/json-patch v5.6.0+incompatible
-	github.com/go-git/go-git/v5 v5.10.1
+	github.com/go-git/go-git/v5 v5.11.0
 	github.com/go-openapi/errors v0.20.4
 	github.com/go-openapi/runtime v0.26.0
 	github.com/go-openapi/strfmt v0.21.7

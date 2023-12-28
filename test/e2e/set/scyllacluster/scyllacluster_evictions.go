@@ -7,7 +7,6 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
@@ -23,7 +22,7 @@ var _ = g.Describe("ScyllaCluster evictions", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 		sc.Spec.Datacenter.Racks[0].Members = 2
 
 		framework.By("Creating a ScyllaCluster")
@@ -37,7 +36,10 @@ var _ = g.Describe("ScyllaCluster evictions", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
-		hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(2))
 		di := insertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()

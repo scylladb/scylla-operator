@@ -16,8 +16,9 @@ func ParseObjectTemplateOrDie[T runtime.Object](name, tmplString string) assets.
 }
 
 var (
-	//go:embed "basic.scyllacluster.yaml"
-	BasicScyllaCluster ScyllaClusterBytes
+	//go:embed "scyllacluster.yaml.tmpl"
+	ScyllaClusterTemplateString string
+	ScyllaClusterTemplate       = ParseObjectTemplateOrDie[*scyllav1.ScyllaCluster]("scyllacluster", ScyllaClusterTemplateString)
 
 	//go:embed "nodeconfig.yaml"
 	NodeConfig NodeConfigBytes
@@ -26,15 +27,6 @@ var (
 	scyllaDBMonitoringTemplateString string
 	ScyllaDBMonitoringTemplate       = ParseObjectTemplateOrDie[*scyllav1alpha1.ScyllaDBMonitoring]("scylladbmonitoring", scyllaDBMonitoringTemplateString)
 )
-
-type ScyllaClusterBytes []byte
-
-func (sc ScyllaClusterBytes) ReadOrFail() *scyllav1.ScyllaCluster {
-	obj, _, err := scheme.Codecs.UniversalDeserializer().Decode(sc, nil, nil)
-	o.Expect(err).NotTo(o.HaveOccurred())
-
-	return obj.(*scyllav1.ScyllaCluster)
-}
 
 type NodeConfigBytes []byte
 

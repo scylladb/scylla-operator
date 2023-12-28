@@ -8,10 +8,8 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -24,7 +22,7 @@ var _ = g.Describe("ScyllaCluster HostID", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 		sc.Spec.Datacenter.Racks[0].Members = 2
 
 		framework.By("Creating a ScyllaCluster")
@@ -39,7 +37,10 @@ var _ = g.Describe("ScyllaCluster HostID", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
-		hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(2))
 		di := insertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
@@ -55,8 +56,8 @@ var _ = g.Describe("ScyllaCluster HostID", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		for _, svc := range svcs.Items {
-			host := svc.Spec.ClusterIP
-			o.Expect(host).NotTo(o.Equal(corev1.ClusterIPNone))
+			host, err := utils.GetBroadcastRPCAddress(ctx, f.KubeClient().CoreV1(), sc, &svc)
+			o.Expect(err).NotTo(o.HaveOccurred())
 
 			hostID, err := scyllaClient.GetLocalHostId(ctx, host, false)
 			o.Expect(err).NotTo(o.HaveOccurred())

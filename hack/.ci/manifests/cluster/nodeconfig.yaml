@@ -1,0 +1,20 @@
+apiVersion: scylla.scylladb.com/v1alpha1
+kind: NodeConfig
+metadata:
+  name: cluster
+spec:
+  localDiskSetup:
+    filesystems:
+    - device: /dev/nvme0n1
+      type: xfs
+    mounts:
+    - device: /dev/nvme0n1
+      mountPoint: /mnt/persistent-volumes
+      unsupportedOptions:
+      - prjquota
+  placement:
+    nodeSelector:
+      kubernetes.io/os: linux
+      scylla.scylladb.com/node-type: scylla
+    tolerations:
+    - operator: Exists

@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	"github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
@@ -156,7 +156,7 @@ func (m *UnitManager) EnsureUnits(ctx context.Context, nc *scyllav1alpha1.NodeCo
 
 	// First save the updated list of managed units first,
 	// so we can clean up in the next run, if we were interrupted.
-	status.ManagedUnits = helpers.ConvertToArray(func(unit *NamedUnit) string {
+	status.ManagedUnits = slices.ConvertToSlice(func(unit *NamedUnit) string {
 		return unit.FileName
 	}, requiredUnits...)
 

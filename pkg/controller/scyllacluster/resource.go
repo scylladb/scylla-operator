@@ -4,13 +4,16 @@ import (
 	"fmt"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
@@ -20,7 +23,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/pointer"
 )
 
 const (
@@ -32,8 +34,8 @@ const (
 )
 
 const (
-	rootUID = 0
-	rootGID = 0
+	rootUID int64 = 0
+	rootGID int64 = 0
 )
 
 const (
@@ -66,20 +68,16 @@ func IdentityService(c *scyllav1.ScyllaCluster) *corev1.Service {
 	}
 }
 
-func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService *corev1.Service) *corev1.Service {
-	labels := naming.ClusterLabels(sc)
-	labels[naming.DatacenterNameLabel] = sc.Spec.Datacenter.Name
-	labels[naming.RackNameLabel] = rackName
-	labels[naming.ScyllaServiceTypeLabel] = string(naming.ScyllaServiceTypeMember)
+func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService *corev1.Service, jobs map[string]*batchv1.Job) (*corev1.Service, error) {
+	svcLabels := naming.ClusterLabels(sc)
+	svcLabels[naming.DatacenterNameLabel] = sc.Spec.Datacenter.Name
+	svcLabels[naming.RackNameLabel] = rackName
+	svcLabels[naming.ScyllaServiceTypeLabel] = string(naming.ScyllaServiceTypeMember)
 
-	// Copy the old replace label, if present.
 	var replaceAddr string
 	var hasReplaceLabel bool
 	if oldService != nil {
 		replaceAddr, hasReplaceLabel = oldService.Labels[naming.ReplaceLabel]
-		if hasReplaceLabel {
-			labels[naming.ReplaceLabel] = replaceAddr
-		}
 	}
 
 	// Only new service should get the replace address, old service keeps "" until deleted.
@@ -88,19 +86,36 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 		if ok {
 			replaceAddr := rackStatus.ReplaceAddressFirstBoot[name]
 			if len(replaceAddr) != 0 {
-				labels[naming.ReplaceLabel] = replaceAddr
+				svcLabels[naming.ReplaceLabel] = replaceAddr
 			}
 		}
 	}
 
-	return &corev1.Service{
+	svcAnnotations := make(map[string]string)
+	if oldService != nil {
+		_, hasLastCleanedUpRingHash := oldService.Annotations[naming.LastCleanedUpTokenRingHashAnnotation]
+		currentTokenRingHash, hasCurrentRingHash := oldService.Annotations[naming.CurrentTokenRingHashAnnotation]
+		if !hasLastCleanedUpRingHash && hasCurrentRingHash {
+			svcAnnotations[naming.LastCleanedUpTokenRingHashAnnotation] = currentTokenRingHash
+		}
+	}
+
+	cleanupJob, ok := jobs[naming.CleanupJobForService(name)]
+	if ok {
+		if len(cleanupJob.Annotations[naming.CleanupJobTokenRingHashAnnotation]) != 0 && cleanupJob.Status.CompletionTime != nil {
+			svcAnnotations[naming.LastCleanedUpTokenRingHashAnnotation] = cleanupJob.Annotations[naming.CleanupJobTokenRingHashAnnotation]
+		}
+	}
+
+	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: sc.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(sc, scyllaClusterControllerGVK),
 			},
-			Labels: labels,
+			Labels:      svcLabels,
+			Annotations: svcAnnotations,
 		},
 		Spec: corev1.ServiceSpec{
 			Type:                     corev1.ServiceTypeClusterIP,
@@ -109,6 +124,30 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 			PublishNotReadyAddresses: true,
 		},
 	}
+
+	if sc.Spec.ExposeOptions != nil && sc.Spec.ExposeOptions.NodeService != nil {
+		ns := sc.Spec.ExposeOptions.NodeService
+
+		switch ns.Type {
+		case scyllav1.NodeServiceTypeClusterIP:
+			svc.Spec.Type = corev1.ServiceTypeClusterIP
+		case scyllav1.NodeServiceTypeLoadBalancer:
+			svc.Spec.Type = corev1.ServiceTypeLoadBalancer
+		case scyllav1.NodeServiceTypeHeadless:
+			svc.Spec.Type = corev1.ServiceTypeClusterIP
+			svc.Spec.ClusterIP = corev1.ClusterIPNone
+		default:
+			return nil, fmt.Errorf("unsupported node service type %q", ns.Type)
+		}
+
+		svc.Annotations = helpers.MergeMaps(svcAnnotations, ns.Annotations)
+		svc.Spec.InternalTrafficPolicy = copyReferencedValue(ns.InternalTrafficPolicy)
+		svc.Spec.AllocateLoadBalancerNodePorts = copyReferencedValue(ns.AllocateLoadBalancerNodePorts)
+		svc.Spec.LoadBalancerClass = copyReferencedValue(ns.LoadBalancerClass)
+		svc.Spec.ExternalTrafficPolicy = getValueOrDefault(ns.ExternalTrafficPolicy, "")
+	}
+
+	return svc, nil
 }
 
 func servicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
@@ -176,10 +215,23 @@ func servicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 
 // StatefulSetForRack make a StatefulSet for the rack.
 // existingSts may be nil if it doesn't exist yet.
-func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existingSts *appsv1.StatefulSet, sidecarImage string) (*appsv1.StatefulSet, error) {
-	matchLabels := naming.RackLabels(r, c)
-	rackLabels := naming.RackLabels(r, c)
+func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existingSts *appsv1.StatefulSet, sidecarImage string, rackOrdinal int) (*appsv1.StatefulSet, error) {
+	rackLabels, err := naming.RackSelectorLabels(r, c)
+	if err != nil {
+		return nil, fmt.Errorf("can't get rack labels: %w", err)
+	}
+	rackLabels[naming.RackOrdinalLabel] = strconv.Itoa(rackOrdinal)
 	rackLabels[naming.ScyllaVersionLabel] = c.Spec.Version
+
+	selectorLabels, err := naming.RackSelectorLabels(r, c)
+	if err != nil {
+		return nil, fmt.Errorf("can't get selector labels: %w", err)
+	}
+
+	pvcLabels, err := naming.RackSelectorLabels(r, c)
+	if err != nil {
+		return nil, fmt.Errorf("can't get PVC Template labels: %w", err)
+	}
 
 	placement := r.Placement
 	if placement == nil {
@@ -202,17 +254,17 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 			},
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: pointer.Int32(r.Members),
+			Replicas: pointer.Ptr(r.Members),
 			// Use a common Headless Service for all StatefulSets
 			ServiceName: naming.HeadlessServiceNameForCluster(c),
 			Selector: &metav1.LabelSelector{
-				MatchLabels: matchLabels,
+				MatchLabels: selectorLabels,
 			},
 			PodManagementPolicy: appsv1.OrderedReadyPodManagement,
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: appsv1.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
-					Partition: pointer.Int32(0),
+					Partition: pointer.Ptr(int32(0)),
 				},
 			},
 			// Template for Pods
@@ -228,8 +280,8 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 					HostNetwork: c.Spec.Network.HostNetworking,
 					DNSPolicy:   c.Spec.Network.GetDNSPolicy(),
 					SecurityContext: &corev1.PodSecurityContext{
-						RunAsUser:  pointer.Int64(rootUID),
-						RunAsGroup: pointer.Int64(rootGID),
+						RunAsUser:  pointer.Ptr(rootUID),
+						RunAsGroup: pointer.Ptr(rootGID),
 					},
 					Volumes: func() []corev1.Volume {
 						volumes := []corev1.Volume{
@@ -346,23 +398,43 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 							ImagePullPolicy: corev1.PullIfNotPresent,
 							Ports:           containerPorts(c),
 							// TODO: unprivileged entrypoint
-							Command: []string{
-								path.Join(naming.SharedDirName, "scylla-operator"),
-								"sidecar",
-								fmt.Sprintf("--feature-gates=%s", func() string {
-									features := utilfeature.DefaultMutableFeatureGate.GetAll()
-									res := make([]string, 0, len(features))
-									for name := range features {
-										res = append(res, fmt.Sprintf("%s=%t", name, utilfeature.DefaultMutableFeatureGate.Enabled(name)))
-									}
-									sort.Strings(res)
-									return strings.Join(res, ",")
-								}()),
-								"--service-name=$(SERVICE_NAME)",
-								"--cpu-count=$(CPU_COUNT)",
-								// TODO: make it configurable
-								"--loglevel=2",
-							},
+							Command: func() []string {
+								cmd := []string{
+									path.Join(naming.SharedDirName, "scylla-operator"),
+									"sidecar",
+									fmt.Sprintf("--feature-gates=%s", func() string {
+										features := utilfeature.DefaultMutableFeatureGate.GetAll()
+										res := make([]string, 0, len(features))
+										for name := range features {
+											res = append(res, fmt.Sprintf("%s=%t", name, utilfeature.DefaultMutableFeatureGate.Enabled(name)))
+										}
+										sort.Strings(res)
+										return strings.Join(res, ",")
+									}()),
+									fmt.Sprintf("--nodes-broadcast-address-type=%s", func() scyllav1.BroadcastAddressType {
+										if c.Spec.ExposeOptions != nil && c.Spec.ExposeOptions.BroadcastOptions != nil {
+											return c.Spec.ExposeOptions.BroadcastOptions.Nodes.Type
+										}
+										return scyllav1.BroadcastAddressTypeServiceClusterIP
+									}()),
+									fmt.Sprintf("--clients-broadcast-address-type=%s", func() scyllav1.BroadcastAddressType {
+										if c.Spec.ExposeOptions != nil && c.Spec.ExposeOptions.BroadcastOptions != nil {
+											return c.Spec.ExposeOptions.BroadcastOptions.Clients.Type
+										}
+										return scyllav1.BroadcastAddressTypeServiceClusterIP
+									}()),
+									"--service-name=$(SERVICE_NAME)",
+									"--cpu-count=$(CPU_COUNT)",
+									// TODO: make it configurable
+									"--loglevel=2",
+								}
+
+								if len(c.Spec.ExternalSeeds) > 0 {
+									cmd = append(cmd, fmt.Sprintf("--external-seeds=%s", strings.Join(c.Spec.ExternalSeeds, ",")))
+								}
+
+								return cmd
+							}(),
 							Env: []corev1.EnvVar{
 								{
 									Name: "SERVICE_NAME",
@@ -426,13 +498,12 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 										},
 									}...)
 								}
-
 								return mounts
 							}(),
 							// Add CAP_SYS_NICE as instructed by scylla logs
 							SecurityContext: &corev1.SecurityContext{
-								RunAsUser:  pointer.Int64(rootUID),
-								RunAsGroup: pointer.Int64(rootGID),
+								RunAsUser:  pointer.Ptr(rootUID),
+								RunAsGroup: pointer.Ptr(rootGID),
 								Capabilities: &corev1.Capabilities{
 									Add: []corev1.Capability{"SYS_NICE"},
 								},
@@ -502,14 +573,14 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 						PodAntiAffinity: placement.PodAntiAffinity,
 					},
 					ImagePullSecrets:              c.Spec.ImagePullSecrets,
-					TerminationGracePeriodSeconds: pointer.Int64(900),
+					TerminationGracePeriodSeconds: pointer.Ptr(int64(900)),
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:   naming.PVCTemplateName,
-						Labels: matchLabels,
+						Labels: pvcLabels,
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
 						AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
@@ -541,7 +612,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 
 	// Make sure we adjust if it was scaled in between.
 	if *sts.Spec.UpdateStrategy.RollingUpdate.Partition > *sts.Spec.Replicas {
-		sts.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32(*sts.Spec.Replicas)
+		sts.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Ptr(*sts.Spec.Replicas)
 	}
 
 	sysctlContainer := sysctlInitContainer(c.Spec.Sysctls, sidecarImage)
@@ -772,7 +843,7 @@ func MakeIngresses(c *scyllav1.ScyllaCluster, services map[string]*corev1.Servic
 					},
 				},
 				Spec: networkingv1.IngressSpec{
-					IngressClassName: pointer.String(ip.ingressOptions.IngressClassName),
+					IngressClassName: pointer.Ptr(ip.ingressOptions.IngressClassName),
 				},
 			}
 
@@ -856,6 +927,20 @@ func stringOrDefault(str, def string) string {
 	return def
 }
 
+func getValueOrDefault[T any](v *T, def T) T {
+	if v != nil {
+		return *v
+	}
+	return def
+}
+
+func copyReferencedValue[T any](v *T) *T {
+	if v != nil {
+		return pointer.Ptr(*v)
+	}
+	return nil
+}
+
 func MakeServiceAccount(sc *scyllav1.ScyllaCluster) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
@@ -894,4 +979,158 @@ func MakeRoleBinding(sc *scyllav1.ScyllaCluster) *rbacv1.RoleBinding {
 			Name:     naming.ScyllaClusterMemberClusterRoleName,
 		},
 	}
+}
+
+func MakeJobs(sc *scyllav1.ScyllaCluster, services map[string]*corev1.Service, image string) ([]*batchv1.Job, []metav1.Condition) {
+	var jobs []*batchv1.Job
+	var progressingConditions []metav1.Condition
+
+	for _, rack := range sc.Spec.Datacenter.Racks {
+		for i := int32(0); i < rack.Members; i++ {
+			svcName := naming.MemberServiceName(rack, sc, int(i))
+			svc, ok := services[svcName]
+			if !ok {
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               jobControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "WaitingForService",
+					Message:            fmt.Sprintf("Waiting for Service %q", naming.ManualRef(sc.Namespace, svcName)),
+					ObservedGeneration: sc.Generation,
+				})
+				continue
+			}
+
+			currentTokenRingHash, ok := svc.Annotations[naming.CurrentTokenRingHashAnnotation]
+			if !ok {
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               jobControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "WaitingForServiceState",
+					Message:            fmt.Sprintf("Service %q is missing current token ring hash annotation", naming.ObjRef(svc)),
+					ObservedGeneration: sc.Generation,
+				})
+				continue
+			}
+
+			if len(currentTokenRingHash) == 0 {
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               jobControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "UnexpectedServiceState",
+					Message:            fmt.Sprintf("Service %q has unexpected empty current token ring hash annotation, can't create cleanup Job", naming.ObjRef(svc)),
+					ObservedGeneration: sc.Generation,
+				})
+				klog.Warningf("Can't create cleanup Job for Service %s because it has unexpected empty current token ring hash annotation", klog.KObj(svc))
+				continue
+			}
+
+			lastCleanedUpTokenRingHash, ok := svc.Annotations[naming.LastCleanedUpTokenRingHashAnnotation]
+			if !ok {
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               jobControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "WaitingForServiceState",
+					Message:            fmt.Sprintf("Service %q is missing last cleaned up token ring hash annotation", naming.ObjRef(svc)),
+					ObservedGeneration: sc.Generation,
+				})
+				continue
+			}
+
+			if len(lastCleanedUpTokenRingHash) == 0 {
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               jobControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "UnexpectedServiceState",
+					Message:            fmt.Sprintf("Service %q has unexpected empty last cleaned up token ring hash annotation, can't create cleanup Job", naming.ObjRef(svc)),
+					ObservedGeneration: sc.Generation,
+				})
+				klog.Warningf("Can't create cleanup Job for Service %s because it has unexpected empty last cleaned up token ring hash annotation", klog.KObj(svc))
+				continue
+			}
+
+			if currentTokenRingHash == lastCleanedUpTokenRingHash {
+				klog.V(4).Infof("Node %q already cleaned up", naming.ObjRef(svc))
+				continue
+			}
+
+			klog.InfoS("Node requires a cleanup", "Node", naming.ObjRef(svc), "CurrentHash", currentTokenRingHash, "LastCleanedUpHash", lastCleanedUpTokenRingHash)
+
+			jobLabels := map[string]string{
+				naming.ClusterNameLabel: sc.Name,
+				naming.NodeJobLabel:     svcName,
+				naming.NodeJobTypeLabel: string(naming.JobTypeCleanup),
+			}
+			annotations := map[string]string{
+				naming.CleanupJobTokenRingHashAnnotation: currentTokenRingHash,
+			}
+
+			var tolerations []corev1.Toleration
+			var affinity *corev1.Affinity
+			if rack.Placement != nil {
+				tolerations = rack.Placement.Tolerations
+				affinity = &corev1.Affinity{
+					NodeAffinity:    rack.Placement.NodeAffinity,
+					PodAffinity:     rack.Placement.PodAffinity,
+					PodAntiAffinity: rack.Placement.PodAntiAffinity,
+				}
+			}
+
+			jobs = append(jobs, &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      naming.CleanupJobForService(svc.Name),
+					Namespace: sc.Namespace,
+					OwnerReferences: []metav1.OwnerReference{
+						*metav1.NewControllerRef(sc, scyllaClusterControllerGVK),
+					},
+					Labels:      jobLabels,
+					Annotations: annotations,
+				},
+				Spec: batchv1.JobSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels:      jobLabels,
+							Annotations: annotations,
+						},
+						Spec: corev1.PodSpec{
+							Tolerations:   tolerations,
+							Affinity:      affinity,
+							RestartPolicy: corev1.RestartPolicyOnFailure,
+							Containers: []corev1.Container{
+								{
+									Name:            naming.CleanupContainerName,
+									Image:           image,
+									ImagePullPolicy: corev1.PullIfNotPresent,
+									Args: []string{
+										"cleanup-job",
+										"--manager-auth-config-path=/etc/scylla-cleanup-job/auth-token.yaml",
+										fmt.Sprintf("--node-address=%s", fmt.Sprintf("%s.%s.svc", svcName, sc.Namespace)),
+									},
+									VolumeMounts: []corev1.VolumeMount{
+										{
+											Name:      "scylla-manager-agent-token",
+											ReadOnly:  true,
+											MountPath: "/etc/scylla-cleanup-job/auth-token.yaml",
+											SubPath:   naming.ScyllaAgentAuthTokenFileName,
+										},
+									},
+								},
+							},
+							Volumes: []corev1.Volume{
+								{
+									Name: "scylla-manager-agent-token",
+									VolumeSource: corev1.VolumeSource{
+										Secret: &corev1.SecretVolumeSource{
+											SecretName: naming.AgentAuthTokenSecretName(sc.Name),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			})
+		}
+	}
+
+	return jobs, progressingConditions
 }

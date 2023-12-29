@@ -7,12 +7,12 @@ fullnameOverride: ""
 scyllaImage:
   repository: scylladb/scylla
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 5.0.5
+  tag: 5.4.0
 # Allows to customize Scylla image
 agentImage:
   repository: scylladb/scylla-manager-agent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 3.0.1
+  tag: 3.2.5
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -41,6 +41,12 @@ sysctls: []
 backups: []
 # Scylla Manager Repair task definition
 repairs: []
+
+# scyllaArgs will be appended to Scylla binary startup parameters.
+scyllaArgs: ""
+
+# ImagePullSecrets used for pulling Scylla and Agent images
+imagePullSecrets: []
 
 # Name of datacenter
 datacenter: "us-east-1"

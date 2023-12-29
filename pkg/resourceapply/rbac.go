@@ -5,6 +5,7 @@ import (
 
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
 	rbacv1listers "k8s.io/client-go/listers/rbac/v1"
 	"k8s.io/client-go/tools/record"
@@ -56,11 +57,11 @@ func ApplyRoleBindingWithControl(
 		required,
 		options,
 		nil,
-		func(required *rbacv1.RoleBinding, existing *rbacv1.RoleBinding) string {
+		func(required *rbacv1.RoleBinding, existing *rbacv1.RoleBinding) (string, *metav1.DeletionPropagation, error) {
 			if !equality.Semantic.DeepEqual(existing.RoleRef, (*required).RoleRef) {
-				return "roleRef is immutable"
+				return "roleRef is immutable", nil, nil
 			}
-			return ""
+			return "", nil, nil
 		},
 	)
 }
@@ -101,11 +102,11 @@ func ApplyClusterRoleBindingWithControl(
 		required,
 		options,
 		nil,
-		func(required *rbacv1.ClusterRoleBinding, existing *rbacv1.ClusterRoleBinding) string {
+		func(required *rbacv1.ClusterRoleBinding, existing *rbacv1.ClusterRoleBinding) (string, *metav1.DeletionPropagation, error) {
 			if !equality.Semantic.DeepEqual(existing.RoleRef, (*required).RoleRef) {
-				return "roleRef is immutable"
+				return "roleRef is immutable", nil, nil
 			}
-			return ""
+			return "", nil, nil
 		},
 	)
 }

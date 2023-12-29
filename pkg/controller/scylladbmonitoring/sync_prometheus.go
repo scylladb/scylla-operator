@@ -12,8 +12,10 @@ import (
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
 	monitoringv1 "github.com/scylladb/scylla-operator/pkg/externalapi/monitoring/v1"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	okubecrypto "github.com/scylladb/scylla-operator/pkg/kubecrypto"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/resource"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	"github.com/scylladb/scylla-operator/pkg/resourcemerge"
@@ -23,7 +25,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	kutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/utils/pointer"
 )
 
 func getPrometheusLabels(sm *scyllav1alpha1.ScyllaDBMonitoring) labels.Set {
@@ -300,7 +301,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		helpers.ToArray(requiredPrometheusSA),
+		slices.ToSlice(requiredPrometheusSA),
 		serviceAccounts,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Delete,
@@ -311,7 +312,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		helpers.ToArray(requiredPrometheusService),
+		slices.ToSlice(requiredPrometheusService),
 		services,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.CoreV1().Services(sm.Namespace).Delete,
@@ -322,7 +323,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		helpers.ToArray(requiredPrometheusRoleBinding),
+		slices.ToSlice(requiredPrometheusRoleBinding),
 		roleBindings,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.RbacV1().RoleBindings(sm.Namespace).Delete,
@@ -333,7 +334,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		helpers.ToArray(requiredPrometheus),
+		slices.ToSlice(requiredPrometheus),
 		prometheuses,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.monitoringClient.Prometheuses(sm.Namespace).Delete,
@@ -344,7 +345,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		helpers.FilterOutNil(helpers.ToArray(requiredIngress)),
+		slices.FilterOutNil(slices.ToSlice(requiredIngress)),
 		ingresses,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.NetworkingV1().Ingresses(sm.Namespace).Delete,
@@ -355,7 +356,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		helpers.ToArray(requiredRecodingPrometheusRule, requiredAlertsPrometheusRule),
+		slices.ToSlice(requiredRecodingPrometheusRule, requiredAlertsPrometheusRule),
 		prometheusRules,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.monitoringClient.PrometheusRules(sm.Namespace).Delete,
@@ -366,7 +367,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		helpers.ToArray(requiredScyllaDBServiceMonitor),
+		slices.ToSlice(requiredScyllaDBServiceMonitor),
 		serviceMonitors,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.monitoringClient.ServiceMonitors(sm.Namespace).Delete,
@@ -499,8 +500,8 @@ func (smc *Controller) syncPrometheus(
 				Kind:               scylladbMonitoringControllerGVK.Kind,
 				Name:               sm.Name,
 				UID:                sm.UID,
-				Controller:         pointer.Bool(true),
-				BlockOwnerDeletion: pointer.Bool(true),
+				Controller:         pointer.Ptr(true),
+				BlockOwnerDeletion: pointer.Ptr(true),
 			},
 		})
 

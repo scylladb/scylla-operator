@@ -56,7 +56,7 @@ kubectl -n cert-manager rollout status deployment.apps/cert-manager-webhook
 Deploy the Scylla Operator using the following commands:
 
 ```console
-kubectl apply -f examples/common/operator.yaml
+kubectl apply -f deploy/operator.yaml
 ```
 
 This will install the operator in namespace `scylla-operator`.
@@ -77,7 +77,7 @@ kubectl -n scylla-operator logs deployment.apps/scylla-operator
 
 Now that the operator is running, we can create an instance of a Scylla cluster by creating an instance of the `clusters.scylla.scylladb.com` resource.
 Some of that resource's values are configurable, so feel free to browse `cluster.yaml` and tweak the settings to your liking.
-Full details for all the configuration options can be found in the [Scylla Cluster CRD documentation](scylla_cluster_crd.md).
+Full details for all the configuration options can be found in the [Scylla Cluster CRD documentation](api-reference/groups/scylla.scylladb.com/scyllaclusters.rst).
 
 When you are ready to create a Scylla cluster, simply run:
 
@@ -143,8 +143,8 @@ To squeeze the most out of your deployment it is sometimes necessary to employ [
 To enable this the CRD allows for specifying a `network` parameter as such:
 
 ```yaml
-version: 4.0.0
-  agentVersion: 2.0.2
+  version: 5.4.0
+  agentVersion: 3.2.5
   cpuset: true
   network:
     hostNetworking: true
@@ -172,8 +172,8 @@ This requires a small change in the cluster definition.
 Change the `cluster.yaml` file from this:
 ```yaml
 spec:
-  version: 4.0.0
-  agentVersion: 2.0.2
+  agentVersion: 3.2.5
+  version: 5.4.0
   developerMode: true
   datacenter:
     name: us-east-1
@@ -181,11 +181,11 @@ spec:
 to this:
 ```yaml
 spec:
-  version: 4.0.0
+  version: 5.4.0
   alternator:
     port: 8000
     writeIsolation: only_rmw_uses_lwt
-  agentVersion: 2.0.2
+  agentVersion: 3.2.5
   developerMode: true
   datacenter:
     name: us-east-1
@@ -195,7 +195,7 @@ You can specify whichever port you want.
 You must provide desired write isolation, supported values are: "always", "forbid_rmw", "only_rmw_uses_lwt".
 Difference between those isolation levels can be found in Scylla Alternator documentation.
 
-Once this is done the regular CQL ports will no longer be available, the cluster is a pure Alienator cluster.
+Once this is done the regular CQL ports will no longer be available, the cluster is a pure Alternator cluster.
 
 ## Accessing the Database
 
@@ -250,6 +250,17 @@ kubectl create configmap scylla-config -n scylla --from-file=/tmp/scylla.yaml --
 ```
 The operator will then apply the overridable properties `prefer_local` and `dc_suffix` if they are available in the provided mounted file.
 
+:::{note}
+If you want to enable authentication, you first need to adjust `system_auth` keyspace replication factor to the number of nodes in the datacenter via cqlsh. It allows you to ensure that the user’s information is kept highly available for the cluster. If `system_auth` is not equal to the number of nodes and a node fails, the user whose information is on that node will be denied access.
+For production environments only use `NetworkTopologyStrategy`.
+
+```shell
+kubectl -n scylla exec -it pods/simple-cluster-us-east-1-us-east-1a-0 -c scylla -- cqlsh -e "ALTER KEYSPACE system_auth WITH REPLICATION = {'class' : 'NetworkTopologyStrategy', 'us-east-1' : <replication_factor>};"
+```
+
+You can read more about enabling authentication in the [Enable authentication](https://opensource.docs.scylladb.com/stable/operating-scylla/security/authentication.html) section of ScyllaDB's documentation.
+:::
+
 ## Configure Scylla Manager Agent
 
 The operator creates a second container for each scylla instance that runs [Scylla Manager Agent](https://hub.docker.com/r/scylladb/scylla-manager-agent).
@@ -261,30 +272,42 @@ To configure the agent you just create a new secret called _scylla-agent-config-
 kubectl create secret -n scylla generic scylla-agent-config-secret --from-file scylla-manager-agent.yaml
 ```
 
-See [Scylla Manager Agent configuration](https://docs.scylladb.com/operating-scylla/manager/2.0/agent-configuration-file/) for a complete reference of the Scylla Manager agent config file.
+See [Scylla Manager Agent configuration](https://manager.docs.scylladb.com/stable/config/scylla-manager-config.html) for a complete reference of the Scylla Manager agent config file.
 
 ### Scylla Manager Agent auth token
 
 Operator provisions Agent auth token by copying value from user provided config secret or auto generates it if it's empty.
-To check which value is being used, decode content of `<cluster-name>-auth-token` secret. 
+To check which value is being used, decode content of `<cluster-name>-auth-token` secret.
 To change it simply remove the secret. Operator will create a new one. To pick up the change in the cluster, initiate a rolling restart.
 
 ## Set up monitoring
 
 To set up monitoring using Prometheus and Grafana follow [this guide](monitoring.md).
 
-## Scale Up
+## Scale a ScyllaCluster
 
-The operator supports scale up of a rack as well as addition of new racks. To make the changes, you can use:
+The operator supports adding new nodes to existing racks, adding new racks to the cluster, as well as removing both single nodes and entire racks. To introduce the changes, edit the cluster with:
 ```console
-kubectl -n scylla edit ScyllaCluster simple-cluster
+kubectl -n scylla edit scyllaclusters.scylla.scylladb.com/simple-cluster
 ```
-* To scale up a rack, change the `Spec.Members` field of the rack to the desired value.
-* To add a new rack, append the `racks` list with a new rack. Remember to choose a different rack name for the new rack.
-* After editing and saving the yaml, check your cluster's Status and Events for information on what's happening:
+* To modify the number of nodes in a rack, update the `members` field of the selected rack to a desired value.
+* To add a new rack, append it to the `.spec.datacenter.racks` list. Remember to choose a unique rack name for the new rack.
+* To remove a rack, first scale it down to zero nodes, and then remove it from `.spec.datacenter.racks` list.
+
+Having edited and saved the yaml, you can check your cluster's Status and Events to retrieve information about what's happening:
 ```console
-kubectl -n scylla describe ScyllaCluster simple-cluster
+kubectl -n scylla describe scyllaclusters.scylla.scylladb.com/simple-cluster
 ```
+
+:::{note}
+If you have configured ScyllaDB with `authenticator` set to `PasswordAuthenticator`, you need to manually configure the replication factor of the `system_auth` keyspace with every scaling operation.
+
+```shell
+kubectl -n scylla exec -it pods/simple-cluster-us-east-1-us-east-1a-0 -c scylla -- cqlsh -u <username> -p <password> -e "ALTER KEYSPACE system_auth WITH REPLICATION = {'class' : 'NetworkTopologyStrategy', 'us-east-1' : <new_replication_factor>};"
+```
+
+It is recommended to set `system_auth` replication factor to the number of nodes in each datacenter.
+:::
 
 ## Benchmark with cassandra-stress
 
@@ -336,18 +359,6 @@ After the Jobs finish, clean them up with:
 kubectl delete -f scripts/cassandra-stress.yaml
 ```
 
-## Scale Down
-
-The operator supports scale down of a rack. To make the changes, you can use:
-```console
-kubectl -n scylla edit ScyllaCluster simple-cluster
-```
-* To scale down a rack, change the `Spec.Members` field of the rack to the desired value.
-* After editing and saving the yaml, check your cluster's Status and Events for information on what's happening:
-```console
-kubectl -n scylla describe ScyllaCluster simple-cluster
-```
-
 ## Clean Up
 
 To clean up all resources associated with this walk-through, you can run the commands below.
@@ -356,7 +367,7 @@ To clean up all resources associated with this walk-through, you can run the com
 
 ```console
 kubectl delete -f examples/generic/cluster.yaml
-kubectl delete -f examples/common/operator.yaml
+kubectl delete -f deploy/operator.yaml
 kubectl delete -f examples/common/cert-manager.yaml
 ```
 

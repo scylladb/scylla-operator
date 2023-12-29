@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -48,7 +47,7 @@ func (c *Client) AddOrgUser(orgID int64, user, role string) error {
 		return err
 	}
 
-	return c.request("POST", fmt.Sprintf("/api/orgs/%d/users", orgID), nil, bytes.NewBuffer(data), nil)
+	return c.request("POST", fmt.Sprintf("/api/orgs/%d/users", orgID), nil, data, nil)
 }
 
 // UpdateOrgUser updates and org user.
@@ -61,7 +60,7 @@ func (c *Client) UpdateOrgUser(orgID, userID int64, role string) error {
 		return err
 	}
 
-	return c.request("PATCH", fmt.Sprintf("/api/orgs/%d/users/%d", orgID, userID), nil, bytes.NewBuffer(data), nil)
+	return c.request("PATCH", fmt.Sprintf("/api/orgs/%d/users/%d", orgID, userID), nil, data, nil)
 }
 
 // RemoveOrgUser removes a user from an org.

@@ -5,8 +5,7 @@ package scyllaclient
 import (
 	"github.com/go-openapi/runtime"
 	"github.com/pkg/errors"
-	agentModels "github.com/scylladb/scylla-operator/pkg/scyllaclient/internal/agent/models"
-	scylla2Models "github.com/scylladb/scylla-operator/pkg/scyllaclient/internal/scylla_v2/models"
+	scyllav2models "github.com/scylladb/scylladb-swagger-go-client/scylladb/gen/v2/models"
 )
 
 // StatusCodeOf returns HTTP status code carried by the error or it's cause.
@@ -21,14 +20,7 @@ func StatusCodeOf(err error) int {
 	case *runtime.APIError:
 		return v.Code
 	case interface {
-		GetPayload() *agentModels.ErrorResponse
-	}:
-		p := v.GetPayload()
-		if p != nil {
-			return int(p.Status)
-		}
-	case interface {
-		GetPayload() *scylla2Models.ErrorModel
+		GetPayload() *scyllav2models.ErrorModel
 	}:
 		p := v.GetPayload()
 		if p != nil {

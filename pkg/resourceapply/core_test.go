@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -19,7 +20,6 @@ import (
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/utils/pointer"
 )
 
 func TestApplyService(t *testing.T) {
@@ -32,12 +32,12 @@ func TestApplyService(t *testing.T) {
 				Labels:    map[string]string{},
 				OwnerReferences: []metav1.OwnerReference{
 					{
-						Controller:         pointer.BoolPtr(true),
+						Controller:         pointer.Ptr(true),
 						UID:                "abcdefgh",
 						APIVersion:         "scylla.scylladb.com/v1",
 						Kind:               "ScyllaCluster",
 						Name:               "basic",
-						BlockOwnerDeletion: pointer.BoolPtr(true),
+						BlockOwnerDeletion: pointer.Ptr(true),
 					},
 				},
 			},
@@ -576,12 +576,12 @@ func TestApplySecret(t *testing.T) {
 				Labels:    map[string]string{},
 				OwnerReferences: []metav1.OwnerReference{
 					{
-						Controller:         pointer.BoolPtr(true),
+						Controller:         pointer.Ptr(true),
 						UID:                "abcdefgh",
 						APIVersion:         "scylla.scylladb.com/v1",
 						Kind:               "ScyllaCluster",
 						Name:               "basic",
-						BlockOwnerDeletion: pointer.BoolPtr(true),
+						BlockOwnerDeletion: pointer.Ptr(true),
 					},
 				},
 			},
@@ -1119,12 +1119,12 @@ func TestApplyServiceAccount(t *testing.T) {
 		sa := newSA()
 		sa.OwnerReferences = []metav1.OwnerReference{
 			{
-				Controller:         pointer.BoolPtr(true),
+				Controller:         pointer.Ptr(true),
 				UID:                "abcdefgh",
 				APIVersion:         "scylla.scylladb.com/v1",
 				Kind:               "ScyllaCluster",
 				Name:               "basic",
-				BlockOwnerDeletion: pointer.BoolPtr(true),
+				BlockOwnerDeletion: pointer.Ptr(true),
 			},
 		}
 		return sa
@@ -1216,12 +1216,12 @@ func TestApplyServiceAccount(t *testing.T) {
 			allowMissingControllerRef: true,
 			required: func() *corev1.ServiceAccount {
 				sa := newSA()
-				sa.AutomountServiceAccountToken = pointer.BoolPtr(true)
+				sa.AutomountServiceAccountToken = pointer.Ptr(true)
 				return sa
 			}(),
 			expectedSA: func() *corev1.ServiceAccount {
 				sa := newSA()
-				sa.AutomountServiceAccountToken = pointer.BoolPtr(true)
+				sa.AutomountServiceAccountToken = pointer.Ptr(true)
 				utilruntime.Must(SetHashAnnotation(sa))
 				return sa
 			}(),
@@ -1256,7 +1256,7 @@ func TestApplyServiceAccount(t *testing.T) {
 				func() *corev1.ServiceAccount {
 					sa := newSAWithHash()
 					// Simulate admission by changing a value after the hash is computed.
-					sa.AutomountServiceAccountToken = pointer.BoolPtr(true)
+					sa.AutomountServiceAccountToken = pointer.Ptr(true)
 					return sa
 				}(),
 			},
@@ -1265,7 +1265,7 @@ func TestApplyServiceAccount(t *testing.T) {
 			expectedSA: func() *corev1.ServiceAccount {
 				sa := newSAWithHash()
 				// Simulate admission by changing a value after the hash is computed.
-				sa.AutomountServiceAccountToken = pointer.BoolPtr(true)
+				sa.AutomountServiceAccountToken = pointer.Ptr(true)
 				return sa
 			}(),
 			expectedChanged: false,
@@ -1286,13 +1286,13 @@ func TestApplyServiceAccount(t *testing.T) {
 			required: func() *corev1.ServiceAccount {
 				sa := newSA()
 				sa.ResourceVersion = ""
-				sa.AutomountServiceAccountToken = pointer.BoolPtr(true)
+				sa.AutomountServiceAccountToken = pointer.Ptr(true)
 				return sa
 			}(),
 			expectedSA: func() *corev1.ServiceAccount {
 				sa := newSA()
 				sa.ResourceVersion = "21"
-				sa.AutomountServiceAccountToken = pointer.BoolPtr(true)
+				sa.AutomountServiceAccountToken = pointer.Ptr(true)
 				utilruntime.Must(SetHashAnnotation(sa))
 				return sa
 			}(),
@@ -1309,7 +1309,7 @@ func TestApplyServiceAccount(t *testing.T) {
 			allowMissingControllerRef: true,
 			required: func() *corev1.ServiceAccount {
 				sa := newSA()
-				sa.AutomountServiceAccountToken = pointer.BoolPtr(true)
+				sa.AutomountServiceAccountToken = pointer.Ptr(true)
 				return sa
 			}(),
 			expectedSA:      nil,
@@ -1660,12 +1660,12 @@ func TestApplyConfigMap(t *testing.T) {
 				Labels:    map[string]string{},
 				OwnerReferences: []metav1.OwnerReference{
 					{
-						Controller:         pointer.BoolPtr(true),
+						Controller:         pointer.Ptr(true),
 						UID:                "abcdefgh",
 						APIVersion:         "scylla.scylladb.com/v1",
 						Kind:               "ScyllaCluster",
 						Name:               "basic",
-						BlockOwnerDeletion: pointer.BoolPtr(true),
+						BlockOwnerDeletion: pointer.Ptr(true),
 					},
 				},
 			},
@@ -2340,12 +2340,12 @@ func TestApplyNamespace(t *testing.T) {
 					ns := newNS()
 					ns.OwnerReferences = []metav1.OwnerReference{
 						{
-							Controller:         pointer.BoolPtr(true),
+							Controller:         pointer.Ptr(true),
 							UID:                "abcdefgh",
 							APIVersion:         "scylla.scylladb.com/v1",
 							Kind:               "ScyllaCluster",
 							Name:               "basic",
-							BlockOwnerDeletion: pointer.BoolPtr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
 						},
 					}
 					utilruntime.Must(SetHashAnnotation(ns))

@@ -8,7 +8,7 @@ IMAGE_TAG ?= latest
 IMAGE_REF ?= docker.io/scylladb/scylla-operator:$(IMAGE_TAG)
 
 MAKE_REQUIRED_MIN_VERSION:=4.2 # for SHELLSTATUS
-GO_REQUIRED_MIN_VERSION ?=1.20
+GO_REQUIRED_MIN_VERSION ?=1.21
 
 GIT_TAG ?=$(shell git describe --long --tags --abbrev=7 --match 'v[0-9]*')$(if $(filter $(.SHELLSTATUS),0),,$(error git describe failed))
 GIT_TAG_SHORT ?=$(shell git describe --tags --abbrev=7 --match 'v[0-9]*')$(if $(filter $(.SHELLSTATUS),0),,$(error git describe failed))
@@ -72,6 +72,7 @@ HELM_MANIFEST_CACHE_CONTROL ?=public, max-age=600
 
 CONTROLLER_GEN ?=$(GO) run ./vendor/sigs.k8s.io/controller-tools/cmd/controller-gen --
 CRD_PATH ?= pkg/api/scylla/v1/scylla.scylladb.com_scyllaclusters.yaml
+CRD_FILES ?=$(shell find ./pkg/api/ -name '*.yaml')$(if $(filter $(.SHELLSTATUS),0),,$(error "can't find CRDs"))
 
 define version-ldflags
 -X $(1).versionFromGit="$(GIT_TAG)" \
@@ -309,7 +310,7 @@ update-crds:
 	$(call generate-crds,)
 .PHONY: update-crds
 
-verify-crds: tmp_dir :=$(shell mktemp -d)
+verify-crds: tmp_dir :=$(shell mktemp -d /tmp/crd-TMPXXXXXX)
 verify-crds:
 	mkdir '$(tmp_dir)'/{original,generated}
 
@@ -456,9 +457,12 @@ verify-helm-charts:
 
 update-deploy: tmp_dir:=$(shell mktemp -d)
 update-deploy:
-	$(call generate-operator-manifests,helm/deploy/operator.yaml,deploy/operator,$(tmp_dir))
-	$(call generate-manager-manifests-prod,helm/deploy/manager_prod.yaml,deploy/manager/prod,$(tmp_dir))
-	$(call generate-manager-manifests-dev,deploy/manager/dev)
+	$(call generate-operator-manifests,helm/deploy/operator.yaml,./deploy/operator,$(tmp_dir))
+	$(call concat-manifests,$(sort $(wildcard deploy/operator/*.yaml)),./deploy/operator.yaml)
+	$(call generate-manager-manifests-prod,helm/deploy/manager_prod.yaml,./deploy/manager/prod,$(tmp_dir))
+	$(call concat-manifests,$(sort $(wildcard ./deploy/manager/prod/*.yaml)),./deploy/manager-prod.yaml)
+	$(call generate-manager-manifests-dev,./deploy/manager/dev)
+	$(call concat-manifests,$(sort $(wildcard ./deploy/manager/dev/*.yaml)),./deploy/manager-dev.yaml)
 .PHONY: update-deploy
 
 verify-deploy: tmp_dir :=$(shell mktemp -d)
@@ -469,41 +473,53 @@ verify-deploy:
 	cp -r deploy/operator/. $(tmp_dir)/operator/.
 	$(call generate-operator-manifests,helm/deploy/operator.yaml,$(tmp_dir)/operator,$(tmp_dir_generate))
 	$(diff) -r '$(tmp_dir)'/operator deploy/operator
+	$(call concat-manifests,$(sort $(wildcard ./deploy/operator/*.yaml)),'$(tmp_dir)'/operator.yaml)
+	$(diff) '$(tmp_dir)'/operator.yaml deploy/operator.yaml
 
 	cp -r deploy/manager/prod/. $(tmp_dir)/manager/prod/.
 	$(call generate-manager-manifests-prod,helm/deploy/manager_prod.yaml,$(tmp_dir)/manager/prod,$(tmp_dir_generate))
 	$(diff) -r '$(tmp_dir)'/manager/prod deploy/manager/prod
+	$(call concat-manifests,$(sort $(wildcard ./deploy/manager/prod/*.yaml)),'$(tmp_dir)'/manager-prod.yaml)
+	$(diff) '$(tmp_dir)'/manager-prod.yaml deploy/manager-prod.yaml
 
 	$(call generate-manager-manifests-dev,$(tmp_dir)/manager/dev)
 	$(diff) -r '$(tmp_dir)'/manager/dev deploy/manager/dev
+	$(call concat-manifests,$(sort $(wildcard ./deploy/manager/dev/*.yaml)),'$(tmp_dir)'/manager-dev.yaml)
+	$(diff) '$(tmp_dir)'/manager-dev.yaml deploy/manager-dev.yaml
 
 .PHONY: verify-deploy
 
-update-examples-operator:
-	$(call concat-manifests,$(sort $(wildcard deploy/operator/*.yaml)),examples/common/operator.yaml)
-.PHONY: update-examples-operator
-
-verify-example-operator: tmp_file := $(shell mktemp)
-verify-example-operator:
-	$(call concat-manifests,$(sort $(wildcard deploy/operator/*.yaml)),$(tmp_file))
-	$(diff) '$(tmp_file)' examples/common/operator.yaml || (echo 'Operator example is not up-to date. Please run `make update-examples-operator` to update it.' && false)
-.PHONY: verify-example-operator
-
-update-examples-manager:
-	$(call concat-manifests,$(sort $(wildcard deploy/manager/prod/*.yaml)),examples/common/manager.yaml)
-.PHONY: update-examples-manager
-
-verify-example-manager: tmp_file :=$(shell mktemp)
-verify-example-manager:
-	$(call concat-manifests,$(sort $(wildcard deploy/manager/prod/*.yaml)),$(tmp_file))
-	$(diff) '$(tmp_file)' examples/common/manager.yaml || (echo 'Manager example is not up-to date. Please run `make update-examples-manager` to update it.' && false)
-.PHONY: verify-example-manager
-
-update-examples: update-examples-manager update-examples-operator
+update-examples:
+update-examples:
+	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/haproxy-ingress/*.yaml)),./examples/third-party/haproxy-ingress.yaml)
+	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/prometheus-operator/*.yaml)),./examples/third-party/prometheus-operator.yaml)
 .PHONY: update-examples
 
-verify-examples: verify-example-manager verify-example-operator
+verify-examples: tmp_dir :=$(shell mktemp -d)
+verify-examples:
+	cp -r ./examples/. $(tmp_dir)/
+
+	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/haproxy-ingress/*.yaml)),$(tmp_dir)/third-party/haproxy-ingress.yaml)
+	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/prometheus-operator/*.yaml)),$(tmp_dir)/third-party/prometheus-operator.yaml)
+
+	$(diff) -r '$(tmp_dir)'/ ./examples
 .PHONY: verify-examples
+
+# $1 - extra flags
+define run-update-docs
+	$(GO) run ./cmd/gen-api-reference/ --templates-dir ./docs/source/api-reference/templates $(1) $(CRD_FILES)
+
+endef
+
+update-docs-api:
+	$(call run-update-docs,--output-dir=./docs/source/api-reference/groups --overwrite)
+.PHONY: update-docs-api
+
+verify-docs-api: tmp_dir :=$(shell mktemp -d)
+verify-docs-api:
+	$(call run-update-docs,--output-dir="$(tmp_dir)")
+	$(diff) -r '$(tmp_dir)' ./docs/source/api-reference/groups || (echo 'Generated API docs are not up-to date. Please run `make update-docs-api` to update it or remove the extra files.' && false)
+.PHONY: verify-docs-api
 
 verify-links:
 	@set -euEo pipefail; broken_links=( $$( find . -type l ! -exec test -e {} \; -print ) ); \
@@ -514,10 +530,10 @@ verify-links:
 	fi;
 .PHONY: verify-links
 
-verify: verify-gofmt verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-examples verify-govet verify-helm-lint verify-links
+verify: verify-gofmt verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-govet verify-helm-lint verify-links verify-examples verify-docs-api
 .PHONY: verify
 
-update: update-gofmt update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples
+update: update-gofmt update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-docs-api
 .PHONY: update
 
 test-unit:

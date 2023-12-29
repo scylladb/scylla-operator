@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 )
 
@@ -26,7 +25,7 @@ func (c *Client) UpdateOrgPreferences(p Preferences) (UpdateOrgPreferencesRespon
 		return resp, err
 	}
 
-	err = c.request("PATCH", "/api/org/preferences", nil, bytes.NewBuffer(data), &resp)
+	err = c.request("PATCH", "/api/org/preferences", nil, data, &resp)
 	if err != nil {
 		return resp, err
 	}
@@ -42,7 +41,7 @@ func (c *Client) UpdateAllOrgPreferences(p Preferences) (UpdateOrgPreferencesRes
 		return resp, err
 	}
 
-	err = c.request("PUT", "/api/org/preferences", nil, bytes.NewBuffer(data), &resp)
+	err = c.request("PUT", "/api/org/preferences", nil, data, &resp)
 	if err != nil {
 		return resp, err
 	}

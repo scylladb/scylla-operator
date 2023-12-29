@@ -9,6 +9,7 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	cqlclientv1alpha1 "github.com/scylladb/scylla-operator/pkg/scylla/api/cqlclient/v1alpha1"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/scheme"
@@ -21,7 +22,6 @@ import (
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/utils/pointer"
 )
 
 func verifyPersistentVolumeClaims(ctx context.Context, coreClient corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) {
@@ -77,8 +77,8 @@ func verifyPodDisruptionBudget(sc *scyllav1.ScyllaCluster, pdb *policyv1.PodDisr
 				Kind:               "ScyllaCluster",
 				Name:               sc.Name,
 				UID:                sc.UID,
-				BlockOwnerDeletion: pointer.Bool(true),
-				Controller:         pointer.Bool(true),
+				BlockOwnerDeletion: pointer.Ptr(true),
+				Controller:         pointer.Ptr(true),
 			},
 		}),
 	)
@@ -185,6 +185,14 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 				condType: "IngressControllerDegraded",
 				status:   metav1.ConditionFalse,
 			},
+			{
+				condType: "JobControllerProgressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "JobControllerDegraded",
+				status:   metav1.ConditionFalse,
+			},
 		}
 
 		if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {
@@ -251,13 +259,16 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 	o.Expect(hosts).To(o.HaveLen(memberCount))
 }
 
-func getScyllaHostsAndWaitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) []string {
-	framework.By("Waiting for the ScyllaCluster to reach consistency ALL")
-	hosts, err := utils.GetScyllaHostsAndWaitForFullQuorum(ctx, client, sc)
-	o.Expect(err).NotTo(o.HaveOccurred())
-	o.Expect(hosts).To(o.HaveLen(int(utils.GetMemberCount(sc))))
+func waitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) {
+	dcClientMap := make(map[string]corev1client.CoreV1Interface, 1)
+	dcClientMap[sc.Spec.Datacenter.Name] = client
+	waitForFullMultiDCQuorum(ctx, dcClientMap, []*scyllav1.ScyllaCluster{sc})
+}
 
-	return hosts
+func waitForFullMultiDCQuorum(ctx context.Context, dcClientMap map[string]corev1client.CoreV1Interface, scs []*scyllav1.ScyllaCluster) {
+	framework.By("Waiting for the ScyllaCluster(s) to reach consistency ALL")
+	err := utils.WaitForFullMultiDCQuorum(ctx, dcClientMap, scs)
+	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
 func verifyCQLData(ctx context.Context, di *utils.DataInserter) {
@@ -270,12 +281,26 @@ func verifyCQLData(ctx context.Context, di *utils.DataInserter) {
 	o.Expect(data).To(o.Equal(di.GetExpected()))
 }
 
-func insertAndVerifyCQLData(ctx context.Context, hosts []string) *utils.DataInserter {
+func insertAndVerifyCQLData(ctx context.Context, hosts []string, options ...utils.DataInserterOption) *utils.DataInserter {
 	framework.By("Inserting data")
-	di, err := utils.NewDataInserter(hosts)
+	di, err := utils.NewDataInserter(hosts, options...)
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	err = di.Insert()
+	insertAndVerifyCQLDataUsingDataInserter(ctx, di)
+	return di
+}
+
+func insertAndVerifyCQLDataByDC(ctx context.Context, hosts map[string][]string) *utils.DataInserter {
+	di, err := utils.NewMultiDCDataInserter(hosts)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	insertAndVerifyCQLDataUsingDataInserter(ctx, di)
+	return di
+}
+
+func insertAndVerifyCQLDataUsingDataInserter(ctx context.Context, di *utils.DataInserter) *utils.DataInserter {
+	framework.By("Inserting data")
+	err := di.Insert()
 	o.Expect(err).NotTo(o.HaveOccurred())
 
 	verifyCQLData(ctx, di)

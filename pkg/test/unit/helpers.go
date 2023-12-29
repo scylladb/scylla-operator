@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
 )
 
 // NewSingleRackCluster returns ScyllaCluster having single racks.
@@ -51,13 +51,13 @@ func NewDetailedSingleRackCluster(name, namespace, repo, version, dc, rack strin
 			},
 		},
 		Status: scyllav1.ScyllaClusterStatus{
-			ObservedGeneration: pointer.Int64(1),
+			ObservedGeneration: pointer.Ptr(int64(1)),
 			Racks: map[string]scyllav1.RackStatus{
 				rack: {
 					Version:      version,
 					Members:      members,
 					ReadyMembers: members,
-					Stale:        pointer.Bool(false),
+					Stale:        pointer.Ptr(false),
 				},
 			},
 		},
@@ -81,7 +81,7 @@ func NewDetailedMultiRackCluster(name, namespace, repo, version, dc string, memb
 			},
 		},
 		Status: scyllav1.ScyllaClusterStatus{
-			ObservedGeneration: pointer.Int64(1),
+			ObservedGeneration: pointer.Ptr(int64(1)),
 			Racks:              map[string]scyllav1.RackStatus{},
 		},
 	}
@@ -99,7 +99,7 @@ func NewDetailedMultiRackCluster(name, namespace, repo, version, dc string, memb
 			Version:      version,
 			Members:      m,
 			ReadyMembers: m,
-			Stale:        pointer.Bool(false),
+			Stale:        pointer.Ptr(false),
 		}
 	}
 

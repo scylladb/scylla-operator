@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -42,7 +41,7 @@ func (c *Client) CreateAPIKey(request CreateAPIKeyRequest) (CreateAPIKeyResponse
 		return response, err
 	}
 
-	err = c.request("POST", "/api/auth/keys", nil, bytes.NewBuffer(data), &response)
+	err = c.request("POST", "/api/auth/keys", nil, data, &response)
 	return response, err
 }
 

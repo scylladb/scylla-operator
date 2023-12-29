@@ -5,6 +5,7 @@ import (
 
 	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	batchv1client "k8s.io/client-go/kubernetes/typed/batch/v1"
 	batchv1listers "k8s.io/client-go/listers/batch/v1"
 	"k8s.io/client-go/tools/record"
@@ -24,23 +25,23 @@ func ApplyJobWithControl(
 		required,
 		options,
 		nil,
-		func(required *batchv1.Job, existing *batchv1.Job) string {
+		func(required *batchv1.Job, existing *batchv1.Job) (string, *metav1.DeletionPropagation, error) {
 			if !equality.Semantic.DeepEqual(existing.Spec.Completions, required.Spec.Completions) {
-				return "spec.completions is immutable"
+				return "spec.completions is immutable", nil, nil
 			}
 			if !equality.Semantic.DeepEqual(existing.Spec.Selector, required.Spec.Selector) {
-				return "spec.selector is immutable"
+				return "spec.selector is immutable", nil, nil
 			}
 			if !equality.Semantic.DeepEqual(existing.Spec.Template, required.Spec.Template) {
-				return "spec.template is immutable"
+				return "spec.template is immutable", nil, nil
 			}
 			if !equality.Semantic.DeepEqual(existing.Spec.CompletionMode, required.Spec.CompletionMode) {
-				return "spec.completionMode is immutable"
+				return "spec.completionMode is immutable", nil, nil
 			}
 			if !equality.Semantic.DeepEqual(existing.Spec.PodFailurePolicy, required.Spec.PodFailurePolicy) {
-				return "spec.podFailurePolicy is immutable"
+				return "spec.podFailurePolicy is immutable", nil, nil
 			}
-			return ""
+			return "", nil, nil
 		},
 	)
 }

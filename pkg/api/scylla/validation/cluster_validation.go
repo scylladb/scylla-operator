@@ -7,6 +7,8 @@ import (
 
 	"github.com/scylladb/go-set/strset"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/semver"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -25,6 +27,12 @@ var (
 		AlternatorWriteIsolationAlways,
 		AlternatorWriteIsolationForbidRMW,
 		AlternatorWriteIsolationOnlyRMWUsesLWT,
+	}
+
+	SupportedBroadcastAddressTypes = []scyllav1.BroadcastAddressType{
+		scyllav1.BroadcastAddressTypePodIP,
+		scyllav1.BroadcastAddressTypeServiceClusterIP,
+		scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
 	}
 )
 
@@ -110,6 +118,85 @@ func ValidateExposeOptions(options *scyllav1.ExposeOptions, fldPath *field.Path)
 
 	if options.CQL != nil && options.CQL.Ingress != nil {
 		allErrs = append(allErrs, ValidateIngressOptions(options.CQL.Ingress, fldPath.Child("cql", "ingress"))...)
+	}
+
+	if options.NodeService != nil {
+		allErrs = append(allErrs, ValidateNodeService(options.NodeService, fldPath.Child("nodeService"))...)
+	}
+
+	if options.BroadcastOptions != nil {
+		allErrs = append(allErrs, ValidateNodeBroadcastOptions(options.BroadcastOptions, options.NodeService, fldPath.Child("broadcastOptions"))...)
+	}
+
+	return allErrs
+}
+
+func ValidateNodeBroadcastOptions(options *scyllav1.NodeBroadcastOptions, nodeService *scyllav1.NodeServiceTemplate, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	allErrs = append(allErrs, ValidateBroadcastOptions(options.Clients, nodeService, fldPath.Child("clients"))...)
+	allErrs = append(allErrs, ValidateBroadcastOptions(options.Nodes, nodeService, fldPath.Child("nodes"))...)
+
+	return allErrs
+}
+
+func ValidateBroadcastOptions(options scyllav1.BroadcastOptions, nodeService *scyllav1.NodeServiceTemplate, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if !slices.ContainsItem(SupportedBroadcastAddressTypes, options.Type) {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("type"), options.Type, slices.ConvertSlice(SupportedBroadcastAddressTypes, slices.ToString[scyllav1.BroadcastAddressType])))
+	}
+
+	var allowedNodeServiceTypesByBroadcastAddressType = map[scyllav1.BroadcastAddressType][]scyllav1.NodeServiceType{
+		scyllav1.BroadcastAddressTypePodIP: {
+			scyllav1.NodeServiceTypeHeadless,
+			scyllav1.NodeServiceTypeClusterIP,
+			scyllav1.NodeServiceTypeLoadBalancer,
+		},
+		scyllav1.BroadcastAddressTypeServiceClusterIP: {
+			scyllav1.NodeServiceTypeClusterIP,
+			scyllav1.NodeServiceTypeLoadBalancer,
+		},
+		scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress: {
+			scyllav1.NodeServiceTypeLoadBalancer,
+		},
+	}
+
+	nodeServiceType := scyllav1.NodeServiceTypeClusterIP
+	if nodeService != nil {
+		nodeServiceType = nodeService.Type
+	}
+
+	// Skipping an error when chosen option type is unsupported as it won't help anyhow users reading it.
+	allowedNodeServiceTypes, ok := allowedNodeServiceTypesByBroadcastAddressType[options.Type]
+	if ok && !slices.ContainsItem(allowedNodeServiceTypes, nodeServiceType) {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("type"), options.Type, fmt.Sprintf("can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: %v", allowedNodeServiceTypes)))
+	}
+
+	return allErrs
+}
+
+func ValidateNodeService(nodeService *scyllav1.NodeServiceTemplate, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	var supportedServiceTypes = []scyllav1.NodeServiceType{
+		scyllav1.NodeServiceTypeHeadless,
+		scyllav1.NodeServiceTypeClusterIP,
+		scyllav1.NodeServiceTypeLoadBalancer,
+	}
+
+	if !slices.ContainsItem(supportedServiceTypes, nodeService.Type) {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("type"), nodeService.Type, slices.ConvertSlice(supportedServiceTypes, slices.ToString[scyllav1.NodeServiceType])))
+	}
+
+	if nodeService.LoadBalancerClass != nil && len(*nodeService.LoadBalancerClass) != 0 {
+		for _, msg := range apimachineryutilvalidation.IsQualifiedName(*nodeService.LoadBalancerClass) {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("loadBalancerClass"), *nodeService.LoadBalancerClass, msg))
+		}
+	}
+
+	if len(nodeService.Annotations) != 0 {
+		allErrs = append(allErrs, apimachineryvalidation.ValidateAnnotations(nodeService.Annotations, fldPath.Child("annotations"))...)
 	}
 
 	return allErrs
@@ -234,6 +321,33 @@ func ValidateScyllaClusterSpecUpdate(new, old *scyllav1.ScyllaCluster, fldPath *
 			allErrs = append(allErrs, field.Forbidden(fldPath.Child("datacenter", "racks").Index(i).Child("storage"), "changes in storage are currently not supported"))
 		}
 	}
+
+	var oldClientBroadcastAddressType, newClientBroadcastAddressType *scyllav1.BroadcastAddressType
+	if old.Spec.ExposeOptions != nil && old.Spec.ExposeOptions.BroadcastOptions != nil {
+		oldClientBroadcastAddressType = pointer.Ptr(old.Spec.ExposeOptions.BroadcastOptions.Clients.Type)
+	}
+	if new.Spec.ExposeOptions != nil && new.Spec.ExposeOptions.BroadcastOptions != nil {
+		newClientBroadcastAddressType = pointer.Ptr(new.Spec.ExposeOptions.BroadcastOptions.Clients.Type)
+	}
+	allErrs = append(allErrs, apimachineryvalidation.ValidateImmutableField(newClientBroadcastAddressType, oldClientBroadcastAddressType, fldPath.Child("exposeOptions", "broadcastOptions", "clients", "type"))...)
+
+	var oldNodesBroadcastAddressType, newNodesBroadcastAddressType *scyllav1.BroadcastAddressType
+	if old.Spec.ExposeOptions != nil && old.Spec.ExposeOptions.BroadcastOptions != nil {
+		oldNodesBroadcastAddressType = pointer.Ptr(old.Spec.ExposeOptions.BroadcastOptions.Nodes.Type)
+	}
+	if new.Spec.ExposeOptions != nil && new.Spec.ExposeOptions.BroadcastOptions != nil {
+		newNodesBroadcastAddressType = pointer.Ptr(new.Spec.ExposeOptions.BroadcastOptions.Nodes.Type)
+	}
+	allErrs = append(allErrs, apimachineryvalidation.ValidateImmutableField(newNodesBroadcastAddressType, oldNodesBroadcastAddressType, fldPath.Child("exposeOptions", "broadcastOptions", "nodes", "type"))...)
+
+	var oldNodeServiceType, newNodeServiceType *scyllav1.NodeServiceType
+	if old.Spec.ExposeOptions != nil && old.Spec.ExposeOptions.NodeService != nil {
+		oldNodeServiceType = pointer.Ptr(old.Spec.ExposeOptions.NodeService.Type)
+	}
+	if new.Spec.ExposeOptions != nil && new.Spec.ExposeOptions.NodeService != nil {
+		newNodeServiceType = pointer.Ptr(new.Spec.ExposeOptions.NodeService.Type)
+	}
+	allErrs = append(allErrs, apimachineryvalidation.ValidateImmutableField(newNodeServiceType, oldNodeServiceType, fldPath.Child("exposeOptions", "nodeService", "type"))...)
 
 	return allErrs
 }

@@ -1,0 +1,22 @@
+name: Feature request
+description: Create a feature request
+labels: kind/feature
+body:
+- type: textarea
+  id: expected
+  attributes:
+    label: What should the feature do?
+  validations:
+    required: true
+
+- type: textarea
+  id: useCase
+  attributes:
+    label: What is the use case behind this feature?
+  validations:
+    required: true
+
+- type: textarea
+  id: additional
+  attributes:
+    label: Anything else we need to know?

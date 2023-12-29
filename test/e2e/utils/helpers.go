@@ -4,6 +4,9 @@ package utils
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -13,19 +16,19 @@ import (
 	"time"
 
 	o "github.com/onsi/gomega"
-	"github.com/scylladb/go-log"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	scyllav1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1"
 	scyllav1alpha1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -34,7 +37,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	apierrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	appv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
@@ -116,7 +118,7 @@ func IsNodeConfigDoneWithNodeTuningFunc(nodes []*corev1.Node) func(nc *scyllav1a
 }
 
 func RolloutTimeoutForScyllaCluster(sc *scyllav1.ScyllaCluster) time.Duration {
-	return SyncTimeout + time.Duration(GetMemberCount(sc))*memberRolloutTimeout
+	return SyncTimeout + time.Duration(GetMemberCount(sc))*memberRolloutTimeout + cleanupJobTimeout
 }
 
 func GetMemberCount(sc *scyllav1.ScyllaCluster) int32 {
@@ -159,11 +161,6 @@ func IsScyllaClusterRolledOut(sc *scyllav1.ScyllaCluster) (bool, error) {
 	}
 
 	framework.Infof("ScyllaCluster %s (RV=%s) is rolled out", klog.KObj(sc), sc.ResourceVersion)
-
-	// Allow CI to remove stale conntrack entries.
-	// https://github.com/scylladb/scylla-operator/issues/975
-	// TODO: remove when GitHub Actions upgrades to kernel version 5.14.
-	time.Sleep(5 * time.Second)
 
 	return true, nil
 }
@@ -288,6 +285,10 @@ func WaitForSecretState(ctx context.Context, client corev1client.SecretInterface
 	return WaitForObjectState[*corev1.Secret, *corev1.SecretList](ctx, client, name, options, condition, additionalConditions...)
 }
 
+func WaitForServiceState(ctx context.Context, client corev1client.ServiceInterface, name string, options WaitForStateOptions, condition func(*corev1.Service) (bool, error), additionalConditions ...func(*corev1.Service) (bool, error)) (*corev1.Service, error) {
+	return WaitForObjectState[*corev1.Service, *corev1.ServiceList](ctx, client, name, options, condition, additionalConditions...)
+}
+
 func RunEphemeralContainerAndWaitForCompletion(ctx context.Context, client corev1client.PodInterface, podName string, ec *corev1.EphemeralContainer) (*corev1.Pod, error) {
 	ephemeralPod := &corev1.Pod{
 		Spec: corev1.PodSpec{
@@ -394,7 +395,7 @@ func GetDaemonSetsForNodeConfig(ctx context.Context, client appv1client.AppsV1In
 }
 
 func GetScyllaClient(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) (*scyllaclient.Client, []string, error) {
-	hosts, err := GetHosts(ctx, client, sc)
+	hosts, err := GetBroadcastRPCAddresses(ctx, client, sc)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -413,13 +414,8 @@ func GetScyllaClient(ctx context.Context, client corev1client.CoreV1Interface, s
 		return nil, nil, fmt.Errorf("can't get auth token: %w", err)
 	}
 
-	// TODO: unify logging
-	logger, _ := log.NewProduction(log.Config{
-		Level: zap.NewAtomicLevelAt(zapcore.InfoLevel),
-	})
 	cfg := scyllaclient.DefaultConfig(authToken, hosts...)
-
-	scyllaClient, err := scyllaclient.NewClient(cfg, logger.Named("scylla_client"))
+	scyllaClient, err := scyllaclient.NewClient(cfg)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -427,35 +423,209 @@ func GetScyllaClient(ctx context.Context, client corev1client.CoreV1Interface, s
 	return scyllaClient, hosts, nil
 }
 
-func GetHostsAndUUIDs(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, []string, error) {
+func GetScyllaConfigClient(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, host string) (*scyllaclient.ConfigClient, error) {
+	tokenSecret, err := client.Secrets(sc.Namespace).Get(ctx, naming.AgentAuthTokenSecretName(sc.Name), metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("can't get Secret %q: %w", naming.ManualRef(sc.Namespace, naming.AgentAuthTokenSecretName(sc.Name)), err)
+	}
+
+	authToken, err := helpers.GetAgentAuthTokenFromSecret(tokenSecret)
+	if err != nil {
+		return nil, fmt.Errorf("can't get auth token: %w", err)
+	}
+
+	configClient := scyllaclient.NewConfigClient(host, authToken)
+	return configClient, nil
+}
+
+func GetBroadcastAddresses(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
 	serviceList, err := client.Services(sc.Namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: GetMemberServiceSelector(sc.Name).String(),
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	var hosts []string
-	var uuids []string
-	for _, s := range serviceList.Items {
-		if s.Spec.Type != corev1.ServiceTypeClusterIP {
-			return nil, nil, fmt.Errorf("service %s/%s is of type %q instead of %q", s.Namespace, s.Name, s.Spec.Type, corev1.ServiceTypeClusterIP)
+	var broadcastAddresses []string
+	for _, svc := range slices.ConvertSlice(serviceList.Items, pointer.Ptr[corev1.Service]) {
+		podName := naming.PodNameFromService(svc)
+		pod, err := client.Pods(sc.Namespace).Get(ctx, podName, metav1.GetOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sc.Namespace, podName), err)
 		}
 
-		if s.Spec.ClusterIP == corev1.ClusterIPNone {
-			return nil, nil, fmt.Errorf("service %s/%s doesn't have a ClusterIP", s.Namespace, s.Name)
+		broadcastAddress, err := GetBroadcastAddress(ctx, client, sc, svc, pod)
+		if err != nil {
+			return nil, fmt.Errorf("can't get broadcast address of Service %q: %w", naming.ObjRef(svc), err)
 		}
 
-		hosts = append(hosts, s.Spec.ClusterIP)
-		uuids = append(uuids, s.Annotations[naming.HostIDAnnotation])
+		broadcastAddresses = append(broadcastAddresses, broadcastAddress)
 	}
 
-	return hosts, uuids, nil
+	return broadcastAddresses, nil
 }
 
-func GetHosts(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
-	hosts, _, err := GetHostsAndUUIDs(ctx, client, sc)
-	return hosts, err
+func GetBroadcastAddress(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, svc *corev1.Service, pod *corev1.Pod) (string, error) {
+	host, err := controllerhelpers.GetScyllaHost(sc, svc, pod)
+	if err != nil {
+		return "", fmt.Errorf("can't get Scylla host for Service %q: %w", naming.ObjRef(svc), err)
+	}
+
+	configClient, err := GetScyllaConfigClient(ctx, client, sc, host)
+	if err != nil {
+		return "", fmt.Errorf("can't create scylla config client with host %q: %w", host, err)
+	}
+	broadcastAddress, err := configClient.BroadcastAddress(ctx)
+	if err != nil {
+		return "", fmt.Errorf("can't get broadcast_address of host %q: %w", host, err)
+	}
+
+	return broadcastAddress, nil
+}
+
+func GetBroadcastRPCAddresses(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
+	serviceList, err := client.Services(sc.Namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: GetMemberServiceSelector(sc.Name).String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var broadcastRPCAddresses []string
+	for _, svc := range serviceList.Items {
+		broadcastRPCAddress, err := GetBroadcastRPCAddress(ctx, client, sc, &svc)
+		if err != nil {
+			return nil, fmt.Errorf("can't get broadcast rpc address for service %q: %w", naming.ObjRef(&svc), err)
+		}
+
+		broadcastRPCAddresses = append(broadcastRPCAddresses, broadcastRPCAddress)
+	}
+
+	return broadcastRPCAddresses, err
+}
+
+func GetBroadcastRPCAddressesAndUUIDsByDC(ctx context.Context, dcClientMap map[string]corev1client.CoreV1Interface, scs []*scyllav1.ScyllaCluster) (map[string][]string, map[string][]string, error) {
+	allBroadcastRPCAddresses := map[string][]string{}
+	allUUIDs := map[string][]string{}
+
+	for _, sc := range scs {
+		client, ok := dcClientMap[sc.Spec.Datacenter.Name]
+		if !ok {
+			return nil, nil, fmt.Errorf("client is missing for datacenter %q of ScyllaCluster %q", sc.Spec.Datacenter.Name, naming.ObjRef(sc))
+		}
+
+		broadcastRPCAddresses, uuids, err := GetBroadcastRPCAddressesAndUUIDs(ctx, client, sc)
+		if err != nil {
+			return nil, nil, fmt.Errorf("can't get broadcast rpc address and UUID for ScyllaCluster %q: %w", naming.ObjRef(sc), err)
+		}
+		allBroadcastRPCAddresses[sc.Spec.Datacenter.Name] = broadcastRPCAddresses
+		allUUIDs[sc.Spec.Datacenter.Name] = uuids
+	}
+
+	return allBroadcastRPCAddresses, allUUIDs, nil
+}
+
+func GetBroadcastRPCAddressesAndUUIDs(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, []string, error) {
+	scyllaClient, broadcastRPCAddresses, err := GetScyllaClient(ctx, client, sc)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can't get scylla client for ScyllaCluster %q: %w", naming.ObjRef(sc), err)
+	}
+
+	var uuids []string
+	for _, broadcastRPCAddress := range broadcastRPCAddresses {
+		uuid, err := scyllaClient.GetLocalHostId(ctx, broadcastRPCAddress, false)
+		if err != nil {
+			return nil, nil, fmt.Errorf("can't get HostID for node with broadcast rpc address %q: %w", broadcastRPCAddress, err)
+		}
+
+		uuids = append(uuids, uuid)
+	}
+
+	return broadcastRPCAddresses, uuids, nil
+}
+
+func GetBroadcastRPCAddress(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, svc *corev1.Service) (string, error) {
+	host := svc.Spec.ClusterIP
+
+	if host == corev1.ClusterIPNone {
+		pod, err := client.Pods(sc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{})
+		if err != nil {
+			return "", fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sc.Namespace, svc.Name), err)
+		}
+		host = pod.Status.PodIP
+		if len(host) < 1 {
+			return "", fmt.Errorf("empty podIP of pod %q", naming.ManualRef(sc.Namespace, svc.Name))
+		}
+	}
+
+	configClient, err := GetScyllaConfigClient(ctx, client, sc, host)
+	if err != nil {
+		return "", fmt.Errorf("can't create scylla config client with host %q: %w", host, err)
+	}
+
+	broadcastRPCAddress, err := configClient.BroadcastRPCAddress(ctx)
+	if err != nil {
+		return "", fmt.Errorf("can't get broadcast_rpc_address of host %q: %w", host, err)
+	}
+
+	return broadcastRPCAddress, nil
+}
+
+func GetNodesServiceAndPodIPs(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
+	serviceIPs, err := GetNodesServiceIPs(ctx, client, sc)
+	if err != nil {
+		return nil, fmt.Errorf("can't get nodes service IPs: %w", err)
+	}
+
+	podIPs, err := GetNodesPodIPs(ctx, client, sc)
+	if err != nil {
+		return nil, fmt.Errorf("can't get nodes pod IPs: %w", err)
+	}
+
+	ipAddresses := make([]string, 0, len(serviceIPs)+len(podIPs))
+	ipAddresses = append(ipAddresses, serviceIPs...)
+	ipAddresses = append(ipAddresses, podIPs...)
+	return ipAddresses, nil
+}
+
+func GetNodesServiceIPs(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
+	serviceList, err := client.Services(sc.Namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: GetMemberServiceSelector(sc.Name).String(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("can't get member services: %w", err)
+	}
+
+	var ipAddresses []string
+
+	for _, svc := range serviceList.Items {
+		if svc.Spec.ClusterIP != corev1.ClusterIPNone {
+			ipAddresses = append(ipAddresses, svc.Spec.ClusterIP)
+		}
+
+		for _, ingressStatus := range svc.Status.LoadBalancer.Ingress {
+			ipAddresses = append(ipAddresses, ingressStatus.IP)
+		}
+	}
+
+	return ipAddresses, nil
+}
+
+func GetNodesPodIPs(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
+	clusterPods, err := client.Pods(sc.Namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: naming.ClusterSelector(sc).String(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("can't get cluster pods: %w", err)
+	}
+
+	ipAddresses := make([]string, 0, len(clusterPods.Items))
+
+	for _, pod := range clusterPods.Items {
+		ipAddresses = append(ipAddresses, pod.Status.PodIP)
+	}
+
+	return ipAddresses, nil
 }
 
 // GetManagerClient gets managerClient using IP address. E2E tests shouldn't rely on InCluster DNS.
@@ -474,7 +644,7 @@ func GetManagerClient(ctx context.Context, client corev1client.CoreV1Interface) 
 		Path:   "/api/v1",
 	}).String()
 
-	manager, err := mermaidclient.NewClient(apiAddress, &http.Transport{})
+	manager, err := mermaidclient.NewClient(apiAddress, &http.Client{})
 	if err != nil {
 		return nil, fmt.Errorf("create manager client, %w", err)
 	}
@@ -499,24 +669,69 @@ func GetMemberServiceSelector(scyllaClusterName string) labels.Selector {
 	}.AsSelector()
 }
 
-func GetScyllaHostsAndWaitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
+func WaitForFullMultiDCQuorum(ctx context.Context, dcClientMap map[string]corev1client.CoreV1Interface, scs []*scyllav1.ScyllaCluster) error {
+	allBroadcastAddresses := map[string][]string{}
+	var sortedAllBroadcastAddresses []string
+
+	var errs []error
+	for _, sc := range scs {
+		client, ok := dcClientMap[sc.Spec.Datacenter.Name]
+		if !ok {
+			errs = append(errs, fmt.Errorf("client is missing for datacenter %q of ScyllaCluster %q", sc.Spec.Datacenter.Name, naming.ObjRef(sc)))
+			continue
+		}
+
+		hosts, err := GetBroadcastAddresses(ctx, client, sc)
+		if err != nil {
+			return fmt.Errorf("can't get broadcast addresses for ScyllaCluster %q: %w", sc.Name, err)
+		}
+		allBroadcastAddresses[sc.Spec.Datacenter.Name] = hosts
+		sortedAllBroadcastAddresses = append(sortedAllBroadcastAddresses, hosts...)
+	}
+	err := errors.Join(errs...)
+	if err != nil {
+		return err
+	}
+
+	sort.Strings(sortedAllBroadcastAddresses)
+
+	for _, sc := range scs {
+		client, ok := dcClientMap[sc.Spec.Datacenter.Name]
+		if !ok {
+			errs = append(errs, fmt.Errorf("client is missing for datacenter %q of ScyllaCluster %q", sc.Spec.Datacenter.Name, naming.ObjRef(sc)))
+			continue
+		}
+
+		err = waitForFullQuorum(ctx, client, sc, sortedAllBroadcastAddresses)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	err = errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("can't wait for scylla nodes to reach status consistency: %w", err)
+	}
+
+	framework.Infof("ScyllaDB nodes have reached status consistency.")
+
+	return nil
+}
+
+func waitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, sortedExpectedHosts []string) error {
 	scyllaClient, hosts, err := GetScyllaClient(ctx, client, sc)
 	if err != nil {
-		return nil, fmt.Errorf("can't get scylla client: %w", err)
+		return fmt.Errorf("can't get scylla client: %w", err)
 	}
 	defer scyllaClient.Close()
 
-	sortedHosts := make([]string, len(hosts))
-	copy(sortedHosts, hosts)
-	sort.Strings(sortedHosts)
-
 	// Wait for node status to propagate and reach consistency.
 	// This can take a while so let's set a large enough timeout to avoid flakes.
-	err = wait.PollImmediateWithContext(ctx, 1*time.Second, 5*time.Minute, func(ctx context.Context) (done bool, err error) {
+	return wait.PollImmediateWithContext(ctx, 1*time.Second, 5*time.Minute, func(ctx context.Context) (done bool, err error) {
 		allSeeAllAsUN := true
 		infoMessages := make([]string, 0, len(hosts))
 		var errs []error
-		for _, h := range sortedHosts {
+		for _, h := range hosts {
 			s, err := scyllaClient.Status(ctx, h)
 			if err != nil {
 				return true, fmt.Errorf("can't get scylla status on node %q: %w", h, err)
@@ -524,7 +739,7 @@ func GetScyllaHostsAndWaitForFullQuorum(ctx context.Context, client corev1client
 
 			sHosts := s.Hosts()
 			sort.Strings(sHosts)
-			if !reflect.DeepEqual(sHosts, sortedHosts) {
+			if !reflect.DeepEqual(sHosts, sortedExpectedHosts) {
 				errs = append(errs, fmt.Errorf("node %q thinks the cluster consists of different nodes: %s", h, sHosts))
 			}
 
@@ -540,7 +755,7 @@ func GetScyllaHostsAndWaitForFullQuorum(ctx context.Context, client corev1client
 			framework.Infof("ScyllaDB nodes have not reached status consistency yet. Statuses:\n%s", strings.Join(infoMessages, ","))
 		}
 
-		err = apierrors.NewAggregate(errs)
+		err = errors.Join(errs...)
 		if err != nil {
 			framework.Infof("ScyllaDB nodes encountered an error. Statuses:\n%s", strings.Join(infoMessages, ","))
 			return true, err
@@ -548,13 +763,6 @@ func GetScyllaHostsAndWaitForFullQuorum(ctx context.Context, client corev1client
 
 		return allSeeAllAsUN, nil
 	})
-	if err != nil {
-		return nil, fmt.Errorf("can't wait for scylla nodes to reach status consistency: %w", err)
-	}
-
-	framework.Infof("ScyllaDB nodes have reached status consistency.")
-
-	return hosts, nil
 }
 
 func PodIsRunning(pod *corev1.Pod) (bool, error) {
@@ -565,4 +773,68 @@ func PodIsRunning(pod *corev1.Pod) (bool, error) {
 		return false, fmt.Errorf("pod ran to completion")
 	}
 	return false, nil
+}
+
+func WaitUntilServingCertificateIsLive(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) error {
+	servingCertSecret, err := client.Secrets(sc.Namespace).Get(ctx, fmt.Sprintf("%s-local-serving-certs", sc.Name), metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("can't get serving cert secret: %w", err)
+	}
+	servingCerts, err := ocrypto.DecodeCertificates(servingCertSecret.Data["tls.crt"])
+	if err != nil {
+		return fmt.Errorf("can't decode serving certificate: %w", err)
+	}
+	if len(servingCerts) != 1 {
+		return fmt.Errorf("expected 1 serving certificate, got %d", len(servingCerts))
+	}
+	servingCert := servingCerts[0]
+
+	adminClientSecret, err := client.Secrets(sc.Namespace).Get(ctx, fmt.Sprintf("%s-local-user-admin", sc.Name), metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("can't get client certificate secret: %w", err)
+	}
+
+	adminTLSCert, err := tls.X509KeyPair(adminClientSecret.Data["tls.crt"], adminClientSecret.Data["tls.key"])
+	if err != nil {
+		return fmt.Errorf("can't parse client certificate: %w", err)
+	}
+
+	servingCABundleConfigMap, err := client.ConfigMaps(sc.Namespace).Get(ctx, fmt.Sprintf("%s-local-serving-ca", sc.Name), metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("can't get serving CA configmap: %w", err)
+	}
+
+	caBundleCerts, err := ocrypto.DecodeCertificates([]byte(servingCABundleConfigMap.Data["ca-bundle.crt"]))
+	if err != nil {
+		return fmt.Errorf("can't decode serving CA certificate: %w", err)
+	}
+
+	servingCAPool := x509.NewCertPool()
+	for _, caCert := range caBundleCerts {
+		servingCAPool.AddCert(caCert)
+	}
+
+	hosts, err := GetBroadcastRPCAddresses(ctx, client, sc)
+	if err != nil {
+		return fmt.Errorf("can't get v1.ScyllaCluster %q hosts: %w", naming.ObjRef(sc), err)
+	}
+
+	for _, host := range hosts {
+		o.Eventually(func(eo o.Gomega) {
+			serverCerts, err := GetServerTLSCertificates(fmt.Sprintf("%s:9142", host), &tls.Config{
+				ServerName:         host,
+				InsecureSkipVerify: false,
+				Certificates:       []tls.Certificate{adminTLSCert},
+				RootCAs:            servingCAPool,
+			})
+			eo.Expect(err).NotTo(o.HaveOccurred())
+			eo.Expect(serverCerts).NotTo(o.BeEmpty())
+			eo.Expect(serverCerts).To(o.HaveLen(1))
+
+			eo.Expect(serverCerts[0].Raw).NotTo(o.BeEmpty())
+			eo.Expect(serverCerts[0].Raw).To(o.Equal(servingCert.Raw))
+		}).WithTimeout(5 * 60 * time.Second).WithPolling(1 * time.Second).Should(o.Succeed())
+	}
+
+	return nil
 }

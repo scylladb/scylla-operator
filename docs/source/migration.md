@@ -1,7 +1,7 @@
-## Version  migrations
+# Version  migrations
 
 
-### `v0.3.0` -> `v1.0.0` migration
+## `v0.3.0` -> `v1.0.0` migration
 
 `v0.3.0` used a very common name as a CRD kind (`Cluster`). In `v1.0.0` this issue was solved by using less common kind
 which is easier to disambiguate (`ScyllaCluster`).
@@ -18,7 +18,7 @@ out of the box on production. Make sure this procedure works well multiple times
 In case of any issues or questions regarding this procedure, you're welcomed on our [Scylla Users Slack](http://slack.scylladb.com/)
 on #kubernetes channel.
 
-### Procedure
+## Procedure
 
 1. Execute this whole procedure for each cluster sequentially. To get a list of existing clusters execute the following
     ```
@@ -37,7 +37,7 @@ on #kubernetes channel.
     kubectl apply -f examples/common/cert-manager.yaml
    ```
     If your `cert-manager` was installed in another way, follow official instructions on `cert-manager` website.
-1. `examples/common/operator.yaml` file contains multiple resources. Extract **only** `CustomResourceDefinition` to separate file.
+1. `deploy/operator.yaml` file contains multiple resources. Extract **only** `CustomResourceDefinition` to separate file.
 1. Install v1.0.0 CRD definition from file created in the previous step:
     ```
     kubectl apply -f examples/common/crd.yaml
@@ -121,7 +121,7 @@ on #kubernetes channel.
 1. Checkout `v1.0.0`, and install upgraded Scylla Operator:
    ```
     git checkout v1.0.0
-    kubectl apply -f examples/common/operator.yaml
+    kubectl apply -f deploy/operator.yaml
    ```
 1. Wait until Scylla Operator boots up:
    ```

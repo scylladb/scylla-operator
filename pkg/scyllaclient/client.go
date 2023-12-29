@@ -3,43 +3,49 @@ package scyllaclient
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net"
 	"net/http"
 	"runtime"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	api "github.com/go-openapi/runtime/client"
 	apiMiddleware "github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	"github.com/hailocab/go-hostpool"
-	"github.com/scylladb/go-log"
 	"github.com/scylladb/go-set/strset"
 	"github.com/scylladb/scylla-operator/pkg/auth"
-	scyllaClient "github.com/scylladb/scylla-operator/pkg/scyllaclient/internal/scylla/client"
-	scyllaOperations "github.com/scylladb/scylla-operator/pkg/scyllaclient/internal/scylla/client/operations"
 	"github.com/scylladb/scylla-operator/pkg/util/httpx"
+	scyllaclient "github.com/scylladb/scylladb-swagger-go-client/scylladb/gen/v1/client"
+	scyllaoperations "github.com/scylladb/scylladb-swagger-go-client/scylladb/gen/v1/client/operations"
 )
+
+func init() {
+	// Timeout is defined in http client that we provide in api.NewWithClient.
+	// If Context is provided to operation, which is always the case here,
+	// this value has no meaning since OpenAPI runtime ignores it.
+	api.DefaultTimeout = 0
+	// Disable debug output to stderr, it could have been enabled by setting
+	// SWAGGER_DEBUG or DEBUG env variables.
+	apiMiddleware.Debug = false
+}
 
 type Client struct {
 	config *Config
-	logger log.Logger
 
-	scyllaOps *scyllaOperations.Client
-	transport http.RoundTripper
-	pool      hostpool.HostPool
-
-	mu      sync.RWMutex
-	dcCache map[string]string
+	scyllaClient *scyllaclient.ScylladbV1
+	transport    http.RoundTripper
+	pool         hostpool.HostPool
 }
 
-func NewClient(config *Config, logger log.Logger) (*Client, error) {
-	/*if err := config.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid config")
-	}*/
-	setOpenAPIGlobals()
+func NewClient(config *Config) (*Client, error) {
+	err := config.Validate()
+	if err != nil {
+		return nil, fmt.Errorf("invalid config: %w", err)
+	}
+
 	hosts := make([]string, len(config.Hosts))
 	copy(hosts, config.Hosts)
 
@@ -50,7 +56,7 @@ func NewClient(config *Config, logger log.Logger) (*Client, error) {
 	}
 	transport := config.Transport
 	transport = timeout(transport, config.Timeout)
-	transport = requestLogger(transport, logger)
+	transport = requestLogger(transport)
 	transport = hostPool(transport, pool, config.Port)
 	transport = auth.AddToken(transport, config.AuthToken)
 	transport = fixContentType(transport)
@@ -58,20 +64,18 @@ func NewClient(config *Config, logger log.Logger) (*Client, error) {
 	c := &http.Client{Transport: transport}
 
 	scyllaRuntime := api.NewWithClient(
-		scyllaClient.DefaultHost, scyllaClient.DefaultBasePath, []string{config.Scheme}, c,
+		scyllaclient.DefaultHost, scyllaclient.DefaultBasePath, []string{config.Scheme}, c,
 	)
 	// Debug can be turned on by SWAGGER_DEBUG or DEBUG env variable
 	scyllaRuntime.Debug = false
 
-	scyllaOps := scyllaOperations.New(retryable(scyllaRuntime, config, logger), strfmt.Default)
+	scyllaClient := scyllaclient.New(scyllaRuntime, strfmt.Default)
 
 	return &Client{
-		config:    config,
-		logger:    logger,
-		scyllaOps: scyllaOps,
-		transport: transport,
-		pool:      pool,
-		dcCache:   make(map[string]string),
+		config:       config,
+		scyllaClient: scyllaClient,
+		transport:    transport,
+		pool:         pool,
 	}, nil
 }
 
@@ -81,28 +85,6 @@ func (c *Client) Close() {
 	}
 }
 
-// HostDatacenter looks up the datacenter that the given host belongs to.
-func (c *Client) HostDatacenter(ctx context.Context, host string) (dc string, err error) {
-	// Try reading from cache
-	c.mu.RLock()
-	dc = c.dcCache[host]
-	c.mu.RUnlock()
-	if dc != "" {
-		return
-	}
-
-	resp, err := c.scyllaOps.SnitchDatacenterGet(&scyllaOperations.SnitchDatacenterGetParams{
-		Context: ctx,
-		Host:    &host,
-	})
-	if err != nil {
-		return "", err
-	}
-	dc = resp.Payload
-
-	return
-}
-
 func (c *Client) Status(ctx context.Context, host string) (NodeStatusInfoSlice, error) {
 	if len(host) > 0 {
 		// Always query same host
@@ -110,7 +92,7 @@ func (c *Client) Status(ctx context.Context, host string) (NodeStatusInfoSlice, 
 	}
 
 	// Get all hosts
-	resp, err := c.scyllaOps.StorageServiceHostIDGet(&scyllaOperations.StorageServiceHostIDGetParams{Context: ctx})
+	resp, err := c.scyllaClient.Operations.StorageServiceHostIDGet(&scyllaoperations.StorageServiceHostIDGetParams{Context: ctx})
 	if err != nil {
 		return nil, err
 	}
@@ -121,48 +103,37 @@ func (c *Client) Status(ctx context.Context, host string) (NodeStatusInfoSlice, 
 		all[i].HostID = p.Value
 	}
 
-	// Get host datacenter (hopefully cached)
-	for i := range all {
-		all[i].Datacenter, err = c.HostDatacenter(ctx, all[i].Addr)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	// Get live nodes
-	live, err := c.scyllaOps.GossiperEndpointLiveGet(&scyllaOperations.GossiperEndpointLiveGetParams{Context: ctx})
+	live, err := c.scyllaClient.Operations.GossiperEndpointLiveGet(&scyllaoperations.GossiperEndpointLiveGetParams{Context: ctx})
 	if err != nil {
 		return nil, err
 	}
 	setNodeStatus(all, NodeStatusUp, live.Payload)
 
 	// Get joining nodes
-	joining, err := c.scyllaOps.StorageServiceNodesJoiningGet(&scyllaOperations.StorageServiceNodesJoiningGetParams{Context: ctx})
+	joining, err := c.scyllaClient.Operations.StorageServiceNodesJoiningGet(&scyllaoperations.StorageServiceNodesJoiningGetParams{Context: ctx})
 	if err != nil {
 		return nil, err
 	}
 	setNodeState(all, NodeStateJoining, joining.Payload)
 
 	// Get leaving nodes
-	leaving, err := c.scyllaOps.StorageServiceNodesLeavingGet(&scyllaOperations.StorageServiceNodesLeavingGetParams{Context: ctx})
+	leaving, err := c.scyllaClient.Operations.StorageServiceNodesLeavingGet(&scyllaoperations.StorageServiceNodesLeavingGetParams{Context: ctx})
 	if err != nil {
 		return nil, err
 	}
 	setNodeState(all, NodeStateLeaving, leaving.Payload)
 
 	// Get moving nodes
-	moving, err := c.scyllaOps.StorageServiceNodesMovingGet(&scyllaOperations.StorageServiceNodesMovingGetParams{Context: ctx})
+	moving, err := c.scyllaClient.Operations.StorageServiceNodesMovingGet(&scyllaoperations.StorageServiceNodesMovingGetParams{Context: ctx})
 	if err != nil {
 		return nil, err
 	}
 	setNodeState(all, NodeStateMoving, moving.Payload)
 
-	// Sort by Datacenter and Address
+	// Sort by Host ID
 	sort.Slice(all, func(i, j int) bool {
-		if all[i].Datacenter != all[j].Datacenter {
-			return all[i].Datacenter < all[j].Datacenter
-		}
-		return all[i].Addr < all[j].Addr
+		return all[i].HostID < all[j].HostID
 	})
 
 	return all, nil
@@ -177,7 +148,102 @@ func (c *Client) GetLocalHostId(ctx context.Context, host string, retry bool) (s
 		ctx = noRetry(ctx)
 	}
 
-	resp, err := c.scyllaOps.StorageServiceHostidLocalGet(&scyllaOperations.StorageServiceHostidLocalGetParams{Context: ctx})
+	resp, err := c.scyllaClient.Operations.StorageServiceHostidLocalGet(&scyllaoperations.StorageServiceHostidLocalGetParams{Context: ctx})
+	if err != nil {
+		return "", err
+	}
+
+	return resp.GetPayload(), nil
+}
+
+func (c *Client) GetIPToHostIDMap(ctx context.Context, host string) (map[string]string, error) {
+	if len(host) > 0 {
+		ctx = forceHost(ctx, host)
+	}
+
+	resp, err := c.scyllaClient.Operations.StorageServiceHostIDGet(&scyllaoperations.StorageServiceHostIDGetParams{
+		Context: ctx,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	mapping := make(map[string]string, len(resp.Payload))
+
+	for _, e := range resp.Payload {
+		mapping[e.Key] = e.Value
+	}
+
+	return mapping, nil
+}
+
+func (c *Client) GetTokenRing(ctx context.Context, host string) ([]string, error) {
+	if len(host) > 0 {
+		ctx = forceHost(ctx, host)
+	}
+
+	resp, err := c.scyllaClient.Operations.StorageServiceTokensGet(&scyllaoperations.StorageServiceTokensGetParams{Context: ctx})
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.GetPayload(), nil
+}
+
+func (c *Client) GetNodeTokens(ctx context.Context, host, endpoint string) ([]string, error) {
+	ctx = forceHost(ctx, host)
+
+	resp, err := c.scyllaClient.Operations.StorageServiceTokensByEndpointGet(&scyllaoperations.StorageServiceTokensByEndpointGetParams{
+		Endpoint: endpoint,
+		Context:  ctx,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.GetPayload(), nil
+}
+
+func (c *Client) Cleanup(ctx context.Context, host string, keyspace string) error {
+	const (
+		// Cleanup is synchronous call and may take a long time to finish.
+		// Default request timeout in client is not big enough to clean huge keyspace.
+		cleanupTimeout = 24 * time.Hour
+	)
+
+	ctx = forceHost(ctx, host)
+	ctx = customTimeout(ctx, cleanupTimeout)
+
+	_, err := c.scyllaClient.Operations.StorageServiceKeyspaceCleanupByKeyspacePost(&scyllaoperations.StorageServiceKeyspaceCleanupByKeyspacePostParams{
+		Context:  ctx,
+		Keyspace: keyspace,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) StopCleanup(ctx context.Context, host string) error {
+	ctx = forceHost(ctx, host)
+
+	_, err := c.scyllaClient.Operations.CompactionManagerStopCompactionPost(&scyllaoperations.CompactionManagerStopCompactionPostParams{
+		Context: ctx,
+		Type:    string(CleanupCompactionType),
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) GetSnitchDatacenter(ctx context.Context, host string) (string, error) {
+	resp, err := c.scyllaClient.Operations.SnitchDatacenterGet(&scyllaoperations.SnitchDatacenterGetParams{
+		Context: ctx,
+		Host:    &host,
+	})
 	if err != nil {
 		return "", err
 	}
@@ -192,7 +258,7 @@ const (
 
 // Keyspaces return a list of all the keyspaces.
 func (c *Client) Keyspaces(ctx context.Context) ([]string, error) {
-	resp, err := c.scyllaOps.StorageServiceKeyspacesGet(&scyllaOperations.StorageServiceKeyspacesGetParams{Context: ctx})
+	resp, err := c.scyllaClient.Operations.StorageServiceKeyspacesGet(&scyllaoperations.StorageServiceKeyspacesGetParams{Context: ctx})
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +269,7 @@ func (c *Client) Keyspaces(ctx context.Context) ([]string, error) {
 func (c *Client) Snapshots(ctx context.Context, host string) ([]string, error) {
 	ctx = customTimeout(ctx, snapshotTimeout)
 
-	resp, err := c.scyllaOps.StorageServiceSnapshotsGet(&scyllaOperations.StorageServiceSnapshotsGetParams{
+	resp, err := c.scyllaClient.Operations.StorageServiceSnapshotsGet(&scyllaoperations.StorageServiceSnapshotsGetParams{
 		Context: forceHost(ctx, host),
 	})
 	if err != nil {
@@ -230,7 +296,7 @@ func (c *Client) TakeSnapshot(ctx context.Context, host, tag, keyspace string, t
 		cfPtr = &v
 	}
 
-	if _, err := c.scyllaOps.StorageServiceKeyspaceFlushByKeyspacePost(&scyllaOperations.StorageServiceKeyspaceFlushByKeyspacePostParams{ // nolint: errcheck
+	if _, err := c.scyllaClient.Operations.StorageServiceKeyspaceFlushByKeyspacePost(&scyllaoperations.StorageServiceKeyspaceFlushByKeyspacePostParams{ // nolint: errcheck
 		Context:  forceHost(ctx, host),
 		Keyspace: keyspace,
 		Cf:       cfPtr,
@@ -238,7 +304,7 @@ func (c *Client) TakeSnapshot(ctx context.Context, host, tag, keyspace string, t
 		return err
 	}
 
-	if _, err := c.scyllaOps.StorageServiceSnapshotsPost(&scyllaOperations.StorageServiceSnapshotsPostParams{ // nolint: errcheck
+	if _, err := c.scyllaClient.Operations.StorageServiceSnapshotsPost(&scyllaoperations.StorageServiceSnapshotsPostParams{ // nolint: errcheck
 		Context: forceHost(ctx, host),
 		Tag:     &tag,
 		Kn:      &keyspace,
@@ -254,7 +320,7 @@ func (c *Client) TakeSnapshot(ctx context.Context, host, tag, keyspace string, t
 func (c *Client) DeleteSnapshot(ctx context.Context, host, tag string) error {
 	ctx = customTimeout(ctx, snapshotTimeout)
 
-	_, err := c.scyllaOps.StorageServiceSnapshotsDelete(&scyllaOperations.StorageServiceSnapshotsDeleteParams{ // nolint: errcheck
+	_, err := c.scyllaClient.Operations.StorageServiceSnapshotsDelete(&scyllaoperations.StorageServiceSnapshotsDeleteParams{ // nolint: errcheck
 		Context: forceHost(ctx, host),
 		Tag:     &tag,
 	})
@@ -265,7 +331,7 @@ func (c *Client) DeleteSnapshot(ctx context.Context, host, tag string) error {
 func (c *Client) Drain(ctx context.Context, host string) error {
 	ctx = customTimeout(ctx, drainTimeout)
 
-	if _, err := c.scyllaOps.StorageServiceDrainPost(&scyllaOperations.StorageServiceDrainPostParams{ // nolint: errcheck
+	if _, err := c.scyllaClient.Operations.StorageServiceDrainPost(&scyllaoperations.StorageServiceDrainPostParams{ // nolint: errcheck
 		Context: forceHost(ctx, host),
 	}); err != nil {
 		return err
@@ -282,7 +348,7 @@ func (c *Client) Decommission(ctx context.Context, host string) error {
 	//   decommission is already in progress.
 	// To avoid that we pass noRetry to the context
 	queryCtx = noRetry(queryCtx)
-	_, err := c.scyllaOps.StorageServiceDecommissionPost(&scyllaOperations.StorageServiceDecommissionPostParams{Context: queryCtx})
+	_, err := c.scyllaClient.Operations.StorageServiceDecommissionPost(&scyllaoperations.StorageServiceDecommissionPostParams{Context: queryCtx})
 	if err != nil {
 		return err
 	}
@@ -290,7 +356,7 @@ func (c *Client) Decommission(ctx context.Context, host string) error {
 }
 
 func (c *Client) ScyllaVersion(ctx context.Context) (string, error) {
-	resp, err := c.scyllaOps.StorageServiceScyllaReleaseVersionGet(&scyllaOperations.StorageServiceScyllaReleaseVersionGetParams{Context: ctx})
+	resp, err := c.scyllaClient.Operations.StorageServiceScyllaReleaseVersionGet(&scyllaoperations.StorageServiceScyllaReleaseVersionGetParams{Context: ctx})
 	if err != nil {
 		return "", err
 	}
@@ -298,7 +364,7 @@ func (c *Client) ScyllaVersion(ctx context.Context) (string, error) {
 }
 
 func (c *Client) OperationMode(ctx context.Context, host string) (OperationalMode, error) {
-	resp, err := c.scyllaOps.StorageServiceOperationModeGet(&scyllaOperations.StorageServiceOperationModeGetParams{Context: forceHost(ctx, host)})
+	resp, err := c.scyllaClient.Operations.StorageServiceOperationModeGet(&scyllaoperations.StorageServiceOperationModeGetParams{Context: forceHost(ctx, host)})
 	if err != nil {
 		return "", err
 	}
@@ -306,7 +372,7 @@ func (c *Client) OperationMode(ctx context.Context, host string) (OperationalMod
 }
 
 func (c *Client) IsNativeTransportEnabled(ctx context.Context, host string) (bool, error) {
-	resp, err := c.scyllaOps.StorageServiceNativeTransportGet(&scyllaOperations.StorageServiceNativeTransportGetParams{Context: forceHost(ctx, host)})
+	resp, err := c.scyllaClient.Operations.StorageServiceNativeTransportGet(&scyllaoperations.StorageServiceNativeTransportGetParams{Context: forceHost(ctx, host)})
 	if err != nil {
 		return false, err
 	}
@@ -314,7 +380,7 @@ func (c *Client) IsNativeTransportEnabled(ctx context.Context, host string) (boo
 }
 
 func (c *Client) HasSchemaAgreement(ctx context.Context) (bool, error) {
-	resp, err := c.scyllaOps.StorageProxySchemaVersionsGet(&scyllaOperations.StorageProxySchemaVersionsGetParams{Context: ctx})
+	resp, err := c.scyllaClient.Operations.StorageProxySchemaVersionsGet(&scyllaoperations.StorageProxySchemaVersionsGetParams{Context: ctx})
 	if err != nil {
 		return false, err
 	}
@@ -369,20 +435,6 @@ func setNodeStatus(all []NodeStatusInfo, status NodeStatus, addrs []string) {
 			all[i].Status = status
 		}
 	}
-}
-
-var setOpenAPIGlobalsOnce sync.Once
-
-func setOpenAPIGlobals() {
-	setOpenAPIGlobalsOnce.Do(func() {
-		// Timeout is defined in http client that we provide in api.NewWithClient.
-		// If Context is provided to operation, which is always the case here,
-		// this value has no meaning since OpenAPI runtime ignores it.
-		api.DefaultTimeout = 0
-		// Disable debug output to stderr, it could have been enabled by setting
-		// SWAGGER_DEBUG or DEBUG env variables.
-		apiMiddleware.Debug = false
-	})
 }
 
 // fixContentType adjusts Scylla REST API response so that it can be consumed

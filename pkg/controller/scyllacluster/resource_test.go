@@ -9,7 +9,9 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -18,7 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
-	"k8s.io/utils/pointer"
 )
 
 func TestMemberService(t *testing.T) {
@@ -42,8 +43,8 @@ func TestMemberService(t *testing.T) {
 			Kind:               "ScyllaCluster",
 			Name:               "basic",
 			UID:                "the-uid",
-			Controller:         pointer.Bool(true),
-			BlockOwnerDeletion: pointer.Bool(true),
+			Controller:         pointer.Ptr(true),
+			BlockOwnerDeletion: pointer.Ptr(true),
 		},
 	}
 	basicRackName := "rack"
@@ -119,6 +120,7 @@ func TestMemberService(t *testing.T) {
 		rackName        string
 		svcName         string
 		oldService      *corev1.Service
+		jobs            map[string]*batchv1.Job
 		expectedService *corev1.Service
 	}{
 		{
@@ -127,6 +129,7 @@ func TestMemberService(t *testing.T) {
 			rackName:      basicRackName,
 			svcName:       basicSVCName,
 			oldService:    nil,
+			jobs:          nil,
 			expectedService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:            basicSVCName,
@@ -155,6 +158,7 @@ func TestMemberService(t *testing.T) {
 			rackName:   basicRackName,
 			svcName:    basicSVCName,
 			oldService: nil,
+			jobs:       nil,
 			expectedService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: basicSVCName,
@@ -193,6 +197,7 @@ func TestMemberService(t *testing.T) {
 					},
 				},
 			},
+			jobs: nil,
 			expectedService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: basicSVCName,
@@ -211,8 +216,10 @@ func TestMemberService(t *testing.T) {
 				},
 			},
 		},
+		// This behaviour is based on the fact the we merge labels on apply.
+		// TODO: to be addressed with https://github.com/scylladb/scylla-operator/issues/1440.
 		{
-			name:          "new service with unsaved IP and existing replace address",
+			name:          "new service with unsaved IP and existing replace label",
 			scyllaCluster: basicSC,
 			rackName:      basicRackName,
 			svcName:       basicSVCName,
@@ -223,44 +230,11 @@ func TestMemberService(t *testing.T) {
 					},
 				},
 			},
+			jobs: nil,
 			expectedService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: basicSVCName,
-					Labels: func() map[string]string {
-						labels := basicSVCLabels()
-						labels[naming.ReplaceLabel] = "10.0.0.1"
-						return labels
-					}(),
-					OwnerReferences: basicSCOwnerRefs,
-				},
-				Spec: corev1.ServiceSpec{
-					Type:                     corev1.ServiceTypeClusterIP,
-					Selector:                 basicSVCSelector,
-					PublishNotReadyAddresses: true,
-					Ports:                    basicPorts,
-				},
-			},
-		},
-		{
-			name:          "existing initial service",
-			scyllaCluster: basicSC,
-			rackName:      basicRackName,
-			svcName:       basicSVCName,
-			oldService: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						naming.ReplaceLabel: "",
-					},
-				},
-			},
-			expectedService: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: basicSVCName,
-					Labels: func() map[string]string {
-						labels := basicSVCLabels()
-						labels[naming.ReplaceLabel] = ""
-						return labels
-					}(),
+					Name:            basicSVCName,
+					Labels:          basicSVCLabels(),
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -291,14 +265,11 @@ func TestMemberService(t *testing.T) {
 					},
 				},
 			},
+			jobs: nil,
 			expectedService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: basicSVCName,
-					Labels: func() map[string]string {
-						labels := basicSVCLabels()
-						labels[naming.ReplaceLabel] = ""
-						return labels
-					}(),
+					Name:            basicSVCName,
+					Labels:          basicSVCLabels(),
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -319,6 +290,7 @@ func TestMemberService(t *testing.T) {
 					Labels: nil,
 				},
 			},
+			jobs: nil,
 			expectedService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:            basicSVCName,
@@ -345,6 +317,7 @@ func TestMemberService(t *testing.T) {
 					},
 				},
 			},
+			jobs: nil,
 			expectedService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:            basicSVCName,
@@ -359,11 +332,213 @@ func TestMemberService(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:          "last cleaned up annotation is rewritten from current one when it's missing in existing service",
+			scyllaCluster: basicSC,
+			rackName:      basicRackName,
+			svcName:       basicSVCName,
+			oldService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/current-token-ring-hash": "abc",
+					},
+				},
+			}, jobs: nil,
+			expectedService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   basicSVCName,
+					Labels: basicSVCLabels(),
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash": "abc",
+					},
+					OwnerReferences: basicSCOwnerRefs,
+				},
+				Spec: corev1.ServiceSpec{
+					Type:                     corev1.ServiceTypeClusterIP,
+					Selector:                 basicSVCSelector,
+					PublishNotReadyAddresses: true,
+					Ports:                    basicPorts,
+				},
+			},
+		},
+		{
+			name:          "last cleaned up annotation is added when cleanup job is completed",
+			scyllaCluster: basicSC,
+			rackName:      basicRackName,
+			svcName:       basicSVCName,
+			oldService:    nil,
+			jobs: map[string]*batchv1.Job{
+				"cleanup-member": {
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							"internal.scylla-operator.scylladb.com/cleanup-token-ring-hash": "abc",
+						},
+					},
+					Status: batchv1.JobStatus{
+						CompletionTime: pointer.Ptr(metav1.Now()),
+					},
+				},
+			},
+			expectedService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   basicSVCName,
+					Labels: basicSVCLabels(),
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash": "abc",
+					},
+					OwnerReferences: basicSCOwnerRefs,
+				},
+				Spec: corev1.ServiceSpec{
+					Type:                     corev1.ServiceTypeClusterIP,
+					Selector:                 basicSVCSelector,
+					PublishNotReadyAddresses: true,
+					Ports:                    basicPorts,
+				},
+			},
+		},
+		{
+			name: "Service properties are taken from ExposeOptions.NodeService",
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := basicSC.DeepCopy()
+				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					NodeService: &scyllav1.NodeServiceTemplate{
+						Annotations: map[string]string{
+							"foo": "bar",
+						},
+						Type:                          scyllav1.NodeServiceTypeLoadBalancer,
+						ExternalTrafficPolicy:         pointer.Ptr(corev1.ServiceExternalTrafficPolicyLocal),
+						AllocateLoadBalancerNodePorts: pointer.Ptr(true),
+						LoadBalancerClass:             pointer.Ptr("my-lb-class"),
+						InternalTrafficPolicy:         pointer.Ptr(corev1.ServiceInternalTrafficPolicyCluster),
+					},
+				}
+
+				return sc
+			}(),
+			rackName:   basicRackName,
+			svcName:    basicSVCName,
+			oldService: nil,
+			jobs:       nil,
+			expectedService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   basicSVCName,
+					Labels: basicSVCLabels(),
+					Annotations: map[string]string{
+						"foo": "bar",
+					},
+					OwnerReferences: basicSCOwnerRefs,
+				},
+				Spec: corev1.ServiceSpec{
+					Type:                          corev1.ServiceTypeLoadBalancer,
+					Selector:                      basicSVCSelector,
+					PublishNotReadyAddresses:      true,
+					Ports:                         basicPorts,
+					ExternalTrafficPolicy:         corev1.ServiceExternalTrafficPolicyLocal,
+					AllocateLoadBalancerNodePorts: pointer.Ptr(true),
+					LoadBalancerClass:             pointer.Ptr("my-lb-class"),
+					InternalTrafficPolicy:         pointer.Ptr(corev1.ServiceInternalTrafficPolicyCluster),
+				},
+			},
+		},
+		{
+			name: "headless service type in node service template",
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := basicSC.DeepCopy()
+				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					NodeService: &scyllav1.NodeServiceTemplate{
+						Type: scyllav1.NodeServiceTypeHeadless,
+					},
+				}
+
+				return sc
+			}(),
+			rackName:   basicRackName,
+			svcName:    basicSVCName,
+			oldService: nil,
+			jobs:       nil,
+			expectedService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            basicSVCName,
+					Labels:          basicSVCLabels(),
+					OwnerReferences: basicSCOwnerRefs,
+				},
+				Spec: corev1.ServiceSpec{
+					Type:                     corev1.ServiceTypeClusterIP,
+					Selector:                 basicSVCSelector,
+					PublishNotReadyAddresses: true,
+					Ports:                    basicPorts,
+					ClusterIP:                corev1.ClusterIPNone,
+				},
+			},
+		},
+		{
+			name: "ClusterIP service type in node service template",
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := basicSC.DeepCopy()
+				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					NodeService: &scyllav1.NodeServiceTemplate{
+						Type: scyllav1.NodeServiceTypeClusterIP,
+					},
+				}
+
+				return sc
+			}(),
+			rackName:   basicRackName,
+			svcName:    basicSVCName,
+			oldService: nil,
+			jobs:       nil,
+			expectedService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            basicSVCName,
+					Labels:          basicSVCLabels(),
+					OwnerReferences: basicSCOwnerRefs,
+				},
+				Spec: corev1.ServiceSpec{
+					Type:                     corev1.ServiceTypeClusterIP,
+					Selector:                 basicSVCSelector,
+					PublishNotReadyAddresses: true,
+					Ports:                    basicPorts,
+				},
+			},
+		},
+		{
+			name: "LoadBalancer service type in node service template",
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := basicSC.DeepCopy()
+				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					NodeService: &scyllav1.NodeServiceTemplate{
+						Type: scyllav1.NodeServiceTypeLoadBalancer,
+					},
+				}
+
+				return sc
+			}(),
+			rackName:   basicRackName,
+			svcName:    basicSVCName,
+			oldService: nil,
+			jobs:       nil,
+			expectedService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            basicSVCName,
+					Labels:          basicSVCLabels(),
+					OwnerReferences: basicSCOwnerRefs,
+				},
+				Spec: corev1.ServiceSpec{
+					Type:                     corev1.ServiceTypeLoadBalancer,
+					Selector:                 basicSVCSelector,
+					PublishNotReadyAddresses: true,
+					Ports:                    basicPorts,
+				},
+			},
+		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			got := MemberService(tc.scyllaCluster, tc.rackName, tc.svcName, tc.oldService)
+			got, err := MemberService(tc.scyllaCluster, tc.rackName, tc.svcName, tc.oldService, tc.jobs)
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			if !apiequality.Semantic.DeepEqual(got, tc.expectedService) {
 				t.Errorf("expected and actual services differ: %s", cmp.Diff(tc.expectedService, got))
@@ -404,7 +579,7 @@ func TestStatefulSetForRack(t *testing.T) {
 		}
 	}
 
-	newBasicStatefulSetLabels := func() map[string]string {
+	newBasicStatefulSetLabels := func(ordinal int) map[string]string {
 		return map[string]string{
 			"app":                          "scylla",
 			"app.kubernetes.io/managed-by": "scylla-operator",
@@ -412,20 +587,16 @@ func TestStatefulSetForRack(t *testing.T) {
 			"scylla/cluster":               "basic",
 			"scylla/datacenter":            "dc",
 			"scylla/rack":                  "rack",
+			"scylla/scylla-version":        "",
+			"scylla/rack-ordinal":          fmt.Sprintf("%d", ordinal),
 		}
-	}
-
-	newBasicStatefulSetLabelsWithVersion := func() map[string]string {
-		m := newBasicStatefulSetLabels()
-		m["scylla/scylla-version"] = ""
-		return m
 	}
 
 	newBasicStatefulSet := func() *appsv1.StatefulSet {
 		return &appsv1.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        "basic-dc-rack",
-				Labels:      newBasicStatefulSetLabelsWithVersion(),
+				Labels:      newBasicStatefulSetLabels(0),
 				Annotations: nil,
 				OwnerReferences: []metav1.OwnerReference{
 					{
@@ -433,19 +604,26 @@ func TestStatefulSetForRack(t *testing.T) {
 						Kind:               "ScyllaCluster",
 						Name:               "basic",
 						UID:                "the-uid",
-						Controller:         pointer.Bool(true),
-						BlockOwnerDeletion: pointer.Bool(true),
+						Controller:         pointer.Ptr(true),
+						BlockOwnerDeletion: pointer.Ptr(true),
 					},
 				},
 			},
 			Spec: appsv1.StatefulSetSpec{
-				Replicas: pointer.Int32(0),
+				Replicas: pointer.Ptr(int32(0)),
 				Selector: &metav1.LabelSelector{
-					MatchLabels: newBasicStatefulSetLabels(),
+					MatchLabels: map[string]string{
+						"app":                          "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"app.kubernetes.io/name":       "scylla",
+						"scylla/cluster":               "basic",
+						"scylla/datacenter":            "dc",
+						"scylla/rack":                  "rack",
+					},
 				},
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
-						Labels: newBasicStatefulSetLabelsWithVersion(),
+						Labels: newBasicStatefulSetLabels(0),
 						Annotations: map[string]string{
 							"prometheus.io/port":   "9180",
 							"prometheus.io/scrape": "true",
@@ -453,8 +631,8 @@ func TestStatefulSetForRack(t *testing.T) {
 					},
 					Spec: corev1.PodSpec{
 						SecurityContext: &corev1.PodSecurityContext{
-							RunAsUser:  pointer.Int64(0),
-							RunAsGroup: pointer.Int64(0),
+							RunAsUser:  pointer.Ptr(int64(0)),
+							RunAsGroup: pointer.Ptr(int64(0)),
 						},
 						Volumes: func() []corev1.Volume {
 							volumes := []corev1.Volume{
@@ -471,7 +649,7 @@ func TestStatefulSetForRack(t *testing.T) {
 											LocalObjectReference: corev1.LocalObjectReference{
 												Name: "scylla-config",
 											},
-											Optional: pointer.Bool(true),
+											Optional: pointer.Ptr(true),
 										},
 									},
 								},
@@ -480,7 +658,7 @@ func TestStatefulSetForRack(t *testing.T) {
 									VolumeSource: corev1.VolumeSource{
 										Secret: &corev1.SecretVolumeSource{
 											SecretName: "scylla-agent-config-secret",
-											Optional:   pointer.Bool(true),
+											Optional:   pointer.Ptr(true),
 										},
 									},
 								},
@@ -489,7 +667,7 @@ func TestStatefulSetForRack(t *testing.T) {
 									VolumeSource: corev1.VolumeSource{
 										Secret: &corev1.SecretVolumeSource{
 											SecretName: "scylla-client-config-secret",
-											Optional:   pointer.Bool(true),
+											Optional:   pointer.Ptr(true),
 										},
 									},
 								},
@@ -614,6 +792,8 @@ func TestStatefulSetForRack(t *testing.T) {
 										"/mnt/shared/scylla-operator",
 										"sidecar",
 										featureGatesFlagString,
+										"--nodes-broadcast-address-type=ServiceClusterIP",
+										"--clients-broadcast-address-type=ServiceClusterIP",
 										"--service-name=$(SERVICE_NAME)",
 										"--cpu-count=$(CPU_COUNT)",
 										"--loglevel=2",
@@ -686,8 +866,8 @@ func TestStatefulSetForRack(t *testing.T) {
 									return mounts
 								}(),
 								SecurityContext: &corev1.SecurityContext{
-									RunAsUser:  pointer.Int64(0),
-									RunAsGroup: pointer.Int64(0),
+									RunAsUser:  pointer.Ptr(int64(0)),
+									RunAsGroup: pointer.Ptr(int64(0)),
 									Capabilities: &corev1.Capabilities{
 										Add: []corev1.Capability{"SYS_NICE"},
 									},
@@ -777,14 +957,21 @@ func TestStatefulSetForRack(t *testing.T) {
 						DNSPolicy:                     "ClusterFirstWithHostNet",
 						ServiceAccountName:            "basic-member",
 						Affinity:                      &corev1.Affinity{},
-						TerminationGracePeriodSeconds: pointer.Int64(900),
+						TerminationGracePeriodSeconds: pointer.Ptr(int64(900)),
 					},
 				},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:   "data",
-							Labels: newBasicStatefulSetLabels(),
+							Name: "data",
+							Labels: map[string]string{
+								"app":                          "scylla",
+								"app.kubernetes.io/managed-by": "scylla-operator",
+								"app.kubernetes.io/name":       "scylla",
+								"scylla/cluster":               "basic",
+								"scylla/datacenter":            "dc",
+								"scylla/rack":                  "rack",
+							},
 						},
 						Spec: corev1.PersistentVolumeClaimSpec{
 							AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
@@ -802,7 +989,7 @@ func TestStatefulSetForRack(t *testing.T) {
 				UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 					Type: appsv1.RollingUpdateStatefulSetStrategyType,
 					RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
-						Partition: pointer.Int32(0),
+						Partition: pointer.Ptr(int32(0)),
 					},
 				},
 			},
@@ -854,6 +1041,8 @@ func TestStatefulSetForRack(t *testing.T) {
 			},
 		}
 	}
+
+	const scyllaContainerIndex = 0
 
 	tt := []struct {
 		name                string
@@ -1011,6 +1200,24 @@ func TestStatefulSetForRack(t *testing.T) {
 			}(),
 			expectedError: nil,
 		},
+		{
+			name: "new StatefulSet with non-empty externalSeeds in scylla container",
+			rack: newBasicRack(),
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := newBasicScyllaCluster()
+				sc.Spec.ExternalSeeds = []string{"10.0.1.1", "10.0.1.2", "10.0.1.3"}
+				return sc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+
+				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command = append(sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command, "--external-seeds=10.0.1.1,10.0.1.2,10.0.1.3")
+
+				return sts
+			}(),
+			expectedError: nil,
+		},
 	}
 
 	for _, tc := range tt {
@@ -1018,7 +1225,7 @@ func TestStatefulSetForRack(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := StatefulSetForRack(tc.rack, tc.scyllaCluster, tc.existingStatefulSet, "scylladb/scylla-operator:latest")
+			got, err := StatefulSetForRack(tc.rack, tc.scyllaCluster, tc.existingStatefulSet, "scylladb/scylla-operator:latest", 0)
 
 			if !reflect.DeepEqual(err, tc.expectedError) {
 				t.Fatalf("expected and actual errors differ: %s",
@@ -1112,7 +1319,7 @@ func TestMakeIngresses(t *testing.T) {
 				cluster.Spec.ExposeOptions = &scyllav1.ExposeOptions{
 					CQL: &scyllav1.CQLExposeOptions{
 						Ingress: &scyllav1.IngressOptions{
-							Disabled:         pointer.Bool(true),
+							Disabled:         pointer.Ptr(true),
 							IngressClassName: "cql-ingress-class",
 							Annotations: map[string]string{
 								"my-cql-custom-annotation": "my-cql-custom-annotation-value",
@@ -1170,13 +1377,13 @@ func TestMakeIngresses(t *testing.T) {
 								Kind:               "ScyllaCluster",
 								Name:               "basic",
 								UID:                "the-uid",
-								Controller:         pointer.BoolPtr(true),
-								BlockOwnerDeletion: pointer.BoolPtr(true),
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
 							},
 						},
 					},
 					Spec: networkingv1.IngressSpec{
-						IngressClassName: pointer.String("cql-ingress-class"),
+						IngressClassName: pointer.Ptr("cql-ingress-class"),
 						Rules: []networkingv1.IngressRule{
 							{
 								Host: "cql.public.scylladb.com",
@@ -1242,13 +1449,13 @@ func TestMakeIngresses(t *testing.T) {
 								Kind:               "ScyllaCluster",
 								Name:               "basic",
 								UID:                "the-uid",
-								Controller:         pointer.BoolPtr(true),
-								BlockOwnerDeletion: pointer.BoolPtr(true),
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
 							},
 						},
 					},
 					Spec: networkingv1.IngressSpec{
-						IngressClassName: pointer.String("cql-ingress-class"),
+						IngressClassName: pointer.Ptr("cql-ingress-class"),
 						Rules: []networkingv1.IngressRule{
 							{
 								Host: "host-id-1.cql.public.scylladb.com",
@@ -1314,13 +1521,13 @@ func TestMakeIngresses(t *testing.T) {
 								Kind:               "ScyllaCluster",
 								Name:               "basic",
 								UID:                "the-uid",
-								Controller:         pointer.BoolPtr(true),
-								BlockOwnerDeletion: pointer.BoolPtr(true),
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
 							},
 						},
 					},
 					Spec: networkingv1.IngressSpec{
-						IngressClassName: pointer.String("cql-ingress-class"),
+						IngressClassName: pointer.Ptr("cql-ingress-class"),
 						Rules: []networkingv1.IngressRule{
 							{
 								Host: "host-id-2.cql.public.scylladb.com",
@@ -1386,13 +1593,13 @@ func TestMakeIngresses(t *testing.T) {
 								Kind:               "ScyllaCluster",
 								Name:               "basic",
 								UID:                "the-uid",
-								Controller:         pointer.BoolPtr(true),
-								BlockOwnerDeletion: pointer.BoolPtr(true),
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
 							},
 						},
 					},
 					Spec: networkingv1.IngressSpec{
-						IngressClassName: pointer.String("cql-ingress-class"),
+						IngressClassName: pointer.Ptr("cql-ingress-class"),
 						Rules: []networkingv1.IngressRule{
 							{
 								Host: "host-id-3.cql.public.scylladb.com",
@@ -1451,6 +1658,622 @@ func TestMakeIngresses(t *testing.T) {
 			got := MakeIngresses(tc.cluster, tc.services)
 			if !apiequality.Semantic.DeepEqual(got, tc.expectedIngresses) {
 				t.Errorf("expected and actual Ingresses differ: %s", cmp.Diff(tc.expectedIngresses, got))
+			}
+		})
+	}
+}
+
+func TestMakeJobs(t *testing.T) {
+	basicScyllaCluster := &scyllav1.ScyllaCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "basic",
+			Namespace: "default",
+			UID:       "the-uid",
+		},
+		Spec: scyllav1.ScyllaClusterSpec{
+			Datacenter: scyllav1.DatacenterSpec{
+				Name: "dc",
+				Racks: []scyllav1.RackSpec{
+					{
+						Name: "rack",
+						Storage: scyllav1.StorageSpec{
+							Capacity: "1Gi",
+						},
+						Members: 1,
+					},
+				},
+			},
+		},
+	}
+
+	newMemberService := func(name string, annotations map[string]string) *corev1.Service {
+		return &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        name,
+				Annotations: annotations,
+			},
+		}
+	}
+
+	tt := []struct {
+		name               string
+		cluster            *scyllav1.ScyllaCluster
+		services           map[string]*corev1.Service
+		expectedJobs       []*batchv1.Job
+		expectedConditions []metav1.Condition
+	}{
+		{
+			name:         "progressing condition rack member service is not present",
+			cluster:      basicScyllaCluster,
+			services:     map[string]*corev1.Service{},
+			expectedJobs: nil,
+			expectedConditions: []metav1.Condition{
+				{
+					Type:    "JobControllerProgressing",
+					Status:  "True",
+					Reason:  "WaitingForService",
+					Message: `Waiting for Service "default/basic-dc-rack-0"`,
+				},
+			},
+		},
+		{
+			name:    "progressing condition when member service doesn't have current token ring hash annotation",
+			cluster: basicScyllaCluster,
+			services: map[string]*corev1.Service{
+				"basic-dc-rack-0": newMemberService("basic-dc-rack-0", map[string]string{}),
+			},
+			expectedJobs: nil,
+			expectedConditions: []metav1.Condition{
+				{
+					Type:    "JobControllerProgressing",
+					Status:  "True",
+					Reason:  "WaitingForServiceState",
+					Message: `Service "basic-dc-rack-0" is missing current token ring hash annotation`,
+				},
+			},
+		},
+		{
+			name:    "progressing condition when member service current token ring hash annotation is empty",
+			cluster: basicScyllaCluster,
+			services: map[string]*corev1.Service{
+				"basic-dc-rack-0": newMemberService("basic-dc-rack-0", map[string]string{
+					"internal.scylla-operator.scylladb.com/current-token-ring-hash": "",
+				}),
+			},
+			expectedJobs: nil,
+			expectedConditions: []metav1.Condition{
+				{
+					Type:    "JobControllerProgressing",
+					Status:  "True",
+					Reason:  "UnexpectedServiceState",
+					Message: `Service "basic-dc-rack-0" has unexpected empty current token ring hash annotation, can't create cleanup Job`,
+				},
+			},
+		},
+		{
+			name:    "progressing condition when member service doesn't have latest token ring hash annotation",
+			cluster: basicScyllaCluster,
+			services: map[string]*corev1.Service{
+				"basic-dc-rack-0": newMemberService("basic-dc-rack-0", map[string]string{
+					"internal.scylla-operator.scylladb.com/current-token-ring-hash": "abc",
+				}),
+			},
+			expectedJobs: nil,
+			expectedConditions: []metav1.Condition{
+				{
+					Type:    "JobControllerProgressing",
+					Status:  "True",
+					Reason:  "WaitingForServiceState",
+					Message: `Service "basic-dc-rack-0" is missing last cleaned up token ring hash annotation`,
+				},
+			},
+		},
+		{
+			name:    "progressing condition when member service last cleaned up token ring hash annotation is empty",
+			cluster: basicScyllaCluster,
+			services: map[string]*corev1.Service{
+				"basic-dc-rack-0": newMemberService("basic-dc-rack-0", map[string]string{
+					"internal.scylla-operator.scylladb.com/current-token-ring-hash":         "abc",
+					"internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash": "",
+				}),
+			},
+			expectedJobs: nil,
+			expectedConditions: []metav1.Condition{
+				{
+					Type:    "JobControllerProgressing",
+					Status:  "True",
+					Reason:  "UnexpectedServiceState",
+					Message: `Service "basic-dc-rack-0" has unexpected empty last cleaned up token ring hash annotation, can't create cleanup Job`,
+				},
+			},
+		},
+		{
+			name:    "no cleanup jobs when member service token ring hash annotations are equal",
+			cluster: basicScyllaCluster,
+			services: map[string]*corev1.Service{
+				"basic-dc-rack-0": newMemberService("basic-dc-rack-0", map[string]string{
+					"internal.scylla-operator.scylladb.com/current-token-ring-hash":         "abc",
+					"internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash": "abc",
+				}),
+			},
+			expectedJobs:       nil,
+			expectedConditions: nil,
+		},
+		{
+			name:    "cleanup job when member service token ring hash annotations differ",
+			cluster: basicScyllaCluster,
+			services: func() map[string]*corev1.Service {
+				return map[string]*corev1.Service{
+					"basic-dc-rack-0": newMemberService("basic-dc-rack-0", map[string]string{
+						"internal.scylla-operator.scylladb.com/current-token-ring-hash":         "abc",
+						"internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash": "def",
+					}),
+				}
+			}(),
+			expectedJobs: []*batchv1.Job{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cleanup-basic-dc-rack-0",
+						Namespace: "default",
+						Annotations: map[string]string{
+							"internal.scylla-operator.scylladb.com/cleanup-token-ring-hash": "abc",
+						},
+						Labels: map[string]string{
+							"scylla/cluster":                             "basic",
+							"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-0",
+							"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1",
+								Kind:               "ScyllaCluster",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Spec: batchv1.JobSpec{
+						Template: corev1.PodTemplateSpec{
+							ObjectMeta: metav1.ObjectMeta{
+								Annotations: map[string]string{
+									"internal.scylla-operator.scylladb.com/cleanup-token-ring-hash": "abc",
+								},
+								Labels: map[string]string{
+									"scylla/cluster":                             "basic",
+									"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-0",
+									"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+								},
+							},
+							Spec: corev1.PodSpec{
+								RestartPolicy: corev1.RestartPolicyOnFailure,
+								Containers: []corev1.Container{
+									{
+										Name:            naming.CleanupContainerName,
+										Image:           "scylladb/scylla-operator:latest",
+										ImagePullPolicy: corev1.PullIfNotPresent,
+										Args: []string{
+											"cleanup-job",
+											"--manager-auth-config-path=/etc/scylla-cleanup-job/auth-token.yaml",
+											"--node-address=basic-dc-rack-0.default.svc",
+										},
+										VolumeMounts: []corev1.VolumeMount{
+											{
+												Name:      "scylla-manager-agent-token",
+												ReadOnly:  true,
+												MountPath: "/etc/scylla-cleanup-job/auth-token.yaml",
+												SubPath:   "auth-token.yaml",
+											},
+										},
+									},
+								},
+								Volumes: []corev1.Volume{
+									{
+										Name: "scylla-manager-agent-token",
+										VolumeSource: corev1.VolumeSource{
+											Secret: &corev1.SecretVolumeSource{
+												SecretName: "basic-auth-token",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedConditions: nil,
+		},
+		{
+			name: "cleanup job has the same placement requirements as ScyllaCluster",
+			cluster: func() *scyllav1.ScyllaCluster {
+				cluster := basicScyllaCluster.DeepCopy()
+				cluster.Spec.Datacenter.Racks[0].Placement = &scyllav1.PlacementSpec{
+					NodeAffinity: &corev1.NodeAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+							NodeSelectorTerms: []corev1.NodeSelectorTerm{
+								{
+									MatchExpressions: []corev1.NodeSelectorRequirement{
+										{
+											Key:      "topology.kubernetes.io/zone",
+											Operator: corev1.NodeSelectorOpIn,
+											Values:   []string{"zone-1", "zone-2"},
+										},
+									},
+								},
+							},
+						},
+					},
+					PodAffinity: &corev1.PodAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+							{
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"app.kubernetes.io/name": "scylla",
+										"scylla/rack":            "rack",
+									},
+								},
+								TopologyKey: "kubernetes.io/hostname",
+							},
+						},
+					},
+					PodAntiAffinity: &corev1.PodAntiAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+							{
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+									},
+								},
+								TopologyKey: "kubernetes.io/hostname",
+							},
+						},
+					},
+					Tolerations: []corev1.Toleration{
+						{
+							Key:      "role",
+							Operator: corev1.TolerationOpEqual,
+							Value:    "scylla-clusters",
+							Effect:   corev1.TaintEffectNoSchedule,
+						},
+					},
+				}
+				cluster.Spec.Datacenter.Racks = append(cluster.Spec.Datacenter.Racks,
+					scyllav1.RackSpec{
+						Name: "rack-2",
+						Storage: scyllav1.StorageSpec{
+							Capacity: "1Gi",
+						},
+						Members: 1,
+						Placement: &scyllav1.PlacementSpec{
+							NodeAffinity: &corev1.NodeAffinity{
+								RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+									NodeSelectorTerms: []corev1.NodeSelectorTerm{
+										{
+											MatchExpressions: []corev1.NodeSelectorRequirement{
+												{
+													Key:      "topology.kubernetes.io/zone",
+													Operator: corev1.NodeSelectorOpIn,
+													Values:   []string{"zone-3", "zone-4"},
+												},
+											},
+										},
+									},
+								},
+							},
+							PodAffinity: &corev1.PodAffinity{
+								RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+									{
+										LabelSelector: &metav1.LabelSelector{
+											MatchLabels: map[string]string{
+												"app.kubernetes.io/name": "scylla",
+												"scylla/rack":            "rack-2",
+											},
+										},
+										TopologyKey: "kubernetes.io/hostname",
+									},
+								},
+							},
+							PodAntiAffinity: &corev1.PodAntiAffinity{
+								RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+									{
+										LabelSelector: &metav1.LabelSelector{
+											MatchLabels: map[string]string{
+												"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+												"scylla/rack-ordinal":                        "0",
+											},
+										},
+										TopologyKey: "kubernetes.io/hostname",
+									},
+								},
+							},
+							Tolerations: []corev1.Toleration{
+								{
+									Key:      "role",
+									Operator: corev1.TolerationOpEqual,
+									Value:    "scylla-clusters-rack-2",
+									Effect:   corev1.TaintEffectNoSchedule,
+								},
+							},
+						},
+					},
+				)
+
+				return cluster
+			}(),
+			services: func() map[string]*corev1.Service {
+				return map[string]*corev1.Service{
+					"basic-dc-rack-0": newMemberService("basic-dc-rack-0", map[string]string{
+						"internal.scylla-operator.scylladb.com/current-token-ring-hash":         "abc",
+						"internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash": "def",
+					}),
+					"basic-dc-rack-2-0": newMemberService("basic-dc-rack-2-0", map[string]string{
+						"internal.scylla-operator.scylladb.com/current-token-ring-hash":         "abc",
+						"internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash": "def",
+					}),
+				}
+			}(),
+			expectedJobs: []*batchv1.Job{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cleanup-basic-dc-rack-0",
+						Namespace: "default",
+						Annotations: map[string]string{
+							"internal.scylla-operator.scylladb.com/cleanup-token-ring-hash": "abc",
+						},
+						Labels: map[string]string{
+							"scylla/cluster":                             "basic",
+							"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-0",
+							"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1",
+								Kind:               "ScyllaCluster",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Spec: batchv1.JobSpec{
+						Template: corev1.PodTemplateSpec{
+							ObjectMeta: metav1.ObjectMeta{
+								Annotations: map[string]string{
+									"internal.scylla-operator.scylladb.com/cleanup-token-ring-hash": "abc",
+								},
+								Labels: map[string]string{
+									"scylla/cluster":                             "basic",
+									"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-0",
+									"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+								},
+							},
+							Spec: corev1.PodSpec{
+								RestartPolicy: corev1.RestartPolicyOnFailure,
+								Tolerations: []corev1.Toleration{
+									{
+										Key:      "role",
+										Operator: corev1.TolerationOpEqual,
+										Value:    "scylla-clusters",
+										Effect:   corev1.TaintEffectNoSchedule,
+									},
+								},
+								Affinity: &corev1.Affinity{
+									NodeAffinity: &corev1.NodeAffinity{
+										RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+											NodeSelectorTerms: []corev1.NodeSelectorTerm{
+												{
+													MatchExpressions: []corev1.NodeSelectorRequirement{
+														{
+															Key:      "topology.kubernetes.io/zone",
+															Operator: corev1.NodeSelectorOpIn,
+															Values:   []string{"zone-1", "zone-2"},
+														},
+													},
+												},
+											},
+										},
+									},
+									PodAffinity: &corev1.PodAffinity{
+										RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+											{
+												LabelSelector: &metav1.LabelSelector{
+													MatchLabels: map[string]string{
+														"app.kubernetes.io/name": "scylla",
+														"scylla/rack":            "rack",
+													},
+												},
+												TopologyKey: "kubernetes.io/hostname",
+											},
+										},
+									},
+									PodAntiAffinity: &corev1.PodAntiAffinity{
+										RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+											{
+												LabelSelector: &metav1.LabelSelector{
+													MatchLabels: map[string]string{
+														"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+													},
+												},
+												TopologyKey: "kubernetes.io/hostname",
+											},
+										},
+									},
+								},
+								Containers: []corev1.Container{
+									{
+										Name:            naming.CleanupContainerName,
+										Image:           "scylladb/scylla-operator:latest",
+										ImagePullPolicy: corev1.PullIfNotPresent,
+										Args: []string{
+											"cleanup-job",
+											"--manager-auth-config-path=/etc/scylla-cleanup-job/auth-token.yaml",
+											"--node-address=basic-dc-rack-0.default.svc",
+										},
+										VolumeMounts: []corev1.VolumeMount{
+											{
+												Name:      "scylla-manager-agent-token",
+												ReadOnly:  true,
+												MountPath: "/etc/scylla-cleanup-job/auth-token.yaml",
+												SubPath:   "auth-token.yaml",
+											},
+										},
+									},
+								},
+								Volumes: []corev1.Volume{
+									{
+										Name: "scylla-manager-agent-token",
+										VolumeSource: corev1.VolumeSource{
+											Secret: &corev1.SecretVolumeSource{
+												SecretName: "basic-auth-token",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cleanup-basic-dc-rack-2-0",
+						Namespace: "default",
+						Annotations: map[string]string{
+							"internal.scylla-operator.scylladb.com/cleanup-token-ring-hash": "abc",
+						},
+						Labels: map[string]string{
+							"scylla/cluster":                             "basic",
+							"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-2-0",
+							"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1",
+								Kind:               "ScyllaCluster",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Spec: batchv1.JobSpec{
+						Template: corev1.PodTemplateSpec{
+							ObjectMeta: metav1.ObjectMeta{
+								Annotations: map[string]string{
+									"internal.scylla-operator.scylladb.com/cleanup-token-ring-hash": "abc",
+								},
+								Labels: map[string]string{
+									"scylla/cluster":                             "basic",
+									"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-2-0",
+									"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+								},
+							},
+							Spec: corev1.PodSpec{
+								RestartPolicy: corev1.RestartPolicyOnFailure,
+								Tolerations: []corev1.Toleration{
+									{
+										Key:      "role",
+										Operator: corev1.TolerationOpEqual,
+										Value:    "scylla-clusters-rack-2",
+										Effect:   corev1.TaintEffectNoSchedule,
+									},
+								},
+								Affinity: &corev1.Affinity{
+									NodeAffinity: &corev1.NodeAffinity{
+										RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+											NodeSelectorTerms: []corev1.NodeSelectorTerm{
+												{
+													MatchExpressions: []corev1.NodeSelectorRequirement{
+														{
+															Key:      "topology.kubernetes.io/zone",
+															Operator: corev1.NodeSelectorOpIn,
+															Values:   []string{"zone-3", "zone-4"},
+														},
+													},
+												},
+											},
+										},
+									},
+									PodAffinity: &corev1.PodAffinity{
+										RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+											{
+												LabelSelector: &metav1.LabelSelector{
+													MatchLabels: map[string]string{
+														"app.kubernetes.io/name": "scylla",
+														"scylla/rack":            "rack-2",
+													},
+												},
+												TopologyKey: "kubernetes.io/hostname",
+											},
+										},
+									},
+									PodAntiAffinity: &corev1.PodAntiAffinity{
+										RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+											{
+												LabelSelector: &metav1.LabelSelector{
+													MatchLabels: map[string]string{
+														"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+														"scylla/rack-ordinal":                        "0",
+													},
+												},
+												TopologyKey: "kubernetes.io/hostname",
+											},
+										},
+									},
+								},
+								Containers: []corev1.Container{
+									{
+										Name:            naming.CleanupContainerName,
+										Image:           "scylladb/scylla-operator:latest",
+										ImagePullPolicy: corev1.PullIfNotPresent,
+										Args: []string{
+											"cleanup-job",
+											"--manager-auth-config-path=/etc/scylla-cleanup-job/auth-token.yaml",
+											"--node-address=basic-dc-rack-2-0.default.svc",
+										},
+										VolumeMounts: []corev1.VolumeMount{
+											{
+												Name:      "scylla-manager-agent-token",
+												ReadOnly:  true,
+												MountPath: "/etc/scylla-cleanup-job/auth-token.yaml",
+												SubPath:   "auth-token.yaml",
+											},
+										},
+									},
+								},
+								Volumes: []corev1.Volume{
+									{
+										Name: "scylla-manager-agent-token",
+										VolumeSource: corev1.VolumeSource{
+											Secret: &corev1.SecretVolumeSource{
+												SecretName: "basic-auth-token",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedConditions: nil,
+		},
+	}
+
+	for i := range tt {
+		tc := tt[i]
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			gotJobs, gotConditions := MakeJobs(tc.cluster, tc.services, "scylladb/scylla-operator:latest")
+			if !apiequality.Semantic.DeepEqual(gotJobs, tc.expectedJobs) {
+				t.Errorf("expected and actual Job differ: %s", cmp.Diff(tc.expectedJobs, gotJobs))
+			}
+			if !reflect.DeepEqual(gotConditions, tc.expectedConditions) {
+				t.Fatalf("expected and actual conditions differ: %s", cmp.Diff(tc.expectedConditions, gotConditions))
 			}
 		})
 	}

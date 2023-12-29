@@ -1,10 +1,9 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -44,7 +43,7 @@ func (c *Client) InstallCloudPlugin(stackSlug string, pluginSlug string, pluginV
 
 	var installation CloudPluginInstallation
 
-	err = c.request("POST", fmt.Sprintf("/api/instances/%s/plugins", stackSlug), nil, bytes.NewBuffer(data), &installation)
+	err = c.request("POST", fmt.Sprintf("/api/instances/%s/plugins", stackSlug), nil, data, &installation)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +74,7 @@ func (c *Client) IsCloudPluginInstalled(stackSlug string, pluginSlug string) (bo
 		if resp.StatusCode == http.StatusNotFound {
 			return false, nil
 		}
-		bodyContents, err := ioutil.ReadAll(resp.Body)
+		bodyContents, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return false, err
 		}

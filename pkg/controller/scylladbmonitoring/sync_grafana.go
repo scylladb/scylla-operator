@@ -11,8 +11,10 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	okubecrypto "github.com/scylladb/scylla-operator/pkg/kubecrypto"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/resource"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	"github.com/scylladb/scylla-operator/pkg/resourcemerge"
@@ -24,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	kutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/utils/pointer"
 )
 
 const (
@@ -146,18 +147,20 @@ func makeGrafanaDashboards(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.Confi
 		t = *sm.Spec.Type
 	}
 
+	var dashboards map[string]string
 	switch t {
 	case scyllav1alpha1.ScyllaDBMonitoringTypePlatform:
-		return grafanav1alpha1assets.GrafanaDashboardsPlatformConfigMapTemplate.RenderObject(map[string]any{
-			"scyllaDBMonitoringName": sm.Name,
-		})
+		dashboards = grafanav1alpha1assets.GrafanaDashboardsPlatform
 	case scyllav1alpha1.ScyllaDBMonitoringTypeSAAS:
-		return grafanav1alpha1assets.GrafanaDashboardsSAASConfigMapTemplate.RenderObject(map[string]any{
-			"scyllaDBMonitoringName": sm.Name,
-		})
+		dashboards = grafanav1alpha1assets.GrafanaDashboardsSAAS
 	default:
 		return nil, "", fmt.Errorf("unkown monitoring type: %q", t)
 	}
+
+	return grafanav1alpha1assets.GrafanaDashboardsConfigMapTemplate.RenderObject(map[string]any{
+		"scyllaDBMonitoringName": sm.Name,
+		"dashboards":             dashboards,
+	})
 }
 
 func makeGrafanaProvisionings(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.ConfigMap, string, error) {
@@ -279,7 +282,7 @@ func (smc *Controller) syncGrafana(
 
 	var requiredDeployment *appsv1.Deployment
 	// Trigger restart for inputs that are not live reloaded.
-	grafanaRestartHash, hashErr := hash.HashObjects(requiredConfigsCM, requiredProvisioningsCM)
+	grafanaRestartHash, hashErr := hash.HashObjects(requiredConfigsCM, requiredProvisioningsCM, requiredDahsboardsCM)
 	if hashErr != nil {
 		renderErrors = append(renderErrors, hashErr)
 	} else {
@@ -303,7 +306,7 @@ func (smc *Controller) syncGrafana(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		helpers.ToArray(requiredGrafanaSA),
+		slices.ToSlice(requiredGrafanaSA),
 		serviceAccounts,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Delete,
@@ -343,7 +346,7 @@ func (smc *Controller) syncGrafana(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		helpers.ToArray(requiredService),
+		slices.ToSlice(requiredService),
 		services,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.CoreV1().Services(sm.Namespace).Delete,
@@ -354,7 +357,7 @@ func (smc *Controller) syncGrafana(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		helpers.ToArray(requiredDeployment),
+		slices.ToSlice(requiredDeployment),
 		deployments,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.AppsV1().Deployments(sm.Namespace).Delete,
@@ -365,7 +368,7 @@ func (smc *Controller) syncGrafana(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		helpers.FilterOutNil(helpers.ToArray(requiredIngress)),
+		slices.FilterOutNil(slices.ToSlice(requiredIngress)),
 		ingresses,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.NetworkingV1().Ingresses(sm.Namespace).Delete,
@@ -477,8 +480,8 @@ func (smc *Controller) syncGrafana(
 				Kind:               scylladbMonitoringControllerGVK.Kind,
 				Name:               sm.Name,
 				UID:                sm.UID,
-				Controller:         pointer.Bool(true),
-				BlockOwnerDeletion: pointer.Bool(true),
+				Controller:         pointer.Ptr(true),
+				BlockOwnerDeletion: pointer.Ptr(true),
 			},
 		})
 

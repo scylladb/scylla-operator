@@ -9,8 +9,8 @@ spec:
   - name: https
     port: 443
     protocol: TCP
-    targetPort: 443
+    targetPort: 8080
   - name: cql-ssl
     port: 9142
     protocol: TCP
-    targetPort: 443
+    targetPort: 8080

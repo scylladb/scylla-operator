@@ -19,6 +19,9 @@ const (
 	// ReplaceLabel express the intent to replace pod under the specific member.
 	ReplaceLabel = "scylla/replace"
 
+	// ReplacingNodeHostIDLabel contains the Host ID of node labelled node is replacing.
+	ReplacingNodeHostIDLabel = "internal.scylla-operator.scylladb.com/replacing-node-hostid"
+
 	// NodeMaintenanceLabel means that node is under maintenance.
 	// Readiness check will always fail when this label is added to member service.
 	NodeMaintenanceLabel = "scylla/node-maintenance"
@@ -27,10 +30,19 @@ const (
 	LabelValueFalse = "false"
 )
 
-// Annotations used internally by sidecar controller.
+// Annotations used internally.
 const (
 	// HostIDAnnotation reflects the host_id of the scylla node.
 	HostIDAnnotation = "internal.scylla-operator.scylladb.com/host-id"
+
+	// CurrentTokenRingHashAnnotation reflects the current hash of token ring of the scylla node.
+	CurrentTokenRingHashAnnotation = "internal.scylla-operator.scylladb.com/current-token-ring-hash"
+
+	// LastCleanedUpTokenRingHashAnnotation reflects the last cleaned up hash of token ring of the scylla node.
+	LastCleanedUpTokenRingHashAnnotation = "internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash"
+
+	// CleanupJobTokenRingHashAnnotation reflects which version of token ring cleanup Job is cleaning.
+	CleanupJobTokenRingHashAnnotation = "internal.scylla-operator.scylladb.com/cleanup-token-ring-hash"
 )
 
 type ScyllaServiceType string
@@ -52,6 +64,7 @@ const (
 	ClusterNameLabel             = "scylla/cluster"
 	DatacenterNameLabel          = "scylla/datacenter"
 	RackNameLabel                = "scylla/rack"
+	RackOrdinalLabel             = "scylla/rack-ordinal"
 	ScyllaVersionLabel           = "scylla/scylla-version"
 	ScyllaServiceTypeLabel       = "scylla-operator.scylladb.com/scylla-service-type"
 	ScyllaIngressTypeLabel       = "scylla-operator.scylladb.com/scylla-ingress-type"
@@ -64,6 +77,8 @@ const (
 	OwnerUIDLabel                = "scylla-operator.scylladb.com/owner-uid"
 	ScyllaDBMonitoringNameLabel  = "scylla-operator.scylladb.com/scylladbmonitoring-name"
 	ControllerNameLabel          = "scylla-operator.scylladb.com/controller-name"
+	NodeJobLabel                 = "scylla-operator.scylladb.com/node-job"
+	NodeJobTypeLabel             = "scylla-operator.scylladb.com/node-job-type"
 
 	AppName           = "scylla"
 	OperatorAppName   = "scylla-operator"
@@ -85,6 +100,7 @@ const (
 	ScyllaContainerName          = "scylla"
 	SidecarInjectorContainerName = "sidecar-injection"
 	PerftuneContainerName        = "perftune"
+	CleanupContainerName         = "cleanup"
 
 	PVCTemplateName = "data"
 
@@ -147,4 +163,10 @@ type ProtocolDNSLabel string
 
 const (
 	CQLProtocolDNSLabel = "cql"
+)
+
+type NodeJobType string
+
+const (
+	JobTypeCleanup NodeJobType = "Cleanup"
 )

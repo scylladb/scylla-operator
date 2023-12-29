@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -65,7 +64,7 @@ func (c *Client) NewMuteTiming(mt *MuteTiming) error {
 		return err
 	}
 
-	return c.request("POST", "/api/v1/provisioning/mute-timings", nil, bytes.NewBuffer(req), nil)
+	return c.request("POST", "/api/v1/provisioning/mute-timings", nil, req, nil)
 }
 
 // UpdateMuteTiming updates a mute timing.
@@ -76,7 +75,7 @@ func (c *Client) UpdateMuteTiming(mt *MuteTiming) error {
 		return err
 	}
 
-	return c.request("PUT", uri, nil, bytes.NewBuffer(req), nil)
+	return c.request("PUT", uri, nil, req, nil)
 }
 
 // DeleteMutetiming deletes a mute timing.

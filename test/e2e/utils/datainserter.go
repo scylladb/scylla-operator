@@ -12,6 +12,8 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v2"
 	"github.com/scylladb/gocqlx/v2/table"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	utilrand "k8s.io/apimachinery/pkg/util/rand"
 )
@@ -23,7 +25,7 @@ type DataInserter struct {
 	keyspace          string
 	table             *table.Table
 	data              []*TestData
-	replicationFactor int
+	replicationFactor map[string]int
 }
 
 type TestData struct {
@@ -31,7 +33,20 @@ type TestData struct {
 	Data string `db:"data"`
 }
 
-func NewDataInserter(hosts []string) (*DataInserter, error) {
+type DataInserterOption func(*DataInserter)
+
+func WithSession(session *gocqlx.Session) func(*DataInserter) {
+	return func(di *DataInserter) {
+		di.session = session
+	}
+}
+
+func NewDataInserter(hosts []string, options ...DataInserterOption) (*DataInserter, error) {
+	// Instead of specifying hosts for the provided datacenter, use 'replication_factor' as a single key to specify a default RF.
+	return NewMultiDCDataInserter(map[string][]string{"replication_factor": hosts})
+}
+
+func NewMultiDCDataInserter(dcHosts map[string][]string, options ...DataInserterOption) (*DataInserter, error) {
 	keyspace := utilrand.String(8)
 	table := table.New(table.Metadata{
 		Name:    fmt.Sprintf(`"%s"."test"`, keyspace),
@@ -43,16 +58,27 @@ func NewDataInserter(hosts []string) (*DataInserter, error) {
 		data = append(data, &TestData{Id: i, Data: utilrand.String(32)})
 	}
 
+	replicationFactor := make(map[string]int, len(dcHosts))
+	for dc, hosts := range dcHosts {
+		replicationFactor[dc] = len(hosts)
+	}
+
 	di := &DataInserter{
 		keyspace:          keyspace,
 		table:             table,
 		data:              data,
-		replicationFactor: len(hosts),
+		replicationFactor: replicationFactor,
 	}
 
-	err := di.SetClientEndpoints(hosts)
-	if err != nil {
-		return nil, fmt.Errorf("can't set client endpoints: %w", err)
+	for _, option := range options {
+		option(di)
+	}
+
+	if di.session == nil {
+		err := di.SetClientEndpoints(slices.Flatten(helpers.GetMapValues(dcHosts)))
+		if err != nil {
+			return nil, fmt.Errorf("can't set client endpoints: %w", err)
+		}
 	}
 
 	return di, nil
@@ -83,11 +109,17 @@ func (di *DataInserter) SetClientEndpoints(hosts []string) error {
 }
 
 func (di *DataInserter) Insert() error {
-	framework.Infof("Creating keyspace %q with RF %d", di.keyspace, di.replicationFactor)
+	ss := make([]string, 0, len(di.replicationFactor))
+	for dc, rf := range di.replicationFactor {
+		ss = append(ss, fmt.Sprintf("'%s': %d", dc, rf))
+	}
+	replicationFactor := strings.Join(ss, ",")
+
+	framework.Infof("Creating keyspace %q with RF %q", di.keyspace, replicationFactor)
 	err := di.session.ExecStmt(fmt.Sprintf(
-		`CREATE KEYSPACE %q WITH replication = {'class': 'NetworkTopologyStrategy', 'replication_factor': %d}`,
+		`CREATE KEYSPACE %q WITH replication = {'class': 'NetworkTopologyStrategy', %s}`,
 		di.keyspace,
-		di.replicationFactor,
+		replicationFactor,
 	))
 	if err != nil {
 		return fmt.Errorf("can't create keyspace: %w", err)

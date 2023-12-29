@@ -12,6 +12,10 @@ spec:
   {{- if .Values.agentImage.repository }}
   agentRepository: {{ .Values.agentImage.repository }}
   {{- end }}
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   {{- if .Values.alternator.enabled }}
   alternator:
     port: {{ .Values.alternator.port }}
@@ -48,6 +52,13 @@ spec:
   {{- end }}
   {{- with .Values.exposeOptions }}
   exposeOptions:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if .Values.scyllaArgs }}
+  scyllaArgs: {{ .Values.scyllaArgs }}
+  {{- end }}
+  {{- with .Values.externalSeeds }}
+  externalSeeds:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   datacenter:

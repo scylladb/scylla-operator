@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -34,7 +33,7 @@ func (c *Client) NewTeamGroup(id int64, groupID string) error {
 		return err
 	}
 
-	return c.request("POST", fmt.Sprintf("/api/teams/%d/groups", id), nil, bytes.NewBuffer(data), nil)
+	return c.request("POST", fmt.Sprintf("/api/teams/%d/groups", id), nil, data, nil)
 }
 
 // DeleteTeam deletes the Grafana team whose ID it's passed.

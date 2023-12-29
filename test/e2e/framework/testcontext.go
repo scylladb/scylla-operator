@@ -3,6 +3,7 @@
 package framework
 
 import (
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	restclient "k8s.io/client-go/rest"
 )
 
@@ -16,9 +17,26 @@ var (
 	DeleteTestingNSPolicyNever     DeleteTestingNSPolicyType = "Never"
 )
 
+type IngressController struct {
+	IngressClassName  string
+	Address           string
+	CustomAnnotations map[string]string
+}
+
+type ScyllaClusterOptions struct {
+	ExposeOptions ExposeOptions
+}
+
+type ExposeOptions struct {
+	NodeServiceType             scyllav1.NodeServiceType
+	NodesBroadcastAddressType   scyllav1.BroadcastAddressType
+	ClientsBroadcastAddressType scyllav1.BroadcastAddressType
+}
+
 type TestContextType struct {
-	RestConfig             *restclient.Config
-	ArtifactsDir           string
-	DeleteTestingNSPolicy  DeleteTestingNSPolicyType
-	OverrideIngressAddress string
+	RestConfig            *restclient.Config
+	ArtifactsDir          string
+	DeleteTestingNSPolicy DeleteTestingNSPolicyType
+	IngressController     *IngressController
+	ScyllaClusterOptions  *ScyllaClusterOptions
 }

@@ -3,9 +3,6 @@ package scyllaclient
 import (
 	"fmt"
 	"strings"
-
-	"github.com/hashicorp/go-version"
-	"github.com/scylladb/go-set/strset"
 )
 
 // NodeStatus represents nodetool Status=Up/Down.
@@ -120,17 +117,26 @@ func operationalModeFromString(str string) OperationalMode {
 	return OperationalModeUnknown
 }
 
+type CompactionType string
+
+const (
+	CompactionCompactionType CompactionType = "COMPACTION"
+	CleanupCompactionType    CompactionType = "CLEANUP"
+	ScrubCompactionType      CompactionType = "SCRUB"
+	UpgradeCompactionType    CompactionType = "UPGRADE"
+	ReshapeCompactionType    CompactionType = "RESHAPE"
+)
+
 // NodeStatusInfo represents a nodetool status line.
 type NodeStatusInfo struct {
-	Datacenter string
-	HostID     string
-	Addr       string
-	Status     NodeStatus
-	State      NodeState
+	HostID string
+	Addr   string
+	Status NodeStatus
+	State  NodeState
 }
 
 func (s NodeStatusInfo) String() string {
-	return fmt.Sprintf("host: %s, DC: %s, Status: %s%s", s.Addr, s.Datacenter, s.Status, s.State)
+	return fmt.Sprintf("host: %s, Status: %s%s", s.Addr, s.Status, s.State)
 }
 
 // IsUN returns true if host is Up and NORMAL meaning it's a fully functional
@@ -141,19 +147,6 @@ func (s NodeStatusInfo) IsUN() bool {
 
 // NodeStatusInfoSlice adds functionality to Status response.
 type NodeStatusInfoSlice []NodeStatusInfo
-
-// Datacenter resturns sub slice containing only nodes from given datacenters.
-func (s NodeStatusInfoSlice) Datacenter(dcs []string) NodeStatusInfoSlice {
-	m := strset.New(dcs...)
-
-	var filtered NodeStatusInfoSlice
-	for _, h := range s {
-		if m.Has(h.Datacenter) {
-			filtered = append(filtered, h)
-		}
-	}
-	return filtered
-}
 
 // Hosts returns slice of address of all nodes.
 func (s NodeStatusInfoSlice) Hosts() []string {
@@ -184,95 +177,4 @@ func (s NodeStatusInfoSlice) DownHosts() []string {
 		}
 	}
 	return hosts
-}
-
-// CommandStatus specifies a result of a command
-type CommandStatus string
-
-// Command statuses
-const (
-	CommandRunning    CommandStatus = "RUNNING"
-	CommandSuccessful CommandStatus = "SUCCESSFUL"
-	CommandFailed     CommandStatus = "FAILED"
-)
-
-// Partitioners
-const (
-	Murmur3Partitioner = "org.apache.cassandra.dht.Murmur3Partitioner"
-)
-
-// ReplicationStrategy specifies type of a keyspace replication strategy.
-type ReplicationStrategy string
-
-// Replication strategies
-const (
-	LocalStrategy           = "org.apache.cassandra.locator.LocalStrategy"
-	SimpleStrategy          = "org.apache.cassandra.locator.SimpleStrategy"
-	NetworkTopologyStrategy = "org.apache.cassandra.locator.NetworkTopologyStrategy"
-)
-
-// Ring describes token ring of a keyspace.
-type Ring struct {
-	Tokens      []TokenRange
-	HostDC      map[string]string
-	Replication ReplicationStrategy
-}
-
-// Datacenters returs a list of datacenters the keyspace is replicated in.
-func (r Ring) Datacenters() []string {
-	v := strset.NewWithSize(len(r.HostDC))
-	for _, dc := range r.HostDC {
-		v.Add(dc)
-	}
-	return v.List()
-}
-
-// TokenRange describes replicas of a token (range).
-type TokenRange struct {
-	StartToken int64
-	EndToken   int64
-	Replicas   []string
-}
-
-// Unit describes keyspace and some tables in that keyspace.
-type Unit struct {
-	Keyspace string
-	Tables   []string
-}
-
-// ScyllaFeatures specifies features supported by the Scylla version.
-type ScyllaFeatures struct {
-	RowLevelRepair bool
-}
-
-var masterScyllaFeatures = ScyllaFeatures{
-	RowLevelRepair: true,
-}
-
-const (
-	scyllaMasterVersion           = "666.development"
-	scyllaEnterpriseMasterVersion = "9999.enterprise_dev"
-)
-
-func makeScyllaFeatures(ver string) (ScyllaFeatures, error) {
-	// Trim build version suffix as it breaks constraints
-	ver = strings.Split(ver, "-")[0]
-
-	// Detect master builds
-	if ver == scyllaMasterVersion || ver == scyllaEnterpriseMasterVersion {
-		return masterScyllaFeatures, nil
-	}
-
-	v, err := version.NewSemver(ver)
-	if err != nil {
-		return ScyllaFeatures{}, err
-	}
-
-	rowLevelRepair, err := version.NewConstraint(">= 3.1, < 2000")
-	if err != nil {
-		panic(err) // must
-	}
-	return ScyllaFeatures{
-		RowLevelRepair: rowLevelRepair.Check(v),
-	}, nil
 }

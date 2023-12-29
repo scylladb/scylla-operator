@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -25,7 +24,7 @@ func (c *Client) CreateUser(user User) (int64, error) {
 		ID int64 `json:"id"`
 	}{}
 
-	err = c.request("POST", "/api/admin/users", nil, bytes.NewBuffer(data), &created)
+	err = c.request("POST", "/api/admin/users", nil, data, &created)
 	if err != nil {
 		return id, err
 	}
@@ -45,7 +44,7 @@ func (c *Client) UpdateUserPassword(id int64, password string) error {
 	if err != nil {
 		return err
 	}
-	return c.request("PUT", fmt.Sprintf("/api/admin/users/%d/password", id), nil, bytes.NewBuffer(data), nil)
+	return c.request("PUT", fmt.Sprintf("/api/admin/users/%d/password", id), nil, data, nil)
 }
 
 // UpdateUserPermissions sets a user's admin status.
@@ -55,7 +54,7 @@ func (c *Client) UpdateUserPermissions(id int64, isAdmin bool) error {
 	if err != nil {
 		return err
 	}
-	return c.request("PUT", fmt.Sprintf("/api/admin/users/%d/permissions", id), nil, bytes.NewBuffer(data), nil)
+	return c.request("PUT", fmt.Sprintf("/api/admin/users/%d/permissions", id), nil, data, nil)
 }
 
 // PauseAllAlerts pauses all Grafana alerts.
@@ -68,7 +67,7 @@ func (c *Client) PauseAllAlerts() (PauseAllAlertsResponse, error) {
 		return result, err
 	}
 
-	err = c.request("POST", "/api/admin/pause-all-alerts", nil, bytes.NewBuffer(data), &result)
+	err = c.request("POST", "/api/admin/pause-all-alerts", nil, data, &result)
 
 	return result, err
 }

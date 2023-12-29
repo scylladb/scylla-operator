@@ -169,7 +169,7 @@ In case you need to preserve your data, refer to backup and restore guide.
     ```
 1. Install new CRD and Scylla Operator
     ```
-    kubectl apply -f examples/common/operator.yaml
+    kubectl apply -f deploy/operator.yaml
     ```
 1. Migrate your existing Scylla Cluster definition. Change `apiVersion` and `kind` from:
     ```

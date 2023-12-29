@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -116,7 +115,7 @@ func (c *Client) SetNotificationPolicyTree(np *NotificationPolicyTree) error {
 	if err != nil {
 		return err
 	}
-	return c.request("PUT", "/api/v1/provisioning/policies", nil, bytes.NewBuffer(req), nil)
+	return c.request("PUT", "/api/v1/provisioning/policies", nil, req, nil)
 }
 
 func (c *Client) ResetNotificationPolicyTree() error {

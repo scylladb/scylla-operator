@@ -37,9 +37,8 @@ func Run(ctx context.Context, programName, lockName, lockNamespace string, clien
 	id := hostname + "_" + string(uuid.NewUUID())
 	klog.V(4).Infof("Leader election ID is %q", id)
 
-	// TODO: Migrate to single lock using just coordination API in >=1.9.
 	lock, err := resourcelock.New(
-		resourcelock.ConfigMapsLeasesResourceLock,
+		resourcelock.LeasesResourceLock,
 		lockNamespace,
 		lockName,
 		client.CoreV1(),

@@ -1,17 +1,26 @@
 # You can set these variables from the command line.
-POETRY        := $(HOME)/.poetry/bin/poetry
-SPHINXBUILD   := $(POETRY) run sphinx-build
-SPHINXOPTS    :=
-PAPER         :=
-BUILDDIR      := _build
-SOURCEDIR     := source
+POETRY ?= poetry
+SPHINXBUILD ?= $(POETRY) run sphinx-build
+SPHINXOPTS ?= -j auto
+PAPER ?=
+BUILDDIR ?= _build
+SOURCEDIR ?= source
+OS ?=
+
 
 # Internal variables.
-PAPEROPT_a4     := -D latex_paper_size=a4
-PAPEROPT_letter := -D latex_paper_size=letter
-ALLSPHINXOPTS   := -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) $(SOURCEDIR) -W
+paperopt_a4 := -D latex_paper_size=a4
+paperopt_letter := -D latex_paper_size=letter
+
+ifdef $(PAPER)
+paperopt :=$(paperopt_$(PAPER))
+else
+paperopt :=
+endif
+
+ALLSPHINXOPTS ?= -d $(BUILDDIR)/doctrees $(paperopt) $(SPHINXOPTS) $(SOURCEDIR) -W
 # the i18n builder cannot share the environment and doctrees with the others
-I18NSPHINXOPTS  := $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) $(SOURCEDIR)
+I18NSPHINXOPTS ?= $(paperopt) $(SPHINXOPTS) $(SOURCEDIR)
 
 .PHONY: all
 all: dirhtml
@@ -74,3 +83,7 @@ redirects:
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/dirhtml."
 .PHONY: redirects
+
+setup:
+	$(POETRY) install
+.PHONY: setup

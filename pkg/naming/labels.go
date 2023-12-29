@@ -1,6 +1,8 @@
 package naming
 
 import (
+	"fmt"
+
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -14,6 +16,11 @@ func ClusterLabels(c *scyllav1.ScyllaCluster) map[string]string {
 	return labels
 }
 
+// ClusterSelector returns a labels selector for the given ScyllaCluster.
+func ClusterSelector(c *scyllav1.ScyllaCluster) labels.Selector {
+	return labels.SelectorFromSet(ClusterLabels(c))
+}
+
 // DatacenterLabels returns a map of label keys and values
 // for the given Datacenter.
 func DatacenterLabels(c *scyllav1.ScyllaCluster) map[string]string {
@@ -24,14 +31,15 @@ func DatacenterLabels(c *scyllav1.ScyllaCluster) map[string]string {
 	return mergeLabels(dcLabels, recLabels)
 }
 
-// RackLabels returns a map of label keys and values
+// RackSelectorLabels returns a map of label keys and values
 // for the given Rack.
-func RackLabels(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) map[string]string {
+// Labels set cannot be changed.
+func RackSelectorLabels(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) (map[string]string, error) {
 	recLabels := ScyllaLabels()
 	rackLabels := DatacenterLabels(c)
 	rackLabels[RackNameLabel] = r.Name
 
-	return mergeLabels(rackLabels, recLabels)
+	return mergeLabels(rackLabels, recLabels), nil
 }
 
 // StatefulSetPodLabel returns a map of labels to uniquely
@@ -43,12 +51,16 @@ func StatefulSetPodLabel(name string) map[string]string {
 }
 
 // RackSelector returns a LabelSelector for the given rack.
-func RackSelector(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) labels.Selector {
+func RackSelector(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) (labels.Selector, error) {
+	rackLabels, err := RackSelectorLabels(r, c)
+	if err != nil {
+		return nil, fmt.Errorf("can't get rack labels: %w", err)
+	}
 
-	rackLabelsSet := labels.Set(RackLabels(r, c))
+	rackLabelsSet := labels.Set(rackLabels)
 	sel := labels.SelectorFromSet(rackLabelsSet)
 
-	return sel
+	return sel, nil
 }
 
 func ScyllaLabels() map[string]string {

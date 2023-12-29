@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -53,7 +52,7 @@ func (c *Client) NewPlaylist(playlist Playlist) (string, error) {
 
 	var result Playlist
 
-	err = c.request("POST", "/api/playlists", nil, bytes.NewBuffer(data), &result)
+	err = c.request("POST", "/api/playlists", nil, data, &result)
 	if err != nil {
 		return "", err
 	}
@@ -69,7 +68,7 @@ func (c *Client) UpdatePlaylist(playlist Playlist) error {
 		return err
 	}
 
-	return c.request("PUT", path, nil, bytes.NewBuffer(data), nil)
+	return c.request("PUT", path, nil, data, nil)
 }
 
 // DeletePlaylist deletes the Grafana playlist whose ID it's passed.

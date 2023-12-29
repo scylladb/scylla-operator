@@ -9,11 +9,14 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strconv"
 	"time"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllaclientset "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
+	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -21,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/storage/names"
 	"k8s.io/client-go/discovery"
+	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
@@ -72,11 +76,11 @@ func (f *Framework) Username() string {
 }
 
 func (f *Framework) GetIngressAddress(hostname string) string {
-	if len(TestContext.OverrideIngressAddress) == 0 {
+	if TestContext.IngressController == nil || len(TestContext.IngressController.Address) == 0 {
 		return hostname
 	}
 
-	return TestContext.OverrideIngressAddress
+	return TestContext.IngressController.Address
 }
 
 func (f *Framework) FieldManager() string {
@@ -141,6 +145,19 @@ func (f *Framework) CommonLabels() map[string]string {
 	}
 }
 
+func (f *Framework) GetDefaultScyllaCluster() *scyllav1.ScyllaCluster {
+	renderArgs := map[string]any{
+		"nodeServiceType":             TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
+		"nodesBroadcastAddressType":   TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
+		"clientsBroadcastAddressType": TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
+	}
+
+	sc, _, err := scyllafixture.ScyllaClusterTemplate.RenderObject(renderArgs)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	return sc
+}
+
 func (f *Framework) setupNamespace(ctx context.Context) {
 	By("Creating a new namespace")
 	var ns *corev1.Namespace
@@ -148,6 +165,7 @@ func (f *Framework) setupNamespace(ctx context.Context) {
 		return names.SimpleNameGenerator.GenerateName(fmt.Sprintf("e2e-test-%s-", f.name))
 	}
 	name := generateName()
+	sr := g.CurrentSpecReport()
 	err := wait.PollImmediate(2*time.Second, 30*time.Second, func() (bool, error) {
 		var err error
 		// We want to know the name ahead, even if the api call fails.
@@ -157,6 +175,10 @@ func (f *Framework) setupNamespace(ctx context.Context) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   name,
 					Labels: f.CommonLabels(),
+					Annotations: map[string]string{
+						"ginkgo-parallel-process": strconv.Itoa(sr.ParallelProcess),
+						"ginkgo-full-text":        sr.FullText(),
+					},
 				},
 			},
 			metav1.CreateOptions{},
@@ -237,7 +259,7 @@ func (f *Framework) setupNamespace(ctx context.Context) {
 	By("Waiting for default ServiceAccount in namespace %q.", ns.Name)
 	ctxSa, ctxSaCancel := context.WithTimeout(ctx, serviceAccountWaitTimeout)
 	defer ctxSaCancel()
-	_, err = WaitForServiceAccount(ctxSa, f.KubeAdminClient().CoreV1(), ns.Namespace, "default")
+	_, err = WaitForServiceAccount(ctxSa, f.KubeAdminClient().CoreV1(), ns.Name, "default")
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
@@ -314,13 +336,13 @@ func (f *Framework) afterEach() {
 	if len(TestContext.ArtifactsDir) != 0 {
 		By(fmt.Sprintf("Collecting dumps from namespace %q.", f.namespace.Name))
 
-		d := path.Join(TestContext.ArtifactsDir, "e2e-namespaces")
+		d := path.Join(TestContext.ArtifactsDir, "e2e")
 		err := os.Mkdir(d, 0777)
 		if err != nil && !os.IsExist(err) {
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
 
-		err = DumpNamespace(ctx, f.KubeAdminClient().Discovery(), f.DynamicAdminClient(), f.KubeAdminClient().CoreV1(), d, f.Namespace())
+		err = DumpNamespace(ctx, cacheddiscovery.NewMemCacheClient(f.KubeAdminClient().Discovery()), f.DynamicAdminClient(), f.KubeAdminClient().CoreV1(), d, f.Namespace())
 		o.Expect(err).NotTo(o.HaveOccurred())
 	}
 }

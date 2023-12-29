@@ -6,18 +6,22 @@ spec:
   endpointsSelector:
     matchLabels:
       app.kubernetes.io/name: scylla
-      scylla-operator.scylladb.com/scylla-service-type: identity
+      scylla-operator.scylladb.com/scylla-service-type: member
       scylla/cluster: "{{ .scyllaClusterName }}"
   components:
     prometheus:
       exposeOptions:
         webInterface:
           ingress:
-            ingressClassName: haproxy
+            {{- with .ingressClassName }}
+            ingressClassName: {{ . }}
+            {{- end }}
             dnsDomains:
             - "{{ .name }}-prometheus.{{ .namespace }}.apps.cluster.scylladb.com"
+            {{- with .ingressCustomAnnotations }}
             annotations:
-              haproxy-ingress.github.io/ssl-passthrough: "true"
+              {{- . | toYAML | nindent 14 }}
+            {{- end }}
       storage:
         volumeClaimTemplate:
           spec:
@@ -28,8 +32,10 @@ spec:
       exposeOptions:
         webInterface:
           ingress:
-            ingressClassName: haproxy
+            ingressClassName: {{ .ingressClassName }}
             dnsDomains:
             - "{{ .name }}-grafana.{{ .namespace }}.apps.cluster.scylladb.com"
+            {{- with .ingressCustomAnnotations }}
             annotations:
-              haproxy-ingress.github.io/ssl-passthrough: "true"
+              {{- . | toYAML | nindent 14 }}
+            {{- end }}

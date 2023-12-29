@@ -5,59 +5,89 @@ import (
 	"sort"
 	"time"
 
-	"github.com/scylladb/go-log"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/errors"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 	corev1schedulinghelpers "k8s.io/component-helpers/scheduling/corev1"
 	"k8s.io/component-helpers/scheduling/corev1/nodeaffinity"
 )
 
-func GetScyllaIPFromService(svc *corev1.Service) (string, error) {
-	if svc.Spec.Type != corev1.ServiceTypeClusterIP {
-		return "", fmt.Errorf("service %s is of type %q instead of %q", naming.ObjRef(svc), svc.Spec.Type, corev1.ServiceTypeClusterIP)
+func GetScyllaHost(sc *scyllav1.ScyllaCluster, svc *corev1.Service, pod *corev1.Pod) (string, error) {
+	// Assume API's default.
+	nodeBroadcastAddressType := scyllav1.BroadcastAddressTypeServiceClusterIP
+	if sc.Spec.ExposeOptions != nil && sc.Spec.ExposeOptions.BroadcastOptions != nil {
+		nodeBroadcastAddressType = sc.Spec.ExposeOptions.BroadcastOptions.Nodes.Type
 	}
 
-	if svc.Spec.ClusterIP == corev1.ClusterIPNone {
-		return "", fmt.Errorf("service %s doesn't have a ClusterIP", naming.ObjRef(svc))
-	}
-
-	return svc.Spec.ClusterIP, nil
+	return GetScyllaBroadcastAddress(nodeBroadcastAddressType, svc, pod)
 }
 
-func GetScyllaHost(statefulsetName string, ordinal int32, services map[string]*corev1.Service) (string, error) {
-	svcName := fmt.Sprintf("%s-%d", statefulsetName, ordinal)
-	svc, found := services[svcName]
-	if !found {
-		return "", fmt.Errorf("missing service %q", svcName)
-	}
+func GetScyllaBroadcastAddress(broadcastAddressType scyllav1.BroadcastAddressType, svc *corev1.Service, pod *corev1.Pod) (string, error) {
+	switch broadcastAddressType {
+	case scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress:
+		if len(svc.Status.LoadBalancer.Ingress) < 1 {
+			return "", fmt.Errorf("service %q does not have an ingress status", naming.ObjRef(svc))
+		}
 
-	ip, err := GetScyllaIPFromService(svc)
-	if err != nil {
-		return "", err
-	}
+		if len(svc.Status.LoadBalancer.Ingress[0].IP) != 0 {
+			return svc.Status.LoadBalancer.Ingress[0].IP, nil
+		}
 
-	return ip, nil
+		if len(svc.Status.LoadBalancer.Ingress[0].Hostname) != 0 {
+			return svc.Status.LoadBalancer.Ingress[0].Hostname, nil
+		}
+
+		return "", fmt.Errorf("service %q does not have an external address", naming.ObjRef(svc))
+
+	case scyllav1.BroadcastAddressTypeServiceClusterIP:
+		if svc.Spec.ClusterIP == corev1.ClusterIPNone {
+			return "", fmt.Errorf("service %q does not have a ClusterIP address", naming.ObjRef(svc))
+		}
+
+		return svc.Spec.ClusterIP, nil
+
+	case scyllav1.BroadcastAddressTypePodIP:
+		if len(pod.Status.PodIP) == 0 {
+			return "", fmt.Errorf("pod %q does not have a PodIP address", naming.ObjRef(pod))
+		}
+
+		return pod.Status.PodIP, nil
+
+	default:
+		return "", fmt.Errorf("unsupported broadcast address type: %q", broadcastAddressType)
+	}
 }
 
-func GetRequiredScyllaHosts(sc *scyllav1.ScyllaCluster, services map[string]*corev1.Service) ([]string, error) {
+func GetRequiredScyllaHosts(sc *scyllav1.ScyllaCluster, services map[string]*corev1.Service, podLister corev1listers.PodLister) ([]string, error) {
 	var hosts []string
 	var errs []error
 	for _, rack := range sc.Spec.Datacenter.Racks {
 		for ord := int32(0); ord < rack.Members; ord++ {
-			stsName := naming.StatefulSetNameForRack(rack, sc)
-			host, err := GetScyllaHost(stsName, ord, services)
+			svcName := naming.MemberServiceName(rack, sc, int(ord))
+			svc, exists := services[svcName]
+			if !exists {
+				errs = append(errs, fmt.Errorf("service %q does not exist", naming.ManualRef(sc.Namespace, svcName)))
+				continue
+			}
+
+			podName := naming.PodNameFromService(svc)
+			pod, err := podLister.Pods(sc.Namespace).Get(podName)
 			if err != nil {
-				errs = append(errs, err)
+				errs = append(errs, fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sc.Namespace, podName), err))
+				continue
+			}
+
+			host, err := GetScyllaHost(sc, svc, pod)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("can't get scylla host for service %q: %w", naming.ObjRef(svc), err))
 				continue
 			}
 
@@ -73,11 +103,7 @@ func GetRequiredScyllaHosts(sc *scyllav1.ScyllaCluster, services map[string]*cor
 }
 
 func NewScyllaClient(cfg *scyllaclient.Config) (*scyllaclient.Client, error) {
-	// TODO: unify logging
-	logger, _ := log.NewProduction(log.Config{
-		Level: zap.NewAtomicLevelAt(zapcore.InfoLevel),
-	})
-	scyllaClient, err := scyllaclient.NewClient(cfg, logger.Named("scylla_client"))
+	scyllaClient, err := scyllaclient.NewClient(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -303,6 +329,10 @@ func IsNodeTuned(ncnss []scyllav1alpha1.NodeConfigNodeStatus, nodeName string) b
 func IsScyllaPod(pod *corev1.Pod) bool {
 	// TODO: use a better label, verify the container
 	if pod.Labels == nil {
+		return false
+	}
+
+	if !labels.SelectorFromSet(naming.ScyllaLabels()).Matches(labels.Set(pod.Labels)) {
 		return false
 	}
 

@@ -129,7 +129,6 @@ clusters create "${CLUSTER_NAME}" \
 --num-nodes "2" \
 --disk-type "pd-ssd" --disk-size "20" \
 --image-type "UBUNTU_CONTAINERD" \
---system-config-from-file=systemconfig.yaml \
 --enable-stackdriver-kubernetes \
 --no-enable-autoupgrade \
 --no-enable-autorepair
@@ -159,6 +158,7 @@ node-pools create "scylla-pool" \
 --node-taints role=scylla-clusters:NoSchedule \
 --node-labels scylla.scylladb.com/node-type=scylla \
 --image-type "UBUNTU_CONTAINERD" \
+--system-config-from-file=systemconfig.yaml \
 --no-enable-autoupgrade \
 --no-enable-autorepair
 
@@ -186,7 +186,7 @@ wait-for-object-creation cert-manager deployment.apps/cert-manager-webhook
 kubectl -n cert-manager rollout status --timeout=5m deployment.apps/cert-manager-webhook
 
 echo "Starting the scylla operator..."
-kubectl apply -f ../common/operator.yaml
+kubectl apply -f ../../deploy/operator.yaml
 
 kubectl wait --for condition=established crd/nodeconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scyllaclusters.scylla.scylladb.com

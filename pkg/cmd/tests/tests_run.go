@@ -20,7 +20,7 @@ import (
 	gomegaformat "github.com/onsi/gomega/format"
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
-	"github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	ginkgotest "github.com/scylladb/scylla-operator/pkg/test/ginkgo"
 	"github.com/scylladb/scylla-operator/pkg/thirdparty/github.com/onsi/ginkgo/v2/exposedinternal/parallel_support"
@@ -49,7 +49,7 @@ var suites = ginkgotest.TestSuites{
 		Description: templates.LongDesc(`
 		Runs all tests.
 		`),
-		DefaultParallelism: 15,
+		DefaultParallelism: 42,
 	},
 	{
 		Name: "scylla-operator/conformance/parallel",
@@ -57,7 +57,7 @@ var suites = ginkgotest.TestSuites{
 		Tests that ensure an Scylla Operator is working properly.
 		`),
 		LabelFilter:        fmt.Sprintf("!%s", framework.SerialLabelName),
-		DefaultParallelism: 15,
+		DefaultParallelism: 42,
 	},
 	{
 		Name: "scylla-operator/conformance/serial",
@@ -74,22 +74,21 @@ type RunOptions struct {
 	genericclioptions.ClientConfig
 	TestFrameworkOptions
 
-	Timeout                time.Duration
-	Quiet                  bool
-	ShowProgress           bool
-	FlakeAttempts          int
-	FailFast               bool
-	LabelFilter            string
-	FocusStrings           []string
-	SkipStrings            []string
-	RandomSeed             int64
-	DryRun                 bool
-	Color                  bool
-	OverrideIngressAddress string
-	Parallelism            int
-	ParallelShard          int
-	ParallelServerAddress  string
-	ParallelLogLevel       int32
+	Timeout               time.Duration
+	Quiet                 bool
+	ShowProgress          bool
+	FlakeAttempts         int
+	FailFast              bool
+	LabelFilter           string
+	FocusStrings          []string
+	SkipStrings           []string
+	RandomSeed            int64
+	DryRun                bool
+	Color                 bool
+	Parallelism           int
+	ParallelShard         int
+	ParallelServerAddress string
+	ParallelLogLevel      int32
 
 	SelectedSuite *ginkgotest.TestSuite
 }
@@ -163,7 +162,6 @@ func NewRunCommand(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd.Flags().Int64VarP(&o.RandomSeed, randomSeedFlagKey, "", o.RandomSeed, "Seed for the test suite.")
 	cmd.Flags().BoolVarP(&o.DryRun, "dry-run", "", o.DryRun, "Doesn't execute the tests, only prints. Limited to serial execution.")
 	cmd.Flags().BoolVarP(&o.Color, "color", "", o.Color, "Colors the output.")
-	cmd.Flags().StringVarP(&o.OverrideIngressAddress, "override-ingress-address", "", o.OverrideIngressAddress, "This flag will override destination address when sending testing data to applications behind ingresses.")
 	cmd.Flags().IntVarP(&o.Parallelism, "parallelism", "", o.Parallelism, "Determines how many workers are going to run in parallel. If not specified or if zero, the default parallelism for the suite will be chosen.")
 	cmd.Flags().Int32Var(&o.ParallelLogLevel, "parallel-loglevel", o.ParallelLogLevel, "Set the level of log output for parallel processes (0-10).")
 	cmd.Flags().IntVarP(&o.ParallelShard, parallelShardFlagKey, "", o.ParallelShard, "")
@@ -260,10 +258,17 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 	const suite = "Scylla operator E2E tests"
 
 	framework.TestContext = &framework.TestContextType{
-		RestConfig:             o.RestConfig,
-		ArtifactsDir:           o.ArtifactsDir,
-		DeleteTestingNSPolicy:  o.DeleteTestingNSPolicy,
-		OverrideIngressAddress: o.OverrideIngressAddress,
+		RestConfig:            o.RestConfig,
+		ArtifactsDir:          o.ArtifactsDir,
+		DeleteTestingNSPolicy: o.DeleteTestingNSPolicy,
+		ScyllaClusterOptions:  o.scyllaClusterOptions,
+	}
+	if o.IngressController != nil {
+		framework.TestContext.IngressController = &framework.IngressController{
+			Address:           o.IngressController.Address,
+			IngressClassName:  o.IngressController.IngressClassName,
+			CustomAnnotations: o.IngressController.CustomAnnotations,
+		}
 	}
 
 	suiteConfig, reporterConfig := ginkgo.GinkgoConfiguration()
@@ -358,7 +363,7 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 	commonArgs = append(commonArgs, fmt.Sprintf("--%s=%v", cmdutil.FlagLogLevelKey, o.ParallelLogLevel))
 
 	// Propagate random seed to child processes.
-	if !helpers.Contains(commonArgs, func(arg string) bool {
+	if !slices.Contains(commonArgs, func(arg string) bool {
 		return strings.HasPrefix(arg, fmt.Sprintf("--%s", randomSeedFlagKey))
 	}) {
 		commonArgs = append(commonArgs, fmt.Sprintf("--%s=%v", randomSeedFlagKey, suiteConfig.RandomSeed))

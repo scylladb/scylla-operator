@@ -17,7 +17,6 @@ spec:
       type: RAID0
       RAID0:
         devices:
-          modelRegex: nvme_card
           nameRegex: ^/dev/nvme\d+n\d+$
   placement:
     nodeSelector:

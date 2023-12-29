@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -30,7 +29,7 @@ func (c *Client) CreateCloudAPIKey(org string, input *CreateCloudAPIKeyInput) (*
 		return nil, err
 	}
 
-	err = c.request("POST", fmt.Sprintf("/api/orgs/%s/api-keys", org), nil, bytes.NewBuffer(data), &resp)
+	err = c.request("POST", fmt.Sprintf("/api/orgs/%s/api-keys", org), nil, data, &resp)
 	return &resp, err
 }
 

@@ -7,10 +7,10 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
 )
 
 func Test_makeScyllaDBServiceMonitor(t *testing.T) {
@@ -248,6 +248,7 @@ kind: Prometheus
 metadata:
   name: "sm-name"
 spec:
+  version: "v2.44.0"
   serviceAccountName: "sm-name-prometheus"
   securityContext:
     runAsNonRoot: true
@@ -304,7 +305,7 @@ spec:
 								VolumeClaimTemplate: corev1.PersistentVolumeClaimTemplate{
 									ObjectMeta: metav1.ObjectMeta{},
 									Spec: corev1.PersistentVolumeClaimSpec{
-										StorageClassName: pointer.String("pv-class"),
+										StorageClassName: pointer.Ptr("pv-class"),
 										Resources: corev1.ResourceRequirements{
 											Requests: map[corev1.ResourceName]resource.Quantity{
 												corev1.ResourceStorage: resource.MustParse("5Gi"),
@@ -323,6 +324,7 @@ kind: Prometheus
 metadata:
   name: "sm-name"
 spec:
+  version: "v2.44.0"
   serviceAccountName: "sm-name-prometheus"
   securityContext:
     runAsNonRoot: true

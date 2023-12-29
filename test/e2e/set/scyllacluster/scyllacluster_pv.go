@@ -16,7 +16,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
-	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"github.com/scylladb/scylla-operator/test/e2e/utils/image"
@@ -76,22 +75,26 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		nodes, err := f.KubeAdminClient().CoreV1().Nodes().List(ctx, metav1.ListOptions{})
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		if len(nodes.Items) != 1 {
-			g.Skip(
-				"This test supports running at most 1 Node, as it relies on the fact that all Pods land on the same Node." +
-					"Replace with actual Node removal logic when CI env is bigger",
-			)
-		}
-
 		testStorageClassName := f.Namespace()
 
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 		sc.Spec.AutomaticOrphanedNodeCleanup = true
 		sc.Spec.Datacenter.Racks[0].Members = 3
 		sc.Spec.Datacenter.Racks[0].Storage.StorageClassName = pointer.Ptr(testStorageClassName)
+		sc.Spec.Datacenter.Racks[0].Placement = &scyllav1.PlacementSpec{
+			PodAffinity: &corev1.PodAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+					{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								cloneLabelKey: f.Namespace(),
+							},
+						},
+						TopologyKey: corev1.LabelHostname,
+					},
+				},
+			},
+		}
 
 		// This test to trigger the orphaned PV cleanup is updating NodeAffinity of PV used by ScyllaCluster to not exiting Node.
 		// The problem is, that local volume storage provisioners which we use in CI, may set this field, which is immutable.
@@ -99,10 +102,12 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 		// ScyllaCluster is going to request a PVC from that StorageClass, and the test is going to request a clone of the original PVC
 		// from the default StorageClass to get any storage. Then the bound PV is rebounded to the original PVC
 		// but with empty NodeAffinity. This allows the test to trigger the orphaned PV cleanup logic.
-		provisionerCtx, provisionerCancel := context.WithCancel(ctx)
+		var wg sync.WaitGroup
+		defer wg.Wait()
+
+		provisionerCtx, provisionerCancel := context.WithCancel(context.Background())
 		defer provisionerCancel()
 
-		var wg sync.WaitGroup
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -136,7 +141,7 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 					pvcClone.Spec.StorageClassName = nil
 
 					framework.Infof("Creating clone PVC for %q", pvc.Name)
-					pvcClone, err = f.KubeClient().CoreV1().PersistentVolumeClaims(f.Namespace()).Create(ctx, pvcClone, metav1.CreateOptions{})
+					pvcClone, err := f.KubeClient().CoreV1().PersistentVolumeClaims(f.Namespace()).Create(ctx, pvcClone, metav1.CreateOptions{})
 					o.Expect(err).NotTo(o.HaveOccurred())
 
 					framework.Infof("Creating PVC clone consumer Pod")
@@ -144,6 +149,9 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 					consumerPod := &corev1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: consumerPodName,
+							Labels: map[string]string{
+								cloneLabelKey: f.Namespace(),
+							},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -252,10 +260,9 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 			}
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}()
-		defer wg.Wait()
 
 		framework.By("Creating a ScyllaCluster")
-		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", sc.ResourceVersion)
@@ -265,7 +272,10 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
-		hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		hosts, _, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(3))
 		di := insertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
@@ -340,13 +350,11 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
-		oldHosts := hosts
-		hosts = getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
-		o.Expect(hosts).To(o.HaveLen(len(oldHosts)))
-		o.Expect(hosts).NotTo(o.ConsistOf(oldHosts))
-		err = di.SetClientEndpoints(hosts)
+		hosts, err = utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(hosts).To(o.HaveLen(3))
 		verifyCQLData(ctx, di)
 
 		// Stop fake provisioner

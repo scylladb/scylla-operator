@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -61,5 +60,58 @@ func (c *Client) UpdateFolderPermissions(fid string, items *PermissionItems) err
 		return err
 	}
 
-	return c.request("POST", path, nil, bytes.NewBuffer(data), nil)
+	return c.request("POST", path, nil, data, nil)
+}
+
+func (c *Client) ListFolderResourcePermissions(uid string) ([]*ResourcePermission, error) {
+	return c.listResourcePermissions(FoldersResource, ResourceUID(uid))
+}
+
+func (c *Client) SetFolderResourcePermissions(uid string, body SetResourcePermissionsBody) (*SetResourcePermissionsResponse, error) {
+	return c.setResourcePermissions(FoldersResource, ResourceUID(uid), body)
+}
+
+func (c *Client) SetUserFolderResourcePermissions(folderUID string, userID int64, permission string) (*SetResourcePermissionsResponse, error) {
+	return c.setResourcePermissionByAssignment(
+		FoldersResource,
+		ResourceUID(folderUID),
+		UsersResource,
+		ResourceID(userID),
+		SetResourcePermissionBody{
+			Permission: SetResourcePermissionItem{
+				UserID:     userID,
+				Permission: permission,
+			},
+		},
+	)
+}
+
+func (c *Client) SetTeamFolderResourcePermissions(folderUID string, teamID int64, permission string) (*SetResourcePermissionsResponse, error) {
+	return c.setResourcePermissionByAssignment(
+		FoldersResource,
+		ResourceUID(folderUID),
+		TeamsResource,
+		ResourceID(teamID),
+		SetResourcePermissionBody{
+			Permission: SetResourcePermissionItem{
+				TeamID:     teamID,
+				Permission: permission,
+			},
+		},
+	)
+}
+
+func (c *Client) SetBuiltInRoleFolderResourcePermissions(folderUID string, builtInRole string, permission string) (*SetResourcePermissionsResponse, error) {
+	return c.setResourcePermissionByAssignment(
+		FoldersResource,
+		ResourceUID(folderUID),
+		BuiltInRolesResource,
+		ResourceUID(builtInRole),
+		SetResourcePermissionBody{
+			Permission: SetResourcePermissionItem{
+				BuiltinRole: builtInRole,
+				Permission:  permission,
+			},
+		},
+	)
 }

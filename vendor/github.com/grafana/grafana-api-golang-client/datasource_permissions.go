@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -81,7 +80,7 @@ func (c *Client) AddDatasourcePermission(id int64, item *DatasourcePermissionAdd
 		return fmt.Errorf("marshal err: %w", err)
 	}
 
-	if err = c.request("POST", path, nil, bytes.NewBuffer(data), nil); err != nil {
+	if err = c.request("POST", path, nil, data, nil); err != nil {
 		return fmt.Errorf("error adding permissions at %s: %w", path, err)
 	}
 
@@ -96,4 +95,57 @@ func (c *Client) RemoveDatasourcePermission(id, permissionID int64) error {
 	}
 
 	return nil
+}
+
+func (c *Client) ListDatasourceResourcePermissions(uid string) ([]*ResourcePermission, error) {
+	return c.listResourcePermissions(DatasourcesResource, ResourceUID(uid))
+}
+
+func (c *Client) SetDatasourceResourcePermissions(uid string, body SetResourcePermissionsBody) (*SetResourcePermissionsResponse, error) {
+	return c.setResourcePermissions(DatasourcesResource, ResourceUID(uid), body)
+}
+
+func (c *Client) SetUserDatasourceResourcePermissions(datasourceUID string, userID int64, permission string) (*SetResourcePermissionsResponse, error) {
+	return c.setResourcePermissionByAssignment(
+		DatasourcesResource,
+		ResourceUID(datasourceUID),
+		UsersResource,
+		ResourceID(userID),
+		SetResourcePermissionBody{
+			Permission: SetResourcePermissionItem{
+				UserID:     userID,
+				Permission: permission,
+			},
+		},
+	)
+}
+
+func (c *Client) SetTeamDatasourceResourcePermissions(datasourceUID string, teamID int64, permission string) (*SetResourcePermissionsResponse, error) {
+	return c.setResourcePermissionByAssignment(
+		DatasourcesResource,
+		ResourceUID(datasourceUID),
+		TeamsResource,
+		ResourceID(teamID),
+		SetResourcePermissionBody{
+			Permission: SetResourcePermissionItem{
+				TeamID:     teamID,
+				Permission: permission,
+			},
+		},
+	)
+}
+
+func (c *Client) SetBuiltInRoleDatasourceResourcePermissions(datasourceUID string, builtInRole string, permission string) (*SetResourcePermissionsResponse, error) {
+	return c.setResourcePermissionByAssignment(
+		DatasourcesResource,
+		ResourceUID(datasourceUID),
+		BuiltInRolesResource,
+		ResourceUID(builtInRole),
+		SetResourcePermissionBody{
+			Permission: SetResourcePermissionItem{
+				BuiltinRole: builtInRole,
+				Permission:  permission,
+			},
+		},
+	)
 }

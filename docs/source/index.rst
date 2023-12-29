@@ -14,11 +14,13 @@ Scylla Operator Documentation
    monitoring
    migration
    nodeoperations/index
+   exposing
+   multidc/index
    performance
    upgrade
    releases
-   known_issues
-   scylla_cluster_crd
+   support/index
+   api-reference/index
    contributing
 
 Scylla Operator is an open source project which helps users of Scylla Open Source and Scylla Enterprise run Scylla on Kubernetes (K8s)
@@ -43,7 +45,6 @@ Currently it supports:
 * Backup
 * Repairs
 * Autohealing
-* Monitoring with Prometheus and Grafana
 
 **Choose a topic to begin**:
 
@@ -54,9 +55,11 @@ Currently it supports:
 * :doc:`Deploying Scylla stack using Helm Charts <helm>`
 * :doc:`Setting up Monitoring using Prometheus and Grafana <monitoring>`
 * :doc:`Node operations <nodeoperations/index>`
+* :doc:`Exposing ScyllaCluster to other networks <exposing>`
+* :doc:`Deploying multi-datacenter ScyllaDB clusters in Kubernetes <multidc/index>`
 * :doc:`Performance tuning [Experimental] <performance>`
 * :doc:`Upgrade procedures <upgrade>`
 * :doc:`Releases <releases>`
-* :doc:`Known issues <known_issues>`
-* :doc:`Scylla Cluster Custom Resource Definition (CRD) <scylla_cluster_crd>`
+* :doc:`Support <support/index>`
+* :doc:`API Reference <api-reference/index>`
 * :doc:`Contributing to the Scylla Operator Project <contributing>`

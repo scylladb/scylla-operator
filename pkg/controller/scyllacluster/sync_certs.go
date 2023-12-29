@@ -20,10 +20,11 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	cqlclientv1alpha1 "github.com/scylladb/scylla-operator/pkg/scylla/api/cqlclient/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	apierrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 )
 
@@ -128,7 +129,7 @@ func (scc *Controller) syncCerts(
 	// Be careful to always apply signers first to be sure they have been persisted
 	// before applying any child certificate signed by it.
 
-	var errors []error
+	var errs []error
 	var progressingConditions []metav1.Condition
 
 	cm := okubecrypto.NewCertificateManager(
@@ -143,7 +144,7 @@ func (scc *Controller) syncCerts(
 	clusterLabels := naming.ClusterLabels(sc)
 
 	// Manage client certificates.
-	errors = append(errors, cm.ManageCertificates(
+	errs = append(errs, cm.ManageCertificates(
 		ctx,
 		time.Now,
 		&sc.ObjectMeta,
@@ -191,23 +192,80 @@ func (scc *Controller) syncCerts(
 
 	// For the clients not using the proxy we'll sign for IPs that are published by ScyllaDB.
 	var ipAddresses []net.IP
+	var servingDNSNames []string
+
+	var externalAddressRequired bool
+	if sc.Spec.ExposeOptions != nil && sc.Spec.ExposeOptions.BroadcastOptions != nil {
+		bo := sc.Spec.ExposeOptions.BroadcastOptions
+		externalAddressRequired = bo.Clients.Type == scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress ||
+			bo.Nodes.Type == scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress
+	}
+
 	for _, svc := range serviceMap {
 		if svc.Labels[naming.ScyllaServiceTypeLabel] != string(naming.ScyllaServiceTypeMember) {
 			continue
 		}
 
-		ips := svc.Spec.ClusterIPs
-		if len(ips) == 0 {
-			klog.V(2).InfoS("No IP available for member", "Service", klog.KObj(svc))
-			continue
-		}
-		parsedIPs, err := helpers.ParseClusterIPs(ips)
-		if err != nil {
-			return progressingConditions, err
+		if svc.Spec.ClusterIP != corev1.ClusterIPNone {
+			parsedIP, err := helpers.ParseIP(svc.Spec.ClusterIP)
+			if err != nil {
+				return progressingConditions, fmt.Errorf("can't parse Service %q ClusterIP %q: %w", naming.ObjRef(svc), svc.Spec.ClusterIP, err)
+			}
+
+			ipAddresses = append(ipAddresses, parsedIP)
 		}
 
-		ipAddresses = append(ipAddresses, parsedIPs...)
+		externalAddressFound := false
+		for _, ingressStatus := range svc.Status.LoadBalancer.Ingress {
+			if len(ingressStatus.IP) != 0 {
+				parsedIP := net.ParseIP(ingressStatus.IP)
+				if parsedIP == nil {
+					return progressingConditions, fmt.Errorf("can't parse ingress IP %q", ingressStatus.IP)
+				}
+
+				externalAddressFound = true
+				ipAddresses = append(ipAddresses, parsedIP)
+			}
+
+			if len(ingressStatus.Hostname) != 0 {
+				externalAddressFound = true
+				servingDNSNames = append(servingDNSNames, ingressStatus.Hostname)
+			}
+		}
+
+		if externalAddressRequired && !externalAddressFound {
+			progressingConditions = append(progressingConditions, metav1.Condition{
+				Type:               certControllerProgressingCondition,
+				Status:             metav1.ConditionTrue,
+				Reason:             internalapi.ProgressingReason,
+				Message:            fmt.Sprintf("waiting for external address in Service %q to be available", naming.ObjRef(svc)),
+				ObservedGeneration: sc.Generation,
+			})
+		}
+
+		pod, err := scc.podLister.Pods(sc.Namespace).Get(svc.Name)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return progressingConditions, fmt.Errorf("can't get Pod %q: %w", naming.ManualRef(sc.Namespace, svc.Name), err)
+		}
+
+		if pod != nil && len(pod.Status.PodIP) != 0 {
+			parsedIP := net.ParseIP(pod.Status.PodIP)
+			if parsedIP == nil {
+				return progressingConditions, fmt.Errorf("can't parse Pod %q IP %q", naming.ObjRef(pod), pod.Status.PodIP)
+			}
+
+			ipAddresses = append(ipAddresses, parsedIP)
+		} else {
+			progressingConditions = append(progressingConditions, metav1.Condition{
+				Type:               certControllerProgressingCondition,
+				Status:             metav1.ConditionTrue,
+				Reason:             internalapi.ProgressingReason,
+				Message:            fmt.Sprintf("waiting for Pod %q to be have IP address", naming.ManualRef(sc.Namespace, svc.Name)),
+				ObservedGeneration: sc.Generation,
+			})
+		}
 	}
+
 	// Make sure ipAddresses are always sorted and can be reconciled in a declarative way.
 	sort.SliceStable(ipAddresses, func(i, j int) bool {
 		return ipAddresses[i].String() < ipAddresses[j].String()
@@ -236,7 +294,6 @@ func (scc *Controller) syncCerts(
 	}
 
 	// For every cluster domain we'll create "cql" subdomain and "UUID.cql" subdomains for every node.
-	var servingDNSNames []string
 	for _, domain := range sc.Spec.DNSDomains {
 		servingDNSNames = append(servingDNSNames, naming.GetCQLProtocolSubDomain(domain))
 
@@ -244,6 +301,16 @@ func (scc *Controller) syncCerts(
 			servingDNSNames = append(servingDNSNames, naming.GetCQLHostIDSubDomain(hostID, domain))
 		}
 	}
+
+	// Sign for every node DNS name and discovery endpoint.
+	for _, svc := range serviceMap {
+		svcType := svc.Labels[naming.ScyllaServiceTypeLabel]
+		if svcType != string(naming.ScyllaServiceTypeIdentity) && svcType != string(naming.ScyllaServiceTypeMember) {
+			return progressingConditions, fmt.Errorf("can't sign certificate for DNS name of unknown service type %q", svcType)
+		}
+		servingDNSNames = append(servingDNSNames, fmt.Sprintf("%s.%s.svc", svc.Name, svc.Namespace))
+	}
+
 	// Make sure servingDNSNames are always sorted and can be reconciled in a declarative way.
 	sort.Strings(servingDNSNames)
 
@@ -257,7 +324,7 @@ func (scc *Controller) syncCerts(
 		})
 	}
 
-	errors = append(errors, cm.ManageCertificates(
+	errs = append(errs, cm.ManageCertificates(
 		ctx,
 		time.Now,
 		&sc.ObjectMeta,
@@ -301,7 +368,7 @@ func (scc *Controller) syncCerts(
 
 	scyllaConnectionConfigSecret, err := makeScyllaConnectionConfig(sc, secrets, configMaps, scc.cqlsIngressPort)
 	if err != nil {
-		errors = append(errors, err)
+		errs = append(errs, err)
 	} else {
 		_, changed, err := resourceapply.ApplySecret(ctx, scc.kubeClient.CoreV1(), scc.secretLister, scc.eventRecorder, scyllaConnectionConfigSecret, resourceapply.ApplyOptions{})
 		if changed {
@@ -312,5 +379,5 @@ func (scc *Controller) syncCerts(
 		}
 	}
 
-	return progressingConditions, apierrors.NewAggregate(errors)
+	return progressingConditions, errors.NewAggregate(errs)
 }

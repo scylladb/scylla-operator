@@ -13,8 +13,10 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
+	"github.com/scylladb/scylla-operator/pkg/scyllafeatures"
 	"github.com/scylladb/scylla-operator/pkg/util/parallel"
 	"github.com/scylladb/scylla-operator/pkg/util/slices"
 	appsv1 "k8s.io/api/apps/v1"
@@ -28,7 +30,6 @@ import (
 	setsutil "k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/pointer"
 )
 
 type UpgradePhase string
@@ -48,9 +49,9 @@ func snapshotTag(prefix string, t time.Time) string {
 
 func (scc *Controller) makeRacks(sc *scyllav1.ScyllaCluster, statefulSets map[string]*appsv1.StatefulSet) ([]*appsv1.StatefulSet, error) {
 	sets := make([]*appsv1.StatefulSet, 0, len(sc.Spec.Datacenter.Racks))
-	for _, rack := range sc.Spec.Datacenter.Racks {
+	for i, rack := range sc.Spec.Datacenter.Racks {
 		oldSts := statefulSets[naming.StatefulSetNameForRack(rack, sc)]
-		sts, err := StatefulSetForRack(rack, sc, oldSts, scc.operatorImage)
+		sts, err := StatefulSetForRack(rack, sc, oldSts, scc.operatorImage, i)
 		if err != nil {
 			return nil, err
 		}
@@ -144,7 +145,7 @@ func (scc *Controller) beforeUpgrade(ctx context.Context, sc *scyllav1.ScyllaClu
 	klog.V(2).InfoS("Running pre-upgrade hook", "ScyllaCluster", klog.KObj(sc))
 	defer klog.V(2).InfoS("Finished running pre-upgrade hook", "ScyllaCluster", klog.KObj(sc))
 
-	hosts, err := controllerhelpers.GetRequiredScyllaHosts(sc, services)
+	hosts, err := controllerhelpers.GetRequiredScyllaHosts(sc, services, scc.podLister)
 	if err != nil {
 		return true, err
 	}
@@ -183,7 +184,7 @@ func (scc *Controller) afterUpgrade(ctx context.Context, sc *scyllav1.ScyllaClus
 	klog.V(2).InfoS("Running post-upgrade hook", "ScyllaCluster", klog.KObj(sc))
 	defer klog.V(2).InfoS("Finished running post-upgrade hook", "ScyllaCluster", klog.KObj(sc))
 
-	hosts, err := controllerhelpers.GetRequiredScyllaHosts(sc, services)
+	hosts, err := controllerhelpers.GetRequiredScyllaHosts(sc, services, scc.podLister)
 	if err != nil {
 		return err
 	}
@@ -229,8 +230,13 @@ func (scc *Controller) beforeNodeUpgrade(ctx context.Context, sc *scyllav1.Scyll
 	}
 
 	// Drain the node.
+	podName := naming.PodNameFromService(svc)
+	pod, err := scc.podLister.Pods(sc.Namespace).Get(podName)
+	if err != nil {
+		return false, fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sc.Namespace, podName), err)
+	}
 
-	host, err := controllerhelpers.GetScyllaIPFromService(svc)
+	host, err := controllerhelpers.GetScyllaHost(sc, svc, pod)
 	if err != nil {
 		return true, err
 	}
@@ -293,7 +299,6 @@ func (scc *Controller) beforeNodeUpgrade(ctx context.Context, sc *scyllav1.Scyll
 	// https://github.com/kubernetes/kubernetes/issues/67250
 	// Kubernetes can't evict pods when DesiredHealthy == 0 and it's already down, so we need to use DELETE
 	// to succeed even when having just one replica.
-	podName := svcName
 	klog.V(2).InfoS("Deleting Pod", "ScyllaCluster", klog.KObj(sc), "Pod", naming.ManualRef(sc.Namespace, podName))
 	err = scc.kubeClient.CoreV1().Pods(sc.Namespace).Delete(ctx, podName, metav1.DeleteOptions{})
 	if err != nil {
@@ -310,7 +315,19 @@ func (scc *Controller) beforeNodeUpgrade(ctx context.Context, sc *scyllav1.Scyll
 }
 
 func (scc *Controller) afterNodeUpgrade(ctx context.Context, sc *scyllav1.ScyllaCluster, sts *appsv1.StatefulSet, ordinal int32, services map[string]*corev1.Service) error {
-	host, err := controllerhelpers.GetScyllaHost(sts.Name, ordinal, services)
+	svcName := fmt.Sprintf("%s-%d", sts.Name, ordinal)
+	svc, ok := services[svcName]
+	if !ok {
+		return fmt.Errorf("missing service %q", naming.ManualRef(sc.Namespace, svcName))
+	}
+
+	podName := naming.PodNameFromService(svc)
+	pod, err := scc.podLister.Pods(sc.Namespace).Get(podName)
+	if err != nil {
+		return fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sc.Namespace, podName), err)
+	}
+
+	host, err := controllerhelpers.GetScyllaHost(sc, svc, pod)
 	if err != nil {
 		return err
 	}
@@ -463,6 +480,26 @@ func (scc *Controller) syncStatefulSets(
 	var err error
 	var progressingConditions []metav1.Condition
 
+	if sc.Spec.ExposeOptions != nil && sc.Spec.ExposeOptions.BroadcastOptions != nil {
+		if sc.Spec.ExposeOptions.BroadcastOptions.Clients.Type != scyllav1.BroadcastAddressTypeServiceClusterIP ||
+			sc.Spec.ExposeOptions.BroadcastOptions.Nodes.Type != scyllav1.BroadcastAddressTypeServiceClusterIP {
+			supportsExposing, err := scyllafeatures.Supports(sc, scyllafeatures.ExposingScyllaClusterViaServiceOtherThanClusterIP)
+			if err != nil {
+				return nil, fmt.Errorf("can't determine if ScyllaDB version %q supports exposing via Service other than ClusterIP: %w", sc.Spec.Version, err)
+			}
+
+			if !supportsExposing {
+				scc.eventRecorder.Eventf(
+					sc,
+					corev1.EventTypeWarning,
+					"InvalidScyllaDBVersion",
+					fmt.Sprintf("Requested ScyllaDB version %q does not support broadcasting other address than ClusterIP, use the latest one", sc.Spec.Version),
+				)
+				return nil, fmt.Errorf("requested ScyllaDB version %q does not support broadcasting other address than ClusterIP, use the latest one", sc.Spec.Version)
+			}
+		}
+	}
+
 	requiredStatefulSets, err := scc.makeRacks(sc, statefulSets)
 	if err != nil {
 		scc.eventRecorder.Eventf(
@@ -541,6 +578,32 @@ func (scc *Controller) syncStatefulSets(
 				}
 
 				return progressingConditions, nil
+			}
+
+			requiredAnnotationsBeforeScaling := []string{
+				// We need to ensure token ring annotation is noticed by the cleanup logic before we scale the rack.
+				// Otherwise, new node could start joining, changing the ring hash and causing cleanup to be missed.
+				naming.LastCleanedUpTokenRingHashAnnotation,
+			}
+
+			for _, requiredAnnotation := range requiredAnnotationsBeforeScaling {
+				ord, err := naming.IndexFromName(svc.Name)
+				if err != nil {
+					return nil, fmt.Errorf("can't determine ordinal from Service name %q: %w", svc.Name, err)
+				}
+
+				if ord < *sts.Spec.Replicas {
+					_, ok := svc.Annotations[requiredAnnotation]
+					if !ok {
+						progressingConditions = append(progressingConditions, metav1.Condition{
+							Type:               statefulSetControllerProgressingCondition,
+							Status:             metav1.ConditionTrue,
+							Reason:             "WaitingForServiceState",
+							Message:            fmt.Sprintf("Statusfulset %q is waiting for Service %q to have required annotation %q before scaling", naming.ObjRef(req), naming.ObjRef(svc), requiredAnnotation),
+							ObservedGeneration: sc.Generation,
+						})
+					}
+				}
 			}
 		}
 
@@ -675,8 +738,8 @@ func (scc *Controller) syncStatefulSets(
 				// It also forces our informers to be up-to-date.
 				required.ResourceVersion = existing.ResourceVersion
 				// Avoid scaling.
-				required.Spec.Replicas = pointer.Int32Ptr(*existing.Spec.Replicas)
-				required.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(*existing.Spec.Replicas)
+				required.Spec.Replicas = pointer.Ptr(*existing.Spec.Replicas)
+				required.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Ptr(*existing.Spec.Replicas)
 				// Use apply to also update the spec.template
 				updatedSts, changed, err := resourceapply.ApplyStatefulSet(ctx, scc.kubeClient.AppsV1(), scc.statefulSetLister, scc.eventRecorder, required, resourceapply.ApplyOptions{})
 				if err != nil {
@@ -782,7 +845,7 @@ func (scc *Controller) syncStatefulSets(
 
 					}
 
-					freshSts.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(nextPartition)
+					freshSts.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Ptr(nextPartition)
 					_, err = scc.kubeClient.AppsV1().StatefulSets(freshSts.Namespace).Update(ctx, freshSts, metav1.UpdateOptions{})
 					if err != nil {
 						return err
@@ -813,7 +876,7 @@ func (scc *Controller) syncStatefulSets(
 		default:
 			// An old cluster with an old state machine can still be going through an update, or stuck.
 			// Given have to be reentrant we'll just start again to be sure no step is missed, even a new one.
-			klog.Warning("ScyllaCluster %q has an unknown upgrade phase %q. Resetting the phase.", klog.KObj(sc), status.Upgrade.State)
+			klog.Warningf("ScyllaCluster %q has an unknown upgrade phase %q. Resetting the phase.", klog.KObj(sc), status.Upgrade.State)
 			status.Upgrade.State = string(PreHooksUpgradePhase)
 			return progressingConditions, nil
 		}

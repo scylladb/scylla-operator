@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -20,7 +21,6 @@ import (
 	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/utils/pointer"
 )
 
 func TestApplyStatefulSet(t *testing.T) {
@@ -35,19 +35,28 @@ func TestApplyStatefulSet(t *testing.T) {
 				Labels:          map[string]string{},
 				OwnerReferences: []metav1.OwnerReference{
 					{
-						Controller:         pointer.BoolPtr(true),
+						Controller:         pointer.Ptr(true),
 						UID:                "abcdefgh",
 						APIVersion:         "scylla.scylladb.com/v1",
 						Kind:               "ScyllaCluster",
 						Name:               "basic",
-						BlockOwnerDeletion: pointer.BoolPtr(true),
+						BlockOwnerDeletion: pointer.Ptr(true),
 					},
 				},
 			},
 			Spec: appsv1.StatefulSetSpec{
-				Replicas: pointer.Int32Ptr(3),
+				Replicas: pointer.Ptr(int32(3)),
+				Selector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"foo": "bar",
+					},
+				},
 				Template: corev1.PodTemplateSpec{
-					ObjectMeta: metav1.ObjectMeta{},
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: map[string]string{
+							"foo": "bar",
+						},
+					},
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
 							{
@@ -140,12 +149,12 @@ func TestApplyStatefulSet(t *testing.T) {
 			},
 			required: func() *appsv1.StatefulSet {
 				sts := newSts()
-				sts.Spec.Replicas = pointer.Int32Ptr(*sts.Spec.Replicas + 1)
+				sts.Spec.Replicas = pointer.Ptr(*sts.Spec.Replicas + 1)
 				return sts
 			}(),
 			expectedSts: func() *appsv1.StatefulSet {
 				sts := newSts()
-				sts.Spec.Replicas = pointer.Int32Ptr(*sts.Spec.Replicas + 1)
+				sts.Spec.Replicas = pointer.Ptr(*sts.Spec.Replicas + 1)
 				utilruntime.Must(SetHashAnnotation(sts))
 				return sts
 			}(),
@@ -493,6 +502,93 @@ func TestApplyStatefulSet(t *testing.T) {
 			expectedErr:     nil,
 			expectedEvents:  []string{"Normal StatefulSetUpdated StatefulSet default/test updated"},
 		},
+		{
+			name: "deletes and creates the StatefulSet when selector is changed and still matches the old pods",
+			existing: []runtime.Object{
+				func() *appsv1.StatefulSet {
+					sts := newSts()
+					sts.Spec.Template.Labels = map[string]string{
+						"foo": "bar",
+						"bar": "foo",
+					}
+					sts.Spec.Selector = &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"foo": "bar",
+							"bar": "foo",
+						},
+					}
+					return sts
+				}(),
+			},
+			required: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.Template.Labels = map[string]string{
+					"foo": "bar",
+					"bar": "foo",
+				}
+				sts.Spec.Selector = &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"foo": "bar",
+					},
+				}
+				return sts
+			}(),
+			expectedSts: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.Template.Labels = map[string]string{
+					"foo": "bar",
+					"bar": "foo",
+				}
+				sts.Spec.Selector = &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"foo": "bar",
+					},
+				}
+				utilruntime.Must(SetHashAnnotation(sts))
+				return sts
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents: []string{
+				"Normal StatefulSetDeleted StatefulSet default/test deleted",
+				"Normal StatefulSetCreated StatefulSet default/test created",
+			},
+		},
+		{
+			name: "apply fails when StatefulSet selector differs and existing Pod labels doesn't match new selector",
+			existing: []runtime.Object{
+				func() *appsv1.StatefulSet {
+					sts := newSts()
+					sts.Spec.Template.Labels = map[string]string{
+						"foo": "bar",
+					}
+					sts.Spec.Selector = &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"foo": "bar",
+						},
+					}
+					return sts
+				}(),
+			},
+			required: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.Template.Labels = map[string]string{
+					"foo": "bar",
+					"bar": "foo",
+				}
+				sts.Spec.Selector = &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"foo": "bar",
+						"bar": "foo",
+					},
+				}
+				return sts
+			}(),
+			expectedSts:     nil,
+			expectedChanged: false,
+			expectedErr:     fmt.Errorf("can't get recreate reason: %w", fmt.Errorf(`required StatefulSet selector "bar=foo,foo=bar" doesn't match existing Pod Labels set map[foo:bar]`)),
+			expectedEvents:  nil,
+		},
 	}
 
 	for _, tc := range tt {
@@ -606,12 +702,12 @@ func TestApplyDaemonSet(t *testing.T) {
 				Labels:          map[string]string{},
 				OwnerReferences: []metav1.OwnerReference{
 					{
-						Controller:         pointer.BoolPtr(true),
+						Controller:         pointer.Ptr(true),
 						UID:                "abcdefgh",
 						APIVersion:         "scylla.scylladb.com/v1",
 						Kind:               "ScyllaCluster",
 						Name:               "basic",
-						BlockOwnerDeletion: pointer.BoolPtr(true),
+						BlockOwnerDeletion: pointer.Ptr(true),
 					},
 				},
 			},

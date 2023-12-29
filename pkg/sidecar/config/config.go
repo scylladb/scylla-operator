@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ghodss/yaml"
 	"github.com/magiconair/properties"
 	"github.com/pkg/errors"
 	scylladbassets "github.com/scylladb/scylla-operator/assets/scylladb"
@@ -19,6 +18,7 @@ import (
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/semver"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/util/cpuset"
@@ -26,7 +26,7 @@ import (
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/pointer"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -64,9 +64,10 @@ type ScyllaConfig struct {
 	scyllaRackDCPropertiesPath          string
 	scyllaRackDCPropertiesConfigMapPath string
 	cpuCount                            int
+	externalSeeds                       []string
 }
 
-func NewScyllaConfig(m *identity.Member, kubeClient kubernetes.Interface, scyllaClient scyllaversionedclient.Interface, cpuCount int) *ScyllaConfig {
+func NewScyllaConfig(m *identity.Member, kubeClient kubernetes.Interface, scyllaClient scyllaversionedclient.Interface, cpuCount int, externalSeeds []string) *ScyllaConfig {
 	return &ScyllaConfig{
 		member:                              m,
 		kubeClient:                          kubeClient,
@@ -74,6 +75,7 @@ func NewScyllaConfig(m *identity.Member, kubeClient kubernetes.Interface, scylla
 		scyllaRackDCPropertiesPath:          scyllaRackDCPropertiesPath,
 		scyllaRackDCPropertiesConfigMapPath: scyllaRackDCPropertiesConfigMapPath,
 		cpuCount:                            cpuCount,
+		externalSeeds:                       externalSeeds,
 	}
 }
 
@@ -195,7 +197,7 @@ func convertScyllaArguments(scyllaArguments string) map[string]string {
 func appendScyllaArguments(ctx context.Context, s *ScyllaConfig, scyllaArgs string, scyllaFinalArgs map[string]*string) {
 	for argName, argValue := range convertScyllaArguments(scyllaArgs) {
 		if existing := scyllaFinalArgs[argName]; existing == nil {
-			scyllaFinalArgs[argName] = pointer.StringPtr(strings.TrimSpace(argValue))
+			scyllaFinalArgs[argName] = pointer.Ptr(strings.TrimSpace(argValue))
 		} else {
 			klog.Infof("ScyllaArgs: argument '%s' is ignored, it is already in the list", argName)
 		}
@@ -204,10 +206,9 @@ func appendScyllaArguments(ctx context.Context, s *ScyllaConfig, scyllaArgs stri
 
 func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	m := s.member
-	// Get seeds
-	seed, err := m.GetSeed(ctx, s.kubeClient.CoreV1())
+	seeds, err := m.GetSeeds(ctx, s.kubeClient.CoreV1(), s.externalSeeds)
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting seeds")
+		return nil, fmt.Errorf("can't get seeds: %w", err)
 	}
 
 	// Check if we need to run in developer mode
@@ -230,24 +231,37 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	prometheusAddress := "0.0.0.0"
 	args := map[string]*string{
 		"listen-address":        &listenAddress,
-		"broadcast-address":     &m.StaticIP,
-		"broadcast-rpc-address": &m.StaticIP,
-		"seeds":                 pointer.StringPtr(seed),
+		"seeds":                 pointer.Ptr(strings.Join(seeds, ",")),
 		"developer-mode":        &devMode,
 		"overprovisioned":       &overprovisioned,
-		"smp":                   pointer.StringPtr(strconv.Itoa(s.cpuCount)),
+		"smp":                   pointer.Ptr(strconv.Itoa(s.cpuCount)),
 		"prometheus-address":    &prometheusAddress,
+		"broadcast-address":     &m.BroadcastAddress,
+		"broadcast-rpc-address": &m.BroadcastRPCAddress,
 	}
+
 	if cluster.Spec.Alternator.Enabled() {
-		args["alternator-port"] = pointer.StringPtr(strconv.Itoa(int(cluster.Spec.Alternator.Port)))
+		args["alternator-port"] = pointer.Ptr(strconv.Itoa(int(cluster.Spec.Alternator.Port)))
 		if cluster.Spec.Alternator.WriteIsolation != "" {
-			args["alternator-write-isolation"] = pointer.StringPtr(cluster.Spec.Alternator.WriteIsolation)
+			args["alternator-write-isolation"] = pointer.Ptr(cluster.Spec.Alternator.WriteIsolation)
 		}
 	}
 	// If node is being replaced
 	if addr, ok := m.ServiceLabels[naming.ReplaceLabel]; ok {
-		args["replace-address-first-boot"] = pointer.StringPtr(addr)
+		if len(addr) == 0 {
+			klog.Warningf("Service %q have unexpectedly empty label %q, skipping replace", m.Name, naming.ReplaceLabel)
+		} else {
+			args["replace-address-first-boot"] = pointer.Ptr(addr)
+		}
 	}
+	if hostID, ok := m.ServiceLabels[naming.ReplacingNodeHostIDLabel]; ok {
+		if len(hostID) == 0 {
+			klog.Warningf("Service %q have unexpectedly empty label %q, skipping replace", m.Name, naming.ReplacingNodeHostIDLabel)
+		} else {
+			args["replace-node-first-boot"] = pointer.Ptr(hostID)
+		}
+	}
+
 	// See if we need to use cpu-pinning
 	// TODO: Add more checks to make sure this is valid.
 	// eg. parse the cpuset and check the number of cpus is the same as cpu limits
@@ -280,7 +294,7 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		klog.InfoS("Scylla IO properties are already set, skipping io tuning")
 		ioSetup := "0"
 		args["io-setup"] = &ioSetup
-		args["io-properties-file"] = pointer.StringPtr(scyllaIOPropertiesPath)
+		args["io-properties-file"] = pointer.Ptr(scyllaIOPropertiesPath)
 	}
 
 	var argsList []string

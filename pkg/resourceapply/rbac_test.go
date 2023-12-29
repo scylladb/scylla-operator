@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -20,7 +21,6 @@ import (
 	rbacv1listers "k8s.io/client-go/listers/rbac/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/utils/pointer"
 )
 
 func TestApplyClusterRole(t *testing.T) {
@@ -264,12 +264,12 @@ func TestApplyClusterRole(t *testing.T) {
 				func() *rbacv1.ClusterRole {
 					cr := newCr()
 					cr.OwnerReferences = []metav1.OwnerReference{{
-						Controller:         pointer.BoolPtr(true),
+						Controller:         pointer.Ptr(true),
 						UID:                "abcdefgh",
 						APIVersion:         "scylla.scylladb.com/v1",
 						Kind:               "ScyllaCluster",
 						Name:               "basic",
-						BlockOwnerDeletion: pointer.BoolPtr(true),
+						BlockOwnerDeletion: pointer.Ptr(true),
 					}}
 					utilruntime.Must(SetHashAnnotation(cr))
 					return cr
@@ -759,12 +759,12 @@ func TestApplyClusterRoleBinding(t *testing.T) {
 					crb := newCrb()
 					crb.OwnerReferences = []metav1.OwnerReference{
 						{
-							Controller:         pointer.BoolPtr(true),
+							Controller:         pointer.Ptr(true),
 							UID:                "abcdefgh",
 							APIVersion:         "scylla.scylladb.com/v1",
 							Kind:               "ScyllaCluster",
 							Name:               "basic",
-							BlockOwnerDeletion: pointer.BoolPtr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
 						},
 					}
 					utilruntime.Must(SetHashAnnotation(crb))
@@ -1025,12 +1025,12 @@ func TestApplyRoleBinding(t *testing.T) {
 		rb := newRB()
 		rb.OwnerReferences = []metav1.OwnerReference{
 			{
-				Controller:         pointer.BoolPtr(true),
+				Controller:         pointer.Ptr(true),
 				UID:                "abcdefgh",
 				APIVersion:         "scylla.scylladb.com/v1",
 				Kind:               "ScyllaCluster",
 				Name:               "basic",
-				BlockOwnerDeletion: pointer.BoolPtr(true),
+				BlockOwnerDeletion: pointer.Ptr(true),
 			},
 		}
 		return rb

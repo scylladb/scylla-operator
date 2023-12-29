@@ -3,6 +3,7 @@ kind: Prometheus
 metadata:
   name: "{{ .scyllaDBMonitoringName }}"
 spec:
+  version: "v2.44.0"
   serviceAccountName: "{{ .scyllaDBMonitoringName }}-prometheus"
   securityContext:
     runAsNonRoot: true

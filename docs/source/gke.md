@@ -23,9 +23,11 @@ cd examples/gke
 # ./gke.sh -u yanniszark@arrikto.com -p gke-demo-226716 -z us-west1-b
 ```
 
-:warning: Make sure to pass a ZONE (ex.: us-west1-b) and not a REGION (ex.: us-west1) or it will deploy nodes in each ZONE available in the region.
+:::{warning}
+Make sure to pass a ZONE (ex.: us-west1-b) and not a REGION (ex.: us-west1) or it will deploy nodes in each ZONE available in the region.
+:::
 
-After you deploy, see how you can [benchmark your cluster with cassandra-stress](#benchmark-with-cassandra-stress).
+After you deploy, see how you can [benchmark your cluster with cassandra-stress](generic.md#benchmark-with-cassandra-stress).
 
 ## Walkthrough
 
@@ -65,7 +67,6 @@ Then we'll create a GKE cluster with the following:
    --num-nodes "2" \
    --disk-type "pd-ssd" --disk-size "20" \
    --image-type "UBUNTU_CONTAINERD" \
-   --system-config-from-file=systemconfig.yaml \
    --enable-stackdriver-kubernetes \
    --no-enable-autoupgrade \
    --no-enable-autorepair
@@ -88,19 +89,20 @@ Then we'll create a GKE cluster with the following:
     --no-enable-autorepair
     ```
    
-3. A NodePool of 4 `n1-standard-32` Nodes, where the Scylla Pods will be deployed. Each of these Nodes has 8 local SSDs attached, which are combined into a RAID0 array by using gcloud beta feature `ephemeral-storage`. It is important to disable `autoupgrade` and `autorepair`. Automatic cluster upgrade or node repair has a hard timeout after which it no longer respect PDBs and force deletes the Compute Engine instances, which also deletes all data on the local SSDs. At this point, it's better to handle upgrades manually, with more control over the process and error handling.
+3. A NodePool of 4 `n1-standard-32` Nodes, where the Scylla Pods will be deployed. Each of these Nodes has 8 local NVMe SSDs attached, which are provided as [raw block devices](https://cloud.google.com/kubernetes-engine/docs/concepts/local-ssd#block). It is important to disable `autoupgrade` and `autorepair`. Automatic cluster upgrade or node repair has a hard timeout after which it no longer respect PDBs and force deletes the Compute Engine instances, which also deletes all data on the local SSDs. At this point, it's better to handle upgrades manually, with more control over the process and error handling.
    ```
-   gcloud beta container \
+   gcloud container \
    node-pools create "scylla-pool" \
    --cluster "${CLUSTER_NAME}" \
    --node-version "${CLUSTER_VERSION}" \
    --machine-type "n1-standard-32" \
    --num-nodes "4" \
    --disk-type "pd-ssd" --disk-size "20" \
-   --ephemeral-storage local-ssd-count="8" \
+   --local-nvme-ssd-block count="8" \
    --node-taints role=scylla-clusters:NoSchedule \
-   --node-labels scylla.scylladb.com/gke-ephemeral-storage-local-ssd=true \
+   --node-labels scylla.scylladb.com/node-type=scylla \
    --image-type "UBUNTU_CONTAINERD" \
+   --system-config-from-file=systemconfig.yaml \
    --no-enable-autoupgrade \
    --no-enable-autorepair
    ```
@@ -121,27 +123,28 @@ kubectl create clusterrolebinding cluster-admin-binding --clusterrole cluster-ad
 ```
 
 
-### Installing Required Tools
+### Prerequisites
 
-#### Installing Helm
+### Deploying ScyllaDB Operator
 
-If you don't have Helm installed, Go to the [helm docs](https://docs.helm.sh/using_helm/#installing-helm) to get the binary for your distro.
+Refer to [Deploying Scylla on a Kubernetes Cluster](generic.md) in the ScyllaDB Operator documentation to deploy the ScyllaDB Operator and its prerequisites.
 
-#### Install xfs-formatter DaemonSet
+#### Setting up nodes for ScyllaDB
 
-To run Scylla, it is necessary to convert ephemeral storage's filesystem to `xfs`. Deploy the `xfs-formatter` DaemonSet to have it taken care of.
-Unfortunately, GKE is only able to provision the ephemeral storage with `ext4` filesystem while Scylla requires `xfs` filesystem. Deploying the `xfs-format` DaemonSet will format the storage as `xfs` and prevent GKE from reformatting it back to `ext4`.
+ScyllaDB, except when in developer mode, requires storage with XFS filesystem. The local NVMes from the cloud provider usually come as individual devices. To use their full capacity together, you'll first need to form a RAID array from those disks.
+`NodeConfig` performs the necessary RAID configuration and XFS filesystem creation, as well as it optimizes the nodes. You can read more about it in [Performance tuning](performance.md) section of ScyllaDB Operator's documentation.
 
-Note that despite our best efforts, this solution is only a workaround. Its robustness depends on GKE's disk formatting logic remaining unchanged, for which there is no guarantee.
+Deploy `NodeConfig` to let it take care of the above operations:
 ```
-kubectl apply -f examples/gke/xfs-formatter-daemonset.yaml
+kubectl apply --server-side -f examples/gke/nodeconfig-alpha.yaml
 ```
 
-#### Install the local provisioner
+#### Deploying Local Volume Provisioner
 
-Afterwards, deploy the local volume provisioner, which will discover the RAID0 arrays' mount points and make them available as PersistentVolumes.
+Afterwards, deploy ScyllaDB's [Local Volume Provisioner](https://github.com/scylladb/k8s-local-volume-provisioner), capable of dynamically provisioning PersistentVolumes for your ScyllaDB clusters on mounted XFS filesystems, earlier created over the configured RAID0 arrays.
 ```
-helm install local-provisioner examples/common/provisioner
+kubectl -n local-csi-driver apply --server-side -f examples/common/local-volume-provisioner/local-csi-driver/
+kubectl apply --server-side -f examples/common/local-volume-provisioner/storageclass_xfs.yaml
 ```
 
 ### Deploy Scylla cluster
@@ -153,9 +156,9 @@ sed -i "s/<gcp_region>/${GCP_REGION}/g;s/<gcp_zone>/${GCP_ZONE}/g" examples/gke/
 
 This will inject your region and zone into the cluster definition so that it matches the kubernetes cluster you just created.
 
-### Installing the Scylla Operator and Scylla
+### Deploying ScyllaDB
 
-Now you can follow the [generic guide](generic.md) to install the operator and launch your Scylla cluster in a highly performant environment.
+Now you can follow the steps described in [Deploying Scylla on a Kubernetes Cluster](generic.md) to launch your ScyllaDB cluster in a highly performant environment.
 
 #### Accessing the database
 

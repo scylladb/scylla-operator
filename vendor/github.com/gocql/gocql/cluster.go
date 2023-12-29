@@ -17,6 +17,8 @@ import (
 type PoolConfig struct {
 	// HostSelectionPolicy sets the policy for selecting which host to use for a
 	// given query (default: RoundRobinHostPolicy())
+	// It is not supported to use a single HostSelectionPolicy in multiple sessions
+	// (even if you close the old session before using in a new session).
 	HostSelectionPolicy HostSelectionPolicy
 }
 
@@ -49,12 +51,29 @@ type ClusterConfig struct {
 	// versions the protocol selected is not defined (ie, it can be any of the supported in the cluster)
 	ProtoVersion int
 
-	// Connection timeout (default: 600ms)
+	// Timeout limits the time spent on the client side while executing a query.
+	// Specifically, query or batch execution will return an error if the client does not receive a response
+	// from the server within the Timeout period.
+	// Timeout is also used to configure the read timeout on the underlying network connection.
+	// Client Timeout should always be higher than the request timeouts configured on the server,
+	// so that retries don't overload the server.
+	// Timeout has a default value of 11 seconds, which is higher than default server timeout for most query types.
+	// Timeout is not applied to requests during initial connection setup, see ConnectTimeout.
 	Timeout time.Duration
 
-	// Initial connection timeout, used during initial dial to server (default: 600ms)
-	// ConnectTimeout is used to set up the default dialer and is ignored if Dialer or HostDialer is provided.
+	// ConnectTimeout limits the time spent during connection setup.
+	// During initial connection setup, internal queries, AUTH requests will return an error if the client
+	// does not receive a response within the ConnectTimeout period.
+	// ConnectTimeout is applied to the connection setup queries independently.
+	// ConnectTimeout also limits the duration of dialing a new TCP connection
+	// in case there is no Dialer nor HostDialer configured.
+	// ConnectTimeout has a default value of 11 seconds.
 	ConnectTimeout time.Duration
+
+	// WriteTimeout limits the time the driver waits to write a request to a network connection.
+	// WriteTimeout should be lower than or equal to Timeout.
+	// WriteTimeout defaults to the value of Timeout.
+	WriteTimeout time.Duration
 
 	// Port used when dialing.
 	// Default: 9042
@@ -66,6 +85,11 @@ type ClusterConfig struct {
 	// Number of connections per host.
 	// Default: 2
 	NumConns int
+
+	// Maximum number of inflight requests allowed per connection.
+	// Default: 32768 for CQL v3 and newer
+	// Default: 128 for older CQL versions
+	MaxRequestsPerConn int
 
 	// Default consistency level.
 	// Default: Quorum
@@ -191,6 +215,10 @@ type ClusterConfig struct {
 	// Use it to collect metrics / stats from frames by providing an implementation of FrameHeaderObserver.
 	FrameHeaderObserver FrameHeaderObserver
 
+	// StreamObserver will be notified of stream state changes.
+	// This can be used to track in-flight protocol requests and responses.
+	StreamObserver StreamObserver
+
 	// Default idempotence for queries
 	DefaultIdempotence bool
 
@@ -249,8 +277,8 @@ func NewCluster(hosts ...string) *ClusterConfig {
 	cfg := &ClusterConfig{
 		Hosts:                  hosts,
 		CQLVersion:             "3.0.0",
-		Timeout:                600 * time.Millisecond,
-		ConnectTimeout:         600 * time.Millisecond,
+		Timeout:                11 * time.Second,
+		ConnectTimeout:         11 * time.Second,
 		Port:                   9042,
 		NumConns:               2,
 		Consistency:            Quorum,

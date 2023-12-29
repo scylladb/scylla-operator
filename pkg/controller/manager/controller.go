@@ -34,7 +34,11 @@ const (
 	ControllerName = "ScyllaManagerController"
 	// maxSyncDuration enforces preemption. Do not raise the value! Controllers shouldn't actively wait,
 	// but rather use the queue.
-	maxSyncDuration = 30 * time.Second
+	// Unfortunately, Scylla Manager calls are synchronous, internally retried and can take ages.
+	// Contrary to what it should be, this needs to be quite high.
+	// Given we reconcile tasks individually with an API call,
+	// this may not be enough for N tasks but should eventually make it.
+	maxSyncDuration = 2 * time.Minute
 )
 
 var (

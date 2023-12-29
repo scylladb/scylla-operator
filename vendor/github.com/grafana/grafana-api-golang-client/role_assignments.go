@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -33,7 +32,7 @@ func (c *Client) UpdateRoleAssignments(ra *RoleAssignments) (*RoleAssignments, e
 	}
 
 	url := fmt.Sprintf("/api/access-control/roles/%s/assignments", ra.RoleUID)
-	err = c.request(http.MethodPut, url, nil, bytes.NewBuffer(data), &response)
+	err = c.request(http.MethodPut, url, nil, data, &response)
 	if err != nil {
 		return nil, err
 	}

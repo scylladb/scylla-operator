@@ -44,7 +44,7 @@ Controller also supports task updates and unscheduling.
 Deploy the Scylla Manager using the following commands:
 
 ```console
-kubectl apply -f examples/common/manager.yaml
+kubectl apply -f deploy/manager-prod.yaml
 ```
 
 This will install the Scylla Manager in the `scylla-manager` namespace.
@@ -149,7 +149,7 @@ Add following task definition to Cluster spec:
     - name: "users repair"
       keyspace: ["users"]
       interval: "1d"
-  backup:
+  backups:
     - name: "weekly backup"
       location: ["s3:cluster-backups"]
       retention: 3
@@ -160,7 +160,7 @@ Add following task definition to Cluster spec:
       interval: "1d"
 ```
 
-For full task definition configuration consult [Scylla Cluster CRD](scylla_cluster_crd.md).
+For full task definition configuration consult [ScyllaCluster CRD](api-reference/groups/scylla.scylladb.com/scyllaclusters.rst).
 
 **Note**: Scylla Manager Agent must have access to above bucket prior the update in order to schedule backup task.
 Consult Scylla Manager documentation for details on how to set it up.
@@ -211,7 +211,7 @@ To clean up all resources associated with Scylla Manager, you can run the comman
 **NOTE:** this will destroy your Scylla Manager database and delete all of its associated data.
 
 ```console
-kubectl delete -f examples/common/manager.yaml
+kubectl delete -f deploy/manager-prod.yaml
 ```
 
 ## Troubleshooting

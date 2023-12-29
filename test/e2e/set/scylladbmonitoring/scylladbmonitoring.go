@@ -17,13 +17,12 @@ import (
 	o "github.com/onsi/gomega"
 	prometheusappclient "github.com/prometheus/client_golang/api"
 	promeheusappv1api "github.com/prometheus/client_golang/api/prometheus/v1"
-	opointer "github.com/scylladb/scylla-operator/pkg/pointer"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"github.com/scylladb/scylla-operator/test/e2e/verification"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
 )
 
 var _ = g.Describe("ScyllaDBMonitoring", func() {
@@ -35,7 +34,7 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 		defer cancel()
 
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 		o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
 		sc.Spec.Datacenter.Racks[0].Members = 1
 
@@ -51,11 +50,16 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Creating a ScyllaDBMonitoring")
-		sm, _, err := scyllafixture.ScyllaDBMonitoringTemplate.RenderObject(map[string]string{
+		renderArgs := map[string]any{
 			"name":              sc.Name,
 			"namespace":         sc.Namespace,
 			"scyllaClusterName": sc.Name,
-		})
+		}
+		if framework.TestContext.IngressController != nil {
+			renderArgs["ingressClassName"] = framework.TestContext.IngressController.IngressClassName
+			renderArgs["ingressCustomAnnotations"] = framework.TestContext.IngressController.CustomAnnotations
+		}
+		sm, _, err := scyllafixture.ScyllaDBMonitoringTemplate.RenderObject(renderArgs)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		sm, err = f.ScyllaClient().ScyllaV1alpha1().ScyllaDBMonitorings(sc.Namespace).Create(
@@ -101,8 +105,8 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 		prometheusGrafanaClientSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-prometheus-client-grafana", sm.Name), metav1.GetOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 		_, prometheusGrafanaClientCertBytes, _, prometheusGrafanaClientKeyBytes := verification.VerifyAndParseTLSCert(prometheusGrafanaClientSecret, verification.TLSCertOptions{
-			IsCA:     pointer.Bool(false),
-			KeyUsage: opointer.KeyUsage(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
+			IsCA:     pointer.Ptr(false),
+			KeyUsage: pointer.Ptr(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
 		})
 
 		prometheusGrafanaAdminTLSCert, err := tls.X509KeyPair(prometheusGrafanaClientCertBytes, prometheusGrafanaClientKeyBytes)

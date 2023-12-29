@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/containers/image/v5/docker/reference"
 	"github.com/pkg/errors"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -35,6 +36,11 @@ func StatefulSetNameForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) stri
 func ServiceNameFromPod(pod *corev1.Pod) string {
 	// Pod and Service has the same name
 	return pod.Name
+}
+
+func PodNameFromService(svc *corev1.Service) string {
+	// Pod and its corresponding Service have the same name
+	return svc.Name
 }
 
 func AgentAuthTokenSecretName(clusterName string) string {
@@ -101,11 +107,16 @@ func IndexFromName(n string) (int32, error) {
 
 // ImageToVersion strips version part from container image.
 func ImageToVersion(image string) (string, error) {
-	parts := strings.Split(image, ":")
-	if len(parts) != 2 || len(parts[1]) == 0 {
-		return "", errors.New(fmt.Sprintf("Invalid image name: %s", image))
+	named, err := reference.ParseNormalizedNamed(image)
+	if err != nil {
+		return "", fmt.Errorf("can't parse image: %w", err)
 	}
-	return parts[1], nil
+	tagged, ok := named.(reference.NamedTagged)
+	if !ok {
+		return "", fmt.Errorf("invalid, non-tagged image reference of type %T: %s", named, image)
+	}
+
+	return tagged.Tag(), nil
 }
 
 // FindScyllaContainer returns Scylla container from given list.
@@ -202,4 +213,8 @@ func GetCQLProtocolSubDomain(domain string) string {
 
 func GetCQLHostIDSubDomain(hostID, domain string) string {
 	return fmt.Sprintf("%s.%s", hostID, GetCQLProtocolSubDomain(domain))
+}
+
+func CleanupJobForService(svcName string) string {
+	return fmt.Sprintf("cleanup-%s", svcName)
 }

@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -52,7 +51,7 @@ func (c *Client) SaveDashboard(model map[string]interface{}, overwrite bool) (*D
 	}
 
 	result := &DashboardSaveResponse{}
-	err = c.request("POST", "/api/dashboards/db", nil, bytes.NewBuffer(data), &result)
+	err = c.request("POST", "/api/dashboards/db", nil, data, &result)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +67,7 @@ func (c *Client) NewDashboard(dashboard Dashboard) (*DashboardSaveResponse, erro
 	}
 
 	result := &DashboardSaveResponse{}
-	err = c.request("POST", "/api/dashboards/db", nil, bytes.NewBuffer(data), &result)
+	err = c.request("POST", "/api/dashboards/db", nil, data, &result)
 	if err != nil {
 		return nil, err
 	}

@@ -106,6 +106,107 @@ type ScyllaClusterSpec struct {
 	// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
 	// +optional
 	ExposeOptions *ExposeOptions `json:"exposeOptions,omitempty"`
+
+	// externalSeeds specifies the external seeds to propagate to ScyllaDB binary on startup as "seeds" parameter of seed-provider.
+	ExternalSeeds []string `json:"externalSeeds,omitempty"`
+}
+
+type PodIPSourceType string
+
+const (
+	// StatusPodIPSource specifies that the PodIP is taken from Pod.Status.PodIP
+	StatusPodIPSource PodIPSourceType = "Status"
+)
+
+type PodIPInterfaceOptions struct {
+	// interfaceName specifies interface name within a Pod from which address is taken from.
+	InterfaceName string `json:"interfaceName,omitempty"`
+}
+
+// PodIPAddressOptions hold options related to Pod IP address.
+type PodIPAddressOptions struct {
+	// sourceType specifies source of the Pod IP.
+	// +kubebuilder:default:="Status"
+	Source PodIPSourceType `json:"source"`
+}
+
+type BroadcastAddressType string
+
+const (
+	// BroadcastAddressTypePodIP selects the IP address from Pod.
+	BroadcastAddressTypePodIP BroadcastAddressType = "PodIP"
+
+	// BroadcastAddressTypeServiceClusterIP selects the IP address from Service.spec.ClusterIP
+	BroadcastAddressTypeServiceClusterIP BroadcastAddressType = "ServiceClusterIP"
+
+	// BroadcastAddressTypeServiceLoadBalancerIngress selects the IP address or Hostname from Service.status.ingress[0]
+	BroadcastAddressTypeServiceLoadBalancerIngress BroadcastAddressType = "ServiceLoadBalancerIngress"
+)
+
+// BroadcastOptions hold options related to address broadcasted by ScyllaDB node.
+type BroadcastOptions struct {
+	// type of the address that is broadcasted.
+	Type BroadcastAddressType `json:"type"`
+
+	// podIP holds options related to Pod IP address.
+	// +optional
+	PodIP *PodIPAddressOptions `json:"podIP,omitempty"`
+}
+
+// NodeBroadcastOptions hold options related to addresses broadcasted by ScyllaDB node.
+type NodeBroadcastOptions struct {
+	// nodes specifies options related to the address that is broadcasted for communication with other nodes.
+	// This field controls the `broadcast_address` value in ScyllaDB config.
+	// +kubebuilder:default:={type:"ServiceClusterIP"}
+	Nodes BroadcastOptions `json:"nodes"`
+
+	// clients specifies options related to the address that is broadcasted for communication with clients.
+	// This field controls the `broadcast_rpc_address` value in ScyllaDB config.
+	// +kubebuilder:default:={type:"ServiceClusterIP"}
+	Clients BroadcastOptions `json:"clients"`
+}
+
+type NodeServiceType string
+
+const (
+	// NodeServiceTypeHeadless means nodes will be exposed via Headless Service.
+	NodeServiceTypeHeadless NodeServiceType = "Headless"
+
+	// NodeServiceTypeClusterIP means nodes will be exposed via ClusterIP Service.
+	NodeServiceTypeClusterIP NodeServiceType = "ClusterIP"
+
+	// NodeServiceTypeLoadBalancer means nodes will be exposed via LoadBalancer Service.
+	NodeServiceTypeLoadBalancer NodeServiceType = "LoadBalancer"
+)
+
+type NodeServiceTemplate struct {
+	// annotations is a custom key value map merged with every node Service annotations.
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// type is the Kubernetes Service type.
+	// +kubebuilder:validation:Required
+	Type NodeServiceType `json:"type"`
+
+	// externalTrafficPolicy controls value of service.spec.externalTrafficPolicy of each node Service.
+	// Check Kubernetes corev1.Service documentation about semantic of this field.
+	// +optional
+	ExternalTrafficPolicy *corev1.ServiceExternalTrafficPolicy `json:"externalTrafficPolicy,omitempty"`
+
+	// allocateLoadBalancerNodePorts controls value of service.spec.allocateLoadBalancerNodePorts of each node Service.
+	// Check Kubernetes corev1.Service documentation about semantic of this field.
+	// +optional
+	AllocateLoadBalancerNodePorts *bool `json:"allocateLoadBalancerNodePorts,omitempty"`
+
+	// loadBalancerClass controls value of service.spec.loadBalancerClass of each node Service.
+	// Check Kubernetes corev1.Service documentation about semantic of this field.
+	// +optional
+	LoadBalancerClass *string `json:"loadBalancerClass,omitempty"`
+
+	// internalTrafficPolicy controls value of service.spec.internalTrafficPolicy of each node Service.
+	// Check Kubernetes corev1.Service documentation about semantic of this field.
+	// +optional
+	InternalTrafficPolicy *corev1.ServiceInternalTrafficPolicy `json:"internalTrafficPolicy,omitempty"`
 }
 
 // ExposeOptions hold options related to exposing ScyllaCluster backends.
@@ -115,6 +216,13 @@ type ExposeOptions struct {
 	// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
 	// +optional
 	CQL *CQLExposeOptions `json:"cql,omitempty"`
+
+	// nodeService controls properties of Service dedicated for each ScyllaCluster node.
+	// +kubebuilder:default:={type:"ClusterIP"}
+	NodeService *NodeServiceTemplate `json:"nodeService,omitempty"`
+
+	// BroadcastOptions defines how ScyllaDB node publishes its IP address to other nodes and clients.
+	BroadcastOptions *NodeBroadcastOptions `json:"broadcastOptions,omitempty"`
 }
 
 // CQLExposeOptions hold options related to exposing CQL backend.
@@ -493,10 +601,9 @@ type RackStatus struct {
 	// conditions are the latest available observations of a rack's state.
 	Conditions []RackCondition `json:"conditions,omitempty"`
 
-	// FIXME: The json value should have been a camelCase string.
-	//        We need to deprecate this value and introduce a new one.
-
 	// replace_address_first_boot holds addresses which should be replaced by new nodes.
+	// DEPRECATED: since Scylla Operator 1.10 it's only used for deprecated replace node procedure (ScyllaDB OS <5.2, Enterprise <2023.1).
+	//             With Scylla Operator 1.11+ this field may be empty.
 	ReplaceAddressFirstBoot map[string]string `json:"replace_address_first_boot,omitempty"`
 }
 

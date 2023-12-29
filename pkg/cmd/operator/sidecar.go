@@ -10,11 +10,14 @@ import (
 	"syscall"
 	"time"
 
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	sidecarcontroller "github.com/scylladb/scylla-operator/pkg/controller/sidecar"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/sidecar"
@@ -44,8 +47,14 @@ type SidecarOptions struct {
 	genericclioptions.ClientConfig
 	genericclioptions.InClusterReflection
 
-	ServiceName string
-	CPUCount    int
+	ServiceName                       string
+	CPUCount                          int
+	ExternalSeeds                     []string
+	NodesBroadcastAddressTypeString   string
+	ClientsBroadcastAddressTypeString string
+
+	nodesBroadcastAddressType   scyllav1.BroadcastAddressType
+	clientsBroadcastAddressType scyllav1.BroadcastAddressType
 
 	kubeClient   kubernetes.Interface
 	scyllaClient scyllaversionedclient.Interface
@@ -97,6 +106,9 @@ func NewSidecarCmd(streams genericclioptions.IOStreams) *cobra.Command {
 
 	cmd.Flags().StringVarP(&o.ServiceName, "service-name", "", o.ServiceName, "Name of the service corresponding to the managed node.")
 	cmd.Flags().IntVarP(&o.CPUCount, "cpu-count", "", o.CPUCount, "Number of cpus to use.")
+	cmd.Flags().StringSliceVar(&o.ExternalSeeds, "external-seeds", o.ExternalSeeds, "The external seeds to propagate to ScyllaDB binary on startup as \"seeds\" parameter of seed-provider.")
+	cmd.Flags().StringVarP(&o.NodesBroadcastAddressTypeString, "nodes-broadcast-address-type", "", o.NodesBroadcastAddressTypeString, "Address type that is broadcasted for communication with other nodes.")
+	cmd.Flags().StringVarP(&o.ClientsBroadcastAddressTypeString, "clients-broadcast-address-type", "", o.ClientsBroadcastAddressTypeString, "Address type that is broadcasted for communication with clients.")
 
 	return cmd
 }
@@ -114,6 +126,14 @@ func (o *SidecarOptions) Validate() error {
 		if len(serviceNameValidationErrs) != 0 {
 			errs = append(errs, fmt.Errorf("invalid service name %q: %v", o.ServiceName, serviceNameValidationErrs))
 		}
+	}
+
+	if !slices.ContainsItem(validation.SupportedBroadcastAddressTypes, scyllav1.BroadcastAddressType(o.NodesBroadcastAddressTypeString)) {
+		errs = append(errs, fmt.Errorf("unsupported value of nodes-broadcast-address-type %q, supported ones are: %v", o.NodesBroadcastAddressTypeString, validation.SupportedBroadcastAddressTypes))
+	}
+
+	if !slices.ContainsItem(validation.SupportedBroadcastAddressTypes, scyllav1.BroadcastAddressType(o.ClientsBroadcastAddressTypeString)) {
+		errs = append(errs, fmt.Errorf("unsupported value of clients-broadcast-address-type %q, supported ones are: %v", o.ClientsBroadcastAddressTypeString, validation.SupportedBroadcastAddressTypes))
 	}
 
 	return utilerrors.NewAggregate(errs)
@@ -139,6 +159,9 @@ func (o *SidecarOptions) Complete() error {
 	if err != nil {
 		return fmt.Errorf("can't build scylla clientset: %w", err)
 	}
+
+	o.clientsBroadcastAddressType = scyllav1.BroadcastAddressType(o.ClientsBroadcastAddressTypeString)
+	o.nodesBroadcastAddressType = scyllav1.BroadcastAddressType(o.NodesBroadcastAddressTypeString)
 
 	return nil
 }
@@ -207,7 +230,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 			return o.kubeClient.CoreV1().Services(o.Namespace).Watch(ctx, options)
 		},
 	}
-	klog.V(2).InfoS("Waiting for Service", "Service", naming.ManualRef(o.Namespace, o.ServiceName))
+	klog.V(2).InfoS("Waiting for Service availability and IP address", "Service", naming.ManualRef(o.Namespace, o.ServiceName))
 	event, err := watchtools.UntilWithSync(
 		ctx,
 		serviceLW,
@@ -216,6 +239,19 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 		func(e watch.Event) (bool, error) {
 			switch t := e.Type; t {
 			case watch.Added, watch.Modified:
+				service, ok := e.Object.(*corev1.Service)
+				if !ok {
+					return false, fmt.Errorf("invalid object type in Service watcher, expected *corev1.Service, got %T", e.Object)
+				}
+
+				if o.clientsBroadcastAddressType == scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress ||
+					o.nodesBroadcastAddressType == scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress {
+					if len(service.Status.LoadBalancer.Ingress) == 0 {
+						klog.V(4).InfoS("LoadBalancer Service is awaiting for public endpoint")
+						return false, nil
+					}
+				}
+
 				return true, nil
 			case watch.Error:
 				return true, apierrors.FromObject(e.Object)
@@ -241,7 +277,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 			return o.kubeClient.CoreV1().Pods(o.Namespace).Watch(ctx, options)
 		},
 	}
-	klog.V(2).InfoS("Waiting for Pod To have scylla ContainerID set", "Pod", naming.ManualRef(o.Namespace, o.ServiceName))
+	klog.V(2).InfoS("Waiting for Pod to have IP address assigned and scylla ContainerID set", "Pod", naming.ManualRef(o.Namespace, o.ServiceName))
 	var containerID string
 	var pod *corev1.Pod
 	_, err = watchtools.UntilWithSync(
@@ -254,9 +290,14 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 			case watch.Added, watch.Modified:
 				pod = e.Object.(*corev1.Pod)
 
+				if len(pod.Status.PodIP) == 0 {
+					klog.V(4).InfoS("PodIP is not yet set", "Pod", klog.KObj(pod))
+					return false, nil
+				}
+
 				containerID, err = controllerhelpers.GetScyllaContainerID(pod)
 				if err != nil {
-					klog.Warningf("can't get scylla container id in pod %q: %w", naming.ObjRef(pod), err)
+					klog.Warningf("can't get scylla container id in pod %q: %v", naming.ObjRef(pod), err)
 					return false, nil
 				}
 
@@ -279,7 +320,10 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 		return fmt.Errorf("can't wait for pod's ContainerID: %w", err)
 	}
 
-	member := identity.NewMemberFromObjects(service, pod)
+	member, err := identity.NewMember(service, pod, o.nodesBroadcastAddressType, o.clientsBroadcastAddressType)
+	if err != nil {
+		return fmt.Errorf("can't create new member from objects: %w", err)
+	}
 
 	labelSelector := labels.Set{
 		naming.OwnerUIDLabel:      string(pod.UID),
@@ -359,7 +403,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 
 	klog.V(2).InfoS("Starting scylla")
 
-	cfg := config.NewScyllaConfig(member, o.kubeClient, o.scyllaClient, o.CPUCount)
+	cfg := config.NewScyllaConfig(member, o.kubeClient, o.scyllaClient, o.CPUCount, o.ExternalSeeds)
 	scyllaCmd, err := cfg.Setup(ctx)
 	if err != nil {
 		return fmt.Errorf("can't set up scylla: %w", err)
@@ -394,7 +438,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 
 		err := server.ListenAndServe()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			klog.Fatal("ListenAndServe failed: %v", err)
+			klog.Fatalf("ListenAndServe failed: %v", err)
 		}
 	}()
 	wg.Add(1)

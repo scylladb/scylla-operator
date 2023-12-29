@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -58,7 +57,7 @@ func (c *Client) NewAnnotation(a *Annotation) (int64, error) {
 		ID int64 `json:"id"`
 	}{}
 
-	err = c.request("POST", "/api/annotations", nil, bytes.NewBuffer(data), &result)
+	err = c.request("POST", "/api/annotations", nil, data, &result)
 	if err != nil {
 		return 0, err
 	}
@@ -77,7 +76,7 @@ func (c *Client) NewGraphiteAnnotation(gfa *GraphiteAnnotation) (int64, error) {
 		ID int64 `json:"id"`
 	}{}
 
-	err = c.request("POST", "/api/annotations/graphite", nil, bytes.NewBuffer(data), &result)
+	err = c.request("POST", "/api/annotations/graphite", nil, data, &result)
 	if err != nil {
 		return 0, err
 	}
@@ -97,7 +96,7 @@ func (c *Client) UpdateAnnotation(id int64, a *Annotation) (string, error) {
 		Message string `json:"message"`
 	}{}
 
-	err = c.request("PUT", path, nil, bytes.NewBuffer(data), &result)
+	err = c.request("PUT", path, nil, data, &result)
 	if err != nil {
 		return "", err
 	}
@@ -117,7 +116,7 @@ func (c *Client) PatchAnnotation(id int64, a *Annotation) (string, error) {
 		Message string `json:"message"`
 	}{}
 
-	err = c.request("PATCH", path, nil, bytes.NewBuffer(data), &result)
+	err = c.request("PATCH", path, nil, data, &result)
 	if err != nil {
 		return "", err
 	}
@@ -132,7 +131,7 @@ func (c *Client) DeleteAnnotation(id int64) (string, error) {
 		Message string `json:"message"`
 	}{}
 
-	err := c.request("DELETE", path, nil, bytes.NewBuffer(nil), &result)
+	err := c.request("DELETE", path, nil, nil, &result)
 	if err != nil {
 		return "", err
 	}
@@ -147,7 +146,7 @@ func (c *Client) DeleteAnnotationByRegionID(id int64) (string, error) {
 		Message string `json:"message"`
 	}{}
 
-	err := c.request("DELETE", path, nil, bytes.NewBuffer(nil), &result)
+	err := c.request("DELETE", path, nil, nil, &result)
 	if err != nil {
 		return "", err
 	}

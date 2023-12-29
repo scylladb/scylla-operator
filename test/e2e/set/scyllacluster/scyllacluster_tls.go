@@ -18,8 +18,8 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/kubecrypto"
-	opointer "github.com/scylladb/scylla-operator/pkg/pointer"
-	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
+	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/scheme"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
@@ -27,10 +27,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	"k8s.io/utils/pointer"
 )
 
 var _ = g.Describe("ScyllaCluster", func() {
@@ -46,7 +46,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 		o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
 		sc.Spec.Datacenter.Racks[0].Members = 1
 
@@ -67,9 +67,12 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
-		initialHost := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
-		o.Expect(initialHost).To(o.HaveLen(1))
-		di := insertAndVerifyCQLData(ctx, initialHost)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		initialHosts, initialHostIDs, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(initialHosts).To(o.HaveLen(1))
+		di := insertAndVerifyCQLData(ctx, initialHosts)
 		defer di.Close()
 
 		for _, tc := range []struct {
@@ -109,7 +112,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 				// TODO: Use generated Apply method when our clients have it.
 				sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(ctx, sc.Name, types.ApplyPatchType, scData, metav1.PatchOptions{
 					FieldManager: f.FieldManager(),
-					Force:        pointer.Bool(true),
+					Force:        pointer.Ptr(true),
 				})
 				o.Expect(err).NotTo(o.HaveOccurred())
 				o.Expect(sc.Spec.Datacenter.Racks[0].Members).To(o.BeEquivalentTo(tc.replicas))
@@ -121,25 +124,30 @@ var _ = g.Describe("ScyllaCluster", func() {
 				sc, err = utils.WaitForScyllaClusterState(waitCtxL1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 				o.Expect(err).NotTo(o.HaveOccurred())
 
-				hosts := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+				verifyScyllaCluster(ctx, f.KubeClient(), sc)
+				waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+				hosts, hostIDs, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+				o.Expect(err).NotTo(o.HaveOccurred())
 				o.Expect(hosts).To(o.HaveLen(tc.replicas))
-				o.Expect(hosts).To(o.ContainElements(initialHost))
+				o.Expect(hostIDs).To(o.HaveLen(tc.replicas))
+				o.Expect(hostIDs).To(o.ContainElements(initialHostIDs))
 
 				framework.By("Verifying TLS API objects")
 
 				clientCASecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-client-ca", sc.Name), metav1.GetOptions{})
 				o.Expect(err).NotTo(o.HaveOccurred())
 				clientCACerts, _, _, _ := verification.VerifyAndParseTLSCert(clientCASecret, verification.TLSCertOptions{
-					IsCA:     pointer.Bool(true),
-					KeyUsage: opointer.KeyUsage(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign),
+					IsCA:     pointer.Ptr(true),
+					KeyUsage: pointer.Ptr(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign),
 				})
 				o.Expect(clientCACerts).To(o.HaveLen(1))
 
 				servingCASecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-serving-ca", sc.Name), metav1.GetOptions{})
 				o.Expect(err).NotTo(o.HaveOccurred())
 				_, _, _, _ = verification.VerifyAndParseTLSCert(servingCASecret, verification.TLSCertOptions{
-					IsCA:     pointer.Bool(true),
-					KeyUsage: opointer.KeyUsage(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign),
+					IsCA:     pointer.Ptr(true),
+					KeyUsage: pointer.Ptr(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign),
 				})
 
 				servingCABundleConfigMap, err := f.KubeClient().CoreV1().ConfigMaps(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-serving-ca", sc.Name), metav1.GetOptions{})
@@ -150,15 +158,15 @@ var _ = g.Describe("ScyllaCluster", func() {
 				servingCertSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-serving-certs", sc.Name), metav1.GetOptions{})
 				o.Expect(err).NotTo(o.HaveOccurred())
 				servingCerts, _, _, _ := verification.VerifyAndParseTLSCert(servingCertSecret, verification.TLSCertOptions{
-					IsCA:     pointer.Bool(false),
-					KeyUsage: opointer.KeyUsage(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
+					IsCA:     pointer.Ptr(false),
+					KeyUsage: pointer.Ptr(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
 				})
 
 				adminClientSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-user-admin", sc.Name), metav1.GetOptions{})
 				o.Expect(err).NotTo(o.HaveOccurred())
 				_, adminClientCertBytes, _, adminClientKeyBytes := verification.VerifyAndParseTLSCert(adminClientSecret, verification.TLSCertOptions{
-					IsCA:     pointer.Bool(false),
-					KeyUsage: opointer.KeyUsage(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
+					IsCA:     pointer.Ptr(false),
+					KeyUsage: pointer.Ptr(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
 				})
 
 				adminClientConnectionConfigsSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-cql-connection-configs-admin", sc.Name), metav1.GetOptions{})
@@ -173,28 +181,46 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 				framework.By("Verifying certificates")
 
-				nodeClusterIPs, nodeIDs, err := utils.GetHostsAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
-				o.Expect(err).NotTo(o.HaveOccurred())
-				o.Expect(nodeClusterIPs).To(o.HaveLen(tc.replicas))
-				o.Expect(nodeIDs).To(o.HaveLen(tc.replicas))
-
 				var sniHosts []string
 				for _, domain := range sc.Spec.DNSDomains {
 					sniHosts = append(sniHosts, fmt.Sprintf("cql.%s", domain))
 
-					for _, nodeID := range nodeIDs {
-						sniHosts = append(sniHosts, fmt.Sprintf("%s.cql.%s", nodeID, domain))
+					for _, hostID := range hostIDs {
+						sniHosts = append(sniHosts, fmt.Sprintf("%s.cql.%s", hostID, domain))
 					}
 				}
 				o.Expect(sniHosts).To(o.HaveLen(len(sc.Spec.DNSDomains) + len(sc.Spec.DNSDomains)*tc.replicas))
 
-				nodeIPs, err := helpers.ParseClusterIPs(nodeClusterIPs)
+				var serviceServingDNSNames []string
+				services, err := f.KubeClient().CoreV1().Services(sc.Namespace).List(ctx, metav1.ListOptions{
+					LabelSelector: labels.SelectorFromSet(naming.ClusterLabels(sc)).String(),
+				})
 				o.Expect(err).NotTo(o.HaveOccurred())
+
+				for _, svc := range services.Items {
+					serviceServingDNSNames = append(serviceServingDNSNames, fmt.Sprintf("%s.%s.svc", svc.Name, svc.Namespace))
+				}
+
+				serviceAndPodIPs, err := utils.GetNodesServiceAndPodIPs(ctx, f.KubeClient().CoreV1(), sc)
+				o.Expect(err).NotTo(o.HaveOccurred())
+
+				expectedServiceAndPodIPsNum := 2 * int(utils.GetMemberCount(sc))
+				if sc.Spec.ExposeOptions != nil && sc.Spec.ExposeOptions.NodeService != nil && sc.Spec.ExposeOptions.NodeService.Type == scyllav1.NodeServiceTypeHeadless {
+					expectedServiceAndPodIPsNum = int(utils.GetMemberCount(sc))
+				}
+				o.Expect(serviceAndPodIPs).To(o.HaveLen(expectedServiceAndPodIPsNum))
+
+				hostsIPs, err := helpers.ParseIPs(serviceAndPodIPs)
+				o.Expect(err).NotTo(o.HaveOccurred())
+
+				servingDNSNames := make([]string, 0, len(sniHosts)+len(serviceServingDNSNames))
+				servingDNSNames = append(servingDNSNames, sniHosts...)
+				servingDNSNames = append(servingDNSNames, serviceServingDNSNames...)
 
 				// Check the serving cert content first to distinguish whether the cert was correctly reloaded by ScyllaDB or not.
 				o.Expect(servingCerts[0].Subject.CommonName).To(o.BeEmpty())
-				o.Expect(helpers.NormalizeIPs(servingCerts[0].IPAddresses)).To(o.ConsistOf(nodeIPs))
-				o.Expect(servingCerts[0].DNSNames).To(o.ConsistOf(sniHosts))
+				o.Expect(helpers.NormalizeIPs(servingCerts[0].IPAddresses)).To(o.ConsistOf(hostsIPs))
+				o.Expect(servingCerts[0].DNSNames).To(o.ConsistOf(servingDNSNames))
 
 				// Now check the cert used by ScyllaDB.
 				servingCAPool := x509.NewCertPool()
@@ -202,7 +228,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 				adminTLSCert, err := tls.X509KeyPair(adminClientCertBytes, adminClientKeyBytes)
 				o.Expect(err).NotTo(o.HaveOccurred())
 
-				for _, nodeAddress := range nodeClusterIPs {
+				for _, nodeAddress := range hosts {
 					framework.Infof("Starting to probe node %q for correct certs", nodeAddress)
 
 					o.Eventually(func(eo o.Gomega) {
@@ -216,8 +242,8 @@ var _ = g.Describe("ScyllaCluster", func() {
 						eo.Expect(serverCerts).NotTo(o.BeEmpty())
 
 						eo.Expect(serverCerts[0].Subject.CommonName).To(o.BeEmpty())
-						eo.Expect(helpers.NormalizeIPs(serverCerts[0].IPAddresses)).To(o.ConsistOf(nodeIPs))
-						eo.Expect(serverCerts[0].DNSNames).To(o.ConsistOf(sniHosts))
+						eo.Expect(helpers.NormalizeIPs(serverCerts[0].IPAddresses)).To(o.ConsistOf(hostsIPs))
+						eo.Expect(serverCerts[0].DNSNames).To(o.ConsistOf(servingDNSNames))
 					}).WithTimeout(5 * 60 * time.Second).WithPolling(1 * time.Second).Should(o.Succeed())
 
 					framework.Infof("Node %q has correct certs", nodeAddress)
@@ -234,7 +260,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		sc := scyllafixture.BasicScyllaCluster.ReadOrFail()
+		sc := f.GetDefaultScyllaCluster()
 		o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
 		sc.Spec.Datacenter.Racks[0].Members = 1
 
@@ -249,9 +275,12 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
-		initialHost := getScyllaHostsAndWaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
-		o.Expect(initialHost).To(o.HaveLen(1))
-		di := insertAndVerifyCQLData(ctx, initialHost)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		initialHosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(initialHosts).To(o.HaveLen(1))
+		di := insertAndVerifyCQLData(ctx, initialHosts)
 		defer di.Close()
 
 		// This test rotates CAs which makes it dependent on the order.
@@ -293,7 +322,6 @@ var _ = g.Describe("ScyllaCluster", func() {
 				o.Expect(initialSecret.Data).To(o.HaveKey("tls.key"))
 				o.Expect(initialSecret.Data["tls.crt"]).NotTo(o.BeEmpty())
 				o.Expect(initialSecret.Data["tls.key"]).NotTo(o.BeEmpty())
-				o.Expect(initialSecret.Annotations).To(o.HaveKeyWithValue("certificates.internal.scylla-operator.scylladb.com/refresh-reason", "needs new cert"))
 
 				var configMap *corev1.ConfigMap
 				var initialBundleCert *x509.Certificate

@@ -5,20 +5,20 @@ import (
 	"net"
 )
 
-func ParseClusterIP(s string) (net.IP, error) {
+func ParseIP(s string) (net.IP, error) {
 	parsedIP := net.ParseIP(s)
 	if parsedIP == nil {
-		return nil, fmt.Errorf("can't parse ClusterIP %q", s)
+		return nil, fmt.Errorf("can't parse IP %q", s)
 	}
 
 	return parsedIP, nil
 }
 
-func ParseClusterIPs(ipStrings []string) ([]net.IP, error) {
+func ParseIPs(ipStrings []string) ([]net.IP, error) {
 	var ips []net.IP
 
 	for _, s := range ipStrings {
-		ip, err := ParseClusterIP(s)
+		ip, err := ParseIP(s)
 		if err != nil {
 			return nil, err
 		}

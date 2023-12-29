@@ -1,7 +1,6 @@
 package gapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -62,7 +61,7 @@ func (c *Client) NewContactPoint(p *ContactPoint) (string, error) {
 	}
 	result := ContactPoint{}
 
-	err = c.request("POST", "/api/v1/provisioning/contact-points", nil, bytes.NewBuffer(req), &result)
+	err = c.request("POST", "/api/v1/provisioning/contact-points", nil, req, &result)
 	if err != nil {
 		return "", err
 	}
@@ -77,7 +76,7 @@ func (c *Client) UpdateContactPoint(p *ContactPoint) error {
 		return err
 	}
 
-	return c.request("PUT", uri, nil, bytes.NewBuffer(req), nil)
+	return c.request("PUT", uri, nil, req, nil)
 }
 
 // DeleteContactPoint deletes a contact point.

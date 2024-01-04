@@ -306,7 +306,7 @@ spec:
 									ObjectMeta: metav1.ObjectMeta{},
 									Spec: corev1.PersistentVolumeClaimSpec{
 										StorageClassName: pointer.Ptr("pv-class"),
-										Resources: corev1.ResourceRequirements{
+										Resources: corev1.VolumeResourceRequirements{
 											Requests: map[corev1.ResourceName]resource.Quantity{
 												corev1.ResourceStorage: resource.MustParse("5Gi"),
 											},

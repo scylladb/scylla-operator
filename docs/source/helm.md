@@ -315,7 +315,7 @@ Two running nodes, exactly what we were asking for.
 
 To spin up a Prometheus monitoring refer to [monitoring guide](monitoring.md).
 
-Helm charts can create ServiceMonitors needed to observe Scylla Managger and Scylla. 
+Helm charts can create ServiceMonitors needed to observe Scylla Manager and Scylla. 
 Both of these Helm Charts allows to specify whether you want to create a ServiceMonitor:
 ```yaml
 serviceMonitor:

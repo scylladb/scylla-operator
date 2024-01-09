@@ -8,7 +8,6 @@ import (
 	v1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -20,9 +19,9 @@ type FakeScyllaDBMonitorings struct {
 	ns   string
 }
 
-var scylladbmonitoringsResource = schema.GroupVersionResource{Group: "scylla.scylladb.com", Version: "v1alpha1", Resource: "scylladbmonitorings"}
+var scylladbmonitoringsResource = v1alpha1.SchemeGroupVersion.WithResource("scylladbmonitorings")
 
-var scylladbmonitoringsKind = schema.GroupVersionKind{Group: "scylla.scylladb.com", Version: "v1alpha1", Kind: "ScyllaDBMonitoring"}
+var scylladbmonitoringsKind = v1alpha1.SchemeGroupVersion.WithKind("ScyllaDBMonitoring")
 
 // Get takes name of the scyllaDBMonitoring, and returns the corresponding scyllaDBMonitoring object, and an error if there is any.
 func (c *FakeScyllaDBMonitorings) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ScyllaDBMonitoring, err error) {

@@ -19,6 +19,7 @@ type TimeInterval struct {
 	DaysOfMonth []DayOfMonthRange `json:"days_of_month,omitempty"`
 	Months      []MonthRange      `json:"months,omitempty"`
 	Years       []YearRange       `json:"years,omitempty"`
+	Location    Location          `json:"location,omitempty"`
 }
 
 // TimeRange represents a range of minutes within a 1440 minute day, exclusive of the End minute.
@@ -38,6 +39,9 @@ type MonthRange string
 
 // A YearRange is a positive inclusive range of years, e.g. "2030" or "2021:2022".
 type YearRange string
+
+// A Location time zone for the time interval in IANA time zone database, e.g. "America/New_York"
+type Location string
 
 // MuteTimings fetches all mute timings.
 func (c *Client) MuteTimings() ([]MuteTiming, error) {

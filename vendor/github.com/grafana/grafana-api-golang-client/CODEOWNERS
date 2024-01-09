@@ -1,4 +1,7 @@
-# These owners will be the default owners for everything in the repo.
-# Unless a later match takes precedence, these owners
-# will be requested for review when someone opens a pull request.
-* @mlclmj @tonglil
+# Docs on CODEOWNERS:
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# Later codeowner matches take precedence over earlier ones.
+
+# Default owner
+* @grafana/platform-cat

@@ -647,7 +647,13 @@ object
      - Description
    * - :ref:`labelSelector<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector>`
      - object
-     - A label query over a set of resources, in this case pods.
+     - A label query over a set of resources, in this case pods. If it's null, this PodAffinityTerm matches with no Pods.
+   * - matchLabelKeys
+     - array (string)
+     - MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key in (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MatchLabelKeys and LabelSelector. Also, MatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+   * - mismatchLabelKeys
+     - array (string)
+     - MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key notin (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MismatchLabelKeys and LabelSelector. Also, MismatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
    * - :ref:`namespaceSelector<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector>`
      - object
      - A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means "this pod's namespace". An empty selector ({}) matches all namespaces.
@@ -665,7 +671,7 @@ object
 
 Description
 """""""""""
-A label query over a set of resources, in this case pods.
+A label query over a set of resources, in this case pods. If it's null, this PodAffinityTerm matches with no Pods.
 
 Type
 """"
@@ -827,7 +833,13 @@ object
      - Description
    * - :ref:`labelSelector<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector>`
      - object
-     - A label query over a set of resources, in this case pods.
+     - A label query over a set of resources, in this case pods. If it's null, this PodAffinityTerm matches with no Pods.
+   * - matchLabelKeys
+     - array (string)
+     - MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key in (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MatchLabelKeys and LabelSelector. Also, MatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+   * - mismatchLabelKeys
+     - array (string)
+     - MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key notin (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MismatchLabelKeys and LabelSelector. Also, MismatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
    * - :ref:`namespaceSelector<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector>`
      - object
      - A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means "this pod's namespace". An empty selector ({}) matches all namespaces.
@@ -845,7 +857,7 @@ object
 
 Description
 """""""""""
-A label query over a set of resources, in this case pods.
+A label query over a set of resources, in this case pods. If it's null, this PodAffinityTerm matches with no Pods.
 
 Type
 """"
@@ -1063,7 +1075,13 @@ object
      - Description
    * - :ref:`labelSelector<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector>`
      - object
-     - A label query over a set of resources, in this case pods.
+     - A label query over a set of resources, in this case pods. If it's null, this PodAffinityTerm matches with no Pods.
+   * - matchLabelKeys
+     - array (string)
+     - MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key in (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MatchLabelKeys and LabelSelector. Also, MatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+   * - mismatchLabelKeys
+     - array (string)
+     - MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key notin (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MismatchLabelKeys and LabelSelector. Also, MismatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
    * - :ref:`namespaceSelector<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector>`
      - object
      - A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means "this pod's namespace". An empty selector ({}) matches all namespaces.
@@ -1081,7 +1099,7 @@ object
 
 Description
 """""""""""
-A label query over a set of resources, in this case pods.
+A label query over a set of resources, in this case pods. If it's null, this PodAffinityTerm matches with no Pods.
 
 Type
 """"
@@ -1243,7 +1261,13 @@ object
      - Description
    * - :ref:`labelSelector<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector>`
      - object
-     - A label query over a set of resources, in this case pods.
+     - A label query over a set of resources, in this case pods. If it's null, this PodAffinityTerm matches with no Pods.
+   * - matchLabelKeys
+     - array (string)
+     - MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key in (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MatchLabelKeys and LabelSelector. Also, MatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+   * - mismatchLabelKeys
+     - array (string)
+     - MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key notin (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MismatchLabelKeys and LabelSelector. Also, MismatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
    * - :ref:`namespaceSelector<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector>`
      - object
      - A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means "this pod's namespace". An empty selector ({}) matches all namespaces.
@@ -1261,7 +1285,7 @@ object
 
 Description
 """""""""""
-A label query over a set of resources, in this case pods.
+A label query over a set of resources, in this case pods. If it's null, this PodAffinityTerm matches with no Pods.
 
 Type
 """"
@@ -2029,7 +2053,13 @@ object
      - Description
    * - :ref:`labelSelector<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.prometheus.placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector>`
      - object
-     - A label query over a set of resources, in this case pods.
+     - A label query over a set of resources, in this case pods. If it's null, this PodAffinityTerm matches with no Pods.
+   * - matchLabelKeys
+     - array (string)
+     - MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key in (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MatchLabelKeys and LabelSelector. Also, MatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+   * - mismatchLabelKeys
+     - array (string)
+     - MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key notin (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MismatchLabelKeys and LabelSelector. Also, MismatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
    * - :ref:`namespaceSelector<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.prometheus.placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector>`
      - object
      - A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means "this pod's namespace". An empty selector ({}) matches all namespaces.
@@ -2047,7 +2077,7 @@ object
 
 Description
 """""""""""
-A label query over a set of resources, in this case pods.
+A label query over a set of resources, in this case pods. If it's null, this PodAffinityTerm matches with no Pods.
 
 Type
 """"
@@ -2209,7 +2239,13 @@ object
      - Description
    * - :ref:`labelSelector<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.prometheus.placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector>`
      - object
-     - A label query over a set of resources, in this case pods.
+     - A label query over a set of resources, in this case pods. If it's null, this PodAffinityTerm matches with no Pods.
+   * - matchLabelKeys
+     - array (string)
+     - MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key in (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MatchLabelKeys and LabelSelector. Also, MatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+   * - mismatchLabelKeys
+     - array (string)
+     - MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key notin (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MismatchLabelKeys and LabelSelector. Also, MismatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
    * - :ref:`namespaceSelector<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.prometheus.placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector>`
      - object
      - A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means "this pod's namespace". An empty selector ({}) matches all namespaces.
@@ -2227,7 +2263,7 @@ object
 
 Description
 """""""""""
-A label query over a set of resources, in this case pods.
+A label query over a set of resources, in this case pods. If it's null, this PodAffinityTerm matches with no Pods.
 
 Type
 """"
@@ -2445,7 +2481,13 @@ object
      - Description
    * - :ref:`labelSelector<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.prometheus.placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector>`
      - object
-     - A label query over a set of resources, in this case pods.
+     - A label query over a set of resources, in this case pods. If it's null, this PodAffinityTerm matches with no Pods.
+   * - matchLabelKeys
+     - array (string)
+     - MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key in (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MatchLabelKeys and LabelSelector. Also, MatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+   * - mismatchLabelKeys
+     - array (string)
+     - MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key notin (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MismatchLabelKeys and LabelSelector. Also, MismatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
    * - :ref:`namespaceSelector<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.prometheus.placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector>`
      - object
      - A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means "this pod's namespace". An empty selector ({}) matches all namespaces.
@@ -2463,7 +2505,7 @@ object
 
 Description
 """""""""""
-A label query over a set of resources, in this case pods.
+A label query over a set of resources, in this case pods. If it's null, this PodAffinityTerm matches with no Pods.
 
 Type
 """"
@@ -2625,7 +2667,13 @@ object
      - Description
    * - :ref:`labelSelector<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.prometheus.placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector>`
      - object
-     - A label query over a set of resources, in this case pods.
+     - A label query over a set of resources, in this case pods. If it's null, this PodAffinityTerm matches with no Pods.
+   * - matchLabelKeys
+     - array (string)
+     - MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key in (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MatchLabelKeys and LabelSelector. Also, MatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+   * - mismatchLabelKeys
+     - array (string)
+     - MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `LabelSelector` as `key notin (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both MismatchLabelKeys and LabelSelector. Also, MismatchLabelKeys cannot be set when LabelSelector isn't set. This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
    * - :ref:`namespaceSelector<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.prometheus.placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector>`
      - object
      - A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means "this pod's namespace". An empty selector ({}) matches all namespaces.
@@ -2643,7 +2691,7 @@ object
 
 Description
 """""""""""
-A label query over a set of resources, in this case pods.
+A label query over a set of resources, in this case pods. If it's null, this PodAffinityTerm matches with no Pods.
 
 Type
 """"
@@ -3045,6 +3093,9 @@ object
    * - storageClassName
      - string
      - storageClassName is the name of the StorageClass required by the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
+   * - volumeAttributesClassName
+     - string
+     - volumeAttributesClassName may be used to set the VolumeAttributesClass used by this claim. If specified, the CSI driver will create or update the volume with the attributes defined in the corresponding VolumeAttributesClass. This has a different purpose than storageClassName, it can be changed after the claim is created. An empty string value means that no VolumeAttributesClass will be applied to the claim but it's not allowed to reset this field to empty string once it is set. If unspecified and the PersistentVolumeClaim is unbound, the default VolumeAttributesClass will be set by the persistentvolume controller if it exists. If the resource referred to by volumeAttributesClass does not exist, this PersistentVolumeClaim will be set to a Pending state, as reflected by the modifyVolumeStatus field, until such as a resource exists. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#volumeattributesclass (Alpha) Using this field requires the VolumeAttributesClass feature gate to be enabled.
    * - volumeMode
      - string
      - volumeMode defines what type of volume is required by the claim. Value of Filesystem is implied when not included in claim spec.
@@ -3138,42 +3189,12 @@ object
    * - Property
      - Type
      - Description
-   * - :ref:`claims<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.prometheus.storage.volumeClaimTemplate.spec.resources.claims[]>`
-     - array (object)
-     - Claims lists the names of resources, defined in spec.resourceClaims, that are used by this container. 
-        This is an alpha field and requires enabling the DynamicResourceAllocation feature gate. 
-        This field is immutable. It can only be set for containers.
    * - :ref:`limits<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.prometheus.storage.volumeClaimTemplate.spec.resources.limits>`
      - object
      - Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
    * - :ref:`requests<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.prometheus.storage.volumeClaimTemplate.spec.resources.requests>`
      - object
      - Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. Requests cannot exceed Limits. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-
-.. _api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.prometheus.storage.volumeClaimTemplate.spec.resources.claims[]:
-
-.spec.components.prometheus.storage.volumeClaimTemplate.spec.resources.claims[]
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Description
-"""""""""""
-ResourceClaim references one entry in PodSpec.ResourceClaims.
-
-Type
-""""
-object
-
-
-.. list-table::
-   :widths: 25 10 150
-   :header-rows: 1
-
-   * - Property
-     - Type
-     - Description
-   * - name
-     - string
-     - Name must match the name of one entry in pod.spec.resourceClaims of the Pod where this field is used. It makes that resource available inside a container.
 
 .. _api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.prometheus.storage.volumeClaimTemplate.spec.resources.limits:
 

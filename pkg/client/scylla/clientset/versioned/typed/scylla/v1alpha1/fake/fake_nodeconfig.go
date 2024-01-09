@@ -8,7 +8,6 @@ import (
 	v1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -19,9 +18,9 @@ type FakeNodeConfigs struct {
 	Fake *FakeScyllaV1alpha1
 }
 
-var nodeconfigsResource = schema.GroupVersionResource{Group: "scylla.scylladb.com", Version: "v1alpha1", Resource: "nodeconfigs"}
+var nodeconfigsResource = v1alpha1.SchemeGroupVersion.WithResource("nodeconfigs")
 
-var nodeconfigsKind = schema.GroupVersionKind{Group: "scylla.scylladb.com", Version: "v1alpha1", Kind: "NodeConfig"}
+var nodeconfigsKind = v1alpha1.SchemeGroupVersion.WithKind("NodeConfig")
 
 // Get takes name of the nodeConfig, and returns the corresponding nodeConfig object, and an error if there is any.
 func (c *FakeNodeConfigs) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.NodeConfig, err error) {

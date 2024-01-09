@@ -161,22 +161,10 @@ func ReadOnly(ctx context.Context, path, in string, data interface{}) *errors.Va
 func Required(path, in string, data interface{}) *errors.Validation {
 	val := reflect.ValueOf(data)
 	if val.IsValid() {
-		typ := reflect.TypeOf(data)
-		switch typ.Kind() {
-		case reflect.Pointer:
-			if val.IsNil() {
-				return errors.Required(path, in, data)
-			}
-			if reflect.DeepEqual(reflect.Zero(val.Elem().Type()).Interface(), val.Elem().Interface()) {
-				return errors.Required(path, in, data)
-			}
-			return nil
-		default:
-			if reflect.DeepEqual(reflect.Zero(val.Type()).Interface(), val.Interface()) {
-				return errors.Required(path, in, data)
-			}
-			return nil
+		if reflect.DeepEqual(reflect.Zero(val.Type()).Interface(), val.Interface()) {
+			return errors.Required(path, in, data)
 		}
+		return nil
 	}
 	return errors.Required(path, in, data)
 }
@@ -327,7 +315,7 @@ func FormatOf(path, in, format, data string, registry strfmt.Registry) *errors.V
 // TODO: Normally, a JSON MAX_SAFE_INTEGER check would ensure conversion remains loss-free
 func MaximumNativeType(path, in string, val interface{}, max float64, exclusive bool) *errors.Validation {
 	kind := reflect.ValueOf(val).Type().Kind()
-	switch kind {
+	switch kind { //nolint:exhaustive
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		value := valueHelp.asInt64(val)
 		return MaximumInt(path, in, value, int64(max), exclusive)
@@ -357,7 +345,7 @@ func MaximumNativeType(path, in string, val interface{}, max float64, exclusive 
 // TODO: Normally, a JSON MAX_SAFE_INTEGER check would ensure conversion remains loss-free
 func MinimumNativeType(path, in string, val interface{}, min float64, exclusive bool) *errors.Validation {
 	kind := reflect.ValueOf(val).Type().Kind()
-	switch kind {
+	switch kind { //nolint:exhaustive
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		value := valueHelp.asInt64(val)
 		return MinimumInt(path, in, value, int64(min), exclusive)
@@ -387,7 +375,7 @@ func MinimumNativeType(path, in string, val interface{}, min float64, exclusive 
 // TODO: Normally, a JSON MAX_SAFE_INTEGER check would ensure conversion remains loss-free
 func MultipleOfNativeType(path, in string, val interface{}, multipleOf float64) *errors.Validation {
 	kind := reflect.ValueOf(val).Type().Kind()
-	switch kind {
+	switch kind { //nolint:exhaustive
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		value := valueHelp.asInt64(val)
 		return MultipleOfInt(path, in, value, int64(multipleOf))
@@ -411,7 +399,7 @@ func IsValueValidAgainstRange(val interface{}, typeName, format, prefix, path st
 
 	// What is the string representation of val
 	var stringRep string
-	switch kind {
+	switch kind { //nolint:exhaustive
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		stringRep = swag.FormatUint64(valueHelp.asUint64(val))
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:

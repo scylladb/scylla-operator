@@ -17,6 +17,7 @@ import (
 	o "github.com/onsi/gomega"
 	prometheusappclient "github.com/prometheus/client_golang/api"
 	promeheusappv1api "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
@@ -76,13 +77,13 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 		framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", sc.ResourceVersion)
 		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx1Cancel()
-		sc, err = utils.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1(), sc.Namespace, sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the ScyllaDBMonitoring to rollout (RV=%s)", sm.ResourceVersion)
 		waitCtx2, waitCtx2Cancel := context.WithTimeout(ctx, 5*time.Minute)
 		defer waitCtx2Cancel()
-		sm, err = utils.WaitForScyllaDBMonitoringState(waitCtx2, f.ScyllaClient().ScyllaV1alpha1().ScyllaDBMonitorings(sc.Namespace), sc.Name, utils.WaitForStateOptions{}, utils.IsScyllaDBMonitoringRolledOut)
+		sm, err = controllerhelpers.WaitForScyllaDBMonitoringState(waitCtx2, f.ScyllaClient().ScyllaV1alpha1().ScyllaDBMonitorings(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaDBMonitoringRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		// We need to retry the prometheus and grafana assertion for several reasons, some of them are:

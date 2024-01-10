@@ -8,6 +8,7 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	corev1 "k8s.io/api/core/v1"
@@ -70,7 +71,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		framework.By("Waiting for the ServiceAccount to be adopted")
 		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx1Cancel()
-		sa, err = utils.WaitForServiceAccountState(waitCtx1, f.KubeClient().CoreV1(), sa.Namespace, sa.Name, utils.WaitForStateOptions{}, func(sa *corev1.ServiceAccount) (bool, error) {
+		sa, err = controllerhelpers.WaitForServiceAccountState(waitCtx1, f.KubeClient().CoreV1().ServiceAccounts(sa.Namespace), sa.Name, controllerhelpers.WaitForStateOptions{}, func(sa *corev1.ServiceAccount) (bool, error) {
 			ref := metav1.GetControllerOfNoCopy(sa)
 			if ref == nil {
 				klog.V(2).InfoS("No controller ref")
@@ -92,7 +93,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		framework.By("Waiting for the RoleBinding to be adopted")
 		waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx2Cancel()
-		rb, err = utils.WaitForRoleBindingState(waitCtx2, f.KubeClient().RbacV1(), rb.Namespace, rb.Name, utils.WaitForStateOptions{}, func(sa *rbacv1.RoleBinding) (bool, error) {
+		rb, err = controllerhelpers.WaitForRoleBindingState(waitCtx2, f.KubeClient().RbacV1().RoleBindings(rb.Namespace), rb.Name, controllerhelpers.WaitForStateOptions{}, func(sa *rbacv1.RoleBinding) (bool, error) {
 			ref := metav1.GetControllerOfNoCopy(sa)
 			if ref == nil {
 				return false, nil

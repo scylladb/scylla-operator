@@ -13,6 +13,7 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
@@ -145,7 +146,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 
 		waitCtx1, waitCtx1Cancel := utils.ContextForPodStartup(ctx)
 		defer waitCtx1Cancel()
-		clientPod, err = utils.WaitForPodState(waitCtx1, f.KubeClient().CoreV1().Pods(clientPod.Namespace), clientPod.Name, utils.WaitForStateOptions{}, utils.PodIsRunning)
+		clientPod, err = controllerhelpers.WaitForPodState(waitCtx1, f.KubeClient().CoreV1().Pods(clientPod.Namespace), clientPod.Name, controllerhelpers.WaitForStateOptions{}, utils.PodIsRunning)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Creating %d loop devices", numberOfDevices)
@@ -200,11 +201,11 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		framework.By("Waiting for the NodeConfig to deploy")
 		ctx1, ctx1Cancel := context.WithTimeout(ctx, nodeConfigRolloutTimeout)
 		defer ctx1Cancel()
-		nc, err = utils.WaitForNodeConfigState(
+		nc, err = controllerhelpers.WaitForNodeConfigState(
 			ctx1,
 			f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs(),
 			nc.Name,
-			utils.WaitForStateOptions{TolerateDelete: false},
+			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
 			utils.IsNodeConfigRolledOut,
 			utils.IsNodeConfigDoneWithNodes(matchingNodes),
 		)
@@ -266,11 +267,11 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		framework.By("Waiting for the NodeConfig to deploy")
 		ctx2, ctx2Cancel := context.WithTimeout(ctx, nodeConfigRolloutTimeout)
 		defer ctx2Cancel()
-		nc, err = utils.WaitForNodeConfigState(
+		nc, err = controllerhelpers.WaitForNodeConfigState(
 			ctx2,
 			f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs(),
 			nc.Name,
-			utils.WaitForStateOptions{TolerateDelete: false},
+			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
 			utils.IsNodeConfigRolledOut,
 			utils.IsNodeConfigDoneWithNodes(matchingNodes),
 		)

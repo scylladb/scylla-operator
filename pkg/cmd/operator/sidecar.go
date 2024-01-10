@@ -219,101 +219,54 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 	}
 
 	// Wait for the service that holds identity for this scylla node.
-	serviceFieldSelector := fields.OneTermEqualSelector("metadata.name", o.ServiceName)
-	serviceLW := &cache.ListWatch{
-		ListFunc: helpers.UncachedListFunc(func(options metav1.ListOptions) (runtime.Object, error) {
-			options.FieldSelector = serviceFieldSelector.String()
-			return o.kubeClient.CoreV1().Services(o.Namespace).List(ctx, options)
-		}),
-		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-			options.FieldSelector = serviceFieldSelector.String()
-			return o.kubeClient.CoreV1().Services(o.Namespace).Watch(ctx, options)
-		},
-	}
 	klog.V(2).InfoS("Waiting for Service availability and IP address", "Service", naming.ManualRef(o.Namespace, o.ServiceName))
-	event, err := watchtools.UntilWithSync(
+	service, err := controllerhelpers.WaitForServiceState(
 		ctx,
-		serviceLW,
-		&corev1.Service{},
-		nil,
-		func(e watch.Event) (bool, error) {
-			switch t := e.Type; t {
-			case watch.Added, watch.Modified:
-				service, ok := e.Object.(*corev1.Service)
-				if !ok {
-					return false, fmt.Errorf("invalid object type in Service watcher, expected *corev1.Service, got %T", e.Object)
+		o.kubeClient.CoreV1().Services(o.Namespace),
+		o.ServiceName,
+		controllerhelpers.WaitForStateOptions{},
+		func(service *corev1.Service) (bool, error) {
+			if o.clientsBroadcastAddressType == scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress ||
+				o.nodesBroadcastAddressType == scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress {
+				if len(service.Status.LoadBalancer.Ingress) == 0 {
+					klog.V(4).InfoS("LoadBalancer Service is awaiting for public endpoint")
+					return false, nil
 				}
-
-				if o.clientsBroadcastAddressType == scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress ||
-					o.nodesBroadcastAddressType == scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress {
-					if len(service.Status.LoadBalancer.Ingress) == 0 {
-						klog.V(4).InfoS("LoadBalancer Service is awaiting for public endpoint")
-						return false, nil
-					}
-				}
-
-				return true, nil
-			case watch.Error:
-				return true, apierrors.FromObject(e.Object)
-			default:
-				return true, fmt.Errorf("unexpected event type %v", t)
 			}
+
+			return true, nil
 		},
 	)
 	if err != nil {
 		return fmt.Errorf("can't wait for service %q: %w", naming.ManualRef(o.Namespace, o.ServiceName), err)
 	}
-	service := event.Object.(*corev1.Service)
 
 	// Wait for this Pod to have ContainerID set.
-	podFieldSelector := fields.OneTermEqualSelector("metadata.name", o.ServiceName)
-	podLW := &cache.ListWatch{
-		ListFunc: helpers.UncachedListFunc(func(options metav1.ListOptions) (runtime.Object, error) {
-			options.FieldSelector = podFieldSelector.String()
-			return o.kubeClient.CoreV1().Pods(o.Namespace).List(ctx, options)
-		}),
-		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-			options.FieldSelector = podFieldSelector.String()
-			return o.kubeClient.CoreV1().Pods(o.Namespace).Watch(ctx, options)
-		},
-	}
 	klog.V(2).InfoS("Waiting for Pod to have IP address assigned and scylla ContainerID set", "Pod", naming.ManualRef(o.Namespace, o.ServiceName))
 	var containerID string
-	var pod *corev1.Pod
-	_, err = watchtools.UntilWithSync(
+	pod, err := controllerhelpers.WaitForPodState(
 		ctx,
-		podLW,
-		&corev1.Pod{},
-		nil,
-		func(e watch.Event) (bool, error) {
-			switch t := e.Type; t {
-			case watch.Added, watch.Modified:
-				pod = e.Object.(*corev1.Pod)
-
-				if len(pod.Status.PodIP) == 0 {
-					klog.V(4).InfoS("PodIP is not yet set", "Pod", klog.KObj(pod))
-					return false, nil
-				}
-
-				containerID, err = controllerhelpers.GetScyllaContainerID(pod)
-				if err != nil {
-					klog.Warningf("can't get scylla container id in pod %q: %v", naming.ObjRef(pod), err)
-					return false, nil
-				}
-
-				if len(containerID) == 0 {
-					klog.V(4).InfoS("ContainerID is not yet set", "Pod", klog.KObj(pod))
-					return false, nil
-				}
-
-				return true, nil
-
-			case watch.Error:
-				return true, apierrors.FromObject(e.Object)
-
-			default:
-				return true, fmt.Errorf("unexpected event type %v", t)
+		o.kubeClient.CoreV1().Pods(o.Namespace),
+		o.ServiceName,
+		controllerhelpers.WaitForStateOptions{},
+		func(pod *corev1.Pod) (bool, error) {
+			if len(pod.Status.PodIP) == 0 {
+				klog.V(4).InfoS("PodIP is not yet set", "Pod", klog.KObj(pod))
+				return false, nil
 			}
+
+			containerID, err = controllerhelpers.GetScyllaContainerID(pod)
+			if err != nil {
+				klog.Warningf("can't get scylla container id in pod %q: %v", naming.ObjRef(pod), err)
+				return false, nil
+			}
+
+			if len(containerID) == 0 {
+				klog.V(4).InfoS("ContainerID is not yet set", "Pod", klog.KObj(pod))
+				return false, nil
+			}
+
+			return true, nil
 		},
 	)
 	if err != nil {
@@ -329,7 +282,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 		naming.OwnerUIDLabel:      string(pod.UID),
 		naming.ConfigMapTypeLabel: string(naming.NodeConfigDataConfigMapType),
 	}.AsSelector()
-	podLW = &cache.ListWatch{
+	podLW := &cache.ListWatch{
 		ListFunc: helpers.UncachedListFunc(func(options metav1.ListOptions) (runtime.Object, error) {
 			options.LabelSelector = labelSelector.String()
 			return o.kubeClient.CoreV1().ConfigMaps(pod.Namespace).List(ctx, options)

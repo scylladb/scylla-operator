@@ -21,24 +21,18 @@ import (
 	monitoringversionedclient "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/clientset/versioned"
 	monitoringinformers "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/informers/externalversions"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
-	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/leaderelection"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/runtime"
 	kutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/validation"
-	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
-	watchtools "k8s.io/client-go/tools/watch"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
 )
@@ -228,46 +222,24 @@ func (o *OperatorOptions) Complete(ctx context.Context, cmd *cobra.Command) erro
 		klog.V(2).InfoS("Waiting for Pod status to be updated", "Timeout", csWaitTimeout)
 		csCtx, csCtxCancel := context.WithTimeout(ctx, csWaitTimeout)
 		defer csCtxCancel()
-		podFieldSelector := fields.OneTermEqualSelector("metadata.name", o.OperatorPodName)
-		podLW := &cache.ListWatch{
-			ListFunc: helpers.UncachedListFunc(func(options metav1.ListOptions) (runtime.Object, error) {
-				options.FieldSelector = podFieldSelector.String()
-				return o.kubeClient.CoreV1().Pods(o.Namespace).List(ctx, options)
-			}),
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				options.FieldSelector = podFieldSelector.String()
-				return o.kubeClient.CoreV1().Pods(o.Namespace).Watch(ctx, options)
-			},
-		}
 		var cs *corev1.ContainerStatus
-		_, err = watchtools.UntilWithSync(
+		_, err = controllerhelpers.WaitForPodState(
 			csCtx,
-			podLW,
-			&corev1.Pod{},
-			nil,
-			func(e watch.Event) (bool, error) {
-				switch t := e.Type; t {
-				case watch.Added, watch.Modified:
-					pod = e.Object.(*corev1.Pod)
-
-					cs = controllerhelpers.FindContainerStatus(pod, soContainerName)
-					if cs == nil {
-						klog.V(4).InfoS(
-							"Container status is not yet present",
-							"Container", soContainerName,
-							"Pod", naming.ObjRef(pod),
-						)
-						return false, nil
-					}
-
-					return true, nil
-
-				case watch.Error:
-					return true, apierrors.FromObject(e.Object)
-
-				default:
-					return true, fmt.Errorf("unexpected event type %v", t)
+			o.kubeClient.CoreV1().Pods(o.Namespace),
+			o.OperatorPodName,
+			controllerhelpers.WaitForStateOptions{},
+			func(pod *corev1.Pod) (bool, error) {
+				cs = controllerhelpers.FindContainerStatus(pod, soContainerName)
+				if cs == nil {
+					klog.V(4).InfoS(
+						"Container status is not yet present",
+						"Container", soContainerName,
+						"Pod", naming.ObjRef(pod),
+					)
+					return false, nil
 				}
+
+				return true, nil
 			},
 		)
 		if err != nil {

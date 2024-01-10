@@ -8,6 +8,7 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
@@ -38,7 +39,7 @@ var _ = g.Describe("MultiDC cluster", func() {
 		framework.By("Waiting for the first ScyllaCluster to rollout (RV=%s)", sc1.ResourceVersion)
 		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc1)
 		defer waitCtx1Cancel()
-		sc1, err = utils.WaitForScyllaClusterState(waitCtx1, f1.ScyllaClient().ScyllaV1(), sc1.Namespace, sc1.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		sc1, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f1.ScyllaClient().ScyllaV1().ScyllaClusters(sc1.Namespace), sc1.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f1.KubeClient(), sc1)
@@ -65,7 +66,7 @@ var _ = g.Describe("MultiDC cluster", func() {
 		framework.By("Waiting for the second ScyllaCluster to rollout (RV=%s)", sc2.ResourceVersion)
 		waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc2)
 		defer waitCtx2Cancel()
-		sc2, err = utils.WaitForScyllaClusterState(waitCtx2, f2.ScyllaClient().ScyllaV1(), sc2.Namespace, sc2.Name, utils.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		sc2, err = controllerhelpers.WaitForScyllaClusterState(waitCtx2, f2.ScyllaClient().ScyllaV1().ScyllaClusters(sc2.Namespace), sc2.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyScyllaCluster(ctx, f2.KubeClient(), sc2)

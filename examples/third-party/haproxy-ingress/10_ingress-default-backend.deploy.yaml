@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: ingress-default-backend
-        image: gcr.io/google_containers/defaultbackend:1.0
+        image: docker.io/scylladb/scylla-operator:thirdparty-google_containers-defaultbackend-1.4@sha256:710e7b3ab708ed0fbd3bb4005893bdadf893983441f46c6680ad2ed6f04c261e
         ports:
         - containerPort: 8080
         resources:

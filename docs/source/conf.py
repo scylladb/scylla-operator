@@ -103,6 +103,7 @@ html_theme_options = {
     'github_repository': 'scylladb/scylla-operator',
     'github_issues_repository': 'scylladb/scylla-operator',
     "versions_unstable": UNSTABLE_VERSIONS,
+    "zendesk_tag": 'd8cgbpqrvmemn8ugficex8',
 }
 
 # If not None, a 'Last updated on:' timestamp is inserted at every page

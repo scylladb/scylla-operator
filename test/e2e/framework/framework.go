@@ -16,6 +16,7 @@ import (
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllaclientset "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -260,6 +261,20 @@ func (f *Framework) setupNamespace(ctx context.Context) {
 	ctxSa, ctxSaCancel := context.WithTimeout(ctx, serviceAccountWaitTimeout)
 	defer ctxSaCancel()
 	_, err = WaitForServiceAccount(ctxSa, f.KubeAdminClient().CoreV1(), ns.Name, "default")
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	// Waits for the configmap kube-root-ca.crt containing CA trust bundle so that pods do not have to retry mounting
+	// the config map because it creates noise and slows the startup.
+	By("Waiting for kube-root-ca.crt in namespace %q.", ns.Name)
+	_, err = controllerhelpers.WaitForConfigMapState(
+		ctx,
+		f.KubeClient().CoreV1().ConfigMaps(ns.Name),
+		"kube-root-ca.crt",
+		controllerhelpers.WaitForStateOptions{},
+		func(configMap *corev1.ConfigMap) (bool, error) {
+			return true, nil
+		},
+	)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 

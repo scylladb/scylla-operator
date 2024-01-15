@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -274,16 +273,11 @@ func (o *OperatorOptions) Complete(ctx context.Context, cmd *cobra.Command) erro
 			return fmt.Errorf("can't wait for pod %q to have container status for container %q: %w", naming.ObjRef(pod), soContainerName, err)
 		}
 
-		imageID := cs.ImageID
-
-		// containerd can't pull its own reference, so we need to strip the prefix.
-		imageID = strings.TrimPrefix(imageID, "docker-pullable://")
-
-		if len(imageID) == 0 {
+		if len(cs.ImageID) == 0 {
 			return fmt.Errorf("can't introspect its own image: containerStatus.imageID for container %q in pod %q is empty", soContainerName, naming.ObjRef(pod))
 		}
 
-		o.OperatorImage = imageID
+		o.OperatorImage = cs.ImageID
 
 		klog.V(2).InfoS("Successfully introspected its own image", "OperatorImage", o.OperatorImage)
 	}

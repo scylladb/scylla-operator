@@ -26,10 +26,8 @@ spec:
         image: docker.io/scylladb/scylla-operator:1.11
         imagePullPolicy: IfNotPresent
         env:
-        - name: SCYLLA_OPERATOR_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
+        - name: SCYLLA_OPERATOR_IMAGE
+          value: docker.io/scylladb/scylla-operator:1.11
         args:
         - operator
         - --loglevel=2

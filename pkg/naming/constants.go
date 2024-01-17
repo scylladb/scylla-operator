@@ -174,3 +174,7 @@ type NodeJobType string
 const (
 	JobTypeCleanup NodeJobType = "Cleanup"
 )
+
+const (
+	DevLoopDeviceDirectoryName = "loops"
+)

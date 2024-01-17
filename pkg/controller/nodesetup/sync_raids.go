@@ -4,8 +4,11 @@ package nodesetup
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -17,6 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/exec"
 )
 
 func (nsc *Controller) syncRAIDs(ctx context.Context, nc *scyllav1alpha1.NodeConfig) ([]metav1.Condition, error) {
@@ -27,9 +31,13 @@ func (nsc *Controller) syncRAIDs(ctx context.Context, nc *scyllav1alpha1.NodeCon
 		return progressingConditions, nil
 	}
 
-	blockDevices, err := blkutils.ListBlockDevices(ctx, nsc.executor)
+	blockDevices, progressingConditions, err := listBlockDevices(ctx, nsc.executor, nc, nsc.devtmpfsPath)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't list block devices: %w", err)
+	}
+
+	if len(progressingConditions) != 0 {
+		return progressingConditions, nil
 	}
 
 	udevControlEnabled := false
@@ -97,7 +105,7 @@ func (nsc *Controller) syncRAIDs(ctx context.Context, nc *scyllav1alpha1.NodeCon
 	return progressingConditions, nil
 }
 
-func filterMatchingRe(blockDevices []*blkutils.BlockDevice, nameRegexp, modelRegexp string) ([]string, error) {
+func filterMatchingRe(blockDevices []*blockDevice, nameRegexp, modelRegexp string) ([]string, error) {
 	var err error
 	var nameRe, modelRe *regexp.Regexp
 
@@ -116,17 +124,78 @@ func filterMatchingRe(blockDevices []*blkutils.BlockDevice, nameRegexp, modelReg
 	}
 
 	var devices []string
-	for _, blockDevice := range blockDevices {
-		if nameRe != nil && !nameRe.MatchString(blockDevice.Name) {
+	for _, bd := range blockDevices {
+		if nameRe != nil && !(nameRe.MatchString(bd.Name) || (nameRe.MatchString(bd.APIFullPath))) {
 			continue
 		}
 
-		if modelRe != nil && !modelRe.MatchString(blockDevice.Model) {
+		if modelRe != nil && !modelRe.MatchString(bd.Model) {
 			continue
 		}
 
-		devices = append(devices, blockDevice.Name)
+		devices = append(devices, bd.Name)
 	}
 
 	return devices, nil
+}
+
+type blockDevice struct {
+	blkutils.BlockDevice
+	// APIFullPath is a full path of a block devices that was created from API, ex. /dev/loops/my-loop-device.
+	APIFullPath string
+}
+
+// listBlockDevices returns a list of block devices on host together with names under which they were referenced on API object.
+func listBlockDevices(ctx context.Context, executor exec.Interface, nc *scyllav1alpha1.NodeConfig, devfsPath string) ([]*blockDevice, []metav1.Condition, error) {
+	bds, err := blkutils.ListBlockDevices(ctx, executor)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can't list block devices: %w", err)
+	}
+
+	var progressingConditions []metav1.Condition
+	blockDevices := make([]*blockDevice, 0, len(bds))
+
+	for _, bd := range bds {
+		var apiFullPath string
+		for _, lc := range nc.Spec.LocalDiskSetup.LoopDevices {
+			symlinkPath := getLoopDeviceSymlinkPath(devfsPath, lc.Name)
+
+			_, err := os.Stat(symlinkPath)
+			if err != nil {
+				if !errors.Is(err, fs.ErrNotExist) {
+					return nil, progressingConditions, fmt.Errorf("can't stat path %q: %w", symlinkPath, err)
+				}
+
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               raidControllerNodeProgressingConditionFormat,
+					Status:             metav1.ConditionTrue,
+					Reason:             "AwaitingLoopDevice",
+					Message:            fmt.Sprintf("Loop device %q not created yet", lc.Name),
+					ObservedGeneration: nc.Generation,
+				})
+				continue
+			}
+
+			resolvedDevice, err := filepath.EvalSymlinks(symlinkPath)
+			if err != nil {
+				return nil, progressingConditions, fmt.Errorf("can't evaluate symlink %q: %w", symlinkPath, err)
+			}
+
+			if resolvedDevice == bd.Name {
+				apiFullPath = symlinkPath
+			}
+		}
+
+		blockDevices = append(blockDevices, &blockDevice{
+			BlockDevice: blkutils.BlockDevice{
+				Name:     bd.Name,
+				Model:    bd.Model,
+				FSType:   bd.FSType,
+				PartUUID: bd.PartUUID,
+			},
+			APIFullPath: apiFullPath,
+		})
+	}
+
+	return blockDevices, progressingConditions, nil
 }

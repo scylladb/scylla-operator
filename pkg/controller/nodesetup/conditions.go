@@ -11,4 +11,7 @@ const (
 
 	mountControllerNodeProgressingConditionFormat = "MountControllerNode%sProgressing"
 	mountControllerNodeDegradedConditionFormat    = "MountControllerNode%sDegraded"
+
+	loopDeviceControllerNodeProgressingConditionFormat = "LoopDeviceControllerNode%sProgressing"
+	loopDeviceControllerNodeDegradedConditionFormat    = "LoopDeviceControllerNode%sDegraded"
 )

@@ -21,7 +21,7 @@ func (nsc *Controller) syncMounts(ctx context.Context, nc *scyllav1alpha1.NodeCo
 	var mountUnits []*systemd.NamedUnit
 	if nc.Spec.LocalDiskSetup != nil {
 		for _, mc := range nc.Spec.LocalDiskSetup.Mounts {
-			device, err := disks.GetRAIDDeviceWithName(ctx, nsc.executor, nsc.devtmpfsPath, mc.Device)
+			device, err := disks.GetDeviceWithName(ctx, nsc.executor, nsc.devtmpfsPath, mc.Device)
 			if err != nil {
 				errs = append(errs, fmt.Errorf("can't resolve RAID device %q: %w", mc.Device, err))
 				continue

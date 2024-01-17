@@ -523,7 +523,7 @@ func TestGetRAIDDeviceWithName(t *testing.T) {
 			expectedRaidDevice := tc.expectedRaidDevice(devtmpfsPath)
 
 			raidName := tc.raidName(devtmpfsPath)
-			raidDevice, err := GetRAIDDeviceWithName(ctx, executor, devtmpfsPath, raidName)
+			raidDevice, err := GetDeviceWithName(ctx, executor, devtmpfsPath, raidName)
 			if !reflect.DeepEqual(err, tc.expectedErr) {
 				t.Fatalf("expected %v error, got %v", tc.expectedErr, err)
 			}

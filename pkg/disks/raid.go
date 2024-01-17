@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	oexec "github.com/scylladb/scylla-operator/pkg/util/exec"
 	"k8s.io/apimachinery/pkg/api/equality"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -26,7 +27,7 @@ var (
 )
 
 func MakeRAID0(ctx context.Context, executor exec.Interface, sysfsPath, devtmpfsPath, name string, devices []string, udevControlEnabled bool) (changed bool, err error) {
-	raidDevice, err := GetRAIDDeviceWithName(ctx, executor, devtmpfsPath, name)
+	raidDevice, err := GetDeviceWithName(ctx, executor, devtmpfsPath, name)
 	if err != nil && !errors.Is(err, ErrRAIDNotFound) {
 		return false, fmt.Errorf("can't get raid device with name %q: %w", name, err)
 	}
@@ -150,20 +151,27 @@ func MakeRAID0(ctx context.Context, executor exec.Interface, sysfsPath, devtmpfs
 	return true, nil
 }
 
-// GetRAIDDeviceWithName finds a device path to the raid array with given name.
+// GetDeviceWithName finds a device path to the raid array with given name.
 // Because mdadm - tool used for array creation - doesn't always use the name we provide,
 // we need to find the device using several heuristics. Different versions of mdadm behaves differently, so there
 // are multiple steps of it.
-// 1. Try provided name, it could be direct reference to a device - if it exists, return it.
+// 1. Try provided name, it could be a reference to a device - if it exists, resolve and return it.
 // 2. Try expected name and location /dev/md/name - if file exists, that's the device.
-// 3. List /dev/disk/by-id/md-name-* files, if name we search for is a suffix, then the symlink points to the raid device.
-// 4. Parse mdadm report and find the device by checking name stored in metadata.
+// 3. Try expected name and location /dev/loops/name - if file exists, resolve symlink and return the device it points to.
+// 4. List /dev/disk/by-id/md-name-* files, if name we search for is a suffix, then the symlink points to the raid device.
+// 5. Parse mdadm report and find the device by checking name stored in metadata.
 // It supports passing either a name of raid device, or full /dev/md/name pattern.
-func GetRAIDDeviceWithName(ctx context.Context, executor exec.Interface, devtmpfsPath, name string) (string, error) {
+func GetDeviceWithName(ctx context.Context, executor exec.Interface, devtmpfsPath, name string) (string, error) {
 	// Try directly the name, it could be a reference to existing device
 	_, err := os.Stat(name)
 	if err == nil {
-		return name, nil
+		// It may be a symlink to real device, so resolve it
+		resolvedDevice, err := filepath.EvalSymlinks(name)
+		if err != nil {
+			return "", fmt.Errorf("can't evaluate symlink %q: %w", name, err)
+		}
+
+		return resolvedDevice, nil
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		return "", fmt.Errorf("can't stat %q: %w", name, err)
 	}
@@ -176,6 +184,20 @@ func GetRAIDDeviceWithName(ctx context.Context, executor exec.Interface, devtmpf
 	}
 	if err == nil {
 		return expectedDevicePath, nil
+	}
+
+	// Try expected name in the /dev/loops
+	expectedDevicePath = path.Join(devtmpfsPath, naming.DevLoopDeviceDirectoryName, name)
+	_, err = os.Stat(expectedDevicePath)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return "", fmt.Errorf("can't stat %q: %w", expectedDevicePath, err)
+	}
+	if err == nil {
+		resolvedDevice, err := filepath.EvalSymlinks(expectedDevicePath)
+		if err != nil {
+			return "", fmt.Errorf("can't evaluate symlink %q: %w", expectedDevicePath, err)
+		}
+		return resolvedDevice, nil
 	}
 
 	// Strip /dev/md/ prefix to get just the name under which raids are created.

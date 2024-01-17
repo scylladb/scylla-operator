@@ -4,6 +4,8 @@ package validation
 
 import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -89,6 +91,22 @@ func ValidateNodeConfigUpdate(new, old *scyllav1alpha1.NodeConfig) field.ErrorLi
 
 func ValidateNodeConfigSpecUpdate(new, old *scyllav1alpha1.NodeConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
+
+	oldLoopDevicesSizes := make(map[string]resource.Quantity)
+	if old.Spec.LocalDiskSetup != nil {
+		for _, ldc := range old.Spec.LocalDiskSetup.LoopDevices {
+			oldLoopDevicesSizes[ldc.Name] = ldc.Size
+		}
+	}
+
+	if new.Spec.LocalDiskSetup != nil {
+		for i, ld := range new.Spec.LocalDiskSetup.LoopDevices {
+			oldSize, ok := oldLoopDevicesSizes[ld.Name]
+			if ok && !ld.Size.Equal(oldSize) {
+				allErrs = append(allErrs, apimachineryvalidation.ValidateImmutableField(ld.Size.String(), oldSize.String(), fldPath.Child("localDiskSetup", "loopDevices").Index(i).Child("size"))...)
+			}
+		}
+	}
 
 	return allErrs
 }

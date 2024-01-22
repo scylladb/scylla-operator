@@ -1,6 +1,7 @@
 package genericclioptions
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,6 +14,12 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+const (
+	defaultKubeconfig = ""
+	defaultQPS        = 50
+	defaultBurst      = 75
+)
+
 // IOStreams is a structure containing all standard streams.
 type IOStreams struct {
 	// In think, os.Stdin
@@ -21,6 +28,67 @@ type IOStreams struct {
 	Out io.Writer
 	// ErrOut think, os.Stderr
 	ErrOut io.Writer
+}
+
+type ClientConfigSet struct {
+	Kubeconfigs   []string
+	QPS           float32
+	Burst         int
+	UserAgentName string
+	ClientConfigs []ClientConfig
+}
+
+func NewClientConfigSet(userAgentName string) ClientConfigSet {
+	return ClientConfigSet{
+		Kubeconfigs:   []string{defaultKubeconfig},
+		QPS:           defaultQPS,
+		Burst:         defaultBurst,
+		UserAgentName: userAgentName,
+	}
+}
+
+func (ccs *ClientConfigSet) AddFlags(cmd *cobra.Command) {
+	cmd.PersistentFlags().StringArrayVarP(&ccs.Kubeconfigs, "kubeconfig", "", ccs.Kubeconfigs, "Path to the kubeconfig file(s).")
+	cmd.PersistentFlags().Float32VarP(&ccs.QPS, "qps", "", ccs.QPS, "Maximum allowed number of queries per second.")
+	cmd.PersistentFlags().IntVarP(&ccs.Burst, "burst", "", ccs.Burst, "Allows extra queries to accumulate when a client is exceeding its rate.")
+}
+
+func (ccs *ClientConfigSet) Validate() error {
+	return nil
+}
+
+func (ccs *ClientConfigSet) Complete() error {
+	clientConfigs := make([]ClientConfig, 0, len(ccs.Kubeconfigs))
+
+	var errs []error
+	for _, kubeconfig := range ccs.Kubeconfigs {
+		cc := NewClientConfig(ccs.UserAgentName)
+		cc.Kubeconfig = kubeconfig
+		cc.QPS = ccs.QPS
+		cc.Burst = ccs.Burst
+
+		err := cc.Validate()
+		if err != nil {
+			errs = append(errs, fmt.Errorf("can't validate client config for kubeconfig %q: %w", kubeconfig, err))
+			continue
+		}
+
+		err = cc.Complete()
+		if err != nil {
+			errs = append(errs, fmt.Errorf("can't complete client config for kubeconfig %q: %w", kubeconfig, err))
+			continue
+		}
+
+		clientConfigs = append(clientConfigs, cc)
+	}
+	err := errors.Join(errs...)
+	if err != nil {
+		return err
+	}
+
+	ccs.ClientConfigs = clientConfigs
+
+	return nil
 }
 
 type ClientConfig struct {
@@ -45,9 +113,9 @@ func MakeVersionedUserAgent(baseName string) string {
 
 func NewClientConfig(userAgentName string) ClientConfig {
 	return ClientConfig{
-		Kubeconfig:    "",
-		QPS:           50,
-		Burst:         75,
+		Kubeconfig:    defaultKubeconfig,
+		QPS:           defaultQPS,
+		Burst:         defaultBurst,
 		UserAgentName: userAgentName,
 		RestConfig:    nil,
 		ProtoConfig:   nil,

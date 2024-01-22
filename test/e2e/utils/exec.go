@@ -29,7 +29,8 @@ type ExecOptions struct {
 // returning stdout, stderr and error. `options` allowed for
 // additional parameters to be passed.
 func ExecWithOptions(client corev1client.CoreV1Interface, options ExecOptions) (string, string, error) {
-	config := framework.TestContext.RestConfig
+	// Hardcode to first item in the slice for backwards compatibility.
+	config := framework.TestContext.RestConfigs[0]
 
 	const tty = false
 

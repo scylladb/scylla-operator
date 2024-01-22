@@ -28,6 +28,7 @@ import (
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/client-go/rest"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -56,7 +57,11 @@ var suites = ginkgotest.TestSuites{
 		Description: templates.LongDesc(`
 		Tests that ensure an Scylla Operator is working properly.
 		`),
-		LabelFilter:        fmt.Sprintf("!%s", framework.SerialLabelName),
+		LabelFilter: fmt.Sprintf(
+			"!%s && !%s",
+			framework.SerialLabelName,
+			framework.MultiDatacenterLabelName,
+		),
 		DefaultParallelism: 42,
 	},
 	{
@@ -67,11 +72,19 @@ var suites = ginkgotest.TestSuites{
 		LabelFilter:        fmt.Sprintf("%s", framework.SerialLabelName),
 		DefaultParallelism: 1,
 	},
+	{
+		Name: "scylla-operator/multi-datacenter-conformance/parallel",
+		Description: templates.LongDesc(`
+		Tests that ensure Scylla Operator is working properly in multi-datacenter infrastructure.
+		`),
+		LabelFilter:        fmt.Sprintf("%s", framework.MultiDatacenterLabelName),
+		DefaultParallelism: 42,
+	},
 }
 
 type RunOptions struct {
 	genericclioptions.IOStreams
-	genericclioptions.ClientConfig
+	genericclioptions.ClientConfigSet
 	TestFrameworkOptions
 
 	Timeout               time.Duration
@@ -95,7 +108,7 @@ type RunOptions struct {
 
 func NewRunOptions(streams genericclioptions.IOStreams) *RunOptions {
 	return &RunOptions{
-		ClientConfig:         genericclioptions.NewClientConfig("scylla-operator-e2e"),
+		ClientConfigSet:      genericclioptions.NewClientConfigSet("scylla-operator-e2e"),
 		TestFrameworkOptions: NewTestFrameworkOptions(),
 
 		Timeout:               24 * time.Hour,
@@ -148,7 +161,7 @@ func NewRunCommand(streams genericclioptions.IOStreams) *cobra.Command {
 		SilenceUsage:  true,
 	}
 
-	o.ClientConfig.AddFlags(cmd)
+	o.ClientConfigSet.AddFlags(cmd)
 	o.TestFrameworkOptions.AddFlags(cmd)
 
 	cmd.Flags().DurationVarP(&o.Timeout, "timeout", "", o.Timeout, "If the overall suite(s) duration exceed this value, tests will be terminated.")
@@ -175,7 +188,7 @@ func NewRunCommand(streams genericclioptions.IOStreams) *cobra.Command {
 func (o *RunOptions) Validate(args []string) error {
 	var errs []error
 
-	errs = append(errs, o.ClientConfig.Validate())
+	errs = append(errs, o.ClientConfigSet.Validate())
 	errs = append(errs, o.TestFrameworkOptions.Validate())
 
 	if o.FlakeAttempts < 0 {
@@ -220,7 +233,7 @@ func (o *RunOptions) Validate(args []string) error {
 }
 
 func (o *RunOptions) Complete(args []string) error {
-	err := o.ClientConfig.Complete()
+	err := o.ClientConfigSet.Complete()
 	if err != nil {
 		return err
 	}
@@ -258,7 +271,9 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 	const suite = "Scylla operator E2E tests"
 
 	framework.TestContext = &framework.TestContextType{
-		RestConfig:            o.RestConfig,
+		RestConfigs: slices.ConvertSlice(o.ClientConfigs, func(cc genericclioptions.ClientConfig) *rest.Config {
+			return cc.RestConfig
+		}),
 		ArtifactsDir:          o.ArtifactsDir,
 		DeleteTestingNSPolicy: o.DeleteTestingNSPolicy,
 		ScyllaClusterOptions:  o.scyllaClusterOptions,

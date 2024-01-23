@@ -187,8 +187,11 @@ kubectl -n e2e wait --for=condition=Ready pod/e2e
 ) &
 e2e_bg_pid=$!
 
-kubectl -n e2e logs -f pod/e2e
-exit_code=$( kubectl -n e2e get pods/e2e --output='jsonpath={.status.containerStatuses[0].state.terminated.exitCode}' )
+exit_code=""
+while [[ "${exit_code}" == "" ]]; do
+  kubectl -n e2e logs -f pod/e2e
+  exit_code="$( kubectl -n e2e get pods/e2e --output='jsonpath={.status.containerStatuses[0].state.terminated.exitCode}' )"
+done
 kubectl -n e2e delete pod/e2e --wait=false
 
 wait "${e2e_bg_pid}" || ( echo "Collecting e2e artifacts failed" && exit 2 )

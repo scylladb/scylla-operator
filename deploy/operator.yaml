@@ -345,6 +345,26 @@ spec:
                             type: string
                         type: object
                       type: array
+                    loopDevices:
+                      description: loops is a list of loop device configurations.
+                      items:
+                        description: LoopDeviceConfiguration specifies loop device configuration options.
+                        properties:
+                          imagePath:
+                            description: imagePath specifies path on host where backing image file for loop device should be located.
+                            type: string
+                          name:
+                            description: name specifies the name of the symlink that will point to actual loop device, created under `/dev/loops/`.
+                            type: string
+                          size:
+                            anyOf:
+                              - type: integer
+                              - type: string
+                            description: size specifies the size of the loop device.
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                        type: object
+                      type: array
                     mounts:
                       description: mounts is a list of mount configuration.
                       items:

@@ -37,7 +37,7 @@ func NewDetailedSingleRackCluster(name, namespace, repo, version, dc, rack strin
 					{
 						Name:    rack,
 						Members: members,
-						Storage: scyllav1.StorageSpec{
+						Storage: scyllav1.Storage{
 							Capacity: "5Gi",
 						},
 						Resources: corev1.ResourceRequirements{
@@ -91,7 +91,7 @@ func NewDetailedMultiRackCluster(name, namespace, repo, version, dc string, memb
 		c.Spec.Datacenter.Racks = append(c.Spec.Datacenter.Racks, scyllav1.RackSpec{
 			Name:    rack,
 			Members: m,
-			Storage: scyllav1.StorageSpec{
+			Storage: scyllav1.Storage{
 				Capacity: "5Gi",
 			},
 		})

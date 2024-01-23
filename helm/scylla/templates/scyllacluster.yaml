@@ -4,6 +4,10 @@ metadata:
   name: {{ include "scylla.fullname" . }}
   namespace: {{ .Release.Namespace }}
 spec:
+  {{- with .Values.podMetadata }}
+  podMetadata:
+    {{- . | toYaml | nindent 4 }}
+  {{- end }}
   version: {{ .Values.scyllaImage.tag }}
   agentVersion: {{ .Values.agentImage.tag }}
   {{- if .Values.scyllaImage.repository }}
@@ -74,10 +78,7 @@ spec:
       {{- end }}
       members: {{ .members }}
       storage:
-        {{- if .storage.storageClassName }}
-        storageClassName: {{ .storage.storageClassName }}
-        {{- end }}
-        capacity: {{ .storage.capacity }}
+        {{- .storage | toYaml | nindent 8 }}
       resources:
         {{- toYaml .resources | nindent 8 }}
       {{- if .agentResources }}

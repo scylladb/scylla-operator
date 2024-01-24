@@ -3,35 +3,44 @@
 package manager
 
 import (
+	"math"
+	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/go-openapi/strfmt"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
+	"github.com/scylladb/scylla-manager/v3/pkg/managerclient"
+	"github.com/scylladb/scylla-manager/v3/pkg/util/timeutc"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/util/duration"
 )
 
+const (
+	nowSafety = 30 * time.Second
+)
+
 type RepairTask v1.RepairTaskStatus
 
-func (r RepairTask) ToManager() (*mermaidclient.Task, error) {
-	t := &mermaidclient.Task{
+func (r RepairTask) ToManager() (*managerclient.Task, error) {
+	t := &managerclient.Task{
 		ID:         r.ID,
 		Type:       "repair",
 		Enabled:    true,
-		Schedule:   new(mermaidclient.Schedule),
+		Schedule:   new(managerclient.Schedule),
 		Properties: make(map[string]interface{}),
 	}
 
 	props := t.Properties.(map[string]interface{})
 
-	startDate, err := mermaidclient.ParseStartDate(r.StartDate)
+	startDate, err := parseStartDate(r.StartDate)
 	if err != nil {
 		return nil, errors.Wrap(err, "parse start date")
 	}
-	t.Schedule.StartDate = startDate
+	t.Schedule.StartDate = &startDate
 
 	if _, err := duration.ParseDuration(r.Interval); err != nil {
 		return nil, errors.Wrap(err, "parse interval")
@@ -59,7 +68,7 @@ func (r RepairTask) ToManager() (*mermaidclient.Task, error) {
 	}
 	props["intensity"] = intensity
 	props["parallel"] = r.Parallel
-	threshold, err := mermaidclient.ParseByteCount(r.SmallTableThreshold)
+	threshold, err := parseByteCount(r.SmallTableThreshold)
 	if err != nil {
 		return nil, errors.Wrap(err, "parse small table threshold")
 	}
@@ -71,7 +80,7 @@ func (r RepairTask) ToManager() (*mermaidclient.Task, error) {
 	return t, nil
 }
 
-func (r *RepairTask) FromManager(t *mermaidclient.ExtendedTask) error {
+func (r *RepairTask) FromManager(t *managerclient.TaskListItem) error {
 	r.ID = t.ID
 	r.Name = t.Name
 	r.Interval = t.Schedule.Interval
@@ -88,22 +97,22 @@ func (r *RepairTask) FromManager(t *mermaidclient.ExtendedTask) error {
 
 type BackupTask v1.BackupTaskStatus
 
-func (b BackupTask) ToManager() (*mermaidclient.Task, error) {
-	t := &mermaidclient.Task{
+func (b BackupTask) ToManager() (*managerclient.Task, error) {
+	t := &managerclient.Task{
 		ID:         b.ID,
 		Type:       "backup",
 		Enabled:    true,
-		Schedule:   new(mermaidclient.Schedule),
+		Schedule:   new(managerclient.Schedule),
 		Properties: make(map[string]interface{}),
 	}
 
 	props := t.Properties.(map[string]interface{})
 
-	startDate, err := mermaidclient.ParseStartDate(b.StartDate)
+	startDate, err := parseStartDate(b.StartDate)
 	if err != nil {
 		return nil, errors.Wrap(err, "parse start date")
 	}
-	t.Schedule.StartDate = startDate
+	t.Schedule.StartDate = &startDate
 
 	if _, err := duration.ParseDuration(b.Interval); err != nil {
 		return nil, errors.Wrap(err, "parse interval")
@@ -138,7 +147,7 @@ func (b BackupTask) ToManager() (*mermaidclient.Task, error) {
 	return t, nil
 }
 
-func (b *BackupTask) FromManager(t *mermaidclient.ExtendedTask) error {
+func (b *BackupTask) FromManager(t *managerclient.TaskListItem) error {
 	b.ID = t.ID
 	b.Name = t.Name
 	b.Interval = t.Schedule.Interval
@@ -160,4 +169,61 @@ func unescapeFilters(strs []string) []string {
 		strs[i] = strings.ReplaceAll(strs[i], "\\", "")
 	}
 	return strs
+}
+
+// parseStartDate parses the supplied string as a strfmt.DateTime.
+func parseStartDate(value string) (strfmt.DateTime, error) {
+	now := timeutc.Now()
+
+	if value == "now" {
+		return strfmt.DateTime(now.Add(nowSafety)), nil
+	}
+
+	if strings.HasPrefix(value, "now") {
+		d, err := duration.ParseDuration(value[3:])
+		if err != nil {
+			return strfmt.DateTime{}, err
+		}
+		return strfmt.DateTime(now.Add(d.Duration())), nil
+	}
+
+	// No more heuristics, assume the user passed a date formatted string
+	t, err := timeutc.Parse(time.RFC3339, value)
+	if err != nil {
+		return strfmt.DateTime(t), err
+	}
+	return strfmt.DateTime(t), nil
+}
+
+var (
+	byteCountRe          = regexp.MustCompile(`([0-9]+(?:\.[0-9]+)?)(B|[KMGTPE]iB)`)
+	byteCountReValueIdx  = 1
+	byteCountReSuffixIdx = 2
+)
+
+// parseByteCount returns byte count parsed from input string.
+// This is opposite of StringByteCount function.
+func parseByteCount(s string) (int64, error) {
+	const unit = 1024
+	var exps = []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"}
+	parts := byteCountRe.FindStringSubmatch(s)
+	if len(parts) != 3 {
+		return 0, errors.Errorf("invalid byte size string: %q; it must be real number with unit suffix: %s", s, strings.Join(exps, ","))
+	}
+
+	v, err := strconv.ParseFloat(parts[byteCountReValueIdx], 64)
+	if err != nil {
+		return 0, errors.Wrapf(err, "parsing value for byte size string: %s", s)
+	}
+
+	pow := 0
+	for i, e := range exps {
+		if e == parts[byteCountReSuffixIdx] {
+			pow = i
+		}
+	}
+
+	mul := math.Pow(unit, float64(pow))
+
+	return int64(v * mul), nil
 }

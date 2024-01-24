@@ -10,14 +10,15 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-set/strset"
+	"github.com/scylladb/scylla-manager/v3/pkg/managerclient"
+	"github.com/scylladb/scylla-manager/v3/pkg/util/uuid"
+	"github.com/scylladb/scylla-manager/v3/swagger/gen/scylla-manager/models"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	"github.com/scylladb/scylla-operator/pkg/util/uuid"
 )
 
 type state struct {
-	Clusters    []*mermaidclient.Cluster
+	Clusters    []*managerclient.Cluster
 	RepairTasks []*RepairTask
 	BackupTasks []*BackupTask
 }
@@ -40,7 +41,7 @@ func runSync(ctx context.Context, cluster *scyllav1.ScyllaCluster, authToken str
 				// * username/password are not part of Cluster CRD
 				if c.AuthToken != authToken {
 					actions = append(actions, &updateClusterAction{
-						cluster: &mermaidclient.Cluster{
+						cluster: &managerclient.Cluster{
 							ID:   c.ID,
 							Name: naming.ManagerClusterName(cluster),
 							Host: naming.CrossNamespaceServiceNameForCluster(cluster),
@@ -57,7 +58,7 @@ func runSync(ctx context.Context, cluster *scyllav1.ScyllaCluster, authToken str
 	}
 	if !found {
 		actions = append(actions, &addClusterAction{
-			cluster: &mermaidclient.Cluster{
+			cluster: &managerclient.Cluster{
 				Host:      naming.CrossNamespaceServiceNameForCluster(cluster),
 				Name:      naming.ManagerClusterName(cluster),
 				AuthToken: authToken,
@@ -303,15 +304,15 @@ func (s stateCache) taskID(taskName string) string {
 }
 
 type action interface {
-	Execute(ctx context.Context, client *mermaidclient.Client, status *scyllav1.ScyllaClusterStatus) error
+	Execute(ctx context.Context, client *managerclient.Client, status *scyllav1.ScyllaClusterStatus) error
 }
 
 type addClusterAction struct {
-	cluster   *mermaidclient.Cluster
+	cluster   *managerclient.Cluster
 	clusterID string
 }
 
-func (a *addClusterAction) Execute(ctx context.Context, client *mermaidclient.Client, status *scyllav1.ScyllaClusterStatus) error {
+func (a *addClusterAction) Execute(ctx context.Context, client *managerclient.Client, status *scyllav1.ScyllaClusterStatus) error {
 	id, err := client.CreateCluster(ctx, a.cluster)
 	if err != nil {
 		return err
@@ -327,10 +328,10 @@ func (a addClusterAction) String() string {
 }
 
 type updateClusterAction struct {
-	cluster *mermaidclient.Cluster
+	cluster *managerclient.Cluster
 }
 
-func (a *updateClusterAction) Execute(ctx context.Context, client *mermaidclient.Client, _ *scyllav1.ScyllaClusterStatus) error {
+func (a *updateClusterAction) Execute(ctx context.Context, client *managerclient.Client, _ *scyllav1.ScyllaClusterStatus) error {
 	return client.UpdateCluster(ctx, a.cluster)
 }
 
@@ -342,7 +343,7 @@ type deleteClusterAction struct {
 	clusterID string
 }
 
-func (a *deleteClusterAction) Execute(ctx context.Context, client *mermaidclient.Client, status *scyllav1.ScyllaClusterStatus) error {
+func (a *deleteClusterAction) Execute(ctx context.Context, client *managerclient.Client, status *scyllav1.ScyllaClusterStatus) error {
 	return client.DeleteCluster(ctx, a.clusterID)
 }
 
@@ -356,14 +357,14 @@ type deleteTaskAction struct {
 	taskID    string
 }
 
-func (a *deleteTaskAction) Execute(ctx context.Context, client *mermaidclient.Client, status *scyllav1.ScyllaClusterStatus) error {
+func (a *deleteTaskAction) Execute(ctx context.Context, client *managerclient.Client, status *scyllav1.ScyllaClusterStatus) error {
 	err := client.DeleteTask(ctx, a.clusterID, a.taskType, uuid.MustParse(a.taskID))
 
 	if a.taskType == "repair" {
 		filteredStatuses := status.Repairs[:0]
 		for i, repairTaskStatus := range status.Repairs {
 			if err != nil && repairTaskStatus.ID == a.taskID {
-				status.Repairs[i].Error = mermaidclient.MessageOf(err)
+				status.Repairs[i].Error = messageOf(err)
 			}
 			if err != nil || repairTaskStatus.ID != a.taskID {
 				filteredStatuses = append(filteredStatuses, repairTaskStatus)
@@ -375,7 +376,7 @@ func (a *deleteTaskAction) Execute(ctx context.Context, client *mermaidclient.Cl
 		filteredStatuses := status.Backups[:0]
 		for i, backupTaskStatus := range status.Backups {
 			if err != nil && backupTaskStatus.ID == a.taskID {
-				status.Backups[i].Error = mermaidclient.MessageOf(err)
+				status.Backups[i].Error = messageOf(err)
 			}
 			if err != nil || backupTaskStatus.ID != a.taskID {
 				filteredStatuses = append(filteredStatuses, backupTaskStatus)
@@ -393,7 +394,7 @@ func (a deleteTaskAction) String() string {
 
 type addTaskAction struct {
 	clusterID string
-	task      *mermaidclient.Task
+	task      *managerclient.Task
 	taskSpec  interface{}
 }
 
@@ -401,7 +402,7 @@ func (a addTaskAction) String() string {
 	return fmt.Sprintf("add task %+v", a.task)
 }
 
-func (a *addTaskAction) Execute(ctx context.Context, client *mermaidclient.Client, status *scyllav1.ScyllaClusterStatus) error {
+func (a *addTaskAction) Execute(ctx context.Context, client *managerclient.Client, status *scyllav1.ScyllaClusterStatus) error {
 	id, err := client.CreateTask(ctx, a.clusterID, a.task)
 
 	if a.task.Type == "repair" {
@@ -410,7 +411,7 @@ func (a *addTaskAction) Execute(ctx context.Context, client *mermaidclient.Clien
 			ID:             id.String(),
 		}
 		if err != nil {
-			rt.Error = mermaidclient.MessageOf(err)
+			rt.Error = messageOf(err)
 		}
 
 		found := false
@@ -431,7 +432,7 @@ func (a *addTaskAction) Execute(ctx context.Context, client *mermaidclient.Clien
 			ID:             id.String(),
 		}
 		if err != nil {
-			bt.Error = mermaidclient.MessageOf(err)
+			bt.Error = messageOf(err)
 		}
 
 		found := false
@@ -452,7 +453,7 @@ func (a *addTaskAction) Execute(ctx context.Context, client *mermaidclient.Clien
 
 type updateTaskAction struct {
 	clusterID string
-	task      *mermaidclient.Task
+	task      *managerclient.Task
 	taskSpec  interface{}
 }
 
@@ -460,7 +461,7 @@ func (a updateTaskAction) String() string {
 	return fmt.Sprintf("update task %+v", a.task)
 }
 
-func (a *updateTaskAction) Execute(ctx context.Context, client *mermaidclient.Client, status *scyllav1.ScyllaClusterStatus) error {
+func (a *updateTaskAction) Execute(ctx context.Context, client *managerclient.Client, status *scyllav1.ScyllaClusterStatus) error {
 	err := client.UpdateTask(ctx, a.clusterID, a.task)
 
 	if a.task.Type == "repair" {
@@ -468,7 +469,7 @@ func (a *updateTaskAction) Execute(ctx context.Context, client *mermaidclient.Cl
 			if a.task.ID == repairStatus.ID {
 				status.Repairs[i].RepairTaskSpec = a.taskSpec.(scyllav1.RepairTaskSpec)
 				if err != nil {
-					status.Repairs[i].Error = mermaidclient.MessageOf(err)
+					status.Repairs[i].Error = messageOf(err)
 				}
 			}
 			break
@@ -479,7 +480,7 @@ func (a *updateTaskAction) Execute(ctx context.Context, client *mermaidclient.Cl
 			if a.task.ID == backupStatus.ID {
 				status.Backups[i].BackupTaskSpec = a.taskSpec.(scyllav1.BackupTaskSpec)
 				if err != nil {
-					status.Backups[i].Error = mermaidclient.MessageOf(err)
+					status.Backups[i].Error = messageOf(err)
 				}
 			}
 			break
@@ -487,4 +488,16 @@ func (a *updateTaskAction) Execute(ctx context.Context, client *mermaidclient.Cl
 	}
 
 	return err
+}
+
+// messageOf returns error message embedded in returned error.
+func messageOf(err error) string {
+	err = errors.Cause(err)
+	switch v := err.(type) {
+	case interface {
+		GetPayload() *models.ErrorResponse
+	}:
+		return v.GetPayload().Message
+	}
+	return err.Error()
 }

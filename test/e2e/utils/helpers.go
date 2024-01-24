@@ -8,7 +8,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
 	"reflect"
 	"sort"
@@ -16,13 +15,13 @@ import (
 	"time"
 
 	o "github.com/onsi/gomega"
+	"github.com/scylladb/scylla-manager/v3/pkg/managerclient"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
-	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
@@ -514,7 +513,7 @@ func GetNodesPodIPs(ctx context.Context, client corev1client.CoreV1Interface, sc
 }
 
 // GetManagerClient gets managerClient using IP address. E2E tests shouldn't rely on InCluster DNS.
-func GetManagerClient(ctx context.Context, client corev1client.CoreV1Interface) (*mermaidclient.Client, error) {
+func GetManagerClient(ctx context.Context, client corev1client.CoreV1Interface) (*managerclient.Client, error) {
 	managerService, err := client.Services(naming.ScyllaManagerNamespace).Get(ctx, naming.ScyllaManagerServiceName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
@@ -529,7 +528,7 @@ func GetManagerClient(ctx context.Context, client corev1client.CoreV1Interface) 
 		Path:   "/api/v1",
 	}).String()
 
-	manager, err := mermaidclient.NewClient(apiAddress, &http.Client{})
+	manager, err := managerclient.NewClient(apiAddress)
 	if err != nil {
 		return nil, fmt.Errorf("create manager client, %w", err)
 	}

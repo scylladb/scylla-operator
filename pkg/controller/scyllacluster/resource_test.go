@@ -909,7 +909,13 @@ func TestStatefulSetForRack(t *testing.T) {
 									PreStop: &corev1.LifecycleHandler{
 										Exec: &corev1.ExecAction{
 											Command: []string{
-												"/bin/sh", "-c", "PID=$(pgrep -x scylla);supervisorctl stop scylla; while kill -0 $PID; do sleep 1; done;",
+												"/usr/bin/bash",
+												"-euExo",
+												"pipefail",
+												"-O",
+												"inherit_errexit",
+												"-c",
+												"nodetool drain &; sleep 15 &; wait",
 											},
 										},
 									},

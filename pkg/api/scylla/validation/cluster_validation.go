@@ -110,6 +110,10 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 		allErrs = append(allErrs, ValidateExposeOptions(spec.ExposeOptions, fldPath.Child("exposeOptions"))...)
 	}
 
+	if spec.MinTerminationGracePeriodSeconds < 0 {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("minTerminationGracePeriodSeconds"), spec.MinTerminationGracePeriodSeconds, "must be non-negative integer"))
+	}
+
 	return allErrs
 }
 

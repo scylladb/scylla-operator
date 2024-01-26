@@ -179,3 +179,35 @@ func ApplyNamespace(
 		options,
 	)
 }
+
+func ApplyEndpointsWithControl(
+	ctx context.Context,
+	control ApplyControlInterface[*corev1.Endpoints],
+	recorder record.EventRecorder,
+	required *corev1.Endpoints,
+	options ApplyOptions,
+) (*corev1.Endpoints, bool, error) {
+	return ApplyGeneric[*corev1.Endpoints](ctx, control, recorder, required, options)
+}
+
+func ApplyEndpoints(
+	ctx context.Context,
+	client corev1client.EndpointsGetter,
+	lister corev1listers.EndpointsLister,
+	recorder record.EventRecorder,
+	required *corev1.Endpoints,
+	options ApplyOptions,
+) (*corev1.Endpoints, bool, error) {
+	return ApplyEndpointsWithControl(
+		ctx,
+		ApplyControlFuncs[*corev1.Endpoints]{
+			GetCachedFunc: lister.Endpoints(required.Namespace).Get,
+			CreateFunc:    client.Endpoints(required.Namespace).Create,
+			UpdateFunc:    client.Endpoints(required.Namespace).Update,
+			DeleteFunc:    client.Endpoints(required.Namespace).Delete,
+		},
+		recorder,
+		required,
+		options,
+	)
+}

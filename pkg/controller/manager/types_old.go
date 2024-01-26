@@ -19,10 +19,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/util/duration"
 )
 
-const (
-	nowSafety = 30 * time.Second
-)
-
 type RepairTask v1.RepairTaskStatus
 
 func (r RepairTask) ToManager() (*managerclient.Task, error) {
@@ -192,7 +188,7 @@ func parseStartDate(value string) (strfmt.DateTime, error) {
 	now := timeutc.Now()
 
 	if value == "now" {
-		return strfmt.DateTime(now.Add(nowSafety)), nil
+		return strfmt.DateTime{}, nil
 	}
 
 	if strings.HasPrefix(value, "now") {

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	helpers "github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -45,13 +45,13 @@ func (c *Controller) getManagerState(ctx context.Context, clusterID string) (*st
 		}
 
 		if clusterFound {
-			managerRepairTasks, err := c.managerClient.ListTasks(ctx, clusterID, "repair", true, "")
+			managerRepairTasks, err := c.managerClient.ListTasks(ctx, clusterID, "repair", true, "", "")
 			if err != nil {
 				return nil, err
 			}
 
-			repairTasks = make([]*RepairTask, 0, len(managerRepairTasks.ExtendedTaskSlice))
-			for _, managerRepairTask := range managerRepairTasks.ExtendedTaskSlice {
+			repairTasks = make([]*RepairTask, 0, len(managerRepairTasks.TaskListItemSlice))
+			for _, managerRepairTask := range managerRepairTasks.TaskListItemSlice {
 				rt := &RepairTask{}
 				if err := rt.FromManager(managerRepairTask); err != nil {
 					return nil, err
@@ -59,13 +59,13 @@ func (c *Controller) getManagerState(ctx context.Context, clusterID string) (*st
 				repairTasks = append(repairTasks, rt)
 			}
 
-			managerBackupTasks, err := c.managerClient.ListTasks(ctx, clusterID, "backup", true, "")
+			managerBackupTasks, err := c.managerClient.ListTasks(ctx, clusterID, "backup", true, "", "")
 			if err != nil {
 				return nil, err
 			}
 
-			backupTasks = make([]*BackupTask, 0, len(managerBackupTasks.ExtendedTaskSlice))
-			for _, managerBackupTask := range managerBackupTasks.ExtendedTaskSlice {
+			backupTasks = make([]*BackupTask, 0, len(managerBackupTasks.TaskListItemSlice))
+			for _, managerBackupTask := range managerBackupTasks.TaskListItemSlice {
 				bt := &BackupTask{}
 				if err := bt.FromManager(managerBackupTask); err != nil {
 					return nil, err

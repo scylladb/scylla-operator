@@ -117,6 +117,9 @@ object
    * - :ref:`imagePullSecrets<api-scylla.scylladb.com-scyllaclusters-v1-.spec.imagePullSecrets[]>`
      - array (object)
      - imagePullSecrets is an optional list of references to secrets in the same namespace used for pulling Scylla and Agent images.
+   * - minTerminationGracePeriodSeconds
+     - integer
+     - minTerminationGracePeriodSeconds specifies minimum duration in seconds to wait before every drained node is terminated. This gives time to potential load balancer in front of a node to notice that node is not ready anymore and stop forwarding new requests. This applies only when node is terminated gracefully. If not provided, Operator will determine this value. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
    * - :ref:`network<api-scylla.scylladb.com-scyllaclusters-v1-.spec.network>`
      - object
      - network holds the networking config.

@@ -2,6 +2,7 @@ package scyllacluster
 
 import (
 	"fmt"
+	"maps"
 	"path"
 	"sort"
 	"strconv"
@@ -48,14 +49,20 @@ const (
 )
 
 func IdentityService(c *scyllav1.ScyllaCluster) *corev1.Service {
-	labels := naming.ClusterLabels(c)
-	labels[naming.ScyllaServiceTypeLabel] = string(naming.ScyllaServiceTypeIdentity)
+	svcLabels := map[string]string{}
+	maps.Copy(svcLabels, c.Labels)
+	maps.Copy(svcLabels, naming.ClusterLabels(c))
+	svcLabels[naming.ScyllaServiceTypeLabel] = string(naming.ScyllaServiceTypeIdentity)
+
+	svcAnnotations := map[string]string{}
+	maps.Copy(svcAnnotations, c.Annotations)
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      naming.HeadlessServiceNameForCluster(c),
-			Namespace: c.Namespace,
-			Labels:    labels,
+			Name:        naming.HeadlessServiceNameForCluster(c),
+			Namespace:   c.Namespace,
+			Labels:      svcLabels,
+			Annotations: svcAnnotations,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(c, scyllaClusterControllerGVK),
 			},
@@ -69,7 +76,15 @@ func IdentityService(c *scyllav1.ScyllaCluster) *corev1.Service {
 }
 
 func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService *corev1.Service, jobs map[string]*batchv1.Job) (*corev1.Service, error) {
-	svcLabels := naming.ClusterLabels(sc)
+	svcLabels := map[string]string{}
+
+	if sc.Spec.ExposeOptions != nil && sc.Spec.ExposeOptions.NodeService.Labels != nil {
+		maps.Copy(svcLabels, sc.Spec.ExposeOptions.NodeService.Labels)
+	} else {
+		maps.Copy(svcLabels, sc.Labels)
+	}
+
+	maps.Copy(svcLabels, naming.ClusterLabels(sc))
 	svcLabels[naming.DatacenterNameLabel] = sc.Spec.Datacenter.Name
 	svcLabels[naming.RackNameLabel] = rackName
 	svcLabels[naming.ScyllaServiceTypeLabel] = string(naming.ScyllaServiceTypeMember)
@@ -91,7 +106,13 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 		}
 	}
 
-	svcAnnotations := make(map[string]string)
+	svcAnnotations := map[string]string{}
+	if sc.Spec.ExposeOptions != nil && sc.Spec.ExposeOptions.NodeService.Annotations != nil {
+		maps.Copy(svcAnnotations, sc.Spec.ExposeOptions.NodeService.Annotations)
+	} else {
+		maps.Copy(svcAnnotations, sc.Annotations)
+	}
+
 	if oldService != nil {
 		_, hasLastCleanedUpRingHash := oldService.Annotations[naming.LastCleanedUpTokenRingHashAnnotation]
 		currentTokenRingHash, hasCurrentRingHash := oldService.Annotations[naming.CurrentTokenRingHashAnnotation]
@@ -216,21 +237,58 @@ func servicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 // StatefulSetForRack make a StatefulSet for the rack.
 // existingSts may be nil if it doesn't exist yet.
 func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existingSts *appsv1.StatefulSet, sidecarImage string, rackOrdinal int) (*appsv1.StatefulSet, error) {
-	rackLabels, err := naming.RackSelectorLabels(r, c)
-	if err != nil {
-		return nil, fmt.Errorf("can't get rack labels: %w", err)
-	}
-	rackLabels[naming.RackOrdinalLabel] = strconv.Itoa(rackOrdinal)
-	rackLabels[naming.ScyllaVersionLabel] = c.Spec.Version
-
 	selectorLabels, err := naming.RackSelectorLabels(r, c)
 	if err != nil {
 		return nil, fmt.Errorf("can't get selector labels: %w", err)
 	}
 
-	pvcLabels, err := naming.RackSelectorLabels(r, c)
-	if err != nil {
-		return nil, fmt.Errorf("can't get PVC Template labels: %w", err)
+	requiredLabels := map[string]string{}
+	requiredLabels[naming.RackOrdinalLabel] = strconv.Itoa(rackOrdinal)
+	requiredLabels[naming.ScyllaVersionLabel] = c.Spec.Version
+	maps.Copy(requiredLabels, selectorLabels)
+
+	rackLabels := map[string]string{}
+	maps.Copy(rackLabels, c.Labels)
+	maps.Copy(rackLabels, requiredLabels)
+
+	rackTemplateLabels := map[string]string{}
+	if c.Spec.PodMetadata != nil && c.Spec.PodMetadata.Labels != nil {
+		maps.Copy(rackTemplateLabels, c.Spec.PodMetadata.Labels)
+	} else {
+		maps.Copy(rackTemplateLabels, c.Labels)
+	}
+	maps.Copy(rackTemplateLabels, requiredLabels)
+
+	rackAnnotations := map[string]string{}
+	maps.Copy(rackAnnotations, c.Annotations)
+
+	rackTemplateAnnotations := map[string]string{}
+	if c.Spec.PodMetadata != nil && c.Spec.PodMetadata.Annotations != nil {
+		maps.Copy(rackTemplateAnnotations, c.Spec.PodMetadata.Annotations)
+	} else {
+		maps.Copy(rackTemplateAnnotations, c.Annotations)
+	}
+	rackTemplateAnnotations[naming.PrometheusScrapeAnnotation] = naming.LabelValueTrue
+	rackTemplateAnnotations[naming.PrometheusPortAnnotation] = "9180"
+
+	// VolumeClaims are not allowed to be edited by StatufulSet validation,
+	// which means we have to keep them static.
+	// ScyllaClusters forbid rack storage changes, but we have to be careful
+	// when defaulting the values from other places.
+
+	volumeClaimLabels := map[string]string{}
+	if r.Storage.Metadata != nil && r.Storage.Metadata.Labels != nil {
+		maps.Copy(volumeClaimLabels, r.Storage.Metadata.Labels)
+	} else if existingSts == nil {
+		maps.Copy(volumeClaimLabels, c.Labels)
+	}
+	maps.Copy(volumeClaimLabels, selectorLabels)
+
+	volumeClaimAnnotations := map[string]string{}
+	if r.Storage.Metadata != nil && r.Storage.Metadata.Annotations != nil {
+		maps.Copy(volumeClaimAnnotations, r.Storage.Metadata.Annotations)
+	} else if existingSts == nil {
+		maps.Copy(volumeClaimAnnotations, c.Annotations)
 	}
 
 	placement := r.Placement
@@ -246,9 +304,10 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 
 	sts := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      naming.StatefulSetNameForRack(r, c),
-			Namespace: c.Namespace,
-			Labels:    rackLabels,
+			Name:        naming.StatefulSetNameForRack(r, c),
+			Namespace:   c.Namespace,
+			Labels:      rackLabels,
+			Annotations: rackAnnotations,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(c, scyllaClusterControllerGVK),
 			},
@@ -270,11 +329,8 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 			// Template for Pods
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: rackLabels,
-					Annotations: map[string]string{
-						naming.PrometheusScrapeAnnotation: naming.LabelValueTrue,
-						naming.PrometheusPortAnnotation:   "9180",
-					},
+					Labels:      rackTemplateLabels,
+					Annotations: rackTemplateAnnotations,
 				},
 				Spec: corev1.PodSpec{
 					HostNetwork: c.Spec.Network.HostNetworking,
@@ -579,8 +635,9 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:   naming.PVCTemplateName,
-						Labels: pvcLabels,
+						Name:        naming.PVCTemplateName,
+						Labels:      volumeClaimLabels,
+						Annotations: volumeClaimAnnotations,
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
 						AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
@@ -755,6 +812,13 @@ func agentContainer(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) corev1.Conta
 
 func MakePodDisruptionBudget(c *scyllav1.ScyllaCluster) *policyv1.PodDisruptionBudget {
 	maxUnavailable := intstr.FromInt(1)
+
+	selectorLabels := naming.ClusterLabels(c)
+
+	labels := map[string]string{}
+	maps.Copy(labels, c.Labels)
+	maps.Copy(labels, selectorLabels)
+
 	return &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      naming.PodDisruptionBudgetName(c),
@@ -762,11 +826,12 @@ func MakePodDisruptionBudget(c *scyllav1.ScyllaCluster) *policyv1.PodDisruptionB
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(c, scyllaClusterControllerGVK),
 			},
-			Labels: naming.ClusterLabels(c),
+			Labels:      labels,
+			Annotations: maps.Clone(c.Annotations),
 		},
 		Spec: policyv1.PodDisruptionBudgetSpec{
 			MaxUnavailable: &maxUnavailable,
-			Selector:       metav1.SetAsLabelSelector(naming.ClusterLabels(c)),
+			Selector:       metav1.SetAsLabelSelector(selectorLabels),
 		},
 	}
 }
@@ -801,7 +866,17 @@ func MakeIngresses(c *scyllav1.ScyllaCluster, services map[string]*corev1.Servic
 	for _, ip := range ingressParams {
 		for _, service := range services {
 			var hosts []string
-			labels := naming.ClusterLabels(c)
+
+			annotations := map[string]string{}
+			if ip.ingressOptions.Annotations != nil {
+				maps.Copy(annotations, ip.ingressOptions.Annotations)
+			} else {
+				maps.Copy(annotations, c.Annotations)
+			}
+
+			labels := map[string]string{}
+			maps.Copy(labels, c.Labels)
+			maps.Copy(labels, naming.ClusterLabels(c))
 
 			switch naming.ScyllaServiceType(service.Labels[naming.ScyllaServiceTypeLabel]) {
 			case naming.ScyllaServiceTypeIdentity:
@@ -837,7 +912,7 @@ func MakeIngresses(c *scyllav1.ScyllaCluster, services map[string]*corev1.Servic
 					Name:        fmt.Sprintf("%s-%s", service.Name, ip.ingressNameSuffix),
 					Namespace:   c.Namespace,
 					Labels:      labels,
-					Annotations: ip.ingressOptions.Annotations,
+					Annotations: annotations,
 					OwnerReferences: []metav1.OwnerReference{
 						*metav1.NewControllerRef(c, scyllaClusterControllerGVK),
 					},
@@ -896,6 +971,10 @@ func MakeAgentAuthTokenSecret(c *scyllav1.ScyllaCluster, authToken string) (*cor
 		return nil, err
 	}
 
+	labels := map[string]string{}
+	maps.Copy(labels, c.Labels)
+	maps.Copy(labels, naming.ClusterLabels(c))
+
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      naming.AgentAuthTokenSecretName(c.Name),
@@ -903,7 +982,8 @@ func MakeAgentAuthTokenSecret(c *scyllav1.ScyllaCluster, authToken string) (*cor
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(c, scyllaClusterControllerGVK),
 			},
-			Labels: naming.ClusterLabels(c),
+			Labels:      labels,
+			Annotations: maps.Clone(c.Annotations),
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
@@ -942,6 +1022,13 @@ func copyReferencedValue[T any](v *T) *T {
 }
 
 func MakeServiceAccount(sc *scyllav1.ScyllaCluster) *corev1.ServiceAccount {
+	labels := map[string]string{}
+	maps.Copy(labels, sc.Labels)
+	maps.Copy(labels, naming.ClusterLabels(sc))
+
+	annotations := map[string]string{}
+	maps.Copy(annotations, sc.Annotations)
+
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      naming.MemberServiceAccountNameForScyllaCluster(sc.Name),
@@ -949,13 +1036,22 @@ func MakeServiceAccount(sc *scyllav1.ScyllaCluster) *corev1.ServiceAccount {
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(sc, scyllaClusterControllerGVK),
 			},
-			Labels: naming.ClusterLabels(sc),
+			Labels:      labels,
+			Annotations: annotations,
 		},
 	}
 }
 
 func MakeRoleBinding(sc *scyllav1.ScyllaCluster) *rbacv1.RoleBinding {
 	saName := naming.MemberServiceAccountNameForScyllaCluster(sc.Name)
+
+	labels := map[string]string{}
+	maps.Copy(labels, sc.Labels)
+	maps.Copy(labels, naming.ClusterLabels(sc))
+
+	annotations := map[string]string{}
+	maps.Copy(annotations, sc.Annotations)
+
 	return &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      saName,
@@ -963,7 +1059,8 @@ func MakeRoleBinding(sc *scyllav1.ScyllaCluster) *rbacv1.RoleBinding {
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(sc, scyllaClusterControllerGVK),
 			},
-			Labels: naming.ClusterLabels(sc),
+			Labels:      labels,
+			Annotations: annotations,
 		},
 		Subjects: []rbacv1.Subject{
 			{
@@ -1055,14 +1152,17 @@ func MakeJobs(sc *scyllav1.ScyllaCluster, services map[string]*corev1.Service, i
 
 			klog.InfoS("Node requires a cleanup", "Node", naming.ObjRef(svc), "CurrentHash", currentTokenRingHash, "LastCleanedUpHash", lastCleanedUpTokenRingHash)
 
-			jobLabels := map[string]string{
+			jobLabels := map[string]string{}
+			maps.Copy(jobLabels, sc.Labels)
+			maps.Copy(jobLabels, map[string]string{
 				naming.ClusterNameLabel: sc.Name,
 				naming.NodeJobLabel:     svcName,
 				naming.NodeJobTypeLabel: string(naming.JobTypeCleanup),
-			}
-			annotations := map[string]string{
-				naming.CleanupJobTokenRingHashAnnotation: currentTokenRingHash,
-			}
+			})
+
+			annotations := map[string]string{}
+			maps.Copy(annotations, sc.Annotations)
+			annotations[naming.CleanupJobTokenRingHashAnnotation] = currentTokenRingHash
 
 			var tolerations []corev1.Toleration
 			var affinity *corev1.Affinity
@@ -1086,6 +1186,8 @@ func MakeJobs(sc *scyllav1.ScyllaCluster, services map[string]*corev1.Service, i
 					Annotations: annotations,
 				},
 				Spec: batchv1.JobSpec{
+					Selector:       nil,
+					ManualSelector: pointer.Ptr(false),
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels:      jobLabels,

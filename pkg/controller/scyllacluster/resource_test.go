@@ -27,6 +27,12 @@ func TestMemberService(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "basic",
 			UID:  "the-uid",
+			Labels: map[string]string{
+				"default-sc-label": "foo",
+			},
+			Annotations: map[string]string{
+				"default-sc-annotation": "bar",
+			},
 		},
 		Spec: scyllav1.ScyllaClusterSpec{
 			Datacenter: scyllav1.DatacenterSpec{
@@ -57,10 +63,16 @@ func TestMemberService(t *testing.T) {
 			"app":                          "scylla",
 			"app.kubernetes.io/name":       "scylla",
 			"app.kubernetes.io/managed-by": "scylla-operator",
+			"default-sc-label":             "foo",
 			"scylla/cluster":               "basic",
 			"scylla/datacenter":            "dc",
 			"scylla/rack":                  "rack",
 			"scylla-operator.scylladb.com/scylla-service-type": "member",
+		}
+	}
+	basicSVCAnnotations := func() map[string]string {
+		return map[string]string{
+			"default-sc-annotation": "bar",
 		}
 	}
 	basicPorts := []corev1.ServicePort{
@@ -134,6 +146,7 @@ func TestMemberService(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:            basicSVCName,
 					Labels:          basicSVCLabels(),
+					Annotations:     basicSVCAnnotations(),
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -167,6 +180,7 @@ func TestMemberService(t *testing.T) {
 						labels[naming.ReplaceLabel] = "10.0.0.1"
 						return labels
 					}(),
+					Annotations:     basicSVCAnnotations(),
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -206,6 +220,7 @@ func TestMemberService(t *testing.T) {
 						labels[naming.ReplaceLabel] = "10.0.0.1"
 						return labels
 					}(),
+					Annotations:     basicSVCAnnotations(),
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -235,6 +250,7 @@ func TestMemberService(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:            basicSVCName,
 					Labels:          basicSVCLabels(),
+					Annotations:     basicSVCAnnotations(),
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -270,6 +286,7 @@ func TestMemberService(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:            basicSVCName,
 					Labels:          basicSVCLabels(),
+					Annotations:     basicSVCAnnotations(),
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -295,6 +312,7 @@ func TestMemberService(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:            basicSVCName,
 					Labels:          basicSVCLabels(),
+					Annotations:     basicSVCAnnotations(),
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -322,6 +340,7 @@ func TestMemberService(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:            basicSVCName,
 					Labels:          basicSVCLabels(),
+					Annotations:     basicSVCAnnotations(),
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -348,9 +367,11 @@ func TestMemberService(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   basicSVCName,
 					Labels: basicSVCLabels(),
-					Annotations: map[string]string{
-						"internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash": "abc",
-					},
+					Annotations: func() map[string]string {
+						res := basicSVCAnnotations()
+						res["internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash"] = "abc"
+						return res
+					}(),
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -383,9 +404,11 @@ func TestMemberService(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   basicSVCName,
 					Labels: basicSVCLabels(),
-					Annotations: map[string]string{
-						"internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash": "abc",
-					},
+					Annotations: func() map[string]string {
+						res := basicSVCAnnotations()
+						res["internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash"] = "abc"
+						return res
+					}(),
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -402,8 +425,13 @@ func TestMemberService(t *testing.T) {
 				sc := basicSC.DeepCopy()
 				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
 					NodeService: &scyllav1.NodeServiceTemplate{
-						Annotations: map[string]string{
-							"foo": "bar",
+						ObjectTemplateMetadata: scyllav1.ObjectTemplateMetadata{
+							Annotations: map[string]string{
+								"foo": "bar",
+							},
+							Labels: map[string]string{
+								"user-label": "user-label-value",
+							},
 						},
 						Type:                          scyllav1.NodeServiceTypeLoadBalancer,
 						ExternalTrafficPolicy:         pointer.Ptr(corev1.ServiceExternalTrafficPolicyLocal),
@@ -421,8 +449,17 @@ func TestMemberService(t *testing.T) {
 			jobs:       nil,
 			expectedService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:   basicSVCName,
-					Labels: basicSVCLabels(),
+					Name: basicSVCName,
+					Labels: map[string]string{
+						"app":                          "scylla",
+						"app.kubernetes.io/name":       "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"user-label":                   "user-label-value",
+						"scylla/cluster":               "basic",
+						"scylla/datacenter":            "dc",
+						"scylla/rack":                  "rack",
+						"scylla-operator.scylladb.com/scylla-service-type": "member",
+					},
 					Annotations: map[string]string{
 						"foo": "bar",
 					},
@@ -460,6 +497,7 @@ func TestMemberService(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:            basicSVCName,
 					Labels:          basicSVCLabels(),
+					Annotations:     basicSVCAnnotations(),
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -491,6 +529,7 @@ func TestMemberService(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:            basicSVCName,
 					Labels:          basicSVCLabels(),
+					Annotations:     basicSVCAnnotations(),
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -521,6 +560,7 @@ func TestMemberService(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:            basicSVCName,
 					Labels:          basicSVCLabels(),
+					Annotations:     basicSVCAnnotations(),
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -553,7 +593,7 @@ func TestStatefulSetForRack(t *testing.T) {
 	newBasicRack := func() scyllav1.RackSpec {
 		return scyllav1.RackSpec{
 			Name: "rack",
-			Storage: scyllav1.StorageSpec{
+			Storage: scyllav1.Storage{
 				Capacity: "1Gi",
 			},
 		}
@@ -564,6 +604,12 @@ func TestStatefulSetForRack(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "basic",
 				UID:  "the-uid",
+				Labels: map[string]string{
+					"default-sc-label": "foo",
+				},
+				Annotations: map[string]string{
+					"default-sc-annotation": "bar",
+				},
 			},
 			Spec: scyllav1.ScyllaClusterSpec{
 				Datacenter: scyllav1.DatacenterSpec{
@@ -584,6 +630,7 @@ func TestStatefulSetForRack(t *testing.T) {
 			"app":                          "scylla",
 			"app.kubernetes.io/managed-by": "scylla-operator",
 			"app.kubernetes.io/name":       "scylla",
+			"default-sc-label":             "foo",
 			"scylla/cluster":               "basic",
 			"scylla/datacenter":            "dc",
 			"scylla/rack":                  "rack",
@@ -595,9 +642,11 @@ func TestStatefulSetForRack(t *testing.T) {
 	newBasicStatefulSet := func() *appsv1.StatefulSet {
 		return &appsv1.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:        "basic-dc-rack",
-				Labels:      newBasicStatefulSetLabels(0),
-				Annotations: nil,
+				Name:   "basic-dc-rack",
+				Labels: newBasicStatefulSetLabels(0),
+				Annotations: map[string]string{
+					"default-sc-annotation": "bar",
+				},
 				OwnerReferences: []metav1.OwnerReference{
 					{
 						APIVersion:         "scylla.scylladb.com/v1",
@@ -625,8 +674,9 @@ func TestStatefulSetForRack(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Labels: newBasicStatefulSetLabels(0),
 						Annotations: map[string]string{
-							"prometheus.io/port":   "9180",
-							"prometheus.io/scrape": "true",
+							"default-sc-annotation": "bar",
+							"prometheus.io/port":    "9180",
+							"prometheus.io/scrape":  "true",
 						},
 					},
 					Spec: corev1.PodSpec{
@@ -971,6 +1021,10 @@ func TestStatefulSetForRack(t *testing.T) {
 								"scylla/cluster":               "basic",
 								"scylla/datacenter":            "dc",
 								"scylla/rack":                  "rack",
+								"default-sc-label":             "foo",
+							},
+							Annotations: map[string]string{
+								"default-sc-annotation": "bar",
 							},
 						},
 						Spec: corev1.PersistentVolumeClaimSpec{
@@ -1064,7 +1118,7 @@ func TestStatefulSetForRack(t *testing.T) {
 			name: "error for invalid Rack storage",
 			rack: func() scyllav1.RackSpec {
 				r := newBasicRack()
-				r.Storage = scyllav1.StorageSpec{
+				r.Storage = scyllav1.Storage{
 					Capacity: "",
 				}
 				return r
@@ -1218,6 +1272,46 @@ func TestStatefulSetForRack(t *testing.T) {
 			}(),
 			expectedError: nil,
 		},
+		{
+			name: "new StatefulSet with custom pod metadata uses the new values and doesn't inherit from the ScyllaCluster",
+			rack: newBasicRack(),
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := newBasicScyllaCluster()
+				sc.Spec.PodMetadata = &scyllav1.ObjectTemplateMetadata{
+					Annotations: map[string]string{
+						"custom-pod-annotation": "custom-pod-annotation-value",
+					},
+					Labels: map[string]string{
+						"custom-pod-label": "custom-pod-label-value",
+					},
+				}
+				return sc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+
+				sts.Spec.Template.ObjectMeta.Annotations = map[string]string{
+					"custom-pod-annotation": "custom-pod-annotation-value",
+					"prometheus.io/port":    "9180",
+					"prometheus.io/scrape":  "true",
+				}
+				sts.Spec.Template.ObjectMeta.Labels = map[string]string{
+					"app":                          "scylla",
+					"app.kubernetes.io/managed-by": "scylla-operator",
+					"app.kubernetes.io/name":       "scylla",
+					"custom-pod-label":             "custom-pod-label-value",
+					"scylla/cluster":               "basic",
+					"scylla/datacenter":            "dc",
+					"scylla/rack":                  "rack",
+					"scylla/rack-ordinal":          "0",
+					"scylla/scylla-version":        "",
+				}
+
+				return sts
+			}(),
+			expectedError: nil,
+		},
 	}
 
 	for _, tc := range tt {
@@ -1256,6 +1350,12 @@ func TestMakeIngresses(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "basic",
 			UID:  "the-uid",
+			Annotations: map[string]string{
+				"default-sc-annotation": "bar",
+			},
+			Labels: map[string]string{
+				"default-sc-label": "foo",
+			},
 		},
 		Spec: scyllav1.ScyllaClusterSpec{
 			Datacenter: scyllav1.DatacenterSpec{
@@ -1263,7 +1363,7 @@ func TestMakeIngresses(t *testing.T) {
 				Racks: []scyllav1.RackSpec{
 					{
 						Name: "rack",
-						Storage: scyllav1.StorageSpec{
+						Storage: scyllav1.Storage{
 							Capacity: "1Gi",
 						},
 					},
@@ -1276,7 +1376,11 @@ func TestMakeIngresses(t *testing.T) {
 		return &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: name,
+				Annotations: map[string]string{
+					"default-sc-annotation": "bar",
+				},
 				Labels: map[string]string{
+					"default-sc-label":            "foo",
 					naming.ScyllaServiceTypeLabel: string(naming.ScyllaServiceTypeIdentity),
 				},
 			},
@@ -1288,9 +1392,11 @@ func TestMakeIngresses(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: name,
 				Annotations: map[string]string{
+					"default-sc-annotation":                         "bar",
 					"internal.scylla-operator.scylladb.com/host-id": hostID,
 				},
 				Labels: map[string]string{
+					"default-sc-label": "foo",
 					"scylla-operator.scylladb.com/scylla-service-type": "member",
 				},
 			},
@@ -1321,8 +1427,13 @@ func TestMakeIngresses(t *testing.T) {
 						Ingress: &scyllav1.IngressOptions{
 							Disabled:         pointer.Ptr(true),
 							IngressClassName: "cql-ingress-class",
-							Annotations: map[string]string{
-								"my-cql-custom-annotation": "my-cql-custom-annotation-value",
+							ObjectTemplateMetadata: scyllav1.ObjectTemplateMetadata{
+								Annotations: map[string]string{
+									"my-cql-custom-annotation": "my-cql-custom-annotation-value",
+								},
+								Labels: map[string]string{
+									"my-cql-custom-label": "my-cql-custom-label-value",
+								},
 							},
 						},
 					},
@@ -1348,8 +1459,10 @@ func TestMakeIngresses(t *testing.T) {
 					CQL: &scyllav1.CQLExposeOptions{
 						Ingress: &scyllav1.IngressOptions{
 							IngressClassName: "cql-ingress-class",
-							Annotations: map[string]string{
-								"my-cql-custom-annotation": "my-cql-custom-annotation-value",
+							ObjectTemplateMetadata: scyllav1.ObjectTemplateMetadata{
+								Annotations: map[string]string{
+									"my-cql-custom-annotation": "my-cql-custom-annotation-value",
+								},
 							},
 						},
 					},
@@ -1365,6 +1478,7 @@ func TestMakeIngresses(t *testing.T) {
 							"app":                          "scylla",
 							"app.kubernetes.io/name":       "scylla",
 							"app.kubernetes.io/managed-by": "scylla-operator",
+							"default-sc-label":             "foo",
 							"scylla/cluster":               "basic",
 							"scylla-operator.scylladb.com/scylla-ingress-type": "AnyNode",
 						},
@@ -1437,6 +1551,7 @@ func TestMakeIngresses(t *testing.T) {
 							"app":                          "scylla",
 							"app.kubernetes.io/name":       "scylla",
 							"app.kubernetes.io/managed-by": "scylla-operator",
+							"default-sc-label":             "foo",
 							"scylla/cluster":               "basic",
 							"scylla-operator.scylladb.com/scylla-ingress-type": "Node",
 						},
@@ -1509,6 +1624,7 @@ func TestMakeIngresses(t *testing.T) {
 							"app":                          "scylla",
 							"app.kubernetes.io/name":       "scylla",
 							"app.kubernetes.io/managed-by": "scylla-operator",
+							"default-sc-label":             "foo",
 							"scylla/cluster":               "basic",
 							"scylla-operator.scylladb.com/scylla-ingress-type": "Node",
 						},
@@ -1581,6 +1697,7 @@ func TestMakeIngresses(t *testing.T) {
 							"app":                          "scylla",
 							"app.kubernetes.io/name":       "scylla",
 							"app.kubernetes.io/managed-by": "scylla-operator",
+							"default-sc-label":             "foo",
 							"scylla/cluster":               "basic",
 							"scylla-operator.scylladb.com/scylla-ingress-type": "Node",
 						},
@@ -1648,6 +1765,87 @@ func TestMakeIngresses(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "ingress objects inherit scyllacluster labels and annotations if none are specified",
+			services: map[string]*corev1.Service{
+				"any":    newIdentityService("any"),
+				"node-1": newMemberService("node-1", "host-id-1"),
+			},
+			cluster: func() *scyllav1.ScyllaCluster {
+				cluster := basicScyllaCluster.DeepCopy()
+				cluster.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					CQL: &scyllav1.CQLExposeOptions{
+						Ingress: &scyllav1.IngressOptions{
+							IngressClassName: "cql-ingress-class",
+						},
+					},
+				}
+
+				return cluster
+			}(),
+			expectedIngresses: []*networkingv1.Ingress{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "any-cql",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/name":       "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"default-sc-label":             "foo",
+							"scylla/cluster":               "basic",
+							"scylla-operator.scylladb.com/scylla-ingress-type": "AnyNode",
+						},
+						Annotations: map[string]string{
+							"default-sc-annotation": "bar",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1",
+								Kind:               "ScyllaCluster",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Spec: networkingv1.IngressSpec{
+						IngressClassName: pointer.Ptr("cql-ingress-class"),
+						Rules:            []networkingv1.IngressRule{},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-1-cql",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/name":       "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"default-sc-label":             "foo",
+							"scylla/cluster":               "basic",
+							"scylla-operator.scylladb.com/scylla-ingress-type": "Node",
+						},
+						Annotations: map[string]string{
+							"default-sc-annotation": "bar",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1",
+								Kind:               "ScyllaCluster",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Spec: networkingv1.IngressSpec{
+						IngressClassName: pointer.Ptr("cql-ingress-class"),
+						Rules:            []networkingv1.IngressRule{},
+					},
+				},
+			},
+		},
 	}
 
 	for i := range tt {
@@ -1669,6 +1867,12 @@ func TestMakeJobs(t *testing.T) {
 			Name:      "basic",
 			Namespace: "default",
 			UID:       "the-uid",
+			Labels: map[string]string{
+				"default-sc-label": "foo",
+			},
+			Annotations: map[string]string{
+				"default-sc-annotation": "bar",
+			},
 		},
 		Spec: scyllav1.ScyllaClusterSpec{
 			Datacenter: scyllav1.DatacenterSpec{
@@ -1676,7 +1880,7 @@ func TestMakeJobs(t *testing.T) {
 				Racks: []scyllav1.RackSpec{
 					{
 						Name: "rack",
-						Storage: scyllav1.StorageSpec{
+						Storage: scyllav1.Storage{
 							Capacity: "1Gi",
 						},
 						Members: 1,
@@ -1689,7 +1893,10 @@ func TestMakeJobs(t *testing.T) {
 	newMemberService := func(name string, annotations map[string]string) *corev1.Service {
 		return &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:        name,
+				Name: name,
+				Labels: map[string]string{
+					"default-sc-label": "foo",
+				},
 				Annotations: annotations,
 			},
 		}
@@ -1816,9 +2023,11 @@ func TestMakeJobs(t *testing.T) {
 						Name:      "cleanup-basic-dc-rack-0",
 						Namespace: "default",
 						Annotations: map[string]string{
+							"default-sc-annotation": "bar",
 							"internal.scylla-operator.scylladb.com/cleanup-token-ring-hash": "abc",
 						},
 						Labels: map[string]string{
+							"default-sc-label":                           "foo",
 							"scylla/cluster":                             "basic",
 							"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-0",
 							"scylla-operator.scylladb.com/node-job-type": "Cleanup",
@@ -1835,12 +2044,16 @@ func TestMakeJobs(t *testing.T) {
 						},
 					},
 					Spec: batchv1.JobSpec{
+						Selector:       nil,
+						ManualSelector: pointer.Ptr(false),
 						Template: corev1.PodTemplateSpec{
 							ObjectMeta: metav1.ObjectMeta{
 								Annotations: map[string]string{
+									"default-sc-annotation": "bar",
 									"internal.scylla-operator.scylladb.com/cleanup-token-ring-hash": "abc",
 								},
 								Labels: map[string]string{
+									"default-sc-label":                           "foo",
 									"scylla/cluster":                             "basic",
 									"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-0",
 									"scylla-operator.scylladb.com/node-job-type": "Cleanup",
@@ -1942,7 +2155,7 @@ func TestMakeJobs(t *testing.T) {
 				cluster.Spec.Datacenter.Racks = append(cluster.Spec.Datacenter.Racks,
 					scyllav1.RackSpec{
 						Name: "rack-2",
-						Storage: scyllav1.StorageSpec{
+						Storage: scyllav1.Storage{
 							Capacity: "1Gi",
 						},
 						Members: 1,
@@ -2020,9 +2233,11 @@ func TestMakeJobs(t *testing.T) {
 						Name:      "cleanup-basic-dc-rack-0",
 						Namespace: "default",
 						Annotations: map[string]string{
+							"default-sc-annotation": "bar",
 							"internal.scylla-operator.scylladb.com/cleanup-token-ring-hash": "abc",
 						},
 						Labels: map[string]string{
+							"default-sc-label":                           "foo",
 							"scylla/cluster":                             "basic",
 							"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-0",
 							"scylla-operator.scylladb.com/node-job-type": "Cleanup",
@@ -2039,12 +2254,16 @@ func TestMakeJobs(t *testing.T) {
 						},
 					},
 					Spec: batchv1.JobSpec{
+						Selector:       nil,
+						ManualSelector: pointer.Ptr(false),
 						Template: corev1.PodTemplateSpec{
 							ObjectMeta: metav1.ObjectMeta{
 								Annotations: map[string]string{
+									"default-sc-annotation": "bar",
 									"internal.scylla-operator.scylladb.com/cleanup-token-ring-hash": "abc",
 								},
 								Labels: map[string]string{
+									"default-sc-label":                           "foo",
 									"scylla/cluster":                             "basic",
 									"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-0",
 									"scylla-operator.scylladb.com/node-job-type": "Cleanup",
@@ -2141,9 +2360,11 @@ func TestMakeJobs(t *testing.T) {
 						Name:      "cleanup-basic-dc-rack-2-0",
 						Namespace: "default",
 						Annotations: map[string]string{
+							"default-sc-annotation": "bar",
 							"internal.scylla-operator.scylladb.com/cleanup-token-ring-hash": "abc",
 						},
 						Labels: map[string]string{
+							"default-sc-label":                           "foo",
 							"scylla/cluster":                             "basic",
 							"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-2-0",
 							"scylla-operator.scylladb.com/node-job-type": "Cleanup",
@@ -2160,12 +2381,16 @@ func TestMakeJobs(t *testing.T) {
 						},
 					},
 					Spec: batchv1.JobSpec{
+						Selector:       nil,
+						ManualSelector: pointer.Ptr(false),
 						Template: corev1.PodTemplateSpec{
 							ObjectMeta: metav1.ObjectMeta{
 								Annotations: map[string]string{
+									"default-sc-annotation": "bar",
 									"internal.scylla-operator.scylladb.com/cleanup-token-ring-hash": "abc",
 								},
 								Labels: map[string]string{
+									"default-sc-label":                           "foo",
 									"scylla/cluster":                             "basic",
 									"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-2-0",
 									"scylla-operator.scylladb.com/node-job-type": "Cleanup",

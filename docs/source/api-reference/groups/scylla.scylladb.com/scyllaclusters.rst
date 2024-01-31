@@ -120,6 +120,9 @@ object
    * - :ref:`network<api-scylla.scylladb.com-scyllaclusters-v1-.spec.network>`
      - object
      - network holds the networking config.
+   * - :ref:`podMetadata<api-scylla.scylladb.com-scyllaclusters-v1-.spec.podMetadata>`
+     - object
+     - podMetadata controls shared metadata for all pods created based on this spec.
    * - :ref:`repairs<api-scylla.scylladb.com-scyllaclusters-v1-.spec.repairs[]>`
      - array (object)
      - repairs specify repair tasks in Scylla Manager. When Scylla Manager is not installed, these will be ignored.
@@ -1726,9 +1729,68 @@ object
    * - capacity
      - string
      - capacity describes the requested size of each persistent volume.
+   * - :ref:`metadata<api-scylla.scylladb.com-scyllaclusters-v1-.spec.datacenter.racks[].storage.metadata>`
+     - object
+     - metadata controls shared metadata for the volume claim for this rack. At this point, the values are applied only for the initial claim and are not reconciled during its lifetime. Note that this may get fixed in the future and this behaviour shouldn't be relied on in any way.
    * - storageClassName
      - string
      - storageClassName is the name of a storageClass to request.
+
+.. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.datacenter.racks[].storage.metadata:
+
+.spec.datacenter.racks[].storage.metadata
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+metadata controls shared metadata for the volume claim for this rack. At this point, the values are applied only for the initial claim and are not reconciled during its lifetime. Note that this may get fixed in the future and this behaviour shouldn't be relied on in any way.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - :ref:`annotations<api-scylla.scylladb.com-scyllaclusters-v1-.spec.datacenter.racks[].storage.metadata.annotations>`
+     - object
+     - annotations is a custom key value map that gets merged with managed object annotations.
+   * - :ref:`labels<api-scylla.scylladb.com-scyllaclusters-v1-.spec.datacenter.racks[].storage.metadata.labels>`
+     - object
+     - labels is a custom key value map that gets merged with managed object labels.
+
+.. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.datacenter.racks[].storage.metadata.annotations:
+
+.spec.datacenter.racks[].storage.metadata.annotations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+annotations is a custom key value map that gets merged with managed object annotations.
+
+Type
+""""
+object
+
+
+.. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.datacenter.racks[].storage.metadata.labels:
+
+.spec.datacenter.racks[].storage.metadata.labels
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+labels is a custom key value map that gets merged with managed object labels.
+
+Type
+""""
+object
+
 
 .. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.datacenter.racks[].volumeMounts[]:
 
@@ -4204,13 +4266,16 @@ object
      - Description
    * - :ref:`annotations<api-scylla.scylladb.com-scyllaclusters-v1-.spec.exposeOptions.cql.ingress.annotations>`
      - object
-     - annotations specifies custom annotations merged into every Ingress object. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+     - annotations is a custom key value map that gets merged with managed object annotations.
    * - disabled
      - boolean
      - disabled controls if Ingress object creation is disabled. Unless disabled, there is an Ingress objects created for every Scylla node. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
    * - ingressClassName
      - string
      - ingressClassName specifies Ingress class name. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+   * - :ref:`labels<api-scylla.scylladb.com-scyllaclusters-v1-.spec.exposeOptions.cql.ingress.labels>`
+     - object
+     - labels is a custom key value map that gets merged with managed object labels.
 
 .. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.exposeOptions.cql.ingress.annotations:
 
@@ -4219,7 +4284,21 @@ object
 
 Description
 """""""""""
-annotations specifies custom annotations merged into every Ingress object. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+annotations is a custom key value map that gets merged with managed object annotations.
+
+Type
+""""
+object
+
+
+.. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.exposeOptions.cql.ingress.labels:
+
+.spec.exposeOptions.cql.ingress.labels
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+labels is a custom key value map that gets merged with managed object labels.
 
 Type
 """"
@@ -4252,13 +4331,16 @@ object
      - allocateLoadBalancerNodePorts controls value of service.spec.allocateLoadBalancerNodePorts of each node Service. Check Kubernetes corev1.Service documentation about semantic of this field.
    * - :ref:`annotations<api-scylla.scylladb.com-scyllaclusters-v1-.spec.exposeOptions.nodeService.annotations>`
      - object
-     - annotations is a custom key value map merged with every node Service annotations.
+     - annotations is a custom key value map that gets merged with managed object annotations.
    * - externalTrafficPolicy
      - string
      - externalTrafficPolicy controls value of service.spec.externalTrafficPolicy of each node Service. Check Kubernetes corev1.Service documentation about semantic of this field.
    * - internalTrafficPolicy
      - string
      - internalTrafficPolicy controls value of service.spec.internalTrafficPolicy of each node Service. Check Kubernetes corev1.Service documentation about semantic of this field.
+   * - :ref:`labels<api-scylla.scylladb.com-scyllaclusters-v1-.spec.exposeOptions.nodeService.labels>`
+     - object
+     - labels is a custom key value map that gets merged with managed object labels.
    * - loadBalancerClass
      - string
      - loadBalancerClass controls value of service.spec.loadBalancerClass of each node Service. Check Kubernetes corev1.Service documentation about semantic of this field.
@@ -4273,7 +4355,21 @@ object
 
 Description
 """""""""""
-annotations is a custom key value map merged with every node Service annotations.
+annotations is a custom key value map that gets merged with managed object annotations.
+
+Type
+""""
+object
+
+
+.. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.exposeOptions.nodeService.labels:
+
+.spec.exposeOptions.nodeService.labels
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+labels is a custom key value map that gets merged with managed object labels.
 
 Type
 """"
@@ -4360,6 +4456,62 @@ object
    * - hostNetworking
      - boolean
      - hostNetworking determines if scylla uses the host's network namespace. Setting this option avoids going through Kubernetes SDN and exposes scylla on node's IP.
+
+.. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.podMetadata:
+
+.spec.podMetadata
+^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+podMetadata controls shared metadata for all pods created based on this spec.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - :ref:`annotations<api-scylla.scylladb.com-scyllaclusters-v1-.spec.podMetadata.annotations>`
+     - object
+     - annotations is a custom key value map that gets merged with managed object annotations.
+   * - :ref:`labels<api-scylla.scylladb.com-scyllaclusters-v1-.spec.podMetadata.labels>`
+     - object
+     - labels is a custom key value map that gets merged with managed object labels.
+
+.. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.podMetadata.annotations:
+
+.spec.podMetadata.annotations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+annotations is a custom key value map that gets merged with managed object annotations.
+
+Type
+""""
+object
+
+
+.. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.podMetadata.labels:
+
+.spec.podMetadata.labels
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+labels is a custom key value map that gets merged with managed object labels.
+
+Type
+""""
+object
+
 
 .. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.repairs[]:
 

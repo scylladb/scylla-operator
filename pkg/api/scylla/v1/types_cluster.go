@@ -21,8 +21,22 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type ObjectTemplateMetadata struct {
+	// labels is a custom key value map that gets merged with managed object labels.
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
+
+	// annotations is a custom key value map that gets merged with managed object annotations.
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
+}
+
 // ScyllaClusterSpec defines the desired state of Cluster.
 type ScyllaClusterSpec struct {
+	// podMetadata controls shared metadata for all pods created based on this spec.
+	// +optional
+	PodMetadata *ObjectTemplateMetadata `json:"podMetadata,omitempty"`
+
 	// version is a version tag of Scylla to use.
 	Version string `json:"version"`
 
@@ -180,9 +194,7 @@ const (
 )
 
 type NodeServiceTemplate struct {
-	// annotations is a custom key value map merged with every node Service annotations.
-	// +optional
-	Annotations map[string]string `json:"annotations,omitempty"`
+	ObjectTemplateMetadata `json:",inline"`
 
 	// type is the Kubernetes Service type.
 	// +kubebuilder:validation:Required
@@ -237,6 +249,8 @@ type CQLExposeOptions struct {
 // IngressOptions defines configuration options for Ingress objects associated with cluster nodes.
 // EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
 type IngressOptions struct {
+	ObjectTemplateMetadata `json:",inline"`
+
 	// disabled controls if Ingress object creation is disabled.
 	// Unless disabled, there is an Ingress objects created for every Scylla node.
 	// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
@@ -247,11 +261,6 @@ type IngressOptions struct {
 	// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
 	// +optional
 	IngressClassName string `json:"ingressClassName,omitempty"`
-
-	// annotations specifies custom annotations merged into every Ingress object.
-	// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
-	// +optional
-	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
 // GenericUpgradeFailureStrategy allows to specify how upgrade logic should handle failures.
@@ -425,7 +434,7 @@ type RackSpec struct {
 	Members int32 `json:"members"`
 
 	// storage describes the underlying storage that Scylla will consume.
-	Storage StorageSpec `json:"storage"`
+	Storage Storage `json:"storage"`
 
 	// placement describes restrictions for the nodes Scylla is scheduled on.
 	// +optional
@@ -476,7 +485,13 @@ type PlacementSpec struct {
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
-type StorageSpec struct {
+type Storage struct {
+	// metadata controls shared metadata for the volume claim for this rack.
+	// At this point, the values are applied only for the initial claim and are not reconciled during its lifetime.
+	// Note that this may get fixed in the future and this behaviour shouldn't be relied on in any way.
+	// +optional
+	Metadata *ObjectTemplateMetadata `json:"metadata,omitempty"`
+
 	// capacity describes the requested size of each persistent volume.
 	Capacity string `json:"capacity"`
 

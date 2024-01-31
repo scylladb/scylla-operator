@@ -792,6 +792,20 @@ spec:
                               capacity:
                                 description: capacity describes the requested size of each persistent volume.
                                 type: string
+                              metadata:
+                                description: metadata controls shared metadata for the volume claim for this rack. At this point, the values are applied only for the initial claim and are not reconciled during its lifetime. Note that this may get fixed in the future and this behaviour shouldn't be relied on in any way.
+                                properties:
+                                  annotations:
+                                    additionalProperties:
+                                      type: string
+                                    description: annotations is a custom key value map that gets merged with managed object annotations.
+                                    type: object
+                                  labels:
+                                    additionalProperties:
+                                      type: string
+                                    description: labels is a custom key value map that gets merged with managed object labels.
+                                    type: object
+                                type: object
                               storageClassName:
                                 description: storageClassName is the name of a storageClass to request.
                                 type: string
@@ -1873,7 +1887,7 @@ spec:
                             annotations:
                               additionalProperties:
                                 type: string
-                              description: annotations specifies custom annotations merged into every Ingress object. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+                              description: annotations is a custom key value map that gets merged with managed object annotations.
                               type: object
                             disabled:
                               description: disabled controls if Ingress object creation is disabled. Unless disabled, there is an Ingress objects created for every Scylla node. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
@@ -1881,6 +1895,11 @@ spec:
                             ingressClassName:
                               description: ingressClassName specifies Ingress class name. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
                               type: string
+                            labels:
+                              additionalProperties:
+                                type: string
+                              description: labels is a custom key value map that gets merged with managed object labels.
+                              type: object
                           type: object
                       type: object
                     nodeService:
@@ -1894,7 +1913,7 @@ spec:
                         annotations:
                           additionalProperties:
                             type: string
-                          description: annotations is a custom key value map merged with every node Service annotations.
+                          description: annotations is a custom key value map that gets merged with managed object annotations.
                           type: object
                         externalTrafficPolicy:
                           description: externalTrafficPolicy controls value of service.spec.externalTrafficPolicy of each node Service. Check Kubernetes corev1.Service documentation about semantic of this field.
@@ -1902,6 +1921,11 @@ spec:
                         internalTrafficPolicy:
                           description: internalTrafficPolicy controls value of service.spec.internalTrafficPolicy of each node Service. Check Kubernetes corev1.Service documentation about semantic of this field.
                           type: string
+                        labels:
+                          additionalProperties:
+                            type: string
+                          description: labels is a custom key value map that gets merged with managed object labels.
+                          type: object
                         loadBalancerClass:
                           description: loadBalancerClass controls value of service.spec.loadBalancerClass of each node Service. Check Kubernetes corev1.Service documentation about semantic of this field.
                           type: string
@@ -1952,6 +1976,20 @@ spec:
                     hostNetworking:
                       description: hostNetworking determines if scylla uses the host's network namespace. Setting this option avoids going through Kubernetes SDN and exposes scylla on node's IP.
                       type: boolean
+                  type: object
+                podMetadata:
+                  description: podMetadata controls shared metadata for all pods created based on this spec.
+                  properties:
+                    annotations:
+                      additionalProperties:
+                        type: string
+                      description: annotations is a custom key value map that gets merged with managed object annotations.
+                      type: object
+                    labels:
+                      additionalProperties:
+                        type: string
+                      description: labels is a custom key value map that gets merged with managed object labels.
+                      type: object
                   type: object
                 repairs:
                   description: repairs specify repair tasks in Scylla Manager. When Scylla Manager is not installed, these will be ignored.

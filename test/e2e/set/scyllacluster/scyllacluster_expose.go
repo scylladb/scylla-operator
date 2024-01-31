@@ -62,7 +62,9 @@ var _ = g.Describe("ScyllaCluster", func() {
 			sc.Spec.ExposeOptions.CQL = &scyllav1.CQLExposeOptions{
 				Ingress: &scyllav1.IngressOptions{
 					IngressClassName: framework.TestContext.IngressController.IngressClassName,
-					Annotations:      framework.TestContext.IngressController.CustomAnnotations,
+					ObjectTemplateMetadata: scyllav1.ObjectTemplateMetadata{
+						Annotations: framework.TestContext.IngressController.CustomAnnotations,
+					},
 				},
 			}
 		}
@@ -395,8 +397,10 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc.Spec.ExposeOptions.CQL = &scyllav1.CQLExposeOptions{
 			Ingress: &scyllav1.IngressOptions{
 				IngressClassName: "my-cql-ingress-class",
-				Annotations: map[string]string{
-					"my-cql-annotation-key": "my-cql-annotation-value",
+				ObjectTemplateMetadata: scyllav1.ObjectTemplateMetadata{
+					Annotations: map[string]string{
+						"my-cql-annotation-key": "my-cql-annotation-value",
+					},
 				},
 			},
 		}

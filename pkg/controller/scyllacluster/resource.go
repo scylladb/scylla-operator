@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/features"
@@ -300,6 +301,21 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 	storageCapacity, err := resource.ParseQuantity(r.Storage.Capacity)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse %q: %v", r.Storage.Capacity, err)
+	}
+
+	// Assume kube-proxy notices readiness change and reconcile Endpoints within this period
+	kubeProxyEndpointsSyncPeriod := 5 * time.Second
+
+	readinessFailureThreshold := int32(1)
+	readinessPeriodSeconds := int32(10)
+	minTerminationGracePeriod := time.Duration(readinessFailureThreshold*readinessPeriodSeconds)*time.Second + kubeProxyEndpointsSyncPeriod
+
+	if c.Spec.ExposeOptions != nil && c.Spec.ExposeOptions.NodeService != nil && c.Spec.ExposeOptions.NodeService.Type == scyllav1.NodeServiceTypeLoadBalancer {
+		// Any "upstream" Load Balancer should notice Endpoint readiness change within this period.
+		minTerminationGracePeriod = 60 * time.Second
+	}
+	if c.Spec.MinTerminationGracePeriodSeconds != 0 {
+		minTerminationGracePeriod = time.Duration(c.Spec.MinTerminationGracePeriodSeconds) * time.Second
 	}
 
 	sts := &appsv1.StatefulSet{
@@ -598,8 +614,8 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								// to 30s to survive cluster overload.
 								// Relevant issue: https://github.com/scylladb/scylla-operator/issues/844
 								TimeoutSeconds:   int32(30),
-								FailureThreshold: int32(1),
-								PeriodSeconds:    int32(10),
+								FailureThreshold: readinessFailureThreshold,
+								PeriodSeconds:    readinessPeriodSeconds,
 								ProbeHandler: corev1.ProbeHandler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Port: intstr.FromInt(naming.ProbePort),
@@ -608,14 +624,20 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								},
 							},
 							// Before a Scylla Pod is stopped, execute nodetool drain to
-							// flush the memtable to disk and stop listening for connections.
-							// This is necessary to ensure we don't lose any data and we don't
-							// need to replay the commitlog in the next startup.
+							// flush the memtable to disk, finish existing requests and stop listening for connections.
+							// Sleep is required to give chance to Load Balancers to acknowledge Pod going down with their
+							// probes.
 							Lifecycle: &corev1.Lifecycle{
 								PreStop: &corev1.LifecycleHandler{
 									Exec: &corev1.ExecAction{
 										Command: []string{
-											"/bin/sh", "-c", "PID=$(pgrep -x scylla);supervisorctl stop scylla; while kill -0 $PID; do sleep 1; done;",
+											"/usr/bin/bash",
+											"-euExo",
+											"pipefail",
+											"-O",
+											"inherit_errexit",
+											"-c",
+											fmt.Sprintf("nodetool drain &; sleep %.0f &; wait", minTerminationGracePeriod.Seconds()),
 										},
 									},
 								},

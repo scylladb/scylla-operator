@@ -294,6 +294,19 @@ func TestValidateScyllaCluster(t *testing.T) {
 			},
 			expectedErrorString: `[spec.exposeOptions.broadcastOptions.clients.type: Invalid value: "ServiceLoadBalancerIngress": can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer], spec.exposeOptions.broadcastOptions.nodes.type: Invalid value: "ServiceLoadBalancerIngress": can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer]]`,
 		},
+		{
+			name: "negative minTerminationGracePeriodSeconds",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.MinTerminationGracePeriodSeconds = -42
+
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.minTerminationGracePeriodSeconds", BadValue: int32(-42), Detail: "must be non-negative integer"},
+			},
+			expectedErrorString: `spec.minTerminationGracePeriodSeconds: Invalid value: -42: must be non-negative integer`,
+		},
 	}
 
 	for i := range tests {

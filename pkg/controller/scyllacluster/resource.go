@@ -12,6 +12,7 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	appsv1 "k8s.io/api/apps/v1"
@@ -277,19 +278,40 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 	// ScyllaClusters forbid rack storage changes, but we have to be careful
 	// when defaulting the values from other places.
 
-	volumeClaimLabels := map[string]string{}
-	if r.Storage.Metadata != nil && r.Storage.Metadata.Labels != nil {
-		maps.Copy(volumeClaimLabels, r.Storage.Metadata.Labels)
-	} else if existingSts == nil {
-		maps.Copy(volumeClaimLabels, c.Labels)
+	var existingDataPVCTemplate *corev1.PersistentVolumeClaim
+	if existingSts != nil {
+		pvc, _, ok := slices.Find(existingSts.Spec.VolumeClaimTemplates, func(pvc corev1.PersistentVolumeClaim) bool {
+			return pvc.Name == naming.PVCTemplateName
+		})
+		if !ok {
+			return nil, fmt.Errorf("can't find data PVC template %q in existing %q StatefulSet spec", naming.PVCTemplateName, naming.ObjRef(existingSts))
+		}
+		existingDataPVCTemplate = &pvc
 	}
-	maps.Copy(volumeClaimLabels, selectorLabels)
 
-	volumeClaimAnnotations := map[string]string{}
-	if r.Storage.Metadata != nil && r.Storage.Metadata.Annotations != nil {
-		maps.Copy(volumeClaimAnnotations, r.Storage.Metadata.Annotations)
+	dataVolumeClaimLabels := map[string]string{}
+	if r.Storage.Metadata != nil && r.Storage.Metadata.Labels != nil {
+		maps.Copy(dataVolumeClaimLabels, r.Storage.Metadata.Labels)
 	} else if existingSts == nil {
-		maps.Copy(volumeClaimAnnotations, c.Annotations)
+		maps.Copy(dataVolumeClaimLabels, c.Labels)
+	} else {
+		if existingDataPVCTemplate == nil {
+			return nil, fmt.Errorf("data PVC template %q in existing %q StatefulSet spec is missing", naming.PVCTemplateName, naming.ObjRef(existingSts))
+		}
+		maps.Copy(dataVolumeClaimLabels, existingDataPVCTemplate.Labels)
+	}
+	maps.Copy(dataVolumeClaimLabels, selectorLabels)
+
+	dataVolumeClaimAnnotations := map[string]string{}
+	if r.Storage.Metadata != nil && r.Storage.Metadata.Annotations != nil {
+		maps.Copy(dataVolumeClaimAnnotations, r.Storage.Metadata.Annotations)
+	} else if existingSts == nil {
+		maps.Copy(dataVolumeClaimAnnotations, c.Annotations)
+	} else {
+		if existingDataPVCTemplate == nil {
+			return nil, fmt.Errorf("data PVC template %q in existing %q StatefulSet spec is missing", naming.PVCTemplateName, naming.ObjRef(existingSts))
+		}
+		maps.Copy(dataVolumeClaimAnnotations, existingDataPVCTemplate.Annotations)
 	}
 
 	placement := r.Placement
@@ -658,8 +680,8 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:        naming.PVCTemplateName,
-						Labels:      volumeClaimLabels,
-						Annotations: volumeClaimAnnotations,
+						Labels:      dataVolumeClaimLabels,
+						Annotations: dataVolumeClaimAnnotations,
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
 						AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},

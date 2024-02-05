@@ -33,6 +33,63 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 	f := framework.NewFramework("scyllacluster")
 
+	g.It("should rolling restart cluster when forceRedeploymentReason is changed", func() {
+		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+		defer cancel()
+
+		framework.By("Creating a ScyllaCluster")
+		sc := f.GetDefaultScyllaCluster()
+		sc.Spec.Datacenter.Racks[0].Members = 1
+
+		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", sc.ResourceVersion)
+		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
+		defer waitCtx1Cancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		pod, err := f.KubeClient().CoreV1().Pods(f.Namespace()).Get(
+			ctx,
+			utils.GetNodeName(sc, 0),
+			metav1.GetOptions{},
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		initialPodUID := pod.UID
+		framework.Infof("Initial pod %q UID is %q", pod.Name, initialPodUID)
+
+		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
+			ctx,
+			sc.Name,
+			types.JSONPatchType,
+			[]byte(`[{"op": "replace", "path": "/spec/forceRedeploymentReason", "value": "foo"}]`),
+			metav1.PatchOptions{},
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to redeploy")
+		waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc)
+		defer waitCtx2Cancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		pod, err = f.KubeClient().CoreV1().Pods(f.Namespace()).Get(
+			ctx,
+			utils.GetNodeName(sc, 0),
+			metav1.GetOptions{},
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		o.Expect(pod.UID).NotTo(o.Equal(initialPodUID))
+	})
+
 	g.It("should reconcile resource changes", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()

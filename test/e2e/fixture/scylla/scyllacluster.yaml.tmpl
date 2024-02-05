@@ -2,6 +2,10 @@ apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
 metadata:
   generateName: basic-
+  labels:
+   foo: bar
+  annotations:
+   bar: foo
 spec:
   agentVersion: 3.2.5
   version: 5.4.0

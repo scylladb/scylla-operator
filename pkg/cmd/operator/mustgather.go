@@ -194,6 +194,14 @@ var mustGatherSpecs = []struct {
 	},
 	{
 		GroupResource: schema.GroupResource{
+			Resource: "namespaces",
+			Group:    "",
+		},
+		Namespace: corev1.NamespaceAll,
+		Name:      "scylla-operator-node-tuning",
+	},
+	{
+		GroupResource: schema.GroupResource{
 			Resource: "customresourcedefinitions",
 			Group:    "apiextensions.k8s.io",
 		},

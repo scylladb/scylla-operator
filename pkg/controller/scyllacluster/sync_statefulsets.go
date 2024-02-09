@@ -17,6 +17,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/pkg/scyllafeatures"
+	"github.com/scylladb/scylla-operator/pkg/util/hash"
 	"github.com/scylladb/scylla-operator/pkg/util/parallel"
 	"github.com/scylladb/scylla-operator/pkg/util/slices"
 	appsv1 "k8s.io/api/apps/v1"
@@ -47,11 +48,11 @@ func snapshotTag(prefix string, t time.Time) string {
 	return fmt.Sprintf("so_%s_%sUTC", prefix, t.UTC().Format(time.RFC3339))
 }
 
-func (scc *Controller) makeRacks(sc *scyllav1.ScyllaCluster, statefulSets map[string]*appsv1.StatefulSet) ([]*appsv1.StatefulSet, error) {
+func (scc *Controller) makeRacks(sc *scyllav1.ScyllaCluster, statefulSets map[string]*appsv1.StatefulSet, inputsHash string) ([]*appsv1.StatefulSet, error) {
 	sets := make([]*appsv1.StatefulSet, 0, len(sc.Spec.Datacenter.Racks))
 	for i, rack := range sc.Spec.Datacenter.Racks {
 		oldSts := statefulSets[naming.StatefulSetNameForRack(rack, sc)]
-		sts, err := StatefulSetForRack(rack, sc, oldSts, scc.operatorImage, i)
+		sts, err := StatefulSetForRack(rack, sc, oldSts, scc.operatorImage, i, inputsHash)
 		if err != nil {
 			return nil, err
 		}
@@ -476,6 +477,7 @@ func (scc *Controller) syncStatefulSets(
 	status *scyllav1.ScyllaClusterStatus,
 	statefulSets map[string]*appsv1.StatefulSet,
 	services map[string]*corev1.Service,
+	configMaps map[string]*corev1.ConfigMap,
 ) ([]metav1.Condition, error) {
 	var err error
 	var progressingConditions []metav1.Condition
@@ -500,7 +502,26 @@ func (scc *Controller) syncStatefulSets(
 		}
 	}
 
-	requiredStatefulSets, err := scc.makeRacks(sc, statefulSets)
+	managedScyllaDBConfigCMName := naming.GetScyllaDBManagedConfigCMName(sc.Name)
+	managedScyllaDBConfigCM, found := configMaps[managedScyllaDBConfigCMName]
+	if !found {
+		klog.V(2).InfoS("Waiting for managed config map", "ScyllaCluster", klog.KObj(sc), "ConfigMapName", managedScyllaDBConfigCMName)
+		progressingConditions = append(progressingConditions, metav1.Condition{
+			Type:               statefulSetControllerProgressingCondition,
+			Status:             metav1.ConditionTrue,
+			Reason:             "WaitingForManagedConfig",
+			Message:            fmt.Sprintf("Waiting for ConfigMap %q to be created.", managedScyllaDBConfigCMName),
+			ObservedGeneration: sc.Generation,
+		})
+		return progressingConditions, nil
+	}
+
+	inputsHash, err := hash.HashObjects(managedScyllaDBConfigCM.Data)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't hash inputs: %w", err)
+	}
+
+	requiredStatefulSets, err := scc.makeRacks(sc, statefulSets, inputsHash)
 	if err != nil {
 		scc.eventRecorder.Eventf(
 			sc,

@@ -263,11 +263,24 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 
 	err = controllerhelpers.RunSync(
 		&status.Conditions,
+		configControllerProgressingCondition,
+		configControllerDegradedCondition,
+		sc.Generation,
+		func() ([]metav1.Condition, error) {
+			return scc.syncConfigs(ctx, sc)
+		},
+	)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't sync configs: %w", err))
+	}
+
+	err = controllerhelpers.RunSync(
+		&status.Conditions,
 		statefulSetControllerProgressingCondition,
 		statefulSetControllerDegradedCondition,
 		sc.Generation,
 		func() ([]metav1.Condition, error) {
-			return scc.syncStatefulSets(ctx, key, sc, status, statefulSetMap, serviceMap)
+			return scc.syncStatefulSets(ctx, key, sc, status, statefulSetMap, serviceMap, configMapMap)
 		},
 	)
 	if err != nil {

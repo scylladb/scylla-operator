@@ -89,6 +89,7 @@ const (
 	PrometheusPortAnnotation   = "prometheus.io/port"
 
 	ForceRedeploymentReasonAnnotation = "scylla-operator.scylladb.com/force-redeployment-reason"
+	InputsHashAnnotation              = "scylla-operator.scylladb.com/inputs-hash"
 )
 
 const (
@@ -112,7 +113,10 @@ const (
 	ScyllaAgentAuthTokenFileName = "auth-token.yaml"
 	ScyllaAgentConfigDefaultFile = "/etc/scylla-manager-agent/scylla-manager-agent.yaml"
 	ScyllaClientConfigDirName    = "/mnt/scylla-client-config"
+	ScyllaDBManagedConfigDir     = "/var/run/configmaps/scylla-operator.scylladb.com/scylladb/managed-config"
 	ScyllaConfigName             = "scylla.yaml"
+	ScyllaDBManagedConfigName    = "scylladb-managed-config.yaml"
+	ScyllaManagedConfigPath      = ScyllaDBManagedConfigDir + "/" + ScyllaDBManagedConfigName
 	ScyllaRackDCPropertiesName   = "cassandra-rackdc.properties"
 	ScyllaIOPropertiesName       = "io_properties.yaml"
 

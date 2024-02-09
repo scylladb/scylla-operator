@@ -10,9 +10,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/magiconair/properties"
-	"github.com/scylladb/scylla-operator/pkg/features"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	featuregatetesting "k8s.io/component-base/featuregate/testing"
 )
 
 func TestCreateRackDCProperties(t *testing.T) {
@@ -321,71 +318,6 @@ func TestScyllaArguments(t *testing.T) {
 			argumentsMap := convertScyllaArguments(test.Args)
 			if !reflect.DeepEqual(test.ExpectedArgs, argumentsMap) {
 				t.Errorf("expected %+v, got %+v", test.ExpectedArgs, argumentsMap)
-			}
-		})
-	}
-}
-
-func Test_makeOperatorConfigOverrides(t *testing.T) {
-	tt := []struct {
-		name                 string
-		clusterName          string
-		enableTLSFeatureGate bool
-		expected             []byte
-		expectedErr          error
-	}{
-		{
-			name:                 "no TLS config when the feature is disabled",
-			clusterName:          "foo",
-			enableTLSFeatureGate: false,
-			expected: []byte(`
-cluster_name: "foo"
-rpc_address: "0.0.0.0"
-endpoint_snitch: "GossipingPropertyFileSnitch"
-`),
-			expectedErr: nil,
-		},
-		{
-			name:                 "TLS config present when the feature is enabled",
-			clusterName:          "foo",
-			enableTLSFeatureGate: true,
-			expected: []byte(`
-cluster_name: "foo"
-rpc_address: "0.0.0.0"
-endpoint_snitch: "GossipingPropertyFileSnitch"
-native_transport_port_ssl: 9142
-native_shard_aware_transport_port_ssl: 19142
-client_encryption_options:
-  enabled: true
-  optional: false
-  certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.crt"
-  keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.key"
-  require_client_auth: true
-  truststore: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/client-ca/tls.crt"
-`),
-			expectedErr: nil,
-		},
-	}
-	for _, tc := range tt {
-		t.Run(tc.name, func(t *testing.T) {
-			defer featuregatetesting.SetFeatureGateDuringTest(
-				t,
-				utilfeature.DefaultMutableFeatureGate,
-				features.AutomaticTLSCertificates,
-				tc.enableTLSFeatureGate,
-			)()
-
-			got, err := makeOperatorConfigOverrides(tc.clusterName)
-			if !reflect.DeepEqual(err, tc.expectedErr) {
-				t.Errorf("expected and actual errors differ: %s", cmp.Diff(tc.expectedErr, err))
-			}
-
-			if tc.expected != nil {
-				tc.expected = []byte(strings.TrimPrefix(string(tc.expected), "\n"))
-			}
-
-			if !reflect.DeepEqual(got, tc.expected) {
-				t.Errorf("expected and actual data differ: %s", cmp.Diff(string(tc.expected), string(got)))
 			}
 		})
 	}

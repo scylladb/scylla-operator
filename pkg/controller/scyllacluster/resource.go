@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	scylladbassets "github.com/scylladb/scylla-operator/assets/scylladb"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
@@ -238,7 +239,7 @@ func servicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 
 // StatefulSetForRack make a StatefulSet for the rack.
 // existingSts may be nil if it doesn't exist yet.
-func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existingSts *appsv1.StatefulSet, sidecarImage string, rackOrdinal int) (*appsv1.StatefulSet, error) {
+func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existingSts *appsv1.StatefulSet, sidecarImage string, rackOrdinal int, inputsHash string) (*appsv1.StatefulSet, error) {
 	selectorLabels, err := naming.RackSelectorLabels(r, c)
 	if err != nil {
 		return nil, fmt.Errorf("can't get selector labels: %w", err)
@@ -272,6 +273,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 	}
 	rackTemplateAnnotations[naming.PrometheusScrapeAnnotation] = naming.LabelValueTrue
 	rackTemplateAnnotations[naming.PrometheusPortAnnotation] = "9180"
+	rackTemplateAnnotations[naming.InputsHashAnnotation] = inputsHash
 
 	// VolumeClaims are not allowed to be edited by StatufulSet validation,
 	// which means we have to keep them static.
@@ -393,6 +395,17 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 											Name: stringOrDefault(r.ScyllaConfig, "scylla-config"),
 										},
 										Optional: &opt,
+									},
+								},
+							},
+							{
+								Name: "scylladb-managed-config",
+								VolumeSource: corev1.VolumeSource{
+									ConfigMap: &corev1.ConfigMapVolumeSource{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: naming.GetScyllaDBManagedConfigCMName(c.Name),
+										},
+										Optional: pointer.Ptr(false),
 									},
 								},
 							},
@@ -564,6 +577,11 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 									{
 										Name:      "scylla-config-volume",
 										MountPath: naming.ScyllaConfigDirName,
+										ReadOnly:  true,
+									},
+									{
+										Name:      "scylladb-managed-config",
+										MountPath: naming.ScyllaDBManagedConfigDir,
 										ReadOnly:  true,
 									},
 									{
@@ -1279,4 +1297,42 @@ func MakeJobs(sc *scyllav1.ScyllaCluster, services map[string]*corev1.Service, i
 	}
 
 	return jobs, progressingConditions
+}
+
+func MakeManagedScyllaDBConfig(sc *scyllav1.ScyllaCluster) (*corev1.ConfigMap, error) {
+	cm, _, err := scylladbassets.ScyllaDBManagedConfigTemplate.RenderObject(
+		map[string]any{
+			"Namespace":         sc.Namespace,
+			"Name":              naming.GetScyllaDBManagedConfigCMName(sc.Name),
+			"ClusterName":       sc.Name,
+			"ManagedConfigName": naming.ScyllaDBManagedConfigName,
+			"EnableTLS":         utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates),
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("can't render managed scylladb config: %w", err)
+	}
+
+	cm.SetOwnerReferences([]metav1.OwnerReference{
+		{
+			APIVersion:         scyllaClusterControllerGVK.GroupVersion().String(),
+			Kind:               scyllaClusterControllerGVK.Kind,
+			Name:               sc.Name,
+			UID:                sc.UID,
+			Controller:         pointer.Ptr(true),
+			BlockOwnerDeletion: pointer.Ptr(true),
+		},
+	})
+
+	if cm.Labels == nil {
+		cm.Labels = map[string]string{}
+	}
+	maps.Copy(cm.Labels, sc.Labels)
+
+	if cm.Annotations == nil {
+		cm.Annotations = map[string]string{}
+	}
+	maps.Copy(cm.Annotations, sc.Annotations)
+
+	return cm, nil
 }

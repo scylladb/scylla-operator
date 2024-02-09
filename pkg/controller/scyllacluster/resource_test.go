@@ -3,6 +3,7 @@ package scyllacluster
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -674,9 +675,10 @@ func TestStatefulSetForRack(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Labels: newBasicStatefulSetLabels(0),
 						Annotations: map[string]string{
-							"default-sc-annotation": "bar",
-							"prometheus.io/port":    "9180",
-							"prometheus.io/scrape":  "true",
+							"default-sc-annotation":                    "bar",
+							"scylla-operator.scylladb.com/inputs-hash": "",
+							"prometheus.io/port":                       "9180",
+							"prometheus.io/scrape":                     "true",
 						},
 					},
 					Spec: corev1.PodSpec{
@@ -700,6 +702,17 @@ func TestStatefulSetForRack(t *testing.T) {
 												Name: "scylla-config",
 											},
 											Optional: pointer.Ptr(true),
+										},
+									},
+								},
+								{
+									Name: "scylladb-managed-config",
+									VolumeSource: corev1.VolumeSource{
+										ConfigMap: &corev1.ConfigMapVolumeSource{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "basic-managed-config",
+											},
+											Optional: pointer.Ptr(false),
 										},
 									},
 								},
@@ -884,6 +897,11 @@ func TestStatefulSetForRack(t *testing.T) {
 										{
 											Name:      "scylla-config-volume",
 											MountPath: "/mnt/scylla-config",
+											ReadOnly:  true,
+										},
+										{
+											Name:      "scylladb-managed-config",
+											MountPath: "/var/run/configmaps/scylla-operator.scylladb.com/scylladb/managed-config",
 											ReadOnly:  true,
 										},
 										{
@@ -1298,9 +1316,10 @@ func TestStatefulSetForRack(t *testing.T) {
 				sts := newBasicStatefulSet()
 
 				sts.Spec.Template.ObjectMeta.Annotations = map[string]string{
-					"custom-pod-annotation": "custom-pod-annotation-value",
-					"prometheus.io/port":    "9180",
-					"prometheus.io/scrape":  "true",
+					"custom-pod-annotation":                    "custom-pod-annotation-value",
+					"prometheus.io/port":                       "9180",
+					"prometheus.io/scrape":                     "true",
+					"scylla-operator.scylladb.com/inputs-hash": "",
 				}
 				sts.Spec.Template.ObjectMeta.Labels = map[string]string{
 					"app":                          "scylla",
@@ -1325,7 +1344,7 @@ func TestStatefulSetForRack(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := StatefulSetForRack(tc.rack, tc.scyllaCluster, tc.existingStatefulSet, "scylladb/scylla-operator:latest", 0)
+			got, err := StatefulSetForRack(tc.rack, tc.scyllaCluster, tc.existingStatefulSet, "scylladb/scylla-operator:latest", 0, "")
 
 			if !reflect.DeepEqual(err, tc.expectedError) {
 				t.Fatalf("expected and actual errors differ: %s",
@@ -2505,6 +2524,137 @@ func TestMakeJobs(t *testing.T) {
 			}
 			if !reflect.DeepEqual(gotConditions, tc.expectedConditions) {
 				t.Fatalf("expected and actual conditions differ: %s", cmp.Diff(tc.expectedConditions, gotConditions))
+			}
+		})
+	}
+}
+
+func Test_MakeManagedScyllaDBConfig(t *testing.T) {
+	tt := []struct {
+		name                 string
+		sc                   *scyllav1.ScyllaCluster
+		enableTLSFeatureGate bool
+		expectedCM           *corev1.ConfigMap
+		expectedErr          error
+	}{
+		{
+			name: "no TLS config when the feature is disabled",
+			sc: &scyllav1.ScyllaCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo",
+					UID:       "uid-42",
+					Labels: map[string]string{
+						"user-label": "user-label-value",
+					},
+				},
+			},
+			enableTLSFeatureGate: false,
+			expectedCM: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo-managed-config",
+					Labels: map[string]string{
+						"scylla/cluster": "foo",
+						"user-label":     "user-label-value",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1",
+							Kind:               "ScyllaCluster",
+							Name:               "foo",
+							UID:                "uid-42",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"scylladb-managed-config.yaml": strings.TrimPrefix(`
+cluster_name: "foo"
+rpc_address: "0.0.0.0"
+endpoint_snitch: "GossipingPropertyFileSnitch"
+`, "\n"),
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "TLS config present when the feature is enabled",
+			sc: &scyllav1.ScyllaCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo",
+					UID:       "uid-42",
+					Labels: map[string]string{
+						"user-label": "user-label-value",
+					},
+				},
+			},
+			enableTLSFeatureGate: true,
+			expectedCM: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo-managed-config",
+					Labels: map[string]string{
+						"scylla/cluster": "foo",
+						"user-label":     "user-label-value",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1",
+							Kind:               "ScyllaCluster",
+							Name:               "foo",
+							UID:                "uid-42",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"scylladb-managed-config.yaml": strings.TrimPrefix(`
+cluster_name: "foo"
+rpc_address: "0.0.0.0"
+endpoint_snitch: "GossipingPropertyFileSnitch"
+native_transport_port_ssl: 9142
+native_shard_aware_transport_port_ssl: 19142
+client_encryption_options:
+  enabled: true
+  optional: false
+  certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.crt"
+  keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.key"
+  require_client_auth: true
+  truststore: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/client-ca/tls.crt"
+`, "\n"),
+				},
+			},
+			expectedErr: nil,
+		},
+	}
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			defer featuregatetesting.SetFeatureGateDuringTest(
+				t,
+				utilfeature.DefaultMutableFeatureGate,
+				features.AutomaticTLSCertificates,
+				tc.enableTLSFeatureGate,
+			)()
+
+			got, err := MakeManagedScyllaDBConfig(tc.sc)
+			if !reflect.DeepEqual(err, tc.expectedErr) {
+				t.Errorf("expected and actual errors differ: %s", cmp.Diff(tc.expectedErr, err))
+			}
+
+			if !apiequality.Semantic.DeepEqual(got, tc.expectedCM) {
+				t.Errorf("expected and actual configmaps differ:\n%s", cmp.Diff(tc.expectedCM, got))
 			}
 		})
 	}

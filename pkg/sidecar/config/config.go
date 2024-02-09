@@ -13,17 +13,13 @@ import (
 
 	"github.com/magiconair/properties"
 	"github.com/pkg/errors"
-	scylladbassets "github.com/scylladb/scylla-operator/assets/scylladb"
-	"github.com/scylladb/scylla-operator/pkg/assets"
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
-	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/semver"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/util/cpuset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/yaml"
@@ -41,21 +37,6 @@ const (
 )
 
 var scyllaJMXPaths = []string{"/usr/lib/scylla/jmx/scylla-jmx", "/opt/scylladb/jmx/scylla-jmx"}
-
-func makeOperatorConfigOverrides(clusterName string) ([]byte, error) {
-	data, err := assets.RenderTemplate(
-		scylladbassets.DefaultConfigTemplate,
-		map[string]any{
-			"clusterName": clusterName,
-			"enableTLS":   utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates),
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return data, nil
-}
 
 type ScyllaConfig struct {
 	member                              *identity.Member
@@ -86,7 +67,7 @@ func (s *ScyllaConfig) Setup(ctx context.Context) (*exec.Cmd, error) {
 	}
 
 	klog.Info("Setting up scylla.yaml")
-	if err := s.setupScyllaYAML(scyllaYAMLPath, scyllaYAMLConfigMapPath); err != nil {
+	if err := s.setupScyllaYAML(scyllaYAMLPath, naming.ScyllaManagedConfigPath, scyllaYAMLConfigMapPath); err != nil {
 		return nil, fmt.Errorf("can't setup scylla.yaml: %w", err)
 	}
 
@@ -110,14 +91,14 @@ func (s *ScyllaConfig) Setup(ctx context.Context) (*exec.Cmd, error) {
 // - cluster_name
 // - rpc_address
 // - endpoint_snitch
-func (s *ScyllaConfig) setupScyllaYAML(configFilePath, configMapPath string) error {
+func (s *ScyllaConfig) setupScyllaYAML(configFilePath, managedConfigMapPath, configMapPath string) error {
 	// Read default scylla.yaml
 	configFileBytes, err := os.ReadFile(configFilePath)
 	if err != nil {
 		return fmt.Errorf("can't read file %q: %w", configFilePath, err)
 	}
 
-	operatorConfigOverrides, err := makeOperatorConfigOverrides(s.member.Cluster)
+	operatorConfigOverrides, err := os.ReadFile(managedConfigMapPath)
 	if err != nil {
 		return fmt.Errorf("can't make scylladb config overrides: %w", err)
 	}

@@ -218,3 +218,7 @@ func GetCQLHostIDSubDomain(hostID, domain string) string {
 func CleanupJobForService(svcName string) string {
 	return fmt.Sprintf("cleanup-%s", svcName)
 }
+
+func GetScyllaDBManagedConfigCMName(clusterName string) string {
+	return fmt.Sprintf("%s-managed-config", clusterName)
+}

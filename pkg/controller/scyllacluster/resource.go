@@ -677,7 +677,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 											"-O",
 											"inherit_errexit",
 											"-c",
-											fmt.Sprintf("nodetool drain &; sleep %.0f &; wait", minTerminationGracePeriod.Seconds()),
+											fmt.Sprintf("nodetool drain & sleep %.0f & wait", minTerminationGracePeriod.Seconds()),
 										},
 									},
 								},

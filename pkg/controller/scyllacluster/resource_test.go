@@ -983,7 +983,7 @@ func TestStatefulSetForRack(t *testing.T) {
 												"-O",
 												"inherit_errexit",
 												"-c",
-												"nodetool drain &; sleep 15 &; wait",
+												"nodetool drain & sleep 15 & wait",
 											},
 										},
 									},

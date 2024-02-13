@@ -29,7 +29,8 @@ spec:
     httpConfig:
       http2: true
   serviceMonitorSelector:
-    matchLabels: {}
+    matchLabels:
+      scylla-operator.scylladb.com/scylladbmonitoring-name: "{{ .scyllaDBMonitoringName }}"
   affinity:
     {{- .affinity | toYAML | nindent 4 }}
   tolerations:

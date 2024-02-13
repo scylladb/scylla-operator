@@ -274,7 +274,8 @@ spec:
     httpConfig:
       http2: true
   serviceMonitorSelector:
-    matchLabels: {}
+    matchLabels:
+      scylla-operator.scylladb.com/scylladbmonitoring-name: "sm-name"
   affinity:
     {}
   tolerations:
@@ -350,7 +351,8 @@ spec:
     httpConfig:
       http2: true
   serviceMonitorSelector:
-    matchLabels: {}
+    matchLabels:
+      scylla-operator.scylladb.com/scylladbmonitoring-name: "sm-name"
   affinity:
     {}
   tolerations:

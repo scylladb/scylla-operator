@@ -52,6 +52,7 @@ require (
 	k8s.io/cri-api v0.29.0
 	k8s.io/klog/v2 v2.110.1
 	k8s.io/kubectl v0.29.0
+	k8s.io/kubelet v0.29.0
 	k8s.io/utils v0.0.0-20240102154912-e7106e64919e
 	sigs.k8s.io/controller-tools v0.11.3
 	sigs.k8s.io/yaml v1.4.0

@@ -143,7 +143,7 @@ const (
 	PerftuneJobPrefixName = "perftune"
 
 	// TODO: Make sure this doesn't get out of date.
-	DefaultScyllaUtilsImage = "docker.io/scylladb/scylla:5.0.5"
+	DefaultScyllaUtilsImage = "docker.io/scylladb/scylla:5.4.2"
 )
 
 type NodeConfigJobType string

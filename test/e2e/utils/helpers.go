@@ -512,6 +512,21 @@ func GetNodesPodIPs(ctx context.Context, client corev1client.CoreV1Interface, sc
 	return ipAddresses, nil
 }
 
+func GetIdentityServiceIP(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) (string, error) {
+	svcName := naming.IdentityServiceName(sc)
+	svc, err := client.Services(sc.Namespace).Get(ctx, svcName, metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("can't get service %q: %w", svcName, err)
+	}
+
+	clusterIP := svc.Spec.ClusterIP
+	if len(clusterIP) == 0 {
+		return "", fmt.Errorf("internal error: member service doesn't have clusterIP assigned")
+	}
+
+	return clusterIP, nil
+}
+
 // GetManagerClient gets managerClient using IP address. E2E tests shouldn't rely on InCluster DNS.
 func GetManagerClient(ctx context.Context, client corev1client.CoreV1Interface) (*managerclient.Client, error) {
 	managerService, err := client.Services(naming.ScyllaManagerNamespace).Get(ctx, naming.ScyllaManagerServiceName, metav1.GetOptions{})

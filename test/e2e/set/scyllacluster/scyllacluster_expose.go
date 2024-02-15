@@ -203,7 +203,15 @@ var _ = g.Describe("ScyllaCluster", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(serviceAndPodIPs).To(o.HaveLen(e.expectedNumberOfIPAddressesInServingCert(int(utils.GetMemberCount(sc)))))
 
-			hostsIPs, err := helpers.ParseIPs(serviceAndPodIPs)
+			indentityServiceIP, err := utils.GetIdentityServiceIP(ctx, f.KubeClient().CoreV1(), sc)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(indentityServiceIP).NotTo(o.BeEmpty())
+
+			allIPs := make([]string, 0, len(serviceAndPodIPs)+1)
+			allIPs = append(allIPs, serviceAndPodIPs...)
+			allIPs = append(allIPs, indentityServiceIP)
+
+			hostsIPs, err := helpers.ParseIPs(allIPs)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			var servingDNSNames []string

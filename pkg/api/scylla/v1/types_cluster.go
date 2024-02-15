@@ -551,6 +551,22 @@ type ScyllaClusterStatus struct {
 	// racks reflect status of cluster racks.
 	Racks map[string]RackStatus `json:"racks,omitempty"`
 
+	// members is the number of ScyllaDB members in all racks.
+	// +optional
+	Members *int32 `json:"members,omitempty"`
+
+	// readyMembers is the number of ScyllaDB members in all racks that are ready.
+	// +optional
+	ReadyMembers *int32 `json:"readyMembers,omitempty"`
+
+	// availableMembers is the number of ScyllaDB members in all racks that are available.
+	// +optional
+	AvailableMembers *int32 `json:"availableMembers,omitempty"`
+
+	// rackCount is the number of ScyllaDB racks in this cluster.
+	// +optional
+	RackCount *int32 `json:"rackCount,omitempty"`
+
 	// managerId contains ID under which cluster was registered in Scylla Manager.
 	ManagerID *string `json:"managerId,omitempty"`
 
@@ -612,6 +628,10 @@ type RackStatus struct {
 
 	// readyMembers is the number of ready members in the specific Rack
 	ReadyMembers int32 `json:"readyMembers"`
+
+	// availableMembers is the number of available members in the Rack.
+	// +optional
+	AvailableMembers *int32 `json:"availableMembers,omitempty"`
 
 	// updatedMembers is the number of members matching the current spec.
 	// +optional

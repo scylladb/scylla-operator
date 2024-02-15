@@ -189,6 +189,7 @@ type NodeConfigSpec struct {
 // +genclient
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 
 type NodeConfig struct {
 	metav1.TypeMeta   `json:",inline"`

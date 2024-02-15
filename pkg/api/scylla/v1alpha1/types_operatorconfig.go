@@ -20,6 +20,7 @@ type ScyllaOperatorConfigStatus struct {
 // +genclient
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 
 // ScyllaOperatorConfig describes the Scylla Operator configuration.
 type ScyllaOperatorConfig struct {

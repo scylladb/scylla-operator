@@ -62,7 +62,7 @@ func IdentityService(c *scyllav1.ScyllaCluster) *corev1.Service {
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        naming.HeadlessServiceNameForCluster(c),
+			Name:        naming.IdentityServiceName(c),
 			Namespace:   c.Namespace,
 			Labels:      svcLabels,
 			Annotations: svcAnnotations,
@@ -355,7 +355,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: pointer.Ptr(r.Members),
 			// Use a common Headless Service for all StatefulSets
-			ServiceName: naming.HeadlessServiceNameForCluster(c),
+			ServiceName: naming.IdentityServiceName(c),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: selectorLabels,
 			},

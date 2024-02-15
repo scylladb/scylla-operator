@@ -191,18 +191,14 @@ func (scc *Controller) syncCerts(
 	//       only for the connection, not by the system.
 
 	// For the clients not using the proxy we'll sign for IPs that are published by ScyllaDB.
+	// We should also sign the identity service ClusterIP and internal DNS for the
+	// initial discovery. (The initial contact point is especially important when using ephemeral IPs.)
 	var ipAddresses []net.IP
 	var servingDNSNames []string
 
-	var externalAddressRequired bool
-	if sc.Spec.ExposeOptions != nil && sc.Spec.ExposeOptions.BroadcastOptions != nil {
-		bo := sc.Spec.ExposeOptions.BroadcastOptions
-		externalAddressRequired = bo.Clients.Type == scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress ||
-			bo.Nodes.Type == scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress
-	}
-
 	for _, svc := range serviceMap {
-		if svc.Labels[naming.ScyllaServiceTypeLabel] != string(naming.ScyllaServiceTypeMember) {
+		svcType := svc.Labels[naming.ScyllaServiceTypeLabel]
+		if svcType != string(naming.ScyllaServiceTypeMember) && svcType != string(naming.ScyllaServiceTypeIdentity) {
 			continue
 		}
 
@@ -215,55 +211,75 @@ func (scc *Controller) syncCerts(
 			ipAddresses = append(ipAddresses, parsedIP)
 		}
 
-		externalAddressFound := false
-		for _, ingressStatus := range svc.Status.LoadBalancer.Ingress {
-			if len(ingressStatus.IP) != 0 {
-				parsedIP := net.ParseIP(ingressStatus.IP)
-				if parsedIP == nil {
-					return progressingConditions, fmt.Errorf("can't parse ingress IP %q", ingressStatus.IP)
+		if svc.Spec.Type == corev1.ServiceTypeLoadBalancer {
+			hasExternalAddress := false
+			for _, ingressStatus := range svc.Status.LoadBalancer.Ingress {
+				if len(ingressStatus.IP) != 0 {
+					parsedIP := net.ParseIP(ingressStatus.IP)
+					if parsedIP == nil {
+						return progressingConditions, fmt.Errorf("can't parse ingress IP %q", ingressStatus.IP)
+					}
+
+					hasExternalAddress = true
+					ipAddresses = append(ipAddresses, parsedIP)
 				}
 
-				externalAddressFound = true
-				ipAddresses = append(ipAddresses, parsedIP)
+				if len(ingressStatus.Hostname) != 0 {
+					hasExternalAddress = true
+					servingDNSNames = append(servingDNSNames, ingressStatus.Hostname)
+				}
 			}
 
-			if len(ingressStatus.Hostname) != 0 {
-				externalAddressFound = true
-				servingDNSNames = append(servingDNSNames, ingressStatus.Hostname)
+			// There should be at least one address for ServiceTypeLoadBalancer.
+			if !hasExternalAddress {
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               certControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             internalapi.ProgressingReason,
+					Message:            fmt.Sprintf("waiting for external address in Service %q to be available", naming.ObjRef(svc)),
+					ObservedGeneration: sc.Generation,
+				})
 			}
 		}
 
-		if externalAddressRequired && !externalAddressFound {
-			progressingConditions = append(progressingConditions, metav1.Condition{
-				Type:               certControllerProgressingCondition,
-				Status:             metav1.ConditionTrue,
-				Reason:             internalapi.ProgressingReason,
-				Message:            fmt.Sprintf("waiting for external address in Service %q to be available", naming.ObjRef(svc)),
-				ObservedGeneration: sc.Generation,
-			})
+		// Only member services have associated pods
+		if svcType != string(naming.ScyllaServiceTypeMember) {
+			continue
 		}
 
 		pod, err := scc.podLister.Pods(sc.Namespace).Get(svc.Name)
-		if err != nil && !apierrors.IsNotFound(err) {
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               certControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             internalapi.ProgressingReason,
+					Message:            fmt.Sprintf("waiting for Pod %q to be created", naming.ManualRef(sc.Namespace, svc.Name)),
+					ObservedGeneration: sc.Generation,
+				})
+				continue
+			}
+
 			return progressingConditions, fmt.Errorf("can't get Pod %q: %w", naming.ManualRef(sc.Namespace, svc.Name), err)
 		}
 
-		if pod != nil && len(pod.Status.PodIP) != 0 {
-			parsedIP := net.ParseIP(pod.Status.PodIP)
-			if parsedIP == nil {
-				return progressingConditions, fmt.Errorf("can't parse Pod %q IP %q", naming.ObjRef(pod), pod.Status.PodIP)
-			}
-
-			ipAddresses = append(ipAddresses, parsedIP)
-		} else {
+		if len(pod.Status.PodIP) == 0 {
 			progressingConditions = append(progressingConditions, metav1.Condition{
 				Type:               certControllerProgressingCondition,
 				Status:             metav1.ConditionTrue,
 				Reason:             internalapi.ProgressingReason,
-				Message:            fmt.Sprintf("waiting for Pod %q to be have IP address", naming.ManualRef(sc.Namespace, svc.Name)),
+				Message:            fmt.Sprintf("waiting for Pod %q to have an IP address", naming.ManualRef(sc.Namespace, svc.Name)),
 				ObservedGeneration: sc.Generation,
 			})
+			continue
 		}
+
+		parsedIP := net.ParseIP(pod.Status.PodIP)
+		if parsedIP == nil {
+			return progressingConditions, fmt.Errorf("can't parse Pod %q IP %q", naming.ObjRef(pod), pod.Status.PodIP)
+		}
+
+		ipAddresses = append(ipAddresses, parsedIP)
 	}
 
 	// Make sure ipAddresses are always sorted and can be reconciled in a declarative way.

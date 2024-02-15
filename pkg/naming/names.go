@@ -55,7 +55,7 @@ func ServiceDNSName(service string, c *scyllav1.ScyllaCluster) string {
 	return fmt.Sprintf("%s.%s", service, CrossNamespaceServiceNameForCluster(c))
 }
 
-func HeadlessServiceNameForCluster(c *scyllav1.ScyllaCluster) string {
+func IdentityServiceName(c *scyllav1.ScyllaCluster) string {
 	return fmt.Sprintf("%s-client", c.Name)
 }
 
@@ -64,7 +64,7 @@ func PodDisruptionBudgetName(c *scyllav1.ScyllaCluster) string {
 }
 
 func CrossNamespaceServiceNameForCluster(c *scyllav1.ScyllaCluster) string {
-	return fmt.Sprintf("%s.%s.svc", HeadlessServiceNameForCluster(c), c.Namespace)
+	return fmt.Sprintf("%s.%s.svc", IdentityServiceName(c), c.Namespace)
 }
 
 func ManagerClusterName(c *scyllav1.ScyllaCluster) string {

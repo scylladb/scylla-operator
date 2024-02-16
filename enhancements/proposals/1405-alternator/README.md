@@ -21,6 +21,7 @@ we can break existing deployments. Same goes for the Service port.
 - Expose Alternator service using a load balanced endpoint (Service)
 - Expose Alternator over secure and static port
 - Expose Alternator on insecure port only if explicitly requested
+- Expose Alternator with Authorization on by default
 - Ensure e2e coverage for Alternator
 - Expose Alternator together with CQL (not exclusively)
 - Deprecate `scyllaclusters.scylla.scylladb.com/v1.spec.alternator.port`
@@ -45,6 +46,8 @@ the Scylla Operator or the administrator can still execute maintenance task usin
 [#1358](https://github.com/scylladb/scylla-operator/issues/1358).
 Also, the Alternator [authorization](https://enterprise.docs.scylladb.com/stable/alternator/compatibility.html#authorization)
 is managed through CQL by updating `system_auth.roles` table.
+
+Alternator will be setup with Authorization enabled. Users can opt out, but it should be secure by default.
 
 In the same release `scyllaclusters.scylla.scylladb.com/v1.spec.alternator.port` will be deprecated, so
 we may ignore the value in a future release. In this release, and with the new changes, it is intended for it to retain the existing behaviour for backward compatibility.
@@ -123,6 +126,13 @@ type AlternatorSpec struct {
 	// insecureEnableHTTP enables serving Alternator traffic also on insecure HTTP port.
 	InsecureEnableHTTP *bool `json:"insecureEnableHTTP,omitempty"`
 	
+	// insecureDisableAuthorization disables Alternator authorization.
+	// If not specified, the authorization is enabled.
+	// For backwards compatibility the authorization is disabled when this field is not specified
+	// and a manual port is used.
+	// +optional
+	InsecureDisableAuthorization *bool `json:"insecureDisableAuthorization,omitempty"`
+	
 	// servingCertificate references a TLS certificate for serving secure traffic.
 	// +kubebuilder:default:="{type:"OperatorManaged"}"
 	// +optional
@@ -150,12 +160,14 @@ If `spec.alternator.port > 0` it implies `insecureEnableHTTP` to be enabled and 
 
 For `spec.alternator.port > 0` we will keep the existing behaviour of exposing it also on the member Services to maintain backwards compatibility.
 
+By default, Alternator will have Authorization enabled. Because this wasn't the case previously (when enabled with manual port), we'll not require authorization when `spec.alternator.port > 0 && spec.alternator.insecureDisableAuthorization == nil`. Users can still opt-in by setting `spec.alternator.insecureDisableAuthorization` explicitly to `false`.
+
 ### Test Plan
 
 There will be a simple unit test to make sure that correct alternator ports are exposed when enabled and vice versa.
 
 There will also be an e2e test covering the full flow and making sure the TLS layer works as well, including changing the certificate type / source.
-Ideally this should include reading from Alternator API during a rolling upgrade and making sure all requests succeed.
+Ideally this should include reading from Alternator API during a rolling upgrade and making sure all requests succeed. As it's the default, e2e test will use authorization.
 
 ### Upgrade / Downgrade Strategy
 
@@ -163,13 +175,14 @@ No specific action for upgrades / downgrades is needed.
 
 ### Version Skew Strategy
 
-For existing ScyllaClusters specifying `alternator.port` will imply `insecureEnableHTTP` so the clusters stay backwards compatible.
+For existing ScyllaClusters specifying `alternator.port` will imply `insecureEnableHTTP = true` and `spec.alternator.insecureDisableAuthorization = true` so the clusters stay backwards compatible.
 When rolled back this will behave the same way.
 Any other new functionality like HTTPS will be "disabled" on rollback and the new certificates may stay unmanaged in the API until the operator is upgraded again.
 
 ## Implementation History
 
 - 2023-09-19: Initial enhancement proposal
+- 2024-02-16: Extended with using Authorization by default
 
 ## Drawbacks
 

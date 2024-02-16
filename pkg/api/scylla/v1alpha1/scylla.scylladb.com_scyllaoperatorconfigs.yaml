@@ -15,7 +15,11 @@ spec:
     singular: scyllaoperatorconfig
   scope: Cluster
   versions:
-    - name: v1alpha1
+    - additionalPrinterColumns:
+        - jsonPath: .metadata.creationTimestamp
+          name: AGE
+          type: date
+      name: v1alpha1
       schema:
         openAPIV3Schema:
           description: ScyllaOperatorConfig describes the Scylla Operator configuration.

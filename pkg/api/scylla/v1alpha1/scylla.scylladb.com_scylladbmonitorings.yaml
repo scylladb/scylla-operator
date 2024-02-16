@@ -15,7 +15,20 @@ spec:
     singular: scylladbmonitoring
   scope: Namespaced
   versions:
-    - name: v1alpha1
+    - additionalPrinterColumns:
+        - jsonPath: .status.conditions[?(@.type=='Available')].status
+          name: AVAILABLE
+          type: string
+        - jsonPath: .status.conditions[?(@.type=='Progressing')].status
+          name: PROGRESSING
+          type: string
+        - jsonPath: .status.conditions[?(@.type=='Degraded')].status
+          name: DEGRADED
+          type: string
+        - jsonPath: .metadata.creationTimestamp
+          name: AGE
+          type: date
+      name: v1alpha1
       schema:
         openAPIV3Schema:
           description: ScyllaDBMonitoring defines a monitoring instance for ScyllaDB clusters.

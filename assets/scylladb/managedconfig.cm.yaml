@@ -10,6 +10,7 @@ data:
     cluster_name: "{{ .ClusterName }}"
     rpc_address: "0.0.0.0"
     endpoint_snitch: "GossipingPropertyFileSnitch"
+    internode_compression: "all"
     {{- if .EnableTLS }}
     native_transport_port_ssl: 9142
     native_shard_aware_transport_port_ssl: 19142

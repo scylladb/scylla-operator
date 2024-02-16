@@ -2578,6 +2578,7 @@ func Test_MakeManagedScyllaDBConfig(t *testing.T) {
 cluster_name: "foo"
 rpc_address: "0.0.0.0"
 endpoint_snitch: "GossipingPropertyFileSnitch"
+internode_compression: "all"
 `, "\n"),
 				},
 			},
@@ -2624,6 +2625,7 @@ endpoint_snitch: "GossipingPropertyFileSnitch"
 cluster_name: "foo"
 rpc_address: "0.0.0.0"
 endpoint_snitch: "GossipingPropertyFileSnitch"
+internode_compression: "all"
 native_transport_port_ssl: 9142
 native_shard_aware_transport_port_ssl: 19142
 client_encryption_options:

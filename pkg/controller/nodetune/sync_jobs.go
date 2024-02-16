@@ -62,7 +62,7 @@ func (ncdc *Controller) makePerftuneJobForContainers(ctx context.Context, podSpe
 		return nil, fmt.Errorf("can't parse full mask: %w", err)
 	}
 
-	irqCPUs, err := getIRQCPUs(ctx, ncdc.criClient, optimizablePods, hostFullCpuset, defaultCgroupMountpoint)
+	irqCPUs, err := getIRQCPUs(ctx, ncdc.kubeletPodResourcesClient, optimizablePods, hostFullCpuset)
 	if err != nil {
 		return nil, fmt.Errorf("can't get IRQ CPUs: %w", err)
 	}

@@ -13,6 +13,7 @@ import (
 	scyllav1alpha1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1alpha1"
 	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/cri"
+	"github.com/scylladb/scylla-operator/pkg/kubelet"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	appsv1 "k8s.io/api/apps/v1"
@@ -57,7 +58,8 @@ type Controller struct {
 	kubeClient   kubernetes.Interface
 	scyllaClient scyllaclient.Interface
 
-	criClient cri.Client
+	criClient                 cri.Client
+	kubeletPodResourcesClient kubelet.PodResourcesClient
 
 	nodeConfigLister          scyllav1alpha1listers.NodeConfigLister
 	localScyllaPodsLister     corev1listers.PodLister
@@ -85,6 +87,7 @@ func NewController(
 	kubeClient kubernetes.Interface,
 	scyllaClient scyllaclient.Interface,
 	criClient cri.Client,
+	kubeletPodResourcesClient kubelet.PodResourcesClient,
 	nodeConfigInformer scyllav1alpha1informers.NodeConfigInformer,
 	localScyllaPodsInformer corev1informers.PodInformer,
 	namespacedDaemonSetInformer appsv1informers.DaemonSetInformer,
@@ -103,9 +106,10 @@ func NewController(
 	eventBroadcaster.StartRecordingToSink(&corev1client.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
 	snc := &Controller{
-		kubeClient:   kubeClient,
-		scyllaClient: scyllaClient,
-		criClient:    criClient,
+		kubeClient:                kubeClient,
+		scyllaClient:              scyllaClient,
+		criClient:                 criClient,
+		kubeletPodResourcesClient: kubeletPodResourcesClient,
 
 		nodeConfigLister:          nodeConfigInformer.Lister(),
 		localScyllaPodsLister:     localScyllaPodsInformer.Lister(),

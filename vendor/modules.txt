@@ -1465,6 +1465,9 @@ k8s.io/kube-openapi/pkg/validation/spec
 k8s.io/kubectl/pkg/util/interrupt
 k8s.io/kubectl/pkg/util/templates
 k8s.io/kubectl/pkg/util/term
+# k8s.io/kubelet v0.29.0
+## explicit; go 1.21
+k8s.io/kubelet/pkg/apis/podresources/v1
 # k8s.io/utils v0.0.0-20240102154912-e7106e64919e
 ## explicit; go 1.18
 k8s.io/utils/buffer

@@ -13,6 +13,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controller/nodetune"
 	"github.com/scylladb/scylla-operator/pkg/cri"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
+	"github.com/scylladb/scylla-operator/pkg/kubelet"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/scylladb/scylla-operator/pkg/version"
@@ -41,7 +42,8 @@ type NodeSetupDaemonOptions struct {
 	ScyllaImage          string
 	DisableOptimizations bool
 
-	CRIEndpoints []string
+	CRIEndpoints                []string
+	KubeletPodResourcesEndpoint string
 
 	kubeClient   kubernetes.Interface
 	scyllaClient scyllaversionedclient.Interface
@@ -56,6 +58,7 @@ func NewNodeSetupOptions(streams genericclioptions.IOStreams) *NodeSetupDaemonOp
 			"unix:///run/containerd/containerd.sock",
 			"unix:///run/crio/crio.sock",
 		},
+		KubeletPodResourcesEndpoint: "unix:///var/lib/kubelet/pod-resources/kubelet.sock",
 	}
 }
 
@@ -99,6 +102,7 @@ func NewNodeSetupCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd.Flags().StringVarP(&o.ScyllaImage, "scylla-image", "", o.ScyllaImage, "Scylla image used for running perftune.")
 	cmd.Flags().BoolVarP(&o.DisableOptimizations, "disable-optimizations", "", o.DisableOptimizations, "Controls if optimizations are disabled")
 	cmd.Flags().StringArrayVarP(&o.CRIEndpoints, "cri-endpoint", "", o.CRIEndpoints, "CRI endpoint to connect to. It will try to connect to any of them, in the given order.")
+	cmd.Flags().StringVarP(&o.KubeletPodResourcesEndpoint, "kubelet-pod-resources-endpoint", "", o.KubeletPodResourcesEndpoint, "Endpoint to kubelet PodResources API server")
 
 	return cmd
 }
@@ -131,6 +135,10 @@ func (o *NodeSetupDaemonOptions) Validate() error {
 
 	if len(o.CRIEndpoints) == 0 {
 		errs = append(errs, fmt.Errorf("there must be at least one cri-endpoint"))
+	}
+
+	if len(o.KubeletPodResourcesEndpoint) == 0 {
+		errs = append(errs, fmt.Errorf("kubelet-pod-resources-endpoint can't be empty"))
 	}
 
 	return apierrors.NewAggregate(errs)
@@ -176,6 +184,13 @@ func (o *NodeSetupDaemonOptions) Run(streams genericclioptions.IOStreams, cmd *c
 	if err != nil {
 		return fmt.Errorf("can't create cri client: %w", err)
 	}
+	defer criClient.Close()
+
+	kubeletPodResourcesClient, err := kubelet.NewPodResourcesClient(ctx, o.KubeletPodResourcesEndpoint)
+	if err != nil {
+		return fmt.Errorf("can't create kubelet pod resources client: %w", err)
+	}
+	defer kubeletPodResourcesClient.Close()
 
 	scyllaInformers := scyllainformers.NewSharedInformerFactory(o.scyllaClient, resyncPeriod)
 	namespacedKubeInformers := informers.NewSharedInformerFactoryWithOptions(o.kubeClient, resyncPeriod, informers.WithNamespace(o.Namespace))
@@ -224,6 +239,7 @@ func (o *NodeSetupDaemonOptions) Run(streams genericclioptions.IOStreams, cmd *c
 		o.kubeClient,
 		o.scyllaClient,
 		criClient,
+		kubeletPodResourcesClient,
 		scyllaInformers.Scylla().V1alpha1().NodeConfigs(),
 		localNodeScyllaCoreInformers.Core().V1().Pods(),
 		namespacedKubeInformers.Apps().V1().DaemonSets(),

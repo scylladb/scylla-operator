@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	scylladbassets "github.com/scylladb/scylla-operator/assets/scylladb"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
@@ -328,18 +327,30 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 	}
 
 	// Assume kube-proxy notices readiness change and reconcile Endpoints within this period
-	kubeProxyEndpointsSyncPeriod := 5 * time.Second
+	kubeProxyEndpointsSyncPeriodSeconds := 10
+	loadBalancerSyncPeriodSeconds := 60
 
-	readinessFailureThreshold := int32(1)
-	readinessPeriodSeconds := int32(10)
-	minTerminationGracePeriod := time.Duration(readinessFailureThreshold*readinessPeriodSeconds)*time.Second + kubeProxyEndpointsSyncPeriod
+	readinessFailureThreshold := 1
+	readinessPeriodSeconds := 10
+	minReadySeconds := kubeProxyEndpointsSyncPeriodSeconds
+	minTerminationGracePeriodSeconds := readinessFailureThreshold*readinessPeriodSeconds + kubeProxyEndpointsSyncPeriodSeconds
 
 	if c.Spec.ExposeOptions != nil && c.Spec.ExposeOptions.NodeService != nil && c.Spec.ExposeOptions.NodeService.Type == scyllav1.NodeServiceTypeLoadBalancer {
 		// Any "upstream" Load Balancer should notice Endpoint readiness change within this period.
-		minTerminationGracePeriod = 60 * time.Second
+		minTerminationGracePeriodSeconds = loadBalancerSyncPeriodSeconds
+		minReadySeconds = loadBalancerSyncPeriodSeconds
+	}
+	if c.Spec.ExposeOptions != nil && c.Spec.ExposeOptions.NodeService != nil && c.Spec.ExposeOptions.NodeService.Type == scyllav1.NodeServiceTypeHeadless {
+		// PodIP exposure doesn't have any load balancer in front of the Pod, there's no need to wait for termination nor availability,
+		// as traffic is rejected and accepted immediately after socket is closed/open.
+		minTerminationGracePeriodSeconds = 0
+		minReadySeconds = 0
 	}
 	if c.Spec.MinTerminationGracePeriodSeconds != nil {
-		minTerminationGracePeriod = time.Duration(*c.Spec.MinTerminationGracePeriodSeconds) * time.Second
+		minTerminationGracePeriodSeconds = int(*c.Spec.MinTerminationGracePeriodSeconds)
+	}
+	if c.Spec.MinReadySeconds != nil {
+		minReadySeconds = int(*c.Spec.MinReadySeconds)
 	}
 
 	sts := &appsv1.StatefulSet{
@@ -366,6 +377,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 					Partition: pointer.Ptr(int32(0)),
 				},
 			},
+			MinReadySeconds: int32(minReadySeconds),
 			// Template for Pods
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -379,6 +391,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 						RunAsUser:  pointer.Ptr(rootUID),
 						RunAsGroup: pointer.Ptr(rootGID),
 					},
+					ReadinessGates: c.Spec.ReadinessGates,
 					Volumes: func() []corev1.Volume {
 						volumes := []corev1.Volume{
 							{
@@ -654,8 +667,8 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								// to 30s to survive cluster overload.
 								// Relevant issue: https://github.com/scylladb/scylla-operator/issues/844
 								TimeoutSeconds:   int32(30),
-								FailureThreshold: readinessFailureThreshold,
-								PeriodSeconds:    readinessPeriodSeconds,
+								FailureThreshold: int32(readinessFailureThreshold),
+								PeriodSeconds:    int32(readinessPeriodSeconds),
 								ProbeHandler: corev1.ProbeHandler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Port: intstr.FromInt(naming.ProbePort),
@@ -677,7 +690,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 											"-O",
 											"inherit_errexit",
 											"-c",
-											fmt.Sprintf("nodetool drain & sleep %.0f & wait", minTerminationGracePeriod.Seconds()),
+											fmt.Sprintf("nodetool drain & sleep %d & wait", minTerminationGracePeriodSeconds),
 										},
 									},
 								},

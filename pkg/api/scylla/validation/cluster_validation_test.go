@@ -307,6 +307,19 @@ func TestValidateScyllaCluster(t *testing.T) {
 			},
 			expectedErrorString: `spec.minTerminationGracePeriodSeconds: Invalid value: -42: must be non-negative integer`,
 		},
+		{
+			name: "negative minReadySeconds",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.MinReadySeconds = pointer.Ptr(int32(-42))
+
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.minReadySeconds", BadValue: int32(-42), Detail: "must be non-negative integer"},
+			},
+			expectedErrorString: `spec.minReadySeconds: Invalid value: -42: must be non-negative integer`,
+		},
 	}
 
 	for i := range tests {

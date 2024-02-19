@@ -4592,6 +4592,9 @@ object
    * - Property
      - Type
      - Description
+   * - availableMembers
+     - integer
+     - availableMembers is the number of ScyllaDB members in all racks that are available.
    * - :ref:`backups<api-scylla.scylladb.com-scyllaclusters-v1-.status.backups[]>`
      - array (object)
      - backups reflects status of backup tasks.
@@ -4601,12 +4604,21 @@ object
    * - managerId
      - string
      - managerId contains ID under which cluster was registered in Scylla Manager.
+   * - members
+     - integer
+     - members is the number of ScyllaDB members in all racks.
    * - observedGeneration
      - integer
      - observedGeneration is the most recent generation observed for this ScyllaCluster. It corresponds to the ScyllaCluster's generation, which is updated on mutation by the API Server.
+   * - rackCount
+     - integer
+     - rackCount is the number of ScyllaDB racks in this cluster.
    * - :ref:`racks<api-scylla.scylladb.com-scyllaclusters-v1-.status.racks>`
      - object
      - racks reflect status of cluster racks.
+   * - readyMembers
+     - integer
+     - readyMembers is the number of ScyllaDB members in all racks that are ready.
    * - :ref:`repairs<api-scylla.scylladb.com-scyllaclusters-v1-.status.repairs[]>`
      - array (object)
      - repairs reflects status of repair tasks.

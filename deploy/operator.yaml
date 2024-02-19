@@ -3069,6 +3069,10 @@ spec:
             status:
               description: status is the current status of this scylla cluster.
               properties:
+                availableMembers:
+                  description: availableMembers is the number of ScyllaDB members in all racks that are available.
+                  format: int32
+                  type: integer
                 backups:
                   description: backups reflects status of backup tasks.
                   items:
@@ -3179,14 +3183,26 @@ spec:
                 managerId:
                   description: managerId contains ID under which cluster was registered in Scylla Manager.
                   type: string
+                members:
+                  description: members is the number of ScyllaDB members in all racks.
+                  format: int32
+                  type: integer
                 observedGeneration:
                   description: observedGeneration is the most recent generation observed for this ScyllaCluster. It corresponds to the ScyllaCluster's generation, which is updated on mutation by the API Server.
                   format: int64
+                  type: integer
+                rackCount:
+                  description: rackCount is the number of ScyllaDB racks in this cluster.
+                  format: int32
                   type: integer
                 racks:
                   additionalProperties:
                     description: RackStatus is the status of a Scylla Rack
                     properties:
+                      availableMembers:
+                        description: availableMembers is the number of available members in the Rack.
+                        format: int32
+                        type: integer
                       conditions:
                         description: conditions are the latest available observations of a rack's state.
                         items:
@@ -3226,6 +3242,10 @@ spec:
                     type: object
                   description: racks reflect status of cluster racks.
                   type: object
+                readyMembers:
+                  description: readyMembers is the number of ScyllaDB members in all racks that are ready.
+                  format: int32
+                  type: integer
                 repairs:
                   description: repairs reflects status of repair tasks.
                   items:

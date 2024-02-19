@@ -23,6 +23,9 @@ func (scc *Controller) updateStatus(ctx context.Context, currentSC *scyllav1.Scy
 	sc := currentSC.DeepCopy()
 	sc.Status = *status
 
+	// Make sure that any "live" updates to the status are always manifested in the aggregated fields.
+	updateAggregatedStatusFields(&sc.Status)
+
 	klog.V(2).InfoS("Updating status", "ScyllaCluster", klog.KObj(sc))
 
 	_, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).UpdateStatus(ctx, sc, metav1.UpdateOptions{})
@@ -60,6 +63,11 @@ func (scc *Controller) getScyllaVersion(sts *appsv1.StatefulSet) (string, error)
 func (scc *Controller) calculateRackStatus(sc *scyllav1.ScyllaCluster, rackName string, sts *appsv1.StatefulSet, oldRackStatus *scyllav1.RackStatus, serviceMap map[string]*corev1.Service) *scyllav1.RackStatus {
 	status := &scyllav1.RackStatus{
 		ReplaceAddressFirstBoot: map[string]string{},
+		Members:                 0,
+		ReadyMembers:            0,
+		AvailableMembers:        pointer.Ptr(int32(0)),
+		UpdatedMembers:          pointer.Ptr(int32(0)),
+		Stale:                   pointer.Ptr(true),
 	}
 
 	// Persist ReplaceAddressFirstBoot.
@@ -73,6 +81,7 @@ func (scc *Controller) calculateRackStatus(sc *scyllav1.ScyllaCluster, rackName 
 
 	status.Members = *sts.Spec.Replicas
 	status.ReadyMembers = sts.Status.ReadyReplicas
+	status.AvailableMembers = pointer.Ptr(sts.Status.AvailableReplicas)
 	status.UpdatedMembers = pointer.Ptr(sts.Status.UpdatedReplicas)
 	status.Stale = pointer.Ptr(sts.Status.ObservedGeneration < sts.Generation)
 
@@ -118,6 +127,21 @@ func (scc *Controller) calculateRackStatus(sc *scyllav1.ScyllaCluster, rackName 
 	return status
 }
 
+func updateAggregatedStatusFields(status *scyllav1.ScyllaClusterStatus) {
+	status.Members = pointer.Ptr(int32(0))
+	status.ReadyMembers = pointer.Ptr(int32(0))
+	status.AvailableMembers = pointer.Ptr(int32(0))
+	status.RackCount = pointer.Ptr(int32(len(status.Racks)))
+
+	for rackName := range status.Racks {
+		rackStatus := status.Racks[rackName]
+
+		*status.Members += rackStatus.Members
+		*status.ReadyMembers += rackStatus.ReadyMembers
+		*status.AvailableMembers += *rackStatus.AvailableMembers
+	}
+}
+
 // calculateStatus calculates the ScyllaCluster status.
 // This function should always succeed. Do not return an error.
 // If a particular object can be missing, it should be reflected in the value itself, like "Unknown" or "".
@@ -134,6 +158,8 @@ func (scc *Controller) calculateStatus(sc *scyllav1.ScyllaCluster, statefulSetMa
 		oldRackStatus := sc.Status.Racks[rack.Name]
 		status.Racks[rack.Name] = *scc.calculateRackStatus(sc, rack.Name, statefulSetMap[stsName], &oldRackStatus, serviceMap)
 	}
+
+	updateAggregatedStatusFields(status)
 
 	return status
 }

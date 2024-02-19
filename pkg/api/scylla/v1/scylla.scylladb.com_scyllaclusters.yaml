@@ -15,7 +15,29 @@ spec:
     singular: scyllacluster
   scope: Namespaced
   versions:
-    - name: v1
+    - additionalPrinterColumns:
+        - jsonPath: .status.readyMembers
+          name: READY
+          type: integer
+        - jsonPath: .status.members
+          name: MEMBERS
+          type: integer
+        - jsonPath: .status.rackCount
+          name: RACKS
+          type: integer
+        - jsonPath: .status.conditions[?(@.type=='Available')].status
+          name: AVAILABLE
+          type: string
+        - jsonPath: .status.conditions[?(@.type=='Progressing')].status
+          name: PROGRESSING
+          type: string
+        - jsonPath: .status.conditions[?(@.type=='Degraded')].status
+          name: DEGRADED
+          type: string
+        - jsonPath: .metadata.creationTimestamp
+          name: AGE
+          type: date
+      name: v1
       schema:
         openAPIV3Schema:
           description: ScyllaCluster defines a Scylla cluster.

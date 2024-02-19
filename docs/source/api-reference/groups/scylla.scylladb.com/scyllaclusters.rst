@@ -117,6 +117,9 @@ object
    * - :ref:`imagePullSecrets<api-scylla.scylladb.com-scyllaclusters-v1-.spec.imagePullSecrets[]>`
      - array (object)
      - imagePullSecrets is an optional list of references to secrets in the same namespace used for pulling Scylla and Agent images.
+   * - minReadySeconds
+     - integer
+     - minReadySeconds is the minimum number of seconds for which a newly created ScyllaDB node should be ready for it to be considered available. When used to control load balanced traffic, this can give the load balancer in front of a node enough time to notice that the node is ready and start forwarding traffic in time. Because it all depends on timing, the order is not guaranteed and, if possible, you should use readinessGates instead. If not provided, Operator will determine this value.
    * - minTerminationGracePeriodSeconds
      - integer
      - minTerminationGracePeriodSeconds specifies minimum duration in seconds to wait before every drained node is terminated. This gives time to potential load balancer in front of a node to notice that node is not ready anymore and stop forwarding new requests. This applies only when node is terminated gracefully. If not provided, Operator will determine this value. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
@@ -126,6 +129,9 @@ object
    * - :ref:`podMetadata<api-scylla.scylladb.com-scyllaclusters-v1-.spec.podMetadata>`
      - object
      - podMetadata controls shared metadata for all pods created based on this spec.
+   * - :ref:`readinessGates<api-scylla.scylladb.com-scyllaclusters-v1-.spec.readinessGates[]>`
+     - array (object)
+     - readinessGates specifies custom readiness gates that will be evaluated for every ScyllaDB Pod readiness. It's projected into every ScyllaDB Pod as its readinessGate. Refer to upstream documentation to learn more about readiness gates.
    * - :ref:`repairs<api-scylla.scylladb.com-scyllaclusters-v1-.spec.repairs[]>`
      - array (object)
      - repairs specify repair tasks in Scylla Manager. When Scylla Manager is not installed, these will be ignored.
@@ -4515,6 +4521,31 @@ Type
 """"
 object
 
+
+.. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.readinessGates[]:
+
+.spec.readinessGates[]
+^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+PodReadinessGate contains the reference to a pod condition
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - conditionType
+     - string
+     - ConditionType refers to a condition in the pod's condition list with matching type.
 
 .. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.repairs[]:
 

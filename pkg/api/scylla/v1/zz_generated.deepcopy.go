@@ -696,6 +696,16 @@ func (in *ScyllaClusterSpec) DeepCopyInto(out *ScyllaClusterSpec) {
 		*out = new(int32)
 		**out = **in
 	}
+	if in.MinReadySeconds != nil {
+		in, out := &in.MinReadySeconds, &out.MinReadySeconds
+		*out = new(int32)
+		**out = **in
+	}
+	if in.ReadinessGates != nil {
+		in, out := &in.ReadinessGates, &out.ReadinessGates
+		*out = make([]corev1.PodReadinessGate, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

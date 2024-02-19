@@ -23,7 +23,8 @@ serviceAccount:
 alternator:
   # Allows to enable Alternator (DynamoDB compatible API) frontend
   enabled: false
-  port: 8000
+  # Enables insecure HTTP port to be backwards compatible. This should be set to "false" in the overrides.
+  insecureEnableHTTP: true
   writeIsolation: "always"
 
 # Whether developer mode should be enabled.

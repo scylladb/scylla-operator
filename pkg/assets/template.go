@@ -19,6 +19,7 @@ var TemplateFuncs template.FuncMap = template.FuncMap{
 	"toBase64":   ToBase64,
 	"map":        MakeMap,
 	"repeat":     Repeat,
+	"isTrue":     IsTrue,
 }
 
 func MarshalYAML(v any) (string, error) {
@@ -58,6 +59,10 @@ func ToBytes(s string) []byte {
 
 func ToBase64(data []byte) string {
 	return base64.StdEncoding.EncodeToString(data)
+}
+
+func IsTrue(v *bool) bool {
+	return v != nil && *v
 }
 
 func MakeMap(kvs ...any) (map[any]any, error) {

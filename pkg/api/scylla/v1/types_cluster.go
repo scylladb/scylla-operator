@@ -524,16 +524,66 @@ type Storage struct {
 	StorageClassName *string `json:"storageClassName,omitempty"`
 }
 
+type TLSCertificateType string
+
+const (
+	TLSCertificateTypeOperatorManaged TLSCertificateType = "OperatorManaged"
+	TLSCertificateTypeUserManaged     TLSCertificateType = "UserManaged"
+)
+
+type UserManagedTLSCertificateOptions struct {
+	// secretName references a kubernetes.io/tls type secret containing the TLS cert and key.
+	SecretName string `json:"secretName"`
+}
+
+type OperatorManagedTLSCertificateOptions struct {
+	// additionalDNSNames represents external DNS names that the certificates should be signed for.
+	// +optional
+	AdditionalDNSNames []string `json:"additionalDNSNames,omitempty"`
+
+	// additionalIPAddresses represents external IP addresses that the certificates should be signed for.
+	// +optional
+	AdditionalIPAddresses []string `json:"additionalIPAddresses,omitempty"`
+}
+
+type TLSCertificate struct {
+	// type determines the source of this certificate.
+	// +kubebuilder:validation:Enum="OperatorManaged";"UserManaged"
+	Type TLSCertificateType `json:"type"`
+
+	// userManagedOptions specifies options for certificates manged by users.
+	// +optional
+	UserManagedOptions *UserManagedTLSCertificateOptions `json:"userManagedOptions,omitempty"`
+
+	// operatorManagedOptions specifies options for certificates manged by the operator.
+	// +optional
+	OperatorManagedOptions *OperatorManagedTLSCertificateOptions `json:"operatorManagedOptions,omitempty"`
+}
+
 type AlternatorSpec struct {
 	// port is the port number used to bind the Alternator API.
+	// Deprecated: `port` is deprecated and may be ignored in the future.
+	// Please make sure to avoid using hostNetworking and work with standard Kubernetes concepts like Services.
 	Port int32 `json:"port,omitempty"`
 
 	// writeIsolation indicates the isolation level.
 	WriteIsolation string `json:"writeIsolation,omitempty"`
-}
 
-func (a *AlternatorSpec) Enabled() bool {
-	return a != nil && a.Port > 0
+	// insecureEnableHTTP enables serving Alternator traffic also on insecure HTTP port.
+	// +optional
+	InsecureEnableHTTP *bool `json:"insecureEnableHTTP,omitempty"`
+
+	// insecureDisableAuthorization disables Alternator authorization.
+	// If not specified, the authorization is enabled.
+	// For backwards compatibility the authorization is disabled when this field is not specified
+	// and a manual port is used.
+	// +optional
+	InsecureDisableAuthorization *bool `json:"insecureDisableAuthorization,omitempty"`
+
+	// servingCertificate references a TLS certificate for serving secure traffic.
+	// +kubebuilder:default:={type:"OperatorManaged"}
+	// +optional
+	ServingCertificate *TLSCertificate `json:"servingCertificate,omitempty"`
 }
 
 type RepairTaskStatus struct {

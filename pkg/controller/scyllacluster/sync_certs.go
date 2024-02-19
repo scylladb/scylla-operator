@@ -395,5 +395,68 @@ func (scc *Controller) syncCerts(
 		}
 	}
 
+	// Setup Alternator certificates.
+	if sc.Spec.Alternator != nil &&
+		(sc.Spec.Alternator.ServingCertificate == nil || sc.Spec.Alternator.ServingCertificate.Type == scyllav1.TLSCertificateTypeOperatorManaged) {
+		var additionalDNSNames []string
+		if sc.Spec.Alternator.ServingCertificate.OperatorManagedOptions != nil && sc.Spec.Alternator.ServingCertificate.OperatorManagedOptions.AdditionalDNSNames != nil {
+			additionalDNSNames = sc.Spec.Alternator.ServingCertificate.OperatorManagedOptions.AdditionalDNSNames
+		}
+		alternatorDNSNames := make([]string, 0, len(servingDNSNames)+len(additionalDNSNames))
+		alternatorDNSNames = append(alternatorDNSNames, servingDNSNames...)
+		alternatorDNSNames = append(alternatorDNSNames, additionalDNSNames...)
+
+		var additionalIPAddresses []net.IP
+		if sc.Spec.Alternator.ServingCertificate.OperatorManagedOptions != nil && sc.Spec.Alternator.ServingCertificate.OperatorManagedOptions.AdditionalIPAddresses != nil {
+			additionalIPAddresses, err = helpers.ParseIPs(sc.Spec.Alternator.ServingCertificate.OperatorManagedOptions.AdditionalIPAddresses)
+			if err != nil {
+				return nil, fmt.Errorf("can't parse additional IP addresses for alternator serving cert: %w", err)
+			}
+		}
+		alternatorIPAddresses := make([]net.IP, 0, len(ipAddresses)+len(additionalIPAddresses))
+		alternatorIPAddresses = append(alternatorIPAddresses, ipAddresses...)
+		alternatorIPAddresses = append(alternatorIPAddresses, additionalIPAddresses...)
+
+		errs = append(errs, cm.ManageCertificates(
+			ctx,
+			time.Now,
+			&sc.ObjectMeta,
+			scyllaClusterControllerGVK,
+			&okubecrypto.CAConfig{
+				MetaConfig: okubecrypto.MetaConfig{
+					Name:   naming.GetScyllaClusterAlternatorLocalServingCAName(sc.Name),
+					Labels: clusterLabels,
+				},
+				Validity: 10 * 365 * 24 * time.Hour,
+				Refresh:  8 * 365 * 24 * time.Hour,
+			},
+			&okubecrypto.CABundleConfig{
+				MetaConfig: okubecrypto.MetaConfig{
+					Name:   naming.GetScyllaClusterAlternatorLocalServingCAName(sc.Name),
+					Labels: clusterLabels,
+				},
+			},
+			[]*okubecrypto.CertificateConfig{
+				{
+					MetaConfig: okubecrypto.MetaConfig{
+						Name:   naming.GetScyllaClusterAlternatorLocalServingCertName(sc.Name),
+						Labels: clusterLabels,
+					},
+					Validity: 30 * 24 * time.Hour,
+					Refresh:  20 * 24 * time.Hour,
+					CertCreator: (&ocrypto.ServingCertCreatorConfig{
+						Subject: pkix.Name{
+							CommonName: "",
+						},
+						IPAddresses: alternatorIPAddresses,
+						DNSNames:    alternatorDNSNames,
+					}).ToCreator(),
+				},
+			},
+			secrets,
+			configMaps,
+		))
+	}
+
 	return progressingConditions, errors.NewAggregate(errs)
 }

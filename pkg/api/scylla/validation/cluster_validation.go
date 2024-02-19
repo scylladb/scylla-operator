@@ -40,23 +40,94 @@ func ValidateScyllaCluster(c *scyllav1.ScyllaCluster) field.ErrorList {
 	return ValidateScyllaClusterSpec(&c.Spec, field.NewPath("spec"))
 }
 
+func ValidateUserManagedTLSCertificateOptions(opts *scyllav1.UserManagedTLSCertificateOptions, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	return allErrs
+}
+
+func ValidateOperatorManagedTLSCertificateOptions(opts *scyllav1.OperatorManagedTLSCertificateOptions, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	return allErrs
+}
+
+func ValidateTLSCertificate(cert *scyllav1.TLSCertificate, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	switch cert.Type {
+	case scyllav1.TLSCertificateTypeOperatorManaged:
+		if cert.OperatorManagedOptions != nil {
+			allErrs = append(allErrs, ValidateOperatorManagedTLSCertificateOptions(
+				cert.OperatorManagedOptions,
+				fldPath.Child("operatorManagedOptions"),
+			)...)
+		}
+
+	case scyllav1.TLSCertificateTypeUserManaged:
+		if cert.UserManagedOptions != nil {
+			allErrs = append(allErrs, ValidateUserManagedTLSCertificateOptions(
+				cert.UserManagedOptions,
+				fldPath.Child("userManagedOptions"),
+			)...)
+		} else {
+			allErrs = append(allErrs, field.Required(fldPath.Child("userManagedOptions"), ""))
+		}
+
+	case "":
+		allErrs = append(allErrs, field.Required(fldPath.Child("type"), ""))
+
+	default:
+		allErrs = append(
+			allErrs,
+			field.NotSupported(
+				fldPath.Child("type"),
+				cert.Type,
+				[]scyllav1.TLSCertificateType{
+					scyllav1.TLSCertificateTypeOperatorManaged,
+					scyllav1.TLSCertificateTypeUserManaged,
+				},
+			),
+		)
+
+	}
+
+	return allErrs
+}
+
+func ValidateAlternatorSpec(alternator *scyllav1.AlternatorSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if alternator.WriteIsolation != "" {
+		found := slices.ContainsItem(AlternatorSupportedWriteIsolation, alternator.WriteIsolation)
+		if !found {
+			allErrs = append(
+				allErrs,
+				field.NotSupported(
+					fldPath.Child("alternator", "writeIsolation"),
+					alternator.WriteIsolation,
+					AlternatorSupportedWriteIsolation,
+				),
+			)
+		}
+	}
+
+	if alternator.InsecureEnableHTTP != nil && *alternator.InsecureEnableHTTP {
+		if alternator.Port != 0 {
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("port"), "deprecated port is not allowed to be specified"))
+		}
+	}
+
+	return allErrs
+}
+
 func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	rackNames := sets.NewString()
 
 	if spec.Alternator != nil {
-		if spec.Alternator.WriteIsolation != "" {
-			found := false
-			for _, wi := range AlternatorSupportedWriteIsolation {
-				if spec.Alternator.WriteIsolation == wi {
-					found = true
-				}
-			}
-			if !found {
-				allErrs = append(allErrs, field.NotSupported(fldPath.Child("alternator", "writeIsolation"), spec.Alternator.WriteIsolation, AlternatorSupportedWriteIsolation))
-			}
-		}
+		allErrs = append(allErrs, ValidateAlternatorSpec(spec.Alternator, fldPath.Child("alternator"))...)
 	}
 
 	if len(spec.ScyllaArgs) > 0 {

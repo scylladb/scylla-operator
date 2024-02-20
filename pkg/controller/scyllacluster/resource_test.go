@@ -671,6 +671,7 @@ func TestStatefulSetForRack(t *testing.T) {
 						"scylla/rack":                  "rack",
 					},
 				},
+				MinReadySeconds: 10,
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Labels: newBasicStatefulSetLabels(0),
@@ -983,7 +984,7 @@ func TestStatefulSetForRack(t *testing.T) {
 												"-O",
 												"inherit_errexit",
 												"-c",
-												"nodetool drain & sleep 15 & wait",
+												"nodetool drain & sleep 20 & wait",
 											},
 										},
 									},
@@ -1331,6 +1332,54 @@ func TestStatefulSetForRack(t *testing.T) {
 					"scylla/rack":                  "rack",
 					"scylla/rack-ordinal":          "0",
 					"scylla/scylla-version":        "",
+				}
+
+				return sts
+			}(),
+			expectedError: nil,
+		},
+		{
+			name: "new StatefulSet with custom minReadySeconds",
+			rack: newBasicRack(),
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := newBasicScyllaCluster()
+				sc.Spec.MinReadySeconds = pointer.Ptr(int32(1234))
+				return sc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+				sts.Spec.MinReadySeconds = 1234
+
+				return sts
+			}(),
+			expectedError: nil,
+		},
+		{
+			name: "new StatefulSet with custom readiness gates",
+			rack: newBasicRack(),
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := newBasicScyllaCluster()
+				sc.Spec.ReadinessGates = []corev1.PodReadinessGate{
+					{
+						ConditionType: "my-custom-pod-readiness-gate-1",
+					},
+					{
+						ConditionType: "my-custom-pod-readiness-gate-2",
+					},
+				}
+				return sc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+				sts.Spec.Template.Spec.ReadinessGates = []corev1.PodReadinessGate{
+					{
+						ConditionType: "my-custom-pod-readiness-gate-1",
+					},
+					{
+						ConditionType: "my-custom-pod-readiness-gate-2",
+					},
 				}
 
 				return sts

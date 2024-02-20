@@ -2997,6 +2997,10 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   type: array
+                minReadySeconds:
+                  description: minReadySeconds is the minimum number of seconds for which a newly created ScyllaDB node should be ready for it to be considered available. When used to control load balanced traffic, this can give the load balancer in front of a node enough time to notice that the node is ready and start forwarding traffic in time. Because it all depends on timing, the order is not guaranteed and, if possible, you should use readinessGates instead. If not provided, Operator will determine this value.
+                  format: int32
+                  type: integer
                 minTerminationGracePeriodSeconds:
                   description: minTerminationGracePeriodSeconds specifies minimum duration in seconds to wait before every drained node is terminated. This gives time to potential load balancer in front of a node to notice that node is not ready anymore and stop forwarding new requests. This applies only when node is terminated gracefully. If not provided, Operator will determine this value. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
                   format: int32
@@ -3025,6 +3029,18 @@ spec:
                       description: labels is a custom key value map that gets merged with managed object labels.
                       type: object
                   type: object
+                readinessGates:
+                  description: readinessGates specifies custom readiness gates that will be evaluated for every ScyllaDB Pod readiness. It's projected into every ScyllaDB Pod as its readinessGate. Refer to upstream documentation to learn more about readiness gates.
+                  items:
+                    description: PodReadinessGate contains the reference to a pod condition
+                    properties:
+                      conditionType:
+                        description: ConditionType refers to a condition in the pod's condition list with matching type.
+                        type: string
+                    required:
+                      - conditionType
+                    type: object
+                  type: array
                 repairs:
                   description: repairs specify repair tasks in Scylla Manager. When Scylla Manager is not installed, these will be ignored.
                   items:

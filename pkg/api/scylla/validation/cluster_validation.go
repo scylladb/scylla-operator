@@ -114,6 +114,10 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("minTerminationGracePeriodSeconds"), *spec.MinTerminationGracePeriodSeconds, "must be non-negative integer"))
 	}
 
+	if spec.MinReadySeconds != nil && *spec.MinReadySeconds < 0 {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("minReadySeconds"), *spec.MinReadySeconds, "must be non-negative integer"))
+	}
+
 	return allErrs
 }
 

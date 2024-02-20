@@ -132,6 +132,21 @@ type ScyllaClusterSpec struct {
 	// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
 	// +optional
 	MinTerminationGracePeriodSeconds *int32 `json:"minTerminationGracePeriodSeconds,omitempty"`
+
+	// minReadySeconds is the minimum number of seconds for which a newly created ScyllaDB node should be ready
+	// for it to be considered available.
+	// When used to control load balanced traffic, this can give the load balancer in front of a node enough time to
+	// notice that the node is ready and start forwarding traffic in time. Because it all depends on timing, the order
+	// is not guaranteed and, if possible, you should use readinessGates instead.
+	// If not provided, Operator will determine this value.
+	// +optional
+	MinReadySeconds *int32 `json:"minReadySeconds,omitempty"`
+
+	// readinessGates specifies custom readiness gates that will be evaluated for every ScyllaDB Pod readiness.
+	// It's projected into every ScyllaDB Pod as its readinessGate. Refer to upstream documentation to learn more
+	// about readiness gates.
+	// +optional
+	ReadinessGates []corev1.PodReadinessGate `json:"readinessGates,omitempty"`
 }
 
 type PodIPSourceType string

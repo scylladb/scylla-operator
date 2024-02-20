@@ -338,8 +338,8 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 		// Any "upstream" Load Balancer should notice Endpoint readiness change within this period.
 		minTerminationGracePeriod = 60 * time.Second
 	}
-	if c.Spec.MinTerminationGracePeriodSeconds != 0 {
-		minTerminationGracePeriod = time.Duration(c.Spec.MinTerminationGracePeriodSeconds) * time.Second
+	if c.Spec.MinTerminationGracePeriodSeconds != nil {
+		minTerminationGracePeriod = time.Duration(*c.Spec.MinTerminationGracePeriodSeconds) * time.Second
 	}
 
 	sts := &appsv1.StatefulSet{

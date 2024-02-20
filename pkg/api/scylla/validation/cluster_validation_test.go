@@ -298,7 +298,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 			name: "negative minTerminationGracePeriodSeconds",
 			cluster: func() *v1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.MinTerminationGracePeriodSeconds = -42
+				cluster.Spec.MinTerminationGracePeriodSeconds = pointer.Ptr(int32(-42))
 
 				return cluster
 			}(),

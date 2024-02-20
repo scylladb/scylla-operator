@@ -691,6 +691,11 @@ func (in *ScyllaClusterSpec) DeepCopyInto(out *ScyllaClusterSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.MinTerminationGracePeriodSeconds != nil {
+		in, out := &in.MinTerminationGracePeriodSeconds, &out.MinTerminationGracePeriodSeconds
+		*out = new(int32)
+		**out = **in
+	}
 	return
 }
 

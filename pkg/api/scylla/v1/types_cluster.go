@@ -131,7 +131,7 @@ type ScyllaClusterSpec struct {
 	// If not provided, Operator will determine this value.
 	// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
 	// +optional
-	MinTerminationGracePeriodSeconds int32 `json:"minTerminationGracePeriodSeconds,omitempty"`
+	MinTerminationGracePeriodSeconds *int32 `json:"minTerminationGracePeriodSeconds,omitempty"`
 }
 
 type PodIPSourceType string

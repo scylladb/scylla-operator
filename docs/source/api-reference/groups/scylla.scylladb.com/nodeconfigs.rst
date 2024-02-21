@@ -109,6 +109,9 @@ object
    * - :ref:`filesystems<api-scylla.scylladb.com-nodeconfigs-v1alpha1-.spec.localDiskSetup.filesystems[]>`
      - array (object)
      - filesystems is a list of filesystem configurations.
+   * - :ref:`loopDevices<api-scylla.scylladb.com-nodeconfigs-v1alpha1-.spec.localDiskSetup.loopDevices[]>`
+     - array (object)
+     - loops is a list of loop device configurations.
    * - :ref:`mounts<api-scylla.scylladb.com-nodeconfigs-v1alpha1-.spec.localDiskSetup.mounts[]>`
      - array (object)
      - mounts is a list of mount configuration.
@@ -143,6 +146,37 @@ object
    * - type
      - string
      - type is a desired filesystem type.
+
+.. _api-scylla.scylladb.com-nodeconfigs-v1alpha1-.spec.localDiskSetup.loopDevices[]:
+
+.spec.localDiskSetup.loopDevices[]
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+LoopDeviceConfiguration specifies loop device configuration options.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - imagePath
+     - string
+     - imagePath specifies path on host where backing image file for loop device should be located.
+   * - name
+     - string
+     - name specifies the name of the symlink that will point to actual loop device, created under `/dev/loops/`.
+   * - size
+     - 
+     - size specifies the size of the loop device.
 
 .. _api-scylla.scylladb.com-nodeconfigs-v1alpha1-.spec.localDiskSetup.mounts[]:
 

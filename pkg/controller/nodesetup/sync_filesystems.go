@@ -23,7 +23,7 @@ func (nsc *Controller) syncFilesystems(ctx context.Context, nc *scyllav1alpha1.N
 	}
 
 	for _, fs := range nc.Spec.LocalDiskSetup.Filesystems {
-		device, err := disks.GetRAIDDeviceWithName(ctx, nsc.executor, nsc.devtmpfsPath, fs.Device)
+		device, err := disks.GetDeviceWithName(ctx, nsc.executor, nsc.devtmpfsPath, fs.Device)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't resolve RAID device %q: %w", fs.Device, err))
 			continue

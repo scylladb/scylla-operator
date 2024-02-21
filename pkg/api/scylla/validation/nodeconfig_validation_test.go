@@ -3,6 +3,7 @@
 package validation_test
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -235,6 +237,35 @@ func TestValidateNodeConfigUpdate(t *testing.T) {
 				&field.Error{Type: field.ErrorTypeDuplicate, Field: "spec.localDiskSetup.mounts[3].mountPoint", BadValue: "/mnt/bar"},
 			},
 			expectedErrorString: `[spec.localDiskSetup.mounts[1].mountPoint: Duplicate value: "/mnt/foo", spec.localDiskSetup.mounts[3].mountPoint: Duplicate value: "/mnt/bar"]`,
+		},
+		{
+			name: "immutable loop device size",
+			old: func() *scyllav1alpha1.NodeConfig {
+				nc := validNodeConfig.DeepCopy()
+				nc.Spec.LocalDiskSetup.LoopDevices = []scyllav1alpha1.LoopDeviceConfiguration{
+					{
+						Name:      "foo",
+						ImagePath: "/mnt/foo.img",
+						Size:      resource.MustParse("100Mi"),
+					},
+				}
+				return nc
+			}(),
+			new: func() *scyllav1alpha1.NodeConfig {
+				nc := validNodeConfig.DeepCopy()
+				nc.Spec.LocalDiskSetup.LoopDevices = []scyllav1alpha1.LoopDeviceConfiguration{
+					{
+						Name:      "foo",
+						ImagePath: "/mnt/foo.img",
+						Size:      resource.MustParse("200Mi"),
+					},
+				}
+				return nc
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.localDiskSetup.loopDevices[0].size", BadValue: "200Mi", Detail: "field is immutable"},
+			},
+			expectedErrorString: fmt.Sprintf(`spec.localDiskSetup.loopDevices[0].size: Invalid value: "200Mi": field is immutable`),
 		},
 	}
 

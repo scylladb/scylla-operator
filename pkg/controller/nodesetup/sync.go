@@ -43,6 +43,19 @@ func (nsc *Controller) sync(ctx context.Context) error {
 
 	err = controllerhelpers.RunSync(
 		&conditions,
+		fmt.Sprintf(loopDeviceControllerNodeProgressingConditionFormat, nsc.nodeName),
+		fmt.Sprintf(loopDeviceControllerNodeDegradedConditionFormat, nsc.nodeName),
+		nc.Generation,
+		func() ([]metav1.Condition, error) {
+			return nsc.syncLoopDevices(ctx, nc)
+		},
+	)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't sync loop devices: %w", err))
+	}
+
+	err = controllerhelpers.RunSync(
+		&conditions,
 		fmt.Sprintf(raidControllerNodeProgressingConditionFormat, nsc.nodeName),
 		fmt.Sprintf(raidControllerNodeDegradedConditionFormat, nsc.nodeName),
 		nc.Generation,

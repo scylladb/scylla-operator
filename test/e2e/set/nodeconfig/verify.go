@@ -99,6 +99,14 @@ func verifyNodeConfig(ctx context.Context, kubeClient kubernetes.Interface, nc *
 					condType: fmt.Sprintf("RaidControllerNode%sDegraded", nodeName),
 					status:   corev1.ConditionFalse,
 				},
+				{
+					condType: fmt.Sprintf("LoopDeviceControllerNode%sProgressing", nodeName),
+					status:   corev1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("LoopDeviceControllerNode%sDegraded", nodeName),
+					status:   corev1.ConditionFalse,
+				},
 			}
 
 			for _, item := range condList {

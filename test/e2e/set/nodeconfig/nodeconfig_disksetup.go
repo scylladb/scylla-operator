@@ -22,6 +22,7 @@ import (
 	"github.com/scylladb/scylla-operator/test/e2e/utils/image"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
 	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
@@ -90,7 +91,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		}
 	})
 
-	g.DescribeTable("should make RAID0, format it to XFS, and mount at desired location", func(numberOfDevices int) {
+	g.DescribeTable("should make RAID0 array out of loop devices, format it to XFS, and mount at desired location", func(numberOfDevices int) {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
@@ -149,15 +150,6 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		clientPod, err = controllerhelpers.WaitForPodState(waitCtx1, f.KubeClient().CoreV1().Pods(clientPod.Namespace), clientPod.Name, controllerhelpers.WaitForStateOptions{}, utils.PodIsRunning)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		framework.By("Creating %d loop devices", numberOfDevices)
-		staticDevices, cleanup, err := makeLoopDevices(f.KubeClient().CoreV1(), clientPod, numberOfDevices)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		defer func() {
-			err := cleanup()
-			o.Expect(err).NotTo(o.HaveOccurred())
-		}()
-
 		raidName := rand.String(8)
 		mountPath := fmt.Sprintf("/mnt/disk-setup-%s", f.Namespace())
 		hostMountPath := path.Join("/host", mountPath)
@@ -165,14 +157,32 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		filesystem := scyllav1alpha1.XFSFilesystem
 		mountOptions := []string{"prjquota"}
 
+		loopDeviceNames := make([]string, 0, numberOfDevices)
+		for i := 0; i < numberOfDevices; i++ {
+			loopDeviceNames = append(loopDeviceNames, fmt.Sprintf("disk-%d", i))
+		}
+
 		nc.Spec.LocalDiskSetup = &scyllav1alpha1.LocalDiskSetup{
+			LoopDevices: func() []scyllav1alpha1.LoopDeviceConfiguration {
+				var ldcs []scyllav1alpha1.LoopDeviceConfiguration
+
+				for _, ldName := range loopDeviceNames {
+					ldcs = append(ldcs, scyllav1alpha1.LoopDeviceConfiguration{
+						Name:      ldName,
+						ImagePath: fmt.Sprintf("/mnt/%s.img", ldName),
+						Size:      resource.MustParse("32M"),
+					})
+				}
+
+				return ldcs
+			}(),
 			RAIDs: []scyllav1alpha1.RAIDConfiguration{
 				{
 					Name: raidName,
 					Type: scyllav1alpha1.RAID0Type,
 					RAID0: &scyllav1alpha1.RAID0Options{
 						Devices: scyllav1alpha1.DeviceDiscovery{
-							NameRegex:  strings.Join(staticDevices, "|"),
+							NameRegex:  `^/dev/loops/disk-\d+$`,
 							ModelRegex: ".*",
 						},
 					},
@@ -210,6 +220,16 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 			utils.IsNodeConfigDoneWithNodes(matchingNodes),
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
+
+		hostLoopsDir := "/host/dev/loops"
+		framework.By("Checking if loop devices has been created at %q", hostLoopsDir)
+		o.Eventually(func(g o.Gomega) {
+			for _, ldName := range loopDeviceNames {
+				loopDevicePath := path.Join(hostLoopsDir, ldName)
+				stdout, stderr, err := executeInPod(f.KubeClient().CoreV1(), clientPod, "stat", loopDevicePath)
+				g.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+			}
+		}).WithPolling(1 * time.Second).WithTimeout(3 * time.Minute).Should(o.Succeed())
 
 		stdout, stderr, err := executeInPod(f.KubeClient().CoreV1(), clientPod, "findmnt", "--raw", "--output=SOURCE", "--noheadings", hostMountPath)
 		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
@@ -281,54 +301,6 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		g.Entry("out of three loop devices", 3),
 	)
 })
-
-func makeLoopDevices(client corev1client.CoreV1Interface, pod *corev1.Pod, disks int) ([]string, func() error, error) {
-	loopDevices := make([]string, 0, disks)
-	diskImages := make([]string, 0, disks)
-
-	for i := 0; i < disks; i++ {
-		diskImage := fmt.Sprintf("/host/mnt/disk-%s.img", rand.String(6))
-		stdout, stderr, err := executeInPod(client, pod, "dd", "if=/dev/zero", fmt.Sprintf("of=%s", diskImage), "bs=1M", "count=32")
-		if err != nil {
-			return nil, nil, fmt.Errorf("can't create disk image: %w, stdout: %q, stderr: %q", err, stdout, stderr)
-		}
-
-		diskImages = append(diskImages, diskImage)
-
-		stdout, stderr, err = executeInPod(client, pod, "losetup", "--show", "--find", diskImage)
-		if err != nil {
-			return nil, nil, fmt.Errorf("can't create loop device: %w, stdout: %q, stderr: %q", err, stdout, stderr)
-		}
-
-		loopDevice := strings.TrimSpace(stdout)
-		loopDevices = append(loopDevices, loopDevice)
-	}
-
-	if len(loopDevices) != disks {
-		return nil, nil, fmt.Errorf("expected to create %d devices, got %d", disks, len(loopDevices))
-	}
-
-	cleanup := func() error {
-		return detachDevices(client, pod, loopDevices, diskImages)
-	}
-
-	return loopDevices, cleanup, nil
-}
-
-func detachDevices(client corev1client.CoreV1Interface, pod *corev1.Pod, devices []string, diskImages []string) error {
-	for i, device := range devices {
-		stdout, stderr, err := executeInPod(client, pod, "losetup", "--detach", device)
-		if err != nil {
-			return fmt.Errorf("can't detach loop device %q: %w, stdout: %q, stderr: %q", device, err, stdout, stderr)
-		}
-		stdout, stderr, err = executeInPod(client, pod, "rm", diskImages[i])
-		if err != nil {
-			return fmt.Errorf("can't remove disk image %q: %w, stdout: %q, stderr: %q", diskImages[i], err, stdout, stderr)
-		}
-	}
-
-	return nil
-}
 
 func executeInPod(client corev1client.CoreV1Interface, pod *corev1.Pod, command string, args ...string) (string, string, error) {
 	return utils.ExecWithOptions(client, utils.ExecOptions{

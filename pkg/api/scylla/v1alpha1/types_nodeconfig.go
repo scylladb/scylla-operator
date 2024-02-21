@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -155,8 +156,23 @@ type MountConfiguration struct {
 	UnsupportedOptions []string `json:"unsupportedOptions"`
 }
 
+// LoopDeviceConfiguration specifies loop device configuration options.
+type LoopDeviceConfiguration struct {
+	// name specifies the name of the symlink that will point to actual loop device, created under `/dev/loops/`.
+	Name string `json:"name"`
+
+	// imagePath specifies path on host where backing image file for loop device should be located.
+	ImagePath string `json:"imagePath"`
+
+	// size specifies the size of the loop device.
+	Size resource.Quantity `json:"size"`
+}
+
 // LocalDiskSetup specifies configuration of local disk setup.
 type LocalDiskSetup struct {
+	// loops is a list of loop device configurations.
+	LoopDevices []LoopDeviceConfiguration `json:"loopDevices"`
+
 	// raids is a list of raid configurations.
 	RAIDs []RAIDConfiguration `json:"raids"`
 

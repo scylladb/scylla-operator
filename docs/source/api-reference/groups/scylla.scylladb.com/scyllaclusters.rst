@@ -169,12 +169,105 @@ object
    * - Property
      - Type
      - Description
+   * - insecureDisableAuthorization
+     - boolean
+     - insecureDisableAuthorization disables Alternator authorization. If not specified, the authorization is enabled. For backwards compatibility the authorization is disabled when this field is not specified and a manual port is used.
+   * - insecureEnableHTTP
+     - boolean
+     - insecureEnableHTTP enables serving Alternator traffic also on insecure HTTP port.
    * - port
      - integer
-     - port is the port number used to bind the Alternator API.
+     - port is the port number used to bind the Alternator API. Deprecated: `port` is deprecated and may be ignored in the future. Please make sure to avoid using hostNetworking and work with standard Kubernetes concepts like Services.
+   * - :ref:`servingCertificate<api-scylla.scylladb.com-scyllaclusters-v1-.spec.alternator.servingCertificate>`
+     - object
+     - servingCertificate references a TLS certificate for serving secure traffic.
    * - writeIsolation
      - string
      - writeIsolation indicates the isolation level.
+
+.. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.alternator.servingCertificate:
+
+.spec.alternator.servingCertificate
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+servingCertificate references a TLS certificate for serving secure traffic.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - :ref:`operatorManagedOptions<api-scylla.scylladb.com-scyllaclusters-v1-.spec.alternator.servingCertificate.operatorManagedOptions>`
+     - object
+     - operatorManagedOptions specifies options for certificates manged by the operator.
+   * - type
+     - string
+     - type determines the source of this certificate.
+   * - :ref:`userManagedOptions<api-scylla.scylladb.com-scyllaclusters-v1-.spec.alternator.servingCertificate.userManagedOptions>`
+     - object
+     - userManagedOptions specifies options for certificates manged by users.
+
+.. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.alternator.servingCertificate.operatorManagedOptions:
+
+.spec.alternator.servingCertificate.operatorManagedOptions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+operatorManagedOptions specifies options for certificates manged by the operator.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - additionalDNSNames
+     - array (string)
+     - additionalDNSNames represents external DNS names that the certificates should be signed for.
+   * - additionalIPAddresses
+     - array (string)
+     - additionalIPAddresses represents external IP addresses that the certificates should be signed for.
+
+.. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.alternator.servingCertificate.userManagedOptions:
+
+.spec.alternator.servingCertificate.userManagedOptions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+userManagedOptions specifies options for certificates manged by users.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - secretName
+     - string
+     - secretName references a kubernetes.io/tls type secret containing the TLS cert and key.
 
 .. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.backups[]:
 

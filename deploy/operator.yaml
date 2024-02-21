@@ -1072,10 +1072,49 @@ spec:
                 alternator:
                   description: alternator designates this cluster an Alternator cluster.
                   properties:
+                    insecureDisableAuthorization:
+                      description: insecureDisableAuthorization disables Alternator authorization. If not specified, the authorization is enabled. For backwards compatibility the authorization is disabled when this field is not specified and a manual port is used.
+                      type: boolean
+                    insecureEnableHTTP:
+                      description: insecureEnableHTTP enables serving Alternator traffic also on insecure HTTP port.
+                      type: boolean
                     port:
-                      description: port is the port number used to bind the Alternator API.
+                      description: 'port is the port number used to bind the Alternator API. Deprecated: `port` is deprecated and may be ignored in the future. Please make sure to avoid using hostNetworking and work with standard Kubernetes concepts like Services.'
                       format: int32
                       type: integer
+                    servingCertificate:
+                      default:
+                        type: OperatorManaged
+                      description: servingCertificate references a TLS certificate for serving secure traffic.
+                      properties:
+                        operatorManagedOptions:
+                          description: operatorManagedOptions specifies options for certificates manged by the operator.
+                          properties:
+                            additionalDNSNames:
+                              description: additionalDNSNames represents external DNS names that the certificates should be signed for.
+                              items:
+                                type: string
+                              type: array
+                            additionalIPAddresses:
+                              description: additionalIPAddresses represents external IP addresses that the certificates should be signed for.
+                              items:
+                                type: string
+                              type: array
+                          type: object
+                        type:
+                          description: type determines the source of this certificate.
+                          enum:
+                            - OperatorManaged
+                            - UserManaged
+                          type: string
+                        userManagedOptions:
+                          description: userManagedOptions specifies options for certificates manged by users.
+                          properties:
+                            secretName:
+                              description: secretName references a kubernetes.io/tls type secret containing the TLS cert and key.
+                              type: string
+                          type: object
+                      type: object
                     writeIsolation:
                       description: writeIsolation indicates the isolation level.
                       type: string

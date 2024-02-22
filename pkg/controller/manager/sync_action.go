@@ -358,7 +358,7 @@ type deleteTaskAction struct {
 }
 
 func (a *deleteTaskAction) Execute(ctx context.Context, client *managerclient.Client, status *scyllav1.ScyllaClusterStatus) error {
-	err := client.DeleteTask(ctx, a.clusterID, a.taskType, uuid.MustParse(a.taskID))
+	err := a.stopAndDeleteTask(ctx, client)
 
 	if a.taskType == "repair" {
 		filteredStatuses := status.Repairs[:0]
@@ -386,6 +386,21 @@ func (a *deleteTaskAction) Execute(ctx context.Context, client *managerclient.Cl
 	}
 
 	return err
+}
+
+func (a *deleteTaskAction) stopAndDeleteTask(ctx context.Context, client *managerclient.Client) error {
+	// StopTask is idempotent
+	err := client.StopTask(ctx, a.clusterID, a.taskType, uuid.MustParse(a.taskID), false)
+	if err != nil {
+		return fmt.Errorf("can't stop task %q: %w", a.taskID, err)
+	}
+
+	err = client.DeleteTask(ctx, a.clusterID, a.taskType, uuid.MustParse(a.taskID))
+	if err != nil {
+		return fmt.Errorf("can't delete task %q: %w", a.taskID, err)
+	}
+
+	return nil
 }
 
 func (a deleteTaskAction) String() string {

@@ -14,7 +14,7 @@ func (opc *Controller) sync(ctx context.Context) error {
 	soc, err := opc.scyllaOperatorConfigLister.Get(naming.SingletonName)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return fmt.Errorf("can't get sdcyllaoperatorconfig %q: %w", naming.SingletonName, err)
+			return fmt.Errorf("can't get ScyllaOperatorConfig %q: %w", naming.SingletonName, err)
 		}
 
 		klog.V(2).InfoS("ScyllaOperatorConfig missing, creating a default one")

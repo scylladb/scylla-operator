@@ -240,7 +240,7 @@ To deploy Scylla Manager using customized values file execute the following comm
 helm install scylla-manager scylla/scylla-manager --values examples/helm/values.manager.yaml --create-namespace --namespace scylla-manager
 ```
 
-# Results
+## Results
 
 Scylla need some time to bootstrap all nodes, but after some time you should be ready to roll. It was simple isn't it?
 You can validate if everything was set up correctly by looking at the all resources created in used namespaces.
@@ -311,7 +311,7 @@ statefulset.apps/scylla-us-east-1-us-east-1b   2/2     5m59s
 
 Two running nodes, exactly what we were asking for.
 
-# Monitoring
+## Monitoring
 
 To spin up a Prometheus monitoring refer to [monitoring guide](monitoring.md).
 
@@ -329,7 +329,7 @@ helm upgrade --install scylla --namespace scylla scylla/scylla -f examples/helm/
 
 Helm should notice the difference, install the ServiceMonitor, and then Prometheous will be able to scrape metrics.
 
-# Cleanup
+## Cleanup
 
 To remove these applications you can simply uninstall them using Helm CLI:
 ```shell

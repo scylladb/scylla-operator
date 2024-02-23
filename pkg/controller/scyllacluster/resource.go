@@ -29,11 +29,12 @@ import (
 )
 
 const (
-	scyllaAgentConfigVolumeName    = "scylla-agent-config-volume"
-	scyllaAgentAuthTokenVolumeName = "scylla-agent-auth-token-volume"
-	scylladbServingCertsVolumeName = "scylladb-serving-certs"
-	scylladbClientCAVolumeName     = "scylladb-client-ca"
-	scylladbUserAdminVolumeName    = "scylladb-user-admin"
+	scyllaAgentConfigVolumeName              = "scylla-agent-config-volume"
+	scyllaAgentAuthTokenVolumeName           = "scylla-agent-auth-token-volume"
+	scylladbServingCertsVolumeName           = "scylladb-serving-certs"
+	scylladbClientCAVolumeName               = "scylladb-client-ca"
+	scylladbUserAdminVolumeName              = "scylladb-user-admin"
+	scylladbAlternatorServingCertsVolumeName = "scylladb-alternator-serving-certs"
 )
 
 const (
@@ -46,8 +47,12 @@ const (
 	portNameCQLSSL           = "cql-ssl"
 	portNameCQLShardAware    = "cql-shard-aware"
 	portNameCQLSSLShardAware = "cql-ssl-shard-aware"
-	portNameAlternator       = "alternator"
 	portNameThrift           = "thrift"
+
+	alternatorInsecurePort     = 8000
+	alternatorInsecurePortName = "alternator"
+	alternatorTLSPort          = 8043
+	alternatorTLSPortName      = "alternator-tls"
 )
 
 func IdentityService(c *scyllav1.ScyllaCluster) *corev1.Service {
@@ -184,6 +189,22 @@ func servicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 			Port: 7001,
 		},
 		{
+			Name: portNameCQL,
+			Port: 9042,
+		},
+		{
+			Name: portNameCQLSSL,
+			Port: 9142,
+		},
+		{
+			Name: portNameCQLShardAware,
+			Port: 19042,
+		},
+		{
+			Name: portNameCQLSSLShardAware,
+			Port: 19142,
+		},
+		{
 			Name: "jmx-monitoring",
 			Port: 7199,
 		},
@@ -204,33 +225,29 @@ func servicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 			Port: 9100,
 		},
 		{
-			Name: portNameCQL,
-			Port: 9042,
-		},
-		{
-			Name: portNameCQLSSL,
-			Port: 9142,
-		},
-		{
-			Name: portNameCQLShardAware,
-			Port: 19042,
-		},
-		{
-			Name: portNameCQLSSLShardAware,
-			Port: 19142,
+			Name: portNameThrift,
+			Port: 9160,
 		},
 	}
 
-	if cluster.Spec.Alternator.Enabled() {
+	if cluster.Spec.Alternator != nil {
 		ports = append(ports, corev1.ServicePort{
-			Name: portNameAlternator,
-			Port: cluster.Spec.Alternator.Port,
+			Name: alternatorTLSPortName,
+			Port: alternatorTLSPort,
 		})
-	} else {
-		ports = append(ports, corev1.ServicePort{
-			Name: portNameThrift,
-			Port: 9160,
-		})
+
+		enableHTTP := cluster.Spec.Alternator.InsecureEnableHTTP
+		if cluster.Spec.Alternator.Port != 0 || (enableHTTP != nil && *enableHTTP) {
+			insecurePort := int32(alternatorInsecurePort)
+			if cluster.Spec.Alternator.Port != 0 {
+				insecurePort = cluster.Spec.Alternator.Port
+			}
+
+			ports = append(ports, corev1.ServicePort{
+				Name: alternatorInsecurePortName,
+				Port: insecurePort,
+			})
+		}
 	}
 
 	return ports
@@ -473,6 +490,17 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								},
 							}...)
 						}
+						if c.Spec.Alternator != nil {
+							volumes = append(volumes, corev1.Volume{
+								Name: scylladbAlternatorServingCertsVolumeName,
+								VolumeSource: corev1.VolumeSource{
+									Secret: &corev1.SecretVolumeSource{
+										SecretName: naming.GetScyllaClusterAlternatorLocalServingCertName(c.Name),
+										Optional:   pointer.Ptr(false),
+									},
+								},
+							})
+						}
 
 						return volumes
 					}(),
@@ -618,6 +646,15 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 										},
 									}...)
 								}
+
+								if c.Spec.Alternator != nil {
+									mounts = append(mounts, corev1.VolumeMount{
+										Name:      scylladbAlternatorServingCertsVolumeName,
+										MountPath: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/alternator-serving-certs",
+										ReadOnly:  true,
+									})
+								}
+
 								return mounts
 							}(),
 							// Add CAP_SYS_NICE as instructed by scylla logs
@@ -769,6 +806,14 @@ func containerPorts(c *scyllav1.ScyllaCluster) []corev1.ContainerPort {
 			ContainerPort: 7001,
 		},
 		{
+			Name:          "cql",
+			ContainerPort: 9042,
+		},
+		{
+			Name:          "cql-ssl",
+			ContainerPort: 9142,
+		},
+		{
 			Name:          "jmx",
 			ContainerPort: 7199,
 		},
@@ -780,24 +825,29 @@ func containerPorts(c *scyllav1.ScyllaCluster) []corev1.ContainerPort {
 			Name:          "node-exporter",
 			ContainerPort: 9100,
 		},
-	}
-
-	if c.Spec.Alternator.Enabled() {
-		ports = append(ports, corev1.ContainerPort{
-			Name:          "alternator",
-			ContainerPort: c.Spec.Alternator.Port,
-		})
-	} else {
-		ports = append(ports, corev1.ContainerPort{
-			Name:          "cql",
-			ContainerPort: 9042,
-		}, corev1.ContainerPort{
-			Name:          "cql-ssl",
-			ContainerPort: 9142,
-		}, corev1.ContainerPort{
+		{
 			Name:          "thrift",
 			ContainerPort: 9160,
+		},
+	}
+
+	if c.Spec.Alternator != nil {
+		ports = append(ports, corev1.ContainerPort{
+			Name:          alternatorTLSPortName,
+			ContainerPort: alternatorTLSPort,
 		})
+
+		enableHTTP := c.Spec.Alternator.InsecureEnableHTTP
+		if c.Spec.Alternator.Port != 0 || (enableHTTP != nil && *enableHTTP) {
+			insecurePort := int32(alternatorInsecurePort)
+			if c.Spec.Alternator.Port != 0 {
+				insecurePort = c.Spec.Alternator.Port
+			}
+			ports = append(ports, corev1.ContainerPort{
+				Name:          alternatorInsecurePortName,
+				ContainerPort: insecurePort,
+			})
+		}
 	}
 
 	return ports
@@ -1315,6 +1365,7 @@ func MakeManagedScyllaDBConfig(sc *scyllav1.ScyllaCluster) (*corev1.ConfigMap, e
 			"ClusterName":       sc.Name,
 			"ManagedConfigName": naming.ScyllaDBManagedConfigName,
 			"EnableTLS":         utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates),
+			"Spec":              sc.Spec,
 		},
 	)
 	if err != nil {

@@ -203,6 +203,14 @@ func GetScyllaClusterLocalAdminCQLConnectionConfigsName(scName string) string {
 	return fmt.Sprintf("%s-local-cql-connection-configs-admin", scName)
 }
 
+func GetScyllaClusterAlternatorLocalServingCAName(scName string) string {
+	return fmt.Sprintf("%s-alternator-local-serving-ca", scName)
+}
+
+func GetScyllaClusterAlternatorLocalServingCertName(scName string) string {
+	return fmt.Sprintf("%s-alternator-local-serving-certs", scName)
+}
+
 func GetProtocolSubDomain(protocol, domain string) string {
 	return fmt.Sprintf("%s.%s", protocol, domain)
 }

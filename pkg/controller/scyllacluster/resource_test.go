@@ -86,6 +86,22 @@ func TestMemberService(t *testing.T) {
 			Port: 7001,
 		},
 		{
+			Name: "cql",
+			Port: 9042,
+		},
+		{
+			Name: "cql-ssl",
+			Port: 9142,
+		},
+		{
+			Name: "cql-shard-aware",
+			Port: 19042,
+		},
+		{
+			Name: "cql-ssl-shard-aware",
+			Port: 19142,
+		},
+		{
 			Name: "jmx-monitoring",
 			Port: 7199,
 		},
@@ -104,22 +120,6 @@ func TestMemberService(t *testing.T) {
 		{
 			Name: "node-exporter",
 			Port: 9100,
-		},
-		{
-			Name: "cql",
-			Port: 9042,
-		},
-		{
-			Name: "cql-ssl",
-			Port: 9142,
-		},
-		{
-			Name: "cql-shard-aware",
-			Port: 19042,
-		},
-		{
-			Name: "cql-ssl-shard-aware",
-			Port: 19142,
 		},
 		{
 			Name: "thrift",
@@ -820,6 +820,14 @@ func TestStatefulSetForRack(t *testing.T) {
 										ContainerPort: 7001,
 									},
 									{
+										Name:          "cql",
+										ContainerPort: 9042,
+									},
+									{
+										Name:          "cql-ssl",
+										ContainerPort: 9142,
+									},
+									{
 										Name:          "jmx",
 										ContainerPort: 7199,
 									},
@@ -830,14 +838,6 @@ func TestStatefulSetForRack(t *testing.T) {
 									{
 										Name:          "node-exporter",
 										ContainerPort: 9100,
-									},
-									{
-										Name:          "cql",
-										ContainerPort: 9042,
-									},
-									{
-										Name:          "cql-ssl",
-										ContainerPort: 9142,
 									},
 									{
 										Name:          "thrift",
@@ -1381,6 +1381,92 @@ func TestStatefulSetForRack(t *testing.T) {
 						ConditionType: "my-custom-pod-readiness-gate-2",
 					},
 				}
+
+				return sts
+			}(),
+			expectedError: nil,
+		},
+		{
+			name: "new StatefulSet with default Alternator enabled",
+			rack: newBasicRack(),
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := newBasicScyllaCluster()
+				sc.Spec.Alternator = &scyllav1.AlternatorSpec{}
+				return sc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+
+				tmplSpec := &sts.Spec.Template.Spec
+				scylladbContainer := &tmplSpec.Containers[scyllaContainerIndex]
+
+				tmplSpec.Volumes = append(tmplSpec.Volumes, corev1.Volume{
+					Name: "scylladb-alternator-serving-certs",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "basic-alternator-local-serving-certs",
+							Optional:   pointer.Ptr(false),
+						},
+					},
+				})
+
+				scylladbContainer.VolumeMounts = append(scylladbContainer.VolumeMounts, corev1.VolumeMount{
+					Name:      "scylladb-alternator-serving-certs",
+					ReadOnly:  true,
+					MountPath: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/alternator-serving-certs",
+				})
+				scylladbContainer.Ports = append(
+					scylladbContainer.Ports,
+					corev1.ContainerPort{
+						Name:          "alternator-tls",
+						ContainerPort: 8043,
+					},
+				)
+
+				return sts
+			}(),
+			expectedError: nil,
+		},
+		{
+			name: "new StatefulSet with default Alternator enabled and disabled http",
+			rack: newBasicRack(),
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := newBasicScyllaCluster()
+				sc.Spec.Alternator = &scyllav1.AlternatorSpec{
+					InsecureEnableHTTP: pointer.Ptr(false),
+				}
+				return sc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+
+				tmplSpec := &sts.Spec.Template.Spec
+				scylladbContainer := &tmplSpec.Containers[scyllaContainerIndex]
+
+				tmplSpec.Volumes = append(tmplSpec.Volumes, corev1.Volume{
+					Name: "scylladb-alternator-serving-certs",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "basic-alternator-local-serving-certs",
+							Optional:   pointer.Ptr(false),
+						},
+					},
+				})
+
+				scylladbContainer.VolumeMounts = append(scylladbContainer.VolumeMounts, corev1.VolumeMount{
+					Name:      "scylladb-alternator-serving-certs",
+					ReadOnly:  true,
+					MountPath: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/alternator-serving-certs",
+				})
+				scylladbContainer.Ports = append(
+					scylladbContainer.Ports,
+					corev1.ContainerPort{
+						Name:          "alternator-tls",
+						ContainerPort: 8043,
+					},
+				)
 
 				return sts
 			}(),
@@ -2684,6 +2770,550 @@ client_encryption_options:
   keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.key"
   require_client_auth: true
   truststore: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/client-ca/tls.crt"
+`, "\n"),
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "alternator is setup on TLS-only with authorization by default",
+			sc: &scyllav1.ScyllaCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo",
+					UID:       "uid-42",
+					Labels: map[string]string{
+						"user-label": "user-label-value",
+					},
+				},
+				Spec: scyllav1.ScyllaClusterSpec{
+					Alternator: &scyllav1.AlternatorSpec{
+						InsecureEnableHTTP: nil,
+					},
+				},
+			},
+			enableTLSFeatureGate: true,
+			expectedCM: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo-managed-config",
+					Labels: map[string]string{
+						"scylla/cluster": "foo",
+						"user-label":     "user-label-value",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1",
+							Kind:               "ScyllaCluster",
+							Name:               "foo",
+							UID:                "uid-42",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"scylladb-managed-config.yaml": strings.TrimPrefix(`
+cluster_name: "foo"
+rpc_address: "0.0.0.0"
+endpoint_snitch: "GossipingPropertyFileSnitch"
+internode_compression: "all"
+native_transport_port_ssl: 9142
+native_shard_aware_transport_port_ssl: 19142
+client_encryption_options:
+  enabled: true
+  optional: false
+  certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.crt"
+  keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.key"
+  require_client_auth: true
+  truststore: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/client-ca/tls.crt"
+alternator_write_isolation: always_use_lwt
+alternator_enforce_authorization: true
+alternator_https_port: 8043
+alternator_encryption_options:
+  certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/alternator-serving-certs/tls.crt"
+  keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/alternator-serving-certs/tls.key"
+`, "\n"),
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "alternator is setup on TLS-only when insecure port is disabled",
+			sc: &scyllav1.ScyllaCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo",
+					UID:       "uid-42",
+					Labels: map[string]string{
+						"user-label": "user-label-value",
+					},
+				},
+				Spec: scyllav1.ScyllaClusterSpec{
+					Alternator: &scyllav1.AlternatorSpec{
+						InsecureEnableHTTP: pointer.Ptr(false),
+					},
+				},
+			},
+			enableTLSFeatureGate: true,
+			expectedCM: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo-managed-config",
+					Labels: map[string]string{
+						"scylla/cluster": "foo",
+						"user-label":     "user-label-value",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1",
+							Kind:               "ScyllaCluster",
+							Name:               "foo",
+							UID:                "uid-42",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"scylladb-managed-config.yaml": strings.TrimPrefix(`
+cluster_name: "foo"
+rpc_address: "0.0.0.0"
+endpoint_snitch: "GossipingPropertyFileSnitch"
+internode_compression: "all"
+native_transport_port_ssl: 9142
+native_shard_aware_transport_port_ssl: 19142
+client_encryption_options:
+  enabled: true
+  optional: false
+  certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.crt"
+  keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.key"
+  require_client_auth: true
+  truststore: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/client-ca/tls.crt"
+alternator_write_isolation: always_use_lwt
+alternator_enforce_authorization: true
+alternator_https_port: 8043
+alternator_encryption_options:
+  certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/alternator-serving-certs/tls.crt"
+  keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/alternator-serving-certs/tls.key"
+`, "\n"),
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "alternator is setup both on TLS and insecure when insecure port is enabled",
+			sc: &scyllav1.ScyllaCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo",
+					UID:       "uid-42",
+					Labels: map[string]string{
+						"user-label": "user-label-value",
+					},
+				},
+				Spec: scyllav1.ScyllaClusterSpec{
+					Alternator: &scyllav1.AlternatorSpec{
+						InsecureEnableHTTP: pointer.Ptr(true),
+					},
+				},
+			},
+			enableTLSFeatureGate: true,
+			expectedCM: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo-managed-config",
+					Labels: map[string]string{
+						"scylla/cluster": "foo",
+						"user-label":     "user-label-value",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1",
+							Kind:               "ScyllaCluster",
+							Name:               "foo",
+							UID:                "uid-42",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"scylladb-managed-config.yaml": strings.TrimPrefix(`
+cluster_name: "foo"
+rpc_address: "0.0.0.0"
+endpoint_snitch: "GossipingPropertyFileSnitch"
+internode_compression: "all"
+native_transport_port_ssl: 9142
+native_shard_aware_transport_port_ssl: 19142
+client_encryption_options:
+  enabled: true
+  optional: false
+  certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.crt"
+  keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.key"
+  require_client_auth: true
+  truststore: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/client-ca/tls.crt"
+alternator_write_isolation: always_use_lwt
+alternator_enforce_authorization: true
+alternator_port: 8000
+alternator_https_port: 8043
+alternator_encryption_options:
+  certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/alternator-serving-certs/tls.crt"
+  keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/alternator-serving-certs/tls.key"
+`, "\n"),
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "alternator is setup without authorization when manual port is specified for backwards compatibility",
+			sc: &scyllav1.ScyllaCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo",
+					UID:       "uid-42",
+					Labels: map[string]string{
+						"user-label": "user-label-value",
+					},
+				},
+				Spec: scyllav1.ScyllaClusterSpec{
+					Alternator: &scyllav1.AlternatorSpec{
+						Port: 42,
+					},
+				},
+			},
+			enableTLSFeatureGate: true,
+			expectedCM: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo-managed-config",
+					Labels: map[string]string{
+						"scylla/cluster": "foo",
+						"user-label":     "user-label-value",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1",
+							Kind:               "ScyllaCluster",
+							Name:               "foo",
+							UID:                "uid-42",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"scylladb-managed-config.yaml": strings.TrimPrefix(`
+cluster_name: "foo"
+rpc_address: "0.0.0.0"
+endpoint_snitch: "GossipingPropertyFileSnitch"
+internode_compression: "all"
+native_transport_port_ssl: 9142
+native_shard_aware_transport_port_ssl: 19142
+client_encryption_options:
+  enabled: true
+  optional: false
+  certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.crt"
+  keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.key"
+  require_client_auth: true
+  truststore: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/client-ca/tls.crt"
+alternator_write_isolation: always_use_lwt
+alternator_enforce_authorization: false
+alternator_port: 42
+alternator_https_port: 8043
+alternator_encryption_options:
+  certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/alternator-serving-certs/tls.crt"
+  keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/alternator-serving-certs/tls.key"
+`, "\n"),
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "alternator is setup with authorization when manual port is specified and authorization is enabled",
+			sc: &scyllav1.ScyllaCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo",
+					UID:       "uid-42",
+					Labels: map[string]string{
+						"user-label": "user-label-value",
+					},
+				},
+				Spec: scyllav1.ScyllaClusterSpec{
+					Alternator: &scyllav1.AlternatorSpec{
+						Port:                         42,
+						InsecureDisableAuthorization: pointer.Ptr(false),
+					},
+				},
+			},
+			enableTLSFeatureGate: true,
+			expectedCM: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo-managed-config",
+					Labels: map[string]string{
+						"scylla/cluster": "foo",
+						"user-label":     "user-label-value",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1",
+							Kind:               "ScyllaCluster",
+							Name:               "foo",
+							UID:                "uid-42",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"scylladb-managed-config.yaml": strings.TrimPrefix(`
+cluster_name: "foo"
+rpc_address: "0.0.0.0"
+endpoint_snitch: "GossipingPropertyFileSnitch"
+internode_compression: "all"
+native_transport_port_ssl: 9142
+native_shard_aware_transport_port_ssl: 19142
+client_encryption_options:
+  enabled: true
+  optional: false
+  certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.crt"
+  keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.key"
+  require_client_auth: true
+  truststore: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/client-ca/tls.crt"
+alternator_write_isolation: always_use_lwt
+alternator_enforce_authorization: true
+alternator_port: 42
+alternator_https_port: 8043
+alternator_encryption_options:
+  certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/alternator-serving-certs/tls.crt"
+  keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/alternator-serving-certs/tls.key"
+`, "\n"),
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "alternator is setup without authorization when it's disabled and using manual port",
+			sc: &scyllav1.ScyllaCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo",
+					UID:       "uid-42",
+					Labels: map[string]string{
+						"user-label": "user-label-value",
+					},
+				},
+				Spec: scyllav1.ScyllaClusterSpec{
+					Alternator: &scyllav1.AlternatorSpec{
+						Port:                         42,
+						InsecureDisableAuthorization: pointer.Ptr(true),
+					},
+				},
+			},
+			enableTLSFeatureGate: true,
+			expectedCM: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo-managed-config",
+					Labels: map[string]string{
+						"scylla/cluster": "foo",
+						"user-label":     "user-label-value",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1",
+							Kind:               "ScyllaCluster",
+							Name:               "foo",
+							UID:                "uid-42",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"scylladb-managed-config.yaml": strings.TrimPrefix(`
+cluster_name: "foo"
+rpc_address: "0.0.0.0"
+endpoint_snitch: "GossipingPropertyFileSnitch"
+internode_compression: "all"
+native_transport_port_ssl: 9142
+native_shard_aware_transport_port_ssl: 19142
+client_encryption_options:
+  enabled: true
+  optional: false
+  certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.crt"
+  keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.key"
+  require_client_auth: true
+  truststore: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/client-ca/tls.crt"
+alternator_write_isolation: always_use_lwt
+alternator_enforce_authorization: false
+alternator_port: 42
+alternator_https_port: 8043
+alternator_encryption_options:
+  certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/alternator-serving-certs/tls.crt"
+  keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/alternator-serving-certs/tls.key"
+`, "\n"),
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "alternator is setup with authorization when manual port is specified and authorization is enabled",
+			sc: &scyllav1.ScyllaCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo",
+					UID:       "uid-42",
+					Labels: map[string]string{
+						"user-label": "user-label-value",
+					},
+				},
+				Spec: scyllav1.ScyllaClusterSpec{
+					Alternator: &scyllav1.AlternatorSpec{
+						Port:                         42,
+						InsecureDisableAuthorization: pointer.Ptr(false),
+					},
+				},
+			},
+			enableTLSFeatureGate: true,
+			expectedCM: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo-managed-config",
+					Labels: map[string]string{
+						"scylla/cluster": "foo",
+						"user-label":     "user-label-value",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1",
+							Kind:               "ScyllaCluster",
+							Name:               "foo",
+							UID:                "uid-42",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"scylladb-managed-config.yaml": strings.TrimPrefix(`
+cluster_name: "foo"
+rpc_address: "0.0.0.0"
+endpoint_snitch: "GossipingPropertyFileSnitch"
+internode_compression: "all"
+native_transport_port_ssl: 9142
+native_shard_aware_transport_port_ssl: 19142
+client_encryption_options:
+  enabled: true
+  optional: false
+  certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.crt"
+  keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.key"
+  require_client_auth: true
+  truststore: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/client-ca/tls.crt"
+alternator_write_isolation: always_use_lwt
+alternator_enforce_authorization: true
+alternator_port: 42
+alternator_https_port: 8043
+alternator_encryption_options:
+  certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/alternator-serving-certs/tls.crt"
+  keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/alternator-serving-certs/tls.key"
+`, "\n"),
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "alternator is setup without authorization when it's disabled",
+			sc: &scyllav1.ScyllaCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo",
+					UID:       "uid-42",
+					Labels: map[string]string{
+						"user-label": "user-label-value",
+					},
+				},
+				Spec: scyllav1.ScyllaClusterSpec{
+					Alternator: &scyllav1.AlternatorSpec{
+						InsecureDisableAuthorization: pointer.Ptr(true),
+					},
+				},
+			},
+			enableTLSFeatureGate: true,
+			expectedCM: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo-managed-config",
+					Labels: map[string]string{
+						"scylla/cluster": "foo",
+						"user-label":     "user-label-value",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1",
+							Kind:               "ScyllaCluster",
+							Name:               "foo",
+							UID:                "uid-42",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"scylladb-managed-config.yaml": strings.TrimPrefix(`
+cluster_name: "foo"
+rpc_address: "0.0.0.0"
+endpoint_snitch: "GossipingPropertyFileSnitch"
+internode_compression: "all"
+native_transport_port_ssl: 9142
+native_shard_aware_transport_port_ssl: 19142
+client_encryption_options:
+  enabled: true
+  optional: false
+  certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.crt"
+  keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.key"
+  require_client_auth: true
+  truststore: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/client-ca/tls.crt"
+alternator_write_isolation: always_use_lwt
+alternator_enforce_authorization: false
+alternator_https_port: 8043
+alternator_encryption_options:
+  certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/alternator-serving-certs/tls.crt"
+  keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/alternator-serving-certs/tls.key"
 `, "\n"),
 				},
 			},

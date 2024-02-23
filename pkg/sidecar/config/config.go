@@ -221,12 +221,6 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		"broadcast-rpc-address": &m.BroadcastRPCAddress,
 	}
 
-	if cluster.Spec.Alternator.Enabled() {
-		args["alternator-port"] = pointer.Ptr(strconv.Itoa(int(cluster.Spec.Alternator.Port)))
-		if cluster.Spec.Alternator.WriteIsolation != "" {
-			args["alternator-write-isolation"] = pointer.Ptr(cluster.Spec.Alternator.WriteIsolation)
-		}
-	}
 	// If node is being replaced
 	if addr, ok := m.ServiceLabels[naming.ReplaceLabel]; ok {
 		if len(addr) == 0 {

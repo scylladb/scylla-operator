@@ -22,8 +22,7 @@ spec:
   {{- end }}
   {{- if .Values.alternator.enabled }}
   alternator:
-    port: {{ .Values.alternator.port }}
-    writeIsolation: {{ .Values.alternator.writeIsolation }}
+    {{- omit .Values.alternator "enabled" | toYaml | nindent 4 }}
   {{- end }}
   {{- if .Values.developerMode }}
   developerMode: {{ .Values.developerMode }}

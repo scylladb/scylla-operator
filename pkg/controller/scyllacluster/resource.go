@@ -340,12 +340,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 		minTerminationGracePeriodSeconds = loadBalancerSyncPeriodSeconds
 		minReadySeconds = loadBalancerSyncPeriodSeconds
 	}
-	if c.Spec.ExposeOptions != nil && c.Spec.ExposeOptions.NodeService != nil && c.Spec.ExposeOptions.NodeService.Type == scyllav1.NodeServiceTypeHeadless {
-		// PodIP exposure doesn't have any load balancer in front of the Pod, there's no need to wait for termination nor availability,
-		// as traffic is rejected and accepted immediately after socket is closed/open.
-		minTerminationGracePeriodSeconds = 0
-		minReadySeconds = 0
-	}
+
 	if c.Spec.MinTerminationGracePeriodSeconds != nil {
 		minTerminationGracePeriodSeconds = int(*c.Spec.MinTerminationGracePeriodSeconds)
 	}

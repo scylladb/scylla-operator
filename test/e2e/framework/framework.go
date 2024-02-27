@@ -118,6 +118,27 @@ func (f *Framework) CreateUserNamespace(ctx context.Context) (*corev1.Namespace,
 	return f.defaultCluster().CreateUserNamespace(ctx)
 }
 
+func (f *Framework) GetObjectStorageType() ObjectStorageType {
+	return TestContext.ObjectStorageType
+}
+
+func (f *Framework) GetObjectStorageProvider() string {
+	switch TestContext.ObjectStorageType {
+	case ObjectStorageTypeGCS:
+		return "gcs"
+	default:
+		return ""
+	}
+}
+
+func (f *Framework) GetObjectStorageBucket() string {
+	return TestContext.ObjectStorageBucket
+}
+
+func (f *Framework) GetGCSServiceAccountKey() []byte {
+	return TestContext.GCSServiceAccountKey
+}
+
 func (f *Framework) defaultCluster() *Cluster {
 	return f.clusters[0]
 }

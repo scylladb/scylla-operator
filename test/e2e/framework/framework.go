@@ -303,6 +303,27 @@ func (f *Framework) deleteNamespace(ctx context.Context, ns *corev1.Namespace) {
 	klog.InfoS("Namespace removed.", "Namespace", ns.Name)
 }
 
+func (f *Framework) GetObjectStorageType() ObjectStorageType {
+	return TestContext.ObjectStorageType
+}
+
+func (f *Framework) GetObjectStorageProvider() string {
+	switch TestContext.ObjectStorageType {
+	case ObjectStorageTypeGCS:
+		return "gcs"
+	default:
+		return ""
+	}
+}
+
+func (f *Framework) GetObjectStorageBucket() string {
+	return TestContext.ObjectStorageBucket
+}
+
+func (f *Framework) GetGCSServiceAccountKey() []byte {
+	return TestContext.GCSServiceAccountKey
+}
+
 func (f *Framework) beforeEach() {
 	f.setupNamespace(context.Background())
 }

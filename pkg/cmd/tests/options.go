@@ -2,6 +2,7 @@ package tests
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
@@ -40,6 +41,10 @@ type TestFrameworkOptions struct {
 	IngressController            *IngressControllerOptions
 	ScyllaClusterOptionsUntyped  *ScyllaClusterOptions
 	scyllaClusterOptions         *framework.ScyllaClusterOptions
+	objectStorageType            framework.ObjectStorageType
+	objectStorageBucket          string
+	gcsServiceAccountKeyPath     string
+	gcsServiceAccountKey         []byte
 }
 
 func NewTestFrameworkOptions() TestFrameworkOptions {
@@ -52,6 +57,7 @@ func NewTestFrameworkOptions() TestFrameworkOptions {
 			NodesBroadcastAddressType:   string(scyllav1.BroadcastAddressTypePodIP),
 			ClientsBroadcastAddressType: string(scyllav1.BroadcastAddressTypePodIP),
 		},
+		objectStorageType: framework.ObjectStorageTypeNone,
 	}
 }
 
@@ -80,6 +86,8 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 		slices.ConvertSlice(supportedBroadcastAddressTypes, slices.ToString[scyllav1.BroadcastAddressType]),
 		", ",
 	)))
+	cmd.PersistentFlags().StringVarP(&o.objectStorageBucket, "object-storage-bucket", "", o.objectStorageBucket, "Name of the object storage bucket.")
+	cmd.PersistentFlags().StringVarP(&o.gcsServiceAccountKeyPath, "gcs-service-account-key-path", "", o.gcsServiceAccountKeyPath, "Path to a file containing a GCS service account key.")
 }
 
 func (o *TestFrameworkOptions) Validate() error {
@@ -105,10 +113,16 @@ func (o *TestFrameworkOptions) Validate() error {
 		errors = append(errors, fmt.Errorf("invalid scylla-cluster-clients-broadcast-address-type: %q", o.ScyllaClusterOptionsUntyped.ClientsBroadcastAddressType))
 	}
 
+	if len(o.gcsServiceAccountKeyPath) > 0 && len(o.objectStorageBucket) == 0 {
+		errors = append(errors, fmt.Errorf("object-storage-bucket can't be empty when gcs-service-account-key-path is provided"))
+	}
+
 	return apierrors.NewAggregate(errors)
 }
 
 func (o *TestFrameworkOptions) Complete() error {
+	var err error
+
 	o.DeleteTestingNSPolicy = framework.DeleteTestingNSPolicyType(o.DeleteTestingNSPolicyUntyped)
 
 	// Trim spaces so we can reason later if the dir is set or not
@@ -120,6 +134,14 @@ func (o *TestFrameworkOptions) Complete() error {
 			NodesBroadcastAddressType:   scyllav1.BroadcastAddressType(o.ScyllaClusterOptionsUntyped.NodesBroadcastAddressType),
 			ClientsBroadcastAddressType: scyllav1.BroadcastAddressType(o.ScyllaClusterOptionsUntyped.ClientsBroadcastAddressType),
 		},
+	}
+
+	if len(o.gcsServiceAccountKeyPath) > 0 {
+		o.objectStorageType = framework.ObjectStorageTypeGCS
+		o.gcsServiceAccountKey, err = os.ReadFile(o.gcsServiceAccountKeyPath)
+		if err != nil {
+			return fmt.Errorf("can't read gcs service account key file at %q: %w", o.gcsServiceAccountKeyPath, err)
+		}
 	}
 
 	return nil

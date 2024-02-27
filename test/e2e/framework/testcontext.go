@@ -33,10 +33,20 @@ type ExposeOptions struct {
 	ClientsBroadcastAddressType scyllav1.BroadcastAddressType
 }
 
+type ObjectStorageType string
+
+const (
+	ObjectStorageTypeNone ObjectStorageType = "None"
+	ObjectStorageTypeGCS  ObjectStorageType = "GCS"
+)
+
 type TestContextType struct {
 	RestConfig            *restclient.Config
 	ArtifactsDir          string
 	DeleteTestingNSPolicy DeleteTestingNSPolicyType
 	IngressController     *IngressController
 	ScyllaClusterOptions  *ScyllaClusterOptions
+	ObjectStorageType     ObjectStorageType
+	ObjectStorageBucket   string
+	GCSServiceAccountKey  []byte
 }

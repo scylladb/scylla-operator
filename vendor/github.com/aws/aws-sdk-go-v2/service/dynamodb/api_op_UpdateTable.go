@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	internalEndpointDiscovery "github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery"
 	"github.com/aws/smithy-go/middleware"
@@ -22,10 +21,10 @@ import (
 //   - Create a new global secondary index on the table. After the index begins
 //     backfilling, you can use UpdateTable to perform other operations.
 //
-// UpdateTable is an asynchronous operation; while it is executing, the table
-// status changes from ACTIVE to UPDATING . While it is UPDATING , you cannot issue
-// another UpdateTable request. When the table returns to the ACTIVE state, the
-// UpdateTable operation is complete.
+// UpdateTable is an asynchronous operation; while it's executing, the table
+// status changes from ACTIVE to UPDATING . While it's UPDATING , you can't issue
+// another UpdateTable request on the base table nor any replicas. When the table
+// returns to the ACTIVE state, the UpdateTable operation is complete.
 func (c *Client) UpdateTable(ctx context.Context, params *UpdateTableInput, optFns ...func(*Options)) (*UpdateTableOutput, error) {
 	if params == nil {
 		params = &UpdateTableInput{}
@@ -139,25 +138,25 @@ func (c *Client) addOperationUpdateTableMiddlewares(stack *middleware.Stack, opt
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -181,7 +180,7 @@ func (c *Client) addOperationUpdateTableMiddlewares(stack *middleware.Stack, opt
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opUpdateTable(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

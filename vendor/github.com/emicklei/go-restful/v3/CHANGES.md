@@ -1,8 +1,8 @@
 # Change history of go-restful
 
-## [v3.11.1] - 2024-01-03
+## [v3.11.1, v3.11.2] - 2024-01-09
 
--  remove the dependency on github.com/json-iterator/go (#539)
+- fix by restoring custom JSON handler functions (Mike Beaumont #540)
 
 ## [v3.11.0] - 2023-08-19
 

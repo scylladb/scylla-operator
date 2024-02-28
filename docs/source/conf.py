@@ -70,9 +70,9 @@ scylladb_markdown_recommonmark_versions = ['v1.9', 'v1.10']
 TAGS = []
 smv_tag_whitelist = multiversion_regex_builder(TAGS)
 # Whitelist pattern for branches (set to None to ignore all branches)
-BRANCHES = ['master', 'v1.9', 'v1.10', 'v1.11']
+BRANCHES = ['master', 'v1.9', 'v1.10', 'v1.11', 'v1.12']
 # Set which versions are not released yet.
-UNSTABLE_VERSIONS = ["master"]
+UNSTABLE_VERSIONS = ["master", 'v1.12']
 smv_branch_whitelist = multiversion_regex_builder(BRANCHES)
 # Defines which version is considered to be the latest stable version.
 # Must be listed in smv_tag_whitelist or smv_branch_whitelist.

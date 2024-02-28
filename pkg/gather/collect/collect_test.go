@@ -160,16 +160,46 @@ status:
 					Name:      "my-pod",
 				},
 				Spec: corev1.PodSpec{
+					InitContainers: []corev1.Container{
+						{
+							Name: "my-init-container",
+						},
+					},
 					Containers: []corev1.Container{
 						{
 							Name: "my-container",
 						},
 					},
+					EphemeralContainers: []corev1.EphemeralContainer{
+						{
+							EphemeralContainerCommon: corev1.EphemeralContainerCommon{
+								Name: "my-ephemeral-container",
+							},
+						},
+					},
 				},
 				Status: corev1.PodStatus{
+					InitContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name: "my-init-container",
+							State: corev1.ContainerState{
+								Terminated: nil,
+								Running:    &corev1.ContainerStateRunning{},
+							},
+						},
+					},
 					ContainerStatuses: []corev1.ContainerStatus{
 						{
 							Name: "my-container",
+							State: corev1.ContainerState{
+								Terminated: nil,
+								Running:    &corev1.ContainerStateRunning{},
+							},
+						},
+					},
+					EphemeralContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name: "my-ephemeral-container",
 							State: corev1.ContainerState{
 								Terminated: nil,
 								Running:    &corev1.ContainerStateRunning{},
@@ -198,6 +228,12 @@ spec:
   containers:
   - name: my-container
     resources: {}
+  ephemeralContainers:
+  - name: my-ephemeral-container
+    resources: {}
+  initContainers:
+  - name: my-init-container
+    resources: {}
 status:
   containerStatuses:
   - image: ""
@@ -209,10 +245,38 @@ status:
     state:
       running:
         startedAt: null
+  ephemeralContainerStatuses:
+  - image: ""
+    imageID: ""
+    lastState: {}
+    name: my-ephemeral-container
+    ready: false
+    restartCount: 0
+    state:
+      running:
+        startedAt: null
+  initContainerStatuses:
+  - image: ""
+    imageID: ""
+    lastState: {}
+    name: my-init-container
+    ready: false
+    restartCount: 0
+    state:
+      running:
+        startedAt: null
 `, "\n"),
 					},
 					{
 						Name:    "namespaces/test/pods/my-pod/my-container.current",
+						Content: "fake logs",
+					},
+					{
+						Name:    "namespaces/test/pods/my-pod/my-ephemeral-container.current",
+						Content: "fake logs",
+					},
+					{
+						Name:    "namespaces/test/pods/my-pod/my-init-container.current",
 						Content: "fake logs",
 					},
 				},
@@ -226,9 +290,21 @@ status:
 					Name:      "my-pod",
 				},
 				Spec: corev1.PodSpec{
+					InitContainers: []corev1.Container{
+						{
+							Name: "my-init-container",
+						},
+					},
 					Containers: []corev1.Container{
 						{
 							Name: "my-container",
+						},
+					},
+					EphemeralContainers: []corev1.EphemeralContainer{
+						{
+							EphemeralContainerCommon: corev1.EphemeralContainerCommon{
+								Name: "my-ephemeral-container",
+							},
 						},
 					},
 				},
@@ -236,6 +312,28 @@ status:
 					ContainerStatuses: []corev1.ContainerStatus{
 						{
 							Name: "my-container",
+							State: corev1.ContainerState{
+								Running: &corev1.ContainerStateRunning{},
+							},
+							LastTerminationState: corev1.ContainerState{
+								Terminated: &corev1.ContainerStateTerminated{},
+							},
+						},
+					},
+					InitContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name: "my-init-container",
+							State: corev1.ContainerState{
+								Running: &corev1.ContainerStateRunning{},
+							},
+							LastTerminationState: corev1.ContainerState{
+								Terminated: &corev1.ContainerStateTerminated{},
+							},
+						},
+					},
+					EphemeralContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name: "my-ephemeral-container",
 							State: corev1.ContainerState{
 								Running: &corev1.ContainerStateRunning{},
 							},
@@ -266,6 +364,12 @@ spec:
   containers:
   - name: my-container
     resources: {}
+  ephemeralContainers:
+  - name: my-ephemeral-container
+    resources: {}
+  initContainers:
+  - name: my-init-container
+    resources: {}
 status:
   containerStatuses:
   - image: ""
@@ -281,6 +385,34 @@ status:
     state:
       running:
         startedAt: null
+  ephemeralContainerStatuses:
+  - image: ""
+    imageID: ""
+    lastState:
+      terminated:
+        exitCode: 0
+        finishedAt: null
+        startedAt: null
+    name: my-ephemeral-container
+    ready: false
+    restartCount: 0
+    state:
+      running:
+        startedAt: null
+  initContainerStatuses:
+  - image: ""
+    imageID: ""
+    lastState:
+      terminated:
+        exitCode: 0
+        finishedAt: null
+        startedAt: null
+    name: my-init-container
+    ready: false
+    restartCount: 0
+    state:
+      running:
+        startedAt: null
 `, "\n"),
 					},
 					{
@@ -289,6 +421,22 @@ status:
 					},
 					{
 						Name:    "namespaces/test/pods/my-pod/my-container.previous",
+						Content: "fake logs",
+					},
+					{
+						Name:    "namespaces/test/pods/my-pod/my-ephemeral-container.current",
+						Content: "fake logs",
+					},
+					{
+						Name:    "namespaces/test/pods/my-pod/my-ephemeral-container.previous",
+						Content: "fake logs",
+					},
+					{
+						Name:    "namespaces/test/pods/my-pod/my-init-container.current",
+						Content: "fake logs",
+					},
+					{
+						Name:    "namespaces/test/pods/my-pod/my-init-container.previous",
 						Content: "fake logs",
 					},
 				},

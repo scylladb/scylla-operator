@@ -671,7 +671,7 @@ func TestStatefulSetForRack(t *testing.T) {
 						"scylla/rack":                  "rack",
 					},
 				},
-				MinReadySeconds: 10,
+				MinReadySeconds: 5,
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Labels: newBasicStatefulSetLabels(0),
@@ -984,7 +984,7 @@ func TestStatefulSetForRack(t *testing.T) {
 												"-O",
 												"inherit_errexit",
 												"-c",
-												"nodetool drain & sleep 20 & wait",
+												"nodetool drain & sleep 15 & wait",
 											},
 										},
 									},

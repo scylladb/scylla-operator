@@ -237,14 +237,14 @@ func retrieveContainerLogs(ctx context.Context, podClient corev1client.PodInterf
 	return nil
 }
 
-func (c *Collector) collectContainerLogs(ctx context.Context, logsDir string, pod *corev1.Pod, container *corev1.Container) error {
+func (c *Collector) collectContainerLogs(ctx context.Context, logsDir string, podMeta *metav1.ObjectMeta, podCSs []corev1.ContainerStatus, containerName string) error {
 	var err error
 
-	cs, _, found := slices.Find(pod.Status.ContainerStatuses, func(s corev1.ContainerStatus) bool {
-		return s.Name == container.Name
+	cs, _, found := slices.Find(podCSs, func(s corev1.ContainerStatus) bool {
+		return s.Name == containerName
 	})
 	if !found {
-		klog.InfoS("Container doesn't yet have a status", "Pod", naming.ObjRef(pod), "Container", container.Name)
+		klog.InfoS("Container doesn't yet have a status", "Pod", naming.ObjRef(podMeta), "Container", containerName)
 		return nil
 	}
 
@@ -254,7 +254,7 @@ func (c *Collector) collectContainerLogs(ctx context.Context, logsDir string, po
 	}
 
 	logOptions := &corev1.PodLogOptions{
-		Container:  container.Name,
+		Container:  containerName,
 		Timestamps: true,
 		Follow:     false,
 		LimitBytes: limitBytes,
@@ -267,17 +267,17 @@ func (c *Collector) collectContainerLogs(ctx context.Context, logsDir string, po
 	if cs.State.Running != nil {
 		// Retrieve current logs.
 		logOptions.Previous = false
-		err = retrieveContainerLogs(ctx, c.corev1Client.Pods(pod.Namespace), filepath.Join(logsDir, container.Name+".current"), pod.Name, logOptions)
+		err = retrieveContainerLogs(ctx, c.corev1Client.Pods(podMeta.Namespace), filepath.Join(logsDir, containerName+".current"), podMeta.Name, logOptions)
 		if err != nil {
-			return fmt.Errorf("can't retrieve pod logs for container %q in pod %q: %w", container.Name, naming.ObjRef(pod), err)
+			return fmt.Errorf("can't retrieve pod logs for container %q in pod %q: %w", containerName, naming.ObjRef(podMeta), err)
 		}
 	}
 
 	if cs.LastTerminationState.Terminated != nil {
 		logOptions.Previous = true
-		err = retrieveContainerLogs(ctx, c.corev1Client.Pods(pod.Namespace), filepath.Join(logsDir, container.Name+".previous"), pod.Name, logOptions)
+		err = retrieveContainerLogs(ctx, c.corev1Client.Pods(podMeta.Namespace), filepath.Join(logsDir, containerName+".previous"), podMeta.Name, logOptions)
 		if err != nil {
-			return fmt.Errorf("can't retrieve previous pod logs for container %q in pod %q: %w", container.Name, naming.ObjRef(pod), err)
+			return fmt.Errorf("can't retrieve previous pod logs for container %q in pod %q: %w", containerName, naming.ObjRef(podMeta), err)
 		}
 	}
 
@@ -308,16 +308,23 @@ func (c *Collector) collectPod(ctx context.Context, u *unstructured.Unstructured
 	}
 
 	for _, container := range pod.Spec.InitContainers {
-		err = c.collectContainerLogs(ctx, logsDir, pod, &container)
+		err = c.collectContainerLogs(ctx, logsDir, &pod.ObjectMeta, pod.Status.InitContainerStatuses, container.Name)
 		if err != nil {
 			return fmt.Errorf("can't collect logs for init container %q in pod %q: %w", container.Name, naming.ObjRef(pod), err)
 		}
 	}
 
 	for _, container := range pod.Spec.Containers {
-		err = c.collectContainerLogs(ctx, logsDir, pod, &container)
+		err = c.collectContainerLogs(ctx, logsDir, &pod.ObjectMeta, pod.Status.ContainerStatuses, container.Name)
 		if err != nil {
 			return fmt.Errorf("can't collect logs for container %q in pod %q: %w", container.Name, naming.ObjRef(pod), err)
+		}
+	}
+
+	for _, container := range pod.Spec.EphemeralContainers {
+		err = c.collectContainerLogs(ctx, logsDir, &pod.ObjectMeta, pod.Status.EphemeralContainerStatuses, container.Name)
+		if err != nil {
+			return fmt.Errorf("can't collect logs for ephemeral container %q in pod %q: %w", container.Name, naming.ObjRef(pod), err)
 		}
 	}
 

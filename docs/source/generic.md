@@ -143,7 +143,7 @@ To squeeze the most out of your deployment it is sometimes necessary to employ [
 To enable this the CRD allows for specifying a `network` parameter as such:
 
 ```yaml
-  version: 5.4.0
+  version: 5.4.3
   agentVersion: 3.2.5
   cpuset: true
   network:
@@ -173,7 +173,7 @@ Change the `cluster.yaml` file from this:
 ```yaml
 spec:
   agentVersion: 3.2.5
-  version: 5.4.0
+  version: 5.4.3
   developerMode: true
   datacenter:
     name: us-east-1
@@ -181,7 +181,7 @@ spec:
 to this:
 ```yaml
 spec:
-  version: 5.4.0
+  version: 5.4.3
   alternator:
     port: 8000
     writeIsolation: only_rmw_uses_lwt

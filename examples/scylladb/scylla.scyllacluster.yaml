@@ -4,7 +4,7 @@ metadata:
   name: scylla
 spec:
   agentVersion: 3.2.5
-  version: 5.4.0
+  version: 5.4.3
   developerMode: true
   automaticOrphanedNodeCleanup: true
   sysctls:

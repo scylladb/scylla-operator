@@ -32,6 +32,11 @@ func ListLoopDevices(ctx context.Context, executor exec.Interface) ([]*LoopDevic
 		return nil, fmt.Errorf("failed to run losetup with args: %v: %w, stdout: %q, stderr: %q", args, err, stdout, stderr.String())
 	}
 
+	// losetup may return nothing, when there are no loop devices.
+	if stdout.Len() == 0 {
+		return []*LoopDevice{}, nil
+	}
+
 	output := &losetupOutput{}
 	err = json.Unmarshal(stdout.Bytes(), output)
 	if err != nil {

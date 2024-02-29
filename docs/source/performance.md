@@ -70,7 +70,7 @@ metadata:
   namespace: scylla
 spec:
   agentVersion: 3.2.5
-  version: 5.4.0
+  version: 5.4.3
   datacenter:
     name: us-east-1
     racks:

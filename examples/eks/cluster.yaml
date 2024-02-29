@@ -14,7 +14,7 @@ metadata:
   namespace: scylla
 spec:
   agentVersion: 3.2.5
-  version: 5.4.0
+  version: 5.4.3
   cpuset: true
   network:
     hostNetworking: true

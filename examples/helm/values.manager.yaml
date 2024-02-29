@@ -23,7 +23,7 @@ controllerResources:
 scylla:
   developerMode: true
   scyllaImage:
-    tag: 5.4.0
+    tag: 5.4.3
   agentImage:
     tag: 3.2.5
   datacenter: manager-dc

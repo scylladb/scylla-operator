@@ -344,7 +344,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 	}
 
 	// Assume kube-proxy notices readiness change and reconcile Endpoints within this period
-	kubeProxyEndpointsSyncPeriodSeconds := 10
+	kubeProxyEndpointsSyncPeriodSeconds := 5
 	loadBalancerSyncPeriodSeconds := 60
 
 	readinessFailureThreshold := 1

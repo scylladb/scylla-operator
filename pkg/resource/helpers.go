@@ -9,6 +9,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+var Scheme = scheme.Scheme
+
 func newUnknownGVK() *schema.GroupVersionKind {
 	return &schema.GroupVersionKind{
 		Group:   "unknown",
@@ -23,7 +25,7 @@ func GetObjectGVK(object runtime.Object) (*schema.GroupVersionKind, error) {
 		return &gvk, nil
 	}
 
-	kinds, _, err := scheme.Scheme.ObjectKinds(object)
+	kinds, _, err := Scheme.ObjectKinds(object)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +42,7 @@ func GetObjectGVKOrUnknown(obj runtime.Object) *schema.GroupVersionKind {
 		return &gvk
 	}
 
-	kinds, _, err := scheme.Scheme.ObjectKinds(obj)
+	kinds, _, err := Scheme.ObjectKinds(obj)
 	if err != nil || len(kinds) == 0 {
 		t := reflect.TypeOf(obj)
 		if t.Kind() == reflect.Ptr {

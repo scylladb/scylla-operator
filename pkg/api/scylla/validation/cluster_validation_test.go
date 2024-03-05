@@ -320,6 +320,121 @@ func TestValidateScyllaCluster(t *testing.T) {
 			},
 			expectedErrorString: `spec.minReadySeconds: Invalid value: -42: must be non-negative integer`,
 		},
+		{
+			name: "minimal alternator cluster passes",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Alternator = &v1.AlternatorSpec{}
+				return cluster
+			}(),
+			expectedErrorList:   field.ErrorList{},
+			expectedErrorString: "",
+		},
+		{
+			name: "alternator cluster with user certificate",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Alternator = &v1.AlternatorSpec{
+					ServingCertificate: &v1.TLSCertificate{
+						Type: v1.TLSCertificateTypeUserManaged,
+						UserManagedOptions: &v1.UserManagedTLSCertificateOptions{
+							SecretName: "my-tls-certificate",
+						},
+					},
+				}
+				return cluster
+			}(),
+			expectedErrorList:   field.ErrorList{},
+			expectedErrorString: "",
+		},
+		{
+			name: "alternator cluster with invalid certificate type",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Alternator = &v1.AlternatorSpec{
+					ServingCertificate: &v1.TLSCertificate{
+						Type: "foo",
+					},
+				}
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeNotSupported, Field: "spec.alternator.servingCertificate.type", BadValue: v1.TLSCertificateType("foo"), Detail: `supported values: "OperatorManaged", "UserManaged"`},
+			},
+			expectedErrorString: `spec.alternator.servingCertificate.type: Unsupported value: "foo": supported values: "OperatorManaged", "UserManaged"`,
+		},
+		{
+			name: "alternator cluster with valid additional domains",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Alternator = &v1.AlternatorSpec{
+					ServingCertificate: &v1.TLSCertificate{
+						Type: v1.TLSCertificateTypeOperatorManaged,
+						OperatorManagedOptions: &v1.OperatorManagedTLSCertificateOptions{
+							AdditionalDNSNames: []string{"scylla-operator.scylladb.com"},
+						},
+					},
+				}
+				return cluster
+			}(),
+			expectedErrorList:   field.ErrorList{},
+			expectedErrorString: "",
+		},
+		{
+			name: "alternator cluster with invalid additional domains",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Alternator = &v1.AlternatorSpec{
+					ServingCertificate: &v1.TLSCertificate{
+						Type: v1.TLSCertificateTypeOperatorManaged,
+						OperatorManagedOptions: &v1.OperatorManagedTLSCertificateOptions{
+							AdditionalDNSNames: []string{"[not a domain]"},
+						},
+					},
+				}
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.alternator.servingCertificate.operatorManagedOptions.additionalDNSNames", BadValue: []string{"[not a domain]"}, Detail: `a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')`},
+			},
+			expectedErrorString: `spec.alternator.servingCertificate.operatorManagedOptions.additionalDNSNames: Invalid value: []string{"[not a domain]"}: a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')`,
+		},
+		{
+			name: "alternator cluster with valid additional IP addresses",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Alternator = &v1.AlternatorSpec{
+					ServingCertificate: &v1.TLSCertificate{
+						Type: v1.TLSCertificateTypeOperatorManaged,
+						OperatorManagedOptions: &v1.OperatorManagedTLSCertificateOptions{
+							AdditionalIPAddresses: []string{"127.0.0.1", "::1"},
+						},
+					},
+				}
+				return cluster
+			}(),
+			expectedErrorList:   field.ErrorList{},
+			expectedErrorString: "",
+		},
+		{
+			name: "alternator cluster with invalid additional IP addresses",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Alternator = &v1.AlternatorSpec{
+					ServingCertificate: &v1.TLSCertificate{
+						Type: v1.TLSCertificateTypeOperatorManaged,
+						OperatorManagedOptions: &v1.OperatorManagedTLSCertificateOptions{
+							AdditionalIPAddresses: []string{"0.not-an-ip.0.0"},
+						},
+					},
+				}
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.alternator.servingCertificate.operatorManagedOptions.additionalIPAddresses", BadValue: []string{"0.not-an-ip.0.0"}, Detail: `must be a valid IP address, (e.g. 10.9.8.7 or 2001:db8::ffff)`},
+			},
+			expectedErrorString: `spec.alternator.servingCertificate.operatorManagedOptions.additionalIPAddresses: Invalid value: []string{"0.not-an-ip.0.0"}: must be a valid IP address, (e.g. 10.9.8.7 or 2001:db8::ffff)`,
+		},
 	}
 
 	for i := range tests {

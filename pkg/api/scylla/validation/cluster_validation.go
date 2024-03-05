@@ -43,11 +43,31 @@ func ValidateScyllaCluster(c *scyllav1.ScyllaCluster) field.ErrorList {
 func ValidateUserManagedTLSCertificateOptions(opts *scyllav1.UserManagedTLSCertificateOptions, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
+	if len(opts.SecretName) == 0 {
+		allErrs = append(allErrs, field.Required(fldPath.Child("secretName"), ""))
+	} else {
+		for _, msg := range apimachineryvalidation.NameIsDNSSubdomain(opts.SecretName, false) {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("secretName"), opts.SecretName, msg))
+		}
+	}
+
 	return allErrs
 }
 
 func ValidateOperatorManagedTLSCertificateOptions(opts *scyllav1.OperatorManagedTLSCertificateOptions, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
+
+	for _, dnsName := range opts.AdditionalDNSNames {
+		for _, msg := range apimachineryutilvalidation.IsDNS1123Subdomain(dnsName) {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("additionalDNSNames"), opts.AdditionalDNSNames, msg))
+		}
+	}
+
+	for _, ip := range opts.AdditionalIPAddresses {
+		for _, msg := range apimachineryutilvalidation.IsValidIP(ip) {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("additionalIPAddresses"), opts.AdditionalIPAddresses, msg))
+		}
+	}
 
 	return allErrs
 }
@@ -116,6 +136,10 @@ func ValidateAlternatorSpec(alternator *scyllav1.AlternatorSpec, fldPath *field.
 		if alternator.Port != 0 {
 			allErrs = append(allErrs, field.Forbidden(fldPath.Child("port"), "deprecated port is not allowed to be specified"))
 		}
+	}
+
+	if alternator.ServingCertificate != nil {
+		allErrs = append(allErrs, ValidateTLSCertificate(alternator.ServingCertificate, fldPath.Child("servingCertificate"))...)
 	}
 
 	return allErrs

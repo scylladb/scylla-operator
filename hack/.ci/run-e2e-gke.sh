@@ -36,6 +36,7 @@ if [ -z ${ARTIFACTS+x} ]; then
   exit 2
 fi
 
+SO_NODECONFIG_PATH=${SO_NODECONFIG_PATH=./hack/.ci/manifests/cluster/nodeconfig.yaml}
 SO_DISABLE_NODECONFIG=${SO_DISABLE_NODECONFIG:-false}
 
 field_manager=run-e2e-script
@@ -144,10 +145,10 @@ kubectl -n default rollout status daemonset/sysctl
 kubectl apply --server-side -f ./pkg/api/scylla/v1alpha1/scylla.scylladb.com_nodeconfigs.yaml
 kubectl wait --for condition=established crd/nodeconfigs.scylla.scylladb.com
 
-if [[ "${SO_DISABLE_NODECONFIG}" == "true" ]]; then
+if [[ "${SO_DISABLE_NODECONFIG}" == "true"  ]] || [[ -z "${SO_NODECONFIG_PATH}" ]]; then
   echo "Skipping NodeConfig creation"
 else
-  kubectl_create -f ./hack/.ci/manifests/cluster/nodeconfig.yaml
+  kubectl_create -f "${SO_NODECONFIG_PATH}"
   kubectl_create -n local-csi-driver -f ./hack/.ci/manifests/namespaces/local-csi-driver/
 fi
 

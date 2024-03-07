@@ -46,14 +46,30 @@ var (
 type MustGatherOptions struct {
 	*GatherBaseOptions
 
-	AllResources bool
+	AllResources            bool
+	CollectedResourceGroups []GroupResourceSpec
 }
 
-func NewMustGatherOptions(streams genericclioptions.IOStreams) *MustGatherOptions {
-	return &MustGatherOptions{
-		GatherBaseOptions: NewGatherBaseOptions("scylla-operator-must-gather", true),
-		AllResources:      false,
+type MustGatherOptionsOverride func(options *MustGatherOptions)
+
+func WithCollectedResourceGroups(groups []GroupResourceSpec) func(options *MustGatherOptions) {
+	return func(options *MustGatherOptions) {
+		options.CollectedResourceGroups = groups
 	}
+}
+
+func NewMustGatherOptions(streams genericclioptions.IOStreams, overrides ...MustGatherOptionsOverride) *MustGatherOptions {
+	options := &MustGatherOptions{
+		GatherBaseOptions:       NewGatherBaseOptions("scylla-operator-must-gather", true),
+		AllResources:            false,
+		CollectedResourceGroups: DefaultCollectedResourceGroups,
+	}
+
+	for _, override := range overrides {
+		override(options)
+	}
+
+	return options
 }
 
 func (o *MustGatherOptions) AddFlags(flagset *pflag.FlagSet) {
@@ -62,8 +78,8 @@ func (o *MustGatherOptions) AddFlags(flagset *pflag.FlagSet) {
 	flagset.BoolVarP(&o.AllResources, "all-resources", "", o.AllResources, "Gather will discover preferred API resources from the apiserver.")
 }
 
-func NewMustGatherCmd(streams genericclioptions.IOStreams) *cobra.Command {
-	o := NewMustGatherOptions(streams)
+func NewMustGatherCmd(streams genericclioptions.IOStreams, optionsOverrides ...MustGatherOptionsOverride) *cobra.Command {
+	o := NewMustGatherOptions(streams, optionsOverrides...)
 
 	cmd := &cobra.Command{
 		Use:     "must-gather",
@@ -148,10 +164,12 @@ type resourceSpec struct {
 	Namespace, Name string
 }
 
-var mustGatherSpecs = []struct {
+type GroupResourceSpec struct {
 	schema.GroupResource
 	Namespace, Name string
-}{
+}
+
+var DefaultCollectedResourceGroups = []GroupResourceSpec{
 	{
 		GroupResource: schema.GroupResource{
 			Resource: "scyllaclusters",
@@ -278,8 +296,8 @@ func (o *MustGatherOptions) run(ctx context.Context) error {
 			return fmt.Errorf("can't discover preferred resources: %w", err)
 		}
 
-		resourceSpecs = make([]resourceSpec, 0, len(mustGatherSpecs))
-		for _, s := range mustGatherSpecs {
+		resourceSpecs = make([]resourceSpec, 0, len(o.CollectedResourceGroups))
+		for _, s := range o.CollectedResourceGroups {
 			ri, err := findResource(preferredResources, s.GroupResource)
 			if err != nil {
 				return fmt.Errorf("can't find resource in preferred resources: %w", err)

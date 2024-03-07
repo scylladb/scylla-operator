@@ -26,7 +26,7 @@ metadata:
   name: source
   namespace: scylla
 spec:
-  agentVersion: 3.2.5
+  agentVersion: 3.2.6
   version: 5.4.1
   developerMode: true
   backups:
@@ -56,7 +56,7 @@ metadata:
   name: target
   namespace: scylla
 spec:
-  agentVersion: 3.2.5
+  agentVersion: 3.2.6
   version: 5.4.1
   developerMode: true
   datacenter:

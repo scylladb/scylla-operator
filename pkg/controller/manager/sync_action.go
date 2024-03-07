@@ -42,9 +42,10 @@ func runSync(ctx context.Context, cluster *scyllav1.ScyllaCluster, authToken str
 				if c.AuthToken != authToken {
 					actions = append(actions, &updateClusterAction{
 						cluster: &managerclient.Cluster{
-							ID:   c.ID,
-							Name: naming.ManagerClusterName(cluster),
-							Host: naming.CrossNamespaceServiceNameForCluster(cluster),
+							ID:        c.ID,
+							Name:      naming.ManagerClusterName(cluster),
+							Host:      naming.CrossNamespaceServiceNameForCluster(cluster),
+							AuthToken: authToken,
 						},
 					})
 					requeue = true

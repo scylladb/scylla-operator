@@ -33,7 +33,7 @@ require (
 	github.com/prometheus/client_golang v1.19.0
 	github.com/scylladb/go-set v1.0.2
 	github.com/scylladb/gocqlx/v2 v2.8.0
-	github.com/scylladb/scylla-manager/v3 v3.2.5
+	github.com/scylladb/scylla-manager/v3 v3.2.6
 	github.com/scylladb/scylladb-swagger-go-client v0.2.0
 	github.com/shurcooL/githubv4 v0.0.0-20240120211514-18a1ae0e79dc
 	github.com/spf13/cobra v1.8.0

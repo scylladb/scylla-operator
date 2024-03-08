@@ -20,7 +20,7 @@ type Schedule struct {
 	// cron
 	Cron string `json:"cron,omitempty"`
 
-	// interval
+	// This field is DEPRECATED. Use cron instead.
 	Interval string `json:"interval,omitempty"`
 
 	// num retries

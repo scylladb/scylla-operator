@@ -18,6 +18,12 @@ type Cluster struct {
 	// auth token
 	AuthToken string `json:"auth_token,omitempty"`
 
+	// force non ssl session port
+	ForceNonSslSessionPort bool `json:"force_non_ssl_session_port,omitempty"`
+
+	// force tls disabled
+	ForceTLSDisabled bool `json:"force_tls_disabled,omitempty"`
+
 	// host
 	Host string `json:"host,omitempty"`
 

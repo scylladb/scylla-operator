@@ -1,3 +1,11 @@
+# v1.30.3 (2024-03-06)
+
+* **Documentation**: Doc only updates for DynamoDB documentation
+
+# v1.30.2 (2024-03-04)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.30.1 (2024-02-23)
 
 * **Bug Fix**: Move all common, SDK-side middleware stack ops into the service client module to prevent cross-module compatibility issues in the future.

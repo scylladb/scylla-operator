@@ -180,8 +180,6 @@ func (di *DataInserter) GetExpected() []*TestData {
 
 func (di *DataInserter) createSession(hosts []string) error {
 	clusterConfig := gocql.NewCluster(hosts...)
-	clusterConfig.Timeout = 3 * time.Second
-	clusterConfig.ConnectTimeout = 3 * time.Second
 	// Set a small reconnect interval to avoid flakes, if not reconnected in time.
 	clusterConfig.ReconnectInterval = 500 * time.Millisecond
 

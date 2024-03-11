@@ -18,7 +18,7 @@ on:
         required: true
 
 env:
-  go_version: '1.20'
+  go_version: '1.21'
 
 defaults:
   run:

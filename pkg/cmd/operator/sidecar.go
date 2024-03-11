@@ -297,7 +297,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 
 				containerID, err = controllerhelpers.GetScyllaContainerID(pod)
 				if err != nil {
-					klog.Warningf("can't get scylla container id in pod %q: %w", naming.ObjRef(pod), err)
+					klog.Warningf("can't get scylla container id in pod %q: %v", naming.ObjRef(pod), err)
 					return false, nil
 				}
 
@@ -438,7 +438,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 
 		err := server.ListenAndServe()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			klog.Fatal("ListenAndServe failed: %v", err)
+			klog.Fatalf("ListenAndServe failed: %v", err)
 		}
 	}()
 	wg.Add(1)

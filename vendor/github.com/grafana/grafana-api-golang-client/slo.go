@@ -6,12 +6,13 @@ import (
 	"fmt"
 )
 
-var sloPath string = "/api/plugins/grafana-slo-app/resources/v1/slo"
+var sloPath = "/api/plugins/grafana-slo-app/resources/v1/slo"
 
 type Slos struct {
 	Slos []Slo `json:"slos"`
 }
 
+// Defines values for QueryType.
 const (
 	QueryTypeFreeform  QueryType = "freeform"
 	QueryTypeHistogram QueryType = "histogram"
@@ -19,6 +20,7 @@ const (
 	QueryTypeThreshold QueryType = "threshold"
 )
 
+// Defines values for ThresholdOperator.
 const (
 	ThresholdOperatorEmpty      ThresholdOperator = "<"
 	ThresholdOperatorEqualEqual ThresholdOperator = "=="
@@ -27,6 +29,7 @@ const (
 	ThresholdOperatorN3         ThresholdOperator = ">"
 )
 
+// Alerting defines model for Alerting.
 type Alerting struct {
 	Annotations []Label           `json:"annotations,omitempty"`
 	FastBurn    *AlertingMetadata `json:"fastBurn,omitempty"`
@@ -34,19 +37,29 @@ type Alerting struct {
 	SlowBurn    *AlertingMetadata `json:"slowBurn,omitempty"`
 }
 
+// AlertingMetadata defines model for AlertingMetadata.
 type AlertingMetadata struct {
 	Annotations []Label `json:"annotations,omitempty"`
 	Labels      []Label `json:"labels,omitempty"`
 }
 
+// DashboardRef defines model for DashboardRef.
 type DashboardRef struct {
 	UID string `json:"UID"`
 }
 
+// DestinationDatasource defines model for DestinationDatasource.
+type DestinationDatasource struct {
+	Type string `json:"type,omitempty"`
+	UID  string `json:"uid,omitempty"`
+}
+
+// FreeformQuery defines model for FreeformQuery.
 type FreeformQuery struct {
 	Query string `json:"query"`
 }
 
+// HistogramQuery defines model for HistogramQuery.
 type HistogramQuery struct {
 	GroupByLabels []string  `json:"groupByLabels,omitempty"`
 	Metric        MetricDef `json:"metric"`
@@ -54,21 +67,25 @@ type HistogramQuery struct {
 	Threshold     Threshold `json:"threshold"`
 }
 
+// Label defines model for Label.
 type Label struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
 
+// MetricDef defines model for MetricDef.
 type MetricDef struct {
-	PrometheusMetric string  `json:"prometheusMetric"`
-	Type             *string `json:"type,omitempty"`
+	PrometheusMetric string `json:"prometheusMetric"`
+	Type             string `json:"type,omitempty"`
 }
 
+// Objective defines model for Objective.
 type Objective struct {
 	Value  float64 `json:"value"`
 	Window string  `json:"window"`
 }
 
+// Query defines model for Query.
 type Query struct {
 	Freeform  *FreeformQuery  `json:"freeform,omitempty"`
 	Histogram *HistogramQuery `json:"histogram,omitempty"`
@@ -77,32 +94,52 @@ type Query struct {
 	Type      QueryType       `json:"type"`
 }
 
+// QueryType defines model for Query.Type.
 type QueryType string
 
+// RatioQuery defines model for RatioQuery.
 type RatioQuery struct {
 	GroupByLabels []string  `json:"groupByLabels,omitempty"`
 	SuccessMetric MetricDef `json:"successMetric"`
 	TotalMetric   MetricDef `json:"totalMetric"`
 }
 
-type Slo struct {
-	Alerting              *Alerting     `json:"alerting,omitempty"`
-	Description           string        `json:"description"`
+// ReadOnly defines model for ReadOnly.
+type ReadOnly struct {
 	DrillDownDashboardRef *DashboardRef `json:"drillDownDashboardRef,omitempty"`
-	Labels                []Label       `json:"labels,omitempty"`
-	Name                  string        `json:"name"`
-	Objectives            []Objective   `json:"objectives"`
-	Query                 Query         `json:"query"`
-	UUID                  string        `json:"uuid"`
+	Provenance            string        `json:"provenance,omitempty"`
+	Status                *Status       `json:"status,omitempty"`
 }
 
+// Slo defines model for Slo.
+type Slo struct {
+	Alerting              *Alerting              `json:"alerting,omitempty"`
+	Description           string                 `json:"description"`
+	DestinationDatasource *DestinationDatasource `json:"destinationDatasource,omitempty"`
+	Labels                []Label                `json:"labels,omitempty"`
+	Name                  string                 `json:"name"`
+	Objectives            []Objective            `json:"objectives"`
+	Query                 Query                  `json:"query"`
+	ReadOnly              *ReadOnly              `json:"readOnly,omitempty"`
+	UUID                  string                 `json:"uuid"`
+}
+
+// Status defines model for Status.
+type Status struct {
+	Message string `json:"message,omitempty"`
+	Type    string `json:"type"`
+}
+
+// Threshold defines model for Threshold.
 type Threshold struct {
 	Operator ThresholdOperator `json:"operator"`
 	Value    float64           `json:"value"`
 }
 
+// ThresholdOperator defines model for Threshold.Operator.
 type ThresholdOperator string
 
+// ThresholdQuery defines model for ThresholdQuery.
 type ThresholdQuery struct {
 	GroupByLabels []string  `json:"groupByLabels,omitempty"`
 	Metric        MetricDef `json:"metric"`
@@ -168,9 +205,5 @@ func (c *Client) UpdateSlo(uuid string, slo Slo) error {
 		return err
 	}
 
-	if err := c.request("PUT", path, nil, data, nil); err != nil {
-		return err
-	}
-
-	return nil
+	return c.request("PUT", path, nil, data, nil)
 }

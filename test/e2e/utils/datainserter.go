@@ -4,9 +4,11 @@ package utils
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gocql/gocql"
@@ -21,6 +23,7 @@ import (
 const nRows = 10
 
 type DataInserter struct {
+	clusterConfig     *gocql.ClusterConfig
 	session           *gocqlx.Session
 	keyspace          string
 	table             *table.Table
@@ -35,15 +38,15 @@ type TestData struct {
 
 type DataInserterOption func(*DataInserter)
 
-func WithSession(session *gocqlx.Session) func(*DataInserter) {
+func WithClusterConfig(clusterConfig *gocql.ClusterConfig) func(*DataInserter) {
 	return func(di *DataInserter) {
-		di.session = session
+		di.clusterConfig = clusterConfig
 	}
 }
 
 func NewDataInserter(hosts []string, options ...DataInserterOption) (*DataInserter, error) {
 	// Instead of specifying hosts for the provided datacenter, use 'replication_factor' as a single key to specify a default RF.
-	return NewMultiDCDataInserter(map[string][]string{"replication_factor": hosts})
+	return NewMultiDCDataInserter(map[string][]string{"replication_factor": hosts}, options...)
 }
 
 func NewMultiDCDataInserter(dcHosts map[string][]string, options ...DataInserterOption) (*DataInserter, error) {
@@ -74,11 +77,9 @@ func NewMultiDCDataInserter(dcHosts map[string][]string, options ...DataInserter
 		option(di)
 	}
 
-	if di.session == nil {
-		err := di.SetClientEndpoints(slices.Flatten(helpers.GetMapValues(dcHosts)))
-		if err != nil {
-			return nil, fmt.Errorf("can't set client endpoints: %w", err)
-		}
+	err := di.SetClientEndpoints(slices.Flatten(helpers.GetMapValues(dcHosts)))
+	if err != nil {
+		return nil, fmt.Errorf("can't set client endpoints: %w", err)
 	}
 
 	return di, nil
@@ -159,7 +160,6 @@ func (di *DataInserter) AwaitSchemaAgreement(ctx context.Context) error {
 
 func (di *DataInserter) Read() ([]*TestData, error) {
 	framework.Infof("Reading data from table %s", di.table.Name())
-
 	q := di.session.Query(di.table.SelectAll()).BindStruct(&TestData{})
 	var res []*TestData
 	err := q.SelectRelease(&res)
@@ -174,16 +174,76 @@ func (di *DataInserter) Read() ([]*TestData, error) {
 	return res, nil
 }
 
+func (di *DataInserter) StartContinuousReads(ctx context.Context) (func() error, error) {
+	ctx, cancel := context.WithCancel(ctx)
+
+	stmt, names := di.table.SelectAll()
+	q := di.session.ContextQuery(ctx, stmt, names).BindStruct(&TestData{})
+
+	var wg sync.WaitGroup
+	errCh := make(chan error, 1)
+
+	trafficStarted := make(chan struct{})
+	notifyTrafficStarted := sync.OnceFunc(func() {
+		close(trafficStarted)
+	})
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		var res []*TestData
+		for {
+			err := q.Select(&res)
+			if err != nil {
+				if errors.Is(err, context.Canceled) {
+					errCh <- nil
+					return
+				}
+				errCh <- fmt.Errorf("can't select data: %w", err)
+				return
+			}
+
+			notifyTrafficStarted()
+		}
+	}()
+
+	select {
+	case <-time.After(10 * time.Second):
+		cancel()
+		wg.Wait()
+		q.Release()
+
+		return nil, fmt.Errorf("traffic not started before timeout")
+	case <-trafficStarted:
+	}
+
+	stopFunc := func() error {
+		cancel()
+		wg.Wait()
+		q.Release()
+
+		return <-errCh
+	}
+
+	return stopFunc, nil
+}
+
 func (di *DataInserter) GetExpected() []*TestData {
 	return di.data
 }
 
 func (di *DataInserter) createSession(hosts []string) error {
-	clusterConfig := gocql.NewCluster(hosts...)
-	clusterConfig.Timeout = 3 * time.Second
-	clusterConfig.ConnectTimeout = 3 * time.Second
-	// Set a small reconnect interval to avoid flakes, if not reconnected in time.
-	clusterConfig.ReconnectInterval = 500 * time.Millisecond
+	var clusterConfig *gocql.ClusterConfig
+	if di.clusterConfig != nil {
+		clusterConfig = di.clusterConfig
+	} else {
+		clusterConfig = gocql.NewCluster(hosts...)
+		clusterConfig.Timeout = 3 * time.Second
+		clusterConfig.ConnectTimeout = 3 * time.Second
+		// Set a small reconnect interval to avoid flakes, if not reconnected in time.
+		clusterConfig.ReconnectInterval = 500 * time.Millisecond
+	}
 
 	session, err := gocqlx.WrapSession(clusterConfig.CreateSession())
 	if err != nil {

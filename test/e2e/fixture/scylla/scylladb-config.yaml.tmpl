@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scylladb-config
+data:
+  scylla.yaml: |
+    {{- .config | nindent 4 }}

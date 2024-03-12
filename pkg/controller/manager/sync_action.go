@@ -493,8 +493,8 @@ func (a *updateTaskAction) Execute(ctx context.Context, client *managerclient.Cl
 				if err != nil {
 					status.Repairs[i].Error = messageOf(err)
 				}
+				break
 			}
-			break
 		}
 	}
 	if a.task.Type == "backup" {
@@ -504,8 +504,8 @@ func (a *updateTaskAction) Execute(ctx context.Context, client *managerclient.Cl
 				if err != nil {
 					status.Backups[i].Error = messageOf(err)
 				}
+				break
 			}
-			break
 		}
 	}
 

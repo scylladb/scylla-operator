@@ -3,9 +3,12 @@ package tests
 import (
 	"fmt"
 	"os"
+	"path"
 	"strings"
 
+	"github.com/onsi/ginkgo/v2"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/spf13/cobra"
@@ -35,6 +38,8 @@ var supportedBroadcastAddressTypes = []scyllav1.BroadcastAddressType{
 }
 
 type TestFrameworkOptions struct {
+	genericclioptions.ClientConfig
+
 	ArtifactsDir                 string
 	DeleteTestingNSPolicyUntyped string
 	DeleteTestingNSPolicy        framework.DeleteTestingNSPolicyType
@@ -47,8 +52,9 @@ type TestFrameworkOptions struct {
 	gcsServiceAccountKey         []byte
 }
 
-func NewTestFrameworkOptions() TestFrameworkOptions {
-	return TestFrameworkOptions{
+func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent string) *TestFrameworkOptions {
+	return &TestFrameworkOptions{
+		ClientConfig:                 genericclioptions.NewClientConfig(userAgent),
 		ArtifactsDir:                 "",
 		DeleteTestingNSPolicyUntyped: string(framework.DeleteTestingNSPolicyAlways),
 		IngressController:            &IngressControllerOptions{},
@@ -65,6 +71,8 @@ func NewTestFrameworkOptions() TestFrameworkOptions {
 }
 
 func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
+	o.ClientConfig.AddFlags(cmd)
+
 	cmd.PersistentFlags().StringVarP(&o.ArtifactsDir, "artifacts-dir", "", o.ArtifactsDir, "A directory for storing test artifacts. No data is collected until set.")
 	cmd.PersistentFlags().StringVarP(&o.DeleteTestingNSPolicyUntyped, "delete-namespace-policy", "", o.DeleteTestingNSPolicyUntyped, fmt.Sprintf("Namespace deletion policy. Allowed values are [%s].", strings.Join(
 		[]string{
@@ -93,8 +101,13 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVarP(&o.GCSServiceAccountKeyPath, "gcs-service-account-key-path", "", o.GCSServiceAccountKeyPath, "Path to a file containing a GCS service account key.")
 }
 
-func (o *TestFrameworkOptions) Validate() error {
+func (o *TestFrameworkOptions) Validate(args []string) error {
 	var errors []error
+
+	err := o.ClientConfig.Validate()
+	if err != nil {
+		errors = append(errors, err)
+	}
 
 	switch p := framework.DeleteTestingNSPolicyType(o.DeleteTestingNSPolicyUntyped); p {
 	case framework.DeleteTestingNSPolicyAlways,
@@ -127,7 +140,12 @@ func (o *TestFrameworkOptions) Validate() error {
 	return apierrors.NewAggregate(errors)
 }
 
-func (o *TestFrameworkOptions) Complete() error {
+func (o *TestFrameworkOptions) Complete(args []string) error {
+	err := o.ClientConfig.Complete()
+	if err != nil {
+		return err
+	}
+
 	o.DeleteTestingNSPolicy = framework.DeleteTestingNSPolicyType(o.DeleteTestingNSPolicyUntyped)
 
 	// Trim spaces so we can reason later if the dir is set or not
@@ -151,6 +169,30 @@ func (o *TestFrameworkOptions) Complete() error {
 			return fmt.Errorf("gcs service account key file %q can't be empty", o.GCSServiceAccountKeyPath)
 		}
 		o.gcsServiceAccountKey = gcsServiceAccountKey
+	}
+
+	framework.TestContext = &framework.TestContextType{
+		RestConfig:            o.RestConfig,
+		ArtifactsDir:          o.ArtifactsDir,
+		DeleteTestingNSPolicy: o.DeleteTestingNSPolicy,
+		ScyllaClusterOptions:  o.scyllaClusterOptions,
+		ObjectStorageType:     o.objectStorageType,
+		ObjectStorageBucket:   o.ObjectStorageBucket,
+		GCSServiceAccountKey:  o.gcsServiceAccountKey,
+	}
+
+	if o.IngressController != nil {
+		framework.TestContext.IngressController = &framework.IngressController{
+			Address:           o.IngressController.Address,
+			IngressClassName:  o.IngressController.IngressClassName,
+			CustomAnnotations: o.IngressController.CustomAnnotations,
+		}
+	}
+
+	if len(o.ArtifactsDir) != 0 {
+		_, reporterConfig := ginkgo.GinkgoConfiguration()
+		reporterConfig.JUnitReport = path.Join(o.ArtifactsDir, "e2e.junit.xml")
+		reporterConfig.JSONReport = path.Join(o.ArtifactsDir, "e2e.json")
 	}
 
 	return nil

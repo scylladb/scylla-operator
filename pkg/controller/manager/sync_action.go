@@ -44,6 +44,9 @@ func runSync(ctx context.Context, cluster *v1.ScyllaCluster, authToken string, s
 							ID:   c.ID,
 							Name: naming.ManagerClusterName(cluster),
 							Host: naming.CrossNamespaceServiceNameForCluster(cluster),
+							// TODO: enable CQL over TLS when https://github.com/scylladb/scylla-operator/issues/1766 is completed
+							ForceNonSslSessionPort: true,
+							ForceTLSDisabled:       true,
 						},
 					})
 					requeue = true
@@ -61,6 +64,9 @@ func runSync(ctx context.Context, cluster *v1.ScyllaCluster, authToken string, s
 				Host:      naming.CrossNamespaceServiceNameForCluster(cluster),
 				Name:      naming.ManagerClusterName(cluster),
 				AuthToken: authToken,
+				// TODO: enable CQL over TLS when https://github.com/scylladb/scylla-operator/issues/1766 is completed
+				ForceNonSslSessionPort: true,
+				ForceTLSDisabled:       true,
 			},
 		})
 		requeue = true

@@ -7,12 +7,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/scylladb/scylla-manager/v3/pkg/managerclient"
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
 	"github.com/scylladb/scylla-operator/pkg/controller/manager"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/leaderelection"
-	"github.com/scylladb/scylla-operator/pkg/mermaidclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/scylladb/scylla-operator/pkg/version"
@@ -31,7 +31,7 @@ type ManagerControllerOptions struct {
 
 	kubeClient    kubernetes.Interface
 	scyllaClient  scyllaversionedclient.Interface
-	managerClient *mermaidclient.Client
+	managerClient *managerclient.Client
 
 	ConcurrentSyncs int
 }
@@ -123,7 +123,13 @@ func (o *ManagerControllerOptions) Complete() error {
 
 	// TODO: Use https and wire certs.
 	url := fmt.Sprintf("http://%s/api/v1", naming.ScyllaManagerServiceName)
-	managerClient, err := mermaidclient.NewClient(url, &http.Transport{})
+	managerClient, err := managerclient.NewClient(url, func(httpClient *http.Client) {
+		httpClient.Transport = http.DefaultTransport
+		// Limit manager calls by default to a higher bound.
+		// Individual calls can still be further limited using context.
+		// Manager is prone to extremely long calls because it (unfortunately) retries errors internally.
+		httpClient.Timeout = 15 * time.Second
+	})
 	if err != nil {
 		return fmt.Errorf("can't build manager client: %w", err)
 	}

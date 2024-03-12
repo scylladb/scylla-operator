@@ -91,10 +91,10 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Verifying that task properties were synchronized")
-		tasks, err := managerClient.ListTasks(ctx, *sc.Status.ManagerID, "repair", false, "")
+		tasks, err := managerClient.ListTasks(ctx, *sc.Status.ManagerID, "repair", false, "", "")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(tasks.ExtendedTaskSlice).To(o.HaveLen(1))
-		repairTask := tasks.ExtendedTaskSlice[0]
+		o.Expect(tasks.TaskListItemSlice).To(o.HaveLen(1))
+		repairTask := tasks.TaskListItemSlice[0]
 		o.Expect(repairTask.Name).To(o.Equal(sc.Spec.Repairs[0].Name))
 		o.Expect(repairTask.Properties.(map[string]interface{})["parallel"].(json.Number).Int64()).To(o.Equal(int64(123)))
 	})

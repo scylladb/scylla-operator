@@ -2,6 +2,15 @@
 
 This procedure will describe how to restore from backup taken using [Scylla Manager](../manager.md) to a fresh **empty** cluster of any size.
 
+:::{warning}
+Restoring schema with **ScyllaDB OS 5.4.X** or **ScyllaDB Enterprise 2024.1.X** and `consistent_cluster_management` isn’t supported.
+
+When creating the `target` ScyllaDB cluster, configure it with `consistent_cluster_management: false`.
+Refer to [API Reference](../api-reference/index.rst) to learn how to customize ScyllaDB configuration files.
+
+When following the steps for schema restore, ensure you follow the additional steps dedicated to affected ScyllaDB versions.
+:::
+
 In the following example, the ScyllaCluster, which was used to take the backup, is called `source`. Backup will be restored into the ScyllaCluster named `target`.
 
 ::::{tab-set}
@@ -11,7 +20,6 @@ apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
 metadata:
   name: source
-  namespace: scylla
 spec:
   agentVersion: 3.2.6
   version: 5.4.1
@@ -41,7 +49,6 @@ apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
 metadata:
   name: target
-  namespace: scylla
 spec:
   agentVersion: 3.2.6
   version: 5.4.1
@@ -95,6 +102,8 @@ Keyspaces:
 
 ```
 
+## Restore schema
+
 In the below commands, we are restoring the `sm_20240105115931UTC` snapshot. Replace it with a tag of a snapshot that you want to restore.
 Restoring consist of two steps. First, you'll restore the schema, and then the data.
 To restore schema, create a restore task manually on target ScyllaCluster by executing following command:
@@ -134,20 +143,46 @@ Snapshot Tag:   sm_20240105115931UTC
 
 As suggested in the progress output, you will need to execute a rolling restart of the ScyllaCluster.
 ```console
-kubectl patch scyllacluster target --type merge -p '{"spec": {"forceRedeploymentReason": "schema restored"}}'
+kubectl patch scyllacluster/target --type=merge -p='{"spec": {"forceRedeploymentReason": "schema restored"}}'
 ```
 
 Use the following commands to wait until restart is finished:
 ```console
-$ kubectl wait --for='condition=Progressing=False' -n scylla scyllaclusters.scylla.scylladb.com/target
+$ kubectl wait --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/target
 scyllacluster.scylla.scylladb.com/target condition met
 
-$ kubectl wait --for='condition=Degraded=False' -n scylla scyllaclusters.scylla.scylladb.com/target
+$ kubectl wait --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/target
 scyllacluster.scylla.scylladb.com/target condition met
 
-$ kubectl wait --for='condition=Available=True' -n scylla scyllaclusters.scylla.scylladb.com/target
+$ kubectl wait --for='condition=Available=True' scyllaclusters.scylla.scylladb.com/target
 scyllacluster.scylla.scylladb.com/target condition met
 ```
+
+:::{caution}
+### Restoring schema with **ScyllaDB OS 5.4.X** or **ScyllaDB Enterprise 2024.1.X** and `consistent_cluster_management`
+
+After you've followed the above steps with a ScyllaDB target cluster with `consistent_cluster_management` disabled, you'll need to enable Raft by configuring the target cluster with `consistent_cluster_management: true`.
+Refer to [API Reference](../api-reference/index.rst) to learn how to customize ScyllaDB configuration files.
+
+You will then need to execute a rolling restart of the ScyllaCluster for the change to take effect.
+```console
+kubectl patch scyllacluster/target --type=merge -p='{"spec": {"forceRedeploymentReason": "raft enabled"}}'
+```
+
+Use the following commands to wait until restart is finished:
+```console
+$ kubectl wait --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/target
+scyllacluster.scylla.scylladb.com/target condition met
+
+$ kubectl wait --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/target
+scyllacluster.scylla.scylladb.com/target condition met
+
+$ kubectl wait --for='condition=Available=True' scyllaclusters.scylla.scylladb.com/target
+scyllacluster.scylla.scylladb.com/target condition met
+```
+:::
+
+## Restore tables
 
 To restore the tables content, create a restore task manually on target ScyllaCluster by executing the following command:
 ```console

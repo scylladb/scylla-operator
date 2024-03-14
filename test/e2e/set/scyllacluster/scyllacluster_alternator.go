@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -26,11 +27,17 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
+	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"github.com/scylladb/scylla-operator/test/e2e/verification"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/storage/names"
+)
+
+const (
+	cqlDefaultUser     = "cassandra"
+	cqlDefaultPassword = "cassandra"
 )
 
 type Movie struct {
@@ -61,10 +68,23 @@ var _ = g.Describe("ScyllaCluster", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
+		cm, _, err := scyllafixture.ScyllaDBConfigTemplate.RenderObject(map[string]any{
+			"config": strings.TrimPrefix(`
+authenticator: PasswordAuthenticator
+authorizer: CassandraAuthorizer
+`, "\n"),
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Creating a ScyllaDB config ConfigMap enabling AuthN+AuthZ")
+		cm, err = f.KubeClient().CoreV1().ConfigMaps(f.Namespace()).Create(ctx, cm, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
 		sc := f.GetDefaultScyllaCluster()
 		o.Expect(sc.Spec.Datacenter.Racks).NotTo(o.BeEmpty())
 		sc.Spec.Datacenter.Racks = sc.Spec.Datacenter.Racks[:1]
 		sc.Spec.Datacenter.Racks[0].Members = 1
+		sc.Spec.Datacenter.Racks[0].ScyllaConfig = cm.Name
 		sc.Spec.Alternator = &scyllav1.AlternatorSpec{
 			ServingCertificate: &scyllav1.TLSCertificate{
 				Type: scyllav1.TLSCertificateTypeOperatorManaged,
@@ -76,7 +96,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		}
 
 		framework.By("Creating a ScyllaCluster with 1 member")
-		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", sc.ResourceVersion)
@@ -90,28 +110,34 @@ var _ = g.Describe("ScyllaCluster", func() {
 		svcIP, err := utils.GetIdentityServiceIP(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		framework.By("Setting up Alternator credentials over CQL")
+		framework.By("Fetching Alternator token using CQL")
 
 		cqlConfig := gocql.NewCluster(svcIP)
+		cqlConfig.Authenticator = gocql.PasswordAuthenticator{
+			Username: cqlDefaultUser,
+			Password: cqlDefaultPassword,
+		}
 		cqlConfig.Consistency = gocql.All
 		cqlSession, err := cqlConfig.CreateSession()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer cqlSession.Close()
 
 		awsCredentials := aws.Credentials{
-			AccessKeyID:     "alternator",
-			SecretAccessKey: "salted-password-42",
+			AccessKeyID:     cqlDefaultUser,
+			SecretAccessKey: "",
 		}
-		wrongAWSCredentials := awsCredentials
-		wrongAWSCredentials.SecretAccessKey += "-wrong"
 
 		q := cqlSession.Query(
-			`INSERT INTO system_auth.roles (role, salted_hash) VALUES (?, ?)`,
-			awsCredentials.AccessKeyID, awsCredentials.SecretAccessKey,
-		)
-		err = q.Exec()
+			`SELECT salted_hash FROM system_auth.roles WHERE role = ?`,
+			awsCredentials.AccessKeyID,
+		).WithContext(ctx)
+		err = q.Scan(&awsCredentials.SecretAccessKey)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		q.Release()
+		o.Expect(awsCredentials.SecretAccessKey).NotTo(o.BeEmpty())
+
+		wrongAWSCredentials := awsCredentials
+		wrongAWSCredentials.SecretAccessKey += "-wrong"
 
 		framework.By("Verifying that Alternator is configured correctly")
 

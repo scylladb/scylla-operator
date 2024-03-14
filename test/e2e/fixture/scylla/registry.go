@@ -8,6 +8,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/assets"
 	"github.com/scylladb/scylla-operator/test/e2e/scheme"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -19,6 +20,10 @@ var (
 	//go:embed "scyllacluster.yaml.tmpl"
 	ScyllaClusterTemplateString string
 	ScyllaClusterTemplate       = ParseObjectTemplateOrDie[*scyllav1.ScyllaCluster]("scyllacluster", ScyllaClusterTemplateString)
+
+	//go:embed "scylladb-config.yaml.tmpl"
+	ScyllaDBConfigTemplateString string
+	ScyllaDBConfigTemplate       = ParseObjectTemplateOrDie[*corev1.ConfigMap]("scylladb-config", ScyllaDBConfigTemplateString)
 
 	//go:embed "nodeconfig.yaml"
 	NodeConfig NodeConfigBytes

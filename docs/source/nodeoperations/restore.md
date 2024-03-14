@@ -2,19 +2,6 @@
 
 This procedure will describe how to restore from backup taken using [Scylla Manager](../manager.md) to a fresh **empty** cluster of any size.
 
-:::{caution}
-Due to a [bug](https://github.com/scylladb/scylla-manager/issues/3679) in Scylla Manager not supporting ScyllaClusters having both non-TLS and TLS CQL ports open, you have to disable the TLS certificate management
-in Scylla Operator.
-This step will no longer be required, when the bug is fixed.
-
-To disable TLS certificate management in Scylla Operator add `--feature-gates="AutomaticTLSCertificates=false"` flag to Scylla Operator deployment.
-
-```console
-kubectl -n scylla-operator patch deployment/scylla-operator --type=json -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--feature-gates=AutomaticTLSCertificates=false"}]'
-```
-
-:::
-
 In the following example, the ScyllaCluster, which was used to take the backup, is called `source`. Backup will be restored into the ScyllaCluster named `target`.
 
 ::::{tab-set}

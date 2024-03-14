@@ -12,6 +12,7 @@ Scylla Operator Documentation
    helm
    manager
    monitoring
+   clients/index
    migration
    nodeoperations/index
    exposing
@@ -54,6 +55,7 @@ Currently it supports:
 * :doc:`Deploying Scylla Manager on a Kubernetes Cluster <manager>`
 * :doc:`Deploying Scylla stack using Helm Charts <helm>`
 * :doc:`Setting up Monitoring using Prometheus and Grafana <monitoring>`
+* :doc:`Using ScyllaDB APIs <clients/index>`
 * :doc:`Node operations <nodeoperations/index>`
 * :doc:`Exposing ScyllaCluster to other networks <exposing>`
 * :doc:`Deploying multi-datacenter ScyllaDB clusters in Kubernetes <multidc/index>`

@@ -3,6 +3,7 @@
 package manager
 
 import (
+	"fmt"
 	"math"
 	"regexp"
 	"strconv"
@@ -21,7 +22,7 @@ import (
 
 type RepairTask v1.RepairTaskStatus
 
-func (r RepairTask) ToManager() (*managerclient.Task, error) {
+func (r *RepairTask) ToManager() (*managerclient.Task, error) {
 	t := &managerclient.Task{
 		ID:         r.ID,
 		Type:       "repair",
@@ -38,15 +39,20 @@ func (r RepairTask) ToManager() (*managerclient.Task, error) {
 	}
 	t.Schedule.StartDate = &startDate
 
-	if _, err := duration.ParseDuration(r.Interval); err != nil {
-		return nil, errors.Wrap(err, "parse interval")
+	if r.Interval != nil {
+		t.Schedule.Interval = *r.Interval
 	}
-	t.Schedule.Interval = r.Interval
 
 	if r.NumRetries != nil {
 		t.Schedule.NumRetries = int64(*r.NumRetries)
 	}
 
+	if r.Cron != nil {
+		t.Schedule.Cron = *r.Cron
+	}
+	if r.Timezone != nil {
+		t.Schedule.Timezone = *r.Timezone
+	}
 	if r.Keyspace != nil {
 		props["keyspace"] = unescapeFilters(r.Keyspace)
 	}
@@ -83,13 +89,17 @@ func (r RepairTask) ToManager() (*managerclient.Task, error) {
 func (r *RepairTask) FromManager(t *managerclient.TaskListItem) error {
 	r.ID = t.ID
 	r.Name = t.Name
-	r.Interval = t.Schedule.Interval
+	r.Interval = pointer.Ptr(t.Schedule.Interval)
 	r.StartDate = t.Schedule.StartDate.String()
 	r.NumRetries = pointer.Ptr(t.Schedule.NumRetries)
+	r.Cron = pointer.Ptr(t.Schedule.Cron)
+	r.Timezone = pointer.Ptr(t.Schedule.Timezone)
 
-	props := t.Properties.(map[string]interface{})
-	if err := mapstructure.Decode(props, r); err != nil {
-		return errors.Wrap(err, "decode properties")
+	if t.Properties != nil {
+		props := t.Properties.(map[string]interface{})
+		if err := mapstructure.Decode(props, r); err != nil {
+			return fmt.Errorf("can't decode properties: %w", err)
+		}
 	}
 
 	return nil
@@ -105,7 +115,7 @@ func (r *RepairTask) SetStartDate(sd string) {
 
 type BackupTask v1.BackupTaskStatus
 
-func (b BackupTask) ToManager() (*managerclient.Task, error) {
+func (b *BackupTask) ToManager() (*managerclient.Task, error) {
 	t := &managerclient.Task{
 		ID:         b.ID,
 		Type:       "backup",
@@ -122,13 +132,19 @@ func (b BackupTask) ToManager() (*managerclient.Task, error) {
 	}
 	t.Schedule.StartDate = &startDate
 
-	if _, err := duration.ParseDuration(b.Interval); err != nil {
-		return nil, errors.Wrap(err, "parse interval")
+	if b.Interval != nil {
+		t.Schedule.Interval = *b.Interval
 	}
-	t.Schedule.Interval = b.Interval
 
 	if b.NumRetries != nil {
 		t.Schedule.NumRetries = int64(*b.NumRetries)
+	}
+
+	if b.Cron != nil {
+		t.Schedule.Cron = *b.Cron
+	}
+	if b.Timezone != nil {
+		t.Schedule.Timezone = *b.Timezone
 	}
 
 	if b.Keyspace != nil {
@@ -158,13 +174,17 @@ func (b BackupTask) ToManager() (*managerclient.Task, error) {
 func (b *BackupTask) FromManager(t *managerclient.TaskListItem) error {
 	b.ID = t.ID
 	b.Name = t.Name
-	b.Interval = t.Schedule.Interval
+	b.Interval = pointer.Ptr(t.Schedule.Interval)
 	b.StartDate = t.Schedule.StartDate.String()
 	b.NumRetries = pointer.Ptr(t.Schedule.NumRetries)
+	b.Cron = pointer.Ptr(t.Schedule.Cron)
+	b.Timezone = pointer.Ptr(t.Schedule.Timezone)
 
-	props := t.Properties.(map[string]interface{})
-	if err := mapstructure.Decode(props, b); err != nil {
-		return errors.Wrap(err, "decode properties")
+	if t.Properties != nil {
+		props := t.Properties.(map[string]interface{})
+		if err := mapstructure.Decode(props, b); err != nil {
+			return fmt.Errorf("can't decode properties: %w", err)
+		}
 	}
 
 	return nil

@@ -203,7 +203,7 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 			},
 		}
 
-		if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {
+		if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) || sc.Spec.Alternator != nil {
 			condList = append(condList,
 				condValue{
 					condType: "CertControllerProgressing",

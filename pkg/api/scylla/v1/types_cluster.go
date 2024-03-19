@@ -323,6 +323,7 @@ type SchedulerTaskSpec struct {
 	StartDate string `json:"startDate,omitempty"`
 
 	// interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
+	// Deprecated: please use cron instead.
 	// +optional
 	// +kubebuilder:default:="0"
 	Interval string `json:"interval,omitempty"`

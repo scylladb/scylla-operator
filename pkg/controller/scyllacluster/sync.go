@@ -7,7 +7,6 @@ import (
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -19,7 +18,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
@@ -246,19 +244,17 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		errs = append(errs, fmt.Errorf("can't sync agent token: %w", err))
 	}
 
-	if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {
-		err = controllerhelpers.RunSync(
-			&status.Conditions,
-			certControllerProgressingCondition,
-			certControllerDegradedCondition,
-			sc.Generation,
-			func() ([]metav1.Condition, error) {
-				return scc.syncCerts(ctx, sc, secretMap, configMapMap, serviceMap)
-			},
-		)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("can't sync certificates: %w", err))
-		}
+	err = controllerhelpers.RunSync(
+		&status.Conditions,
+		certControllerProgressingCondition,
+		certControllerDegradedCondition,
+		sc.Generation,
+		func() ([]metav1.Condition, error) {
+			return scc.syncCerts(ctx, sc, secretMap, configMapMap, serviceMap)
+		},
+	)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't sync certificates: %w", err))
 	}
 
 	err = controllerhelpers.RunSync(

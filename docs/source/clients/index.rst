@@ -9,3 +9,4 @@ Using ScyllaDB APIs
 
    discovery
    cql
+   alternator

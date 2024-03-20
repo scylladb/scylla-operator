@@ -72,6 +72,16 @@ func TestCollector_CollectObject(t *testing.T) {
 				},
 				Files: []testhelpers.File{
 					{
+						Name: IntegrityFileName,
+						Content: strings.TrimPrefix(`
+checksum: d763fa8cc6665af15380368055bb31a5720ef80d7e49232a4527e450d3d8a5fa129cac17068863ce63374afb32494089462ad79e47898b48a3f24957334fd4e8
+directories:
+  /namespaces/test/pods:
+    checksum: d763fa8cc6665af15380368055bb31a5720ef80d7e49232a4527e450d3d8a5fa129cac17068863ce63374afb32494089462ad79e47898b48a3f24957334fd4e8
+    fileCount: 1
+`, "\n"),
+					},
+					{
 						Name: "namespaces/test/pods/my-pod.yaml",
 						Content: strings.TrimPrefix(`
 apiVersion: v1
@@ -125,6 +135,16 @@ status: {}
 					"namespaces/test/pods/my-pod",
 				},
 				Files: []testhelpers.File{
+					{
+						Name: IntegrityFileName,
+						Content: strings.TrimPrefix(`
+checksum: d2503c86cb530b941dd9239ee48033d804b5e7d1e4861b0b116d205b38232c9564ed13634b96901f1e471777b419754962bbe559921a34b0bb0b54b8e11fe303
+directories:
+  /namespaces/test/pods:
+    checksum: d2503c86cb530b941dd9239ee48033d804b5e7d1e4861b0b116d205b38232c9564ed13634b96901f1e471777b419754962bbe559921a34b0bb0b54b8e11fe303
+    fileCount: 1
+`, "\n"),
+					},
 					{
 						Name: "namespaces/test/pods/my-pod.yaml",
 						Content: strings.TrimPrefix(`
@@ -215,6 +235,16 @@ status:
 			expectedDump: &testhelpers.GatherDump{
 				EmptyDirs: nil,
 				Files: []testhelpers.File{
+					{
+						Name: IntegrityFileName,
+						Content: strings.TrimPrefix(`
+checksum: 25149bc2e1d1c698989b4f6c9d6a9d87bd51369bc9328b2923ab1cddda62ecc397f254634a184da550a3b39d114d7c19a69cfd7cb266576907656ba1e6535bd7
+directories:
+  /namespaces/test/pods:
+    checksum: 25149bc2e1d1c698989b4f6c9d6a9d87bd51369bc9328b2923ab1cddda62ecc397f254634a184da550a3b39d114d7c19a69cfd7cb266576907656ba1e6535bd7
+    fileCount: 1
+`, "\n"),
+					},
 					{
 						Name: "namespaces/test/pods/my-pod.yaml",
 						Content: strings.TrimPrefix(`
@@ -352,6 +382,16 @@ status:
 				EmptyDirs: nil,
 				Files: []testhelpers.File{
 					{
+						Name: IntegrityFileName,
+						Content: strings.TrimPrefix(`
+checksum: 35795801b54e77cfbe1567452e2ab7053631a02696dcc7418e173c6db99fb4dc0fab98f444b6020be77da398e8b147a47b08c64a3bfb8e96912f4aa67c04e677
+directories:
+  /namespaces/test/pods:
+    checksum: 35795801b54e77cfbe1567452e2ab7053631a02696dcc7418e173c6db99fb4dc0fab98f444b6020be77da398e8b147a47b08c64a3bfb8e96912f4aa67c04e677
+    fileCount: 1
+`, "\n"),
+					},
+					{
 						Name: "namespaces/test/pods/my-pod.yaml",
 						Content: strings.TrimPrefix(`
 apiVersion: v1
@@ -458,6 +498,16 @@ status:
 				EmptyDirs: nil,
 				Files: []testhelpers.File{
 					{
+						Name: IntegrityFileName,
+						Content: strings.TrimPrefix(`
+checksum: 3b11d89fb3b46dd29852f0efd5eefbced9d664f0d7b93aefa8532d62c856c6a6ba0cc7eb1f898d1c337d6827d77a4d325e6ae6c555f0bf0b0973819bf85a1c51
+directories:
+  /cluster-scoped/namespaces:
+    checksum: 3b11d89fb3b46dd29852f0efd5eefbced9d664f0d7b93aefa8532d62c856c6a6ba0cc7eb1f898d1c337d6827d77a4d325e6ae6c555f0bf0b0973819bf85a1c51
+    fileCount: 1
+`, "\n"),
+					},
+					{
 						Name: "cluster-scoped/namespaces/my-namespace.yaml",
 						Content: strings.TrimPrefix(`
 apiVersion: v1
@@ -497,6 +547,19 @@ status: {}
 			expectedDump: &testhelpers.GatherDump{
 				EmptyDirs: nil,
 				Files: []testhelpers.File{
+					{
+						Name: IntegrityFileName,
+						Content: strings.TrimPrefix(`
+checksum: 7f340ac7a111169126248f69c955b347d6ff5422e0cc792031bd8398dc766137896fcc188aa3ccbc274a6128296572e971dde235fc050cbf1baaa1af3a6b397a
+directories:
+  /cluster-scoped/namespaces:
+    checksum: 03cb220813bf01d43c5c8316e4a3b5a766770fa3437196ddaabc478269025570f33c93f6c54791af2b450e3b197af0df5ca8ec4c3285b427c743c40b771fc225
+    fileCount: 1
+  /namespaces/my-namespace/secrets:
+    checksum: 99a521ab8ba30d21687b0eca6ffa1f4a4a98c2ca05a016d5f215b9a8690820abbbfddf63be1e486392a236c2c91b2a19e0ec50644c97ecb6d4b39406ecaa2e48
+    fileCount: 1
+`, "\n"),
+					},
 					{
 						Name: "cluster-scoped/namespaces/my-namespace.yaml",
 						Content: strings.TrimPrefix(`
@@ -597,6 +660,11 @@ metadata:
 
 			err = collector.CollectObject(ctx, u, NewResourceInfoFromMapping(mapping))
 			if !reflect.DeepEqual(err, tc.expectedError) {
+				t.Fatal(err)
+			}
+
+			_, err = collector.WriteIntegrityFile()
+			if err != nil {
 				t.Fatal(err)
 			}
 

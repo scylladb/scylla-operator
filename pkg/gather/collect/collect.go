@@ -8,13 +8,14 @@ import (
 	"os"
 	"path/filepath"
 
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -446,6 +447,59 @@ func (c *Collector) collectNamespace(ctx context.Context, u *unstructured.Unstru
 	return nil
 }
 
+func (c *Collector) collectNamespaceForObject(ctx context.Context, u *unstructured.Unstructured, resourceInfo *ResourceInfo) error {
+	err := c.CollectResource(
+		ctx,
+		&ResourceInfo{
+			Scope:    meta.RESTScopeRoot,
+			Resource: corev1.SchemeGroupVersion.WithResource("namespaces"),
+		},
+		"",
+		u.GetNamespace(),
+	)
+	if err != nil {
+		return fmt.Errorf("can't collect namespace %q: %w", resourceInfo, err)
+	}
+
+	return nil
+}
+
+func (c *Collector) collectScyllaCluster(ctx context.Context, u *unstructured.Unstructured, resourceInfo *ResourceInfo) error {
+	err := c.writeResource(ctx, u, resourceInfo)
+	if err != nil {
+		return fmt.Errorf("can't write resource %q: %w", resourceInfo, err)
+	}
+
+	if !c.relatedResources {
+		return nil
+	}
+
+	err = c.collectNamespaceForObject(ctx, u, resourceInfo)
+	if err != nil {
+		return fmt.Errorf("can't collect related namespace for object %q: %w", resourceInfo, err)
+	}
+
+	return nil
+}
+
+func (c *Collector) collectScyllaDBMonitoring(ctx context.Context, u *unstructured.Unstructured, resourceInfo *ResourceInfo) error {
+	err := c.writeResource(ctx, u, resourceInfo)
+	if err != nil {
+		return fmt.Errorf("can't write resource %q: %w", resourceInfo, err)
+	}
+
+	if !c.relatedResources {
+		return nil
+	}
+
+	err = c.collectNamespaceForObject(ctx, u, resourceInfo)
+	if err != nil {
+		return fmt.Errorf("can't collect related namespace for object %q: %w", resourceInfo, err)
+	}
+
+	return nil
+}
+
 func (c *Collector) CollectObject(ctx context.Context, u *unstructured.Unstructured, resourceInfo *ResourceInfo) error {
 	key := getResourceKey(u, resourceInfo)
 	if c.collectedResources.Has(key) {
@@ -464,6 +518,12 @@ func (c *Collector) CollectObject(ctx context.Context, u *unstructured.Unstructu
 	case corev1.SchemeGroupVersion.WithResource("namespaces").GroupResource():
 		return c.collectNamespace(ctx, u, resourceInfo)
 
+	case scyllav1.GroupVersion.WithResource("scyllaclusters").GroupResource():
+		return c.collectScyllaCluster(ctx, u, resourceInfo)
+
+	case scyllav1alpha1.GroupVersion.WithResource("scylladbmonitorings").GroupResource():
+		return c.collectScyllaDBMonitoring(ctx, u, resourceInfo)
+
 	default:
 		return c.collect(ctx, u, resourceInfo)
 	}
@@ -472,10 +532,6 @@ func (c *Collector) CollectObject(ctx context.Context, u *unstructured.Unstructu
 func (c *Collector) CollectResource(ctx context.Context, resourceInfo *ResourceInfo, namespace, name string) error {
 	obj, err := c.dynamicClient.Resource(resourceInfo.Resource).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil
-		}
-
 		return fmt.Errorf("can't get resource %q: %w", resourceInfo.Resource, err)
 	}
 

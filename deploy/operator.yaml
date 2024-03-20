@@ -1153,7 +1153,7 @@ spec:
                         type: array
                       interval:
                         default: "0"
-                        description: interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
+                        description: 'interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s. Deprecated: please use cron instead.'
                         type: string
                       keyspace:
                         description: keyspace is a list of keyspace/tables glob patterns, e.g. 'keyspace,!keyspace.table_prefix_*' used to include or exclude keyspaces from repair.
@@ -3121,7 +3121,7 @@ spec:
                         type: string
                       interval:
                         default: "0"
-                        description: interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
+                        description: 'interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s. Deprecated: please use cron instead.'
                         type: string
                       keyspace:
                         description: keyspace is a list of keyspace/tables glob patterns, e.g. 'keyspace,!keyspace.table_prefix_*' used to include or exclude keyspaces from repair.
@@ -3191,7 +3191,7 @@ spec:
                         type: string
                       interval:
                         default: "0"
-                        description: interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
+                        description: 'interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s. Deprecated: please use cron instead.'
                         type: string
                       keyspace:
                         description: keyspace is a list of keyspace/tables glob patterns, e.g. 'keyspace,!keyspace.table_prefix_*' used to include or exclude keyspaces from repair.
@@ -3374,7 +3374,7 @@ spec:
                         type: string
                       interval:
                         default: "0"
-                        description: interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
+                        description: 'interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s. Deprecated: please use cron instead.'
                         type: string
                       keyspace:
                         description: keyspace is a list of keyspace/tables glob patterns, e.g. 'keyspace,!keyspace.table_prefix_*' used to include or exclude keyspaces from repair.

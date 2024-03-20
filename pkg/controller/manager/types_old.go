@@ -70,6 +70,10 @@ func (r RepairTask) ToManager() (*managerclient.Task, error) {
 	}
 	props["small_table_threshold"] = threshold
 
+	if r.Host != nil {
+		props["host"] = *r.Host
+	}
+
 	t.Name = r.Name
 	t.Properties = props
 

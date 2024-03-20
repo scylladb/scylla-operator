@@ -597,7 +597,7 @@ type RepairTaskStatus struct {
 }
 
 type BackupTaskStatus struct {
-	BackupTaskSpec `json:",inline"`
+	BackupTaskSpec `json:",inline" mapstructure:",squash"`
 
 	// id is the identification number of the backup task.
 	ID string `json:"id"`

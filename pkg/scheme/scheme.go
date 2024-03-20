@@ -25,15 +25,17 @@ var (
 			Strict: true,
 		},
 	)
+	localSchemeBuilder = runtime.SchemeBuilder{
+		kscheme.AddToScheme,
+		scyllav1.Install,
+		scyllav1alpha1.Install,
+		cqlclientv1alpha1.Install,
+		monitoringv1.Install,
+	}
+
+	AddToScheme = localSchemeBuilder.AddToScheme
 )
 
 func init() {
-	utilruntime.Must(kscheme.AddToScheme(Scheme))
-
-	utilruntime.Must(scyllav1.Install(Scheme))
-	utilruntime.Must(scyllav1alpha1.Install(Scheme))
-
-	utilruntime.Must(cqlclientv1alpha1.Install(Scheme))
-
-	utilruntime.Must(monitoringv1.Install(Scheme))
+	utilruntime.Must(AddToScheme(Scheme))
 }

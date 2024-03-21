@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/scylladb/go-set/strset"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -165,12 +164,12 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 		allErrs = append(allErrs, ValidateScyllaClusterRackSpec(rack, rackNames, spec.CpuSet, fldPath.Child("datacenter", "racks").Index(i))...)
 	}
 
-	managerTaskNames := strset.New()
+	managerRepairTaskNames := sets.New[string]()
 	for i, r := range spec.Repairs {
-		if managerTaskNames.Has(r.Name) {
+		if managerRepairTaskNames.Has(r.Name) {
 			allErrs = append(allErrs, field.Duplicate(fldPath.Child("repairs").Index(i).Child("name"), r.Name))
 		}
-		managerTaskNames.Add(r.Name)
+		managerRepairTaskNames.Insert(r.Name)
 
 		_, err := strconv.ParseFloat(r.Intensity, 64)
 		if err != nil {
@@ -178,11 +177,12 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 		}
 	}
 
+	managerBackupTaskNames := sets.New[string]()
 	for i, b := range spec.Backups {
-		if managerTaskNames.Has(b.Name) {
+		if managerBackupTaskNames.Has(b.Name) {
 			allErrs = append(allErrs, field.Duplicate(fldPath.Child("backups").Index(i).Child("name"), b.Name))
 		}
-		managerTaskNames.Add(b.Name)
+		managerBackupTaskNames.Insert(b.Name)
 	}
 
 	if spec.GenericUpgrade != nil {

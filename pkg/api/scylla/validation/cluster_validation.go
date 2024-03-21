@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/robfig/cron/v3"
-	"github.com/scylladb/go-set/strset"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -171,21 +170,22 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 		allErrs = append(allErrs, ValidateScyllaClusterRackSpec(rack, rackNames, spec.CpuSet, fldPath.Child("datacenter", "racks").Index(i))...)
 	}
 
-	managerTaskNames := strset.New()
+	managerRepairTaskNames := sets.New[string]()
 	for i, r := range spec.Repairs {
-		if managerTaskNames.Has(r.Name) {
+		if managerRepairTaskNames.Has(r.Name) {
 			allErrs = append(allErrs, field.Duplicate(fldPath.Child("repairs").Index(i).Child("name"), r.Name))
 		}
-		managerTaskNames.Add(r.Name)
+		managerRepairTaskNames.Insert(r.Name)
 
 		allErrs = append(allErrs, ValidateRepairTaskSpec(&r, fldPath.Child("repairs").Index(i))...)
 	}
 
+	managerBackupTaskNames := sets.New[string]()
 	for i, b := range spec.Backups {
-		if managerTaskNames.Has(b.Name) {
+		if managerBackupTaskNames.Has(b.Name) {
 			allErrs = append(allErrs, field.Duplicate(fldPath.Child("backups").Index(i).Child("name"), b.Name))
 		}
-		managerTaskNames.Add(b.Name)
+		managerBackupTaskNames.Insert(b.Name)
 
 		allErrs = append(allErrs, ValidateBackupTaskSpec(&b, fldPath.Child("backups").Index(i))...)
 	}
@@ -229,7 +229,7 @@ func ValidateRepairTaskSpec(repairTaskSpec *scyllav1.RepairTaskSpec, fldPath *fi
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("intensity"), repairTaskSpec.Intensity, "must be a float"))
 	}
 
-	allErrs = append(allErrs, ValidateSchedulerTaskSpec(&repairTaskSpec.SchedulerTaskSpec, fldPath)...)
+	allErrs = append(allErrs, ValidateTaskSpec(&repairTaskSpec.TaskSpec, fldPath)...)
 
 	return allErrs
 }
@@ -237,7 +237,15 @@ func ValidateRepairTaskSpec(repairTaskSpec *scyllav1.RepairTaskSpec, fldPath *fi
 func ValidateBackupTaskSpec(backupTaskSpec *scyllav1.BackupTaskSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	allErrs = append(allErrs, ValidateSchedulerTaskSpec(&backupTaskSpec.SchedulerTaskSpec, fldPath)...)
+	allErrs = append(allErrs, ValidateTaskSpec(&backupTaskSpec.TaskSpec, fldPath)...)
+
+	return allErrs
+}
+
+func ValidateTaskSpec(taskSpec *scyllav1.TaskSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	allErrs = append(allErrs, ValidateSchedulerTaskSpec(&taskSpec.SchedulerTaskSpec, fldPath)...)
 
 	return allErrs
 }

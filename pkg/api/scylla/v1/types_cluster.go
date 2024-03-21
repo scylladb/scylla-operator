@@ -313,9 +313,6 @@ type GenericUpgradeSpec struct {
 }
 
 type SchedulerTaskSpec struct {
-	// name is a unique name of a task.
-	Name string `json:"name"`
-
 	// startDate specifies the task start date expressed in the RFC3339 format or now[+duration],
 	// e.g. now+3d2h10m, valid units are d, h, m, s.
 	// +optional
@@ -340,16 +337,23 @@ type SchedulerTaskSpec struct {
 	Timezone *string `json:"timezone,omitempty"`
 }
 
-type RepairTaskSpec struct {
+type TaskSpec struct {
+	// name specifies the name of a task.
+	Name string `json:"name"`
+
 	SchedulerTaskSpec `json:",inline"`
+}
+
+type RepairTaskSpec struct {
+	TaskSpec `json:",inline"`
 
 	// dc is a list of datacenter glob patterns, e.g. 'dc1', '!otherdc*' used to specify the DCs
 	// to include or exclude from backup.
-	DC []string `json:"dc,omitempty" mapstructure:"dc,omitempty"`
+	DC []string `json:"dc,omitempty"`
 
 	// failFast indicates if a repair should be stopped on first error.
 	// +optional
-	FailFast bool `json:"failFast,omitempty" mapstructure:"fail_fast,omitempty"`
+	FailFast bool `json:"failFast,omitempty"`
 
 	// intensity indicates how many token ranges (per shard) to repair in a single Scylla repair job. By default this is 1.
 	// If you set it to 0 the number of token ranges is adjusted to the maximum supported by node (see max_repair_ranges_in_parallel in Scylla logs).
@@ -360,7 +364,7 @@ type RepairTaskSpec struct {
 	// For Scylla clusters that are row-level repair enabled, setting intensity below 1 has the same effect as setting intensity 1.
 	// +kubebuilder:default:="1"
 	// +optional
-	Intensity string `json:"intensity,omitempty" mapstructure:"intensity,omitempty"`
+	Intensity string `json:"intensity,omitempty"`
 
 	// parallel is the maximum number of Scylla repair jobs that can run at the same time (on different token ranges and replicas).
 	// Each node can take part in at most one repair at any given moment. By default the maximum possible parallelism is used.
@@ -368,66 +372,66 @@ type RepairTaskSpec struct {
 	// The formula to calculate it is as follows: number of nodes / RF, ex. for 6 node cluster with RF=3 the maximum parallelism is 2.
 	// +kubebuilder:default:=0
 	// +optional
-	Parallel int64 `json:"parallel,omitempty" mapstructure:"parallel,omitempty"`
+	Parallel int64 `json:"parallel,omitempty"`
 
 	// keyspace is a list of keyspace/tables glob patterns, e.g. 'keyspace,!keyspace.table_prefix_*'
 	// used to include or exclude keyspaces from repair.
-	Keyspace []string `json:"keyspace,omitempty" mapstructure:"keyspace,omitempty"`
+	Keyspace []string `json:"keyspace,omitempty"`
 
 	// smallTableThreshold enable small table optimization for tables of size lower than given threshold.
 	// Supported units [B, MiB, GiB, TiB].
 	// +kubebuilder:default:="1GiB"
 	// +optional
-	SmallTableThreshold string `json:"smallTableThreshold,omitempty" mapstructure:"small_table_threshold,omitempty"`
+	SmallTableThreshold string `json:"smallTableThreshold,omitempty"`
 
 	// host specifies a host to repair. If empty, all hosts are repaired.
-	Host *string `json:"host,omitempty" mapstructure:"host,omitempty"`
+	Host *string `json:"host,omitempty"`
 }
 
 type BackupTaskSpec struct {
-	SchedulerTaskSpec `json:",inline"`
+	TaskSpec `json:",inline"`
 
 	// dc is a list of datacenter glob patterns, e.g. 'dc1,!otherdc*' used to specify the DCs
 	// to include or exclude from backup.
 	// +optional
-	DC []string `json:"dc,omitempty" mapstructure:"dc,omitempty"`
+	DC []string `json:"dc,omitempty"`
 
 	// keyspace is a list of keyspace/tables glob patterns,
 	// e.g. 'keyspace,!keyspace.table_prefix_*' used to include or exclude keyspaces from repair.
 	// +optional
-	Keyspace []string `json:"keyspace,omitempty" mapstructure:"keyspace,omitempty"`
+	Keyspace []string `json:"keyspace,omitempty"`
 
 	// location is a list of backup locations in the format [<dc>:]<provider>:<name> ex. s3:my-bucket.
 	// The <dc>: part is optional and is only needed when different datacenters are being used to upload data
 	// to different locations. <name> must be an alphanumeric string and may contain a dash and or a dot,
 	// but other characters are forbidden.
 	// The only supported storage <provider> at the moment are s3 and gcs.
-	Location []string `json:"location" mapstructure:"location,omitempty"`
+	Location []string `json:"location"`
 
 	// rateLimit is a list of megabytes (MiB) per second rate limits expressed in the format [<dc>:]<limit>.
 	// The <dc>: part is optional and only needed when different datacenters need different upload limits.
 	// Set to 0 for no limit (default 100).
 	// +optional
-	RateLimit []string `json:"rateLimit,omitempty" mapstructure:"rate_limit,omitempty"`
+	RateLimit []string `json:"rateLimit,omitempty"`
 
 	// retention is the number of backups which are to be stored.
 	// +kubebuilder:default:=3
 	// +optional
-	Retention int64 `json:"retention,omitempty" mapstructure:"retention,omitempty"`
+	Retention int64 `json:"retention,omitempty"`
 
 	// snapshotParallel is a list of snapshot parallelism limits in the format [<dc>:]<limit>.
 	// The <dc>: part is optional and allows for specifying different limits in selected datacenters.
 	// If The <dc>: part is not set, the limit is global (e.g. 'dc1:2,5') the runs are parallel in n nodes (2 in dc1)
 	// and n nodes in all the other datacenters.
 	// +optional
-	SnapshotParallel []string `json:"snapshotParallel,omitempty" mapstructure:"snapshot_parallel,omitempty"`
+	SnapshotParallel []string `json:"snapshotParallel,omitempty"`
 
 	// uploadParallel is a list of upload parallelism limits in the format [<dc>:]<limit>.
 	// The <dc>: part is optional and allows for specifying different limits in selected datacenters.
 	// If The <dc>: part is not set the limit is global (e.g. 'dc1:2,5') the runs are parallel in n nodes (2 in dc1)
 	// and n nodes in all the other datacenters.
 	// +optional
-	UploadParallel []string `json:"uploadParallel,omitempty" mapstructure:"upload_parallel,omitempty"`
+	UploadParallel []string `json:"uploadParallel,omitempty"`
 }
 
 type Network struct {
@@ -593,24 +597,106 @@ type AlternatorSpec struct {
 	ServingCertificate *TLSCertificate `json:"servingCertificate,omitempty"`
 }
 
+type SchedulerTaskStatus struct {
+	// startDate reflects the task start date expressed in the RFC3339 format
+	// +optional
+	StartDate *string `json:"startDate,omitempty"`
+
+	// interval reflects a task schedule interval.
+	// +optional
+	Interval *string `json:"interval,omitempty"`
+
+	// numRetries reflects how many times a scheduled task will be retried before failing.
+	// +optional
+	NumRetries *int64 `json:"numRetries,omitempty"`
+
+	// cron reflects the task schedule as a cron expression.
+	// +optional
+	Cron *string `json:"cron,omitempty"`
+
+	// timezone reflects the timezone of cron field.
+	// +optional
+	Timezone *string `json:"timezone,omitempty"`
+}
+
+type TaskStatus struct {
+	SchedulerTaskStatus `json:",inline"`
+
+	// name reflects the name of a task.
+	Name string `json:"name,omitempty"`
+
+	// id reflects identification number of the repair task.
+	// +optional
+	ID *string `json:"id,omitempty"`
+
+	// error holds the task error, if any.
+	// +optional
+	Error *string `json:"error,omitempty"`
+}
+
 type RepairTaskStatus struct {
-	RepairTaskSpec `json:",inline" mapstructure:",squash"`
+	TaskStatus `json:",inline"`
 
-	// id is the identification number of the repair task.
-	ID string `json:"id"`
+	// dc reflects a list of datacenter glob patterns, e.g. 'dc1', '!otherdc*' used to specify the DCs
+	// to include or exclude from repair.
+	// +optional
+	DC []string `json:"dc,omitempty" mapstructure:"dc,omitempty"`
 
-	// error holds the repair task error, if any.
-	Error string `json:"error"`
+	// failFast indicates if a repair should be stopped on first error.
+	// +optional
+	FailFast *bool `json:"failFast,omitempty" mapstructure:"fail_fast,omitempty"`
+
+	// intensity indicates how many token ranges (per shard) to repair in a single Scylla repair job. By default this is 1.
+	// +optional
+	Intensity *string `json:"intensity,omitempty" mapstructure:"intensity,omitempty"`
+
+	// parallel reflects the maximum number of Scylla repair jobs that can run at the same time (on different token ranges and replicas).
+	// +optional
+	Parallel *int64 `json:"parallel,omitempty" mapstructure:"parallel,omitempty"`
+
+	// keyspace reflects a list of keyspace/tables glob patterns, e.g. 'keyspace,!keyspace.table_prefix_*'
+	// used to include or exclude keyspaces from repair.
+	Keyspace []string `json:"keyspace,omitempty" mapstructure:"keyspace,omitempty"`
+
+	// smallTableThreshold reflects whether small table optimization for tables, of size lower than given threshold, are enabled.
+	// +optional
+	SmallTableThreshold *string `json:"smallTableThreshold,omitempty" mapstructure:"small_table_threshold,omitempty"`
+
+	// host reflects a host to repair.
+	Host *string `json:"host,omitempty" mapstructure:"host,omitempty"`
 }
 
 type BackupTaskStatus struct {
-	BackupTaskSpec `json:",inline" mapstructure:",squash"`
+	TaskStatus `json:",inline"`
 
-	// id is the identification number of the backup task.
-	ID string `json:"id"`
+	// dc reflects a list of datacenter glob patterns, e.g. 'dc1,!otherdc*' used to specify the DCs
+	// to include or exclude from backup.
+	// +optional
+	DC []string `json:"dc,omitempty" mapstructure:"dc,omitempty"`
 
-	// error holds the backup task error, if any.
-	Error string `json:"error"`
+	// keyspace reflects a list of keyspace/tables glob patterns,
+	// e.g. 'keyspace,!keyspace.table_prefix_*' used to include or exclude keyspaces from repair.
+	// +optional
+	Keyspace []string `json:"keyspace,omitempty" mapstructure:"keyspace,omitempty"`
+
+	// location reflects a list of backup locations in the format [<dc>:]<provider>:<name> ex. s3:my-bucket.
+	Location []string `json:"location" mapstructure:"location,omitempty"`
+
+	// rateLimit reflects a list of megabytes (MiB) per second rate limits expressed in the format [<dc>:]<limit>.
+	// +optional
+	RateLimit []string `json:"rateLimit,omitempty" mapstructure:"rate_limit,omitempty"`
+
+	// retention reflects the number of backups which are to be stored.
+	// +optional
+	Retention *int64 `json:"retention,omitempty" mapstructure:"retention,omitempty"`
+
+	// snapshotParallel reflects a list of snapshot parallelism limits in the format [<dc>:]<limit>.
+	// +optional
+	SnapshotParallel []string `json:"snapshotParallel,omitempty" mapstructure:"snapshot_parallel,omitempty"`
+
+	// uploadParallel reflects a list of upload parallelism limits in the format [<dc>:]<limit>.
+	// +optional
+	UploadParallel []string `json:"uploadParallel,omitempty" mapstructure:"upload_parallel,omitempty"`
 }
 
 // ScyllaClusterStatus defines the observed state of ScyllaCluster.

@@ -8,9 +8,7 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
@@ -32,8 +30,8 @@ func (c *Controller) getManagerState(ctx context.Context, clusterID string) (*st
 		return nil, err
 	}
 	var (
-		repairTasks []*RepairTask
-		backupTasks []*BackupTask
+		repairTasks map[string]RepairTaskStatus
+		backupTasks map[string]BackupTaskStatus
 	)
 
 	if clusterID != "" {
@@ -50,13 +48,13 @@ func (c *Controller) getManagerState(ctx context.Context, clusterID string) (*st
 				return nil, err
 			}
 
-			repairTasks = make([]*RepairTask, 0, len(managerRepairTasks.TaskListItemSlice))
+			repairTasks = make(map[string]RepairTaskStatus, len(managerRepairTasks.TaskListItemSlice))
 			for _, managerRepairTask := range managerRepairTasks.TaskListItemSlice {
-				rt := &RepairTask{}
-				if err := rt.FromManager(managerRepairTask); err != nil {
+				rts, err := NewRepairStatusFromManager(managerRepairTask)
+				if err != nil {
 					return nil, err
 				}
-				repairTasks = append(repairTasks, rt)
+				repairTasks[rts.Name] = *rts
 			}
 
 			managerBackupTasks, err := c.managerClient.ListTasks(ctx, clusterID, "backup", true, "", "")
@@ -64,13 +62,13 @@ func (c *Controller) getManagerState(ctx context.Context, clusterID string) (*st
 				return nil, err
 			}
 
-			backupTasks = make([]*BackupTask, 0, len(managerBackupTasks.TaskListItemSlice))
+			backupTasks = make(map[string]BackupTaskStatus, len(managerBackupTasks.TaskListItemSlice))
 			for _, managerBackupTask := range managerBackupTasks.TaskListItemSlice {
-				bt := &BackupTask{}
-				if err := bt.FromManager(managerBackupTask); err != nil {
+				bts, err := NewBackupStatusFromManager(managerBackupTask)
+				if err != nil {
 					return nil, err
 				}
-				backupTasks = append(backupTasks, bt)
+				backupTasks[bts.Name] = *bts
 			}
 		}
 	}
@@ -97,18 +95,9 @@ func (c *Controller) sync(ctx context.Context, key string) error {
 
 	sc, err := c.scyllaLister.ScyllaClusters(namespace).Get(name)
 	if apierrors.IsNotFound(err) {
-		klog.V(2).InfoS("ScyllaCluster has been deleted", "ScyllaCluster", klog.KObj(sc))
+		klog.V(2).InfoS("ScyllaCluster has been deleted", "ScyllaCluster", klog.KRef(namespace, name))
 		return nil
 	}
-	if err != nil {
-		return err
-	}
-
-	if sc.DeletionTimestamp != nil {
-		return nil
-	}
-
-	authToken, err := c.getAuthToken(sc)
 	if err != nil {
 		return err
 	}
@@ -117,38 +106,47 @@ func (c *Controller) sync(ctx context.Context, key string) error {
 	if sc.Status.ManagerID != nil {
 		clusterID = *sc.Status.ManagerID
 	}
+
 	managerState, err := c.getManagerState(ctx, clusterID)
 	if err != nil {
-		return err
+		return fmt.Errorf("can't get manager state: %w", err)
+	}
+
+	status := c.calculateStatus(sc, managerState)
+
+	if sc.DeletionTimestamp != nil {
+		return c.updateStatus(ctx, sc, status)
+	}
+
+	authToken, err := c.getAuthToken(sc)
+	if err != nil {
+		return fmt.Errorf("can't get auth token: %w", err)
 	}
 
 	actions, requeue, err := runSync(ctx, sc, authToken, managerState)
 	if err != nil {
-		return err
+		return fmt.Errorf("can't run sync: %w", err)
 	}
 
-	scCopy := sc.DeepCopy()
-
-	var actionErrs []error
+	var errs []error
 	for _, a := range actions {
 		klog.V(4).InfoS("Executing action", "action", a)
-		err = a.Execute(ctx, c.managerClient, &scCopy.Status)
+		err = a.Execute(ctx, c.managerClient, status)
 		if err != nil {
 			klog.ErrorS(err, "Failed to execute action", "action", a)
-			actionErrs = append(actionErrs, err)
+			errs = append(errs, fmt.Errorf("can't execute action: %w", err))
+		} else {
+			requeue = true
 		}
 	}
 
-	// Update status if needed
-	if !apiequality.Semantic.DeepEqual(scCopy.Status, sc.Status) {
-		klog.V(4).InfoS("Updating cluster status", "new", scCopy.Status, "old", sc.Status)
-		_, err := c.scyllaClient.ScyllaClusters(sc.Namespace).UpdateStatus(ctx, scCopy, metav1.UpdateOptions{})
-		if err != nil {
-			return err
-		}
+	err = c.updateStatus(ctx, sc, status)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't update status: %w", err))
+		return utilerrors.NewAggregate(errs)
 	}
 
-	err = utilerrors.NewAggregate(actionErrs)
+	err = utilerrors.NewAggregate(errs)
 	if err != nil {
 		return err
 	}

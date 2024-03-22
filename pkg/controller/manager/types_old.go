@@ -19,13 +19,23 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/util/duration"
 )
 
-type RepairTask scyllav1.RepairTaskStatus
+type startDateGetter interface {
+	GetStartDateOrEmpty() string
+}
 
-func (r *RepairTask) ToManager() (*managerclient.Task, error) {
+type startDateGetterSetter interface {
+	startDateGetter
+	SetStartDate(sd string)
+}
+
+type RepairTaskSpec scyllav1.RepairTaskSpec
+
+var _ startDateGetterSetter = &RepairTaskSpec{}
+
+func (r *RepairTaskSpec) ToManager() (*managerclient.Task, error) {
 	t := &managerclient.Task{
-		ID:      r.ID,
 		Name:    r.Name,
-		Type:    "repair",
+		Type:    managerclient.RepairTask,
 		Enabled: true,
 	}
 
@@ -35,9 +45,20 @@ func (r *RepairTask) ToManager() (*managerclient.Task, error) {
 	}
 	t.Schedule = schedule
 
-	props := make(map[string]interface{})
-	if r.Keyspace != nil {
-		props["keyspace"] = unescapeFilters(r.Keyspace)
+	intensity, err := strconv.ParseFloat(r.Intensity, 64)
+	if err != nil {
+		return nil, fmt.Errorf("can't parse intensity: %w", err)
+	}
+
+	smallTableThreshold, err := parseByteCount(r.SmallTableThreshold)
+	if err != nil {
+		return nil, fmt.Errorf("can't parse small table threshold: %w", err)
+	}
+
+	props := map[string]interface{}{
+		"intensity":             intensity,
+		"parallel":              r.Parallel,
+		"small_table_threshold": smallTableThreshold,
 	}
 
 	if r.DC != nil {
@@ -49,20 +70,9 @@ func (r *RepairTask) ToManager() (*managerclient.Task, error) {
 		props["fail_fast"] = true
 	}
 
-	intensity, err := strconv.ParseFloat(r.Intensity, 64)
-	if err != nil {
-		return nil, fmt.Errorf("can't parse intensity: %w", err)
+	if r.Keyspace != nil {
+		props["keyspace"] = unescapeFilters(r.Keyspace)
 	}
-	props["intensity"] = intensity
-
-	props["parallel"] = r.Parallel
-
-	threshold, err := parseByteCount(r.SmallTableThreshold)
-	if err != nil {
-		return nil, fmt.Errorf("can't parse small table threshold: %w", err)
-	}
-
-	props["small_table_threshold"] = threshold
 
 	if r.Host != nil {
 		props["host"] = *r.Host
@@ -73,24 +83,26 @@ func (r *RepairTask) ToManager() (*managerclient.Task, error) {
 	return t, nil
 }
 
-func (r *RepairTask) FromManager(t *managerclient.TaskListItem) error {
-	r.ID = t.ID
-	r.Name = t.Name
-	r.Interval = pointer.Ptr(t.Schedule.Interval)
-	r.StartDate = pointer.Ptr(t.Schedule.StartDate.String())
-	r.NumRetries = pointer.Ptr(t.Schedule.NumRetries)
-	r.Cron = pointer.Ptr(t.Schedule.Cron)
-	r.Timezone = pointer.Ptr(t.Schedule.Timezone)
-
-	props := t.Properties.(map[string]interface{})
-	if err := mapstructure.Decode(props, r); err != nil {
-		return fmt.Errorf("can't decode properties: %w", err)
+func (r *RepairTaskSpec) ToStatus() *RepairTaskStatus {
+	rts := &RepairTaskStatus{
+		DC:                  r.DC,
+		Keyspace:            r.Keyspace,
+		FailFast:            pointer.Ptr(r.FailFast),
+		Intensity:           pointer.Ptr(r.Intensity),
+		Parallel:            pointer.Ptr(r.Parallel),
+		SmallTableThreshold: pointer.Ptr(r.SmallTableThreshold),
 	}
 
-	return nil
+	rts.TaskStatus = taskSpecToStatus(&r.TaskSpec)
+
+	if r.Host != nil {
+		rts.Host = pointer.Ptr(*r.Host)
+	}
+
+	return rts
 }
 
-func (r *RepairTask) GetStartDateOrEmpty() string {
+func (r *RepairTaskSpec) GetStartDateOrEmpty() string {
 	if r.StartDate != nil {
 		return *r.StartDate
 	}
@@ -98,17 +110,43 @@ func (r *RepairTask) GetStartDateOrEmpty() string {
 	return ""
 }
 
-func (r *RepairTask) SetStartDate(sd string) {
+func (r *RepairTaskSpec) SetStartDate(sd string) {
 	r.StartDate = &sd
 }
 
-type BackupTask scyllav1.BackupTaskStatus
+type RepairTaskStatus scyllav1.RepairTaskStatus
 
-func (b *BackupTask) ToManager() (*managerclient.Task, error) {
+var _ startDateGetter = &RepairTaskStatus{}
+
+func NewRepairStatusFromManager(t *managerclient.TaskListItem) (*RepairTaskStatus, error) {
+	rts := &RepairTaskStatus{}
+
+	rts.TaskStatus = newTaskStatusFromManager(t)
+
+	if t.Properties != nil {
+		props := t.Properties.(map[string]interface{})
+		if err := mapstructure.Decode(props, rts); err != nil {
+			return nil, fmt.Errorf("can't decode properties: %w", err)
+		}
+	}
+
+	return rts, nil
+}
+
+func (r *RepairTaskStatus) GetStartDateOrEmpty() string {
+	if r.StartDate != nil {
+		return *r.StartDate
+	}
+
+	return ""
+}
+
+type BackupTaskSpec scyllav1.BackupTaskSpec
+
+func (b *BackupTaskSpec) ToManager() (*managerclient.Task, error) {
 	t := &managerclient.Task{
-		ID:      b.ID,
 		Name:    b.Name,
-		Type:    "backup",
+		Type:    managerclient.BackupTask,
 		Enabled: true,
 	}
 
@@ -118,17 +156,18 @@ func (b *BackupTask) ToManager() (*managerclient.Task, error) {
 	}
 	t.Schedule = schedule
 
-	props := make(map[string]interface{})
-
-	if b.Keyspace != nil {
-		props["keyspace"] = unescapeFilters(b.Keyspace)
+	props := map[string]interface{}{
+		"location":  b.Location,
+		"retention": b.Retention,
 	}
 
 	if b.DC != nil {
 		props["dc"] = unescapeFilters(b.DC)
 	}
 
-	props["retention"] = b.Retention
+	if b.Keyspace != nil {
+		props["keyspace"] = unescapeFilters(b.Keyspace)
+	}
 
 	if b.RateLimit != nil {
 		props["rate_limit"] = b.RateLimit
@@ -142,31 +181,28 @@ func (b *BackupTask) ToManager() (*managerclient.Task, error) {
 		props["upload_parallel"] = b.UploadParallel
 	}
 
-	props["location"] = b.Location
-
 	t.Properties = props
 
 	return t, nil
 }
 
-func (b *BackupTask) FromManager(t *managerclient.TaskListItem) error {
-	b.ID = t.ID
-	b.Name = t.Name
-	b.Interval = pointer.Ptr(t.Schedule.Interval)
-	b.StartDate = pointer.Ptr(t.Schedule.StartDate.String())
-	b.NumRetries = pointer.Ptr(t.Schedule.NumRetries)
-	b.Cron = pointer.Ptr(t.Schedule.Cron)
-	b.Timezone = pointer.Ptr(t.Schedule.Timezone)
-
-	props := t.Properties.(map[string]interface{})
-	if err := mapstructure.Decode(props, b); err != nil {
-		return fmt.Errorf("can't decode properties: %w", err)
+func (b *BackupTaskSpec) ToStatus() *BackupTaskStatus {
+	bts := &BackupTaskStatus{
+		DC:               b.DC,
+		Keyspace:         b.Keyspace,
+		Location:         b.Location,
+		RateLimit:        b.RateLimit,
+		Retention:        pointer.Ptr(b.Retention),
+		SnapshotParallel: b.SnapshotParallel,
+		UploadParallel:   b.UploadParallel,
 	}
 
-	return nil
+	bts.TaskStatus = taskSpecToStatus(&b.TaskSpec)
+
+	return bts
 }
 
-func (b *BackupTask) GetStartDateOrEmpty() string {
+func (b *BackupTaskSpec) GetStartDateOrEmpty() string {
 	if b.StartDate != nil {
 		return *b.StartDate
 	}
@@ -174,8 +210,37 @@ func (b *BackupTask) GetStartDateOrEmpty() string {
 	return ""
 }
 
-func (b *BackupTask) SetStartDate(sd string) {
+func (b *BackupTaskSpec) SetStartDate(sd string) {
 	b.StartDate = &sd
+}
+
+var _ startDateGetterSetter = &BackupTaskSpec{}
+
+type BackupTaskStatus scyllav1.BackupTaskStatus
+
+var _ startDateGetter = &BackupTaskStatus{}
+
+func NewBackupStatusFromManager(t *managerclient.TaskListItem) (*BackupTaskStatus, error) {
+	bts := &BackupTaskStatus{}
+
+	bts.TaskStatus = newTaskStatusFromManager(t)
+
+	if t.Properties != nil {
+		props := t.Properties.(map[string]interface{})
+		if err := mapstructure.Decode(props, bts); err != nil {
+			return nil, fmt.Errorf("can't decode properties: %w", err)
+		}
+	}
+
+	return bts, nil
+}
+
+func (b *BackupTaskStatus) GetStartDateOrEmpty() string {
+	if b.StartDate != nil {
+		return *b.StartDate
+	}
+
+	return ""
 }
 
 func schedulerTaskSpecToManager(schedulerTaskSpec *scyllav1.SchedulerTaskSpec) (*managerclient.Schedule, error) {
@@ -206,6 +271,61 @@ func schedulerTaskSpecToManager(schedulerTaskSpec *scyllav1.SchedulerTaskSpec) (
 	}
 
 	return schedule, nil
+}
+
+func taskSpecToStatus(taskSpec *scyllav1.TaskSpec) scyllav1.TaskStatus {
+	return scyllav1.TaskStatus{
+		SchedulerTaskStatus: schedulerTaskSpecToStatus(&taskSpec.SchedulerTaskSpec),
+		Name:                taskSpec.Name,
+	}
+}
+
+func schedulerTaskSpecToStatus(schedulerTaskSpec *scyllav1.SchedulerTaskSpec) scyllav1.SchedulerTaskStatus {
+	schedulerTaskStatus := scyllav1.SchedulerTaskStatus{}
+
+	if schedulerTaskSpec.StartDate != nil {
+		schedulerTaskStatus.StartDate = pointer.Ptr(*schedulerTaskSpec.StartDate)
+	}
+
+	if schedulerTaskSpec.Interval != nil {
+		schedulerTaskStatus.Interval = pointer.Ptr(*schedulerTaskSpec.Interval)
+	}
+
+	if schedulerTaskSpec.NumRetries != nil {
+		schedulerTaskStatus.NumRetries = pointer.Ptr(*schedulerTaskSpec.NumRetries)
+	}
+
+	if schedulerTaskSpec.Cron != nil {
+		schedulerTaskStatus.Cron = pointer.Ptr(*schedulerTaskSpec.Cron)
+	}
+
+	if schedulerTaskSpec.Timezone != nil {
+		schedulerTaskStatus.Timezone = pointer.Ptr(*schedulerTaskSpec.Timezone)
+	}
+
+	return schedulerTaskStatus
+}
+
+func newTaskStatusFromManager(t *managerclient.TaskListItem) scyllav1.TaskStatus {
+	taskStatus := scyllav1.TaskStatus{
+		SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{},
+		Name:                t.Name,
+		ID:                  pointer.Ptr(t.ID),
+	}
+
+	taskStatus.SchedulerTaskStatus = newSchedulerTaskStatusFromManager(t.Schedule)
+
+	return taskStatus
+}
+
+func newSchedulerTaskStatusFromManager(schedule *managerclient.Schedule) scyllav1.SchedulerTaskStatus {
+	return scyllav1.SchedulerTaskStatus{
+		StartDate:  pointer.Ptr(schedule.StartDate.String()),
+		Interval:   pointer.Ptr(schedule.Interval),
+		NumRetries: pointer.Ptr(schedule.NumRetries),
+		Cron:       pointer.Ptr(schedule.Cron),
+		Timezone:   pointer.Ptr(schedule.Timezone),
+	}
 }
 
 // accommodate for escaping of bash expansions, we can safely remove '\'

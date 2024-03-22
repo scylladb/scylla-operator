@@ -20,41 +20,40 @@ var (
 	validDateTime = pointer.Ptr(helpers.Must(strfmt.ParseDateTime(validDate)))
 )
 
-func TestRepairTask_ToManager(t *testing.T) {
+func TestRepairTaskSpec_ToManager(t *testing.T) {
 	t.Parallel()
 
 	tt := []struct {
-		name          string
-		repairTask    *RepairTask
-		expected      *managerclient.Task
-		expectedError error
+		name           string
+		repairTaskSpec *RepairTaskSpec
+		expected       *managerclient.Task
+		expectedError  error
 	}{
 		{
 			name: "fields and properties are propagated with NumRetries",
-			repairTask: &RepairTask{
-				RepairTaskSpec: scyllav1.RepairTaskSpec{
+			repairTaskSpec: &RepairTaskSpec{
+				TaskSpec: scyllav1.TaskSpec{
+					Name: "repair_task_name",
 					SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-						Name:       "repair_task_name",
 						StartDate:  validDate,
 						NumRetries: pointer.Ptr[int64](3),
 						Interval:   "7d",
 						Cron:       pointer.Ptr("0 23 * * SAT"),
 						Timezone:   pointer.Ptr("CET"),
 					},
-					DC:                  []string{"us-east1"},
-					FailFast:            false,
-					Intensity:           "1",
-					Parallel:            1,
-					Keyspace:            []string{"test"},
-					SmallTableThreshold: "1GiB",
-					Host:                pointer.Ptr("10.0.0.1"),
 				},
-				ID: "repair_task_id",
+				DC:                  []string{"us-east1"},
+				FailFast:            false,
+				Intensity:           "1",
+				Parallel:            1,
+				Keyspace:            []string{"test"},
+				SmallTableThreshold: "1GiB",
+				Host:                pointer.Ptr("10.0.0.1"),
 			},
 			expected: &managerclient.Task{
 				ClusterID: "",
 				Enabled:   true,
-				ID:        "repair_task_id",
+				ID:        "",
 				Name:      "repair_task_name",
 				Properties: map[string]interface{}{
 					"dc": []string{
@@ -81,30 +80,29 @@ func TestRepairTask_ToManager(t *testing.T) {
 		},
 		{
 			name: "fields and properties are propagated with FailFast",
-			repairTask: &RepairTask{
-				RepairTaskSpec: scyllav1.RepairTaskSpec{
+			repairTaskSpec: &RepairTaskSpec{
+				TaskSpec: scyllav1.TaskSpec{
+					Name: "repair_task_name",
 					SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-						Name:       "repair_task_name",
 						StartDate:  validDate,
 						NumRetries: pointer.Ptr[int64](3),
 						Interval:   "7d",
 						Cron:       pointer.Ptr("0 23 * * SAT"),
 						Timezone:   pointer.Ptr("CET"),
 					},
-					DC:                  []string{"us-east1"},
-					FailFast:            true,
-					Intensity:           "1",
-					Parallel:            1,
-					Keyspace:            []string{"test"},
-					SmallTableThreshold: "1GiB",
-					Host:                pointer.Ptr("10.0.0.1"),
 				},
-				ID: "repair_task_id",
+				DC:                  []string{"us-east1"},
+				FailFast:            true,
+				Intensity:           "1",
+				Parallel:            1,
+				Keyspace:            []string{"test"},
+				SmallTableThreshold: "1GiB",
+				Host:                pointer.Ptr("10.0.0.1"),
 			},
 			expected: &managerclient.Task{
 				ClusterID: "",
 				Enabled:   true,
-				ID:        "repair_task_id",
+				ID:        "",
 				Name:      "repair_task_name",
 				Properties: map[string]interface{}{
 					"dc": []string{
@@ -137,7 +135,7 @@ func TestRepairTask_ToManager(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			managerClientTask, err := tc.repairTask.ToManager()
+			managerClientTask, err := tc.repairTaskSpec.ToManager()
 			if !equality.Semantic.DeepEqual(err, tc.expectedError) {
 				t.Errorf("expected error %v, got %v", tc.expectedError, err)
 			}
@@ -155,7 +153,7 @@ func TestRepairTask_FromManager(t *testing.T) {
 	tt := []struct {
 		name          string
 		managerTask   *managerclient.TaskListItem
-		expected      *RepairTask
+		expected      *RepairTaskStatus
 		expectedError error
 	}{
 		{
@@ -195,25 +193,26 @@ func TestRepairTask_FromManager(t *testing.T) {
 				Suspended:    false,
 				Type:         "repair",
 			},
-			expected: &RepairTask{
-				RepairTaskSpec: scyllav1.RepairTaskSpec{
-					SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-						Name:       "repair_task_name",
-						StartDate:  validDate,
+			expected: &RepairTaskStatus{
+				TaskStatus: scyllav1.TaskStatus{
+					SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
+						StartDate:  pointer.Ptr(validDate),
 						NumRetries: pointer.Ptr[int64](3),
-						Interval:   "7d",
+						Interval:   pointer.Ptr("7d"),
 						Cron:       pointer.Ptr("0 23 * * SAT"),
 						Timezone:   pointer.Ptr("CET"),
 					},
-					DC:                  []string{"us-east1"},
-					FailFast:            true,
-					Intensity:           "1",
-					Parallel:            1,
-					Keyspace:            []string{"test"},
-					SmallTableThreshold: "1073741824",
-					Host:                pointer.Ptr("10.0.0.1"),
+					Name:  "repair_task_name",
+					ID:    pointer.Ptr("repair_task_id"),
+					Error: nil,
 				},
-				ID: "repair_task_id",
+				DC:                  []string{"us-east1"},
+				FailFast:            pointer.Ptr(true),
+				Intensity:           pointer.Ptr("1"),
+				Parallel:            pointer.Ptr[int64](1),
+				Keyspace:            []string{"test"},
+				SmallTableThreshold: pointer.Ptr("1073741824"),
+				Host:                pointer.Ptr("10.0.0.1"),
 			},
 			expectedError: nil,
 		},
@@ -224,14 +223,13 @@ func TestRepairTask_FromManager(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			rt := &RepairTask{}
-			err := rt.FromManager(tc.managerTask)
+			rts, err := NewRepairStatusFromManager(tc.managerTask)
 			if !equality.Semantic.DeepEqual(err, tc.expectedError) {
 				t.Errorf("expected error %v, got %v", tc.expectedError, err)
 			}
 
-			if !reflect.DeepEqual(rt, tc.expected) {
-				t.Errorf("expected and got repair task differ: %s", cmp.Diff(tc.expected, rt))
+			if !reflect.DeepEqual(rts, tc.expected) {
+				t.Errorf("expected and got repair task statuses differ: %s", cmp.Diff(tc.expected, rts))
 			}
 		})
 	}
@@ -241,48 +239,47 @@ func TestBackupTask_ToManager(t *testing.T) {
 	t.Parallel()
 
 	tt := []struct {
-		name          string
-		backupTask    *BackupTask
-		expected      *managerclient.Task
-		expectedError error
+		name           string
+		backupTaskSpec *BackupTaskSpec
+		expected       *managerclient.Task
+		expectedError  error
 	}{
 		{
 			name: "fields and properties are propagated",
-			backupTask: &BackupTask{
-				BackupTaskSpec: scyllav1.BackupTaskSpec{
+			backupTaskSpec: &BackupTaskSpec{
+				TaskSpec: scyllav1.TaskSpec{
+					Name: "backup_task_name",
 					SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-						Name:       "backup_task_name",
 						StartDate:  validDate,
 						NumRetries: pointer.Ptr[int64](3),
 						Interval:   "7d",
 						Cron:       pointer.Ptr("0 23 * * SAT"),
 						Timezone:   pointer.Ptr("CET"),
 					},
-					DC:       []string{"us-east1"},
-					Keyspace: []string{"test"},
-					Location: []string{
-						"gcs:test",
-					},
-					RateLimit: []string{
-						"10",
-						"us-east1:100",
-					},
-					Retention: 1,
-					SnapshotParallel: []string{
-						"10",
-						"us-east1:100",
-					},
-					UploadParallel: []string{
-						"10",
-						"us-east1:100",
-					},
 				},
-				ID: "backup_task_id",
+				DC:       []string{"us-east1"},
+				Keyspace: []string{"test"},
+				Location: []string{
+					"gcs:test",
+				},
+				RateLimit: []string{
+					"10",
+					"us-east1:100",
+				},
+				Retention: 1,
+				SnapshotParallel: []string{
+					"10",
+					"us-east1:100",
+				},
+				UploadParallel: []string{
+					"10",
+					"us-east1:100",
+				},
 			},
 			expected: &managerclient.Task{
 				ClusterID: "",
 				Enabled:   true,
-				ID:        "backup_task_id",
+				ID:        "",
 				Name:      "backup_task_name",
 				Properties: map[string]interface{}{
 					"location": []string{
@@ -322,7 +319,7 @@ func TestBackupTask_ToManager(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			managerClientTask, err := tc.backupTask.ToManager()
+			managerClientTask, err := tc.backupTaskSpec.ToManager()
 			if !equality.Semantic.DeepEqual(err, tc.expectedError) {
 				t.Errorf("expected error %v, got %v", tc.expectedError, err)
 			}
@@ -340,7 +337,7 @@ func TestBackupTask_FromManager(t *testing.T) {
 	tt := []struct {
 		name          string
 		managerTask   *managerclient.TaskListItem
-		expected      *BackupTask
+		expected      *BackupTaskStatus
 		expectedError error
 	}{
 		{
@@ -389,25 +386,26 @@ func TestBackupTask_FromManager(t *testing.T) {
 				Suspended:    false,
 				Type:         "backup",
 			},
-			expected: &BackupTask{
-				BackupTaskSpec: scyllav1.BackupTaskSpec{
-					SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-						Name:       "backup_task_name",
-						StartDate:  validDate,
+			expected: &BackupTaskStatus{
+				TaskStatus: scyllav1.TaskStatus{
+					SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
+						StartDate:  pointer.Ptr(validDate),
 						NumRetries: pointer.Ptr[int64](3),
-						Interval:   "7d",
+						Interval:   pointer.Ptr("7d"),
 						Cron:       pointer.Ptr("0 23 * * SAT"),
 						Timezone:   pointer.Ptr("CET"),
 					},
-					DC:               []string{"us-east1"},
-					Keyspace:         []string{"test"},
-					Location:         []string{"gcs:test"},
-					RateLimit:        []string{"10", "us-east1:100"},
-					Retention:        1,
-					SnapshotParallel: []string{"10", "us-east1:100"},
-					UploadParallel:   []string{"10", "us-east1:100"},
+					Name:  "backup_task_name",
+					ID:    pointer.Ptr("backup_task_id"),
+					Error: nil,
 				},
-				ID: "backup_task_id",
+				DC:               []string{"us-east1"},
+				Keyspace:         []string{"test"},
+				Location:         []string{"gcs:test"},
+				RateLimit:        []string{"10", "us-east1:100"},
+				Retention:        pointer.Ptr[int64](1),
+				SnapshotParallel: []string{"10", "us-east1:100"},
+				UploadParallel:   []string{"10", "us-east1:100"},
 			},
 			expectedError: nil,
 		},
@@ -418,14 +416,13 @@ func TestBackupTask_FromManager(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			bt := &BackupTask{}
-			err := bt.FromManager(tc.managerTask)
+			bts, err := NewBackupStatusFromManager(tc.managerTask)
 			if !equality.Semantic.DeepEqual(err, tc.expectedError) {
 				t.Errorf("expected error %v, got %v", tc.expectedError, err)
 			}
 
-			if !reflect.DeepEqual(bt, tc.expected) {
-				t.Errorf("expected and got backup task differ: %s", cmp.Diff(tc.expected, bt))
+			if !reflect.DeepEqual(bts, tc.expected) {
+				t.Errorf("expected and got backup task statuses differ: %s", cmp.Diff(tc.expected, bts))
 			}
 		})
 	}

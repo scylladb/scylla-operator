@@ -64,8 +64,7 @@ func TestGetPartitionUUID(t *testing.T) {
 		},
 	}
 
-	for i := range tt {
-		tc := tt[i]
+	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -137,8 +136,7 @@ func TestIsBlockDevice(t *testing.T) {
 		},
 	}
 
-	for i := range tt {
-		tc := tt[i]
+	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -215,8 +213,7 @@ func TestGetBlockDevice(t *testing.T) {
 		},
 	}
 
-	for i := range tt {
-		tc := tt[i]
+	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -309,8 +306,7 @@ func TestListBlockDevices(t *testing.T) {
 		},
 	}
 
-	for i := range tt {
-		tc := tt[i]
+	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

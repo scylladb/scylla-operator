@@ -10,14 +10,14 @@ func ForEach(length int, f func(i int) error) error {
 	errCh := make(chan error, length)
 	defer close(errCh)
 
-	for i := 0; i < length; i++ {
+	for i := range length {
 		go func(i int) {
 			errCh <- f(i)
 		}(i)
 	}
 
 	errs := make([]error, 0, length)
-	for i := 0; i < length; i++ {
+	for range length {
 		errs = append(errs, <-errCh)
 	}
 

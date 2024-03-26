@@ -306,8 +306,7 @@ func TestFindNodeConfigCondition(t *testing.T) {
 		},
 	}
 
-	for i := range tt {
-		tc := tt[i]
+	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -391,8 +390,7 @@ func TestGetScyllaHost(t *testing.T) {
 		},
 	}
 
-	for i := range tt {
-		tc := tt[i]
+	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -567,8 +565,7 @@ func TestGetScyllaNodeBroadcastAddress(t *testing.T) {
 		},
 	}
 
-	for i := range tt {
-		tc := tt[i]
+	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -756,8 +753,7 @@ func TestGetRequiredScyllaHosts(t *testing.T) {
 		},
 	}
 
-	for i := range tt {
-		tc := tt[i]
+	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

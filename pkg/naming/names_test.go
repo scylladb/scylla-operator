@@ -48,9 +48,7 @@ func Test_ImageToVersion(t *testing.T) {
 		},
 	}
 
-	for i := range tcs {
-		tc := tcs[i]
-
+	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

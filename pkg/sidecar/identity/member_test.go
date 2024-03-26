@@ -391,8 +391,7 @@ func TestMember_GetSeeds(t *testing.T) {
 		},
 	}
 
-	for i := range ts {
-		test := ts[i]
+	for _, test := range ts {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 

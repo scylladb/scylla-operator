@@ -43,8 +43,7 @@ func TestStripContainerID(t *testing.T) {
 		},
 	}
 
-	for i := range ts {
-		test := ts[i]
+	for _, test := range ts {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -185,8 +184,7 @@ func TestGetIRQCPUs(t *testing.T) {
 			expectedCpuSet: "0-5",
 		},
 	}
-	for i := range ts {
-		test := ts[i]
+	for _, test := range ts {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 

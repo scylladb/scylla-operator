@@ -54,7 +54,7 @@ func NewMultiDCDataInserter(dcHosts map[string][]string, options ...DataInserter
 		PartKey: []string{"id"},
 	})
 	data := make([]*TestData, 0, nRows)
-	for i := 0; i < nRows; i++ {
+	for i := range nRows {
 		data = append(data, &TestData{Id: i, Data: utilrand.String(32)})
 	}
 

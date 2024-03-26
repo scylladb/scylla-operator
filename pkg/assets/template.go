@@ -47,7 +47,7 @@ func IndentNext(spaceCount int, s string) string {
 func Repeat(s string, count int) string {
 	var sb strings.Builder
 	sb.Grow(len(s) * count)
-	for i := 0; i < count; i++ {
+	for range count {
 		sb.WriteString(s)
 	}
 	return sb.String()

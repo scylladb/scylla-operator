@@ -6,10 +6,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"math/rand"
 	"os"
-	"runtime"
-	"time"
 
 	cmd "github.com/scylladb/scylla-operator/pkg/cmd/releasenotes"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
@@ -20,8 +17,6 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rand.Seed(time.Now().UTC().UnixNano())
-
 	klog.InitFlags(flag.CommandLine)
 	err := flag.Set("logtostderr", "true")
 	if err != nil {
@@ -29,9 +24,6 @@ func main() {
 	}
 	defer klog.Flush()
 
-	if len(os.Getenv("GOMAXPROCS")) == 0 {
-		runtime.GOMAXPROCS(runtime.NumCPU())
-	}
 	streams := genericclioptions.IOStreams{
 		In:     os.Stdin,
 		Out:    os.Stdout,

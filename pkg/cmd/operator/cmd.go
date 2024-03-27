@@ -1,17 +1,33 @@
 package operator
 
 import (
+	"fmt"
+
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/spf13/cobra"
+	"go.uber.org/automaxprocs/maxprocs"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	"k8s.io/klog/v2"
 )
 
 func NewOperatorCommand(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return cmdutil.ReadFlagsFromEnv(naming.OperatorEnvVarPrefix, cmd)
+			_, err := maxprocs.Set(maxprocs.Logger(func(format string, v ...interface{}) {
+				klog.V(2).Infof(format, v)
+			}))
+			if err != nil {
+				return fmt.Errorf("can't set maxproc: %w", err)
+			}
+
+			err = cmdutil.ReadFlagsFromEnv(naming.OperatorEnvVarPrefix, cmd)
+			if err != nil {
+				return fmt.Errorf("can't read flags from env: %w", err)
+			}
+
+			return nil
 		},
 	}
 

@@ -4,10 +4,13 @@ package releasenotes
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/spf13/cobra"
+	"go.uber.org/automaxprocs/maxprocs"
+	"k8s.io/klog/v2"
 	"k8s.io/kubectl/pkg/util/templates"
 )
 
@@ -27,7 +30,19 @@ func NewGenGitReleaseNotesCommand(ctx context.Context, streams genericclioptions
 		`),
 
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return cmdutil.ReadFlagsFromEnv(EnvVarPrefix, cmd)
+			_, err := maxprocs.Set(maxprocs.Logger(func(format string, v ...interface{}) {
+				klog.V(2).Infof(format, v)
+			}))
+			if err != nil {
+				return fmt.Errorf("can't set maxproc: %w", err)
+			}
+
+			err = cmdutil.ReadFlagsFromEnv(EnvVarPrefix, cmd)
+			if err != nil {
+				return fmt.Errorf("can't read flags from env: %w", err)
+			}
+
+			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := o.Validate(); err != nil {

@@ -110,7 +110,7 @@ func TestManagerSynchronization(t *testing.T) {
 						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 							Name:      "my-repair",
 							StartDate: "2006-01-02T15:04:05Z",
-							Interval:  "0",
+							Interval:  pointer.Ptr("0"),
 						},
 						SmallTableThreshold: "1GiB",
 						DC:                  []string{"dc1"},
@@ -141,7 +141,7 @@ func TestManagerSynchronization(t *testing.T) {
 						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 							Name:      "my-backup",
 							StartDate: "2006-01-02T15:04:05Z",
-							Interval:  "0",
+							Interval:  pointer.Ptr("0"),
 						},
 						DC:               []string{"dc1"},
 						Keyspace:         []string{"keyspace1"},
@@ -174,7 +174,7 @@ func TestManagerSynchronization(t *testing.T) {
 						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 							Name:      "repair",
 							StartDate: "2006-01-02T15:04:05Z",
-							Interval:  "0",
+							Interval:  pointer.Ptr("0"),
 						},
 						SmallTableThreshold: "1GiB",
 						Intensity:           "0",
@@ -190,7 +190,7 @@ func TestManagerSynchronization(t *testing.T) {
 							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 								Name:      "repair",
 								StartDate: "2006-01-02T15:04:05Z",
-								Interval:  "0",
+								Interval:  pointer.Ptr("0"),
 							},
 							Intensity:           "666",
 							SmallTableThreshold: "1GiB",
@@ -210,7 +210,7 @@ func TestManagerSynchronization(t *testing.T) {
 							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 								Name:      "repair",
 								StartDate: "2006-01-02T15:04:05Z",
-								Interval:  "0",
+								Interval:  pointer.Ptr("0"),
 							},
 							Intensity:           "123",
 							SmallTableThreshold: "1GiB",
@@ -230,7 +230,7 @@ func TestManagerSynchronization(t *testing.T) {
 						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 							Name:      "repair",
 							StartDate: "2021-01-01T11:11:11Z",
-							Interval:  "0",
+							Interval:  pointer.Ptr("0"),
 						},
 						Intensity:           "666",
 						SmallTableThreshold: "1GiB",
@@ -246,7 +246,7 @@ func TestManagerSynchronization(t *testing.T) {
 							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 								Name:      "repair",
 								StartDate: "2021-01-01T11:11:11Z",
-								Interval:  "0",
+								Interval:  pointer.Ptr("0"),
 							},
 							Intensity:           "666",
 							SmallTableThreshold: "1GiB",
@@ -266,7 +266,7 @@ func TestManagerSynchronization(t *testing.T) {
 							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 								Name:      "repair",
 								StartDate: "2021-01-01T11:11:11Z",
-								Interval:  "0",
+								Interval:  pointer.Ptr("0"),
 							},
 							Intensity:           "666",
 							SmallTableThreshold: "1GiB",
@@ -296,7 +296,7 @@ func TestManagerSynchronization(t *testing.T) {
 							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 								Name:      "other-repair",
 								StartDate: "2006-01-02T15:04:05Z",
-								Interval:  "0",
+								Interval:  pointer.Ptr("0"),
 							},
 						},
 						ID: "other-repair-id",
@@ -314,7 +314,7 @@ func TestManagerSynchronization(t *testing.T) {
 						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 							Name:      "repair",
 							StartDate: "now",
-							Interval:  "0",
+							Interval:  pointer.Ptr("0"),
 						},
 						Intensity:           "666",
 						SmallTableThreshold: "1GiB",
@@ -330,7 +330,7 @@ func TestManagerSynchronization(t *testing.T) {
 							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 								Name:      "repair",
 								StartDate: "2021-01-01T11:11:11Z",
-								Interval:  "0",
+								Interval:  pointer.Ptr("0"),
 							},
 							Intensity:           "666",
 							SmallTableThreshold: "1GiB",
@@ -351,7 +351,7 @@ func TestManagerSynchronization(t *testing.T) {
 							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 								Name:      "repair",
 								StartDate: "2021-01-01T11:11:11Z",
-								Interval:  "0",
+								Interval:  pointer.Ptr("0"),
 							},
 							Intensity:           "666",
 							SmallTableThreshold: "1GiB",
@@ -370,7 +370,7 @@ func TestManagerSynchronization(t *testing.T) {
 						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 							Name:      "repair",
 							StartDate: "2006-01-02T15:04:05Z",
-							Interval:  "0",
+							Interval:  pointer.Ptr("0"),
 						},
 						Intensity:           "666",
 						SmallTableThreshold: "1GiB",
@@ -386,7 +386,7 @@ func TestManagerSynchronization(t *testing.T) {
 							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 								Name:      "repair",
 								StartDate: "2021-01-01T11:11:11Z",
-								Interval:  "0",
+								Interval:  pointer.Ptr("0"),
 							},
 							Intensity:           "666",
 							SmallTableThreshold: "1GiB",
@@ -406,7 +406,7 @@ func TestManagerSynchronization(t *testing.T) {
 							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 								Name:      "repair",
 								StartDate: "2021-01-01T11:11:11Z",
-								Interval:  "0",
+								Interval:  pointer.Ptr("0"),
 							},
 							Intensity:           "666",
 							SmallTableThreshold: "1GiB",

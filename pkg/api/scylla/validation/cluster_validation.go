@@ -4,12 +4,16 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
+	"time"
 
+	"github.com/robfig/cron/v3"
 	"github.com/scylladb/go-set/strset"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/semver"
+	"github.com/scylladb/scylla-operator/pkg/util/duration"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/sets"
 	apimachineryutilvalidation "k8s.io/apimachinery/pkg/util/validation"
@@ -34,6 +38,8 @@ var (
 		scyllav1.BroadcastAddressTypeServiceClusterIP,
 		scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
 	}
+
+	schedulerTaskSpecCronParseOptions = cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor
 )
 
 func ValidateScyllaCluster(c *scyllav1.ScyllaCluster) field.ErrorList {
@@ -180,6 +186,8 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 			allErrs = append(allErrs, field.Duplicate(fldPath.Child("backups").Index(i).Child("name"), b.Name))
 		}
 		managerTaskNames.Add(b.Name)
+
+		allErrs = append(allErrs, ValidateBackupTaskSpec(&b, fldPath.Child("backups").Index(i))...)
 	}
 
 	if spec.GenericUpgrade != nil {
@@ -219,6 +227,54 @@ func ValidateRepairTaskSpec(repairTaskSpec *scyllav1.RepairTaskSpec, fldPath *fi
 	_, err := strconv.ParseFloat(repairTaskSpec.Intensity, 64)
 	if err != nil {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("intensity"), repairTaskSpec.Intensity, "must be a float"))
+	}
+
+	allErrs = append(allErrs, ValidateSchedulerTaskSpec(&repairTaskSpec.SchedulerTaskSpec, fldPath)...)
+
+	return allErrs
+}
+
+func ValidateBackupTaskSpec(backupTaskSpec *scyllav1.BackupTaskSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	allErrs = append(allErrs, ValidateSchedulerTaskSpec(&backupTaskSpec.SchedulerTaskSpec, fldPath)...)
+
+	return allErrs
+}
+
+func ValidateSchedulerTaskSpec(schedulerTaskSpec *scyllav1.SchedulerTaskSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if schedulerTaskSpec.Cron != nil {
+		_, err := cron.NewParser(schedulerTaskSpecCronParseOptions).Parse(*schedulerTaskSpec.Cron)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("cron"), schedulerTaskSpec.Cron, err.Error()))
+		}
+
+		if strings.Contains(*schedulerTaskSpec.Cron, "TZ") {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("cron"), schedulerTaskSpec.Cron, "can't use TZ or CRON_TZ in cron, use timezone instead"))
+		}
+	}
+
+	if schedulerTaskSpec.Timezone != nil {
+		_, err := time.LoadLocation(*schedulerTaskSpec.Timezone)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("timezone"), schedulerTaskSpec.Timezone, err.Error()))
+		}
+	}
+
+	// We can only validate interval when cron is non-nil for backwards compatibility.
+	if schedulerTaskSpec.Interval != nil && schedulerTaskSpec.Cron != nil {
+		intervalDuration, err := duration.ParseDuration(*schedulerTaskSpec.Interval)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("interval"), schedulerTaskSpec.Interval, "valid units are d, h, m, s"))
+		} else if intervalDuration != 0 {
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("interval"), "can't be non-zero when cron is specified"))
+		}
+	}
+
+	if schedulerTaskSpec.Timezone != nil && schedulerTaskSpec.Cron == nil {
+		allErrs = append(allErrs, field.Forbidden(fldPath.Child("timezone"), "can't be set when cron is not specified"))
 	}
 
 	return allErrs

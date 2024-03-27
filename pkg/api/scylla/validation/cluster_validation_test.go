@@ -86,6 +86,121 @@ func TestValidateScyllaCluster(t *testing.T) {
 			expectedErrorString: `[spec.repairs[0].intensity: Invalid value: "": invalid intensity, it must be a float value, spec.backups[0].name: Duplicate value: "task-name"]`,
 		},
 		{
+			name: "invalid interval in manager repair task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name:     "task-name",
+						Interval: pointer.Ptr("invalid"),
+					},
+					Intensity: "1",
+				})
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "spec.repairs[0].interval",
+					BadValue: pointer.Ptr("invalid"),
+					Detail:   `invalid interval format, valid units are d, h, m, s`,
+				},
+			},
+			expectedErrorString: `spec.repairs[0].interval: Invalid value: "invalid": invalid interval format, valid units are d, h, m, s`,
+		},
+		{
+			name: "invalid interval in manager backup task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name:     "task-name",
+						Interval: pointer.Ptr("invalid"),
+					},
+				})
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "spec.backups[0].interval",
+					BadValue: pointer.Ptr("invalid"),
+					Detail:   `invalid interval format, valid units are d, h, m, s`,
+				},
+			},
+			expectedErrorString: `spec.backups[0].interval: Invalid value: "invalid": invalid interval format, valid units are d, h, m, s`,
+		},
+		{
+			name: "cron and zero interval in manager repair task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, []v1.RepairTaskSpec{
+					{
+						SchedulerTaskSpec: v1.SchedulerTaskSpec{
+							Name:     "task-name",
+							Interval: pointer.Ptr("0"),
+							Cron:     pointer.Ptr("0 23 * * SAT"),
+						},
+						Intensity: "1",
+					},
+					{
+						SchedulerTaskSpec: v1.SchedulerTaskSpec{
+							Name:     "other-task-name",
+							Interval: pointer.Ptr("0d"),
+							Cron:     pointer.Ptr("0 23 * * SAT"),
+						},
+						Intensity: "1",
+					},
+				}...)
+				return cluster
+			}(),
+			expectedErrorList:   field.ErrorList{},
+			expectedErrorString: "",
+		},
+		{
+			name: "cron and zero interval in manager backup task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Backups = append(cluster.Spec.Backups, []v1.BackupTaskSpec{
+					{
+						SchedulerTaskSpec: v1.SchedulerTaskSpec{
+							Name:     "task-name",
+							Interval: pointer.Ptr("0"),
+							Cron:     pointer.Ptr("0 23 * * SAT"),
+						},
+					},
+					{
+						SchedulerTaskSpec: v1.SchedulerTaskSpec{
+							Name:     "other-task-name",
+							Interval: pointer.Ptr("0d"),
+							Cron:     pointer.Ptr("0 23 * * SAT"),
+						},
+					},
+				}...)
+				return cluster
+			}(),
+			expectedErrorList:   field.ErrorList{},
+			expectedErrorString: "",
+		},
+		{
+			name: "mutually exclusive cron and non-zero interval set in manager backup task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name:     "task-name",
+						Interval: pointer.Ptr("7d"),
+						Cron:     pointer.Ptr("0 23 * * SAT"),
+					},
+				})
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.backups[0].interval", BadValue: pointer.Ptr("7d"), Detail: "interval can't be non-zero when 'cron' is specified"},
+			},
+			expectedErrorString: `spec.backups[0].interval: Invalid value: "7d": interval can't be non-zero when 'cron' is specified`,
+		},
+		{
 			name: "when CQL ingress is provided, domains must not be empty",
 			cluster: func() *v1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()

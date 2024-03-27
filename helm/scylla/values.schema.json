@@ -90,6 +90,10 @@
       "description": "backups specifies backup tasks in Scylla Manager. When Scylla Manager is not installed, these will be ignored.",
       "items": {
         "properties": {
+          "cron": {
+            "description": "cron specifies the task schedule as a cron expression. It supports an extended syntax including @monthly, @weekly, @daily, @midnight, @hourly, @every X[h|m|s].",
+            "type": "string"
+          },
           "dc": {
             "description": "dc is a list of datacenter glob patterns, e.g. 'dc1,!otherdc*' used to specify the DCs to include or exclude from backup.",
             "items": {
@@ -147,6 +151,10 @@
           },
           "startDate": {
             "description": "startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.",
+            "type": "string"
+          },
+          "timezone": {
+            "description": "timezone specifies the timezone of cron field.",
             "type": "string"
           },
           "uploadParallel": {
@@ -426,6 +434,10 @@
       "description": "repairs specify repair tasks in Scylla Manager. When Scylla Manager is not installed, these will be ignored.",
       "items": {
         "properties": {
+          "cron": {
+            "description": "cron specifies the task schedule as a cron expression. It supports an extended syntax including @monthly, @weekly, @daily, @midnight, @hourly, @every X[h|m|s].",
+            "type": "string"
+          },
           "dc": {
             "description": "dc is a list of datacenter glob patterns, e.g. 'dc1', '!otherdc*' used to specify the DCs to include or exclude from backup.",
             "items": {
@@ -480,6 +492,10 @@
           },
           "startDate": {
             "description": "startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.",
+            "type": "string"
+          },
+          "timezone": {
+            "description": "timezone specifies the timezone of cron field.",
             "type": "string"
           }
         },

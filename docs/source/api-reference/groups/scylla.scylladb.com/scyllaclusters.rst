@@ -290,6 +290,9 @@ object
    * - Property
      - Type
      - Description
+   * - cron
+     - string
+     - cron specifies the task schedule as a cron expression. It supports an extended syntax including @monthly, @weekly, @daily, @midnight, @hourly, @every X[h|m|s].
    * - dc
      - array (string)
      - dc is a list of datacenter glob patterns, e.g. 'dc1,!otherdc*' used to specify the DCs to include or exclude from backup.
@@ -320,6 +323,9 @@ object
    * - startDate
      - string
      - startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.
+   * - timezone
+     - string
+     - timezone specifies the timezone of cron field.
    * - uploadParallel
      - array (string)
      - uploadParallel is a list of upload parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set the limit is global (e.g. 'dc1:2,5') the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters.
@@ -4661,6 +4667,9 @@ object
    * - Property
      - Type
      - Description
+   * - cron
+     - string
+     - cron specifies the task schedule as a cron expression. It supports an extended syntax including @monthly, @weekly, @daily, @midnight, @hourly, @every X[h|m|s].
    * - dc
      - array (string)
      - dc is a list of datacenter glob patterns, e.g. 'dc1', '!otherdc*' used to specify the DCs to include or exclude from backup.
@@ -4694,6 +4703,9 @@ object
    * - startDate
      - string
      - startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.
+   * - timezone
+     - string
+     - timezone specifies the timezone of cron field.
 
 .. _api-scylla.scylladb.com-scyllaclusters-v1-.status:
 
@@ -4771,6 +4783,9 @@ object
    * - Property
      - Type
      - Description
+   * - cron
+     - string
+     - cron specifies the task schedule as a cron expression. It supports an extended syntax including @monthly, @weekly, @daily, @midnight, @hourly, @every X[h|m|s].
    * - dc
      - array (string)
      - dc is a list of datacenter glob patterns, e.g. 'dc1,!otherdc*' used to specify the DCs to include or exclude from backup.
@@ -4807,6 +4822,9 @@ object
    * - startDate
      - string
      - startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.
+   * - timezone
+     - string
+     - timezone specifies the timezone of cron field.
    * - uploadParallel
      - array (string)
      - uploadParallel is a list of upload parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set the limit is global (e.g. 'dc1:2,5') the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters.
@@ -4888,6 +4906,9 @@ object
    * - Property
      - Type
      - Description
+   * - cron
+     - string
+     - cron specifies the task schedule as a cron expression. It supports an extended syntax including @monthly, @weekly, @daily, @midnight, @hourly, @every X[h|m|s].
    * - dc
      - array (string)
      - dc is a list of datacenter glob patterns, e.g. 'dc1', '!otherdc*' used to specify the DCs to include or exclude from backup.
@@ -4927,6 +4948,9 @@ object
    * - startDate
      - string
      - startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.
+   * - timezone
+     - string
+     - timezone specifies the timezone of cron field.
 
 .. _api-scylla.scylladb.com-scyllaclusters-v1-.status.upgrade:
 

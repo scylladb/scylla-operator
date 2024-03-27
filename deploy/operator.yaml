@@ -1146,6 +1146,9 @@ spec:
                   description: backups specifies backup tasks in Scylla Manager. When Scylla Manager is not installed, these will be ignored.
                   items:
                     properties:
+                      cron:
+                        description: cron specifies the task schedule as a cron expression. It supports an extended syntax including @monthly, @weekly, @daily, @midnight, @hourly, @every X[h|m|s].
+                        type: string
                       dc:
                         description: dc is a list of datacenter glob patterns, e.g. 'dc1,!otherdc*' used to specify the DCs to include or exclude from backup.
                         items:
@@ -1189,6 +1192,9 @@ spec:
                         type: array
                       startDate:
                         description: startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.
+                        type: string
+                      timezone:
+                        description: timezone specifies the timezone of cron field.
                         type: string
                       uploadParallel:
                         description: 'uploadParallel is a list of upload parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set the limit is global (e.g. ''dc1:2,5'') the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters.'
@@ -3102,6 +3108,9 @@ spec:
                   description: repairs specify repair tasks in Scylla Manager. When Scylla Manager is not installed, these will be ignored.
                   items:
                     properties:
+                      cron:
+                        description: cron specifies the task schedule as a cron expression. It supports an extended syntax including @monthly, @weekly, @daily, @midnight, @hourly, @every X[h|m|s].
+                        type: string
                       dc:
                         description: dc is a list of datacenter glob patterns, e.g. 'dc1', '!otherdc*' used to specify the DCs to include or exclude from backup.
                         items:
@@ -3145,6 +3154,9 @@ spec:
                       startDate:
                         description: startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.
                         type: string
+                      timezone:
+                        description: timezone specifies the timezone of cron field.
+                        type: string
                     type: object
                   type: array
                 repository:
@@ -3174,6 +3186,9 @@ spec:
                   description: backups reflects status of backup tasks.
                   items:
                     properties:
+                      cron:
+                        description: cron specifies the task schedule as a cron expression. It supports an extended syntax including @monthly, @weekly, @daily, @midnight, @hourly, @every X[h|m|s].
+                        type: string
                       dc:
                         description: dc is a list of datacenter glob patterns, e.g. 'dc1,!otherdc*' used to specify the DCs to include or exclude from backup.
                         items:
@@ -3223,6 +3238,9 @@ spec:
                         type: array
                       startDate:
                         description: startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.
+                        type: string
+                      timezone:
+                        description: timezone specifies the timezone of cron field.
                         type: string
                       uploadParallel:
                         description: 'uploadParallel is a list of upload parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set the limit is global (e.g. ''dc1:2,5'') the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters.'
@@ -3345,6 +3363,9 @@ spec:
                   description: repairs reflects status of repair tasks.
                   items:
                     properties:
+                      cron:
+                        description: cron specifies the task schedule as a cron expression. It supports an extended syntax including @monthly, @weekly, @daily, @midnight, @hourly, @every X[h|m|s].
+                        type: string
                       dc:
                         description: dc is a list of datacenter glob patterns, e.g. 'dc1', '!otherdc*' used to specify the DCs to include or exclude from backup.
                         items:
@@ -3393,6 +3414,9 @@ spec:
                         type: string
                       startDate:
                         description: startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.
+                        type: string
+                      timezone:
+                        description: timezone specifies the timezone of cron field.
                         type: string
                     type: object
                   type: array

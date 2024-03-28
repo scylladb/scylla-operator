@@ -16,8 +16,10 @@ import (
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/kubernetes"
@@ -201,6 +203,22 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 				condType: "ConfigControllerDegraded",
 				status:   metav1.ConditionFalse,
 			},
+			{
+				condType: "EndpointSliceControllerProgressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "EndpointSliceControllerDegraded",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "EndpointsControllerProgressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "EndpointsControllerDegraded",
+				status:   metav1.ConditionFalse,
+			},
 		}
 
 		if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) || sc.Spec.Alternator != nil {
@@ -248,6 +266,67 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 		o.Expect(sc.Status.Racks[r.Name].ReadyMembers).To(o.Equal(s.Status.ReadyReplicas))
 		o.Expect(sc.Status.Racks[r.Name].UpdatedMembers).NotTo(o.BeNil())
 		o.Expect(*sc.Status.Racks[r.Name].UpdatedMembers).To(o.Equal(s.Status.UpdatedReplicas))
+
+		for idx := 0; idx < int(r.Members); idx++ {
+			serviceName := naming.MemberServiceName(r, sc, idx)
+			service, err := kubeClient.CoreV1().Services(sc.Namespace).Get(ctx, serviceName, metav1.GetOptions{})
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			pod, err := kubeClient.CoreV1().Pods(sc.Namespace).Get(ctx, service.Name, metav1.GetOptions{})
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			o.Expect(pod.Status.PodIP).ToNot(o.BeEmpty())
+
+			endpointSlices, err := kubeClient.DiscoveryV1().EndpointSlices(sc.Namespace).List(ctx, metav1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(map[string]string{
+					discoveryv1.LabelManagedBy:   naming.OperatorAppNameWithDomain,
+					discoveryv1.LabelServiceName: service.Name,
+				}).String(),
+			})
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			o.Expect(endpointSlices.Items).ToNot(o.BeEmpty())
+
+			for _, es := range endpointSlices.Items {
+				o.Expect(es.Endpoints).NotTo(o.BeEmpty())
+
+				for _, ep := range es.Endpoints {
+					o.Expect(ep.Addresses).To(o.HaveLen(1))
+					o.Expect(ep.Addresses[0]).To(o.Equal(pod.Status.PodIP))
+
+					o.Expect(ep.Conditions.Ready).NotTo(o.BeNil())
+					o.Expect(*ep.Conditions.Ready).To(o.BeTrue())
+
+					o.Expect(ep.Conditions.Serving).NotTo(o.BeNil())
+					o.Expect(*ep.Conditions.Serving).To(o.BeTrue())
+
+					o.Expect(ep.NodeName).NotTo(o.BeNil())
+					o.Expect(*ep.NodeName).To(o.Equal(pod.Spec.NodeName))
+
+					o.Expect(ep.TargetRef).NotTo(o.BeNil())
+					o.Expect(ep.TargetRef.Namespace).To(o.Equal(pod.Namespace))
+					o.Expect(ep.TargetRef.Name).To(o.Equal(pod.Name))
+					o.Expect(ep.TargetRef.UID).To(o.Equal(pod.UID))
+				}
+			}
+
+			endpoints, err := kubeClient.CoreV1().Endpoints(sc.Namespace).Get(ctx, service.Name, metav1.GetOptions{})
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			o.Expect(endpoints.Subsets).NotTo(o.BeEmpty())
+
+			for _, subset := range endpoints.Subsets {
+				o.Expect(subset.NotReadyAddresses).To(o.BeEmpty())
+
+				o.Expect(subset.Addresses).To(o.HaveLen(1))
+				o.Expect(subset.Addresses[0].IP).To(o.Equal(pod.Status.PodIP))
+				o.Expect(*subset.Addresses[0].NodeName).To(o.Equal(pod.Spec.NodeName))
+				o.Expect(subset.Addresses[0].TargetRef).NotTo(o.BeNil())
+				o.Expect(subset.Addresses[0].TargetRef.Namespace).To(o.Equal(pod.Namespace))
+				o.Expect(subset.Addresses[0].TargetRef.Name).To(o.Equal(pod.Name))
+				o.Expect(subset.Addresses[0].TargetRef.UID).To(o.Equal(pod.UID))
+			}
+		}
 	}
 
 	if sc.Status.Upgrade != nil {

@@ -54,7 +54,8 @@ func TestValidateScyllaCluster(t *testing.T) {
 			cluster: func() *v1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
 				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
-					Intensity: "100Mib",
+					Intensity:           "100Mib",
+					SmallTableThreshold: "1GiB",
 				})
 				return cluster
 			}(),
@@ -64,7 +65,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 			expectedErrorString: `spec.repairs[0].intensity: Invalid value: "100Mib": invalid intensity, it must be a float value`,
 		},
 		{
-			name: "invalid intensity in repair task spec && non-unique names in manager tasks spec",
+			name: "non-unique names in manager tasks spec",
 			cluster: func() *v1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
 				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
@@ -76,14 +77,85 @@ func TestValidateScyllaCluster(t *testing.T) {
 					SchedulerTaskSpec: v1.SchedulerTaskSpec{
 						Name: "task-name",
 					},
+					Intensity:           "1",
+					SmallTableThreshold: "1GiB",
 				})
 				return cluster
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.repairs[0].intensity", BadValue: "", Detail: "invalid intensity, it must be a float value"},
 				&field.Error{Type: field.ErrorTypeDuplicate, Field: "spec.backups[0].name", BadValue: "task-name"},
 			},
-			expectedErrorString: `[spec.repairs[0].intensity: Invalid value: "": invalid intensity, it must be a float value, spec.backups[0].name: Duplicate value: "task-name"]`,
+			expectedErrorString: `spec.backups[0].name: Duplicate value: "task-name"`,
+		},
+		{
+			name: "invalid startDate in manager repair task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name:      "task-name",
+						StartDate: pointer.Ptr("invalid"),
+					},
+					Intensity:           "1",
+					SmallTableThreshold: "1GiB",
+				})
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "spec.repairs[0].startDate",
+					BadValue: pointer.Ptr("invalid"),
+					Detail:   `invalid format, required format is RFC3339 or now[+duration], valid units are d, h, m, s`,
+				},
+			},
+			expectedErrorString: `spec.repairs[0].startDate: Invalid value: "invalid": invalid format, required format is RFC3339 or now[+duration], valid units are d, h, m, s`,
+		},
+		{
+			name: "invalid interval in manager repair task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name:     "task-name",
+						Interval: pointer.Ptr("invalid"),
+					},
+					Intensity:           "1",
+					SmallTableThreshold: "1GiB",
+				})
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "spec.repairs[0].interval",
+					BadValue: pointer.Ptr("invalid"),
+					Detail:   `invalid format, valid units are d, h, m, s`,
+				},
+			},
+			expectedErrorString: `spec.repairs[0].interval: Invalid value: "invalid": invalid format, valid units are d, h, m, s`,
+		},
+		{
+			name: "invalid interval in manager backup task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name:     "task-name",
+						Interval: pointer.Ptr("invalid"),
+					},
+				})
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "spec.backups[0].interval",
+					BadValue: pointer.Ptr("invalid"),
+					Detail:   `invalid format, valid units are d, h, m, s`,
+				},
+			},
+			expectedErrorString: `spec.backups[0].interval: Invalid value: "invalid": invalid format, valid units are d, h, m, s`,
 		},
 		{
 			name: "when CQL ingress is provided, domains must not be empty",

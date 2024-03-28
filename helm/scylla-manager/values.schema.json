@@ -209,7 +209,6 @@
                 "type": "array"
               },
               "interval": {
-                "default": "0",
                 "description": "interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.",
                 "type": "string"
               },
@@ -258,7 +257,6 @@
                 "type": "array"
               },
               "startDate": {
-                "default": "now",
                 "description": "startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.",
                 "type": "string"
               },
@@ -560,7 +558,6 @@
                 "type": "string"
               },
               "interval": {
-                "default": "0",
                 "description": "interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.",
                 "type": "string"
               },
@@ -593,7 +590,6 @@
                 "type": "string"
               },
               "startDate": {
-                "default": "now",
                 "description": "startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.",
                 "type": "string"
               }

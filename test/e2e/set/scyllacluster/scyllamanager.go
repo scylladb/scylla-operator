@@ -65,15 +65,13 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		scCopy := sc.DeepCopy()
 		scCopy.Spec.Repairs = append(scCopy.Spec.Repairs, scyllav1.RepairTaskSpec{
 			SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-				Name:     "weekly",
-				Interval: "7d",
+				Name: "repair",
 			},
 			Parallel: 123,
 		})
 		scCopy.Spec.Backups = append(scCopy.Spec.Backups, scyllav1.BackupTaskSpec{
 			SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-				Name:     "daily",
-				Interval: "1d",
+				Name: "backup",
 			},
 			Location: []string{"s3:bucket"},
 		})
@@ -84,11 +82,10 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(ctx, sc.Name, types.MergePatchType, patchData, metav1.PatchOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(sc.Spec.Repairs).To(o.HaveLen(1))
-		o.Expect(sc.Spec.Repairs[0].Name).To(o.Equal("weekly"))
-		o.Expect(sc.Spec.Repairs[0].Interval).To(o.Equal("7d"))
+		o.Expect(sc.Spec.Repairs[0].Name).To(o.Equal("repair"))
 		o.Expect(sc.Spec.Repairs[0].Parallel).To(o.Equal(int64(123)))
 		o.Expect(sc.Spec.Backups).To(o.HaveLen(1))
-		o.Expect(sc.Spec.Backups[0].Name).To(o.Equal("daily"))
+		o.Expect(sc.Spec.Backups[0].Name).To(o.Equal("backup"))
 
 		framework.By("Waiting for ScyllaCluster to sync tasks with Scylla Manager")
 		repairTaskScheduledCond := func(cluster *scyllav1.ScyllaCluster) (bool, error) {
@@ -123,7 +120,6 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(sc.Status.Repairs).To(o.HaveLen(1))
 		o.Expect(sc.Status.Repairs[0].Name).To(o.Equal(sc.Spec.Repairs[0].Name))
-		o.Expect(sc.Status.Repairs[0].Interval).To(o.Equal(sc.Spec.Repairs[0].Interval))
 		o.Expect(sc.Status.Repairs[0].Parallel).To(o.Equal(sc.Spec.Repairs[0].Parallel))
 
 		managerClient, err := utils.GetManagerClient(ctx, f.KubeAdminClient().CoreV1())
@@ -136,7 +132,6 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		repairTask := tasks.TaskListItemSlice[0]
 		o.Expect(repairTask.Name).To(o.Equal(sc.Status.Repairs[0].Name))
 		o.Expect(repairTask.ID).To(o.Equal(sc.Status.Repairs[0].ID))
-		o.Expect(repairTask.Schedule.Interval).To(o.Equal(sc.Status.Repairs[0].Interval))
 		o.Expect(repairTask.Properties.(map[string]interface{})["parallel"].(json.Number).Int64()).To(o.Equal(sc.Status.Repairs[0].Parallel))
 
 		framework.By("Updating the repair task for ScyllaCluster")
@@ -174,7 +169,6 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(sc.Status.Repairs).To(o.HaveLen(1))
 		o.Expect(sc.Status.Repairs[0].Name).To(o.Equal(sc.Spec.Repairs[0].Name))
-		o.Expect(sc.Status.Repairs[0].Interval).To(o.Equal(sc.Spec.Repairs[0].Interval))
 		o.Expect(sc.Status.Repairs[0].Parallel).To(o.Equal(sc.Spec.Repairs[0].Parallel))
 
 		framework.By("Verifying that updated repair task properties were synchronized")
@@ -184,7 +178,6 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		repairTask = tasks.TaskListItemSlice[0]
 		o.Expect(repairTask.Name).To(o.Equal(sc.Status.Repairs[0].Name))
 		o.Expect(repairTask.ID).To(o.Equal(sc.Status.Repairs[0].ID))
-		o.Expect(repairTask.Schedule.Interval).To(o.Equal(sc.Status.Repairs[0].Interval))
 		o.Expect(repairTask.Properties.(map[string]interface{})["parallel"].(json.Number).Int64()).To(o.Equal(sc.Status.Repairs[0].Parallel))
 
 		// Sanity check to avoid panics in the polling func.

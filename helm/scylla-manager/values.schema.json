@@ -210,7 +210,7 @@
               },
               "interval": {
                 "default": "0",
-                "description": "interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.",
+                "description": "interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s. Deprecated: please use cron instead.",
                 "type": "string"
               },
               "keyspace": {
@@ -561,7 +561,7 @@
               },
               "interval": {
                 "default": "0",
-                "description": "interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.",
+                "description": "interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s. Deprecated: please use cron instead.",
                 "type": "string"
               },
               "keyspace": {

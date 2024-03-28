@@ -35,9 +35,9 @@ func TestRepairTask_ToManager(t *testing.T) {
 				RepairTaskSpec: scyllav1.RepairTaskSpec{
 					SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 						Name:       "repair_task_name",
-						StartDate:  validDate,
+						StartDate:  pointer.Ptr(validDate),
 						NumRetries: pointer.Ptr[int64](3),
-						Interval:   "7d",
+						Interval:   pointer.Ptr("7d"),
 					},
 					DC:                  []string{"us-east1"},
 					FailFast:            false,
@@ -81,9 +81,9 @@ func TestRepairTask_ToManager(t *testing.T) {
 				RepairTaskSpec: scyllav1.RepairTaskSpec{
 					SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 						Name:       "repair_task_name",
-						StartDate:  validDate,
+						StartDate:  pointer.Ptr(validDate),
 						NumRetries: pointer.Ptr[int64](3),
-						Interval:   "7d",
+						Interval:   pointer.Ptr("7d"),
 					},
 					DC:                  []string{"us-east1"},
 					FailFast:            true,
@@ -190,9 +190,9 @@ func TestRepairTask_FromManager(t *testing.T) {
 				RepairTaskSpec: scyllav1.RepairTaskSpec{
 					SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 						Name:       "repair_task_name",
-						StartDate:  validDate,
+						StartDate:  pointer.Ptr(validDate),
 						NumRetries: pointer.Ptr[int64](3),
-						Interval:   "7d",
+						Interval:   pointer.Ptr("7d"),
 					},
 					DC:                  []string{"us-east1"},
 					FailFast:            true,
@@ -241,9 +241,9 @@ func TestBackupTask_ToManager(t *testing.T) {
 				BackupTaskSpec: scyllav1.BackupTaskSpec{
 					SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 						Name:       "backup_task_name",
-						StartDate:  validDate,
+						StartDate:  pointer.Ptr(validDate),
 						NumRetries: pointer.Ptr[int64](3),
-						Interval:   "7d",
+						Interval:   pointer.Ptr("7d"),
 					},
 					DC:       []string{"us-east1"},
 					Keyspace: []string{"test"},
@@ -376,9 +376,9 @@ func TestBackupTask_FromManager(t *testing.T) {
 				BackupTaskSpec: scyllav1.BackupTaskSpec{
 					SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 						Name:       "backup_task_name",
-						StartDate:  validDate,
+						StartDate:  pointer.Ptr(validDate),
 						NumRetries: pointer.Ptr[int64](3),
-						Interval:   "7d",
+						Interval:   pointer.Ptr("7d"),
 					},
 					DC:               []string{"us-east1"},
 					Keyspace:         []string{"test"},

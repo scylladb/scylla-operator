@@ -59,6 +59,66 @@ spec:
       regex: '([0-9]+\.[0-9]+)(\.?[0-9]*).*'
       replacement: '$1$2'
       targetLabel: svr
+    - sourceLabels: [__name__, quantile]
+      regex: '(scylla_storage_proxy_coordinator_write_latency_summary;0.990*)'
+      targetLabel: __name__
+      replacement: 'wlatencyp99'
+    - sourceLabels: [__name__, quantile]
+      regex: '(scylla_storage_proxy_coordinator_write_latency_summary;0.950*)'
+      targetLabel: __name__
+      replacement: 'wlatencyp95'
+    - sourceLabels: [__name__, quantile]
+      regex: '(scylla_storage_proxy_coordinator_write_latency_summary;0.50*)'
+      targetLabel: __name__
+      replacement: 'wlatencya'
+    - sourceLabels: [__name__, quantile]
+      regex: '(scylla_storage_proxy_coordinator_read_latency_summary;0.990*)'
+      targetLabel: __name__
+      replacement: 'rlatencyp99'
+    - sourceLabels: [__name__, quantile]
+      regex: '(scylla_storage_proxy_coordinator_read_latency_summary;0.950*)'
+      targetLabel: __name__
+      replacement: 'rlatencyp95'
+    - sourceLabels: [__name__, quantile]
+      regex: '(scylla_storage_proxy_coordinator_read_latency_summary;0.50*)'
+      targetLabel: __name__
+      replacement: 'rlatencya'
+    - sourceLabels: [__name__, quantile]
+      regex: '(scylla_storage_proxy_coordinator_cas_write_latency_summary;0.950*)'
+      targetLabel: __name__
+      replacement: 'caswlatencyp95'
+    - sourceLabels: [__name__, quantile]
+      regex: '(scylla_storage_proxy_coordinator_cas_write_latency_summary;0.990*)'
+      targetLabel: __name__
+      replacement: 'caswlatencyp99'
+    - sourceLabels: [__name__, quantile]
+      regex: '(scylla_storage_proxy_coordinator_cas_write_latency_summary;0.50*)'
+      targetLabel: __name__
+      replacement: 'caswlatencya'
+    - sourceLabels: [__name__, quantile]
+      regex: '(scylla_storage_proxy_coordinator_cas_read_latency_summary;0.950*)'
+      targetLabel: __name__
+      replacement: 'casrlatencyp95'
+    - sourceLabels: [__name__, quantile]
+      regex: '(scylla_storage_proxy_coordinator_cas_read_latency_summary;0.990*)'
+      targetLabel: __name__
+      replacement: 'casrlatencyp99'
+    - sourceLabels: [__name__, quantile]
+      regex: '(scylla_storage_proxy_coordinator_cas_read_latency_summary;0.50*)'
+      targetLabel: __name__
+      replacement: 'casrlatencya'
+    - sourceLabels: [__name__]
+      regex: '(.latency..?.?|cas.latency..?.?)'
+      targetLabel: by
+      replacement: 'instance,shard'
+    - sourceLabels: [__name__]
+      regex: '(scylla_node_operation_mode)'
+      replacement: '1'
+      targetLabel: dd
+    - sourceLabels: [scheduling_group_name]
+      regex: '(atexit|gossip|mem_compaction|memtable|streaming|background_reclaim|compaction|main|memtable_to_cache)'
+      replacement: ''
+      targetLabel: dd
     relabelings:
     - sourceLabels: [__address__]
       regex:  '(.*):.+'

@@ -15,10 +15,6 @@ spec:
       labels:
         scylla-operator.scylladb.com/deployment-name: "{{ .scyllaDBMonitoringName }}-grafana"
     spec:
-      securityContext:
-        fsGroup: 472
-        supplementalGroups:
-        - 0
       affinity:
         {{- .affinity | toYAML | nindent 8 }}
       tolerations:
@@ -124,6 +120,15 @@ spec:
           mountPath: /var/run/configmaps/prometheus-serving-ca
         - name: grafana-storage
           mountPath: /var/lib/grafana
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+          runAsNonRoot: true
+          runAsUser: 472
+          runAsGroup: 472
+          capabilities:
+            drop:
+            - ALL
       volumes:
       - name: decompressed-configmaps
         emptyDir:
@@ -152,3 +157,10 @@ spec:
       - name: grafana-storage
         emptyDir:
           sizeLimit: 100Mi
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 472
+        runAsGroup: 472
+        fsGroup: 472
+        seccompProfile:
+          type: RuntimeDefault

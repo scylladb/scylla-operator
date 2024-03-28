@@ -1146,13 +1146,15 @@ spec:
                   description: backups specifies backup tasks in Scylla Manager. When Scylla Manager is not installed, these will be ignored.
                   items:
                     properties:
+                      cron:
+                        description: cron specifies the task schedule as a cron expression. It supports an extended syntax including @monthly, @weekly, @daily, @midnight, @hourly, @every X[h|m|s].
+                        type: string
                       dc:
                         description: dc is a list of datacenter glob patterns, e.g. 'dc1,!otherdc*' used to specify the DCs to include or exclude from backup.
                         items:
                           type: string
                         type: array
                       interval:
-                        default: "0"
                         description: interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
                         type: string
                       keyspace:
@@ -1191,6 +1193,9 @@ spec:
                       startDate:
                         default: now
                         description: startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.
+                        type: string
+                      timezone:
+                        description: timezone specifies the timezone of cron field.
                         type: string
                       uploadParallel:
                         description: 'uploadParallel is a list of upload parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set the limit is global (e.g. ''dc1:2,5'') the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters.'
@@ -3104,6 +3109,9 @@ spec:
                   description: repairs specify repair tasks in Scylla Manager. When Scylla Manager is not installed, these will be ignored.
                   items:
                     properties:
+                      cron:
+                        description: cron specifies the task schedule as a cron expression. It supports an extended syntax including @monthly, @weekly, @daily, @midnight, @hourly, @every X[h|m|s].
+                        type: string
                       dc:
                         description: dc is a list of datacenter glob patterns, e.g. 'dc1', '!otherdc*' used to specify the DCs to include or exclude from backup.
                         items:
@@ -3120,7 +3128,6 @@ spec:
                         description: intensity indicates how many token ranges (per shard) to repair in a single Scylla repair job. By default this is 1. If you set it to 0 the number of token ranges is adjusted to the maximum supported by node (see max_repair_ranges_in_parallel in Scylla logs). Valid values are 0 and integers >= 1. Higher values will result in increased cluster load and slightly faster repairs. Changing the intensity impacts repair granularity if you need to resume it, the higher the value the more work on resume. For Scylla clusters that *do not support row-level repair*, intensity can be a decimal between (0,1). In that case it specifies percent of shards that can be repaired in parallel on a repair master node. For Scylla clusters that are row-level repair enabled, setting intensity below 1 has the same effect as setting intensity 1.
                         type: string
                       interval:
-                        default: "0"
                         description: interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
                         type: string
                       keyspace:
@@ -3148,6 +3155,9 @@ spec:
                       startDate:
                         default: now
                         description: startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.
+                        type: string
+                      timezone:
+                        description: timezone specifies the timezone of cron field.
                         type: string
                     type: object
                   type: array
@@ -3178,6 +3188,9 @@ spec:
                   description: backups reflects status of backup tasks.
                   items:
                     properties:
+                      cron:
+                        description: cron specifies the task schedule as a cron expression. It supports an extended syntax including @monthly, @weekly, @daily, @midnight, @hourly, @every X[h|m|s].
+                        type: string
                       dc:
                         description: dc is a list of datacenter glob patterns, e.g. 'dc1,!otherdc*' used to specify the DCs to include or exclude from backup.
                         items:
@@ -3190,7 +3203,6 @@ spec:
                         description: id is the identification number of the backup task.
                         type: string
                       interval:
-                        default: "0"
                         description: interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
                         type: string
                       keyspace:
@@ -3229,6 +3241,9 @@ spec:
                       startDate:
                         default: now
                         description: startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.
+                        type: string
+                      timezone:
+                        description: timezone specifies the timezone of cron field.
                         type: string
                       uploadParallel:
                         description: 'uploadParallel is a list of upload parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set the limit is global (e.g. ''dc1:2,5'') the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters.'
@@ -3351,6 +3366,9 @@ spec:
                   description: repairs reflects status of repair tasks.
                   items:
                     properties:
+                      cron:
+                        description: cron specifies the task schedule as a cron expression. It supports an extended syntax including @monthly, @weekly, @daily, @midnight, @hourly, @every X[h|m|s].
+                        type: string
                       dc:
                         description: dc is a list of datacenter glob patterns, e.g. 'dc1', '!otherdc*' used to specify the DCs to include or exclude from backup.
                         items:
@@ -3373,7 +3391,6 @@ spec:
                         description: intensity indicates how many token ranges (per shard) to repair in a single Scylla repair job. By default this is 1. If you set it to 0 the number of token ranges is adjusted to the maximum supported by node (see max_repair_ranges_in_parallel in Scylla logs). Valid values are 0 and integers >= 1. Higher values will result in increased cluster load and slightly faster repairs. Changing the intensity impacts repair granularity if you need to resume it, the higher the value the more work on resume. For Scylla clusters that *do not support row-level repair*, intensity can be a decimal between (0,1). In that case it specifies percent of shards that can be repaired in parallel on a repair master node. For Scylla clusters that are row-level repair enabled, setting intensity below 1 has the same effect as setting intensity 1.
                         type: string
                       interval:
-                        default: "0"
                         description: interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
                         type: string
                       keyspace:
@@ -3401,6 +3418,9 @@ spec:
                       startDate:
                         default: now
                         description: startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.
+                        type: string
+                      timezone:
+                        description: timezone specifies the timezone of cron field.
                         type: string
                     type: object
                   type: array

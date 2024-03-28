@@ -10,6 +10,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/semver"
+	"github.com/scylladb/scylla-operator/pkg/util/duration"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/sets"
 	apimachineryutilvalidation "k8s.io/apimachinery/pkg/util/validation"
@@ -172,10 +173,7 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 		}
 		managerTaskNames.Add(r.Name)
 
-		_, err := strconv.ParseFloat(r.Intensity, 64)
-		if err != nil {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("repairs").Index(i).Child("intensity"), r.Intensity, "invalid intensity, it must be a float value"))
-		}
+		allErrs = append(allErrs, ValidateRepairTaskSpec(&r, fldPath.Child("repairs").Index(i))...)
 	}
 
 	for i, b := range spec.Backups {
@@ -183,6 +181,8 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 			allErrs = append(allErrs, field.Duplicate(fldPath.Child("backups").Index(i).Child("name"), b.Name))
 		}
 		managerTaskNames.Add(b.Name)
+
+		allErrs = append(allErrs, ValidateBackupTaskSpec(&b, fldPath.Child("backups").Index(i))...)
 	}
 
 	if spec.GenericUpgrade != nil {
@@ -211,6 +211,41 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 
 	if spec.MinReadySeconds != nil && *spec.MinReadySeconds < 0 {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("minReadySeconds"), *spec.MinReadySeconds, "must be non-negative integer"))
+	}
+
+	return allErrs
+}
+
+func ValidateRepairTaskSpec(repairTaskSpec *scyllav1.RepairTaskSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	_, err := strconv.ParseFloat(repairTaskSpec.Intensity, 64)
+	if err != nil {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("intensity"), repairTaskSpec.Intensity, "invalid intensity, it must be a float value"))
+	}
+
+	allErrs = append(allErrs, ValidateSchedulerTaskSpec(&repairTaskSpec.SchedulerTaskSpec, fldPath)...)
+
+	return allErrs
+}
+
+func ValidateBackupTaskSpec(backupTaskSpec *scyllav1.BackupTaskSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	allErrs = append(allErrs, ValidateSchedulerTaskSpec(&backupTaskSpec.SchedulerTaskSpec, fldPath)...)
+
+	return allErrs
+}
+
+func ValidateSchedulerTaskSpec(schedulerTaskSpec *scyllav1.SchedulerTaskSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if schedulerTaskSpec.Interval != nil {
+		if intervalDuration, err := duration.ParseDuration(*schedulerTaskSpec.Interval); err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("interval"), schedulerTaskSpec.Interval, "invalid interval format, valid units are d, h, m, s"))
+		} else if schedulerTaskSpec.Cron != nil && intervalDuration != 0 {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("interval"), schedulerTaskSpec.Interval, "interval can't be non-zero when 'cron' is specified"))
+		}
 	}
 
 	return allErrs

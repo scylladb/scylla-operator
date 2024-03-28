@@ -324,13 +324,20 @@ type SchedulerTaskSpec struct {
 
 	// interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
 	// +optional
-	// +kubebuilder:default:="0"
-	Interval string `json:"interval,omitempty"`
+	Interval *string `json:"interval,omitempty"`
 
 	// numRetries indicates how many times a scheduled task will be retried before failing.
 	// +kubebuilder:default:=3
 	// +optional
 	NumRetries *int64 `json:"numRetries,omitempty"`
+
+	// cron specifies the task schedule as a cron expression. It supports an extended syntax including @monthly, @weekly, @daily, @midnight, @hourly, @every X[h|m|s].
+	// +optional
+	Cron *string `json:"cron,omitempty"`
+
+	// timezone specifies the timezone of cron field.
+	// +optional
+	Timezone *string `json:"timezone,omitempty"`
 }
 
 type RepairTaskSpec struct {

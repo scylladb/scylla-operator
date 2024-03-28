@@ -11,6 +11,7 @@ We will use Minikube K8s cluster, but this could be any K8s cluster supported by
 
 - Kubernetes 1.16+
 - Helm 3+
+- Being in inside of [scylla-operator](https://github.com/scylladb/scylla-operator) directory 
 
 ## TL;DR
 

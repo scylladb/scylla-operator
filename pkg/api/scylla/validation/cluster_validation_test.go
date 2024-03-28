@@ -64,26 +64,52 @@ func TestValidateScyllaCluster(t *testing.T) {
 			expectedErrorString: `spec.repairs[0].intensity: Invalid value: "100Mib": invalid intensity, it must be a float value`,
 		},
 		{
-			name: "invalid intensity in repair task spec && non-unique names in manager tasks spec",
+			name: "non-unique names in manager repair tasks spec",
 			cluster: func() *v1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
-						Name: "task-name",
+				cluster.Spec.Repairs = []v1.RepairTaskSpec{
+					{
+						TaskSpec: v1.TaskSpec{
+							Name: "task-name",
+						},
+						Intensity: "1",
 					},
-				})
-				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
-						Name: "task-name",
+					{
+						TaskSpec: v1.TaskSpec{
+							Name: "task-name",
+						},
+						Intensity: "1",
 					},
-				})
+				}
 				return cluster
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.repairs[0].intensity", BadValue: "", Detail: "invalid intensity, it must be a float value"},
-				&field.Error{Type: field.ErrorTypeDuplicate, Field: "spec.backups[0].name", BadValue: "task-name"},
+				&field.Error{Type: field.ErrorTypeDuplicate, Field: "spec.repairs[1].name", BadValue: "task-name"},
 			},
-			expectedErrorString: `[spec.repairs[0].intensity: Invalid value: "": invalid intensity, it must be a float value, spec.backups[0].name: Duplicate value: "task-name"]`,
+			expectedErrorString: `spec.repairs[1].name: Duplicate value: "task-name"`,
+		},
+		{
+			name: "non-unique names in manager backup tasks spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Backups = []v1.BackupTaskSpec{
+					{
+						TaskSpec: v1.TaskSpec{
+							Name: "task-name",
+						},
+					},
+					{
+						TaskSpec: v1.TaskSpec{
+							Name: "task-name",
+						},
+					},
+				}
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeDuplicate, Field: "spec.backups[1].name", BadValue: "task-name"},
+			},
+			expectedErrorString: `spec.backups[1].name: Duplicate value: "task-name"`,
 		},
 		{
 			name: "when CQL ingress is provided, domains must not be empty",

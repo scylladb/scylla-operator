@@ -96,6 +96,13 @@ func IsNodeConfigDoneWithNodes(nodes []*corev1.Node) func(nc *scyllav1alpha1.Nod
 	}
 }
 
+func IsNodeConfigDoneWithContainerTuningFunc(nodeName, containerID string) func(nc *scyllav1alpha1.NodeConfig) (bool, error) {
+	return func(nc *scyllav1alpha1.NodeConfig) (bool, error) {
+		containerTuned := controllerhelpers.IsNodeTunedForContainer(nc, nodeName, containerID)
+		return containerTuned, nil
+	}
+}
+
 func IsNodeConfigDoneWithNodeTuningFunc(nodes []*corev1.Node) func(nc *scyllav1alpha1.NodeConfig) (bool, error) {
 	return func(nc *scyllav1alpha1.NodeConfig) (bool, error) {
 		for _, node := range nodes {

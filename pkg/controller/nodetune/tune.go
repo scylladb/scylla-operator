@@ -23,7 +23,7 @@ import (
 func getIRQCPUs(ctx context.Context, kubeletPodResourcesClient kubelet.PodResourcesClient, scyllaPods []*corev1.Pod, hostFullCpuset cpuset.CPUSet) (cpuset.CPUSet, error) {
 	scyllaCPUs := cpuset.CPUSet{}
 	for _, scyllaPod := range scyllaPods {
-		if scyllaPod.Status.QOSClass != corev1.PodQOSGuaranteed {
+		if !controllerhelpers.IsPodTunable(scyllaPod) {
 			continue
 		}
 

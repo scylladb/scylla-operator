@@ -22,8 +22,7 @@ func TestMask(t *testing.T) {
 		{Mask: []uint32{0x000e3862}, Expected: "1,5-6,11-13,17-19"},
 		{Mask: []uint32{0x00000001, 0x00000001, 0x00010117}, Expected: "0-2,4,8,16,32,64"},
 	}
-	for i := range ts {
-		test := ts[i]
+	for _, test := range ts {
 		t.Run(test.Expected, func(t *testing.T) {
 			mask := ParseMaskFormat(test.Mask).String()
 			if mask != test.Expected {
@@ -67,8 +66,7 @@ func TestFormatMask(t *testing.T) {
 		{CPUs: []int{1, 5, 6, 11, 12, 13, 17, 18, 19}, Expected: "0x000e3862"},
 		{CPUs: []int{0, 1, 2, 4, 8, 16, 32, 64}, Expected: "0x00000001,0x00000001,0x00010117"},
 	}
-	for i := range ts {
-		test := ts[i]
+	for _, test := range ts {
 		t.Run(test.Expected, func(t *testing.T) {
 			cpuset := NewCPUSet(test.CPUs...)
 			mask := cpuset.FormatMask()

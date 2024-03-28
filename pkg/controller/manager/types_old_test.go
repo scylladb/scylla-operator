@@ -125,7 +125,6 @@ func TestRepairTask_ToManager(t *testing.T) {
 	}
 
 	for _, tc := range tt {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -209,7 +208,6 @@ func TestRepairTask_FromManager(t *testing.T) {
 	}
 
 	for _, tc := range tt {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -303,7 +301,6 @@ func TestBackupTask_ToManager(t *testing.T) {
 	}
 
 	for _, tc := range tt {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -395,7 +392,6 @@ func TestBackupTask_FromManager(t *testing.T) {
 	}
 
 	for _, tc := range tt {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

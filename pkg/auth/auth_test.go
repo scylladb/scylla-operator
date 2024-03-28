@@ -46,9 +46,7 @@ func TestParseBearerAuth(t *testing.T) {
 		},
 	}
 
-	for i := range table {
-		test := table[i]
-
+	for _, test := range table {
 		t.Run(test.Name, func(t *testing.T) {
 			t.Parallel()
 

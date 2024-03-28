@@ -290,7 +290,7 @@ func (scc *Controller) Run(ctx context.Context, workers int) {
 		return
 	}
 
-	for i := 0; i < workers; i++ {
+	for range workers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

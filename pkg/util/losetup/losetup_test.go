@@ -88,8 +88,7 @@ func TestListLoopDevices(t *testing.T) {
 		},
 	}
 
-	for i := range tt {
-		tc := tt[i]
+	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

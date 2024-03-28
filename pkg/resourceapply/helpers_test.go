@@ -48,8 +48,7 @@ func TestDeepHashObject(t *testing.T) {
 			return map[string]interface{}{"Hello": map[string]interface{}{"Yumiko": &A{1, "1"}}}
 		}},
 	}
-	for i := range tests {
-		test := tests[i]
+	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
 			t.Parallel()
 
@@ -57,7 +56,7 @@ func TestDeepHashObject(t *testing.T) {
 			hashes := make(map[string]struct{}, 1)
 			hashes[hashObjectsOrDie(f())] = struct{}{}
 
-			for i := 0; i < iterations; i++ {
+			for range iterations {
 				hash := hashObjectsOrDie(f())
 				_, collision := hashes[hash]
 				if !collision {

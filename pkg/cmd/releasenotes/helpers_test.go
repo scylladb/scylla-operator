@@ -36,8 +36,7 @@ func TestParsePullRequestNumber(t *testing.T) {
 		},
 	}
 
-	for i := range ts {
-		test := ts[i]
+	for _, test := range ts {
 		t.Run(test.Name, func(t *testing.T) {
 			t.Parallel()
 

@@ -468,7 +468,6 @@ func TestApplyService(t *testing.T) {
 	}
 
 	for _, tc := range tt {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -481,7 +480,7 @@ func TestApplyService(t *testing.T) {
 			if tc.expectedErr != nil {
 				iterations = 1
 			}
-			for i := 0; i < iterations; i++ {
+			for i := range iterations {
 				t.Run("", func(t *testing.T) {
 					ctx, ctxCancel := context.WithTimeout(context.Background(), 30*time.Second)
 					defer ctxCancel()
@@ -1004,7 +1003,6 @@ func TestApplySecret(t *testing.T) {
 	}
 
 	for _, tc := range tt {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1017,7 +1015,7 @@ func TestApplySecret(t *testing.T) {
 			if tc.expectedErr != nil {
 				iterations = 1
 			}
-			for i := 0; i < iterations; i++ {
+			for i := range iterations {
 				t.Run("", func(t *testing.T) {
 					ctx, ctxCancel := context.WithTimeout(context.Background(), 30*time.Second)
 					defer ctxCancel()
@@ -1551,7 +1549,6 @@ func TestApplyServiceAccount(t *testing.T) {
 	}
 
 	for _, tc := range tt {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1564,7 +1561,7 @@ func TestApplyServiceAccount(t *testing.T) {
 			if tc.expectedErr != nil {
 				iterations = 1
 			}
-			for i := 0; i < iterations; i++ {
+			for i := range iterations {
 				t.Run("", func(t *testing.T) {
 					ctx, ctxCancel := context.WithTimeout(context.Background(), 30*time.Second)
 					defer ctxCancel()
@@ -2038,7 +2035,6 @@ func TestApplyConfigMap(t *testing.T) {
 	}
 
 	for _, tc := range tt {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -2051,7 +2047,7 @@ func TestApplyConfigMap(t *testing.T) {
 			if tc.expectedErr != nil {
 				iterations = 1
 			}
-			for i := 0; i < iterations; i++ {
+			for i := range iterations {
 				t.Run("", func(t *testing.T) {
 					ctx, ctxCancel := context.WithTimeout(context.Background(), 30*time.Second)
 					defer ctxCancel()
@@ -2488,7 +2484,6 @@ func TestApplyNamespace(t *testing.T) {
 	}
 
 	for _, tc := range tt {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -2501,7 +2496,7 @@ func TestApplyNamespace(t *testing.T) {
 			if tc.expectedErr != nil {
 				iterations = 1
 			}
-			for i := 0; i < iterations; i++ {
+			for i := range iterations {
 				t.Run("", func(t *testing.T) {
 					ctx, ctxCancel := context.WithTimeout(context.Background(), 30*time.Second)
 					defer ctxCancel()
@@ -2976,7 +2971,6 @@ func TestApplyEndpoints(t *testing.T) {
 	}
 
 	for _, tc := range tt {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -2989,7 +2983,7 @@ func TestApplyEndpoints(t *testing.T) {
 			if tc.expectedErr != nil {
 				iterations = 1
 			}
-			for i := 0; i < iterations; i++ {
+			for i := range iterations {
 				t.Run("", func(t *testing.T) {
 					ctx, ctxCancel := context.WithTimeout(context.Background(), 30*time.Second)
 					defer ctxCancel()

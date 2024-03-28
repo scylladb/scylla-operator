@@ -76,8 +76,7 @@ func TestWebhookOptionsRun(t *testing.T) {
 		},
 	}
 
-	for i := range tt {
-		tc := tt[i]
+	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 

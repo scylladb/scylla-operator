@@ -420,8 +420,7 @@ func TestManagerSynchronization(t *testing.T) {
 		},
 	}
 
-	for i := range tcs {
-		test := tcs[i]
+	for _, test := range tcs {
 		t.Run(test.Name, func(t *testing.T) {
 			ctx := context.Background()
 			cluster := &scyllav1.ScyllaCluster{
@@ -496,8 +495,7 @@ func TestBackupTaskChanged(t *testing.T) {
 		},
 	}
 
-	for i := range ts {
-		test := ts[i]
+	for _, test := range ts {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -536,8 +534,7 @@ func TestRepairTaskChanged(t *testing.T) {
 		},
 	}
 
-	for i := range ts {
-		test := ts[i]
+	for _, test := range ts {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 

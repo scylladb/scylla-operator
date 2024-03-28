@@ -101,7 +101,6 @@ var _ = g.Describe("ScyllaCluster", func() {
 				replicas: 1,
 			},
 		} {
-			tc := tc
 			func() {
 				framework.By("Scaling the ScyllaCluster to %d replicas setting domains to %q", tc.replicas, tc.domains)
 				sc.ManagedFields = nil

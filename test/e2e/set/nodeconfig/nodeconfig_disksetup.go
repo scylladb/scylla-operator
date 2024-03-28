@@ -158,7 +158,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		mountOptions := []string{"prjquota"}
 
 		loopDeviceNames := make([]string, 0, numberOfDevices)
-		for i := 0; i < numberOfDevices; i++ {
+		for i := range numberOfDevices {
 			loopDeviceNames = append(loopDeviceNames, fmt.Sprintf("disk-%d", i))
 		}
 

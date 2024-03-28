@@ -1,3 +1,5 @@
+// Copyright (c) 2024 ScyllaDB.
+
 package tests
 
 import (
@@ -7,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path"
 	"strings"
 	"sync"
 	"time"
@@ -25,15 +26,11 @@ import (
 	ginkgotest "github.com/scylladb/scylla-operator/pkg/test/ginkgo"
 	"github.com/scylladb/scylla-operator/pkg/thirdparty/github.com/onsi/ginkgo/v2/exposedinternal/parallel_support"
 	"github.com/scylladb/scylla-operator/pkg/version"
-	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/util/errors"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
 	"k8s.io/kubectl/pkg/util/templates"
-
-	// Include suites
-	_ "github.com/scylladb/scylla-operator/test/e2e"
 )
 
 const (
@@ -43,36 +40,9 @@ const (
 	ginkgoOutputInterceptorModeNone = "none"
 )
 
-var suites = ginkgotest.TestSuites{
-	{
-		Name: "all",
-		Description: templates.LongDesc(`
-		Runs all tests.
-		`),
-		DefaultParallelism: 42,
-	},
-	{
-		Name: "scylla-operator/conformance/parallel",
-		Description: templates.LongDesc(`
-		Tests that ensure an Scylla Operator is working properly.
-		`),
-		LabelFilter:        fmt.Sprintf("!%s", framework.SerialLabelName),
-		DefaultParallelism: 42,
-	},
-	{
-		Name: "scylla-operator/conformance/serial",
-		Description: templates.LongDesc(`
-		Tests that ensure an Scylla Operator is working properly.
-		`),
-		LabelFilter:        fmt.Sprintf("%s", framework.SerialLabelName),
-		DefaultParallelism: 1,
-	},
-}
-
 type RunOptions struct {
 	genericclioptions.IOStreams
-	genericclioptions.ClientConfig
-	TestFrameworkOptions
+	CustomOptions []CustomFrameworkOptions
 
 	Timeout               time.Duration
 	Quiet                 bool
@@ -90,13 +60,19 @@ type RunOptions struct {
 	ParallelServerAddress string
 	ParallelLogLevel      int32
 
+	testSuites    ginkgotest.TestSuites
 	SelectedSuite *ginkgotest.TestSuite
 }
 
-func NewRunOptions(streams genericclioptions.IOStreams) *RunOptions {
+type CustomFrameworkOptions interface {
+	Validate() error
+	Complete() error
+	AddFlags(command *cobra.Command)
+}
+
+func NewRunOptions(streams genericclioptions.IOStreams, testSuites ginkgotest.TestSuites, options ...CustomFrameworkOptions) *RunOptions {
 	return &RunOptions{
-		ClientConfig:         genericclioptions.NewClientConfig("scylla-operator-e2e"),
-		TestFrameworkOptions: NewTestFrameworkOptions(),
+		CustomOptions: options,
 
 		Timeout:               24 * time.Hour,
 		Quiet:                 false,
@@ -113,18 +89,37 @@ func NewRunOptions(streams genericclioptions.IOStreams) *RunOptions {
 		ParallelShard:         0,
 		ParallelServerAddress: "",
 		ParallelLogLevel:      0,
+
+		testSuites: testSuites,
 	}
 }
 
-func NewRunCommand(streams genericclioptions.IOStreams) *cobra.Command {
-	o := NewRunOptions(streams)
+func NewRunCommand(streams genericclioptions.IOStreams, customTestSuites ginkgotest.TestSuites, customOptions ...CustomFrameworkOptions) *cobra.Command {
+	testSuites := make(ginkgotest.TestSuites, 0, len(customTestSuites)+1)
+	for _, cts := range customTestSuites {
+		testSuites = append(testSuites, cts)
+	}
+
+	testSuites = append(testSuites, &ginkgotest.TestSuite{
+		Name: "all",
+		Description: templates.LongDesc(`
+		Runs all tests.`,
+		),
+		DefaultParallelism: 42,
+	})
+
+	o := NewRunOptions(streams, testSuites, customOptions...)
+
+	validTestSuiteNames := slices.ConvertSlice(testSuites, func(ts *ginkgotest.TestSuite) string {
+		return ts.Name
+	})
 
 	cmd := &cobra.Command{
 		Use: "run SUITE_NAME",
 		Long: templates.LongDesc(`
 		Runs a test suite
 		`),
-		ValidArgs: suites.Names(),
+		ValidArgs: validTestSuiteNames,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := o.Validate(args)
 			if err != nil {
@@ -148,8 +143,9 @@ func NewRunCommand(streams genericclioptions.IOStreams) *cobra.Command {
 		SilenceUsage:  true,
 	}
 
-	o.ClientConfig.AddFlags(cmd)
-	o.TestFrameworkOptions.AddFlags(cmd)
+	for _, co := range o.CustomOptions {
+		co.AddFlags(cmd)
+	}
 
 	cmd.Flags().DurationVarP(&o.Timeout, "timeout", "", o.Timeout, "If the overall suite(s) duration exceed this value, tests will be terminated.")
 	cmd.Flags().BoolVarP(&o.Quiet, "quiet", "", o.Quiet, "Reduces the tests output.")
@@ -175,8 +171,9 @@ func NewRunCommand(streams genericclioptions.IOStreams) *cobra.Command {
 func (o *RunOptions) Validate(args []string) error {
 	var errs []error
 
-	errs = append(errs, o.ClientConfig.Validate())
-	errs = append(errs, o.TestFrameworkOptions.Validate())
+	for _, co := range o.CustomOptions {
+		errs = append(errs, co.Validate())
+	}
 
 	if o.FlakeAttempts < 0 {
 		errs = append(errs, fmt.Errorf("flake attempts can't be negative"))
@@ -202,12 +199,12 @@ func (o *RunOptions) Validate(args []string) error {
 	case 0:
 		errs = append(errs, fmt.Errorf(
 			"you have to specify at least one suite from [%s]",
-			strings.Join(suites.Names(), ", ")),
+			strings.Join(o.testSuites.Names(), ", ")),
 		)
 
 	case 1:
 		suiteName := args[0]
-		o.SelectedSuite = suites.Find(suiteName)
+		o.SelectedSuite = o.testSuites.Find(suiteName)
 		if o.SelectedSuite == nil {
 			errs = append(errs, fmt.Errorf("suite %q doesn't exist", suiteName))
 		}
@@ -220,14 +217,11 @@ func (o *RunOptions) Validate(args []string) error {
 }
 
 func (o *RunOptions) Complete(args []string) error {
-	err := o.ClientConfig.Complete()
-	if err != nil {
-		return err
-	}
-
-	err = o.TestFrameworkOptions.Complete()
-	if err != nil {
-		return err
+	for _, co := range o.CustomOptions {
+		err := co.Complete()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -256,20 +250,6 @@ var _ ginkgo.GinkgoTestingT = &fakeT{}
 
 func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStreams) error {
 	const suite = "Scylla operator E2E tests"
-
-	framework.TestContext = &framework.TestContextType{
-		RestConfig:            o.RestConfig,
-		ArtifactsDir:          o.ArtifactsDir,
-		DeleteTestingNSPolicy: o.DeleteTestingNSPolicy,
-		ScyllaClusterOptions:  o.scyllaClusterOptions,
-	}
-	if o.IngressController != nil {
-		framework.TestContext.IngressController = &framework.IngressController{
-			Address:           o.IngressController.Address,
-			IngressClassName:  o.IngressController.IngressClassName,
-			CustomAnnotations: o.IngressController.CustomAnnotations,
-		}
-	}
 
 	suiteConfig, reporterConfig := ginkgo.GinkgoConfiguration()
 
@@ -315,11 +295,6 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 	gomegaformat.TruncatedDiff = false
 
 	gomega.RegisterFailHandler(ginkgo.Fail)
-
-	if len(o.ArtifactsDir) > 0 {
-		reporterConfig.JUnitReport = path.Join(o.ArtifactsDir, "e2e.junit.xml")
-		reporterConfig.JSONReport = path.Join(o.ArtifactsDir, "e2e.json")
-	}
 
 	suiteConfig.ParallelTotal = o.Parallelism
 	if suiteConfig.ParallelTotal == 0 {

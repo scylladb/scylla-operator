@@ -270,24 +270,24 @@ spec:
         description: 'OOM Kill on {{ $labels.instance }}'
         summary: A process was terminated on Instance {{ $labels.instance }}
     - alert: tooManyFiles
-      expr: (node_filesystem_files - node_filesystem_files_free) / on(instance) group_left count(scylla_reactor_cpu_busy_ms) by (instance)>20000
+      expr: (node_filesystem_files{mountpoint="/var/lib/scylla"} - node_filesystem_files_free) / on(instance) group_left count(scylla_reactor_cpu_busy_ms) by (instance)>20000
       for: 10s
       labels:
         severity: "info"
         description: 'Over 20k open files per shard {{ $labels.instance }}'
-        summary: There are over 20K open files per shard on Insace {{ $labels.instance }}
+        summary: There are over 20K open files per shard on Instance {{ $labels.instance }}
     - alert: tooManyFiles
-      expr: (node_filesystem_files - node_filesystem_files_free) / on(instance) group_left count(scylla_reactor_cpu_busy_ms) by (instance)>30000
+      expr: (node_filesystem_files{mountpoint="/var/lib/scylla"} - node_filesystem_files_free) / on(instance) group_left count(scylla_reactor_cpu_busy_ms) by (instance)>30000
       for: 10s
       labels:
         severity: "warn"
         description: 'Over 30k open files per shard {{ $labels.instance }}'
-        summary: There are over 30K open files per shard on Insace {{ $labels.instance }}
+        summary: There are over 30K open files per shard on Instance {{ $labels.instance }}
     - alert: tooManyFiles
-      expr: (node_filesystem_files - node_filesystem_files_free) / on(instance) group_left count(scylla_reactor_cpu_busy_ms) by (instance)>40000
+      expr: (node_filesystem_files{mountpoint="/var/lib/scylla"} - node_filesystem_files_free) / on(instance) group_left count(scylla_reactor_cpu_busy_ms) by (instance)>40000
       for: 10s
       labels:
         severity: "error"
         description: 'Over 40k open files per shard {{ $labels.instance }}'
-        summary: There are over 40K open files per shard on Insace {{ $labels.instance }}
+        summary: There are over 40K open files per shard on Instance {{ $labels.instance }}
 `}}

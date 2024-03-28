@@ -13,6 +13,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/gather/collect"
 	"github.com/scylladb/scylla-operator/pkg/gather/collect/testhelpers"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/spf13/cobra"
@@ -148,6 +149,25 @@ func TestMustGatherOptions_Run(t *testing.T) {
 				EmptyDirs: nil,
 				Files: []testhelpers.File{
 					{
+						Name: collect.IntegrityFileName,
+						Content: strings.TrimPrefix(`
+checksum: f3d8c4e7e30f0170945cd374ca6a2e6dbfaa84a1534e5b3da4f5bbfab165369c9c89f982779cb2630dfc9392876edf4daf5906d285741dfcf3d6f65bf688db66
+directories:
+  /cluster-scoped/namespaces:
+    checksum: bbaf277edfa96fc011b6ca9db1b76eae803d26ab6169f816e88d223e2808e0dadc1733e71a8c0288630c7ab0ec77d1be34b3d78daa62f2f2b90c0dfabc3b2331
+    fileCount: 1
+  /namespaces/my-namespace/scyllaclusters.scylla.scylladb.com:
+    checksum: 7ab5ffe5b82d7f78398b1a4f7081ac649c28eeef72bf89cdd70eaba7f266f2d109415e7186555a718b784239677c53ddb97be08a20303fa36580c8e73c73dfff
+    fileCount: 1
+  /namespaces/my-other-namespace/scyllaclusters.scylla.scylladb.com:
+    checksum: f06efc479e7c5363282891bfebf7906d388bb1f6e8aa7852510b8025ee00f89bf30d648402230f310ed1e91f7266ad7434a9e56f142cdb7c9eb25eb69b9340b7
+    fileCount: 1
+  /namespaces/scylla-operator/secrets:
+    checksum: e46f1567de5a4a6d647595ee5f5ca424f6c05e6c044b71f694735379577250629ed421fc9d71c8e048067a3b04980e126d832589ada664609ebd5a81597920e6
+    fileCount: 1
+`, "\n"),
+					},
+					{
 						Name: "cluster-scoped/namespaces/scylla-operator.yaml",
 						Content: strings.TrimPrefix(`
 apiVersion: v1
@@ -249,6 +269,19 @@ metadata:
 				EmptyDirs: nil,
 				Files: []testhelpers.File{
 					{
+						Name: collect.IntegrityFileName,
+						Content: strings.TrimPrefix(`
+checksum: 6ad59d9fa641a55f9f81b554d0ea73a19d3fa03c05e08aceb757076158aab691efae7c6ca040f44e142764d71fbe25b67265a33ddb10e32d91016ce69ba99605
+directories:
+  /cluster-scoped/namespaces:
+    checksum: bbaf277edfa96fc011b6ca9db1b76eae803d26ab6169f816e88d223e2808e0dadc1733e71a8c0288630c7ab0ec77d1be34b3d78daa62f2f2b90c0dfabc3b2331
+    fileCount: 1
+  /namespaces/my-namespace/scyllaclusters.scylla.scylladb.com:
+    checksum: 7ab5ffe5b82d7f78398b1a4f7081ac649c28eeef72bf89cdd70eaba7f266f2d109415e7186555a718b784239677c53ddb97be08a20303fa36580c8e73c73dfff
+    fileCount: 1
+`, "\n"),
+					},
+					{
 						Name: "cluster-scoped/namespaces/scylla-operator.yaml",
 						Content: strings.TrimPrefix(`
 apiVersion: v1
@@ -300,6 +333,16 @@ status: {}
 			expectedDump: &testhelpers.GatherDump{
 				EmptyDirs: nil,
 				Files: []testhelpers.File{
+					{
+						Name: collect.IntegrityFileName,
+						Content: strings.TrimPrefix(`
+checksum: 3198c682f6798c42c7b94228c7f3568f045abcb8ad191caa67fc568b5dd93afd48c2fb3da372c3ebe4cf5c51a7711ddcffe8a488b4da6e1702dd2622b59c8323
+directories:
+  /namespaces/storageversions.internal.apiserver.k8s.io:
+    checksum: 3198c682f6798c42c7b94228c7f3568f045abcb8ad191caa67fc568b5dd93afd48c2fb3da372c3ebe4cf5c51a7711ddcffe8a488b4da6e1702dd2622b59c8323
+    fileCount: 1
+`, "\n"),
+					},
 					{
 						Name: "namespaces/storageversions.internal.apiserver.k8s.io/my-non-standard-resource.yaml",
 						Content: strings.TrimPrefix(`

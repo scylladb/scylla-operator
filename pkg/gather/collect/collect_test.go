@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/gather/collect/testhelpers"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,6 +16,7 @@ import (
 	fakediscovery "k8s.io/client-go/discovery/fake"
 	dynamicfakeclient "k8s.io/client-go/dynamic/fake"
 	kubefakeclient "k8s.io/client-go/kubernetes/fake"
+	kubernetesscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/restmapper"
 )
 
@@ -30,12 +32,12 @@ func TestCollector_CollectObject(t *testing.T) {
 				{Name: "secrets", Namespaced: true, Kind: "Secret", Verbs: []string{"list"}},
 			},
 		},
-	}
-
-	scheme := runtime.NewScheme()
-	err := corev1.AddToScheme(scheme)
-	if err != nil {
-		t.Fatal(err)
+		{
+			GroupVersion: scyllav1.GroupVersion.String(),
+			APIResources: []metav1.APIResource{
+				{Name: "scyllaclusters", Namespaced: true, Kind: "ScyllaCluster", Verbs: []string{"list"}},
+			},
+		},
 	}
 
 	tt := []struct {
@@ -525,6 +527,128 @@ metadata:
 				},
 			},
 		},
+		{
+			name: "scyllacluster doesn't collect any extra resources if related resources are disabled",
+			targetedObject: &scyllav1.ScyllaCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "test",
+					Name:      "my-scyllacluster",
+				},
+			},
+			existingObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "test",
+						Name:      "my-service",
+					},
+				},
+			},
+			relatedResources: false,
+			keepGoing:        false,
+			expectedError:    nil,
+			expectedDump: &testhelpers.GatherDump{
+				EmptyDirs: nil,
+				Files: []testhelpers.File{
+					{
+						Name: "namespaces/test/scyllaclusters.scylla.scylladb.com/my-scyllacluster.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  creationTimestamp: null
+  name: my-scyllacluster
+  namespace: test
+spec:
+  agentVersion: ""
+  datacenter:
+    name: ""
+    racks: null
+  network: {}
+  version: ""
+status: {}
+`, "\n"),
+					},
+				},
+			},
+		},
+		{
+			name: "scyllacluster collects all resources in its namespace if related resources are enabled",
+			targetedObject: &scyllav1.ScyllaCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "test",
+					Name:      "my-scyllacluster",
+				},
+			},
+			existingObjects: []runtime.Object{
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "test",
+						Name:      "my-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "other-namespace",
+						Name:      "other-secret",
+					},
+				},
+			},
+			relatedResources: true,
+			keepGoing:        false,
+			expectedError:    nil,
+			expectedDump: &testhelpers.GatherDump{
+				EmptyDirs: nil,
+				Files: []testhelpers.File{
+					{
+						Name: "cluster-scoped/namespaces/test.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: v1
+kind: Namespace
+metadata:
+  creationTimestamp: null
+  name: test
+spec: {}
+status: {}
+`, "\n"),
+					},
+					{
+						Name: "namespaces/test/scyllaclusters.scylla.scylladb.com/my-scyllacluster.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  creationTimestamp: null
+  name: my-scyllacluster
+  namespace: test
+spec:
+  agentVersion: ""
+  datacenter:
+    name: ""
+    racks: null
+  network: {}
+  version: ""
+status: {}
+`, "\n"),
+					},
+					{
+						Name: "namespaces/test/secrets/my-secret.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: v1
+kind: Secret
+metadata:
+  creationTimestamp: null
+  name: my-secret
+  namespace: test
+`, "\n"),
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range tt {
@@ -536,14 +660,49 @@ metadata:
 
 			tmpDir := t.TempDir()
 
-			fakeKubeClient := kubefakeclient.NewSimpleClientset(tc.existingObjects...)
+			scheme := runtime.NewScheme()
+			err := corev1.AddToScheme(scheme)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = scyllav1.Install(scheme)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			u := &unstructured.Unstructured{}
+			err = scheme.Convert(tc.targetedObject, u, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			allObjects := make([]runtime.Object, 0, len(tc.existingObjects)+1)
+			allObjects = append(allObjects, tc.targetedObject)
+			allObjects = append(allObjects, tc.existingObjects...)
+
+			var kubeObjects []runtime.Object
+			var unstructuredObjects []runtime.Object
+			for _, obj := range allObjects {
+				_, _, err = kubernetesscheme.Scheme.ObjectKinds(obj)
+				if err == nil {
+					kubeObjects = append(kubeObjects, obj)
+					unstructuredObjects = append(unstructuredObjects, obj)
+				} else if runtime.IsNotRegisteredError(err) {
+					unstructuredObjects = append(unstructuredObjects, obj)
+				} else {
+					t.Fatal(err)
+				}
+			}
+
+			fakeKubeClient := kubefakeclient.NewSimpleClientset(kubeObjects...)
 			fakeKubeClient.Resources = apiResources
 			simpleFakeDiscoveryClient := fakeKubeClient.Discovery()
 			fakeDiscoveryClient := &testhelpers.FakeDiscoveryWithSPR{
 				FakeDiscovery: simpleFakeDiscoveryClient.(*fakediscovery.FakeDiscovery),
 			}
-			existingUnstructuredObjects := make([]runtime.Object, 0, len(tc.existingObjects))
-			for _, e := range tc.existingObjects {
+			existingUnstructuredObjects := make([]runtime.Object, 0, len(unstructuredObjects))
+			for _, e := range unstructuredObjects {
 				u := &unstructured.Unstructured{}
 				err := scheme.Convert(e, u, nil)
 				if err != nil {
@@ -584,12 +743,6 @@ metadata:
 			discoveryMapper := restmapper.NewDiscoveryRESTMapper(groupResources)
 
 			mapping, err := discoveryMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			u := &unstructured.Unstructured{}
-			err = scheme.Convert(tc.targetedObject, u, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

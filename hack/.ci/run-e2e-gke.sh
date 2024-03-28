@@ -39,6 +39,8 @@ fi
 SO_NODECONFIG_PATH=${SO_NODECONFIG_PATH=./hack/.ci/manifests/cluster/nodeconfig.yaml}
 SO_DISABLE_NODECONFIG=${SO_DISABLE_NODECONFIG:-false}
 
+SO_BUCKET_NAME=${SO_BUCKET_NAME:-}
+
 field_manager=run-e2e-script
 
 function kubectl_create {
@@ -172,26 +174,92 @@ ingress_controller_address="$( kubectl -n haproxy-ingress get svc haproxy-ingres
 
 kubectl create -n e2e pdb my-pdb --selector='app=e2e' --min-available=1 --dry-run=client -o yaml | kubectl_create -f -
 
-kubectl -n e2e run --restart=Never --image="${SO_IMAGE}" --labels='app=e2e' --command=true e2e -- bash -euExo pipefail -O inherit_errexit -c "function wait-for-artifacts { touch /tmp/done && until [[ -f '/tmp/exit' ]]; do sleep 1; done } && trap wait-for-artifacts EXIT && mkdir /tmp/artifacts && scylla-operator-tests run '${SO_SUITE}' --loglevel=2 --color=false --artifacts-dir=/tmp/artifacts --feature-gates='${SCYLLA_OPERATOR_FEATURE_GATES}' --ingress-controller-address='${ingress_controller_address}' --ingress-controller-ingress-class-name='${ingress_class_name}' --ingress-controller-custom-annotations='${ingress_custom_annotations}' --scyllacluster-node-service-type='${SO_SCYLLACLUSTER_NODE_SERVICE_TYPE}' --scyllacluster-nodes-broadcast-address-type='${SO_SCYLLACLUSTER_NODES_BROADCAST_ADDRESS_TYPE}' --scyllacluster-clients-broadcast-address-type='${SO_SCYLLACLUSTER_CLIENTS_BROADCAST_ADDRESS_TYPE}'"
+gcs_sa_in_container_path=
+if [[ -n ${SO_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATH+x} ]]; then
+  gcs_sa_in_container_path=/var/run/secrets/gcs-service-account-credentials/gcs-service-account.json
+  kubectl create -n e2e secret generic gcs-service-account-credentials --from-file="${SO_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATH}" --dry-run=client -o yaml | kubectl_create -f -
+else
+  kubectl create -n e2e secret generic gcs-service-account-credentials --dry-run=client -o yaml | kubectl_create -f -
+fi
+
+e2e_pod=$(cat << EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: e2e
+  name: e2e
+spec:
+  restartPolicy: Never
+  containers:
+  - name: wait-for-artifacts
+    command:
+    - bash
+    - -euExo
+    - pipefail
+    - -O
+    - inherit_errexit
+    - -c
+    - function wait-for-artifacts { touch /tmp/done && until [[ -f '/tmp/exit' ]]; do sleep 1; done } && trap wait-for-artifacts EXIT
+    image: ${SO_IMAGE}
+    imagePullPolicy: Always
+    volumeMounts:
+    - name: artifacts
+      mountPath: /tmp/artifacts
+  - name: e2e
+    command:
+    - scylla-operator-tests
+    args:
+    - run
+    - ${SO_SUITE}
+    - --loglevel=2
+    - --color=false
+    - --artifacts-dir=/tmp/artifacts
+    - --feature-gates=${SCYLLA_OPERATOR_FEATURE_GATES}
+    - --ingress-controller-address=${ingress_controller_address}
+    - --ingress-controller-ingress-class-name=${ingress_class_name}
+    - --ingress-controller-custom-annotations=${ingress_custom_annotations}
+    - --scyllacluster-node-service-type=${SO_SCYLLACLUSTER_NODE_SERVICE_TYPE}
+    - --scyllacluster-nodes-broadcast-address-type=${SO_SCYLLACLUSTER_NODES_BROADCAST_ADDRESS_TYPE}
+    - --scyllacluster-clients-broadcast-address-type=${SO_SCYLLACLUSTER_CLIENTS_BROADCAST_ADDRESS_TYPE}
+    - --object-storage-bucket=${SO_BUCKET_NAME}
+    - --gcs-service-account-key-path=${gcs_sa_in_container_path}
+    image: ${SO_IMAGE}
+    imagePullPolicy: Always
+    volumeMounts:
+    - name: artifacts
+      mountPath: /tmp/artifacts
+    - name: gcs-service-account-credentials
+      mountPath: /var/run/secrets/gcs-service-account-credentials
+  volumes:
+  - name: artifacts
+    emptyDir: {}
+  - name: gcs-service-account-credentials
+    secret:
+      secretName: gcs-service-account-credentials
+EOF
+)
+
+kubectl_create -n e2e -f <(echo "${e2e_pod}")
 kubectl -n e2e wait --for=condition=Ready pod/e2e
 
 # Setup artifacts transfer when finished and unblock the e2e pod when done.
 (
   function unblock-e2e-pod {
-    kubectl -n e2e exec pod/e2e -- bash -euEo pipefail -O inherit_errexit -c "touch /tmp/exit"
+    kubectl -n e2e exec pod/e2e -c wait-for-artifacts -- bash -euEo pipefail -O inherit_errexit -c "touch /tmp/exit"
   }
   trap unblock-e2e-pod EXIT
 
-  kubectl -n e2e exec pod/e2e -- bash -euEo pipefail -O inherit_errexit -c "until [[ -f /tmp/done ]]; do sleep 1; done; ls -l /tmp/artifacts"
-  kubectl -n e2e cp --retries=42 e2e:/tmp/artifacts "${ARTIFACTS}"
+  kubectl -n e2e exec pod/e2e -c wait-for-artifacts -- bash -euEo pipefail -O inherit_errexit -c "until [[ -f /tmp/done ]]; do sleep 1; done; ls -l /tmp/artifacts"
+  kubectl -n e2e cp --retries=42 e2e:/tmp/artifacts -c wait-for-artifacts "${ARTIFACTS}"
   ls -l "${ARTIFACTS}"
 ) &
 e2e_bg_pid=$!
 
 exit_code=""
 while [[ "${exit_code}" == "" ]]; do
-  kubectl -n e2e logs -f pod/e2e || echo "kubectl logs failed before the pod has finished, retrying..." > /dev/stderr
-  exit_code="$( kubectl -n e2e get pods/e2e --output='jsonpath={.status.containerStatuses[0].state.terminated.exitCode}' )"
+  kubectl -n e2e logs -f pod/e2e -c e2e || echo "kubectl logs failed before the pod has finished, retrying..." > /dev/stderr
+  exit_code="$( kubectl -n e2e get pods/e2e --template='{{ range .status.containerStatuses }}{{ if and (eq .name "e2e") (ne .state.terminated.exitCode nil) }}{{ .state.terminated.exitCode }}{{ end }}{{ end }}' )"
 done
 kubectl -n e2e delete pod/e2e --wait=false
 

@@ -7,9 +7,11 @@ import (
 
 	"github.com/scylladb/go-set/strset"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	managerhelpers "github.com/scylladb/scylla-operator/pkg/helpers/manager"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/semver"
+	"github.com/scylladb/scylla-operator/pkg/util/duration"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/sets"
 	apimachineryutilvalidation "k8s.io/apimachinery/pkg/util/validation"
@@ -172,10 +174,7 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 		}
 		managerTaskNames.Add(r.Name)
 
-		_, err := strconv.ParseFloat(r.Intensity, 64)
-		if err != nil {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("repairs").Index(i).Child("intensity"), r.Intensity, "invalid intensity, it must be a float value"))
-		}
+		allErrs = append(allErrs, ValidateRepairTaskSpec(&r, fldPath.Child("repairs").Index(i))...)
 	}
 
 	for i, b := range spec.Backups {
@@ -183,6 +182,8 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 			allErrs = append(allErrs, field.Duplicate(fldPath.Child("backups").Index(i).Child("name"), b.Name))
 		}
 		managerTaskNames.Add(b.Name)
+
+		allErrs = append(allErrs, ValidateBackupTaskSpec(&b, fldPath.Child("backups").Index(i))...)
 	}
 
 	if spec.GenericUpgrade != nil {
@@ -211,6 +212,52 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 
 	if spec.MinReadySeconds != nil && *spec.MinReadySeconds < 0 {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("minReadySeconds"), *spec.MinReadySeconds, "must be non-negative integer"))
+	}
+
+	return allErrs
+}
+
+func ValidateRepairTaskSpec(repairTaskSpec *scyllav1.RepairTaskSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	allErrs = append(allErrs, ValidateSchedulerTaskSpec(&repairTaskSpec.SchedulerTaskSpec, fldPath)...)
+
+	_, err := strconv.ParseFloat(repairTaskSpec.Intensity, 64)
+	if err != nil {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("intensity"), repairTaskSpec.Intensity, "invalid intensity, it must be a float value"))
+	}
+
+	_, err = managerhelpers.ParseByteCount(repairTaskSpec.SmallTableThreshold)
+	if err != nil {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("smallTableThreshold"), repairTaskSpec.SmallTableThreshold, "invalid format, valid units are B, MiB, GiB, TiB"))
+	}
+
+	return allErrs
+}
+
+func ValidateBackupTaskSpec(backupTaskSpec *scyllav1.BackupTaskSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	allErrs = append(allErrs, ValidateSchedulerTaskSpec(&backupTaskSpec.SchedulerTaskSpec, fldPath)...)
+
+	return allErrs
+}
+
+func ValidateSchedulerTaskSpec(schedulerTaskSpec *scyllav1.SchedulerTaskSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if schedulerTaskSpec.StartDate != nil {
+		_, err := managerhelpers.ParseStartDate(*schedulerTaskSpec.StartDate)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("startDate"), schedulerTaskSpec.StartDate, "invalid format, required format is RFC3339 or now[+duration], valid units are d, h, m, s"))
+		}
+	}
+
+	if schedulerTaskSpec.Interval != nil {
+		_, err := duration.ParseDuration(*schedulerTaskSpec.Interval)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("interval"), schedulerTaskSpec.Interval, "invalid format, valid units are d, h, m, s"))
+		}
 	}
 
 	return allErrs

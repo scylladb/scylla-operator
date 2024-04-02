@@ -38,6 +38,7 @@ func TestMustGatherOptions_Run(t *testing.T) {
 			GroupVersion: corev1.SchemeGroupVersion.String(),
 			APIResources: []metav1.APIResource{
 				{Name: "namespaces", Namespaced: false, Kind: "Namespace", Verbs: []string{"list"}},
+				{Name: "nodes", Namespaced: false, Kind: "Node", Verbs: []string{"list"}},
 				{Name: "pods", Namespaced: true, Kind: "Pod", Verbs: []string{"list"}},
 				{Name: "secrets", Namespaced: true, Kind: "Secret", Verbs: []string{"list"}},
 			},
@@ -115,6 +116,11 @@ func TestMustGatherOptions_Run(t *testing.T) {
 						Name: "scylla-operator",
 					},
 				},
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "fedora",
+					},
+				},
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "scylla-operator",
@@ -157,6 +163,32 @@ metadata:
   name: scylla-operator
 spec: {}
 status: {}
+`, "\n"),
+					},
+					{
+						Name: "cluster-scoped/nodes/fedora.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: v1
+kind: Node
+metadata:
+  creationTimestamp: null
+  name: fedora
+spec: {}
+status:
+  daemonEndpoints:
+    kubeletEndpoint:
+      Port: 0
+  nodeInfo:
+    architecture: ""
+    bootID: ""
+    containerRuntimeVersion: ""
+    kernelVersion: ""
+    kubeProxyVersion: ""
+    kubeletVersion: ""
+    machineID: ""
+    operatingSystem: ""
+    osImage: ""
+    systemUUID: ""
 `, "\n"),
 					},
 					{
@@ -225,6 +257,11 @@ metadata:
 						Name: "scylla-operator",
 					},
 				},
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "fedora",
+					},
+				},
 				&scyllav1.ScyllaCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "my-namespace",
@@ -258,6 +295,32 @@ metadata:
   name: scylla-operator
 spec: {}
 status: {}
+`, "\n"),
+					},
+					{
+						Name: "cluster-scoped/nodes/fedora.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: v1
+kind: Node
+metadata:
+  creationTimestamp: null
+  name: fedora
+spec: {}
+status:
+  daemonEndpoints:
+    kubeletEndpoint:
+      Port: 0
+  nodeInfo:
+    architecture: ""
+    bootID: ""
+    containerRuntimeVersion: ""
+    kernelVersion: ""
+    kubeProxyVersion: ""
+    kubeletVersion: ""
+    machineID: ""
+    operatingSystem: ""
+    osImage: ""
+    systemUUID: ""
 `, "\n"),
 					},
 					{

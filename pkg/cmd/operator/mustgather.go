@@ -210,6 +210,14 @@ var mustGatherSpecs = []struct {
 	},
 	{
 		GroupResource: schema.GroupResource{
+			Resource: "nodes",
+			Group:    "",
+		},
+		Namespace: corev1.NamespaceAll,
+		Name:      "",
+	},
+	{
+		GroupResource: schema.GroupResource{
 			Resource: "validatingwebhookconfigurations",
 			Group:    "admissionregistration.k8s.io",
 		},

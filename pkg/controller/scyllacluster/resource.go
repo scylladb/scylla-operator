@@ -255,7 +255,7 @@ func servicePorts(cluster *scyllav1.ScyllaCluster) []corev1.ServicePort {
 
 // StatefulSetForRack make a StatefulSet for the rack.
 // existingSts may be nil if it doesn't exist yet.
-func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existingSts *appsv1.StatefulSet, sidecarImage string, rackOrdinal int, inputsHash string) (*appsv1.StatefulSet, error) {
+func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existingSts *appsv1.StatefulSet, operatorBinaryPath, sidecarImage string, rackOrdinal int, inputsHash string) (*appsv1.StatefulSet, error) {
 	selectorLabels, err := naming.RackSelectorLabels(r, c)
 	if err != nil {
 		return nil, fmt.Errorf("can't get selector labels: %w", err)
@@ -513,7 +513,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 							Command: []string{
 								"/bin/sh",
 								"-c",
-								fmt.Sprintf("cp -a /usr/bin/scylla-operator %s", naming.SharedDirName),
+								fmt.Sprintf("cp -a %s %s", operatorBinaryPath, path.Join(naming.SharedDirName, "scylla-operator")),
 							},
 							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{

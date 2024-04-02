@@ -784,7 +784,7 @@ func TestStatefulSetForRack(t *testing.T) {
 								Command: []string{
 									"/bin/sh",
 									"-c",
-									"cp -a /usr/bin/scylla-operator /mnt/shared",
+									"cp -a /usr/bin/scylla-operator /mnt/shared/scylla-operator",
 								},
 								Resources: corev1.ResourceRequirements{
 									Limits: corev1.ResourceList{
@@ -1478,7 +1478,7 @@ func TestStatefulSetForRack(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := StatefulSetForRack(tc.rack, tc.scyllaCluster, tc.existingStatefulSet, "scylladb/scylla-operator:latest", 0, "")
+			got, err := StatefulSetForRack(tc.rack, tc.scyllaCluster, tc.existingStatefulSet, "/usr/bin/scylla-operator", "scylladb/scylla-operator:latest", 0, "")
 
 			if !reflect.DeepEqual(err, tc.expectedError) {
 				t.Fatalf("expected and actual errors differ: %s",

@@ -59,8 +59,9 @@ var (
 )
 
 type Controller struct {
-	operatorImage   string
-	cqlsIngressPort int
+	operatorImage      string
+	operatorBinaryPath string
+	cqlsIngressPort    int
 
 	kubeClient   kubernetes.Interface
 	scyllaClient scyllav1client.ScyllaV1Interface
@@ -102,6 +103,7 @@ func NewController(
 	jobInformer batchv1informers.JobInformer,
 	scyllaClusterInformer scyllav1informers.ScyllaClusterInformer,
 	operatorImage string,
+	operatorBinaryPath string,
 	cqlsIngressPort int,
 	keyGetter crypto.RSAKeyGetter,
 ) (*Controller, error) {
@@ -110,8 +112,9 @@ func NewController(
 	eventBroadcaster.StartRecordingToSink(&corev1client.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
 	scc := &Controller{
-		operatorImage:   operatorImage,
-		cqlsIngressPort: cqlsIngressPort,
+		operatorImage:      operatorImage,
+		operatorBinaryPath: operatorBinaryPath,
+		cqlsIngressPort:    cqlsIngressPort,
 
 		kubeClient:   kubeClient,
 		scyllaClient: scyllaClient,

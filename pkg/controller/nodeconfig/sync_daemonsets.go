@@ -23,7 +23,7 @@ func (ncc *Controller) syncDaemonSet(
 	// FIXME: check that its not empty, emit event
 	// FIXME: add webhook validation for the format
 	requiredDaemonSets := []*appsv1.DaemonSet{
-		makeNodeSetupDaemonSet(nc, ncc.operatorImage, scyllaUtilsImage),
+		makeNodeSetupDaemonSet(nc, ncc.operatorBinaryPath, ncc.operatorImage, scyllaUtilsImage),
 	}
 
 	err := controllerhelpers.Prune(

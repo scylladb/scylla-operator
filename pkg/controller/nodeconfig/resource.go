@@ -116,7 +116,7 @@ func makeNodeConfigClusterRoleBinding() *rbacv1.ClusterRoleBinding {
 	}
 }
 
-func makeNodeSetupDaemonSet(nc *scyllav1alpha1.NodeConfig, operatorImage, scyllaImage string) *appsv1.DaemonSet {
+func makeNodeSetupDaemonSet(nc *scyllav1alpha1.NodeConfig, operatorBinaryPath, operatorImage, scyllaImage string) *appsv1.DaemonSet {
 	if nc.Spec.LocalDiskSetup == nil && nc.Spec.DisableOptimizations {
 		return nil
 	}
@@ -223,7 +223,7 @@ fi
 # Mount operator binary
 mkdir -p ./scylla-operator
 touch ./scylla-operator/scylla-operator
-mount --bind /usr/bin/scylla-operator ./scylla-operator/scylla-operator
+mount --bind ` + operatorBinaryPath + ` ./scylla-operator/scylla-operator
 
 # Mount service account
 mkdir -p "./run/secrets/kubernetes.io/serviceaccount"

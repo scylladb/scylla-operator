@@ -38,6 +38,11 @@ const (
 	cryptoKeyBufferSizeMaxFlagKey = "crypto-key-buffer-size-max"
 )
 
+var (
+	// OperatorBinaryPath specifies path of Operator binary within Operator container image.
+	OperatorBinaryPath = "/usr/bin/scylla-operator"
+)
+
 type OperatorOptions struct {
 	genericclioptions.ClientConfig
 	genericclioptions.InClusterReflection
@@ -261,6 +266,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		kubeInformers.Batch().V1().Jobs(),
 		scyllaInformers.Scylla().V1().ScyllaClusters(),
 		o.OperatorImage,
+		OperatorBinaryPath,
 		o.CQLSIngressPort,
 		rsaKeyGenerator,
 	)
@@ -291,6 +297,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		kubeInformers.Core().V1().Nodes(),
 		kubeInformers.Core().V1().ServiceAccounts(),
 		o.OperatorImage,
+		OperatorBinaryPath,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create nodeconfig controller: %w", err)

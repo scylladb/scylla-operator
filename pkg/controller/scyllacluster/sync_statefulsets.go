@@ -52,7 +52,7 @@ func (scc *Controller) makeRacks(sc *scyllav1.ScyllaCluster, statefulSets map[st
 	sets := make([]*appsv1.StatefulSet, 0, len(sc.Spec.Datacenter.Racks))
 	for i, rack := range sc.Spec.Datacenter.Racks {
 		oldSts := statefulSets[naming.StatefulSetNameForRack(rack, sc)]
-		sts, err := StatefulSetForRack(rack, sc, oldSts, scc.operatorImage, i, inputsHash)
+		sts, err := StatefulSetForRack(rack, sc, oldSts, scc.operatorBinaryPath, scc.operatorImage, i, inputsHash)
 		if err != nil {
 			return nil, err
 		}

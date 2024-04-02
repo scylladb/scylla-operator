@@ -70,7 +70,8 @@ type Controller struct {
 	queue    workqueue.RateLimitingInterface
 	handlers *controllerhelpers.Handlers[*scyllav1alpha1.NodeConfig]
 
-	operatorImage string
+	operatorImage      string
+	operatorBinaryPath string
 }
 
 func NewController(
@@ -85,6 +86,7 @@ func NewController(
 	nodeInformer corev1informers.NodeInformer,
 	serviceAccountInformer corev1informers.ServiceAccountInformer,
 	operatorImage string,
+	operatorBinaryPath string,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
@@ -118,7 +120,8 @@ func NewController(
 
 		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "NodeConfig"),
 
-		operatorImage: operatorImage,
+		operatorImage:      operatorImage,
+		operatorBinaryPath: operatorBinaryPath,
 	}
 
 	var err error

@@ -22,7 +22,7 @@ func (ncc *Controller) calculateStatus(nc *scyllav1alpha1.NodeConfig, daemonSets
 
 	// TODO: We need to restructure the pattern so status update already know the desired object and we don't
 	// 		 construct it twice.
-	requiredDaemonSet := makeNodeSetupDaemonSet(nc, ncc.operatorImage, scyllaUtilsImage)
+	requiredDaemonSet := makeNodeSetupDaemonSet(nc, ncc.operatorBinaryPath, ncc.operatorImage, scyllaUtilsImage)
 	ds, found := daemonSets[requiredDaemonSet.Name]
 	if !found {
 		klog.V(4).InfoS("Existing DaemonSet not found", "DaemonSet", klog.KObj(ds))

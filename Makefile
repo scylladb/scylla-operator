@@ -8,7 +8,6 @@ IMAGE_TAG ?= latest
 IMAGE_REF ?= docker.io/scylladb/scylla-operator:$(IMAGE_TAG)
 
 MAKE_REQUIRED_MIN_VERSION:=4.2 # for SHELLSTATUS
-GO_REQUIRED_MIN_VERSION ?=1.22
 
 GIT_TAG ?=$(shell git describe --long --tags --abbrev=7 --match 'v[0-9]*')$(if $(filter $(.SHELLSTATUS),0),,$(error git describe failed))
 GIT_TAG_SHORT ?=$(shell git describe --tags --abbrev=7 --match 'v[0-9]*')$(if $(filter $(.SHELLSTATUS),0),,$(error git describe failed))
@@ -105,10 +104,6 @@ endef
 
 ifneq "$(MAKE_REQUIRED_MIN_VERSION)" ""
 $(call require_minimal_version,make,MAKE_REQUIRED_MIN_VERSION,$(MAKE_VERSION))
-endif
-
-ifneq "$(GO_REQUIRED_MIN_VERSION)" ""
-$(call require_minimal_version,$(GO),GO_REQUIRED_MIN_VERSION,$(GO_VERSION))
 endif
 
 # $1 - package name

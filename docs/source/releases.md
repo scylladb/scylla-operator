@@ -57,3 +57,29 @@ Support matrix table shows the version requirements for a particular **scylla-op
 | Scylla Enterprise | `>=2021.1` | `>=2021.1` | `>=2021.1` |    `>=2021.1`     |      `>=2021.1`      | `>=2021.1`  | `>=2021.1`  | `>=2020.1` | `>=2020.1` | `>=2020.1` | `>=2020.1` |
 |  Scylla Manager   |  `>=2.6`   |  `>=2.6`   |  `>=2.6`   |      `>=2.2`      |       `>=2.2`        |   `>=2.2`   |   `>=2.2`   |  `>=2.2`   |  `>=2.2`   |  `>=2.2`   |  `>=2.2`   |
 | Scylla Monitoring |  `>=4.0`   |  `>=4.0`   |  `>=4.0`   |      `>=3.0`      |       `>=3.0`        |   `>=1.0`   |   `>=1.0`   |  `>=1.0`   |  `>=1.0`   |  `>=1.0`   |  `>=1.0`   |
+
+### Supported Kubernetes platforms
+
+We officially test and recommend to use the following platforms:
+
+:::{table}
+| Platform         | OS Image     |
+|:-----------------|:-------------|
+| GKE              | Ubuntu       |
+| EKS              | Amazon Linux |
+:::
+
+While our APIs generally work on any Kubernetes conformant cluster,
+performance tuning and other pieces that need to interact with the host OS, kubelet, CRI, kernel, etc. might hit some incompatibilities.
+
+
+:::{warning}
+The following platforms are known **not to work correctly** at this time.
+
+:::{table}
+| Platform         | OS Image     | Details |
+|:-----------------|:-------------| :------ |
+| GKE              | Container OS |         |
+| EKS              | Bottlerocket | Suspected kernel/cgroups issue that breaks available memory detection for ScyllaDB |
+:::
+:::

@@ -1,3 +1,24 @@
+# v1.13.13 (2024-03-29)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.13.12 (2024-03-25)
+
+* **Bug Fix**: Removes some duplicated reflection-based calls in the marshaler.
+
+# v1.13.11 (2024-03-20)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.13.10 (2024-03-18)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.13.9 (2024-03-07)
+
+* **Bug Fix**: Remove dependency on go-cmp.
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.13.8 (2024-03-06)
 
 * **Dependency Update**: Updated to the latest SDK module versions

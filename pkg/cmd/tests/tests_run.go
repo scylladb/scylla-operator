@@ -57,7 +57,11 @@ var suites = ginkgotest.TestSuites{
 		Description: templates.LongDesc(`
 		Tests that ensure an Scylla Operator is working properly.
 		`),
-		LabelFilter:        fmt.Sprintf("!%s", framework.SerialLabelName),
+		LabelFilter: fmt.Sprintf(
+			"!%s && !%s",
+			framework.SerialLabelName,
+			framework.MultiDatacenterLabelName,
+		),
 		DefaultParallelism: 42,
 	},
 	{
@@ -67,6 +71,14 @@ var suites = ginkgotest.TestSuites{
 		`),
 		LabelFilter:        fmt.Sprintf("%s", framework.SerialLabelName),
 		DefaultParallelism: 1,
+	},
+	{
+		Name: "scylla-operator/multi-datacenter-conformance/parallel",
+		Description: templates.LongDesc(`
+		Tests that ensure Scylla Operator is working properly in multi-datacenter infrastructure.
+		`),
+		LabelFilter:        fmt.Sprintf("%s", framework.MultiDatacenterLabelName),
+		DefaultParallelism: 42,
 	},
 }
 

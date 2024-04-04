@@ -1,0 +1,38 @@
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  generateName: basic-
+  labels:
+   foo: bar
+  annotations:
+   bar: foo
+spec:
+  agentVersion: 3.2.8
+  version: 5.4.3
+  developerMode: true
+  exposeOptions:
+    nodeService:
+      type: {{ .nodeServiceType }}
+    broadcastOptions:
+      nodes:
+        type: {{ .nodesBroadcastAddressType }}
+      clients:
+        type: {{ .clientsBroadcastAddressType }}
+  datacenter:
+    name: us-east-1
+    racks:
+    {{- range $_, $rackName := .rackNames }}
+    - name: "{{ $rackName }}"
+      members: 1
+      storage:
+        capacity: 1Gi
+      resources:
+        requests:
+          cpu: 10m
+          memory: 100Mi
+        limits:
+          cpu: 1
+          memory: 1Gi
+    {{- end }}
+  sysctls:
+   - fs.aio-max-nr=30000000

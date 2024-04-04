@@ -118,6 +118,10 @@ func RolloutTimeoutForScyllaCluster(sc *scyllav1.ScyllaCluster) time.Duration {
 	return SyncTimeout + time.Duration(GetMemberCount(sc))*memberRolloutTimeout + cleanupJobTimeout
 }
 
+func RolloutTimeoutForMultiDatacenterScyllaCluster(sc *scyllav1.ScyllaCluster) time.Duration {
+	return SyncTimeout + time.Duration(GetMemberCount(sc))*multiDatacenterMemberRolloutTimeout + cleanupJobTimeout
+}
+
 func GetMemberCount(sc *scyllav1.ScyllaCluster) int32 {
 	members := int32(0)
 	for _, r := range sc.Spec.Datacenter.Racks {
@@ -129,6 +133,10 @@ func GetMemberCount(sc *scyllav1.ScyllaCluster) int32 {
 
 func ContextForRollout(parent context.Context, sc *scyllav1.ScyllaCluster) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(parent, RolloutTimeoutForScyllaCluster(sc))
+}
+
+func ContextForMultiDatacenterRollout(parent context.Context, sc *scyllav1.ScyllaCluster) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(parent, RolloutTimeoutForMultiDatacenterScyllaCluster(sc))
 }
 
 func SyncTimeoutForScyllaCluster(sc *scyllav1.ScyllaCluster) time.Duration {

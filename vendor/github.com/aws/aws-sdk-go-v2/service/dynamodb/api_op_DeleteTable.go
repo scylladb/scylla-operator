@@ -45,7 +45,8 @@ func (c *Client) DeleteTable(ctx context.Context, params *DeleteTableInput, optF
 // Represents the input of a DeleteTable operation.
 type DeleteTableInput struct {
 
-	// The name of the table to delete.
+	// The name of the table to delete. You can also provide the Amazon Resource Name
+	// (ARN) of the table in this parameter.
 	//
 	// This member is required.
 	TableName *string

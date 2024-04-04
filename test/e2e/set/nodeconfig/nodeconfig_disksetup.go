@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/rest"
 )
 
 var _ = g.Describe("Node Setup", framework.Serial, func() {
@@ -226,12 +227,12 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		o.Eventually(func(g o.Gomega) {
 			for _, ldName := range loopDeviceNames {
 				loopDevicePath := path.Join(hostLoopsDir, ldName)
-				stdout, stderr, err := executeInPod(f.KubeClient().CoreV1(), clientPod, "stat", loopDevicePath)
+				stdout, stderr, err := executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "stat", loopDevicePath)
 				g.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 			}
 		}).WithPolling(1 * time.Second).WithTimeout(3 * time.Minute).Should(o.Succeed())
 
-		stdout, stderr, err := executeInPod(f.KubeClient().CoreV1(), clientPod, "findmnt", "--raw", "--output=SOURCE", "--noheadings", hostMountPath)
+		stdout, stderr, err := executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "findmnt", "--raw", "--output=SOURCE", "--noheadings", hostMountPath)
 		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 
 		discoveredRaidDevice := strings.TrimSpace(stdout)
@@ -239,15 +240,15 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 
 		framework.By("Checking if RAID device has been created at %q", discoveredRaidDevice)
 		o.Eventually(func(g o.Gomega) {
-			stdout, stderr, err := executeInPod(f.KubeClient().CoreV1(), clientPod, "stat", discoveredRaidDeviceOnHost)
+			stdout, stderr, err := executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "stat", discoveredRaidDeviceOnHost)
 			g.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 
-			stdout, stderr, err = executeInPod(f.KubeClient().CoreV1(), clientPod, "readlink", "-f", discoveredRaidDeviceOnHost)
+			stdout, stderr, err = executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "readlink", "-f", discoveredRaidDeviceOnHost)
 			g.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 
 			raidDeviceName := path.Base(discoveredRaidDeviceOnHost)
 
-			stdout, stderr, err = executeInPod(f.KubeClient().CoreV1(), clientPod, "cat", fmt.Sprintf("/sys/block/%s/md/level", raidDeviceName))
+			stdout, stderr, err = executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "cat", fmt.Sprintf("/sys/block/%s/md/level", raidDeviceName))
 			g.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 
 			raidLevel := strings.TrimSpace(stdout)
@@ -256,13 +257,13 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 
 		defer func() {
 			framework.By("Stopping RAID device at %q", discoveredRaidDeviceOnHost)
-			stdout, stderr, err := executeInPod(f.KubeClient().CoreV1(), clientPod, "mdadm", "--stop", discoveredRaidDeviceOnHost)
+			stdout, stderr, err := executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "mdadm", "--stop", discoveredRaidDeviceOnHost)
 			o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 		}()
 
 		framework.By("Checking if RAID device has been formatted")
 		o.Eventually(func(g o.Gomega) {
-			stdout, stderr, err := executeInPod(f.KubeClient().CoreV1(), clientPod, "blkid", "--output=value", "--match-tag=TYPE", discoveredRaidDeviceOnHost)
+			stdout, stderr, err := executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "blkid", "--output=value", "--match-tag=TYPE", discoveredRaidDeviceOnHost)
 			g.Expect(err).NotTo(o.HaveOccurred(), stderr)
 
 			g.Expect(strings.TrimSpace(stdout)).To(o.Equal("xfs"))
@@ -270,7 +271,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 
 		framework.By("Checking if RAID was mounted at the provided location with correct options")
 		o.Eventually(func(g o.Gomega) {
-			stdout, stderr, err := executeInPod(f.KubeClient().CoreV1(), clientPod, "mount")
+			stdout, stderr, err := executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "mount")
 			g.Expect(err).NotTo(o.HaveOccurred(), stderr)
 
 			// mount output format
@@ -302,8 +303,8 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 	)
 })
 
-func executeInPod(client corev1client.CoreV1Interface, pod *corev1.Pod, command string, args ...string) (string, string, error) {
-	return utils.ExecWithOptions(client, utils.ExecOptions{
+func executeInPod(config *rest.Config, client corev1client.CoreV1Interface, pod *corev1.Pod, command string, args ...string) (string, string, error) {
+	return utils.ExecWithOptions(config, client, utils.ExecOptions{
 		Command:       append([]string{command}, args...),
 		Namespace:     pod.Namespace,
 		PodName:       pod.Name,

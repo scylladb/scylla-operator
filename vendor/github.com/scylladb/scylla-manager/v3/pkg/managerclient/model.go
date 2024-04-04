@@ -3,6 +3,7 @@
 package managerclient
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"sort"
@@ -14,7 +15,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-set/strset"
 	"github.com/scylladb/scylla-manager/v3/pkg/managerclient/table"
+	"github.com/scylladb/scylla-manager/v3/pkg/service/scheduler"
 	"github.com/scylladb/scylla-manager/v3/pkg/util/inexlist"
+	"github.com/scylladb/scylla-manager/v3/pkg/util/timeutc"
 	"github.com/scylladb/scylla-manager/v3/pkg/util/version"
 	"github.com/scylladb/scylla-manager/v3/swagger/gen/scylla-manager/models"
 	"github.com/scylladb/termtables"
@@ -513,7 +516,18 @@ func (li TaskListItems) Render(w io.Writer) error {
 
 		var schedule string
 		if t.Schedule.Cron != "" {
-			schedule = t.Schedule.Cron
+			var cronSpec scheduler.CronSpecification
+			err := json.Unmarshal([]byte(t.Schedule.Cron), &cronSpec)
+			if err != nil {
+				schedule = t.Schedule.Cron
+			} else {
+				schedule = cronSpec.Spec
+				if cronSpec.StartDate.After(timeutc.Now()) {
+					c := scheduler.MustCron(cronSpec.Spec, cronSpec.StartDate)
+					schedule += fmt.Sprintf(" with first activation after %s",
+						c.Next(cronSpec.StartDate).Format("2006-01-02 15:04:05"))
+				}
+			}
 		} else if t.Schedule.Interval != "" {
 			schedule = t.Schedule.Interval
 		}

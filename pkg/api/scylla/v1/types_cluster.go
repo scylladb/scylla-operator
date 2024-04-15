@@ -318,14 +318,12 @@ type SchedulerTaskSpec struct {
 
 	// startDate specifies the task start date expressed in the RFC3339 format or now[+duration],
 	// e.g. now+3d2h10m, valid units are d, h, m, s.
-	// +kubebuilder:default:="now"
 	// +optional
-	StartDate string `json:"startDate,omitempty"`
+	StartDate *string `json:"startDate,omitempty"`
 
 	// interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
 	// +optional
-	// +kubebuilder:default:="0"
-	Interval string `json:"interval,omitempty"`
+	Interval *string `json:"interval,omitempty"`
 
 	// numRetries indicates how many times a scheduled task will be retried before failing.
 	// +kubebuilder:default:=3

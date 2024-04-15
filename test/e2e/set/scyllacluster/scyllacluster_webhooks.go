@@ -62,7 +62,7 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 		_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, invalidIntensitySC, metav1.CreateOptions{})
 		o.Expect(err).To(o.Equal(&errors.StatusError{ErrStatus: metav1.Status{
 			Status:  "Failure",
-			Message: fmt.Sprintf(`admission webhook "webhook.scylla.scylladb.com" denied the request: ScyllaCluster.scylla.scylladb.com %q is invalid: spec.repairs[0].intensity: Invalid value: "100Mib": invalid intensity, it must be a float value`, invalidIntensitySC.Name),
+			Message: fmt.Sprintf(`admission webhook "webhook.scylla.scylladb.com" denied the request: ScyllaCluster.scylla.scylladb.com %q is invalid: spec.repairs[0].intensity: Invalid value: "100Mib": must be a float`, invalidIntensitySC.Name),
 			Reason:  "Invalid",
 			Details: &metav1.StatusDetails{
 				Name:  invalidIntensitySC.Name,
@@ -72,7 +72,7 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 				Causes: []metav1.StatusCause{
 					{
 						Type:    "FieldValueInvalid",
-						Message: `Invalid value: "100Mib": invalid intensity, it must be a float value`,
+						Message: `Invalid value: "100Mib": must be a float`,
 						Field:   "spec.repairs[0].intensity",
 					},
 				},

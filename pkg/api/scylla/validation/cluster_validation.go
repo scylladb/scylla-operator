@@ -172,10 +172,7 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 		}
 		managerTaskNames.Add(r.Name)
 
-		_, err := strconv.ParseFloat(r.Intensity, 64)
-		if err != nil {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("repairs").Index(i).Child("intensity"), r.Intensity, "invalid intensity, it must be a float value"))
-		}
+		allErrs = append(allErrs, ValidateRepairTaskSpec(&r, fldPath.Child("repairs").Index(i))...)
 	}
 
 	for i, b := range spec.Backups {
@@ -211,6 +208,17 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 
 	if spec.MinReadySeconds != nil && *spec.MinReadySeconds < 0 {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("minReadySeconds"), *spec.MinReadySeconds, "must be non-negative integer"))
+	}
+
+	return allErrs
+}
+
+func ValidateRepairTaskSpec(repairTaskSpec *scyllav1.RepairTaskSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	_, err := strconv.ParseFloat(repairTaskSpec.Intensity, 64)
+	if err != nil {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("intensity"), repairTaskSpec.Intensity, "must be a float"))
 	}
 
 	return allErrs

@@ -124,7 +124,6 @@ spec:
                           type: string
                         type: array
                       interval:
-                        default: "0"
                         description: interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
                         type: string
                       keyspace:
@@ -161,7 +160,6 @@ spec:
                           type: string
                         type: array
                       startDate:
-                        default: now
                         description: startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.
                         type: string
                       uploadParallel:
@@ -2092,7 +2090,6 @@ spec:
                         description: intensity indicates how many token ranges (per shard) to repair in a single Scylla repair job. By default this is 1. If you set it to 0 the number of token ranges is adjusted to the maximum supported by node (see max_repair_ranges_in_parallel in Scylla logs). Valid values are 0 and integers >= 1. Higher values will result in increased cluster load and slightly faster repairs. Changing the intensity impacts repair granularity if you need to resume it, the higher the value the more work on resume. For Scylla clusters that *do not support row-level repair*, intensity can be a decimal between (0,1). In that case it specifies percent of shards that can be repaired in parallel on a repair master node. For Scylla clusters that are row-level repair enabled, setting intensity below 1 has the same effect as setting intensity 1.
                         type: string
                       interval:
-                        default: "0"
                         description: interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
                         type: string
                       keyspace:
@@ -2118,7 +2115,6 @@ spec:
                         description: smallTableThreshold enable small table optimization for tables of size lower than given threshold. Supported units [B, MiB, GiB, TiB].
                         type: string
                       startDate:
-                        default: now
                         description: startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.
                         type: string
                     type: object
@@ -2162,7 +2158,6 @@ spec:
                         description: id is the identification number of the backup task.
                         type: string
                       interval:
-                        default: "0"
                         description: interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
                         type: string
                       keyspace:
@@ -2199,7 +2194,6 @@ spec:
                           type: string
                         type: array
                       startDate:
-                        default: now
                         description: startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.
                         type: string
                       uploadParallel:
@@ -2345,7 +2339,6 @@ spec:
                         description: intensity indicates how many token ranges (per shard) to repair in a single Scylla repair job. By default this is 1. If you set it to 0 the number of token ranges is adjusted to the maximum supported by node (see max_repair_ranges_in_parallel in Scylla logs). Valid values are 0 and integers >= 1. Higher values will result in increased cluster load and slightly faster repairs. Changing the intensity impacts repair granularity if you need to resume it, the higher the value the more work on resume. For Scylla clusters that *do not support row-level repair*, intensity can be a decimal between (0,1). In that case it specifies percent of shards that can be repaired in parallel on a repair master node. For Scylla clusters that are row-level repair enabled, setting intensity below 1 has the same effect as setting intensity 1.
                         type: string
                       interval:
-                        default: "0"
                         description: interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s.
                         type: string
                       keyspace:
@@ -2371,7 +2364,6 @@ spec:
                         description: smallTableThreshold enable small table optimization for tables of size lower than given threshold. Supported units [B, MiB, GiB, TiB].
                         type: string
                       startDate:
-                        default: now
                         description: startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.
                         type: string
                     type: object

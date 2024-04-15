@@ -13,6 +13,7 @@ import (
 	"github.com/scylladb/scylla-manager/v3/pkg/managerclient"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -66,7 +67,7 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		scCopy.Spec.Repairs = append(scCopy.Spec.Repairs, scyllav1.RepairTaskSpec{
 			SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 				Name:     "weekly",
-				Interval: "7d",
+				Interval: pointer.Ptr("7d"),
 			},
 			Parallel: 123,
 		})
@@ -78,7 +79,7 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(sc.Spec.Repairs).To(o.HaveLen(1))
 		o.Expect(sc.Spec.Repairs[0].Name).To(o.Equal("weekly"))
-		o.Expect(sc.Spec.Repairs[0].Interval).To(o.Equal("7d"))
+		o.Expect(sc.Spec.Repairs[0].Interval).To(o.Equal(pointer.Ptr("7d")))
 		o.Expect(sc.Spec.Repairs[0].Parallel).To(o.Equal(int64(123)))
 		o.Expect(sc.Spec.Backups).To(o.BeEmpty())
 
@@ -120,7 +121,8 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		repairTask := tasks.TaskListItemSlice[0]
 		o.Expect(repairTask.Name).To(o.Equal(sc.Status.Repairs[0].Name))
 		o.Expect(repairTask.ID).To(o.Equal(sc.Status.Repairs[0].ID))
-		o.Expect(repairTask.Schedule.Interval).To(o.Equal(sc.Status.Repairs[0].Interval))
+		o.Expect(sc.Status.Repairs[0].Interval).NotTo(o.BeNil())
+		o.Expect(repairTask.Schedule.Interval).To(o.Equal(*sc.Status.Repairs[0].Interval))
 		o.Expect(repairTask.Properties.(map[string]interface{})["parallel"].(json.Number).Int64()).To(o.Equal(sc.Status.Repairs[0].Parallel))
 
 		framework.By("Updating the repair task for ScyllaCluster")
@@ -169,7 +171,8 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		repairTask = tasks.TaskListItemSlice[0]
 		o.Expect(repairTask.Name).To(o.Equal(sc.Status.Repairs[0].Name))
 		o.Expect(repairTask.ID).To(o.Equal(sc.Status.Repairs[0].ID))
-		o.Expect(repairTask.Schedule.Interval).To(o.Equal(sc.Status.Repairs[0].Interval))
+		o.Expect(sc.Status.Repairs[0].Interval).NotTo(o.BeNil())
+		o.Expect(repairTask.Schedule.Interval).To(o.Equal(*sc.Status.Repairs[0].Interval))
 		o.Expect(repairTask.Properties.(map[string]interface{})["parallel"].(json.Number).Int64()).To(o.Equal(sc.Status.Repairs[0].Parallel))
 
 		// Sanity check to avoid panics in the polling func.
@@ -254,7 +257,7 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		scCopy.Spec.Backups = append(scCopy.Spec.Backups, scyllav1.BackupTaskSpec{
 			SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
 				Name:     "daily",
-				Interval: "1d",
+				Interval: pointer.Ptr("1d"),
 			},
 			Location: []string{"s3:bucket"},
 		})

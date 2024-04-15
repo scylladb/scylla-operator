@@ -227,14 +227,15 @@ func syncRepairTasks(clusterID string, cluster *scyllav1.ScyllaCluster, syncer s
 }
 
 type startDateGetterSetter interface {
-	GetStartDate() string
+	GetStartDateOrEmpty() string
 	SetStartDate(sd string)
 }
 
 func evaluateDates(spec, managerTask startDateGetterSetter) {
+	startDate := spec.GetStartDateOrEmpty()
 	// Keep special "now" value evaluated on task creation.
-	if strings.HasPrefix(spec.GetStartDate(), "now") {
-		spec.SetStartDate(managerTask.GetStartDate())
+	if len(startDate) == 0 || strings.HasPrefix(startDate, "now") {
+		spec.SetStartDate(managerTask.GetStartDateOrEmpty())
 	}
 }
 

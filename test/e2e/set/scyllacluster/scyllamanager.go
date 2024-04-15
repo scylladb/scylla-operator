@@ -25,7 +25,7 @@ var _ = g.Describe("Scylla Manager integration", func() {
 
 	f := framework.NewFramework("scyllacluster")
 
-	g.It("should discover cluster and sync tasks", func() {
+	g.It("should register cluster and sync repair tasks", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
@@ -70,13 +70,6 @@ var _ = g.Describe("Scylla Manager integration", func() {
 			},
 			Parallel: 123,
 		})
-		scCopy.Spec.Backups = append(scCopy.Spec.Backups, scyllav1.BackupTaskSpec{
-			SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-				Name:     "daily",
-				Interval: "1d",
-			},
-			Location: []string{"s3:bucket"},
-		})
 
 		patchData, err := controllerhelpers.GenerateMergePatch(sc, scCopy)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -87,10 +80,9 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		o.Expect(sc.Spec.Repairs[0].Name).To(o.Equal("weekly"))
 		o.Expect(sc.Spec.Repairs[0].Interval).To(o.Equal("7d"))
 		o.Expect(sc.Spec.Repairs[0].Parallel).To(o.Equal(int64(123)))
-		o.Expect(sc.Spec.Backups).To(o.HaveLen(1))
-		o.Expect(sc.Spec.Backups[0].Name).To(o.Equal("daily"))
+		o.Expect(sc.Spec.Backups).To(o.BeEmpty())
 
-		framework.By("Waiting for ScyllaCluster to sync tasks with Scylla Manager")
+		framework.By("Waiting for ScyllaCluster to sync repair tasks with Scylla Manager")
 		repairTaskScheduledCond := func(cluster *scyllav1.ScyllaCluster) (bool, error) {
 			for _, r := range cluster.Status.Repairs {
 				if r.Name == sc.Spec.Repairs[0].Name {
@@ -108,23 +100,15 @@ var _ = g.Describe("Scylla Manager integration", func() {
 			return false, nil
 		}
 
-		backupTaskSchedulingFailedCond := func(cluster *scyllav1.ScyllaCluster) (bool, error) {
-			for _, b := range cluster.Status.Backups {
-				if b.Name == sc.Spec.Backups[0].Name {
-					return b.Error != "", nil
-				}
-			}
-			return false, nil
-		}
-
 		waitCtx3, waitCtx3Cancel := utils.ContextForManagerSync(ctx, sc)
 		defer waitCtx3Cancel()
-		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx3, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, repairTaskScheduledCond, backupTaskSchedulingFailedCond)
+		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx3, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, repairTaskScheduledCond)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(sc.Status.Repairs).To(o.HaveLen(1))
 		o.Expect(sc.Status.Repairs[0].Name).To(o.Equal(sc.Spec.Repairs[0].Name))
 		o.Expect(sc.Status.Repairs[0].Interval).To(o.Equal(sc.Spec.Repairs[0].Interval))
 		o.Expect(sc.Status.Repairs[0].Parallel).To(o.Equal(sc.Spec.Repairs[0].Parallel))
+		o.Expect(sc.Status.Backups).To(o.BeEmpty())
 
 		managerClient, err := utils.GetManagerClient(ctx, f.KubeAdminClient().CoreV1())
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -176,6 +160,7 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		o.Expect(sc.Status.Repairs[0].Name).To(o.Equal(sc.Spec.Repairs[0].Name))
 		o.Expect(sc.Status.Repairs[0].Interval).To(o.Equal(sc.Spec.Repairs[0].Interval))
 		o.Expect(sc.Status.Repairs[0].Parallel).To(o.Equal(sc.Spec.Repairs[0].Parallel))
+		o.Expect(sc.Status.Backups).To(o.BeEmpty())
 
 		framework.By("Verifying that updated repair task properties were synchronized")
 		tasks, err = managerClient.ListTasks(ctx, *sc.Status.ManagerID, "repair", false, "", "")
@@ -226,5 +211,80 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		tasks, err = managerClient.ListTasks(ctx, *sc.Status.ManagerID, "repair", false, "", "")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(tasks.TaskListItemSlice).To(o.BeEmpty())
+	})
+
+	g.It("should register cluster and sync backup tasks", func() {
+		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+		defer cancel()
+
+		sc := f.GetDefaultScyllaCluster()
+		sc.Spec.Datacenter.Racks[0].Members = 1
+
+		framework.By("Creating a ScyllaCluster")
+		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", sc.ResourceVersion)
+		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
+		defer waitCtx1Cancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(hosts).To(o.HaveLen(1))
+		di := insertAndVerifyCQLData(ctx, hosts)
+		defer di.Close()
+
+		framework.By("Waiting for ScyllaCluster to register with Scylla Manager")
+		registeredInManagerCond := func(sc *scyllav1.ScyllaCluster) (bool, error) {
+			return sc.Status.ManagerID != nil, nil
+		}
+
+		waitCtx2, waitCtx2Cancel := utils.ContextForManagerSync(ctx, sc)
+		defer waitCtx2Cancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, registeredInManagerCond)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Scheduling a backup for ScyllaCluster")
+		scCopy := sc.DeepCopy()
+		scCopy.Spec.Backups = append(scCopy.Spec.Backups, scyllav1.BackupTaskSpec{
+			SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+				Name:     "daily",
+				Interval: "1d",
+			},
+			Location: []string{"s3:bucket"},
+		})
+
+		patchData, err := controllerhelpers.GenerateMergePatch(sc, scCopy)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(ctx, sc.Name, types.MergePatchType, patchData, metav1.PatchOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(sc.Spec.Repairs).To(o.BeEmpty())
+		o.Expect(sc.Spec.Backups).To(o.HaveLen(1))
+		o.Expect(sc.Spec.Backups[0].Name).To(o.Equal("daily"))
+
+		framework.By("Waiting for ScyllaCluster to sync backup tasks with Scylla Manager")
+		backupTaskSchedulingFailedCond := func(cluster *scyllav1.ScyllaCluster) (bool, error) {
+			for _, b := range cluster.Status.Backups {
+				if b.Name == sc.Spec.Backups[0].Name {
+					return b.Error != "", nil
+				}
+			}
+			return false, nil
+		}
+
+		waitCtx3, waitCtx3Cancel := utils.ContextForManagerSync(ctx, sc)
+		defer waitCtx3Cancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx3, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, backupTaskSchedulingFailedCond)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(sc.Status.Repairs).To(o.BeEmpty())
+		o.Expect(sc.Status.Backups).To(o.HaveLen(1))
+		o.Expect(sc.Status.Backups[0].Name).To(o.Equal(sc.Spec.Backups[0].Name))
+		o.Expect(sc.Status.Backups[0].Error).NotTo(o.BeEmpty())
 	})
 })

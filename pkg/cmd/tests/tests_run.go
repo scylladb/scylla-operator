@@ -262,6 +262,9 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 		ArtifactsDir:          o.ArtifactsDir,
 		DeleteTestingNSPolicy: o.DeleteTestingNSPolicy,
 		ScyllaClusterOptions:  o.scyllaClusterOptions,
+		ObjectStorageType:     o.objectStorageType,
+		ObjectStorageBucket:   o.ObjectStorageBucket,
+		GCSServiceAccountKey:  o.gcsServiceAccountKey,
 	}
 	if o.IngressController != nil {
 		framework.TestContext.IngressController = &framework.IngressController{

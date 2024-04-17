@@ -2,6 +2,7 @@ package tests
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
@@ -40,6 +41,10 @@ type TestFrameworkOptions struct {
 	IngressController            *IngressControllerOptions
 	ScyllaClusterOptionsUntyped  *ScyllaClusterOptions
 	scyllaClusterOptions         *framework.ScyllaClusterOptions
+	ObjectStorageBucket          string
+	GCSServiceAccountKeyPath     string
+	objectStorageType            framework.ObjectStorageType
+	gcsServiceAccountKey         []byte
 }
 
 func NewTestFrameworkOptions() TestFrameworkOptions {
@@ -52,6 +57,10 @@ func NewTestFrameworkOptions() TestFrameworkOptions {
 			NodesBroadcastAddressType:   string(scyllav1.BroadcastAddressTypePodIP),
 			ClientsBroadcastAddressType: string(scyllav1.BroadcastAddressTypePodIP),
 		},
+		ObjectStorageBucket:      "",
+		GCSServiceAccountKeyPath: "",
+		objectStorageType:        framework.ObjectStorageTypeNone,
+		gcsServiceAccountKey:     []byte{},
 	}
 }
 
@@ -80,6 +89,8 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 		slices.ConvertSlice(supportedBroadcastAddressTypes, slices.ToString[scyllav1.BroadcastAddressType]),
 		", ",
 	)))
+	cmd.PersistentFlags().StringVarP(&o.ObjectStorageBucket, "object-storage-bucket", "", o.ObjectStorageBucket, "Name of the object storage bucket.")
+	cmd.PersistentFlags().StringVarP(&o.GCSServiceAccountKeyPath, "gcs-service-account-key-path", "", o.GCSServiceAccountKeyPath, "Path to a file containing a GCS service account key.")
 }
 
 func (o *TestFrameworkOptions) Validate() error {
@@ -105,6 +116,14 @@ func (o *TestFrameworkOptions) Validate() error {
 		errors = append(errors, fmt.Errorf("invalid scylla-cluster-clients-broadcast-address-type: %q", o.ScyllaClusterOptionsUntyped.ClientsBroadcastAddressType))
 	}
 
+	if len(o.GCSServiceAccountKeyPath) > 0 && len(o.ObjectStorageBucket) == 0 {
+		errors = append(errors, fmt.Errorf("object-storage-bucket can't be empty when gcs-service-account-key-path is provided"))
+	}
+
+	if len(o.ObjectStorageBucket) > 0 && len(o.GCSServiceAccountKeyPath) == 0 {
+		errors = append(errors, fmt.Errorf("gcs-service-account-key-path can't be empty when object-storage-bucket is provided"))
+	}
+
 	return apierrors.NewAggregate(errors)
 }
 
@@ -120,6 +139,18 @@ func (o *TestFrameworkOptions) Complete() error {
 			NodesBroadcastAddressType:   scyllav1.BroadcastAddressType(o.ScyllaClusterOptionsUntyped.NodesBroadcastAddressType),
 			ClientsBroadcastAddressType: scyllav1.BroadcastAddressType(o.ScyllaClusterOptionsUntyped.ClientsBroadcastAddressType),
 		},
+	}
+
+	if len(o.GCSServiceAccountKeyPath) > 0 {
+		o.objectStorageType = framework.ObjectStorageTypeGCS
+		gcsServiceAccountKey, err := os.ReadFile(o.GCSServiceAccountKeyPath)
+		if err != nil {
+			return fmt.Errorf("can't read gcs service account key file %q: %w", o.GCSServiceAccountKeyPath, err)
+		}
+		if len(gcsServiceAccountKey) == 0 {
+			return fmt.Errorf("gcs service account key file %q can't be empty", o.GCSServiceAccountKeyPath)
+		}
+		o.gcsServiceAccountKey = gcsServiceAccountKey
 	}
 
 	return nil

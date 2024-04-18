@@ -2,6 +2,7 @@ package operator
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -327,6 +328,12 @@ func (o *MustGatherOptions) run(ctx context.Context) error {
 			}
 		}
 	}
+
+	integritySHA, err := collector.WriteIntegrityFile()
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't write integrity file: %w", err))
+	}
+	klog.InfoS("Witten integrity file", "SHA", hex.EncodeToString(integritySHA))
 
 	return utilerrors.NewAggregate(errs)
 }

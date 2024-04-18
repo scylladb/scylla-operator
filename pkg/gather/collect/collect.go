@@ -3,10 +3,12 @@ package collect
 import (
 	"bytes"
 	"context"
+	"crypto/sha512"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
@@ -26,11 +28,13 @@ import (
 	"k8s.io/client-go/dynamic"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/yaml"
 )
 
 const (
 	namespacesDirName    = "namespaces"
 	clusterScopedDirName = "cluster-scoped"
+	IntegrityFileName    = ".integrity.yaml"
 )
 
 type ResourceInfo struct {
@@ -43,23 +47,6 @@ func NewResourceInfoFromMapping(mapping *meta.RESTMapping) *ResourceInfo {
 		Scope:    mapping.Scope,
 		Resource: mapping.Resource,
 	}
-}
-
-func writeObject(printer ResourcePrinterInterface, filePath string, resourceInfo *ResourceInfo, obj kubeinterfaces.ObjectInterface) error {
-	buf := bytes.NewBuffer(nil)
-	err := printer.PrintObj(resourceInfo, obj, buf)
-	if err != nil {
-		return fmt.Errorf("can't print object %q (%s): %w", naming.ObjRef(obj), resourceInfo.Resource, err)
-	}
-
-	err = os.WriteFile(filePath, buf.Bytes(), 0770)
-	if err != nil {
-		return fmt.Errorf("can't write file %q: %w", filePath, err)
-	}
-
-	klog.V(4).InfoS("Written resource", "Path", filePath)
-
-	return nil
 }
 
 func getResourceKey(obj *unstructured.Unstructured, resourceInfo *ResourceInfo) string {
@@ -82,6 +69,7 @@ type Collector struct {
 	logsLimitBytes   int64
 
 	collectedResources sets.Set[string]
+	counters           *Counters
 }
 
 func NewCollector(
@@ -104,6 +92,7 @@ func NewCollector(
 		keepGoing:          keepGoing,
 		logsLimitBytes:     logsLimitBytes,
 		collectedResources: sets.Set[string]{},
+		counters:           NewCounters(),
 	}
 }
 
@@ -134,10 +123,24 @@ func (c *Collector) writeObject(ctx context.Context, dirPath string, obj kubeint
 	var err error
 	for _, printer := range c.printers {
 		filePath := filepath.Join(dirPath, obj.GetName()+printer.GetSuffix())
-		err = writeObject(printer, filePath, resourceInfo, obj)
+		buf := bytes.NewBuffer(nil)
+
+		err = printer.PrintObj(resourceInfo, obj, buf)
+		if err != nil {
+			return fmt.Errorf("can't print object %q (%s): %w", naming.ObjRef(obj), resourceInfo.Resource, err)
+		}
+
+		err = os.WriteFile(filePath, buf.Bytes(), 0770)
+		if err != nil {
+			return fmt.Errorf("can't write file %q: %w", filePath, err)
+		}
+
+		err = c.counters.writeFile(strings.TrimPrefix(dirPath, c.baseDir), buf.Bytes())
 		if err != nil {
 			return fmt.Errorf("can't write object: %w", err)
 		}
+
+		klog.V(4).InfoS("Written resource", "Path", filePath)
 	}
 
 	return nil
@@ -503,4 +506,21 @@ func (c *Collector) CollectResources(ctx context.Context, resourceInfo *Resource
 	}
 
 	return apierrors.NewAggregate(errs)
+}
+
+func (c *Collector) WriteIntegrityFile() ([]byte, error) {
+	data, err := yaml.Marshal(c.counters)
+	if err != nil {
+		return nil, fmt.Errorf("can't marsah identity: %w", err)
+	}
+
+	integrityFilePath := filepath.Join(c.baseDir, IntegrityFileName)
+	err = os.WriteFile(integrityFilePath, data, 0770)
+	if err != nil {
+		return nil, fmt.Errorf("can't write file %q: %w", integrityFilePath, err)
+	}
+
+	h := sha512.New()
+	h.Write(data)
+	return h.Sum(nil), nil
 }

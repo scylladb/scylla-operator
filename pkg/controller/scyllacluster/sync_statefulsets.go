@@ -448,7 +448,7 @@ func (scc *Controller) createMissingStatefulSets(
 			}
 		}
 
-		// Wait for the StatefulSet to rollout. Racks can only bootstrap one by one.
+		// Wait for the StatefulSet to roll out. Racks can only bootstrap one by one.
 		rolledOut, err := controllerhelpers.IsStatefulSetRolledOut(sts)
 		if err != nil {
 			return progressingConditions, err
@@ -460,7 +460,7 @@ func (scc *Controller) createMissingStatefulSets(
 				Type:               statefulSetControllerProgressingCondition,
 				Status:             metav1.ConditionTrue,
 				Reason:             "WaitingForStatefulSetRollout",
-				Message:            fmt.Sprintf("Waiting for StatefulSet %q to rollout.", naming.ObjRef(req)),
+				Message:            fmt.Sprintf("Waiting for StatefulSet %q to roll out.", naming.ObjRef(req)),
 				ObservedGeneration: sc.Generation,
 			})
 			return progressingConditions, nil
@@ -693,7 +693,7 @@ func (scc *Controller) syncStatefulSets(
 				Type:               statefulSetControllerProgressingCondition,
 				Status:             metav1.ConditionTrue,
 				Reason:             "WaitingForStatefulSetRollout",
-				Message:            fmt.Sprintf("Waiting for StatefulSet %q to rollout.", naming.ObjRef(req)),
+				Message:            fmt.Sprintf("Waiting for StatefulSet %q to roll out.", naming.ObjRef(req)),
 				ObservedGeneration: sc.Generation,
 			})
 			return progressingConditions, nil
@@ -977,7 +977,7 @@ func (scc *Controller) syncStatefulSets(
 			status.Racks[rackName] = *scc.calculateRackStatus(sc, rackName, updatedSts, &oldRackStatus, services)
 		}
 
-		// Wait for the StatefulSet to rollout.
+		// Wait for the StatefulSet to roll out.
 		rolledOut, err := controllerhelpers.IsStatefulSetRolledOut(updatedSts)
 		if err != nil {
 			return progressingConditions, err
@@ -989,7 +989,7 @@ func (scc *Controller) syncStatefulSets(
 				Type:               statefulSetControllerProgressingCondition,
 				Status:             metav1.ConditionTrue,
 				Reason:             "WaitingForStatefulSetRollout",
-				Message:            fmt.Sprintf("Waiting for StatefulSet %q to rollout.", naming.ObjRef(required)),
+				Message:            fmt.Sprintf("Waiting for StatefulSet %q to roll out.", naming.ObjRef(required)),
 				ObservedGeneration: sc.Generation,
 			})
 			return progressingConditions, nil

@@ -36,7 +36,7 @@ var _ = g.Describe("MultiDC cluster", func() {
 		sc1, err := f1.ScyllaClient().ScyllaV1().ScyllaClusters(f1.Namespace()).Create(ctx, sc1, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		framework.By("Waiting for the first ScyllaCluster to rollout (RV=%s)", sc1.ResourceVersion)
+		framework.By("Waiting for the first ScyllaCluster to roll out (RV=%s)", sc1.ResourceVersion)
 		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc1)
 		defer waitCtx1Cancel()
 		sc1, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f1.ScyllaClient().ScyllaV1().ScyllaClusters(sc1.Namespace), sc1.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
@@ -63,7 +63,7 @@ var _ = g.Describe("MultiDC cluster", func() {
 		sc2, err = f2.ScyllaClient().ScyllaV1().ScyllaClusters(f2.Namespace()).Create(ctx, sc2, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		framework.By("Waiting for the second ScyllaCluster to rollout (RV=%s)", sc2.ResourceVersion)
+		framework.By("Waiting for the second ScyllaCluster to roll out (RV=%s)", sc2.ResourceVersion)
 		waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc2)
 		defer waitCtx2Cancel()
 		sc2, err = controllerhelpers.WaitForScyllaClusterState(waitCtx2, f2.ScyllaClient().ScyllaV1().ScyllaClusters(sc2.Namespace), sc2.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)

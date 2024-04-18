@@ -61,7 +61,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", sc.ResourceVersion)
+		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
 		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx1Cancel()
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
@@ -118,7 +118,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 				o.Expect(sc.Spec.Datacenter.Racks[0].Members).To(o.BeEquivalentTo(tc.replicas))
 				o.Expect(sc.Spec.DNSDomains).To(o.BeEquivalentTo(tc.domains))
 
-				framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", sc.ResourceVersion)
+				framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
 				waitCtxL1, waitCtxL1Cancel := utils.ContextForRollout(ctx, sc)
 				defer waitCtxL1Cancel()
 				sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtxL1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
@@ -276,7 +276,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", sc.ResourceVersion)
+		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
 		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx1Cancel()
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)

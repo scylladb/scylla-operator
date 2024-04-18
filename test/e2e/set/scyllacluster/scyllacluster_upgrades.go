@@ -55,7 +55,7 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(sc.Spec.Version).To(o.Equal(e.initialVersion))
 
-			framework.By("Waiting for the ScyllaCluster to rollout (RV=%s)", sc.ResourceVersion)
+			framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
 			waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
 			defer waitCtx1Cancel()
 			sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)

@@ -121,6 +121,16 @@ func TestMustGatherOptions_Run(t *testing.T) {
 						Name: "fedora",
 					},
 				},
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "my-namespace",
+					},
+				},
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "my-other-namespace",
+					},
+				},
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "scylla-operator",
@@ -153,6 +163,30 @@ func TestMustGatherOptions_Run(t *testing.T) {
 			expectedDump: &testhelpers.GatherDump{
 				EmptyDirs: nil,
 				Files: []testhelpers.File{
+					{
+						Name: "cluster-scoped/namespaces/my-namespace.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: v1
+kind: Namespace
+metadata:
+  creationTimestamp: null
+  name: my-namespace
+spec: {}
+status: {}
+`, "\n"),
+					},
+					{
+						Name: "cluster-scoped/namespaces/my-other-namespace.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: v1
+kind: Namespace
+metadata:
+  creationTimestamp: null
+  name: my-other-namespace
+spec: {}
+status: {}
+`, "\n"),
+					},
 					{
 						Name: "cluster-scoped/namespaces/scylla-operator.yaml",
 						Content: strings.TrimPrefix(`
@@ -262,6 +296,16 @@ metadata:
 						Name: "fedora",
 					},
 				},
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "my-namespace",
+					},
+				},
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "my-other-namespace",
+					},
+				},
 				&scyllav1.ScyllaCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "my-namespace",
@@ -285,6 +329,18 @@ metadata:
 			expectedDump: &testhelpers.GatherDump{
 				EmptyDirs: nil,
 				Files: []testhelpers.File{
+					{
+						Name: "cluster-scoped/namespaces/my-namespace.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: v1
+kind: Namespace
+metadata:
+  creationTimestamp: null
+  name: my-namespace
+spec: {}
+status: {}
+`, "\n"),
+					},
 					{
 						Name: "cluster-scoped/namespaces/scylla-operator.yaml",
 						Content: strings.TrimPrefix(`

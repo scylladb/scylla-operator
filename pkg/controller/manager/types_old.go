@@ -79,6 +79,8 @@ func (r *RepairTask) FromManager(t *managerclient.TaskListItem) error {
 	r.Interval = pointer.Ptr(t.Schedule.Interval)
 	r.StartDate = pointer.Ptr(t.Schedule.StartDate.String())
 	r.NumRetries = pointer.Ptr(t.Schedule.NumRetries)
+	r.Cron = pointer.Ptr(t.Schedule.Cron)
+	r.Timezone = pointer.Ptr(t.Schedule.Timezone)
 
 	props := t.Properties.(map[string]interface{})
 	if err := mapstructure.Decode(props, r); err != nil {
@@ -153,6 +155,8 @@ func (b *BackupTask) FromManager(t *managerclient.TaskListItem) error {
 	b.Interval = pointer.Ptr(t.Schedule.Interval)
 	b.StartDate = pointer.Ptr(t.Schedule.StartDate.String())
 	b.NumRetries = pointer.Ptr(t.Schedule.NumRetries)
+	b.Cron = pointer.Ptr(t.Schedule.Cron)
+	b.Timezone = pointer.Ptr(t.Schedule.Timezone)
 
 	props := t.Properties.(map[string]interface{})
 	if err := mapstructure.Decode(props, b); err != nil {
@@ -191,6 +195,14 @@ func schedulerTaskSpecToManager(schedulerTaskSpec *scyllav1.SchedulerTaskSpec) (
 
 	if schedulerTaskSpec.NumRetries != nil {
 		schedule.NumRetries = *schedulerTaskSpec.NumRetries
+	}
+
+	if schedulerTaskSpec.Cron != nil {
+		schedule.Cron = *schedulerTaskSpec.Cron
+	}
+
+	if schedulerTaskSpec.Timezone != nil {
+		schedule.Timezone = *schedulerTaskSpec.Timezone
 	}
 
 	return schedule, nil

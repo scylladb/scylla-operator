@@ -31,6 +31,7 @@ require (
 	github.com/onsi/gomega v1.32.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.19.0
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/scylladb/go-set v1.0.2
 	github.com/scylladb/gocqlx/v2 v2.8.0
 	github.com/scylladb/scylla-manager/v3 v3.2.7
@@ -174,7 +175,6 @@ require (
 	github.com/rclone/rclone v1.66.0 // indirect
 	github.com/rfjakob/eme v1.1.2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/scylladb/go-log v0.0.7 // indirect
 	github.com/scylladb/go-reflectx v1.0.1 // indirect

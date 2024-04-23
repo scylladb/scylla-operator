@@ -609,6 +609,16 @@ func (in *SchedulerTaskSpec) DeepCopyInto(out *SchedulerTaskSpec) {
 		*out = new(int64)
 		**out = **in
 	}
+	if in.Cron != nil {
+		in, out := &in.Cron, &out.Cron
+		*out = new(string)
+		**out = **in
+	}
+	if in.Timezone != nil {
+		in, out := &in.Timezone, &out.Timezone
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 

@@ -329,6 +329,14 @@ type SchedulerTaskSpec struct {
 	// +kubebuilder:default:=3
 	// +optional
 	NumRetries *int64 `json:"numRetries,omitempty"`
+
+	// cron specifies the task schedule as a cron expression. It supports an extended syntax including @monthly, @weekly, @daily, @midnight, @hourly, @every X[h|m|s].
+	// +optional
+	Cron *string `json:"cron,omitempty"`
+
+	// timezone specifies the timezone of cron field.
+	// +optional
+	Timezone *string `json:"timezone,omitempty"`
 }
 
 type RepairTaskSpec struct {

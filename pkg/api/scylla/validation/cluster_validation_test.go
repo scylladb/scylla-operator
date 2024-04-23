@@ -88,6 +88,458 @@ func TestValidateScyllaCluster(t *testing.T) {
 			expectedErrorString: `spec.backups[0].name: Duplicate value: "task-name"`,
 		},
 		{
+			name: "invalid cron in manager repair task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name: "task-name",
+						Cron: pointer.Ptr("invalid"),
+					},
+					Intensity: "1",
+				})
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "spec.repairs[0].cron",
+					BadValue: pointer.Ptr("invalid"),
+					Detail:   "expected 5 to 6 fields, found 1: [invalid]",
+				},
+			},
+			expectedErrorString: `spec.repairs[0].cron: Invalid value: "invalid": expected 5 to 6 fields, found 1: [invalid]`,
+		},
+		{
+			name: "unallowed TZ in cron in manager repair task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name: "task-name",
+						Cron: pointer.Ptr("TZ=Europe/Warsaw 0 23 * * SAT"),
+					},
+					Intensity: "1",
+				})
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "spec.repairs[0].cron",
+					BadValue: pointer.Ptr("TZ=Europe/Warsaw 0 23 * * SAT"),
+					Detail:   "can't use TZ or CRON_TZ in cron, use timezone instead",
+				},
+			},
+			expectedErrorString: `spec.repairs[0].cron: Invalid value: "TZ=Europe/Warsaw 0 23 * * SAT": can't use TZ or CRON_TZ in cron, use timezone instead`,
+		},
+		{
+			name: "unallowed TZ in cron in manager backup task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name: "task-name",
+						Cron: pointer.Ptr("TZ=Europe/Warsaw 0 23 * * SAT"),
+					},
+				})
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "spec.backups[0].cron",
+					BadValue: pointer.Ptr("TZ=Europe/Warsaw 0 23 * * SAT"),
+					Detail:   "can't use TZ or CRON_TZ in cron, use timezone instead",
+				},
+			},
+			expectedErrorString: `spec.backups[0].cron: Invalid value: "TZ=Europe/Warsaw 0 23 * * SAT": can't use TZ or CRON_TZ in cron, use timezone instead`,
+		},
+		{
+			name: "unallowed CRON_TZ in cron in manager repair task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name: "task-name",
+						Cron: pointer.Ptr("CRON_TZ=Europe/Warsaw 0 23 * * SAT"),
+					},
+					Intensity: "1",
+				})
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "spec.repairs[0].cron",
+					BadValue: pointer.Ptr("CRON_TZ=Europe/Warsaw 0 23 * * SAT"),
+					Detail:   "can't use TZ or CRON_TZ in cron, use timezone instead",
+				},
+			},
+			expectedErrorString: `spec.repairs[0].cron: Invalid value: "CRON_TZ=Europe/Warsaw 0 23 * * SAT": can't use TZ or CRON_TZ in cron, use timezone instead`,
+		},
+		{
+			name: "unallowed CRON_TZ in cron in manager backup task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name: "task-name",
+						Cron: pointer.Ptr("CRON_TZ=Europe/Warsaw 0 23 * * SAT"),
+					},
+				})
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "spec.backups[0].cron",
+					BadValue: pointer.Ptr("CRON_TZ=Europe/Warsaw 0 23 * * SAT"),
+					Detail:   "can't use TZ or CRON_TZ in cron, use timezone instead",
+				},
+			},
+			expectedErrorString: `spec.backups[0].cron: Invalid value: "CRON_TZ=Europe/Warsaw 0 23 * * SAT": can't use TZ or CRON_TZ in cron, use timezone instead`,
+		},
+		{
+			name: "invalid timezone in manager repair task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name:     "task-name",
+						Cron:     pointer.Ptr("0 23 * * SAT"),
+						Timezone: pointer.Ptr("invalid"),
+					},
+					Intensity: "1",
+				})
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "spec.repairs[0].timezone",
+					BadValue: pointer.Ptr("invalid"),
+					Detail:   "unknown time zone invalid",
+				},
+			},
+			expectedErrorString: `spec.repairs[0].timezone: Invalid value: "invalid": unknown time zone invalid`,
+		},
+		{
+			name: "invalid timezone in manager backup task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name:     "task-name",
+						Cron:     pointer.Ptr("0 23 * * SAT"),
+						Timezone: pointer.Ptr("invalid"),
+					},
+				})
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "spec.backups[0].timezone",
+					BadValue: pointer.Ptr("invalid"),
+					Detail:   "unknown time zone invalid",
+				},
+			},
+			expectedErrorString: `spec.backups[0].timezone: Invalid value: "invalid": unknown time zone invalid`,
+		},
+		{
+			name: "cron and timezone in manager repair task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name:     "task-name",
+						Cron:     pointer.Ptr("0 23 * * SAT"),
+						Timezone: pointer.Ptr("Europe/Warsaw"),
+					},
+					Intensity: "1",
+				})
+				return cluster
+			}(),
+			expectedErrorList:   field.ErrorList{},
+			expectedErrorString: "",
+		},
+		{
+			name: "cron and timezone in manager backup task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name:     "task-name",
+						Cron:     pointer.Ptr("0 23 * * SAT"),
+						Timezone: pointer.Ptr("Europe/Warsaw"),
+					},
+				})
+				return cluster
+			}(),
+			expectedErrorList:   field.ErrorList{},
+			expectedErrorString: "",
+		},
+		{
+			name: "nil cron and invalid interval in manager repair task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name:     "task-name",
+						Interval: pointer.Ptr("invalid"),
+						Cron:     nil,
+					},
+					Intensity: "1",
+				})
+				return cluster
+			}(),
+			expectedErrorList:   field.ErrorList{},
+			expectedErrorString: "",
+		},
+		{
+			name: "nil cron and invalid interval in manager backup task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name:     "task-name",
+						Interval: pointer.Ptr("invalid"),
+						Cron:     nil,
+					},
+				})
+				return cluster
+			}(),
+			expectedErrorList:   field.ErrorList{},
+			expectedErrorString: "",
+		},
+		{
+			name: "nil cron and non-zero interval in manager repair task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name:     "task-name",
+						Interval: pointer.Ptr("7d"),
+						Cron:     nil,
+					},
+					Intensity: "1",
+				})
+				return cluster
+			}(),
+			expectedErrorList:   field.ErrorList{},
+			expectedErrorString: "",
+		},
+		{
+			name: "nil cron and non-zero interval in manager backup task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name:     "task-name",
+						Interval: pointer.Ptr("7d"),
+						Cron:     nil,
+					},
+				})
+				return cluster
+			}(),
+			expectedErrorList:   field.ErrorList{},
+			expectedErrorString: "",
+		},
+		{
+			name: "cron and invalid interval in manager repair task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name:     "task-name",
+						Interval: pointer.Ptr("invalid"),
+						Cron:     pointer.Ptr("0 23 * * SAT"),
+					},
+					Intensity: "1",
+				})
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "spec.repairs[0].interval",
+					BadValue: pointer.Ptr("invalid"),
+					Detail:   "valid units are d, h, m, s",
+				},
+			},
+			expectedErrorString: `spec.repairs[0].interval: Invalid value: "invalid": valid units are d, h, m, s`,
+		},
+		{
+			name: "cron and invalid interval in manager backup task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name:     "task-name",
+						Interval: pointer.Ptr("invalid"),
+						Cron:     pointer.Ptr("0 23 * * SAT"),
+					},
+				})
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "spec.backups[0].interval",
+					BadValue: pointer.Ptr("invalid"),
+					Detail:   "valid units are d, h, m, s",
+				},
+			},
+			expectedErrorString: `spec.backups[0].interval: Invalid value: "invalid": valid units are d, h, m, s`,
+		},
+		{
+			name: "cron and zero interval in manager repair task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, []v1.RepairTaskSpec{
+					{
+						SchedulerTaskSpec: v1.SchedulerTaskSpec{
+							Name:     "task-name",
+							Interval: pointer.Ptr("0"),
+							Cron:     pointer.Ptr("0 23 * * SAT"),
+						},
+						Intensity: "1",
+					},
+					{
+						SchedulerTaskSpec: v1.SchedulerTaskSpec{
+							Name:     "other-task-name",
+							Interval: pointer.Ptr("0d"),
+							Cron:     pointer.Ptr("0 23 * * SAT"),
+						},
+						Intensity: "1",
+					},
+				}...)
+				return cluster
+			}(),
+			expectedErrorList:   field.ErrorList{},
+			expectedErrorString: "",
+		},
+		{
+			name: "cron and zero interval in manager backup task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Backups = append(cluster.Spec.Backups, []v1.BackupTaskSpec{
+					{
+						SchedulerTaskSpec: v1.SchedulerTaskSpec{
+							Name:     "task-name",
+							Interval: pointer.Ptr("0"),
+							Cron:     pointer.Ptr("0 23 * * SAT"),
+						},
+					},
+					{
+						SchedulerTaskSpec: v1.SchedulerTaskSpec{
+							Name:     "other-task-name",
+							Interval: pointer.Ptr("0d"),
+							Cron:     pointer.Ptr("0 23 * * SAT"),
+						},
+					},
+				}...)
+				return cluster
+			}(),
+			expectedErrorList:   field.ErrorList{},
+			expectedErrorString: "",
+		},
+		{
+			name: "cron and non-zero interval in manager repair task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name:     "task-name",
+						Interval: pointer.Ptr("7d"),
+						Cron:     pointer.Ptr("0 23 * * SAT"),
+					},
+					Intensity: "1",
+				})
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeForbidden,
+					Field:    "spec.repairs[0].interval",
+					BadValue: "",
+					Detail:   "can't be non-zero when cron is specified",
+				},
+			},
+			expectedErrorString: `spec.repairs[0].interval: Forbidden: can't be non-zero when cron is specified`,
+		},
+		{
+			name: "cron and non-zero interval in manager backup task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name:     "task-name",
+						Interval: pointer.Ptr("7d"),
+						Cron:     pointer.Ptr("0 23 * * SAT"),
+					},
+				})
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeForbidden,
+					Field:    "spec.backups[0].interval",
+					BadValue: "",
+					Detail:   "can't be non-zero when cron is specified",
+				},
+			},
+			expectedErrorString: `spec.backups[0].interval: Forbidden: can't be non-zero when cron is specified`,
+		},
+		{
+			name: "timezone and nil cron in manager repair task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name:     "task-name",
+						Cron:     nil,
+						Timezone: pointer.Ptr("UTC"),
+					},
+					Intensity: "1",
+				})
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeForbidden,
+					Field:    "spec.repairs[0].timezone",
+					BadValue: "",
+					Detail:   "can't be set when cron is not specified",
+				},
+			},
+			expectedErrorString: `spec.repairs[0].timezone: Forbidden: can't be set when cron is not specified`,
+		},
+		{
+			name: "timezone and nil cron in manager backup task spec",
+			cluster: func() *v1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
+					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+						Name:     "task-name",
+						Cron:     nil,
+						Timezone: pointer.Ptr("UTC"),
+					},
+				})
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeForbidden,
+					Field:    "spec.backups[0].timezone",
+					BadValue: "",
+					Detail:   "can't be set when cron is not specified",
+				},
+			},
+			expectedErrorString: `spec.backups[0].timezone: Forbidden: can't be set when cron is not specified`,
+		},
+		{
 			name: "when CQL ingress is provided, domains must not be empty",
 			cluster: func() *v1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()

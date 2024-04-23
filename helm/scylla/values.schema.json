@@ -120,7 +120,7 @@
             "type": "array"
           },
           "name": {
-            "description": "name is a unique name of a task.",
+            "description": "name specifies the name of a task.",
             "type": "string"
           },
           "numRetries": {
@@ -470,7 +470,7 @@
             "type": "array"
           },
           "name": {
-            "description": "name is a unique name of a task.",
+            "description": "name specifies the name of a task.",
             "type": "string"
           },
           "numRetries": {

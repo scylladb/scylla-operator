@@ -109,7 +109,6 @@ kubectl apply --server-side -f examples/eks/nodeconfig-alpha.yaml
 Afterwards, deploy ScyllaDB's [Local Volume Provisioner](https://github.com/scylladb/k8s-local-volume-provisioner), capable of dynamically provisioning PersistentVolumes for your ScyllaDB clusters on mounted XFS filesystems, earlier created over the configured RAID0 arrays.
 ```
 kubectl -n local-csi-driver apply --server-side -f examples/common/local-volume-provisioner/local-csi-driver/
-kubectl apply --server-side -f examples/common/local-volume-provisioner/storageclass_xfs.yaml
 ```
 
 ### Deploying ScyllaDB

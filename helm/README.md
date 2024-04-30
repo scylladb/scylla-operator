@@ -16,7 +16,7 @@ Please refer to Helm's [documentation](https://helm.sh/docs/) to get started.
 Once Helm is set up properly, add the repo as follows:
 
 ```console
-helm repo add scylla-operator https://storage.googleapis.com/scylla-operator-charts
+helm repo add scylla-operator https://scylla-operator-charts.storage.googleapis.com/stable
 ```
 
 You can then run `helm search repo scylla-operator` to see the charts.

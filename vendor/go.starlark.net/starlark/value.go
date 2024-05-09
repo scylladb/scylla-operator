@@ -775,6 +775,15 @@ func (fn *Function) ParamDefault(i int) Value {
 func (fn *Function) HasVarargs() bool { return fn.funcode.HasVarargs }
 func (fn *Function) HasKwargs() bool  { return fn.funcode.HasKwargs }
 
+// NumFreeVars returns the number of free variables of this function.
+func (fn *Function) NumFreeVars() int { return len(fn.funcode.FreeVars) }
+
+// FreeVar returns the binding (name and binding position) and value
+// of the i'th free variable of function fn.
+func (fn *Function) FreeVar(i int) (Binding, Value) {
+	return Binding(fn.funcode.FreeVars[i]), fn.freevars[i].(*cell).v
+}
+
 // A Builtin is a function implemented in Go.
 type Builtin struct {
 	name string
@@ -854,7 +863,7 @@ func (d *Dict) Type() string                                    { return "dict" 
 func (d *Dict) Freeze()                                         { d.ht.freeze() }
 func (d *Dict) Truth() Bool                                     { return d.Len() > 0 }
 func (d *Dict) Hash() (uint32, error)                           { return 0, fmt.Errorf("unhashable type: dict") }
-func (d *Dict) Entries(yield func(k, v Value) bool)             { d.ht.entries(yield) }
+func (d *Dict) Entries() func(yield func(k, v Value) bool)      { return d.ht.entries }
 
 func (x *Dict) Union(y *Dict) *Dict {
 	z := new(Dict)
@@ -962,19 +971,21 @@ func (l *List) Iterate() Iterator {
 	return &listIterator{l: l}
 }
 
-// Elements is a go1.23 iterator over the elements of the list.
+// Elements returns a go1.23 iterator over the elements of the list.
 //
 // Example:
 //
-//	for elem := range list.Elements { ... }
-func (l *List) Elements(yield func(Value) bool) {
-	if !l.frozen {
-		l.itercount++
-		defer func() { l.itercount-- }()
-	}
-	for _, x := range l.elems {
-		if !yield(x) {
-			break
+//	for elem := range list.Elements() { ... }
+func (l *List) Elements() func(yield func(Value) bool) {
+	return func(yield func(Value) bool) {
+		if !l.frozen {
+			l.itercount++
+			defer func() { l.itercount-- }()
+		}
+		for _, x := range l.elems {
+			if !yield(x) {
+				break
+			}
 		}
 	}
 }
@@ -1079,15 +1090,17 @@ func (t Tuple) Slice(start, end, step int) Value {
 
 func (t Tuple) Iterate() Iterator { return &tupleIterator{elems: t} }
 
-// Elements is a go1.23 iterator over the elements of the tuple.
+// Elements returns a go1.23 iterator over the elements of the tuple.
 //
 // (A Tuple is a slice, so it is of course directly iterable. This
 // method exists to provide a fast path for the [Elements] standalone
 // function.)
-func (t Tuple) Elements(yield func(Value) bool) {
-	for _, x := range t {
-		if !yield(x) {
-			break
+func (t Tuple) Elements() func(yield func(Value) bool) {
+	return func(yield func(Value) bool) {
+		for _, x := range t {
+			if !yield(x) {
+				break
+			}
 		}
 	}
 }
@@ -1163,8 +1176,10 @@ func (s *Set) Truth() Bool                            { return s.Len() > 0 }
 
 func (s *Set) Attr(name string) (Value, error) { return builtinAttr(s, name, setMethods) }
 func (s *Set) AttrNames() []string             { return builtinAttrNames(setMethods) }
-func (s *Set) Elements(yield func(k Value) bool) {
-	s.ht.entries(func(k, _ Value) bool { return yield(k) })
+func (s *Set) Elements() func(yield func(k Value) bool) {
+	return func(yield func(k Value) bool) {
+		s.ht.entries(func(k, _ Value) bool { return yield(k) })
+	}
 }
 
 func (x *Set) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
@@ -1617,10 +1632,10 @@ func Iterate(x Value) Iterator {
 func Elements(iterable Iterable) func(yield func(Value) bool) {
 	// Use specialized push iterator if available (*List, Tuple, *Set).
 	type hasElements interface {
-		Elements(yield func(k Value) bool)
+		Elements() func(yield func(k Value) bool)
 	}
 	if iterable, ok := iterable.(hasElements); ok {
-		return iterable.Elements
+		return iterable.Elements()
 	}
 
 	iter := iterable.Iterate()
@@ -1648,10 +1663,10 @@ func Entries(mapping IterableMapping) func(yield func(k, v Value) bool) {
 	// If available (e.g. *Dict), use specialized push iterator,
 	// as it gets k and v in one shot.
 	type hasEntries interface {
-		Entries(yield func(k, v Value) bool)
+		Entries() func(yield func(k, v Value) bool)
 	}
 	if mapping, ok := mapping.(hasEntries); ok {
-		return mapping.Entries
+		return mapping.Entries()
 	}
 
 	iter := mapping.Iterate()

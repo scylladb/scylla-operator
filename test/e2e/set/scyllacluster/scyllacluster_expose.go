@@ -14,7 +14,6 @@ import (
 	"github.com/gocql/gocql/scyllacloud"
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	"github.com/scylladb/gocqlx/v2"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/features"
@@ -136,11 +135,9 @@ var _ = g.Describe("ScyllaCluster", func() {
 				// Increase default timeout, due to additional hop on the route to host.
 				cluster.Timeout = 10 * time.Second
 
-				session, err := gocqlx.WrapSession(cluster.CreateSession())
-				g.Expect(err).NotTo(o.HaveOccurred())
-
-				di := insertAndVerifyCQLData(ctx, hosts, utils.WithSession(&session))
+				di := insertAndVerifyCQLData(ctx, hosts, utils.WithClusterConfig(cluster))
 				di.Close()
+
 			}).WithTimeout(30 * time.Second).WithPolling(time.Second)
 		}
 	})

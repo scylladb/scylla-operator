@@ -7,10 +7,10 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
@@ -28,9 +28,7 @@ type ExecOptions struct {
 // ExecWithOptions executes a command in the specified container,
 // returning stdout, stderr and error. `options` allowed for
 // additional parameters to be passed.
-func ExecWithOptions(client corev1client.CoreV1Interface, options ExecOptions) (string, string, error) {
-	config := framework.TestContext.RestConfig
-
+func ExecWithOptions(config *rest.Config, client corev1client.CoreV1Interface, options ExecOptions) (string, string, error) {
 	const tty = false
 
 	req := client.RESTClient().Post().

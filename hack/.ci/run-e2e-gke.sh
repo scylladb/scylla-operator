@@ -15,8 +15,7 @@ source "$( dirname "${BASH_SOURCE[0]}" )/../lib/kube.sh"
 source "$( dirname "${BASH_SOURCE[0]}" )/lib/e2e.sh"
 parent_dir="$( dirname "${BASH_SOURCE[0]}" )"
 
-trap gather-artifact-on-exit EXIT
-
+trap gather-artifacts-on-exit EXIT
 
 SO_NODECONFIG_PATH="${SO_NODECONFIG_PATH=./hack/.ci/manifests/cluster/nodeconfig.yaml}"
 export SO_NODECONFIG_PATH
@@ -29,13 +28,20 @@ if [[ "${SO_DISABLE_NODECONFIG:-false}" == "true" ]]; then
   SO_CSI_DRIVER_PATH=""
 else
   # Make sure there is no default storage class before we create our own.
-  for r in $( kubectl get storageclasses -o name ); do kubectl patch "${r}" -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'; done
+  unset-default-storageclass
 fi
 
 SCYLLA_OPERATOR_FEATURE_GATES="${SCYLLA_OPERATOR_FEATURE_GATES:-AllAlpha=true,AllBeta=true}"
 export SCYLLA_OPERATOR_FEATURE_GATES
 
-timeout --foreground -v 10m "${parent_dir}/../ci-deploy.sh" "${SO_IMAGE}"
+for i in "${!KUBECONFIGS[@]}"; do
+  KUBECONFIG="${KUBECONFIGS[$i]}" timeout --foreground -v 10m "${parent_dir}/../ci-deploy.sh" "${SO_IMAGE}" &
+  ci_deploy_bg_pids["${i}"]=$!
+done
 
-apply-e2e-workarounds
-run-e2e
+for pid in "${ci_deploy_bg_pids[@]}"; do
+  wait "${pid}"
+done
+
+KUBECONFIG="${KUBECONFIGS[0]}" apply-e2e-workarounds
+KUBECONFIG="${KUBECONFIGS[0]}" run-e2e

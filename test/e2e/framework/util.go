@@ -4,6 +4,8 @@ package framework
 
 import (
 	"context"
+	"crypto/sha512"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"sort"
@@ -135,4 +137,9 @@ func DumpEventsInNamespace(ctx context.Context, c kubernetes.Interface, namespac
 	for _, e := range sortedEvents {
 		Infof("At %v - event for %v: %v %v: %v", e.FirstTimestamp, e.InvolvedObject.Name, e.Source, e.Reason, e.Message)
 	}
+}
+
+func FieldManager(userAgent, namespace string) string {
+	h := sha512.Sum512([]byte(fmt.Sprintf("%s-%s", userAgent, namespace)))
+	return base64.StdEncoding.EncodeToString(h[:])
 }

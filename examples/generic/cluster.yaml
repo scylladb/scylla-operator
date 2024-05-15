@@ -15,7 +15,7 @@ metadata:
   name: simple-cluster
   namespace: scylla
 spec:
-  agentVersion: 3.2.6
+  agentVersion: 3.2.7
   version: 5.4.3
   developerMode: true
   datacenter:

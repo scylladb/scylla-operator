@@ -144,7 +144,7 @@ To enable this the CRD allows for specifying a `network` parameter as such:
 
 ```yaml
   version: 5.4.3
-  agentVersion: 3.2.6
+  agentVersion: 3.2.7
   cpuset: true
   network:
     hostNetworking: true
@@ -172,7 +172,7 @@ This requires a small change in the cluster definition.
 Change the `cluster.yaml` file from this:
 ```yaml
 spec:
-  agentVersion: 3.2.6
+  agentVersion: 3.2.7
   version: 5.4.3
   developerMode: true
   datacenter:
@@ -185,7 +185,7 @@ spec:
   alternator:
     port: 8000
     writeIsolation: only_rmw_uses_lwt
-  agentVersion: 3.2.6
+  agentVersion: 3.2.7
   developerMode: true
   datacenter:
     name: us-east-1

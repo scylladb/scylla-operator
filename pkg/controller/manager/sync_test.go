@@ -107,10 +107,12 @@ func TestManagerSynchronization(t *testing.T) {
 			Spec: scyllav1.ScyllaClusterSpec{
 				Repairs: []scyllav1.RepairTaskSpec{
 					{
-						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-							Name:      "my-repair",
-							StartDate: pointer.Ptr("2006-01-02T15:04:05Z"),
-							Interval:  pointer.Ptr("0"),
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "my-repair",
+							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+								StartDate: pointer.Ptr("2006-01-02T15:04:05Z"),
+								Interval:  pointer.Ptr("0"),
+							},
 						},
 						SmallTableThreshold: "1GiB",
 						DC:                  []string{"dc1"},
@@ -138,10 +140,12 @@ func TestManagerSynchronization(t *testing.T) {
 			Spec: scyllav1.ScyllaClusterSpec{
 				Backups: []scyllav1.BackupTaskSpec{
 					{
-						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-							Name:      "my-backup",
-							StartDate: pointer.Ptr("2006-01-02T15:04:05Z"),
-							Interval:  pointer.Ptr("0"),
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "my-backup",
+							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+								StartDate: pointer.Ptr("2006-01-02T15:04:05Z"),
+								Interval:  pointer.Ptr("0"),
+							},
 						},
 						DC:               []string{"dc1"},
 						Keyspace:         []string{"keyspace1"},
@@ -171,10 +175,12 @@ func TestManagerSynchronization(t *testing.T) {
 			Spec: scyllav1.ScyllaClusterSpec{
 				Repairs: []scyllav1.RepairTaskSpec{
 					{
-						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-							Name:      "repair",
-							StartDate: pointer.Ptr("2006-01-02T15:04:05Z"),
-							Interval:  pointer.Ptr("0"),
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "repair",
+							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+								StartDate: pointer.Ptr("2006-01-02T15:04:05Z"),
+								Interval:  pointer.Ptr("0"),
+							},
 						},
 						SmallTableThreshold: "1GiB",
 						Intensity:           "0",
@@ -185,16 +191,17 @@ func TestManagerSynchronization(t *testing.T) {
 				ManagerID: pointer.Ptr(clusterID),
 				Repairs: []scyllav1.RepairTaskStatus{
 					{
-						ID: "repair-id",
-						RepairTaskSpec: scyllav1.RepairTaskSpec{
-							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-								Name:      "repair",
+						TaskStatus: scyllav1.TaskStatus{
+							SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
 								StartDate: pointer.Ptr("2006-01-02T15:04:05Z"),
 								Interval:  pointer.Ptr("0"),
 							},
-							Intensity:           "666",
-							SmallTableThreshold: "1GiB",
+							Name:  "repair",
+							ID:    pointer.Ptr("repair-id"),
+							Error: nil,
 						},
+						Intensity:           pointer.Ptr("666"),
+						SmallTableThreshold: pointer.Ptr("1GiB"),
 					},
 				},
 			},
@@ -204,18 +211,18 @@ func TestManagerSynchronization(t *testing.T) {
 					Name:      clusterName,
 					AuthToken: clusterAuthToken,
 				}},
-				RepairTasks: []*RepairTask{
-					{
-						RepairTaskSpec: scyllav1.RepairTaskSpec{
-							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-								Name:      "repair",
+				RepairTasks: map[string]RepairTaskStatus{
+					"repair": {
+						TaskStatus: scyllav1.TaskStatus{
+							SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
 								StartDate: pointer.Ptr("2006-01-02T15:04:05Z"),
 								Interval:  pointer.Ptr("0"),
 							},
-							Intensity:           "123",
-							SmallTableThreshold: "1GiB",
+							Name: "repair",
+							ID:   pointer.Ptr("repair-id"),
 						},
-						ID: "repair-id",
+						Intensity:           pointer.Ptr("123"),
+						SmallTableThreshold: pointer.Ptr("1GiB"),
 					},
 				},
 			},
@@ -227,32 +234,21 @@ func TestManagerSynchronization(t *testing.T) {
 			Spec: scyllav1.ScyllaClusterSpec{
 				Repairs: []scyllav1.RepairTaskSpec{
 					{
-						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-							Name:      "repair",
-							StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
-							Interval:  pointer.Ptr("0"),
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "repair",
+							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+								StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+								Interval:  pointer.Ptr("0"),
+							},
 						},
-						Intensity:           "666",
 						SmallTableThreshold: "1GiB",
+						Intensity:           "666",
+						Parallel:            0,
 					},
 				},
 			},
 			Status: scyllav1.ScyllaClusterStatus{
 				ManagerID: pointer.Ptr(clusterID),
-				Repairs: []scyllav1.RepairTaskStatus{
-					{
-						ID: "repair-id",
-						RepairTaskSpec: scyllav1.RepairTaskSpec{
-							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-								Name:      "repair",
-								StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
-								Interval:  pointer.Ptr("0"),
-							},
-							Intensity:           "666",
-							SmallTableThreshold: "1GiB",
-						},
-					},
-				},
 			},
 			State: state{
 				Clusters: []*managerclient.Cluster{{
@@ -260,22 +256,23 @@ func TestManagerSynchronization(t *testing.T) {
 					Name:      clusterName,
 					AuthToken: clusterAuthToken,
 				}},
-				RepairTasks: []*RepairTask{
-					{
-						RepairTaskSpec: scyllav1.RepairTaskSpec{
-							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-								Name:      "repair",
+				RepairTasks: map[string]RepairTaskStatus{
+					"repair": {
+						TaskStatus: scyllav1.TaskStatus{
+							SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
 								StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
 								Interval:  pointer.Ptr("0"),
 							},
-							Intensity:           "666",
-							SmallTableThreshold: "1GiB",
+							Name: "repair",
+							ID:   pointer.Ptr("repair-id"),
 						},
-						ID: "repair-id",
+						FailFast:            pointer.Ptr(false),
+						Intensity:           pointer.Ptr("666"),
+						Parallel:            pointer.Ptr[int64](0),
+						SmallTableThreshold: pointer.Ptr("1GiB"),
 					},
 				},
 			},
-
 			Actions: nil,
 		},
 		{
@@ -290,16 +287,16 @@ func TestManagerSynchronization(t *testing.T) {
 					Name:      clusterName,
 					AuthToken: clusterAuthToken,
 				}},
-				RepairTasks: []*RepairTask{
-					{
-						RepairTaskSpec: scyllav1.RepairTaskSpec{
-							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-								Name:      "other-repair",
+				RepairTasks: map[string]RepairTaskStatus{
+					"other-repair": {
+						TaskStatus: scyllav1.TaskStatus{
+							Name: "other-repair",
+							SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
 								StartDate: pointer.Ptr("2006-01-02T15:04:05Z"),
 								Interval:  pointer.Ptr("0"),
 							},
+							ID: pointer.Ptr("other-repair-id"),
 						},
-						ID: "other-repair-id",
 					},
 				},
 			},
@@ -311,32 +308,21 @@ func TestManagerSynchronization(t *testing.T) {
 			Spec: scyllav1.ScyllaClusterSpec{
 				Repairs: []scyllav1.RepairTaskSpec{
 					{
-						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-							Name:      "repair",
-							StartDate: pointer.Ptr("now"),
-							Interval:  pointer.Ptr("0"),
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "repair",
+							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+								StartDate: pointer.Ptr("now"),
+								Interval:  pointer.Ptr("0"),
+							},
 						},
 						Intensity:           "666",
 						SmallTableThreshold: "1GiB",
+						Parallel:            0,
 					},
 				},
 			},
 			Status: scyllav1.ScyllaClusterStatus{
 				ManagerID: pointer.Ptr(clusterID),
-				Repairs: []scyllav1.RepairTaskStatus{
-					{
-						ID: "repair-id",
-						RepairTaskSpec: scyllav1.RepairTaskSpec{
-							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-								Name:      "repair",
-								StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
-								Interval:  pointer.Ptr("0"),
-							},
-							Intensity:           "666",
-							SmallTableThreshold: "1GiB",
-						},
-					},
-				},
 			},
 			State: state{
 				Clusters: []*managerclient.Cluster{{
@@ -344,18 +330,20 @@ func TestManagerSynchronization(t *testing.T) {
 					Name:      clusterName,
 					AuthToken: clusterAuthToken,
 				}},
-				RepairTasks: []*RepairTask{
-					{
-						ID: "repair-id",
-						RepairTaskSpec: scyllav1.RepairTaskSpec{
-							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-								Name:      "repair",
+				RepairTasks: map[string]RepairTaskStatus{
+					"repair": {
+						TaskStatus: scyllav1.TaskStatus{
+							SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
 								StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
 								Interval:  pointer.Ptr("0"),
 							},
-							Intensity:           "666",
-							SmallTableThreshold: "1GiB",
+							Name: "repair",
+							ID:   pointer.Ptr("repair-id"),
 						},
+						FailFast:            pointer.Ptr(false),
+						Intensity:           pointer.Ptr("666"),
+						Parallel:            pointer.Ptr[int64](0),
+						SmallTableThreshold: pointer.Ptr("1GiB"),
 					},
 				},
 			},
@@ -367,32 +355,21 @@ func TestManagerSynchronization(t *testing.T) {
 			Spec: scyllav1.ScyllaClusterSpec{
 				Repairs: []scyllav1.RepairTaskSpec{
 					{
-						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-							Name:      "repair",
-							StartDate: pointer.Ptr("2006-01-02T15:04:05Z"),
-							Interval:  pointer.Ptr("0"),
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "repair",
+							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+								StartDate: pointer.Ptr("2006-01-02T15:04:05Z"),
+								Interval:  pointer.Ptr("0"),
+							},
 						},
 						Intensity:           "666",
 						SmallTableThreshold: "1GiB",
+						Parallel:            0,
 					},
 				},
 			},
 			Status: scyllav1.ScyllaClusterStatus{
 				ManagerID: pointer.Ptr(clusterID),
-				Repairs: []scyllav1.RepairTaskStatus{
-					{
-						ID: "repair-id",
-						RepairTaskSpec: scyllav1.RepairTaskSpec{
-							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-								Name:      "repair",
-								StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
-								Interval:  pointer.Ptr("0"),
-							},
-							Intensity:           "666",
-							SmallTableThreshold: "1GiB",
-						},
-					},
-				},
 			},
 			State: state{
 				Clusters: []*managerclient.Cluster{{
@@ -400,18 +377,20 @@ func TestManagerSynchronization(t *testing.T) {
 					Name:      clusterName,
 					AuthToken: clusterAuthToken,
 				}},
-				RepairTasks: []*RepairTask{
-					{
-						RepairTaskSpec: scyllav1.RepairTaskSpec{
-							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-								Name:      "repair",
+				RepairTasks: map[string]RepairTaskStatus{
+					"repair": {
+						TaskStatus: scyllav1.TaskStatus{
+							SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
 								StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
 								Interval:  pointer.Ptr("0"),
 							},
-							Intensity:           "666",
-							SmallTableThreshold: "1GiB",
+							Name: "repair",
+							ID:   pointer.Ptr("repair-id"),
 						},
-						ID: "repair-id",
+						FailFast:            pointer.Ptr(false),
+						Intensity:           pointer.Ptr("666"),
+						Parallel:            pointer.Ptr[int64](0),
+						SmallTableThreshold: pointer.Ptr("1GiB"),
 					},
 				},
 			},
@@ -428,7 +407,6 @@ func TestManagerSynchronization(t *testing.T) {
 				Spec:       test.Spec,
 				Status:     test.Status,
 			}
-
 			actions, requeue, err := runSync(ctx, cluster, clusterAuthToken, &test.State)
 			if err != nil {
 				t.Error(err)
@@ -471,61 +449,80 @@ func actionComparer(a action, b action) bool {
 func TestBackupTaskChanged(t *testing.T) {
 	ts := []struct {
 		name        string
-		spec        *BackupTask
-		managerTask *BackupTask
-		expected    *BackupTask
+		spec        *BackupTaskSpec
+		managerTask *BackupTaskStatus
+		expected    *BackupTaskStatus
 	}{
 		{
 			name: "Task startDate is changed to one from manager state when it's not provided",
-			spec: &BackupTask{BackupTaskSpec: scyllav1.BackupTaskSpec{
-				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{},
-			}},
-			managerTask: &BackupTask{BackupTaskSpec: scyllav1.BackupTaskSpec{
-				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-					StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+			spec: &BackupTaskSpec{
+				TaskSpec: scyllav1.TaskSpec{
+					SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{},
 				},
-			}},
-			expected: &BackupTask{BackupTaskSpec: scyllav1.BackupTaskSpec{
-				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-					StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+			},
+			managerTask: &BackupTaskStatus{
+				TaskStatus: scyllav1.TaskStatus{
+					SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
+						StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+					},
 				},
-			}},
+			},
+			expected: &BackupTaskStatus{
+				TaskStatus: scyllav1.TaskStatus{
+					SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
+						StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+					},
+				},
+				Retention: pointer.Ptr[int64](0),
+			},
 		},
 		{
 			name: "Task startDate is changed to one from manager state when it's an empty string",
-			spec: &BackupTask{BackupTaskSpec: scyllav1.BackupTaskSpec{
-				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-					StartDate: pointer.Ptr(""),
+			spec: &BackupTaskSpec{
+				TaskSpec: scyllav1.TaskSpec{
+					SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+						StartDate: pointer.Ptr(""),
+					},
+				}},
+			managerTask: &BackupTaskStatus{
+				TaskStatus: scyllav1.TaskStatus{
+					SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
+						StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+					},
+				}},
+			expected: &BackupTaskStatus{
+				TaskStatus: scyllav1.TaskStatus{
+					SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
+						StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+					},
 				},
-			}},
-			managerTask: &BackupTask{BackupTaskSpec: scyllav1.BackupTaskSpec{
-				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-					StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
-				},
-			}},
-			expected: &BackupTask{BackupTaskSpec: scyllav1.BackupTaskSpec{
-				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-					StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
-				},
-			}},
+				Retention: pointer.Ptr[int64](0),
+			},
 		},
 		{
 			name: "Task startDate is changed to one from manager state when prefix is 'now'",
-			spec: &BackupTask{BackupTaskSpec: scyllav1.BackupTaskSpec{
-				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-					StartDate: pointer.Ptr("now"),
+			spec: &BackupTaskSpec{
+				TaskSpec: scyllav1.TaskSpec{
+					SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+						StartDate: pointer.Ptr("now"),
+					},
 				},
-			}},
-			managerTask: &BackupTask{BackupTaskSpec: scyllav1.BackupTaskSpec{
-				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-					StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+			},
+			managerTask: &BackupTaskStatus{
+				TaskStatus: scyllav1.TaskStatus{
+					SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
+						StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+					},
 				},
-			}},
-			expected: &BackupTask{BackupTaskSpec: scyllav1.BackupTaskSpec{
-				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-					StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+			},
+			expected: &BackupTaskStatus{
+				TaskStatus: scyllav1.TaskStatus{
+					SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
+						StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+					},
 				},
-			}},
+				Retention: pointer.Ptr[int64](0),
+			},
 		},
 	}
 
@@ -534,8 +531,9 @@ func TestBackupTaskChanged(t *testing.T) {
 			t.Parallel()
 
 			evaluateDates(test.spec, test.managerTask)
-			if !reflect.DeepEqual(test.spec, test.expected) {
-				t.Errorf("expected %v, got %v", test.expected, test.spec)
+			got := test.spec.ToStatus()
+			if !reflect.DeepEqual(got, test.expected) {
+				t.Errorf("expected and got repair task statuses differ: %s", cmp.Diff(test.expected, got))
 			}
 		})
 	}
@@ -544,61 +542,91 @@ func TestBackupTaskChanged(t *testing.T) {
 func TestRepairTaskChanged(t *testing.T) {
 	ts := []struct {
 		name        string
-		spec        *RepairTask
-		managerTask *RepairTask
-		expected    *RepairTask
+		spec        *RepairTaskSpec
+		managerTask *RepairTaskStatus
+		expected    *RepairTaskStatus
 	}{
 		{
 			name: "Task startDate is changed to one from manager state when it's not provided",
-			spec: &RepairTask{RepairTaskSpec: scyllav1.RepairTaskSpec{
-				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{},
-			}},
-			managerTask: &RepairTask{RepairTaskSpec: scyllav1.RepairTaskSpec{
-				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-					StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+			spec: &RepairTaskSpec{
+				TaskSpec: scyllav1.TaskSpec{
+					SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{},
 				},
-			}},
-			expected: &RepairTask{RepairTaskSpec: scyllav1.RepairTaskSpec{
-				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-					StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+			},
+			managerTask: &RepairTaskStatus{
+				TaskStatus: scyllav1.TaskStatus{
+					SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
+						StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+					},
 				},
-			}},
+			},
+			expected: &RepairTaskStatus{
+				TaskStatus: scyllav1.TaskStatus{
+					SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
+						StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+					},
+				},
+				FailFast:            pointer.Ptr(false),
+				Intensity:           pointer.Ptr(""),
+				Parallel:            pointer.Ptr[int64](0),
+				SmallTableThreshold: pointer.Ptr(""),
+			},
 		},
 		{
 			name: "Task startDate is changed to one from manager state when it's an empty string",
-			spec: &RepairTask{RepairTaskSpec: scyllav1.RepairTaskSpec{
-				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-					StartDate: pointer.Ptr(""),
+			spec: &RepairTaskSpec{
+				TaskSpec: scyllav1.TaskSpec{
+					SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+						StartDate: pointer.Ptr(""),
+					},
 				},
-			}},
-			managerTask: &RepairTask{RepairTaskSpec: scyllav1.RepairTaskSpec{
-				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-					StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+			},
+			managerTask: &RepairTaskStatus{
+				TaskStatus: scyllav1.TaskStatus{
+					SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
+						StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+					},
 				},
-			}},
-			expected: &RepairTask{RepairTaskSpec: scyllav1.RepairTaskSpec{
-				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-					StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+			},
+			expected: &RepairTaskStatus{
+				TaskStatus: scyllav1.TaskStatus{
+					SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
+						StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+					},
 				},
-			}},
+				FailFast:            pointer.Ptr(false),
+				Intensity:           pointer.Ptr(""),
+				Parallel:            pointer.Ptr[int64](0),
+				SmallTableThreshold: pointer.Ptr(""),
+			},
 		},
 		{
 			name: "Task startDate is changed to one from manager state when prefix is 'now'",
-			spec: &RepairTask{RepairTaskSpec: scyllav1.RepairTaskSpec{
-				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-					StartDate: pointer.Ptr("now"),
+			spec: &RepairTaskSpec{
+				TaskSpec: scyllav1.TaskSpec{
+					SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+						StartDate: pointer.Ptr("now"),
+					},
 				},
-			}},
-			managerTask: &RepairTask{RepairTaskSpec: scyllav1.RepairTaskSpec{
-				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-					StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+			},
+			managerTask: &RepairTaskStatus{
+				TaskStatus: scyllav1.TaskStatus{
+					SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
+						StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+					},
 				},
-			}},
-			expected: &RepairTask{RepairTaskSpec: scyllav1.RepairTaskSpec{
-				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
-					StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+			},
+			expected: &RepairTaskStatus{
+				TaskStatus: scyllav1.TaskStatus{
+					SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
+						StartDate: pointer.Ptr("2021-01-01T11:11:11Z"),
+					},
 				},
-			}},
+				FailFast:            pointer.Ptr(false),
+				Intensity:           pointer.Ptr(""),
+				Parallel:            pointer.Ptr[int64](0),
+				SmallTableThreshold: pointer.Ptr(""),
+			},
 		},
 	}
 
@@ -607,8 +635,9 @@ func TestRepairTaskChanged(t *testing.T) {
 			t.Parallel()
 
 			evaluateDates(test.spec, test.managerTask)
-			if !reflect.DeepEqual(test.spec, test.expected) {
-				t.Errorf("expected %v, got %v", test.expected, test.spec)
+			got := test.spec.ToStatus()
+			if !reflect.DeepEqual(got, test.expected) {
+				t.Errorf("expected and got backup task statuses differ: %s", cmp.Diff(test.expected, got))
 			}
 		})
 	}

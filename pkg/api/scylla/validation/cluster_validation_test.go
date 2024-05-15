@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	v1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
@@ -27,7 +27,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 
 	tests := []struct {
 		name                string
-		cluster             *v1.ScyllaCluster
+		cluster             *scyllav1.ScyllaCluster
 		expectedErrorList   field.ErrorList
 		expectedErrorString string
 	}{
@@ -39,7 +39,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "two racks with same name",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
 				cluster.Spec.Datacenter.Racks = append(cluster.Spec.Datacenter.Racks, *cluster.Spec.Datacenter.Racks[0].DeepCopy())
 				return cluster
@@ -51,9 +51,9 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "invalid intensity in repair task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, scyllav1.RepairTaskSpec{
 					Intensity:           "100Mib",
 					SmallTableThreshold: "1GiB",
 				})
@@ -65,36 +65,95 @@ func TestValidateScyllaCluster(t *testing.T) {
 			expectedErrorString: `spec.repairs[0].intensity: Invalid value: "100Mib": must be a float`,
 		},
 		{
-			name: "non-unique names in manager tasks spec",
-			cluster: func() *v1.ScyllaCluster {
+			name: "non-unique names across manager tasks of different types",
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
-						Name: "task-name",
+				cluster.Spec.Repairs = []scyllav1.RepairTaskSpec{
+					{
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "task-name",
+						},
+						Intensity: "1",
 					},
-				})
-				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
-						Name: "task-name",
+				}
+				cluster.Spec.Backups = []scyllav1.BackupTaskSpec{
+					{
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "task-name",
+						},
 					},
-					Intensity:           "1",
-					SmallTableThreshold: "1GiB",
-				})
+				}
+				return cluster
+			}(),
+			expectedErrorList:   field.ErrorList{},
+			expectedErrorString: "",
+		},
+		{
+			name: "non-unique names in manager repair tasks spec",
+			cluster: func() *scyllav1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Repairs = []scyllav1.RepairTaskSpec{
+					{
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "task-name",
+						},
+						Intensity: "1",
+					},
+					{
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "task-name",
+						},
+						Intensity: "1",
+					},
+				}
 				return cluster
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeDuplicate, Field: "spec.backups[0].name", BadValue: "task-name"},
+				&field.Error{
+					Type:     field.ErrorTypeDuplicate,
+					Field:    "spec.repairs[1].name",
+					BadValue: "task-name",
+				},
 			},
-			expectedErrorString: `spec.backups[0].name: Duplicate value: "task-name"`,
+			expectedErrorString: `spec.repairs[1].name: Duplicate value: "task-name"`,
+		},
+		{
+			name: "non-unique names in manager backup tasks spec",
+			cluster: func() *scyllav1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Backups = []scyllav1.BackupTaskSpec{
+					{
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "task-name",
+						},
+					},
+					{
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "task-name",
+						},
+					},
+				}
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeDuplicate,
+					Field:    "spec.backups[1].name",
+					BadValue: "task-name",
+				},
+			},
+			expectedErrorString: `spec.backups[1].name: Duplicate value: "task-name"`,
 		},
 		{
 			name: "invalid cron in manager repair task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, scyllav1.RepairTaskSpec{
+					TaskSpec: scyllav1.TaskSpec{
 						Name: "task-name",
-						Cron: pointer.Ptr("invalid"),
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+							Cron: pointer.Ptr("invalid"),
+						},
 					},
 					Intensity: "1",
 				})
@@ -112,12 +171,14 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "unallowed TZ in cron in manager repair task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, scyllav1.RepairTaskSpec{
+					TaskSpec: scyllav1.TaskSpec{
 						Name: "task-name",
-						Cron: pointer.Ptr("TZ=Europe/Warsaw 0 23 * * SAT"),
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+							Cron: pointer.Ptr("TZ=Europe/Warsaw 0 23 * * SAT"),
+						},
 					},
 					Intensity: "1",
 				})
@@ -135,12 +196,14 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "unallowed TZ in cron in manager backup task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+				cluster.Spec.Backups = append(cluster.Spec.Backups, scyllav1.BackupTaskSpec{
+					TaskSpec: scyllav1.TaskSpec{
 						Name: "task-name",
-						Cron: pointer.Ptr("TZ=Europe/Warsaw 0 23 * * SAT"),
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+							Cron: pointer.Ptr("TZ=Europe/Warsaw 0 23 * * SAT"),
+						},
 					},
 				})
 				return cluster
@@ -157,12 +220,14 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "unallowed CRON_TZ in cron in manager repair task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, scyllav1.RepairTaskSpec{
+					TaskSpec: scyllav1.TaskSpec{
 						Name: "task-name",
-						Cron: pointer.Ptr("CRON_TZ=Europe/Warsaw 0 23 * * SAT"),
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+							Cron: pointer.Ptr("CRON_TZ=Europe/Warsaw 0 23 * * SAT"),
+						},
 					},
 					Intensity: "1",
 				})
@@ -180,12 +245,14 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "unallowed CRON_TZ in cron in manager backup task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
+				cluster.Spec.Backups = append(cluster.Spec.Backups, scyllav1.BackupTaskSpec{
+					TaskSpec: scyllav1.TaskSpec{
 						Name: "task-name",
-						Cron: pointer.Ptr("CRON_TZ=Europe/Warsaw 0 23 * * SAT"),
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+							Cron: pointer.Ptr("CRON_TZ=Europe/Warsaw 0 23 * * SAT"),
+						},
 					},
 				})
 				return cluster
@@ -202,13 +269,15 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "invalid timezone in manager repair task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
-						Name:     "task-name",
-						Cron:     pointer.Ptr("0 23 * * SAT"),
-						Timezone: pointer.Ptr("invalid"),
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, scyllav1.RepairTaskSpec{
+					TaskSpec: scyllav1.TaskSpec{
+						Name: "task-name",
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+							Cron:     pointer.Ptr("0 23 * * SAT"),
+							Timezone: pointer.Ptr("invalid"),
+						},
 					},
 					Intensity: "1",
 				})
@@ -226,13 +295,15 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "invalid timezone in manager backup task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
-						Name:     "task-name",
-						Cron:     pointer.Ptr("0 23 * * SAT"),
-						Timezone: pointer.Ptr("invalid"),
+				cluster.Spec.Backups = append(cluster.Spec.Backups, scyllav1.BackupTaskSpec{
+					TaskSpec: scyllav1.TaskSpec{
+						Name: "task-name",
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+							Cron:     pointer.Ptr("0 23 * * SAT"),
+							Timezone: pointer.Ptr("invalid"),
+						},
 					},
 				})
 				return cluster
@@ -249,13 +320,15 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "cron and timezone in manager repair task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
-						Name:     "task-name",
-						Cron:     pointer.Ptr("0 23 * * SAT"),
-						Timezone: pointer.Ptr("Europe/Warsaw"),
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, scyllav1.RepairTaskSpec{
+					TaskSpec: scyllav1.TaskSpec{
+						Name: "task-name",
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+							Cron:     pointer.Ptr("0 23 * * SAT"),
+							Timezone: pointer.Ptr("Europe/Warsaw"),
+						},
 					},
 					Intensity: "1",
 				})
@@ -266,13 +339,15 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "cron and timezone in manager backup task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
-						Name:     "task-name",
-						Cron:     pointer.Ptr("0 23 * * SAT"),
-						Timezone: pointer.Ptr("Europe/Warsaw"),
+				cluster.Spec.Backups = append(cluster.Spec.Backups, scyllav1.BackupTaskSpec{
+					TaskSpec: scyllav1.TaskSpec{
+						Name: "task-name",
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+							Cron:     pointer.Ptr("0 23 * * SAT"),
+							Timezone: pointer.Ptr("Europe/Warsaw"),
+						},
 					},
 				})
 				return cluster
@@ -282,13 +357,15 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "nil cron and invalid interval in manager repair task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
-						Name:     "task-name",
-						Interval: pointer.Ptr("invalid"),
-						Cron:     nil,
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, scyllav1.RepairTaskSpec{
+					TaskSpec: scyllav1.TaskSpec{
+						Name: "task-name",
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+							Interval: pointer.Ptr("invalid"),
+							Cron:     nil,
+						},
 					},
 					Intensity: "1",
 				})
@@ -299,13 +376,15 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "nil cron and invalid interval in manager backup task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
-						Name:     "task-name",
-						Interval: pointer.Ptr("invalid"),
-						Cron:     nil,
+				cluster.Spec.Backups = append(cluster.Spec.Backups, scyllav1.BackupTaskSpec{
+					TaskSpec: scyllav1.TaskSpec{
+						Name: "task-name",
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+							Interval: pointer.Ptr("invalid"),
+							Cron:     nil,
+						},
 					},
 				})
 				return cluster
@@ -315,13 +394,15 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "nil cron and non-zero interval in manager repair task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
-						Name:     "task-name",
-						Interval: pointer.Ptr("7d"),
-						Cron:     nil,
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, scyllav1.RepairTaskSpec{
+					TaskSpec: scyllav1.TaskSpec{
+						Name: "task-name",
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+							Interval: pointer.Ptr("7d"),
+							Cron:     nil,
+						},
 					},
 					Intensity: "1",
 				})
@@ -332,13 +413,15 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "nil cron and non-zero interval in manager backup task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
-						Name:     "task-name",
-						Interval: pointer.Ptr("7d"),
-						Cron:     nil,
+				cluster.Spec.Backups = append(cluster.Spec.Backups, scyllav1.BackupTaskSpec{
+					TaskSpec: scyllav1.TaskSpec{
+						Name: "task-name",
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+							Interval: pointer.Ptr("7d"),
+							Cron:     nil,
+						},
 					},
 				})
 				return cluster
@@ -348,13 +431,15 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "cron and invalid interval in manager repair task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
-						Name:     "task-name",
-						Interval: pointer.Ptr("invalid"),
-						Cron:     pointer.Ptr("0 23 * * SAT"),
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, scyllav1.RepairTaskSpec{
+					TaskSpec: scyllav1.TaskSpec{
+						Name: "task-name",
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+							Interval: pointer.Ptr("invalid"),
+							Cron:     pointer.Ptr("0 23 * * SAT"),
+						},
 					},
 					Intensity: "1",
 				})
@@ -372,13 +457,15 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "cron and invalid interval in manager backup task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
-						Name:     "task-name",
-						Interval: pointer.Ptr("invalid"),
-						Cron:     pointer.Ptr("0 23 * * SAT"),
+				cluster.Spec.Backups = append(cluster.Spec.Backups, scyllav1.BackupTaskSpec{
+					TaskSpec: scyllav1.TaskSpec{
+						Name: "task-name",
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+							Interval: pointer.Ptr("invalid"),
+							Cron:     pointer.Ptr("0 23 * * SAT"),
+						},
 					},
 				})
 				return cluster
@@ -395,22 +482,26 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "cron and zero interval in manager repair task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Repairs = append(cluster.Spec.Repairs, []v1.RepairTaskSpec{
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, []scyllav1.RepairTaskSpec{
 					{
-						SchedulerTaskSpec: v1.SchedulerTaskSpec{
-							Name:     "task-name",
-							Interval: pointer.Ptr("0"),
-							Cron:     pointer.Ptr("0 23 * * SAT"),
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "task-name",
+							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+								Interval: pointer.Ptr("0"),
+								Cron:     pointer.Ptr("0 23 * * SAT"),
+							},
 						},
 						Intensity: "1",
 					},
 					{
-						SchedulerTaskSpec: v1.SchedulerTaskSpec{
-							Name:     "other-task-name",
-							Interval: pointer.Ptr("0d"),
-							Cron:     pointer.Ptr("0 23 * * SAT"),
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "other-task-name",
+							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+								Interval: pointer.Ptr("0d"),
+								Cron:     pointer.Ptr("0 23 * * SAT"),
+							},
 						},
 						Intensity: "1",
 					},
@@ -422,21 +513,25 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "cron and zero interval in manager backup task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Backups = append(cluster.Spec.Backups, []v1.BackupTaskSpec{
+				cluster.Spec.Backups = append(cluster.Spec.Backups, []scyllav1.BackupTaskSpec{
 					{
-						SchedulerTaskSpec: v1.SchedulerTaskSpec{
-							Name:     "task-name",
-							Interval: pointer.Ptr("0"),
-							Cron:     pointer.Ptr("0 23 * * SAT"),
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "task-name",
+							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+								Interval: pointer.Ptr("0"),
+								Cron:     pointer.Ptr("0 23 * * SAT"),
+							},
 						},
 					},
 					{
-						SchedulerTaskSpec: v1.SchedulerTaskSpec{
-							Name:     "other-task-name",
-							Interval: pointer.Ptr("0d"),
-							Cron:     pointer.Ptr("0 23 * * SAT"),
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "other-task-name",
+							SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+								Interval: pointer.Ptr("0d"),
+								Cron:     pointer.Ptr("0 23 * * SAT"),
+							},
 						},
 					},
 				}...)
@@ -447,13 +542,15 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "cron and non-zero interval in manager repair task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
-						Name:     "task-name",
-						Interval: pointer.Ptr("7d"),
-						Cron:     pointer.Ptr("0 23 * * SAT"),
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, scyllav1.RepairTaskSpec{
+					TaskSpec: scyllav1.TaskSpec{
+						Name: "task-name",
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+							Interval: pointer.Ptr("7d"),
+							Cron:     pointer.Ptr("0 23 * * SAT"),
+						},
 					},
 					Intensity: "1",
 				})
@@ -471,13 +568,15 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "cron and non-zero interval in manager backup task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
-						Name:     "task-name",
-						Interval: pointer.Ptr("7d"),
-						Cron:     pointer.Ptr("0 23 * * SAT"),
+				cluster.Spec.Backups = append(cluster.Spec.Backups, scyllav1.BackupTaskSpec{
+					TaskSpec: scyllav1.TaskSpec{
+						Name: "task-name",
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+							Interval: pointer.Ptr("7d"),
+							Cron:     pointer.Ptr("0 23 * * SAT"),
+						},
 					},
 				})
 				return cluster
@@ -494,13 +593,15 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "timezone and nil cron in manager repair task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Repairs = append(cluster.Spec.Repairs, v1.RepairTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
-						Name:     "task-name",
-						Cron:     nil,
-						Timezone: pointer.Ptr("UTC"),
+				cluster.Spec.Repairs = append(cluster.Spec.Repairs, scyllav1.RepairTaskSpec{
+					TaskSpec: scyllav1.TaskSpec{
+						Name: "task-name",
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+							Cron:     nil,
+							Timezone: pointer.Ptr("UTC"),
+						},
 					},
 					Intensity: "1",
 				})
@@ -518,13 +619,15 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "timezone and nil cron in manager backup task spec",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Backups = append(cluster.Spec.Backups, v1.BackupTaskSpec{
-					SchedulerTaskSpec: v1.SchedulerTaskSpec{
-						Name:     "task-name",
-						Cron:     nil,
-						Timezone: pointer.Ptr("UTC"),
+				cluster.Spec.Backups = append(cluster.Spec.Backups, scyllav1.BackupTaskSpec{
+					TaskSpec: scyllav1.TaskSpec{
+						Name: "task-name",
+						SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+							Cron:     nil,
+							Timezone: pointer.Ptr("UTC"),
+						},
 					},
 				})
 				return cluster
@@ -541,11 +644,11 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "when CQL ingress is provided, domains must not be empty",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.ExposeOptions = &v1.ExposeOptions{
-					CQL: &v1.CQLExposeOptions{
-						Ingress: &v1.IngressOptions{},
+				cluster.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					CQL: &scyllav1.CQLExposeOptions{
+						Ingress: &scyllav1.IngressOptions{},
 					},
 				}
 
@@ -558,7 +661,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "invalid domain",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
 				cluster.Spec.DNSDomains = []string{"-hello"}
 
@@ -571,11 +674,11 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "unsupported type of node service",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
 				cluster.Spec.Version = "5.2.0"
-				cluster.Spec.ExposeOptions = &v1.ExposeOptions{
-					NodeService: &v1.NodeServiceTemplate{
+				cluster.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					NodeService: &scyllav1.NodeServiceTemplate{
 						Type: "foo",
 					},
 				}
@@ -583,17 +686,17 @@ func TestValidateScyllaCluster(t *testing.T) {
 				return cluster
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeNotSupported, Field: "spec.exposeOptions.nodeService.type", BadValue: v1.NodeServiceType("foo"), Detail: `supported values: "Headless", "ClusterIP", "LoadBalancer"`},
+				&field.Error{Type: field.ErrorTypeNotSupported, Field: "spec.exposeOptions.nodeService.type", BadValue: scyllav1.NodeServiceType("foo"), Detail: `supported values: "Headless", "ClusterIP", "LoadBalancer"`},
 			},
 			expectedErrorString: `spec.exposeOptions.nodeService.type: Unsupported value: "foo": supported values: "Headless", "ClusterIP", "LoadBalancer"`,
 		},
 		{
 			name: "invalid load balancer class name in node service template",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.ExposeOptions = &v1.ExposeOptions{
-					NodeService: &v1.NodeServiceTemplate{
-						Type:              v1.NodeServiceTypeClusterIP,
+				cluster.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					NodeService: &scyllav1.NodeServiceTemplate{
+						Type:              scyllav1.NodeServiceTypeClusterIP,
 						LoadBalancerClass: pointer.Ptr("-hello"),
 					},
 				}
@@ -607,11 +710,11 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "EKS NLB LoadBalancerClass is valid",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.ExposeOptions = &v1.ExposeOptions{
-					NodeService: &v1.NodeServiceTemplate{
-						Type:              v1.NodeServiceTypeLoadBalancer,
+				cluster.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					NodeService: &scyllav1.NodeServiceTemplate{
+						Type:              scyllav1.NodeServiceTypeLoadBalancer,
 						LoadBalancerClass: pointer.Ptr("service.k8s.aws/nlb"),
 					},
 				}
@@ -623,15 +726,15 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "unsupported type of client broadcast address",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
 				cluster.Spec.Version = "5.2.0"
-				cluster.Spec.ExposeOptions = &v1.ExposeOptions{
-					BroadcastOptions: &v1.NodeBroadcastOptions{
-						Nodes: v1.BroadcastOptions{
-							Type: v1.BroadcastAddressTypeServiceClusterIP,
+				cluster.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					BroadcastOptions: &scyllav1.NodeBroadcastOptions{
+						Nodes: scyllav1.BroadcastOptions{
+							Type: scyllav1.BroadcastAddressTypeServiceClusterIP,
 						},
-						Clients: v1.BroadcastOptions{
+						Clients: scyllav1.BroadcastOptions{
 							Type: "foo",
 						},
 					},
@@ -640,22 +743,22 @@ func TestValidateScyllaCluster(t *testing.T) {
 				return cluster
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeNotSupported, Field: "spec.exposeOptions.broadcastOptions.clients.type", BadValue: v1.BroadcastAddressType("foo"), Detail: `supported values: "PodIP", "ServiceClusterIP", "ServiceLoadBalancerIngress"`},
+				&field.Error{Type: field.ErrorTypeNotSupported, Field: "spec.exposeOptions.broadcastOptions.clients.type", BadValue: scyllav1.BroadcastAddressType("foo"), Detail: `supported values: "PodIP", "ServiceClusterIP", "ServiceLoadBalancerIngress"`},
 			},
 			expectedErrorString: `spec.exposeOptions.broadcastOptions.clients.type: Unsupported value: "foo": supported values: "PodIP", "ServiceClusterIP", "ServiceLoadBalancerIngress"`,
 		},
 		{
 			name: "unsupported type of node broadcast address",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
 				cluster.Spec.Version = "5.2.0"
-				cluster.Spec.ExposeOptions = &v1.ExposeOptions{
-					BroadcastOptions: &v1.NodeBroadcastOptions{
-						Nodes: v1.BroadcastOptions{
+				cluster.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					BroadcastOptions: &scyllav1.NodeBroadcastOptions{
+						Nodes: scyllav1.BroadcastOptions{
 							Type: "foo",
 						},
-						Clients: v1.BroadcastOptions{
-							Type: v1.BroadcastAddressTypeServiceClusterIP,
+						Clients: scyllav1.BroadcastOptions{
+							Type: scyllav1.BroadcastAddressTypeServiceClusterIP,
 						},
 					},
 				}
@@ -663,25 +766,25 @@ func TestValidateScyllaCluster(t *testing.T) {
 				return cluster
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeNotSupported, Field: "spec.exposeOptions.broadcastOptions.nodes.type", BadValue: v1.BroadcastAddressType("foo"), Detail: `supported values: "PodIP", "ServiceClusterIP", "ServiceLoadBalancerIngress"`},
+				&field.Error{Type: field.ErrorTypeNotSupported, Field: "spec.exposeOptions.broadcastOptions.nodes.type", BadValue: scyllav1.BroadcastAddressType("foo"), Detail: `supported values: "PodIP", "ServiceClusterIP", "ServiceLoadBalancerIngress"`},
 			},
 			expectedErrorString: `spec.exposeOptions.broadcastOptions.nodes.type: Unsupported value: "foo": supported values: "PodIP", "ServiceClusterIP", "ServiceLoadBalancerIngress"`,
 		},
 		{
 			name: "invalid ClusterIP broadcast type when node service is Headless",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
 				cluster.Spec.Version = "5.2.0"
-				cluster.Spec.ExposeOptions = &v1.ExposeOptions{
-					NodeService: &v1.NodeServiceTemplate{
-						Type: v1.NodeServiceTypeHeadless,
+				cluster.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					NodeService: &scyllav1.NodeServiceTemplate{
+						Type: scyllav1.NodeServiceTypeHeadless,
 					},
-					BroadcastOptions: &v1.NodeBroadcastOptions{
-						Clients: v1.BroadcastOptions{
-							Type: v1.BroadcastAddressTypeServiceClusterIP,
+					BroadcastOptions: &scyllav1.NodeBroadcastOptions{
+						Clients: scyllav1.BroadcastOptions{
+							Type: scyllav1.BroadcastAddressTypeServiceClusterIP,
 						},
-						Nodes: v1.BroadcastOptions{
-							Type: v1.BroadcastAddressTypeServiceClusterIP,
+						Nodes: scyllav1.BroadcastOptions{
+							Type: scyllav1.BroadcastAddressTypeServiceClusterIP,
 						},
 					},
 				}
@@ -689,26 +792,26 @@ func TestValidateScyllaCluster(t *testing.T) {
 				return cluster
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.clients.type", BadValue: v1.BroadcastAddressTypeServiceClusterIP, Detail: `can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [ClusterIP LoadBalancer]`},
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.nodes.type", BadValue: v1.BroadcastAddressTypeServiceClusterIP, Detail: `can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [ClusterIP LoadBalancer]`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.clients.type", BadValue: scyllav1.BroadcastAddressTypeServiceClusterIP, Detail: `can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [ClusterIP LoadBalancer]`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.nodes.type", BadValue: scyllav1.BroadcastAddressTypeServiceClusterIP, Detail: `can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [ClusterIP LoadBalancer]`},
 			},
 			expectedErrorString: `[spec.exposeOptions.broadcastOptions.clients.type: Invalid value: "ServiceClusterIP": can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [ClusterIP LoadBalancer], spec.exposeOptions.broadcastOptions.nodes.type: Invalid value: "ServiceClusterIP": can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [ClusterIP LoadBalancer]]`,
 		},
 		{
 			name: "invalid LoadBalancerIngressIP broadcast type when node service is Headless",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
 				cluster.Spec.Version = "5.2.0"
-				cluster.Spec.ExposeOptions = &v1.ExposeOptions{
-					NodeService: &v1.NodeServiceTemplate{
-						Type: v1.NodeServiceTypeHeadless,
+				cluster.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					NodeService: &scyllav1.NodeServiceTemplate{
+						Type: scyllav1.NodeServiceTypeHeadless,
 					},
-					BroadcastOptions: &v1.NodeBroadcastOptions{
-						Clients: v1.BroadcastOptions{
-							Type: v1.BroadcastAddressTypeServiceLoadBalancerIngress,
+					BroadcastOptions: &scyllav1.NodeBroadcastOptions{
+						Clients: scyllav1.BroadcastOptions{
+							Type: scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
 						},
-						Nodes: v1.BroadcastOptions{
-							Type: v1.BroadcastAddressTypeServiceLoadBalancerIngress,
+						Nodes: scyllav1.BroadcastOptions{
+							Type: scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
 						},
 					},
 				}
@@ -716,26 +819,26 @@ func TestValidateScyllaCluster(t *testing.T) {
 				return cluster
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.clients.type", BadValue: v1.BroadcastAddressTypeServiceLoadBalancerIngress, Detail: `can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer]`},
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.nodes.type", BadValue: v1.BroadcastAddressTypeServiceLoadBalancerIngress, Detail: `can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer]`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.clients.type", BadValue: scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress, Detail: `can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer]`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.nodes.type", BadValue: scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress, Detail: `can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer]`},
 			},
 			expectedErrorString: `[spec.exposeOptions.broadcastOptions.clients.type: Invalid value: "ServiceLoadBalancerIngress": can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer], spec.exposeOptions.broadcastOptions.nodes.type: Invalid value: "ServiceLoadBalancerIngress": can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer]]`,
 		},
 		{
 			name: "invalid LoadBalancerIngressIP broadcast type when node service is ClusterIP",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
 				cluster.Spec.Version = "5.2.0"
-				cluster.Spec.ExposeOptions = &v1.ExposeOptions{
-					NodeService: &v1.NodeServiceTemplate{
-						Type: v1.NodeServiceTypeClusterIP,
+				cluster.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					NodeService: &scyllav1.NodeServiceTemplate{
+						Type: scyllav1.NodeServiceTypeClusterIP,
 					},
-					BroadcastOptions: &v1.NodeBroadcastOptions{
-						Clients: v1.BroadcastOptions{
-							Type: v1.BroadcastAddressTypeServiceLoadBalancerIngress,
+					BroadcastOptions: &scyllav1.NodeBroadcastOptions{
+						Clients: scyllav1.BroadcastOptions{
+							Type: scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
 						},
-						Nodes: v1.BroadcastOptions{
-							Type: v1.BroadcastAddressTypeServiceLoadBalancerIngress,
+						Nodes: scyllav1.BroadcastOptions{
+							Type: scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
 						},
 					},
 				}
@@ -743,14 +846,14 @@ func TestValidateScyllaCluster(t *testing.T) {
 				return cluster
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.clients.type", BadValue: v1.BroadcastAddressTypeServiceLoadBalancerIngress, Detail: `can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer]`},
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.nodes.type", BadValue: v1.BroadcastAddressTypeServiceLoadBalancerIngress, Detail: `can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer]`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.clients.type", BadValue: scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress, Detail: `can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer]`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.nodes.type", BadValue: scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress, Detail: `can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer]`},
 			},
 			expectedErrorString: `[spec.exposeOptions.broadcastOptions.clients.type: Invalid value: "ServiceLoadBalancerIngress": can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer], spec.exposeOptions.broadcastOptions.nodes.type: Invalid value: "ServiceLoadBalancerIngress": can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: [LoadBalancer]]`,
 		},
 		{
 			name: "negative minTerminationGracePeriodSeconds",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
 				cluster.Spec.MinTerminationGracePeriodSeconds = pointer.Ptr(int32(-42))
 
@@ -763,7 +866,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "negative minReadySeconds",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
 				cluster.Spec.MinReadySeconds = pointer.Ptr(int32(-42))
 
@@ -776,9 +879,9 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "minimal alternator cluster passes",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Alternator = &v1.AlternatorSpec{}
+				cluster.Spec.Alternator = &scyllav1.AlternatorSpec{}
 				return cluster
 			}(),
 			expectedErrorList:   field.ErrorList{},
@@ -786,12 +889,12 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "alternator cluster with user certificate",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Alternator = &v1.AlternatorSpec{
-					ServingCertificate: &v1.TLSCertificate{
-						Type: v1.TLSCertificateTypeUserManaged,
-						UserManagedOptions: &v1.UserManagedTLSCertificateOptions{
+				cluster.Spec.Alternator = &scyllav1.AlternatorSpec{
+					ServingCertificate: &scyllav1.TLSCertificate{
+						Type: scyllav1.TLSCertificateTypeUserManaged,
+						UserManagedOptions: &scyllav1.UserManagedTLSCertificateOptions{
 							SecretName: "my-tls-certificate",
 						},
 					},
@@ -803,28 +906,28 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "alternator cluster with invalid certificate type",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Alternator = &v1.AlternatorSpec{
-					ServingCertificate: &v1.TLSCertificate{
+				cluster.Spec.Alternator = &scyllav1.AlternatorSpec{
+					ServingCertificate: &scyllav1.TLSCertificate{
 						Type: "foo",
 					},
 				}
 				return cluster
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeNotSupported, Field: "spec.alternator.servingCertificate.type", BadValue: v1.TLSCertificateType("foo"), Detail: `supported values: "OperatorManaged", "UserManaged"`},
+				&field.Error{Type: field.ErrorTypeNotSupported, Field: "spec.alternator.servingCertificate.type", BadValue: scyllav1.TLSCertificateType("foo"), Detail: `supported values: "OperatorManaged", "UserManaged"`},
 			},
 			expectedErrorString: `spec.alternator.servingCertificate.type: Unsupported value: "foo": supported values: "OperatorManaged", "UserManaged"`,
 		},
 		{
 			name: "alternator cluster with valid additional domains",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Alternator = &v1.AlternatorSpec{
-					ServingCertificate: &v1.TLSCertificate{
-						Type: v1.TLSCertificateTypeOperatorManaged,
-						OperatorManagedOptions: &v1.OperatorManagedTLSCertificateOptions{
+				cluster.Spec.Alternator = &scyllav1.AlternatorSpec{
+					ServingCertificate: &scyllav1.TLSCertificate{
+						Type: scyllav1.TLSCertificateTypeOperatorManaged,
+						OperatorManagedOptions: &scyllav1.OperatorManagedTLSCertificateOptions{
 							AdditionalDNSNames: []string{"scylla-operator.scylladb.com"},
 						},
 					},
@@ -836,12 +939,12 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "alternator cluster with invalid additional domains",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Alternator = &v1.AlternatorSpec{
-					ServingCertificate: &v1.TLSCertificate{
-						Type: v1.TLSCertificateTypeOperatorManaged,
-						OperatorManagedOptions: &v1.OperatorManagedTLSCertificateOptions{
+				cluster.Spec.Alternator = &scyllav1.AlternatorSpec{
+					ServingCertificate: &scyllav1.TLSCertificate{
+						Type: scyllav1.TLSCertificateTypeOperatorManaged,
+						OperatorManagedOptions: &scyllav1.OperatorManagedTLSCertificateOptions{
 							AdditionalDNSNames: []string{"[not a domain]"},
 						},
 					},
@@ -855,12 +958,12 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "alternator cluster with valid additional IP addresses",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Alternator = &v1.AlternatorSpec{
-					ServingCertificate: &v1.TLSCertificate{
-						Type: v1.TLSCertificateTypeOperatorManaged,
-						OperatorManagedOptions: &v1.OperatorManagedTLSCertificateOptions{
+				cluster.Spec.Alternator = &scyllav1.AlternatorSpec{
+					ServingCertificate: &scyllav1.TLSCertificate{
+						Type: scyllav1.TLSCertificateTypeOperatorManaged,
+						OperatorManagedOptions: &scyllav1.OperatorManagedTLSCertificateOptions{
 							AdditionalIPAddresses: []string{"127.0.0.1", "::1"},
 						},
 					},
@@ -872,12 +975,12 @@ func TestValidateScyllaCluster(t *testing.T) {
 		},
 		{
 			name: "alternator cluster with invalid additional IP addresses",
-			cluster: func() *v1.ScyllaCluster {
+			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.Alternator = &v1.AlternatorSpec{
-					ServingCertificate: &v1.TLSCertificate{
-						Type: v1.TLSCertificateTypeOperatorManaged,
-						OperatorManagedOptions: &v1.OperatorManagedTLSCertificateOptions{
+				cluster.Spec.Alternator = &scyllav1.AlternatorSpec{
+					ServingCertificate: &scyllav1.TLSCertificate{
+						Type: scyllav1.TLSCertificateTypeOperatorManaged,
+						OperatorManagedOptions: &scyllav1.OperatorManagedTLSCertificateOptions{
 							AdditionalIPAddresses: []string{"0.not-an-ip.0.0"},
 						},
 					},
@@ -900,7 +1003,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 				t.Errorf("expected and actual error lists differ: %s", cmp.Diff(test.expectedErrorList, errList))
 			}
 
-			errStr := ""
+			var errStr string
 			if agg := errList.ToAggregate(); agg != nil {
 				errStr = agg.Error()
 			}
@@ -914,8 +1017,8 @@ func TestValidateScyllaCluster(t *testing.T) {
 func TestValidateScyllaClusterUpdate(t *testing.T) {
 	tests := []struct {
 		name                string
-		old                 *v1.ScyllaCluster
-		new                 *v1.ScyllaCluster
+		old                 *scyllav1.ScyllaCluster
+		new                 *scyllav1.ScyllaCluster
 		expectedErrorList   field.ErrorList
 		expectedErrorString string
 	}{
@@ -995,7 +1098,7 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 		},
 		{
 			name: "empty rack with members under decommission",
-			old:  withStatus(unit.NewSingleRackCluster(0), v1.ScyllaClusterStatus{Racks: map[string]v1.RackStatus{"test-rack": {Members: 3}}}),
+			old:  withStatus(unit.NewSingleRackCluster(0), scyllav1.ScyllaClusterStatus{Racks: map[string]scyllav1.RackStatus{"test-rack": {Members: 3}}}),
 			new:  racksDeleted(unit.NewSingleRackCluster(0)),
 			expectedErrorList: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.datacenter.racks[0]", BadValue: "", Detail: `rack "test-rack" can't be removed because the members are being scaled down`},
@@ -1004,7 +1107,7 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 		},
 		{
 			name: "empty rack with stale status",
-			old:  withStatus(unit.NewSingleRackCluster(0), v1.ScyllaClusterStatus{Racks: map[string]v1.RackStatus{"test-rack": {Stale: pointer.Ptr(true), Members: 0}}}),
+			old:  withStatus(unit.NewSingleRackCluster(0), scyllav1.ScyllaClusterStatus{Racks: map[string]scyllav1.RackStatus{"test-rack": {Stale: pointer.Ptr(true), Members: 0}}}),
 			new:  racksDeleted(unit.NewSingleRackCluster(0)),
 			expectedErrorList: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeInternal, Field: "spec.datacenter.racks[0]", Detail: `rack "test-rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`},
@@ -1013,7 +1116,7 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 		},
 		{
 			name: "empty rack with not reconciled generation",
-			old:  withStatus(withGeneration(unit.NewSingleRackCluster(0), 123), v1.ScyllaClusterStatus{ObservedGeneration: pointer.Ptr(int64(321)), Racks: map[string]v1.RackStatus{"test-rack": {Members: 0}}}),
+			old:  withStatus(withGeneration(unit.NewSingleRackCluster(0), 123), scyllav1.ScyllaClusterStatus{ObservedGeneration: pointer.Ptr(int64(321)), Racks: map[string]scyllav1.RackStatus{"test-rack": {Members: 0}}}),
 			new:  racksDeleted(unit.NewSingleRackCluster(0)),
 			expectedErrorList: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeInternal, Field: "spec.datacenter.racks[0]", Detail: `rack "test-rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`},
@@ -1033,121 +1136,121 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 		},
 		{
 			name: "node service type cannot be unset",
-			old: func() *v1.ScyllaCluster {
+			old: func() *scyllav1.ScyllaCluster {
 				sc := unit.NewSingleRackCluster(3)
-				sc.Spec.ExposeOptions = &v1.ExposeOptions{
-					NodeService: &v1.NodeServiceTemplate{
-						Type: v1.NodeServiceTypeClusterIP,
+				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					NodeService: &scyllav1.NodeServiceTemplate{
+						Type: scyllav1.NodeServiceTypeClusterIP,
 					},
 				}
 				return sc
 			}(),
-			new: func() *v1.ScyllaCluster {
+			new: func() *scyllav1.ScyllaCluster {
 				sc := unit.NewSingleRackCluster(3)
 				sc.Spec.ExposeOptions = nil
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.nodeService.type", BadValue: (*v1.NodeServiceType)(nil), Detail: `field is immutable`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.nodeService.type", BadValue: (*scyllav1.NodeServiceType)(nil), Detail: `field is immutable`},
 			},
 			expectedErrorString: `spec.exposeOptions.nodeService.type: Invalid value: "null": field is immutable`,
 		},
 		{
 			name: "node service type cannot be changed",
-			old: func() *v1.ScyllaCluster {
+			old: func() *scyllav1.ScyllaCluster {
 				sc := unit.NewSingleRackCluster(3)
-				sc.Spec.ExposeOptions = &v1.ExposeOptions{
-					NodeService: &v1.NodeServiceTemplate{
-						Type: v1.NodeServiceTypeHeadless,
+				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					NodeService: &scyllav1.NodeServiceTemplate{
+						Type: scyllav1.NodeServiceTypeHeadless,
 					},
 				}
 				return sc
 			}(),
-			new: func() *v1.ScyllaCluster {
+			new: func() *scyllav1.ScyllaCluster {
 				sc := unit.NewSingleRackCluster(3)
-				sc.Spec.ExposeOptions = &v1.ExposeOptions{
-					NodeService: &v1.NodeServiceTemplate{
-						Type: v1.NodeServiceTypeClusterIP,
+				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					NodeService: &scyllav1.NodeServiceTemplate{
+						Type: scyllav1.NodeServiceTypeClusterIP,
 					},
 				}
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.nodeService.type", BadValue: pointer.Ptr(v1.NodeServiceTypeClusterIP), Detail: `field is immutable`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.nodeService.type", BadValue: pointer.Ptr(scyllav1.NodeServiceTypeClusterIP), Detail: `field is immutable`},
 			},
 			expectedErrorString: `spec.exposeOptions.nodeService.type: Invalid value: "ClusterIP": field is immutable`,
 		},
 		{
 			name: "clients broadcast address type cannot be changed",
-			old: func() *v1.ScyllaCluster {
+			old: func() *scyllav1.ScyllaCluster {
 				sc := unit.NewSingleRackCluster(3)
 				sc.Spec.Version = "5.2.0"
-				sc.Spec.ExposeOptions = &v1.ExposeOptions{
-					BroadcastOptions: &v1.NodeBroadcastOptions{
-						Clients: v1.BroadcastOptions{
-							Type: v1.BroadcastAddressTypeServiceClusterIP,
+				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					BroadcastOptions: &scyllav1.NodeBroadcastOptions{
+						Clients: scyllav1.BroadcastOptions{
+							Type: scyllav1.BroadcastAddressTypeServiceClusterIP,
 						},
-						Nodes: v1.BroadcastOptions{
-							Type: v1.BroadcastAddressTypeServiceClusterIP,
+						Nodes: scyllav1.BroadcastOptions{
+							Type: scyllav1.BroadcastAddressTypeServiceClusterIP,
 						},
 					},
 				}
 				return sc
 			}(),
-			new: func() *v1.ScyllaCluster {
+			new: func() *scyllav1.ScyllaCluster {
 				sc := unit.NewSingleRackCluster(3)
 				sc.Spec.Version = "5.2.0"
-				sc.Spec.ExposeOptions = &v1.ExposeOptions{
-					BroadcastOptions: &v1.NodeBroadcastOptions{
-						Clients: v1.BroadcastOptions{
-							Type: v1.BroadcastAddressTypePodIP,
+				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					BroadcastOptions: &scyllav1.NodeBroadcastOptions{
+						Clients: scyllav1.BroadcastOptions{
+							Type: scyllav1.BroadcastAddressTypePodIP,
 						},
-						Nodes: v1.BroadcastOptions{
-							Type: v1.BroadcastAddressTypeServiceClusterIP,
+						Nodes: scyllav1.BroadcastOptions{
+							Type: scyllav1.BroadcastAddressTypeServiceClusterIP,
 						},
 					},
 				}
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.clients.type", BadValue: pointer.Ptr(v1.BroadcastAddressTypePodIP), Detail: `field is immutable`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.clients.type", BadValue: pointer.Ptr(scyllav1.BroadcastAddressTypePodIP), Detail: `field is immutable`},
 			},
 			expectedErrorString: `spec.exposeOptions.broadcastOptions.clients.type: Invalid value: "PodIP": field is immutable`,
 		},
 		{
 			name: "nodes broadcast address type cannot be changed",
-			old: func() *v1.ScyllaCluster {
+			old: func() *scyllav1.ScyllaCluster {
 				sc := unit.NewSingleRackCluster(3)
 				sc.Spec.Version = "5.2.0"
-				sc.Spec.ExposeOptions = &v1.ExposeOptions{
-					BroadcastOptions: &v1.NodeBroadcastOptions{
-						Nodes: v1.BroadcastOptions{
-							Type: v1.BroadcastAddressTypeServiceClusterIP,
+				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					BroadcastOptions: &scyllav1.NodeBroadcastOptions{
+						Nodes: scyllav1.BroadcastOptions{
+							Type: scyllav1.BroadcastAddressTypeServiceClusterIP,
 						},
-						Clients: v1.BroadcastOptions{
-							Type: v1.BroadcastAddressTypeServiceClusterIP,
+						Clients: scyllav1.BroadcastOptions{
+							Type: scyllav1.BroadcastAddressTypeServiceClusterIP,
 						},
 					},
 				}
 				return sc
 			}(),
-			new: func() *v1.ScyllaCluster {
+			new: func() *scyllav1.ScyllaCluster {
 				sc := unit.NewSingleRackCluster(3)
 				sc.Spec.Version = "5.2.0"
-				sc.Spec.ExposeOptions = &v1.ExposeOptions{
-					BroadcastOptions: &v1.NodeBroadcastOptions{
-						Nodes: v1.BroadcastOptions{
-							Type: v1.BroadcastAddressTypePodIP,
+				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					BroadcastOptions: &scyllav1.NodeBroadcastOptions{
+						Nodes: scyllav1.BroadcastOptions{
+							Type: scyllav1.BroadcastAddressTypePodIP,
 						},
-						Clients: v1.BroadcastOptions{
-							Type: v1.BroadcastAddressTypeServiceClusterIP,
+						Clients: scyllav1.BroadcastOptions{
+							Type: scyllav1.BroadcastAddressTypeServiceClusterIP,
 						},
 					},
 				}
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.nodes.type", BadValue: pointer.Ptr(v1.BroadcastAddressTypePodIP), Detail: `field is immutable`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.broadcastOptions.nodes.type", BadValue: pointer.Ptr(scyllav1.BroadcastAddressTypePodIP), Detail: `field is immutable`},
 			},
 			expectedErrorString: `spec.exposeOptions.broadcastOptions.nodes.type: Invalid value: "PodIP": field is immutable`,
 		},
@@ -1171,34 +1274,34 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 	}
 }
 
-func withGeneration(sc *v1.ScyllaCluster, generation int64) *v1.ScyllaCluster {
+func withGeneration(sc *scyllav1.ScyllaCluster, generation int64) *scyllav1.ScyllaCluster {
 	sc.Generation = generation
 	return sc
 }
 
-func withStatus(sc *v1.ScyllaCluster, status v1.ScyllaClusterStatus) *v1.ScyllaCluster {
+func withStatus(sc *scyllav1.ScyllaCluster, status scyllav1.ScyllaClusterStatus) *scyllav1.ScyllaCluster {
 	sc.Status = status
 	return sc
 }
 
-func placementChanged(c *v1.ScyllaCluster) *v1.ScyllaCluster {
-	c.Spec.Datacenter.Racks[0].Placement = &v1.PlacementSpec{}
+func placementChanged(c *scyllav1.ScyllaCluster) *scyllav1.ScyllaCluster {
+	c.Spec.Datacenter.Racks[0].Placement = &scyllav1.PlacementSpec{}
 	return c
 }
 
-func resourceChanged(c *v1.ScyllaCluster) *v1.ScyllaCluster {
+func resourceChanged(c *scyllav1.ScyllaCluster) *scyllav1.ScyllaCluster {
 	c.Spec.Datacenter.Racks[0].Resources.Requests = map[corev1.ResourceName]resource.Quantity{
 		corev1.ResourceCPU: *resource.NewMilliQuantity(1000, resource.DecimalSI),
 	}
 	return c
 }
 
-func racksDeleted(c *v1.ScyllaCluster) *v1.ScyllaCluster {
+func racksDeleted(c *scyllav1.ScyllaCluster) *scyllav1.ScyllaCluster {
 	c.Spec.Datacenter.Racks = nil
 	return c
 }
 
-func storageChanged(c *v1.ScyllaCluster) *v1.ScyllaCluster {
+func storageChanged(c *scyllav1.ScyllaCluster) *scyllav1.ScyllaCluster {
 	c.Spec.Datacenter.Racks[0].Storage.Capacity = "15Gi"
 	return c
 }

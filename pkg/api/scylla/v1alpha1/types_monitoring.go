@@ -5,12 +5,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const (
-	AvailableCondition   = "Available"
-	ProgressingCondition = "Progressing"
-	DegradedCondition    = "Degraded"
-)
-
 // GrafanaExposeOptions holds options related to exposing Grafana app.
 type GrafanaExposeOptions struct {
 	// webInterface specifies expose options for the user web interface.

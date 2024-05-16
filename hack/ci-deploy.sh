@@ -15,10 +15,10 @@ if [[ -z ${1+x} ]]; then
     exit 1
 fi
 
-ARTIFACTS_DIR=${ARTIFACTS_DIR:-$( mktemp -d )}
+ARTIFACTS=${ARTIFACTS:-$( mktemp -d )}
 OPERATOR_IMAGE_REF=${1}
 
-deploy_dir=${ARTIFACTS_DIR}/deploy
+deploy_dir=${ARTIFACTS}/deploy
 mkdir -p "${deploy_dir}/"{operator,manager,prometheus-operator,haproxy-ingress}
 
 cp ./deploy/manager/dev/*.yaml "${deploy_dir}/manager"

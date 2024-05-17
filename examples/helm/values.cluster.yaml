@@ -2,7 +2,7 @@
 scyllaImage:
   tag: 5.4.3
 agentImage:
-  tag: 3.2.7
+  tag: 3.2.8
 
 # Cluster information
 developerMode: true

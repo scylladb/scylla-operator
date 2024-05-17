@@ -66,6 +66,11 @@ type StorageServiceDescribeRingByKeyspaceGetParams struct {
 
 	*/
 	Keyspace string
+	/*Table
+	  The name of table to fetch information about
+
+	*/
+	Table *string
 
 	timeout    time.Duration
 	Context    context.Context
@@ -116,6 +121,17 @@ func (o *StorageServiceDescribeRingByKeyspaceGetParams) SetKeyspace(keyspace str
 	o.Keyspace = keyspace
 }
 
+// WithTable adds the table to the storage service describe ring by keyspace get params
+func (o *StorageServiceDescribeRingByKeyspaceGetParams) WithTable(table *string) *StorageServiceDescribeRingByKeyspaceGetParams {
+	o.SetTable(table)
+	return o
+}
+
+// SetTable adds the table to the storage service describe ring by keyspace get params
+func (o *StorageServiceDescribeRingByKeyspaceGetParams) SetTable(table *string) {
+	o.Table = table
+}
+
 // WriteToRequest writes these params to a swagger request
 func (o *StorageServiceDescribeRingByKeyspaceGetParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
@@ -127,6 +143,22 @@ func (o *StorageServiceDescribeRingByKeyspaceGetParams) WriteToRequest(r runtime
 	// path param keyspace
 	if err := r.SetPathParam("keyspace", o.Keyspace); err != nil {
 		return err
+	}
+
+	if o.Table != nil {
+
+		// query param table
+		var qrTable string
+		if o.Table != nil {
+			qrTable = *o.Table
+		}
+		qTable := qrTable
+		if qTable != "" {
+			if err := r.SetQueryParam("table", qTable); err != nil {
+				return err
+			}
+		}
+
 	}
 
 	if len(res) > 0 {

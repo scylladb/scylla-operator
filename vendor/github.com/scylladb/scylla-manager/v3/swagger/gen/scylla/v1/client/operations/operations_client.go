@@ -775,6 +775,8 @@ type ClientService interface {
 
 	StorageServiceStreamThroughputPost(params *StorageServiceStreamThroughputPostParams) (*StorageServiceStreamThroughputPostOK, error)
 
+	StorageServiceTabletsBalancingPost(params *StorageServiceTabletsBalancingPostParams) (*StorageServiceTabletsBalancingPostOK, error)
+
 	StorageServiceTokensByEndpointGet(params *StorageServiceTokensByEndpointGetParams) (*StorageServiceTokensByEndpointGetOK, error)
 
 	StorageServiceTokensEndpointGet(params *StorageServiceTokensEndpointGetParams) (*StorageServiceTokensEndpointGetOK, error)
@@ -13938,6 +13940,41 @@ func (a *Client) StorageServiceStreamThroughputPost(params *StorageServiceStream
 	}
 	// unexpected success response
 	unexpectedSuccess := result.(*StorageServiceStreamThroughputPostDefault)
+	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
+}
+
+/*
+StorageServiceTabletsBalancingPost tablets balancing enable
+
+Controls tablet load-balancing
+*/
+func (a *Client) StorageServiceTabletsBalancingPost(params *StorageServiceTabletsBalancingPostParams) (*StorageServiceTabletsBalancingPostOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewStorageServiceTabletsBalancingPostParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "StorageServiceTabletsBalancingPost",
+		Method:             "POST",
+		PathPattern:        "/storage_service/tablets/balancing",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &StorageServiceTabletsBalancingPostReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*StorageServiceTabletsBalancingPostOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	unexpectedSuccess := result.(*StorageServiceTabletsBalancingPostDefault)
 	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
 }
 

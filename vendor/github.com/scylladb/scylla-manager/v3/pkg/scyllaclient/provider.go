@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/scylladb/go-log"
+	"github.com/scylladb/scylla-manager/v3/pkg/util/logutil"
 	"github.com/scylladb/scylla-manager/v3/pkg/util/timeutc"
 	"github.com/scylladb/scylla-manager/v3/pkg/util/uuid"
 )
@@ -88,7 +89,7 @@ func (p *CachedProvider) Close() error {
 
 	for clusterID, c := range p.clients {
 		delete(p.clients, clusterID)
-		c.client.Close()
+		logutil.LogOnError(context.Background(), p.logger, c.client.Close, "Couldn't close scylla client")
 	}
 
 	return nil

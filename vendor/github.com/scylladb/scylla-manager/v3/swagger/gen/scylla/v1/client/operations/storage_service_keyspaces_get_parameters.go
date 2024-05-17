@@ -61,6 +61,11 @@ for the storage service keyspaces get operation typically these are written to a
 */
 type StorageServiceKeyspacesGetParams struct {
 
+	/*Replication
+	  Filter keyspaces for the replication used: vnodes or tablets (default: all)
+
+	*/
+	Replication *string
 	/*Type
 	  Which keyspaces to return
 
@@ -105,6 +110,17 @@ func (o *StorageServiceKeyspacesGetParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
+// WithReplication adds the replication to the storage service keyspaces get params
+func (o *StorageServiceKeyspacesGetParams) WithReplication(replication *string) *StorageServiceKeyspacesGetParams {
+	o.SetReplication(replication)
+	return o
+}
+
+// SetReplication adds the replication to the storage service keyspaces get params
+func (o *StorageServiceKeyspacesGetParams) SetReplication(replication *string) {
+	o.Replication = replication
+}
+
 // WithType adds the typeVar to the storage service keyspaces get params
 func (o *StorageServiceKeyspacesGetParams) WithType(typeVar *string) *StorageServiceKeyspacesGetParams {
 	o.SetType(typeVar)
@@ -123,6 +139,22 @@ func (o *StorageServiceKeyspacesGetParams) WriteToRequest(r runtime.ClientReques
 		return err
 	}
 	var res []error
+
+	if o.Replication != nil {
+
+		// query param replication
+		var qrReplication string
+		if o.Replication != nil {
+			qrReplication = *o.Replication
+		}
+		qReplication := qrReplication
+		if qReplication != "" {
+			if err := r.SetQueryParam("replication", qReplication); err != nil {
+				return err
+			}
+		}
+
+	}
 
 	if o.Type != nil {
 

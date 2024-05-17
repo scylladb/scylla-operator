@@ -20,14 +20,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-set/strset"
 	"github.com/scylladb/scylla-manager/v3/pkg/dht"
-	"github.com/scylladb/scylla-manager/v3/pkg/util/slice"
-	"go.uber.org/multierr"
-
+	"github.com/scylladb/scylla-manager/v3/pkg/util/maputil"
 	"github.com/scylladb/scylla-manager/v3/pkg/util/parallel"
 	"github.com/scylladb/scylla-manager/v3/pkg/util/pointer"
 	"github.com/scylladb/scylla-manager/v3/pkg/util/prom"
+	"github.com/scylladb/scylla-manager/v3/pkg/util/slice"
 	"github.com/scylladb/scylla-manager/v3/swagger/gen/scylla/v1/client/operations"
 	"github.com/scylladb/scylla-manager/v3/swagger/gen/scylla/v1/models"
+	"go.uber.org/multierr"
 )
 
 // ErrHostInvalidResponse is to indicate that one of the root-causes is the invalid response from scylla-server.
@@ -246,13 +246,31 @@ func (c *Client) hosts(ctx context.Context) ([]string, error) {
 	return v, nil
 }
 
-// Keyspaces return a list of all the keyspaces.
-func (c *Client) Keyspaces(ctx context.Context) ([]string, error) {
-	resp, err := c.scyllaOps.StorageServiceKeyspacesGet(&operations.StorageServiceKeyspacesGetParams{Context: ctx})
+// KeyspaceReplication describes keyspace replication type.
+type KeyspaceReplication = string
+
+// KeyspaceReplication enum.
+const (
+	ReplicationAll    = "all"
+	ReplicationVnode  = "vnodes"
+	ReplicationTablet = "tablets"
+)
+
+// ReplicationKeyspaces return a list of keyspaces with given replication.
+func (c *Client) ReplicationKeyspaces(ctx context.Context, replication KeyspaceReplication) ([]string, error) {
+	resp, err := c.scyllaOps.StorageServiceKeyspacesGet(&operations.StorageServiceKeyspacesGetParams{
+		Context:     ctx,
+		Replication: &replication,
+	})
 	if err != nil {
 		return nil, err
 	}
 	return resp.Payload, nil
+}
+
+// Keyspaces return a list of all the keyspaces.
+func (c *Client) Keyspaces(ctx context.Context) ([]string, error) {
+	return c.ReplicationKeyspaces(ctx, ReplicationAll)
 }
 
 // Tables returns a slice of table names in a given keyspace.
@@ -374,14 +392,30 @@ func (c *Client) metrics(ctx context.Context, host, name string) (map[string]*pr
 	return prom.ParseText(resp.Body)
 }
 
-// DescribeRing returns a description of token range of a given keyspace.
-func (c *Client) DescribeRing(ctx context.Context, keyspace string) (Ring, error) {
-	resp, err := c.scyllaOps.StorageServiceDescribeRingByKeyspaceGet(&operations.StorageServiceDescribeRingByKeyspaceGetParams{
+// DescribeTabletRing returns a description of token range of a given tablet table.
+func (c *Client) DescribeTabletRing(ctx context.Context, keyspace, table string) (Ring, error) {
+	return c.describeRing(&operations.StorageServiceDescribeRingByKeyspaceGetParams{
+		Context:  ctx,
+		Keyspace: keyspace,
+		Table:    &table,
+	})
+}
+
+// DescribeVnodeRing returns a description of token range of a given vnode keyspace.
+func (c *Client) DescribeVnodeRing(ctx context.Context, keyspace string) (Ring, error) {
+	return c.describeRing(&operations.StorageServiceDescribeRingByKeyspaceGetParams{
 		Context:  ctx,
 		Keyspace: keyspace,
 	})
+}
+
+func (c *Client) describeRing(params *operations.StorageServiceDescribeRingByKeyspaceGetParams) (Ring, error) {
+	resp, err := c.scyllaOps.StorageServiceDescribeRingByKeyspaceGet(params)
 	if err != nil {
 		return Ring{}, err
+	}
+	if len(resp.Payload) == 0 {
+		return Ring{}, errors.New("received empty token range list")
 	}
 
 	ring := Ring{
@@ -393,6 +427,9 @@ func (c *Client) DescribeRing(ctx context.Context, keyspace string) (Ring, error
 	replicaTokens := make(map[uint64][]TokenRange)
 	replicaHash := make(map[uint64][]string)
 
+	isNetworkTopologyStrategy := true
+	rf := len(resp.Payload[0].Endpoints)
+	var dcRF map[string]int
 	for _, p := range resp.Payload {
 		// Parse tokens
 		startToken, err := strconv.ParseInt(p.StartToken, 10, 64)
@@ -414,6 +451,21 @@ func (c *Client) DescribeRing(ctx context.Context, keyspace string) (Ring, error
 			StartToken: startToken,
 			EndToken:   endToken,
 		})
+
+		// Update replication factors
+		if rf != len(p.Endpoints) {
+			return Ring{}, errors.Errorf("ifferent token ranges have different rf (%d/%d). Repair is not safe for now", rf, len(p.Endpoints))
+		}
+		tokenDCrf := make(map[string]int)
+		for _, e := range p.EndpointDetails {
+			tokenDCrf[e.Datacenter]++
+		}
+		// NetworkTopologyStrategy -> all token ranges have the same dc to rf mapping
+		if dcRF == nil || maputil.Equal(dcRF, tokenDCrf) {
+			dcRF = tokenDCrf
+		} else {
+			isNetworkTopologyStrategy = false
+		}
 
 		// Update host to DC mapping
 		for _, e := range p.EndpointDetails {
@@ -443,16 +495,15 @@ func (c *Client) DescribeRing(ctx context.Context, keyspace string) (Ring, error
 	}
 
 	// Detect replication strategy
-	if len(ring.HostDC) == 1 {
+	ring.RF = rf
+	switch {
+	case len(ring.HostDC) == 1:
 		ring.Replication = LocalStrategy
-	} else {
+	case isNetworkTopologyStrategy:
 		ring.Replication = NetworkTopologyStrategy
-		for _, tokens := range dcTokens {
-			if tokens != len(resp.Payload) {
-				ring.Replication = SimpleStrategy
-				break
-			}
-		}
+		ring.DCrf = dcRF
+	default:
+		ring.Replication = SimpleStrategy
 	}
 
 	return ring, nil
@@ -469,13 +520,16 @@ func ReplicaHash(replicaSet []string) uint64 {
 }
 
 // Repair invokes async repair and returns the repair command ID.
-func (c *Client) Repair(ctx context.Context, keyspace, table, master string, replicaSet []string, ranges []TokenRange) (int32, error) {
+func (c *Client) Repair(ctx context.Context, keyspace, table, master string, replicaSet []string, ranges []TokenRange, smallTableOpt bool) (int32, error) {
 	dr := dumpRanges(ranges)
 	p := operations.StorageServiceRepairAsyncByKeyspacePostParams{
 		Context:        forceHost(ctx, master),
 		Keyspace:       keyspace,
 		ColumnFamilies: &table,
 		Ranges:         &dr,
+	}
+	if smallTableOpt {
+		p.SmallTableOptimization = pointer.StringPtr("true")
 	}
 	// Single node cluster repair fails with hosts param
 	if len(replicaSet) > 1 {
@@ -854,8 +908,14 @@ func (t HostKeyspaceTables) Hosts() []string {
 	return s.List()
 }
 
+// SizeReport extends HostKeyspaceTable with Size information.
+type SizeReport struct {
+	HostKeyspaceTable
+	Size int64
+}
+
 // TableDiskSizeReport returns total on disk size of tables in bytes.
-func (c *Client) TableDiskSizeReport(ctx context.Context, hostKeyspaceTables HostKeyspaceTables) ([]int64, error) {
+func (c *Client) TableDiskSizeReport(ctx context.Context, hostKeyspaceTables HostKeyspaceTables) ([]SizeReport, error) {
 	// Get shard count of a first node to estimate parallelism limit
 	shards, err := c.ShardCount(ctx, "")
 	if err != nil {
@@ -864,7 +924,7 @@ func (c *Client) TableDiskSizeReport(ctx context.Context, hostKeyspaceTables Hos
 
 	var (
 		limit  = len(hostKeyspaceTables.Hosts()) * int(shards)
-		report = make([]int64, len(hostKeyspaceTables))
+		report = make([]SizeReport, len(hostKeyspaceTables))
 	)
 
 	f := func(i int) error {
@@ -881,7 +941,10 @@ func (c *Client) TableDiskSizeReport(ctx context.Context, hostKeyspaceTables Hos
 			"size", size,
 		)
 
-		report[i] = size
+		report[i] = SizeReport{
+			HostKeyspaceTable: v,
+			Size:              size,
+		}
 		return nil
 	}
 
@@ -987,6 +1050,15 @@ func (c *Client) ViewBuildStatus(ctx context.Context, keyspace, view string) (Vi
 		}
 	}
 	return minStatus, nil
+}
+
+// ControlTabletLoadBalancing disables or enables tablet load balancing in cluster.
+func (c *Client) ControlTabletLoadBalancing(ctx context.Context, enabled bool) error {
+	_, err := c.scyllaOps.StorageServiceTabletsBalancingPost(&operations.StorageServiceTabletsBalancingPostParams{
+		Context: ctx,
+		Enabled: enabled,
+	})
+	return err
 }
 
 // ToCanonicalIP replaces ":0:0" in IPv6 addresses with "::"

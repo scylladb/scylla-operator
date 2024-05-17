@@ -81,6 +81,11 @@ type StorageServiceRepairAsyncByKeyspacePostParams struct {
 
 	*/
 	Hosts *string
+	/*IgnoreNodes
+	  Which hosts are to ignore in this repair. Multiple hosts can be listed separated by commas.
+
+	*/
+	IgnoreNodes *string
 	/*Incremental
 	  If the value is the string 'true' with any capitalization, perform incremental repair.
 
@@ -111,6 +116,16 @@ type StorageServiceRepairAsyncByKeyspacePostParams struct {
 
 	*/
 	Ranges *string
+	/*RangesParallelism
+	  An integer specifying the number of ranges to repair in parallel by user request. If this number is bigger than the max_repair_ranges_in_parallel calculated by Scylla core, the smaller one will be used.
+
+	*/
+	RangesParallelism *string
+	/*SmallTableOptimization
+	  If the value is the string 'true' with any capitalization, perform small table optimization. When this option is enabled, user can send the repair request to any of the nodes in the cluster. There is no need to send repair requests to multiple nodes. All token ranges for the table will be repaired automatically.
+
+	*/
+	SmallTableOptimization *string
 	/*StartToken
 	  Token on which to begin repair
 
@@ -204,6 +219,17 @@ func (o *StorageServiceRepairAsyncByKeyspacePostParams) SetHosts(hosts *string) 
 	o.Hosts = hosts
 }
 
+// WithIgnoreNodes adds the ignoreNodes to the storage service repair async by keyspace post params
+func (o *StorageServiceRepairAsyncByKeyspacePostParams) WithIgnoreNodes(ignoreNodes *string) *StorageServiceRepairAsyncByKeyspacePostParams {
+	o.SetIgnoreNodes(ignoreNodes)
+	return o
+}
+
+// SetIgnoreNodes adds the ignoreNodes to the storage service repair async by keyspace post params
+func (o *StorageServiceRepairAsyncByKeyspacePostParams) SetIgnoreNodes(ignoreNodes *string) {
+	o.IgnoreNodes = ignoreNodes
+}
+
 // WithIncremental adds the incremental to the storage service repair async by keyspace post params
 func (o *StorageServiceRepairAsyncByKeyspacePostParams) WithIncremental(incremental *string) *StorageServiceRepairAsyncByKeyspacePostParams {
 	o.SetIncremental(incremental)
@@ -268,6 +294,28 @@ func (o *StorageServiceRepairAsyncByKeyspacePostParams) WithRanges(ranges *strin
 // SetRanges adds the ranges to the storage service repair async by keyspace post params
 func (o *StorageServiceRepairAsyncByKeyspacePostParams) SetRanges(ranges *string) {
 	o.Ranges = ranges
+}
+
+// WithRangesParallelism adds the rangesParallelism to the storage service repair async by keyspace post params
+func (o *StorageServiceRepairAsyncByKeyspacePostParams) WithRangesParallelism(rangesParallelism *string) *StorageServiceRepairAsyncByKeyspacePostParams {
+	o.SetRangesParallelism(rangesParallelism)
+	return o
+}
+
+// SetRangesParallelism adds the rangesParallelism to the storage service repair async by keyspace post params
+func (o *StorageServiceRepairAsyncByKeyspacePostParams) SetRangesParallelism(rangesParallelism *string) {
+	o.RangesParallelism = rangesParallelism
+}
+
+// WithSmallTableOptimization adds the smallTableOptimization to the storage service repair async by keyspace post params
+func (o *StorageServiceRepairAsyncByKeyspacePostParams) WithSmallTableOptimization(smallTableOptimization *string) *StorageServiceRepairAsyncByKeyspacePostParams {
+	o.SetSmallTableOptimization(smallTableOptimization)
+	return o
+}
+
+// SetSmallTableOptimization adds the smallTableOptimization to the storage service repair async by keyspace post params
+func (o *StorageServiceRepairAsyncByKeyspacePostParams) SetSmallTableOptimization(smallTableOptimization *string) {
+	o.SmallTableOptimization = smallTableOptimization
 }
 
 // WithStartToken adds the startToken to the storage service repair async by keyspace post params
@@ -364,6 +412,22 @@ func (o *StorageServiceRepairAsyncByKeyspacePostParams) WriteToRequest(r runtime
 
 	}
 
+	if o.IgnoreNodes != nil {
+
+		// query param ignore_nodes
+		var qrIgnoreNodes string
+		if o.IgnoreNodes != nil {
+			qrIgnoreNodes = *o.IgnoreNodes
+		}
+		qIgnoreNodes := qrIgnoreNodes
+		if qIgnoreNodes != "" {
+			if err := r.SetQueryParam("ignore_nodes", qIgnoreNodes); err != nil {
+				return err
+			}
+		}
+
+	}
+
 	if o.Incremental != nil {
 
 		// query param incremental
@@ -443,6 +507,38 @@ func (o *StorageServiceRepairAsyncByKeyspacePostParams) WriteToRequest(r runtime
 		qRanges := qrRanges
 		if qRanges != "" {
 			if err := r.SetQueryParam("ranges", qRanges); err != nil {
+				return err
+			}
+		}
+
+	}
+
+	if o.RangesParallelism != nil {
+
+		// query param ranges_parallelism
+		var qrRangesParallelism string
+		if o.RangesParallelism != nil {
+			qrRangesParallelism = *o.RangesParallelism
+		}
+		qRangesParallelism := qrRangesParallelism
+		if qRangesParallelism != "" {
+			if err := r.SetQueryParam("ranges_parallelism", qRangesParallelism); err != nil {
+				return err
+			}
+		}
+
+	}
+
+	if o.SmallTableOptimization != nil {
+
+		// query param small_table_optimization
+		var qrSmallTableOptimization string
+		if o.SmallTableOptimization != nil {
+			qrSmallTableOptimization = *o.SmallTableOptimization
+		}
+		qSmallTableOptimization := qrSmallTableOptimization
+		if qSmallTableOptimization != "" {
+			if err := r.SetQueryParam("small_table_optimization", qSmallTableOptimization); err != nil {
 				return err
 			}
 		}

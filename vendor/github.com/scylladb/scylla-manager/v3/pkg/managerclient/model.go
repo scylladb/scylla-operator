@@ -514,8 +514,14 @@ func (li TaskListItems) Render(w io.Writer) error {
 			id = "*" + id
 		}
 
+		emptySpec := scheduler.CronSpecification{}
+		bytesEmptySpec, err := json.Marshal(emptySpec)
+		if err != nil {
+			return errors.New("cannot marshall empty cron specification object")
+		}
+
 		var schedule string
-		if t.Schedule.Cron != "" {
+		if t.Schedule.Cron != "" && t.Schedule.Cron != string(bytesEmptySpec) {
 			var cronSpec scheduler.CronSpecification
 			err := json.Unmarshal([]byte(t.Schedule.Cron), &cronSpec)
 			if err != nil {

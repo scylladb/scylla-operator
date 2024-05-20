@@ -3,6 +3,7 @@ package tests
 import (
 	"fmt"
 
+	versioncmd "github.com/scylladb/scylla-operator/pkg/cmd/version"
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	ginkgotest "github.com/scylladb/scylla-operator/pkg/test/ginkgo"
@@ -77,6 +78,7 @@ func NewTestsCommand(streams genericclioptions.IOStreams) *cobra.Command {
 	}
 
 	userAgent := "scylla-operator-e2e"
+	cmd.AddCommand(versioncmd.NewCmd(streams))
 	cmd.AddCommand(NewRunCommand(streams, Suites, userAgent))
 
 	// TODO: wrap help func for the root command and every subcommand to add a line about automatic env vars and the prefix.

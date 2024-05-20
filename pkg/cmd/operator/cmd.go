@@ -3,6 +3,7 @@ package operator
 import (
 	"fmt"
 
+	versioncmd "github.com/scylladb/scylla-operator/pkg/cmd/version"
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -31,6 +32,7 @@ func NewOperatorCommand(streams genericclioptions.IOStreams) *cobra.Command {
 		},
 	}
 
+	cmd.AddCommand(versioncmd.NewCmd(streams))
 	cmd.AddCommand(NewOperatorCmd(streams))
 	cmd.AddCommand(NewWebhookCmd(streams))
 	cmd.AddCommand(NewSidecarCmd(streams))

@@ -3,9 +3,7 @@ package operator
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"net/http"
 	"sync"
 	"syscall"
 	"time"
@@ -20,7 +18,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	"github.com/scylladb/scylla-operator/pkg/sidecar"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/config"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/signals"
@@ -193,12 +190,6 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 
 	singleServiceInformer := singleServiceKubeInformers.Core().V1().Services()
 
-	prober := sidecar.NewProber(
-		o.Namespace,
-		o.ServiceName,
-		singleServiceInformer.Lister(),
-	)
-
 	sc, err := sidecarcontroller.NewController(
 		o.Namespace,
 		o.ServiceName,
@@ -368,48 +359,6 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 
 	var wg sync.WaitGroup
 	defer wg.Wait()
-
-	// Run probes.
-	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", naming.ProbePort),
-		Handler: nil,
-	}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		ok := cache.WaitForNamedCacheSync("Prober", ctx.Done(), singleServiceInformer.Informer().HasSynced)
-		if !ok {
-			return
-		}
-
-		klog.InfoS("Starting Prober server")
-		defer klog.InfoS("Prober server shut down")
-
-		http.HandleFunc(naming.LivenessProbePath, prober.Healthz)
-		http.HandleFunc(naming.ReadinessProbePath, prober.Readyz)
-
-		err := server.ListenAndServe()
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			klog.Fatalf("ListenAndServe failed: %v", err)
-		}
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		<-ctx.Done()
-
-		klog.InfoS("Shutting down Prober server")
-		defer klog.InfoS("Shut down Prober server")
-
-		shutdownCtx, shutdownCtxCancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer shutdownCtxCancel()
-		err := server.Shutdown(shutdownCtx)
-		if err != nil {
-			klog.ErrorS(err, "Shutting down Prober server")
-		}
-	}()
 
 	// Run sidecar controller.
 	wg.Add(1)

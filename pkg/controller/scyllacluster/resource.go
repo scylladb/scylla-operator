@@ -771,6 +771,60 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								},
 							},
 						},
+						{
+							Name:            "scylladb-ignition",
+							Image:           sidecarImage,
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Command: []string{
+								"/usr/bin/scylla-operator",
+								"run-ignition",
+								"scylladb-api-status",
+								"--service-name=$(SERVICE_NAME)",
+								fmt.Sprintf("--nodes-broadcast-address-type=%s", func() scyllav1.BroadcastAddressType {
+									if c.Spec.ExposeOptions != nil && c.Spec.ExposeOptions.BroadcastOptions != nil {
+										return c.Spec.ExposeOptions.BroadcastOptions.Nodes.Type
+									}
+									return scyllav1.BroadcastAddressTypeServiceClusterIP
+								}()),
+								fmt.Sprintf("--clients-broadcast-address-type=%s", func() scyllav1.BroadcastAddressType {
+									if c.Spec.ExposeOptions != nil && c.Spec.ExposeOptions.BroadcastOptions != nil {
+										return c.Spec.ExposeOptions.BroadcastOptions.Clients.Type
+									}
+									return scyllav1.BroadcastAddressTypeServiceClusterIP
+								}()),
+								"--loglevel=2",
+							},
+							Env: []corev1.EnvVar{
+								{
+									Name: "SERVICE_NAME",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
+										},
+									},
+								},
+							},
+							ReadinessProbe: &corev1.Probe{
+								TimeoutSeconds:   int32(30),
+								FailureThreshold: int32(1),
+								PeriodSeconds:    int32(5),
+								ProbeHandler: corev1.ProbeHandler{
+									TCPSocket: &corev1.TCPSocketAction{
+										Port: intstr.FromInt32(naming.ScyllaDBAPIStatusProbePort),
+									},
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("40Mi"),
+								},
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("40Mi"),
+								},
+							},
+						},
 					},
 					ServiceAccountName: naming.MemberServiceAccountNameForScyllaCluster(c.Name),
 					Affinity: &corev1.Affinity{

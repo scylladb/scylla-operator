@@ -8,7 +8,7 @@ import (
 
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	"github.com/scylladb/scylla-operator/pkg/sidecar"
+	"github.com/scylladb/scylla-operator/pkg/probeserver/scylladbapistatus"
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
@@ -157,7 +157,7 @@ func (o *ScyllaDBAPIStatusOptions) Execute(ctx context.Context, originalStreams 
 	)
 	singleServiceInformer := singleServiceKubeInformers.Core().V1().Services()
 
-	prober := sidecar.NewProber(
+	prober := scylladbapistatus.NewProber(
 		o.Namespace,
 		o.ServiceName,
 		singleServiceInformer.Lister(),

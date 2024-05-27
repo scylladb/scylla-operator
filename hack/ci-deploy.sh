@@ -45,7 +45,6 @@ kubectl_create -f "${deploy_dir}"/cert-manager.yaml
 # Wait for cert-manager
 kubectl wait --for condition=established --timeout=60s crd/certificates.cert-manager.io crd/issuers.cert-manager.io
 for d in cert-manager{,-cainjector,-webhook}; do
-    wait-for-object-creation cert-manager deployment.apps/"${d}"
     kubectl -n cert-manager rollout status --timeout=5m deployment.apps/"${d}"
 done
 wait-for-object-creation cert-manager secret/cert-manager-webhook-ca

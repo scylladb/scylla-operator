@@ -70,8 +70,9 @@ fi
 
 kubectl_create -f "${deploy_dir}"/manager
 
-wait-for-object-creation scylla-manager statefulset.apps/scylla-manager-cluster-manager-dc-manager-rack
-kubectl -n scylla-manager rollout status --timeout=5m statefulset.apps/scylla-manager-cluster-manager-dc-manager-rack
+kubectl -n=scylla-manager wait --timeout=5m --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
+kubectl -n=scylla-manager wait --timeout=5m --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
+kubectl -n=scylla-manager wait --timeout=5m --for='condition=Available=True' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
 kubectl -n scylla-manager rollout status --timeout=5m deployment.apps/scylla-manager
 kubectl -n scylla-manager rollout status --timeout=5m deployment.apps/scylla-manager-controller
 

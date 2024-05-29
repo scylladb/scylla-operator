@@ -30,7 +30,7 @@ The Scylla operator manages Scylla clusters deployed to Kubernetes and automates
 .. image:: logo.png
    :width: 200pt
 
-For the latest status of the project, and reports issue, see the Github Project. Also check out the K8s Operator lesson on Scylla University.
+For the latest status of the project, and reports issue, see the Github Project. Also check out the `K8s Operator lesson on Scylla University <https://university.scylladb.com/courses/scylla-operations/lessons/kubernetes-operator/topic/k8-operator-what-is-the-scylla-operator/>`_.
 
 scylla-operator is a Kubernetes Operator for managing Scylla clusters.
 

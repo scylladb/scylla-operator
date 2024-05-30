@@ -81,6 +81,12 @@ Full details for all the configuration options can be found in the [Scylla Clust
 
 When you are ready to create a Scylla cluster, simply run:
 
+If you want to **expose scylladb cluster as service**, that is If you want to connect to scylla db cluster with host and port name, run the below command
+```console
+kubectl create -f examples/generic/cluster_expose.yaml
+```
+
+else run below command
 ```console
 kubectl create -f examples/generic/cluster.yaml
 ```
@@ -226,6 +232,14 @@ session = cluster.connect()
 ```
 
 If you are running the Alternator you can access the API on the port you specified using plain http.
+
+## Accessing the Database using host and port
+
+If you have used 'expose scylladb cluster as service' step earlier,
+You will be seeing a service named 'simple-cluster-client' running, get its publicip and port will be 9042
+```console
+cqlsh publicip port
+```
 
 ## Configure Scylla
 

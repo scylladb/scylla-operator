@@ -1,0 +1,61 @@
+# Namespace where the Scylla Cluster will be created
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: scylla
+
+---
+
+# Simple Scylla Cluster
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: simple-cluster
+  namespace: scylla
+spec:
+  agentVersion: 3.2.8
+  version: 5.4.3
+  developerMode: true
+  datacenter:
+    name: us-east-1
+    racks:
+      - name: us-east-1a
+        scyllaConfig: "scylla-config"
+        scyllaAgentConfig: "scylla-agent-config"
+        members: 3
+        storage:
+          capacity: 5Gi
+        resources:
+          requests:
+            cpu: 1
+            memory: 1Gi
+          limits:
+            cpu: 1
+            memory: 1Gi
+        volumes:
+          - name: coredumpfs
+            hostPath:
+              path: /tmp/coredumps
+        volumeMounts:
+          - mountPath: /tmp/coredumps
+            name: coredumpfs
+
+---
+
+# ScyllaDB Service to expose the cluster
+apiVersion: v1
+kind: Service
+metadata:
+  name: scylla-service
+  namespace: scylla
+spec:
+  type: LoadBalancer  # Use LoadBalancer if you need to expose the service externally
+  ports:
+    - port: 9042
+      name: cql
+      targetPort: 9042
+  selector:
+    app.kubernetes.io/instance: simple-cluster
+    app.kubernetes.io/name: scylla

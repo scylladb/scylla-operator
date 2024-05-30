@@ -79,14 +79,14 @@ Now that the operator is running, we can create an instance of a Scylla cluster 
 Some of that resource's values are configurable, so feel free to browse `cluster.yaml` and tweak the settings to your liking.
 Full details for all the configuration options can be found in the [Scylla Cluster CRD documentation](api-reference/groups/scylla.scylladb.com/scyllaclusters.rst).
 
-When you are ready to create a Scylla cluster, simply run:
+To create a Scylla cluster, follow these steps:
 
-If you want to **expose scylladb cluster as service**, that is If you want to connect to scylla db cluster with host and port name, run the below command
+**To Expose the ScyllaDB Cluster as a Service**: If you need to connect to the ScyllaDB cluster using a host and port, run the following command
 ```console
 kubectl create -f examples/generic/cluster_expose.yaml
 ```
 
-else run below command
+**Without Exposing the Cluster**: If you do not need to expose the ScyllaDB cluster, run this command instead:
 ```console
 kubectl create -f examples/generic/cluster.yaml
 ```
@@ -235,10 +235,11 @@ If you are running the Alternator you can access the API on the port you specifi
 
 ## Accessing the Database using host and port
 
-If you have used 'expose scylladb cluster as service' step earlier,
-You will be seeing a service named 'simple-cluster-client' running, get its publicip and port will be 9042
+If you followed the step to expose the ScyllaDB cluster as a service, you will see a service named simple-cluster-client running. To connect to the database:
+Retrieve the public IP address of the simple-cluster-client service.
+Use the following command to connect to the ScyllaDB cluster, with the port set to 9042:
 ```console
-cqlsh publicip port
+cqlsh <publicip> <9042>
 ```
 
 ## Configure Scylla

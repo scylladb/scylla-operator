@@ -13,6 +13,7 @@ import (
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/client-go/rest"
 )
 
 type IngressControllerOptions struct {
@@ -38,7 +39,7 @@ var supportedBroadcastAddressTypes = []scyllav1.BroadcastAddressType{
 }
 
 type TestFrameworkOptions struct {
-	genericclioptions.ClientConfig
+	genericclioptions.ClientConfigSet
 
 	ArtifactsDir                 string
 	DeleteTestingNSPolicyUntyped string
@@ -54,7 +55,7 @@ type TestFrameworkOptions struct {
 
 func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent string) *TestFrameworkOptions {
 	return &TestFrameworkOptions{
-		ClientConfig:                 genericclioptions.NewClientConfig(userAgent),
+		ClientConfigSet:              genericclioptions.NewClientConfigSet(userAgent),
 		ArtifactsDir:                 "",
 		DeleteTestingNSPolicyUntyped: string(framework.DeleteTestingNSPolicyAlways),
 		IngressController:            &IngressControllerOptions{},
@@ -71,7 +72,7 @@ func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent stri
 }
 
 func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
-	o.ClientConfig.AddFlags(cmd)
+	o.ClientConfigSet.AddFlags(cmd)
 
 	cmd.PersistentFlags().StringVarP(&o.ArtifactsDir, "artifacts-dir", "", o.ArtifactsDir, "A directory for storing test artifacts. No data is collected until set.")
 	cmd.PersistentFlags().StringVarP(&o.DeleteTestingNSPolicyUntyped, "delete-namespace-policy", "", o.DeleteTestingNSPolicyUntyped, fmt.Sprintf("Namespace deletion policy. Allowed values are [%s].", strings.Join(
@@ -104,7 +105,7 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 func (o *TestFrameworkOptions) Validate(args []string) error {
 	var errors []error
 
-	err := o.ClientConfig.Validate()
+	err := o.ClientConfigSet.Validate()
 	if err != nil {
 		errors = append(errors, err)
 	}
@@ -141,7 +142,7 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 }
 
 func (o *TestFrameworkOptions) Complete(args []string) error {
-	err := o.ClientConfig.Complete()
+	err := o.ClientConfigSet.Complete()
 	if err != nil {
 		return err
 	}
@@ -172,7 +173,9 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 	}
 
 	framework.TestContext = &framework.TestContextType{
-		RestConfig:            o.RestConfig,
+		RestConfigs: slices.ConvertSlice(o.ClientConfigs, func(cc genericclioptions.ClientConfig) *rest.Config {
+			return cc.RestConfig
+		}),
 		ArtifactsDir:          o.ArtifactsDir,
 		DeleteTestingNSPolicy: o.DeleteTestingNSPolicy,
 		ScyllaClusterOptions:  o.scyllaClusterOptions,

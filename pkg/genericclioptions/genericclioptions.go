@@ -9,8 +9,13 @@ import (
 
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+)
+
+const (
+	defaultKubeconfig = ""
 )
 
 // IOStreams is a structure containing all standard streams.
@@ -23,13 +28,113 @@ type IOStreams struct {
 	ErrOut io.Writer
 }
 
-type ClientConfig struct {
-	Kubeconfig    string
+type ClientConfigBase struct {
 	QPS           float32
 	Burst         int
 	UserAgentName string
-	RestConfig    *restclient.Config
-	ProtoConfig   *restclient.Config
+}
+
+func NewDefaultClientConfigBase(userAgentName string) ClientConfigBase {
+	return ClientConfigBase{
+		QPS:           50,
+		Burst:         75,
+		UserAgentName: userAgentName,
+	}
+}
+
+func (ccb *ClientConfigBase) AddFlags(cmd *cobra.Command) {
+	cmd.PersistentFlags().Float32VarP(&ccb.QPS, "qps", "", ccb.QPS, "Maximum allowed number of queries per second.")
+	cmd.PersistentFlags().IntVarP(&ccb.Burst, "burst", "", ccb.Burst, "Allows extra queries to accumulate when a client is exceeding its rate.")
+}
+
+func (ccb *ClientConfigBase) Validate() error {
+	return nil
+}
+
+func (ccb *ClientConfigBase) Complete() error {
+	return nil
+}
+
+type ClientConfigSet struct {
+	ClientConfigBase
+	kubeconfigs   []string
+	ClientConfigs []ClientConfig
+}
+
+func NewClientConfigSet(userAgentName string) ClientConfigSet {
+	return ClientConfigSet{
+		ClientConfigBase: NewDefaultClientConfigBase(userAgentName),
+		kubeconfigs:      []string{defaultKubeconfig},
+	}
+}
+
+func (ccs *ClientConfigSet) AddFlags(cmd *cobra.Command) {
+	ccs.ClientConfigBase.AddFlags(cmd)
+
+	cmd.PersistentFlags().StringArrayVarP(&ccs.kubeconfigs, "kubeconfig", "", ccs.kubeconfigs, "Path to kubeconfig file(s).")
+}
+
+func (ccs *ClientConfigSet) Validate() error {
+	var errs []error
+	var err error
+
+	err = ccs.ClientConfigBase.Validate()
+	if err != nil {
+		errs = append(errs, fmt.Errorf("invalid client config base: %w", err))
+	}
+
+	if len(ccs.kubeconfigs) == 0 {
+		errs = append(errs, fmt.Errorf("at least one kubeconfig must be provided"))
+	}
+
+	for _, kubeconfig := range ccs.kubeconfigs {
+		cc := NewClientConfig(ccs.UserAgentName)
+		cc.Kubeconfig = kubeconfig
+		cc.QPS = ccs.QPS
+		cc.Burst = ccs.Burst
+
+		err = cc.Validate()
+		if err != nil {
+			errs = append(errs, fmt.Errorf("invalid client config for kubeconfig %q: %w", kubeconfig, err))
+		}
+	}
+
+	return utilerrors.NewAggregate(errs)
+}
+
+func (ccs *ClientConfigSet) Complete() error {
+	var err error
+
+	err = ccs.ClientConfigBase.Complete()
+	if err != nil {
+		return fmt.Errorf("can't complete client config base: %w", err)
+	}
+
+	clientConfigs := make([]ClientConfig, 0, len(ccs.kubeconfigs))
+	for _, kubeconfig := range ccs.kubeconfigs {
+		cc := NewClientConfig(ccs.UserAgentName)
+		cc.Kubeconfig = kubeconfig
+		cc.QPS = ccs.QPS
+		cc.Burst = ccs.Burst
+
+		err = cc.Complete()
+		if err != nil {
+			return fmt.Errorf("can't complete client config for kubeconfig %q: %w", kubeconfig, err)
+		}
+
+		clientConfigs = append(clientConfigs, cc)
+	}
+
+	ccs.ClientConfigs = clientConfigs
+
+	return nil
+}
+
+type ClientConfig struct {
+	ClientConfigBase
+	Kubeconfig  string
+	RestConfig  *restclient.Config
+	ProtoConfig *restclient.Config
 }
 
 func MakeVersionedUserAgent(baseName string) string {
@@ -45,27 +150,38 @@ func MakeVersionedUserAgent(baseName string) string {
 
 func NewClientConfig(userAgentName string) ClientConfig {
 	return ClientConfig{
-		Kubeconfig:    "",
-		QPS:           50,
-		Burst:         75,
-		UserAgentName: userAgentName,
-		RestConfig:    nil,
-		ProtoConfig:   nil,
+		ClientConfigBase: NewDefaultClientConfigBase(userAgentName),
+		Kubeconfig:       defaultKubeconfig,
+		RestConfig:       nil,
+		ProtoConfig:      nil,
 	}
 }
 
 func (cc *ClientConfig) AddFlags(cmd *cobra.Command) {
+	cc.ClientConfigBase.AddFlags(cmd)
+
 	cmd.PersistentFlags().StringVarP(&cc.Kubeconfig, "kubeconfig", "", cc.Kubeconfig, "Path to the kubeconfig file.")
-	cmd.PersistentFlags().Float32VarP(&cc.QPS, "qps", "", cc.QPS, "Maximum allowed number of queries per second.")
-	cmd.PersistentFlags().IntVarP(&cc.Burst, "burst", "", cc.Burst, "Allows extra queries to accumulate when a client is exceeding its rate.")
 }
 
 func (cc *ClientConfig) Validate() error {
-	return nil
+	var errs []error
+	var err error
+
+	err = cc.ClientConfigBase.Validate()
+	if err != nil {
+		errs = append(errs, fmt.Errorf("invalid client config base: %w", err))
+	}
+
+	return utilerrors.NewAggregate(errs)
 }
 
 func (cc *ClientConfig) Complete() error {
 	var err error
+
+	err = cc.ClientConfigBase.Complete()
+	if err != nil {
+		return fmt.Errorf("can't complete client config base: %w", err)
+	}
 
 	loader := clientcmd.NewDefaultClientConfigLoadingRules()
 	// Use explicit kubeconfig if set.

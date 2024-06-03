@@ -8,8 +8,23 @@ shopt -s inherit_errexit
 
 source "$( dirname "${BASH_SOURCE[0]}" )/../../lib/kube.sh"
 
+if [ -z "${KUBECONFIG_DIR+x}" ]; then
+  KUBECONFIGS=("${KUBECONFIG}")
+else
+  KUBECONFIGS=()
+  for f in $( find "$( realpath "${KUBECONFIG_DIR}" )" -maxdepth 1 -type f -name '*.kubeconfig' ); do
+    KUBECONFIGS+=("${f}")
+  done
+fi
+
 # gather-artifacts is a self sufficient function that collects artifacts without depending on any external objects.
+# $1- target directory
 function gather-artifacts {
+  if [ -z "${1+x}" ]; then
+    echo -e "Missing target directory.\nUsage: ${FUNCNAME[0]} target_directory" > /dev/stderr
+    exit 2
+  fi
+
   if [ -z "${SO_IMAGE+x}" ]; then
     echo "SO_IMAGE can't be empty" > /dev/stderr
     exit 2
@@ -57,8 +72,8 @@ EOF
 
   exit_code="$( wait-for-container-exit-with-logs gather-artifacts must-gather must-gather )"
 
-  kubectl -n=gather-artifacts cp --retries=42 -c=wait-for-artifacts must-gather:/tmp/artifacts "${ARTIFACTS}/must-gather"
-  ls -l "${ARTIFACTS}/must-gather"
+  kubectl -n=gather-artifacts cp --retries=42 -c=wait-for-artifacts must-gather:/tmp/artifacts "${1}"
+  ls -l "${1}"
 
   kubectl -n=gather-artifacts delete pod/must-gather --wait=false
 
@@ -68,8 +83,23 @@ EOF
   fi
 }
 
-function gather-artifact-on-exit {
-  gather-artifacts || "Error gathering artifacts" > /dev/stderr
+function gather-artifacts-on-exit {
+  for i in "${!KUBECONFIGS[@]}"; do
+    KUBECONFIG="${KUBECONFIGS[$i]}" gather-artifacts "${ARTIFACTS}/must-gather/${i}" &
+    gather_artifacts_bg_pids["${i}"]=$!
+  done
+
+  for pid in "${gather_artifacts_bg_pids[@]}"; do
+    wait "${pid}"
+  done
+}
+
+function unset-default-storageclass {
+  for f in "${KUBECONFIGS[@]}"; do
+    for r in $( KUBECONFIG="${f}" kubectl get storageclasses -o name ); do
+      KUBECONFIG="${f}" kubectl patch "${r}" -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
+    done
+  done
 }
 
 function apply-e2e-workarounds {

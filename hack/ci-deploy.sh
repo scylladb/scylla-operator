@@ -18,29 +18,32 @@ fi
 ARTIFACTS=${ARTIFACTS:-$( mktemp -d )}
 OPERATOR_IMAGE_REF=${1}
 
-deploy_dir=${ARTIFACTS}/deploy
-mkdir -p "${deploy_dir}/"{operator,manager,prometheus-operator,haproxy-ingress}
+if [ -z "${DEPLOY_DIR+x}" ]; then
+  DEPLOY_DIR=${ARTIFACTS}/deploy
+fi
 
-cp ./deploy/manager/dev/*.yaml "${deploy_dir}/manager"
-cp ./deploy/operator/*.yaml "${deploy_dir}/operator"
-cp ./examples/third-party/prometheus-operator/*.yaml "${deploy_dir}/prometheus-operator"
-cp ./examples/third-party/haproxy-ingress/*.yaml "${deploy_dir}/haproxy-ingress"
-cp ./examples/common/cert-manager.yaml "${deploy_dir}/"
+mkdir -p "${DEPLOY_DIR}/"{operator,manager,prometheus-operator,haproxy-ingress}
 
-for f in $( find "${deploy_dir}"/ -type f -name '*.yaml' ); do
+cp ./deploy/manager/dev/*.yaml "${DEPLOY_DIR}/manager"
+cp ./deploy/operator/*.yaml "${DEPLOY_DIR}/operator"
+cp ./examples/third-party/prometheus-operator/*.yaml "${DEPLOY_DIR}/prometheus-operator"
+cp ./examples/third-party/haproxy-ingress/*.yaml "${DEPLOY_DIR}/haproxy-ingress"
+cp ./examples/common/cert-manager.yaml "${DEPLOY_DIR}/"
+
+for f in $( find "${DEPLOY_DIR}"/ -type f -name '*.yaml' ); do
     sed -i -E -e "s~docker.io/scylladb/scylla-operator(:|@sha256:)[^ ]*~${OPERATOR_IMAGE_REF}~" "${f}"
 done
 
-yq e --inplace '.spec.template.spec.containers[0].args += ["--qps=200", "--burst=400"]' "${deploy_dir}/operator/50_operator.deployment.yaml"
-yq e --inplace '.spec.template.spec.containers[0].args += ["--crypto-key-buffer-size-min=3", "--crypto-key-buffer-size-max=6", "--crypto-key-buffer-delay=2s"]' "${deploy_dir}/operator/50_operator.deployment.yaml"
+yq e --inplace '.spec.template.spec.containers[0].args += ["--qps=200", "--burst=400"]' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
+yq e --inplace '.spec.template.spec.containers[0].args += ["--crypto-key-buffer-size-min=3", "--crypto-key-buffer-size-max=6", "--crypto-key-buffer-delay=2s"]' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
 
 if [[ -n ${SCYLLA_OPERATOR_FEATURE_GATES+x} ]]; then
-    yq e --inplace '.spec.template.spec.containers[0].args += "--feature-gates="+ strenv(SCYLLA_OPERATOR_FEATURE_GATES)' "${deploy_dir}/operator/50_operator.deployment.yaml"
+    yq e --inplace '.spec.template.spec.containers[0].args += "--feature-gates="+ strenv(SCYLLA_OPERATOR_FEATURE_GATES)' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
 fi
 
-kubectl_create -n prometheus-operator -f "${deploy_dir}/prometheus-operator"
-kubectl_create -n haproxy-ingress -f "${deploy_dir}/haproxy-ingress"
-kubectl_create -f "${deploy_dir}"/cert-manager.yaml
+kubectl_create -n prometheus-operator -f "${DEPLOY_DIR}/prometheus-operator"
+kubectl_create -n haproxy-ingress -f "${DEPLOY_DIR}/haproxy-ingress"
+kubectl_create -f "${DEPLOY_DIR}"/cert-manager.yaml
 
 # Wait for cert-manager
 kubectl wait --for condition=established --timeout=60s crd/certificates.cert-manager.io crd/issuers.cert-manager.io
@@ -49,7 +52,7 @@ for d in cert-manager{,-cainjector,-webhook}; do
 done
 wait-for-object-creation cert-manager secret/cert-manager-webhook-ca
 
-kubectl_create -f "${deploy_dir}"/operator
+kubectl_create -f "${DEPLOY_DIR}"/operator
 
 # Manager needs scylla CRD registered and the webhook running
 kubectl wait --for condition=established crd/scyllaclusters.scylla.scylladb.com
@@ -68,7 +71,7 @@ else
   kubectl_create -n=local-csi-driver -f="${SO_CSI_DRIVER_PATH}"
 fi
 
-kubectl_create -f "${deploy_dir}"/manager
+kubectl_create -f "${DEPLOY_DIR}"/manager
 
 kubectl -n=scylla-manager wait --timeout=5m --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
 kubectl -n=scylla-manager wait --timeout=5m --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
@@ -81,4 +84,4 @@ kubectl -n haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-i
 kubectl wait --for condition=established crd/nodeconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scyllaoperatorconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scylladbmonitorings.scylla.scylladb.com
-kubectl wait --for condition=established $( find "${deploy_dir}/prometheus-operator/" -name '*.crd.yaml' -printf '-f=%p\n' )
+kubectl wait --for condition=established $( find "${DEPLOY_DIR}/prometheus-operator/" -name '*.crd.yaml' -printf '-f=%p\n' )

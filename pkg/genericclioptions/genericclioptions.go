@@ -71,7 +71,7 @@ func NewClientConfigSet(userAgentName string) ClientConfigSet {
 func (ccs *ClientConfigSet) AddFlags(cmd *cobra.Command) {
 	ccs.ClientConfigBase.AddFlags(cmd)
 
-	cmd.PersistentFlags().StringArrayVarP(&ccs.kubeconfigs, "kubeconfig", "", ccs.kubeconfigs, "Path to kubeconfig file(s).")
+	cmd.PersistentFlags().StringSliceVarP(&ccs.kubeconfigs, "kubeconfig", "", ccs.kubeconfigs, "Path to kubeconfig file(s).")
 }
 
 func (ccs *ClientConfigSet) Validate() error {

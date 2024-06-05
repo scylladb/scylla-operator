@@ -212,6 +212,9 @@ function run-e2e {
   kubectl -n=scylla-manager patch --field-manager="${FIELD_MANAGER}" deployment/scylla-manager-controller --type=json -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--loglevel=4"}]'
   kubectl -n=scylla-manager rollout status deployment/scylla-manager-controller
 
+  kubectl create -n=e2e secret generic kubeconfigs ${KUBECONFIGS[@]/#/--from-file=} --dry-run=client -o=yaml | kubectl_create -f=-
+  kubeconfigs_in_container_path=$( IFS=','; basenames=( "${KUBECONFIGS[@]##*/}" ) && in_container_paths="${basenames[@]/#//var/run/secrets/kubeconfigs/}" && echo "${in_container_paths[*]}" )
+
   gcs_sa_in_container_path=""
   if [[ -n "${SO_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATH+x}" ]]; then
     gcs_sa_in_container_path=/var/run/secrets/gcs-service-account-credentials/gcs-service-account.json
@@ -248,6 +251,7 @@ spec:
     - scylla-operator-tests
     - run
     - "${SO_SUITE}"
+    - "--kubeconfig=${kubeconfigs_in_container_path}"
     - --loglevel=2
     - --color=false
     - --artifacts-dir=/tmp/artifacts
@@ -267,12 +271,18 @@ spec:
       mountPath: /tmp/artifacts
     - name: gcs-service-account-credentials
       mountPath: /var/run/secrets/gcs-service-account-credentials
+    - name: kubeconfigs
+      mountPath: /var/run/secrets/kubeconfigs
+      readOnly: true
   volumes:
   - name: artifacts
     emptyDir: {}
   - name: gcs-service-account-credentials
     secret:
       secretName: gcs-service-account-credentials
+  - name: kubeconfigs
+    secret:
+      secretName: kubeconfigs
 EOF
   kubectl -n=e2e wait --for=condition=Ready pod/e2e
 

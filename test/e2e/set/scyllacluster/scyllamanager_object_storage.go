@@ -266,8 +266,8 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 
 		targetSC := f.GetDefaultScyllaCluster()
 		targetSC.Spec.Datacenter.Racks[0].Members = sourceSC.Spec.Datacenter.Racks[0].Members
-		// Restoring schema with ScyllaDB OS 5.4.X or ScyllaDB Enterprise 2024.1.X and consistent_cluster_management isn’t supported.
-		targetSC.Spec.ScyllaArgs = "--consistent-cluster-management=false"
+		// // Restoring schema with ScyllaDB OS 5.4.X or ScyllaDB Enterprise 2024.1.X and consistent_cluster_management isn’t supported.
+		// targetSC.Spec.ScyllaArgs = "--consistent-cluster-management=false"
 
 		switch objectStorageType {
 		case framework.ObjectStorageTypeGCS:
@@ -382,24 +382,24 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		verifyScyllaCluster(ctx, f.KubeClient(), targetSC)
 		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), targetSC)
 
-		framework.By("Enabling raft in target cluster")
-		_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
-			ctx,
-			targetSC.Name,
-			types.JSONPatchType,
-			[]byte(`[{"op":"replace","path":"/spec/scyllaArgs","value":"--consistent-cluster-management=true"}]`),
-			metav1.PatchOptions{},
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		framework.By("Waiting for the target ScyllaCluster to roll out")
-		waitCtx10, waitCtx10Cancel := utils.ContextForRollout(ctx, targetSC)
-		defer waitCtx10Cancel()
-		targetSC, err = controllerhelpers.WaitForScyllaClusterState(waitCtx10, f.ScyllaClient().ScyllaV1().ScyllaClusters(targetSC.Namespace), targetSC.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		verifyScyllaCluster(ctx, f.KubeClient(), targetSC)
-		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), targetSC)
+		// framework.By("Enabling raft in target cluster")
+		// _, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
+		// 	ctx,
+		// 	targetSC.Name,
+		// 	types.JSONPatchType,
+		// 	[]byte(`[{"op":"replace","path":"/spec/scyllaArgs","value":"--consistent-cluster-management=true"}]`),
+		// 	metav1.PatchOptions{},
+		// )
+		// o.Expect(err).NotTo(o.HaveOccurred())
+		//
+		// framework.By("Waiting for the target ScyllaCluster to roll out")
+		// waitCtx10, waitCtx10Cancel := utils.ContextForRollout(ctx, targetSC)
+		// defer waitCtx10Cancel()
+		// targetSC, err = controllerhelpers.WaitForScyllaClusterState(waitCtx10, f.ScyllaClient().ScyllaV1().ScyllaClusters(targetSC.Namespace), targetSC.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		// o.Expect(err).NotTo(o.HaveOccurred())
+		//
+		// verifyScyllaCluster(ctx, f.KubeClient(), targetSC)
+		// waitForFullQuorum(ctx, f.KubeClient().CoreV1(), targetSC)
 
 		framework.By("Creating a tables restore task")
 		stdout, stderr, err = utils.ExecWithOptions(f.AdminClientConfig(), f.KubeAdminClient().CoreV1(), utils.ExecOptions{

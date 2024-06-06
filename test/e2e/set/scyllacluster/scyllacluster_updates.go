@@ -124,12 +124,12 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 		for _, rp := range []resourcePair{
 			{
-				cpu:    resource.MustParse("1m"),
-				memory: resource.MustParse("1Mi"),
+				cpu:    resource.MustParse("4"),
+				memory: resource.MustParse("400Mi"),
 			},
 			{
-				cpu:    resource.MustParse("-2m"),
-				memory: resource.MustParse("-2Mi"),
+				cpu:    resource.MustParse("-3"),
+				memory: resource.MustParse("-300Mi"),
 			},
 		} {
 			framework.By("Adding %q cpu, %q memory to pod resources", rp.cpu, rp.memory)

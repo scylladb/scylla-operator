@@ -991,6 +991,49 @@ func TestStatefulSetForRack(t *testing.T) {
 								},
 							},
 							{
+								Name:            "scylladb-api-status-probe",
+								Image:           "scylladb/scylla-operator:latest",
+								ImagePullPolicy: corev1.PullIfNotPresent,
+								Command: []string{
+									"/usr/bin/scylla-operator",
+									"serve-probes",
+									"scylladb-api-status",
+									"--port=8080",
+									"--service-name=$(SERVICE_NAME)",
+									"--loglevel=2",
+								},
+								Env: []corev1.EnvVar{
+									{
+										Name: "SERVICE_NAME",
+										ValueFrom: &corev1.EnvVarSource{
+											FieldRef: &corev1.ObjectFieldSelector{
+												FieldPath: "metadata.name",
+											},
+										},
+									},
+								},
+								ReadinessProbe: &corev1.Probe{
+									TimeoutSeconds:   int32(30),
+									FailureThreshold: int32(1),
+									PeriodSeconds:    int32(5),
+									ProbeHandler: corev1.ProbeHandler{
+										TCPSocket: &corev1.TCPSocketAction{
+											Port: intstr.FromInt32(naming.ScyllaDBAPIStatusProbePort),
+										},
+									},
+								},
+								Resources: corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceMemory: resource.MustParse("40Mi"),
+									},
+									Requests: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceMemory: resource.MustParse("40Mi"),
+									},
+								},
+							},
+							{
 								Name:            "scylla-manager-agent",
 								Image:           ":",
 								ImagePullPolicy: corev1.PullIfNotPresent,

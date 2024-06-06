@@ -122,10 +122,11 @@ const (
 
 	DataDir = "/var/lib/scylla"
 
-	ReadinessProbePath = "/readyz"
-	LivenessProbePath  = "/healthz"
-	ProbePort          = 8080
-	ScyllaAPIPort      = 10000
+	ReadinessProbePath         = "/readyz"
+	LivenessProbePath          = "/healthz"
+	ScyllaDBAPIStatusProbePort = 8080
+	ScyllaDBIgnitionProbePort  = 42081
+	ScyllaAPIPort              = 10000
 
 	OperatorEnvVarPrefix = "SCYLLA_OPERATOR_"
 )

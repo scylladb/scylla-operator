@@ -117,60 +117,76 @@ var _ = g.Describe("ScyllaCluster", func() {
 		di := insertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
 
-		framework.By("Changing pod resources")
-		oldResources := *sc.Spec.Datacenter.Racks[0].Resources.DeepCopy()
-		newResources := *oldResources.DeepCopy()
-		o.Expect(oldResources.Requests).To(o.HaveKey(corev1.ResourceCPU))
-		o.Expect(oldResources.Requests).To(o.HaveKey(corev1.ResourceMemory))
-		o.Expect(oldResources.Limits).To(o.HaveKey(corev1.ResourceCPU))
-		o.Expect(oldResources.Limits).To(o.HaveKey(corev1.ResourceMemory))
+		type resourcePair struct {
+			cpu    resource.Quantity
+			memory resource.Quantity
+		}
 
-		newResources.Requests[corev1.ResourceCPU] = *addQuantity(newResources.Requests[corev1.ResourceCPU], resource.MustParse("1m"))
-		newResources.Requests[corev1.ResourceMemory] = *addQuantity(newResources.Requests[corev1.ResourceMemory], resource.MustParse("1Mi"))
-		o.Expect(newResources.Requests).NotTo(o.BeEquivalentTo(oldResources.Requests))
+		for _, rp := range []resourcePair{
+			{
+				cpu:    resource.MustParse("1m"),
+				memory: resource.MustParse("1Mi"),
+			},
+			{
+				cpu:    resource.MustParse("-2m"),
+				memory: resource.MustParse("-2Mi"),
+			},
+		} {
+			framework.By("Adding %q cpu, %q memory to pod resources", rp.cpu, rp.memory)
+			oldResources := *sc.Spec.Datacenter.Racks[0].Resources.DeepCopy()
+			newResources := *oldResources.DeepCopy()
+			o.Expect(oldResources.Requests).To(o.HaveKey(corev1.ResourceCPU))
+			o.Expect(oldResources.Requests).To(o.HaveKey(corev1.ResourceMemory))
+			o.Expect(oldResources.Limits).To(o.HaveKey(corev1.ResourceCPU))
+			o.Expect(oldResources.Limits).To(o.HaveKey(corev1.ResourceMemory))
 
-		newResources.Limits[corev1.ResourceCPU] = *addQuantity(newResources.Limits[corev1.ResourceCPU], resource.MustParse("1m"))
-		newResources.Limits[corev1.ResourceMemory] = *addQuantity(newResources.Limits[corev1.ResourceMemory], resource.MustParse("1Mi"))
-		o.Expect(newResources.Limits).NotTo(o.BeEquivalentTo(oldResources.Limits))
+			newResources.Requests[corev1.ResourceCPU] = *addQuantity(newResources.Requests[corev1.ResourceCPU], rp.cpu)
+			newResources.Requests[corev1.ResourceMemory] = *addQuantity(newResources.Requests[corev1.ResourceMemory], rp.memory)
+			o.Expect(newResources.Requests).NotTo(o.BeEquivalentTo(oldResources.Requests))
 
-		o.Expect(newResources).NotTo(o.BeEquivalentTo(oldResources))
+			newResources.Limits[corev1.ResourceCPU] = *addQuantity(newResources.Limits[corev1.ResourceCPU], rp.cpu)
+			newResources.Limits[corev1.ResourceMemory] = *addQuantity(newResources.Limits[corev1.ResourceMemory], rp.memory)
+			o.Expect(newResources.Limits).NotTo(o.BeEquivalentTo(oldResources.Limits))
 
-		newResourcesJSON, err := json.Marshal(newResources)
-		o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(newResources).NotTo(o.BeEquivalentTo(oldResources))
 
-		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
-			ctx,
-			sc.Name,
-			types.JSONPatchType,
-			[]byte(fmt.Sprintf(
-				`[{"op": "replace", "path": "/spec/datacenter/racks/0/resources", "value": %s}]`,
-				newResourcesJSON,
-			)),
-			metav1.PatchOptions{},
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(sc.Spec.Datacenter.Racks[0].Resources).To(o.BeEquivalentTo(newResources))
+			newResourcesJSON, err := json.Marshal(newResources)
+			o.Expect(err).NotTo(o.HaveOccurred())
 
-		framework.By("Waiting for the ScyllaCluster to redeploy")
-		waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc)
-		defer waitCtx2Cancel()
-		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
-		o.Expect(err).NotTo(o.HaveOccurred())
+			sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
+				ctx,
+				sc.Name,
+				types.JSONPatchType,
+				[]byte(fmt.Sprintf(
+					`[{"op": "replace", "path": "/spec/datacenter/racks/0/resources", "value": %s}]`,
+					newResourcesJSON,
+				)),
+				metav1.PatchOptions{},
+			)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(sc.Spec.Datacenter.Racks[0].Resources).To(o.BeEquivalentTo(newResources))
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc)
-		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+			framework.By("Waiting for the ScyllaCluster to redeploy")
+			waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc)
+			defer waitCtx2Cancel()
+			sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+			o.Expect(err).NotTo(o.HaveOccurred())
 
-		oldHosts := hosts
-		oldHostIDs := hostIDs
-		hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(hosts).To(o.HaveLen(len(oldHosts)))
-		o.Expect(hostIDs).To(o.ConsistOf(oldHostIDs))
+			verifyScyllaCluster(ctx, f.KubeClient(), sc)
+			waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
-		// Reset hosts as the client won't be able to discover a single node after rollout.
-		err = di.SetClientEndpoints(hosts)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		verifyCQLData(ctx, di)
+			oldHosts := hosts
+			oldHostIDs := hostIDs
+			hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(hosts).To(o.HaveLen(len(oldHosts)))
+			o.Expect(hostIDs).To(o.ConsistOf(oldHostIDs))
+
+			// Reset hosts as the client won't be able to discover a single node after rollout.
+			err = di.SetClientEndpoints(hosts)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			verifyCQLData(ctx, di)
+		}
 
 		framework.By("Scaling the ScyllaCluster up to create a new replica")
 		oldMembers := sc.Spec.Datacenter.Racks[0].Members
@@ -197,7 +213,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
 		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
-		oldHostIDs = hostIDs
+		oldHostIDs := hostIDs
 		_, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
 
 		o.Expect(err).NotTo(o.HaveOccurred())

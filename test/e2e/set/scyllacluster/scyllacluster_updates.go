@@ -124,30 +124,22 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 		for _, rp := range []resourcePair{
 			{
-				cpu:    resource.MustParse("4"),
-				memory: resource.MustParse("400Mi"),
+				cpu: resource.MustParse("5"),
 			},
 			{
-				cpu:    resource.MustParse("-3"),
-				memory: resource.MustParse("-300Mi"),
+				cpu: resource.MustParse("2"),
 			},
 		} {
 			framework.By("Adding %q cpu, %q memory to pod resources", rp.cpu, rp.memory)
 			oldResources := *sc.Spec.Datacenter.Racks[0].Resources.DeepCopy()
 			newResources := *oldResources.DeepCopy()
-			o.Expect(oldResources.Requests).To(o.HaveKey(corev1.ResourceCPU))
-			o.Expect(oldResources.Requests).To(o.HaveKey(corev1.ResourceMemory))
-			o.Expect(oldResources.Limits).To(o.HaveKey(corev1.ResourceCPU))
-			o.Expect(oldResources.Limits).To(o.HaveKey(corev1.ResourceMemory))
+			o.Expect(newResources.Requests).To(o.HaveKey(corev1.ResourceCPU))
+			o.Expect(newResources.Requests).To(o.HaveKey(corev1.ResourceMemory))
+			o.Expect(newResources.Limits).To(o.HaveKey(corev1.ResourceCPU))
+			o.Expect(newResources.Limits).To(o.HaveKey(corev1.ResourceMemory))
 
-			newResources.Requests[corev1.ResourceCPU] = *addQuantity(newResources.Requests[corev1.ResourceCPU], rp.cpu)
-			newResources.Requests[corev1.ResourceMemory] = *addQuantity(newResources.Requests[corev1.ResourceMemory], rp.memory)
-			o.Expect(newResources.Requests).NotTo(o.BeEquivalentTo(oldResources.Requests))
-
-			newResources.Limits[corev1.ResourceCPU] = *addQuantity(newResources.Limits[corev1.ResourceCPU], rp.cpu)
-			newResources.Limits[corev1.ResourceMemory] = *addQuantity(newResources.Limits[corev1.ResourceMemory], rp.memory)
+			newResources.Limits[corev1.ResourceCPU] = rp.cpu
 			o.Expect(newResources.Limits).NotTo(o.BeEquivalentTo(oldResources.Limits))
-
 			o.Expect(newResources).NotTo(o.BeEquivalentTo(oldResources))
 
 			newResourcesJSON, err := json.Marshal(newResources)

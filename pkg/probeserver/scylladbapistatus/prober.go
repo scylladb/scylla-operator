@@ -1,4 +1,4 @@
-package sidecar
+package scylladbapistatus
 
 import (
 	"context"

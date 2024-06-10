@@ -102,6 +102,12 @@ func NewOperatorCmd(streams genericclioptions.IOStreams) *cobra.Command {
 		SilenceUsage:  true,
 	}
 
+	o.AddFlags(cmd)
+
+	return cmd
+}
+
+func (o *OperatorOptions) AddFlags(cmd *cobra.Command) {
 	o.ClientConfig.AddFlags(cmd)
 	o.InClusterReflection.AddFlags(cmd)
 	o.LeaderElection.AddFlags(cmd)
@@ -112,8 +118,6 @@ func NewOperatorCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd.Flags().IntVarP(&o.CryptoKeyBufferSizeMin, "crypto-key-buffer-size-min", "", o.CryptoKeyBufferSizeMin, "Minimal number of pre-generated crypto keys that are used for quick certificate issuance. The minimum size is 1.")
 	cmd.Flags().IntVarP(&o.CryptoKeyBufferSizeMax, cryptoKeyBufferSizeMaxFlagKey, "", o.CryptoKeyBufferSizeMax, "Maximum number of pre-generated crypto keys that are used for quick certificate issuance. The minimum size is 1. If not set, it will adjust to be at least the size of crypto-key-buffer-size-min.")
 	cmd.Flags().DurationVarP(&o.CryptoKeyBufferDelay, "crypto-key-buffer-delay", "", o.CryptoKeyBufferDelay, "Delay is the time to wait when generating next certificate in the (min, max) range. Certificate generation bellow the min threshold is not affected.")
-
-	return cmd
 }
 
 func (o *OperatorOptions) Validate() error {

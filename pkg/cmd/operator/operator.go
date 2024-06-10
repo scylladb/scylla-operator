@@ -206,6 +206,10 @@ func (o *OperatorOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Co
 		cancel()
 	}()
 
+	return o.Execute(ctx, streams, cmd)
+}
+
+func (o *OperatorOptions) Execute(ctx context.Context, streams genericclioptions.IOStreams, cmd *cobra.Command) error {
 	// Lock names cannot be changed, because it may lead to two leaders during rolling upgrades.
 	const lockName = "scylla-operator-lock"
 

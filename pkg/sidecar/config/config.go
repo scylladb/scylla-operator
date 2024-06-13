@@ -208,7 +208,7 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	}
 
 	// Listen on all interfaces so users or a service mesh can use localhost.
-	listenAddress := "0.0.0.0"
+	listenAddress := "::"
 	prometheusAddress := "0.0.0.0"
 	args := map[string]*string{
 		"listen-address":        &listenAddress,

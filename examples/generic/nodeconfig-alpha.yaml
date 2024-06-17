@@ -18,6 +18,7 @@ spec:
       - prjquota
   placement:
     nodeSelector:
+      kubernetes.io/os: linux
       scylla.scylladb.com/node-type: scylla
     tolerations:
     - effect: NoSchedule

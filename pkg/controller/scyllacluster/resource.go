@@ -15,6 +15,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
+	"github.com/scylladb/scylla-operator/pkg/scyllafeatures"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -365,6 +366,15 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 		minReadySeconds = int(*c.Spec.MinReadySeconds)
 	}
 
+	podManagementPolicy := appsv1.OrderedReadyPodManagement
+	supportsConsistentTopologyUpdates, err := scyllafeatures.Supports(c, scyllafeatures.ConsistentTopologyUpdates)
+	if err != nil {
+		return nil, fmt.Errorf("can't check if ScyllaCluster %q supports consistent topology updates: %w", naming.ObjRef(c), err)
+	}
+	if supportsConsistentTopologyUpdates {
+		podManagementPolicy = appsv1.ParallelPodManagement
+	}
+
 	sts := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        naming.StatefulSetNameForRack(r, c),
@@ -382,7 +392,7 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 			Selector: &metav1.LabelSelector{
 				MatchLabels: selectorLabels,
 			},
-			PodManagementPolicy: appsv1.OrderedReadyPodManagement,
+			PodManagementPolicy: podManagementPolicy,
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: appsv1.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{

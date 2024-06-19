@@ -62,9 +62,9 @@ Support matrix table shows the version requirements for a particular **scylla-op
 |:-----------------:|:----------:|:----------:|:----------:|:----------:|
 | Kubernetes        | `>=1.21`   | `>=1.21`   | `>=1.21`   | `>=1.21`   |
 | CRI API           | `v1`       | `v1`       | `v1`       | `v1`       |
-| Scylla OS         | `>=5.3`    | `>=5.0`    | `>=5.0`    | `>=5.0`    |
-| Scylla Enterprise | `>=2021.1` | `>=2021.1` | `>=2021.1` | `>=2021.1` |
-| Scylla Manager    | `>=3.2.6`  | `>=3.2.6`  | `>=3.2`    | `>=2.6`    |
+| Scylla OS         | `>=5.4`    | `>=5.0`    | `>=5.0`    | `>=5.0`    |
+| Scylla Enterprise | `>=2023.1` | `>=2021.1` | `>=2021.1` | `>=2021.1` |
+| Scylla Manager    | `>=3.2.8`  | `>=3.2.6`  | `>=3.2`    | `>=2.6`    |
 | Scylla Monitoring | `(CRD)`    | `(CRD)`    | `(CRD)`    | `>=4.0`    |
 :::
 

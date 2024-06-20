@@ -27,7 +27,6 @@ var _ = g.Describe("MultiDC cluster", framework.MultiDatacenter, func() {
 		sc1 := f.GetDefaultScyllaCluster()
 		sc1.Name = "multi-datacenter-cluster"
 		sc1.Spec.Datacenter.Name = "dc1"
-		sc1.Spec.Sysctls = []string{"fs.aio-max-nr=30000000"}
 		sc1.Spec.Datacenter.Racks = []scyllav1.RackSpec{
 			{
 				Name:    "a",
@@ -81,6 +80,8 @@ var _ = g.Describe("MultiDC cluster", framework.MultiDatacenter, func() {
 				},
 			},
 		}
+		sc1.Spec.ScyllaArgs = "--enable-repair-based-node-ops=false"
+		sc1.Spec.Sysctls = []string{"fs.aio-max-nr=30000000"}
 
 		framework.By("Ensuring default namespace presence in the first cluster")
 		ns1, ns1Client, ok := f.Cluster(0).DefaultNamespaceIfAny()
@@ -161,6 +162,7 @@ var _ = g.Describe("MultiDC cluster", framework.MultiDatacenter, func() {
 			},
 		}
 		sc2.Spec.ExternalSeeds = append(make([]string, 0, len(hosts1)), hosts1...)
+		sc2.Spec.ScyllaArgs = "--enable-repair-based-node-ops=false"
 		sc2.Spec.Sysctls = []string{"fs.aio-max-nr=30000000"}
 
 		framework.By("Creating namespace in the second cluster")
@@ -268,6 +270,7 @@ var _ = g.Describe("MultiDC cluster", framework.MultiDatacenter, func() {
 			},
 		}
 		sc3.Spec.ExternalSeeds = append(make([]string, 0, len(hosts1)), hosts1...)
+		sc3.Spec.ScyllaArgs = "--enable-repair-based-node-ops=false"
 		sc3.Spec.Sysctls = []string{"fs.aio-max-nr=30000000"}
 
 		framework.By("Creating namespace in the third cluster")

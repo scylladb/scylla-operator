@@ -58,6 +58,8 @@ type Controller struct {
 	scyllaOperatorConfigLister scyllav1alpha1listers.ScyllaOperatorConfigLister
 	clusterRoleLister          rbacv1listers.ClusterRoleLister
 	clusterRoleBindingLister   rbacv1listers.ClusterRoleBindingLister
+	roleLister                 rbacv1listers.RoleLister
+	roleBindingLister          rbacv1listers.RoleBindingLister
 	daemonSetLister            appsv1listers.DaemonSetLister
 	namespaceLister            corev1listers.NamespaceLister
 	nodeLister                 corev1listers.NodeLister
@@ -80,6 +82,8 @@ func NewController(
 	scyllaOperatorConfigInformer scyllav1alpha1informers.ScyllaOperatorConfigInformer,
 	clusterRoleInformer rbacv1informers.ClusterRoleInformer,
 	clusterRoleBindingInformer rbacv1informers.ClusterRoleBindingInformer,
+	roleInformer rbacv1informers.RoleInformer,
+	roleBindingInformer rbacv1informers.RoleBindingInformer,
 	daemonSetInformer appsv1informers.DaemonSetInformer,
 	namespaceInformer corev1informers.NamespaceInformer,
 	nodeInformer corev1informers.NodeInformer,
@@ -98,6 +102,8 @@ func NewController(
 		scyllaOperatorConfigLister: scyllaOperatorConfigInformer.Lister(),
 		clusterRoleLister:          clusterRoleInformer.Lister(),
 		clusterRoleBindingLister:   clusterRoleBindingInformer.Lister(),
+		roleLister:                 roleInformer.Lister(),
+		roleBindingLister:          roleBindingInformer.Lister(),
 		daemonSetLister:            daemonSetInformer.Lister(),
 		namespaceLister:            namespaceInformer.Lister(),
 		nodeLister:                 nodeInformer.Lister(),
@@ -108,6 +114,8 @@ func NewController(
 			scyllaOperatorConfigInformer.Informer().HasSynced,
 			clusterRoleInformer.Informer().HasSynced,
 			clusterRoleBindingInformer.Informer().HasSynced,
+			roleInformer.Informer().HasSynced,
+			roleBindingInformer.Informer().HasSynced,
 			daemonSetInformer.Informer().HasSynced,
 			namespaceInformer.Informer().HasSynced,
 			nodeInformer.Informer().HasSynced,
@@ -168,6 +176,18 @@ func NewController(
 		AddFunc:    ncc.addClusterRoleBinding,
 		UpdateFunc: ncc.updateClusterRoleBinding,
 		DeleteFunc: ncc.deleteClusterRoleBinding,
+	})
+
+	roleInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    ncc.addRole,
+		UpdateFunc: ncc.updateRole,
+		DeleteFunc: ncc.deleteRole,
+	})
+
+	roleBindingInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    ncc.addRoleBinding,
+		UpdateFunc: ncc.updateRoleBinding,
+		DeleteFunc: ncc.deleteRoleBinding,
 	})
 
 	serviceAccountInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -271,6 +291,52 @@ func (ncc *Controller) updateClusterRole(old, cur interface{}) {
 }
 
 func (ncc *Controller) deleteClusterRole(obj interface{}) {
+	ncc.handlers.HandleDelete(
+		obj,
+		ncc.handlers.EnqueueOwner,
+	)
+}
+
+func (ncc *Controller) addRoleBinding(obj interface{}) {
+	ncc.handlers.HandleAdd(
+		obj.(*rbacv1.RoleBinding),
+		ncc.handlers.EnqueueOwner,
+	)
+}
+
+func (ncc *Controller) updateRoleBinding(old, cur interface{}) {
+	ncc.handlers.HandleUpdate(
+		old.(*rbacv1.RoleBinding),
+		cur.(*rbacv1.RoleBinding),
+		ncc.handlers.EnqueueOwner,
+		ncc.deleteRoleBinding,
+	)
+}
+
+func (ncc *Controller) deleteRoleBinding(obj interface{}) {
+	ncc.handlers.HandleDelete(
+		obj,
+		ncc.handlers.EnqueueOwner,
+	)
+}
+
+func (ncc *Controller) addRole(obj interface{}) {
+	ncc.handlers.HandleAdd(
+		obj.(*rbacv1.Role),
+		ncc.handlers.EnqueueOwner,
+	)
+}
+
+func (ncc *Controller) updateRole(old, cur interface{}) {
+	ncc.handlers.HandleUpdate(
+		old.(*rbacv1.Role),
+		cur.(*rbacv1.Role),
+		ncc.handlers.EnqueueOwner,
+		ncc.deleteRole,
+	)
+}
+
+func (ncc *Controller) deleteRole(obj interface{}) {
 	ncc.handlers.HandleDelete(
 		obj,
 		ncc.handlers.EnqueueOwner,

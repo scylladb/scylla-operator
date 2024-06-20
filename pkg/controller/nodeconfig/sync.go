@@ -63,12 +63,22 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 		objectErrs = append(objectErrs, err)
 	}
 
+	roles, err := ncc.getRoles()
+	if err != nil {
+		objectErrs = append(objectErrs, err)
+	}
+
 	serviceAccounts, err := ncc.getServiceAccounts()
 	if err != nil {
 		objectErrs = append(objectErrs, err)
 	}
 
 	clusterRoleBindings, err := ncc.getClusterRoleBindings()
+	if err != nil {
+		objectErrs = append(objectErrs, err)
+	}
+
+	roleBindings, err := ncc.getRoleBindings()
 	if err != nil {
 		objectErrs = append(objectErrs, err)
 	}
@@ -114,6 +124,11 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 		errs = append(errs, fmt.Errorf("sync ClusterRole(s): %w", err))
 	}
 
+	err = ncc.syncRoles(ctx, nc, roles)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("sync Role(s): %w", err))
+	}
+
 	err = ncc.syncServiceAccounts(ctx, serviceAccounts)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("sync ServiceAccount(s): %w", err))
@@ -122,6 +137,11 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 	err = ncc.syncClusterRoleBindings(ctx, clusterRoleBindings)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("sync ClusterRoleBinding(s): %w", err))
+	}
+
+	err = ncc.syncRoleBindings(ctx, nc, roleBindings)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("sync RoleBinding(s): %w", err))
 	}
 
 	err = ncc.syncDaemonSet(ctx, nc, soc, daemonSets)
@@ -181,6 +201,38 @@ func (ncc *Controller) getClusterRoleBindings() (map[string]*rbacv1.ClusterRoleB
 	}
 
 	return crbMap, nil
+}
+
+func (ncc *Controller) getRoles() (map[string]*rbacv1.Role, error) {
+	roles, err := ncc.roleLister.List(labels.SelectorFromSet(map[string]string{
+		naming.NodeConfigNameLabel: naming.NodeConfigAppName,
+	}))
+	if err != nil {
+		return nil, fmt.Errorf("list roles: %w", err)
+	}
+
+	res := map[string]*rbacv1.Role{}
+	for i := range roles {
+		res[roles[i].Name] = roles[i]
+	}
+
+	return res, nil
+}
+
+func (ncc *Controller) getRoleBindings() (map[string]*rbacv1.RoleBinding, error) {
+	roleBindings, err := ncc.roleBindingLister.List(labels.SelectorFromSet(map[string]string{
+		naming.NodeConfigNameLabel: naming.NodeConfigAppName,
+	}))
+	if err != nil {
+		return nil, fmt.Errorf("list rolebindings: %w", err)
+	}
+
+	res := map[string]*rbacv1.RoleBinding{}
+	for i := range roleBindings {
+		res[roleBindings[i].Name] = roleBindings[i]
+	}
+
+	return res, nil
 }
 
 func (ncc *Controller) getServiceAccounts() (map[string]*corev1.ServiceAccount, error) {

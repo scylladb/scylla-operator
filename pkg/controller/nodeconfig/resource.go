@@ -38,6 +38,18 @@ func makeNodeConfigServiceAccount() *corev1.ServiceAccount {
 	}
 }
 
+func makePerftuneServiceAccount() *corev1.ServiceAccount {
+	return &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Name:      naming.PerftuneServiceAccountName,
+			Labels: map[string]string{
+				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
+			},
+		},
+	}
+}
+
 func NodeConfigClusterRole() *rbacv1.ClusterRole {
 	return &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
@@ -92,6 +104,19 @@ func NodeConfigClusterRole() *rbacv1.ClusterRole {
 	}
 }
 
+func makePerftuneRole() *rbacv1.Role {
+	return &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Name:      naming.PerftuneServiceAccountName,
+			Labels: map[string]string{
+				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
+			},
+		},
+		Rules: []rbacv1.PolicyRule{},
+	}
+}
+
 func makeNodeConfigClusterRoleBinding() *rbacv1.ClusterRoleBinding {
 	return &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
@@ -111,6 +136,30 @@ func makeNodeConfigClusterRoleBinding() *rbacv1.ClusterRoleBinding {
 				Kind:      "ServiceAccount",
 				Namespace: naming.ScyllaOperatorNodeTuningNamespace,
 				Name:      naming.NodeConfigAppName,
+			},
+		},
+	}
+}
+
+func makePerftuneRoleBinding() *rbacv1.RoleBinding {
+	return &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Name:      naming.PerftuneServiceAccountName,
+			Labels: map[string]string{
+				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "Role",
+			Name:     naming.PerftuneServiceAccountName,
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+				Name:      naming.PerftuneServiceAccountName,
 			},
 		},
 	}

@@ -9,7 +9,6 @@ import (
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,9 +50,13 @@ var _ = g.Describe("MultiDC cluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts1).To(o.HaveLen(int(utils.GetMemberCount(sc1))))
 		o.Expect(hostIDs1).To(o.HaveLen(int(utils.GetMemberCount(sc1))))
-		
+
 		di1 := insertAndVerifyCQLData(ctx, hosts1)
 		defer di1.Close()
+
+		seeds1, err := utils.GetBroadcastAddresses(ctx, ns1Client.KubeClient().CoreV1(), sc1)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(seeds1).To(o.HaveLen(int(utils.GetMemberCount(sc1))))
 
 		ns2, ns2Client := f.CreateUserNamespace(ctx)
 		sc2 := f.GetDefaultScyllaCluster()
@@ -61,9 +64,7 @@ var _ = g.Describe("MultiDC cluster", func() {
 		sc2.Spec.Datacenter.Name = "us-east-2"
 		sc2.Spec.Datacenter.Racks[0].Name = "us-east-2a"
 		sc2.Spec.Datacenter.Racks[0].Members = 3
-		sc2.Spec.ExternalSeeds = []string{
-			naming.CrossNamespaceServiceNameForCluster(sc1),
-		}
+		sc2.Spec.ExternalSeeds = seeds1
 
 		framework.By("Creating second ScyllaCluster")
 		sc2, err = ns2Client.ScyllaClient().ScyllaV1().ScyllaClusters(ns2.Name).Create(ctx, sc2, metav1.CreateOptions{})

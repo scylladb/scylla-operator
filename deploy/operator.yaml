@@ -1143,7 +1143,7 @@ spec:
                   description: automaticOrphanedNodeCleanup controls if automatic orphan node cleanup should be performed.
                   type: boolean
                 priorityClassName:
-                  description: automaticOrphanedNodeCleanup controls if automatic orphan node cleanup should be performed.
+                  description: priorityClassName is the name of the priority class to use for the Scylla pods.
                   type: string
                 backups:
                   description: backups specifies backup tasks in Scylla Manager. When Scylla Manager is not installed, these will be ignored.

@@ -52,6 +52,13 @@ controllerAffinity: { }
 ## ControllerSecurityContext holds pod-level security attributes
 controllerSecurityContext: {}
 
+# Set a priority class for Scylla Manager controller
+# controllerPriorityClassName: ""
+
+# Set a priority class for Scylla Manager
+# managerPriorityClassName: ""
+
+
 serviceAccount:
   # Specifies whether a service account should be created
   create: true

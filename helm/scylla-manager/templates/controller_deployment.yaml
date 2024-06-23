@@ -52,3 +52,6 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.controllerPriorityClassName }}
+      priorityClassName: {{ .Values.controllerPriorityClassName }}
+      {{- end }}

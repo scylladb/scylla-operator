@@ -78,8 +78,15 @@ else
  kubectl_create -f="${SO_NODECONFIG_PATH}"
 fi
 
-kubectl_create -n=local-csi-driver -f="${source_url}/${revision}/examples/common/local-volume-provisioner/local-csi-driver/"{00_namespace.yaml,00_scylladb-local-xfs.storageclass.yaml,10_csidriver.yaml,10_driver.serviceaccount.yaml,10_provisioner_clusterrole.yaml,20_provisioner_clusterrolebinding.yaml,50_daemonset.yaml}
-kubectl -n=local-csi-driver rollout status --timeout=5m daemonset.apps/local-csi-driver
+if [[ -z "${SO_CSI_DRIVER_PATH+x}" ]]; then
+  kubectl_create -n=local-csi-driver -f="${source_url}/${revision}/examples/common/local-volume-provisioner/local-csi-driver/"{00_namespace.yaml,00_scylladb-local-xfs.storageclass.yaml,10_csidriver.yaml,10_driver.serviceaccount.yaml,10_provisioner_clusterrole.yaml,20_provisioner_clusterrolebinding.yaml,50_daemonset.yaml}
+  kubectl -n=local-csi-driver rollout status --timeout=5m daemonset.apps/local-csi-driver
+elif [[ -n "${SO_CSI_DRIVER_PATH}" ]]; then
+  kubectl_create -n=local-csi-driver -f="${SO_CSI_DRIVER_PATH}"
+  kubectl -n=local-csi-driver rollout status --timeout=5m daemonset.apps/local-csi-driver
+else
+  echo "Skipping CSI driver creation"
+fi
 
 mkdir "${ARTIFACTS}/manager"
 cat > "${ARTIFACTS}/manager/kustomization.yaml" << EOF

@@ -11,4 +11,6 @@ const (
 	upgradeToScyllaVersion   = "5.4.3"
 
 	testTimeout = 45 * time.Minute
+
+	multiDatacenterTestTimeout = 3 * time.Hour
 )

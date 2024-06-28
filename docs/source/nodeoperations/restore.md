@@ -21,7 +21,7 @@ kind: ScyllaCluster
 metadata:
   name: source
 spec:
-  agentVersion: 3.2.8
+  agentVersion: 3.3.0
   version: 5.4.1
   developerMode: true
   backups:
@@ -50,7 +50,7 @@ kind: ScyllaCluster
 metadata:
   name: target
 spec:
-  agentVersion: 3.2.8
+  agentVersion: 3.3.0
   version: 5.4.1
   developerMode: true
   datacenter:

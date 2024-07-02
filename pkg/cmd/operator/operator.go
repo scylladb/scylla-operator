@@ -294,6 +294,8 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		scyllaInformers.Scylla().V1alpha1().ScyllaOperatorConfigs(),
 		kubeInformers.Rbac().V1().ClusterRoles(),
 		kubeInformers.Rbac().V1().ClusterRoleBindings(),
+		kubeInformers.Rbac().V1().Roles(),
+		kubeInformers.Rbac().V1().RoleBindings(),
 		kubeInformers.Apps().V1().DaemonSets(),
 		kubeInformers.Core().V1().Namespaces(),
 		kubeInformers.Core().V1().Nodes(),

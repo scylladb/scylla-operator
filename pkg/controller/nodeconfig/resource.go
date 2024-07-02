@@ -38,6 +38,18 @@ func makeNodeConfigServiceAccount() *corev1.ServiceAccount {
 	}
 }
 
+func makePerftuneServiceAccount() *corev1.ServiceAccount {
+	return &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Name:      naming.PerftuneServiceAccountName,
+			Labels: map[string]string{
+				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
+			},
+		},
+	}
+}
+
 func NodeConfigClusterRole() *rbacv1.ClusterRole {
 	return &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
@@ -74,6 +86,11 @@ func NodeConfigClusterRole() *rbacv1.ClusterRole {
 				Verbs:     []string{"get", "list", "watch"},
 			},
 			{
+				APIGroups: []string{"apps"},
+				Resources: []string{"daemonsets/finalizers"},
+				Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
+			},
+			{
 				APIGroups: []string{"batch"},
 				Resources: []string{"jobs"},
 				Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
@@ -87,6 +104,32 @@ func NodeConfigClusterRole() *rbacv1.ClusterRole {
 				APIGroups: []string{"scylla.scylladb.com"},
 				Resources: []string{"nodeconfigs/status"},
 				Verbs:     []string{"update"},
+			},
+			{
+				APIGroups:     []string{"security.openshift.io"},
+				ResourceNames: []string{"privileged"},
+				Resources:     []string{"securitycontextconstraints"},
+				Verbs:         []string{"use"},
+			},
+		},
+	}
+}
+
+func makePerftuneRole() *rbacv1.Role {
+	return &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Name:      naming.PerftuneServiceAccountName,
+			Labels: map[string]string{
+				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
+			},
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups:     []string{"security.openshift.io"},
+				Resources:     []string{"securitycontextconstraints"},
+				ResourceNames: []string{"privileged"},
+				Verbs:         []string{"use"},
 			},
 		},
 	}
@@ -111,6 +154,30 @@ func makeNodeConfigClusterRoleBinding() *rbacv1.ClusterRoleBinding {
 				Kind:      "ServiceAccount",
 				Namespace: naming.ScyllaOperatorNodeTuningNamespace,
 				Name:      naming.NodeConfigAppName,
+			},
+		},
+	}
+}
+
+func makePerftuneRoleBinding() *rbacv1.RoleBinding {
+	return &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Name:      naming.PerftuneServiceAccountName,
+			Labels: map[string]string{
+				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "Role",
+			Name:     naming.PerftuneServiceAccountName,
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+				Name:      naming.PerftuneServiceAccountName,
 			},
 		},
 	}

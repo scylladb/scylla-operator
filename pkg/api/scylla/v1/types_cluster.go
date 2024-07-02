@@ -147,6 +147,9 @@ type ScyllaClusterSpec struct {
 	// about readiness gates.
 	// +optional
 	ReadinessGates []corev1.PodReadinessGate `json:"readinessGates,omitempty"`
+
+	// priorityClassName is the name of the priority class to be used for ScyllaDB Pods.
+	PriorityClassName string `json:"priorityClassName,omitempty"`
 }
 
 type PodIPSourceType string

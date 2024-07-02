@@ -504,7 +504,8 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 
 						return volumes
 					}(),
-					Tolerations: placement.Tolerations,
+					Tolerations:       placement.Tolerations,
+					PriorityClassName: c.Spec.PriorityClassName,
 					InitContainers: []corev1.Container{
 						{
 							Name:            naming.SidecarInjectorContainerName,

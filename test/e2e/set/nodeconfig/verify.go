@@ -6,11 +6,11 @@ import (
 
 	o "github.com/onsi/gomega"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -57,73 +57,125 @@ func verifyNodeConfig(ctx context.Context, kubeClient kubernetes.Interface, nc *
 
 		type condValue struct {
 			condType string
-			status   corev1.ConditionStatus
+			status   metav1.ConditionStatus
 		}
+		condList := []condValue{
+			// Aggregated conditions
+			{
+				condType: "Available",
+				status:   metav1.ConditionTrue,
+			},
+			{
+				condType: "Progressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "Degraded",
+				status:   metav1.ConditionFalse,
+			},
+			// Controller conditions
+			{
+				condType: "NamespaceControllerProgressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "NamespaceControllerDegraded",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "ClusterRoleControllerProgressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "ClusterRoleControllerDegraded",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "ServiceAccountControllerProgressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "ServiceAccountControllerDegraded",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "ClusterRoleBindingControllerProgressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "ClusterRoleBindingControllerDegraded",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "DaemonSetControllerProgressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "DaemonSetControllerDegraded",
+				status:   metav1.ConditionFalse,
+			},
+		}
+
 		for _, nodeName := range dsNodeNames {
-			condList := []condValue{
+			sanitizedNodeName := controllerhelpers.DNS1123SubdomainToValidStatusConditionReason(nodeName)
+			nodeCondList := []condValue{
 				// Node aggregated conditions
 				{
-					condType: fmt.Sprintf("Node%sAvailable", nodeName),
-					status:   corev1.ConditionTrue,
+					condType: fmt.Sprintf("Node%sAvailable", sanitizedNodeName),
+					status:   metav1.ConditionTrue,
 				},
 				{
-					condType: fmt.Sprintf("Node%sProgressing", nodeName),
-					status:   corev1.ConditionFalse,
+					condType: fmt.Sprintf("Node%sProgressing", sanitizedNodeName),
+					status:   metav1.ConditionFalse,
 				},
 				{
-					condType: fmt.Sprintf("Node%sDegraded", nodeName),
-					status:   corev1.ConditionFalse,
+					condType: fmt.Sprintf("Node%sDegraded", sanitizedNodeName),
+					status:   metav1.ConditionFalse,
 				},
-				// Controller conditions
+				// Node controller conditions
 				{
-					condType: fmt.Sprintf("FilesystemControllerNode%sProgressing", nodeName),
-					status:   corev1.ConditionFalse,
-				},
-				{
-					condType: fmt.Sprintf("FilesystemControllerNode%sDegraded", nodeName),
-					status:   corev1.ConditionFalse,
+					condType: fmt.Sprintf("FilesystemControllerNode%sProgressing", sanitizedNodeName),
+					status:   metav1.ConditionFalse,
 				},
 				{
-					condType: fmt.Sprintf("MountControllerNode%sProgressing", nodeName),
-					status:   corev1.ConditionFalse,
+					condType: fmt.Sprintf("FilesystemControllerNode%sDegraded", sanitizedNodeName),
+					status:   metav1.ConditionFalse,
 				},
 				{
-					condType: fmt.Sprintf("MountControllerNode%sDegraded", nodeName),
-					status:   corev1.ConditionFalse,
+					condType: fmt.Sprintf("MountControllerNode%sProgressing", sanitizedNodeName),
+					status:   metav1.ConditionFalse,
 				},
 				{
-					condType: fmt.Sprintf("RaidControllerNode%sProgressing", nodeName),
-					status:   corev1.ConditionFalse,
+					condType: fmt.Sprintf("MountControllerNode%sDegraded", sanitizedNodeName),
+					status:   metav1.ConditionFalse,
 				},
 				{
-					condType: fmt.Sprintf("RaidControllerNode%sDegraded", nodeName),
-					status:   corev1.ConditionFalse,
+					condType: fmt.Sprintf("RaidControllerNode%sProgressing", sanitizedNodeName),
+					status:   metav1.ConditionFalse,
 				},
 				{
-					condType: fmt.Sprintf("LoopDeviceControllerNode%sProgressing", nodeName),
-					status:   corev1.ConditionFalse,
+					condType: fmt.Sprintf("RaidControllerNode%sDegraded", sanitizedNodeName),
+					status:   metav1.ConditionFalse,
 				},
 				{
-					condType: fmt.Sprintf("LoopDeviceControllerNode%sDegraded", nodeName),
-					status:   corev1.ConditionFalse,
+					condType: fmt.Sprintf("LoopDeviceControllerNode%sProgressing", sanitizedNodeName),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("LoopDeviceControllerNode%sDegraded", sanitizedNodeName),
+					status:   metav1.ConditionFalse,
 				},
 			}
 
-			for _, item := range condList {
-				expectedConditions = append(expectedConditions, scyllav1alpha1.NodeConfigCondition{
-					Type:               scyllav1alpha1.NodeConfigConditionType(item.condType),
-					Status:             item.status,
-					Reason:             "AsExpected",
-					Message:            "",
-					ObservedGeneration: nc.Generation,
-				})
-			}
+			condList = append(condList, nodeCondList...)
+		}
 
-			expectedConditions = append(expectedConditions, scyllav1alpha1.NodeConfigCondition{
-				Type:               scyllav1alpha1.NodeConfigReconciledConditionType,
-				Status:             corev1.ConditionTrue,
-				Reason:             "FullyReconciledAndUp",
-				Message:            "All operands are reconciled and available.",
+		for _, item := range condList {
+			expectedConditions = append(expectedConditions, metav1.Condition{
+				Type:               item.condType,
+				Status:             item.status,
+				Reason:             "AsExpected",
+				Message:            "",
 				ObservedGeneration: nc.Generation,
 			})
 		}

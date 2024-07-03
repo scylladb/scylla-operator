@@ -211,3 +211,35 @@ func ApplyEndpoints(
 		options,
 	)
 }
+
+func ApplyPodWithControl(
+	ctx context.Context,
+	control ApplyControlInterface[*corev1.Pod],
+	recorder record.EventRecorder,
+	required *corev1.Pod,
+	options ApplyOptions,
+) (*corev1.Pod, bool, error) {
+	return ApplyGeneric[*corev1.Pod](ctx, control, recorder, required, options)
+}
+
+func ApplyPod(
+	ctx context.Context,
+	client corev1client.PodsGetter,
+	lister corev1listers.PodLister,
+	recorder record.EventRecorder,
+	required *corev1.Pod,
+	options ApplyOptions,
+) (*corev1.Pod, bool, error) {
+	return ApplyPodWithControl(
+		ctx,
+		ApplyControlFuncs[*corev1.Pod]{
+			GetCachedFunc: lister.Pods(required.Namespace).Get,
+			CreateFunc:    client.Pods(required.Namespace).Create,
+			UpdateFunc:    client.Pods(required.Namespace).Update,
+			DeleteFunc:    client.Pods(required.Namespace).Delete,
+		},
+		recorder,
+		required,
+		options,
+	)
+}

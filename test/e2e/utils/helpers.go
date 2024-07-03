@@ -25,6 +25,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
+	"github.com/scylladb/scylla-operator/pkg/util/hash"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -320,6 +321,25 @@ func GetScyllaClient(ctx context.Context, client corev1client.CoreV1Interface, s
 	}
 
 	return scyllaClient, hosts, nil
+}
+
+func GetCurrentTokenRingHash(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) (string, error) {
+	scyllaClient, hosts, err := GetScyllaClient(ctx, client, sc)
+	if err != nil {
+		return "", fmt.Errorf("can't get scylla client: %w", err)
+	}
+
+	tokenRing, err := scyllaClient.GetTokenRing(ctx, hosts[0])
+	if err != nil {
+		return "", fmt.Errorf("can't get token ring: %w", err)
+	}
+
+	tokenRingHash, err := hash.HashObjects(tokenRing)
+	if err != nil {
+		return "", fmt.Errorf("can't hash token ring: %w", err)
+	}
+
+	return tokenRingHash, nil
 }
 
 func GetScyllaConfigClient(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, host string) (*scyllaclient.ConfigClient, error) {

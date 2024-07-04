@@ -14,6 +14,7 @@ import (
 	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -71,6 +72,10 @@ type Controller struct {
 	handlers *controllerhelpers.Handlers[*scyllav1alpha1.NodeConfig]
 
 	operatorImage string
+}
+
+func isManagedByNodeConfigController(obj kubeinterfaces.ObjectInterface) bool {
+	return obj.GetLabels()[naming.NodeConfigNameLabel] == naming.NodeConfigAppName
 }
 
 func NewController(
@@ -182,6 +187,12 @@ func NewController(
 		DeleteFunc: ncc.deleteDaemonSet,
 	})
 
+	namespaceInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    ncc.addNamespace,
+		UpdateFunc: ncc.updateNamespace,
+		DeleteFunc: ncc.deleteNamespace,
+	})
+
 	return ncc, nil
 }
 
@@ -208,10 +219,33 @@ func (ncc *Controller) deleteDaemonSet(obj interface{}) {
 	)
 }
 
+func (ncc *Controller) addNamespace(obj interface{}) {
+	ncc.handlers.HandleAdd(
+		obj.(*corev1.Namespace),
+		ncc.handlers.EnqueueAllWithUntypedFilterFunc(isManagedByNodeConfigController),
+	)
+}
+
+func (ncc *Controller) updateNamespace(old, cur interface{}) {
+	ncc.handlers.HandleUpdate(
+		old.(*corev1.Namespace),
+		cur.(*corev1.Namespace),
+		ncc.handlers.EnqueueAllWithUntypedFilterFunc(isManagedByNodeConfigController),
+		ncc.deleteNamespace,
+	)
+}
+
+func (ncc *Controller) deleteNamespace(obj interface{}) {
+	ncc.handlers.HandleDelete(
+		obj,
+		ncc.handlers.EnqueueAllWithUntypedFilterFunc(isManagedByNodeConfigController),
+	)
+}
+
 func (ncc *Controller) addServiceAccount(obj interface{}) {
 	ncc.handlers.HandleAdd(
 		obj.(*corev1.ServiceAccount),
-		ncc.handlers.EnqueueOwner,
+		ncc.handlers.EnqueueAllWithUntypedFilterFunc(isManagedByNodeConfigController),
 	)
 }
 
@@ -219,7 +253,7 @@ func (ncc *Controller) updateServiceAccount(old, cur interface{}) {
 	ncc.handlers.HandleUpdate(
 		old.(*corev1.ServiceAccount),
 		cur.(*corev1.ServiceAccount),
-		ncc.handlers.EnqueueOwner,
+		ncc.handlers.EnqueueAllWithUntypedFilterFunc(isManagedByNodeConfigController),
 		ncc.deleteServiceAccount,
 	)
 }
@@ -227,14 +261,14 @@ func (ncc *Controller) updateServiceAccount(old, cur interface{}) {
 func (ncc *Controller) deleteServiceAccount(obj interface{}) {
 	ncc.handlers.HandleDelete(
 		obj,
-		ncc.handlers.EnqueueOwner,
+		ncc.handlers.EnqueueAllWithUntypedFilterFunc(isManagedByNodeConfigController),
 	)
 }
 
 func (ncc *Controller) addClusterRoleBinding(obj interface{}) {
 	ncc.handlers.HandleAdd(
 		obj.(*rbacv1.ClusterRoleBinding),
-		ncc.handlers.EnqueueOwner,
+		ncc.handlers.EnqueueAllWithUntypedFilterFunc(isManagedByNodeConfigController),
 	)
 }
 
@@ -242,7 +276,7 @@ func (ncc *Controller) updateClusterRoleBinding(old, cur interface{}) {
 	ncc.handlers.HandleUpdate(
 		old.(*rbacv1.ClusterRoleBinding),
 		cur.(*rbacv1.ClusterRoleBinding),
-		ncc.handlers.EnqueueOwner,
+		ncc.handlers.EnqueueAllWithUntypedFilterFunc(isManagedByNodeConfigController),
 		ncc.deleteClusterRoleBinding,
 	)
 }
@@ -250,14 +284,14 @@ func (ncc *Controller) updateClusterRoleBinding(old, cur interface{}) {
 func (ncc *Controller) deleteClusterRoleBinding(obj interface{}) {
 	ncc.handlers.HandleDelete(
 		obj,
-		ncc.handlers.EnqueueOwner,
+		ncc.handlers.EnqueueAllWithUntypedFilterFunc(isManagedByNodeConfigController),
 	)
 }
 
 func (ncc *Controller) addClusterRole(obj interface{}) {
 	ncc.handlers.HandleAdd(
 		obj.(*rbacv1.ClusterRole),
-		ncc.handlers.EnqueueOwner,
+		ncc.handlers.EnqueueAllWithUntypedFilterFunc(isManagedByNodeConfigController),
 	)
 }
 
@@ -265,7 +299,7 @@ func (ncc *Controller) updateClusterRole(old, cur interface{}) {
 	ncc.handlers.HandleUpdate(
 		old.(*rbacv1.ClusterRole),
 		cur.(*rbacv1.ClusterRole),
-		ncc.handlers.EnqueueOwner,
+		ncc.handlers.EnqueueAllWithUntypedFilterFunc(isManagedByNodeConfigController),
 		ncc.deleteClusterRole,
 	)
 }
@@ -273,7 +307,7 @@ func (ncc *Controller) updateClusterRole(old, cur interface{}) {
 func (ncc *Controller) deleteClusterRole(obj interface{}) {
 	ncc.handlers.HandleDelete(
 		obj,
-		ncc.handlers.EnqueueOwner,
+		ncc.handlers.EnqueueAllWithUntypedFilterFunc(isManagedByNodeConfigController),
 	)
 }
 
@@ -303,7 +337,7 @@ func (ncc *Controller) deleteNodeConfig(obj interface{}) {
 func (ncc *Controller) addScyllaOperatorConfig(obj interface{}) {
 	ncc.handlers.HandleAdd(
 		obj.(*scyllav1alpha1.ScyllaOperatorConfig),
-		ncc.handlers.EnqueueAll,
+		ncc.handlers.EnqueueAllWithUntypedFilterFunc(isManagedByNodeConfigController),
 	)
 }
 
@@ -311,7 +345,7 @@ func (ncc *Controller) updateScyllaOperatorConfig(old, cur interface{}) {
 	ncc.handlers.HandleUpdate(
 		old.(*scyllav1alpha1.ScyllaOperatorConfig),
 		cur.(*scyllav1alpha1.ScyllaOperatorConfig),
-		ncc.handlers.EnqueueAll,
+		ncc.handlers.EnqueueAllWithUntypedFilterFunc(isManagedByNodeConfigController),
 		nil,
 	)
 }

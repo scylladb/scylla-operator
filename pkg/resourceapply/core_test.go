@@ -3615,3 +3615,551 @@ func TestApplyPod(t *testing.T) {
 		})
 	}
 }
+
+func TestApplyPersistentVolumeClaim(t *testing.T) {
+	// Using a generating function prevents unwanted mutations.
+	newPersistentVolumeClaim := func() *corev1.PersistentVolumeClaim {
+		return &corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "test",
+				Labels:    map[string]string{},
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						Controller:         pointer.Ptr(true),
+						UID:                "abcdefgh",
+						APIVersion:         "scylla.scylladb.com/v1",
+						Kind:               "ScyllaCluster",
+						Name:               "basic",
+						BlockOwnerDeletion: pointer.Ptr(true),
+					},
+				},
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				AccessModes: []corev1.PersistentVolumeAccessMode{
+					corev1.ReadWriteOnce,
+				},
+				Resources: corev1.VolumeResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: resource.MustParse("1Gi"),
+					},
+				},
+			},
+		}
+	}
+
+	newPersistentVolumeClaimWithHash := func() *corev1.PersistentVolumeClaim {
+		pvc := newPersistentVolumeClaim()
+		utilruntime.Must(SetHashAnnotation(pvc))
+		return pvc
+	}
+
+	tt := []struct {
+		name                          string
+		existing                      []runtime.Object
+		cache                         []runtime.Object // nil cache means autofill from the client
+		required                      *corev1.PersistentVolumeClaim
+		forceOwnership                bool
+		expectedPersistentVolumeClaim *corev1.PersistentVolumeClaim
+		expectedChanged               bool
+		expectedErr                   error
+		expectedEvents                []string
+	}{
+		{
+			name:                          "creates a new pvc when there is none",
+			existing:                      nil,
+			required:                      newPersistentVolumeClaim(),
+			expectedPersistentVolumeClaim: newPersistentVolumeClaimWithHash(),
+			expectedChanged:               true,
+			expectedErr:                   nil,
+			expectedEvents:                []string{"Normal PersistentVolumeClaimCreated PersistentVolumeClaim default/test created"},
+		},
+		{
+			name: "does nothing if the same pvc already exists",
+			existing: []runtime.Object{
+				newPersistentVolumeClaimWithHash(),
+			},
+			required:                      newPersistentVolumeClaim(),
+			expectedPersistentVolumeClaim: newPersistentVolumeClaimWithHash(),
+			expectedChanged:               false,
+			expectedErr:                   nil,
+			expectedEvents:                nil,
+		},
+		{
+			name: "does nothing if the same pvc already exists and required one has the hash",
+			existing: []runtime.Object{
+				newPersistentVolumeClaimWithHash(),
+			},
+			required:                      newPersistentVolumeClaimWithHash(),
+			expectedPersistentVolumeClaim: newPersistentVolumeClaimWithHash(),
+			expectedChanged:               false,
+			expectedErr:                   nil,
+			expectedEvents:                nil,
+		},
+		{
+			name: "updates the pvc if it exists without the hash",
+			existing: []runtime.Object{
+				newPersistentVolumeClaim(),
+			},
+			required:                      newPersistentVolumeClaim(),
+			expectedPersistentVolumeClaim: newPersistentVolumeClaimWithHash(),
+			expectedChanged:               true,
+			expectedErr:                   nil,
+			expectedEvents:                []string{"Normal PersistentVolumeClaimUpdated PersistentVolumeClaim default/test updated"},
+		},
+		{
+			name:     "fails to create the pvc without a controllerRef",
+			existing: nil,
+			required: func() *corev1.PersistentVolumeClaim {
+				pvc := newPersistentVolumeClaim()
+				pvc.OwnerReferences = nil
+				return pvc
+			}(),
+			expectedPersistentVolumeClaim: nil,
+			expectedChanged:               false,
+			expectedErr:                   fmt.Errorf(`/v1, Kind=PersistentVolumeClaim "default/test" is missing controllerRef`),
+			expectedEvents:                nil,
+		},
+		{
+			name: "updates the pvc if access mode differs",
+			existing: []runtime.Object{
+				newPersistentVolumeClaim(),
+			},
+			required: func() *corev1.PersistentVolumeClaim {
+				pvc := newPersistentVolumeClaim()
+				pvc.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{
+					corev1.ReadWriteMany,
+				}
+				return pvc
+			}(),
+			expectedPersistentVolumeClaim: func() *corev1.PersistentVolumeClaim {
+				pvc := newPersistentVolumeClaim()
+				pvc.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{
+					corev1.ReadWriteMany,
+				}
+				utilruntime.Must(SetHashAnnotation(pvc))
+				return pvc
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal PersistentVolumeClaimUpdated PersistentVolumeClaim default/test updated"},
+		},
+		{
+			name: "updates the pvc if labels differ",
+			existing: []runtime.Object{
+				newPersistentVolumeClaimWithHash(),
+			},
+			required: func() *corev1.PersistentVolumeClaim {
+				pvc := newPersistentVolumeClaim()
+				pvc.Labels["foo"] = "bar"
+				return pvc
+			}(),
+			expectedPersistentVolumeClaim: func() *corev1.PersistentVolumeClaim {
+				pvc := newPersistentVolumeClaim()
+				pvc.Labels["foo"] = "bar"
+				utilruntime.Must(SetHashAnnotation(pvc))
+				return pvc
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal PersistentVolumeClaimUpdated PersistentVolumeClaim default/test updated"},
+		},
+		{
+			name: "won't update the pvc if an admission changes it",
+			existing: []runtime.Object{
+				func() *corev1.PersistentVolumeClaim {
+					pvc := newPersistentVolumeClaimWithHash()
+					// Simulate admission by changing a value after the hash is computed.
+					pvc.Finalizers = append(pvc.Finalizers, "admissionfinalizer")
+					return pvc
+				}(),
+			},
+			required: newPersistentVolumeClaim(),
+			expectedPersistentVolumeClaim: func() *corev1.PersistentVolumeClaim {
+				pvc := newPersistentVolumeClaimWithHash()
+				// Simulate admission by changing a value after the hash is computed.
+				pvc.Finalizers = append(pvc.Finalizers, "admissionfinalizer")
+				return pvc
+			}(),
+			expectedChanged: false,
+			expectedErr:     nil,
+			expectedEvents:  nil,
+		},
+		{
+			// We test propagating the RV from required in all the other tests.
+			name: "specifying no RV will use the one from the existing object",
+			existing: []runtime.Object{
+				func() *corev1.PersistentVolumeClaim {
+					pvc := newPersistentVolumeClaimWithHash()
+					pvc.ResourceVersion = "21"
+					return pvc
+				}(),
+			},
+			required: func() *corev1.PersistentVolumeClaim {
+				pvc := newPersistentVolumeClaim()
+				pvc.ResourceVersion = ""
+				pvc.Labels["foo"] = "bar"
+				return pvc
+			}(),
+			expectedPersistentVolumeClaim: func() *corev1.PersistentVolumeClaim {
+				pvc := newPersistentVolumeClaim()
+				pvc.ResourceVersion = "21"
+				pvc.Labels["foo"] = "bar"
+				utilruntime.Must(SetHashAnnotation(pvc))
+				return pvc
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal PersistentVolumeClaimUpdated PersistentVolumeClaim default/test updated"},
+		},
+		{
+			name:     "update fails if the pvc is missing but we still see it in the cache",
+			existing: nil,
+			cache: []runtime.Object{
+				newPersistentVolumeClaimWithHash(),
+			},
+			required: func() *corev1.PersistentVolumeClaim {
+				pvc := newPersistentVolumeClaim()
+				pvc.Labels["foo"] = "bar"
+				return pvc
+			}(),
+			expectedPersistentVolumeClaim: nil,
+			expectedChanged:               false,
+			expectedErr:                   fmt.Errorf(`can't update /v1, Kind=PersistentVolumeClaim "default/test": %w`, apierrors.NewNotFound(corev1.Resource("persistentvolumeclaims"), "test")),
+			expectedEvents:                []string{`Warning UpdatePersistentVolumeClaimFailed Failed to update PersistentVolumeClaim default/test: persistentvolumeclaims "test" not found`},
+		},
+		{
+			name: "update fails if the existing object has no ownerRef",
+			existing: []runtime.Object{
+				func() *corev1.PersistentVolumeClaim {
+					pvc := newPersistentVolumeClaim()
+					pvc.OwnerReferences = nil
+					utilruntime.Must(SetHashAnnotation(pvc))
+					return pvc
+				}(),
+			},
+			required: func() *corev1.PersistentVolumeClaim {
+				pvc := newPersistentVolumeClaim()
+				pvc.Labels["foo"] = "bar"
+				return pvc
+			}(),
+			expectedPersistentVolumeClaim: nil,
+			expectedChanged:               false,
+			expectedErr:                   fmt.Errorf(`/v1, Kind=PersistentVolumeClaim "default/test" isn't controlled by us`),
+			expectedEvents:                []string{`Warning UpdatePersistentVolumeClaimFailed Failed to update PersistentVolumeClaim default/test: /v1, Kind=PersistentVolumeClaim "default/test" isn't controlled by us`},
+		},
+		{
+			name: "forced update succeeds if the existing object has no ownerRef",
+			existing: []runtime.Object{
+				func() *corev1.PersistentVolumeClaim {
+					pvc := newPersistentVolumeClaim()
+					pvc.OwnerReferences = nil
+					utilruntime.Must(SetHashAnnotation(pvc))
+					return pvc
+				}(),
+			},
+			required: func() *corev1.PersistentVolumeClaim {
+				pvc := newPersistentVolumeClaim()
+				pvc.Labels["foo"] = "bar"
+				return pvc
+			}(),
+			forceOwnership: true,
+			expectedPersistentVolumeClaim: func() *corev1.PersistentVolumeClaim {
+				pvc := newPersistentVolumeClaim()
+				pvc.Labels["foo"] = "bar"
+				utilruntime.Must(SetHashAnnotation(pvc))
+				return pvc
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal PersistentVolumeClaimUpdated PersistentVolumeClaim default/test updated"},
+		},
+		{
+			name: "update succeeds to replace ownerRef kind",
+			existing: []runtime.Object{
+				func() *corev1.PersistentVolumeClaim {
+					pvc := newPersistentVolumeClaim()
+					pvc.OwnerReferences[0].Kind = "WrongKind"
+					utilruntime.Must(SetHashAnnotation(pvc))
+					return pvc
+				}(),
+			},
+			required: func() *corev1.PersistentVolumeClaim {
+				pvc := newPersistentVolumeClaim()
+				return pvc
+			}(),
+			expectedPersistentVolumeClaim: func() *corev1.PersistentVolumeClaim {
+				pvc := newPersistentVolumeClaim()
+				utilruntime.Must(SetHashAnnotation(pvc))
+				return pvc
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal PersistentVolumeClaimUpdated PersistentVolumeClaim default/test updated"},
+		},
+		{
+			name: "update fails if the existing object is owned by someone else",
+			existing: []runtime.Object{
+				func() *corev1.PersistentVolumeClaim {
+					pvc := newPersistentVolumeClaim()
+					pvc.OwnerReferences[0].UID = "42"
+					utilruntime.Must(SetHashAnnotation(pvc))
+					return pvc
+				}(),
+			},
+			required: func() *corev1.PersistentVolumeClaim {
+				pvc := newPersistentVolumeClaim()
+				pvc.Labels["foo"] = "bar"
+				return pvc
+			}(),
+			expectedPersistentVolumeClaim: nil,
+			expectedChanged:               false,
+			expectedErr:                   fmt.Errorf(`/v1, Kind=PersistentVolumeClaim "default/test" isn't controlled by us`),
+			expectedEvents:                []string{`Warning UpdatePersistentVolumeClaimFailed Failed to update PersistentVolumeClaim default/test: /v1, Kind=PersistentVolumeClaim "default/test" isn't controlled by us`},
+		},
+		{
+			name: "forced update fails if the existing object is owned by someone else",
+			existing: []runtime.Object{
+				func() *corev1.PersistentVolumeClaim {
+					pvc := newPersistentVolumeClaim()
+					pvc.OwnerReferences[0].UID = "42"
+					utilruntime.Must(SetHashAnnotation(pvc))
+					return pvc
+				}(),
+			},
+			required: func() *corev1.PersistentVolumeClaim {
+				pvc := newPersistentVolumeClaim()
+				pvc.Labels["foo"] = "bar"
+				return pvc
+			}(),
+			forceOwnership:                true,
+			expectedPersistentVolumeClaim: nil,
+			expectedChanged:               false,
+			expectedErr:                   fmt.Errorf(`/v1, Kind=PersistentVolumeClaim "default/test" isn't controlled by us`),
+			expectedEvents:                []string{`Warning UpdatePersistentVolumeClaimFailed Failed to update PersistentVolumeClaim default/test: /v1, Kind=PersistentVolumeClaim "default/test" isn't controlled by us`},
+		},
+		{
+			name: "all label and annotation keys are kept when the hash matches",
+			existing: []runtime.Object{
+				func() *corev1.PersistentVolumeClaim {
+					pvc := newPersistentVolumeClaim()
+					pvc.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "",
+					}
+					pvc.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "",
+					}
+					utilruntime.Must(SetHashAnnotation(pvc))
+					pvc.Annotations["a-1"] = "a-alpha-changed"
+					pvc.Annotations["a-3"] = "a-resurrected"
+					pvc.Annotations["a-custom"] = "custom-value"
+					pvc.Labels["l-1"] = "l-alpha-changed"
+					pvc.Labels["l-3"] = "l-resurrected"
+					pvc.Labels["l-custom"] = "custom-value"
+					return pvc
+				}(),
+			},
+			required: func() *corev1.PersistentVolumeClaim {
+				pvc := newPersistentVolumeClaim()
+				pvc.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				pvc.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				return pvc
+			}(),
+			forceOwnership: false,
+			expectedPersistentVolumeClaim: func() *corev1.PersistentVolumeClaim {
+				pvc := newPersistentVolumeClaim()
+				pvc.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				pvc.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(pvc))
+				pvc.Annotations["a-1"] = "a-alpha-changed"
+				pvc.Annotations["a-3"] = "a-resurrected"
+				pvc.Annotations["a-custom"] = "custom-value"
+				pvc.Labels["l-1"] = "l-alpha-changed"
+				pvc.Labels["l-3"] = "l-resurrected"
+				pvc.Labels["l-custom"] = "custom-value"
+				return pvc
+			}(),
+			expectedChanged: false,
+			expectedErr:     nil,
+			expectedEvents:  nil,
+		},
+		{
+			name: "only managed label and annotation keys are updated when the hash changes",
+			existing: []runtime.Object{
+				func() *corev1.PersistentVolumeClaim {
+					pvc := newPersistentVolumeClaim()
+					pvc.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "a-resurrected",
+					}
+					pvc.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "l-resurrected",
+					}
+					utilruntime.Must(SetHashAnnotation(pvc))
+					pvc.Annotations["a-1"] = "a-alpha-changed"
+					pvc.Annotations["a-custom"] = "a-custom-value"
+					pvc.Labels["l-1"] = "l-alpha-changed"
+					pvc.Labels["l-custom"] = "l-custom-value"
+					return pvc
+				}(),
+			},
+			required: func() *corev1.PersistentVolumeClaim {
+				pvc := newPersistentVolumeClaim()
+				pvc.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				pvc.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				return pvc
+			}(),
+			forceOwnership: true,
+			expectedPersistentVolumeClaim: func() *corev1.PersistentVolumeClaim {
+				pvc := newPersistentVolumeClaim()
+				pvc.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				pvc.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(pvc))
+				delete(pvc.Annotations, "a-3-")
+				pvc.Annotations["a-custom"] = "a-custom-value"
+				delete(pvc.Labels, "l-3-")
+				pvc.Labels["l-custom"] = "l-custom-value"
+				return pvc
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal PersistentVolumeClaimUpdated PersistentVolumeClaim default/test updated"},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Client holds the state so it has to persists the iterations.
+			client := fake.NewSimpleClientset(tc.existing...)
+
+			// ApplyPersistentVolumeClaim needs to be reentrant so running it the second time should give the same results.
+			// (One of the common mistakes is editing the object after computing the hash so it differs the second time.)
+			iterations := 2
+			if tc.expectedErr != nil {
+				iterations = 1
+			}
+			for i := range iterations {
+				t.Run("", func(t *testing.T) {
+					ctx, ctxCancel := context.WithTimeout(context.Background(), 30*time.Second)
+					defer ctxCancel()
+
+					recorder := record.NewFakeRecorder(10)
+
+					pvcCache := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+					pvcLister := corev1listers.NewPersistentVolumeClaimLister(pvcCache)
+
+					if tc.cache != nil {
+						for _, obj := range tc.cache {
+							err := pvcCache.Add(obj)
+							if err != nil {
+								t.Fatal(err)
+							}
+						}
+					} else {
+						pvcList, err := client.CoreV1().PersistentVolumeClaims("").List(ctx, metav1.ListOptions{
+							LabelSelector: labels.Everything().String(),
+						})
+						if err != nil {
+							t.Fatal(err)
+						}
+
+						for i := range pvcList.Items {
+							err := pvcCache.Add(&pvcList.Items[i])
+							if err != nil {
+								t.Fatal(err)
+							}
+						}
+					}
+
+					gotPersistentVolumeClaim, gotChanged, gotErr := ApplyPersistentVolumeClaim(ctx, client.CoreV1(), pvcLister, recorder, tc.required, ApplyOptions{
+						ForceOwnership: tc.forceOwnership,
+					})
+					if !reflect.DeepEqual(gotErr, tc.expectedErr) {
+						t.Fatalf("expected %v, got %v", tc.expectedErr, gotErr)
+					}
+
+					if !equality.Semantic.DeepEqual(gotPersistentVolumeClaim, tc.expectedPersistentVolumeClaim) {
+						t.Errorf("expected %#v, got %#v, diff:\n%s", tc.expectedPersistentVolumeClaim, gotPersistentVolumeClaim, cmp.Diff(tc.expectedPersistentVolumeClaim, gotPersistentVolumeClaim))
+					}
+
+					// Make sure such object was actually created.
+					if gotPersistentVolumeClaim != nil {
+						createdPersistentVolumeClaim, err := client.CoreV1().PersistentVolumeClaims(gotPersistentVolumeClaim.Namespace).Get(ctx, gotPersistentVolumeClaim.Name, metav1.GetOptions{})
+						if err != nil {
+							t.Error(err)
+						}
+						if !equality.Semantic.DeepEqual(createdPersistentVolumeClaim, gotPersistentVolumeClaim) {
+							t.Errorf("created and returned pvcs differ:\n%s", cmp.Diff(createdPersistentVolumeClaim, gotPersistentVolumeClaim))
+						}
+					}
+
+					if i == 0 {
+						if gotChanged != tc.expectedChanged {
+							t.Errorf("expected %t, got %t", tc.expectedChanged, gotChanged)
+						}
+					} else {
+						if gotChanged {
+							t.Errorf("object changed in iteration %d", i)
+						}
+					}
+
+					close(recorder.Events)
+					var gotEvents []string
+					for e := range recorder.Events {
+						gotEvents = append(gotEvents, e)
+					}
+					if i == 0 {
+						if !reflect.DeepEqual(gotEvents, tc.expectedEvents) {
+							t.Errorf("expected %v, got %v, diff:\n%s", tc.expectedEvents, gotEvents, cmp.Diff(tc.expectedEvents, gotEvents))
+						}
+					} else {
+						if len(gotEvents) > 0 {
+							t.Errorf("unexpected events: %v", gotEvents)
+						}
+					}
+				})
+			}
+		})
+	}
+}

@@ -243,3 +243,35 @@ func ApplyPod(
 		options,
 	)
 }
+
+func ApplyPersistentVolumeClaimWithControl(
+	ctx context.Context,
+	control ApplyControlInterface[*corev1.PersistentVolumeClaim],
+	recorder record.EventRecorder,
+	required *corev1.PersistentVolumeClaim,
+	options ApplyOptions,
+) (*corev1.PersistentVolumeClaim, bool, error) {
+	return ApplyGeneric[*corev1.PersistentVolumeClaim](ctx, control, recorder, required, options)
+}
+
+func ApplyPersistentVolumeClaim(
+	ctx context.Context,
+	client corev1client.PersistentVolumeClaimsGetter,
+	lister corev1listers.PersistentVolumeClaimLister,
+	recorder record.EventRecorder,
+	required *corev1.PersistentVolumeClaim,
+	options ApplyOptions,
+) (*corev1.PersistentVolumeClaim, bool, error) {
+	return ApplyPersistentVolumeClaimWithControl(
+		ctx,
+		ApplyControlFuncs[*corev1.PersistentVolumeClaim]{
+			GetCachedFunc: lister.PersistentVolumeClaims(required.Namespace).Get,
+			CreateFunc:    client.PersistentVolumeClaims(required.Namespace).Create,
+			UpdateFunc:    client.PersistentVolumeClaims(required.Namespace).Update,
+			DeleteFunc:    client.PersistentVolumeClaims(required.Namespace).Delete,
+		},
+		recorder,
+		required,
+		options,
+	)
+}

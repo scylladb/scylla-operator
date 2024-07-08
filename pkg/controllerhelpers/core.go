@@ -249,3 +249,10 @@ func GetScyllaContainerID(pod *corev1.Pod) (string, error) {
 
 	return cs.ContainerID, nil
 }
+
+// DNS1123SubdomainToValidStatusConditionReason converts a string to a valid metav1.Condition reason, assuming the input is a valid DNS1123 Subdomain.
+func DNS1123SubdomainToValidStatusConditionReason(s string) string {
+	s = strings.ReplaceAll(s, "-", "_")
+	s = strings.ReplaceAll(s, ".", "_")
+	return s
+}

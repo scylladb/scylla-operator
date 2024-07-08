@@ -6,6 +6,8 @@ import (
 	"context"
 	"fmt"
 
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -53,27 +55,29 @@ func (ncc *Controller) pruneClusterRoleBindings(ctx context.Context, requiredClu
 	return utilerrors.NewAggregate(errs)
 }
 
-func (ncc *Controller) syncClusterRoleBindings(
-	ctx context.Context,
-	clusterRoleBindings map[string]*rbacv1.ClusterRoleBinding,
-) error {
+func (ncc *Controller) syncClusterRoleBindings(ctx context.Context, nc *scyllav1alpha1.NodeConfig, clusterRoleBindings map[string]*rbacv1.ClusterRoleBinding) ([]metav1.Condition, error) {
+	var progressingConditions []metav1.Condition
+
 	requiredClusterRoleBindings := ncc.makeClusterRoleBindings()
 
 	// Delete any excessive ClusterRoleBindings.
 	// Delete has to be the first action to avoid getting stuck on quota.
 	if err := ncc.pruneClusterRoleBindings(ctx, requiredClusterRoleBindings, clusterRoleBindings); err != nil {
-		return fmt.Errorf("can't delete ClusterRoleBinding(s): %w", err)
+		return progressingConditions, fmt.Errorf("can't delete ClusterRoleBinding(s): %w", err)
 	}
 
 	var errs []error
 	for _, crb := range requiredClusterRoleBindings {
-		_, _, err := resourceapply.ApplyClusterRoleBinding(ctx, ncc.kubeClient.RbacV1(), ncc.clusterRoleBindingLister, ncc.eventRecorder, crb, resourceapply.ApplyOptions{
+		_, changed, err := resourceapply.ApplyClusterRoleBinding(ctx, ncc.kubeClient.RbacV1(), ncc.clusterRoleBindingLister, ncc.eventRecorder, crb, resourceapply.ApplyOptions{
 			AllowMissingControllerRef: true,
 		})
+		if changed {
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, clusterRoleBindingControllerProgressingCondition, crb, "apply", nc.Generation)
+		}
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't create missing clusterrole: %w", err))
 			continue
 		}
 	}
-	return utilerrors.NewAggregate(errs)
+	return progressingConditions, utilerrors.NewAggregate(errs)
 }

@@ -14,6 +14,8 @@ import (
 	o "github.com/onsi/gomega"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
@@ -43,7 +45,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		defer cancel()
 
 		// Make sure the NodeConfig is not present.
-		framework.By("Making sure NodeConfig %q, doesn't exist", naming.ObjRef(ncTemplate))
+		framework.By("Making sure NodeConfig %q doesn't exist", naming.ObjRef(ncTemplate))
 		_, err := f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Get(ctx, ncTemplate.Name, metav1.GetOptions{})
 		if err == nil {
 			framework.Failf("NodeConfig %q can't be present before running this test", naming.ObjRef(ncTemplate))
@@ -218,9 +220,11 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 			nc.Name,
 			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
 			utils.IsNodeConfigRolledOut,
-			utils.IsNodeConfigDoneWithNodes(matchingNodes),
+			utils.IsNodeConfigDoneWithNodeTuningFunc(matchingNodes),
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
+
+		verifyNodeConfig(ctx, f.KubeAdminClient(), nc)
 
 		hostLoopsDir := "/host/dev/loops"
 		framework.By("Checking if loop devices has been created at %q", hostLoopsDir)
@@ -294,13 +298,79 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 			nc.Name,
 			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
 			utils.IsNodeConfigRolledOut,
-			utils.IsNodeConfigDoneWithNodes(matchingNodes),
+			utils.IsNodeConfigDoneWithNodeTuningFunc(matchingNodes),
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
+
+		verifyNodeConfig(ctx, f.KubeAdminClient(), nc)
 	},
 		g.Entry("out of one loop device", 1),
 		g.Entry("out of three loop devices", 3),
 	)
+
+	g.It("should propagate degraded conditions for invalid configuration", func() {
+		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+		defer cancel()
+
+		nc := ncTemplate.DeepCopy()
+
+		nc.Spec.LocalDiskSetup = &scyllav1alpha1.LocalDiskSetup{
+			Mounts: []scyllav1alpha1.MountConfiguration{
+				{
+					Device:             fmt.Sprintf("/dev/%s", f.Namespace()),
+					MountPoint:         fmt.Sprintf("/mnt/%s", f.Namespace()),
+					FSType:             string(scyllav1alpha1.XFSFilesystem),
+					UnsupportedOptions: []string{"prjquota"},
+				},
+			},
+		}
+
+		g.By("Creating NodeConfig")
+		nc, err := f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Create(ctx, nc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		isNodeConfigMountControllerDegraded := func(nc *scyllav1alpha1.NodeConfig) (bool, error) {
+			if !helpers.IsStatusConditionPresentAndTrue(nc.Status.Conditions, scyllav1alpha1.AvailableCondition, nc.Generation) {
+				return false, nil
+			}
+
+			if !helpers.IsStatusConditionPresentAndFalse(nc.Status.Conditions, scyllav1alpha1.ProgressingCondition, nc.Generation) {
+				return false, nil
+			}
+
+			if !helpers.IsStatusConditionPresentAndTrue(nc.Status.Conditions, scyllav1alpha1.DegradedCondition, nc.Generation) {
+				return false, nil
+			}
+
+			for _, n := range matchingNodes {
+				sanitizedNodeName := controllerhelpers.DNS1123SubdomainToValidStatusConditionReason(n.Name)
+				nodeDegradedConditionType := fmt.Sprintf(internalapi.NodeDegradedConditionFormat, sanitizedNodeName)
+				if !helpers.IsStatusConditionPresentAndTrue(nc.Status.Conditions, nodeDegradedConditionType, nc.Generation) {
+					return false, nil
+				}
+
+				nodeRaidControllerConditionType := fmt.Sprintf("MountControllerNode%sDegraded", sanitizedNodeName)
+				if !helpers.IsStatusConditionPresentAndTrue(nc.Status.Conditions, nodeRaidControllerConditionType, nc.Generation) {
+					return false, nil
+				}
+			}
+
+			return true, nil
+		}
+
+		framework.By("Waiting for NodeConfig to be in a degraded state")
+		ctx1, ctx1Cancel := context.WithTimeout(ctx, nodeConfigRolloutTimeout)
+		defer ctx1Cancel()
+		nc, err = controllerhelpers.WaitForNodeConfigState(
+			ctx1,
+			f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs(),
+			nc.Name,
+			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
+			utils.IsNodeConfigDoneWithNodeTuningFunc(matchingNodes),
+			isNodeConfigMountControllerDegraded,
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+	})
 })
 
 func executeInPod(config *rest.Config, client corev1client.CoreV1Interface, pod *corev1.Pod, command string, args ...string) (string, string, error) {

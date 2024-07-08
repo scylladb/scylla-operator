@@ -22,37 +22,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type NodeConfigConditionType string
-
-const (
-	// Reconciled indicates that the NodeConfig is fully deployed and available.
-	NodeConfigReconciledConditionType NodeConfigConditionType = "Reconciled"
-)
-
-type NodeConfigCondition struct {
-	// type is the type of the NodeConfig condition.
-	Type NodeConfigConditionType `json:"type"`
-
-	// status represents the state of the condition, one of True, False, or Unknown.
-	Status corev1.ConditionStatus `json:"status"`
-
-	// observedGeneration represents the .metadata.generation that the condition was set based upon.
-	// For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-	// with respect to the current state of the instance.
-	// +optional
-	// +kubebuilder:validation:Minimum=0
-	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
-
-	// lastTransitionTime is last time the condition transitioned from one status to another.
-	LastTransitionTime metav1.Time `json:"lastTransitionTime"`
-
-	// reason is the reason for condition's last transition.
-	Reason string `json:"reason"`
-
-	// message is a human-readable message indicating details about the transition.
-	Message string `json:"message"`
-}
-
 type NodeConfigNodeStatus struct {
 	Name            string   `json:"name"`
 	TunedNode       bool     `json:"tunedNode"`
@@ -65,7 +34,7 @@ type NodeConfigStatus struct {
 
 	// conditions represents the latest available observations of current state.
 	// +optional
-	Conditions []NodeConfigCondition `json:"conditions"`
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
 	// nodeStatuses hold the status for each tuned node.
 	NodeStatuses []NodeConfigNodeStatus `json:"nodeStatuses"`
@@ -205,6 +174,9 @@ type NodeConfigSpec struct {
 // +genclient
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:printcolumn:name="AVAILABLE",type=string,JSONPath=".status.conditions[?(@.type=='Available')].status"
+// +kubebuilder:printcolumn:name="PROGRESSING",type=string,JSONPath=".status.conditions[?(@.type=='Progressing')].status"
+// +kubebuilder:printcolumn:name="DEGRADED",type=string,JSONPath=".status.conditions[?(@.type=='Degraded')].status"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 
 type NodeConfig struct {

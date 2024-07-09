@@ -18,6 +18,7 @@ spec:
         type: {{ .nodesBroadcastAddressType }}
       clients:
         type: {{ .clientsBroadcastAddressType }}
+  scyllaArgs: "--default-log-level=trace"
   datacenter:
     name: us-east-1
     racks:

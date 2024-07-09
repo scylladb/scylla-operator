@@ -140,7 +140,8 @@ const (
 
 	SingletonName = "cluster"
 
-	PerftuneJobPrefixName = "perftune"
+	PerftuneJobPrefixName      = "perftune"
+	PerftuneServiceAccountName = "perftune"
 
 	// TODO: Make sure this doesn't get out of date.
 	// TODO: Can't be bumped until scylladb/scylladb#17787 is fixed.

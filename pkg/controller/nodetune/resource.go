@@ -54,11 +54,12 @@ func makePerftuneJobForNode(controllerRef *metav1.OwnerReference, namespace, nod
 					Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
-					Tolerations:   podSpec.Tolerations,
-					NodeName:      nodeName,
-					RestartPolicy: corev1.RestartPolicyOnFailure,
-					HostPID:       true,
-					HostNetwork:   true,
+					Tolerations:        podSpec.Tolerations,
+					NodeName:           nodeName,
+					RestartPolicy:      corev1.RestartPolicyOnFailure,
+					HostPID:            true,
+					HostNetwork:        true,
+					ServiceAccountName: naming.PerftuneServiceAccountName,
 					Containers: []corev1.Container{
 						{
 							Name:            naming.PerftuneContainerName,
@@ -164,11 +165,12 @@ func makePerftuneJobForContainers(controllerRef *metav1.OwnerReference, namespac
 					Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
-					Tolerations:   podSpec.Tolerations,
-					NodeName:      nodeName,
-					RestartPolicy: corev1.RestartPolicyOnFailure,
-					HostPID:       true,
-					HostNetwork:   true,
+					Tolerations:        podSpec.Tolerations,
+					NodeName:           nodeName,
+					RestartPolicy:      corev1.RestartPolicyOnFailure,
+					HostPID:            true,
+					HostNetwork:        true,
+					ServiceAccountName: naming.PerftuneServiceAccountName,
 					Containers: []corev1.Container{
 						{
 							Name:            naming.PerftuneContainerName,

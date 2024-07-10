@@ -106,6 +106,7 @@ func (f *Framework) GetDefaultScyllaCluster() *scyllav1.ScyllaCluster {
 		"nodeServiceType":             TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
 		"nodesBroadcastAddressType":   TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
 		"clientsBroadcastAddressType": TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
+		"storageClassName":            TestContext.ScyllaClusterOptions.StorageClassName,
 	}
 
 	sc, _, err := scyllafixture.ScyllaClusterTemplate.RenderObject(renderArgs)
@@ -119,6 +120,7 @@ func (f *Framework) GetDefaultZonalScyllaClusterWithThreeRacks() *scyllav1.Scyll
 		"nodeServiceType":             TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
 		"nodesBroadcastAddressType":   TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
 		"clientsBroadcastAddressType": TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
+		"storageClassName":            TestContext.ScyllaClusterOptions.StorageClassName,
 		"rackNames":                   []string{"a", "b", "c"},
 	}
 

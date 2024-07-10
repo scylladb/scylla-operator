@@ -24,7 +24,8 @@ type IngressController struct {
 }
 
 type ScyllaClusterOptions struct {
-	ExposeOptions ExposeOptions
+	ExposeOptions    ExposeOptions
+	StorageClassName string
 }
 
 type ExposeOptions struct {

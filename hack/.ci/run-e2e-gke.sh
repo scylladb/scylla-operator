@@ -21,14 +21,13 @@ SO_NODECONFIG_PATH="${SO_NODECONFIG_PATH=./hack/.ci/manifests/cluster/nodeconfig
 export SO_NODECONFIG_PATH
 SO_CSI_DRIVER_PATH="${parent_dir}/manifests/namespaces/local-csi-driver/"
 export SO_CSI_DRIVER_PATH
+SO_SCYLLACLUSTER_STORAGECLASS_NAME="${SO_SCYLLACLUSTER_STORAGECLASS_NAME=scylladb-local-xfs}"
+export SO_SCYLLACLUSTER_STORAGECLASS_NAME
 
 # Backwards compatibility. Remove when release repo stops using SO_DISABLE_NODECONFIG.
 if [[ "${SO_DISABLE_NODECONFIG:-false}" == "true" ]]; then
   SO_NODECONFIG_PATH=""
   SO_CSI_DRIVER_PATH=""
-else
-  # Make sure there is no default storage class before we create our own.
-  unset-default-storageclass
 fi
 
 SCYLLA_OPERATOR_FEATURE_GATES="${SCYLLA_OPERATOR_FEATURE_GATES:-AllAlpha=true,AllBeta=true}"

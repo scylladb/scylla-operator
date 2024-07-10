@@ -16,6 +16,7 @@ spec:
       members: 1
       storage:
         capacity: 1Gi
+        storageClassName: scylladb-local-xfs
       resources:
         requests:
           cpu: 10m

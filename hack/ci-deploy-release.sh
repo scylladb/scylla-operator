@@ -88,8 +88,11 @@ else
   echo "Skipping CSI driver creation"
 fi
 
-mkdir "${ARTIFACTS}/manager"
-cat > "${ARTIFACTS}/manager/kustomization.yaml" << EOF
+if [[ -z "${SO_SCYLLACLUSTER_STORAGECLASS_NAME+x}" ]]; then
+  kubectl_create -n=scylla-manager -f="${source_url}/${revision}/deploy/manager-prod.yaml"
+elif [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME}" ]]; then
+  mkdir "${ARTIFACTS}/manager"
+  cat > "${ARTIFACTS}/manager/kustomization.yaml" << EOF
 resources:
 - ${source_url}/${revision}/deploy/manager-prod.yaml
 patches:
@@ -101,9 +104,26 @@ patches:
   patch: |
     - op: replace
       path: /spec/datacenter/racks/0/storage/storageClassName
-      value: scylladb-local-xfs
+      value: "${SO_SCYLLACLUSTER_STORAGECLASS_NAME}"
 EOF
-kubectl kustomize "${ARTIFACTS}/manager" | kubectl_create -n=scylla-manager -f=-
+  kubectl kustomize "${ARTIFACTS}/manager" | kubectl_create -n=scylla-manager -f=-
+else
+  mkdir "${ARTIFACTS}/manager"
+  cat > "${ARTIFACTS}/manager/kustomization.yaml" << EOF
+resources:
+- ${source_url}/${revision}/deploy/manager-prod.yaml
+patches:
+- target:
+    group: scylla.scylladb.com
+    version: v1
+    kind: ScyllaCluster
+    name: scylla-manager-cluster
+  patch: |
+    - op: remove
+      path: /spec/datacenter/racks/0/storage/storageClassName
+EOF
+  kubectl kustomize "${ARTIFACTS}/manager" | kubectl_create -n=scylla-manager -f=-
+fi
 
 kubectl -n=scylla-manager wait --timeout=5m --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
 kubectl -n=scylla-manager wait --timeout=5m --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster

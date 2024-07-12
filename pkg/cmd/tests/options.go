@@ -26,6 +26,7 @@ type ScyllaClusterOptions struct {
 	NodeServiceType             string
 	NodesBroadcastAddressType   string
 	ClientsBroadcastAddressType string
+	StorageClassName            string
 }
 
 var supportedNodeServiceTypes = []scyllav1.NodeServiceType{
@@ -63,6 +64,7 @@ func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent stri
 			NodeServiceType:             string(scyllav1.NodeServiceTypeHeadless),
 			NodesBroadcastAddressType:   string(scyllav1.BroadcastAddressTypePodIP),
 			ClientsBroadcastAddressType: string(scyllav1.BroadcastAddressTypePodIP),
+			StorageClassName:            "",
 		},
 		ObjectStorageBucket:      "",
 		GCSServiceAccountKeyPath: "",
@@ -98,6 +100,7 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 		slices.ConvertSlice(supportedBroadcastAddressTypes, slices.ToString[scyllav1.BroadcastAddressType]),
 		", ",
 	)))
+	cmd.PersistentFlags().StringVarP(&o.ScyllaClusterOptionsUntyped.StorageClassName, "scyllacluster-storageclass-name", "", o.ScyllaClusterOptionsUntyped.StorageClassName, fmt.Sprintf("Name of the StorageClass to request for ScyllaCluster storage."))
 	cmd.PersistentFlags().StringVarP(&o.ObjectStorageBucket, "object-storage-bucket", "", o.ObjectStorageBucket, "Name of the object storage bucket.")
 	cmd.PersistentFlags().StringVarP(&o.GCSServiceAccountKeyPath, "gcs-service-account-key-path", "", o.GCSServiceAccountKeyPath, "Path to a file containing a GCS service account key.")
 }
@@ -158,6 +161,7 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 			NodesBroadcastAddressType:   scyllav1.BroadcastAddressType(o.ScyllaClusterOptionsUntyped.NodesBroadcastAddressType),
 			ClientsBroadcastAddressType: scyllav1.BroadcastAddressType(o.ScyllaClusterOptionsUntyped.ClientsBroadcastAddressType),
 		},
+		StorageClassName: o.ScyllaClusterOptionsUntyped.StorageClassName,
 	}
 
 	if len(o.GCSServiceAccountKeyPath) > 0 {

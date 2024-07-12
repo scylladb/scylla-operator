@@ -64,6 +64,7 @@ racks:
   members: 3
   # Storage definition
   storage:
+    storageClassName: scylladb-local-xfs
     capacity: 10Gi
   # Scylla container resource definition
   resources:

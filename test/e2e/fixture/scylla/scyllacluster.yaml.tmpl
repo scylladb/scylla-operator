@@ -25,6 +25,9 @@ spec:
       members: 1
       storage:
         capacity: 1Gi
+        {{- if .storageClassName }}
+        storageClassName: {{ .storageClassName }}
+        {{- end }}
       resources:
         requests:
           cpu: 10m

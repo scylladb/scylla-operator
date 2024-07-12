@@ -207,7 +207,7 @@ object
      - fsType specifies the filesystem on the device.
    * - mountPoint
      - string
-     - mountPoint is a path where the device should be mounted at.
+     - mountPoint is a path where the device should be mounted at. If the mountPoint is a symlink, the mount will be set up for the target.
    * - unsupportedOptions
      - array (string)
      - unsupportedOptions is a list of mount options used during device mounting. unsupported in this field name means that we won't support all the available options passed down using this field.

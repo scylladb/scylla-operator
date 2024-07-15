@@ -33,6 +33,12 @@ fi
 
 ARTIFACTS="${ARTIFACTS:-$( mktemp -d )}"
 
+if [ -z "${ARTIFACTS_DEPLOY_DIR+x}" ]; then
+  ARTIFACTS_DEPLOY_DIR="${ARTIFACTS}/deploy"
+fi
+
+mkdir -p "${ARTIFACTS_DEPLOY_DIR}/"{operator,manager}
+
 kubectl_create -n=prometheus-operator -f="${source_url}/${revision}/examples/third-party/prometheus-operator.yaml"
 kubectl_create -n=haproxy-ingress -f="${source_url}/${revision}/examples/third-party/haproxy-ingress.yaml"
 
@@ -44,8 +50,7 @@ for d in cert-manager{,-cainjector,-webhook}; do
 done
 wait-for-object-creation cert-manager secret/cert-manager-webhook-ca
 
-mkdir "${ARTIFACTS}/operator"
-cat > "${ARTIFACTS}/operator/kustomization.yaml" << EOF
+cat > "${ARTIFACTS_DEPLOY_DIR}/operator/kustomization.yaml" << EOF
 resources:
 - ${source_url}/${revision}/deploy/operator.yaml
 patches:
@@ -65,7 +70,7 @@ patches:
             - name: SCYLLA_OPERATOR_IMAGE
               value: "${operator_image_ref}"
 EOF
-kubectl kustomize "${ARTIFACTS}/operator" | kubectl_create -n=scylla-operator -f=-
+kubectl kustomize "${ARTIFACTS_DEPLOY_DIR}/operator" | kubectl_create -n=scylla-operator -f=-
 
 # Manager needs scylla CRD registered and the webhook running
 kubectl wait --for condition=established crd/{scyllaclusters,nodeconfigs}.scylla.scylladb.com
@@ -91,8 +96,7 @@ fi
 if [[ -z "${SO_SCYLLACLUSTER_STORAGECLASS_NAME+x}" ]]; then
   kubectl_create -n=scylla-manager -f="${source_url}/${revision}/deploy/manager-prod.yaml"
 elif [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME}" ]]; then
-  mkdir "${ARTIFACTS}/manager"
-  cat > "${ARTIFACTS}/manager/kustomization.yaml" << EOF
+  cat > "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" << EOF
 resources:
 - ${source_url}/${revision}/deploy/manager-prod.yaml
 patches:
@@ -106,10 +110,9 @@ patches:
       path: /spec/datacenter/racks/0/storage/storageClassName
       value: "${SO_SCYLLACLUSTER_STORAGECLASS_NAME}"
 EOF
-  kubectl kustomize "${ARTIFACTS}/manager" | kubectl_create -n=scylla-manager -f=-
+  kubectl kustomize "${ARTIFACTS_DEPLOY_DIR}/manager" | kubectl_create -n=scylla-manager -f=-
 else
-  mkdir "${ARTIFACTS}/manager"
-  cat > "${ARTIFACTS}/manager/kustomization.yaml" << EOF
+  cat > "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" << EOF
 resources:
 - ${source_url}/${revision}/deploy/manager-prod.yaml
 patches:
@@ -122,7 +125,7 @@ patches:
     - op: remove
       path: /spec/datacenter/racks/0/storage/storageClassName
 EOF
-  kubectl kustomize "${ARTIFACTS}/manager" | kubectl_create -n=scylla-manager -f=-
+  kubectl kustomize "${ARTIFACTS_DEPLOY_DIR}/manager" | kubectl_create -n=scylla-manager -f=-
 fi
 
 kubectl -n=scylla-manager wait --timeout=5m --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster

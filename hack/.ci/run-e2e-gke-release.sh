@@ -27,7 +27,7 @@ SCYLLA_OPERATOR_FEATURE_GATES="${SCYLLA_OPERATOR_FEATURE_GATES:-AllAlpha=true,Al
 export SCYLLA_OPERATOR_FEATURE_GATES
 
 for i in "${!KUBECONFIGS[@]}"; do
-  KUBECONFIG="${KUBECONFIGS[$i]}" timeout --foreground -v 10m "${parent_dir}/../ci-deploy-release.sh" "${SO_IMAGE}" &
+  KUBECONFIG="${KUBECONFIGS[$i]}" ARTIFACTS_DEPLOY_DIR="${ARTIFACTS}/deploy/${i}" timeout --foreground -v 10m "${parent_dir}/../ci-deploy-release.sh" "${SO_IMAGE}" &
   ci_deploy_bg_pids["${i}"]=$!
 done
 

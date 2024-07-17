@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
@@ -15,14 +15,14 @@ import (
 
 func (scc *Controller) syncIngresses(
 	ctx context.Context,
-	sc *scyllav1.ScyllaCluster,
+	sdc *scyllav1alpha1.ScyllaDBDatacenter,
 	ingresses map[string]*networkingv1.Ingress,
 	services map[string]*corev1.Service,
 ) ([]metav1.Condition, error) {
 	var err error
 	var progressingConditions []metav1.Condition
 
-	requiredIngresses := MakeIngresses(sc, services)
+	requiredIngresses := MakeIngresses(sdc, services)
 
 	// Delete any excessive Ingresses.
 	// Delete has to be the fist action to avoid getting stuck on quota.
@@ -43,7 +43,7 @@ func (scc *Controller) syncIngresses(
 		}
 
 		propagationPolicy := metav1.DeletePropagationBackground
-		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, ingressControllerProgressingCondition, ingress, "delete", sc.Generation)
+		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, ingressControllerProgressingCondition, ingress, "delete", sdc.Generation)
 		err = scc.kubeClient.NetworkingV1().Ingresses(ingress.Namespace).Delete(ctx, ingress.Name, metav1.DeleteOptions{
 			Preconditions: &metav1.Preconditions{
 				UID: &ingress.UID,
@@ -60,7 +60,7 @@ func (scc *Controller) syncIngresses(
 	for _, requiredIngress := range requiredIngresses {
 		_, changed, err := resourceapply.ApplyIngress(ctx, scc.kubeClient.NetworkingV1(), scc.ingressLister, scc.eventRecorder, requiredIngress, resourceapply.ApplyOptions{})
 		if changed {
-			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, ingressControllerProgressingCondition, requiredIngress, "apply", sc.Generation)
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, ingressControllerProgressingCondition, requiredIngress, "apply", sdc.Generation)
 		}
 		if err != nil {
 			return progressingConditions, fmt.Errorf("can't apply ingress: %w", err)

@@ -4,36 +4,34 @@ import (
 	"context"
 	"fmt"
 
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
 
-func (scc *Controller) updateStatus(ctx context.Context, currentSC *scyllav1.ScyllaCluster, status *scyllav1.ScyllaClusterStatus) error {
+func (scc *Controller) updateStatus(ctx context.Context, currentSC *scyllav1alpha1.ScyllaDBDatacenter, status *scyllav1alpha1.ScyllaDBDatacenterStatus) error {
 	if apiequality.Semantic.DeepEqual(&currentSC.Status, status) {
 		return nil
 	}
 
-	sc := currentSC.DeepCopy()
-	sc.Status = *status
+	sdc := currentSC.DeepCopy()
+	sdc.Status = *status
 
 	// Make sure that any "live" updates to the status are always manifested in the aggregated fields.
-	updateAggregatedStatusFields(&sc.Status)
+	updateAggregatedStatusFields(&sdc.Status)
 
-	klog.V(2).InfoS("Updating status", "ScyllaCluster", klog.KObj(sc))
+	klog.V(2).InfoS("Updating status", "ScyllaDBDatacenter", klog.KObj(sdc))
 
-	_, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).UpdateStatus(ctx, sc, metav1.UpdateOptions{})
+	_, err := scc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).UpdateStatus(ctx, sdc, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
 
-	klog.V(2).InfoS("Status updated", "ScyllaCluster", klog.KObj(sc))
+	klog.V(2).InfoS("Status updated", "ScyllaDBDatacenter", klog.KObj(sdc))
 
 	return nil
 }
@@ -60,103 +58,106 @@ func (scc *Controller) getScyllaVersion(sts *appsv1.StatefulSet) (string, error)
 
 // calculateRackStatus calculates a status for the rack.
 // sts and old status may be nil.
-func (scc *Controller) calculateRackStatus(sc *scyllav1.ScyllaCluster, rackName string, sts *appsv1.StatefulSet, oldRackStatus *scyllav1.RackStatus, serviceMap map[string]*corev1.Service) *scyllav1.RackStatus {
-	status := &scyllav1.RackStatus{
-		ReplaceAddressFirstBoot: map[string]string{},
-		Members:                 0,
-		ReadyMembers:            0,
-		AvailableMembers:        pointer.Ptr(int32(0)),
-		UpdatedMembers:          pointer.Ptr(int32(0)),
-		Stale:                   pointer.Ptr(true),
-	}
-
-	// Persist ReplaceAddressFirstBoot.
-	if oldRackStatus != nil && oldRackStatus.ReplaceAddressFirstBoot != nil {
-		status.ReplaceAddressFirstBoot = oldRackStatus.DeepCopy().ReplaceAddressFirstBoot
+func (scc *Controller) calculateRackStatus(sdc *scyllav1alpha1.ScyllaDBDatacenter, sts *appsv1.StatefulSet) *scyllav1alpha1.RackStatus {
+	status := &scyllav1alpha1.RackStatus{
+		Nodes:          pointer.Ptr(int32(0)),
+		CurrentNodes:   pointer.Ptr(int32(0)),
+		UpdatedNodes:   pointer.Ptr(int32(0)),
+		ReadyNodes:     pointer.Ptr(int32(0)),
+		AvailableNodes: pointer.Ptr(int32(0)),
+		Stale:          pointer.Ptr(true),
 	}
 
 	if sts == nil {
 		return status
 	}
 
-	status.Members = *sts.Spec.Replicas
-	status.ReadyMembers = sts.Status.ReadyReplicas
-	status.AvailableMembers = pointer.Ptr(sts.Status.AvailableReplicas)
-	status.UpdatedMembers = pointer.Ptr(sts.Status.UpdatedReplicas)
+	status.Name = sts.Labels[naming.RackNameLabel]
+	status.Nodes = pointer.Ptr(*sts.Spec.Replicas)
+	status.ReadyNodes = pointer.Ptr(sts.Status.ReadyReplicas)
+	status.AvailableNodes = pointer.Ptr(sts.Status.AvailableReplicas)
+	status.UpdatedNodes = pointer.Ptr(sts.Status.UpdatedReplicas)
+	status.CurrentNodes = pointer.Ptr(sts.Status.CurrentReplicas)
 	status.Stale = pointer.Ptr(sts.Status.ObservedGeneration < sts.Generation)
 
+	scyllaDBImageVersion, err := naming.ImageToVersion(sdc.Spec.ScyllaDB.Image)
+	if err != nil {
+		klog.ErrorS(err, "can't get version of image", "Image", sdc.Spec.ScyllaDB.Image)
+	}
+
+	status.UpdatedVersion = scyllaDBImageVersion
+
 	// Update Rack Version
-	if status.Members == 0 {
-		status.Version = sc.Spec.Version
+	if status.Nodes != nil && *status.Nodes == 0 {
+		status.CurrentVersion = scyllaDBImageVersion
 	} else {
 		version, err := scc.getScyllaVersion(sts)
 		if err != nil {
-			status.Version = ""
-			klog.ErrorS(err, "Can't get scylla version", "ScyllaCluster", klog.KObj(sc))
+			klog.ErrorS(err, "can't get scylla version")
 		} else {
-			status.Version = version
+			status.CurrentVersion = version
 		}
 	}
 
-	// Update Upgrading condition
-	desiredRackVersion := sc.Spec.Version
-	actualRackVersion := status.Version
-	if desiredRackVersion != actualRackVersion {
-		controllerhelpers.SetRackCondition(status, scyllav1.RackConditionTypeUpgrading)
-	}
+	// TODO: Add this to migrating controller
+	// // Update Upgrading condition
+	// desiredRackVersion := scyllaDBImageVersion
+	// actualRackVersion := status.CurrentVersion
+	// if desiredRackVersion != actualRackVersion {
+	// 	controllerhelpers.SetRackCondition(status, scyllav1.RackConditionTypeUpgrading)
+	// }
 
+	// TODO: Add this to migrating controller
 	// Update Scaling Down condition
-	for _, svc := range serviceMap {
-		// Check if there is a decommission in progress
-		if _, ok := svc.Labels[naming.DecommissionedLabel]; ok {
-			// Add MemberLeaving Condition to rack status
-			controllerhelpers.SetRackCondition(status, scyllav1.RackConditionTypeMemberLeaving)
-			// Sanity check. Only the last member should be decommissioning.
-			index, err := naming.IndexFromName(svc.Name)
-			if err != nil {
-				klog.ErrorS(err, "Can't determine service index from its name", "Service", klog.KObj(svc))
-				continue
-			}
-			if index != status.Members-1 {
-				klog.Errorf("only last member of each rack should be decommissioning, but %d-th member of %s found decommissioning while rack had %d members", index, rackName, status.Members)
-				continue
-			}
-		}
-	}
+	// for _, svc := range serviceMap {
+	// 	// Check if there is a decommission in progress
+	// 	if _, ok := svc.Labels[naming.DecommissionedLabel]; ok {
+	// 		// Add MemberLeaving Condition to rack status
+	// 		controllerhelpers.SetRackCondition(status, scyllav1.RackConditionTypeMemberLeaving)
+	// 		// Sanity check. Only the last member should be decommissioning.
+	// 		index, err := naming.IndexFromName(svc.Name)
+	// 		if err != nil {
+	// 			klog.ErrorS(err, "Can't determine service index from its name", "Service", klog.KObj(svc))
+	// 			continue
+	// 		}
+	// 		if index != status.Members-1 {
+	// 			klog.Errorf("only last member of each rack should be decommissioning, but %d-th member of %s found decommissioning while rack had %d members", index, rackName, status.Members)
+	// 			continue
+	// 		}
+	// 	}
+	// }
 
 	return status
 }
 
-func updateAggregatedStatusFields(status *scyllav1.ScyllaClusterStatus) {
-	status.Members = pointer.Ptr(int32(0))
-	status.ReadyMembers = pointer.Ptr(int32(0))
-	status.AvailableMembers = pointer.Ptr(int32(0))
-	status.RackCount = pointer.Ptr(int32(len(status.Racks)))
+func updateAggregatedStatusFields(status *scyllav1alpha1.ScyllaDBDatacenterStatus) {
+	status.Nodes = pointer.Ptr(int32(0))
+	status.ReadyNodes = pointer.Ptr(int32(0))
+	status.AvailableNodes = pointer.Ptr(int32(0))
 
 	for rackName := range status.Racks {
 		rackStatus := status.Racks[rackName]
 
-		*status.Members += rackStatus.Members
-		*status.ReadyMembers += rackStatus.ReadyMembers
-		*status.AvailableMembers += *rackStatus.AvailableMembers
+		*status.Nodes += *rackStatus.Nodes
+		*status.ReadyNodes += *rackStatus.ReadyNodes
+		*status.AvailableNodes += *rackStatus.AvailableNodes
 	}
 }
 
 // calculateStatus calculates the ScyllaCluster status.
 // This function should always succeed. Do not return an error.
 // If a particular object can be missing, it should be reflected in the value itself, like "Unknown" or "".
-func (scc *Controller) calculateStatus(sc *scyllav1.ScyllaCluster, statefulSetMap map[string]*appsv1.StatefulSet, serviceMap map[string]*corev1.Service) *scyllav1.ScyllaClusterStatus {
-	status := sc.Status.DeepCopy()
-	status.ObservedGeneration = pointer.Ptr(sc.Generation)
+func (scc *Controller) calculateStatus(sdc *scyllav1alpha1.ScyllaDBDatacenter, statefulSetMap map[string]*appsv1.StatefulSet) *scyllav1alpha1.ScyllaDBDatacenterStatus {
+	status := sdc.Status.DeepCopy()
+	status.ObservedGeneration = pointer.Ptr(sdc.Generation)
 
 	// Clear the previous rack status.
-	status.Racks = map[string]scyllav1.RackStatus{}
+	status.Racks = []scyllav1alpha1.RackStatus{}
 
 	// Calculate the status for racks.
-	for _, rack := range sc.Spec.Datacenter.Racks {
-		stsName := naming.StatefulSetNameForRack(rack, sc)
-		oldRackStatus := sc.Status.Racks[rack.Name]
-		status.Racks[rack.Name] = *scc.calculateRackStatus(sc, rack.Name, statefulSetMap[stsName], &oldRackStatus, serviceMap)
+	for _, rack := range sdc.Spec.Racks {
+		stsName := naming.StatefulSetNameForRack(rack, sdc)
+		status.Racks = append(status.Racks, *scc.calculateRackStatus(sdc, statefulSetMap[stsName]))
 	}
 
 	updateAggregatedStatusFields(status)

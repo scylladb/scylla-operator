@@ -271,7 +271,7 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
 		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		hosts, _, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
@@ -281,7 +281,7 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 		defer di.Close()
 
 		framework.By("Simulating a PV on node that's gone")
-		stsName := naming.StatefulSetNameForRack(sc.Spec.Datacenter.Racks[0], sc)
+		stsName := naming.StatefulSetNameForRackForScyllaCluster(sc.Spec.Datacenter.Racks[0], sc)
 		podName := fmt.Sprintf("%s-%d", stsName, sc.Spec.Datacenter.Racks[0].Members-1)
 		pvcName := naming.PVCNameForPod(podName)
 
@@ -349,7 +349,7 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx4, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
 		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		hosts, err = utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)

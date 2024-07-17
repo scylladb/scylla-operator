@@ -9,7 +9,7 @@ import (
 
 // ScyllaDBDatacenterSpec defines the desired state of ScyllaDBDatacenter.
 type ScyllaDBDatacenterSpec struct {
-	// metadata controls shared metadata for all pods created based on this spec.
+	// metadata controls shared metadata for all resources created based on this spec.
 	// +optional
 	Metadata ObjectTemplateMetadata `json:"metadata,omitempty"`
 
@@ -26,7 +26,7 @@ type ScyllaDBDatacenterSpec struct {
 	// scyllaDB holds a specification of ScyllaDB.
 	ScyllaDB ScyllaDB `json:"scyllaDB"`
 
-	// scyllaManagerAgent holds a specification of ScyllaDB Manager Agent.
+	// scyllaDBManagerAgent holds a specification of ScyllaDB Manager Agent.
 	// +optional
 	ScyllaDBManagerAgent *ScyllaDBManagerAgent `json:"scyllaDBManagerAgent,omitempty"`
 
@@ -48,7 +48,7 @@ type ScyllaDBDatacenterSpec struct {
 	// +optional
 	ForceRedeploymentReason string `json:"forceRedeploymentReason,omitempty"`
 
-	// exposeOptions specifies parameters related to exposing ScyllaCluster backends.
+	// exposeOptions specifies parameters related to exposing ScyllaDBCluster backends.
 	// +optional
 	ExposeOptions *ExposeOptions `json:"exposeOptions,omitempty"`
 
@@ -110,14 +110,17 @@ type RackTemplate struct {
 	// topologyLabelSelector specifies a label selector which will be used to target nodes at specified topology constraints.
 	// Datacenter topologyLabelSelector is merged with rack topologyLabelSelector and then converted into nodeAffinity
 	// targeting nodes having specified topology.
-	TopologyLabelSelector *metav1.LabelSelector `json:"topologyLabelSelector,omitempty"`
+	// +optional
+	TopologyLabelSelector map[string]string `json:"topologyLabelSelector,omitempty"`
 
 	// scyllaDB defined ScyllaDB properties for this rack.
 	// These override the settings set on Datacenter level.
+	// +optional
 	ScyllaDB *ScyllaDBTemplate `json:"scyllaDB"`
 
 	// scyllaDBManagerAgent specifies ScyllaDB Manager Agent properties for this rack.
 	// These override the settings set on Datacenter level.
+	// +optional
 	ScyllaDBManagerAgent *ScyllaDBManagerAgentTemplate `json:"scyllaDBManagerAgent"`
 }
 
@@ -141,10 +144,11 @@ type ScyllaDBTemplate struct {
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
 
 	// volumeMounts to be added to ScyllaDB container.
+	// +optional
 	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
 }
 
-// ScyllaDBManagerAgentTemplate allows to override a subset of ScyllaManagerAgent settings.
+// ScyllaDBManagerAgentTemplate allows to override a subset of ScyllaDBManagerAgent settings.
 type ScyllaDBManagerAgentTemplate struct {
 	// resources are requirements for the ScyllaDB Manager Agent container.
 	// +optional
@@ -363,7 +367,7 @@ type NodeServiceTemplate struct {
 	InternalTrafficPolicy *corev1.ServiceInternalTrafficPolicy `json:"internalTrafficPolicy,omitempty"`
 }
 
-// ExposeOptions hold options related to exposing ScyllaCluster backends.
+// ExposeOptions hold options related to exposing ScyllaDBCluster backends.
 type ExposeOptions struct {
 	// cql specifies expose options for CQL SSL backend.
 	// +optional
@@ -440,6 +444,10 @@ type RackStatus struct {
 	// +optional
 	ReadyNodes *int32 `json:"readyNodes,omitempty"`
 
+	// availableNodes is the total number of available nodes in rack.
+	// +optional
+	AvailableNodes *int32 `json:"availableNodes,omitempty"`
+
 	// stale indicates if the current rack status is collected for a previous generation.
 	// stale should eventually become false when the appropriate controller writes a fresh status.
 	// +optional
@@ -480,6 +488,10 @@ type ScyllaDBDatacenterStatus struct {
 	// +optional
 	ReadyNodes *int32 `json:"readyNodes,omitempty"`
 
+	// availableNodes is the total number of available nodes in datacenter.
+	// +optional
+	AvailableNodes *int32 `json:"availableNodes,omitempty"`
+
 	// racks reflect the status of datacenter racks.
 	Racks []RackStatus `json:"racks"`
 }
@@ -504,4 +516,13 @@ type ScyllaDBDatacenter struct {
 
 	// status is the current status of this ScyllaDBDatacenter.
 	Status ScyllaDBDatacenterStatus `json:"status,omitempty"`
+}
+
+// +kubebuilder:object:root=true
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type ScyllaDBDatacenterList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []ScyllaDBDatacenter `json:"items"`
 }

@@ -92,7 +92,7 @@ object
      - dnsPolicy defines how a pod's DNS will be configured.
    * - :ref:`exposeOptions<api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.spec.exposeOptions>`
      - object
-     - exposeOptions specifies parameters related to exposing ScyllaCluster backends.
+     - exposeOptions specifies parameters related to exposing ScyllaDBCluster backends.
    * - forceRedeploymentReason
      - string
      - forceRedeploymentReason can be used to force a rolling restart of all racks in this DC by providing a unique string.
@@ -101,7 +101,7 @@ object
      - imagePullSecrets is an optional list of references to secrets in the same namespace used for pulling any images used by this spec.
    * - :ref:`metadata<api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.spec.metadata>`
      - object
-     - metadata controls shared metadata for all pods created based on this spec.
+     - metadata controls shared metadata for all resources created based on this spec.
    * - minReadySeconds
      - integer
      - minReadySeconds is the minimum number of seconds for which a newly created ScyllaDB node should be ready for it to be considered available. When used to control load balanced traffic, this can give the load balancer in front of a node enough time to notice that the node is ready and start forwarding traffic in time. Because it all depends on timing, the order is not guaranteed and, if possible, you should use readinessGates instead. If not provided, Operator will determine this value.
@@ -122,7 +122,7 @@ object
      - scyllaDB holds a specification of ScyllaDB.
    * - :ref:`scyllaDBManagerAgent<api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.spec.scyllaDBManagerAgent>`
      - object
-     - scyllaManagerAgent holds a specification of ScyllaDB Manager Agent.
+     - scyllaDBManagerAgent holds a specification of ScyllaDB Manager Agent.
 
 .. _api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.spec.exposeOptions:
 
@@ -131,7 +131,7 @@ object
 
 Description
 """""""""""
-exposeOptions specifies parameters related to exposing ScyllaCluster backends.
+exposeOptions specifies parameters related to exposing ScyllaDBCluster backends.
 
 Type
 """"
@@ -476,7 +476,7 @@ object
 
 Description
 """""""""""
-metadata controls shared metadata for all pods created based on this spec.
+metadata controls shared metadata for all resources created based on this spec.
 
 Type
 """"
@@ -6616,65 +6616,6 @@ Type
 object
 
 
-.. list-table::
-   :widths: 25 10 150
-   :header-rows: 1
-
-   * - Property
-     - Type
-     - Description
-   * - :ref:`matchExpressions<api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.spec.rackTemplate.topologyLabelSelector.matchExpressions[]>`
-     - array (object)
-     - matchExpressions is a list of label selector requirements. The requirements are ANDed.
-   * - :ref:`matchLabels<api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.spec.rackTemplate.topologyLabelSelector.matchLabels>`
-     - object
-     - matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
-
-.. _api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.spec.rackTemplate.topologyLabelSelector.matchExpressions[]:
-
-.spec.rackTemplate.topologyLabelSelector.matchExpressions[]
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Description
-"""""""""""
-A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
-
-Type
-""""
-object
-
-
-.. list-table::
-   :widths: 25 10 150
-   :header-rows: 1
-
-   * - Property
-     - Type
-     - Description
-   * - key
-     - string
-     - key is the label key that the selector applies to.
-   * - operator
-     - string
-     - operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
-   * - values
-     - array (string)
-     - values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
-
-.. _api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.spec.rackTemplate.topologyLabelSelector.matchLabels:
-
-.spec.rackTemplate.topologyLabelSelector.matchLabels
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Description
-"""""""""""
-matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
-
-Type
-""""
-object
-
-
 .. _api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.spec.racks[]:
 
 .spec.racks[]
@@ -12769,65 +12710,6 @@ Type
 object
 
 
-.. list-table::
-   :widths: 25 10 150
-   :header-rows: 1
-
-   * - Property
-     - Type
-     - Description
-   * - :ref:`matchExpressions<api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.spec.racks[].topologyLabelSelector.matchExpressions[]>`
-     - array (object)
-     - matchExpressions is a list of label selector requirements. The requirements are ANDed.
-   * - :ref:`matchLabels<api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.spec.racks[].topologyLabelSelector.matchLabels>`
-     - object
-     - matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
-
-.. _api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.spec.racks[].topologyLabelSelector.matchExpressions[]:
-
-.spec.racks[].topologyLabelSelector.matchExpressions[]
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Description
-"""""""""""
-A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
-
-Type
-""""
-object
-
-
-.. list-table::
-   :widths: 25 10 150
-   :header-rows: 1
-
-   * - Property
-     - Type
-     - Description
-   * - key
-     - string
-     - key is the label key that the selector applies to.
-   * - operator
-     - string
-     - operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
-   * - values
-     - array (string)
-     - values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
-
-.. _api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.spec.racks[].topologyLabelSelector.matchLabels:
-
-.spec.racks[].topologyLabelSelector.matchLabels
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Description
-"""""""""""
-matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
-
-Type
-""""
-object
-
-
 .. _api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.spec.readinessGates[]:
 
 .spec.readinessGates[]
@@ -15458,7 +15340,7 @@ object
 
 Description
 """""""""""
-scyllaManagerAgent holds a specification of ScyllaDB Manager Agent.
+scyllaDBManagerAgent holds a specification of ScyllaDB Manager Agent.
 
 Type
 """"
@@ -17856,6 +17738,9 @@ object
    * - Property
      - Type
      - Description
+   * - availableNodes
+     - integer
+     - availableNodes is the total number of available nodes in datacenter.
    * - :ref:`conditions<api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.status.conditions[]>`
      - array (object)
      - conditions hold conditions describing ScyllaDBDatacenter state. To determine whether a cluster rollout is finished, look for Available=True,Progressing=False,Degraded=False.
@@ -17947,6 +17832,9 @@ object
    * - Property
      - Type
      - Description
+   * - availableNodes
+     - integer
+     - availableNodes is the total number of available nodes in rack.
    * - currentNodes
      - integer
      - nodes is the total number of nodes created in rack.

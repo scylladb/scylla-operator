@@ -15,7 +15,7 @@ import (
 )
 
 func (c *Controller) getAuthToken(sc *scyllav1.ScyllaCluster) (string, error) {
-	secretName := naming.AgentAuthTokenSecretName(sc.Name)
+	secretName := naming.AgentAuthTokenSecretNameForScyllaCluster(sc)
 	secret, err := c.secretLister.Secrets(sc.Namespace).Get(secretName)
 	if err != nil {
 		return "", fmt.Errorf("can't get manager agent auth secret %s/%s: %w", sc.Namespace, secretName, err)

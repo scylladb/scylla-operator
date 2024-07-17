@@ -23,17 +23,16 @@ data:
       require_client_auth: true
       truststore: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/client-ca/tls.crt"
     {{- end }}
-
-    {{- with .Spec.Alternator }}
-    alternator_write_isolation: {{ or .WriteIsolation "always_use_lwt" }}
-      {{- if or ( isTrue .InsecureDisableAuthorization ) ( and .Port ( not .InsecureDisableAuthorization ) ) }}
+    {{- if .Spec.ScyllaDB.AlternatorOptions }}
+    alternator_write_isolation: {{ or .Spec.ScyllaDB.AlternatorOptions.WriteIsolation "always_use_lwt" }}
+      {{- if or ( isTrue .AlternatorInsecureDisableAuthorization ) ( and .AlternatorPort ( not .AlternatorInsecureDisableAuthorization ) ) }}
     alternator_enforce_authorization: false
       {{- else }}
     alternator_enforce_authorization: true
       {{- end }}
-      {{- if .Port }}
-    alternator_port: {{ .Port }}
-      {{- else if isTrue .InsecureEnableHTTP }}
+      {{- if .AlternatorPort }}
+    alternator_port: {{ .AlternatorPort }}
+      {{- else if isTrue .AlternatorInsecureEnableHTTP }}
     alternator_port: 8000
       {{- end }}
     alternator_https_port: 8043

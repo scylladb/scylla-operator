@@ -57,7 +57,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
 
 		framework.By("Validating no cleanup jobs were created")
 		jobEvents, err := jobObserver.Stop()
@@ -88,7 +88,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
 
 		framework.By("Validating cleanup jobs were created for all nodes except last one")
 		jobEvents, err = jobObserver.Stop()
@@ -114,8 +114,8 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 		o.Expect(cleanupJobsCreated).To(o.HaveLen(2))
 		o.Expect(cleanupJobsCreated).To(o.ConsistOf(
-			o.Satisfy(nodeJobMatcher(naming.MemberServiceName(sc.Spec.Datacenter.Racks[0], sc, 0))),
-			o.Satisfy(nodeJobMatcher(naming.MemberServiceName(sc.Spec.Datacenter.Racks[0], sc, 1))),
+			o.Satisfy(nodeJobMatcher(naming.MemberServiceNameForScyllaCluster(sc.Spec.Datacenter.Racks[0], sc, 0))),
+			o.Satisfy(nodeJobMatcher(naming.MemberServiceNameForScyllaCluster(sc.Spec.Datacenter.Racks[0], sc, 1))),
 		))
 
 		framework.By("Scaling down the ScyllaCluster to 2 replicas")
@@ -141,7 +141,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx3, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
 
 		tokenRingHash, err = utils.GetCurrentTokenRingHash(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -161,8 +161,8 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 		o.Expect(cleanupJobsCreated).To(o.HaveLen(2))
 		o.Expect(cleanupJobsCreated).To(o.ConsistOf(
-			o.Satisfy(nodeJobMatcher(naming.MemberServiceName(sc.Spec.Datacenter.Racks[0], sc, 0))),
-			o.Satisfy(nodeJobMatcher(naming.MemberServiceName(sc.Spec.Datacenter.Racks[0], sc, 1))),
+			o.Satisfy(nodeJobMatcher(naming.MemberServiceNameForScyllaCluster(sc.Spec.Datacenter.Racks[0], sc, 0))),
+			o.Satisfy(nodeJobMatcher(naming.MemberServiceNameForScyllaCluster(sc.Spec.Datacenter.Racks[0], sc, 1))),
 		))
 	})
 })

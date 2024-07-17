@@ -62,7 +62,7 @@ spec:
                   description: dnsPolicy defines how a pod's DNS will be configured.
                   type: string
                 exposeOptions:
-                  description: exposeOptions specifies parameters related to exposing ScyllaCluster backends.
+                  description: exposeOptions specifies parameters related to exposing ScyllaDBCluster backends.
                   properties:
                     broadcastOptions:
                       description: BroadcastOptions defines how ScyllaDB node publishes its IP address to other nodes and clients.
@@ -172,7 +172,7 @@ spec:
                     x-kubernetes-map-type: atomic
                   type: array
                 metadata:
-                  description: metadata controls shared metadata for all pods created based on this spec.
+                  description: metadata controls shared metadata for all resources created based on this spec.
                   properties:
                     annotations:
                       additionalProperties:
@@ -2888,36 +2888,10 @@ spec:
                           type: array
                       type: object
                     topologyLabelSelector:
+                      additionalProperties:
+                        type: string
                       description: topologyLabelSelector specifies a label selector which will be used to target nodes at specified topology constraints. Datacenter topologyLabelSelector is merged with rack topologyLabelSelector and then converted into nodeAffinity targeting nodes having specified topology.
-                      properties:
-                        matchExpressions:
-                          description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
-                          items:
-                            description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
-                            properties:
-                              key:
-                                description: key is the label key that the selector applies to.
-                                type: string
-                              operator:
-                                description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
-                                type: string
-                              values:
-                                description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
-                                items:
-                                  type: string
-                                type: array
-                            required:
-                              - key
-                              - operator
-                            type: object
-                          type: array
-                        matchLabels:
-                          additionalProperties:
-                            type: string
-                          description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
-                          type: object
                       type: object
-                      x-kubernetes-map-type: atomic
                   type: object
                 racks:
                   description: racks specify the racks in the datacenter.
@@ -5619,36 +5593,10 @@ spec:
                             type: array
                         type: object
                       topologyLabelSelector:
+                        additionalProperties:
+                          type: string
                         description: topologyLabelSelector specifies a label selector which will be used to target nodes at specified topology constraints. Datacenter topologyLabelSelector is merged with rack topologyLabelSelector and then converted into nodeAffinity targeting nodes having specified topology.
-                        properties:
-                          matchExpressions:
-                            description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
-                            items:
-                              description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
-                              properties:
-                                key:
-                                  description: key is the label key that the selector applies to.
-                                  type: string
-                                operator:
-                                  description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
-                                  type: string
-                                values:
-                                  description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
-                                  items:
-                                    type: string
-                                  type: array
-                              required:
-                                - key
-                                - operator
-                              type: object
-                            type: array
-                          matchLabels:
-                            additionalProperties:
-                              type: string
-                            description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
-                            type: object
                         type: object
-                        x-kubernetes-map-type: atomic
                     type: object
                   type: array
                 readinessGates:
@@ -6804,7 +6752,7 @@ spec:
                       type: array
                   type: object
                 scyllaDBManagerAgent:
-                  description: scyllaManagerAgent holds a specification of ScyllaDB Manager Agent.
+                  description: scyllaDBManagerAgent holds a specification of ScyllaDB Manager Agent.
                   properties:
                     customConfigSecretRef:
                       description: customConfigSecretRef points to custom ScyllaDB Manager Agent configuration stored as Secret.
@@ -7870,6 +7818,10 @@ spec:
             status:
               description: status is the current status of this ScyllaDBDatacenter.
               properties:
+                availableNodes:
+                  description: availableNodes is the total number of available nodes in datacenter.
+                  format: int32
+                  type: integer
                 conditions:
                   description: conditions hold conditions describing ScyllaDBDatacenter state. To determine whether a cluster rollout is finished, look for Available=True,Progressing=False,Degraded=False.
                   items:
@@ -7934,6 +7886,10 @@ spec:
                   items:
                     description: RackStatus is the status of a Scylla Rack
                     properties:
+                      availableNodes:
+                        description: availableNodes is the total number of available nodes in rack.
+                        format: int32
+                        type: integer
                       currentNodes:
                         description: nodes is the total number of nodes created in rack.
                         format: int32

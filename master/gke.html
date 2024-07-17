@@ -1,0 +1,799 @@
+
+
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+    
+    
+
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width initial-scale=1" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <title>
+             Deploying Scylla on GKE | ScyllaDB Docs 
+        </title>
+        <meta name="description" content="ScyllaDB is an Apache Cassandra-compatible NoSQL data store that can handle 1 million transactions per second on a single server." />
+        <link rel="icon" href="_static/img/favicon.ico" type="image/x-icon" />
+        <link rel="icon" href="_static/img/favicon-32x32.png" sizes="32x32" />
+        <link rel="icon" href="_static/img/favicon-228x228.png" sizes="192x192" />
+        <link rel="apple-touch-icon" href="_static/img/favicon-228x228.png" />
+        <meta name="msapplication-TileImage" href="_static/img/favicon-228x228.png" />
+
+        
+            
+            
+        
+
+        
+            
+            <link rel="canonical" href="https://operator.docs.scylladb.com/stable/gke.html"/>
+        
+
+        <link rel="author" href="mailto:info@scylladb.com" />
+
+        
+            
+        <!-- increase expertrec loading priority-->
+        <link rel="dns-prefetch" href="https://cse.expertrec.com">
+
+        <!-- increase font loading priority -->
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link rel="preload" as="style"
+              href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+
+        <!-- async CSS -->
+        <link rel="stylesheet" media="print" onload="this.onload=null;this.removeAttribute('media');"
+              href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+
+        <!-- no-JS fallback -->
+        <noscript>
+            <link rel="stylesheet"
+                  href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+        </noscript>
+        
+            
+                <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b76e3c8a" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="_static/css/main.css?v=60de4c37" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="_static/sphinx_collapse.css?v=226d88b4" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
+            
+        
+    
+        
+        
+            
+        <script type="text/javascript" src="_static/js/runtime.bundle.js"></script>
+        <script type="text/javascript" src="_static/js/main.bundle.js"></script>
+        
+            
+                <script src="_static/documentation_options.js?v=5929fcd5"></script>
+            
+        
+            
+                <script src="_static/doctools.js?v=888ff710"></script>
+            
+        
+            
+                <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+            
+        
+            
+                <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+            
+        
+            
+                <script src="_static/copybutton.js?v=f281be69"></script>
+            
+        
+            
+                <script src="_static/design-tabs.js?v=36754332"></script>
+            
+        
+    
+            
+                <!-- Local meta tags -->
+            
+            
+                <!-- Google Tag Manager global -->
+<script>
+    (function (w, d, s, l, i) {
+        w[l] = w[l] || [];
+        w[l].push({
+            "gtm.start": new Date().getTime(),
+            event: "gtm.js"
+        });
+        var f = d.getElementsByTagName(s)[0],
+            j = d.createElement(s),
+            dl = l != "dataLayer" ? "&l=" + l : "";
+        j.async = true;
+        j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
+        f.parentNode.insertBefore(j, f);
+    })(window, document, "script", "dataLayer", "GTM-T8P2JP");
+</script>
+<!-- End Google Tag Manager -->
+
+<!-- Google Tag Manager docs -->
+<script>
+    (function (w, d, s, l, i) {
+        w[l] = w[l] || [];
+        w[l].push({
+            "gtm.start": new Date().getTime(),
+            event: "gtm.js"
+        });
+        var f = d.getElementsByTagName(s)[0],
+            j = d.createElement(s),
+            dl = l != "dataLayer" ? "&l=" + l : "";
+        j.async = true;
+        j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
+        f.parentNode.insertBefore(j, f);
+    })(window, document, "script", "dataLayer", "GTM-54NWVS4");
+</script>
+<!-- End Google Tag Manager -->
+
+<!-- Expertrec -->
+<script>
+    var id = "e2077224-9ccf-11e9-a0c9-0242ac130002";
+    var ci_search = document.createElement("script");
+    ci_search.type = "text/javascript";
+    ci_search.async = true;
+    ci_search.src = "https://cse.expertrec.com/api/js/ci_common.js?id=" + id;
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(ci_search, s);
+</script>
+<!-- End Expertrec -->
+            
+        
+        <!-- Font Awesome -->
+        <script src="https://kit.fontawesome.com/b1870adf6a.js" crossorigin="anonymous"></script>
+        <!-- End Font Awesome -->
+    </head>
+
+    <body>
+        <section class="promo-banner  promo-banner--hide" style="display: none;">
+    <div class="promo-banner-wrapper">
+        
+        <div class="promo-banner__title">ScyllaDB University Live | Free Virtual Training Event</div>
+        <a class="promo-banner__button button button--reverse" href="#"
+           target="_blank" rel="noopener noreferrer">Learn more</a>
+        <button class="promo-banner__close">
+            <i class="scylla-icon scylla-icon--close"></i>
+        </button>
+    </div>
+</section>
+        <header class="header">
+    <div class="header-logo">
+        <a class="header-logo__img" href="https://scylladb.com/">
+            <img src="_static/img/logo-docs.svg" alt="ScyllaDB Documentation Logo" />
+        </a>
+        <span class="header-logo__bar"></span>
+        <a class="header-logo__text" href="https://docs.scylladb.com/">
+            Documentation
+        </a>
+    </div>
+    <div class="header-navigation">
+        <ul class="dropdown menu scylla-dropdown scylla-dropdown--header" data-dropdown-menu>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Server
+                    <i class="chevron scylla-icon scylla-icon--triangle-down"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://opensource.docs.scylladb.com/">
+                            <i class="scylla-icon scylla-icon--about-us"></i>
+                            ScyllaDB Open Source
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://enterprise.docs.scylladb.com/">
+                            <i class="scylla-icon scylla-icon--enterprise"></i>ScyllaDB Enterprise
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://scylla.docs.scylladb.com/stable/alternator/alternator.html">
+                            <i class="scylla-icon scylla-icon--alternator"></i>
+                            ScyllaDB Alternator
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <li class="scylla-dropdown__item">
+                <a href="https://docs.scylladb.com/scylla-cloud/" class="scylla-dropdown__title">Cloud</a>
+            </li>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Tools <i
+                    class="chevron scylla-icon scylla-icon--triangle-down"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://manager.docs.scylladb.com/">
+                            <i class="scylla-icon scylla-icon--manager"></i>ScyllaDB Manager</a>
+                    </li>
+                    <li>
+                        <a href="https://monitoring.docs.scylladb.com/">
+                            <i class="scylla-icon scylla-icon--monitoring"></i>ScyllaDB
+                            Monitoring Stack</a>
+                    </li>
+                    <li>
+                        <a href="https://operator.docs.scylladb.com/">
+                            <i class="scylla-icon scylla-icon--operator"></i>ScyllaDB Operator
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Drivers <i
+                    class="chevron scylla-icon scylla-icon--triangle-down"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://docs.scylladb.com/using-scylla/drivers/cql-drivers/">
+                            <i class="scylla-icon scylla-icon--nsql-guides"></i>CQL Drivers
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://docs.scylladb.com/using-scylla/drivers/dynamo-drivers/">
+                            <i class="scylla-icon scylla-icon--alternator"></i>DynamoDB Drivers
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+        <div class="header-button">
+            <a href="https://www.scylladb.com/download/" class="button">Download</a>
+        </div>
+    </div>
+    <div class="header-search-box">
+        <div class="search-box">
+            <ci-search></ci-search>
+        </div>
+    </div>
+    <div class="side-nav-toggle" data-toggle="side-nav">
+    <div class="side-nav-toggle__button">
+        <img src="_static/img/menu.svg" alt="Menu" />
+    </div>
+</div>
+</header>
+        <section
+            class="layout  layout--sidebar layout--has-secondary-sidebar ">
+            <div class="content large-order-2">
+                
+                    
+    <div class="admonition caution">
+        <p class="admonition-title">Caution</p>
+        <p>
+            
+                You're viewing documentation for an unstable version of Scylla Operator.
+            
+            <a href="../stable/index.html">Switch to the latest stable version.</a>
+        </p>
+    </div>
+
+                
+                
+                    <div class="pre-content">
+                        <div class="breadcrumbs">
+    <span class="bread__item">
+        <a href="https://docs.scylladb.com"
+           class="bread__highlight">
+            <i class="fas fa-home"></i> ScyllaDB Docs
+        </a>
+    </span>
+    <span class="bread__item">
+        <a href="index.html"
+           class="bread__highlight">
+            Scylla Operator
+        </a>
+    </span>
+    
+    <span class="bread__item bread__item--last">Deploying Scylla on GKE</span>
+</div>
+                    </div>
+                
+                <section id="deploying-scylla-on-gke">
+<h1>Deploying Scylla on GKE<a class="headerlink" href="#deploying-scylla-on-gke" title="Link to this heading">¶</a></h1>
+<p>This guide is focused on deploying Scylla on GKE with maximum performance (without any persistence guarantees).
+It sets up the kubelets on GKE nodes to run with <a class="reference external" href="https://kubernetes.io/blog/2018/07/24/feature-highlight-cpu-manager/">static cpu policy</a> and uses <a class="reference external" href="https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/local-ssd">local sdd disks</a> in RAID0 for maximum performance.</p>
+<p>Most of the commands used to setup the Scylla cluster are the same for all environments
+As such we have tried to keep them separate in the <a class="reference internal" href="generic.html"><span class="std std-doc">general guide</span></a>.</p>
+<section id="tl-dr">
+<h2>TL;DR;<a class="headerlink" href="#tl-dr" title="Link to this heading">¶</a></h2>
+<p>If you don’t want to run the commands step-by-step, you can just run a script that will set everything up for you:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Edit according to your preference</span>
+<span class="nv">GCP_USER</span><span class="o">=</span><span class="k">$(</span>gcloud<span class="w"> </span>config<span class="w"> </span>list<span class="w"> </span>account<span class="w"> </span>--format<span class="w"> </span><span class="s2">&quot;value(core.account)&quot;</span><span class="k">)</span>
+<span class="nv">GCP_PROJECT</span><span class="o">=</span><span class="k">$(</span>gcloud<span class="w"> </span>config<span class="w"> </span>list<span class="w"> </span>project<span class="w"> </span>--format<span class="w"> </span><span class="s2">&quot;value(core.project)&quot;</span><span class="k">)</span>
+<span class="nv">GCP_ZONE</span><span class="o">=</span>us-west1-b
+
+<span class="c1"># From inside the examples/gke folder</span>
+<span class="nb">cd</span><span class="w"> </span>examples/gke
+./gke.sh<span class="w"> </span>-u<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$GCP_USER</span><span class="s2">&quot;</span><span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$GCP_PROJECT</span><span class="s2">&quot;</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$GCP_ZONE</span><span class="s2">&quot;</span>
+
+<span class="c1"># Example:</span>
+<span class="c1"># ./gke.sh -u yanniszark@arrikto.com -p gke-demo-226716 -z us-west1-b</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Make sure to pass a ZONE (ex.: us-west1-b) and not a REGION (ex.: us-west1) or it will deploy nodes in each ZONE available in the region.</p>
+</div>
+<p>After you deploy, see how you can <a class="reference internal" href="generic.html#benchmark-with-cassandra-stress"><span class="std std-ref">benchmark your cluster with cassandra-stress</span></a>.</p>
+</section>
+<section id="walkthrough">
+<h2>Walkthrough<a class="headerlink" href="#walkthrough" title="Link to this heading">¶</a></h2>
+<section id="google-kubernetes-engine-setup">
+<h3>Google Kubernetes Engine Setup<a class="headerlink" href="#google-kubernetes-engine-setup" title="Link to this heading">¶</a></h3>
+<section id="configure-environment-variables">
+<h4>Configure environment variables<a class="headerlink" href="#configure-environment-variables" title="Link to this heading">¶</a></h4>
+<p>First of all, we export all the configuration options as environment variables.
+Edit according to your own environment.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>GCP_USER=$( gcloud config list account --format &quot;value(core.account)&quot; )
+GCP_PROJECT=$( gcloud config list project --format &quot;value(core.project)&quot; )
+GCP_REGION=us-west1
+GCP_ZONE=us-west1-b
+CLUSTER_NAME=scylla-demo
+CLUSTER_VERSION=$( gcloud container get-server-config --zone ${GCP_ZONE} --format &quot;value(validMasterVersions[0])&quot; )
+</pre></div>
+</div>
+</section>
+<section id="creating-a-gke-cluster">
+<h4>Creating a GKE cluster<a class="headerlink" href="#creating-a-gke-cluster" title="Link to this heading">¶</a></h4>
+<p>First we need to change kubelet CPU Manager policy to static by providing a config file. Create file called <code class="docutils literal notranslate"><span class="pre">systemconfig.yaml</span></code> with the following content:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">kubeletConfig</span><span class="p">:</span>
+  <span class="n">cpuManagerPolicy</span><span class="p">:</span> <span class="n">static</span>
+</pre></div>
+</div>
+<p>Then we’ll create a GKE cluster with the following:</p>
+<ol class="arabic">
+<li><p>A NodePool of 2 <code class="docutils literal notranslate"><span class="pre">n1-standard-8</span></code> Nodes, where the operator and the monitoring stack will be deployed. These are generic Nodes and their free capacity can be used for other purposes.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">gcloud</span> <span class="n">container</span> \
+<span class="n">clusters</span> <span class="n">create</span> <span class="s2">&quot;$</span><span class="si">{CLUSTER_NAME}</span><span class="s2">&quot;</span> \
+<span class="o">--</span><span class="n">cluster</span><span class="o">-</span><span class="n">version</span> <span class="s2">&quot;$</span><span class="si">{CLUSTER_VERSION}</span><span class="s2">&quot;</span> \
+<span class="o">--</span><span class="n">node</span><span class="o">-</span><span class="n">version</span> <span class="s2">&quot;$</span><span class="si">{CLUSTER_VERSION}</span><span class="s2">&quot;</span> \
+<span class="o">--</span><span class="n">machine</span><span class="o">-</span><span class="nb">type</span> <span class="s2">&quot;n1-standard-8&quot;</span> \
+<span class="o">--</span><span class="n">num</span><span class="o">-</span><span class="n">nodes</span> <span class="s2">&quot;2&quot;</span> \
+<span class="o">--</span><span class="n">disk</span><span class="o">-</span><span class="nb">type</span> <span class="s2">&quot;pd-ssd&quot;</span> <span class="o">--</span><span class="n">disk</span><span class="o">-</span><span class="n">size</span> <span class="s2">&quot;20&quot;</span> \
+<span class="o">--</span><span class="n">image</span><span class="o">-</span><span class="nb">type</span> <span class="s2">&quot;UBUNTU_CONTAINERD&quot;</span> \
+<span class="o">--</span><span class="n">enable</span><span class="o">-</span><span class="n">stackdriver</span><span class="o">-</span><span class="n">kubernetes</span> \
+<span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">enable</span><span class="o">-</span><span class="n">autoupgrade</span> \
+<span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">enable</span><span class="o">-</span><span class="n">autorepair</span>
+</pre></div>
+</div>
+</li>
+<li><p>A NodePool of 2 <code class="docutils literal notranslate"><span class="pre">n1-standard-32</span></code> Nodes to deploy <code class="docutils literal notranslate"><span class="pre">cassandra-stress</span></code> later on.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">gcloud</span> <span class="n">container</span> <span class="o">--</span><span class="n">project</span> <span class="s2">&quot;$</span><span class="si">{GCP_PROJECT}</span><span class="s2">&quot;</span> \
+<span class="n">node</span><span class="o">-</span><span class="n">pools</span> <span class="n">create</span> <span class="s2">&quot;cassandra-stress-pool&quot;</span> \
+<span class="o">--</span><span class="n">cluster</span> <span class="s2">&quot;$</span><span class="si">{CLUSTER_NAME}</span><span class="s2">&quot;</span> \
+<span class="o">--</span><span class="n">zone</span> <span class="s2">&quot;$</span><span class="si">{GCP_ZONE}</span><span class="s2">&quot;</span> \
+<span class="o">--</span><span class="n">node</span><span class="o">-</span><span class="n">version</span> <span class="s2">&quot;$</span><span class="si">{CLUSTER_VERSION}</span><span class="s2">&quot;</span> \
+<span class="o">--</span><span class="n">machine</span><span class="o">-</span><span class="nb">type</span> <span class="s2">&quot;n1-standard-32&quot;</span> \
+<span class="o">--</span><span class="n">num</span><span class="o">-</span><span class="n">nodes</span> <span class="s2">&quot;2&quot;</span> \
+<span class="o">--</span><span class="n">disk</span><span class="o">-</span><span class="nb">type</span> <span class="s2">&quot;pd-ssd&quot;</span> <span class="o">--</span><span class="n">disk</span><span class="o">-</span><span class="n">size</span> <span class="s2">&quot;20&quot;</span> \
+<span class="o">--</span><span class="n">node</span><span class="o">-</span><span class="n">taints</span> <span class="n">role</span><span class="o">=</span><span class="n">cassandra</span><span class="o">-</span><span class="n">stress</span><span class="p">:</span><span class="n">NoSchedule</span> \
+<span class="o">--</span><span class="n">image</span><span class="o">-</span><span class="nb">type</span> <span class="s2">&quot;UBUNTU_CONTAINERD&quot;</span> \
+<span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">enable</span><span class="o">-</span><span class="n">autoupgrade</span> \
+<span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">enable</span><span class="o">-</span><span class="n">autorepair</span>
+</pre></div>
+</div>
+</li>
+<li><p>A NodePool of 4 <code class="docutils literal notranslate"><span class="pre">n1-standard-32</span></code> Nodes, where the Scylla Pods will be deployed. Each of these Nodes has 8 local NVMe SSDs attached, which are provided as <a class="reference external" href="https://cloud.google.com/kubernetes-engine/docs/concepts/local-ssd#block">raw block devices</a>. It is important to disable <code class="docutils literal notranslate"><span class="pre">autoupgrade</span></code> and <code class="docutils literal notranslate"><span class="pre">autorepair</span></code>. Automatic cluster upgrade or node repair has a hard timeout after which it no longer respect PDBs and force deletes the Compute Engine instances, which also deletes all data on the local SSDs. At this point, it’s better to handle upgrades manually, with more control over the process and error handling.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">gcloud</span> <span class="n">container</span> \
+<span class="n">node</span><span class="o">-</span><span class="n">pools</span> <span class="n">create</span> <span class="s2">&quot;scylla-pool&quot;</span> \
+<span class="o">--</span><span class="n">cluster</span> <span class="s2">&quot;$</span><span class="si">{CLUSTER_NAME}</span><span class="s2">&quot;</span> \
+<span class="o">--</span><span class="n">node</span><span class="o">-</span><span class="n">version</span> <span class="s2">&quot;$</span><span class="si">{CLUSTER_VERSION}</span><span class="s2">&quot;</span> \
+<span class="o">--</span><span class="n">machine</span><span class="o">-</span><span class="nb">type</span> <span class="s2">&quot;n1-standard-32&quot;</span> \
+<span class="o">--</span><span class="n">num</span><span class="o">-</span><span class="n">nodes</span> <span class="s2">&quot;4&quot;</span> \
+<span class="o">--</span><span class="n">disk</span><span class="o">-</span><span class="nb">type</span> <span class="s2">&quot;pd-ssd&quot;</span> <span class="o">--</span><span class="n">disk</span><span class="o">-</span><span class="n">size</span> <span class="s2">&quot;20&quot;</span> \
+<span class="o">--</span><span class="n">local</span><span class="o">-</span><span class="n">nvme</span><span class="o">-</span><span class="n">ssd</span><span class="o">-</span><span class="n">block</span> <span class="n">count</span><span class="o">=</span><span class="s2">&quot;8&quot;</span> \
+<span class="o">--</span><span class="n">node</span><span class="o">-</span><span class="n">taints</span> <span class="n">role</span><span class="o">=</span><span class="n">scylla</span><span class="o">-</span><span class="n">clusters</span><span class="p">:</span><span class="n">NoSchedule</span> \
+<span class="o">--</span><span class="n">node</span><span class="o">-</span><span class="n">labels</span> <span class="n">scylla</span><span class="o">.</span><span class="n">scylladb</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">node</span><span class="o">-</span><span class="nb">type</span><span class="o">=</span><span class="n">scylla</span> \
+<span class="o">--</span><span class="n">image</span><span class="o">-</span><span class="nb">type</span> <span class="s2">&quot;UBUNTU_CONTAINERD&quot;</span> \
+<span class="o">--</span><span class="n">system</span><span class="o">-</span><span class="n">config</span><span class="o">-</span><span class="n">from</span><span class="o">-</span><span class="n">file</span><span class="o">=</span><span class="n">systemconfig</span><span class="o">.</span><span class="n">yaml</span> \
+<span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">enable</span><span class="o">-</span><span class="n">autoupgrade</span> \
+<span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">enable</span><span class="o">-</span><span class="n">autorepair</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="setting-yourself-as-cluster-admin">
+<h4>Setting Yourself as <code class="docutils literal notranslate"><span class="pre">cluster-admin</span></code><a class="headerlink" href="#setting-yourself-as-cluster-admin" title="Link to this heading">¶</a></h4>
+<blockquote>
+<div><p>(By default GKE doesn’t give you the necessary RBAC permissions)</p>
+</div></blockquote>
+<p>Get the credentials for your new cluster</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">gcloud</span> <span class="n">container</span> <span class="n">clusters</span> <span class="n">get</span><span class="o">-</span><span class="n">credentials</span> <span class="s2">&quot;$</span><span class="si">{CLUSTER_NAME}</span><span class="s2">&quot;</span> <span class="o">--</span><span class="n">zone</span><span class="o">=</span><span class="s2">&quot;$</span><span class="si">{GCP_ZONE}</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
+<p>Create a ClusterRoleBinding for your user.
+In order for this to work you need to have at least permission <code class="docutils literal notranslate"><span class="pre">container.clusterRoleBindings.create</span></code>.
+The easiest way to obtain this permission is to enable the <code class="docutils literal notranslate"><span class="pre">Kubernetes</span> <span class="pre">Engine</span> <span class="pre">Admin</span></code> role for your user in the GCP IAM web interface.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">kubectl</span> <span class="n">create</span> <span class="n">clusterrolebinding</span> <span class="n">cluster</span><span class="o">-</span><span class="n">admin</span><span class="o">-</span><span class="n">binding</span> <span class="o">--</span><span class="n">clusterrole</span> <span class="n">cluster</span><span class="o">-</span><span class="n">admin</span> <span class="o">--</span><span class="n">user</span> <span class="s2">&quot;$</span><span class="si">{GCP_USER}</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="prerequisites">
+<h3>Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this heading">¶</a></h3>
+</section>
+<section id="deploying-scylladb-operator">
+<h3>Deploying ScyllaDB Operator<a class="headerlink" href="#deploying-scylladb-operator" title="Link to this heading">¶</a></h3>
+<p>Refer to <a class="reference internal" href="generic.html"><span class="std std-doc">Deploying Scylla on a Kubernetes Cluster</span></a> in the ScyllaDB Operator documentation to deploy the ScyllaDB Operator and its prerequisites.</p>
+<section id="setting-up-nodes-for-scylladb">
+<h4>Setting up nodes for ScyllaDB<a class="headerlink" href="#setting-up-nodes-for-scylladb" title="Link to this heading">¶</a></h4>
+<p>ScyllaDB, except when in developer mode, requires storage with XFS filesystem. The local NVMes from the cloud provider usually come as individual devices. To use their full capacity together, you’ll first need to form a RAID array from those disks.
+<code class="docutils literal notranslate"><span class="pre">NodeConfig</span></code> performs the necessary RAID configuration and XFS filesystem creation, as well as it optimizes the nodes. You can read more about it in <a class="reference internal" href="performance.html"><span class="std std-doc">Performance tuning</span></a> section of ScyllaDB Operator’s documentation.</p>
+<p>Deploy <code class="docutils literal notranslate"><span class="pre">NodeConfig</span></code> to let it take care of the above operations:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">kubectl</span> <span class="n">apply</span> <span class="o">--</span><span class="n">server</span><span class="o">-</span><span class="n">side</span> <span class="o">-</span><span class="n">f</span> <span class="n">examples</span><span class="o">/</span><span class="n">gke</span><span class="o">/</span><span class="n">nodeconfig</span><span class="o">-</span><span class="n">alpha</span><span class="o">.</span><span class="n">yaml</span>
+</pre></div>
+</div>
+</section>
+<section id="deploying-local-volume-provisioner">
+<h4>Deploying Local Volume Provisioner<a class="headerlink" href="#deploying-local-volume-provisioner" title="Link to this heading">¶</a></h4>
+<p>Afterwards, deploy ScyllaDB’s <a class="reference external" href="https://github.com/scylladb/k8s-local-volume-provisioner">Local Volume Provisioner</a>, capable of dynamically provisioning PersistentVolumes for your ScyllaDB clusters on mounted XFS filesystems, earlier created over the configured RAID0 arrays.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">kubectl</span> <span class="o">-</span><span class="n">n</span> <span class="n">local</span><span class="o">-</span><span class="n">csi</span><span class="o">-</span><span class="n">driver</span> <span class="n">apply</span> <span class="o">--</span><span class="n">server</span><span class="o">-</span><span class="n">side</span> <span class="o">-</span><span class="n">f</span> <span class="n">examples</span><span class="o">/</span><span class="n">common</span><span class="o">/</span><span class="n">local</span><span class="o">-</span><span class="n">volume</span><span class="o">-</span><span class="n">provisioner</span><span class="o">/</span><span class="n">local</span><span class="o">-</span><span class="n">csi</span><span class="o">-</span><span class="n">driver</span><span class="o">/</span>
+<span class="n">kubectl</span> <span class="n">apply</span> <span class="o">--</span><span class="n">server</span><span class="o">-</span><span class="n">side</span> <span class="o">-</span><span class="n">f</span> <span class="n">examples</span><span class="o">/</span><span class="n">common</span><span class="o">/</span><span class="n">local</span><span class="o">-</span><span class="n">volume</span><span class="o">-</span><span class="n">provisioner</span><span class="o">/</span><span class="n">storageclass_xfs</span><span class="o">.</span><span class="n">yaml</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="deploy-scylla-cluster">
+<h3>Deploy Scylla cluster<a class="headerlink" href="#deploy-scylla-cluster" title="Link to this heading">¶</a></h3>
+<p>In order for the example to work you need to modify the cluster definition in the following way:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sed</span> <span class="o">-</span><span class="n">i</span> <span class="s2">&quot;s/&lt;gcp_region&gt;/$</span><span class="si">{GCP_REGION}</span><span class="s2">/g;s/&lt;gcp_zone&gt;/$</span><span class="si">{GCP_ZONE}</span><span class="s2">/g&quot;</span> <span class="n">examples</span><span class="o">/</span><span class="n">gke</span><span class="o">/</span><span class="n">cluster</span><span class="o">.</span><span class="n">yaml</span>
+</pre></div>
+</div>
+<p>This will inject your region and zone into the cluster definition so that it matches the kubernetes cluster you just created.</p>
+</section>
+<section id="deploying-scylladb">
+<h3>Deploying ScyllaDB<a class="headerlink" href="#deploying-scylladb" title="Link to this heading">¶</a></h3>
+<p>Now you can follow the steps described in <a class="reference internal" href="generic.html"><span class="std std-doc">Deploying Scylla on a Kubernetes Cluster</span></a> to launch your ScyllaDB cluster in a highly performant environment.</p>
+<section id="accessing-the-database">
+<h4>Accessing the database<a class="headerlink" href="#accessing-the-database" title="Link to this heading">¶</a></h4>
+<p>Instructions on how to access the database can also be found in the <a class="reference internal" href="generic.html"><span class="std std-doc">generic guide</span></a>.</p>
+</section>
+</section>
+<section id="deleting-a-gke-cluster">
+<h3>Deleting a GKE cluster<a class="headerlink" href="#deleting-a-gke-cluster" title="Link to this heading">¶</a></h3>
+<p>Once you are done with your experiments delete your cluster using the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">gcloud</span> <span class="n">container</span> <span class="o">--</span><span class="n">project</span> <span class="s2">&quot;$</span><span class="si">{GCP_PROJECT}</span><span class="s2">&quot;</span> <span class="n">clusters</span> <span class="n">delete</span> <span class="o">--</span><span class="n">zone</span> <span class="s2">&quot;$</span><span class="si">{GCP_ZONE}</span><span class="s2">&quot;</span> <span class="s2">&quot;$</span><span class="si">{CLUSTER_NAME}</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+                
+                    <div class="post-content">
+                        
+    <div class="feedback-container">
+        <p class="feedback-container__title">Was this page helpful?</p>
+        <span data-tooltip tabindex="1" title="Yes" data-position="top">
+            <button class="feedback-container__button" id="feedback-positive">
+                <i class="feedback-container__icon scylla-icon scylla-icon--thumbs-up"></i>
+            </button>
+        </span>
+        <span data-tooltip tabindex="1" title="No" data-position="top">
+            <button class="feedback-container__button" id="feedback-negative">
+                <i class="feedback-container__icon scylla-icon scylla-icon--thumbs-down"></i>
+            </button>
+        </span>
+        <div class="feedback-container__message" id="feedback-message"></div>
+    </div>
+
+    <script>
+        function resetFeedbackButtonActive() {
+            const feedbackButtons = document.getElementsByClassName('feedback-container__button');
+            for (let i = 0; i < feedbackButtons.length; i++) {
+                feedbackButtons[i].classList.remove('active');
+            }
+        }
+
+        function showMessage(liked) {
+            const feedbackMessage = document.getElementById('feedback-message');
+            const themeGithubRepository = true;
+            let message = 'Great! Thanks for your feedback.';
+            if (themeGithubRepository && !liked) {
+                message = "Thanks for your feedback! Please don't hesitate to <a href='https://github.com/scylladb/scylla-operator/issues/new?title=docs:%20Issue on page Deploying Scylla on GKE&&body=I%20would%20like%20to%20report%20an%20issue%20on%20page%20https://operator.docs.scylladb.com/master/gke%0A%0A%23%23%23%20Problem%0A%0A%23%23%23%20%20Suggest%20a%20fix&labels=documentation'>create an issue</a> if you have any suggestions on how we can improve.";
+            }
+            feedbackMessage.innerHTML = message;
+        }
+
+        function sendGaEvent(liked) {
+            const event_label = liked ? "positive" : "negative";
+            const event = "feedback_" + event_label;
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({
+                'event': event,
+            });
+        }
+
+        const positiveFeebackButton = document.getElementById('feedback-positive');
+        const negativeFeedbackButton = document.getElementById('feedback-negative');
+
+        positiveFeebackButton.addEventListener('click', function() {
+            resetFeedbackButtonActive();
+            sendGaEvent(true);
+            showMessage(true);
+            positiveFeebackButton.classList.add('active');
+        });
+
+        negativeFeedbackButton.addEventListener('click', function() {
+            resetFeedbackButtonActive();
+            sendGaEvent(false);
+            showMessage(false);
+            negativeFeedbackButton.classList.add('active');
+        });
+    </script>
+
+                        <div class="content-navigation">
+    <div class="navigation navigation--prev">
+        
+            <a class="navigation__link" href="eks.html">
+                <button class="navigation__button">
+                    <i class="scylla-icon scylla-icon--chevron-left"></i>
+                </button>
+                <div class="navigation__title">
+                    <span class="colored">PREVIOUS</span> <br />Deploying Scylla on EKS
+                </div>
+            </a>
+        
+    </div>
+    <div class="navigation navigation--next">
+        
+            <a class="navigation__link" href="helm.html">
+                <div class="navigation__title">
+                    <span class="colored">NEXT</span> <br />Deploying Scylla stack using Helm Charts
+                </div>
+                <button class="navigation__button">
+                    <i class="scylla-icon scylla-icon--chevron-right"></i>
+                </button>
+            </a>
+        
+    </div>
+</div>
+                        <!-- Post content text -->
+                    </div>
+                
+            </div>
+            <div class="sidebar-left  large-order-1">
+                
+                    
+                        <div id="side-nav" class="side-nav custom-scroll-bar" data-closable data-toggler=".show">
+    <button class="collapsible-button">
+        <i class="scylla-icon scylla-icon--chevron-left"></i>
+    </button>
+    <div class="side-nav-content" style="visibility: hidden;">
+        <div class="side-nav__search">
+            <div class="search-box">
+                <ci-search></ci-search>
+            </div>
+        </div>
+        <div class="side-nav__title">
+            <a href="index.html">Scylla Operator</a>
+        </div>
+        <div class="side-nav__versions"><ul class="dropdown menu scylla-dropdown scylla-dropdown--versions" data-dropdown-menu>
+    <li class="scylla-dropdown__item">
+        <a class="scylla-dropdown__title" href="#">
+            
+                master
+            
+            <i class="chevron scylla-icon scylla-icon--chevron-right"></i>
+        </a>
+        <ul class="menu scylla-dropdown__content">
+            
+                
+                    <li>
+                        <a href="../stable/index.html">v1.13</a>
+                    </li>
+                
+            
+                
+                    <li>
+                        <a href="../v1.12/index.html">v1.12</a>
+                    </li>
+                
+            
+                
+                    <li>
+                        <a href="gke.html">master</a>
+                    </li>
+                
+            
+            
+        </ul>
+    </li>
+</ul></div>
+        <div class="side-nav__content">
+            <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="generic.html">Deploying Scylla on a Kubernetes Cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="eks.html">Deploying Scylla on EKS</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Deploying Scylla on GKE</a></li>
+<li class="toctree-l1"><a class="reference internal" href="helm.html">Deploying Scylla stack using Helm Charts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="manager.html">Deploying Scylla Manager on a Kubernetes Cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="monitoring.html">Monitoring</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="clients/index.html">Using ScyllaDB APIs</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label for="toctree-checkbox-1"><i class="scylla-icon scylla-icon--expand"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="clients/discovery.html">Discovering ScyllaDB Nodes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="clients/cql.html">Using CQL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="clients/alternator.html">Using Alternator (DynamoDB)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="migration.html">Version  migrations</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="nodeoperations/index.html">Node operations using Scylla Operator</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label for="toctree-checkbox-2"><i class="scylla-icon scylla-icon--expand"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="nodeoperations/scylla-upgrade.html">Upgrading version of Scylla</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nodeoperations/replace-node.html">Replacing a Scylla node</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nodeoperations/automatic-cleanup.html">Automatic cleanup and replacement in case when k8s node is lost</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nodeoperations/maintenance-mode.html">Maintenance mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nodeoperations/restore.html">Restore from backup</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="exposing.html">Exposing ScyllaCluster</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="multidc/index.html">Deploying multi-datacenter ScyllaDB clusters in Kubernetes</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label for="toctree-checkbox-3"><i class="scylla-icon scylla-icon--expand"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="multidc/eks.html">Build multiple Amazon EKS clusters with inter-Kubernetes networking</a></li>
+<li class="toctree-l2"><a class="reference internal" href="multidc/gke.html">Build multiple GKE clusters with inter-Kubernetes networking</a></li>
+<li class="toctree-l2"><a class="reference internal" href="multidc/multidc.html">Deploy a multi-datacenter ScyllaDB cluster in multiple interconnected Kubernetes clusters</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="performance.html">Performance tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="upgrade.html">Upgrade of Scylla Operator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Releases</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="support/index.html">Support</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label for="toctree-checkbox-4"><i class="scylla-icon scylla-icon--expand"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="support/overview.html">Support overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="support/known-issues.html">Known issues</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="support/troubleshooting/index.html">Troubleshooting</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/><label for="toctree-checkbox-5"><i class="scylla-icon scylla-icon--expand"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="support/troubleshooting/installation.html">Troubleshooting installation issues</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="support/must-gather.html">Gathering data with must-gather</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="api-reference/index.html">API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label for="toctree-checkbox-6"><i class="scylla-icon scylla-icon--expand"></i></label><div class="break"></div><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="api-reference/groups/scylla.scylladb.com.html">scylla.scylladb.com</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label for="toctree-checkbox-7"><i class="scylla-icon scylla-icon--expand"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="api-reference/groups/scylla.scylladb.com/nodeconfigs.html">NodeConfig (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api-reference/groups/scylla.scylladb.com/scyllaclusters.html">ScyllaCluster (scylla.scylladb.com/v1)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api-reference/groups/scylla.scylladb.com/scylladbmonitorings.html">ScyllaDBMonitoring (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api-reference/groups/scylla.scylladb.com/scyllaoperatorconfigs.html">ScyllaOperatorConfig (scylla.scylladb.com/v1alpha1)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to Scylla Operator</a></li>
+</ul>
+
+        </div>
+    </div>
+</div>
+                    
+                
+            </div>
+            
+                <div class="sidebar-right large-order-3">
+                    <div class="secondary-side-nav custom-scroll-bar">
+    
+    <ul class="contribute">
+        <li class="contribute__item">
+            <a href="https://github.com/scylladb/scylla-operator/issues/new?title=docs:%20Issue on page Deploying Scylla on GKE&&body=I%20would%20like%20to%20report%20an%20issue%20on%20page%20https://operator.docs.scylladb.com/master/gke%0A%0A%23%23%23%20Problem%0A%0A%23%23%23%20%20Suggest%20a%20fix&labels=documentation"
+               target="_blank">
+                <i class="icon fab fa-github" aria-hidden="true"></i>Create an issue
+            </a>
+        </li>
+        
+            <li class="contribute__item">
+                <a href="https://github.com/scylladb/scylla-operator/edit/master/docs/source/gke.md"
+                   target="_blank">
+                    <i class="icon fa fa-edit" aria-hidden="true"></i>Edit this page
+                </a>
+            </li>
+        
+    </ul>
+
+    
+        <div class="secondary-side-nav__content">
+            <p class="topic-title">On this page</p>
+            <ul>
+<li><a class="reference internal" href="#">Deploying Scylla on GKE</a><ul>
+<li><a class="reference internal" href="#tl-dr">TL;DR;</a></li>
+<li><a class="reference internal" href="#walkthrough">Walkthrough</a><ul>
+<li><a class="reference internal" href="#google-kubernetes-engine-setup">Google Kubernetes Engine Setup</a><ul>
+<li><a class="reference internal" href="#configure-environment-variables">Configure environment variables</a></li>
+<li><a class="reference internal" href="#creating-a-gke-cluster">Creating a GKE cluster</a></li>
+<li><a class="reference internal" href="#setting-yourself-as-cluster-admin">Setting Yourself as <code class="docutils literal notranslate"><span class="pre">cluster-admin</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+<li><a class="reference internal" href="#deploying-scylladb-operator">Deploying ScyllaDB Operator</a><ul>
+<li><a class="reference internal" href="#setting-up-nodes-for-scylladb">Setting up nodes for ScyllaDB</a></li>
+<li><a class="reference internal" href="#deploying-local-volume-provisioner">Deploying Local Volume Provisioner</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#deploy-scylla-cluster">Deploy Scylla cluster</a></li>
+<li><a class="reference internal" href="#deploying-scylladb">Deploying ScyllaDB</a><ul>
+<li><a class="reference internal" href="#accessing-the-database">Accessing the database</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#deleting-a-gke-cluster">Deleting a GKE cluster</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+    
+</div>
+                </div>
+            
+        </section>
+
+        <footer class="footer">
+    <div class="footer-group">
+        <div class="footer-top">
+            <a class="footer-logo" href="https://www.scylladb.com">
+                <img src="_static/img/logo-scylla-horizontal-RGB.svg" alt="Logo" />
+            </a>
+            <div class="footer-links">
+                <a class="footer-links__link" href="https://docs.scylladb.com/" target="_blank">Docs</a>
+                <a class="footer-links__link" href="https://university.scylladb.com/" target="_blank">University</a>
+                <a class="footer-links__link" href="https://www.scylladb.com/company/contact-us/" target="_blank">Contact Us</a>
+                <a class="footer-links__link" href="https://www.scylladb.com/company/" target="_blank">About Us</a>
+            </div>
+            <div class="footer-actions">
+                <a class="footer-actions__link" href="https://groups.google.com/g/scylladb-users" target="_blank">
+                    <span data-tooltip tabindex="1" title="User mailing list" data-position="bottom">
+                        <img src="_static/img/icons/icon-mail-list.svg" alt="Mail List Icon" />
+                    </span>
+                </a>
+                <a class="footer-actions__link" href="http://slack.scylladb.com/" target="_blank">
+                    <span data-tooltip tabindex="1" title="User Slack channel" data-position="bottom">
+                        <img src="_static/img/icons/icon-slack.svg" alt="Slack Icon" />
+                    </span>
+                </a>
+                <a class="footer-actions__link" href="https://forum.scylladb.com/" target="_blank">
+                    <span data-tooltip tabindex="1" title="Community forum" data-position="bottom">
+                        <img src="_static/img/icons/icon-forum.svg" alt="Forum Icon" />
+                    </span>
+                </a>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            
+                <div class="footer-bottom__copyright">
+                    
+                        
+                            &#169; 2024, ScyllaDB. All rights reserved.
+                        
+                    
+                </div>
+            
+            
+                <div class="footer-bottom__last-updated">
+                    
+                        Last updated on 17 July 2024.
+                    
+                </div>
+            
+            <div class="footer-bottom__version">
+                Powered by
+                <a href="http://sphinx-doc.org/">Sphinx 7.2.6</a> &amp;
+                <a href="https://sphinx-theme.scylladb.com/">ScyllaDB Theme 1.7.2</a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+        <noscript>
+            <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-T8P2JP" height="0" width="0"
+                    style="display: none; visibility: hidden"></iframe>
+        </noscript>
+    </body>
+
+</html>

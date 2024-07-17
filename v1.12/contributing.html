@@ -1,0 +1,765 @@
+
+
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+    
+    
+
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width initial-scale=1" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <title>
+             Contributing to Scylla Operator | ScyllaDB Docs 
+        </title>
+        <meta name="description" content="ScyllaDB is an Apache Cassandra-compatible NoSQL data store that can handle 1 million transactions per second on a single server." />
+        <link rel="icon" href="_static/img/favicon.ico" type="image/x-icon" />
+        <link rel="icon" href="_static/img/favicon-32x32.png" sizes="32x32" />
+        <link rel="icon" href="_static/img/favicon-228x228.png" sizes="192x192" />
+        <link rel="apple-touch-icon" href="_static/img/favicon-228x228.png" />
+        <meta name="msapplication-TileImage" href="_static/img/favicon-228x228.png" />
+
+        
+            
+            
+        
+
+        
+            
+            <link rel="canonical" href="https://operator.docs.scylladb.com/stable/contributing.html"/>
+        
+
+        <link rel="author" href="mailto:info@scylladb.com" />
+
+        
+            
+        <!-- increase expertrec loading priority-->
+        <link rel="dns-prefetch" href="https://cse.expertrec.com">
+
+        <!-- increase font loading priority -->
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link rel="preload" as="style"
+              href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+
+        <!-- async CSS -->
+        <link rel="stylesheet" media="print" onload="this.onload=null;this.removeAttribute('media');"
+              href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+
+        <!-- no-JS fallback -->
+        <noscript>
+            <link rel="stylesheet"
+                  href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+        </noscript>
+        
+            
+                <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b76e3c8a" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="_static/css/main.css?v=60de4c37" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="_static/sphinx_collapse.css?v=226d88b4" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
+            
+        
+    
+        
+        
+            
+        <script type="text/javascript" src="_static/js/runtime.bundle.js"></script>
+        <script type="text/javascript" src="_static/js/main.bundle.js"></script>
+        
+            
+                <script src="_static/documentation_options.js?v=5929fcd5"></script>
+            
+        
+            
+                <script src="_static/doctools.js?v=888ff710"></script>
+            
+        
+            
+                <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+            
+        
+            
+                <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+            
+        
+            
+                <script src="_static/copybutton.js?v=f281be69"></script>
+            
+        
+            
+                <script src="_static/design-tabs.js?v=36754332"></script>
+            
+        
+    
+            
+                <!-- Local meta tags -->
+            
+            
+                <!-- Google Tag Manager global -->
+<script>
+    (function (w, d, s, l, i) {
+        w[l] = w[l] || [];
+        w[l].push({
+            "gtm.start": new Date().getTime(),
+            event: "gtm.js"
+        });
+        var f = d.getElementsByTagName(s)[0],
+            j = d.createElement(s),
+            dl = l != "dataLayer" ? "&l=" + l : "";
+        j.async = true;
+        j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
+        f.parentNode.insertBefore(j, f);
+    })(window, document, "script", "dataLayer", "GTM-T8P2JP");
+</script>
+<!-- End Google Tag Manager -->
+
+<!-- Google Tag Manager docs -->
+<script>
+    (function (w, d, s, l, i) {
+        w[l] = w[l] || [];
+        w[l].push({
+            "gtm.start": new Date().getTime(),
+            event: "gtm.js"
+        });
+        var f = d.getElementsByTagName(s)[0],
+            j = d.createElement(s),
+            dl = l != "dataLayer" ? "&l=" + l : "";
+        j.async = true;
+        j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
+        f.parentNode.insertBefore(j, f);
+    })(window, document, "script", "dataLayer", "GTM-54NWVS4");
+</script>
+<!-- End Google Tag Manager -->
+
+<!-- Expertrec -->
+<script>
+    var id = "e2077224-9ccf-11e9-a0c9-0242ac130002";
+    var ci_search = document.createElement("script");
+    ci_search.type = "text/javascript";
+    ci_search.async = true;
+    ci_search.src = "https://cse.expertrec.com/api/js/ci_common.js?id=" + id;
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(ci_search, s);
+</script>
+<!-- End Expertrec -->
+            
+        
+        <!-- Font Awesome -->
+        <script src="https://kit.fontawesome.com/b1870adf6a.js" crossorigin="anonymous"></script>
+        <!-- End Font Awesome -->
+    </head>
+
+    <body>
+        <section class="promo-banner  promo-banner--hide" style="display: none;">
+    <div class="promo-banner-wrapper">
+        
+        <div class="promo-banner__title">ScyllaDB University Live | Free Virtual Training Event</div>
+        <a class="promo-banner__button button button--reverse" href="#"
+           target="_blank" rel="noopener noreferrer">Learn more</a>
+        <button class="promo-banner__close">
+            <i class="scylla-icon scylla-icon--close"></i>
+        </button>
+    </div>
+</section>
+        <header class="header">
+    <div class="header-logo">
+        <a class="header-logo__img" href="https://scylladb.com/">
+            <img src="_static/img/logo-docs.svg" alt="ScyllaDB Documentation Logo" />
+        </a>
+        <span class="header-logo__bar"></span>
+        <a class="header-logo__text" href="https://docs.scylladb.com/">
+            Documentation
+        </a>
+    </div>
+    <div class="header-navigation">
+        <ul class="dropdown menu scylla-dropdown scylla-dropdown--header" data-dropdown-menu>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Server
+                    <i class="chevron scylla-icon scylla-icon--triangle-down"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://opensource.docs.scylladb.com/">
+                            <i class="scylla-icon scylla-icon--about-us"></i>
+                            ScyllaDB Open Source
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://enterprise.docs.scylladb.com/">
+                            <i class="scylla-icon scylla-icon--enterprise"></i>ScyllaDB Enterprise
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://scylla.docs.scylladb.com/stable/alternator/alternator.html">
+                            <i class="scylla-icon scylla-icon--alternator"></i>
+                            ScyllaDB Alternator
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <li class="scylla-dropdown__item">
+                <a href="https://docs.scylladb.com/scylla-cloud/" class="scylla-dropdown__title">Cloud</a>
+            </li>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Tools <i
+                    class="chevron scylla-icon scylla-icon--triangle-down"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://manager.docs.scylladb.com/">
+                            <i class="scylla-icon scylla-icon--manager"></i>ScyllaDB Manager</a>
+                    </li>
+                    <li>
+                        <a href="https://monitoring.docs.scylladb.com/">
+                            <i class="scylla-icon scylla-icon--monitoring"></i>ScyllaDB
+                            Monitoring Stack</a>
+                    </li>
+                    <li>
+                        <a href="https://operator.docs.scylladb.com/">
+                            <i class="scylla-icon scylla-icon--operator"></i>ScyllaDB Operator
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Drivers <i
+                    class="chevron scylla-icon scylla-icon--triangle-down"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://docs.scylladb.com/using-scylla/drivers/cql-drivers/">
+                            <i class="scylla-icon scylla-icon--nsql-guides"></i>CQL Drivers
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://docs.scylladb.com/using-scylla/drivers/dynamo-drivers/">
+                            <i class="scylla-icon scylla-icon--alternator"></i>DynamoDB Drivers
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+        <div class="header-button">
+            <a href="https://www.scylladb.com/download/" class="button">Download</a>
+        </div>
+    </div>
+    <div class="header-search-box">
+        <div class="search-box">
+            <ci-search></ci-search>
+        </div>
+    </div>
+    <div class="side-nav-toggle" data-toggle="side-nav">
+    <div class="side-nav-toggle__button">
+        <img src="_static/img/menu.svg" alt="Menu" />
+    </div>
+</div>
+</header>
+        <section
+            class="layout  layout--sidebar layout--has-secondary-sidebar ">
+            <div class="content large-order-2">
+                
+                    
+    <div class="admonition caution">
+        <p class="admonition-title">Caution</p>
+        <p>
+            
+                You're viewing documentation for a previous version of Scylla Operator.
+            
+            <a href="../stable/index.html">Switch to the latest stable version.</a>
+        </p>
+    </div>
+
+                
+                
+                    <div class="pre-content">
+                        <div class="breadcrumbs">
+    <span class="bread__item">
+        <a href="https://docs.scylladb.com"
+           class="bread__highlight">
+            <i class="fas fa-home"></i> ScyllaDB Docs
+        </a>
+    </span>
+    <span class="bread__item">
+        <a href="index.html"
+           class="bread__highlight">
+            Scylla Operator
+        </a>
+    </span>
+    
+    <span class="bread__item bread__item--last">Contributing to Scylla Operator</span>
+</div>
+                    </div>
+                
+                <section id="contributing-to-scylla-operator">
+<h1>Contributing to Scylla Operator<a class="headerlink" href="#contributing-to-scylla-operator" title="Link to this heading">¶</a></h1>
+<section id="prerequisites">
+<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this heading">¶</a></h2>
+<p>To develop on scylla-operator, your environment must have the following:</p>
+<ol class="arabic simple">
+<li><p><a class="reference external" href="https://golang.org/dl/">Go 1.13</a></p>
+<ul class="simple">
+<li><p>Make sure <a class="reference external" href="https://github.com/golang/go/wiki/SettingGOPATH">GOPATH</a> is set to <code class="docutils literal notranslate"><span class="pre">GOPATH=$HOME/go</span></code>.</p></li>
+</ul>
+</li>
+<li><p><a class="reference external" href="https://github.com/kubernetes-sigs/kustomize/releases/tag/v3.1.0">Kustomize v3.1.0</a></p></li>
+<li><p><a class="reference external" href="https://github.com/kubernetes-sigs/kubebuilder/releases/tag/v2.3.1">kubebuilder v2.3.1</a></p></li>
+<li><p><a class="reference external" href="https://docs.docker.com/install/">Docker</a></p></li>
+<li><p>Git client installed</p></li>
+<li><p>Github account</p></li>
+</ol>
+<p>To install all dependencies (Go, kustomize, kubebuilder, dep), simply run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>./install-dependencies.sh
+</pre></div>
+</div>
+</section>
+<section id="initial-setup">
+<h2>Initial Setup<a class="headerlink" href="#initial-setup" title="Link to this heading">¶</a></h2>
+<section id="create-a-fork">
+<h3>Create a Fork<a class="headerlink" href="#create-a-fork" title="Link to this heading">¶</a></h3>
+<p>From your browser navigate to <a class="reference external" href="http://github.com/scylladb/scylla-operator">http://github.com/scylladb/scylla-operator</a> and click the “Fork” button.</p>
+</section>
+<section id="clone-your-fork">
+<h3>Clone Your Fork<a class="headerlink" href="#clone-your-fork" title="Link to this heading">¶</a></h3>
+<p>Open a console window and do the following:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create the scylla operator repo path</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="nv">$GOPATH</span>/src/github.com/scylladb
+
+<span class="c1"># Navigate to the local repo path and clone your fork</span>
+<span class="nb">cd</span><span class="w"> </span><span class="nv">$GOPATH</span>/src/github.com/scylladb
+
+<span class="c1"># Clone your fork, where &lt;user&gt; is your GitHub account name</span>
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/&lt;user&gt;/scylla-operator.git
+</pre></div>
+</div>
+</section>
+<section id="add-upstream-remote">
+<h3>Add Upstream Remote<a class="headerlink" href="#add-upstream-remote" title="Link to this heading">¶</a></h3>
+<p>First you will need to add the upstream remote to your local git:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Add &#39;upstream&#39; to the list of remotes</span>
+git<span class="w"> </span>remote<span class="w"> </span>add<span class="w"> </span>upstream<span class="w"> </span>https://github.com/scylladb/scylla-operator.git
+
+<span class="c1"># Verify the remote was added</span>
+git<span class="w"> </span>remote<span class="w"> </span>-v
+</pre></div>
+</div>
+<p>Now you should have at least <code class="docutils literal notranslate"><span class="pre">origin</span></code> and <code class="docutils literal notranslate"><span class="pre">upstream</span></code> remotes. You can also add other remotes to collaborate with other contributors.</p>
+</section>
+</section>
+<section id="development">
+<h2>Development<a class="headerlink" href="#development" title="Link to this heading">¶</a></h2>
+<p>To add a feature or to make a bug fix, you will need to create a branch in your fork and then submit a pull request (PR) from the branch.</p>
+<section id="building-the-project">
+<h3>Building the project<a class="headerlink" href="#building-the-project" title="Link to this heading">¶</a></h3>
+<p>You can build the project using the Makefile commands:</p>
+<ul class="simple">
+<li><p>Open the Makefile and change the <code class="docutils literal notranslate"><span class="pre">IMG</span></code> environment variable to a repository you have access to.</p></li>
+<li><p>Run <code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">docker-push</span></code> and wait for the image to be built and uploaded in your repo.</p></li>
+</ul>
+</section>
+<section id="create-a-branch">
+<h3>Create a Branch<a class="headerlink" href="#create-a-branch" title="Link to this heading">¶</a></h3>
+<p>From a console, create a new branch based on your fork and start working on it:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Ensure all your remotes are up to date with the latest</span>
+git<span class="w"> </span>fetch<span class="w"> </span>--all
+
+<span class="c1"># Create a new branch that is based off upstream master.  Give it a simple, but descriptive name.</span>
+<span class="c1"># Generally it will be two to three words separated by dashes and without numbers.</span>
+git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>feature-name<span class="w"> </span>upstream/master
+</pre></div>
+</div>
+<p>Now you are ready to make the changes and commit to your branch.</p>
+</section>
+<section id="updating-your-fork">
+<h3>Updating Your Fork<a class="headerlink" href="#updating-your-fork" title="Link to this heading">¶</a></h3>
+<p>During the development lifecycle, you will need to keep up-to-date with the latest upstream master. As others on the team push changes, you will need to <code class="docutils literal notranslate"><span class="pre">rebase</span></code> your commits on top of the latest. This avoids unnecessary merge commits and keeps the commit history clean.</p>
+<p>Whenever you need to update your local repository, you never want to merge. You <strong>always</strong> will rebase. Otherwise you will end up with merge commits in the git history. If you have any modified files, you will first have to stash them (<code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">stash</span> <span class="pre">save</span> <span class="pre">-u</span> <span class="pre">&quot;&lt;some</span> <span class="pre">description&gt;&quot;</span></code>).</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>fetch<span class="w"> </span>--all
+git<span class="w"> </span>rebase<span class="w"> </span>upstream/master
+</pre></div>
+</div>
+<p>Rebasing is a very powerful feature of Git. You need to understand how it works or else you will risk losing your work. Read about it in the <a class="reference external" href="https://git-scm.com/docs/git-rebase">Git documentation</a>, it will be well worth it. In a nutshell, rebasing does the following:</p>
+<ul class="simple">
+<li><p>“Unwinds” your local commits. Your local commits are removed temporarily from the history.</p></li>
+<li><p>The latest changes from upstream are added to the history</p></li>
+<li><p>Your local commits are re-applied one by one</p></li>
+<li><p>If there are merge conflicts, you will be prompted to fix them before continuing. Read the output closely. It will tell you how to complete the rebase.</p></li>
+<li><p>When done rebasing, you will see all of your commits in the history.</p></li>
+</ul>
+</section>
+</section>
+<section id="submitting-a-pull-request">
+<h2>Submitting a Pull Request<a class="headerlink" href="#submitting-a-pull-request" title="Link to this heading">¶</a></h2>
+<p>Once you have implemented the feature or bug fix in your branch, you will open a PR to the upstream repo. Before opening the PR ensure you have added unit tests, are passing the integration tests, cleaned your commit history, and have rebased on the latest upstream.</p>
+<p>In order to open a pull request (PR) it is required to be up to date with the latest changes upstream. If other commits are pushed upstream before your PR is merged, you will also need to rebase again before it will be merged.</p>
+<section id="commit-history">
+<h3>Commit History<a class="headerlink" href="#commit-history" title="Link to this heading">¶</a></h3>
+<p>To prepare your branch to open a PR, you will need to have the minimal number of logical commits so we can maintain
+a clean commit history. Most commonly a PR will include a single commit where all changes are squashed, although
+sometimes there will be multiple logical commits.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Inspect your commit history to determine if you need to squash commits</span>
+git<span class="w"> </span>log
+
+<span class="c1"># Rebase the commits and edit, squash, or even reorder them as you determine will keep the history clean.</span>
+<span class="c1"># In this example, the last 5 commits will be opened in the git rebase tool.</span>
+git<span class="w"> </span>rebase<span class="w"> </span>-i<span class="w"> </span>HEAD~5
+</pre></div>
+</div>
+<p>Once your commit history is clean, ensure you have based on the <a class="reference internal" href="#updating-your-fork">latest upstream</a> before you open the PR.</p>
+</section>
+<section id="commit-messages">
+<h3>Commit messages<a class="headerlink" href="#commit-messages" title="Link to this heading">¶</a></h3>
+<p>Please make the first line of your commit message a summary of the change that a user (not a developer) of Operator would like to read,
+and prefix it with the most relevant directory of the change followed by a colon.
+The changelog gets made by looking at just these first lines so make it good!</p>
+<p>If you have more to say about the commit, then enter a blank line and carry on the description.
+Remember to say why the change was needed - the commit itself shows what was changed.</p>
+<p>Writing more is better than less. Comparing the behaviour before the change to that after the change is very useful.
+Imagine you are writing to yourself in 12 months time when you’ve forgotten everything about what you just did, and you need to get up to speed quickly.</p>
+<p>If the change fixes an issue then write Fixes #1234 in the commit message.
+This can be on the subject line if it will fit. If you don’t want to close the associated issue just put #1234 and the change will get linked into the issue.</p>
+<p>Here is an example of a short commit message:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sidecar</span><span class="p">:</span> <span class="n">log</span> <span class="n">on</span> <span class="n">reconcile</span> <span class="n">loop</span> <span class="o">-</span> <span class="n">fixes</span> <span class="c1">#1234</span>
+</pre></div>
+</div>
+<p>And here is an example of a longer one:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>
+<span class="n">api</span><span class="p">:</span> <span class="n">now</span> <span class="n">supports</span> <span class="n">host</span> <span class="n">networking</span> <span class="p">(</span><span class="c1">#1234)</span>
+
+<span class="n">The</span> <span class="n">operator</span> <span class="n">CRD</span> <span class="n">now</span> <span class="n">has</span> <span class="n">a</span> <span class="s2">&quot;network&quot;</span> <span class="nb">property</span> <span class="n">that</span> <span class="n">can</span> <span class="n">be</span> <span class="n">used</span> <span class="n">to</span>
+<span class="n">select</span> <span class="n">host</span> <span class="n">networking</span> <span class="k">as</span> <span class="n">well</span> <span class="k">as</span> <span class="n">setting</span> <span class="n">the</span> <span class="n">apropriate</span> <span class="n">DNS</span> <span class="n">policy</span><span class="o">.</span>
+
+<span class="n">Fixes</span> <span class="c1">#1234</span>
+</pre></div>
+</div>
+</section>
+<section id="submitting">
+<h3>Submitting<a class="headerlink" href="#submitting" title="Link to this heading">¶</a></h3>
+<p>Go to the <a class="reference external" href="https://www.github.com/scylladb/scylla-operator">Scylla Operator github</a> to open the PR. If you have pushed recently, you should see an obvious link to open the PR. If you have not pushed recently, go to the Pull Request tab and select your fork and branch for the PR.</p>
+<p>After the PR is open, you can make changes simply by pushing new commits. Your PR will track the changes in your fork and update automatically.</p>
+</section>
+</section>
+</section>
+
+                
+                    <div class="post-content">
+                        
+    <div class="feedback-container">
+        <p class="feedback-container__title">Was this page helpful?</p>
+        <span data-tooltip tabindex="1" title="Yes" data-position="top">
+            <button class="feedback-container__button" id="feedback-positive">
+                <i class="feedback-container__icon scylla-icon scylla-icon--thumbs-up"></i>
+            </button>
+        </span>
+        <span data-tooltip tabindex="1" title="No" data-position="top">
+            <button class="feedback-container__button" id="feedback-negative">
+                <i class="feedback-container__icon scylla-icon scylla-icon--thumbs-down"></i>
+            </button>
+        </span>
+        <div class="feedback-container__message" id="feedback-message"></div>
+    </div>
+
+    <script>
+        function resetFeedbackButtonActive() {
+            const feedbackButtons = document.getElementsByClassName('feedback-container__button');
+            for (let i = 0; i < feedbackButtons.length; i++) {
+                feedbackButtons[i].classList.remove('active');
+            }
+        }
+
+        function showMessage(liked) {
+            const feedbackMessage = document.getElementById('feedback-message');
+            const themeGithubRepository = true;
+            let message = 'Great! Thanks for your feedback.';
+            if (themeGithubRepository && !liked) {
+                message = "Thanks for your feedback! Please don't hesitate to <a href='https://github.com/scylladb/scylla-operator/issues/new?title=docs:%20Issue on page Contributing to Scylla Operator&&body=I%20would%20like%20to%20report%20an%20issue%20on%20page%20https://operator.docs.scylladb.com/v1.12/contributing%0A%0A%23%23%23%20Problem%0A%0A%23%23%23%20%20Suggest%20a%20fix&labels=documentation'>create an issue</a> if you have any suggestions on how we can improve.";
+            }
+            feedbackMessage.innerHTML = message;
+        }
+
+        function sendGaEvent(liked) {
+            const event_label = liked ? "positive" : "negative";
+            const event = "feedback_" + event_label;
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({
+                'event': event,
+            });
+        }
+
+        const positiveFeebackButton = document.getElementById('feedback-positive');
+        const negativeFeedbackButton = document.getElementById('feedback-negative');
+
+        positiveFeebackButton.addEventListener('click', function() {
+            resetFeedbackButtonActive();
+            sendGaEvent(true);
+            showMessage(true);
+            positiveFeebackButton.classList.add('active');
+        });
+
+        negativeFeedbackButton.addEventListener('click', function() {
+            resetFeedbackButtonActive();
+            sendGaEvent(false);
+            showMessage(false);
+            negativeFeedbackButton.classList.add('active');
+        });
+    </script>
+
+                        <div class="content-navigation">
+    <div class="navigation navigation--prev">
+        
+            <a class="navigation__link" href="api-reference/groups/scylla.scylladb.com/scyllaoperatorconfigs.html">
+                <button class="navigation__button">
+                    <i class="scylla-icon scylla-icon--chevron-left"></i>
+                </button>
+                <div class="navigation__title">
+                    <span class="colored">PREVIOUS</span> <br />ScyllaOperatorConfig (scylla.scylladb.com/v1alpha1)
+                </div>
+            </a>
+        
+    </div>
+    <div class="navigation navigation--next">
+        
+    </div>
+</div>
+                        <!-- Post content text -->
+                    </div>
+                
+            </div>
+            <div class="sidebar-left  large-order-1">
+                
+                    
+                        <div id="side-nav" class="side-nav custom-scroll-bar" data-closable data-toggler=".show">
+    <button class="collapsible-button">
+        <i class="scylla-icon scylla-icon--chevron-left"></i>
+    </button>
+    <div class="side-nav-content" style="visibility: hidden;">
+        <div class="side-nav__search">
+            <div class="search-box">
+                <ci-search></ci-search>
+            </div>
+        </div>
+        <div class="side-nav__title">
+            <a href="index.html">Scylla Operator</a>
+        </div>
+        <div class="side-nav__versions"><ul class="dropdown menu scylla-dropdown scylla-dropdown--versions" data-dropdown-menu>
+    <li class="scylla-dropdown__item">
+        <a class="scylla-dropdown__title" href="#">
+            
+                v1.12
+            
+            <i class="chevron scylla-icon scylla-icon--chevron-right"></i>
+        </a>
+        <ul class="menu scylla-dropdown__content">
+            
+                
+                    <li>
+                        <a href="../stable/index.html">v1.13</a>
+                    </li>
+                
+            
+                
+                    <li>
+                        <a href="contributing.html">v1.12</a>
+                    </li>
+                
+            
+                
+                    <li>
+                        <a href="../master/index.html">master</a>
+                    </li>
+                
+            
+            
+        </ul>
+    </li>
+</ul></div>
+        <div class="side-nav__content">
+            <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="generic.html">Deploying Scylla on a Kubernetes Cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="eks.html">Deploying Scylla on EKS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gke.html">Deploying Scylla on GKE</a></li>
+<li class="toctree-l1"><a class="reference internal" href="helm.html">Deploying Scylla stack using Helm Charts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="manager.html">Deploying Scylla Manager on a Kubernetes Cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="monitoring.html">Monitoring</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="clients/index.html">Using ScyllaDB APIs</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label for="toctree-checkbox-1"><i class="scylla-icon scylla-icon--expand"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="clients/discovery.html">Discovering ScyllaDB Nodes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="clients/cql.html">Using CQL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="clients/alternator.html">Using Alternator (DynamoDB)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="migration.html">Version  migrations</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="nodeoperations/index.html">Node operations using Scylla Operator</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label for="toctree-checkbox-2"><i class="scylla-icon scylla-icon--expand"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="nodeoperations/scylla-upgrade.html">Upgrading version of Scylla</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nodeoperations/replace-node.html">Replacing a Scylla node</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nodeoperations/automatic-cleanup.html">Automatic cleanup and replacement in case when k8s node is lost</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nodeoperations/maintenance-mode.html">Maintenance mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nodeoperations/restore.html">Restore from backup</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="exposing.html">Exposing ScyllaCluster</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="multidc/index.html">Deploying multi-datacenter ScyllaDB clusters in Kubernetes</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label for="toctree-checkbox-3"><i class="scylla-icon scylla-icon--expand"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="multidc/eks.html">Build multiple Amazon EKS clusters with inter-Kubernetes networking</a></li>
+<li class="toctree-l2"><a class="reference internal" href="multidc/gke.html">Build multiple GKE clusters with inter-Kubernetes networking</a></li>
+<li class="toctree-l2"><a class="reference internal" href="multidc/multidc.html">Deploy a multi-datacenter ScyllaDB cluster in multiple interconnected Kubernetes clusters</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="performance.html">Performance tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="upgrade.html">Upgrade of Scylla Operator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Releases</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="support/index.html">Support</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label for="toctree-checkbox-4"><i class="scylla-icon scylla-icon--expand"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="support/overview.html">Support overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="support/known-issues.html">Known issues</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="support/troubleshooting/index.html">Troubleshooting</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/><label for="toctree-checkbox-5"><i class="scylla-icon scylla-icon--expand"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="support/troubleshooting/installation.html">Troubleshooting installation issues</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="support/must-gather.html">Gathering data with must-gather</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="api-reference/index.html">API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label for="toctree-checkbox-6"><i class="scylla-icon scylla-icon--expand"></i></label><div class="break"></div><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="api-reference/groups/scylla.scylladb.com.html">scylla.scylladb.com</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label for="toctree-checkbox-7"><i class="scylla-icon scylla-icon--expand"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="api-reference/groups/scylla.scylladb.com/nodeconfigs.html">NodeConfig (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api-reference/groups/scylla.scylladb.com/scyllaclusters.html">ScyllaCluster (scylla.scylladb.com/v1)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api-reference/groups/scylla.scylladb.com/scylladbmonitorings.html">ScyllaDBMonitoring (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api-reference/groups/scylla.scylladb.com/scyllaoperatorconfigs.html">ScyllaOperatorConfig (scylla.scylladb.com/v1alpha1)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Contributing to Scylla Operator</a></li>
+</ul>
+
+        </div>
+    </div>
+</div>
+                    
+                
+            </div>
+            
+                <div class="sidebar-right large-order-3">
+                    <div class="secondary-side-nav custom-scroll-bar">
+    
+    <ul class="contribute">
+        <li class="contribute__item">
+            <a href="https://github.com/scylladb/scylla-operator/issues/new?title=docs:%20Issue on page Contributing to Scylla Operator&&body=I%20would%20like%20to%20report%20an%20issue%20on%20page%20https://operator.docs.scylladb.com/v1.12/contributing%0A%0A%23%23%23%20Problem%0A%0A%23%23%23%20%20Suggest%20a%20fix&labels=documentation"
+               target="_blank">
+                <i class="icon fab fa-github" aria-hidden="true"></i>Create an issue
+            </a>
+        </li>
+        
+            <li class="contribute__item">
+                <a href="https://github.com/scylladb/scylla-operator/edit/master/docs/source/contributing.md"
+                   target="_blank">
+                    <i class="icon fa fa-edit" aria-hidden="true"></i>Edit this page
+                </a>
+            </li>
+        
+    </ul>
+
+    
+        <div class="secondary-side-nav__content">
+            <p class="topic-title">On this page</p>
+            <ul>
+<li><a class="reference internal" href="#">Contributing to Scylla Operator</a><ul>
+<li><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+<li><a class="reference internal" href="#initial-setup">Initial Setup</a><ul>
+<li><a class="reference internal" href="#create-a-fork">Create a Fork</a></li>
+<li><a class="reference internal" href="#clone-your-fork">Clone Your Fork</a></li>
+<li><a class="reference internal" href="#add-upstream-remote">Add Upstream Remote</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#development">Development</a><ul>
+<li><a class="reference internal" href="#building-the-project">Building the project</a></li>
+<li><a class="reference internal" href="#create-a-branch">Create a Branch</a></li>
+<li><a class="reference internal" href="#updating-your-fork">Updating Your Fork</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#submitting-a-pull-request">Submitting a Pull Request</a><ul>
+<li><a class="reference internal" href="#commit-history">Commit History</a></li>
+<li><a class="reference internal" href="#commit-messages">Commit messages</a></li>
+<li><a class="reference internal" href="#submitting">Submitting</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+    
+</div>
+                </div>
+            
+        </section>
+
+        <footer class="footer">
+    <div class="footer-group">
+        <div class="footer-top">
+            <a class="footer-logo" href="https://www.scylladb.com">
+                <img src="_static/img/logo-scylla-horizontal-RGB.svg" alt="Logo" />
+            </a>
+            <div class="footer-links">
+                <a class="footer-links__link" href="https://docs.scylladb.com/" target="_blank">Docs</a>
+                <a class="footer-links__link" href="https://university.scylladb.com/" target="_blank">University</a>
+                <a class="footer-links__link" href="https://www.scylladb.com/company/contact-us/" target="_blank">Contact Us</a>
+                <a class="footer-links__link" href="https://www.scylladb.com/company/" target="_blank">About Us</a>
+            </div>
+            <div class="footer-actions">
+                <a class="footer-actions__link" href="https://groups.google.com/g/scylladb-users" target="_blank">
+                    <span data-tooltip tabindex="1" title="User mailing list" data-position="bottom">
+                        <img src="_static/img/icons/icon-mail-list.svg" alt="Mail List Icon" />
+                    </span>
+                </a>
+                <a class="footer-actions__link" href="http://slack.scylladb.com/" target="_blank">
+                    <span data-tooltip tabindex="1" title="User Slack channel" data-position="bottom">
+                        <img src="_static/img/icons/icon-slack.svg" alt="Slack Icon" />
+                    </span>
+                </a>
+                <a class="footer-actions__link" href="https://forum.scylladb.com/" target="_blank">
+                    <span data-tooltip tabindex="1" title="Community forum" data-position="bottom">
+                        <img src="_static/img/icons/icon-forum.svg" alt="Forum Icon" />
+                    </span>
+                </a>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            
+                <div class="footer-bottom__copyright">
+                    
+                        
+                            &#169; 2024, ScyllaDB. All rights reserved.
+                        
+                    
+                </div>
+            
+            
+                <div class="footer-bottom__last-updated">
+                    
+                        Last updated on 17 July 2024.
+                    
+                </div>
+            
+            <div class="footer-bottom__version">
+                Powered by
+                <a href="http://sphinx-doc.org/">Sphinx 7.2.6</a> &amp;
+                <a href="https://sphinx-theme.scylladb.com/">ScyllaDB Theme 1.7.2</a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+        <noscript>
+            <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-T8P2JP" height="0" width="0"
+                    style="display: none; visibility: hidden"></iframe>
+        </noscript>
+    </body>
+
+</html>

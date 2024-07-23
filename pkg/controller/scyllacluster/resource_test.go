@@ -158,80 +158,6 @@ func TestMemberService(t *testing.T) {
 				},
 			},
 		},
-		{
-			name: "new service with saved IP",
-			scyllaCluster: func() *scyllav1.ScyllaCluster {
-				sc := basicSC.DeepCopy()
-				sc.Status.Racks[basicRackName] = scyllav1.RackStatus{
-					ReplaceAddressFirstBoot: map[string]string{
-						basicSVCName: "10.0.0.1",
-					},
-				}
-				return sc
-			}(),
-			rackName:   basicRackName,
-			svcName:    basicSVCName,
-			oldService: nil,
-			jobs:       nil,
-			expectedService: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: basicSVCName,
-					Labels: func() map[string]string {
-						labels := basicSVCLabels()
-						labels[naming.ReplaceLabel] = "10.0.0.1"
-						return labels
-					}(),
-					Annotations:     basicSVCAnnotations(),
-					OwnerReferences: basicSCOwnerRefs,
-				},
-				Spec: corev1.ServiceSpec{
-					Type:                     corev1.ServiceTypeClusterIP,
-					Selector:                 basicSVCSelector,
-					PublishNotReadyAddresses: true,
-					Ports:                    basicPorts,
-				},
-			},
-		},
-		{
-			name: "new service with saved IP and existing replace address",
-			scyllaCluster: func() *scyllav1.ScyllaCluster {
-				sc := basicSC.DeepCopy()
-				sc.Status.Racks[basicRackName] = scyllav1.RackStatus{
-					ReplaceAddressFirstBoot: map[string]string{
-						basicSVCName: "10.0.0.1",
-					},
-				}
-				return sc
-			}(),
-			rackName: basicRackName,
-			svcName:  basicSVCName,
-			oldService: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						naming.ReplaceLabel: "10.0.0.1",
-					},
-				},
-			},
-			jobs: nil,
-			expectedService: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: basicSVCName,
-					Labels: func() map[string]string {
-						labels := basicSVCLabels()
-						labels[naming.ReplaceLabel] = "10.0.0.1"
-						return labels
-					}(),
-					Annotations:     basicSVCAnnotations(),
-					OwnerReferences: basicSCOwnerRefs,
-				},
-				Spec: corev1.ServiceSpec{
-					Type:                     corev1.ServiceTypeClusterIP,
-					Selector:                 basicSVCSelector,
-					PublishNotReadyAddresses: true,
-					Ports:                    basicPorts,
-				},
-			},
-		},
 		// This behaviour is based on the fact the we merge labels on apply.
 		// TODO: to be addressed with https://github.com/scylladb/scylla-operator/issues/1440.
 		{
@@ -263,18 +189,10 @@ func TestMemberService(t *testing.T) {
 			},
 		},
 		{
-			name: "existing initial service with IP",
-			scyllaCluster: func() *scyllav1.ScyllaCluster {
-				sc := basicSC.DeepCopy()
-				sc.Status.Racks[basicRackName] = scyllav1.RackStatus{
-					ReplaceAddressFirstBoot: map[string]string{
-						basicSVCName: "10.0.0.1",
-					},
-				}
-				return sc
-			}(),
-			rackName: basicRackName,
-			svcName:  basicSVCName,
+			name:          "existing initial service with IP",
+			scyllaCluster: basicSC.DeepCopy(),
+			rackName:      basicRackName,
+			svcName:       basicSVCName,
 			oldService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{

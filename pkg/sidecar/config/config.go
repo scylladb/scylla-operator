@@ -221,14 +221,6 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		"broadcast-rpc-address": &m.BroadcastRPCAddress,
 	}
 
-	// If node is being replaced
-	if addr, ok := m.ServiceLabels[naming.ReplaceLabel]; ok {
-		if len(addr) == 0 {
-			klog.Warningf("Service %q have unexpectedly empty label %q, skipping replace", m.Name, naming.ReplaceLabel)
-		} else {
-			args["replace-address-first-boot"] = pointer.Ptr(addr)
-		}
-	}
 	if hostID, ok := m.ServiceLabels[naming.ReplacingNodeHostIDLabel]; ok {
 		if len(hostID) == 0 {
 			klog.Warningf("Service %q have unexpectedly empty label %q, skipping replace", m.Name, naming.ReplacingNodeHostIDLabel)

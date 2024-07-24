@@ -16,8 +16,7 @@ var (
 type ScyllaFeature string
 
 const (
-	ReplacingNodeUsingHostID                          ScyllaFeature = "ReplacingNodeUsingHostID"
-	ExposingScyllaClusterViaServiceOtherThanClusterIP ScyllaFeature = "ExposingScyllaClusterViaServiceOtherThanClusterIP"
+	ReplacingNodeUsingHostID ScyllaFeature = "ReplacingNodeUsingHostID"
 )
 
 type scyllaDBVersionMinimalConstraint struct {
@@ -27,11 +26,6 @@ type scyllaDBVersionMinimalConstraint struct {
 
 var featureMinimalVersionConstraints = map[ScyllaFeature]scyllaDBVersionMinimalConstraint{
 	ReplacingNodeUsingHostID: {
-		openSource: semver.MustParse("5.2.0"),
-		enterprise: semver.MustParse("2023.1.0"),
-	},
-	// Exposing requires ReplacingNodeUsingHostID, so minimal values should be the same.
-	ExposingScyllaClusterViaServiceOtherThanClusterIP: {
 		openSource: semver.MustParse("5.2.0"),
 		enterprise: semver.MustParse("2023.1.0"),
 	},

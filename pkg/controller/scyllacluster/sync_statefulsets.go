@@ -16,7 +16,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
-	"github.com/scylladb/scylla-operator/pkg/scyllafeatures"
 	"github.com/scylladb/scylla-operator/pkg/util/hash"
 	"github.com/scylladb/scylla-operator/pkg/util/parallel"
 	"github.com/scylladb/scylla-operator/pkg/util/slices"
@@ -481,26 +480,6 @@ func (scc *Controller) syncStatefulSets(
 ) ([]metav1.Condition, error) {
 	var err error
 	var progressingConditions []metav1.Condition
-
-	if sc.Spec.ExposeOptions != nil && sc.Spec.ExposeOptions.BroadcastOptions != nil {
-		if sc.Spec.ExposeOptions.BroadcastOptions.Clients.Type != scyllav1.BroadcastAddressTypeServiceClusterIP ||
-			sc.Spec.ExposeOptions.BroadcastOptions.Nodes.Type != scyllav1.BroadcastAddressTypeServiceClusterIP {
-			supportsExposing, err := scyllafeatures.Supports(sc, scyllafeatures.ExposingScyllaClusterViaServiceOtherThanClusterIP)
-			if err != nil {
-				return nil, fmt.Errorf("can't determine if ScyllaDB version %q supports exposing via Service other than ClusterIP: %w", sc.Spec.Version, err)
-			}
-
-			if !supportsExposing {
-				scc.eventRecorder.Eventf(
-					sc,
-					corev1.EventTypeWarning,
-					"InvalidScyllaDBVersion",
-					fmt.Sprintf("Requested ScyllaDB version %q does not support broadcasting other address than ClusterIP, use the latest one", sc.Spec.Version),
-				)
-				return nil, fmt.Errorf("requested ScyllaDB version %q does not support broadcasting other address than ClusterIP, use the latest one", sc.Spec.Version)
-			}
-		}
-	}
 
 	managedScyllaDBConfigCMName := naming.GetScyllaDBManagedConfigCMName(sc.Name)
 	managedScyllaDBConfigCM, found := configMaps[managedScyllaDBConfigCMName]

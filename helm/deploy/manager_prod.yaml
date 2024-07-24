@@ -25,7 +25,7 @@ scylla:
     repository: docker.io/scylladb/scylla
     tag: 5.4.3
   agentImage:
-    tag: 3.2.8
+    tag: 3.3.0
     repository: docker.io/scylladb/scylla-manager-agent
   developerMode: true
   cpuset: true
@@ -35,6 +35,7 @@ scylla:
     members: 1
     storage:
       capacity: 5Gi
+      storageClassName: scylladb-local-xfs
     resources:
       limits:
         cpu: 1

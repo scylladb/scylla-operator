@@ -106,9 +106,25 @@ func (f *Framework) GetDefaultScyllaCluster() *scyllav1.ScyllaCluster {
 		"nodeServiceType":             TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
 		"nodesBroadcastAddressType":   TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
 		"clientsBroadcastAddressType": TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
+		"storageClassName":            TestContext.ScyllaClusterOptions.StorageClassName,
 	}
 
 	sc, _, err := scyllafixture.ScyllaClusterTemplate.RenderObject(renderArgs)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	return sc
+}
+
+func (f *Framework) GetDefaultZonalScyllaClusterWithThreeRacks() *scyllav1.ScyllaCluster {
+	renderArgs := map[string]any{
+		"nodeServiceType":             TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
+		"nodesBroadcastAddressType":   TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
+		"clientsBroadcastAddressType": TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
+		"storageClassName":            TestContext.ScyllaClusterOptions.StorageClassName,
+		"rackNames":                   []string{"a", "b", "c"},
+	}
+
+	sc, _, err := scyllafixture.ZonalScyllaClusterTemplate.RenderObject(renderArgs)
 	o.Expect(err).NotTo(o.HaveOccurred())
 
 	return sc

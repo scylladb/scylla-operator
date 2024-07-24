@@ -27,6 +27,9 @@ spec:
   {{- if .Values.developerMode }}
   developerMode: {{ .Values.developerMode }}
   {{- end }}
+  {{- if .Values.forceRedeploymentReason }}
+  forceRedeploymentReason: {{ .Values.forceRedeploymentReason }}
+  {{- end }}
   {{- if .Values.cpuset }}
   cpuset: {{ .Values.cpuset }}
   {{- end }}

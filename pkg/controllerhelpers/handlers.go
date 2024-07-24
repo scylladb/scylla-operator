@@ -90,14 +90,30 @@ func (h *Handlers[T]) Enqueue(depth int, untypedObj kubeinterfaces.ObjectInterfa
 func (h *Handlers[T]) EnqueueAll(depth int, untypedObj kubeinterfaces.ObjectInterface, op HandlerOperationType) {
 	klog.V(4).InfoSDepth(depth, "Enqueuing all controller objects", getObjectLogContext(untypedObj, nil)...)
 
-	controllerObjs, err := h.getterLister.List(untypedObj.GetNamespace(), labels.Everything())
-	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("couldn't list all controller objects for %T: %w", untypedObj, err))
-		return
-	}
+	h.EnqueueAllFunc(h.Enqueue)(depth+1, untypedObj, op)
+}
 
-	for _, controllerObj := range controllerObjs {
-		h.Enqueue(depth+1, controllerObj, op)
+func (h *Handlers[T]) EnqueueAllWithUntypedFilterFunc(filterFunc func(kubeinterfaces.ObjectInterface) bool) EnqueueFuncType {
+	return func(depth int, untypedObj kubeinterfaces.ObjectInterface, op HandlerOperationType) {
+		if !filterFunc(untypedObj) {
+			return
+		}
+
+		h.EnqueueAll(depth+1, untypedObj, op)
+	}
+}
+
+func (h *Handlers[T]) EnqueueAllFunc(enqueueFunc EnqueueFuncType) EnqueueFuncType {
+	return func(depth int, untypedObj kubeinterfaces.ObjectInterface, op HandlerOperationType) {
+		controllerObjs, err := h.getterLister.List(untypedObj.GetNamespace(), labels.Everything())
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("couldn't list all controller objects for %T: %w", untypedObj, err))
+			return
+		}
+
+		for _, controllerObj := range controllerObjs {
+			enqueueFunc(depth+1, controllerObj, op)
+		}
 	}
 }
 

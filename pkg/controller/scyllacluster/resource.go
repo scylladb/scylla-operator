@@ -96,23 +96,6 @@ func MemberService(sc *scyllav1.ScyllaCluster, rackName, name string, oldService
 	svcLabels[naming.RackNameLabel] = rackName
 	svcLabels[naming.ScyllaServiceTypeLabel] = string(naming.ScyllaServiceTypeMember)
 
-	var replaceAddr string
-	var hasReplaceLabel bool
-	if oldService != nil {
-		replaceAddr, hasReplaceLabel = oldService.Labels[naming.ReplaceLabel]
-	}
-
-	// Only new service should get the replace address, old service keeps "" until deleted.
-	if !hasReplaceLabel || len(replaceAddr) != 0 {
-		rackStatus, ok := sc.Status.Racks[rackName]
-		if ok {
-			replaceAddr := rackStatus.ReplaceAddressFirstBoot[name]
-			if len(replaceAddr) != 0 {
-				svcLabels[naming.ReplaceLabel] = replaceAddr
-			}
-		}
-	}
-
 	svcAnnotations := map[string]string{}
 	if sc.Spec.ExposeOptions != nil && sc.Spec.ExposeOptions.NodeService.Annotations != nil {
 		maps.Copy(svcAnnotations, sc.Spec.ExposeOptions.NodeService.Annotations)

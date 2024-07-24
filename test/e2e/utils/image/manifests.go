@@ -44,7 +44,7 @@ const (
 func initImageConfigs(list RegistryList) map[int]Config {
 	configs := map[int]Config{}
 	configs[BusyBox] = Config{registry: list.DockerLibraryRegistry, name: "busybox", version: "1.35"}
-	configs[OperatorNodeSetup] = Config{registry: list.QuayScyllaDB, name: "scylla-operator-images", version: "node-setup-v0.0.1@sha256:a25e77c769605bbb1f9c8b0b29723bb6b1d9990982d43c908779a0717dc10cb4"}
+	configs[OperatorNodeSetup] = Config{registry: list.QuayScyllaDB, name: "scylla-operator-images", version: "node-setup-v0.0.2@sha256:210b1dd9bd60a5bf4056783f3132bdeef0cf9ab0a19eff0b620b2dfa5c4e5d61"}
 
 	return configs
 }

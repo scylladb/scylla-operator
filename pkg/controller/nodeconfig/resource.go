@@ -193,7 +193,8 @@ func makeNodeSetupDaemonSet(nc *scyllav1alpha1.NodeConfig, operatorImage, scylla
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					ServiceAccountName: naming.NodeConfigAppName,
+					ServiceAccountName:           naming.NodeConfigAppName,
+					AutomountServiceAccountToken: pointer.Ptr(false),
 					// Required for getting the right iface name to tune
 					HostNetwork:  true,
 					NodeSelector: nc.Spec.Placement.NodeSelector,
@@ -206,6 +207,35 @@ func makeNodeSetupDaemonSet(nc *scyllav1alpha1.NodeConfig, operatorImage, scylla
 								HostPath: &corev1.HostPathVolumeSource{
 									Path: "/",
 									Type: pointer.Ptr(corev1.HostPathDirectory),
+								},
+							},
+						},
+						{
+							Name: "kube-api-access",
+							VolumeSource: corev1.VolumeSource{
+								Projected: &corev1.ProjectedVolumeSource{
+									DefaultMode: pointer.Ptr[int32](420),
+									Sources: []corev1.VolumeProjection{
+										{
+											ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+												Path: "token",
+											},
+										},
+										{
+											ConfigMap: &corev1.ConfigMapProjection{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "kube-root-ca.crt",
+												},
+												Items: []corev1.KeyToPath{
+													{
+
+														Key:  corev1.ServiceAccountRootCAKey,
+														Path: corev1.ServiceAccountRootCAKey,
+													},
+												},
+											},
+										},
+									},
 								},
 							},
 						},
@@ -226,11 +256,12 @@ func makeNodeSetupDaemonSet(nc *scyllav1alpha1.NodeConfig, operatorImage, scylla
 							Args: []string{
 								`
 # Create a temporary root that will represent the host file system and devices.
+# It shall contain identical file tree as the host, so all symlinks keep working,
+# and we'll add additional "virtual" data into /scylla-operator folder.
+# This will avoid polluting the node with the extra data and avoids the need to clean up. 
 cd "$( mktemp -d )"
 
-# Skip mounting entire /var, /run, /tmp to prevent from polluting host with files created in runtime in the container.
-# Required directories originating from these are mounted explicitly below.
-for d in $( find /host -mindepth 1 -maxdepth 1 -type d -not -path /host/var -not -path /host/run -not -path /host/tmp -printf '%f\n' ); do
+for d in $( find /host -mindepth 1 -maxdepth 1 -type d -printf '%f\n' ); do
 	mkdir -p "./${d}"
 	mount --rbind "/host/${d}" "./${d}"
 done
@@ -242,52 +273,46 @@ done
 
 find /host -mindepth 1 -maxdepth 1 -type l -exec cp -P "{}" ./ \;
 
-# Required for node setup
-for dir in "run/udev" "run/mdadm" "run/dbus"; do
-	if [ -d "/host/${dir}" ]; then
-		mkdir -p "./${dir}"
-		mount --rbind "/host/${dir}" "./${dir}"
-	fi
-done
-
-# Required by CRI client
-for dir in "run/crio" "run/containerd"; do
-	if [ -d "/host/${dir}" ]; then
-		mkdir -p "./${dir}"
-		mount --rbind "/host/${dir}" "./${dir}"
-	fi
-done
-
-if [ -f "/host/run/dockershim.sock" ]; then
-	touch "./run/dockershim.sock"
-	mount --bind "/host/run/dockershim.sock" "./run/dockershim.sock"
-fi
-
-# Required by node tuning
-if [ -d "/host/var/lib/kubelet" ]; then
-	mkdir -p "./var/lib/kubelet"
-	mount --rbind "/host/var/lib/kubelet" "./var/lib/kubelet"
-fi
+# Create /scylla-operator directory for additional files.
+mkdir './scylla-operator'
 
 # Mount operator binary
-mkdir -p ./scylla-operator
-touch ./scylla-operator/scylla-operator
-mount --bind /usr/bin/scylla-operator ./scylla-operator/scylla-operator
+mkdir -p './scylla-operator/usr/bin/'
+touch './scylla-operator/usr/bin/scylla-operator'
+mount --bind {,./scylla-operator}/usr/bin/scylla-operator
 
-# Mount service account
-mkdir -p "./run/secrets/kubernetes.io/serviceaccount"
-for f in ca.crt token; do
-	touch "./run/secrets/kubernetes.io/serviceaccount/${f}"
-	mount --bind "/run/secrets/kubernetes.io/serviceaccount/${f}" "./run/secrets/kubernetes.io/serviceaccount/${f}"
-done
+# Mount container run to propagate secrets and configmaps.
+mkdir './scylla-operator/run'
+mount --rbind {,./scylla-operator}/run
+							
+# Mount container tmp.
+mkdir './scylla-operator/tmp'
+mount --rbind {,./scylla-operator}/tmp
+export TMPDIR='/scylla-operator/tmp'
 
-# Create special symlink
-if [ -L "/host/var/run" ]; then
-	mkdir -p "./var"
-	ln -s "../run" "./var/run"
-fi
+cat > ./scylla-operator/run/secrets/kubernetes.io/serviceaccount.kubeconfig <<EOF
+apiVersion: v1
+kind: Config
+clusters:
+- name: local
+  cluster:
+    certificate-authority: "/scylla-operator/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    server: "https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}"
+contexts:
+- name: default
+  context:
+    cluster: local
+    namespace: "${NAMESPACE}"
+    user: sa
+current-context: default
+users:
+- name: sa
+  user:
+    tokenFile: "/scylla-operator/run/secrets/kubernetes.io/serviceaccount/token"
+EOF
 
-exec chroot ./ /scylla-operator/scylla-operator node-setup-daemon \
+exec chroot ./ /scylla-operator/usr/bin/scylla-operator node-setup-daemon \
+--kubeconfig=/scylla-operator/run/secrets/kubernetes.io/serviceaccount.kubeconfig \
 --namespace="$(NAMESPACE)" \
 --pod-name="$(POD_NAME)" \
 --node-name="$(NODE_NAME)" \
@@ -344,6 +369,11 @@ exec chroot ./ /scylla-operator/scylla-operator node-setup-daemon \
 									Name:             "hostfs",
 									MountPath:        "/host",
 									MountPropagation: pointer.Ptr(corev1.MountPropagationBidirectional),
+								},
+								{
+									Name:             "kube-api-access",
+									MountPath:        "/run/secrets/kubernetes.io/serviceaccount/",
+									MountPropagation: pointer.Ptr(corev1.MountPropagationNone),
 								},
 							},
 						},

@@ -200,6 +200,7 @@ rules:
   resources:
   - clusterroles
   - clusterrolebindings
+  - roles
   - rolebindings
   verbs:
   - create
@@ -377,7 +378,7 @@ spec:
                             description: fsType specifies the filesystem on the device.
                             type: string
                           mountPoint:
-                            description: mountPoint is a path where the device should be mounted at.
+                            description: mountPoint is a path where the device should be mounted at. If the mountPoint is a symlink, the mount will be set up for the target.
                             type: string
                           unsupportedOptions:
                             description: unsupportedOptions is a list of mount options used during device mounting. unsupported in this field name means that we won't support all the available options passed down using this field.

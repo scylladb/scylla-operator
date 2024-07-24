@@ -145,6 +145,7 @@ type MountConfiguration struct {
 	Device string `json:"device"`
 
 	// mountPoint is a path where the device should be mounted at.
+	// If the mountPoint is a symlink, the mount will be set up for the target.
 	MountPoint string `json:"mountPoint"`
 
 	// fsType specifies the filesystem on the device.

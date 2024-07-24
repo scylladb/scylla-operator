@@ -7,7 +7,7 @@ fullnameOverride: ""
 image:
   repository: scylladb
   pullPolicy: IfNotPresent
-  tag: 3.2.8
+  tag: 3.3.0
 
 # Allows to customize Scylla Manager Controller image
 controllerImage:
@@ -75,13 +75,14 @@ scylla:
   scyllaImage:
     tag: 5.4.3
   agentImage:
-    tag: 3.2.8
+    tag: 3.3.0
   datacenter: manager-dc
   racks:
   - name: manager-rack
     members: 1
     storage:
       capacity: 5Gi
+      storageClassName: scylladb-local-xfs
     resources:
       limits:
         cpu: 1

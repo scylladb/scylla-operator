@@ -3,7 +3,7 @@ kind: ScyllaCluster
 metadata:
   name: scylla
 spec:
-  agentVersion: 3.2.8
+  agentVersion: 3.3.0
   version: 5.4.3
   developerMode: true
   automaticOrphanedNodeCleanup: true
@@ -16,6 +16,7 @@ spec:
       members: 1
       storage:
         capacity: 1Gi
+        storageClassName: scylladb-local-xfs
       resources:
         requests:
           cpu: 10m

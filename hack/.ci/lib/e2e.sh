@@ -94,14 +94,6 @@ function gather-artifacts-on-exit {
   done
 }
 
-function unset-default-storageclass {
-  for f in "${KUBECONFIGS[@]}"; do
-    for r in $( KUBECONFIG="${f}" kubectl get storageclasses -o name ); do
-      KUBECONFIG="${f}" kubectl patch "${r}" -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
-    done
-  done
-}
-
 function apply-e2e-workarounds {
   if [ -z "${SO_IMAGE+x}" ]; then
     echo "SO_IMAGE can't be empty" > /dev/stderr
@@ -191,6 +183,11 @@ function run-e2e {
     exit 2
   fi
 
+  if [ -z "${SO_SCYLLACLUSTER_STORAGECLASS_NAME+x}" ]; then
+    echo "SO_SCYLLACLUSTER_STORAGECLASS_NAME can't be empty" > /dev/stderr
+    exit 2
+  fi
+
   if [ -z "${ARTIFACTS+x}" ]; then
     echo "ARTIFACTS can't be empty" > /dev/stderr
     exit 2
@@ -262,6 +259,7 @@ spec:
     - "--scyllacluster-node-service-type=${SO_SCYLLACLUSTER_NODE_SERVICE_TYPE}"
     - "--scyllacluster-nodes-broadcast-address-type=${SO_SCYLLACLUSTER_NODES_BROADCAST_ADDRESS_TYPE}"
     - "--scyllacluster-clients-broadcast-address-type=${SO_SCYLLACLUSTER_CLIENTS_BROADCAST_ADDRESS_TYPE}"
+    - "--scyllacluster-storageclass-name=${SO_SCYLLACLUSTER_STORAGECLASS_NAME}"
     - "--object-storage-bucket=${SO_BUCKET_NAME}"
     - "--gcs-service-account-key-path=${gcs_sa_in_container_path}"
     image: "${SO_IMAGE}"

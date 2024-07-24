@@ -2,6 +2,11 @@
 
 Scylla Operator 1.6 introduces a new experimental feature allowing users to optimize Kubernetes nodes.
 
+:::{warning}
+We recommend that you first try out the performance tuning on a pre-production instance.
+Given the nature of the underlying tuning script, undoing the changes requires rebooting the Kubernetes node(s).
+:::
+
 ## Node tuning
 
 Starting from Operator 1.6, a new CRD called NodeConfig is available, allowing users to target Nodes which should be tuned.
@@ -69,7 +74,7 @@ metadata:
   name: guaranteed-cluster
   namespace: scylla
 spec:
-  agentVersion: 3.2.8
+  agentVersion: 3.3.0
   version: 5.4.3
   datacenter:
     name: us-east-1

@@ -12,7 +12,7 @@ scyllaImage:
 agentImage:
   repository: scylladb/scylla-manager-agent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 3.2.8
+  tag: 3.3.0
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -27,6 +27,8 @@ alternator:
   insecureEnableHTTP: true
   writeIsolation: "always"
 
+# If set to a non-empty string, it forces a rolling restart of Scylla. Change it again to trigger a new restart.
+forceRedeploymentReason: ""
 # Whether developer mode should be enabled.
 developerMode: false
 # cpuset determines if the cluster will use cpu-pinning for max performance.
@@ -62,6 +64,7 @@ racks:
   members: 3
   # Storage definition
   storage:
+    storageClassName: scylladb-local-xfs
     capacity: 10Gi
   # Scylla container resource definition
   resources:

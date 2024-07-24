@@ -43,6 +43,38 @@ func ApplyClusterRole(
 	)
 }
 
+func ApplyRoleWithControl(
+	ctx context.Context,
+	control ApplyControlInterface[*rbacv1.Role],
+	recorder record.EventRecorder,
+	required *rbacv1.Role,
+	options ApplyOptions,
+) (*rbacv1.Role, bool, error) {
+	return ApplyGeneric[*rbacv1.Role](ctx, control, recorder, required, options)
+}
+
+func ApplyRole(
+	ctx context.Context,
+	client rbacv1client.RolesGetter,
+	lister rbacv1listers.RoleLister,
+	recorder record.EventRecorder,
+	required *rbacv1.Role,
+	options ApplyOptions,
+) (*rbacv1.Role, bool, error) {
+	return ApplyRoleWithControl(
+		ctx,
+		ApplyControlFuncs[*rbacv1.Role]{
+			GetCachedFunc: lister.Roles(required.Namespace).Get,
+			CreateFunc:    client.Roles(required.Namespace).Create,
+			UpdateFunc:    client.Roles(required.Namespace).Update,
+			DeleteFunc:    client.Roles(required.Namespace).Delete,
+		},
+		recorder,
+		required,
+		options,
+	)
+}
+
 func ApplyRoleBindingWithControl(
 	ctx context.Context,
 	control ApplyControlInterface[*rbacv1.RoleBinding],

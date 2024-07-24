@@ -33,6 +33,12 @@ fi
 
 ARTIFACTS="${ARTIFACTS:-$( mktemp -d )}"
 
+if [ -z "${ARTIFACTS_DEPLOY_DIR+x}" ]; then
+  ARTIFACTS_DEPLOY_DIR="${ARTIFACTS}/deploy"
+fi
+
+mkdir -p "${ARTIFACTS_DEPLOY_DIR}/"{operator,manager}
+
 kubectl_create -n=prometheus-operator -f="${source_url}/${revision}/examples/third-party/prometheus-operator.yaml"
 kubectl_create -n=haproxy-ingress -f="${source_url}/${revision}/examples/third-party/haproxy-ingress.yaml"
 
@@ -44,8 +50,7 @@ for d in cert-manager{,-cainjector,-webhook}; do
 done
 wait-for-object-creation cert-manager secret/cert-manager-webhook-ca
 
-mkdir "${ARTIFACTS}/operator"
-cat > "${ARTIFACTS}/operator/kustomization.yaml" << EOF
+cat > "${ARTIFACTS_DEPLOY_DIR}/operator/kustomization.yaml" << EOF
 resources:
 - ${source_url}/${revision}/deploy/operator.yaml
 patches:
@@ -65,7 +70,7 @@ patches:
             - name: SCYLLA_OPERATOR_IMAGE
               value: "${operator_image_ref}"
 EOF
-kubectl kustomize "${ARTIFACTS}/operator" | kubectl_create -n=scylla-operator -f=-
+kubectl kustomize "${ARTIFACTS_DEPLOY_DIR}/operator" | kubectl_create -n=scylla-operator -f=-
 
 # Manager needs scylla CRD registered and the webhook running
 kubectl wait --for condition=established crd/{scyllaclusters,nodeconfigs}.scylla.scylladb.com
@@ -78,11 +83,20 @@ else
  kubectl_create -f="${SO_NODECONFIG_PATH}"
 fi
 
-kubectl_create -n=local-csi-driver -f="${source_url}/${revision}/examples/common/local-volume-provisioner/local-csi-driver/"{00_namespace.yaml,00_scylladb-local-xfs.storageclass.yaml,10_csidriver.yaml,10_driver.serviceaccount.yaml,10_provisioner_clusterrole.yaml,20_provisioner_clusterrolebinding.yaml,50_daemonset.yaml}
-kubectl -n=local-csi-driver rollout status --timeout=5m daemonset.apps/local-csi-driver
+if [[ -z "${SO_CSI_DRIVER_PATH+x}" ]]; then
+  kubectl_create -n=local-csi-driver -f="${source_url}/${revision}/examples/common/local-volume-provisioner/local-csi-driver/"{00_namespace.yaml,00_scylladb-local-xfs.storageclass.yaml,10_csidriver.yaml,10_driver.serviceaccount.yaml,10_provisioner_clusterrole.yaml,20_provisioner_clusterrolebinding.yaml,50_daemonset.yaml}
+  kubectl -n=local-csi-driver rollout status --timeout=5m daemonset.apps/local-csi-driver
+elif [[ -n "${SO_CSI_DRIVER_PATH}" ]]; then
+  kubectl_create -n=local-csi-driver -f="${SO_CSI_DRIVER_PATH}"
+  kubectl -n=local-csi-driver rollout status --timeout=5m daemonset.apps/local-csi-driver
+else
+  echo "Skipping CSI driver creation"
+fi
 
-mkdir "${ARTIFACTS}/manager"
-cat > "${ARTIFACTS}/manager/kustomization.yaml" << EOF
+if [[ -z "${SO_SCYLLACLUSTER_STORAGECLASS_NAME+x}" ]]; then
+  kubectl_create -n=scylla-manager -f="${source_url}/${revision}/deploy/manager-prod.yaml"
+elif [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME}" ]]; then
+  cat > "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" << EOF
 resources:
 - ${source_url}/${revision}/deploy/manager-prod.yaml
 patches:
@@ -94,9 +108,25 @@ patches:
   patch: |
     - op: replace
       path: /spec/datacenter/racks/0/storage/storageClassName
-      value: scylladb-local-xfs
+      value: "${SO_SCYLLACLUSTER_STORAGECLASS_NAME}"
 EOF
-kubectl kustomize "${ARTIFACTS}/manager" | kubectl_create -n=scylla-manager -f=-
+  kubectl kustomize "${ARTIFACTS_DEPLOY_DIR}/manager" | kubectl_create -n=scylla-manager -f=-
+else
+  cat > "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" << EOF
+resources:
+- ${source_url}/${revision}/deploy/manager-prod.yaml
+patches:
+- target:
+    group: scylla.scylladb.com
+    version: v1
+    kind: ScyllaCluster
+    name: scylla-manager-cluster
+  patch: |
+    - op: remove
+      path: /spec/datacenter/racks/0/storage/storageClassName
+EOF
+  kubectl kustomize "${ARTIFACTS_DEPLOY_DIR}/manager" | kubectl_create -n=scylla-manager -f=-
+fi
 
 kubectl -n=scylla-manager wait --timeout=5m --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
 kubectl -n=scylla-manager wait --timeout=5m --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster

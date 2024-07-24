@@ -1,0 +1,27 @@
+apiVersion: scylla.scylladb.com/v1alpha1
+kind: NodeConfig
+metadata:
+  name: cluster
+spec:
+  localDiskSetup:
+    loopDevices:
+    - name: persistent-volumes
+      imagePath: /mnt/persistent-volumes.img
+      size: 80Gi
+    filesystems:
+    - device: /dev/loops/persistent-volumes
+      type: xfs
+    mounts:
+    - device: /dev/loops/persistent-volumes
+      mountPoint: /mnt/persistent-volumes
+      unsupportedOptions:
+      - prjquota
+  placement:
+    nodeSelector:
+      kubernetes.io/os: linux
+      scylla.scylladb.com/node-type: scylla
+    tolerations:
+    - effect: NoSchedule
+      key: role
+      operator: Equal
+      value: scylla-clusters

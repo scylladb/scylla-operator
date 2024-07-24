@@ -1,19 +1,22 @@
-# Release procedure
+# Release procedures
 
-## Prerequisites
-1. Stop merges to `master` branch except for the PR in the next section.
+## Creating a release branch
 
-## Creating a new release branch
-1. Create a release branch on the upstream.
-    ```
-    git fetch upstream master
-    git push upstream upstream/master:refs/heads/vX.Y
-    ```
+### Mark `master` as the next release
+Moving `master` to the next release is done by creating a new `vX.Y+1.Z-alpha.0` tag for the next version.
+```
+git fetch git@github.com:scylladb/scylla-operator.git
+git tag -s -a 'vX.Y+1.Z-alpha.0' 'FETCH_HEAD' -m 'vX.Y+1.Z-alpha.0'
+git push git@github.com:scylladb/scylla-operator.git 'vX.Y+1.Z-alpha.0'
+```
 
-1. Set branch protection rules on `vX.Y` branch in GitHub repository settings.
+### Creating a new release branch
+```
+git push git@github.com:scylladb/scylla-operator.git 'vX.Y+1.Z-alpha.0^{}:refs/heads/vX.Y'
+```
 
-## Updating the release branch
-1. On the release branch, change the default value of the image tag variable in Makefile. Set only major and minor part of version without the 'v' prefix.
+### Updating the release branch
+1. On the new release branch, change the default value of the image tag variable in Makefile. Set only major and minor part of version without the 'v' prefix.
    ```
    IMAGE_TAG ?=X.Y
    ```
@@ -30,22 +33,14 @@
 
 1. Commit changes and create a PR with `vX.Y` as base branch.
    ```
-   git commit -a -m "Updated generated code"
+   git commit -a -m "Updated generated"
    ```
 
-1. Once the PR is merged, tag the merge commit as `vX.Y.Z-beta.0` using an **annotated** tag.
-   ```
-   git fetch upstream vX.Y
-   git tag -a vX.Y.Z-beta.0 upstream/vX.Y -m "vX.Y.Z-beta.0"
-   git push upstream vX.Y.Z-beta.0
-   ```
 
-1. Ask QA to run smoke test on beta before preparing release candidate.
-
-## Updating `master` branch for the next release
+### Enable building docs for the new release branch
 1. Enable building docs from `vX.Y` branch by adding an entry to `docs/source/conf.py`.
    ```
-   BRANCHES = ['master', 'v0.3', 'v1.0', 'v1.1', 'vX.Y']
+   BRANCHES = ['master', 'vX.Y-2', 'vX.Y-1', 'vX.Y']
    ```
 
 1. Set new version as unstable:
@@ -55,78 +50,103 @@
 
 1. Send the PR to `master` branch.
 
-1. When merged, create an **annotated** tag `vX.Y+1.0-alpha.0` for the next release from the merge commit.
-   ```
-   git fetch upstream master
-   git tag -a vX.Y+1.0-alpha.0 upstream/master -m 'vX.Y+1.0-alpha.0'
-   git push upstream vX.Y+1.0-alpha.0
-   ```
+### Finalize 
+When the PRs are merged, publish `vX.Y.0-beta.0` pre-release and ask QA to run smoke test using it.
 
-1. Open `master` branch for merging.
+## Creating releases
+All the releases and pre-releases are a promotion of an existing image built by our CI.
 
-## Publishing a release candidate
-1. For `Z=0`, the release candidate should be tagged only when all issues in the GitHub milestone are closed and fixed in the release branch.
+### Alpha
+`alpha` is a testing release that is done on demand, usually from a `master` branch.
 
-1. Tag the HEAD of the release branch using an **annotated** tag.
-   ```
-   git fetch upstream vX.Y
-   git tag -a vX.Y.Z-rc.I upstream/vX.Y -m "vX.Y.Z-rc.I"
-   git push upstream vX.Y.Z-rc.I
-   ```
-   CI will automatically create a new release in GitHub and publish the [release notes](#release-notes) there.
+It is created as a promotion of an image created by a postsubmit from the associated branch. 
 
-1. Announce the new RC with the link to the GitHub release on:
-   - `#scylla-operator` channel in ScyllaDB-Users Slack
-   - users mailing list (https://groups.google.com/g/scylladb-users)
+### Beta
+`beta` is a testing release that comes from a release branch.
+The first `beta` is made after cutting the branch.
+If we plan to cut the `rc` right after we cut the branch, we skip the `beta`.
 
-## Publishing a final release
+It is created as a promotion of an image created by a postsubmit from the associated branch.
 
-1. Tag the final release from the last RC that was approved by QA team using an **annotated** tag:
-   ```
-   git tag -a vX.Y.Z tags/vX.Y.Z-rc.I^{} -m 'vX.Y.Z'
-   git push upstream vX.Y.Z
-   ```
-   CI will automatically create a new release in GitHub and publish the [release notes](#release-notes) there.
+### RC
+`rc` (release candidate) is the attempt at GA release.
+It is intended to go through extended testing and become the GA image, if successful. 
 
-1. Promote the container image from the latest RC approved by QA team.
-   - `skopeo`
-      ```
-      skopeo copy docker://docker.io/scylladb/scylla-operator:X.Y.Z-rc.I docker://docker.io/scylladb/scylla-operator:X.Y.Z
-      ```
-   
-   - `docker`
-      ```
-      docker pull docker.io/scylladb/scylla-operator:X.Y.Z-rc.I
-      docker tag docker.io/scylladb/scylla-operator:X.Y.Z-rc.I docker.io/scylladb/scylla-operator:X.Y.Z
-      docker push docker.io/scylladb/scylla-operator:X.Y.Z
-      ```
+It is created as a promotion of an image created by a postsubmit from the associated branch.
 
-1. Publish the Helm charts.
-    ```
-    git checkout vX.Y.Z
-    gcloud auth login
-    make helm-publish HELM_CHANNEL=stable HELM_APP_VERSION=X.Y.Z HELM_CHART_VERSION=vX.Y.Z
-    ```
+### GA
+GA release is our final release to be published.
 
-1. Ask QA to smoke test vX.Y.Z helm charts.
+It is created as a promotion of an `rc` image tagged earlier, if it passes the tests.
 
-1. Mark docs as latest, and remove from unstable versions list in `docs/source/conf.py` in the master branch:
-   ```
-   smv_latest_version = 'vX.Y'
-   UNSTABLE_VERSIONS = ['master']
-   ```
+## Promoting releases and pre-releases
 
-1. Submit a PR using `master` as target branch.
+### Tagging the image
+First, you need to promote an existing image with your new tag. We use both `docker.io` and `quay.io` for resiliency and different features like image scanning. (Image synchronization may get automated in the future.)
 
-1. (optional) Update the release schedule in `docs/source/release.md`.
+#### From `master` branch
+```
+skopeo copy --all docker://quay.io/scylladb/scylla-operator:latest-YYYY-MM-DD-HHMMSS docker://quay.io/scylladb/scylla-operator:X.Y.0-alpha.I
+```
+```
+skopeo copy --all docker://quay.io/scylladb/scylla-operator:X.Y.0-alpha.I docker://docker.io/scylladb/scylla-operator:X.Y.0-alpha.I
+```
 
-1. Submit a PR using `master` as target branch.
+#### From release branch
+```
+skopeo copy --all docker://quay.io/scylladb/scylla-operator:X.Y-YYYY-MM-DD-HHMMSS docker://quay.io/scylladb/scylla-operator:X.Y.Z-beta.I
+```
+```
+skopeo copy --all docker://quay.io/scylladb/scylla-operator:X.Y.Z-beta.I docker://docker.io/scylladb/scylla-operator:X.Y.Z-beta.I
+```
 
-1. Wait for QA to give you the green light.
+#### From a pre-release
+```
+skopeo copy --all docker://quay.io/scylladb/scylla-operator:X.Y.Z-rc.I docker://quay.io/scylladb/scylla-operator:X.Y.Z
+```
+```
+skopeo copy --all docker://quay.io/scylladb/scylla-operator:X.Y.Z docker://docker.io/scylladb/scylla-operator:X.Y.Z
+```
 
-1. Announce the new release with the link to the GitHub release on:
-   - `#scylla-operator` channel in ScyllaDB-Users Slack
-   - users mailing list (https://groups.google.com/g/scylladb-users)
+### Creating matching `git` tag
+When the new image is tagged, you should create a matching `git` tag that this image was built from. (This may get automated in the future.)
+```
+revision="$( skopeo inspect '--format={{ index .Labels "org.opencontainers.image.revision" }}' docker://docker.io/scylladb/scylla-operator:X.Y.Z-alpha.I )"
+```
+```
+git fetch git@github.com:scylladb/scylla-operator.git
+git tag -s -a vX.Y.Z-alpha.I "${revision}" -m "vX.Y.Z-alpha.I"
+git push git@github.com:scylladb/scylla-operator.git vX.Y.Z-alpha.I
+```
+CI will automatically create a new release in GitHub and publish the [release notes](#release-notes) there, and it will automatically publish Helm charts.
+
+## Release announcements
+A new release should be published in several channels. This is usually done only for RC and GA releases.
+For GA release we first write a google doc and get it reviewed and approved by at least the PM and the TL.
+
+### GitHub release
+
+CI automatically publishes full release notes, listing every PR merged for this release.
+
+### ScyllaDB Forum
+There is a dedicated section on release notes on ScyllaDB Forum that is being linked from the [ScyllaDB docs](https://www.scylladb.com/product/release-notes).
+It filters posts to `Release notes` category that have `operator-release` tags.
+To publish a release, create a new topic (post) in [Release notes](https://forum.scylladb.com/tags/c/scylladb-release-notes/18/operator-release) category.
+
+| Title                             | Tags                                     | Content                   |
+| :-------------------------------: | :--------------------------------------: | :-----------------------: |
+| `[RELEASE] Scylla Operator X.Y.Z` | `operator-release`, `operator`, `release`| copy&paste the google doc |
+
+
+### ScyllaDB User Slack
+Send a post to the `#scylla-operator` channel in ScyllaDB-Users Slack based on the following template.
+```
+:scylla-operator: :rocket: The ScyllaDB team is pleased to announce the release of Scylla Operator X.Y.Z. :rocket: :scylla-operator:
+
+Release notes announcement and summary - https://forum.scylladb.com/t/release-scylla-operator-1-12-0/1446
+Full release notes - https://github.com/scylladb/scylla-operator/releases/tag/v1.12.0
+```
+
 
 ## Release notes
 1. Release notes are now published by CI for every release and beta+rc prereleases. The release notes contain changes since the last corresponding release in the same category, according to this table  

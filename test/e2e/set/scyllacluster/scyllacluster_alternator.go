@@ -128,7 +128,7 @@ authorizer: CassandraAuthorizer
 		}
 
 		q := cqlSession.Query(
-			`SELECT salted_hash FROM system_auth.roles WHERE role = ?`,
+			`SELECT salted_hash FROM system.roles WHERE role = ?`,
 			awsCredentials.AccessKeyID,
 		).WithContext(ctx)
 		err = q.Scan(&awsCredentials.SecretAccessKey)

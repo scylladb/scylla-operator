@@ -96,6 +96,10 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 		o.Expect(jobEvents).NotTo(o.BeEmpty())
 
+		tokenRingHash, err := utils.GetCurrentTokenRingHash(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		framework.Infof("Current token ring hash is %q", tokenRingHash)
+
 		nodeJobMatcher := func(nodeName string) func(utils.ObserverEvent[*batchv1.Job]) bool {
 			return func(e utils.ObserverEvent[*batchv1.Job]) bool {
 				return e.Obj.Labels[naming.NodeJobLabel] == nodeName
@@ -103,7 +107,9 @@ var _ = g.Describe("ScyllaCluster", func() {
 		}
 
 		cleanupJobsCreated := slices.Filter(jobEvents, func(e utils.ObserverEvent[*batchv1.Job]) bool {
-			return e.Action == watch.Added && e.Obj.Labels[naming.NodeJobTypeLabel] == string(naming.JobTypeCleanup)
+			return e.Action == watch.Added &&
+				e.Obj.Labels[naming.NodeJobTypeLabel] == string(naming.JobTypeCleanup) &&
+				e.Obj.Annotations[naming.CleanupJobTokenRingHashAnnotation] == tokenRingHash
 		})
 
 		o.Expect(cleanupJobsCreated).To(o.HaveLen(2))
@@ -137,6 +143,10 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 		verifyScyllaCluster(ctx, f.KubeClient(), sc)
 
+		tokenRingHash, err = utils.GetCurrentTokenRingHash(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		framework.Infof("Current token ring hash is %q", tokenRingHash)
+
 		framework.By("Validating cleanup jobs were created for all nodes")
 		jobEvents, err = jobObserver.Stop()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -144,7 +154,9 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(jobEvents).NotTo(o.BeEmpty())
 
 		cleanupJobsCreated = slices.Filter(jobEvents, func(e utils.ObserverEvent[*batchv1.Job]) bool {
-			return e.Action == watch.Added && e.Obj.Labels[naming.NodeJobTypeLabel] == string(naming.JobTypeCleanup)
+			return e.Action == watch.Added &&
+				e.Obj.Labels[naming.NodeJobTypeLabel] == string(naming.JobTypeCleanup) &&
+				e.Obj.Annotations[naming.CleanupJobTokenRingHashAnnotation] == tokenRingHash
 		})
 
 		o.Expect(cleanupJobsCreated).To(o.HaveLen(2))

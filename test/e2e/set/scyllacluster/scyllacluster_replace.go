@@ -9,7 +9,6 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
@@ -28,22 +27,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 	const (
 		scyllaOSImageRepository         = "docker.io/scylladb/scylla"
 		scyllaEnterpriseImageRepository = "docker.io/scylladb/scylla-enterprise"
-		clusterIPProcedure              = "ClusterIP"
-		hostIDProcedure                 = "HostID"
 	)
-
-	validateReplaceViaClusterIPAddress := func(ctx context.Context, configClient *scyllaclient.ConfigClient, preReplaceService *corev1.Service) error {
-		replaceAddressFirstBoot, err := configClient.ReplaceAddressFirstBoot(ctx)
-		if err != nil {
-			return fmt.Errorf("can't get replace_address_first_boot config parameter: %w", err)
-		}
-
-		if replaceAddressFirstBoot != preReplaceService.Spec.ClusterIP {
-			return fmt.Errorf("unexpected value of replace_address_first_boot scylla config, expected %q, got %q", preReplaceService.Spec.ClusterIP, replaceAddressFirstBoot)
-		}
-
-		return nil
-	}
 
 	validateReplaceViaHostID := func(ctx context.Context, configClient *scyllaclient.ConfigClient, preReplaceService *corev1.Service) error {
 		replaceNodeFirstBoot, err := configClient.ReplaceNodeFirstBoot(ctx)
@@ -59,14 +43,13 @@ var _ = g.Describe("ScyllaCluster", func() {
 	}
 
 	type entry struct {
-		procedure             string
 		scyllaImageRepository string
 		scyllaVersion         string
 		validateScyllaConfig  func(context.Context, *scyllaclient.ConfigClient, *corev1.Service) error
 	}
 
 	describeEntry := func(e *entry) string {
-		return fmt.Sprintf(`using %s based procedure when version of ScyllaDB is "%s:%s"`, e.procedure, e.scyllaImageRepository, e.scyllaVersion)
+		return fmt.Sprintf(`using "%s:%s" as ScyllaDB version`, e.scyllaImageRepository, e.scyllaVersion)
 	}
 
 	g.DescribeTable("should replace a node", func(e *entry) {
@@ -77,11 +60,6 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc.Spec.Repository = e.scyllaImageRepository
 		sc.Spec.Version = e.scyllaVersion
 		sc.Spec.Datacenter.Racks[0].Members = 3
-
-		isHeadlessNodeService := sc.Spec.ExposeOptions == nil || sc.Spec.ExposeOptions.NodeService == nil || sc.Spec.ExposeOptions.NodeService.Type == scyllav1.NodeServiceTypeHeadless
-		if e.procedure == clusterIPProcedure && isHeadlessNodeService {
-			g.Skip("Skipping because ClusterIP-based replace procedure can only be tested on ScyllaClusters exposed on ClusterIPs")
-		}
 
 		framework.By("Creating a ScyllaCluster")
 		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
@@ -131,14 +109,6 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 		waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx2Cancel()
-
-		if e.procedure == clusterIPProcedure {
-			framework.By("Waiting for the service to be replaced")
-			_, err := controllerhelpers.WaitForServiceState(waitCtx2, f.KubeClient().CoreV1().Services(preReplaceService.Namespace), preReplaceService.Name, controllerhelpers.WaitForStateOptions{TolerateDelete: true}, func(svc *corev1.Service) (bool, error) {
-				return svc.UID != preReplaceService.UID, nil
-			})
-			o.Expect(err).NotTo(o.HaveOccurred())
-		}
 
 		framework.By("Waiting for the pod to be replaced")
 		_, err = controllerhelpers.WaitForPodState(waitCtx2, f.KubeClient().CoreV1().Pods(pod.Namespace), pod.Name, controllerhelpers.WaitForStateOptions{TolerateDelete: true}, func(p *corev1.Pod) (bool, error) {
@@ -200,26 +170,12 @@ var _ = g.Describe("ScyllaCluster", func() {
 		err = e.validateScyllaConfig(ctx, configClient, preReplaceService)
 		o.Expect(err).NotTo(o.HaveOccurred())
 	},
-		g.Entry(describeEntry, framework.RequiresClusterIP, &entry{
-			procedure:             clusterIPProcedure,
-			scyllaImageRepository: scyllaOSImageRepository,
-			scyllaVersion:         "5.1.15",
-			validateScyllaConfig:  validateReplaceViaClusterIPAddress,
-		}),
-		g.Entry(describeEntry, framework.RequiresClusterIP, &entry{
-			procedure:             clusterIPProcedure,
-			scyllaImageRepository: scyllaEnterpriseImageRepository,
-			scyllaVersion:         "2022.2.12",
-			validateScyllaConfig:  validateReplaceViaClusterIPAddress,
-		}),
 		g.Entry(describeEntry, &entry{
-			procedure:             hostIDProcedure,
 			scyllaImageRepository: scyllaOSImageRepository,
 			scyllaVersion:         "5.2.6",
 			validateScyllaConfig:  validateReplaceViaHostID,
 		}),
 		g.Entry(describeEntry, &entry{
-			procedure:             hostIDProcedure,
 			scyllaImageRepository: scyllaEnterpriseImageRepository,
 			scyllaVersion:         "2023.1.0",
 			validateScyllaConfig:  validateReplaceViaHostID,

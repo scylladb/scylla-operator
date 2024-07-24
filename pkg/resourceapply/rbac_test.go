@@ -1565,3 +1565,492 @@ func TestApplyRoleBinding(t *testing.T) {
 		})
 	}
 }
+
+func TestApplyRole(t *testing.T) {
+	// Using a generating function prevents unwanted mutations.
+	newRole := func() *rbacv1.Role {
+		return &rbacv1.Role{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "test",
+				Labels:    map[string]string{},
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						Controller:         pointer.Ptr(true),
+						UID:                "abcdefgh",
+						APIVersion:         "scylla.scylladb.com/v1",
+						Kind:               "ScyllaCluster",
+						Name:               "basic",
+						BlockOwnerDeletion: pointer.Ptr(true),
+					},
+				},
+			},
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{"rbac.authorization.k8s.io"},
+					Resources: []string{"rolebindings"},
+					Verbs:     []string{"create", "get", "list", "watch"},
+				},
+			},
+		}
+	}
+
+	newRoleWithHash := func() *rbacv1.Role {
+		role := newRole()
+		utilruntime.Must(SetHashAnnotation(role))
+		return role
+	}
+
+	tt := []struct {
+		name            string
+		existing        []runtime.Object
+		cache           []runtime.Object // nil cache means autofill from the client
+		required        *rbacv1.Role
+		expectedRole    *rbacv1.Role
+		expectedChanged bool
+		expectedErr     error
+		expectedEvents  []string
+	}{
+		{
+			name:            "creates a new role when there is none",
+			existing:        nil,
+			required:        newRole(),
+			expectedRole:    newRoleWithHash(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal RoleCreated Role default/test created"},
+		},
+		{
+			name: "does nothing if the same role already exists",
+			existing: []runtime.Object{
+				newRoleWithHash(),
+			},
+			required:        newRole(),
+			expectedRole:    newRoleWithHash(),
+			expectedChanged: false,
+			expectedErr:     nil,
+			expectedEvents:  nil,
+		},
+		{
+			name: "does nothing if the same role already exists and required one has the hash",
+			existing: []runtime.Object{
+				newRoleWithHash(),
+			},
+			required:        newRoleWithHash(),
+			expectedRole:    newRoleWithHash(),
+			expectedChanged: false,
+			expectedErr:     nil,
+			expectedEvents:  nil,
+		},
+		{
+			name: "updates the role if it exists without the hash",
+			existing: []runtime.Object{
+				newRole(),
+			},
+			required:        newRole(),
+			expectedRole:    newRoleWithHash(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal RoleUpdated Role default/test updated"},
+		},
+		{
+			name:     "fails to create the role without a controllerRef",
+			existing: nil,
+			required: func() *rbacv1.Role {
+				cm := newRole()
+				cm.OwnerReferences = nil
+				return cm
+			}(),
+			expectedRole:    nil,
+			expectedChanged: false,
+			expectedErr:     fmt.Errorf(`rbac.authorization.k8s.io/v1, Kind=Role "default/test" is missing controllerRef`),
+			expectedEvents:  nil,
+		},
+		{
+			name: "updates the role if it differs",
+			existing: []runtime.Object{
+				newRole(),
+			},
+			required: func() *rbacv1.Role {
+				role := newRole()
+				role.Rules[0].Verbs = []string{"update"}
+				return role
+			}(),
+			expectedRole: func() *rbacv1.Role {
+				role := newRole()
+				role.Rules[0].Verbs = []string{"update"}
+				utilruntime.Must(SetHashAnnotation(role))
+				return role
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal RoleUpdated Role default/test updated"},
+		},
+		{
+			name: "updates the role if labels differ",
+			existing: []runtime.Object{
+				newRoleWithHash(),
+			},
+			required: func() *rbacv1.Role {
+				cm := newRole()
+				cm.Labels["foo"] = "bar"
+				return cm
+			}(),
+			expectedRole: func() *rbacv1.Role {
+				cm := newRole()
+				cm.Labels["foo"] = "bar"
+				utilruntime.Must(SetHashAnnotation(cm))
+				return cm
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal RoleUpdated Role default/test updated"},
+		},
+		{
+			name: "won't update the role if an admission changes the sts",
+			existing: []runtime.Object{
+				func() *rbacv1.Role {
+					role := newRoleWithHash()
+					// Simulate admission by changing a value after the hash is computed.
+					role.Rules[0].Verbs = []string{"list"}
+					return role
+				}(),
+			},
+			required: newRole(),
+			expectedRole: func() *rbacv1.Role {
+				role := newRoleWithHash()
+				// Simulate admission by changing a value after the hash is computed.
+				role.Rules[0].Verbs = []string{"list"}
+				return role
+			}(),
+			expectedChanged: false,
+			expectedErr:     nil,
+			expectedEvents:  nil,
+		},
+		{
+			// We test propagating the RV from required in all the other tests.
+			name: "specifying no RV will use the one from the existing object",
+			existing: []runtime.Object{
+				func() *rbacv1.Role {
+					role := newRoleWithHash()
+					role.ResourceVersion = "21"
+					return role
+				}(),
+			},
+			required: func() *rbacv1.Role {
+				role := newRole()
+				role.ResourceVersion = ""
+				role.Labels["foo"] = "bar"
+				return role
+			}(),
+			expectedRole: func() *rbacv1.Role {
+				role := newRole()
+				role.ResourceVersion = "21"
+				role.Labels["foo"] = "bar"
+				utilruntime.Must(SetHashAnnotation(role))
+				return role
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal RoleUpdated Role default/test updated"},
+		},
+		{
+			name:     "update fails if the role is missing but we still see it in the cache",
+			existing: nil,
+			cache: []runtime.Object{
+				newRoleWithHash(),
+			},
+			required: func() *rbacv1.Role {
+				cm := newRole()
+				cm.Labels["foo"] = "bar"
+				return cm
+			}(),
+			expectedRole:    nil,
+			expectedChanged: false,
+			expectedErr:     fmt.Errorf(`can't update rbac.authorization.k8s.io/v1, Kind=Role "default/test": %w`, apierrors.NewNotFound(rbacv1.Resource("roles"), "test")),
+			expectedEvents:  []string{`Warning UpdateRoleFailed Failed to update Role default/test: roles.rbac.authorization.k8s.io "test" not found`},
+		},
+		{
+			name: "update fails if the existing object has no ownerRef",
+			existing: []runtime.Object{
+				func() *rbacv1.Role {
+					role := newRole()
+					role.OwnerReferences = nil
+					utilruntime.Must(SetHashAnnotation(role))
+					return role
+				}(),
+			},
+			required: func() *rbacv1.Role {
+				role := newRole()
+				role.Labels["foo"] = "bar"
+				return role
+			}(),
+			expectedRole:    nil,
+			expectedChanged: false,
+			expectedErr:     fmt.Errorf(`rbac.authorization.k8s.io/v1, Kind=Role "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateRoleFailed Failed to update Role default/test: rbac.authorization.k8s.io/v1, Kind=Role "default/test" isn't controlled by us`},
+		},
+		{
+			name: "update succeeds to replace ownerRef kind",
+			existing: []runtime.Object{
+				func() *rbacv1.Role {
+					role := newRole()
+					role.OwnerReferences[0].Kind = "WrongKind"
+					utilruntime.Must(SetHashAnnotation(role))
+					return role
+				}(),
+			},
+			required: func() *rbacv1.Role {
+				role := newRole()
+				return role
+			}(),
+			expectedRole: func() *rbacv1.Role {
+				role := newRole()
+				utilruntime.Must(SetHashAnnotation(role))
+				return role
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal RoleUpdated Role default/test updated"},
+		},
+		{
+			name: "update fails if the existing object is owned by someone else",
+			existing: []runtime.Object{
+				func() *rbacv1.Role {
+					role := newRole()
+					role.OwnerReferences[0].UID = "42"
+					utilruntime.Must(SetHashAnnotation(role))
+					return role
+				}(),
+			},
+			required: func() *rbacv1.Role {
+				role := newRole()
+				role.Labels["foo"] = "bar"
+				return role
+			}(),
+			expectedRole:    nil,
+			expectedChanged: false,
+			expectedErr:     fmt.Errorf(`rbac.authorization.k8s.io/v1, Kind=Role "default/test" isn't controlled by us`),
+			expectedEvents:  []string{`Warning UpdateRoleFailed Failed to update Role default/test: rbac.authorization.k8s.io/v1, Kind=Role "default/test" isn't controlled by us`},
+		},
+		{
+			name: "all label and annotation keys are kept when the hash matches",
+			existing: []runtime.Object{
+				func() *rbacv1.Role {
+					role := newRole()
+					role.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "",
+					}
+					role.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "",
+					}
+					utilruntime.Must(SetHashAnnotation(role))
+					role.Annotations["a-1"] = "a-alpha-changed"
+					role.Annotations["a-3"] = "a-resurrected"
+					role.Annotations["a-custom"] = "custom-value"
+					role.Labels["l-1"] = "l-alpha-changed"
+					role.Labels["l-3"] = "l-resurrected"
+					role.Labels["l-custom"] = "custom-value"
+					return role
+				}(),
+			},
+			required: func() *rbacv1.Role {
+				role := newRole()
+				role.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				role.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				return role
+			}(),
+			expectedRole: func() *rbacv1.Role {
+				role := newRole()
+				role.Annotations = map[string]string{
+					"a-1":  "a-alpha",
+					"a-2":  "a-beta",
+					"a-3-": "",
+				}
+				role.Labels = map[string]string{
+					"l-1":  "l-alpha",
+					"l-2":  "l-beta",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(role))
+				role.Annotations["a-1"] = "a-alpha-changed"
+				role.Annotations["a-3"] = "a-resurrected"
+				role.Annotations["a-custom"] = "custom-value"
+				role.Labels["l-1"] = "l-alpha-changed"
+				role.Labels["l-3"] = "l-resurrected"
+				role.Labels["l-custom"] = "custom-value"
+				return role
+			}(),
+			expectedChanged: false,
+			expectedErr:     nil,
+			expectedEvents:  nil,
+		},
+		{
+			name: "only managed label and annotation keys are updated when the hash changes",
+			existing: []runtime.Object{
+				func() *rbacv1.Role {
+					role := newRole()
+					role.Annotations = map[string]string{
+						"a-1":  "a-alpha",
+						"a-2":  "a-beta",
+						"a-3-": "a-resurrected",
+					}
+					role.Labels = map[string]string{
+						"l-1":  "l-alpha",
+						"l-2":  "l-beta",
+						"l-3-": "l-resurrected",
+					}
+					utilruntime.Must(SetHashAnnotation(role))
+					role.Annotations["a-1"] = "a-alpha-changed"
+					role.Annotations["a-custom"] = "a-custom-value"
+					role.Labels["l-1"] = "l-alpha-changed"
+					role.Labels["l-custom"] = "l-custom-value"
+					return role
+				}(),
+			},
+			required: func() *rbacv1.Role {
+				role := newRole()
+				role.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				role.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				return role
+			}(),
+			expectedRole: func() *rbacv1.Role {
+				role := newRole()
+				role.Annotations = map[string]string{
+					"a-1":  "a-alpha-x",
+					"a-2":  "a-beta-x",
+					"a-3-": "",
+				}
+				role.Labels = map[string]string{
+					"l-1":  "l-alpha-x",
+					"l-2":  "l-beta-x",
+					"l-3-": "",
+				}
+				utilruntime.Must(SetHashAnnotation(role))
+				delete(role.Annotations, "a-3-")
+				role.Annotations["a-custom"] = "a-custom-value"
+				delete(role.Labels, "l-3-")
+				role.Labels["l-custom"] = "l-custom-value"
+				return role
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents:  []string{"Normal RoleUpdated Role default/test updated"},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Client holds the state so it has to persists the iterations.
+			client := fake.NewSimpleClientset(tc.existing...)
+
+			// ApplyRole needs to be reentrant so running it the second time should give the same results.
+			// (One of the common mistakes is editing the object after computing the hash so it differs the second time.)
+			iterations := 2
+			if tc.expectedErr != nil {
+				iterations = 1
+			}
+			for i := range iterations {
+				t.Run("", func(t *testing.T) {
+					ctx, ctxCancel := context.WithTimeout(context.Background(), 30*time.Second)
+					defer ctxCancel()
+
+					recorder := record.NewFakeRecorder(10)
+
+					roleCache := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+					roleLister := rbacv1listers.NewRoleLister(roleCache)
+
+					if tc.cache != nil {
+						for _, obj := range tc.cache {
+							err := roleCache.Add(obj)
+							if err != nil {
+								t.Fatal(err)
+							}
+						}
+					} else {
+						roleList, err := client.RbacV1().Roles("").List(ctx, metav1.ListOptions{
+							LabelSelector: labels.Everything().String(),
+						})
+						if err != nil {
+							t.Fatal(err)
+						}
+
+						for i := range roleList.Items {
+							err := roleCache.Add(&roleList.Items[i])
+							if err != nil {
+								t.Fatal(err)
+							}
+						}
+					}
+
+					gotRole, gotChanged, gotErr := ApplyRole(ctx, client.RbacV1(), roleLister, recorder, tc.required, ApplyOptions{})
+					if !reflect.DeepEqual(gotErr, tc.expectedErr) {
+						t.Fatalf("expected %v, got %v", tc.expectedErr, gotErr)
+					}
+
+					if !equality.Semantic.DeepEqual(gotRole, tc.expectedRole) {
+						t.Errorf("expected %#v, got %#v, diff:\n%s", tc.expectedRole, gotRole, cmp.Diff(tc.expectedRole, gotRole))
+					}
+
+					// Make sure such object was actually created.
+					if gotRole != nil {
+						createdRole, err := client.RbacV1().Roles(gotRole.Namespace).Get(ctx, gotRole.Name, metav1.GetOptions{})
+						if err != nil {
+							t.Error(err)
+						}
+						if !equality.Semantic.DeepEqual(createdRole, gotRole) {
+							t.Errorf("created and returned roles differ:\n%s", cmp.Diff(createdRole, gotRole))
+						}
+					}
+
+					if i == 0 {
+						if gotChanged != tc.expectedChanged {
+							t.Errorf("expected %t, got %t", tc.expectedChanged, gotChanged)
+						}
+					} else {
+						if gotChanged {
+							t.Errorf("object changed in iteration %d", i)
+						}
+					}
+
+					close(recorder.Events)
+					var gotEvents []string
+					for e := range recorder.Events {
+						gotEvents = append(gotEvents, e)
+					}
+					if i == 0 {
+						if !reflect.DeepEqual(gotEvents, tc.expectedEvents) {
+							t.Errorf("expected %v, got %v, diff:\n%s", tc.expectedEvents, gotEvents, cmp.Diff(tc.expectedEvents, gotEvents))
+						}
+					} else {
+						if len(gotEvents) > 0 {
+							t.Errorf("unexpected events: %v", gotEvents)
+						}
+					}
+				})
+			}
+		})
+	}
+}

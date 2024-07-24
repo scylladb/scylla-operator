@@ -10,7 +10,6 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	"github.com/scylladb/scylla-operator/pkg/scyllafeatures"
 	appsv1 "k8s.io/api/apps/v1"
@@ -251,24 +250,17 @@ func (scc *Controller) syncServices(
 		if err != nil {
 			return progressingConditions, fmt.Errorf("can't determine if ScyllaCluster %q supports replacing using hostID: %w", naming.ObjRef(sc), err)
 		}
-
-		if supportsReplaceUsingHostID {
-			klog.V(4).InfoS("Replacing node using HostID", "ScyllaCluster", klog.KObj(sc), "Service", klog.KObj(svc))
-			pcs, err := scc.replaceNodeUsingHostID(ctx, sc, svc)
-			if err != nil {
-				return progressingConditions, fmt.Errorf("can't replace node using Host ID: %w", err)
-			}
-
-			progressingConditions = append(progressingConditions, pcs...)
-		} else {
-			klog.V(4).InfoS("Replacing node using ClusterIP", "ScyllaCluster", klog.KObj(sc), "Service", klog.KObj(svc))
-			pcs, err := scc.replaceNodeUsingClusterIP(ctx, sc, status, svc, rackName)
-			if err != nil {
-				return progressingConditions, fmt.Errorf("can't replace node using ClusterIP: %w", err)
-			}
-
-			progressingConditions = append(progressingConditions, pcs...)
+		if !supportsReplaceUsingHostID {
+			return progressingConditions, fmt.Errorf("can't replace node %q, ScyllaDB version of %q ScyllaCluster doesn't support HostID based replace procedure", naming.ObjRef(svc), naming.ObjRef(sc))
 		}
+
+		klog.V(4).InfoS("Replacing node using HostID", "ScyllaCluster", klog.KObj(sc), "Service", klog.KObj(svc))
+		pcs, err := scc.replaceNodeUsingHostID(ctx, sc, svc)
+		if err != nil {
+			return progressingConditions, fmt.Errorf("can't replace node using Host ID: %w", err)
+		}
+
+		progressingConditions = append(progressingConditions, pcs...)
 	}
 
 	return progressingConditions, nil
@@ -421,160 +413,6 @@ func (scc *Controller) finishOngoingReplaceNodeUsingHostID(ctx context.Context, 
 	resourceapply.ReportUpdateEvent(scc.eventRecorder, svc, err)
 	if err != nil {
 		return progressingConditions, err
-	}
-
-	return progressingConditions, nil
-}
-
-func (scc *Controller) replaceNodeUsingClusterIP(ctx context.Context, sc *scyllav1.ScyllaCluster, status *scyllav1.ScyllaClusterStatus, svc *corev1.Service, rackName string) ([]metav1.Condition, error) {
-	var progressingConditions []metav1.Condition
-
-	replaceAddr, ok := svc.Labels[naming.ReplaceLabel]
-	if !ok {
-		return progressingConditions, nil
-	}
-
-	if len(replaceAddr) == 0 {
-		pcs, err := scc.initializeReplaceNodeUsingClusterIP(ctx, sc, status, svc, rackName)
-		if err != nil {
-			return progressingConditions, fmt.Errorf("can't initialize replace using ClusterIP: %w", err)
-		}
-		progressingConditions = append(progressingConditions, pcs...)
-	} else {
-		pcs, err := scc.finishOngoingReplaceNodeUsingClusterIP(ctx, sc, status, svc, rackName)
-		if err != nil {
-			return progressingConditions, fmt.Errorf("can't finish replace using ClusterIP: %w", err)
-		}
-		progressingConditions = append(progressingConditions, pcs...)
-	}
-
-	return progressingConditions, nil
-}
-
-func (scc *Controller) initializeReplaceNodeUsingClusterIP(ctx context.Context, sc *scyllav1.ScyllaCluster, status *scyllav1.ScyllaClusterStatus, svc *corev1.Service, rackName string) ([]metav1.Condition, error) {
-	var progressingConditions []metav1.Condition
-
-	// Member needs to be replaced.
-	// Save replace address in RackStatus
-	if len(status.Racks[rackName].ReplaceAddressFirstBoot[svc.Name]) == 0 {
-		status.Racks[rackName].ReplaceAddressFirstBoot[svc.Name] = svc.Spec.ClusterIP
-		klog.V(2).InfoS("Adding member address to replace address list", "Member", svc.Name, "IP", svc.Spec.ClusterIP, "ReplaceAddresses", status.Racks[rackName].ReplaceAddressFirstBoot)
-
-		// Make sure the address is stored before proceeding further.
-		progressingConditions = append(progressingConditions, metav1.Condition{
-			Type:               serviceControllerProgressingCondition,
-			Status:             metav1.ConditionTrue,
-			Reason:             "WaitingToPickUpReplaceAddress",
-			Message:            fmt.Sprintf("Service %q is waiting to pick up stored replace address.", naming.ObjRef(svc)),
-			ObservedGeneration: sc.Generation,
-		})
-		return progressingConditions, nil
-	}
-
-	pcs, err := scc.removePodAndAssociatedPVC(ctx, sc, svc)
-	if err != nil {
-		return progressingConditions, fmt.Errorf("can't remove ScyllaCluster %q Pod %q and associated PVC: %w", naming.ObjRef(sc), naming.ObjRef(svc), err)
-	}
-	progressingConditions = append(progressingConditions, pcs...)
-
-	// Delete the member Service.
-	klog.V(2).InfoS("Deleting the member service to replace member",
-		"ScyllaCluster", klog.KObj(sc),
-		"Service", klog.KObj(svc),
-	)
-	controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, svc, "delete", sc.Generation)
-	err = scc.kubeClient.CoreV1().Services(svc.Namespace).Delete(ctx, svc.Name, metav1.DeleteOptions{
-		PropagationPolicy: pointer.Ptr(metav1.DeletePropagationBackground),
-		Preconditions: &metav1.Preconditions{
-			UID: &svc.UID,
-			// Delete only if its the version we see in cache. (Has the same replace label state.)
-			ResourceVersion: &svc.ResourceVersion,
-		},
-	})
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			klog.V(4).InfoS("Pod not found", "Pod", klog.ObjectRef{Namespace: svc.Namespace, Name: svc.Name})
-		} else {
-			resourceapply.ReportDeleteEvent(scc.eventRecorder, svc, err)
-			return progressingConditions, err
-		}
-	} else {
-		resourceapply.ReportDeleteEvent(scc.eventRecorder, svc, nil)
-
-		// FIXME: The pod could have been already up and read the old ClusterIP - make sure it will restart.
-		//        We can't delete the pod here as it wouldn't retry failures.
-
-		// We have deleted the service. Wait for re-queue.
-		progressingConditions = append(progressingConditions, metav1.Condition{
-			Type:               serviceControllerProgressingCondition,
-			Status:             metav1.ConditionTrue,
-			Reason:             "WaitingToObserveDeletedService",
-			Message:            fmt.Sprintf("Waiting to observe service %q as deleted to proceeed with other services.", naming.ObjRef(svc)),
-			ObservedGeneration: sc.Generation,
-		})
-	}
-
-	return progressingConditions, nil
-}
-
-func (scc *Controller) finishOngoingReplaceNodeUsingClusterIP(ctx context.Context, sc *scyllav1.ScyllaCluster, status *scyllav1.ScyllaClusterStatus, svc *corev1.Service, rackName string) ([]metav1.Condition, error) {
-	var progressingConditions []metav1.Condition
-
-	// Member is being replaced. Wait for readiness and clear the replace label.
-
-	pod, err := scc.podLister.Pods(svc.Namespace).Get(svc.Name)
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return progressingConditions, err
-		}
-
-		klog.V(2).InfoS("Pod has not been recreated by the StatefulSet controller yet",
-			"ScyllaCluster", klog.KObj(sc),
-			"Pod", klog.KObj(svc),
-		)
-		progressingConditions = append(progressingConditions, metav1.Condition{
-			Type:               serviceControllerProgressingCondition,
-			Status:             metav1.ConditionTrue,
-			Reason:             "WaitingForPodRecreation",
-			Message:            fmt.Sprintf("Service %q is waiting for StatefulSet controller to recreate pod.", naming.ObjRef(svc)),
-			ObservedGeneration: sc.Generation,
-		})
-	} else {
-		sc := scc.resolveScyllaClusterControllerThroughStatefulSet(pod)
-		if sc == nil {
-			return progressingConditions, fmt.Errorf("pod %q is not owned by us anymore", naming.ObjRef(pod))
-		}
-
-		// We could still see an old pod in the caches - verify with a live call.
-		podReady, pod, err := controllerhelpers.IsPodReadyWithPositiveLiveCheck(ctx, scc.kubeClient.CoreV1(), pod)
-		if err != nil {
-			return progressingConditions, err
-		}
-		if podReady {
-			scc.eventRecorder.Eventf(svc, corev1.EventTypeNormal, "FinishedReplacingNode", "New pod %s/%s is ready.", pod.Namespace, pod.Name)
-			svcCopy := svc.DeepCopy()
-			delete(svcCopy.Labels, naming.ReplaceLabel)
-			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, svcCopy, "update", sc.Generation)
-			_, err := scc.kubeClient.CoreV1().Services(svcCopy.Namespace).Update(ctx, svcCopy, metav1.UpdateOptions{})
-			resourceapply.ReportUpdateEvent(scc.eventRecorder, svc, err)
-			if err != nil {
-				return progressingConditions, err
-			}
-
-			delete(status.Racks[rackName].ReplaceAddressFirstBoot, svc.Name)
-		} else {
-			klog.V(2).InfoS("Pod isn't ready yet",
-				"ScyllaCluster", klog.KObj(sc),
-				"Pod", klog.KObj(pod),
-			)
-			progressingConditions = append(progressingConditions, metav1.Condition{
-				Type:               serviceControllerProgressingCondition,
-				Status:             metav1.ConditionTrue,
-				Reason:             "WaitingForPodReadiness",
-				Message:            fmt.Sprintf("Service %q is waiting for Pod %q to become ready.", naming.ObjRef(svc), naming.ObjRef(pod)),
-				ObservedGeneration: sc.Generation,
-			})
-		}
 	}
 
 	return progressingConditions, nil

@@ -5334,7 +5334,7 @@ spec:
         - --loglevel=2
         resources:
           requests:
-            cpu: 10m
+            cpu: 100m
             memory: 20Mi
       terminationGracePeriodSeconds: 10
       affinity:

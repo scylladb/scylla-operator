@@ -9,7 +9,7 @@ spec:
       type: xfs
     mounts:
     - device: /dev/md/nvmes
-      mountPoint: /mnt/persistent-volumes
+      mountPoint: /var/mnt/persistent-volumes
       unsupportedOptions:
       - prjquota
     raids:

@@ -123,9 +123,9 @@ spec:
         securityContext:
           allowPrivilegeEscalation: false
           privileged: false
-          runAsNonRoot: true
-          runAsUser: 472
-          runAsGroup: 472
+#          runAsNonRoot: true
+#          runAsUser: 472
+#          runAsGroup: 472
           capabilities:
             drop:
             - ALL
@@ -158,9 +158,9 @@ spec:
         emptyDir:
           sizeLimit: 100Mi
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 472
-        runAsGroup: 472
-        fsGroup: 472
+#        runAsNonRoot: true
+#        runAsUser: 472
+#        runAsGroup: 472
+#        fsGroup: 472
         seccompProfile:
           type: RuntimeDefault

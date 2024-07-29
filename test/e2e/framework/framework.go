@@ -317,6 +317,27 @@ func CreateUserNamespace(ctx context.Context, clusterName string, labels map[str
 	}, metav1.CreateOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
 
+	// Grant it permission needed for ScyllaCLusters
+	_, err = adminClient.RbacV1().RoleBindings(ns.Name).Create(ctx, &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: userSA.Name + "-scyllacluster-member",
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				APIGroup:  corev1.GroupName,
+				Kind:      rbacv1.ServiceAccountKind,
+				Namespace: userSA.Namespace,
+				Name:      userSA.Name,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: rbacv1.GroupName,
+			Kind:     "ClusterRole",
+			Name:     "scyllacluster-member",
+		},
+	}, metav1.CreateOptions{})
+	o.Expect(err).NotTo(o.HaveOccurred())
+
 	// Create a service account token Secret for the user ServiceAccount.
 	userSATokenSecret, err := adminClient.CoreV1().Secrets(ns.Name).Create(ctx, &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{

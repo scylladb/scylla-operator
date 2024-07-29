@@ -18,12 +18,13 @@ spec:
               storageClassName: scylladb-local-xfs
               requests:
                 storage: 1Gi
+            storageClassName: scylladb-local-xfs
     grafana:
       exposeOptions:
         webInterface:
           ingress:
             ingressClassName: haproxy
             dnsDomains:
-            - test-grafana.test.svc.cluster.local
+            - example-grafana.test.svc.cluster.local
             annotations:
               haproxy-ingress.github.io/ssl-passthrough: "true"

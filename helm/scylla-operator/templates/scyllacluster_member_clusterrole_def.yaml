@@ -24,6 +24,7 @@ rules:
   - ""
   resources:
   - configmaps
+  - configmaps/finalizers
   verbs:
   - get
   - list
@@ -53,3 +54,11 @@ rules:
   - scyllaclusters
   verbs:
   - get
+- apiGroups:
+  - security.openshift.io
+  resourceNames:
+  - privileged
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use

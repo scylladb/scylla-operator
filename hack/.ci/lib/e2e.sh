@@ -215,7 +215,7 @@ function run-e2e {
   gcs_sa_in_container_path=""
   if [[ -n "${SO_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATH+x}" ]]; then
     gcs_sa_in_container_path=/var/run/secrets/gcs-service-account-credentials/gcs-service-account.json
-    kubectl create -n=e2e secret generic gcs-service-account-credentials --from-file="${SO_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATH}" --dry-run=client -o=yaml | kubectl_create -f=-
+    kubectl create -n=e2e secret generic gcs-service-account-credentials --from-file=gcs-service-account.json="${SO_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATH}" --dry-run=client -o=yaml | kubectl_create -f=-
   else
     kubectl create -n=e2e secret generic gcs-service-account-credentials --dry-run=client -o=yaml | kubectl_create -f=-
   fi

@@ -31,7 +31,7 @@ cp ./examples/third-party/haproxy-ingress/*.yaml "${DEPLOY_DIR}/haproxy-ingress"
 cp ./examples/common/cert-manager.yaml "${DEPLOY_DIR}/"
 
 for f in $( find "${DEPLOY_DIR}"/ -type f -name '*.yaml' ); do
-    sed -i -E -e "s~docker.io/scylladb/scylla-operator(:|@sha256:)[^ ]*~${OPERATOR_IMAGE_REF}~" "${f}"
+    sed -i -E -e "s~docker\.io/scylladb/scylla-operator:[^ @]+$~${OPERATOR_IMAGE_REF}~" "${f}"
 done
 
 yq e --inplace '.spec.template.spec.containers[0].args += ["--qps=200", "--burst=400"]' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
@@ -41,8 +41,8 @@ if [[ -n ${SCYLLA_OPERATOR_FEATURE_GATES+x} ]]; then
     yq e --inplace '.spec.template.spec.containers[0].args += "--feature-gates="+ strenv(SCYLLA_OPERATOR_FEATURE_GATES)' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
 fi
 
-kubectl_create -n prometheus-operator -f "${DEPLOY_DIR}/prometheus-operator"
-kubectl_create -n haproxy-ingress -f "${DEPLOY_DIR}/haproxy-ingress"
+kubectl_create -n=prometheus-operator -f="${DEPLOY_DIR}/prometheus-operator"
+kubectl_create -n=haproxy-ingress -f="${DEPLOY_DIR}/haproxy-ingress"
 kubectl_create -f "${DEPLOY_DIR}"/cert-manager.yaml
 
 # Wait for cert-manager
@@ -69,6 +69,7 @@ if [[ -z "${SO_CSI_DRIVER_PATH:-}" ]]; then
   echo "Skipping CSI driver creation"
 else
   kubectl_create -n=local-csi-driver -f="${SO_CSI_DRIVER_PATH}"
+  kubectl -n=local-csi-driver rollout status -f="${SO_CSI_DRIVER_PATH}"
 fi
 
 if [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME}" ]]; then
@@ -90,3 +91,6 @@ kubectl wait --for condition=established crd/nodeconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scyllaoperatorconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scylladbmonitorings.scylla.scylladb.com
 kubectl wait --for condition=established $( find "${DEPLOY_DIR}/prometheus-operator/" -name '*.crd.yaml' -printf '-f=%p\n' )
+
+kubectl -n=haproxy-ingress rollout status deploy/haproxy-ingress deploy/ingress-default-backend deploy/prometheus
+kubectl -n=prometheus-operator rollout status deploy/prometheus-operator

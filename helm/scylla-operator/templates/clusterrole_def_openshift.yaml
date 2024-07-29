@@ -1,59 +1,41 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: scylladb:aggregate-to-scyllacluster-member
+  name: scylladb:controller:aggregate-to-operator-openshift
   labels:
-    rbac.operator.scylladb.com/aggregate-to-scylla-member: "true"
+    rbac.operator.scylladb.com/aggregate-to-scylla-operator: "true"
 rules:
 - apiGroups:
   - ""
   resources:
-  - pods
+  - pods/finalizers
   verbs:
-  - get
-  - list
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  - configmaps/finalizers
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - services
-  verbs:
-  - get
-  - list
-  - patch
   - update
-  - watch
 - apiGroups:
-  - "apps"
+  - apps
   resources:
-  - statefulsets
+  - daemonsets/finalizers
   verbs:
-  - get
-  - list
-  - patch
-  - watch
+  - update
 - apiGroups:
   - scylla.scylladb.com
   resources:
-  - scyllaclusters
+  - scyllaclusters/finalizers
+  - scylladbmonitorings/finalizers
   verbs:
-  - get
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - configmaps/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - nodeconfigs/finalizers
+  verbs:
+  - update
 - apiGroups:
   - security.openshift.io
   resourceNames:

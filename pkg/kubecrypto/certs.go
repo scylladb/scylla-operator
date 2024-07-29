@@ -198,12 +198,13 @@ func makeCertificate(ctx context.Context, name string, certCreator ocrypto.CertC
 	}
 
 	if len(refreshReason) != 0 {
+		startTime := time.Now()
 		klog.V(2).InfoS("Creating certificate", "Secret", naming.ObjRef(tlsSecret.GetSecret()), "Reason", refreshReason)
 		cert, key, err := certCreator.MakeCertificate(ctx, keyGetter, signer, validity)
 		if err != nil {
 			return nil, fmt.Errorf("can't create certificate: %w", err)
 		}
-		klog.V(2).InfoS("Certificate created", "Secret", naming.ObjRef(tlsSecret.GetSecret()))
+		klog.V(2).InfoS("Certificate created", "Secret", naming.ObjRef(tlsSecret.GetSecret()), "ElapsedTime", time.Now().Sub(startTime))
 
 		certBytes, err := ocrypto.EncodeCertificates(cert)
 		if err != nil {

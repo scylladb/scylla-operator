@@ -195,6 +195,7 @@ function run-e2e {
 
   FIELD_MANAGER="${FIELD_MANAGER:-run-e2e-script}"
   SO_BUCKET_NAME="${SO_BUCKET_NAME:-}"
+  SO_E2E_PARALLELISM="${SO_E2E_PARALLELISM:-0}"
 
   kubectl create namespace e2e --dry-run=client -o=yaml | kubectl_create -f=-
   kubectl create clusterrolebinding e2e --clusterrole=cluster-admin --serviceaccount=e2e:default --dry-run=client -o=yaml | kubectl_create -f=-
@@ -252,6 +253,7 @@ spec:
     - --loglevel=2
     - --color=false
     - --artifacts-dir=/tmp/artifacts
+    - "--parallelism=${SO_E2E_PARALLELISM}"
     - "--feature-gates=${SCYLLA_OPERATOR_FEATURE_GATES}"
     - "--ingress-controller-address=${ingress_controller_address}"
     - "--ingress-controller-ingress-class-name=${ingress_class_name}"

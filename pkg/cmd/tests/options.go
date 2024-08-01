@@ -50,8 +50,10 @@ type TestFrameworkOptions struct {
 	scyllaClusterOptions         *framework.ScyllaClusterOptions
 	ObjectStorageBucket          string
 	GCSServiceAccountKeyPath     string
+	S3CredentialsFilePath        string
 	objectStorageType            framework.ObjectStorageType
 	gcsServiceAccountKey         []byte
+	s3CredentialsFile            []byte
 }
 
 func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent string) *TestFrameworkOptions {
@@ -68,8 +70,10 @@ func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent stri
 		},
 		ObjectStorageBucket:      "",
 		GCSServiceAccountKeyPath: "",
+		S3CredentialsFilePath:    "",
 		objectStorageType:        framework.ObjectStorageTypeNone,
 		gcsServiceAccountKey:     []byte{},
+		s3CredentialsFile:        []byte{},
 	}
 }
 
@@ -103,6 +107,7 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVarP(&o.ScyllaClusterOptionsUntyped.StorageClassName, "scyllacluster-storageclass-name", "", o.ScyllaClusterOptionsUntyped.StorageClassName, fmt.Sprintf("Name of the StorageClass to request for ScyllaCluster storage."))
 	cmd.PersistentFlags().StringVarP(&o.ObjectStorageBucket, "object-storage-bucket", "", o.ObjectStorageBucket, "Name of the object storage bucket.")
 	cmd.PersistentFlags().StringVarP(&o.GCSServiceAccountKeyPath, "gcs-service-account-key-path", "", o.GCSServiceAccountKeyPath, "Path to a file containing a GCS service account key.")
+	cmd.PersistentFlags().StringVarP(&o.S3CredentialsFilePath, "s3-credentials-file-path", "", o.S3CredentialsFilePath, "Path to the AWS credentials file providing access to the S3 bucket.")
 }
 
 func (o *TestFrameworkOptions) Validate(args []string) error {
@@ -137,8 +142,16 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 		errors = append(errors, fmt.Errorf("object-storage-bucket can't be empty when gcs-service-account-key-path is provided"))
 	}
 
-	if len(o.ObjectStorageBucket) > 0 && len(o.GCSServiceAccountKeyPath) == 0 {
-		errors = append(errors, fmt.Errorf("gcs-service-account-key-path can't be empty when object-storage-bucket is provided"))
+	if len(o.S3CredentialsFilePath) > 0 && len(o.ObjectStorageBucket) == 0 {
+		errors = append(errors, fmt.Errorf("object-storage-bucket can't be empty when s3-credentials-file-path is provided"))
+	}
+
+	if len(o.ObjectStorageBucket) > 0 && len(o.GCSServiceAccountKeyPath) == 0 && len(o.S3CredentialsFilePath) == 0 {
+		errors = append(errors, fmt.Errorf("either gcs-service-account-key-path or s3-credentials-file-path must be set when object-storage-bucket is provided"))
+	}
+
+	if len(o.GCSServiceAccountKeyPath) > 0 && len(o.S3CredentialsFilePath) > 0 {
+		errors = append(errors, fmt.Errorf("gcs-service-account-key-path and s3-credentials-file-path can't be set simultanously"))
 	}
 
 	return apierrors.NewAggregate(errors)
@@ -176,6 +189,18 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 		o.gcsServiceAccountKey = gcsServiceAccountKey
 	}
 
+	if len(o.S3CredentialsFilePath) > 0 {
+		o.objectStorageType = framework.ObjectStorageTypeS3
+		s3CredentialsFile, err := os.ReadFile(o.S3CredentialsFilePath)
+		if err != nil {
+			return fmt.Errorf("can't read s3 credentials file %q: %w", o.S3CredentialsFilePath, err)
+		}
+		if len(s3CredentialsFile) == 0 {
+			return fmt.Errorf("s3 credentials file %q can't be empty", o.S3CredentialsFilePath)
+		}
+		o.s3CredentialsFile = s3CredentialsFile
+	}
+
 	framework.TestContext = &framework.TestContextType{
 		RestConfigs: slices.ConvertSlice(o.ClientConfigs, func(cc genericclioptions.ClientConfig) *rest.Config {
 			return cc.RestConfig
@@ -186,6 +211,7 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 		ObjectStorageType:     o.objectStorageType,
 		ObjectStorageBucket:   o.ObjectStorageBucket,
 		GCSServiceAccountKey:  o.gcsServiceAccountKey,
+		S3CredentialsFile:     o.s3CredentialsFile,
 	}
 
 	if o.IngressController != nil {

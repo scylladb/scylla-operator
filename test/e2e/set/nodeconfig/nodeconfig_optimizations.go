@@ -67,6 +67,9 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 			return
 		}
 
+		// FIXME: Remove
+		return
+
 		framework.By("Deleting NodeConfig %q, if it exists", naming.ObjRef(ncTemplate))
 		err := f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Delete(context.Background(), ncTemplate.Name, metav1.DeleteOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {

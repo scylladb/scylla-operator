@@ -78,11 +78,11 @@ elif [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME+x}" ]]; then
 fi
 kubectl_create -f "${DEPLOY_DIR}"/manager
 
-kubectl -n=scylla-manager wait --timeout=5m --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
-kubectl -n=scylla-manager wait --timeout=5m --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
-kubectl -n=scylla-manager wait --timeout=5m --for='condition=Available=True' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
-kubectl -n scylla-manager rollout status --timeout=5m deployment.apps/scylla-manager
-kubectl -n scylla-manager rollout status --timeout=5m deployment.apps/scylla-manager-controller
+kubectl -n=scylla-manager wait --timeout=10m --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
+kubectl -n=scylla-manager wait --timeout=10m --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
+kubectl -n=scylla-manager wait --timeout=10m --for='condition=Available=True' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
+kubectl -n scylla-manager rollout status --timeout=10m deployment.apps/scylla-manager
+kubectl -n scylla-manager rollout status --timeout=10m deployment.apps/scylla-manager-controller
 
 kubectl -n haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-ingress
 

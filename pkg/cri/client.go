@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	apierrors "k8s.io/apimachinery/pkg/util/errors"
 	pb "k8s.io/cri-api/pkg/apis/runtime/v1"
@@ -21,6 +23,16 @@ import (
 
 const (
 	dialTimeout = 2 * time.Second
+)
+
+var (
+	backoffConfig = backoff.Config{
+		BaseDelay:  100 * time.Millisecond,
+		Multiplier: 1.6,
+		Jitter:     0.2,
+		// MaxDelay shall not be close or longer than the sync loop timeout!
+		MaxDelay: 10 * time.Second,
+	}
 )
 
 var (
@@ -60,7 +72,17 @@ func connectToEndpoint(ctx context.Context, endpoint string) *endpointState {
 	}
 
 	klog.V(4).InfoS("Connecting to CRI endpoint", "Scheme", u.Scheme, "Path", u.Path)
-	conn, err := grpc.DialContext(connCtx, u.Path, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithContextDialer(dialer))
+	conn, err := grpc.DialContext(
+		connCtx,
+		u.Path,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
+		grpc.WithContextDialer(dialer),
+		grpc.WithConnectParams(grpc.ConnectParams{
+			MinConnectTimeout: dialTimeout,
+			Backoff:           backoffConfig,
+		}),
+	)
 	return &endpointState{
 		endpoint:   endpoint,
 		connection: conn,

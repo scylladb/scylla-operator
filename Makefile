@@ -9,10 +9,13 @@ IMAGE_REF ?= docker.io/scylladb/scylla-operator:$(IMAGE_TAG)
 
 MAKE_REQUIRED_MIN_VERSION:=4.2 # for SHELLSTATUS
 
-GIT_TAG ?=$(shell git describe --long --tags --abbrev=7 --match 'v[0-9]*')$(if $(filter $(.SHELLSTATUS),0),,$(error git describe failed))
-GIT_TAG_SHORT ?=$(shell git describe --tags --abbrev=7 --match 'v[0-9]*')$(if $(filter $(.SHELLSTATUS),0),,$(error git describe failed))
-GIT_COMMIT ?=$(shell git rev-parse --short "HEAD^{commit}" 2>/dev/null)$(if $(filter $(.SHELLSTATUS),0),,$(error git rev-parse failed))
-GIT_TREE_STATE ?=$(shell ( ( [ ! -d ".git/" ] || git diff --quiet ) && echo 'clean' ) || echo 'dirty')
+# Support container build from git worktrees where the parent git folder isn't available.
+GIT ?=git
+
+GIT_TAG ?=$(shell [ ! -d ".git/" ] || $(GIT) describe --long --tags --abbrev=7 --match 'v[0-9]*')$(if $(filter $(.SHELLSTATUS),0),,$(error $(GIT) describe failed))
+GIT_TAG_SHORT ?=$(shell [ ! -d ".git/" ] || $(GIT) describe --tags --abbrev=7 --match 'v[0-9]*')$(if $(filter $(.SHELLSTATUS),0),,$(error $(GIT) describe failed))
+GIT_COMMIT ?=$(shell [ ! -d ".git/" ] || $(GIT) rev-parse --short "HEAD^{commit}" 2>/dev/null)$(if $(filter $(.SHELLSTATUS),0),,$(error $(GIT) rev-parse failed))
+GIT_TREE_STATE ?=$(shell ( ( [ ! -d ".git/" ] || $(GIT) diff --quiet ) && echo 'clean' ) || echo 'dirty')
 
 GO ?=go
 GO_MODULE ?=$(shell $(GO) list -m)$(if $(filter $(.SHELLSTATUS),0),,$(error failed to list go module name))

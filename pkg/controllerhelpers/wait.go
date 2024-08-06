@@ -3,6 +3,8 @@ package controllerhelpers
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
@@ -15,6 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
@@ -31,6 +34,73 @@ type WaitForStateOptions struct {
 	TolerateDelete bool
 }
 
+type AggregatedConditions[Obj runtime.Object] struct {
+	conditions []func(obj Obj) (bool, error)
+	state      []*bool
+}
+
+func NewAggregatedConditions[Obj runtime.Object](condition func(obj Obj) (bool, error), additionalConditions ...func(obj Obj) (bool, error)) *AggregatedConditions[Obj] {
+	conditions := make([]func(obj Obj) (bool, error), 0, 1+len(additionalConditions))
+	conditions = append(conditions, condition)
+	if len(additionalConditions) != 0 {
+		conditions = append(conditions, additionalConditions...)
+	}
+
+	return &AggregatedConditions[Obj]{
+		conditions: conditions,
+		state:      make([]*bool, len(conditions)),
+	}
+}
+
+func (ac AggregatedConditions[Obj]) clearState() {
+	for i := range ac.state {
+		ac.state[i] = nil
+	}
+}
+
+func (ac AggregatedConditions[Obj]) Condition(obj Obj) (bool, error) {
+	ac.clearState()
+
+	allDone := true
+	var err error
+	for i, cond := range ac.conditions {
+		var done bool
+		done, err = cond(obj)
+		ac.state[i] = &done
+		if err != nil {
+			return done, err
+		}
+
+		if !done {
+			allDone = false
+		}
+	}
+
+	return allDone, nil
+}
+
+func (ac AggregatedConditions[Obj]) GetStateString() string {
+	var sb strings.Builder
+
+	sb.WriteString("[")
+
+	for i, v := range ac.state {
+		if v == nil {
+			sb.WriteString("<nil>")
+		} else {
+			sb.WriteString(strconv.FormatBool(*v))
+		}
+
+		if i != len(ac.state)-1 {
+			sb.WriteString(",")
+		}
+	}
+
+	sb.WriteString("]")
+
+	return sb.String()
+}
+
 func WaitForObjectState[Object, ListObject runtime.Object](ctx context.Context, client listerWatcher[ListObject], name string, options WaitForStateOptions, condition func(obj Object) (bool, error), additionalConditions ...func(obj Object) (bool, error)) (Object, error) {
 	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
 	lw := &cache.ListWatch{
@@ -44,39 +114,18 @@ func WaitForObjectState[Object, ListObject runtime.Object](ctx context.Context, 
 		},
 	}
 
-	conditions := make([]func(Object) (bool, error), 0, 1+len(additionalConditions))
-	conditions = append(conditions, condition)
-	if len(additionalConditions) != 0 {
-		conditions = append(conditions, additionalConditions...)
-	}
-	aggregatedCond := func(obj Object) (bool, error) {
-		allDone := true
-		for _, c := range conditions {
-			var err error
-			var done bool
-
-			done, err = c(obj)
-			if err != nil {
-				return done, err
-			}
-			if !done {
-				allDone = false
-			}
-		}
-		return allDone, nil
-	}
-
+	acs := NewAggregatedConditions(condition, additionalConditions...)
 	event, err := watchtools.UntilWithSync(ctx, lw, *new(Object), nil, func(event watch.Event) (bool, error) {
 		switch event.Type {
 		case watch.Added, watch.Modified:
-			return aggregatedCond(event.Object.(Object))
+			return acs.Condition(event.Object.(Object))
 
 		case watch.Error:
 			return true, apierrors.FromObject(event.Object)
 
 		case watch.Deleted:
 			if options.TolerateDelete {
-				return aggregatedCond(event.Object.(Object))
+				return acs.Condition(event.Object.(Object))
 			}
 			fallthrough
 
@@ -85,6 +134,9 @@ func WaitForObjectState[Object, ListObject runtime.Object](ctx context.Context, 
 		}
 	})
 	if err != nil {
+		if wait.Interrupted(err) {
+			err = fmt.Errorf("waiting has been interupted (%s): %w", acs.GetStateString(), err)
+		}
 		return *new(Object), err
 	}
 

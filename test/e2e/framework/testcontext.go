@@ -39,6 +39,7 @@ type ObjectStorageType string
 const (
 	ObjectStorageTypeNone ObjectStorageType = "None"
 	ObjectStorageTypeGCS  ObjectStorageType = "GCS"
+	ObjectStorageTypeS3   ObjectStorageType = "S3"
 )
 
 type TestContextType struct {
@@ -50,4 +51,5 @@ type TestContextType struct {
 	ObjectStorageType     ObjectStorageType
 	ObjectStorageBucket   string
 	GCSServiceAccountKey  []byte
+	S3CredentialsFile     []byte
 }

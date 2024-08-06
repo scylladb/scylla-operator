@@ -142,6 +142,8 @@ func (f *Framework) GetObjectStorageProvider() string {
 	switch TestContext.ObjectStorageType {
 	case ObjectStorageTypeGCS:
 		return "gcs"
+	case ObjectStorageTypeS3:
+		return "s3"
 	default:
 		return ""
 	}
@@ -153,6 +155,10 @@ func (f *Framework) GetObjectStorageBucket() string {
 
 func (f *Framework) GetGCSServiceAccountKey() []byte {
 	return TestContext.GCSServiceAccountKey
+}
+
+func (f *Framework) GetS3CredentialsFile() []byte {
+	return TestContext.S3CredentialsFile
 }
 
 func (f *Framework) defaultCluster() *Cluster {

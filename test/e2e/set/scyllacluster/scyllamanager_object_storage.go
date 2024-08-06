@@ -60,6 +60,11 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 			o.Expect(gcServiceAccountKey).NotTo(o.BeEmpty())
 
 			sourceSC = setUpGCSCredentials(ctx, f.KubeClient().CoreV1(), sourceSC, f.Namespace(), gcServiceAccountKey)
+		case framework.ObjectStorageTypeS3:
+			s3CredentialsFile := f.GetS3CredentialsFile()
+			o.Expect(s3CredentialsFile).NotTo(o.BeEmpty())
+
+			sourceSC = setUpS3Credentials(ctx, f.KubeClient().CoreV1(), sourceSC, f.Namespace(), s3CredentialsFile)
 		default:
 			g.Fail("unsupported object storage type")
 		}
@@ -293,6 +298,11 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 			o.Expect(gcServiceAccountKey).NotTo(o.BeEmpty())
 
 			targetSC = setUpGCSCredentials(ctx, f.KubeClient().CoreV1(), targetSC, f.Namespace(), gcServiceAccountKey)
+		case framework.ObjectStorageTypeS3:
+			s3CredentialsFile := f.GetS3CredentialsFile()
+			o.Expect(s3CredentialsFile).NotTo(o.BeEmpty())
+
+			targetSC = setUpS3Credentials(ctx, f.KubeClient().CoreV1(), targetSC, f.Namespace(), s3CredentialsFile)
 		default:
 			g.Fail("unsupported object storage type")
 		}
@@ -488,6 +498,11 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 			o.Expect(gcServiceAccountKey).NotTo(o.BeEmpty())
 
 			sc = setUpGCSCredentials(ctx, f.KubeClient().CoreV1(), sc, f.Namespace(), gcServiceAccountKey)
+		case framework.ObjectStorageTypeS3:
+			s3CredentialsFile := f.GetS3CredentialsFile()
+			o.Expect(s3CredentialsFile).NotTo(o.BeEmpty())
+
+			sc = setUpS3Credentials(ctx, f.KubeClient().CoreV1(), sc, f.Namespace(), s3CredentialsFile)
 		default:
 			g.Fail("unsupported object storage type")
 		}
@@ -808,6 +823,47 @@ func setUpGCSCredentials(ctx context.Context, coreClient corev1client.CoreV1Inte
 			ReadOnly:  true,
 			MountPath: "/etc/scylla-manager-agent/gcs-service-account.json",
 			SubPath:   "gcs-service-account.json",
+		})
+	}
+
+	return scCopy
+}
+
+func setUpS3Credentials(ctx context.Context, coreClient corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, namespace string, s3CredentialsFile []byte) *scyllav1.ScyllaCluster {
+	scCopy := sc.DeepCopy()
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: "s3-credentials-file-",
+		},
+		Data: map[string][]byte{
+			"credentials": s3CredentialsFile,
+		},
+	}
+
+	secret, err := coreClient.Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	for i := range scCopy.Spec.Datacenter.Racks {
+		scCopy.Spec.Datacenter.Racks[i].Volumes = append(scCopy.Spec.Datacenter.Racks[i].Volumes, corev1.Volume{
+			Name: "aws-credentials",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: secret.Name,
+					Items: []corev1.KeyToPath{
+						{
+							Key:  "credentials",
+							Path: "credentials",
+						},
+					},
+				},
+			},
+		})
+		scCopy.Spec.Datacenter.Racks[i].AgentVolumeMounts = append(scCopy.Spec.Datacenter.Racks[i].AgentVolumeMounts, corev1.VolumeMount{
+			Name:      "aws-credentials",
+			ReadOnly:  true,
+			MountPath: "/var/lib/scylla-manager/.aws/credentials",
+			SubPath:   "credentials",
 		})
 	}
 

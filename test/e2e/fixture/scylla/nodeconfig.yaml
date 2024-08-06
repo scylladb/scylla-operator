@@ -1,7 +1,7 @@
 apiVersion: scylla.scylladb.com/v1alpha1
 kind: NodeConfig
 metadata:
-  name: cluster
+  name: e2e-cluster
 spec:
   placement:
     nodeSelector:

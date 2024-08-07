@@ -15,7 +15,7 @@ nodeGroups:
   labels:
     scylla.scylladb.com/node-type: scylla
   taints:
-    role: "scylla-clusters:NoSchedule"
+    scylla-operator.scylladb.com/dedicated: "scylladb-clusters:NoSchedule"
   ssh:
     allow: true
   kubeletExtraConfig:
@@ -29,7 +29,7 @@ nodeGroups:
   labels:
     pool: "cassandra-stress-pool"
   taints:
-    role: "cassandra-stress:NoSchedule"
+    scylla-operator.scylladb.com/dedicated: "cassandra-stress:NoSchedule"
   ssh:
     allow: true
 

@@ -17,12 +17,13 @@ spec:
       type: RAID0
       RAID0:
         devices:
-          nameRegex: ^/dev/nvme\d+n\d+$
+          modelRegex: Amazon EC2 NVMe Instance Storage
+          nameRegex: ^/dev/nvme[1-9]\d*n\d+$
   placement:
     nodeSelector:
       scylla.scylladb.com/node-type: scylla
     tolerations:
-    - key: scylla-operator.scylladb.com/dedicated
+    - effect: NoSchedule
+      key: role
       operator: Equal
-      value: scylladb-clusters
-      effect: NoSchedule
+      value: scylla-clusters

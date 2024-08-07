@@ -24,6 +24,6 @@ spec:
       scylla.scylladb.com/node-type: scylla
     tolerations:
     - effect: NoSchedule
-      key: role
+      key: scylla-operator.scylladb.com/dedicated
       operator: Equal
-      value: scylla-clusters
+      value: scylladb-clusters

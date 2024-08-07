@@ -20,3 +20,9 @@ racks:
     requests:
       cpu: 1
       memory: 1Gi
+  placement:
+    tolerations:
+    - key: scylla-operator.scylladb.com/dedicated
+      operator: Equal
+      value: scylladb-clusters
+      effect: NoSchedule

@@ -164,9 +164,9 @@ spec:
                 values:
                 - scylla
         tolerations:
-        - key: role
+        - key: scylla-operator.scylladb.com/dedicated
           operator: Equal
-          value: scylla-clusters
+          value: scylladb-clusters
           effect: NoSchedule
     - name: b
       members: 1
@@ -208,9 +208,9 @@ spec:
                 values:
                 - scylla
         tolerations:
-        - key: role
+        - key: scylla-operator.scylladb.com/dedicated
           operator: Equal
-          value: scylla-clusters
+          value: scylladb-clusters
           effect: NoSchedule
     - name: c
       members: 1
@@ -252,9 +252,9 @@ spec:
                 values:
                 - scylla
         tolerations:
-        - key: role
+        - key: scylla-operator.scylladb.com/dedicated
           operator: Equal
-          value: scylla-clusters
+          value: scylladb-clusters
           effect: NoSchedule
 ```
 
@@ -418,9 +418,9 @@ spec:
                 values:
                 - scylla
         tolerations:
-        - key: role
+        - key: scylla-operator.scylladb.com/dedicated
           operator: Equal
-          value: scylla-clusters
+          value: scylladb-clusters
           effect: NoSchedule
     - name: b
       members: 1
@@ -462,9 +462,9 @@ spec:
                 values:
                 - scylla
         tolerations:
-        - key: role
+        - key: scylla-operator.scylladb.com/dedicated
           operator: Equal
-          value: scylla-clusters
+          value: scylladb-clusters
           effect: NoSchedule
     - name: c
       members: 1
@@ -506,9 +506,9 @@ spec:
                 values:
                 - scylla
         tolerations:
-        - key: role
+        - key: scylla-operator.scylladb.com/dedicated
           operator: Equal
-          value: scylla-clusters
+          value: scylladb-clusters
           effect: NoSchedule
 ```
 

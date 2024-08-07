@@ -23,6 +23,12 @@ spec:
  placement:
    nodeSelector:
      scylla.scylladb.com/node-type: scylla
+   placement:
+     tolerations:
+     - key: scylla-operator.scylladb.com/dedicated
+       operator: Equal
+       value: scylladb-clusters
+       effect: NoSchedule
 ```
 For more details about new CRD use:
 ```
@@ -97,4 +103,12 @@ spec:
         limits:
           cpu: 4
           memory: 16G
+      placement:
+        nodeSelector:
+          scylla.scylladb.com/node-type: scylla
+        tolerations:
+        - key: scylla-operator.scylladb.com/dedicated
+          operator: Equal
+          value: scylladb-clusters
+          effect: NoSchedule
 ```

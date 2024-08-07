@@ -141,7 +141,7 @@ node-pools create "cassandra-stress-pool" \
 --machine-type "n1-standard-32" \
 --num-nodes "2" \
 --disk-type "pd-ssd" --disk-size "20" \
---node-taints role=cassandra-stress:NoSchedule \
+--node-taints scylla-operator.scylladb.com/dedicated=cassandra-stress:NoSchedule \
 --image-type "UBUNTU_CONTAINERD" \
 --no-enable-autoupgrade \
 --no-enable-autorepair
@@ -155,7 +155,7 @@ node-pools create "scylla-pool" \
 --num-nodes "4" \
 --disk-type "pd-ssd" --disk-size "20" \
 --local-nvme-ssd-block count="8" \
---node-taints role=scylla-clusters:NoSchedule \
+--node-taints scylla-operator.scylladb.com/dedicated=scylladb-clusters:NoSchedule \
 --node-labels scylla.scylladb.com/node-type=scylla \
 --image-type "UBUNTU_CONTAINERD" \
 --system-config-from-file=systemconfig.yaml \

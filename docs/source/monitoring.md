@@ -20,6 +20,7 @@ spec:
       storage:
         volumeClaimTemplate:
           spec:
+            storageClassName: scylladb-local-xfs
             resources:
               requests:
                 storage: 1Gi

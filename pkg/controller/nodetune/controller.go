@@ -162,7 +162,7 @@ func (ncdc *Controller) processNextItem(ctx context.Context) bool {
 	}
 	defer ncdc.queue.Done(key)
 
-	ctx, cancel := context.WithTimeout(ctx, maxSyncDuration)
+	ctx, cancel := context.WithTimeoutCause(ctx, maxSyncDuration, fmt.Errorf("exceeded max sync duration (%v)", maxSyncDuration))
 	defer cancel()
 	err := ncdc.sync(ctx)
 	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.

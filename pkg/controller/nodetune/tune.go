@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"time"
 
 	"github.com/scylladb/go-set/strset"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
@@ -18,6 +19,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 	"k8s.io/kubelet/pkg/apis/podresources/v1"
+)
+
+const (
+	criCallTimeout = 5 * time.Second
 )
 
 func getIRQCPUs(ctx context.Context, kubeletPodResourcesClient kubelet.PodResourcesClient, scyllaPods []*corev1.Pod, hostFullCpuset cpuset.CPUSet) (cpuset.CPUSet, error) {
@@ -47,23 +52,35 @@ func getIRQCPUs(ctx context.Context, kubeletPodResourcesClient kubelet.PodResour
 func scyllaDataDirMountHostPaths(ctx context.Context, criClient cri.Client, scyllaPods []*corev1.Pod) ([]string, error) {
 	dataDirs := strset.New()
 
-	for _, pod := range scyllaPods {
-		cid, err := getScyllaContainerIDInCRIFormat(pod)
-		if err != nil {
-			return nil, fmt.Errorf("get Scylla container ID: %w", err)
-		}
+	for i := 0; i < 10; i++ {
+		time.Sleep(1 * time.Second)
+		for _, pod := range scyllaPods {
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
 
-		cs, err := criClient.Inspect(ctx, cid)
-		if err != nil {
-			return nil, fmt.Errorf("can't inspect container %q: %w", cid, err)
-		}
+			cid, err := getScyllaContainerIDInCRIFormat(pod)
+			if err != nil {
+				return nil, fmt.Errorf("get Scylla container ID: %w", err)
+			}
 
-		if cs != nil {
-			for _, mount := range cs.Status.GetMounts() {
-				if mount.ContainerPath != naming.DataDir {
-					continue
+			klog.V(4).InfoS("Inspecting container", "containerID", cid)
+
+			criCtx, criCtxCancel := context.WithTimeoutCause(ctx, criCallTimeout, fmt.Errorf("exceeded cri inspect container timeout (%v)", criCallTimeout))
+			defer criCtxCancel()
+			cs, err := criClient.Inspect(criCtx, cid)
+			klog.V(4).InfoS("Finished inspecting container", "containerID", cid)
+			if err != nil {
+				return nil, fmt.Errorf("can't inspect container %q: %w", cid, err)
+			}
+
+			if cs != nil {
+				for _, mount := range cs.Status.GetMounts() {
+					if mount.ContainerPath != naming.DataDir {
+						continue
+					}
+					dataDirs.Add(mount.HostPath)
 				}
-				dataDirs.Add(mount.HostPath)
 			}
 		}
 	}

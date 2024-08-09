@@ -1,6 +1,6 @@
 // Copyright (c) 2023 ScyllaDB.
 
-package scyllacluster
+package scylladbdatacenter
 
 import (
 	"context"

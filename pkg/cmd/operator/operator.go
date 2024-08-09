@@ -12,8 +12,8 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controller/nodeconfig"
 	"github.com/scylladb/scylla-operator/pkg/controller/nodeconfigpod"
 	"github.com/scylladb/scylla-operator/pkg/controller/orphanedpv"
-	"github.com/scylladb/scylla-operator/pkg/controller/scyllacluster"
 	"github.com/scylladb/scylla-operator/pkg/controller/scyllaclustermigration"
+	"github.com/scylladb/scylla-operator/pkg/controller/scylladbdatacenter"
 	"github.com/scylladb/scylla-operator/pkg/controller/scylladbmonitoring"
 	"github.com/scylladb/scylla-operator/pkg/controller/scyllaoperatorconfig"
 	"github.com/scylladb/scylla-operator/pkg/crypto"
@@ -255,7 +255,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 
 	monitoringInformers := monitoringinformers.NewSharedInformerFactory(o.monitoringClient, resyncPeriod)
 
-	scc, err := scyllacluster.NewController(
+	sdcc, err := scylladbdatacenter.NewController(
 		o.kubeClient,
 		o.scyllaClient.ScyllaV1alpha1(),
 		kubeInformers.Core().V1().Pods(),
@@ -274,7 +274,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		rsaKeyGenerator,
 	)
 	if err != nil {
-		return fmt.Errorf("can't create scyllacluster controller: %w", err)
+		return fmt.Errorf("can't create scylladbdatacenter controller: %w", err)
 	}
 
 	scmc, err := scyllaclustermigration.NewController(
@@ -405,7 +405,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		scc.Run(ctx, o.ConcurrentSyncs)
+		sdcc.Run(ctx, o.ConcurrentSyncs)
 	}()
 
 	wg.Add(1)

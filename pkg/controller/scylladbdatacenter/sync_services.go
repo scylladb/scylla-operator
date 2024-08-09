@@ -1,4 +1,4 @@
-package scyllacluster
+package scylladbdatacenter
 
 import (
 	"context"

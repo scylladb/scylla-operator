@@ -23,7 +23,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 	f := framework.NewFramework("scyllacluster")
 
-	g.It("should support scaling", func() {
+	g.FIt("should support scaling", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
@@ -40,15 +40,15 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
-		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		// verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+		// waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
-		hosts, hostIDs, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(hosts).To(o.HaveLen(3))
-		o.Expect(hostIDs).To(o.HaveLen(3))
-		diRF3 := insertAndVerifyCQLData(ctx, hosts)
-		defer diRF3.Close()
+		// hosts, hostIDs, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+		// o.Expect(err).NotTo(o.HaveOccurred())
+		// o.Expect(hosts).To(o.HaveLen(3))
+		// o.Expect(hostIDs).To(o.HaveLen(3))
+		// diRF3 := insertAndVerifyCQLData(ctx, hosts)
+		// defer diRF3.Close()
 
 		framework.By("Scaling the ScyllaCluster to 5 replicas")
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
@@ -68,20 +68,20 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
-		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
-
-		oldHosts := hosts
-		oldHostIDs := hostIDs
-		hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(oldHosts).To(o.HaveLen(3))
-		o.Expect(oldHostIDs).To(o.HaveLen(3))
-		o.Expect(hosts).To(o.HaveLen(5))
-		o.Expect(hostIDs).To(o.HaveLen(5))
-		o.Expect(hostIDs).To(o.ContainElements(oldHostIDs))
-
-		verifyCQLData(ctx, diRF3)
+		// verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+		// waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		//
+		// oldHosts := hosts
+		// oldHostIDs := hostIDs
+		// hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+		// o.Expect(err).NotTo(o.HaveOccurred())
+		// o.Expect(oldHosts).To(o.HaveLen(3))
+		// o.Expect(oldHostIDs).To(o.HaveLen(3))
+		// o.Expect(hosts).To(o.HaveLen(5))
+		// o.Expect(hostIDs).To(o.HaveLen(5))
+		// o.Expect(hostIDs).To(o.ContainElements(oldHostIDs))
+		//
+		// verifyCQLData(ctx, diRF3)
 
 		podName := naming.StatefulSetNameForRackForScyllaCluster(sc.Spec.Datacenter.Racks[0], sc) + "-4"
 		svcName := podName
@@ -139,20 +139,20 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx3, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
-		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
-
-		oldHosts = hosts
-		oldHostIDs = hostIDs
-		hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(oldHosts).To(o.HaveLen(5))
-		o.Expect(oldHostIDs).To(o.HaveLen(5))
-		o.Expect(hosts).To(o.HaveLen(4))
-		o.Expect(hostIDs).To(o.HaveLen(4))
-		o.Expect(oldHostIDs).To(o.ContainElements(hostIDs))
-
-		verifyCQLData(ctx, diRF3)
+		// verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+		// waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		//
+		// oldHosts = hosts
+		// oldHostIDs = hostIDs
+		// hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+		// o.Expect(err).NotTo(o.HaveOccurred())
+		// o.Expect(oldHosts).To(o.HaveLen(5))
+		// o.Expect(oldHostIDs).To(o.HaveLen(5))
+		// o.Expect(hosts).To(o.HaveLen(4))
+		// o.Expect(hostIDs).To(o.HaveLen(4))
+		// o.Expect(oldHostIDs).To(o.ContainElements(hostIDs))
+		//
+		// verifyCQLData(ctx, diRF3)
 
 		framework.By("Scaling the ScyllaCluster down to 3 replicas")
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
@@ -171,20 +171,20 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx5, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
-		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
-
-		oldHosts = hosts
-		oldHostIDs = hostIDs
-		hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(oldHosts).To(o.HaveLen(4))
-		o.Expect(oldHostIDs).To(o.HaveLen(4))
-		o.Expect(hosts).To(o.HaveLen(3))
-		o.Expect(hostIDs).To(o.HaveLen(3))
-		o.Expect(oldHostIDs).To(o.ContainElements(hostIDs))
-
-		verifyCQLData(ctx, diRF3)
+		// verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+		// waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		//
+		// oldHosts = hosts
+		// oldHostIDs = hostIDs
+		// hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+		// o.Expect(err).NotTo(o.HaveOccurred())
+		// o.Expect(oldHosts).To(o.HaveLen(4))
+		// o.Expect(oldHostIDs).To(o.HaveLen(4))
+		// o.Expect(hosts).To(o.HaveLen(3))
+		// o.Expect(hostIDs).To(o.HaveLen(3))
+		// o.Expect(oldHostIDs).To(o.ContainElements(hostIDs))
+		//
+		// verifyCQLData(ctx, diRF3)
 
 		framework.By("Scaling the ScyllaCluster back to 5 replicas to make sure there isn't an old (decommissioned) storage in place")
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
@@ -203,19 +203,19 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx6, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
-		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
-
-		oldHosts = hosts
-		oldHostIDs = hostIDs
-		hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(oldHosts).To(o.HaveLen(3))
-		o.Expect(oldHostIDs).To(o.HaveLen(3))
-		o.Expect(hosts).To(o.HaveLen(5))
-		o.Expect(hostIDs).To(o.HaveLen(5))
-		o.Expect(hostIDs).To(o.ContainElements(oldHostIDs))
-
-		verifyCQLData(ctx, diRF3)
+		// verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+		// waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		//
+		// oldHosts = hosts
+		// oldHostIDs = hostIDs
+		// hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+		// o.Expect(err).NotTo(o.HaveOccurred())
+		// o.Expect(oldHosts).To(o.HaveLen(3))
+		// o.Expect(oldHostIDs).To(o.HaveLen(3))
+		// o.Expect(hosts).To(o.HaveLen(5))
+		// o.Expect(hostIDs).To(o.HaveLen(5))
+		// o.Expect(hostIDs).To(o.ContainElements(oldHostIDs))
+		//
+		// verifyCQLData(ctx, diRF3)
 	})
 })

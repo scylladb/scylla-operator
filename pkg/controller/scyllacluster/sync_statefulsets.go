@@ -748,7 +748,7 @@ func (scc *Controller) syncStatefulSets(
 			}
 
 			currentUpgradeContext.State = RolloutInitUpgradePhase
-			cm, err := makeUpgradeContextConfigMap(sdc, configMaps, currentUpgradeContext)
+			cm, err := makeUpgradeContextConfigMap(sdc, currentUpgradeContext)
 			if err != nil {
 				return progressingConditions, fmt.Errorf("can't make upgrade context ConfigMap: %w", err)
 			}
@@ -820,7 +820,7 @@ func (scc *Controller) syncStatefulSets(
 			}
 
 			currentUpgradeContext.State = RolloutRunUpgradePhase
-			cm, err := makeUpgradeContextConfigMap(sdc, configMaps, currentUpgradeContext)
+			cm, err := makeUpgradeContextConfigMap(sdc, currentUpgradeContext)
 			if err != nil {
 				return progressingConditions, fmt.Errorf("can't make upgrade context ConfigMap: %w", err)
 			}
@@ -923,7 +923,7 @@ func (scc *Controller) syncStatefulSets(
 			}
 
 			currentUpgradeContext.State = PostHooksUpgradePhase
-			cm, err := makeUpgradeContextConfigMap(sdc, configMaps, currentUpgradeContext)
+			cm, err := makeUpgradeContextConfigMap(sdc, currentUpgradeContext)
 			if err != nil {
 				return progressingConditions, fmt.Errorf("can't make upgrade context ConfigMap: %w", err)
 			}
@@ -957,7 +957,7 @@ func (scc *Controller) syncStatefulSets(
 			// Given have to be reentrant we'll just start again to be sure no step is missed, even a new one.
 			klog.Warningf("ScyllaCluster %q has an unknown upgrade phase %q. Resetting the phase.", klog.KObj(sdc), currentUpgradeContext.State)
 			currentUpgradeContext.State = PreHooksUpgradePhase
-			cm, err := makeUpgradeContextConfigMap(sdc, configMaps, currentUpgradeContext)
+			cm, err := makeUpgradeContextConfigMap(sdc, currentUpgradeContext)
 			if err != nil {
 				return progressingConditions, fmt.Errorf("can't make upgrade context ConfigMap: %w", err)
 			}
@@ -1015,7 +1015,7 @@ func (scc *Controller) syncStatefulSets(
 					// Initiate the upgrade. This triggers a state machine to run hooks first.
 					now := time.Now()
 
-					cm, err := makeUpgradeContextConfigMap(sdc, configMaps, &upgradeContext{
+					cm, err := makeUpgradeContextConfigMap(sdc, &upgradeContext{
 						State:             PreHooksUpgradePhase,
 						FromVersion:       existingVersionString,
 						ToVersion:         requiredVersionString,
@@ -1200,17 +1200,8 @@ func (scc *Controller) decodeUpgradeContext(upgradeContextConfigMap *corev1.Conf
 	return uc, nil
 }
 
-func makeUpgradeContextConfigMap(sdc *scyllav1alpha1.ScyllaDBDatacenter, configMaps map[string]*corev1.ConfigMap, uc *upgradeContext) (*corev1.ConfigMap, error) {
+func makeUpgradeContextConfigMap(sdc *scyllav1alpha1.ScyllaDBDatacenter, uc *upgradeContext) (*corev1.ConfigMap, error) {
 	cmName := naming.UpgradeContextConfigMapName(sdc)
-
-	// Keep existing ConfigMap when the content of new one wasn't provided.
-	existingUpgradeContextConfigMap, ok := configMaps[cmName]
-	if ok && uc == nil {
-		return existingUpgradeContextConfigMap.DeepCopy(), nil
-	}
-	if uc == nil {
-		return nil, nil
-	}
 
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(uc)

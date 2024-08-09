@@ -1,10 +1,10 @@
-package scyllacluster
+package scylladbdatacenter
 
 import (
 	"context"
 	"fmt"
 
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -14,16 +14,30 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
-func (scc *Controller) getAgentTokenFromAgentConfig(sc *scyllav1.ScyllaCluster) (string, error) {
-	if len(sc.Spec.Datacenter.Racks) == 0 ||
-		len(sc.Spec.Datacenter.Racks[0].ScyllaAgentConfig) == 0 {
+func (scc *Controller) getAgentTokenFromAgentConfig(sdc *scyllav1alpha1.ScyllaDBDatacenter) (string, error) {
+	if len(sdc.Spec.Racks) == 0 {
 		return "", nil
 	}
 
-	secretName := sc.Spec.Datacenter.Racks[0].ScyllaAgentConfig
-	secret, err := scc.secretLister.Secrets(sc.Namespace).Get(secretName)
+	if sdc.Spec.RackTemplate != nil && sdc.Spec.RackTemplate.ScyllaDBManagerAgent == nil {
+		return "", nil
+	}
+
+	var configSecret *string
+	if sdc.Spec.RackTemplate != nil && sdc.Spec.RackTemplate.ScyllaDBManagerAgent != nil && sdc.Spec.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+		configSecret = sdc.Spec.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef
+	}
+	if sdc.Spec.Racks[0].ScyllaDBManagerAgent != nil && sdc.Spec.Racks[0].ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+		configSecret = sdc.Spec.Racks[0].ScyllaDBManagerAgent.CustomConfigSecretRef
+	}
+	if configSecret == nil {
+		return "", nil
+	}
+
+	secretName := *configSecret
+	secret, err := scc.secretLister.Secrets(sdc.Namespace).Get(secretName)
 	if err != nil {
-		return "", fmt.Errorf("can't get secret %s/%s: %w", sc.Namespace, secretName, err)
+		return "", fmt.Errorf("can't get secret %s/%s: %w", sdc.Namespace, secretName, err)
 	}
 
 	return helpers.GetAgentAuthTokenFromAgentConfigSecret(secret)
@@ -31,22 +45,22 @@ func (scc *Controller) getAgentTokenFromAgentConfig(sc *scyllav1.ScyllaCluster) 
 
 func (scc *Controller) syncAgentToken(
 	ctx context.Context,
-	sc *scyllav1.ScyllaCluster,
+	sdc *scyllav1alpha1.ScyllaDBDatacenter,
 	secrets map[string]*corev1.Secret,
 ) ([]metav1.Condition, error) {
 	var progressingConditions []metav1.Condition
 
-	token, tokenErr := scc.getAgentTokenFromAgentConfig(sc)
+	token, tokenErr := scc.getAgentTokenFromAgentConfig(sdc)
 	if tokenErr != nil {
 		tokenErr = fmt.Errorf("can't get agent token: %w", tokenErr)
-		scc.eventRecorder.Eventf(sc, corev1.EventTypeWarning, "InvalidManagerAgentConfig", "Can't gent agent token: %s", tokenErr.Error())
+		scc.eventRecorder.Eventf(sdc, corev1.EventTypeWarning, "InvalidManagerAgentConfig", "Can't gent agent token: %s", tokenErr.Error())
 	}
 	// If we can't read a token we still need to secure the manager agent by creating a random one.
 	// We handle the error at the end.
 
 	// First we try to retain an already generated token.
 	if len(token) == 0 {
-		tokenSecretName := naming.AgentAuthTokenSecretName(sc.Name)
+		tokenSecretName := naming.AgentAuthTokenSecretName(sdc)
 		tokenSecret, exists := secrets[tokenSecretName]
 		if exists {
 			var err error
@@ -62,7 +76,7 @@ func (scc *Controller) syncAgentToken(
 		token = rand.String(128)
 	}
 
-	secret, err := MakeAgentAuthTokenSecret(sc, token)
+	secret, err := MakeAgentAuthTokenSecret(sdc, token)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't make auth token secret: %w", err)
 	}
@@ -72,7 +86,7 @@ func (scc *Controller) syncAgentToken(
 		ForceOwnership: true,
 	})
 	if changed {
-		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, agentTokenControllerProgressingCondition, secret, "apply", sc.Generation)
+		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, agentTokenControllerProgressingCondition, secret, "apply", sdc.Generation)
 	}
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't apply secret %q: %w", naming.ObjRef(secret), err)

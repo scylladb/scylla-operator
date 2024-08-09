@@ -1,10 +1,10 @@
-package scyllacluster
+package scylladbdatacenter
 
 import (
 	"context"
 	"fmt"
 
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
@@ -14,13 +14,13 @@ import (
 
 func (scc *Controller) syncServiceAccounts(
 	ctx context.Context,
-	sc *scyllav1.ScyllaCluster,
+	sdc *scyllav1alpha1.ScyllaDBDatacenter,
 	serviceAccounts map[string]*corev1.ServiceAccount,
 ) ([]metav1.Condition, error) {
 	var err error
 	var progressingConditions []metav1.Condition
 
-	requiredServiceAccount := MakeServiceAccount(sc)
+	requiredServiceAccount := MakeServiceAccount(sdc)
 
 	// Delete any excessive ServiceAccounts.
 	// Delete has to be the fist action to avoid getting stuck on quota.
@@ -35,7 +35,7 @@ func (scc *Controller) syncServiceAccounts(
 		}
 
 		propagationPolicy := metav1.DeletePropagationBackground
-		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceAccountControllerProgressingCondition, sa, "delete", sc.Generation)
+		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceAccountControllerProgressingCondition, sa, "delete", sdc.Generation)
 		err = scc.kubeClient.CoreV1().ServiceAccounts(sa.Namespace).Delete(ctx, sa.Name, metav1.DeleteOptions{
 			Preconditions: &metav1.Preconditions{
 				UID: &sa.UID,
@@ -53,7 +53,7 @@ func (scc *Controller) syncServiceAccounts(
 		ForceOwnership: true,
 	})
 	if changed {
-		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceAccountControllerProgressingCondition, requiredServiceAccount, "apply", sc.Generation)
+		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceAccountControllerProgressingCondition, requiredServiceAccount, "apply", sdc.Generation)
 	}
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't apply service account: %w", err)

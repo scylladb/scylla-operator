@@ -1,11 +1,11 @@
-package scyllacluster
+package scylladbdatacenter
 
 import (
 	"context"
 	"fmt"
 	"time"
 
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
@@ -30,36 +30,36 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 	}
 
 	startTime := time.Now()
-	klog.V(4).InfoS("Started syncing ScyllaCluster", "ScyllaCluster", klog.KRef(namespace, name), "startTime", startTime)
+	klog.V(4).InfoS("Started syncing ScyllaCluster", "ScyllaDBDatacenter", klog.KRef(namespace, name), "startTime", startTime)
 	defer func() {
-		klog.V(4).InfoS("Finished syncing ScyllaCluster", "ScyllaCluster", klog.KRef(namespace, name), "duration", time.Since(startTime))
+		klog.V(4).InfoS("Finished syncing ScyllaCluster", "ScyllaDBDatacenter", klog.KRef(namespace, name), "duration", time.Since(startTime))
 	}()
 
-	sc, err := scc.scyllaLister.ScyllaClusters(namespace).Get(name)
+	sdc, err := scc.scyllaDBDatacenterLister.ScyllaDBDatacenters(namespace).Get(name)
 	if errors.IsNotFound(err) {
-		klog.V(2).InfoS("ScyllaCluster has been deleted", "ScyllaCluster", klog.KObj(sc))
+		klog.V(2).InfoS("ScyllaCluster has been deleted", "ScyllaDBDatacenter", klog.KObj(sdc))
 		return nil
 	}
 	if err != nil {
 		return err
 	}
 
-	scSelector := labels.SelectorFromSet(labels.Set{
-		naming.ClusterNameLabel: sc.Name,
+	sdcSelector := labels.SelectorFromSet(labels.Set{
+		naming.ClusterNameLabel: sdc.Name,
 	})
 
-	type CT = *scyllav1.ScyllaCluster
+	type CT = *scyllav1alpha1.ScyllaDBDatacenter
 	var objectErrs []error
 
 	statefulSetMap, err := controllerhelpers.GetObjects[CT, *appsv1.StatefulSet](
 		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		scSelector,
+		sdc,
+		scyllaDBDatacenterControllerGVK,
+		sdcSelector,
 		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *appsv1.StatefulSet]{
-			GetControllerUncachedFunc: scc.scyllaClient.ScyllaClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scc.statefulSetLister.StatefulSets(sc.Namespace).List,
-			PatchObjectFunc:           scc.kubeClient.AppsV1().StatefulSets(sc.Namespace).Patch,
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
+			ListObjectsFunc:           scc.statefulSetLister.StatefulSets(sdc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.AppsV1().StatefulSets(sdc.Namespace).Patch,
 		},
 	)
 	if err != nil {
@@ -68,13 +68,13 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 
 	serviceMap, err := controllerhelpers.GetObjects[CT, *corev1.Service](
 		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		scSelector,
+		sdc,
+		scyllaDBDatacenterControllerGVK,
+		sdcSelector,
 		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.Service]{
-			GetControllerUncachedFunc: scc.scyllaClient.ScyllaClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scc.serviceLister.Services(sc.Namespace).List,
-			PatchObjectFunc:           scc.kubeClient.CoreV1().Services(sc.Namespace).Patch,
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
+			ListObjectsFunc:           scc.serviceLister.Services(sdc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.CoreV1().Services(sdc.Namespace).Patch,
 		},
 	)
 	if err != nil {
@@ -83,13 +83,13 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 
 	secretMap, err := controllerhelpers.GetObjects[CT, *corev1.Secret](
 		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		scSelector,
+		sdc,
+		scyllaDBDatacenterControllerGVK,
+		sdcSelector,
 		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.Secret]{
-			GetControllerUncachedFunc: scc.scyllaClient.ScyllaClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scc.secretLister.Secrets(sc.Namespace).List,
-			PatchObjectFunc:           scc.kubeClient.CoreV1().Secrets(sc.Namespace).Patch,
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
+			ListObjectsFunc:           scc.secretLister.Secrets(sdc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.CoreV1().Secrets(sdc.Namespace).Patch,
 		},
 	)
 	if err != nil {
@@ -98,13 +98,13 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 
 	configMapMap, err := controllerhelpers.GetObjects[CT, *corev1.ConfigMap](
 		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		scSelector,
+		sdc,
+		scyllaDBDatacenterControllerGVK,
+		sdcSelector,
 		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.ConfigMap]{
-			GetControllerUncachedFunc: scc.scyllaClient.ScyllaClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scc.configMapLister.ConfigMaps(sc.Namespace).List,
-			PatchObjectFunc:           scc.kubeClient.CoreV1().ConfigMaps(sc.Namespace).Patch,
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
+			ListObjectsFunc:           scc.configMapLister.ConfigMaps(sdc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.CoreV1().ConfigMaps(sdc.Namespace).Patch,
 		},
 	)
 	if err != nil {
@@ -113,13 +113,13 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 
 	serviceAccounts, err := controllerhelpers.GetObjects[CT, *corev1.ServiceAccount](
 		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		scSelector,
+		sdc,
+		scyllaDBDatacenterControllerGVK,
+		sdcSelector,
 		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.ServiceAccount]{
-			GetControllerUncachedFunc: scc.scyllaClient.ScyllaClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scc.serviceAccountLister.ServiceAccounts(sc.Namespace).List,
-			PatchObjectFunc:           scc.kubeClient.CoreV1().ServiceAccounts(sc.Namespace).Patch,
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
+			ListObjectsFunc:           scc.serviceAccountLister.ServiceAccounts(sdc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.CoreV1().ServiceAccounts(sdc.Namespace).Patch,
 		},
 	)
 	if err != nil {
@@ -128,13 +128,13 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 
 	roleBindings, err := controllerhelpers.GetObjects[CT, *rbacv1.RoleBinding](
 		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		scSelector,
+		sdc,
+		scyllaDBDatacenterControllerGVK,
+		sdcSelector,
 		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *rbacv1.RoleBinding]{
-			GetControllerUncachedFunc: scc.scyllaClient.ScyllaClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scc.roleBindingLister.RoleBindings(sc.Namespace).List,
-			PatchObjectFunc:           scc.kubeClient.RbacV1().RoleBindings(sc.Namespace).Patch,
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
+			ListObjectsFunc:           scc.roleBindingLister.RoleBindings(sdc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.RbacV1().RoleBindings(sdc.Namespace).Patch,
 		},
 	)
 	if err != nil {
@@ -143,13 +143,13 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 
 	pdbMap, err := controllerhelpers.GetObjects[CT, *policyv1.PodDisruptionBudget](
 		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		scSelector,
+		sdc,
+		scyllaDBDatacenterControllerGVK,
+		sdcSelector,
 		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *policyv1.PodDisruptionBudget]{
-			GetControllerUncachedFunc: scc.scyllaClient.ScyllaClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scc.pdbLister.PodDisruptionBudgets(sc.Namespace).List,
-			PatchObjectFunc:           scc.kubeClient.PolicyV1().PodDisruptionBudgets(sc.Namespace).Patch,
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
+			ListObjectsFunc:           scc.pdbLister.PodDisruptionBudgets(sdc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.PolicyV1().PodDisruptionBudgets(sdc.Namespace).Patch,
 		},
 	)
 	if err != nil {
@@ -158,13 +158,13 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 
 	ingressMap, err := controllerhelpers.GetObjects[CT, *networkingv1.Ingress](
 		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		scSelector,
+		sdc,
+		scyllaDBDatacenterControllerGVK,
+		sdcSelector,
 		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *networkingv1.Ingress]{
-			GetControllerUncachedFunc: scc.scyllaClient.ScyllaClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scc.ingressLister.Ingresses(sc.Namespace).List,
-			PatchObjectFunc:           scc.kubeClient.NetworkingV1().Ingresses(sc.Namespace).Patch,
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
+			ListObjectsFunc:           scc.ingressLister.Ingresses(sdc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.NetworkingV1().Ingresses(sdc.Namespace).Patch,
 		},
 	)
 	if err != nil {
@@ -173,13 +173,13 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 
 	jobMap, err := controllerhelpers.GetObjects[CT, *batchv1.Job](
 		ctx,
-		sc,
-		scyllaClusterControllerGVK,
-		scSelector,
+		sdc,
+		scyllaDBDatacenterControllerGVK,
+		sdcSelector,
 		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *batchv1.Job]{
-			GetControllerUncachedFunc: scc.scyllaClient.ScyllaClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scc.jobLister.Jobs(sc.Namespace).List,
-			PatchObjectFunc:           scc.kubeClient.BatchV1().Jobs(sc.Namespace).Patch,
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
+			ListObjectsFunc:           scc.jobLister.Jobs(sdc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.BatchV1().Jobs(sdc.Namespace).Patch,
 		},
 	)
 	if err != nil {
@@ -191,10 +191,10 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		return objectErr
 	}
 
-	status := scc.calculateStatus(sc, statefulSetMap, serviceMap)
+	status := scc.calculateStatus(sdc, statefulSetMap)
 
-	if sc.DeletionTimestamp != nil {
-		return scc.updateStatus(ctx, sc, status)
+	if sdc.DeletionTimestamp != nil {
+		return scc.updateStatus(ctx, sdc, status)
 	}
 
 	var errs []error
@@ -203,9 +203,9 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		&status.Conditions,
 		serviceAccountControllerProgressingCondition,
 		serviceAccountControllerDegradedCondition,
-		sc.Generation,
+		sdc.Generation,
 		func() ([]metav1.Condition, error) {
-			return scc.syncServiceAccounts(ctx, sc, serviceAccounts)
+			return scc.syncServiceAccounts(ctx, sdc, serviceAccounts)
 		},
 	)
 	if err != nil {
@@ -216,9 +216,9 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		&status.Conditions,
 		roleBindingControllerProgressingCondition,
 		roleBindingControllerDegradedCondition,
-		sc.Generation,
+		sdc.Generation,
 		func() ([]metav1.Condition, error) {
-			return scc.syncRoleBindings(ctx, sc, roleBindings)
+			return scc.syncRoleBindings(ctx, sdc, roleBindings)
 		},
 	)
 	if err != nil {
@@ -229,9 +229,9 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		&status.Conditions,
 		agentTokenControllerProgressingCondition,
 		agentTokenControllerDegradedCondition,
-		sc.Generation,
+		sdc.Generation,
 		func() ([]metav1.Condition, error) {
-			return scc.syncAgentToken(ctx, sc, secretMap)
+			return scc.syncAgentToken(ctx, sdc, secretMap)
 		},
 	)
 	if err != nil {
@@ -242,9 +242,9 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		&status.Conditions,
 		certControllerProgressingCondition,
 		certControllerDegradedCondition,
-		sc.Generation,
+		sdc.Generation,
 		func() ([]metav1.Condition, error) {
-			return scc.syncCerts(ctx, sc, secretMap, configMapMap, serviceMap)
+			return scc.syncCerts(ctx, sdc, secretMap, configMapMap, serviceMap)
 		},
 	)
 	if err != nil {
@@ -255,9 +255,9 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		&status.Conditions,
 		configControllerProgressingCondition,
 		configControllerDegradedCondition,
-		sc.Generation,
+		sdc.Generation,
 		func() ([]metav1.Condition, error) {
-			return scc.syncConfigs(ctx, sc)
+			return scc.syncConfigs(ctx, sdc)
 		},
 	)
 	if err != nil {
@@ -268,9 +268,9 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		&status.Conditions,
 		statefulSetControllerProgressingCondition,
 		statefulSetControllerDegradedCondition,
-		sc.Generation,
+		sdc.Generation,
 		func() ([]metav1.Condition, error) {
-			return scc.syncStatefulSets(ctx, key, sc, status, statefulSetMap, serviceMap, configMapMap)
+			return scc.syncStatefulSets(ctx, key, sdc, status, statefulSetMap, serviceMap, configMapMap)
 		},
 	)
 	if err != nil {
@@ -280,15 +280,15 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 	// StatefulSets, the rack status can change afterwards. Overtime we should consider adding a status.progressing
 	// field (to allow determining cluster status without conditions) and wait for the status to be updated
 	// in a single place, on the next resync.
-	scc.setStatefulSetsAvailableStatusCondition(sc, status)
+	scc.setStatefulSetsAvailableStatusCondition(sdc, status)
 
 	err = controllerhelpers.RunSync(
 		&status.Conditions,
 		serviceControllerProgressingCondition,
 		serviceControllerDegradedCondition,
-		sc.Generation,
+		sdc.Generation,
 		func() ([]metav1.Condition, error) {
-			return scc.syncServices(ctx, sc, status, serviceMap, statefulSetMap, jobMap)
+			return scc.syncServices(ctx, sdc, status, serviceMap, statefulSetMap, jobMap)
 		},
 	)
 	if err != nil {
@@ -299,9 +299,9 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		&status.Conditions,
 		pdbControllerProgressingCondition,
 		pdbControllerDegradedCondition,
-		sc.Generation,
+		sdc.Generation,
 		func() ([]metav1.Condition, error) {
-			return scc.syncPodDisruptionBudgets(ctx, sc, pdbMap)
+			return scc.syncPodDisruptionBudgets(ctx, sdc, pdbMap)
 		},
 	)
 	if err != nil {
@@ -312,9 +312,9 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		&status.Conditions,
 		ingressControllerProgressingCondition,
 		ingressControllerDegradedCondition,
-		sc.Generation,
+		sdc.Generation,
 		func() ([]metav1.Condition, error) {
-			return scc.syncIngresses(ctx, sc, ingressMap, serviceMap)
+			return scc.syncIngresses(ctx, sdc, ingressMap, serviceMap)
 		},
 	)
 	if err != nil {
@@ -325,9 +325,9 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		&status.Conditions,
 		jobControllerProgressingCondition,
 		jobControllerDegradedCondition,
-		sc.Generation,
+		sdc.Generation,
 		func() ([]metav1.Condition, error) {
-			return scc.syncJobs(ctx, sc, serviceMap, jobMap)
+			return scc.syncJobs(ctx, sdc, serviceMap, jobMap)
 		},
 	)
 	if err != nil {
@@ -335,11 +335,11 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 	}
 
 	// Aggregate conditions.
-	err = controllerhelpers.SetAggregatedWorkloadConditions(&status.Conditions, sc.Generation)
+	err = controllerhelpers.SetAggregatedWorkloadConditions(&status.Conditions, sdc.Generation)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't aggregate workload conditions: %w", err))
 	} else {
-		err = scc.updateStatus(ctx, sc, status)
+		err = scc.updateStatus(ctx, sdc, status)
 		errs = append(errs, err)
 	}
 

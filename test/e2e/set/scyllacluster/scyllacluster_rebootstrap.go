@@ -43,7 +43,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
 		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
@@ -85,7 +85,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 			pvcMap[pvc.Name] = pvc
 		}
 
-		stsName := naming.StatefulSetNameForRack(sc.Spec.Datacenter.Racks[0], sc)
+		stsName := naming.StatefulSetNameForRackForScyllaCluster(sc.Spec.Datacenter.Racks[0], sc)
 		for i := int32(0); i < sc.Spec.Datacenter.Racks[0].Members; i++ {
 			podName := fmt.Sprintf("%s-%d", stsName, i)
 			pvcName := naming.PVCNameForPod(podName)
@@ -104,7 +104,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx3, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
 		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		oldHosts := hosts

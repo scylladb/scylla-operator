@@ -9,6 +9,7 @@ import (
 
 	"github.com/robfig/cron/v3"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/semver"
@@ -32,10 +33,16 @@ var (
 		AlternatorWriteIsolationOnlyRMWUsesLWT,
 	}
 
-	SupportedBroadcastAddressTypes = []scyllav1.BroadcastAddressType{
+	SupportedScyllaV1BroadcastAddressTypes = []scyllav1.BroadcastAddressType{
 		scyllav1.BroadcastAddressTypePodIP,
 		scyllav1.BroadcastAddressTypeServiceClusterIP,
 		scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
+	}
+
+	SupportedScyllaV1Alpha1BroadcastAddressTypes = []scyllav1alpha1.BroadcastAddressType{
+		scyllav1alpha1.BroadcastAddressTypePodIP,
+		scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+		scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
 	}
 
 	schedulerTaskSpecCronParseOptions = cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor
@@ -318,8 +325,8 @@ func ValidateNodeBroadcastOptions(options *scyllav1.NodeBroadcastOptions, nodeSe
 func ValidateBroadcastOptions(options scyllav1.BroadcastOptions, nodeService *scyllav1.NodeServiceTemplate, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	if !slices.ContainsItem(SupportedBroadcastAddressTypes, options.Type) {
-		allErrs = append(allErrs, field.NotSupported(fldPath.Child("type"), options.Type, slices.ConvertSlice(SupportedBroadcastAddressTypes, slices.ToString[scyllav1.BroadcastAddressType])))
+	if !slices.ContainsItem(SupportedScyllaV1BroadcastAddressTypes, options.Type) {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("type"), options.Type, slices.ConvertSlice(SupportedScyllaV1BroadcastAddressTypes, slices.ToString[scyllav1.BroadcastAddressType])))
 	}
 
 	var allowedNodeServiceTypesByBroadcastAddressType = map[scyllav1.BroadcastAddressType][]scyllav1.NodeServiceType{

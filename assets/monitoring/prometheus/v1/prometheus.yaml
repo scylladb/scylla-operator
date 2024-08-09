@@ -7,8 +7,8 @@ spec:
   serviceAccountName: "{{ .scyllaDBMonitoringName }}-prometheus"
   securityContext:
     runAsNonRoot: true
-    runAsUser: 65534
-    fsGroup: 65534
+#    runAsUser: 65534
+#    fsGroup: 65534
   web:
     pageTitle: "ScyllaDB Prometheus"
     tlsConfig:

@@ -15,6 +15,8 @@ if [[ -z ${1+x} ]]; then
     exit 1
 fi
 
+SO_INSTALL_PROMETHEUS_OPERATOR="${SO_INSTALL_PROMETHEUS_OPERATOR:-yes}"
+
 ARTIFACTS=${ARTIFACTS:-$( mktemp -d )}
 OPERATOR_IMAGE_REF=${1}
 
@@ -41,7 +43,9 @@ if [[ -n ${SCYLLA_OPERATOR_FEATURE_GATES+x} ]]; then
     yq e --inplace '.spec.template.spec.containers[0].args += "--feature-gates="+ strenv(SCYLLA_OPERATOR_FEATURE_GATES)' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
 fi
 
-kubectl_create -n=prometheus-operator -f="${DEPLOY_DIR}/prometheus-operator"
+if [[ "${SO_INSTALL_PROMETHEUS_OPERATOR}" == "yes" ]]; then
+  kubectl_create -n=prometheus-operator -f="${DEPLOY_DIR}/prometheus-operator"
+fi
 kubectl_create -n=haproxy-ingress -f="${DEPLOY_DIR}/haproxy-ingress"
 kubectl_create -f "${DEPLOY_DIR}"/cert-manager.yaml
 
@@ -69,7 +73,7 @@ if [[ -z "${SO_CSI_DRIVER_PATH:-}" ]]; then
   echo "Skipping CSI driver creation"
 else
   kubectl_create -n=local-csi-driver -f="${SO_CSI_DRIVER_PATH}"
-  kubectl -n=local-csi-driver rollout status -f="${SO_CSI_DRIVER_PATH}"
+  kubectl -n=local-csi-driver rollout status daemonset.apps/local-csi-driver
 fi
 
 if [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME}" ]]; then
@@ -85,12 +89,13 @@ kubectl -n=scylla-manager wait --timeout=5m --for='condition=Available=True' scy
 kubectl -n scylla-manager rollout status --timeout=5m deployment.apps/scylla-manager
 kubectl -n scylla-manager rollout status --timeout=5m deployment.apps/scylla-manager-controller
 
-kubectl -n haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-ingress
+kubectl -n haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-ingress deploy/ingress-default-backend deploy/prometheus
 
 kubectl wait --for condition=established crd/nodeconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scyllaoperatorconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scylladbmonitorings.scylla.scylladb.com
-kubectl wait --for condition=established $( find "${DEPLOY_DIR}/prometheus-operator/" -name '*.crd.yaml' -printf '-f=%p\n' )
 
-kubectl -n=haproxy-ingress rollout status deploy/haproxy-ingress deploy/ingress-default-backend deploy/prometheus
-kubectl -n=prometheus-operator rollout status deploy/prometheus-operator
+if [[ "${SO_INSTALL_PROMETHEUS_OPERATOR}" == "yes" ]]; then
+  kubectl wait --for condition=established $( find "${DEPLOY_DIR}/prometheus-operator/" -name '*.crd.yaml' -printf '-f=%p\n' )
+  kubectl -n=prometheus-operator rollout status deploy/prometheus-operator
+fi

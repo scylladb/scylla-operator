@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"time"
 
 	"github.com/scylladb/go-set/strset"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
@@ -18,6 +19,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 	"k8s.io/kubelet/pkg/apis/podresources/v1"
+)
+
+const (
+	criCallTimeout = 5 * time.Second
 )
 
 func getIRQCPUs(ctx context.Context, kubeletPodResourcesClient kubelet.PodResourcesClient, scyllaPods []*corev1.Pod, hostFullCpuset cpuset.CPUSet) (cpuset.CPUSet, error) {
@@ -44,28 +49,49 @@ func getIRQCPUs(ctx context.Context, kubeletPodResourcesClient kubelet.PodResour
 	return hostFullCpuset.Difference(scyllaCPUs), nil
 }
 
+func scyllaDataDirMountHostPathsForPod(ctx context.Context, criClient cri.Client, scyllaPod *corev1.Pod) ([]string, error) {
+	dataDirs := strset.New()
+
+	cid, err := getScyllaContainerIDInCRIFormat(scyllaPod)
+	if err != nil {
+		return nil, fmt.Errorf("get Scylla container ID: %w", err)
+	}
+
+	klog.V(4).InfoS("Inspecting container", "ContainerID", cid, "Pod", naming.ObjRef(scyllaPod))
+	criCtx, criCtxCancel := context.WithTimeoutCause(ctx, criCallTimeout, fmt.Errorf("exceeded cri inspect container timeout (%v)", criCallTimeout))
+	defer criCtxCancel()
+	cs, err := criClient.Inspect(criCtx, cid)
+	klog.V(4).InfoS("Finished inspecting container", "ContainerID", cid)
+	if err != nil {
+		return nil, fmt.Errorf("can't inspect container %q: %w", cid, err)
+	}
+
+	if cs != nil {
+		for _, mount := range cs.Status.GetMounts() {
+			if mount.ContainerPath != naming.DataDir {
+				continue
+			}
+			dataDirs.Add(mount.HostPath)
+		}
+	}
+
+	return dataDirs.List(), nil
+}
+
 func scyllaDataDirMountHostPaths(ctx context.Context, criClient cri.Client, scyllaPods []*corev1.Pod) ([]string, error) {
 	dataDirs := strset.New()
 
 	for _, pod := range scyllaPods {
-		cid, err := getScyllaContainerIDInCRIFormat(pod)
-		if err != nil {
-			return nil, fmt.Errorf("get Scylla container ID: %w", err)
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
 		}
 
-		cs, err := criClient.Inspect(ctx, cid)
+		podDataDirs, err := scyllaDataDirMountHostPathsForPod(ctx, criClient, pod)
 		if err != nil {
-			return nil, fmt.Errorf("can't inspect container %q: %w", cid, err)
+			return nil, fmt.Errorf("can't get data dirs for pod %q: %w", naming.ObjRef(pod), err)
 		}
 
-		if cs != nil {
-			for _, mount := range cs.Status.GetMounts() {
-				if mount.ContainerPath != naming.DataDir {
-					continue
-				}
-				dataDirs.Add(mount.HostPath)
-			}
-		}
+		dataDirs.Add(podDataDirs...)
 	}
 
 	return dataDirs.List(), nil

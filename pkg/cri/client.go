@@ -80,8 +80,13 @@ func connectToEndpoint(ctx context.Context, endpoint string) *endpointState {
 		grpc.WithContextDialer(dialer),
 		grpc.WithConnectParams(grpc.ConnectParams{
 			MinConnectTimeout: dialTimeout,
-			Backoff:           backoffConfig,
+			// Backoff configures the exponential backoff when establishing a new connection with DialContext.
+			Backoff: backoffConfig,
 		}),
+		// WithDisableRetry disables retries (we have our own work queue with backoff) and retryThrottler.
+		// We should not retry calls within the same sync loop and this is essential to avoid an infinite loop
+		// between the sync loop context timing out and retryThrottler reaching a max delay higher than the timeout.
+		grpc.WithDisableRetry(),
 	)
 	return &endpointState{
 		endpoint:   endpoint,

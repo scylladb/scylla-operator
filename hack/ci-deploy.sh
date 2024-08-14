@@ -71,7 +71,7 @@ else
   kubectl_create -n=local-csi-driver -f="${SO_CSI_DRIVER_PATH}"
 fi
 
-if [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME}" ]]; then
+if [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME:-}" ]]; then
   yq e --inplace '.spec.datacenter.racks[0].storage.storageClassName = env(SO_SCYLLACLUSTER_STORAGECLASS_NAME)' "${DEPLOY_DIR}/manager/50_scyllacluster.yaml"
 elif [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME+x}" ]]; then
   yq e --inplace 'del(.spec.datacenter.racks[0].storage.storageClassName)' "${DEPLOY_DIR}/manager/50_scyllacluster.yaml"

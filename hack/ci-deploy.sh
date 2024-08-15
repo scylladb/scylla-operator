@@ -31,7 +31,7 @@ cp ./examples/third-party/haproxy-ingress/*.yaml "${DEPLOY_DIR}/haproxy-ingress"
 cp ./examples/common/cert-manager.yaml "${DEPLOY_DIR}/"
 
 for f in $( find "${DEPLOY_DIR}"/ -type f -name '*.yaml' ); do
-    sed -i -E -e "s~docker.io/scylladb/scylla-operator(:|@sha256:)[^ ]*~${OPERATOR_IMAGE_REF}~" "${f}"
+    sed -i -E -e "s~docker\.io/scylladb/scylla-operator:[^ @]+$~${OPERATOR_IMAGE_REF}~" "${f}"
 done
 
 yq e --inplace '.spec.template.spec.containers[0].args += ["--qps=200", "--burst=400"]' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
@@ -69,6 +69,7 @@ if [[ -z "${SO_CSI_DRIVER_PATH:-}" ]]; then
   echo "Skipping CSI driver creation"
 else
   kubectl_create -n=local-csi-driver -f="${SO_CSI_DRIVER_PATH}"
+  kubectl -n=local-csi-driver rollout status daemonset.apps/local-csi-driver
 fi
 
 if [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME:-}" ]]; then
@@ -85,6 +86,7 @@ kubectl -n scylla-manager rollout status --timeout=10m deployment.apps/scylla-ma
 kubectl -n scylla-manager rollout status --timeout=10m deployment.apps/scylla-manager-controller
 
 kubectl -n haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-ingress
+kubectl -n haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-ingress deploy/ingress-default-backend deploy/prometheus
 
 kubectl wait --for condition=established crd/nodeconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scyllaoperatorconfigs.scylla.scylladb.com

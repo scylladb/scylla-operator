@@ -120,11 +120,14 @@ const (
 	ScyllaRackDCPropertiesName   = "cassandra-rackdc.properties"
 	ScyllaIOPropertiesName       = "io_properties.yaml"
 
+	ScyllaDBIgnitionDonePath = SharedDirName + "/ignition.done"
+
 	DataDir = "/var/lib/scylla"
 
 	ReadinessProbePath         = "/readyz"
 	LivenessProbePath          = "/healthz"
 	ScyllaDBAPIStatusProbePort = 8080
+	ScyllaDBIgnitionProbePort  = 42081
 	ScyllaAPIPort              = 10000
 
 	OperatorEnvVarPrefix = "SCYLLA_OPERATOR_"

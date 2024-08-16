@@ -763,22 +763,37 @@ func TestStatefulSetForRack(t *testing.T) {
 									},
 								},
 								Command: func() []string {
-									featureGatesFlagString := "--feature-gates=AllAlpha=false,AllBeta=false"
-									if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {
-										featureGatesFlagString += ",AutomaticTLSCertificates=true"
-									} else {
-										featureGatesFlagString += ",AutomaticTLSCertificates=false"
-									}
-
 									return []string{
-										"/mnt/shared/scylla-operator",
-										"sidecar",
-										featureGatesFlagString,
-										"--nodes-broadcast-address-type=ServiceClusterIP",
-										"--clients-broadcast-address-type=ServiceClusterIP",
-										"--service-name=$(SERVICE_NAME)",
-										"--cpu-count=$(CPU_COUNT)",
-										"--loglevel=2",
+										"/usr/bin/bash",
+										"-euEo",
+										"pipefail",
+										"-O",
+										"inherit_errexit",
+										"-c",
+										strings.TrimSpace(`
+printf 'INFO %s ignition - Waiting for /mnt/shared/ignition.done\n' "$( date '+%Y-%m-%d %H:%M:%S,%3N' )" > /dev/stderr
+until [[ -f "/mnt/shared/ignition.done" ]]; do
+  sleep 1;
+done
+printf 'INFO %s ignition - Ignited. Starting ScyllaDB...\n' "$( date '+%Y-%m-%d %H:%M:%S,%3N' )" > /dev/stderr
+
+# TODO: This is where we should start ScyllaDB directly after the sidecar split #1942 
+exec /mnt/shared/scylla-operator sidecar \
+--feature-gates=` + func() string {
+											featureGates := []string{"AllAlpha=false", "AllBeta=false"}
+											if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {
+												featureGates = append(featureGates, "AutomaticTLSCertificates=true")
+											} else {
+												featureGates = append(featureGates, "AutomaticTLSCertificates=false")
+											}
+											return strings.Join(featureGates, ",")
+										}() + ` \
+--nodes-broadcast-address-type=ServiceClusterIP \
+--clients-broadcast-address-type=ServiceClusterIP \
+--service-name=$(SERVICE_NAME) \
+--cpu-count=$(CPU_COUNT) \
+--loglevel=2 \
+`),
 									}
 								}(),
 								Env: []corev1.EnvVar{
@@ -902,7 +917,10 @@ func TestStatefulSetForRack(t *testing.T) {
 												"-O",
 												"inherit_errexit",
 												"-c",
-												"nodetool drain & sleep 15 & wait",
+												`trap 'rm /mnt/shared/ignition.done' EXIT
+nodetool drain &
+sleep 15 &
+wait`,
 											},
 										},
 									},
@@ -952,16 +970,79 @@ func TestStatefulSetForRack(t *testing.T) {
 								},
 							},
 							{
+								Name:            "scylladb-ignition",
+								Image:           "scylladb/scylla-operator:latest",
+								ImagePullPolicy: corev1.PullIfNotPresent,
+								Command: []string{
+									"/usr/bin/scylla-operator",
+									"run-ignition",
+									"--service-name=$(SERVICE_NAME)",
+									"--nodes-broadcast-address-type=ServiceClusterIP",
+									"--clients-broadcast-address-type=ServiceClusterIP",
+									"--loglevel=2",
+								},
+								Env: []corev1.EnvVar{
+									{
+										Name: "SERVICE_NAME",
+										ValueFrom: &corev1.EnvVarSource{
+											FieldRef: &corev1.ObjectFieldSelector{
+												FieldPath: "metadata.name",
+											},
+										},
+									},
+								},
+								ReadinessProbe: &corev1.Probe{
+									TimeoutSeconds:   int32(30),
+									FailureThreshold: int32(1),
+									PeriodSeconds:    int32(5),
+									ProbeHandler: corev1.ProbeHandler{
+										HTTPGet: &corev1.HTTPGetAction{
+											Port: intstr.FromInt32(42081),
+											Path: "/readyz",
+										},
+									},
+								},
+								Resources: corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceMemory: resource.MustParse("40Mi"),
+									},
+									Requests: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceMemory: resource.MustParse("40Mi"),
+									},
+								},
+								VolumeMounts: []corev1.VolumeMount{
+									{
+										Name:      "shared",
+										MountPath: "/mnt/shared",
+										ReadOnly:  false,
+									},
+								},
+							},
+							{
 								Name:            "scylla-manager-agent",
 								Image:           ":",
 								ImagePullPolicy: corev1.PullIfNotPresent,
-								Args: []string{
+								Command: []string{
+									"/usr/bin/bash",
+									"-euEo",
+									"pipefail",
+									"-O",
+									"inherit_errexit",
 									"-c",
-									"/etc/scylla-manager-agent/scylla-manager-agent.yaml",
-									"-c",
-									"/mnt/scylla-agent-config/scylla-manager-agent.yaml",
-									"-c",
-									"/mnt/scylla-agent-config/auth-token.yaml",
+									strings.TrimSpace(`
+printf '{"L":"INFO","T":"%s","M":"Waiting for /mnt/shared/ignition.done"}\n' "$( date -u '+%Y-%m-%dT%H:%M:%S,%3NZ' )" > /dev/stderr
+until [[ -f "/mnt/shared/ignition.done" ]]; do
+  sleep 1;
+done
+printf '{"L":"INFO","T":"%s","M":"Ignited. Starting ScyllaDB Manager Agent"}\n' "$( date -u '+%Y-%m-%dT%H:%M:%S,%3NZ' )" > /dev/stderr
+
+scylla-manager-agent \
+-c "/etc/scylla-manager-agent/scylla-manager-agent.yaml" \
+-c "/mnt/scylla-agent-config/scylla-manager-agent.yaml" \
+-c "/mnt/scylla-agent-config/auth-token.yaml"
+`),
 								},
 								Ports: []corev1.ContainerPort{
 									{
@@ -991,6 +1072,11 @@ func TestStatefulSetForRack(t *testing.T) {
 										Name:      "scylla-agent-auth-token-volume",
 										MountPath: "/mnt/scylla-agent-config/auth-token.yaml",
 										SubPath:   "auth-token.yaml",
+										ReadOnly:  true,
+									},
+									{
+										Name:      "shared",
+										MountPath: "/mnt/shared",
 										ReadOnly:  true,
 									},
 								},
@@ -1259,7 +1345,7 @@ func TestStatefulSetForRack(t *testing.T) {
 			expectedStatefulSet: func() *appsv1.StatefulSet {
 				sts := newBasicStatefulSet()
 
-				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command = append(sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command, "--external-seeds=10.0.1.1,10.0.1.2,10.0.1.3")
+				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command[len(sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command)-1] += "\n--external-seeds=10.0.1.1,10.0.1.2,10.0.1.3"
 
 				return sts
 			}(),

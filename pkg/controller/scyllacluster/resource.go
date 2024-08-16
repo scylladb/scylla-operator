@@ -526,9 +526,22 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 							// TODO: unprivileged entrypoint
 							Command: func() []string {
 								cmd := []string{
-									path.Join(naming.SharedDirName, "scylla-operator"),
-									"sidecar",
-									fmt.Sprintf("--feature-gates=%s", func() string {
+									"/usr/bin/bash",
+									"-euEo",
+									"pipefail",
+									"-O",
+									"inherit_errexit",
+									"-c",
+									strings.TrimSpace(`
+printf 'INFO %s ignition - Waiting for /mnt/shared/ignition.done\n' "$( date '+%Y-%m-%d %H:%M:%S,%3N' )" > /dev/stderr
+until [[ -f "/mnt/shared/ignition.done" ]]; do
+  sleep 1;
+done
+printf 'INFO %s ignition - Ignited. Starting ScyllaDB...\n' "$( date '+%Y-%m-%d %H:%M:%S,%3N' )" > /dev/stderr
+
+# TODO: This is where we should start ScyllaDB directly after the sidecar split #1942 
+exec /mnt/shared/scylla-operator sidecar \
+--feature-gates=` + func() string {
 										features := utilfeature.DefaultMutableFeatureGate.GetAll()
 										res := make([]string, 0, len(features))
 										for name := range features {
@@ -536,27 +549,29 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 										}
 										sort.Strings(res)
 										return strings.Join(res, ",")
-									}()),
-									fmt.Sprintf("--nodes-broadcast-address-type=%s", func() scyllav1.BroadcastAddressType {
+									}() + ` \
+--nodes-broadcast-address-type=` + func() string {
 										if c.Spec.ExposeOptions != nil && c.Spec.ExposeOptions.BroadcastOptions != nil {
-											return c.Spec.ExposeOptions.BroadcastOptions.Nodes.Type
+											return string(c.Spec.ExposeOptions.BroadcastOptions.Nodes.Type)
 										}
-										return scyllav1.BroadcastAddressTypeServiceClusterIP
-									}()),
-									fmt.Sprintf("--clients-broadcast-address-type=%s", func() scyllav1.BroadcastAddressType {
+										return string(scyllav1.BroadcastAddressTypeServiceClusterIP)
+									}() + ` \
+--clients-broadcast-address-type=` + func() string {
 										if c.Spec.ExposeOptions != nil && c.Spec.ExposeOptions.BroadcastOptions != nil {
-											return c.Spec.ExposeOptions.BroadcastOptions.Clients.Type
+											return string(c.Spec.ExposeOptions.BroadcastOptions.Clients.Type)
 										}
-										return scyllav1.BroadcastAddressTypeServiceClusterIP
-									}()),
-									"--service-name=$(SERVICE_NAME)",
-									"--cpu-count=$(CPU_COUNT)",
-									// TODO: make it configurable
-									"--loglevel=2",
-								}
-
-								if len(c.Spec.ExternalSeeds) > 0 {
-									cmd = append(cmd, fmt.Sprintf("--external-seeds=%s", strings.Join(c.Spec.ExternalSeeds, ",")))
+										return string(scyllav1.BroadcastAddressTypeServiceClusterIP)
+									}() + ` \
+--service-name=$(SERVICE_NAME) \
+--cpu-count=$(CPU_COUNT) \
+--loglevel=2 \
+` + func() string {
+										if len(c.Spec.ExternalSeeds) > 0 {
+											return fmt.Sprintf("--external-seeds=%s", strings.Join(c.Spec.ExternalSeeds, ","))
+										}
+										return ""
+									}(),
+									),
 								}
 
 								return cmd
@@ -705,7 +720,12 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 											"-O",
 											"inherit_errexit",
 											"-c",
-											fmt.Sprintf("nodetool drain & sleep %d & wait", minTerminationGracePeriodSeconds),
+											strings.TrimSpace(`
+trap 'rm /mnt/shared/ignition.done' EXIT
+nodetool drain &
+sleep ` + strconv.Itoa(minTerminationGracePeriodSeconds) + ` &
+wait
+`),
 										},
 									},
 								},
@@ -753,6 +773,67 @@ func StatefulSetForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, existing
 								Requests: corev1.ResourceList{
 									corev1.ResourceCPU:    resource.MustParse("10m"),
 									corev1.ResourceMemory: resource.MustParse("40Mi"),
+								},
+							},
+						},
+						{
+							Name:            "scylladb-ignition",
+							Image:           sidecarImage,
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Command: []string{
+								"/usr/bin/scylla-operator",
+								"run-ignition",
+								"--service-name=$(SERVICE_NAME)",
+								fmt.Sprintf("--nodes-broadcast-address-type=%s", func() scyllav1.BroadcastAddressType {
+									if c.Spec.ExposeOptions != nil && c.Spec.ExposeOptions.BroadcastOptions != nil {
+										return c.Spec.ExposeOptions.BroadcastOptions.Nodes.Type
+									}
+									return scyllav1.BroadcastAddressTypeServiceClusterIP
+								}()),
+								fmt.Sprintf("--clients-broadcast-address-type=%s", func() scyllav1.BroadcastAddressType {
+									if c.Spec.ExposeOptions != nil && c.Spec.ExposeOptions.BroadcastOptions != nil {
+										return c.Spec.ExposeOptions.BroadcastOptions.Clients.Type
+									}
+									return scyllav1.BroadcastAddressTypeServiceClusterIP
+								}()),
+								"--loglevel=2",
+							},
+							Env: []corev1.EnvVar{
+								{
+									Name: "SERVICE_NAME",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
+										},
+									},
+								},
+							},
+							ReadinessProbe: &corev1.Probe{
+								TimeoutSeconds:   int32(30),
+								FailureThreshold: int32(1),
+								PeriodSeconds:    int32(5),
+								ProbeHandler: corev1.ProbeHandler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Port: intstr.FromInt32(naming.ScyllaDBIgnitionProbePort),
+										Path: naming.ReadinessProbePath,
+									},
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("40Mi"),
+								},
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("40Mi"),
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "shared",
+									MountPath: naming.SharedDirName,
+									ReadOnly:  false,
 								},
 							},
 						},
@@ -916,13 +997,26 @@ func agentContainer(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) corev1.Conta
 		Name:            "scylla-manager-agent",
 		Image:           agentImageForCluster(c),
 		ImagePullPolicy: corev1.PullIfNotPresent,
-		Args: []string{
+		// There is no point in starting scylla-manager before ScyllaDB is tuned and ignited. The manager agent fails after 60 attempts and hits backoff unnecessarily.
+		Command: []string{
+			"/usr/bin/bash",
+			"-euEo",
+			"pipefail",
+			"-O",
+			"inherit_errexit",
 			"-c",
-			naming.ScyllaAgentConfigDefaultFile,
-			"-c",
-			path.Join(naming.ScyllaAgentConfigDirName, naming.ScyllaAgentConfigFileName),
-			"-c",
-			path.Join(naming.ScyllaAgentConfigDirName, naming.ScyllaAgentAuthTokenFileName),
+			strings.TrimSpace(`
+printf '{"L":"INFO","T":"%s","M":"Waiting for /mnt/shared/ignition.done"}\n' "$( date -u '+%Y-%m-%dT%H:%M:%S,%3NZ' )" > /dev/stderr
+until [[ -f "/mnt/shared/ignition.done" ]]; do
+  sleep 1;
+done
+printf '{"L":"INFO","T":"%s","M":"Ignited. Starting ScyllaDB Manager Agent"}\n' "$( date -u '+%Y-%m-%dT%H:%M:%S,%3NZ' )" > /dev/stderr
+
+scylla-manager-agent \
+-c ` + fmt.Sprintf("%q ", naming.ScyllaAgentConfigDefaultFile) + `\
+-c ` + fmt.Sprintf("%q ", path.Join(naming.ScyllaAgentConfigDirName, naming.ScyllaAgentConfigFileName)) + `\
+-c ` + fmt.Sprintf("%q ", path.Join(naming.ScyllaAgentConfigDirName, naming.ScyllaAgentAuthTokenFileName)) + `
+`),
 		},
 		Ports: []corev1.ContainerPort{
 			{
@@ -952,6 +1046,11 @@ func agentContainer(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) corev1.Conta
 				Name:      scyllaAgentAuthTokenVolumeName,
 				MountPath: path.Join(naming.ScyllaAgentConfigDirName, naming.ScyllaAgentAuthTokenFileName),
 				SubPath:   naming.ScyllaAgentAuthTokenFileName,
+				ReadOnly:  true,
+			},
+			{
+				Name:      "shared",
+				MountPath: naming.SharedDirName,
 				ReadOnly:  true,
 			},
 		},

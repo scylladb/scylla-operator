@@ -21,7 +21,7 @@ spec:
         {{- .tolerations | toYAML | nindent 8 }}
       initContainers:
       - name: gzip
-        image: registry.access.redhat.com/ubi9/ubi:9.3-1361.1699548029@sha256:6b95efc134c2af3d45472c0a2f88e6085433df058cc210abb2bb061ac4d74359
+        image: "{{ .bashToolsImage }}"
         command:
         - /usr/bin/bash
         - -euExo
@@ -47,7 +47,7 @@ spec:
           mountPath: /var/run/configmaps/grafana-scylladb-dashboards
       containers:
       - name: grafana
-        image: docker.io/grafana/grafana:9.5.12@sha256:7d2f2a8b7aebe30bf3f9ae0f190e508e571b43f65753ba3b1b1adf0800bc9256
+        image: "{{ .grafanaImage }}"
         command:
         - grafana-server
         - --packaging=docker

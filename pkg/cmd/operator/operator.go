@@ -331,6 +331,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		o.kubeClient,
 		o.scyllaClient.ScyllaV1alpha1(),
 		o.monitoringClient.MonitoringV1(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaOperatorConfigs(),
 		kubeInformers.Core().V1().ConfigMaps(),
 		kubeInformers.Core().V1().Secrets(),
 		kubeInformers.Core().V1().Services(),

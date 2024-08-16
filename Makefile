@@ -429,6 +429,24 @@ define set-default-app-version
 	$(YQ) eval -i -P '.appVersion = "$(2)"' '$(1)'/Chart.yaml
 endef
 
+# $1 - values.yaml
+define update-scylla-helm-versions
+	$(YQ) eval-all -i -P '\
+	select(fi==0).scyllaImage.tag = ( select(fi==1) | .operator.scyllaDBVersion ) | \
+	select(fi==0).agentImage.tag = ( select(fi==1) | .operator.scyllaDBManagerVersion ) | \
+	select(fi==0)' \
+	'$(1)' './assets/config/config.yaml'
+endef
+
+# $1 - values.yaml
+define update-scylla-manager-helm-versions
+	$(YQ) eval-all -i -P '\
+	select(fi==0).scylla.scyllaImage.tag = ( select(fi==1) | .operator.scyllaDBVersion ) | \
+	select(fi==0).scylla.agentImage.tag = ( select(fi==1) | .operator.scyllaDBManagerVersion ) | \
+	select(fi==0)' \
+	'$(1)' './assets/config/config.yaml'
+endef
+
 # $1 - file path
 # $2 - container name
 # $3 - target image ref
@@ -439,17 +457,23 @@ endef
 update-helm-charts:
 	$(call set-default-app-version,helm/scylla-operator,$(IMAGE_TAG))
 	$(call set-default-app-version,helm/scylla-manager,$(IMAGE_TAG))
+	$(call update-scylla-helm-versions,./helm/scylla/values.yaml)
+	$(call update-scylla-manager-helm-versions,./helm/scylla-manager/values.yaml)
+	$(call update-scylla-manager-helm-versions,./helm/deploy/manager_prod.yaml)
+
 .PHONY: update-helm-charts
 
 verify-helm-charts: tmp_dir:=$(shell mktemp -d)
 verify-helm-charts:
-	cp -r helm/scylla-{operator,manager} '$(tmp_dir)'
+	cp -r './helm/.' '$(tmp_dir)/'
 
 	$(call set-default-app-version,$(tmp_dir)/scylla-operator,$(IMAGE_TAG))
-	$(diff) -r '$(tmp_dir)'/scylla-operator helm/scylla-operator
-
 	$(call set-default-app-version,$(tmp_dir)/scylla-manager,$(IMAGE_TAG))
-	$(diff) -r '$(tmp_dir)'/scylla-manager helm/scylla-manager
+	$(call update-scylla-helm-versions,$(tmp_dir)/scylla/values.yaml)
+	$(call update-scylla-manager-helm-versions,$(tmp_dir)/scylla-manager/values.yaml)
+	$(call update-scylla-manager-helm-versions,$(tmp_dir)/deploy/manager_prod.yaml)
+
+	$(diff) -r '$(tmp_dir)'/ ./helm/
 .PHONY: verify-helm-charts
 
 update-deploy: tmp_dir:=$(shell mktemp -d)
@@ -486,8 +510,26 @@ verify-deploy:
 
 .PHONY: verify-deploy
 
+# $1 - file name
+# $2 - ScyllaCluster document index
+define replace-scyllacluster-versions
+	$(YQ) eval-all -i -P '\
+	select(fi==0 and di==$(2)).spec.version = ( select(fi==1) | .operator.scyllaDBVersion ) | \
+	select(fi==0 and di==$(2)).spec.agentVersion = ( select(fi==1) | .operator.scyllaDBManagerVersion ) | \
+	select(fi==0)' \
+	'$(1)' './assets/config/config.yaml'
+endef
+
 update-examples:
 update-examples:
+	$(call update-scylla-helm-versions,./examples/helm/values.cluster.yaml)
+	$(call update-scylla-manager-helm-versions,./examples/helm/values.manager.yaml)
+	$(call replace-scyllacluster-versions,./examples/eks/cluster.yaml,1)
+	$(call replace-scyllacluster-versions,./examples/generic/cluster.yaml,1)
+	$(call replace-scyllacluster-versions,./examples/gke/cluster.yaml,1)
+	$(call replace-scyllacluster-versions,./examples/gke/cluster.yaml,1)
+	$(call replace-scyllacluster-versions,./examples/scylladb/scylla.scyllacluster.yaml,0)
+
 	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/haproxy-ingress/*.yaml)),./examples/third-party/haproxy-ingress.yaml)
 	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/prometheus-operator/*.yaml)),./examples/third-party/prometheus-operator.yaml)
 .PHONY: update-examples
@@ -495,6 +537,13 @@ update-examples:
 verify-examples: tmp_dir :=$(shell mktemp -d)
 verify-examples:
 	cp -r ./examples/. $(tmp_dir)/
+
+	$(call update-scylla-helm-versions,$(tmp_dir)/helm/values.cluster.yaml)
+	$(call update-scylla-manager-helm-versions,$(tmp_dir)/helm/values.manager.yaml)
+	$(call replace-scyllacluster-versions,$(tmp_dir)/eks/cluster.yaml,1)
+	$(call replace-scyllacluster-versions,$(tmp_dir)/generic/cluster.yaml,1)
+	$(call replace-scyllacluster-versions,$(tmp_dir)/gke/cluster.yaml,1)
+	$(call replace-scyllacluster-versions,$(tmp_dir)/scylladb/scylla.scyllacluster.yaml,0)
 
 	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/haproxy-ingress/*.yaml)),$(tmp_dir)/third-party/haproxy-ingress.yaml)
 	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/prometheus-operator/*.yaml)),$(tmp_dir)/third-party/prometheus-operator.yaml)

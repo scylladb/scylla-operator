@@ -11,6 +11,7 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	configassests "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
@@ -18,7 +19,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
-	"github.com/scylladb/scylla-operator/test/e2e/utils/image"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -157,7 +157,7 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 							Containers: []corev1.Container{
 								{
 									Name:  "consumer",
-									Image: image.GetE2EImage(image.BusyBox),
+									Image: configassests.Project.Operator.BashToolsImage,
 									Command: []string{
 										"/bin/sh",
 										"-c",

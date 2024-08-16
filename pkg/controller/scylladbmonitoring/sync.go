@@ -52,6 +52,16 @@ func (smc *Controller) sync(ctx context.Context, key string) error {
 		return fmt.Errorf("can't get object %q from cache: %w", naming.ManualRef(namespace, name), err)
 	}
 
+	soc, err := smc.scyllaOperatorConfigLister.Get(naming.SingletonName)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return fmt.Errorf("can't get scyllaoperatorconfig %q from cache: %w", naming.SingletonName, err)
+		}
+
+		klog.V(4).InfoS("Waiting for ScyllaOperatorConfig to be available", "Name", naming.SingletonName)
+		return nil
+	}
+
 	smSelector := getSelector(sm)
 
 	type CT = *scyllav1alpha1.ScyllaDBMonitoring
@@ -232,6 +242,7 @@ func (smc *Controller) sync(ctx context.Context, key string) error {
 			return smc.syncPrometheus(
 				ctx,
 				sm,
+				soc,
 				controllerhelpers.FilterObjectMapByLabel(configMaps, prometheusSelector),
 				controllerhelpers.FilterObjectMapByLabel(secrets, prometheusSelector),
 				controllerhelpers.FilterObjectMapByLabel(services, prometheusSelector),
@@ -257,6 +268,7 @@ func (smc *Controller) sync(ctx context.Context, key string) error {
 			return smc.syncGrafana(
 				ctx,
 				sm,
+				soc,
 				controllerhelpers.FilterObjectMapByLabel(configMaps, grafanaSelector),
 				controllerhelpers.FilterObjectMapByLabel(secrets, grafanaSelector),
 				controllerhelpers.FilterObjectMapByLabel(services, grafanaSelector),

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -11,17 +12,28 @@ import (
 )
 
 func (opc *Controller) sync(ctx context.Context) error {
-	soc, err := opc.scyllaOperatorConfigLister.Get(naming.SingletonName)
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return fmt.Errorf("can't get ScyllaOperatorConfig %q: %w", naming.SingletonName, err)
+	soc, socGetErr := opc.scyllaOperatorConfigLister.Get(naming.SingletonName)
+	if socGetErr != nil {
+		if !apierrors.IsNotFound(socGetErr) {
+			return fmt.Errorf("can't get ScyllaOperatorConfig %q: %w", naming.SingletonName, socGetErr)
 		}
 
 		klog.V(2).InfoS("ScyllaOperatorConfig missing, creating a default one")
 
-		_, err := opc.scyllaClient.ScyllaOperatorConfigs().Create(ctx, DefaultScyllaOperatorConfig(), metav1.CreateOptions{})
-		if err != nil {
-			return fmt.Errorf("can't create scyllaoperatorconfig %q: %w", naming.SingletonName, err)
+		_, createErr := opc.scyllaClient.ScyllaOperatorConfigs().Create(
+			ctx,
+			&scyllav1alpha1.ScyllaOperatorConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: naming.SingletonName,
+				},
+				// Do not set any default values into the spec so they can be auto defaulted to newer ones
+				// when the operator is upgraded. The default values are projected into the status for consumption.
+				Spec: scyllav1alpha1.ScyllaOperatorConfigSpec{},
+			},
+			metav1.CreateOptions{},
+		)
+		if createErr != nil {
+			return fmt.Errorf("can't create scyllaoperatorconfig %q: %w", naming.SingletonName, createErr)
 		}
 
 		klog.V(2).InfoS("Create ScyllaOperatorConfig", "ScyllaOperatorConfig", klog.KObj(soc))
@@ -30,7 +42,7 @@ func (opc *Controller) sync(ctx context.Context) error {
 		return nil
 	}
 
-	// TODO: Report status, like which scylla images / version are used in this cluster, ...
+	status := opc.calculateStatus(soc)
 
-	return nil
+	return opc.updateStatus(ctx, soc, status)
 }

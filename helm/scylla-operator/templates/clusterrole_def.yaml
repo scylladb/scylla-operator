@@ -240,6 +240,7 @@ rules:
   - scylla.scylladb.com
   resources:
   - scyllaoperatorconfigs
+  - scyllaoperatorconfigs/status
   verbs:
   - create
   - delete

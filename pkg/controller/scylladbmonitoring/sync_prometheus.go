@@ -108,7 +108,7 @@ func makeAlertsPrometheusRule(sm *scyllav1alpha1.ScyllaDBMonitoring) (*monitorin
 	})
 }
 
-func makePrometheus(sm *scyllav1alpha1.ScyllaDBMonitoring) (*monitoringv1.Prometheus, string, error) {
+func makePrometheus(sm *scyllav1alpha1.ScyllaDBMonitoring, soc *scyllav1alpha1.ScyllaOperatorConfig) (*monitoringv1.Prometheus, string, error) {
 	spec := getPrometheusSpec(sm)
 
 	var volumeClaimTemplate *monitoringv1.EmbeddedPersistentVolumeClaim
@@ -140,6 +140,7 @@ func makePrometheus(sm *scyllav1alpha1.ScyllaDBMonitoring) (*monitoringv1.Promet
 	}
 
 	return prometheusv1assets.PrometheusTemplate.RenderObject(map[string]any{
+		"prometheusVersion":      soc.Status.PrometheusVersion,
 		"namespace":              sm.Namespace,
 		"scyllaDBMonitoringName": sm.Name,
 		"volumeClaimTemplate":    volumeClaimTemplate,
@@ -174,6 +175,7 @@ func makePrometheusIngress(sm *scyllav1alpha1.ScyllaDBMonitoring) (*networkingv1
 func (smc *Controller) syncPrometheus(
 	ctx context.Context,
 	sm *scyllav1alpha1.ScyllaDBMonitoring,
+	soc *scyllav1alpha1.ScyllaOperatorConfig,
 	configMaps map[string]*corev1.ConfigMap,
 	secrets map[string]*corev1.Secret,
 	services map[string]*corev1.Service,
@@ -279,7 +281,7 @@ func (smc *Controller) syncPrometheus(
 	requiredIngress, _, err := makePrometheusIngress(sm)
 	renderErrors = append(renderErrors, err)
 
-	requiredPrometheus, _, err := makePrometheus(sm)
+	requiredPrometheus, _, err := makePrometheus(sm, soc)
 	renderErrors = append(renderErrors, err)
 
 	requiredRecodingPrometheusRule, _, err := makeRecodingPrometheusRule(sm)

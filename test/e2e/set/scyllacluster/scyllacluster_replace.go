@@ -9,6 +9,7 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	configassests "github.com/scylladb/scylla-operator/assets/config"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
@@ -170,7 +171,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 	},
 		g.Entry(describeEntry, &entry{
 			scyllaImageRepository: scyllaOSImageRepository,
-			scyllaVersion:         "5.2.6",
+			scyllaVersion:         configassests.Project.Operator.ScyllaDBVersion,
 			validateScyllaConfig:  validateReplaceViaHostID,
 		}),
 		g.Entry(describeEntry, &entry{

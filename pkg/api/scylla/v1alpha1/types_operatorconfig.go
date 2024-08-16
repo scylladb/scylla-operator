@@ -5,12 +5,49 @@ package v1alpha1
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 type ScyllaOperatorConfigSpec struct {
-	// scyllaUtilsImage is a Scylla image used for running scylla utilities.
-	// +kubebuilder:validation:MinLength=1
+	// scyllaUtilsImage is a ScyllaDB image used for running ScyllaDB utilities.
 	ScyllaUtilsImage string `json:"scyllaUtilsImage"`
+
+	// unsupportedBashToolsImageOverride allows to adjust a generic Bash image with extra tools used by the operator
+	// for auxiliary purposes.
+	// Setting this field renders your cluster unsupported. Use at your own risk.
+	// +optional
+	UnsupportedBashToolsImageOverride *string `json:"unsupportedBashToolsImageOverride,omitempty"`
+
+	// unsupportedGrafanaImageOverride allows to adjust Grafana image used by the operator
+	// for testing, dev or emergencies.
+	// Setting this field renders your cluster unsupported. Use at your own risk.
+	// +optional
+	UnsupportedGrafanaImageOverride *string `json:"unsupportedGrafanaImageOverride,omitempty"`
+
+	// unsupportedPrometheusVersionOverride allows to adjust Prometheus version used by the operator
+	// for testing, dev or emergencies.
+	// Setting this field renders your cluster unsupported. Use at your own risk.
+	// +optional
+	UnsupportedPrometheusVersionOverride *string `json:"unsupportedPrometheusVersionOverride,omitempty"`
 }
 
 type ScyllaOperatorConfigStatus struct {
+	// observedGeneration is the most recent generation observed for this ScyllaOperatorConfig. It corresponds to the
+	// ScyllaOperatorConfig's generation, which is updated on mutation by the API Server.
+	// +optional
+	ObservedGeneration *int64 `json:"observedGeneration,omitempty"`
+
+	// scyllaDBUtilsImage is the ScyllaDB image used for running ScyllaDB utilities.
+	// +optional
+	ScyllaDBUtilsImage *string `json:"scyllaDBUtilsImage"`
+
+	// bashToolsImage is a generic Bash image with extra tools used by the operator for auxiliary purposes.
+	// +optional
+	BashToolsImage *string `json:"bashToolsImage,omitempty"`
+
+	// grafanaImage is the image used by the operator to create a Grafana instance.
+	// +optional
+	GrafanaImage *string `json:"grafanaImage,omitempty"`
+
+	// prometheusVersion is the Prometheus version used by the operator to create a Prometheus instance.
+	// +optional
+	PrometheusVersion *string `json:"prometheusVersion"`
 }
 
 // +kubebuilder:object:root=true

@@ -8,9 +8,11 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func (ncc *Controller) syncDaemonSet(
@@ -19,11 +21,14 @@ func (ncc *Controller) syncDaemonSet(
 	soc *scyllav1alpha1.ScyllaOperatorConfig,
 	daemonSets map[string]*appsv1.DaemonSet,
 ) error {
-	scyllaUtilsImage := soc.Spec.ScyllaUtilsImage
-	// FIXME: check that its not empty, emit event
-	// FIXME: add webhook validation for the format
+	if soc.Status.ScyllaDBUtilsImage == nil || len(*soc.Status.ScyllaDBUtilsImage) == 0 {
+		ncc.eventRecorder.Event(nc, corev1.EventTypeNormal, "MissingScyllaUtilsImage", "ScyllaOperatorConfig doesn't yet have scyllaUtilsImage available in the status.")
+		return controllertools.NewNonRetriable("scylla operator config doesn't yet have scyllaUtilsImage available in the status")
+	}
+	scyllaDBUtilsImage := *soc.Status.ScyllaDBUtilsImage
+
 	requiredDaemonSets := []*appsv1.DaemonSet{
-		makeNodeSetupDaemonSet(nc, ncc.operatorImage, scyllaUtilsImage),
+		makeNodeSetupDaemonSet(nc, ncc.operatorImage, scyllaDBUtilsImage),
 	}
 
 	err := controllerhelpers.Prune(

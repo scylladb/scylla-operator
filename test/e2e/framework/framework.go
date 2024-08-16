@@ -12,6 +12,7 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	configassets "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
@@ -133,6 +134,8 @@ func (f *Framework) CommonLabels() map[string]string {
 
 func (f *Framework) GetDefaultScyllaCluster() *scyllav1.ScyllaCluster {
 	renderArgs := map[string]any{
+		"scyllaDBVersion":             configassets.Project.Operator.ScyllaDBVersion,
+		"scyllaDBManagerVersion":      configassets.Project.Operator.ScyllaDBManagerVersion,
 		"nodeServiceType":             TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
 		"nodesBroadcastAddressType":   TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
 		"clientsBroadcastAddressType": TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
@@ -147,6 +150,8 @@ func (f *Framework) GetDefaultScyllaCluster() *scyllav1.ScyllaCluster {
 
 func (f *Framework) GetDefaultZonalScyllaClusterWithThreeRacks() *scyllav1.ScyllaCluster {
 	renderArgs := map[string]any{
+		"scyllaDBVersion":             configassets.Project.Operator.ScyllaDBVersion,
+		"scyllaDBManagerVersion":      configassets.Project.Operator.ScyllaDBManagerVersion,
 		"nodeServiceType":             TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
 		"nodesBroadcastAddressType":   TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
 		"clientsBroadcastAddressType": TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,

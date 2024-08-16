@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	configassests "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corev1 "k8s.io/api/core/v1"
@@ -383,7 +384,11 @@ spec:
 	}
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			_, objString, err := makePrometheus(tc.sm)
+			_, objString, err := makePrometheus(tc.sm, &scyllav1alpha1.ScyllaOperatorConfig{
+				Status: scyllav1alpha1.ScyllaOperatorConfigStatus{
+					PrometheusVersion: pointer.Ptr(configassests.Project.Operator.PrometheusVersion),
+				},
+			})
 			if !reflect.DeepEqual(err, tc.expectedErr) {
 				t.Errorf("expected and got errors differ:\n%s\nRendered object:\n%s", cmp.Diff(tc.expectedErr, err), objString)
 			}

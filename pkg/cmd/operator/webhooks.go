@@ -283,6 +283,7 @@ func validate(ar *admissionv1.AdmissionReview) error {
 			return apierrors.NewInvalid(obj.(*scyllav1.ScyllaCluster).GroupVersionKind().GroupKind(), obj.(*scyllav1.ScyllaCluster).Name, errList)
 		}
 		return nil
+
 	case scyllav1alpha1.GroupVersion.WithResource("nodeconfigs"):
 		var errList field.ErrorList
 		switch ar.Request.Operation {
@@ -296,6 +297,21 @@ func validate(ar *admissionv1.AdmissionReview) error {
 			return apierrors.NewInvalid(obj.(*scyllav1alpha1.NodeConfig).GroupVersionKind().GroupKind(), obj.(*scyllav1alpha1.NodeConfig).Name, errList)
 		}
 		return nil
+
+	case scyllav1alpha1.GroupVersion.WithResource("scyllaoperatorconfigs"):
+		var errList field.ErrorList
+		switch ar.Request.Operation {
+		case admissionv1.Create:
+			errList = validation.ValidateScyllaOperatorConfig(obj.(*scyllav1alpha1.ScyllaOperatorConfig))
+		case admissionv1.Update:
+			errList = validation.ValidateScyllaOperatorConfigUpdate(obj.(*scyllav1alpha1.ScyllaOperatorConfig), oldObj.(*scyllav1alpha1.ScyllaOperatorConfig))
+		}
+
+		if len(errList) > 0 {
+			return apierrors.NewInvalid(obj.(*scyllav1alpha1.ScyllaOperatorConfig).GroupVersionKind().GroupKind(), obj.(*scyllav1alpha1.ScyllaOperatorConfig).Name, errList)
+		}
+		return nil
+
 	default:
 		return fmt.Errorf("unsupported GVR %q", gvr)
 	}

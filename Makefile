@@ -37,7 +37,6 @@ go_build_binaries =$(notdir $(GO_BUILD_PACKAGES_EXPANDED))
 GO_BUILD_FLAGS ?=-trimpath
 GO_BUILD_BINDIR ?=
 GO_LD_EXTRA_FLAGS ?=
-GO_TEST_PACKAGES :=./pkg/... ./cmd/...
 GO_TEST_FLAGS ?=-race
 GO_TEST_COUNT ?=
 GO_TEST_EXTRA_FLAGS ?=

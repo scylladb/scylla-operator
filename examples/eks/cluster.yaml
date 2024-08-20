@@ -16,8 +16,6 @@ spec:
   agentVersion: 3.3.0
   version: 5.4.3
   cpuset: true
-  network:
-    hostNetworking: true
   sysctls:
   - "fs.aio-max-nr=2097152"
   datacenter:

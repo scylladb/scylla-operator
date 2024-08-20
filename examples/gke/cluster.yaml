@@ -19,8 +19,6 @@ spec:
   automaticOrphanedNodeCleanup: true
   sysctls:
     - "fs.aio-max-nr=2097152"
-  network:
-    hostNetworking: true
   datacenter:
     name: <gcp_region>
     racks:

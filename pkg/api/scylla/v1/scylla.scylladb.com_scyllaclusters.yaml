@@ -176,7 +176,7 @@ spec:
                     type: object
                   type: array
                 cpuset:
-                  description: cpuset determines if the cluster will use cpu-pinning for max performance.
+                  description: 'cpuset determines if the cluster will use cpu-pinning. Deprecated: `cpuset` is deprecated and may be ignored in the future.'
                   type: boolean
                 datacenter:
                   description: datacenter holds a specification of a datacenter.

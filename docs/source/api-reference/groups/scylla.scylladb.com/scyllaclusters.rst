@@ -92,7 +92,7 @@ object
      - backups specifies backup tasks in Scylla Manager. When Scylla Manager is not installed, these will be ignored.
    * - cpuset
      - boolean
-     - cpuset determines if the cluster will use cpu-pinning for max performance.
+     - cpuset determines if the cluster will use cpu-pinning. Deprecated: `cpuset` is deprecated and may be ignored in the future.
    * - :ref:`datacenter<api-scylla.scylladb.com-scyllaclusters-v1-.spec.datacenter>`
      - object
      - datacenter holds a specification of a datacenter.

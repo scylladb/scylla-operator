@@ -3,9 +3,7 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: scylla
-
 ---
-
 # Simple Scylla Cluster
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
@@ -22,8 +20,8 @@ spec:
     name: us-east-1
     racks:
       - name: us-east-1a
-        scyllaConfig: "scylla-config"
-        scyllaAgentConfig: "scylla-agent-config"
+        scyllaConfig: scylla-config
+        scyllaAgentConfig: scylla-agent-config
         members: 3
         storage:
           capacity: 5Gi

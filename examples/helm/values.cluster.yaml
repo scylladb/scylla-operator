@@ -3,20 +3,19 @@ scyllaImage:
   tag: 6.1.0
 agentImage:
   tag: 3.3.0
-
 # Cluster information
 developerMode: true
 datacenter: us-east-1
 racks:
-- name: us-east-1b
-  members: 2
-  storage:
-    capacity: 5Gi
-    storageClassName: scylladb-local-xfs
-  resources:
-    limits:
-      cpu: 1
-      memory: 1Gi
-    requests:
-      cpu: 1
-      memory: 1Gi
+  - name: us-east-1b
+    members: 2
+    storage:
+      capacity: 5Gi
+      storageClassName: scylladb-local-xfs
+    resources:
+      limits:
+        cpu: 1
+        memory: 1Gi
+      requests:
+        cpu: 1
+        memory: 1Gi

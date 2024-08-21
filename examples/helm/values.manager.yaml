@@ -1,7 +1,6 @@
 # Scylla Manager image
 image:
   tag: 3.3.0
-
 # Resources allocated to Scylla Manager pods
 resources:
   limits:
@@ -18,7 +17,6 @@ controllerResources:
   requests:
     cpu: 200m
     memory: 32Mi
-
 # Scylla instance for Manager
 scylla:
   developerMode: true

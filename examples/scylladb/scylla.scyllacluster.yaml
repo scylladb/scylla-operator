@@ -8,19 +8,19 @@ spec:
   developerMode: true
   automaticOrphanedNodeCleanup: true
   sysctls:
-  - "fs.aio-max-nr=30000000"
+    - fs.aio-max-nr=30000000
   datacenter:
     name: us-east-1
     racks:
-    - name: us-east-1a
-      members: 1
-      storage:
-        capacity: 1Gi
-        storageClassName: scylladb-local-xfs
-      resources:
-        requests:
-          cpu: 10m
-          memory: 100Mi
-        limits:
-          cpu: 1
-          memory: 1Gi
+      - name: us-east-1a
+        members: 1
+        storage:
+          capacity: 1Gi
+          storageClassName: scylladb-local-xfs
+        resources:
+          requests:
+            cpu: 10m
+            memory: 100Mi
+          limits:
+            cpu: 1
+            memory: 1Gi

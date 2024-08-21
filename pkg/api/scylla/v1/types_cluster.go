@@ -63,7 +63,8 @@ type ScyllaClusterSpec struct {
 	// +optional
 	DeveloperMode bool `json:"developerMode,omitempty"`
 
-	// cpuset determines if the cluster will use cpu-pinning for max performance.
+	// cpuset determines if the cluster will use cpu-pinning.
+	// Deprecated: `cpuset` is deprecated and may be ignored in the future.
 	// +optional
 	CpuSet bool `json:"cpuset,omitempty"`
 

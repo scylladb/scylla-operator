@@ -4,7 +4,7 @@ metadata:
   name: scylla-manager-cluster
   namespace: scylla-manager
 spec:
-  version: 5.4.3
+  version: 6.1.0
   agentVersion: 3.3.0
   repository: docker.io/scylladb/scylla
   agentRepository: docker.io/scylladb/scylla-manager-agent

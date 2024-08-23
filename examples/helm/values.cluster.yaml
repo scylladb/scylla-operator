@@ -1,6 +1,6 @@
 # Version information
 scyllaImage:
-  tag: 5.4.3
+  tag: 6.1.0
 agentImage:
   tag: 3.3.0
 

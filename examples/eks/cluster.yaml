@@ -14,7 +14,7 @@ metadata:
   namespace: scylla
 spec:
   agentVersion: 3.3.0
-  version: 5.4.3
+  version: 6.1.0
   sysctls:
   - "fs.aio-max-nr=2097152"
   datacenter:

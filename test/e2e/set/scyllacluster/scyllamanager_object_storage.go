@@ -457,7 +457,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		// This test validates a workaround explained in the docs - https://operator.docs.scylladb.com/stable/nodeoperations/restore.html
 		g.Entry("using workaround for consistent_cluster_management for ScyllaDB Enterprise 2024.1.X", entry{
 			scyllaRepository: "docker.io/scylladb/scylla-enterprise",
-			scyllaVersion:    "2024.1.5",
+			scyllaVersion:    "2024.1.7",
 			preTargetClusterCreateHook: func(targetCluster *scyllav1.ScyllaCluster) {
 				targetCluster.Spec.ScyllaArgs = "--consistent-cluster-management=false"
 			},

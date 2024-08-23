@@ -5,10 +5,10 @@ import (
 )
 
 const (
-	updateFromScyllaVersion  = "6.0.0"
-	updateToScyllaVersion    = "6.0.1"
-	upgradeFromScyllaVersion = "5.4.7"
-	upgradeToScyllaVersion   = "6.0.1"
+	updateFromScyllaVersion  = "6.0.1"
+	updateToScyllaVersion    = "6.0.2"
+	upgradeFromScyllaVersion = "6.0.2"
+	upgradeToScyllaVersion   = "6.1.0"
 
 	testTimeout = 45 * time.Minute
 

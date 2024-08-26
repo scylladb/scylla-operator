@@ -28,6 +28,7 @@ import (
 	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/util/retry"
 )
 
 var _ = g.Describe("Node Setup", framework.Serial, func() {
@@ -160,7 +161,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 
 		loopDeviceNames := make([]string, 0, numberOfDevices)
 		for i := range numberOfDevices {
-			loopDeviceNames = append(loopDeviceNames, fmt.Sprintf("disk-%d", i))
+			loopDeviceNames = append(loopDeviceNames, fmt.Sprintf("disk-%s-%d", f.Namespace(), i))
 		}
 
 		nc.Spec.LocalDiskSetup = &scyllav1alpha1.LocalDiskSetup{
@@ -170,7 +171,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 				for _, ldName := range loopDeviceNames {
 					ldcs = append(ldcs, scyllav1alpha1.LoopDeviceConfiguration{
 						Name:      ldName,
-						ImagePath: fmt.Sprintf("/mnt/%s.img", ldName),
+						ImagePath: fmt.Sprintf("/mnt/%s-%s.img", ldName, f.Namespace()),
 						Size:      resource.MustParse("32M"),
 					})
 				}
@@ -183,7 +184,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 					Type: scyllav1alpha1.RAID0Type,
 					RAID0: &scyllav1alpha1.RAID0Options{
 						Devices: scyllav1alpha1.DeviceDiscovery{
-							NameRegex:  `^/dev/loops/disk-\d+$`,
+							NameRegex:  fmt.Sprintf(`^/dev/loops/disk-%s-\d+$`, f.Namespace()),
 							ModelRegex: ".*",
 						},
 					},
@@ -232,10 +233,16 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 			}
 		}).WithPolling(1 * time.Second).WithTimeout(3 * time.Minute).Should(o.Succeed())
 
-		stdout, stderr, err := executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "findmnt", "--raw", "--output=SOURCE", "--noheadings", hostMountPath)
-		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+		var findmntOutput string
+		o.Eventually(func(g o.Gomega) {
+			stdout, stderr, err := executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "findmnt", "--raw", "--output=SOURCE", "--noheadings", hostMountPath)
+			g.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+			findmntOutput = stdout
+		}).WithPolling(10 * time.Second).WithTimeout(3 * time.Minute).Should(o.Succeed())
+		o.Expect(findmntOutput).NotTo(o.BeEmpty())
 
-		discoveredRaidDevice := strings.TrimSpace(stdout)
+		discoveredRaidDevice := strings.TrimSpace(findmntOutput)
+		o.Expect(discoveredRaidDevice).NotTo(o.BeEmpty())
 		discoveredRaidDeviceOnHost := path.Join("/host", discoveredRaidDevice)
 
 		framework.By("Checking if RAID device has been created at %q", discoveredRaidDevice)
@@ -254,12 +261,6 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 			raidLevel := strings.TrimSpace(stdout)
 			g.Expect(raidLevel).To(o.Equal("raid0"))
 		}).WithPolling(1 * time.Second).WithTimeout(3 * time.Minute).Should(o.Succeed())
-
-		defer func() {
-			framework.By("Stopping RAID device at %q", discoveredRaidDeviceOnHost)
-			stdout, stderr, err := executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "mdadm", "--stop", discoveredRaidDeviceOnHost)
-			o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
-		}()
 
 		framework.By("Checking if RAID device has been formatted")
 		o.Eventually(func(g o.Gomega) {
@@ -281,8 +282,18 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 
 		// Disable disk setup before cleanup to not fight over resources
 		// TODO: can be removed once we support cleanup of filesystem and raid array
-		nc.Spec.LocalDiskSetup = nil
-		nc, err = f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Update(ctx, nc, metav1.UpdateOptions{})
+		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			var freshNC, updatedNC *scyllav1alpha1.NodeConfig
+			freshNC, err = f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Get(ctx, nc.Name, metav1.GetOptions{})
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			freshNC.Spec.LocalDiskSetup = nil
+			updatedNC, err = f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Update(ctx, freshNC, metav1.UpdateOptions{})
+			if err == nil {
+				nc = updatedNC
+			}
+			return err
+		})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the NodeConfig to deploy")

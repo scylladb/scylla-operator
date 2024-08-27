@@ -9,6 +9,10 @@ ScyllaClusters can be only exposed when the ScyllaDB version used version is `>=
 
 ## Expose Options
 
+:::{note}
+`exposeOptions` are immutable, they cannot be changed after ScyllaCluster is created.
+:::
+
 `exposeOptions` specifies configuration options for exposing ScyllaCluster's. 
 A ScyllaCluster created without any `exposeOptions` is equivalent to the following:
 

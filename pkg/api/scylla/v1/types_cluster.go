@@ -118,6 +118,7 @@ type ScyllaClusterSpec struct {
 	DNSDomains []string `json:"dnsDomains,omitempty"`
 
 	// exposeOptions specifies options for exposing ScyllaCluster services.
+	// This field is immutable.
 	// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
 	// +optional
 	ExposeOptions *ExposeOptions `json:"exposeOptions,omitempty"`

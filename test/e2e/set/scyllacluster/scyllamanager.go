@@ -21,8 +21,6 @@ import (
 )
 
 var _ = g.Describe("Scylla Manager integration", func() {
-	defer g.GinkgoRecover()
-
 	f := framework.NewFramework("scyllacluster")
 
 	g.It("should register cluster and sync repair tasks", func() {

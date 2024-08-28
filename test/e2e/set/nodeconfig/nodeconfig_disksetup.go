@@ -32,7 +32,6 @@ import (
 )
 
 var _ = g.Describe("Node Setup", framework.Serial, func() {
-	defer g.GinkgoRecover()
 	f := framework.NewFramework("nodesetup")
 
 	ncTemplate := scyllafixture.NodeConfig.ReadOrFail()

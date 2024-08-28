@@ -19,8 +19,6 @@ import (
 )
 
 var _ = g.Describe("ScyllaCluster webhook", func() {
-	defer g.GinkgoRecover()
-
 	f := framework.NewFramework("scyllacluster")
 
 	g.It("should forbid invalid requests", func() {

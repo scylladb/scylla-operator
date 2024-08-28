@@ -20,8 +20,6 @@ import (
 )
 
 var _ = g.Describe("ScyllaCluster", func() {
-	defer g.GinkgoRecover()
-
 	f := framework.NewFramework("scyllacluster")
 
 	const (

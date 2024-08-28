@@ -15,8 +15,6 @@ import (
 )
 
 var _ = g.Describe("ScyllaCluster HostID", func() {
-	defer g.GinkgoRecover()
-
 	f := framework.NewFramework("scyllacluster")
 
 	g.It("should be reflected as a Service annotation", func() {

@@ -27,8 +27,6 @@ import (
 )
 
 var _ = g.Describe("ScyllaDBMonitoring", func() {
-	defer g.GinkgoRecover()
-
 	f := framework.NewFramework("scylladbmonitoring")
 
 	g.It("should setup monitoring stack", func() {

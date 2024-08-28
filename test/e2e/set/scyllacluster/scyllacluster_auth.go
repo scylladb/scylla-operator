@@ -22,8 +22,6 @@ import (
 )
 
 var _ = g.Describe("ScyllaCluster authentication", func() {
-	defer g.GinkgoRecover()
-
 	f := framework.NewFramework("scyllacluster")
 
 	g.It("agent requires authentication", func() {

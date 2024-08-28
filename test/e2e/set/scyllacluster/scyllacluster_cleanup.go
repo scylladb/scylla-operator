@@ -22,8 +22,6 @@ import (
 )
 
 var _ = g.Describe("ScyllaCluster", func() {
-	defer g.GinkgoRecover()
-
 	f := framework.NewFramework("scyllacluster")
 
 	g.It("nodes are cleaned up after horizontal scaling", func() {

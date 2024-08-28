@@ -17,8 +17,6 @@ import (
 )
 
 var _ = g.Describe("ScyllaCluster sysctl", func() {
-	defer g.GinkgoRecover()
-
 	f := framework.NewFramework("scyllacluster")
 
 	g.It("should set container sysctl", func() {

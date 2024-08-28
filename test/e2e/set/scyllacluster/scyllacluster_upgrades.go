@@ -17,8 +17,6 @@ import (
 )
 
 var _ = g.Describe("ScyllaCluster upgrades", func() {
-	defer g.GinkgoRecover()
-
 	f := framework.NewFramework("scyllacluster")
 
 	type entry struct {

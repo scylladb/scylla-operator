@@ -154,6 +154,17 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 		errors = append(errors, fmt.Errorf("gcs-service-account-key-path and s3-credentials-file-path can't be set simultanously"))
 	}
 
+	if len(o.ArtifactsDir) > 0 {
+		_, err = os.Stat(o.ArtifactsDir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				errors = append(errors, fmt.Errorf("artifacts directory %q does not exist", o.ArtifactsDir))
+			} else {
+				errors = append(errors, fmt.Errorf("can't inspect artifacts directory %q", o.ArtifactsDir))
+			}
+		}
+	}
+
 	return apierrors.NewAggregate(errors)
 }
 

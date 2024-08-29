@@ -60,3 +60,6 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.managerPriorityClassName }}
+      priorityClassName: {{ .Values.managerPriorityClassName }}
+      {{- end }}

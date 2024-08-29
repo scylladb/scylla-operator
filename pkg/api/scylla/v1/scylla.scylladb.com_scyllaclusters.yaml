@@ -1,4 +1,3 @@
----
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -2064,6 +2063,9 @@ spec:
                       description: labels is a custom key value map that gets merged with managed object labels.
                       type: object
                   type: object
+                priorityClassName:
+                  description: priorityClassName is the name of the priority class to be used for ScyllaDB Pods.
+                  type: string
                 readinessGates:
                   description: readinessGates specifies custom readiness gates that will be evaluated for every ScyllaDB Pod readiness. It's projected into every ScyllaDB Pod as its readinessGate. Refer to upstream documentation to learn more about readiness gates.
                   items:

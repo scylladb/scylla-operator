@@ -28,8 +28,6 @@ import (
 )
 
 var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage, func() {
-	defer g.GinkgoRecover()
-
 	f := framework.NewFramework("scyllacluster")
 
 	type entry struct {

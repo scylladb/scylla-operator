@@ -16,8 +16,6 @@ import (
 )
 
 var _ = g.Describe("MultiDC cluster", func() {
-	defer g.GinkgoRecover()
-
 	f := framework.NewFramework("scyllacluster")
 
 	g.It("should form when external seeds are provided to ScyllaClusters", func() {

@@ -60,8 +60,6 @@ func (movie Movie) GetKey() map[string]types.AttributeValue {
 }
 
 var _ = g.Describe("ScyllaCluster", func() {
-	defer g.GinkgoRecover()
-
 	f := framework.NewFramework("scyllacluster")
 
 	g.It("should set up Alternator API when enabled", func() {

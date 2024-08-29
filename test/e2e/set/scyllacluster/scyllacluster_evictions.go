@@ -15,8 +15,6 @@ import (
 )
 
 var _ = g.Describe("ScyllaCluster evictions", func() {
-	defer g.GinkgoRecover()
-
 	f := framework.NewFramework("scyllacluster")
 
 	g.It("should allow one disruption", func() {

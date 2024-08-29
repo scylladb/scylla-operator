@@ -29,8 +29,6 @@ func addQuantity(lhs resource.Quantity, rhs resource.Quantity) *resource.Quantit
 }
 
 var _ = g.Describe("ScyllaCluster", func() {
-	defer g.GinkgoRecover()
-
 	f := framework.NewFramework("scyllacluster")
 
 	g.It("should rolling restart cluster when forceRedeploymentReason is changed", func() {

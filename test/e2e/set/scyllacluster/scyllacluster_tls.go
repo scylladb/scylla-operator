@@ -35,8 +35,6 @@ import (
 )
 
 var _ = g.Describe("ScyllaCluster", func() {
-	defer g.GinkgoRecover()
-
 	f := framework.NewFramework("scyllacluster")
 
 	g.It("should setup and maintain up to date TLS certificates", func() {

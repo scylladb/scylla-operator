@@ -101,6 +101,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		framework.By("Waiting for the NodeConfig to deploy")
 		ctx1, ctx1Cancel := context.WithTimeout(ctx, nodeConfigRolloutTimeout)
 		defer ctx1Cancel()
+		o.Expect(matchingNodes).NotTo(o.BeEmpty())
 		nc, err = controllerhelpers.WaitForNodeConfigState(
 			ctx1,
 			f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs(),
@@ -108,6 +109,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
 			utils.IsNodeConfigRolledOut,
 			utils.IsNodeConfigDoneWithNodeTuningFunc(matchingNodes),
+			utils.IsNodeConfigDoneWithNodes(matchingNodes),
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 

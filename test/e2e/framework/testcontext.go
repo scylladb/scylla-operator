@@ -9,12 +9,12 @@ import (
 
 var TestContext *TestContextType
 
-type DeleteTestingNSPolicyType string
+type CleanupPolicyType string
 
 var (
-	DeleteTestingNSPolicyAlways    DeleteTestingNSPolicyType = "Always"
-	DeleteTestingNSPolicyOnSuccess DeleteTestingNSPolicyType = "OnSuccess"
-	DeleteTestingNSPolicyNever     DeleteTestingNSPolicyType = "Never"
+	CleanupPolicyAlways    CleanupPolicyType = "Always"
+	CleanupPolicyOnSuccess CleanupPolicyType = "OnSuccess"
+	CleanupPolicyNever     CleanupPolicyType = "Never"
 )
 
 type IngressController struct {
@@ -43,13 +43,13 @@ const (
 )
 
 type TestContextType struct {
-	RestConfigs           []*restclient.Config
-	ArtifactsDir          string
-	DeleteTestingNSPolicy DeleteTestingNSPolicyType
-	IngressController     *IngressController
-	ScyllaClusterOptions  *ScyllaClusterOptions
-	ObjectStorageType     ObjectStorageType
-	ObjectStorageBucket   string
-	GCSServiceAccountKey  []byte
-	S3CredentialsFile     []byte
+	RestConfigs          []*restclient.Config
+	ArtifactsDir         string
+	CleanupPolicy        CleanupPolicyType
+	IngressController    *IngressController
+	ScyllaClusterOptions *ScyllaClusterOptions
+	ObjectStorageType    ObjectStorageType
+	ObjectStorageBucket  string
+	GCSServiceAccountKey []byte
+	S3CredentialsFile    []byte
 }

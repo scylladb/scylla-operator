@@ -6,12 +6,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"time"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -37,53 +37,16 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 	ncTemplate := scyllafixture.NodeConfig.ReadOrFail()
 	var matchingNodes []*corev1.Node
 
-	preconditionSuccessful := false
 	g.JustBeforeEach(func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		// Make sure the NodeConfig is not present.
-		framework.By("Making sure NodeConfig %q, doesn't exist", naming.ObjRef(ncTemplate))
-		_, err := f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Get(ctx, ncTemplate.Name, metav1.GetOptions{})
-		if err == nil {
-			framework.Failf("NodeConfig %q can't be present before running this test", naming.ObjRef(ncTemplate))
-		} else if !apierrors.IsNotFound(err) {
-			framework.Failf("Can't get NodeConfig %q: %v", naming.ObjRef(ncTemplate), err)
-		}
-
-		preconditionSuccessful = true
-
 		g.By("Verifying there is at least one scylla node")
+		var err error
 		matchingNodes, err = utils.GetMatchingNodesForNodeConfig(ctx, f.KubeAdminClient().CoreV1(), ncTemplate)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(matchingNodes).NotTo(o.HaveLen(0))
 		framework.Infof("There are %d scylla nodes", len(matchingNodes))
-	})
-
-	g.JustAfterEach(func() {
-		if !preconditionSuccessful {
-			return
-		}
-
-		framework.By("Deleting NodeConfig %q, if it exists", naming.ObjRef(ncTemplate))
-		err := f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Delete(context.Background(), ncTemplate.Name, metav1.DeleteOptions{})
-		if err != nil && !apierrors.IsNotFound(err) {
-			framework.Failf("Can't delete NodeConfig %q: %v", naming.ObjRef(ncTemplate), err)
-		}
-		if !apierrors.IsNotFound(err) {
-			err = framework.WaitForObjectDeletion(context.Background(), f.DynamicAdminClient(), scyllav1alpha1.GroupVersion.WithResource("nodeconfigs"), ncTemplate.Namespace, ncTemplate.Name, nil)
-			o.Expect(err).NotTo(o.HaveOccurred())
-		}
-
-		framework.By("Deleting ResourceQuota %q, if it exists", naming.ObjRef(ncTemplate))
-		err = f.KubeAdminClient().CoreV1().ResourceQuotas(naming.ScyllaOperatorNodeTuningNamespace).Delete(context.Background(), resourceQuotaName, metav1.DeleteOptions{})
-		if err != nil && !apierrors.IsNotFound(err) {
-			framework.Failf("Can't delete ResourceQuota %q: %v", naming.ManualRef(naming.ScyllaOperatorNodeTuningNamespace, resourceQuotaName), err)
-		}
-		if !apierrors.IsNotFound(err) {
-			err = framework.WaitForObjectDeletion(context.Background(), f.DynamicAdminClient(), corev1.SchemeGroupVersion.WithResource(corev1.ResourceQuotas.String()), naming.ScyllaOperatorNodeTuningNamespace, resourceQuotaName, nil)
-			o.Expect(err).NotTo(o.HaveOccurred())
-		}
 	})
 
 	g.It("should create tuning resources and tune nodes", func() {
@@ -91,6 +54,17 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		defer cancel()
 
 		nc := ncTemplate.DeepCopy()
+		rc := framework.NewRestoringCleaner(
+			ctx,
+			f.KubeAdminClient(),
+			f.DynamicAdminClient(),
+			nodeConfigResourceInfo,
+			nc.Namespace,
+			nc.Name,
+			framework.RestoreStrategyRecreate,
+		)
+		f.AddCleaners(rc)
+		rc.DeleteObject(ctx, true)
 
 		g.By("Creating a NodeConfig")
 		nc, err := f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Create(ctx, nc, metav1.CreateOptions{})
@@ -147,8 +121,6 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		nc := ncTemplate.DeepCopy()
-
 		g.By("Blocking node tuning")
 		// We have to make sure the namespace exists.
 		_, err := f.KubeAdminClient().CoreV1().Namespaces().Create(
@@ -164,21 +136,49 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
 
-		rq, err := f.KubeAdminClient().CoreV1().ResourceQuotas(naming.ScyllaOperatorNodeTuningNamespace).Create(
-			ctx,
-			&corev1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: resourceQuotaName,
-				},
-				Spec: corev1.ResourceQuotaSpec{
-					Hard: corev1.ResourceList{
-						corev1.ResourcePods: resource.MustParse("0"),
-					},
+		rq := &corev1.ResourceQuota{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      resourceQuotaName,
+				Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			},
+			Spec: corev1.ResourceQuotaSpec{
+				Hard: corev1.ResourceList{
+					corev1.ResourcePods: resource.MustParse("0"),
 				},
 			},
+		}
+		rqRC := framework.NewRestoringCleaner(
+			ctx,
+			f.KubeAdminClient(),
+			f.DynamicAdminClient(),
+			resourceQuotaResourceInfo,
+			rq.Namespace,
+			rq.Name,
+			framework.RestoreStrategyUpdate,
+		)
+		f.AddCleaners(rqRC)
+		rqRC.DeleteObject(ctx, true)
+
+		rq, err = f.KubeAdminClient().CoreV1().ResourceQuotas(naming.ScyllaOperatorNodeTuningNamespace).Create(
+			ctx,
+			rq,
 			metav1.CreateOptions{},
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
+
+		nc := ncTemplate.DeepCopy()
+
+		ncRC := framework.NewRestoringCleaner(
+			ctx,
+			f.KubeAdminClient(),
+			f.DynamicAdminClient(),
+			nodeConfigResourceInfo,
+			nc.Namespace,
+			nc.Name,
+			framework.RestoreStrategyRecreate,
+		)
+		f.AddCleaners(ncRC)
+		ncRC.DeleteObject(ctx, true)
 
 		g.By("Creating a NodeConfig")
 		nc, err = f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Create(ctx, nc, metav1.CreateOptions{})
@@ -255,12 +255,12 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		o.Expect(utils.IsScyllaClusterRolledOut(sc)).To(o.BeFalse())
 
 		framework.By("Unblocking tuning")
-		err = f.KubeAdminClient().CoreV1().ResourceQuotas(rq.Namespace).Delete(
-			ctx,
-			rq.Name,
-			metav1.DeleteOptions{},
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		intermittentArtifactsDir := ""
+		if len(f.GetDefaultArtifactsDir()) != 0 {
+			intermittentArtifactsDir = filepath.Join(f.GetDefaultArtifactsDir(), "intermittent")
+		}
+		rqRC.Collect(ctx, intermittentArtifactsDir, f.Namespace())
+		rqRC.DeleteObject(ctx, false)
 
 		pod, err = f.KubeClient().CoreV1().Pods(f.Namespace()).Get(
 			ctx,

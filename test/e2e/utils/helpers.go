@@ -71,6 +71,10 @@ func IsNodeConfigDoneWithNodes(nodes []*corev1.Node) func(nc *scyllav1alpha1.Nod
 	)
 
 	return func(nc *scyllav1alpha1.NodeConfig) (bool, error) {
+		if len(nodes) == 0 {
+			return true, fmt.Errorf("nodes can't be empty")
+		}
+
 		for _, node := range nodes {
 			if nc.Status.ObservedGeneration < nc.Generation {
 				return false, nil
@@ -93,6 +97,7 @@ func IsNodeConfigDoneWithNodes(nodes []*corev1.Node) func(nc *scyllav1alpha1.Nod
 				return false, nil
 			}
 		}
+
 		return true, nil
 	}
 }

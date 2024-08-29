@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"time"
 
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
@@ -34,15 +37,17 @@ func (nsc *Controller) sync(ctx context.Context) error {
 		return fmt.Errorf("nodeConfig UID %q doesn't match the expected UID %q", nc.UID, nc.UID)
 	}
 
-	var errs []error
-	var conditions []metav1.Condition
+	status := nsc.calculateStatus(nc)
 
 	if nc.DeletionTimestamp != nil {
-		return nsc.updateNodeStatus(ctx, nc, conditions)
+		return nsc.updateStatus(ctx, nc, status)
 	}
 
+	statusConditions := status.Conditions.ToMetaV1Conditions()
+
+	var errs []error
 	err = controllerhelpers.RunSync(
-		&conditions,
+		&statusConditions,
 		fmt.Sprintf(loopDeviceControllerNodeProgressingConditionFormat, nsc.nodeName),
 		fmt.Sprintf(loopDeviceControllerNodeDegradedConditionFormat, nsc.nodeName),
 		nc.Generation,
@@ -55,7 +60,7 @@ func (nsc *Controller) sync(ctx context.Context) error {
 	}
 
 	err = controllerhelpers.RunSync(
-		&conditions,
+		&statusConditions,
 		fmt.Sprintf(raidControllerNodeProgressingConditionFormat, nsc.nodeName),
 		fmt.Sprintf(raidControllerNodeDegradedConditionFormat, nsc.nodeName),
 		nc.Generation,
@@ -68,7 +73,7 @@ func (nsc *Controller) sync(ctx context.Context) error {
 	}
 
 	err = controllerhelpers.RunSync(
-		&conditions,
+		&statusConditions,
 		fmt.Sprintf(filesystemControllerNodeProgressingConditionFormat, nsc.nodeName),
 		fmt.Sprintf(filesystemControllerNodeDegradedConditionFormat, nsc.nodeName),
 		nc.Generation,
@@ -81,7 +86,7 @@ func (nsc *Controller) sync(ctx context.Context) error {
 	}
 
 	err = controllerhelpers.RunSync(
-		&conditions,
+		&statusConditions,
 		fmt.Sprintf(mountControllerNodeProgressingConditionFormat, nsc.nodeName),
 		fmt.Sprintf(mountControllerNodeDegradedConditionFormat, nsc.nodeName),
 		nc.Generation,
@@ -93,20 +98,67 @@ func (nsc *Controller) sync(ctx context.Context) error {
 		errs = append(errs, fmt.Errorf("can't sync mounts: %w", err))
 	}
 
-	err = controllerhelpers.SetAggregatedNodeConditions(nsc.nodeName, &conditions, nc.Generation)
+	// Aggregate node conditions.
+	var aggregationErrs []error
+	nodeAvailableConditionType := fmt.Sprintf(internalapi.NodeAvailableConditionFormat, nsc.nodeName)
+	nodeAvailableCondition, err := controllerhelpers.AggregateStatusConditions(
+		controllerhelpers.FindStatusConditionsWithSuffix(statusConditions, nodeAvailableConditionType),
+		metav1.Condition{
+			Type:               nodeAvailableConditionType,
+			Status:             metav1.ConditionTrue,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: nc.Generation,
+		},
+	)
 	if err != nil {
-		errs = append(errs, fmt.Errorf("can't aggregate conditions: %w", err))
+		aggregationErrs = append(aggregationErrs, fmt.Errorf("can't aggregate available node status conditions: %w", err))
 	}
 
-	err = nsc.updateNodeStatus(ctx, nc, conditions)
+	nodeProgressingConditionType := fmt.Sprintf(internalapi.NodeProgressingConditionFormat, nsc.nodeName)
+	nodeProgressingCondition, err := controllerhelpers.AggregateStatusConditions(
+		controllerhelpers.FindStatusConditionsWithSuffix(statusConditions, nodeProgressingConditionType),
+		metav1.Condition{
+			Type:               nodeProgressingConditionType,
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: nc.Generation,
+		},
+	)
 	if err != nil {
-		errs = append(errs, fmt.Errorf("can't update node status: %w", err))
+		aggregationErrs = append(aggregationErrs, fmt.Errorf("can't aggregate progressing node status conditions: %w", err))
 	}
 
-	err = utilerrors.NewAggregate(errs)
+	nodeDegradedConditionType := fmt.Sprintf(internalapi.NodeDegradedConditionFormat, nsc.nodeName)
+	nodeDegradedCondition, err := controllerhelpers.AggregateStatusConditions(
+		controllerhelpers.FindStatusConditionsWithSuffix(statusConditions, nodeDegradedConditionType),
+		metav1.Condition{
+			Type:               nodeDegradedConditionType,
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: nc.Generation,
+		},
+	)
 	if err != nil {
-		return fmt.Errorf("failed to sync nodeconfig %q: %w", nsc.nodeConfigName, err)
+		aggregationErrs = append(aggregationErrs, fmt.Errorf("can't aggregate degraded node status conditions: %w", err))
 	}
 
-	return nil
+	if len(aggregationErrs) > 0 {
+		errs = append(errs, aggregationErrs...)
+		return utilerrors.NewAggregate(errs)
+	}
+
+	apimeta.SetStatusCondition(&statusConditions, nodeAvailableCondition)
+	apimeta.SetStatusCondition(&statusConditions, nodeProgressingCondition)
+	apimeta.SetStatusCondition(&statusConditions, nodeDegradedCondition)
+
+	status.Conditions = scyllav1alpha1.NewNodeConfigConditions(statusConditions)
+	err = nsc.updateStatus(ctx, nc, status)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't update status: %w", err))
+	}
+
+	return utilerrors.NewAggregate(errs)
 }

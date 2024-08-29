@@ -1,7 +1,12 @@
 package internalapi
 
 const (
-	AsExpectedReason  = "AsExpected"
-	ErrorReason       = "Error"
-	ProgressingReason = "Progressing"
+	NodeAvailableConditionFormat   = "Node%sAvailable"
+	NodeProgressingConditionFormat = "Node%sProgressing"
+	NodeDegradedConditionFormat    = "Node%sDegraded"
+
+	AsExpectedReason        = "AsExpected"
+	ErrorReason             = "Error"
+	ProgressingReason       = "Progressing"
+	AwaitingConditionReason = "AwaitingCondition"
 )

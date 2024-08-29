@@ -6,6 +6,8 @@ import (
 	"context"
 	"fmt"
 
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -53,25 +55,30 @@ func (ncc *Controller) pruneNamespaces(ctx context.Context, requiredNamespaces [
 	return utilerrors.NewAggregate(errs)
 }
 
-func (ncc *Controller) syncNamespaces(ctx context.Context, namespaces map[string]*corev1.Namespace) error {
+func (ncc *Controller) syncNamespaces(ctx context.Context, nc *scyllav1alpha1.NodeConfig, namespaces map[string]*corev1.Namespace) ([]metav1.Condition, error) {
+	var progressingConditions []metav1.Condition
+
 	requiredNamespaces := ncc.makeNamespaces()
 
 	// Delete any excessive Namespaces.
 	// Delete has to be the first action to avoid getting stuck on quota.
 	err := ncc.pruneNamespaces(ctx, requiredNamespaces, namespaces)
 	if err != nil {
-		return fmt.Errorf("can't delete Namespace(s): %w", err)
+		return progressingConditions, fmt.Errorf("can't delete Namespace(s): %w", err)
 	}
 
 	var errs []error
 	for _, ns := range requiredNamespaces {
-		_, _, err := resourceapply.ApplyNamespace(ctx, ncc.kubeClient.CoreV1(), ncc.namespaceLister, ncc.eventRecorder, ns, resourceapply.ApplyOptions{
+		_, changed, err := resourceapply.ApplyNamespace(ctx, ncc.kubeClient.CoreV1(), ncc.namespaceLister, ncc.eventRecorder, ns, resourceapply.ApplyOptions{
 			AllowMissingControllerRef: true,
 		})
+		if changed {
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, namespaceControllerProgressingCondition, ns, "apply", nc.Generation)
+		}
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't create missing Namespace: %w", err))
 			continue
 		}
 	}
-	return utilerrors.NewAggregate(errs)
+	return progressingConditions, utilerrors.NewAggregate(errs)
 }

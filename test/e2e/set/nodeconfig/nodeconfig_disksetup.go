@@ -5,7 +5,6 @@ package nodeconfig
 import (
 	"context"
 	"fmt"
-	"os"
 	"path"
 	"strings"
 	"time"
@@ -14,18 +13,15 @@ import (
 	o "github.com/onsi/gomega"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"github.com/scylladb/scylla-operator/test/e2e/utils/image"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
-	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
@@ -37,59 +33,16 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 	ncTemplate := scyllafixture.NodeConfig.ReadOrFail()
 	var matchingNodes []*corev1.Node
 
-	preconditionSuccessful := false
 	g.JustBeforeEach(func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		// Make sure the NodeConfig is not present.
-		framework.By("Making sure NodeConfig %q, doesn't exist", naming.ObjRef(ncTemplate))
-		_, err := f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Get(ctx, ncTemplate.Name, metav1.GetOptions{})
-		if err == nil {
-			framework.Failf("NodeConfig %q can't be present before running this test", naming.ObjRef(ncTemplate))
-		} else if !apierrors.IsNotFound(err) {
-			framework.Failf("Can't get NodeConfig %q: %v", naming.ObjRef(ncTemplate), err)
-		}
-
-		preconditionSuccessful = true
-
 		g.By("Verifying there is at least one scylla node")
+		var err error
 		matchingNodes, err = utils.GetMatchingNodesForNodeConfig(ctx, f.KubeAdminClient().CoreV1(), ncTemplate)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(matchingNodes).NotTo(o.HaveLen(0))
 		framework.Infof("There are %d scylla nodes", len(matchingNodes))
-	})
-
-	g.JustAfterEach(func() {
-		if !preconditionSuccessful {
-			return
-		}
-
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		if len(framework.TestContext.ArtifactsDir) > 0 {
-			framework.By("Collecting NodeConfig namespace dump")
-
-			dir := path.Join(framework.TestContext.ArtifactsDir, "nodeconfig-related", f.Namespace())
-			err := os.MkdirAll(dir, 0777)
-			if err != nil && !os.IsExist(err) {
-				o.Expect(err).NotTo(o.HaveOccurred())
-			}
-
-			err = framework.DumpNamespace(ctx, cacheddiscovery.NewMemCacheClient(f.KubeAdminClient().Discovery()), f.DynamicAdminClient(), f.KubeAdminClient().CoreV1(), dir, naming.ScyllaOperatorNodeTuningNamespace)
-			o.Expect(err).NotTo(o.HaveOccurred())
-		}
-
-		framework.By("Deleting NodeConfig %q, if it exists", naming.ObjRef(ncTemplate))
-		err := f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Delete(context.Background(), ncTemplate.Name, metav1.DeleteOptions{})
-		if err != nil && !apierrors.IsNotFound(err) {
-			framework.Failf("Can't delete NodeConfig %q: %v", naming.ObjRef(ncTemplate), err)
-		}
-		if !apierrors.IsNotFound(err) {
-			err = framework.WaitForObjectDeletion(context.Background(), f.DynamicAdminClient(), scyllav1alpha1.GroupVersion.WithResource("nodeconfigs"), ncTemplate.Namespace, ncTemplate.Name, nil)
-			o.Expect(err).NotTo(o.HaveOccurred())
-		}
 	})
 
 	g.DescribeTable("should make RAID0 array out of loop devices, format it to XFS, and mount at desired location", func(numberOfDevices int) {
@@ -204,6 +157,18 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 				},
 			},
 		}
+
+		rc := framework.NewRestoringCleaner(
+			ctx,
+			f.KubeAdminClient(),
+			f.DynamicAdminClient(),
+			nodeConfigResourceInfo,
+			nc.Namespace,
+			nc.Name,
+			framework.RestoreStrategyRecreate,
+		)
+		f.AddCleaners(rc)
+		rc.DeleteObject(ctx, true)
 
 		g.By("Creating a NodeConfig")
 		nc, err = f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Create(ctx, nc, metav1.CreateOptions{})

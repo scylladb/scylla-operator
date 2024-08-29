@@ -13,6 +13,7 @@ import (
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/util/errors"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/rest"
 )
 
@@ -42,26 +43,26 @@ var supportedBroadcastAddressTypes = []scyllav1.BroadcastAddressType{
 type TestFrameworkOptions struct {
 	genericclioptions.ClientConfigSet
 
-	ArtifactsDir                 string
-	DeleteTestingNSPolicyUntyped string
-	DeleteTestingNSPolicy        framework.DeleteTestingNSPolicyType
-	IngressController            *IngressControllerOptions
-	ScyllaClusterOptionsUntyped  *ScyllaClusterOptions
-	scyllaClusterOptions         *framework.ScyllaClusterOptions
-	ObjectStorageBucket          string
-	GCSServiceAccountKeyPath     string
-	S3CredentialsFilePath        string
-	objectStorageType            framework.ObjectStorageType
-	gcsServiceAccountKey         []byte
-	s3CredentialsFile            []byte
+	ArtifactsDir                string
+	CleanupPolicyUntyped        string
+	CleanupPolicy               framework.CleanupPolicyType
+	IngressController           *IngressControllerOptions
+	ScyllaClusterOptionsUntyped *ScyllaClusterOptions
+	scyllaClusterOptions        *framework.ScyllaClusterOptions
+	ObjectStorageBucket         string
+	GCSServiceAccountKeyPath    string
+	S3CredentialsFilePath       string
+	objectStorageType           framework.ObjectStorageType
+	gcsServiceAccountKey        []byte
+	s3CredentialsFile           []byte
 }
 
 func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent string) *TestFrameworkOptions {
 	return &TestFrameworkOptions{
-		ClientConfigSet:              genericclioptions.NewClientConfigSet(userAgent),
-		ArtifactsDir:                 "",
-		DeleteTestingNSPolicyUntyped: string(framework.DeleteTestingNSPolicyAlways),
-		IngressController:            &IngressControllerOptions{},
+		ClientConfigSet:      genericclioptions.NewClientConfigSet(userAgent),
+		ArtifactsDir:         "",
+		CleanupPolicyUntyped: string(framework.CleanupPolicyAlways),
+		IngressController:    &IngressControllerOptions{},
 		ScyllaClusterOptionsUntyped: &ScyllaClusterOptions{
 			NodeServiceType:             string(scyllav1.NodeServiceTypeHeadless),
 			NodesBroadcastAddressType:   string(scyllav1.BroadcastAddressTypePodIP),
@@ -81,11 +82,20 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 	o.ClientConfigSet.AddFlags(cmd)
 
 	cmd.PersistentFlags().StringVarP(&o.ArtifactsDir, "artifacts-dir", "", o.ArtifactsDir, "A directory for storing test artifacts. No data is collected until set.")
-	cmd.PersistentFlags().StringVarP(&o.DeleteTestingNSPolicyUntyped, "delete-namespace-policy", "", o.DeleteTestingNSPolicyUntyped, fmt.Sprintf("Namespace deletion policy. Allowed values are [%s].", strings.Join(
+	cmd.PersistentFlags().StringVarP(&o.CleanupPolicyUntyped, "delete-namespace-policy", "", o.CleanupPolicyUntyped, fmt.Sprintf("Namespace deletion policy. Allowed values are [%s].", strings.Join(
 		[]string{
-			string(framework.DeleteTestingNSPolicyAlways),
-			string(framework.DeleteTestingNSPolicyNever),
-			string(framework.DeleteTestingNSPolicyOnSuccess),
+			string(framework.CleanupPolicyAlways),
+			string(framework.CleanupPolicyNever),
+			string(framework.CleanupPolicyOnSuccess),
+		},
+		", ",
+	)))
+	utilruntime.Must(cmd.PersistentFlags().MarkDeprecated("delete-namespace-policy", "--delete-namespace-policy is deprecated - please use --cleanup-policy instead"))
+	cmd.PersistentFlags().StringVarP(&o.CleanupPolicyUntyped, "cleanup-policy", "", o.CleanupPolicyUntyped, fmt.Sprintf("Cleanup policy. Allowed values are [%s].", strings.Join(
+		[]string{
+			string(framework.CleanupPolicyAlways),
+			string(framework.CleanupPolicyNever),
+			string(framework.CleanupPolicyOnSuccess),
 		},
 		", ",
 	)))
@@ -118,10 +128,10 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 		errors = append(errors, err)
 	}
 
-	switch p := framework.DeleteTestingNSPolicyType(o.DeleteTestingNSPolicyUntyped); p {
-	case framework.DeleteTestingNSPolicyAlways,
-		framework.DeleteTestingNSPolicyOnSuccess,
-		framework.DeleteTestingNSPolicyNever:
+	switch p := framework.CleanupPolicyType(o.CleanupPolicyUntyped); p {
+	case framework.CleanupPolicyAlways,
+		framework.CleanupPolicyOnSuccess,
+		framework.CleanupPolicyNever:
 	default:
 		errors = append(errors, fmt.Errorf("invalid DeleteTestingNSPolicy: %q", p))
 	}
@@ -174,7 +184,7 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 		return err
 	}
 
-	o.DeleteTestingNSPolicy = framework.DeleteTestingNSPolicyType(o.DeleteTestingNSPolicyUntyped)
+	o.CleanupPolicy = framework.CleanupPolicyType(o.CleanupPolicyUntyped)
 
 	// Trim spaces so we can reason later if the dir is set or not
 	o.ArtifactsDir = strings.TrimSpace(o.ArtifactsDir)
@@ -216,13 +226,13 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 		RestConfigs: slices.ConvertSlice(o.ClientConfigs, func(cc genericclioptions.ClientConfig) *rest.Config {
 			return cc.RestConfig
 		}),
-		ArtifactsDir:          o.ArtifactsDir,
-		DeleteTestingNSPolicy: o.DeleteTestingNSPolicy,
-		ScyllaClusterOptions:  o.scyllaClusterOptions,
-		ObjectStorageType:     o.objectStorageType,
-		ObjectStorageBucket:   o.ObjectStorageBucket,
-		GCSServiceAccountKey:  o.gcsServiceAccountKey,
-		S3CredentialsFile:     o.s3CredentialsFile,
+		ArtifactsDir:         o.ArtifactsDir,
+		CleanupPolicy:        o.CleanupPolicy,
+		ScyllaClusterOptions: o.scyllaClusterOptions,
+		ObjectStorageType:    o.objectStorageType,
+		ObjectStorageBucket:  o.ObjectStorageBucket,
+		GCSServiceAccountKey: o.gcsServiceAccountKey,
+		S3CredentialsFile:    o.s3CredentialsFile,
 	}
 
 	if o.IngressController != nil {

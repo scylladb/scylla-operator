@@ -77,7 +77,16 @@ object
      - Description
    * - scyllaUtilsImage
      - string
-     - scyllaUtilsImage is a Scylla image used for running scylla utilities.
+     - scyllaUtilsImage is a ScyllaDB image used for running ScyllaDB utilities.
+   * - unsupportedBashToolsImageOverride
+     - string
+     - unsupportedBashToolsImageOverride allows to adjust a generic Bash image with extra tools used by the operator for auxiliary purposes. Setting this field renders your cluster unsupported. Use at your own risk.
+   * - unsupportedGrafanaImageOverride
+     - string
+     - unsupportedGrafanaImageOverride allows to adjust Grafana image used by the operator for testing, dev or emergencies. Setting this field renders your cluster unsupported. Use at your own risk.
+   * - unsupportedPrometheusVersionOverride
+     - string
+     - unsupportedPrometheusVersionOverride allows to adjust Prometheus version used by the operator for testing, dev or emergencies. Setting this field renders your cluster unsupported. Use at your own risk.
 
 .. _api-scylla.scylladb.com-scyllaoperatorconfigs-v1alpha1-.status:
 
@@ -92,3 +101,26 @@ Type
 """"
 object
 
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - bashToolsImage
+     - string
+     - bashToolsImage is a generic Bash image with extra tools used by the operator for auxiliary purposes.
+   * - grafanaImage
+     - string
+     - grafanaImage is the image used by the operator to create a Grafana instance.
+   * - observedGeneration
+     - integer
+     - observedGeneration is the most recent generation observed for this ScyllaOperatorConfig. It corresponds to the ScyllaOperatorConfig's generation, which is updated on mutation by the API Server.
+   * - prometheusVersion
+     - string
+     - prometheusVersion is the Prometheus version used by the operator to create a Prometheus instance.
+   * - scyllaDBUtilsImage
+     - string
+     - scyllaDBUtilsImage is the ScyllaDB image used for running ScyllaDB utilities.

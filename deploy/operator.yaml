@@ -250,6 +250,7 @@ rules:
   - scylla.scylladb.com
   resources:
   - scyllaoperatorconfigs
+  - scyllaoperatorconfigs/status
   verbs:
   - create
   - delete
@@ -5003,12 +5004,37 @@ spec:
               description: spec defines the desired state of the operator.
               properties:
                 scyllaUtilsImage:
-                  description: scyllaUtilsImage is a Scylla image used for running scylla utilities.
-                  minLength: 1
+                  description: scyllaUtilsImage is a ScyllaDB image used for running ScyllaDB utilities.
+                  type: string
+                unsupportedBashToolsImageOverride:
+                  description: unsupportedBashToolsImageOverride allows to adjust a generic Bash image with extra tools used by the operator for auxiliary purposes. Setting this field renders your cluster unsupported. Use at your own risk.
+                  type: string
+                unsupportedGrafanaImageOverride:
+                  description: unsupportedGrafanaImageOverride allows to adjust Grafana image used by the operator for testing, dev or emergencies. Setting this field renders your cluster unsupported. Use at your own risk.
+                  type: string
+                unsupportedPrometheusVersionOverride:
+                  description: unsupportedPrometheusVersionOverride allows to adjust Prometheus version used by the operator for testing, dev or emergencies. Setting this field renders your cluster unsupported. Use at your own risk.
                   type: string
               type: object
             status:
               description: status defines the observed state of the operator.
+              properties:
+                bashToolsImage:
+                  description: bashToolsImage is a generic Bash image with extra tools used by the operator for auxiliary purposes.
+                  type: string
+                grafanaImage:
+                  description: grafanaImage is the image used by the operator to create a Grafana instance.
+                  type: string
+                observedGeneration:
+                  description: observedGeneration is the most recent generation observed for this ScyllaOperatorConfig. It corresponds to the ScyllaOperatorConfig's generation, which is updated on mutation by the API Server.
+                  format: int64
+                  type: integer
+                prometheusVersion:
+                  description: prometheusVersion is the Prometheus version used by the operator to create a Prometheus instance.
+                  type: string
+                scyllaDBUtilsImage:
+                  description: scyllaDBUtilsImage is the ScyllaDB image used for running ScyllaDB utilities.
+                  type: string
               type: object
           type: object
       served: true
@@ -5242,6 +5268,7 @@ webhooks:
     - UPDATE
     resources:
     - nodeconfigs
+    - scyllaoperatorconfigs
 
 ---
 apiVersion: policy/v1

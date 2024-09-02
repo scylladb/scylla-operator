@@ -1,12 +1,9 @@
 # Scylla Manager image
 image:
   repository: docker.io/scylladb
-
 controllerImage:
   repository: docker.io/scylladb
-
 logLevel: info
-
 # Resources allocated to Scylla Manager pods
 resources:
   requests:
@@ -17,7 +14,6 @@ controllerResources:
   requests:
     cpu: 10m
     memory: 20Mi
-
 # Scylla instance for Manager
 scylla:
   fullnameOverride: scylla-manager-cluster
@@ -31,15 +27,15 @@ scylla:
   cpuset: true
   datacenter: manager-dc
   racks:
-  - name: manager-rack
-    members: 1
-    storage:
-      capacity: 5Gi
-      storageClassName: scylladb-local-xfs
-    resources:
-      limits:
-        cpu: 1
-        memory: 200Mi
-      requests:
-        cpu: 1
-        memory: 200Mi
+    - name: manager-rack
+      members: 1
+      storage:
+        capacity: 5Gi
+        storageClassName: scylladb-local-xfs
+      resources:
+        limits:
+          cpu: 1
+          memory: 200Mi
+        requests:
+          cpu: 1
+          memory: 200Mi

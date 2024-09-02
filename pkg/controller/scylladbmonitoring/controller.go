@@ -59,14 +59,15 @@ type Controller struct {
 	scyllaV1alpha1Client scyllav1alpha1client.ScyllaV1alpha1Interface
 	monitoringClient     monitoringv1client.MonitoringV1Interface
 
-	configMapLister      corev1listers.ConfigMapLister
-	secretLister         corev1listers.SecretLister
-	serviceLister        corev1listers.ServiceLister
-	serviceAccountLister corev1listers.ServiceAccountLister
-	roleBindingLister    rbacv1listers.RoleBindingLister
-	pdbLister            policyv1listers.PodDisruptionBudgetLister
-	deploymentLister     appsv1listers.DeploymentLister
-	ingressLister        networkingv1listers.IngressLister
+	scyllaOperatorConfigLister scyllav1alpha1listers.ScyllaOperatorConfigLister
+	configMapLister            corev1listers.ConfigMapLister
+	secretLister               corev1listers.SecretLister
+	serviceLister              corev1listers.ServiceLister
+	serviceAccountLister       corev1listers.ServiceAccountLister
+	roleBindingLister          rbacv1listers.RoleBindingLister
+	pdbLister                  policyv1listers.PodDisruptionBudgetLister
+	deploymentLister           appsv1listers.DeploymentLister
+	ingressLister              networkingv1listers.IngressLister
 
 	scylladbMonitoringLister scyllav1alpha1listers.ScyllaDBMonitoringLister
 
@@ -88,6 +89,7 @@ func NewController(
 	kubeClient kubernetes.Interface,
 	scyllaV1alpha1Client scyllav1alpha1client.ScyllaV1alpha1Interface,
 	monitoringClient monitoringv1client.MonitoringV1Interface,
+	scyllaOperatorConfigInformer scyllav1alpha1informers.ScyllaOperatorConfigInformer,
 	configMapInformer corev1informers.ConfigMapInformer,
 	secretInformer corev1informers.SecretInformer,
 	serviceInformer corev1informers.ServiceInformer,
@@ -111,14 +113,15 @@ func NewController(
 		scyllaV1alpha1Client: scyllaV1alpha1Client,
 		monitoringClient:     monitoringClient,
 
-		secretLister:         secretInformer.Lister(),
-		configMapLister:      configMapInformer.Lister(),
-		serviceLister:        serviceInformer.Lister(),
-		serviceAccountLister: serviceAccountInformer.Lister(),
-		roleBindingLister:    roleBindingInformer.Lister(),
-		pdbLister:            pdbInformer.Lister(),
-		deploymentLister:     deploymentInformer.Lister(),
-		ingressLister:        ingressInformer.Lister(),
+		scyllaOperatorConfigLister: scyllaOperatorConfigInformer.Lister(),
+		secretLister:               secretInformer.Lister(),
+		configMapLister:            configMapInformer.Lister(),
+		serviceLister:              serviceInformer.Lister(),
+		serviceAccountLister:       serviceAccountInformer.Lister(),
+		roleBindingLister:          roleBindingInformer.Lister(),
+		pdbLister:                  pdbInformer.Lister(),
+		deploymentLister:           deploymentInformer.Lister(),
+		ingressLister:              ingressInformer.Lister(),
 
 		scylladbMonitoringLister: scyllaDBMonitoringInformer.Lister(),
 
@@ -127,6 +130,7 @@ func NewController(
 		serviceMonitorLister: serviceMonitorInformer.Lister(),
 
 		cachesToSync: []cache.InformerSynced{
+			scyllaOperatorConfigInformer.Informer().HasSynced,
 			secretInformer.Informer().HasSynced,
 			configMapInformer.Informer().HasSynced,
 			serviceInformer.Informer().HasSynced,
@@ -168,6 +172,12 @@ func NewController(
 	if err != nil {
 		return nil, fmt.Errorf("can't create handlers: %w", err)
 	}
+
+	scyllaOperatorConfigInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    smc.addScyllaOperatorConfig,
+		UpdateFunc: smc.updateScyllaOperatorConfig,
+		DeleteFunc: smc.deleteScyllaOperatorConfig,
+	})
 
 	scyllaDBMonitoringInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    smc.addScyllaDBMonitoring,
@@ -261,6 +271,28 @@ func (smc *Controller) deleteScyllaDBMonitoring(obj interface{}) {
 	)
 }
 
+func (smc *Controller) addScyllaOperatorConfig(obj interface{}) {
+	smc.handlers.HandleAdd(
+		obj.(*scyllav1alpha1.ScyllaOperatorConfig),
+		smc.handlers.EnqueueAll,
+	)
+}
+
+func (smc *Controller) updateScyllaOperatorConfig(old, cur interface{}) {
+	smc.handlers.HandleUpdate(
+		old.(*scyllav1alpha1.ScyllaOperatorConfig),
+		cur.(*scyllav1alpha1.ScyllaOperatorConfig),
+		smc.handlers.EnqueueAll,
+		smc.deleteScyllaOperatorConfig,
+	)
+}
+
+func (smc *Controller) deleteScyllaOperatorConfig(obj interface{}) {
+	smc.handlers.HandleDelete(
+		obj,
+		smc.handlers.EnqueueAll,
+	)
+}
 func (smc *Controller) addConfigMap(obj interface{}) {
 	smc.handlers.HandleAdd(
 		obj.(*corev1.ConfigMap),

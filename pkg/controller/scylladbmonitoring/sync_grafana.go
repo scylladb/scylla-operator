@@ -9,6 +9,7 @@ import (
 	grafanav1alpha1assets "github.com/scylladb/scylla-operator/assets/monitoring/grafana/v1alpha1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
@@ -73,7 +74,7 @@ func getGrafanaIngressDomains(sm *scyllav1alpha1.ScyllaDBMonitoring) []string {
 	return nil
 }
 
-func makeGrafanaDeployment(sm *scyllav1alpha1.ScyllaDBMonitoring, grafanaServingCertSecretName string, restartTriggerHash string) (*appsv1.Deployment, string, error) {
+func makeGrafanaDeployment(sm *scyllav1alpha1.ScyllaDBMonitoring, soc *scyllav1alpha1.ScyllaOperatorConfig, grafanaServingCertSecretName string, restartTriggerHash string) (*appsv1.Deployment, string, error) {
 	spec := getGrafanaSpec(sm)
 
 	var affinity corev1.Affinity
@@ -91,7 +92,19 @@ func makeGrafanaDeployment(sm *scyllav1alpha1.ScyllaDBMonitoring, grafanaServing
 		resources = spec.Resources
 	}
 
+	if soc.Status.GrafanaImage == nil {
+		return nil, "", controllertools.NewNonRetriable("scyllaoperatorconfig doesn't yet contain grafana image in the status")
+	}
+	grafanaImage := soc.Status.GrafanaImage
+
+	if soc.Status.BashToolsImage == nil {
+		return nil, "", controllertools.NewNonRetriable("scyllaoperatorconfig doesn't yet contain bash tools image in the status")
+	}
+	bashToolsImage := soc.Status.BashToolsImage
+
 	return grafanav1alpha1assets.GrafanaDeploymentTemplate.RenderObject(map[string]any{
+		"grafanaImage":           grafanaImage,
+		"bashToolsImage":         bashToolsImage,
 		"scyllaDBMonitoringName": sm.Name,
 		"servingCertSecretName":  grafanaServingCertSecretName,
 		"affinity":               affinity,
@@ -200,6 +213,7 @@ func makeGrafanaIngress(sm *scyllav1alpha1.ScyllaDBMonitoring) (*networkingv1.In
 func (smc *Controller) syncGrafana(
 	ctx context.Context,
 	sm *scyllav1alpha1.ScyllaDBMonitoring,
+	soc *scyllav1alpha1.ScyllaOperatorConfig,
 	configMaps map[string]*corev1.ConfigMap,
 	secrets map[string]*corev1.Secret,
 	services map[string]*corev1.Service,
@@ -286,7 +300,7 @@ func (smc *Controller) syncGrafana(
 	if hashErr != nil {
 		renderErrors = append(renderErrors, hashErr)
 	} else {
-		requiredDeployment, _, err = makeGrafanaDeployment(sm, grafanaServingCertSecretName, grafanaRestartHash)
+		requiredDeployment, _, err = makeGrafanaDeployment(sm, soc, grafanaServingCertSecretName, grafanaRestartHash)
 		renderErrors = append(renderErrors, err)
 	}
 

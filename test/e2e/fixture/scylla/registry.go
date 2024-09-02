@@ -32,6 +32,9 @@ var (
 	//go:embed "nodeconfig.yaml"
 	NodeConfig NodeConfigBytes
 
+	//go:embed "default.scyllaoperatorconfig.yaml"
+	DefaultScyllaOperatorConfig ScyllaOperatorConfigBytes
+
 	//go:embed "scylladbmonitoring.yaml.tmpl"
 	scyllaDBMonitoringTemplateString string
 	ScyllaDBMonitoringTemplate       = ParseObjectTemplateOrDie[*scyllav1alpha1.ScyllaDBMonitoring]("scylladbmonitoring", scyllaDBMonitoringTemplateString)
@@ -44,4 +47,13 @@ func (sc NodeConfigBytes) ReadOrFail() *scyllav1alpha1.NodeConfig {
 	o.Expect(err).NotTo(o.HaveOccurred())
 
 	return obj.(*scyllav1alpha1.NodeConfig)
+}
+
+type ScyllaOperatorConfigBytes []byte
+
+func (soc ScyllaOperatorConfigBytes) ReadOrFail() *scyllav1alpha1.ScyllaOperatorConfig {
+	obj, _, err := scheme.Codecs.UniversalDeserializer().Decode(soc, nil, nil)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	return obj.(*scyllav1alpha1.ScyllaOperatorConfig)
 }

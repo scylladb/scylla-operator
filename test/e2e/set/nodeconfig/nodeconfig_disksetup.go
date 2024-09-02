@@ -11,13 +11,13 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	configassests "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
-	"github.com/scylladb/scylla-operator/test/e2e/utils/image"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -60,7 +60,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 				Containers: []corev1.Container{
 					{
 						Name:  "client",
-						Image: image.GetE2EImage(image.OperatorNodeSetup),
+						Image: configassests.Project.OperatorTests.NodeSetupImage,
 						Command: []string{
 							"/bin/sh",
 							"-c",

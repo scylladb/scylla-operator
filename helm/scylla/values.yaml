@@ -2,7 +2,6 @@
 nameOverride: ""
 # Allows to override names used in Scylla k8s objects.
 fullnameOverride: ""
-
 # Allows to customize Scylla image
 scyllaImage:
   repository: scylladb/scylla
@@ -13,20 +12,17 @@ agentImage:
   repository: scylladb/scylla-manager-agent
   # Overrides the image tag whose default is the chart appVersion.
   tag: 3.3.0
-
 serviceAccount:
   # Specifies whether a service account should be created
   create: true
   # Annotations to add to the service account
   annotations: {}
-
 alternator:
   # Allows to enable Alternator (DynamoDB compatible API) frontend
   enabled: false
   # Enables insecure HTTP port to be backwards compatible. This should be set to "false" in the overrides.
   insecureEnableHTTP: true
-  writeIsolation: "always"
-
+  writeIsolation: always
 # If set to a non-empty string, it forces a rolling restart of Scylla. Change it again to trigger a new restart.
 forceRedeploymentReason: ""
 # Whether developer mode should be enabled.
@@ -39,42 +35,37 @@ hostNetworking: false
 automaticOrphanedNodeCleanup: false
 # Sysctl properties to be applied during initialization given as a list of key=value pairs
 sysctls: []
-
 # Scylla Manager Backups task definition
 backups: []
 # Scylla Manager Repair task definition
 repairs: []
-
 # scyllaArgs will be appended to Scylla binary startup parameters.
 scyllaArgs: ""
-
 # ImagePullSecrets used for pulling Scylla and Agent images
 imagePullSecrets: []
-
 # Name of datacenter
-datacenter: "us-east-1"
+datacenter: us-east-1
 # List of racks
 racks:
-- name: "us-east-1a"
-  # Name of additional scylla config configMap
-  scyllaConfig: "scylla-config"
-  # Name of additional scylla manager agent config stored as secret
-  scyllaAgentConfig: "scylla-agent-config"
-  # Number of rack members (nodes)
-  members: 3
-  # Storage definition
-  storage:
-    storageClassName: scylladb-local-xfs
-    capacity: 10Gi
-  # Scylla container resource definition
-  resources:
-     limits:
-       cpu: 1
-       memory: 4Gi
-     requests:
-       cpu: 1
-       memory: 4Gi
-
+  - name: us-east-1a
+    # Name of additional scylla config configMap
+    scyllaConfig: scylla-config
+    # Name of additional scylla manager agent config stored as secret
+    scyllaAgentConfig: scylla-agent-config
+    # Number of rack members (nodes)
+    members: 3
+    # Storage definition
+    storage:
+      storageClassName: scylladb-local-xfs
+      capacity: 10Gi
+    # Scylla container resource definition
+    resources:
+      limits:
+        cpu: 1
+        memory: 4Gi
+      requests:
+        cpu: 1
+        memory: 4Gi
 # Whether to create Prometheus ServiceMonitor
 serviceMonitor:
   create: false

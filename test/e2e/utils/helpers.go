@@ -18,6 +18,7 @@ import (
 	"github.com/scylladb/scylla-manager/v3/pkg/managerclient"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllav1alpha1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
@@ -776,4 +777,41 @@ func WaitUntilServingCertificateIsLive(ctx context.Context, client corev1client.
 	}
 
 	return nil
+}
+
+func WaitForScyllaOperatorConfigState(ctx context.Context, socClient scyllav1alpha1client.ScyllaOperatorConfigInterface, name string, options controllerhelpers.WaitForStateOptions, condition func(*scyllav1alpha1.ScyllaOperatorConfig) (bool, error), additionalConditions ...func(*scyllav1alpha1.ScyllaOperatorConfig) (bool, error)) (*scyllav1alpha1.ScyllaOperatorConfig, error) {
+	return controllerhelpers.WaitForObjectState[*scyllav1alpha1.ScyllaOperatorConfig, *scyllav1alpha1.ScyllaOperatorConfigList](ctx, socClient, name, options, condition, additionalConditions...)
+}
+
+func WaitForScyllaOperatorConfigStatus(ctx context.Context, client scyllav1alpha1client.ScyllaOperatorConfigInterface, scyllaOperatorConfig *scyllav1alpha1.ScyllaOperatorConfig) (*scyllav1alpha1.ScyllaOperatorConfig, error) {
+	waitCtx, waitCtxCancel := context.WithTimeoutCause(ctx, SyncTimeout, errors.New("exceeded sync timeout to update the status"))
+	defer waitCtxCancel()
+	return controllerhelpers.WaitForObjectState[*scyllav1alpha1.ScyllaOperatorConfig, *scyllav1alpha1.ScyllaOperatorConfigList](
+		waitCtx,
+		client,
+		scyllaOperatorConfig.Name,
+		controllerhelpers.WaitForStateOptions{
+			TolerateDelete: false,
+		},
+		func(soc *scyllav1alpha1.ScyllaOperatorConfig) (bool, error) {
+			if soc.UID != scyllaOperatorConfig.UID {
+				return true, fmt.Errorf(
+					"scyllaOperatorConfig %q with UID %q doesn't exist anymore (current UID=%q)",
+					scyllaOperatorConfig.Name,
+					scyllaOperatorConfig.UID,
+					soc.UID,
+				)
+			}
+
+			if soc.Status.ObservedGeneration == nil {
+				return false, nil
+			}
+
+			if *soc.Status.ObservedGeneration < scyllaOperatorConfig.Generation {
+				return false, nil
+			}
+
+			return true, nil
+		},
+	)
 }

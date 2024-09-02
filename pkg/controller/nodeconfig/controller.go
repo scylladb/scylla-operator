@@ -15,6 +15,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/scheme"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -27,7 +28,6 @@ import (
 	corev1informers "k8s.io/client-go/informers/core/v1"
 	rbacv1informers "k8s.io/client-go/informers/rbac/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
@@ -169,6 +169,7 @@ func NewController(
 	scyllaOperatorConfigInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ncc.addScyllaOperatorConfig,
 		UpdateFunc: ncc.updateScyllaOperatorConfig,
+		DeleteFunc: ncc.deleteScyllaOperatorConfig,
 	})
 
 	clusterRoleInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -403,7 +404,7 @@ func (ncc *Controller) deleteNodeConfig(obj interface{}) {
 func (ncc *Controller) addScyllaOperatorConfig(obj interface{}) {
 	ncc.handlers.HandleAdd(
 		obj.(*scyllav1alpha1.ScyllaOperatorConfig),
-		ncc.handlers.EnqueueAllWithUntypedFilterFunc(isManagedByNodeConfigController),
+		ncc.handlers.EnqueueAll,
 	)
 }
 
@@ -411,8 +412,15 @@ func (ncc *Controller) updateScyllaOperatorConfig(old, cur interface{}) {
 	ncc.handlers.HandleUpdate(
 		old.(*scyllav1alpha1.ScyllaOperatorConfig),
 		cur.(*scyllav1alpha1.ScyllaOperatorConfig),
-		ncc.handlers.EnqueueAllWithUntypedFilterFunc(isManagedByNodeConfigController),
-		nil,
+		ncc.handlers.EnqueueAll,
+		ncc.deleteScyllaOperatorConfig,
+	)
+}
+
+func (ncc *Controller) deleteScyllaOperatorConfig(obj interface{}) {
+	ncc.handlers.HandleDelete(
+		obj,
+		ncc.handlers.EnqueueAll,
 	)
 }
 

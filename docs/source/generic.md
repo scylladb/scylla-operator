@@ -159,7 +159,7 @@ Change the `cluster.yaml` file from this:
 ```yaml
 spec:
   agentVersion: 3.3.0
-  version: 6.1.0
+  version: 6.1.1
   developerMode: true
   datacenter:
     name: us-east-1
@@ -167,7 +167,7 @@ spec:
 to this:
 ```yaml
 spec:
-  version: 6.1.0
+  version: 6.1.1
   alternator:
     port: 8000
     writeIsolation: only_rmw_uses_lwt

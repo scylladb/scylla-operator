@@ -22,7 +22,7 @@ metadata:
   name: source
 spec:
   agentVersion: 3.3.0
-  version: 6.1.0
+  version: 6.1.1
   developerMode: true
   backups:
   - name: foo
@@ -51,7 +51,7 @@ metadata:
   name: target
 spec:
   agentVersion: 3.3.0
-  version: 6.1.0
+  version: 6.1.1
   developerMode: true
   datacenter:
     name: us-east-1

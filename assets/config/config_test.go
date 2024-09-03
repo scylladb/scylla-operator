@@ -48,6 +48,11 @@ func TestProjectConfig(t *testing.T) {
 		t.Error(err)
 	}
 
+	err = validateRequired(Project.Operator.ScyllaDBManagerAgentVersion)
+	if err != nil {
+		t.Error(err)
+	}
+
 	err = validateImage(Project.Operator.BashToolsImage)
 	if err != nil {
 		t.Error(err)

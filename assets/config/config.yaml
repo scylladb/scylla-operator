@@ -1,9 +1,9 @@
 operator:
-  scyllaDBVersion: "6.1.0"
+  scyllaDBVersion: "6.1.1"
   # scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride sets enterprise version
   # that requires consistent_cluster_management workaround for restore.
   # In the future, enterprise versions should be run as a different config instance in its own run.
-  scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride: "2024.1.7"
+  scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride: "2024.1.8"
   # TODO: scyllaDBUtils image can't be bumped until scylladb/scylladb#17787 is fixed.
   scyllaDBUtilsImage: "docker.io/scylladb/scylla:5.4.0@sha256:b9070afdb2be0d5c59b1c196e1bb66660351403cb30d5c6ba446ef8c3b0754f1"
   scyllaDBManagerVersion: "3.3.0"
@@ -12,6 +12,6 @@ operator:
   prometheusVersion: "v2.44.0"
 operatorTests:
   scyllaDBVersions:
-    updateFrom: "6.1.0-rc1"
+    updateFrom: "6.1.0"
     upgradeFrom: "6.0.2"
   nodeSetupImage: "quay.io/scylladb/scylla-operator-images:node-setup-v0.0.2@sha256:210b1dd9bd60a5bf4056783f3132bdeef0cf9ab0a19eff0b620b2dfa5c4e5d61"

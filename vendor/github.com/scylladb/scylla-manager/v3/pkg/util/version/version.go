@@ -90,7 +90,7 @@ func CheckConstraint(ver, constraint string) (bool, error) {
 
 	c, err := version.NewConstraint(constraint)
 	if err != nil {
-		return false, errors.Errorf("version constraint syntax error: %s", err)
+		return false, fmt.Errorf("version constraint syntax error: %w", err)
 	}
 	return c.Check(v), nil
 }

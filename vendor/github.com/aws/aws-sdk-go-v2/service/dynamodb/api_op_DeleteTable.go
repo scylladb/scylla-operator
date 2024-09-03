@@ -20,11 +20,12 @@ import (
 // returns a ResourceNotFoundException . If table is already in the DELETING
 // state, no error is returned.
 //
-// This operation only applies to [Version 2019.11.21 (Current)] of global tables.
+// For global tables, this operation only applies to global tables using Version
+// 2019.11.21 (Current version).
 //
 // DynamoDB might continue to accept data read and write operations, such as
 // GetItem and PutItem , on a table in the DELETING state until the table deletion
-// is complete.
+// is complete. For the full list of table states, see [TableStatus].
 //
 // When you delete a table, any indexes on that table are also deleted.
 //
@@ -34,7 +35,7 @@ import (
 //
 // Use the DescribeTable action to check the status of the table.
 //
-// [Version 2019.11.21 (Current)]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/globaltables.V2.html
+// [TableStatus]: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TableDescription.html#DDB-Type-TableDescription-TableStatus
 func (c *Client) DeleteTable(ctx context.Context, params *DeleteTableInput, optFns ...func(*Options)) (*DeleteTableOutput, error) {
 	if params == nil {
 		params = &DeleteTableInput{}
@@ -130,6 +131,12 @@ func (c *Client) addOperationDeleteTableMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteTableValidationMiddleware(stack); err != nil {

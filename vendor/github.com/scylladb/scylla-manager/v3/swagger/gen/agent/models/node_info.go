@@ -59,6 +59,9 @@ type NodeInfo struct {
 	// Whether CQL requires password authentication.
 	CqlPasswordProtected bool `json:"cql_password_protected,omitempty"`
 
+	// Whether tablets are enabled.
+	EnableTablets bool `json:"enable_tablets,omitempty"`
+
 	// Address Scylla listens for connections from other nodes.
 	ListenAddress string `json:"listen_address,omitempty"`
 

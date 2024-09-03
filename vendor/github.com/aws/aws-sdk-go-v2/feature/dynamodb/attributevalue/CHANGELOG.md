@@ -1,3 +1,76 @@
+# v1.15.0 (2024-08-26)
+
+* **Feature**: Add Encoder option to obey omitempty tag for NULL attribute values.
+
+# v1.14.12 (2024-08-22)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.14.11 (2024-08-15)
+
+* **Dependency Update**: Bump minimum Go version to 1.21.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.14.10 (2024-07-24)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.14.9 (2024-07-10.2)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.14.8 (2024-07-10)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.14.7 (2024-06-28)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.14.6 (2024-06-26)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.14.5 (2024-06-20)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.14.4 (2024-06-19)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.14.3 (2024-06-18)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.14.2 (2024-06-17)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.14.1 (2024-06-07)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.14.0 (2024-06-05)
+
+* **Feature**: Add codec options to use encoding.Text/Binary(Un)Marshaler when present on targets.
+
+# v1.13.21 (2024-06-03)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.13.20 (2024-05-28)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.13.19 (2024-05-24)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.13.18 (2024-05-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.13.17 (2024-05-16)
 
 * **Dependency Update**: Updated to the latest SDK module versions

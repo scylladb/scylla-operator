@@ -99,13 +99,13 @@ type CreateTableInput struct {
 	// capacity. This setting can be changed later.
 	//
 	//   - PROVISIONED - We recommend using PROVISIONED for predictable workloads.
-	//   PROVISIONED sets the billing mode to [Provisioned Mode].
+	//   PROVISIONED sets the billing mode to [Provisioned capacity mode].
 	//
 	//   - PAY_PER_REQUEST - We recommend using PAY_PER_REQUEST for unpredictable
-	//   workloads. PAY_PER_REQUEST sets the billing mode to [On-Demand Mode].
+	//   workloads. PAY_PER_REQUEST sets the billing mode to [On-demand capacity mode].
 	//
-	// [On-Demand Mode]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadWriteCapacityMode.html#HowItWorks.OnDemand
-	// [Provisioned Mode]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadWriteCapacityMode.html#HowItWorks.ProvisionedThroughput.Manual
+	// [Provisioned capacity mode]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/provisioned-capacity-mode.html
+	// [On-demand capacity mode]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/on-demand-capacity-mode.html
 	BillingMode types.BillingMode
 
 	// Indicates whether deletion protection is to be enabled (true) or disabled
@@ -205,6 +205,9 @@ type CreateTableInput struct {
 	// DynamoDB counts whitespaces when calculating the size of a policy against this
 	// limit. For a full list of all considerations that apply for resource-based
 	// policies, see [Resource-based policy considerations].
+	//
+	// You need to specify the CreateTable and PutResourcePolicy IAM actions for
+	// authorizing a user to create a table with a resource-based policy.
 	//
 	// [Resource-based policy considerations]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/rbac-considerations.html
 	ResourcePolicy *string
@@ -314,6 +317,12 @@ func (c *Client) addOperationCreateTableMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateTableValidationMiddleware(stack); err != nil {

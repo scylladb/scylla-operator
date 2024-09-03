@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/scylladb/go-log"
 	"github.com/scylladb/scylla-manager/v3/pkg/util/logutil"
 	"github.com/scylladb/scylla-manager/v3/pkg/util/timeutc"
@@ -17,8 +18,36 @@ import (
 type ProviderFunc func(ctx context.Context, clusterID uuid.UUID) (*Client, error)
 
 type clientTTL struct {
-	client *Client
-	ttl    time.Time
+	client   *Client
+	ttl      time.Time // time after which client is invalid
+	hostsTTL time.Time // time after which client hosts needs to be validated
+}
+
+const hostsValidity = 15 * time.Second
+
+// isValid checks if client can be safely returned from cache.
+// Client is invalid when it reaches the end of TTL, or when its hosts changed.
+// In order to reduce API calls under mutex when creating many clients
+// (e.g. when healthcheck svc runs pingREST for every node),
+// checking for changed hosts is done only every hostsValidity.
+func (c *clientTTL) isValid(ctx context.Context) (bool, error) {
+	// Check client TTL
+	if c.ttl.Before(timeutc.Now()) {
+		return false, nil
+	}
+	// Check hosts TTL and refresh if they didn't change
+	if c.hostsTTL.Before(timeutc.Now()) {
+		changed, err := c.client.CheckHostsChanged(ctx)
+		switch {
+		case err != nil:
+			return false, errors.Wrap(err, "check if client's hosts changed")
+		case changed:
+			return false, nil
+		default:
+			c.hostsTTL = timeutc.Now().Add(hostsValidity)
+		}
+	}
+	return true, nil
 }
 
 // CachedProvider is a provider implementation that reuses clients.
@@ -42,36 +71,30 @@ func NewCachedProvider(f ProviderFunc, cacheInvalidationTimeout time.Duration, l
 // Client is the cached ProviderFunc.
 func (p *CachedProvider) Client(ctx context.Context, clusterID uuid.UUID) (*Client, error) {
 	p.mu.Lock()
-	c, ok := p.clients[clusterID]
-	p.mu.Unlock()
+	defer p.mu.Unlock()
 
-	// Cache hit
-	if ok {
-		// Check if hosts did not change before returning
-		changed, err := c.client.CheckHostsChanged(ctx)
-		if err != nil {
-			p.logger.Error(ctx, "Cannot check if hosts changed", "error", err)
-		}
-		if c.ttl.After(timeutc.Now()) && !changed && err == nil {
+	// Look for client in cache
+	if c, ok := p.clients[clusterID]; ok {
+		if valid, err := c.isValid(ctx); err != nil {
+			p.logger.Error(ctx, "Cannot check client validity", "error", err)
+		} else if valid {
 			return c.client, nil
 		}
 	}
 
-	// If not found or hosts changed create a new one
+	// If not found or invalid, create a new one
 	client, err := p.inner(ctx, clusterID)
 	if err != nil {
 		return nil, err
 	}
 
-	c = clientTTL{
-		client: client,
-		ttl:    timeutc.Now().Add(p.validity),
+	c := clientTTL{
+		client:   client,
+		ttl:      timeutc.Now().Add(p.validity),
+		hostsTTL: timeutc.Now().Add(hostsValidity),
 	}
 
-	p.mu.Lock()
 	p.clients[clusterID] = c
-	p.mu.Unlock()
-
 	return c.client, nil
 }
 

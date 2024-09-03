@@ -81,7 +81,7 @@ func makeAgentError(resp *http.Response) error {
 		payload: new(agentModels.ErrorResponse),
 	}
 	if err := json.Unmarshal(b, ae.payload); err != nil {
-		return errors.Errorf("agent [HTTP %d] cannot read response: %s", resp.StatusCode, err)
+		return fmt.Errorf("agent [HTTP %d] cannot read response: %w", resp.StatusCode, err)
 	}
 
 	return ae

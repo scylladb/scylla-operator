@@ -329,6 +329,7 @@ func (c *Client) UpdateTask(ctx context.Context, clusterID string, t *Task) erro
 		TaskFields: &models.TaskUpdate{
 			Enabled:    t.Enabled,
 			Name:       t.Name,
+			Labels:     t.Labels,
 			Schedule:   t.Schedule,
 			Tags:       t.Tags,
 			Properties: t.Properties,

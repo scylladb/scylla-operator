@@ -164,7 +164,7 @@ func (s *Service) markRunningAsAborted(t *Task, endTime time.Time) (bool, error)
 	}
 	if r.Status == StatusRunning {
 		r.Status = StatusAborted
-		r.Cause = "service stopped"
+		r.Cause = scheduler.ErrStoppedScheduler.Error()
 		r.EndTime = &endTime
 		return true, s.putRunAndUpdateTask(r)
 	}
@@ -415,10 +415,7 @@ func (s *Service) run(ctx RunContext) (runErr error) {
 	s.metrics.BeginRun(ti.ClusterID, ti.TaskType.String(), ti.TaskID)
 
 	defer func() {
-		r.Status = statusFromError(runErr)
-		if r.Status == StatusError {
-			r.Cause = runErr.Error()
-		}
+		r.Status, r.Cause = statusAndCauseFromCtxAndErr(runCtx, runErr)
 		if r.Status == StatusStopped && s.isClosed() {
 			r.Status = StatusAborted
 		}
@@ -498,16 +495,18 @@ func (s *Service) updateTaskWithRun(r *Run) error {
 	return u.BindStruct(&t).ExecRelease()
 }
 
-func statusFromError(err error) Status {
+func statusAndCauseFromCtxAndErr(ctx context.Context, err error) (taskStatus Status, taskError string) {
 	switch {
 	case err == nil:
-		return StatusDone
-	case errors.Is(err, context.Canceled):
-		return StatusStopped
-	case errors.Is(err, context.DeadlineExceeded):
-		return StatusWaiting
+		return StatusDone, ""
+	case errors.Is(context.Cause(ctx), scheduler.ErrStoppedTask):
+		return StatusStopped, scheduler.ErrStoppedTask.Error()
+	case errors.Is(context.Cause(ctx), scheduler.ErrOutOfWindowTask):
+		return StatusWaiting, scheduler.ErrOutOfWindowTask.Error()
+	case errors.Is(context.Cause(ctx), scheduler.ErrStoppedScheduler):
+		return StatusStopped, scheduler.ErrStoppedScheduler.Error()
 	default:
-		return StatusError
+		return StatusError, err.Error()
 	}
 }
 

@@ -340,6 +340,53 @@ func (c *Client) RcloneDeleteFile(ctx context.Context, host, remotePath string) 
 	return err
 }
 
+// RcloneDeletePathsInBatches divides paths into batches and calls RcloneDeletePaths for each of them.
+// This method should be used when deleting large number of files to improve granularity and timeout handling.
+func (c *Client) RcloneDeletePathsInBatches(ctx context.Context, host, remoteDir string, paths []string, batchSize int) (int64, error) {
+	toDelete := append([]string{}, paths...)
+	var deleted int64
+	for len(toDelete) != 0 {
+		size := min(len(toDelete), batchSize)
+		batch := toDelete[:size]
+		toDelete = toDelete[size:]
+
+		cnt, err := c.RcloneDeletePaths(ctx, host, remoteDir, batch)
+		if err != nil {
+			return deleted, errors.Wrap(err, "delete paths")
+		}
+		deleted += cnt
+	}
+	return deleted, nil
+}
+
+// RcloneDeletePaths deletes paths from remoteDir/path.
+// It does not return error when some paths are not present on the remote,
+// and it returns the amount of actually deleted files.
+// Paths cannot be empty.
+// RemoteDir:
+//   - needs to be registered with the server first
+//   - has "name:bucket/path" format
+//   - must point to a directory
+func (c *Client) RcloneDeletePaths(ctx context.Context, host, remoteDir string, paths []string) (int64, error) {
+	fs, remote, err := rcloneSplitRemotePath(remoteDir)
+	if err != nil {
+		return 0, err
+	}
+	p := operations.OperationsDeletepathsParams{
+		Context: customTimeout(forceHost(ctx, host), 15*time.Minute),
+		Options: &models.DeletePathsOptions{
+			Fs:     fs,
+			Remote: remote,
+			Paths:  paths,
+		},
+	}
+	res, err := c.agentOps.OperationsDeletepaths(&p)
+	if err != nil {
+		return 0, err
+	}
+	return res.Payload.Deletes, nil
+}
+
 // RcloneDiskUsage get disk space usage.
 // Remote path format is "name:bucket/path".
 func (c *Client) RcloneDiskUsage(ctx context.Context, host, remotePath string) (*models.FileSystemDetails, error) {

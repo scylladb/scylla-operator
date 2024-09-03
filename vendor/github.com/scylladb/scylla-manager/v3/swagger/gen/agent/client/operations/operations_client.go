@@ -49,6 +49,8 @@ type ClientService interface {
 
 	OperationsDeletefile(params *OperationsDeletefileParams) (*OperationsDeletefileOK, error)
 
+	OperationsDeletepaths(params *OperationsDeletepathsParams) (*OperationsDeletepathsOK, error)
+
 	OperationsFileInfo(params *OperationsFileInfoParams) (*OperationsFileInfoOK, error)
 
 	OperationsList(params *OperationsListParams) (*OperationsListOK, error)
@@ -485,6 +487,41 @@ func (a *Client) OperationsDeletefile(params *OperationsDeletefileParams) (*Oper
 	}
 	// unexpected success response
 	unexpectedSuccess := result.(*OperationsDeletefileDefault)
+	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
+}
+
+/*
+OperationsDeletepaths deletes paths
+
+Delete provided list of paths
+*/
+func (a *Client) OperationsDeletepaths(params *OperationsDeletepathsParams) (*OperationsDeletepathsOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewOperationsDeletepathsParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "OperationsDeletepaths",
+		Method:             "POST",
+		PathPattern:        "/rclone/operations/deletepaths",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &OperationsDeletepathsReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*OperationsDeletepathsOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	unexpectedSuccess := result.(*OperationsDeletepathsDefault)
 	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
 }
 

@@ -15,8 +15,12 @@ const (
 	MetadataVersion = ".version"
 	// Manifest is name of the manifest file.
 	Manifest = "manifest.json.gz"
-	// Schema is the name of the schema file.
-	Schema = "schema.tar.gz"
+	// Schema is the name of the schema file used for restore
+	// (so for Scylla versions starting from 6.0).
+	Schema = "schema_with_internals.json.gz"
+	// UnsafeSchema is the name of the schema file that shouldn't be used for restore
+	// (so for Scylla versions older than 6.0).
+	UnsafeSchema = "schema.tar.gz"
 	// TempFileExt is suffix for the temporary files.
 	TempFileExt = ".tmp"
 
@@ -85,9 +89,32 @@ func RemoteSchemaFile(clusterID, taskID uuid.UUID, snapshotTag string) string {
 	manifestName := strings.Join([]string{
 		"task",
 		taskID.String(),
+		RemoteSchemaFileSuffix(snapshotTag),
+	}, "_")
+
+	return path.Join(
+		remoteSchemaDir(clusterID),
+		manifestName,
+	)
+}
+
+// RemoteSchemaFileSuffix returns suffix (containing snapshot tag) of the schema file.
+func RemoteSchemaFileSuffix(snapshotTag string) string {
+	return strings.Join([]string{
 		"tag",
 		snapshotTag,
 		Schema,
+	}, "_")
+}
+
+// RemoteUnsafeSchemaFile returns path to the unsafe schema file.
+func RemoteUnsafeSchemaFile(clusterID, taskID uuid.UUID, snapshotTag string) string {
+	manifestName := strings.Join([]string{
+		"task",
+		taskID.String(),
+		"tag",
+		snapshotTag,
+		UnsafeSchema,
 	}, "_")
 
 	return path.Join(

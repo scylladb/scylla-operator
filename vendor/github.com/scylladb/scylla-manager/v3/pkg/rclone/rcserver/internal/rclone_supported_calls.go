@@ -18,6 +18,7 @@ var RcloneSupportedCalls = strset.New(
 	"operations/check-permissions",
 	"operations/copyfile",
 	"operations/deletefile",
+	"operations/deletepaths",
 	"operations/fileinfo",
 	"operations/list",
 	"operations/movefile",

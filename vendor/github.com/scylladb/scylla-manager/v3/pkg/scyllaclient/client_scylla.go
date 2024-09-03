@@ -205,6 +205,18 @@ func (c *Client) HostDatacenter(ctx context.Context, host string) (dc string, er
 	return
 }
 
+// HostRack looks up the rack that the given host belongs to.
+func (c *Client) HostRack(ctx context.Context, host string) (string, error) {
+	resp, err := c.scyllaOps.SnitchRackGet(&operations.SnitchRackGetParams{
+		Context: ctx,
+		Host:    &host,
+	})
+	if err != nil {
+		return "", err
+	}
+	return resp.Payload, nil
+}
+
 // HostIDs returns a mapping from host IP to UUID.
 func (c *Client) HostIDs(ctx context.Context) (map[string]string, error) {
 	resp, err := c.scyllaOps.StorageServiceHostIDGet(&operations.StorageServiceHostIDGetParams{Context: ctx})
@@ -226,10 +238,8 @@ func (c *Client) CheckHostsChanged(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if len(cur) != len(c.config.Hosts) {
-		return true, err
-	}
-	return !strset.New(c.config.Hosts...).Has(cur...), nil
+	s := strset.New(c.config.Hosts...)
+	return s.Size() != len(cur) || !s.Has(cur...), nil
 }
 
 // hosts returns a list of all hosts in a cluster.
@@ -520,7 +530,7 @@ func ReplicaHash(replicaSet []string) uint64 {
 }
 
 // Repair invokes async repair and returns the repair command ID.
-func (c *Client) Repair(ctx context.Context, keyspace, table, master string, replicaSet []string, ranges []TokenRange, smallTableOpt bool) (int32, error) {
+func (c *Client) Repair(ctx context.Context, keyspace, table, master string, replicaSet []string, ranges []TokenRange, intensity int, smallTableOpt bool) (int32, error) {
 	dr := dumpRanges(ranges)
 	p := operations.StorageServiceRepairAsyncByKeyspacePostParams{
 		Context:        forceHost(ctx, master),
@@ -530,6 +540,8 @@ func (c *Client) Repair(ctx context.Context, keyspace, table, master string, rep
 	}
 	if smallTableOpt {
 		p.SmallTableOptimization = pointer.StringPtr("true")
+	} else {
+		p.RangesParallelism = pointer.StringPtr(fmt.Sprint(intensity))
 	}
 	// Single node cluster repair fails with hosts param
 	if len(replicaSet) > 1 {
@@ -551,7 +563,7 @@ func dumpRanges(ranges []TokenRange) string {
 			_ = buf.WriteByte(',')
 		}
 		if ttr.StartToken > ttr.EndToken {
-			_, _ = fmt.Fprintf(&buf, "%d:%d,%d:%d", dht.Murmur3MinToken, ttr.EndToken, ttr.StartToken, dht.Murmur3MaxToken)
+			_, _ = fmt.Fprintf(&buf, "%d:%d,%d:%d", ttr.StartToken, dht.Murmur3MaxToken, dht.Murmur3MinToken, ttr.EndToken)
 		} else {
 			_, _ = fmt.Fprintf(&buf, "%d:%d", ttr.StartToken, ttr.EndToken)
 		}

@@ -25,6 +25,9 @@ type Task struct {
 	// id
 	ID string `json:"id,omitempty"`
 
+	// labels
+	Labels map[string]string `json:"labels,omitempty"`
+
 	// name
 	Name string `json:"name,omitempty"`
 
@@ -34,7 +37,7 @@ type Task struct {
 	// schedule
 	Schedule *Schedule `json:"schedule,omitempty"`
 
-	// tags
+	// This field is DEPRECATED. Use labels instead.
 	Tags []string `json:"tags"`
 
 	// type

@@ -19,6 +19,9 @@ type TaskUpdate struct {
 	// enabled
 	Enabled bool `json:"enabled,omitempty"`
 
+	// labels
+	Labels map[string]string `json:"labels,omitempty"`
+
 	// name
 	Name string `json:"name,omitempty"`
 
@@ -28,7 +31,7 @@ type TaskUpdate struct {
 	// schedule
 	Schedule *Schedule `json:"schedule,omitempty"`
 
-	// tags
+	// This field is DEPRECATED. Use labels instead.
 	Tags []string `json:"tags"`
 
 	// type

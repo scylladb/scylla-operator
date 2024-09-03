@@ -221,6 +221,18 @@ func (c *ConfigClient) ConsistentClusterManagement(ctx context.Context) (bool, e
 	return resp.Payload, err
 }
 
+// EnableTablets returns true if tablets are enabled.
+func (c *ConfigClient) EnableTablets(ctx context.Context) (bool, error) {
+	resp, err := c.client.Config.FindConfigEnableTablets(config.NewFindConfigEnableTabletsParamsWithContext(ctx))
+	if isStatusCode400(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return resp.Payload, err
+}
+
 // AlternatorEnforceAuthorization returns whether alternator requires authorization.
 func (c *ConfigClient) AlternatorEnforceAuthorization(ctx context.Context) (bool, error) {
 	resp, err := c.client.Config.FindConfigAlternatorEnforceAuthorization(config.NewFindConfigAlternatorEnforceAuthorizationParamsWithContext(ctx))
@@ -291,6 +303,7 @@ func (c *ConfigClient) NodeInfo(ctx context.Context) (*NodeInfo, error) {
 		{Field: &ni.AlternatorEnforceAuthorization, Fetcher: c.AlternatorEnforceAuthorization},
 		{Field: &ni.SstableUUIDFormat, Fetcher: c.UUIDSStableIdentifiers},
 		{Field: &ni.ConsistentClusterManagement, Fetcher: c.ConsistentClusterManagement},
+		{Field: &ni.EnableTablets, Fetcher: c.EnableTablets},
 	}
 
 	for i, ff := range ffb {

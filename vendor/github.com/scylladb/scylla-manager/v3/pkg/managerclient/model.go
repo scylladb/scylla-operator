@@ -40,7 +40,7 @@ type ClusterSlice []*models.Cluster
 
 // Render renders ClusterSlice in a tabular format.
 func (cs ClusterSlice) Render(w io.Writer) error {
-	t := table.New("ID", "Name", "Port", "CQL credentials")
+	t := table.New("ID", "Name", "Labels", "Port", "CQL credentials")
 	for _, c := range cs {
 		p := "default"
 		if c.Port != 0 {
@@ -50,7 +50,7 @@ func (cs ClusterSlice) Render(w io.Writer) error {
 		if c.Username != "" && c.Password != "" {
 			creds = "set"
 		}
-		t.AddRow(c.ID, c.Name, p, creds)
+		t.AddRow(c.ID, c.Name, formatLabels(c.Labels), p, creds)
 	}
 	if _, err := w.Write([]byte(t.String())); err != nil {
 		return err
@@ -198,8 +198,8 @@ func makeTaskUpdate(t *Task) *models.TaskUpdate {
 		Type:       t.Type,
 		Enabled:    t.Enabled,
 		Name:       t.Name,
+		Labels:     t.Labels,
 		Schedule:   t.Schedule,
-		Tags:       t.Tags,
 		Properties: t.Properties,
 	}
 }
@@ -218,7 +218,12 @@ Window:	{{ WindowDesc .Schedule.Window }}
 Tz:	{{ .Schedule.Timezone }}
 {{ end -}}
 {{ if .Schedule.NumRetries -}}
-Retry:	{{ .Schedule.NumRetries }} {{ if .Schedule.RetryWait }}(initial backoff {{ .Schedule.RetryWait }}){{ end }}
+Retry:	{{ .Schedule.NumRetries }} {{ if .Schedule.RetryWait }}(initial backoff {{ .Schedule.RetryWait }}){{ end }}{{ end -}}
+{{ if .Labels }}
+Labels:
+{{- range $key, $val := .Labels }}
+- {{ $key }}: {{ $val -}}
+{{ end }}
 {{ end -}}
 
 {{ if .Properties }}
@@ -492,18 +497,12 @@ type TaskListItems struct {
 
 // Render renders TaskListItems in a tabular format.
 func (li TaskListItems) Render(w io.Writer) error {
-	var doneRestoreTask bool
-
-	columns := []any{"Task", "Schedule", "Window", "Timezone", "Success", "Error", "Last Success", "Last Error", "Status", "Next"}
+	columns := []any{"Task", "Labels", "Schedule", "Window", "Timezone", "Success", "Error", "Last Success", "Last Error", "Status", "Next"}
 	if li.ShowProps {
 		columns = append(columns, "Properties")
 	}
 	p := table.New(columns...)
 	for _, t := range li.TaskListItemSlice {
-		if t.Type == RestoreTask && t.Status == TaskStatusDone {
-			doneRestoreTask = true
-		}
-
 		var id string
 		if t.Name != "" && !li.ShowIDs {
 			id = taskJoin(t.Type, t.Name)
@@ -551,7 +550,7 @@ func (li TaskListItems) Render(w io.Writer) error {
 		}
 
 		row := []any{
-			id, schedule, strings.Join(t.Schedule.Window, ","), t.Schedule.Timezone,
+			id, formatLabels(t.Labels), schedule, strings.Join(t.Schedule.Window, ","), t.Schedule.Timezone,
 			t.SuccessCount, t.ErrorCount, FormatTimePointer(t.LastSuccess), FormatTimePointer(t.LastError),
 			status, next,
 		}
@@ -572,10 +571,6 @@ func (li TaskListItems) Render(w io.Writer) error {
 		p.AddRow(row...)
 	}
 	fmt.Fprint(w, p)
-
-	if doneRestoreTask {
-		fmt.Fprint(w, " NOTE: all completed restore tasks require specific follow-up action - see docs for more information\n")
-	}
 
 	return nil
 }
@@ -1042,11 +1037,6 @@ func (rp RestoreProgress) status() string {
 	if rp.Progress == nil {
 		return s
 	}
-	if s == TaskStatusDone {
-		if len(rp.Progress.Keyspaces) == 1 && rp.Progress.Keyspaces[0].Keyspace == "system_schema" {
-			return "DONE - restart required (see restore docs)"
-		}
-	}
 	stage := RestoreStageName(rp.Progress.Stage)
 	if s != TaskStatusNew && s != TaskStatusDone && stage != "" {
 		s += " (" + stage + ")"
@@ -1374,4 +1364,12 @@ func (bl BackupListItems) Render(w io.Writer) error {
 		}
 	}
 	return nil
+}
+
+func formatLabels(labels map[string]string) string {
+	var out []string
+	for k, v := range labels {
+		out = append(out, k+"="+v)
+	}
+	return strings.Join(out, ", ")
 }

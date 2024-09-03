@@ -26,7 +26,7 @@ func wrap(fn rc.Func, v paramsValidator) rc.Func {
 
 // pathHasPrefix reads "fs" and "remote" params, evaluates absolute path and
 // ensures it has the required prefix.
-func pathHasPrefix(prefix string) paramsValidator {
+func pathHasPrefix(prefixes ...string) paramsValidator {
 	return func(ctx context.Context, in rc.Params) error {
 		_, p, err := joined(in, "fs", "remote")
 		if err != nil {
@@ -37,10 +37,40 @@ func pathHasPrefix(prefix string) paramsValidator {
 		i := strings.Index(p, "/")
 		p = p[i+1:]
 
-		if !strings.HasPrefix(p, prefix) {
+		for _, prefix := range prefixes {
+			if strings.HasPrefix(p, prefix) {
+				return nil
+			}
+		}
+
+		return fs.ErrorPermissionDenied
+	}
+}
+
+// pathHasSuffix reads "fs" and "remote" params + checks if the path has
+// required suffix.
+func pathHasSuffix(suffix string) paramsValidator {
+	return func(ctx context.Context, in rc.Params) error {
+		_, p, err := joined(in, "fs", "remote")
+		if err != nil {
+			return err
+		}
+
+		if !strings.HasSuffix(p, suffix) {
 			return fs.ErrorPermissionDenied
 		}
 		return nil
+	}
+}
+
+func or(validators ...paramsValidator) paramsValidator {
+	return func(ctx context.Context, in rc.Params) error {
+		for _, v := range validators {
+			if err := v(ctx, in); err == nil {
+				return nil
+			}
+		}
+		return fs.ErrorPermissionDenied
 	}
 }
 

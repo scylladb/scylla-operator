@@ -262,13 +262,6 @@ func (c *Client) ping(ctx context.Context, host string) error {
 	return nil
 }
 
-func min(a, b time.Duration) time.Duration {
-	if a > b {
-		return b
-	}
-	return a
-}
-
 // PingAgent is a simple heartbeat ping to agent.
 func (c *Client) PingAgent(ctx context.Context, host string, timeout time.Duration) (time.Duration, error) {
 	if timeout == 0 {

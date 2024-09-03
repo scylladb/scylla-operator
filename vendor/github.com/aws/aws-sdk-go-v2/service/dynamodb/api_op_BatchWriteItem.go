@@ -33,9 +33,12 @@ import (
 // iteration would check for unprocessed items and submit a new BatchWriteItem
 // request with those unprocessed items until all items have been processed.
 //
-// If none of the items can be processed due to insufficient provisioned
-// throughput on all of the tables in the request, then BatchWriteItem returns a
-// ProvisionedThroughputExceededException .
+// For tables and indexes with provisioned capacity, if none of the items can be
+// processed due to insufficient provisioned throughput on all of the tables in the
+// request, then BatchWriteItem returns a ProvisionedThroughputExceededException .
+// For all tables and indexes, if none of the items can be processed due to other
+// throttling scenarios (such as exceeding partition level limits), then
+// BatchWriteItem returns a ThrottlingException .
 //
 // If DynamoDB returns any unprocessed items, you should retry the batch operation
 // on those items. However, we strongly recommend that you use an exponential
@@ -86,6 +89,10 @@ import (
 //   - Any individual item in a batch exceeds 400 KB.
 //
 //   - The total request size exceeds 16 MB.
+//
+//   - Any individual items with keys exceeding the key length limits. For a
+//     partition key, the limit is 2048 bytes and for a sort key, the limit is 1024
+//     bytes.
 //
 // [Batch Operations and Error Handling]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ErrorHandling.html#Programming.Errors.BatchOperations
 // [Naming Rules and Data Types]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.NamingRulesDataTypes.html
@@ -288,6 +295,12 @@ func (c *Client) addOperationBatchWriteItemMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpBatchWriteItemValidationMiddleware(stack); err != nil {

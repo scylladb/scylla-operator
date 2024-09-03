@@ -25,15 +25,18 @@ type RunContext[K comparable] struct {
 	err error
 }
 
-func newRunContext[K comparable](key K, properties Properties, stop time.Time) (*RunContext[K], context.CancelFunc) {
-	var (
-		ctx    context.Context
-		cancel context.CancelFunc
-	)
-	if stop.IsZero() {
-		ctx, cancel = context.WithCancel(context.Background())
-	} else {
-		ctx, cancel = context.WithDeadline(context.Background(), stop)
+// Errors describing the cause of task interruption.
+var (
+	ErrStoppedTask      = errors.New("task was stopped")
+	ErrOutOfWindowTask  = errors.New("task got out of --window")
+	ErrRescheduledTask  = errors.New("task is being rescheduled")
+	ErrStoppedScheduler = errors.New("scheduler and all tasks were stopped")
+)
+
+func newRunContext[K comparable](key K, properties Properties, stop time.Time) (*RunContext[K], context.CancelCauseFunc) {
+	ctx, cancel := context.WithCancelCause(context.Background())
+	if !stop.IsZero() {
+		ctx, _ = context.WithDeadlineCause(ctx, stop, ErrOutOfWindowTask)
 	}
 
 	return &RunContext[K]{
@@ -78,7 +81,7 @@ type Scheduler[K comparable] struct {
 
 	queue   *activationQueue[K]
 	details map[K]Details
-	running map[K]context.CancelFunc
+	running map[K]context.CancelCauseFunc
 	closed  bool
 	mu      sync.Mutex
 
@@ -94,7 +97,7 @@ func NewScheduler[K comparable](now func() time.Time, run RunFunc[K], listener L
 		timer:    time.NewTimer(0),
 		queue:    newActivationQueue[K](),
 		details:  make(map[K]Details),
-		running:  make(map[K]context.CancelFunc),
+		running:  make(map[K]context.CancelCauseFunc),
 		wakeupCh: make(chan struct{}, 1),
 	}
 }
@@ -127,7 +130,7 @@ func (s *Scheduler[K]) reschedule(ctx *RunContext[K]) {
 
 	cancel, ok := s.running[key]
 	if ok {
-		cancel()
+		cancel(ErrRescheduledTask)
 	}
 	delete(s.running, key)
 
@@ -150,11 +153,11 @@ func (s *Scheduler[K]) reschedule(ctx *RunContext[K]) {
 		p     Properties
 	)
 	switch {
-	case shouldContinue(ctx.err):
+	case shouldContinue(ctx):
 		next = now
 		retno = ctx.Retry
 		p = ctx.Properties
-	case shouldRetry(ctx.err):
+	case shouldRetry(ctx, ctx.err):
 		if d.Backoff != nil {
 			if b := d.Backoff.NextBackOff(); b != retry.Stop {
 				next = now.Add(b)
@@ -171,12 +174,12 @@ func (s *Scheduler[K]) reschedule(ctx *RunContext[K]) {
 	s.scheduleLocked(ctx, key, next, retno, p, d.Window)
 }
 
-func shouldContinue(err error) bool {
-	return errors.Is(err, context.DeadlineExceeded)
+func shouldContinue(ctx context.Context) bool {
+	return errors.Is(context.Cause(ctx), ErrOutOfWindowTask)
 }
 
-func shouldRetry(err error) bool {
-	return !(err == nil || errors.Is(err, context.Canceled) || retry.IsPermanent(err))
+func shouldRetry(ctx context.Context, err error) bool {
+	return !(err == nil || errors.Is(context.Cause(ctx), ErrStoppedTask) || retry.IsPermanent(err))
 }
 
 func (s *Scheduler[K]) scheduleLocked(ctx context.Context, key K, next time.Time, retno int8, p Properties, w Window) {
@@ -244,7 +247,7 @@ func (s *Scheduler[K]) Stop(ctx context.Context, key K) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if cancel, ok := s.running[key]; ok {
-		cancel()
+		cancel(ErrStoppedTask)
 	}
 }
 
@@ -260,7 +263,7 @@ func (s *Scheduler[K]) Close() (running, pending []K) {
 	s.wakeup()
 	for k, cancel := range s.running {
 		running = append(running, k)
-		cancel()
+		cancel(ErrStoppedScheduler)
 	}
 	for _, a := range s.queue.h {
 		pending = append(pending, a.Key)
@@ -412,11 +415,23 @@ func (s *Scheduler[K]) onRunEnd(ctx *RunContext[K]) {
 	switch {
 	case err == nil:
 		s.listener.OnRunSuccess(ctx)
-	case errors.Is(err, context.Canceled):
+	case errors.Is(context.Cause(ctx), ErrStoppedTask):
 		s.listener.OnRunStop(ctx, err)
-	case errors.Is(err, context.DeadlineExceeded):
+	case errors.Is(context.Cause(ctx), ErrOutOfWindowTask):
 		s.listener.OnRunWindowEnd(ctx, err)
 	default:
 		s.listener.OnRunError(ctx, err)
 	}
+}
+
+// IsTaskInterrupted returns true if task execution was interrupted by scheduler.
+func IsTaskInterrupted(ctx context.Context) bool {
+	schedulerErrs := []error{ErrStoppedTask, ErrOutOfWindowTask, ErrRescheduledTask, ErrStoppedScheduler}
+	err := context.Cause(ctx)
+	for _, schedulerErr := range schedulerErrs {
+		if errors.Is(err, schedulerErr) {
+			return true
+		}
+	}
+	return false
 }

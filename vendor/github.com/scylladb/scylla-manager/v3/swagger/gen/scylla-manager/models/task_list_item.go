@@ -29,6 +29,9 @@ type TaskListItem struct {
 	// id
 	ID string `json:"id,omitempty"`
 
+	// labels
+	Labels map[string]string `json:"labels,omitempty"`
+
 	// last error
 	// Format: date-time
 	LastError *strfmt.DateTime `json:"last_error,omitempty"`
@@ -62,7 +65,7 @@ type TaskListItem struct {
 	// suspended
 	Suspended bool `json:"suspended,omitempty"`
 
-	// tags
+	// This field is DEPRECATED. Use labels instead.
 	Tags []string `json:"tags"`
 
 	// type

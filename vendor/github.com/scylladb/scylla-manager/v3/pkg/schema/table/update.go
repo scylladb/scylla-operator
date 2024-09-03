@@ -14,9 +14,9 @@ var SchedulerTaskUpdate = table.New(table.Metadata{
 		"enabled",
 		"id",
 		"name",
+		"labels",
 		"properties",
 		"sched",
-		"tags",
 		"type",
 	},
 	PartKey: []string{

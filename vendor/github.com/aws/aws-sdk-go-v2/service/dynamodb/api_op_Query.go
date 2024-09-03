@@ -401,10 +401,10 @@ type QueryOutput struct {
 	// The capacity units consumed by the Query operation. The data returned includes
 	// the total provisioned throughput consumed, along with statistics for the table
 	// and any indexes involved in the operation. ConsumedCapacity is only returned if
-	// the ReturnConsumedCapacity parameter was specified. For more information, see [Provisioned Throughput]
+	// the ReturnConsumedCapacity parameter was specified. For more information, see [Capacity unit consumption for read operations]
 	// in the Amazon DynamoDB Developer Guide.
 	//
-	// [Provisioned Throughput]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ProvisionedThroughputIntro.html
+	// [Capacity unit consumption for read operations]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/read-write-operations.html#read-operation-consumption
 	ConsumedCapacity *types.ConsumedCapacity
 
 	// The number of items in the response.
@@ -440,7 +440,7 @@ type QueryOutput struct {
 	// If you did not use a filter in the request, then ScannedCount is the same as
 	// Count .
 	//
-	// [Count and ScannedCount]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/QueryAndScan.html#Count
+	// [Count and ScannedCount]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Scan.html#Scan.Count
 	ScannedCount int32
 
 	// Metadata pertaining to the operation's result.
@@ -507,6 +507,12 @@ func (c *Client) addOperationQueryMiddlewares(stack *middleware.Stack, options O
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpQueryValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -536,56 +542,6 @@ func (c *Client) addOperationQueryMiddlewares(stack *middleware.Stack, options O
 	}
 	return nil
 }
-
-func addOpQueryDiscoverEndpointMiddleware(stack *middleware.Stack, o Options, c *Client) error {
-	return stack.Finalize.Insert(&internalEndpointDiscovery.DiscoverEndpoint{
-		Options: []func(*internalEndpointDiscovery.DiscoverEndpointOptions){
-			func(opt *internalEndpointDiscovery.DiscoverEndpointOptions) {
-				opt.DisableHTTPS = o.EndpointOptions.DisableHTTPS
-				opt.Logger = o.Logger
-			},
-		},
-		DiscoverOperation:            c.fetchOpQueryDiscoverEndpoint,
-		EndpointDiscoveryEnableState: o.EndpointDiscovery.EnableEndpointDiscovery,
-		EndpointDiscoveryRequired:    false,
-		Region:                       o.Region,
-	}, "ResolveEndpointV2", middleware.After)
-}
-
-func (c *Client) fetchOpQueryDiscoverEndpoint(ctx context.Context, region string, optFns ...func(*internalEndpointDiscovery.DiscoverEndpointOptions)) (internalEndpointDiscovery.WeightedAddress, error) {
-	input := getOperationInput(ctx)
-	in, ok := input.(*QueryInput)
-	if !ok {
-		return internalEndpointDiscovery.WeightedAddress{}, fmt.Errorf("unknown input type %T", input)
-	}
-	_ = in
-
-	identifierMap := make(map[string]string, 0)
-	identifierMap["sdk#Region"] = region
-
-	key := fmt.Sprintf("DynamoDB.%v", identifierMap)
-
-	if v, ok := c.endpointCache.Get(key); ok {
-		return v, nil
-	}
-
-	discoveryOperationInput := &DescribeEndpointsInput{}
-
-	opt := internalEndpointDiscovery.DiscoverEndpointOptions{}
-	for _, fn := range optFns {
-		fn(&opt)
-	}
-
-	go c.handleEndpointDiscoveryFromService(ctx, discoveryOperationInput, region, key, opt)
-	return internalEndpointDiscovery.WeightedAddress{}, nil
-}
-
-// QueryAPIClient is a client that implements the Query operation.
-type QueryAPIClient interface {
-	Query(context.Context, *QueryInput, ...func(*Options)) (*QueryOutput, error)
-}
-
-var _ QueryAPIClient = (*Client)(nil)
 
 // QueryPaginatorOptions is the paginator options for Query
 type QueryPaginatorOptions struct {
@@ -656,6 +612,9 @@ func (p *QueryPaginator) NextPage(ctx context.Context, optFns ...func(*Options))
 	}
 	params.Limit = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.Query(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -669,6 +628,56 @@ func (p *QueryPaginator) NextPage(ctx context.Context, optFns ...func(*Options))
 
 	return result, nil
 }
+
+func addOpQueryDiscoverEndpointMiddleware(stack *middleware.Stack, o Options, c *Client) error {
+	return stack.Finalize.Insert(&internalEndpointDiscovery.DiscoverEndpoint{
+		Options: []func(*internalEndpointDiscovery.DiscoverEndpointOptions){
+			func(opt *internalEndpointDiscovery.DiscoverEndpointOptions) {
+				opt.DisableHTTPS = o.EndpointOptions.DisableHTTPS
+				opt.Logger = o.Logger
+			},
+		},
+		DiscoverOperation:            c.fetchOpQueryDiscoverEndpoint,
+		EndpointDiscoveryEnableState: o.EndpointDiscovery.EnableEndpointDiscovery,
+		EndpointDiscoveryRequired:    false,
+		Region:                       o.Region,
+	}, "ResolveEndpointV2", middleware.After)
+}
+
+func (c *Client) fetchOpQueryDiscoverEndpoint(ctx context.Context, region string, optFns ...func(*internalEndpointDiscovery.DiscoverEndpointOptions)) (internalEndpointDiscovery.WeightedAddress, error) {
+	input := getOperationInput(ctx)
+	in, ok := input.(*QueryInput)
+	if !ok {
+		return internalEndpointDiscovery.WeightedAddress{}, fmt.Errorf("unknown input type %T", input)
+	}
+	_ = in
+
+	identifierMap := make(map[string]string, 0)
+	identifierMap["sdk#Region"] = region
+
+	key := fmt.Sprintf("DynamoDB.%v", identifierMap)
+
+	if v, ok := c.endpointCache.Get(key); ok {
+		return v, nil
+	}
+
+	discoveryOperationInput := &DescribeEndpointsInput{}
+
+	opt := internalEndpointDiscovery.DiscoverEndpointOptions{}
+	for _, fn := range optFns {
+		fn(&opt)
+	}
+
+	go c.handleEndpointDiscoveryFromService(ctx, discoveryOperationInput, region, key, opt)
+	return internalEndpointDiscovery.WeightedAddress{}, nil
+}
+
+// QueryAPIClient is a client that implements the Query operation.
+type QueryAPIClient interface {
+	Query(context.Context, *QueryInput, ...func(*Options)) (*QueryOutput, error)
+}
+
+var _ QueryAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opQuery(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

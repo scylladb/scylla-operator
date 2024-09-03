@@ -66,6 +66,7 @@ var (
 			"auth_token",
 			"id",
 			"known_hosts",
+			"labels",
 			"name",
 			"port",
 			"force_tls_disabled",
@@ -252,6 +253,7 @@ var (
 			"enabled",
 			"error_count",
 			"id",
+			"labels",
 			"last_error",
 			"last_success",
 			"name",
@@ -259,7 +261,6 @@ var (
 			"sched",
 			"status",
 			"success_count",
-			"tags",
 			"type",
 		},
 		PartKey: []string{

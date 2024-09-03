@@ -354,8 +354,7 @@ func MarshalListWithOptions(in interface{}, optFns ...func(*EncoderOptions)) ([]
 	return asList.Value, nil
 }
 
-// EncoderOptions is a collection of options shared between marshaling
-// and unmarshaling
+// EncoderOptions is a collection of options used by the marshaler.
 type EncoderOptions struct {
 	// Support other custom struct tag keys, such as `yaml`, `json`, or `toml`.
 	// Note that values provided with a custom TagKey must also be supported
@@ -380,6 +379,26 @@ type EncoderOptions struct {
 	//
 	// Default encoding is time.RFC3339Nano in a DynamoDB String (S) data type.
 	EncodeTime func(time.Time) (types.AttributeValue, error)
+
+	// When enabled, the encoder will use implementations of
+	// encoding.TextMarshaler and encoding.BinaryMarshaler when present on
+	// marshaled values.
+	//
+	// Implementations are checked in the following order:
+	//   - [Marshaler]
+	//   - encoding.TextMarshaler
+	//   - encoding.BinaryMarshaler
+	//
+	// The results of a MarshalText call will convert to string (S), results
+	// from a MarshalBinary call will convert to binary (B).
+	UseEncodingMarshalers bool
+
+	// When enabled, the encoder will omit null (NULL) attribute values
+	// returned from custom marshalers tagged with `omitempty`.
+	//
+	// NULL attribute values returned from the standard marshaling routine will
+	// always respect omitempty regardless of this setting.
+	OmitNullAttributeValues bool
 }
 
 // An Encoder provides marshaling Go value types to AttributeValues.
@@ -438,8 +457,10 @@ func (e *Encoder) encode(v reflect.Value, fieldTag tag) (types.AttributeValue, e
 	v = valueElem(v)
 
 	if v.Kind() != reflect.Invalid {
-		if av, err := tryMarshaler(v); err != nil {
+		if av, err := e.tryMarshaler(v); err != nil {
 			return nil, err
+		} else if e.options.OmitNullAttributeValues && fieldTag.OmitEmpty && isNullAttributeValue(av) {
+			return nil, nil
 		} else if av != nil {
 			return av, nil
 		}
@@ -822,7 +843,7 @@ func isNullableZeroValue(v reflect.Value) bool {
 	return false
 }
 
-func tryMarshaler(v reflect.Value) (types.AttributeValue, error) {
+func (e *Encoder) tryMarshaler(v reflect.Value) (types.AttributeValue, error) {
 	if v.Kind() != reflect.Ptr && v.Type().Name() != "" && v.CanAddr() {
 		v = v.Addr()
 	}
@@ -831,8 +852,34 @@ func tryMarshaler(v reflect.Value) (types.AttributeValue, error) {
 		return nil, nil
 	}
 
-	if m, ok := v.Interface().(Marshaler); ok {
+	i := v.Interface()
+	if m, ok := i.(Marshaler); ok {
 		return m.MarshalDynamoDBAttributeValue()
+	}
+	if e.options.UseEncodingMarshalers {
+		return e.tryEncodingMarshaler(i)
+	}
+
+	return nil, nil
+}
+
+func (e *Encoder) tryEncodingMarshaler(v any) (types.AttributeValue, error) {
+	if m, ok := v.(encoding.TextMarshaler); ok {
+		s, err := m.MarshalText()
+		if err != nil {
+			return nil, err
+		}
+
+		return &types.AttributeValueMemberS{Value: string(s)}, nil
+	}
+
+	if m, ok := v.(encoding.BinaryMarshaler); ok {
+		b, err := m.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+
+		return &types.AttributeValueMemberB{Value: b}, nil
 	}
 
 	return nil, nil
@@ -854,4 +901,9 @@ func defaultEncodeTime(t time.Time) (types.AttributeValue, error) {
 	return &types.AttributeValueMemberS{
 		Value: t.Format(time.RFC3339Nano),
 	}, nil
+}
+
+func isNullAttributeValue(av types.AttributeValue) bool {
+	n, ok := av.(*types.AttributeValueMemberNULL)
+	return ok && n.Value
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"time"
 
 	"github.com/mitchellh/mapstructure"
@@ -23,6 +24,7 @@ import (
 	"github.com/scylladb/scylla-manager/v3/pkg/rclone/operations"
 	"github.com/scylladb/scylla-manager/v3/pkg/rclone/rcserver/internal"
 	"github.com/scylladb/scylla-manager/v3/pkg/util/timeutc"
+	"github.com/scylladb/scylla-manager/v3/pkg/util/uuid"
 	"go.uber.org/multierr"
 )
 
@@ -331,7 +333,7 @@ func init() {
 	rc.Add(rc.Call{
 		Path:         "operations/cat",
 		AuthRequired: true,
-		Fn:           wrap(rcCat, pathHasPrefix("backup/meta/")),
+		Fn:           wrap(rcCat, or(pathHasPrefix("backup/meta/", "backup/schema/"), pathHasSuffix(".crc32"))),
 		Title:        "Concatenate any files and send them in response",
 		Help: `This takes the following parameters
 
@@ -557,6 +559,45 @@ func rcCopyPaths() func(ctx context.Context, in rc.Params) (rc.Params, error) {
 	}
 }
 
+// rcDeletePaths returns rc function that deletes paths from remote.
+func rcDeletePaths(ctx context.Context, in rc.Params) (out rc.Params, err error) {
+	f, remote, err := rc.GetFsAndRemote(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	paths, err := getStringSlice(in, "paths")
+	if err != nil {
+		return nil, err
+	}
+	if len(paths) == 0 {
+		return nil, errors.New("empty paths")
+	}
+
+	// Specify files to be deleted by filter config
+	ctx, cfg := filter.AddConfig(ctx)
+	for _, p := range paths {
+		if err := cfg.AddFile(path.Join(remote, p)); err != nil {
+			return nil, errors.Wrap(err, "add file to filter")
+		}
+	}
+
+	// Run file deletion in a separate group so that
+	// the stats won't mix with other rclone calls.
+	group := uuid.NewTime().String()
+	ctx = accounting.WithStatsGroup(ctx, "deletepaths/"+group)
+
+	err = rcops.Delete(ctx, f)
+	out = make(rc.Params)
+	out["deletes"] = accounting.Stats(ctx).Deletes(0)
+
+	// Delete stats of created group
+	statsDeleteIn := make(rc.Params)
+	statsDeleteIn["group"] = group
+	_, statsDeleteErr := rc.Calls.Get("core/stats-delete").Fn(ctx, statsDeleteIn)
+
+	return out, multierr.Combine(err, statsDeleteErr)
+}
+
 // getFsAndRemoteNamed gets fs and remote path from the params, but it doesn't
 // fail if remote path is not provided.
 // In that case it is assumed that path is empty and root of the fs is used.
@@ -631,6 +672,18 @@ func init() {
 - dstFs - a remote name string eg "gcs:" for the destination
 - dstRemote - a directory path within that remote for the destination
 - paths - slice of paths to be copied from source directory to destination`,
+	})
+
+	rc.Add(rc.Call{
+		Path:         "operations/deletepaths",
+		AuthRequired: true,
+		Fn:           rcDeletePaths,
+		Title:        "Delete paths from remote directory",
+		Help: `This takes the following parameters:
+
+- fs - a remote name string eg "s3:"
+- remote - a directory path within that remote
+- paths - slice of paths to be deleted from remote directory`,
 	})
 }
 

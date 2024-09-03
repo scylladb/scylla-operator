@@ -80,7 +80,7 @@ func (s Server) writeError(path string, in rc.Params, w http.ResponseWriter, err
 
 	fs.Errorf(nil, "rc: %q: error: %v", path, err)
 	// Adjust the error return for some well known errors
-	if e, ok := err.(operations.PermissionError); ok { // nolint: errorlint
+	if e, ok := err.(operations.OperationError); ok { // nolint: errorlint
 		status = e.StatusCode()
 	} else {
 		switch {

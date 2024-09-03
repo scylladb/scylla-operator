@@ -167,6 +167,8 @@ type ClientService interface {
 
 	FindConfigEnableSstablesMcFormat(params *FindConfigEnableSstablesMcFormatParams) (*FindConfigEnableSstablesMcFormatOK, error)
 
+	FindConfigEnableTablets(params *FindConfigEnableTabletsParams) (*FindConfigEnableTabletsOK, error)
+
 	FindConfigEndpointSnitch(params *FindConfigEndpointSnitchParams) (*FindConfigEndpointSnitchOK, error)
 
 	FindConfigExperimental(params *FindConfigExperimentalParams) (*FindConfigExperimentalOK, error)
@@ -294,10 +296,6 @@ type ClientService interface {
 	FindConfigReduceCacheCapacityTo(params *FindConfigReduceCacheCapacityToParams) (*FindConfigReduceCacheCapacityToOK, error)
 
 	FindConfigReduceCacheSizesAt(params *FindConfigReduceCacheSizesAtParams) (*FindConfigReduceCacheSizesAtOK, error)
-
-	FindConfigReplaceAddress(params *FindConfigReplaceAddressParams) (*FindConfigReplaceAddressOK, error)
-
-	FindConfigReplaceAddressFirstBoot(params *FindConfigReplaceAddressFirstBootParams) (*FindConfigReplaceAddressFirstBootOK, error)
 
 	FindConfigReplaceNode(params *FindConfigReplaceNodeParams) (*FindConfigReplaceNodeOK, error)
 
@@ -2796,6 +2794,39 @@ func (a *Client) FindConfigEnableSstablesMcFormat(params *FindConfigEnableSstabl
 }
 
 /*
+FindConfigEnableTablets Return true if tablets are enabled.
+*/
+func (a *Client) FindConfigEnableTablets(params *FindConfigEnableTabletsParams) (*FindConfigEnableTabletsOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewFindConfigEnableTabletsParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "find_config_enable_tablets",
+		Method:             "GET",
+		PathPattern:        "/config/enable_tablets",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &FindConfigEnableTabletsReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*FindConfigEnableTabletsOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	unexpectedSuccess := result.(*FindConfigEnableTabletsDefault)
+	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
+}
+
+/*
 	 FindConfigEndpointSnitch Set to a class that implements the IEndpointSnitch. Scylla uses snitches for locating nodes and routing requests.
 
 	SimpleSnitch: Use for single-data center deployments or single-zone in public clouds. Does not recognize data center or rack information. It treats strategy order as proximity, which can improve cache locality when disabling read repair.
@@ -4972,72 +5003,6 @@ func (a *Client) FindConfigReduceCacheSizesAt(params *FindConfigReduceCacheSizes
 	}
 	// unexpected success response
 	unexpectedSuccess := result.(*FindConfigReduceCacheSizesAtDefault)
-	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
-}
-
-/*
-FindConfigReplaceAddress The listen_address or broadcast_address of the dead node to replace. Same as -Dcassandra.replace_address.
-*/
-func (a *Client) FindConfigReplaceAddress(params *FindConfigReplaceAddressParams) (*FindConfigReplaceAddressOK, error) {
-	// TODO: Validate the params before sending
-	if params == nil {
-		params = NewFindConfigReplaceAddressParams()
-	}
-
-	result, err := a.transport.Submit(&runtime.ClientOperation{
-		ID:                 "find_config_replace_address",
-		Method:             "GET",
-		PathPattern:        "/config/replace_address",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http"},
-		Params:             params,
-		Reader:             &FindConfigReplaceAddressReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	})
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*FindConfigReplaceAddressOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	unexpectedSuccess := result.(*FindConfigReplaceAddressDefault)
-	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
-}
-
-/*
-FindConfigReplaceAddressFirstBoot Like replace_address option, but if the node has been bootstrapped successfully it will be ignored. Same as -Dcassandra.replace_address_first_boot.
-*/
-func (a *Client) FindConfigReplaceAddressFirstBoot(params *FindConfigReplaceAddressFirstBootParams) (*FindConfigReplaceAddressFirstBootOK, error) {
-	// TODO: Validate the params before sending
-	if params == nil {
-		params = NewFindConfigReplaceAddressFirstBootParams()
-	}
-
-	result, err := a.transport.Submit(&runtime.ClientOperation{
-		ID:                 "find_config_replace_address_first_boot",
-		Method:             "GET",
-		PathPattern:        "/config/replace_address_first_boot",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http"},
-		Params:             params,
-		Reader:             &FindConfigReplaceAddressFirstBootReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	})
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*FindConfigReplaceAddressFirstBootOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	unexpectedSuccess := result.(*FindConfigReplaceAddressFirstBootDefault)
 	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
 }
 

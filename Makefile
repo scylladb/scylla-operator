@@ -433,7 +433,7 @@ endef
 define update-scylla-helm-versions
 	$(YQ) eval-all -i -P '\
 	select(fi==0).scyllaImage.tag = ( select(fi==1) | .operator.scyllaDBVersion ) | \
-	select(fi==0).agentImage.tag = ( select(fi==1) | .operator.scyllaDBManagerVersion ) | \
+	select(fi==0).agentImage.tag = ( select(fi==1) | .operator.scyllaDBManagerAgentVersion ) | \
 	select(fi==0)' \
 	'$(1)' './assets/config/config.yaml'
 endef
@@ -442,7 +442,8 @@ endef
 define update-scylla-manager-helm-versions
 	$(YQ) eval-all -i -P '\
 	select(fi==0).scylla.scyllaImage.tag = ( select(fi==1) | .operator.scyllaDBVersion ) | \
-	select(fi==0).scylla.agentImage.tag = ( select(fi==1) | .operator.scyllaDBManagerVersion ) | \
+	select(fi==0).scylla.agentImage.tag = ( select(fi==1) | .operator.scyllaDBManagerAgentVersion ) | \
+	select(fi==0).image.tag = ( select(fi==1) | .operator.scyllaDBManagerVersion ) | \
 	select(fi==0)' \
 	'$(1)' './assets/config/config.yaml'
 endef
@@ -515,7 +516,7 @@ verify-deploy:
 define replace-scyllacluster-versions
 	$(YQ) eval-all -i -P '\
 	select(fi==0 and di==$(2)).spec.version = ( select(fi==1) | .operator.scyllaDBVersion ) | \
-	select(fi==0 and di==$(2)).spec.agentVersion = ( select(fi==1) | .operator.scyllaDBManagerVersion ) | \
+	select(fi==0 and di==$(2)).spec.agentVersion = ( select(fi==1) | .operator.scyllaDBManagerAgentVersion ) | \
 	select(fi==0)' \
 	'$(1)' './assets/config/config.yaml'
 endef

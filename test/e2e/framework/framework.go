@@ -135,7 +135,7 @@ func (f *Framework) CommonLabels() map[string]string {
 func (f *Framework) GetDefaultScyllaCluster() *scyllav1.ScyllaCluster {
 	renderArgs := map[string]any{
 		"scyllaDBVersion":             configassets.Project.Operator.ScyllaDBVersion,
-		"scyllaDBManagerVersion":      configassets.Project.Operator.ScyllaDBManagerVersion,
+		"scyllaDBManagerVersion":      configassets.Project.Operator.ScyllaDBManagerAgentVersion,
 		"nodeServiceType":             TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
 		"nodesBroadcastAddressType":   TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
 		"clientsBroadcastAddressType": TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
@@ -151,7 +151,7 @@ func (f *Framework) GetDefaultScyllaCluster() *scyllav1.ScyllaCluster {
 func (f *Framework) GetDefaultZonalScyllaClusterWithThreeRacks() *scyllav1.ScyllaCluster {
 	renderArgs := map[string]any{
 		"scyllaDBVersion":             configassets.Project.Operator.ScyllaDBVersion,
-		"scyllaDBManagerVersion":      configassets.Project.Operator.ScyllaDBManagerVersion,
+		"scyllaDBManagerVersion":      configassets.Project.Operator.ScyllaDBManagerAgentVersion,
 		"nodeServiceType":             TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
 		"nodesBroadcastAddressType":   TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
 		"clientsBroadcastAddressType": TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,

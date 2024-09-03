@@ -25,6 +25,7 @@ type OperatorConfig struct {
 	ScyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride string `json:"scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride"`
 	ScyllaDBUtilsImage                                                  string `json:"scyllaDBUtilsImage"`
 	ScyllaDBManagerVersion                                              string `json:"scyllaDBManagerVersion"`
+	ScyllaDBManagerAgentVersion                                         string `json:"scyllaDBManagerAgentVersion"`
 	BashToolsImage                                                      string `json:"bashToolsImage"`
 	GrafanaImage                                                        string `json:"grafanaImage"`
 	PrometheusVersion                                                   string `json:"prometheusVersion"`

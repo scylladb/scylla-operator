@@ -1,4 +1,4 @@
-package scyllacluster
+package scylladbdatacenter
 
 import (
 	"reflect"
@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,7 +15,7 @@ import (
 func Test_makeScyllaConnectionConfig(t *testing.T) {
 	tt := []struct {
 		name            string
-		sc              *scyllav1.ScyllaCluster
+		sdc             *scyllav1alpha1.ScyllaDBDatacenter
 		secrets         map[string]*corev1.Secret
 		configMaps      map[string]*corev1.ConfigMap
 		cqlsIngressPort int
@@ -24,18 +24,17 @@ func Test_makeScyllaConnectionConfig(t *testing.T) {
 	}{
 		{
 			name: "single domain with port will generate bundle using explicit port",
-			sc: &scyllav1.ScyllaCluster{
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "foo-ns",
 					Name:      "bar",
 				},
-				Spec: scyllav1.ScyllaClusterSpec{
+				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+					ClusterName: "bar",
 					DNSDomains: []string{
 						"my-domain",
 					},
-					Datacenter: scyllav1.DatacenterSpec{
-						Name: "us-east-1",
-					},
+					DatacenterName: pointer.Ptr("us-east-1"),
 				},
 			},
 			secrets: map[string]*corev1.Secret{
@@ -66,8 +65,8 @@ func Test_makeScyllaConnectionConfig(t *testing.T) {
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBDatacenter",
 							Name:               "bar",
 							Controller:         pointer.Ptr(true),
 							BlockOwnerDeletion: pointer.Ptr(true),
@@ -105,19 +104,18 @@ parameters:
 		},
 		{
 			name: "multi domain will generate multiple bundles",
-			sc: &scyllav1.ScyllaCluster{
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "foo-ns",
 					Name:      "bar",
 				},
-				Spec: scyllav1.ScyllaClusterSpec{
+				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+					ClusterName: "bar",
 					DNSDomains: []string{
 						"my-domain",
 						"my-private-domain",
 					},
-					Datacenter: scyllav1.DatacenterSpec{
-						Name: "us-east-1",
-					},
+					DatacenterName: pointer.Ptr("us-east-1"),
 				},
 			},
 			secrets: map[string]*corev1.Secret{
@@ -148,8 +146,8 @@ parameters:
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBDatacenter",
 							Name:               "bar",
 							Controller:         pointer.Ptr(true),
 							BlockOwnerDeletion: pointer.Ptr(true),
@@ -211,7 +209,7 @@ parameters:
 	}
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := makeScyllaConnectionConfig(tc.sc, tc.secrets, tc.configMaps, tc.cqlsIngressPort)
+			got, err := makeScyllaConnectionConfig(tc.sdc, tc.secrets, tc.configMaps, tc.cqlsIngressPort)
 			if !reflect.DeepEqual(err, tc.expectedError) {
 				t.Errorf("expected error %#v, got %#v", tc.expectedError, err)
 			}

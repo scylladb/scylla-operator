@@ -1,34 +1,32 @@
+// Copyright (c) 2024 ScyllaDB.
+
 package scyllacluster
 
 import (
 	"context"
-	"fmt"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/naming"
-	"github.com/scylladb/scylla-operator/pkg/pointer"
-	appsv1 "k8s.io/api/apps/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 )
 
-func (scc *Controller) updateStatus(ctx context.Context, currentSC *scyllav1.ScyllaCluster, status *scyllav1.ScyllaClusterStatus) error {
+func (scmc *Controller) updateStatus(ctx context.Context, currentSC *scyllav1.ScyllaCluster, status scyllav1.ScyllaClusterStatus) error {
 	if apiequality.Semantic.DeepEqual(&currentSC.Status, status) {
 		return nil
 	}
 
 	sc := currentSC.DeepCopy()
-	sc.Status = *status
-
-	// Make sure that any "live" updates to the status are always manifested in the aggregated fields.
-	updateAggregatedStatusFields(&sc.Status)
+	sc.Status = status
 
 	klog.V(2).InfoS("Updating status", "ScyllaCluster", klog.KObj(sc))
 
-	_, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).UpdateStatus(ctx, sc, metav1.UpdateOptions{})
+	_, err := scmc.scyllaClient.ScyllaV1().ScyllaClusters(sc.Namespace).UpdateStatus(ctx, sc, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
@@ -38,128 +36,41 @@ func (scc *Controller) updateStatus(ctx context.Context, currentSC *scyllav1.Scy
 	return nil
 }
 
-func (scc *Controller) getScyllaVersion(sts *appsv1.StatefulSet) (string, error) {
-	firstMemberName := fmt.Sprintf("%s-0", sts.Name)
-	firstMember, err := scc.podLister.Pods(sts.Namespace).Get(firstMemberName)
-	if err != nil {
-		return "", err
-	}
-
-	controllerRef := metav1.GetControllerOfNoCopy(firstMember)
-	if controllerRef == nil || controllerRef.UID != sts.UID {
-		return "", fmt.Errorf("foreign pod")
-	}
-
-	version, err := naming.ScyllaVersion(firstMember.Spec.Containers)
-	if err != nil {
-		return "", err
-	}
-
-	return version, nil
-}
-
-// calculateRackStatus calculates a status for the rack.
-// sts and old status may be nil.
-func (scc *Controller) calculateRackStatus(sc *scyllav1.ScyllaCluster, rackName string, sts *appsv1.StatefulSet, oldRackStatus *scyllav1.RackStatus, serviceMap map[string]*corev1.Service) *scyllav1.RackStatus {
-	status := &scyllav1.RackStatus{
-		ReplaceAddressFirstBoot: map[string]string{},
-		Members:                 0,
-		ReadyMembers:            0,
-		AvailableMembers:        pointer.Ptr(int32(0)),
-		UpdatedMembers:          pointer.Ptr(int32(0)),
-		Stale:                   pointer.Ptr(true),
-	}
-
-	// Persist ReplaceAddressFirstBoot.
-	if oldRackStatus != nil && oldRackStatus.ReplaceAddressFirstBoot != nil {
-		status.ReplaceAddressFirstBoot = oldRackStatus.DeepCopy().ReplaceAddressFirstBoot
-	}
-
-	if sts == nil {
-		return status
-	}
-
-	status.Members = *sts.Spec.Replicas
-	status.ReadyMembers = sts.Status.ReadyReplicas
-	status.AvailableMembers = pointer.Ptr(sts.Status.AvailableReplicas)
-	status.UpdatedMembers = pointer.Ptr(sts.Status.UpdatedReplicas)
-	status.Stale = pointer.Ptr(sts.Status.ObservedGeneration < sts.Generation)
-
-	// Update Rack Version
-	if status.Members == 0 {
-		status.Version = sc.Spec.Version
-	} else {
-		version, err := scc.getScyllaVersion(sts)
-		if err != nil {
-			status.Version = ""
-			klog.ErrorS(err, "Can't get scylla version", "ScyllaCluster", klog.KObj(sc))
-		} else {
-			status.Version = version
-		}
-	}
-
-	// Update Upgrading condition
-	desiredRackVersion := sc.Spec.Version
-	actualRackVersion := status.Version
-	if desiredRackVersion != actualRackVersion {
-		controllerhelpers.SetRackCondition(status, scyllav1.RackConditionTypeUpgrading)
-	}
-
-	// Update Scaling Down condition
-	for _, svc := range serviceMap {
-		// Check if there is a decommission in progress
-		if _, ok := svc.Labels[naming.DecommissionedLabel]; ok {
-			// Add MemberLeaving Condition to rack status
-			controllerhelpers.SetRackCondition(status, scyllav1.RackConditionTypeMemberLeaving)
-			// Sanity check. Only the last member should be decommissioning.
-			index, err := naming.IndexFromName(svc.Name)
-			if err != nil {
-				klog.ErrorS(err, "Can't determine service index from its name", "Service", klog.KObj(svc))
-				continue
-			}
-			if index != status.Members-1 {
-				klog.Errorf("only last member of each rack should be decommissioning, but %d-th member of %s found decommissioning while rack had %d members", index, rackName, status.Members)
-				continue
-			}
-		}
-	}
-
-	return status
-}
-
-func updateAggregatedStatusFields(status *scyllav1.ScyllaClusterStatus) {
-	status.Members = pointer.Ptr(int32(0))
-	status.ReadyMembers = pointer.Ptr(int32(0))
-	status.AvailableMembers = pointer.Ptr(int32(0))
-	status.RackCount = pointer.Ptr(int32(len(status.Racks)))
-
-	for rackName := range status.Racks {
-		rackStatus := status.Racks[rackName]
-
-		*status.Members += rackStatus.Members
-		*status.ReadyMembers += rackStatus.ReadyMembers
-		*status.AvailableMembers += *rackStatus.AvailableMembers
-	}
-}
-
-// calculateStatus calculates the ScyllaCluster status.
-// This function should always succeed. Do not return an error.
-// If a particular object can be missing, it should be reflected in the value itself, like "Unknown" or "".
-func (scc *Controller) calculateStatus(sc *scyllav1.ScyllaCluster, statefulSetMap map[string]*appsv1.StatefulSet, serviceMap map[string]*corev1.Service) *scyllav1.ScyllaClusterStatus {
+func (scmc *Controller) calculateStatus(sc *scyllav1.ScyllaCluster, sdcs map[string]*scyllav1alpha1.ScyllaDBDatacenter, configMaps []*corev1.ConfigMap, services []*corev1.Service) scyllav1.ScyllaClusterStatus {
 	status := sc.Status.DeepCopy()
-	status.ObservedGeneration = pointer.Ptr(sc.Generation)
-
-	// Clear the previous rack status.
-	status.Racks = map[string]scyllav1.RackStatus{}
-
-	// Calculate the status for racks.
-	for _, rack := range sc.Spec.Datacenter.Racks {
-		stsName := naming.StatefulSetNameForRack(rack, sc)
-		oldRackStatus := sc.Status.Racks[rack.Name]
-		status.Racks[rack.Name] = *scc.calculateRackStatus(sc, rack.Name, statefulSetMap[stsName], &oldRackStatus, serviceMap)
+	if len(sdcs) == 0 {
+		return *status
 	}
 
-	updateAggregatedStatusFields(status)
+	sdc, ok := sdcs[sc.Name]
+	if !ok {
+		return *status
+	}
 
-	return status
+	migratedStatus := migrateV1Alpha1ScyllaDBDatacenterStatusToV1ScyllaClusterStatus(sdc, configMaps, services)
+
+	return scyllav1.ScyllaClusterStatus{
+		ObservedGeneration: migratedStatus.ObservedGeneration,
+		Racks:              migratedStatus.Racks,
+		Members:            migratedStatus.Members,
+		ReadyMembers:       migratedStatus.ReadyMembers,
+		AvailableMembers:   migratedStatus.AvailableMembers,
+		RackCount:          migratedStatus.RackCount,
+		Upgrade:            migratedStatus.Upgrade,
+		Conditions:         migratedStatus.Conditions,
+		ManagerID:          status.ManagerID,
+		Repairs:            status.Repairs,
+		Backups:            status.Backups,
+	}
+}
+
+func isOwnedByAnyFunc[T kubeinterfaces.ObjectInterface](allowedOwners []types.UID) func(T) bool {
+	return func(obj T) bool {
+		controllerRef := metav1.GetControllerOfNoCopy(obj)
+		if controllerRef == nil {
+			return false
+		}
+
+		return slices.ContainsItem(allowedOwners, controllerRef.UID)
+	}
 }

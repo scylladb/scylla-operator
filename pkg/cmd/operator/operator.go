@@ -13,6 +13,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controller/nodeconfigpod"
 	"github.com/scylladb/scylla-operator/pkg/controller/orphanedpv"
 	"github.com/scylladb/scylla-operator/pkg/controller/scyllacluster"
+	"github.com/scylladb/scylla-operator/pkg/controller/scylladbdatacenter"
 	"github.com/scylladb/scylla-operator/pkg/controller/scylladbmonitoring"
 	"github.com/scylladb/scylla-operator/pkg/controller/scyllaoperatorconfig"
 	"github.com/scylladb/scylla-operator/pkg/crypto"
@@ -254,9 +255,9 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 
 	monitoringInformers := monitoringinformers.NewSharedInformerFactory(o.monitoringClient, resyncPeriod)
 
-	scc, err := scyllacluster.NewController(
+	sdcc, err := scylladbdatacenter.NewController(
 		o.kubeClient,
-		o.scyllaClient.ScyllaV1(),
+		o.scyllaClient.ScyllaV1alpha1(),
 		kubeInformers.Core().V1().Pods(),
 		kubeInformers.Core().V1().Services(),
 		kubeInformers.Core().V1().Secrets(),
@@ -267,10 +268,29 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		kubeInformers.Policy().V1().PodDisruptionBudgets(),
 		kubeInformers.Networking().V1().Ingresses(),
 		kubeInformers.Batch().V1().Jobs(),
-		scyllaInformers.Scylla().V1().ScyllaClusters(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
 		o.OperatorImage,
 		o.CQLSIngressPort,
 		rsaKeyGenerator,
+	)
+	if err != nil {
+		return fmt.Errorf("can't create scylladbdatacenter controller: %w", err)
+	}
+
+	scc, err := scyllacluster.NewController(
+		o.kubeClient,
+		o.scyllaClient,
+		kubeInformers.Core().V1().Services(),
+		kubeInformers.Core().V1().Secrets(),
+		kubeInformers.Core().V1().ConfigMaps(),
+		kubeInformers.Core().V1().ServiceAccounts(),
+		kubeInformers.Rbac().V1().RoleBindings(),
+		kubeInformers.Apps().V1().StatefulSets(),
+		kubeInformers.Policy().V1().PodDisruptionBudgets(),
+		kubeInformers.Networking().V1().Ingresses(),
+		kubeInformers.Batch().V1().Jobs(),
+		scyllaInformers.Scylla().V1().ScyllaClusters(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
 	)
 	if err != nil {
 		return fmt.Errorf("can't create scyllacluster controller: %w", err)
@@ -281,7 +301,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		kubeInformers.Core().V1().PersistentVolumes(),
 		kubeInformers.Core().V1().PersistentVolumeClaims(),
 		kubeInformers.Core().V1().Nodes(),
-		scyllaInformers.Scylla().V1().ScyllaClusters(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
 	)
 	if err != nil {
 		return fmt.Errorf("can't create orphanpv controller: %w", err)
@@ -381,6 +401,12 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 	go func() {
 		defer wg.Done()
 		monitoringInformers.Start(ctx.Done())
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		sdcc.Run(ctx, o.ConcurrentSyncs)
 	}()
 
 	wg.Add(1)

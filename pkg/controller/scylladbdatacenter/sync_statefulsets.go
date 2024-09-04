@@ -1,4 +1,4 @@
-package scyllacluster
+package scylladbdatacenter
 
 import (
 	"context"
@@ -8,9 +8,10 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -18,7 +19,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/pkg/util/hash"
 	"github.com/scylladb/scylla-operator/pkg/util/parallel"
-	"github.com/scylladb/scylla-operator/pkg/util/slices"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -32,26 +32,17 @@ import (
 	"k8s.io/klog/v2"
 )
 
-type UpgradePhase string
-
-const (
-	PreHooksUpgradePhase    UpgradePhase = "PreHooks"
-	RolloutInitUpgradePhase UpgradePhase = "RolloutInit"
-	RolloutRunUpgradePhase  UpgradePhase = "RolloutRun"
-	PostHooksUpgradePhase   UpgradePhase = "PostHooks"
-)
-
 var systemKeyspaces = []string{"system", "system_schema"}
 
 func snapshotTag(prefix string, t time.Time) string {
 	return fmt.Sprintf("so_%s_%sUTC", prefix, t.UTC().Format(time.RFC3339))
 }
 
-func (scc *Controller) makeRacks(sc *scyllav1.ScyllaCluster, statefulSets map[string]*appsv1.StatefulSet, inputsHash string) ([]*appsv1.StatefulSet, error) {
-	sets := make([]*appsv1.StatefulSet, 0, len(sc.Spec.Datacenter.Racks))
-	for i, rack := range sc.Spec.Datacenter.Racks {
-		oldSts := statefulSets[naming.StatefulSetNameForRack(rack, sc)]
-		sts, err := StatefulSetForRack(rack, sc, oldSts, scc.operatorImage, i, inputsHash)
+func (sdcc *Controller) makeRacks(sdc *scyllav1alpha1.ScyllaDBDatacenter, statefulSets map[string]*appsv1.StatefulSet, inputsHash string) ([]*appsv1.StatefulSet, error) {
+	sets := make([]*appsv1.StatefulSet, 0, len(sdc.Spec.Racks))
+	for i, rack := range sdc.Spec.Racks {
+		oldSts := statefulSets[naming.StatefulSetNameForRack(rack, sdc)]
+		sts, err := StatefulSetForRack(rack, sdc, oldSts, sdcc.operatorImage, i, inputsHash)
 		if err != nil {
 			return nil, err
 		}
@@ -61,11 +52,11 @@ func (scc *Controller) makeRacks(sc *scyllav1.ScyllaCluster, statefulSets map[st
 	return sets, nil
 }
 
-func (scc *Controller) getScyllaManagerAgentToken(ctx context.Context, sc *scyllav1.ScyllaCluster) (string, error) {
-	secretName := naming.AgentAuthTokenSecretName(sc.Name)
-	secret, err := scc.secretLister.Secrets(sc.Namespace).Get(secretName)
+func (sdcc *Controller) getScyllaManagerAgentToken(ctx context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter) (string, error) {
+	secretName := naming.AgentAuthTokenSecretName(sdc)
+	secret, err := sdcc.secretLister.Secrets(sdc.Namespace).Get(secretName)
 	if err != nil {
-		return "", fmt.Errorf("can't get manager agent auth secret %s/%s: %w", sc.Namespace, secretName, err)
+		return "", fmt.Errorf("can't get manager agent auth secret %s/%s: %w", sdc.Namespace, secretName, err)
 	}
 
 	token, err := helpers.GetAgentAuthTokenFromSecret(secret)
@@ -76,8 +67,8 @@ func (scc *Controller) getScyllaManagerAgentToken(ctx context.Context, sc *scyll
 	return token, nil
 }
 
-func (scc *Controller) getScyllaClient(ctx context.Context, sc *scyllav1.ScyllaCluster, hosts []string) (*scyllaclient.Client, error) {
-	managerAgentAuthToken, err := scc.getScyllaManagerAgentToken(ctx, sc)
+func (sdcc *Controller) getScyllaClient(ctx context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter, hosts []string) (*scyllaclient.Client, error) {
+	managerAgentAuthToken, err := sdcc.getScyllaManagerAgentToken(ctx, sdc)
 	if err != nil {
 		return nil, fmt.Errorf("can't get manager agent auth token: %w", err)
 	}
@@ -90,7 +81,7 @@ func (scc *Controller) getScyllaClient(ctx context.Context, sc *scyllav1.ScyllaC
 	return client, nil
 }
 
-func (scc *Controller) backupKeyspaces(ctx context.Context, scyllaClient *scyllaclient.Client, hosts, keyspaces []string, snapshotTag string) error {
+func (sdcc *Controller) backupKeyspaces(ctx context.Context, scyllaClient *scyllaclient.Client, hosts, keyspaces []string, snapshotTag string) error {
 	return parallel.ForEach(len(hosts), func(i int) error {
 		host := hosts[i]
 
@@ -99,7 +90,7 @@ func (scc *Controller) backupKeyspaces(ctx context.Context, scyllaClient *scylla
 			return fmt.Errorf("can't list snapshots on host %q: %w", host, err)
 		}
 
-		if slices.ContainsString(snapshotTag, snapshots) {
+		if slices.ContainsItem(snapshots, snapshotTag) {
 			return nil
 		}
 
@@ -114,7 +105,7 @@ func (scc *Controller) backupKeyspaces(ctx context.Context, scyllaClient *scylla
 	})
 }
 
-func (scc *Controller) removeSnapshot(ctx context.Context, scyllaClient *scyllaclient.Client, hosts, snapshotTags []string) error {
+func (sdcc *Controller) removeSnapshot(ctx context.Context, scyllaClient *scyllaclient.Client, hosts, snapshotTags []string) error {
 	return parallel.ForEach(len(hosts), func(i int) error {
 		host := hosts[i]
 
@@ -141,62 +132,62 @@ func (scc *Controller) removeSnapshot(ctx context.Context, scyllaClient *scyllac
 
 // beforeUpgrade runs hooks before a cluster upgrade starts.
 // It returns true if the action is done, false if the caller should repeat later.
-func (scc *Controller) beforeUpgrade(ctx context.Context, sc *scyllav1.ScyllaCluster, services map[string]*corev1.Service) (bool, error) {
-	klog.V(2).InfoS("Running pre-upgrade hook", "ScyllaCluster", klog.KObj(sc))
-	defer klog.V(2).InfoS("Finished running pre-upgrade hook", "ScyllaCluster", klog.KObj(sc))
+func (sdcc *Controller) beforeUpgrade(ctx context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev1.Service, upgradeContext *internalapi.DatacenterUpgradeContext) (bool, error) {
+	klog.V(2).InfoS("Running pre-upgrade hook", "ScyllaDBDatacenter", klog.KObj(sdc))
+	defer klog.V(2).InfoS("Finished running pre-upgrade hook", "ScyllaDBDatacenter", klog.KObj(sdc))
 
-	hosts, err := controllerhelpers.GetRequiredScyllaHosts(sc, services, scc.podLister)
+	hosts, err := controllerhelpers.GetRequiredScyllaHosts(sdc, services, sdcc.podLister)
 	if err != nil {
 		return true, err
 	}
 
-	scyllaClient, err := scc.getScyllaClient(ctx, sc, hosts)
+	scyllaClient, err := sdcc.getScyllaClient(ctx, sdc, hosts)
 	if err != nil {
 		return true, err
 	}
 	defer scyllaClient.Close()
 
-	klog.V(4).InfoS("Checking schema agreement", "ScyllaCluster", klog.KObj(sc))
+	klog.V(4).InfoS("Checking schema agreement", "ScyllaDBDatacenter", klog.KObj(sdc))
 	hasSchemaAgreement, err := scyllaClient.HasSchemaAgreement(ctx)
 	if err != nil {
 		return true, fmt.Errorf("awaiting schema agreement: %w", err)
 	}
 
 	if !hasSchemaAgreement {
-		klog.V(4).InfoS("Schema is not agreed yet, will retry.", "ScyllaCluster", klog.KObj(sc))
+		klog.V(4).InfoS("Schema is not agreed yet, will retry.", "ScyllaDBDatacenter", klog.KObj(sdc))
 		return false, nil
 	}
-	klog.V(4).InfoS("Schema agreed", "ScyllaCluster", klog.KObj(sc))
+	klog.V(4).InfoS("Schema agreed", "ScyllaDBDatacenter", klog.KObj(sdc))
 
 	// Snapshot system tables.
 
-	klog.V(4).InfoS("Backing up system keyspaces", "ScyllaCluster", klog.KObj(sc))
-	err = scc.backupKeyspaces(ctx, scyllaClient, hosts, systemKeyspaces, sc.Status.Upgrade.SystemSnapshotTag)
+	klog.V(4).InfoS("Backing up system keyspaces", "ScyllaDBDatacenter", klog.KObj(sdc))
+	err = sdcc.backupKeyspaces(ctx, scyllaClient, hosts, systemKeyspaces, upgradeContext.SystemSnapshotTag)
 	if err != nil {
 		return true, err
 	}
-	klog.V(4).InfoS("Backed up system keyspaces", "ScyllaCluster", klog.KObj(sc))
+	klog.V(4).InfoS("Backed up system keyspaces", "ScyllaDBDatacenter", klog.KObj(sdc))
 
 	return true, nil
 }
 
-func (scc *Controller) afterUpgrade(ctx context.Context, sc *scyllav1.ScyllaCluster, services map[string]*corev1.Service) error {
-	klog.V(2).InfoS("Running post-upgrade hook", "ScyllaCluster", klog.KObj(sc))
-	defer klog.V(2).InfoS("Finished running post-upgrade hook", "ScyllaCluster", klog.KObj(sc))
+func (sdcc *Controller) afterUpgrade(ctx context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev1.Service, upgradeContext *internalapi.DatacenterUpgradeContext) error {
+	klog.V(2).InfoS("Running post-upgrade hook", "ScyllaDBDatacenter", klog.KObj(sdc))
+	defer klog.V(2).InfoS("Finished running post-upgrade hook", "ScyllaDBDatacenter", klog.KObj(sdc))
 
-	hosts, err := controllerhelpers.GetRequiredScyllaHosts(sc, services, scc.podLister)
+	hosts, err := controllerhelpers.GetRequiredScyllaHosts(sdc, services, sdcc.podLister)
 	if err != nil {
 		return err
 	}
 
-	scyllaClient, err := scc.getScyllaClient(ctx, sc, hosts)
+	scyllaClient, err := sdcc.getScyllaClient(ctx, sdc, hosts)
 	if err != nil {
 		return err
 	}
 	defer scyllaClient.Close()
 
 	// Clear system backup.
-	err = scc.removeSnapshot(ctx, scyllaClient, hosts, []string{sc.Status.Upgrade.SystemSnapshotTag})
+	err = sdcc.removeSnapshot(ctx, scyllaClient, hosts, []string{upgradeContext.SystemSnapshotTag})
 	if err != nil {
 		return err
 	}
@@ -206,19 +197,19 @@ func (scc *Controller) afterUpgrade(ctx context.Context, sc *scyllav1.ScyllaClus
 
 // beforeNodeUpgrade runs hooks before a node upgrade.
 // It returns true if the action is done, false if the caller should repeat later.
-func (scc *Controller) beforeNodeUpgrade(ctx context.Context, sc *scyllav1.ScyllaCluster, sts *appsv1.StatefulSet, ordinal int32, services map[string]*corev1.Service) (bool, error) {
-	klog.V(2).InfoS("Running node pre-upgrade hook", "ScyllaCluster", klog.KObj(sc))
-	defer klog.V(2).InfoS("Finished running node pre-upgrade hook", "ScyllaCluster", klog.KObj(sc))
+func (sdcc *Controller) beforeNodeUpgrade(ctx context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter, sts *appsv1.StatefulSet, ordinal int32, services map[string]*corev1.Service, upgradeContext *internalapi.DatacenterUpgradeContext) (bool, error) {
+	klog.V(2).InfoS("Running node pre-upgrade hook", "ScyllaDBDatacenter", klog.KObj(sdc))
+	defer klog.V(2).InfoS("Finished running node pre-upgrade hook", "ScyllaDBDatacenter", klog.KObj(sdc))
 
 	// Make sure node is marked as under maintenance so liveness checks won't fail during drain.
 	svcName := fmt.Sprintf("%s-%d", sts.Name, ordinal)
 	svc, ok := services[svcName]
 	if !ok {
-		return true, fmt.Errorf("missing service %s/%s", sc.Namespace, svcName)
+		return true, fmt.Errorf("missing service %s/%s", sdc.Namespace, svcName)
 	}
 
 	// Enable maintenance mode to make sure liveness checks won't fail.
-	_, err := scc.kubeClient.CoreV1().Services(svc.Namespace).Patch(
+	_, err := sdcc.kubeClient.CoreV1().Services(svc.Namespace).Patch(
 		ctx,
 		svc.Name,
 		types.StrategicMergePatchType,
@@ -231,17 +222,17 @@ func (scc *Controller) beforeNodeUpgrade(ctx context.Context, sc *scyllav1.Scyll
 
 	// Drain the node.
 	podName := naming.PodNameFromService(svc)
-	pod, err := scc.podLister.Pods(sc.Namespace).Get(podName)
+	pod, err := sdcc.podLister.Pods(sdc.Namespace).Get(podName)
 	if err != nil {
-		return false, fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sc.Namespace, podName), err)
+		return false, fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sdc.Namespace, podName), err)
 	}
 
-	host, err := controllerhelpers.GetScyllaHost(sc, svc, pod)
+	host, err := controllerhelpers.GetScyllaHost(sdc, svc, pod)
 	if err != nil {
 		return true, err
 	}
 
-	scyllaClient, err := scc.getScyllaClient(ctx, sc, []string{host})
+	scyllaClient, err := sdcc.getScyllaClient(ctx, sdc, []string{host})
 	if err != nil {
 		return true, err
 	}
@@ -253,17 +244,17 @@ func (scc *Controller) beforeNodeUpgrade(ctx context.Context, sc *scyllav1.Scyll
 	}
 
 	if om.IsDraining() {
-		klog.V(4).InfoS("Waiting for scylla node to finish draining", "ScyllaCluster", klog.KObj(sc), "Host", host)
+		klog.V(4).InfoS("Waiting for scylla node to finish draining", "ScyllaDBDatacenter", klog.KObj(sdc), "Host", host)
 		return false, nil
 	}
 
 	if !om.IsDrained() {
-		klog.V(4).InfoS("Draining scylla node", "ScyllaCluster", klog.KObj(sc), "Host", host)
+		klog.V(4).InfoS("Draining scylla node", "ScyllaDBDatacenter", klog.KObj(sdc), "Host", host)
 		err = scyllaClient.Drain(ctx, host)
 		if err != nil {
 			return true, err
 		}
-		klog.V(4).InfoS("Drained scylla node", "ScyllaCluster", klog.KObj(sc), "Host", host)
+		klog.V(4).InfoS("Drained scylla node", "ScyllaDBDatacenter", klog.KObj(sdc), "Host", host)
 	}
 
 	// Create data backup.
@@ -275,15 +266,15 @@ func (scc *Controller) beforeNodeUpgrade(ctx context.Context, sc *scyllav1.Scyll
 
 	keyspaceSet := setsutil.NewString(allKeyspaces...)
 	keyspaceSet.Delete(systemKeyspaces...)
-	klog.V(4).InfoS("Backing up data keyspaces", "ScyllaCluster", klog.KObj(sc), "Host", host)
-	err = scc.backupKeyspaces(ctx, scyllaClient, []string{host}, keyspaceSet.List(), sc.Status.Upgrade.DataSnapshotTag)
+	klog.V(4).InfoS("Backing up data keyspaces", "ScyllaDBDatacenter", klog.KObj(sdc), "Host", host)
+	err = sdcc.backupKeyspaces(ctx, scyllaClient, []string{host}, keyspaceSet.List(), upgradeContext.DataSnapshotTag)
 	if err != nil {
 		return true, err
 	}
-	klog.V(4).InfoS("Backed up data keyspaces", "ScyllaCluster", klog.KObj(sc), "Host", host)
+	klog.V(4).InfoS("Backed up data keyspaces", "ScyllaDBDatacenter", klog.KObj(sdc), "Host", host)
 
 	// Disable maintenance mode.
-	_, err = scc.kubeClient.CoreV1().Services(svc.Namespace).Patch(
+	_, err = sdcc.kubeClient.CoreV1().Services(svc.Namespace).Patch(
 		ctx,
 		svc.Name,
 		types.StrategicMergePatchType,
@@ -299,47 +290,47 @@ func (scc *Controller) beforeNodeUpgrade(ctx context.Context, sc *scyllav1.Scyll
 	// https://github.com/kubernetes/kubernetes/issues/67250
 	// Kubernetes can't evict pods when DesiredHealthy == 0 and it's already down, so we need to use DELETE
 	// to succeed even when having just one replica.
-	klog.V(2).InfoS("Deleting Pod", "ScyllaCluster", klog.KObj(sc), "Pod", naming.ManualRef(sc.Namespace, podName))
-	err = scc.kubeClient.CoreV1().Pods(sc.Namespace).Delete(ctx, podName, metav1.DeleteOptions{})
+	klog.V(2).InfoS("Deleting Pod", "ScyllaDBDatacenter", klog.KObj(sdc), "Pod", naming.ManualRef(sdc.Namespace, podName))
+	err = sdcc.kubeClient.CoreV1().Pods(sdc.Namespace).Delete(ctx, podName, metav1.DeleteOptions{})
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return true, fmt.Errorf("can't delete pod %q: %w", naming.ManualRef(sc.Namespace, podName), err)
+			return true, fmt.Errorf("can't delete pod %q: %w", naming.ManualRef(sdc.Namespace, podName), err)
 		}
 
-		klog.V(3).InfoS("Pod already deleted", "ScyllaCluster", klog.KObj(sc), "Pod", naming.ManualRef(sc.Namespace, podName))
+		klog.V(3).InfoS("Pod already deleted", "ScyllaDBDatacenter", klog.KObj(sdc), "Pod", naming.ManualRef(sdc.Namespace, podName))
 	} else {
-		klog.V(2).InfoS("Pod deleted", "ScyllaCluster", klog.KObj(sc), "Pod", naming.ManualRef(sc.Namespace, podName))
+		klog.V(2).InfoS("Pod deleted", "ScyllaDBDatacenter", klog.KObj(sdc), "Pod", naming.ManualRef(sdc.Namespace, podName))
 	}
 
 	return true, nil
 }
 
-func (scc *Controller) afterNodeUpgrade(ctx context.Context, sc *scyllav1.ScyllaCluster, sts *appsv1.StatefulSet, ordinal int32, services map[string]*corev1.Service) error {
+func (sdcc *Controller) afterNodeUpgrade(ctx context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter, sts *appsv1.StatefulSet, ordinal int32, services map[string]*corev1.Service, upgradeContext *internalapi.DatacenterUpgradeContext) error {
 	svcName := fmt.Sprintf("%s-%d", sts.Name, ordinal)
 	svc, ok := services[svcName]
 	if !ok {
-		return fmt.Errorf("missing service %q", naming.ManualRef(sc.Namespace, svcName))
+		return fmt.Errorf("missing service %q", naming.ManualRef(sdc.Namespace, svcName))
 	}
 
 	podName := naming.PodNameFromService(svc)
-	pod, err := scc.podLister.Pods(sc.Namespace).Get(podName)
+	pod, err := sdcc.podLister.Pods(sdc.Namespace).Get(podName)
 	if err != nil {
-		return fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sc.Namespace, podName), err)
+		return fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sdc.Namespace, podName), err)
 	}
 
-	host, err := controllerhelpers.GetScyllaHost(sc, svc, pod)
+	host, err := controllerhelpers.GetScyllaHost(sdc, svc, pod)
 	if err != nil {
 		return err
 	}
 
-	scyllaClient, err := scc.getScyllaClient(ctx, sc, []string{host})
+	scyllaClient, err := sdcc.getScyllaClient(ctx, sdc, []string{host})
 	if err != nil {
 		return err
 	}
 	defer scyllaClient.Close()
 
 	// Clear data backup.
-	err = scc.removeSnapshot(ctx, scyllaClient, []string{host}, []string{sc.Status.Upgrade.DataSnapshotTag})
+	err = sdcc.removeSnapshot(ctx, scyllaClient, []string{host}, []string{upgradeContext.DataSnapshotTag})
 	if err != nil {
 		return err
 	}
@@ -347,10 +338,10 @@ func (scc *Controller) afterNodeUpgrade(ctx context.Context, sc *scyllav1.Scylla
 	return nil
 }
 
-func (scc *Controller) pruneStatefulSets(
+func (sdcc *Controller) pruneStatefulSets(
 	ctx context.Context,
-	sc *scyllav1.ScyllaCluster,
-	status *scyllav1.ScyllaClusterStatus,
+	sdc *scyllav1alpha1.ScyllaDBDatacenter,
+	status *scyllav1alpha1.ScyllaDBDatacenterStatus,
 	requiredStatefulSets []*appsv1.StatefulSet,
 	statefulSets map[string]*appsv1.StatefulSet,
 ) ([]metav1.Condition, error) {
@@ -374,8 +365,8 @@ func (scc *Controller) pruneStatefulSets(
 		// TODO: Decommission the rack before removal.
 
 		propagationPolicy := metav1.DeletePropagationBackground
-		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, sts, "delete", sc.Generation)
-		err := scc.kubeClient.AppsV1().StatefulSets(sts.Namespace).Delete(ctx, sts.Name, metav1.DeleteOptions{
+		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, sts, "delete", sdc.Generation)
+		err := sdcc.kubeClient.AppsV1().StatefulSets(sts.Namespace).Delete(ctx, sts.Name, metav1.DeleteOptions{
 			Preconditions: &metav1.Preconditions{
 				UID: &sts.UID,
 			},
@@ -394,17 +385,19 @@ func (scc *Controller) pruneStatefulSets(
 			continue
 		}
 
-		delete(status.Racks, rackName)
+		status.Racks = slices.FilterOut(status.Racks, func(rackStatus scyllav1alpha1.RackStatus) bool {
+			return rackStatus.Name == rackName
+		})
 	}
 	return progressingConditions, utilerrors.NewAggregate(errs)
 }
 
 // createMissingStatefulSets creates missing StatefulSets.
 // It return true if done and an error.
-func (scc *Controller) createMissingStatefulSets(
+func (sdcc *Controller) createMissingStatefulSets(
 	ctx context.Context,
-	sc *scyllav1.ScyllaCluster,
-	status *scyllav1.ScyllaClusterStatus,
+	sdc *scyllav1alpha1.ScyllaDBDatacenter,
+	status *scyllav1alpha1.ScyllaDBDatacenterStatus,
 	requiredStatefulSets []*appsv1.StatefulSet,
 	statefulSets map[string]*appsv1.StatefulSet,
 	services map[string]*corev1.Service,
@@ -419,13 +412,13 @@ func (scc *Controller) createMissingStatefulSets(
 			klog.V(2).InfoS("Creating missing StatefulSet", "StatefulSet", klog.KObj(req))
 			var changed bool
 			var err error
-			sts, changed, err = resourceapply.ApplyStatefulSet(ctx, scc.kubeClient.AppsV1(), scc.statefulSetLister, scc.eventRecorder, req, resourceapply.ApplyOptions{})
+			sts, changed, err = resourceapply.ApplyStatefulSet(ctx, sdcc.kubeClient.AppsV1(), sdcc.statefulSetLister, sdcc.eventRecorder, req, resourceapply.ApplyOptions{})
 			if err != nil {
 				errs = append(errs, fmt.Errorf("can't create missing statefulset: %w", err))
 				continue
 			}
 			if changed {
-				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, req, "apply", sc.Generation)
+				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, req, "apply", sdc.Generation)
 
 				rackName, ok := sts.Labels[naming.RackNameLabel]
 				if !ok {
@@ -436,8 +429,16 @@ func (scc *Controller) createMissingStatefulSets(
 					)
 					continue
 				}
-				oldRackStatus := sc.Status.Racks[rackName]
-				status.Racks[rackName] = *scc.calculateRackStatus(sc, rackName, sts, &oldRackStatus, services)
+
+				updatedRackStatus := *sdcc.calculateRackStatus(sdc, sts)
+				_, idx, ok := slices.Find(status.Racks, func(rackStatus scyllav1alpha1.RackStatus) bool {
+					return rackStatus.Name == rackName
+				})
+				if ok {
+					status.Racks[idx] = updatedRackStatus
+				} else {
+					status.Racks = append(status.Racks, updatedRackStatus)
+				}
 			}
 		} else {
 			// When we decommission a member there is a pod left that's not ready until we scale.
@@ -454,13 +455,13 @@ func (scc *Controller) createMissingStatefulSets(
 		}
 
 		if !rolledOut {
-			klog.V(4).InfoS("Waiting for StatefulSet rollout", "ScyllaCluster", klog.KObj(sc), "StatefulSet", klog.KObj(sts))
+			klog.V(4).InfoS("Waiting for StatefulSet rollout", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
 			progressingConditions = append(progressingConditions, metav1.Condition{
 				Type:               statefulSetControllerProgressingCondition,
 				Status:             metav1.ConditionTrue,
 				Reason:             "WaitingForStatefulSetRollout",
 				Message:            fmt.Sprintf("Waiting for StatefulSet %q to roll out.", naming.ObjRef(req)),
-				ObservedGeneration: sc.Generation,
+				ObservedGeneration: sdc.Generation,
 			})
 			return progressingConditions, nil
 		}
@@ -469,11 +470,11 @@ func (scc *Controller) createMissingStatefulSets(
 	return progressingConditions, utilerrors.NewAggregate(errs)
 }
 
-func (scc *Controller) syncStatefulSets(
+func (sdcc *Controller) syncStatefulSets(
 	ctx context.Context,
 	key string,
-	sc *scyllav1.ScyllaCluster,
-	status *scyllav1.ScyllaClusterStatus,
+	sdc *scyllav1alpha1.ScyllaDBDatacenter,
+	status *scyllav1alpha1.ScyllaDBDatacenterStatus,
 	statefulSets map[string]*appsv1.StatefulSet,
 	services map[string]*corev1.Service,
 	configMaps map[string]*corev1.ConfigMap,
@@ -481,16 +482,16 @@ func (scc *Controller) syncStatefulSets(
 	var err error
 	var progressingConditions []metav1.Condition
 
-	managedScyllaDBConfigCMName := naming.GetScyllaDBManagedConfigCMName(sc.Name)
+	managedScyllaDBConfigCMName := naming.GetScyllaDBManagedConfigCMName(sdc.Name)
 	managedScyllaDBConfigCM, found := configMaps[managedScyllaDBConfigCMName]
 	if !found {
-		klog.V(2).InfoS("Waiting for managed config map", "ScyllaCluster", klog.KObj(sc), "ConfigMapName", managedScyllaDBConfigCMName)
+		klog.V(2).InfoS("Waiting for managed config map", "ScyllaDBDatacenter", klog.KObj(sdc), "ConfigMapName", managedScyllaDBConfigCMName)
 		progressingConditions = append(progressingConditions, metav1.Condition{
 			Type:               statefulSetControllerProgressingCondition,
 			Status:             metav1.ConditionTrue,
 			Reason:             "WaitingForManagedConfig",
 			Message:            fmt.Sprintf("Waiting for ConfigMap %q to be created.", managedScyllaDBConfigCMName),
-			ObservedGeneration: sc.Generation,
+			ObservedGeneration: sdc.Generation,
 		})
 		return progressingConditions, nil
 	}
@@ -500,10 +501,10 @@ func (scc *Controller) syncStatefulSets(
 		return progressingConditions, fmt.Errorf("can't hash inputs: %w", err)
 	}
 
-	requiredStatefulSets, err := scc.makeRacks(sc, statefulSets, inputsHash)
+	requiredStatefulSets, err := sdcc.makeRacks(sdc, statefulSets, inputsHash)
 	if err != nil {
-		scc.eventRecorder.Eventf(
-			sc,
+		sdcc.eventRecorder.Eventf(
+			sdc,
 			corev1.EventTypeWarning,
 			"InvalidRack",
 			fmt.Sprintf("Failed to make rack: %v", err),
@@ -513,7 +514,7 @@ func (scc *Controller) syncStatefulSets(
 
 	// Delete any excessive StatefulSets.
 	// Delete has to be the first action to avoid getting stuck on quota.
-	pruneProgressingConditions, err := scc.pruneStatefulSets(ctx, sc, status, requiredStatefulSets, statefulSets)
+	pruneProgressingConditions, err := sdcc.pruneStatefulSets(ctx, sdc, status, requiredStatefulSets, statefulSets)
 	progressingConditions = append(progressingConditions, pruneProgressingConditions...)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't delete StatefulSet(s): %w", err)
@@ -521,7 +522,7 @@ func (scc *Controller) syncStatefulSets(
 
 	// Before any update, make sure all StatefulSets are present.
 	// Create any that are missing.
-	createProgressingConditions, err := scc.createMissingStatefulSets(ctx, sc, status, requiredStatefulSets, statefulSets, services)
+	createProgressingConditions, err := sdcc.createMissingStatefulSets(ctx, sdc, status, requiredStatefulSets, statefulSets, services)
 	progressingConditions = append(progressingConditions, createProgressingConditions...)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't create StatefulSet(s): %w", err)
@@ -565,17 +566,8 @@ func (scc *Controller) syncStatefulSets(
 					Status:             metav1.ConditionTrue,
 					Reason:             "WaitingForRackServiceDecommission",
 					Message:            fmt.Sprintf("Waiting for rack service %q to decommission.", naming.ObjRef(svc)),
-					ObservedGeneration: sc.Generation,
+					ObservedGeneration: sdc.Generation,
 				})
-
-				rackName, ok := sts.Labels[naming.RackNameLabel]
-				if ok && len(rackName) != 0 {
-					rackStatus := status.Racks[rackName]
-					controllerhelpers.SetRackCondition(&rackStatus, scyllav1.RackConditionTypeMemberDecommissioning)
-					status.Racks[rackName] = rackStatus
-				} else {
-					klog.Warningf("Can't set decommissioning condition sts %s/%s because it's missing rack label.", sts.Namespace, sts.Name)
-				}
 
 				return progressingConditions, nil
 			}
@@ -600,7 +592,7 @@ func (scc *Controller) syncStatefulSets(
 							Status:             metav1.ConditionTrue,
 							Reason:             "WaitingForServiceState",
 							Message:            fmt.Sprintf("Statusfulset %q is waiting for Service %q to have required annotation %q before scaling", naming.ObjRef(req), naming.ObjRef(svc), requiredAnnotation),
-							ObservedGeneration: sc.Generation,
+							ObservedGeneration: sdc.Generation,
 						})
 					}
 				}
@@ -618,13 +610,13 @@ func (scc *Controller) syncStatefulSets(
 			lastSvcName := fmt.Sprintf("%s-%d", sts.Name, *sts.Spec.Replicas-1)
 			lastSvc, ok := rackServices[lastSvcName]
 			if !ok {
-				klog.V(4).InfoS("Missing service", "ScyllaCluster", klog.KObj(sc), "ServiceName", lastSvcName)
+				klog.V(4).InfoS("Missing service", "ScyllaDBDatacenter", klog.KObj(sdc), "ServiceName", lastSvcName)
 				progressingConditions = append(progressingConditions, metav1.Condition{
 					Type:               statefulSetControllerProgressingCondition,
 					Status:             metav1.ConditionTrue,
 					Reason:             "WaitingForMissingService",
 					Message:            fmt.Sprintf("Statusfulset %q is waiting for service %q to be created", naming.ObjRef(req), lastSvcName),
-					ObservedGeneration: sc.Generation,
+					ObservedGeneration: sdc.Generation,
 				})
 				// Services are managed in the other loop.
 				// When informers see the new service, will get re-queued.
@@ -637,8 +629,8 @@ func (scc *Controller) syncStatefulSets(
 				// TODO: Move this into syncServices so it reconciles properly. This is edge triggered
 				//  and nothing will reconcile the label if something goes wrong or the flow changes.
 				lastSvcCopy.Labels[naming.DecommissionedLabel] = naming.LabelValueFalse
-				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, lastSvcCopy, "update", sc.Generation)
-				_, err := scc.kubeClient.CoreV1().Services(lastSvcCopy.Namespace).Update(ctx, lastSvcCopy, metav1.UpdateOptions{})
+				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, lastSvcCopy, "update", sdc.Generation)
+				_, err := sdcc.kubeClient.CoreV1().Services(lastSvcCopy.Namespace).Update(ctx, lastSvcCopy, metav1.UpdateOptions{})
 				if err != nil {
 					return progressingConditions, err
 				}
@@ -646,9 +638,9 @@ func (scc *Controller) syncStatefulSets(
 			}
 		}
 
-		klog.V(2).InfoS("Scaling StatefulSet", "ScyllaCluster", klog.KObj(sc), "StatefulSet", klog.KObj(sts), "CurrentReplicas", *sts.Spec.Replicas, "UpdatedReplicas", scale.Spec.Replicas)
-		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, scale, "updateScale", sc.Generation)
-		_, err = scc.kubeClient.AppsV1().StatefulSets(sts.Namespace).UpdateScale(ctx, sts.Name, scale, metav1.UpdateOptions{})
+		klog.V(2).InfoS("Scaling StatefulSet", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts), "CurrentReplicas", *sts.Spec.Replicas, "UpdatedReplicas", scale.Spec.Replicas)
+		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, scale, "updateScale", sdc.Generation)
+		_, err = sdcc.kubeClient.AppsV1().StatefulSets(sts.Namespace).UpdateScale(ctx, sts.Name, scale, metav1.UpdateOptions{})
 		if err != nil {
 			return progressingConditions, fmt.Errorf("can't update scale: %w", err)
 		}
@@ -667,26 +659,32 @@ func (scc *Controller) syncStatefulSets(
 		}
 
 		if !rolledOut {
-			klog.V(4).InfoS("Waiting for StatefulSet rollout", "ScyllaCluster", klog.KObj(sc), "StatefulSet", klog.KObj(sts))
+			klog.V(4).InfoS("Waiting for StatefulSet rollout", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
 			progressingConditions = append(progressingConditions, metav1.Condition{
 				Type:               statefulSetControllerProgressingCondition,
 				Status:             metav1.ConditionTrue,
 				Reason:             "WaitingForStatefulSetRollout",
 				Message:            fmt.Sprintf("Waiting for StatefulSet %q to roll out.", naming.ObjRef(req)),
-				ObservedGeneration: sc.Generation,
+				ObservedGeneration: sdc.Generation,
 			})
 			return progressingConditions, nil
 		}
 	}
 
+	upgradeContextConfigMap, ok := configMaps[naming.UpgradeContextConfigMapName(sdc)]
 	// Run hooks if an upgrade is in progress.
-	if status.Upgrade != nil {
+	if ok {
+		currentUpgradeContext, err := sdcc.decodeUpgradeContext(upgradeContextConfigMap)
+		if err != nil {
+			return progressingConditions, fmt.Errorf("can't decode upgrade context for ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
+		}
+
 		progressingConditions = append(progressingConditions, metav1.Condition{
 			Type:               statefulSetControllerProgressingCondition,
 			Status:             metav1.ConditionTrue,
 			Reason:             "RunningUpgradeHooks",
 			Message:            "Running upgrade hooks",
-			ObservedGeneration: sc.Generation,
+			ObservedGeneration: sdc.Generation,
 		})
 
 		// Isolate the live values in a block to prevent accidental use.
@@ -694,36 +692,53 @@ func (scc *Controller) syncStatefulSets(
 			// We could still see an old status. Although hooks are mandated to be reentrant,
 			// they are pretty expensive to run so it's cheaper to recheck the partition with a live call.
 			// TODO: Remove the live call when the hooks are migrated to run as Jobs.
-			freshSC, err := scc.scyllaClient.ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
+			freshUpgradeContextConfigMap, err := sdcc.kubeClient.CoreV1().ConfigMaps(sdc.Namespace).Get(ctx, naming.UpgradeContextConfigMapName(sdc), metav1.GetOptions{})
 			if err != nil {
-				return progressingConditions, err
+				return progressingConditions, fmt.Errorf("can't get upgrade context ConfigMap %q: %w", naming.UpgradeContextConfigMapName(sdc), err)
 			}
 
-			if freshSC.Status.Upgrade == nil ||
-				freshSC.Status.Upgrade.State != status.Upgrade.State {
+			freshUpgradeContext, err := sdcc.decodeUpgradeContext(freshUpgradeContextConfigMap)
+			if err != nil {
+				return progressingConditions, fmt.Errorf("can't decode upgrade context for ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
+			}
+
+			if freshUpgradeContext.State != currentUpgradeContext.State {
 				// Wait for requeue.
-				klog.V(2).InfoS("Stale upgrade status, waiting for requeue", "ScyllaCluster", sc)
+				klog.V(2).InfoS("Stale upgrade context, waiting for requeue", "ScyllaDBDatacenter", sdc)
 				return progressingConditions, err
 			}
 		}
 
-		klog.V(4).InfoS("Upgrade is in progress", "Phase", status.Upgrade.State)
-		switch status.Upgrade.State {
-		case string(PreHooksUpgradePhase):
+		klog.V(4).InfoS("Upgrade is in progress", "Phase", currentUpgradeContext.State)
+		switch currentUpgradeContext.State {
+		case internalapi.PreHooksUpgradePhase:
 			// TODO: Move the pre-upgrade hook into a Job.
-			done, err := scc.beforeUpgrade(ctx, sc, services)
+			done, err := sdcc.beforeUpgrade(ctx, sdc, services, currentUpgradeContext)
 			if err != nil {
 				return progressingConditions, err
 			}
 			if !done {
-				scc.queue.AddAfter(key, 5*time.Second)
+				sdcc.queue.AddAfter(key, 5*time.Second)
 				return progressingConditions, nil
 			}
 
-			status.Upgrade.State = string(RolloutInitUpgradePhase)
+			currentUpgradeContext.State = internalapi.RolloutInitUpgradePhase
+			cm, err := MakeUpgradeContextConfigMap(sdc, currentUpgradeContext)
+			if err != nil {
+				return progressingConditions, fmt.Errorf("can't make upgrade context ConfigMap: %w", err)
+			}
+
+			cm, changed, err := resourceapply.ApplyConfigMap(ctx, sdcc.kubeClient.CoreV1(), sdcc.configMapLister, sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
+			if changed {
+				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, cm, "apply", sdc.Generation)
+			}
+			if err != nil {
+				return progressingConditions, fmt.Errorf("can't apply upgrade context ConfigMap: %w", err)
+			}
+
 			return progressingConditions, nil
 
-		case string(RolloutInitUpgradePhase):
+		case internalapi.RolloutInitUpgradePhase:
 			// Partition all StatefulSet at once to block changes but no Pod update is done yet.
 			var errs []error
 			anyStsChanged := false
@@ -741,7 +756,7 @@ func (scc *Controller) syncStatefulSets(
 				required.Spec.Replicas = pointer.Ptr(*existing.Spec.Replicas)
 				required.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Ptr(*existing.Spec.Replicas)
 				// Use apply to also update the spec.template
-				updatedSts, changed, err := resourceapply.ApplyStatefulSet(ctx, scc.kubeClient.AppsV1(), scc.statefulSetLister, scc.eventRecorder, required, resourceapply.ApplyOptions{})
+				updatedSts, changed, err := resourceapply.ApplyStatefulSet(ctx, sdcc.kubeClient.AppsV1(), sdcc.statefulSetLister, sdcc.eventRecorder, required, resourceapply.ApplyOptions{})
 				if err != nil {
 					errs = append(errs, fmt.Errorf("can't apply statefulset to set partition: %w", err))
 				}
@@ -758,8 +773,16 @@ func (scc *Controller) syncStatefulSets(
 						)
 						continue
 					}
-					oldRackStatus := sc.Status.Racks[rackName]
-					status.Racks[rackName] = *scc.calculateRackStatus(sc, rackName, updatedSts, &oldRackStatus, services)
+
+					_, idx, ok := slices.Find(sdc.Status.Racks, func(status scyllav1alpha1.RackStatus) bool {
+						return status.Name == rackName
+					})
+					if !ok {
+						errs = append(errs, fmt.Errorf("can't find rack %q status in %q ScyllaDBDatacenter", rackName, naming.ObjRef(sdc)))
+						continue
+					}
+
+					status.Racks[idx] = *sdcc.calculateRackStatus(sdc, updatedSts)
 				}
 			}
 			if anyStsChanged {
@@ -771,10 +794,23 @@ func (scc *Controller) syncStatefulSets(
 				return progressingConditions, err
 			}
 
-			status.Upgrade.State = string(RolloutRunUpgradePhase)
+			currentUpgradeContext.State = internalapi.RolloutRunUpgradePhase
+			cm, err := MakeUpgradeContextConfigMap(sdc, currentUpgradeContext)
+			if err != nil {
+				return progressingConditions, fmt.Errorf("can't make upgrade context ConfigMap: %w", err)
+			}
+
+			cm, changed, err := resourceapply.ApplyConfigMap(ctx, sdcc.kubeClient.CoreV1(), sdcc.configMapLister, sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
+			if changed {
+				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, cm, "apply", sdc.Generation)
+			}
+			if err != nil {
+				return progressingConditions, fmt.Errorf("can't apply upgrade context ConfigMap: %w", err)
+			}
+
 			return progressingConditions, nil
 
-		case string(RolloutRunUpgradePhase):
+		case internalapi.RolloutRunUpgradePhase:
 			for _, sts := range requiredStatefulSets {
 				partition := *sts.Spec.UpdateStrategy.RollingUpdate.Partition
 
@@ -783,7 +819,7 @@ func (scc *Controller) syncStatefulSets(
 					// TODO: Remove the live call when hooks are migrated into Jobs.
 					// We could still see an old partition. Although hooks are mandated to be reentrant,
 					// they are pretty expensive to run so it's cheaper to recheck the partition with a live call.
-					freshSts, err := scc.kubeClient.AppsV1().StatefulSets(sts.Namespace).Get(ctx, sts.Name, metav1.GetOptions{})
+					freshSts, err := sdcc.kubeClient.AppsV1().StatefulSets(sts.Namespace).Get(ctx, sts.Name, metav1.GetOptions{})
 					if err != nil {
 						return progressingConditions, err
 					}
@@ -791,7 +827,7 @@ func (scc *Controller) syncStatefulSets(
 					if freshSts.Spec.UpdateStrategy.RollingUpdate == nil ||
 						*freshSts.Spec.UpdateStrategy.RollingUpdate.Partition != partition {
 						// Wait for requeue.
-						klog.V(2).InfoS("Stale StatefulSet partition, waiting for requeue", "ScyllaCluster", klog.KObj(sc), "StatefulSet", klog.KObj(sts))
+						klog.V(2).InfoS("Stale StatefulSet partition, waiting for requeue", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
 						return progressingConditions, nil
 					}
 				}
@@ -806,30 +842,30 @@ func (scc *Controller) syncStatefulSets(
 
 				if partition < *sts.Spec.Replicas {
 					// TODO: Move the post-node-upgrade hook into a Job.
-					err = scc.afterNodeUpgrade(ctx, sc, sts, partition, services)
+					err = sdcc.afterNodeUpgrade(ctx, sdc, sts, partition, services, currentUpgradeContext)
 					if err != nil {
 						return progressingConditions, err
 					}
-					klog.V(2).InfoS("AfterNodeUpgrade hook finished", "ScyllaCluster", klog.KObj(sc), "StatefulSet", klog.KObj(sts))
+					klog.V(2).InfoS("AfterNodeUpgrade hook finished", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
 				}
 
 				// TODO: Move the pre-node-upgrade hook into a Job.
-				done, err := scc.beforeNodeUpgrade(ctx, sc, sts, nextPartition, services)
+				done, err := sdcc.beforeNodeUpgrade(ctx, sdc, sts, nextPartition, services, currentUpgradeContext)
 				if err != nil {
 					return progressingConditions, err
 				}
 
 				if !done {
-					klog.V(4).InfoS("PreNodeUpgrade hook in progress. Waiting a bit.", "ScyllaCluster", klog.KObj(sc), "StatefulSet", klog.KObj(sts))
-					scc.queue.AddAfter(key, 5*time.Second)
+					klog.V(4).InfoS("PreNodeUpgrade hook in progress. Waiting a bit.", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
+					sdcc.queue.AddAfter(key, 5*time.Second)
 					return progressingConditions, nil
 				}
-				klog.V(2).InfoS("PreNodeUpgrade hook finished", "ScyllaCluster", klog.KObj(sc), "StatefulSet", klog.KObj(sts))
+				klog.V(2).InfoS("PreNodeUpgrade hook finished", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
 
 				// TODO: Use bare update when hooks are extracted into Jobs.
 				//       But at this point rerunning them is expensive so we retry with condition check.
 				err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-					freshSts, err := scc.kubeClient.AppsV1().StatefulSets(sts.Namespace).Get(ctx, sts.Name, metav1.GetOptions{})
+					freshSts, err := sdcc.kubeClient.AppsV1().StatefulSets(sts.Namespace).Get(ctx, sts.Name, metav1.GetOptions{})
 					if err != nil {
 						return err
 					}
@@ -846,7 +882,7 @@ func (scc *Controller) syncStatefulSets(
 					}
 
 					freshSts.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Ptr(nextPartition)
-					_, err = scc.kubeClient.AppsV1().StatefulSets(freshSts.Namespace).Update(ctx, freshSts, metav1.UpdateOptions{})
+					_, err = sdcc.kubeClient.AppsV1().StatefulSets(freshSts.Namespace).Update(ctx, freshSts, metav1.UpdateOptions{})
 					if err != nil {
 						return err
 					}
@@ -861,23 +897,65 @@ func (scc *Controller) syncStatefulSets(
 				return progressingConditions, nil
 			}
 
-			status.Upgrade.State = string(PostHooksUpgradePhase)
+			currentUpgradeContext.State = internalapi.PostHooksUpgradePhase
+			cm, err := MakeUpgradeContextConfigMap(sdc, currentUpgradeContext)
+			if err != nil {
+				return progressingConditions, fmt.Errorf("can't make upgrade context ConfigMap: %w", err)
+			}
+
+			cm, changed, err := resourceapply.ApplyConfigMap(ctx, sdcc.kubeClient.CoreV1(), sdcc.configMapLister, sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
+			if changed {
+				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, cm, "apply", sdc.Generation)
+			}
+			if err != nil {
+				return progressingConditions, fmt.Errorf("can't apply upgrade context ConfigMap: %w", err)
+			}
+
 			return progressingConditions, nil
 
-		case string(PostHooksUpgradePhase):
-			err = scc.afterUpgrade(ctx, sc, services)
+		case internalapi.PostHooksUpgradePhase:
+			err = sdcc.afterUpgrade(ctx, sdc, services, currentUpgradeContext)
 			if err != nil {
 				return progressingConditions, err
 			}
 
-			status.Upgrade = nil
+			cmName := naming.UpgradeContextConfigMapName(sdc)
+			cm, ok := configMaps[cmName]
+			if !ok {
+				return progressingConditions, nil
+			}
+
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, cm, "delete", sdc.Generation)
+			err = sdcc.kubeClient.CoreV1().ConfigMaps(sdc.Namespace).Delete(ctx, cmName, metav1.DeleteOptions{
+				Preconditions: &metav1.Preconditions{
+					UID: &cm.UID,
+				},
+				PropagationPolicy: pointer.Ptr(metav1.DeletePropagationBackground),
+			})
+			if err != nil {
+				return progressingConditions, fmt.Errorf("can't delete upgrade context ConfigMap %q: %w", naming.ManualRef(sdc.Namespace, cmName), err)
+			}
+
 			return progressingConditions, nil
 
 		default:
 			// An old cluster with an old state machine can still be going through an update, or stuck.
 			// Given have to be reentrant we'll just start again to be sure no step is missed, even a new one.
-			klog.Warningf("ScyllaCluster %q has an unknown upgrade phase %q. Resetting the phase.", klog.KObj(sc), status.Upgrade.State)
-			status.Upgrade.State = string(PreHooksUpgradePhase)
+			klog.Warningf("ScyllaCluster %q has an unknown upgrade phase %q. Resetting the phase.", klog.KObj(sdc), currentUpgradeContext.State)
+			currentUpgradeContext.State = internalapi.PreHooksUpgradePhase
+			cm, err := MakeUpgradeContextConfigMap(sdc, currentUpgradeContext)
+			if err != nil {
+				return progressingConditions, fmt.Errorf("can't make upgrade context ConfigMap: %w", err)
+			}
+
+			cm, changed, err := resourceapply.ApplyConfigMap(ctx, sdcc.kubeClient.CoreV1(), sdcc.configMapLister, sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
+			if changed {
+				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, cm, "apply", sdc.Generation)
+			}
+			if err != nil {
+				return progressingConditions, fmt.Errorf("can't apply upgrade context ConfigMap: %w", err)
+			}
+
 			return progressingConditions, nil
 		}
 	}
@@ -893,7 +971,7 @@ func (scc *Controller) syncStatefulSets(
 	for _, required := range requiredStatefulSets {
 		// Check for version upgrades first.
 		existing, existingFound := statefulSets[required.Name]
-		if existingFound && status.Upgrade == nil {
+		if existingFound && upgradeContextConfigMap == nil {
 			requiredVersionString, requiredVersionLabelPresent := required.Labels[naming.ScyllaVersionLabel]
 			existingVersionString, existingVersionLabelPresent := existing.Labels[naming.ScyllaVersionLabel]
 
@@ -910,31 +988,44 @@ func (scc *Controller) syncStatefulSets(
 				if requiredVersion.Major != existingVersion.Major ||
 					requiredVersion.Minor != existingVersion.Minor {
 					// We need to run hooks for version upgrades.
-					scc.eventRecorder.Eventf(sc, corev1.EventTypeNormal, "UpgradeStarted", "Version changed from %q to %q", existingVersionString, requiredVersionString)
+					sdcc.eventRecorder.Eventf(sdc, corev1.EventTypeNormal, "UpgradeStarted", "Version changed from %q to %q", existingVersionString, requiredVersionString)
 
 					progressingConditions = append(progressingConditions, metav1.Condition{
 						Type:               statefulSetControllerProgressingCondition,
 						Status:             metav1.ConditionTrue,
 						Reason:             "Upgrading",
 						Message:            "Starting cluster upgrade",
-						ObservedGeneration: sc.Generation,
+						ObservedGeneration: sdc.Generation,
 					})
 
 					// Initiate the upgrade. This triggers a state machine to run hooks first.
 					now := time.Now()
-					status.Upgrade = &scyllav1.UpgradeStatus{
-						State:             string(PreHooksUpgradePhase),
+
+					cm, err := MakeUpgradeContextConfigMap(sdc, &internalapi.DatacenterUpgradeContext{
+						State:             internalapi.PreHooksUpgradePhase,
 						FromVersion:       existingVersionString,
 						ToVersion:         requiredVersionString,
 						SystemSnapshotTag: snapshotTag("system", now),
 						DataSnapshotTag:   snapshotTag("data", now),
+					})
+					if err != nil {
+						return progressingConditions, fmt.Errorf("can't make upgrade context ConfigMap: %w", err)
 					}
+
+					cm, changed, err := resourceapply.ApplyConfigMap(ctx, sdcc.kubeClient.CoreV1(), sdcc.configMapLister, sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
+					if changed {
+						controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, cm, "apply", sdc.Generation)
+					}
+					if err != nil {
+						return progressingConditions, fmt.Errorf("can't apply upgrade context ConfigMap: %w", err)
+					}
+
 					return progressingConditions, nil
 				}
 			}
 		}
 
-		updatedSts, changed, err := resourceapply.ApplyStatefulSet(ctx, scc.kubeClient.AppsV1(), scc.statefulSetLister, scc.eventRecorder, required, resourceapply.ApplyOptions{})
+		updatedSts, changed, err := resourceapply.ApplyStatefulSet(ctx, sdcc.kubeClient.AppsV1(), sdcc.statefulSetLister, sdcc.eventRecorder, required, resourceapply.ApplyOptions{})
 		if err != nil {
 			return progressingConditions, fmt.Errorf("can't apply statefulset update: %w", err)
 		}
@@ -942,7 +1033,7 @@ func (scc *Controller) syncStatefulSets(
 		if changed {
 			anyStsChanged = true
 
-			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, required, "apply", sc.Generation)
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, required, "apply", sdc.Generation)
 
 			rackName, ok := updatedSts.Labels[naming.RackNameLabel]
 			if !ok {
@@ -952,8 +1043,14 @@ func (scc *Controller) syncStatefulSets(
 					naming.RackNameLabel,
 				)
 			}
-			oldRackStatus := sc.Status.Racks[rackName]
-			status.Racks[rackName] = *scc.calculateRackStatus(sc, rackName, updatedSts, &oldRackStatus, services)
+			_, idx, ok := slices.Find(sdc.Status.Racks, func(status scyllav1alpha1.RackStatus) bool {
+				return status.Name == rackName
+			})
+			if !ok {
+				return progressingConditions, fmt.Errorf("can't find rack %q status in %q ScyllaDBDatacenter", rackName, naming.ObjRef(sdc))
+			}
+
+			status.Racks[idx] = *sdcc.calculateRackStatus(sdc, updatedSts)
 		}
 
 		// Wait for the StatefulSet to roll out.
@@ -963,13 +1060,13 @@ func (scc *Controller) syncStatefulSets(
 		}
 
 		if !rolledOut {
-			klog.V(4).InfoS("Waiting for StatefulSet rollout", "ScyllaCluster", klog.KObj(sc), "StatefulSet", klog.KObj(updatedSts))
+			klog.V(4).InfoS("Waiting for StatefulSet rollout", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(updatedSts))
 			progressingConditions = append(progressingConditions, metav1.Condition{
 				Type:               statefulSetControllerProgressingCondition,
 				Status:             metav1.ConditionTrue,
 				Reason:             "WaitingForStatefulSetRollout",
 				Message:            fmt.Sprintf("Waiting for StatefulSet %q to roll out.", naming.ObjRef(required)),
-				ObservedGeneration: sc.Generation,
+				ObservedGeneration: sdc.Generation,
 			})
 			return progressingConditions, nil
 		}
@@ -978,24 +1075,37 @@ func (scc *Controller) syncStatefulSets(
 	return progressingConditions, nil
 }
 
-func (scc *Controller) setStatefulSetsAvailableStatusCondition(
-	sc *scyllav1.ScyllaCluster,
-	status *scyllav1.ScyllaClusterStatus,
+func (sdcc *Controller) setStatefulSetsAvailableStatusCondition(
+	sdc *scyllav1alpha1.ScyllaDBDatacenter,
+	status *scyllav1alpha1.ScyllaDBDatacenterStatus,
 ) {
 	desiredMembers := int32(0)
 	updatedMembers := int32(0)
 	readyMembers := int32(0)
 	var racksInDifferentVersion []string
-	for _, rack := range sc.Spec.Datacenter.Racks {
-		desiredMembers += rack.Members
+	for _, rack := range sdc.Spec.Racks {
+		rackCount, err := controllerhelpers.GetRackNodeCount(sdc, rack.Name)
+		if err != nil {
+			klog.ErrorS(err, "can't get rack node count", "ScyllaDBDatacenter", naming.ObjRef(sdc), "Rack", rack.Name)
+			continue
+		}
+		desiredMembers += *rackCount
 
-		rackStatus, found := status.Racks[rack.Name]
+		rackStatus, _, found := slices.Find(status.Racks, func(status scyllav1alpha1.RackStatus) bool {
+			return status.Name == rack.Name
+		})
 		if !found {
 			klog.Errorf("Can't find status for rack %q", rack.Name)
 			continue
 		}
 
-		if rackStatus.Version != sc.Spec.Version {
+		expectedVersion, err := naming.ImageToVersion(sdc.Spec.ScyllaDB.Image)
+		if err != nil {
+			klog.ErrorS(err, "can't get version from image", "Image", sdc.Spec.ScyllaDB.Image)
+			continue
+		}
+
+		if rackStatus.CurrentVersion != expectedVersion {
 			racksInDifferentVersion = append(racksInDifferentVersion, rack.Name)
 		}
 
@@ -1003,9 +1113,12 @@ func (scc *Controller) setStatefulSetsAvailableStatusCondition(
 			continue
 		}
 
-		readyMembers += rackStatus.ReadyMembers
-		if rackStatus.UpdatedMembers != nil {
-			updatedMembers += *rackStatus.UpdatedMembers
+		if rackStatus.ReadyNodes != nil {
+			readyMembers += *rackStatus.ReadyNodes
+		}
+
+		if rackStatus.UpdatedNodes != nil {
+			updatedMembers += *rackStatus.UpdatedNodes
 		}
 	}
 
@@ -1016,7 +1129,7 @@ func (scc *Controller) setStatefulSetsAvailableStatusCondition(
 			Status:             metav1.ConditionFalse,
 			Reason:             "RacksNotAtDesiredVersion",
 			Message:            fmt.Sprintf("Racks %q are not in the desired version", strings.Join(racksInDifferentVersion, ", ")),
-			ObservedGeneration: sc.Generation,
+			ObservedGeneration: sdc.Generation,
 		})
 
 	case updatedMembers != desiredMembers:
@@ -1025,7 +1138,7 @@ func (scc *Controller) setStatefulSetsAvailableStatusCondition(
 			Status:             metav1.ConditionFalse,
 			Reason:             "MembersNotUpdated",
 			Message:            fmt.Sprintf("Only %d out of %d member(s) have been updated", updatedMembers, desiredMembers),
-			ObservedGeneration: sc.Generation,
+			ObservedGeneration: sdc.Generation,
 		})
 
 	case readyMembers != desiredMembers:
@@ -1034,7 +1147,7 @@ func (scc *Controller) setStatefulSetsAvailableStatusCondition(
 			Status:             metav1.ConditionFalse,
 			Reason:             "MembersNotReady",
 			Message:            fmt.Sprintf("Only %d out of %d member(s) are ready", readyMembers, desiredMembers),
-			ObservedGeneration: sc.Generation,
+			ObservedGeneration: sdc.Generation,
 		})
 
 	default:
@@ -1043,9 +1156,24 @@ func (scc *Controller) setStatefulSetsAvailableStatusCondition(
 			Status:             metav1.ConditionTrue,
 			Reason:             internalapi.AsExpectedReason,
 			Message:            "",
-			ObservedGeneration: sc.Generation,
+			ObservedGeneration: sdc.Generation,
 		})
 	}
 
 	return
+}
+
+func (sdcc *Controller) decodeUpgradeContext(upgradeContextConfigMap *corev1.ConfigMap) (*internalapi.DatacenterUpgradeContext, error) {
+	ucRaw, ok := upgradeContextConfigMap.Data[naming.UpgradeContextConfigMapKey]
+	if !ok {
+		return nil, fmt.Errorf("upgrade context ConfigMap %q is missing %q key", naming.ObjRef(upgradeContextConfigMap), naming.UpgradeContextConfigMapKey)
+	}
+
+	uc := &internalapi.DatacenterUpgradeContext{}
+	err := uc.Decode(strings.NewReader(ucRaw))
+	if err != nil {
+		return nil, fmt.Errorf("can't decode ugprade context from ConfigMap %q: %w", naming.ObjRef(upgradeContextConfigMap), err)
+	}
+
+	return uc, nil
 }

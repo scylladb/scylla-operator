@@ -6,7 +6,8 @@ import (
 	"fmt"
 
 	"github.com/blang/semver"
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 )
 
 var (
@@ -31,7 +32,12 @@ var featureMinimalVersionConstraints = map[ScyllaFeature]scyllaDBVersionMinimalC
 	},
 }
 
-func VersionSupports(version string, feature ScyllaFeature) (bool, error) {
+func VersionSupports(image string, feature ScyllaFeature) (bool, error) {
+	version, err := naming.ImageToVersion(image)
+	if err != nil {
+		return false, fmt.Errorf("can't get version from image %q: %w", image, err)
+	}
+
 	constraints, ok := featureMinimalVersionConstraints[feature]
 	if !ok {
 		return false, fmt.Errorf("unable to find minimal version constraints, unknown feature %q", feature)
@@ -53,8 +59,8 @@ func VersionSupports(version string, feature ScyllaFeature) (bool, error) {
 	return false, nil
 }
 
-func Supports(sc *scyllav1.ScyllaCluster, feature ScyllaFeature) (bool, error) {
-	return VersionSupports(sc.Spec.Version, feature)
+func Supports(sdc *scyllav1alpha1.ScyllaDBDatacenter, feature ScyllaFeature) (bool, error) {
+	return VersionSupports(sdc.Spec.ScyllaDB.Image, feature)
 }
 
 func isEnterprise(v semver.Version) bool {

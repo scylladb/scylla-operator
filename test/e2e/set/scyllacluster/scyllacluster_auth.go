@@ -41,7 +41,7 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
 		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		hosts, hostIDs, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
@@ -58,7 +58,7 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 
 		framework.By("Accepting requests authorized using token from provisioned secret")
 
-		tokenSecret, err := f.KubeClient().CoreV1().Secrets(sc.Namespace).Get(ctx, naming.AgentAuthTokenSecretName(sc.Name), metav1.GetOptions{})
+		tokenSecret, err := f.KubeClient().CoreV1().Secrets(sc.Namespace).Get(ctx, naming.AgentAuthTokenSecretNameForScyllaCluster(sc), metav1.GetOptions{})
 		o.Expect(err).ToNot(o.HaveOccurred())
 
 		token, err := helpers.GetAgentAuthTokenFromSecret(tokenSecret)
@@ -117,7 +117,7 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
 		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		oldHostIDs := hostIDs
@@ -161,7 +161,7 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx3, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
 		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		oldHostIDs = hostIDs

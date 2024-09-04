@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	scyllav1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1"
-	scyllav1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllav1alpha1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1alpha1"
+	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
@@ -39,25 +39,25 @@ var (
 	keyFunc = cache.DeletionHandlingMetaNamespaceKeyFunc
 )
 
-// Controller watches all PVs actively belonging to a ScyllaCluster and replace scylla node
-// on any PV that is orphaned, if enabled on the ScyllaCluster.
+// Controller watches all PVs actively belonging to a ScyllaDBDatacenter and replace scylla node
+// on any PV that is orphaned, if enabled on the ScyllaDBDatacenter.
 // Orphaned PV is a volume that is hard bound to a node that doesn't exist anymore.
-// The controller is based on a ScyllaCluster key and listing matching PVs because using a PV key and trying to
-// find a corresponding ScyllaCluster would be quite hard, there are no ownerRefs and we can't
-// propagate the "enabled" information from a ScyllaCluster to a PVC annotation because PVCs are not
+// The controller is based on a ScyllaDBDatacenter key and listing matching PVs because using a PV key and trying to
+// find a corresponding ScyllaDBDatacenter would be quite hard, there are no ownerRefs and we can't
+// propagate the "enabled" information from a ScyllaDBDatacenter to a PVC annotation because PVCs are not
 // reconciled.
 // TODO: When we support auto-replacing nodes, we could replace it with generic controller
 //
-//	deleting PVs bound to nodes that don't exists anymore, without knowing about ScyllaClusters.
-//	It would also process PVs instead of ScyllaClusters which is currently complicating the logic
+//	deleting PVs bound to nodes that don't exists anymore, without knowing about ScyllaDBDatacenter.
+//	It would also process PVs instead of ScyllaDBDatacenter which is currently complicating the logic
 //	that has to handle multiple PVs at once, artificial requeues / not watching PVs and different error paths.
 type Controller struct {
 	kubeClient kubernetes.Interface
 
-	pvLister     corev1listers.PersistentVolumeLister
-	pvcLister    corev1listers.PersistentVolumeClaimLister
-	nodeLister   corev1listers.NodeLister
-	scyllaLister scyllav1listers.ScyllaClusterLister
+	pvLister                 corev1listers.PersistentVolumeLister
+	pvcLister                corev1listers.PersistentVolumeClaimLister
+	nodeLister               corev1listers.NodeLister
+	scyllaDBDatacenterLister scyllav1alpha1listers.ScyllaDBDatacenterLister
 
 	cachesToSync []cache.InformerSynced
 
@@ -73,24 +73,24 @@ func NewController(
 	pvInformer corev1informers.PersistentVolumeInformer,
 	pvcInformer corev1informers.PersistentVolumeClaimInformer,
 	nodeInformer corev1informers.NodeInformer,
-	scyllaClusterInformer scyllav1informers.ScyllaClusterInformer,
+	scyllaDBDatacenterInformer scyllav1alpha1informers.ScyllaDBDatacenterInformer,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
 	eventBroadcaster.StartRecordingToSink(&corev1client.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
 	opc := &Controller{
-		kubeClient:   kubeClient,
-		pvLister:     pvInformer.Lister(),
-		pvcLister:    pvcInformer.Lister(),
-		nodeLister:   nodeInformer.Lister(),
-		scyllaLister: scyllaClusterInformer.Lister(),
+		kubeClient:               kubeClient,
+		pvLister:                 pvInformer.Lister(),
+		pvcLister:                pvcInformer.Lister(),
+		nodeLister:               nodeInformer.Lister(),
+		scyllaDBDatacenterLister: scyllaDBDatacenterInformer.Lister(),
 
 		cachesToSync: []cache.InformerSynced{
 			pvInformer.Informer().HasSynced,
 			pvcInformer.Informer().HasSynced,
 			nodeInformer.Informer().HasSynced,
-			scyllaClusterInformer.Informer().HasSynced,
+			scyllaDBDatacenterInformer.Informer().HasSynced,
 		},
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "orphanedpv-controller"}),
@@ -103,10 +103,10 @@ func NewController(
 		DeleteFunc: opc.deleteNode,
 	})
 
-	scyllaClusterInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    opc.addScyllaCluster,
-		UpdateFunc: opc.updateScyllaCluster,
-		DeleteFunc: opc.deleteScyllaCluster,
+	scyllaDBDatacenterInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    opc.addScyllaDBDatacenter,
+		UpdateFunc: opc.updateScyllaDBDatacenter,
+		DeleteFunc: opc.deleteScyllaDBDatacenter,
 	})
 
 	return opc, nil
@@ -192,14 +192,14 @@ func (opc *Controller) Run(ctx context.Context, workers int) {
 		wait.UntilWithContext(ctx, func(ctx context.Context) {
 			klog.V(4).InfoS("Periodically enqueuing all ScyllaClusters")
 
-			scs, err := opc.scyllaLister.ScyllaClusters(corev1.NamespaceAll).List(labels.Everything())
+			sdcs, err := opc.scyllaDBDatacenterLister.ScyllaDBDatacenters(corev1.NamespaceAll).List(labels.Everything())
 			if err != nil {
 				utilruntime.HandleError(err)
 				return
 			}
 
-			for _, sc := range scs {
-				opc.enqueue(sc)
+			for _, sdc := range sdcs {
+				opc.enqueue(sdc)
 			}
 		}, 30*time.Minute)
 	}()
@@ -207,33 +207,33 @@ func (opc *Controller) Run(ctx context.Context, workers int) {
 	<-ctx.Done()
 }
 
-func (opc *Controller) enqueue(sc *scyllav1.ScyllaCluster) {
-	key, err := keyFunc(sc)
+func (opc *Controller) enqueue(sdc *scyllav1alpha1.ScyllaDBDatacenter) {
+	key, err := keyFunc(sdc)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", sc, err))
+		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", sdc, err))
 		return
 	}
 
-	klog.V(4).InfoS("Enqueuing", "ScyllaCluster", klog.KObj(sc))
+	klog.V(4).InfoS("Enqueuing", "ScyllaDBDatacenter", klog.KObj(sdc))
 	opc.queue.Add(key)
 }
 
-func (opc *Controller) enqueueAllScyllaClustersOnBackground() {
+func (opc *Controller) enqueueAllScyllaDBDatacentersOnBackground() {
 	opc.wg.Add(1)
 	go func() {
-		klog.V(4).InfoS("Enqueuing all ScyllaClusters")
+		klog.V(4).InfoS("Enqueuing all ScyllaDBDatacenters")
 
 		// This gets called from an informer handler which doesn't wait for cache sync,
-		// but any ScyllaCluster that won't list here is gonna be queued later on addition
-		// by the ScyllaCluster handler.
-		scs, err := opc.scyllaLister.ScyllaClusters(corev1.NamespaceAll).List(labels.Everything())
+		// but any ScyllaDBDatacenter that won't list here is gonna be queued later on addition
+		// by the ScyllaDBDatacenter handler.
+		sdcs, err := opc.scyllaDBDatacenterLister.ScyllaDBDatacenters(corev1.NamespaceAll).List(labels.Everything())
 		if err != nil {
 			utilruntime.HandleError(err)
 			return
 		}
 
-		for _, sc := range scs {
-			opc.enqueue(sc)
+		for _, sdc := range sdcs {
+			opc.enqueue(sdc)
 		}
 	}()
 }
@@ -273,49 +273,49 @@ func (opc *Controller) deleteNode(obj interface{}) {
 
 	// We can't run a long running task in the handler because it'd block the informer.
 	// Add on background.
-	opc.enqueueAllScyllaClustersOnBackground()
+	opc.enqueueAllScyllaDBDatacentersOnBackground()
 }
 
-func (opc *Controller) addScyllaCluster(obj interface{}) {
-	sc := obj.(*scyllav1.ScyllaCluster)
-	klog.V(4).InfoS("Observed addition of ScyllaCluster", "ScyllaCluster", klog.KObj(sc))
-	opc.enqueue(sc)
+func (opc *Controller) addScyllaDBDatacenter(obj interface{}) {
+	sdc := obj.(*scyllav1alpha1.ScyllaDBDatacenter)
+	klog.V(4).InfoS("Observed addition of ScyllaDBDatacenter", "ScyllaDBDatacenter", klog.KObj(sdc))
+	opc.enqueue(sdc)
 }
 
-func (opc *Controller) updateScyllaCluster(old, cur interface{}) {
-	oldSC := old.(*scyllav1.ScyllaCluster)
-	currentSC := cur.(*scyllav1.ScyllaCluster)
+func (opc *Controller) updateScyllaDBDatacenter(old, cur interface{}) {
+	oldSDC := old.(*scyllav1alpha1.ScyllaDBDatacenter)
+	currentSDC := cur.(*scyllav1alpha1.ScyllaDBDatacenter)
 
-	if currentSC.UID != oldSC.UID {
-		key, err := keyFunc(oldSC)
+	if currentSDC.UID != oldSDC.UID {
+		key, err := keyFunc(oldSDC)
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldSC, err))
+			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldSDC, err))
 			return
 		}
-		opc.deleteScyllaCluster(cache.DeletedFinalStateUnknown{
+		opc.deleteScyllaDBDatacenter(cache.DeletedFinalStateUnknown{
 			Key: key,
-			Obj: oldSC,
+			Obj: oldSDC,
 		})
 	}
 
-	klog.V(4).InfoS("Observed update of ScyllaCluster", "ScyllaCluster", klog.KObj(oldSC))
-	opc.enqueue(currentSC)
+	klog.V(4).InfoS("Observed update of ScyllaDBDatacenter", "ScyllaDBDatacenter", klog.KObj(oldSDC))
+	opc.enqueue(currentSDC)
 }
 
-func (opc *Controller) deleteScyllaCluster(obj interface{}) {
-	sc, ok := obj.(*scyllav1.ScyllaCluster)
+func (opc *Controller) deleteScyllaDBDatacenter(obj interface{}) {
+	sdc, ok := obj.(*scyllav1alpha1.ScyllaDBDatacenter)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
 			return
 		}
-		sc, ok = tombstone.Obj.(*scyllav1.ScyllaCluster)
+		sdc, ok = tombstone.Obj.(*scyllav1alpha1.ScyllaDBDatacenter)
 		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ScyllaCluster %#v", obj))
+			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ScyllaDBDatacenter %#v", obj))
 			return
 		}
 	}
-	klog.V(4).InfoS("Observed deletion of ScyllaCluster", "ScyllaCluster", klog.KObj(sc))
-	opc.enqueue(sc)
+	klog.V(4).InfoS("Observed deletion of ScyllaDBDatacenter", "ScyllaDBDatacenter", klog.KObj(sdc))
+	opc.enqueue(sdc)
 }

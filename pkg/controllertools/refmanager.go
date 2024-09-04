@@ -58,7 +58,12 @@ type ControllerRefManager[T kubeinterfaces.ObjectInterface] struct {
 	ctx           context.Context
 	controllerGVK schema.GroupVersionKind
 	Control       ControllerRefManagerControlInterface
+
+	ReleasePatchType     types.PatchType
+	GetReleasePatchBytes func(obj metav1.Object, controllerUID types.UID) ([]byte, error)
 }
+
+type GetReleasePatchBytesFunc func(obj metav1.Object, controllerUID types.UID) ([]byte, error)
 
 func NewControllerRefManager[T kubeinterfaces.ObjectInterface](
 	ctx context.Context,
@@ -78,8 +83,16 @@ func NewControllerRefManager[T kubeinterfaces.ObjectInterface](
 	}
 
 	crm.CanAdoptFunc = crm.canAdopt
+	crm.GetReleasePatchBytes = crm.getReleasePatchBytesFunc()
+	crm.ReleasePatchType = types.StrategicMergePatchType
 
 	return crm
+}
+
+func (m *ControllerRefManager[T]) getReleasePatchBytesFunc() GetReleasePatchBytesFunc {
+	return func(obj metav1.Object, controllerUID types.UID) ([]byte, error) {
+		return kubecontroller.DeleteOwnerRefStrategicMergePatch(obj.GetUID(), controllerUID)
+	}
 }
 
 func (m *ControllerRefManager[T]) canAdopt() error {
@@ -153,12 +166,8 @@ func (m *ControllerRefManager[T]) ReleaseObject(obj T) error {
 		"ControllerRef", fmt.Sprintf("%s/%s:%s", m.controllerGVK.GroupVersion(), m.controllerGVK.Kind, m.Controller.GetName()),
 	)
 
-	patchBytes, err := kubecontroller.DeleteOwnerRefStrategicMergePatch(obj.GetUID(), m.Controller.GetUID())
-	if err != nil {
-		return err
-	}
-
-	err = m.Control.PatchObject(m.ctx, obj.GetNamespace(), obj.GetName(), types.StrategicMergePatchType, patchBytes, metav1.PatchOptions{})
+	patchBytes, err := m.GetReleasePatchBytes(obj, m.Controller.GetUID())
+	err = m.Control.PatchObject(m.ctx, obj.GetNamespace(), obj.GetName(), m.ReleasePatchType, patchBytes, metav1.PatchOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// If the object no longer exists, ignore it.

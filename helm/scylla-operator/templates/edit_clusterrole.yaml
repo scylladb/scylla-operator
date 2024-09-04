@@ -11,6 +11,7 @@ rules:
   resources:
   - scyllaclusters
   - scylladbmonitorings
+  - scylladbdatacenters
   verbs:
   - create
   - patch

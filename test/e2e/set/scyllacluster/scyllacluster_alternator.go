@@ -103,7 +103,7 @@ authorizer: CassandraAuthorizer
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
 
 		svcIP, err := utils.GetIdentityServiceIP(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -149,7 +149,7 @@ authorizer: CassandraAuthorizer
 		alternatorServingCert := alternatorServingCerts[0]
 		o.Expect(alternatorServingCert.DNSNames).To(o.ConsistOf(
 			fmt.Sprintf("%s-client.%s.svc", sc.Name, sc.Namespace),
-			fmt.Sprintf("%s.%s.svc", naming.MemberServiceName(sc.Spec.Datacenter.Racks[0], sc, 0), sc.Namespace),
+			fmt.Sprintf("%s.%s.svc", naming.MemberServiceNameForScyllaCluster(sc.Spec.Datacenter.Racks[0], sc, 0), sc.Namespace),
 			"scylla.operator.rocks",
 		))
 		alternatorServingCertIPStrings := slices.ConvertSlice[string](

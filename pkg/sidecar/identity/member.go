@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strconv"
 
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
@@ -33,10 +33,10 @@ type Member struct {
 	BroadcastRPCAddress string
 	BroadcastAddress    string
 
-	NodesBroadcastAddressType scyllav1.BroadcastAddressType
+	NodesBroadcastAddressType scyllav1alpha1.BroadcastAddressType
 }
 
-func NewMember(service *corev1.Service, pod *corev1.Pod, nodesAddressType, clientAddressType scyllav1.BroadcastAddressType) (*Member, error) {
+func NewMember(service *corev1.Service, pod *corev1.Pod, nodesAddressType, clientAddressType scyllav1alpha1.BroadcastAddressType) (*Member, error) {
 	rackOrdinalString, ok := pod.Labels[naming.RackOrdinalLabel]
 	if !ok {
 		return nil, fmt.Errorf("pod %q is missing %q label", naming.ObjRef(pod), naming.RackOrdinalLabel)

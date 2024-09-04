@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
 	"github.com/scylladb/scylla-operator/pkg/cmd/operator/probeserver"
 	"github.com/scylladb/scylla-operator/pkg/controller/ignition"
@@ -39,8 +39,8 @@ type IgnitionOptions struct {
 
 	kubeClient                  kubernetes.Interface
 	mux                         *http.ServeMux
-	nodesBroadcastAddressType   scyllav1.BroadcastAddressType
-	clientsBroadcastAddressType scyllav1.BroadcastAddressType
+	nodesBroadcastAddressType   scyllav1alpha1.BroadcastAddressType
+	clientsBroadcastAddressType scyllav1alpha1.BroadcastAddressType
 }
 
 func NewIgnitionOptions(streams genericclioptions.IOStreams) *IgnitionOptions {
@@ -114,12 +114,12 @@ func (o *IgnitionOptions) Validate(args []string) error {
 		}
 	}
 
-	if !slices.ContainsItem(validation.SupportedBroadcastAddressTypes, scyllav1.BroadcastAddressType(o.NodesBroadcastAddressTypeString)) {
-		errs = append(errs, fmt.Errorf("unsupported value of nodes-broadcast-address-type %q, supported ones are: %v", o.NodesBroadcastAddressTypeString, validation.SupportedBroadcastAddressTypes))
+	if !slices.ContainsItem(validation.SupportedScyllaV1Alpha1BroadcastAddressTypes, scyllav1alpha1.BroadcastAddressType(o.NodesBroadcastAddressTypeString)) {
+		errs = append(errs, fmt.Errorf("unsupported value of nodes-broadcast-address-type %q, supported ones are: %v", o.NodesBroadcastAddressTypeString, validation.SupportedScyllaV1Alpha1BroadcastAddressTypes))
 	}
 
-	if !slices.ContainsItem(validation.SupportedBroadcastAddressTypes, scyllav1.BroadcastAddressType(o.ClientsBroadcastAddressTypeString)) {
-		errs = append(errs, fmt.Errorf("unsupported value of clients-broadcast-address-type %q, supported ones are: %v", o.ClientsBroadcastAddressTypeString, validation.SupportedBroadcastAddressTypes))
+	if !slices.ContainsItem(validation.SupportedScyllaV1Alpha1BroadcastAddressTypes, scyllav1alpha1.BroadcastAddressType(o.ClientsBroadcastAddressTypeString)) {
+		errs = append(errs, fmt.Errorf("unsupported value of clients-broadcast-address-type %q, supported ones are: %v", o.ClientsBroadcastAddressTypeString, validation.SupportedScyllaV1Alpha1BroadcastAddressTypes))
 	}
 
 	return utilerrors.NewAggregate(errs)
@@ -146,8 +146,8 @@ func (o *IgnitionOptions) Complete(args []string) error {
 		return fmt.Errorf("can't build kubernetes clientset: %w", err)
 	}
 
-	o.nodesBroadcastAddressType = scyllav1.BroadcastAddressType(o.NodesBroadcastAddressTypeString)
-	o.clientsBroadcastAddressType = scyllav1.BroadcastAddressType(o.ClientsBroadcastAddressTypeString)
+	o.nodesBroadcastAddressType = scyllav1alpha1.BroadcastAddressType(o.NodesBroadcastAddressTypeString)
+	o.clientsBroadcastAddressType = scyllav1alpha1.BroadcastAddressType(o.ClientsBroadcastAddressTypeString)
 
 	return nil
 }

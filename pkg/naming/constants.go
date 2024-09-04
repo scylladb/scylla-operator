@@ -45,6 +45,15 @@ const (
 	CleanupJobTokenRingHashAnnotation = "internal.scylla-operator.scylladb.com/cleanup-token-ring-hash"
 )
 
+// Annotations used for feature backward compatibility between v1.ScyllaCluster and v1alpha1.ScyllaDBDatacenter
+const (
+	TransformScyllaClusterToScyllaDBDatacenterHostNetworkingAnnotation               = "internal.scylla-operator.scylladb.com/host-networking"
+	TransformScyllaClusterToScyllaDBDatacenterAlternatorPortAnnotation               = "internal.scylla-operator.scylladb.com/alternator-port"
+	TransformScyllaClusterToScyllaDBDatacenterInsecureEnableHTTPAnnotation           = "internal.scylla-operator.scylladb.com/alternator-insecure-enable-http"
+	TransformScyllaClusterToScyllaDBDatacenterInsecureDisableAuthorizationAnnotation = "internal.scylla-operator.scylladb.com/alternator-insecure-disable-authorization"
+	TransformScyllaClusterToScyllaDBDatacenterSysctlsAnnotation                      = "internal.scylla-operator.scylladb.com/sysctls"
+)
+
 type ScyllaServiceType string
 
 const (
@@ -178,4 +187,8 @@ const (
 
 const (
 	DevLoopDeviceDirectoryName = "loops"
+)
+
+const (
+	UpgradeContextConfigMapKey = "upgrade-context.json"
 )

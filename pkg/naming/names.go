@@ -8,6 +8,7 @@ import (
 	"github.com/containers/image/v5/docker/reference"
 	"github.com/pkg/errors"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -27,13 +28,12 @@ func ObjRefWithUID(obj metav1.Object) string {
 	return fmt.Sprintf("%s(UID=%s)", ObjRef(obj), obj.GetUID())
 }
 
-func StatefulSetNameForRack(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster) string {
-	return fmt.Sprintf("%s-%s-%s", c.Name, c.Spec.Datacenter.Name, r.Name)
+func StatefulSetNameForRack(r scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
+	return fmt.Sprintf("%s-%s-%s", sdc.Spec.ClusterName, GetScyllaDBDatacenterGossipDatacenterName(sdc), r.Name)
 }
 
-func ServiceNameFromPod(pod *corev1.Pod) string {
-	// Pod and Service has the same name
-	return pod.Name
+func StatefulSetNameForRackForScyllaCluster(r scyllav1.RackSpec, sc *scyllav1.ScyllaCluster) string {
+	return fmt.Sprintf("%s-%s-%s", sc.Name, sc.Spec.Datacenter.Name, r.Name)
 }
 
 func PodNameFromService(svc *corev1.Service) string {
@@ -41,32 +41,48 @@ func PodNameFromService(svc *corev1.Service) string {
 	return svc.Name
 }
 
-func AgentAuthTokenSecretName(clusterName string) string {
-	return fmt.Sprintf("%s-auth-token", clusterName)
+func AgentAuthTokenSecretName(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
+	return fmt.Sprintf("%s-auth-token", sdc.Spec.ClusterName)
 }
 
-func MemberServiceName(r scyllav1.RackSpec, c *scyllav1.ScyllaCluster, idx int) string {
-	return fmt.Sprintf("%s-%d", StatefulSetNameForRack(r, c), idx)
+func AgentAuthTokenSecretNameForScyllaCluster(sc *scyllav1.ScyllaCluster) string {
+	return AgentAuthTokenSecretName(&scyllav1alpha1.ScyllaDBDatacenter{
+		Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+			ClusterName: sc.Name,
+		},
+	})
 }
 
-func ServiceDNSName(service string, c *scyllav1.ScyllaCluster) string {
-	return fmt.Sprintf("%s.%s", service, CrossNamespaceServiceNameForCluster(c))
+func MemberServiceName(r scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.ScyllaDBDatacenter, idx int) string {
+	return fmt.Sprintf("%s-%d", StatefulSetNameForRack(r, sdc), idx)
 }
 
-func IdentityServiceName(c *scyllav1.ScyllaCluster) string {
-	return fmt.Sprintf("%s-client", c.Name)
+func MemberServiceNameForScyllaCluster(r scyllav1.RackSpec, sc *scyllav1.ScyllaCluster, idx int) string {
+	return fmt.Sprintf("%s-%d", StatefulSetNameForRackForScyllaCluster(r, sc), idx)
 }
 
-func PodDisruptionBudgetName(c *scyllav1.ScyllaCluster) string {
-	return c.Name
+func IdentityServiceName(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
+	return fmt.Sprintf("%s-client", sdc.Spec.ClusterName)
 }
 
-func CrossNamespaceServiceNameForCluster(c *scyllav1.ScyllaCluster) string {
-	return fmt.Sprintf("%s.%s.svc", IdentityServiceName(c), c.Namespace)
+func IdentityServiceNameForScyllaCluster(sc *scyllav1.ScyllaCluster) string {
+	return fmt.Sprintf("%s-client", sc.Name)
 }
 
-func ManagerClusterName(c *scyllav1.ScyllaCluster) string {
-	return c.Namespace + "/" + c.Name
+func PodDisruptionBudgetName(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
+	return sdc.Spec.ClusterName
+}
+
+func PodDisruptionBudgetNameForScyllaCluster(sc *scyllav1.ScyllaCluster) string {
+	return sc.Name
+}
+
+func CrossNamespaceServiceNameForCluster(sc *scyllav1.ScyllaCluster) string {
+	return fmt.Sprintf("%s.%s.svc", IdentityServiceNameForScyllaCluster(sc), sc.Namespace)
+}
+
+func ManagerClusterName(sc *scyllav1.ScyllaCluster) string {
+	return sc.Namespace + "/" + sc.Name
 }
 
 func PVCNameForPod(podName string) string {
@@ -77,8 +93,12 @@ func PVCNameForService(svcName string) string {
 	return PVCNameForPod(svcName)
 }
 
-func PVCNamePrefixForScyllaCluster(scName string) string {
-	return fmt.Sprintf("%s-%s-", PVCTemplateName, scName)
+func PVCNamePrefix(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
+	return fmt.Sprintf("%s-%s-", PVCTemplateName, sdc.Spec.ClusterName)
+}
+
+func PVCNamePrefixForScyllaCluster(sc *scyllav1.ScyllaCluster) string {
+	return fmt.Sprintf("%s-%s-", PVCTemplateName, sc.Name)
 }
 
 func PVCNameForStatefulSet(stsName string, ordinal int32) string {
@@ -105,16 +125,25 @@ func IndexFromName(n string) (int32, error) {
 
 // ImageToVersion strips version part from container image.
 func ImageToVersion(image string) (string, error) {
+	_, version, err := ImageToRepositoryVersion(image)
+	if err != nil {
+		return "", err
+	}
+
+	return version, nil
+}
+
+func ImageToRepositoryVersion(image string) (string, string, error) {
 	named, err := reference.ParseNormalizedNamed(image)
 	if err != nil {
-		return "", fmt.Errorf("can't parse image: %w", err)
+		return "", "", fmt.Errorf("can't parse image: %w", err)
 	}
 	tagged, ok := named.(reference.NamedTagged)
 	if !ok {
-		return "", fmt.Errorf("invalid, non-tagged image reference of type %T: %s", named, image)
+		return "", "", fmt.Errorf("invalid, non-tagged image reference of type %T: %s", named, image)
 	}
 
-	return tagged.Tag(), nil
+	return tagged.Name(), tagged.Tag(), nil
 }
 
 // FindScyllaContainer returns Scylla container from given list.
@@ -151,34 +180,12 @@ func ScyllaVersion(containers []corev1.Container) (string, error) {
 	return version, nil
 }
 
-// SidecarVersion returns version of sidecar container.
-func SidecarVersion(containers []corev1.Container) (string, error) {
-	idx, err := FindSidecarInjectorContainer(containers)
-	if err != nil {
-		return "", errors.Wrap(err, "find sidecar container")
-	}
-
-	version, err := ImageToVersion(containers[idx].Image)
-	if err != nil {
-		return "", errors.Wrap(err, "parse sidecar container version")
-	}
-	return version, nil
-}
-
-func PerftuneResultName(uid string) string {
-	return fmt.Sprintf("%s-%s", PerftuneJobPrefixName, uid)
-}
-
 func GetTuningConfigMapNameForPod(pod *corev1.Pod) string {
 	return fmt.Sprintf("nodeconfig-podinfo-%s", pod.UID)
 }
 
-func MemberServiceAccountNameForScyllaCluster(scName string) string {
-	return fmt.Sprintf("%s-member", scName)
-}
-
-func GetScyllaClusterRootCASecretName(scName string) string {
-	return fmt.Sprintf("%s-root-ca", scName)
+func MemberServiceAccountNameForScyllaDBDatacenter(sdcName string) string {
+	return fmt.Sprintf("%s-member", sdcName)
 }
 
 func GetScyllaClusterLocalClientCAName(scName string) string {
@@ -227,4 +234,15 @@ func CleanupJobForService(svcName string) string {
 
 func GetScyllaDBManagedConfigCMName(clusterName string) string {
 	return fmt.Sprintf("%s-managed-config", clusterName)
+}
+
+func GetScyllaDBDatacenterGossipDatacenterName(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
+	if sdc.Spec.DatacenterName != nil && len(*sdc.Spec.DatacenterName) != 0 {
+		return *sdc.Spec.DatacenterName
+	}
+	return sdc.Name
+}
+
+func UpgradeContextConfigMapName(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
+	return fmt.Sprintf("%s-upgrade-context", sdc.Name)
 }

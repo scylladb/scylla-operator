@@ -35,7 +35,7 @@ var _ = g.Describe("ScyllaCluster HostID", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
 		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
@@ -50,7 +50,7 @@ var _ = g.Describe("ScyllaCluster HostID", func() {
 		defer scyllaClient.Close()
 
 		svcs, err := f.KubeClient().CoreV1().Services(sc.Namespace).List(ctx, metav1.ListOptions{
-			LabelSelector: utils.GetMemberServiceSelector(sc.Name).String(),
+			LabelSelector: utils.GetMemberServiceSelector(sc).String(),
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())
 

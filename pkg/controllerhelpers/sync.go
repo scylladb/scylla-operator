@@ -98,6 +98,40 @@ func GetObjects[CT, T kubeinterfaces.ObjectInterface](
 	)
 }
 
+func GetCustomResourceObjects[CT, T kubeinterfaces.ObjectInterface](
+	ctx context.Context,
+	controller metav1.Object,
+	controllerGVK schema.GroupVersionKind,
+	selector labels.Selector,
+	control ControlleeManagerGetObjectsInterface[CT, T],
+) (map[string]T, error) {
+	allObjects, err := control.ListObjects(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+
+	crm := controllertools.NewControllerRefManager[T](
+		ctx,
+		controller,
+		controllerGVK,
+		selector,
+		controllertools.ControllerRefManagerControlFuncsConverter[CT, T]{
+			GetControllerUncachedFunc: func(ctx context.Context, name string, opts metav1.GetOptions) (CT, error) {
+				return control.GetControllerUncached(ctx, name, opts)
+			},
+			PatchObjectFunc: func(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (T, error) {
+				return control.PatchObject(ctx, name, pt, data, opts, subresources...)
+			},
+		}.Convert(),
+	)
+
+	// StrategicMergePatch used by ControllerRefManager by default during object releasing is not supported on CRDs.
+	crm.GetReleasePatchBytes = GetDeleteOwnerReferenceMergePatchBytes
+	crm.ReleasePatchType = types.MergePatchType
+
+	return crm.ClaimObjects(allObjects)
+}
+
 func RunSync(conditions *[]metav1.Condition, progressingConditionType, degradedCondType string, observedGeneration int64, syncFn func() ([]metav1.Condition, error)) error {
 	progressingConditions, err := syncFn()
 	SetStatusConditionFromError(conditions, err, degradedCondType, observedGeneration)

@@ -1,6 +1,6 @@
 // Copyright (c) 2023 ScyllaDB.
 
-package scyllacluster
+package scylladbdatacenter
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -19,13 +20,16 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
-func (scc *Controller) syncJobs(
+func (sdcc *Controller) syncJobs(
 	ctx context.Context,
-	sc *scyllav1.ScyllaCluster,
+	sdc *scyllav1alpha1.ScyllaDBDatacenter,
 	services map[string]*corev1.Service,
 	jobs map[string]*batchv1.Job,
 ) ([]metav1.Condition, error) {
-	requiredJobs, progressingConditions := MakeJobs(sc, services, scc.operatorImage)
+	requiredJobs, progressingConditions, err := MakeJobs(sdc, services, sdcc.operatorImage)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't make jobs: %w", err)
+	}
 	if len(progressingConditions) != 0 {
 		return progressingConditions, nil
 	}
@@ -33,26 +37,26 @@ func (scc *Controller) syncJobs(
 	var progressingMessages []string
 	var errs []error
 
-	err := controllerhelpers.Prune(ctx, requiredJobs, jobs,
+	err = controllerhelpers.Prune(ctx, requiredJobs, jobs,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: scc.kubeClient.BatchV1().Jobs(sc.Namespace).Delete,
+			DeleteFunc: sdcc.kubeClient.BatchV1().Jobs(sdc.Namespace).Delete,
 		},
-		scc.eventRecorder,
+		sdcc.eventRecorder,
 	)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't prune job(s): %w", err)
 	}
 
-	if sc.Status.ObservedGeneration == nil || (sc.Generation != *sc.Status.ObservedGeneration) {
-		progressingMessages = append(progressingMessages, fmt.Sprintf("Waiting for status update of ScyllaCluster %q", naming.ObjRef(sc)))
+	if sdc.Status.ObservedGeneration == nil || (sdc.Generation != *sdc.Status.ObservedGeneration) {
+		progressingMessages = append(progressingMessages, fmt.Sprintf("Waiting for status update of ScyllaCluster %q", naming.ObjRef(sdc)))
 	}
 
-	if apimeta.IsStatusConditionTrue(sc.Status.Conditions, statefulSetControllerProgressingCondition) {
-		progressingMessages = append(progressingMessages, fmt.Sprintf("Waiting for StatefulSet controller to finish progressing with ScyllaCluster %q", naming.ObjRef(sc)))
+	if apimeta.IsStatusConditionTrue(sdc.Status.Conditions, statefulSetControllerProgressingCondition) {
+		progressingMessages = append(progressingMessages, fmt.Sprintf("Waiting for StatefulSet controller to finish progressing with ScyllaCluster %q", naming.ObjRef(sdc)))
 	}
 
-	if !apimeta.IsStatusConditionTrue(sc.Status.Conditions, scyllav1.AvailableCondition) || !apimeta.IsStatusConditionFalse(sc.Status.Conditions, scyllav1.DegradedCondition) {
-		progressingMessages = append(progressingMessages, fmt.Sprintf("Waiting for ScyllaCluster %q nodes to be ready", naming.ObjRef(sc)))
+	if !apimeta.IsStatusConditionTrue(sdc.Status.Conditions, scyllav1.AvailableCondition) || !apimeta.IsStatusConditionFalse(sdc.Status.Conditions, scyllav1.DegradedCondition) {
+		progressingMessages = append(progressingMessages, fmt.Sprintf("Waiting for ScyllaCluster %q nodes to be ready", naming.ObjRef(sdc)))
 	}
 
 	if len(progressingMessages) != 0 {
@@ -61,16 +65,16 @@ func (scc *Controller) syncJobs(
 			Status:             metav1.ConditionTrue,
 			Reason:             internalapi.ProgressingReason,
 			Message:            strings.Join(progressingMessages, "\n"),
-			ObservedGeneration: sc.Generation,
+			ObservedGeneration: sdc.Generation,
 		})
 
 		return progressingConditions, nil
 	}
 
 	for _, job := range requiredJobs {
-		fresh, changed, err := resourceapply.ApplyJob(ctx, scc.kubeClient.BatchV1(), scc.jobLister, scc.eventRecorder, job, resourceapply.ApplyOptions{})
+		fresh, changed, err := resourceapply.ApplyJob(ctx, sdcc.kubeClient.BatchV1(), sdcc.jobLister, sdcc.eventRecorder, job, resourceapply.ApplyOptions{})
 		if changed {
-			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, jobControllerProgressingCondition, job, "apply", sc.Generation)
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, jobControllerProgressingCondition, job, "apply", sdc.Generation)
 		}
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't apply Job: %w", err))
@@ -83,7 +87,7 @@ func (scc *Controller) syncJobs(
 				Status:             metav1.ConditionTrue,
 				Reason:             "WaitingForJobCompletion",
 				Message:            fmt.Sprintf("Waiting for Job %q to complete.", naming.ObjRef(fresh)),
-				ObservedGeneration: sc.Generation,
+				ObservedGeneration: sdc.Generation,
 			})
 		}
 	}

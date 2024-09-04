@@ -23,11 +23,11 @@ spec:
       serviceAccountName: scylla-operator
       containers:
       - name: scylla-operator
-        image: docker.io/scylladb/scylla-operator:latest
+        image: docker.io/scylladb/scylla-operator:1.14
         imagePullPolicy: IfNotPresent
         env:
         - name: SCYLLA_OPERATOR_IMAGE
-          value: docker.io/scylladb/scylla-operator:latest
+          value: docker.io/scylladb/scylla-operator:1.14
         args:
         - operator
         - --loglevel=2

@@ -11,7 +11,7 @@ metadata:
   name: scylla-cluster
   namespace: scylla
 spec:
-  agentVersion: 3.3.0@sha256:dc2684f51e961d88da5a8eac2d9f165cb7a960cbf91f67f49332e7224317c96b
+  agentVersion: 3.4.0-dev-0.20240904.debcff5bf
   version: 6.1.1
   sysctls:
     - fs.aio-max-nr=2097152

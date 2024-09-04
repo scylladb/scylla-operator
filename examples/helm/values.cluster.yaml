@@ -2,7 +2,7 @@
 scyllaImage:
   tag: 6.1.1
 agentImage:
-  tag: 3.4.0-dev-0.20240904.3cd0e7d5b
+  tag: 3.4.0-dev-0.20240904.2aff4cd30
 # Cluster information
 developerMode: true
 datacenter: us-east-1

@@ -38,6 +38,10 @@ var (
 	//go:embed "scylladbmonitoring.yaml.tmpl"
 	scyllaDBMonitoringTemplateString string
 	ScyllaDBMonitoringTemplate       = ParseObjectTemplateOrDie[*scyllav1alpha1.ScyllaDBMonitoring]("scylladbmonitoring", scyllaDBMonitoringTemplateString)
+
+	//go:embed "scylladbdatacenter.yaml.tmpl"
+	ScyllaDBDatacenterTemplateString string
+	ScyllaDBDatacenterTemplate       = ParseObjectTemplateOrDie[*scyllav1alpha1.ScyllaDBDatacenter]("scylladbdatacenter", ScyllaDBDatacenterTemplateString)
 )
 
 type NodeConfigBytes []byte

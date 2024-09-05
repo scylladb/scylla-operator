@@ -20,7 +20,7 @@ import (
 func (scmc *Controller) syncScyllaDBDatacenter(ctx context.Context, sc *scyllav1.ScyllaCluster, sdcs map[string]*scyllav1alpha1.ScyllaDBDatacenter) ([]metav1.Condition, error) {
 	var progressingConditions []metav1.Condition
 
-	sdc, upgradeContext, err := migrateV1ScyllaClusterToV1Alpha1ScyllaDBDatacenter(sc)
+	sdc, upgradeContext, err := MigrateV1ScyllaClusterToV1Alpha1ScyllaDBDatacenter(sc)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't migrate scyllav1.ScyllaCluster to v1alpha1.ScyllaDBDatacenter: %w", err)
 	}

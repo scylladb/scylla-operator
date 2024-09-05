@@ -295,7 +295,7 @@ func TestMigrateV1ScyllaClusterToV1Alpha1ScyllaDBDatacenter(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			gotSDc, gotUpgradeContext, err := migrateV1ScyllaClusterToV1Alpha1ScyllaDBDatacenter(tc.scyllaCluster)
+			gotSDc, gotUpgradeContext, err := MigrateV1ScyllaClusterToV1Alpha1ScyllaDBDatacenter(tc.scyllaCluster)
 			if !equality.Semantic.DeepEqual(err, tc.expectedErr) {
 				t.Fatalf("expected error %v, got %v", tc.expectedErr, err)
 			}

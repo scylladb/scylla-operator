@@ -48,6 +48,10 @@ var (
 			ValidateCreateFunc: validation.ValidateScyllaOperatorConfig,
 			ValidateUpdateFunc: validation.ValidateScyllaOperatorConfigUpdate,
 		},
+		scyllav1alpha1.GroupVersion.WithResource("scylladbdatacenters"): &GenericValidator[*scyllav1alpha1.ScyllaDBDatacenter]{
+			ValidateCreateFunc: validation.ValidateScyllaDBDatacenter,
+			ValidateUpdateFunc: validation.ValidateScyllaDBDatacenterUpdate,
+		},
 	}
 )
 

@@ -10,10 +10,13 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
-func (ncc *Controller) syncRoles(ctx context.Context, nc *scyllav1alpha1.NodeConfig, roles map[string]*rbacv1.Role) error {
+func (ncc *Controller) syncRoles(ctx context.Context, nc *scyllav1alpha1.NodeConfig, roles map[string]*rbacv1.Role) ([]metav1.Condition, error) {
+	var progressingConditions []metav1.Condition
+
 	requiredRoles := []*rbacv1.Role{
 		makePerftuneRole(),
 	}
@@ -29,19 +32,22 @@ func (ncc *Controller) syncRoles(ctx context.Context, nc *scyllav1alpha1.NodeCon
 		},
 		ncc.eventRecorder)
 	if err != nil {
-		return fmt.Errorf("can't prune Role(s): %w", err)
+		return progressingConditions, fmt.Errorf("can't prune Role(s): %w", err)
 	}
 
 	var errs []error
-	for _, cr := range requiredRoles {
-		_, _, err := resourceapply.ApplyRole(ctx, ncc.kubeClient.RbacV1(), ncc.roleLister, ncc.eventRecorder, cr, resourceapply.ApplyOptions{
+	for _, r := range requiredRoles {
+		_, changed, err := resourceapply.ApplyRole(ctx, ncc.kubeClient.RbacV1(), ncc.roleLister, ncc.eventRecorder, r, resourceapply.ApplyOptions{
 			AllowMissingControllerRef: true,
 		})
+		if changed {
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, roleControllerProgressingCondition, r, "apply", nc.Generation)
+		}
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't create missing Role: %w", err))
 			continue
 		}
 	}
 
-	return utilerrors.NewAggregate(errs)
+	return progressingConditions, utilerrors.NewAggregate(errs)
 }

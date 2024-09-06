@@ -6,6 +6,8 @@ import (
 	"context"
 	"fmt"
 
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -53,25 +55,30 @@ func (ncc *Controller) pruneClusterRoles(ctx context.Context, requiredClusterRol
 	return utilerrors.NewAggregate(errs)
 }
 
-func (ncc *Controller) syncClusterRoles(ctx context.Context, clusterRoles map[string]*rbacv1.ClusterRole) error {
+func (ncc *Controller) syncClusterRoles(ctx context.Context, nc *scyllav1alpha1.NodeConfig, clusterRoles map[string]*rbacv1.ClusterRole) ([]metav1.Condition, error) {
+	var progressingConditions []metav1.Condition
+
 	requiredClusterRoles := ncc.makeClusterRoles()
 
 	// Delete any excessive ClusterRoles.
 	// Delete has to be the first action to avoid getting stuck on quota.
 	if err := ncc.pruneClusterRoles(ctx, requiredClusterRoles, clusterRoles); err != nil {
-		return fmt.Errorf("can't delete ClusterRole(s): %w", err)
+		return progressingConditions, fmt.Errorf("can't delete ClusterRole(s): %w", err)
 	}
 
 	var errs []error
 	for _, cr := range requiredClusterRoles {
-		_, _, err := resourceapply.ApplyClusterRole(ctx, ncc.kubeClient.RbacV1(), ncc.clusterRoleLister, ncc.eventRecorder, cr, resourceapply.ApplyOptions{
+		_, changed, err := resourceapply.ApplyClusterRole(ctx, ncc.kubeClient.RbacV1(), ncc.clusterRoleLister, ncc.eventRecorder, cr, resourceapply.ApplyOptions{
 			AllowMissingControllerRef: true,
 		})
+		if changed {
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, clusterRoleControllerProgressingCondition, cr, "apply", nc.Generation)
+		}
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't create missing clusterrole: %w", err))
 			continue
 		}
 	}
 
-	return utilerrors.NewAggregate(errs)
+	return progressingConditions, utilerrors.NewAggregate(errs)
 }

@@ -6,6 +6,8 @@ import (
 	"context"
 	"fmt"
 
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -54,28 +56,30 @@ func (ncc *Controller) pruneServiceAccounts(ctx context.Context, requiredService
 	return utilerrors.NewAggregate(errs)
 }
 
-func (ncc *Controller) syncServiceAccounts(
-	ctx context.Context,
-	serviceAccounts map[string]*corev1.ServiceAccount,
-) error {
+func (ncc *Controller) syncServiceAccounts(ctx context.Context, nc *scyllav1alpha1.NodeConfig, serviceAccounts map[string]*corev1.ServiceAccount) ([]metav1.Condition, error) {
+	var progressingConditions []metav1.Condition
+
 	requiredServiceAccounts := ncc.makeServiceAccounts()
 
 	// Delete any excessive ServiceAccounts.
 	// Delete has to be the first action to avoid getting stuck on quota.
 	if err := ncc.pruneServiceAccounts(ctx, requiredServiceAccounts, serviceAccounts); err != nil {
-		return fmt.Errorf("can't delete ServiceAccount(s): %w", err)
+		return progressingConditions, fmt.Errorf("can't delete ServiceAccount(s): %w", err)
 	}
 
 	var errs []error
 	for _, sa := range requiredServiceAccounts {
-		_, _, err := resourceapply.ApplyServiceAccount(ctx, ncc.kubeClient.CoreV1(), ncc.serviceAccountLister, ncc.eventRecorder, sa, resourceapply.ApplyOptions{
+		_, changed, err := resourceapply.ApplyServiceAccount(ctx, ncc.kubeClient.CoreV1(), ncc.serviceAccountLister, ncc.eventRecorder, sa, resourceapply.ApplyOptions{
 			AllowMissingControllerRef: true,
 		})
+		if changed {
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceAccountControllerProgressingCondition, sa, "apply", nc.Generation)
+		}
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't create missing ServiceAccount: %w", err))
 			continue
 		}
 	}
 
-	return utilerrors.NewAggregate(errs)
+	return progressingConditions, utilerrors.NewAggregate(errs)
 }

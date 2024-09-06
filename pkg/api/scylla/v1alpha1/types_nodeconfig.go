@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,9 +26,12 @@ import (
 type NodeConfigConditionType string
 
 const (
-	// Reconciled indicates that the NodeConfig is fully deployed and available.
+	// NodeConfigReconciledConditionType indicates that the NodeConfig is fully deployed and available.
+	// Deprecated: NodeConfigReconciledConditionType is deprecated. Use standard workload conditions instead.
 	NodeConfigReconciledConditionType NodeConfigConditionType = "Reconciled"
 )
+
+// TODO(rzetelskik): move from NodeConfigCondition to metav1.Condition in next API version.
 
 type NodeConfigCondition struct {
 	// type is the type of the NodeConfig condition.
@@ -53,10 +57,46 @@ type NodeConfigCondition struct {
 	Message string `json:"message"`
 }
 
+func (c *NodeConfigCondition) ToMetaV1Condition() metav1.Condition {
+	return metav1.Condition{
+		Type:               string(c.Type),
+		Status:             metav1.ConditionStatus(c.Status),
+		ObservedGeneration: c.ObservedGeneration,
+		LastTransitionTime: c.LastTransitionTime,
+		Reason:             c.Reason,
+		Message:            c.Message,
+	}
+}
+
+func NewNodeConfigCondition(c metav1.Condition) NodeConfigCondition {
+	return NodeConfigCondition{
+		Type:               NodeConfigConditionType(c.Type),
+		Status:             corev1.ConditionStatus(c.Status),
+		ObservedGeneration: c.ObservedGeneration,
+		LastTransitionTime: c.LastTransitionTime,
+		Reason:             c.Reason,
+		Message:            c.Message,
+	}
+}
+
+type NodeConfigConditions []NodeConfigCondition
+
 type NodeConfigNodeStatus struct {
 	Name            string   `json:"name"`
 	TunedNode       bool     `json:"tunedNode"`
 	TunedContainers []string `json:"tunedContainers"`
+}
+
+func (c NodeConfigConditions) ToMetaV1Conditions() []metav1.Condition {
+	return slices.ConvertSlice(c, func(from NodeConfigCondition) metav1.Condition {
+		return from.ToMetaV1Condition()
+	})
+}
+
+func NewNodeConfigConditions(cs []metav1.Condition) NodeConfigConditions {
+	return slices.ConvertSlice(cs, func(from metav1.Condition) NodeConfigCondition {
+		return NewNodeConfigCondition(from)
+	})
 }
 
 type NodeConfigStatus struct {
@@ -65,7 +105,7 @@ type NodeConfigStatus struct {
 
 	// conditions represents the latest available observations of current state.
 	// +optional
-	Conditions []NodeConfigCondition `json:"conditions"`
+	Conditions NodeConfigConditions `json:"conditions"`
 
 	// nodeStatuses hold the status for each tuned node.
 	NodeStatuses []NodeConfigNodeStatus `json:"nodeStatuses"`
@@ -206,6 +246,9 @@ type NodeConfigSpec struct {
 // +genclient
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:printcolumn:name="AVAILABLE",type=string,JSONPath=".status.conditions[?(@.type=='Available')].status"
+// +kubebuilder:printcolumn:name="PROGRESSING",type=string,JSONPath=".status.conditions[?(@.type=='Progressing')].status"
+// +kubebuilder:printcolumn:name="DEGRADED",type=string,JSONPath=".status.conditions[?(@.type=='Degraded')].status"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 
 type NodeConfig struct {

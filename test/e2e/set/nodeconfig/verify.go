@@ -59,8 +59,82 @@ func verifyNodeConfig(ctx context.Context, kubeClient kubernetes.Interface, nc *
 			condType string
 			status   corev1.ConditionStatus
 		}
+		condList := []condValue{
+			// Aggregated conditions
+			{
+				condType: "Available",
+				status:   corev1.ConditionTrue,
+			},
+			{
+				condType: "Progressing",
+				status:   corev1.ConditionFalse,
+			},
+			{
+				condType: "Degraded",
+				status:   corev1.ConditionFalse,
+			},
+
+			// Controller conditions
+			{
+				condType: "NamespaceControllerProgressing",
+				status:   corev1.ConditionFalse,
+			},
+			{
+				condType: "NamespaceControllerDegraded",
+				status:   corev1.ConditionFalse,
+			},
+			{
+				condType: "ClusterRoleControllerProgressing",
+				status:   corev1.ConditionFalse,
+			},
+			{
+				condType: "ClusterRoleControllerDegraded",
+				status:   corev1.ConditionFalse,
+			},
+			{
+				condType: "ServiceAccountControllerProgressing",
+				status:   corev1.ConditionFalse,
+			},
+			{
+				condType: "ServiceAccountControllerDegraded",
+				status:   corev1.ConditionFalse,
+			},
+			{
+				condType: "ClusterRoleBindingControllerProgressing",
+				status:   corev1.ConditionFalse,
+			},
+			{
+				condType: "ClusterRoleBindingControllerDegraded",
+				status:   corev1.ConditionFalse,
+			},
+			{
+				condType: "DaemonSetControllerProgressing",
+				status:   corev1.ConditionFalse,
+			},
+			{
+				condType: "DaemonSetControllerDegraded",
+				status:   corev1.ConditionFalse,
+			},
+			{
+				condType: "RoleControllerProgressing",
+				status:   corev1.ConditionFalse,
+			},
+			{
+				condType: "RoleControllerDegraded",
+				status:   corev1.ConditionFalse,
+			},
+			{
+				condType: "RoleBindingControllerProgressing",
+				status:   corev1.ConditionFalse,
+			},
+			{
+				condType: "RoleBindingControllerDegraded",
+				status:   corev1.ConditionFalse,
+			},
+		}
+
 		for _, nodeName := range dsNodeNames {
-			condList := []condValue{
+			nodeCondList := []condValue{
 				// Node aggregated conditions
 				{
 					condType: fmt.Sprintf("Node%sAvailable", nodeName),
@@ -74,7 +148,7 @@ func verifyNodeConfig(ctx context.Context, kubeClient kubernetes.Interface, nc *
 					condType: fmt.Sprintf("Node%sDegraded", nodeName),
 					status:   corev1.ConditionFalse,
 				},
-				// Controller conditions
+				// Node controller conditions
 				{
 					condType: fmt.Sprintf("FilesystemControllerNode%sProgressing", nodeName),
 					status:   corev1.ConditionFalse,
@@ -109,24 +183,26 @@ func verifyNodeConfig(ctx context.Context, kubeClient kubernetes.Interface, nc *
 				},
 			}
 
-			for _, item := range condList {
-				expectedConditions = append(expectedConditions, scyllav1alpha1.NodeConfigCondition{
-					Type:               scyllav1alpha1.NodeConfigConditionType(item.condType),
-					Status:             item.status,
-					Reason:             "AsExpected",
-					Message:            "",
-					ObservedGeneration: nc.Generation,
-				})
-			}
+			condList = append(condList, nodeCondList...)
+		}
 
+		for _, item := range condList {
 			expectedConditions = append(expectedConditions, scyllav1alpha1.NodeConfigCondition{
-				Type:               scyllav1alpha1.NodeConfigReconciledConditionType,
-				Status:             corev1.ConditionTrue,
-				Reason:             "FullyReconciledAndUp",
-				Message:            "All operands are reconciled and available.",
+				Type:               scyllav1alpha1.NodeConfigConditionType(item.condType),
+				Status:             item.status,
+				Reason:             "AsExpected",
+				Message:            "",
 				ObservedGeneration: nc.Generation,
 			})
 		}
+
+		expectedConditions = append(expectedConditions, scyllav1alpha1.NodeConfigCondition{
+			Type:               scyllav1alpha1.NodeConfigReconciledConditionType,
+			Status:             corev1.ConditionTrue,
+			ObservedGeneration: nc.Generation,
+			Reason:             "FullyReconciledAndUp",
+			Message:            "All operands are reconciled and available.",
+		})
 
 		return expectedConditions
 	}()...))

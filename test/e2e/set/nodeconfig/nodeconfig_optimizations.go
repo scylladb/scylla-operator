@@ -81,7 +81,6 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
 			utils.IsNodeConfigRolledOut,
 			utils.IsNodeConfigDoneWithNodeTuningFunc(matchingNodes),
-			utils.IsNodeConfigDoneWithNodes(matchingNodes),
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 

@@ -40,9 +40,22 @@ import (
 )
 
 func IsNodeConfigRolledOut(nc *scyllav1alpha1.NodeConfig) (bool, error) {
-	cond := controllerhelpers.FindNodeConfigCondition(nc.Status.Conditions, scyllav1alpha1.NodeConfigReconciledConditionType)
-	return nc.Status.ObservedGeneration >= nc.Generation &&
-		cond != nil && cond.ObservedGeneration >= nc.Generation && cond.Status == corev1.ConditionTrue, nil
+	statusConditions := nc.Status.Conditions.ToMetaV1Conditions()
+
+	if !helpers.IsStatusConditionPresentAndTrue(statusConditions, scyllav1alpha1.AvailableCondition, nc.Generation) {
+		return false, nil
+	}
+
+	if !helpers.IsStatusConditionPresentAndFalse(statusConditions, scyllav1alpha1.ProgressingCondition, nc.Generation) {
+		return false, nil
+	}
+
+	if !helpers.IsStatusConditionPresentAndFalse(statusConditions, scyllav1alpha1.DegradedCondition, nc.Generation) {
+		return false, nil
+	}
+
+	framework.Infof("NodeConfig %q (RV=%s) is rolled out", naming.ObjRef(nc), nc.ResourceVersion)
+	return true, nil
 }
 
 func GetMatchingNodesForNodeConfig(ctx context.Context, nodeGetter corev1client.NodesGetter, nc *scyllav1alpha1.NodeConfig) ([]*corev1.Node, error) {
@@ -62,45 +75,6 @@ func GetMatchingNodesForNodeConfig(ctx context.Context, nodeGetter corev1client.
 	}
 
 	return matchingNodes, nil
-}
-
-func IsNodeConfigDoneWithNodes(nodes []*corev1.Node) func(nc *scyllav1alpha1.NodeConfig) (bool, error) {
-	const (
-		nodeAvailableConditionFormat   = "Node%sAvailable"
-		nodeProgressingConditionFormat = "Node%sProgressing"
-		nodeDegradedConditionFormat    = "Node%sDegraded"
-	)
-
-	return func(nc *scyllav1alpha1.NodeConfig) (bool, error) {
-		if len(nodes) == 0 {
-			return true, fmt.Errorf("nodes can't be empty")
-		}
-
-		for _, node := range nodes {
-			if nc.Status.ObservedGeneration < nc.Generation {
-				return false, nil
-			}
-			if !controllerhelpers.IsNodeTuned(nc.Status.NodeStatuses, node.Name) {
-				return false, nil
-			}
-
-			availableNodeConditionType := scyllav1alpha1.NodeConfigConditionType(fmt.Sprintf(nodeAvailableConditionFormat, node.Name))
-			progressingNodeConditionType := scyllav1alpha1.NodeConfigConditionType(fmt.Sprintf(nodeProgressingConditionFormat, node.Name))
-			degradedNodeConditionType := scyllav1alpha1.NodeConfigConditionType(fmt.Sprintf(nodeDegradedConditionFormat, node.Name))
-
-			if !helpers.IsStatusNodeConfigConditionPresentAndTrue(nc.Status.Conditions, availableNodeConditionType, nc.Generation) {
-				return false, nil
-			}
-			if !helpers.IsStatusNodeConfigConditionPresentAndFalse(nc.Status.Conditions, progressingNodeConditionType, nc.Generation) {
-				return false, nil
-			}
-			if !helpers.IsStatusNodeConfigConditionPresentAndFalse(nc.Status.Conditions, degradedNodeConditionType, nc.Generation) {
-				return false, nil
-			}
-		}
-
-		return true, nil
-	}
 }
 
 func IsNodeConfigDoneWithContainerTuningFunc(nodeName, containerID string) func(nc *scyllav1alpha1.NodeConfig) (bool, error) {

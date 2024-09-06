@@ -606,7 +606,6 @@ exec /mnt/shared/scylla-operator sidecar \
 									{
 										Name:      "shared",
 										MountPath: naming.SharedDirName,
-										ReadOnly:  true,
 									},
 									{
 										Name:      "scylla-config-volume",

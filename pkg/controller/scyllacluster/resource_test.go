@@ -826,7 +826,6 @@ exec /mnt/shared/scylla-operator sidecar \
 										{
 											Name:      "shared",
 											MountPath: "/mnt/shared",
-											ReadOnly:  true,
 										},
 										{
 											Name:      "scylla-config-volume",

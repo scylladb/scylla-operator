@@ -221,6 +221,14 @@ function run-e2e {
     kubectl create -n=e2e secret generic gcs-service-account-credentials --dry-run=client -o=yaml | kubectl_create -f=-
   fi
 
+  s3_credentials_in_container_path=""
+  if [[ -n "${SO_S3_CREDENTIALS_PATH+x}" ]]; then
+    s3_credentials_in_container_path=/var/run/secrets/s3-credentials/credentials
+    kubectl create -n=e2e secret generic s3-credentials --from-file=credentials="${SO_S3_CREDENTIALS_PATH}" --dry-run=client -o=yaml | kubectl_create -f=-
+  else
+    kubectl create -n=e2e secret generic s3-credentials --dry-run=client -o=yaml | kubectl_create -f=-
+  fi
+
   ingress_class_name='haproxy'
   ingress_custom_annotations='haproxy.org/ssl-passthrough=true'
   ingress_controller_address="$( kubectl -n=haproxy-ingress get svc haproxy-ingress --template='{{ .spec.clusterIP }}' ):9142"
@@ -264,6 +272,7 @@ spec:
     - "--scyllacluster-storageclass-name=${SO_SCYLLACLUSTER_STORAGECLASS_NAME}"
     - "--object-storage-bucket=${SO_BUCKET_NAME}"
     - "--gcs-service-account-key-path=${gcs_sa_in_container_path}"
+    - "--s3-credentials-file-path=${s3_credentials_in_container_path}"
     image: "${SO_IMAGE}"
     imagePullPolicy: Always
     volumeMounts:
@@ -271,6 +280,8 @@ spec:
       mountPath: /tmp/artifacts
     - name: gcs-service-account-credentials
       mountPath: /var/run/secrets/gcs-service-account-credentials
+    - name: s3-credentials
+      mountPath: /var/run/secrets/s3-credentials
     - name: kubeconfigs
       mountPath: /var/run/secrets/kubeconfigs
       readOnly: true
@@ -280,6 +291,9 @@ spec:
   - name: gcs-service-account-credentials
     secret:
       secretName: gcs-service-account-credentials
+  - name: s3-credentials
+    secret:
+      secretName: s3-credentials
   - name: kubeconfigs
     secret:
       secretName: kubeconfigs

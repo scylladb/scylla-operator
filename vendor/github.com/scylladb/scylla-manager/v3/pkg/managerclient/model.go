@@ -15,8 +15,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/scylladb/go-set/strset"
 	"github.com/scylladb/scylla-manager/v3/pkg/managerclient/table"
-	"github.com/scylladb/scylla-manager/v3/pkg/service/scheduler"
 	"github.com/scylladb/scylla-manager/v3/pkg/util/inexlist"
+	"github.com/scylladb/scylla-manager/v3/pkg/util/schedules"
 	"github.com/scylladb/scylla-manager/v3/pkg/util/timeutc"
 	"github.com/scylladb/scylla-manager/v3/pkg/util/version"
 	"github.com/scylladb/scylla-manager/v3/swagger/gen/scylla-manager/models"
@@ -513,7 +513,7 @@ func (li TaskListItems) Render(w io.Writer) error {
 			id = "*" + id
 		}
 
-		emptySpec := scheduler.CronSpecification{}
+		emptySpec := schedules.CronSpecification{}
 		bytesEmptySpec, err := json.Marshal(emptySpec)
 		if err != nil {
 			return errors.New("cannot marshall empty cron specification object")
@@ -521,14 +521,14 @@ func (li TaskListItems) Render(w io.Writer) error {
 
 		var schedule string
 		if t.Schedule.Cron != "" && t.Schedule.Cron != string(bytesEmptySpec) {
-			var cronSpec scheduler.CronSpecification
+			var cronSpec schedules.CronSpecification
 			err := json.Unmarshal([]byte(t.Schedule.Cron), &cronSpec)
 			if err != nil {
 				schedule = t.Schedule.Cron
 			} else {
 				schedule = cronSpec.Spec
 				if cronSpec.StartDate.After(timeutc.Now()) {
-					c := scheduler.MustCron(cronSpec.Spec, cronSpec.StartDate)
+					c := schedules.MustCron(cronSpec.Spec, cronSpec.StartDate)
 					schedule += fmt.Sprintf(" with first activation after %s",
 						c.Next(cronSpec.StartDate).Format("2006-01-02 15:04:05"))
 				}

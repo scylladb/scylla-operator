@@ -1511,8 +1511,8 @@ func encIntZigZag(n int64) uint64 {
 	return uint64((n >> 63) ^ (n << 1))
 }
 
-func encVints(months int32, seconds int32, nanos int64) []byte {
-	buf := append(encVint(int64(months)), encVint(int64(seconds))...)
+func encVints(months int32, days int32, nanos int64) []byte {
+	buf := append(encVint(int64(months)), encVint(int64(days))...)
 	return append(buf, encVint(nanos)...)
 }
 

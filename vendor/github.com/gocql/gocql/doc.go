@@ -321,6 +321,8 @@
 // execution.
 //
 // Idempotent queries are retried in case of errors based on the configured RetryPolicy.
+// If the query is LWT and the configured RetryPolicy additionally implements LWTRetryPolicy
+// interface, then the policy will be cast to LWTRetryPolicy and used this way.
 //
 // Queries can be retried even before they fail by setting a SpeculativeExecutionPolicy. The policy can
 // cause the driver to retry on a different node if the query is taking longer than a specified delay even before the

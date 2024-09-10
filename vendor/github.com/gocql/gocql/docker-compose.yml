@@ -15,6 +15,7 @@ services:
       public:
         ipv4_address: 192.168.100.11
     volumes:
+    - /tmp/scylla:/var/lib/scylla/
     - type: bind
       source: ./testdata/config/scylla.yaml
       target: /etc/scylla/scylla.yaml
@@ -33,10 +34,8 @@ services:
       timeout: 5s
       retries: 18
   node_2:
-    image: scylladb/scylla-nightly
+    image: ${SCYLLA_IMAGE}
     command: |
-      --experimental-features consistent-topology-changes
-      --experimental-features tablets
       --smp 2
       --memory 1G
       --seeds 192.168.100.12
@@ -49,10 +48,8 @@ services:
       timeout: 5s
       retries: 18
   node_3:
-    image: scylladb/scylla-nightly
+    image: ${SCYLLA_IMAGE}
     command: |
-      --experimental-features consistent-topology-changes
-      --experimental-features tablets
       --smp 2
       --memory 1G
       --seeds 192.168.100.12
@@ -68,10 +65,8 @@ services:
       node_2:
         condition: service_healthy
   node_4:
-    image: scylladb/scylla-nightly
+    image: ${SCYLLA_IMAGE}
     command: |
-      --experimental-features consistent-topology-changes
-      --experimental-features tablets
       --smp 2
       --memory 1G
       --seeds 192.168.100.12

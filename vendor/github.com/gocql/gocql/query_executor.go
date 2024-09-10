@@ -18,7 +18,7 @@ type ExecutableQuery interface {
 	Table() string
 	IsIdempotent() bool
 	IsLWT() bool
-	GetCustomPartitioner() partitioner
+	GetCustomPartitioner() Partitioner
 
 	withContext(context.Context) ExecutableQuery
 
@@ -109,6 +109,9 @@ func (q *queryExecutor) executeQuery(qry ExecutableQuery) (*Iter, error) {
 func (q *queryExecutor) do(ctx context.Context, qry ExecutableQuery, hostIter NextHost) *Iter {
 	selectedHost := hostIter()
 	rt := qry.retryPolicy()
+	lwt_rt, use_lwt_rt := rt.(LWTRetryPolicy)
+	// We only want to apply LWT policy to LWT queries
+	use_lwt_rt = use_lwt_rt && qry.IsLWT()
 
 	var lastErr error
 	var iter *Iter
@@ -125,7 +128,7 @@ func (q *queryExecutor) do(ctx context.Context, qry ExecutableQuery, hostIter Ne
 			continue
 		}
 
-		conn := pool.Pick(selectedHost.Token(), qry.Keyspace(), qry.Table())
+		conn := pool.Pick(selectedHost.Token(), qry)
 		if conn == nil {
 			selectedHost = hostIter()
 			continue
@@ -145,14 +148,33 @@ func (q *queryExecutor) do(ctx context.Context, qry ExecutableQuery, hostIter Ne
 		}
 
 		// Exit if the query was successful
-		// or no retry policy defined or retry attempts were reached
-		if iter.err == nil || rt == nil || !rt.Attempt(qry) {
+		// or no retry policy defined
+		if iter.err == nil || rt == nil {
 			return iter
 		}
+
+		// or retry policy decides to not retry anymore
+		if use_lwt_rt {
+			if !lwt_rt.AttemptLWT(qry) {
+				return iter
+			}
+		} else {
+			if !rt.Attempt(qry) {
+				return iter
+			}
+		}
+
 		lastErr = iter.err
 
+		var retry_type RetryType
+		if use_lwt_rt {
+			retry_type = lwt_rt.GetRetryTypeLWT(iter.err)
+		} else {
+			retry_type = rt.GetRetryType(iter.err)
+		}
+
 		// If query is unsuccessful, check the error with RetryPolicy to retry
-		switch rt.GetRetryType(iter.err) {
+		switch retry_type {
 		case Retry:
 			// retry on the same host
 			continue

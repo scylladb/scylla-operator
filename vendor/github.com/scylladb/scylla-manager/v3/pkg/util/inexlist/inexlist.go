@@ -8,7 +8,7 @@ import (
 
 	"github.com/gobwas/glob"
 	"github.com/pkg/errors"
-	"github.com/scylladb/scylla-manager/v3/pkg/service"
+	"github.com/scylladb/scylla-manager/v3/pkg/util"
 )
 
 type sign bool
@@ -56,7 +56,7 @@ func ParseInExList(patterns []string) (InExList, error) {
 		p = strings.TrimLeft(p, "!")
 		g, err := glob.Compile(p)
 		if err != nil {
-			return InExList{}, service.ErrValidate(errors.Errorf("invalid glob p on position %d: %s", i, p))
+			return InExList{}, util.ErrValidate(errors.Errorf("invalid glob p on position %d: %s", i, p))
 		}
 		parsed = append(parsed, signedPattern{Sign: sign(s), Pattern: p, g: g})
 	}

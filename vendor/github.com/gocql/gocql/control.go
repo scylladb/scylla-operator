@@ -50,10 +50,11 @@ type controlConn struct {
 }
 
 func createControlConn(session *Session) *controlConn {
+
 	control := &controlConn{
-		session: session,
-		quit:    make(chan struct{}),
-		retry:   &SimpleRetryPolicy{NumRetries: 3},
+		session:            session,
+		quit:               make(chan struct{}),
+		retry:              &SimpleRetryPolicy{NumRetries: 3},
 	}
 
 	control.conn.Store((*connHost)(nil))
@@ -87,7 +88,7 @@ func (c *controlConn) heartBeat() {
 		switch resp.(type) {
 		case *supportedFrame:
 			// Everything ok
-			sleepTime = 5 * time.Second
+			sleepTime = 30 * time.Second
 			continue
 		case error:
 			goto reconn
@@ -270,7 +271,11 @@ type connHost struct {
 func (c *controlConn) setupConn(conn *Conn) error {
 	// we need up-to-date host info for the filterHost call below
 	iter := conn.querySystemLocal(context.TODO())
-	host, err := c.session.hostInfoFromIter(iter, conn.host.connectAddress, conn.conn.RemoteAddr().(*net.TCPAddr).Port)
+	defaultPort := 9042
+	if tcpAddr, ok := conn.conn.RemoteAddr().(*net.TCPAddr); ok {
+		defaultPort = tcpAddr.Port
+	}
+	host, err := c.session.hostInfoFromIter(iter, conn.host.connectAddress, defaultPort)
 	if err != nil {
 		return err
 	}

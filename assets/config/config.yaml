@@ -6,8 +6,8 @@ operator:
   scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride: "2024.1.8"
   # TODO: scyllaDBUtils image can't be bumped until scylladb/scylladb#17787 is fixed.
   scyllaDBUtilsImage: "docker.io/scylladb/scylla:5.4.0@sha256:b9070afdb2be0d5c59b1c196e1bb66660351403cb30d5c6ba446ef8c3b0754f1"
-  scyllaDBManagerVersion: "3.4.0-dev-0.20240910.bc89ca4ee"
-  scyllaDBManagerAgentVersion: "3.4.0-dev-0.20240910.bc89ca4ee"
+  scyllaDBManagerVersion: "3.4.0-dev-0.20240910.62c01b928"
+  scyllaDBManagerAgentVersion: "3.4.0-dev-0.20240910.62c01b928"
   bashToolsImage: "registry.access.redhat.com/ubi9/ubi:9.3-1361.1699548029@sha256:6b95efc134c2af3d45472c0a2f88e6085433df058cc210abb2bb061ac4d74359"
   grafanaImage: "docker.io/grafana/grafana:9.5.12@sha256:7d2f2a8b7aebe30bf3f9ae0f190e508e571b43f65753ba3b1b1adf0800bc9256"
   prometheusVersion: "v2.44.0"

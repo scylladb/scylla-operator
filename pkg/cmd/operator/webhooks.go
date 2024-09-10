@@ -19,6 +19,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
+	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
@@ -33,10 +34,36 @@ import (
 	"k8s.io/klog/v2"
 )
 
+var (
+	DefaultValidators = map[schema.GroupVersionResource]Validator{
+		scyllav1.GroupVersion.WithResource("scyllaclusters"): &GenericValidator[*scyllav1.ScyllaCluster]{
+			ValidateCreateFunc: validation.ValidateScyllaCluster,
+			ValidateUpdateFunc: validation.ValidateScyllaClusterUpdate,
+		},
+		scyllav1alpha1.GroupVersion.WithResource("nodeconfigs"): &GenericValidator[*scyllav1alpha1.NodeConfig]{
+			ValidateCreateFunc: validation.ValidateNodeConfig,
+			ValidateUpdateFunc: validation.ValidateNodeConfigUpdate,
+		},
+		scyllav1alpha1.GroupVersion.WithResource("scyllaoperatorconfigs"): &GenericValidator[*scyllav1alpha1.ScyllaOperatorConfig]{
+			ValidateCreateFunc: validation.ValidateScyllaOperatorConfig,
+			ValidateUpdateFunc: validation.ValidateScyllaOperatorConfigUpdate,
+		},
+	}
+)
+
+type Validator interface {
+	ValidateCreate(obj runtime.Object) field.ErrorList
+	ValidateUpdate(obj, oldObj runtime.Object) field.ErrorList
+	GetGroupKind(obj runtime.Object) schema.GroupKind
+	GetName(obj runtime.Object) string
+}
+
 type WebhookOptions struct {
 	TLSCertFile, TLSKeyFile        string
 	Port                           int
 	InsecureGenerateLocalhostCerts bool
+
+	Validators map[schema.GroupVersionResource]Validator
 
 	TLSConfig                 *tls.Config
 	dynamicCertKeyPairContent *dynamiccertificates.DynamicCertKeyPairContent
@@ -45,15 +72,20 @@ type WebhookOptions struct {
 	resolvedListenAddrCh chan struct{}
 }
 
-func NewWebhookOptions(streams genericclioptions.IOStreams) *WebhookOptions {
+func NewWebhookOptions(streams genericclioptions.IOStreams, validators map[schema.GroupVersionResource]Validator) *WebhookOptions {
+	if len(validators) == 0 {
+		panic(fmt.Errorf("validators must not be empty"))
+	}
+
 	return &WebhookOptions{
 		Port:                 5000,
+		Validators:           validators,
 		resolvedListenAddrCh: make(chan struct{}),
 	}
 }
 
-func NewWebhookCmd(streams genericclioptions.IOStreams) *cobra.Command {
-	o := NewWebhookOptions(streams)
+func NewWebhookCmd(streams genericclioptions.IOStreams, validators map[schema.GroupVersionResource]Validator) *cobra.Command {
+	o := NewWebhookOptions(streams, validators)
 
 	cmd := &cobra.Command{
 		Use:   "run-webhook-server",
@@ -199,7 +231,9 @@ func (o *WebhookOptions) run(ctx context.Context, streams genericclioptions.IOSt
 			klog.Error(err)
 		}
 	})
-	handler.Handle("/validate", admissionreview.NewHandler(validate))
+	handler.Handle("/validate", admissionreview.NewHandler(func(review *admissionv1.AdmissionReview) error {
+		return validate(review, o.Validators)
+	}))
 
 	server := http.Server{
 		Handler:   handler,
@@ -245,7 +279,33 @@ func (o *WebhookOptions) run(ctx context.Context, streams genericclioptions.IOSt
 	return nil
 }
 
-func validate(ar *admissionv1.AdmissionReview) error {
+type ValidatableObject interface {
+	kubeinterfaces.ObjectInterface
+	schema.ObjectKind
+}
+
+type GenericValidator[T ValidatableObject] struct {
+	ValidateCreateFunc func(obj T) field.ErrorList
+	ValidateUpdateFunc func(obj, oldObj T) field.ErrorList
+}
+
+func (v *GenericValidator[T]) ValidateCreate(obj runtime.Object) field.ErrorList {
+	return v.ValidateCreateFunc(obj.(T))
+}
+
+func (v *GenericValidator[T]) ValidateUpdate(obj, oldObj runtime.Object) field.ErrorList {
+	return v.ValidateUpdateFunc(obj.(T), oldObj.(T))
+}
+
+func (v *GenericValidator[T]) GetGroupKind(obj runtime.Object) schema.GroupKind {
+	return obj.(T).GroupVersionKind().GroupKind()
+}
+
+func (v *GenericValidator[T]) GetName(obj runtime.Object) string {
+	return obj.(T).GetName()
+}
+
+func validate(ar *admissionv1.AdmissionReview, validators map[schema.GroupVersionResource]Validator) error {
 	gvr := schema.GroupVersionResource{
 		Group:    ar.Request.Resource.Group,
 		Version:  ar.Request.Resource.Version,
@@ -269,50 +329,23 @@ func validate(ar *admissionv1.AdmissionReview) error {
 		}
 	}
 
-	switch gvr {
-	case scyllav1.GroupVersion.WithResource("scyllaclusters"):
-		var errList field.ErrorList
-		switch ar.Request.Operation {
-		case admissionv1.Create:
-			errList = validation.ValidateScyllaCluster(obj.(*scyllav1.ScyllaCluster))
-		case admissionv1.Update:
-			errList = validation.ValidateScyllaClusterUpdate(obj.(*scyllav1.ScyllaCluster), oldObj.(*scyllav1.ScyllaCluster))
-		}
-
-		if len(errList) > 0 {
-			return apierrors.NewInvalid(obj.(*scyllav1.ScyllaCluster).GroupVersionKind().GroupKind(), obj.(*scyllav1.ScyllaCluster).Name, errList)
-		}
-		return nil
-
-	case scyllav1alpha1.GroupVersion.WithResource("nodeconfigs"):
-		var errList field.ErrorList
-		switch ar.Request.Operation {
-		case admissionv1.Create:
-			errList = validation.ValidateNodeConfig(obj.(*scyllav1alpha1.NodeConfig))
-		case admissionv1.Update:
-			errList = validation.ValidateNodeConfigUpdate(obj.(*scyllav1alpha1.NodeConfig), oldObj.(*scyllav1alpha1.NodeConfig))
-		}
-
-		if len(errList) > 0 {
-			return apierrors.NewInvalid(obj.(*scyllav1alpha1.NodeConfig).GroupVersionKind().GroupKind(), obj.(*scyllav1alpha1.NodeConfig).Name, errList)
-		}
-		return nil
-
-	case scyllav1alpha1.GroupVersion.WithResource("scyllaoperatorconfigs"):
-		var errList field.ErrorList
-		switch ar.Request.Operation {
-		case admissionv1.Create:
-			errList = validation.ValidateScyllaOperatorConfig(obj.(*scyllav1alpha1.ScyllaOperatorConfig))
-		case admissionv1.Update:
-			errList = validation.ValidateScyllaOperatorConfigUpdate(obj.(*scyllav1alpha1.ScyllaOperatorConfig), oldObj.(*scyllav1alpha1.ScyllaOperatorConfig))
-		}
-
-		if len(errList) > 0 {
-			return apierrors.NewInvalid(obj.(*scyllav1alpha1.ScyllaOperatorConfig).GroupVersionKind().GroupKind(), obj.(*scyllav1alpha1.ScyllaOperatorConfig).Name, errList)
-		}
-		return nil
-
-	default:
+	validator, ok := validators[gvr]
+	if !ok {
 		return fmt.Errorf("unsupported GVR %q", gvr)
 	}
+
+	var errList field.ErrorList
+	switch ar.Request.Operation {
+	case admissionv1.Create:
+		errList = validator.ValidateCreate(obj)
+	case admissionv1.Update:
+		errList = validator.ValidateUpdate(obj, oldObj)
+	default:
+		return fmt.Errorf("unsupported operation %q", ar.Request.Operation)
+	}
+
+	if len(errList) > 0 {
+		return apierrors.NewInvalid(validator.GetGroupKind(obj), validator.GetName(obj), errList)
+	}
+	return nil
 }

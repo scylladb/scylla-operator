@@ -5,7 +5,7 @@ metadata:
   namespace: scylla-manager
 spec:
   version: 6.1.1
-  agentVersion: 3.4.0-dev-0.20240911.0008113df
+  agentVersion: 3.3.2-0.20240911.83f13898f
   repository: docker.io/scylladb/scylla
   agentRepository: docker.io/scylladb/scylla-manager-agent
   developerMode: true

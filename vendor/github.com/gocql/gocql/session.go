@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -85,6 +86,8 @@ type Session struct {
 	logger StdLogger
 
 	tabletsRoutingV1 bool
+
+	usingTimeoutClause string
 }
 
 var queryPool = &sync.Pool{
@@ -197,6 +200,10 @@ func NewSession(cfg ClusterConfig) (*Session, error) {
 		}
 	}
 
+	if s.policy.IsOperational(s) != nil {
+		return nil, fmt.Errorf("gocql: unable to create session: %v", err)
+	}
+
 	return s, nil
 }
 
@@ -229,9 +236,13 @@ func (s *Session) init() error {
 		if err := s.control.connect(hosts); err != nil {
 			return err
 		}
-		s.control.getConn().conn.mu.Lock()
-		s.tabletsRoutingV1 = s.control.getConn().conn.tabletsRoutingV1
-		s.control.getConn().conn.mu.Unlock()
+		conn := s.control.getConn().conn
+		conn.mu.Lock()
+		s.tabletsRoutingV1 = conn.isTabletSupported()
+		if s.cfg.MetadataSchemaRequestTimeout > time.Duration(0) && isScyllaConn(conn) {
+			s.usingTimeoutClause = " USING TIMEOUT " + strconv.FormatInt(int64(s.cfg.MetadataSchemaRequestTimeout.Milliseconds()), 10) + "ms"
+		}
+		conn.mu.Unlock()
 
 		if !s.cfg.DisableInitialHostLookup {
 			var partitioner string
@@ -522,6 +533,10 @@ func (s *Session) Close() {
 		s.cancel()
 	}
 
+	if s.policy != nil {
+		s.policy.Reset()
+	}
+
 	s.sessionStateMu.Lock()
 	s.isClosed = true
 	s.sessionStateMu.Unlock()
@@ -600,7 +615,7 @@ func (s *Session) getConn() *Conn {
 		pool, ok := s.pool.getPool(host)
 		if !ok {
 			continue
-		} else if conn := pool.Pick(nil, "", ""); conn != nil {
+		} else if conn := pool.Pick(nil, nil); conn != nil {
 			return conn
 		}
 	}
@@ -986,7 +1001,7 @@ type queryRoutingInfo struct {
 	lwt bool
 
 	// If not nil, represents a custom partitioner for the table.
-	partitioner partitioner
+	partitioner Partitioner
 
 	keyspace string
 
@@ -999,7 +1014,7 @@ func (qri *queryRoutingInfo) isLWT() bool {
 	return qri.lwt
 }
 
-func (qri *queryRoutingInfo) getPartitioner() partitioner {
+func (qri *queryRoutingInfo) getPartitioner() Partitioner {
 	qri.mu.RLock()
 	defer qri.mu.RUnlock()
 	return qri.partitioner
@@ -1310,7 +1325,7 @@ func (q *Query) IsLWT() bool {
 	return q.routingInfo.isLWT()
 }
 
-func (q *Query) GetCustomPartitioner() partitioner {
+func (q *Query) GetCustomPartitioner() Partitioner {
 	return q.routingInfo.getPartitioner()
 }
 
@@ -1385,9 +1400,24 @@ func (q *Query) Iter() *Iter {
 	if isUseStatement(q.stmt) {
 		return &Iter{err: ErrUseStmt}
 	}
-	// if the query was specifically run on a connection then re-use that
-	// connection when fetching the next results
+
+	if !q.disableAutoPage {
+		return q.executeQuery()
+	}
+
+	// Retry on empty page if pagination is manual
+	iter := q.executeQuery()
+	for iter.err == nil && iter.numRows == 0 && !iter.LastPage() {
+		q.PageState(iter.PageState())
+		iter = q.executeQuery()
+	}
+	return iter
+}
+
+func (q *Query) executeQuery() *Iter {
 	if q.conn != nil {
+		// if the query was specifically run on a connection then re-use that
+		// connection when fetching the next results
 		return q.conn.executeQuery(q.Context(), q)
 	}
 	return q.session.executeQuery(q)
@@ -1763,6 +1793,11 @@ func (iter *Iter) PageState() []byte {
 	return iter.meta.pagingState
 }
 
+// LastPage returns true if there are no more pages to fetch.
+func (iter *Iter) LastPage() bool {
+	return len(iter.meta.pagingState) == 0
+}
+
 // NumRows returns the number of rows in this pagination, it will update when new
 // pages are fetched, it is not the value of the total number of rows this iter
 // will return unless there is only a single page returned.
@@ -1933,7 +1968,7 @@ func (b *Batch) IsLWT() bool {
 	return b.routingInfo.isLWT()
 }
 
-func (b *Batch) GetCustomPartitioner() partitioner {
+func (b *Batch) GetCustomPartitioner() Partitioner {
 	return b.routingInfo.getPartitioner()
 }
 
@@ -2171,12 +2206,12 @@ type routingKeyInfoLRU struct {
 }
 
 type routingKeyInfo struct {
-	indexes  []int
-	types    []TypeInfo
-	keyspace string
-	table    string
+	indexes     []int
+	types       []TypeInfo
+	keyspace    string
+	table       string
 	lwt         bool
-	partitioner partitioner
+	partitioner Partitioner
 }
 
 func (r *routingKeyInfo) String() string {

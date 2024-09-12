@@ -110,3 +110,30 @@ The driver will print a warning about misconfigured address translation if it de
 Issues with shard-aware port not being reachable are not reported in non-debug mode, because there is no way to detect it without false positives.
 
 If you suspect that this feature is causing you problems, you can completely disable it by setting the `ClusterConfig.DisableShardAwarePort` flag to false.
+
+### Iterator
+
+Paging is a way to parse large result sets in smaller chunks. 
+The driver provides an iterator to simplify this process.
+
+Use `Query.Iter()` to obtain iterator:
+```go
+
+iter := session.Query("SELECT id, value FROM my_table WHERE id > 100 AND id < 10000").Iter()
+var results []int
+
+var id, value int
+for !iter.Scan(&id, &value) {
+	if id%2 == 0 {
+		results = append(results, value)
+	}
+}
+
+if err := iter.Close(); err != nil {
+    // handle error
+}
+```
+
+In case of range and `ALLOW FILTERING` queries server can send empty responses for some pages.
+That is why you should never consider empty response as the end of the result set.
+Always check `iter.Scan()` result to know if there are more results, or `Iter.LastPage()` to know if the last page was reached.

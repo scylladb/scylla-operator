@@ -145,7 +145,7 @@ func (h *HostInfo) Equal(host *HostInfo) bool {
 		return true
 	}
 
-	return h.ConnectAddress().Equal(host.ConnectAddress())
+	return h.HostID() == host.HostID() && h.ConnectAddressAndPort() == host.ConnectAddressAndPort()
 }
 
 func (h *HostInfo) Peer() net.IP {
@@ -409,10 +409,31 @@ func (h *HostInfo) IsUp() bool {
 	return h != nil && h.State() == NodeUp
 }
 
+func (h *HostInfo) IsBusy(s *Session) bool {
+	pool, ok := s.pool.getPool(h)
+	return ok && h != nil && pool.InFlight() >= MAX_IN_FLIGHT_THRESHOLD
+}
+
 func (h *HostInfo) HostnameAndPort() string {
+	// Fast path: in most cases hostname is not empty
+	var (
+		hostname string
+		port     int
+	)
+	h.mu.RLock()
+	hostname = h.hostname
+	port = h.port
+	h.mu.RUnlock()
+
+	if hostname != "" {
+		return net.JoinHostPort(hostname, strconv.Itoa(port))
+	}
+
+	// Slow path: hostname is empty
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.hostname == "" {
+	if h.hostname == "" { // recheck is hostname empty
+		// if yes - fill it
 		addr, _ := h.connectAddressLocked()
 		h.hostname = addr.String()
 	}
@@ -420,6 +441,17 @@ func (h *HostInfo) HostnameAndPort() string {
 }
 
 func (h *HostInfo) Hostname() string {
+	// Fast path: in most cases hostname is not empty
+	var hostname string
+	h.mu.RLock()
+	hostname = h.hostname
+	h.mu.RUnlock()
+
+	if hostname != "" {
+		return hostname
+	}
+
+	// Slow path: hostname is empty
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.hostname == "" {
@@ -430,10 +462,10 @@ func (h *HostInfo) Hostname() string {
 }
 
 func (h *HostInfo) ConnectAddressAndPort() string {
-        h.mu.Lock()
-        defer h.mu.Unlock()
-        addr, _ := h.connectAddressLocked()
-        return net.JoinHostPort(addr.String(), strconv.Itoa(h.port))
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	addr, _ := h.connectAddressLocked()
+	return net.JoinHostPort(addr.String(), strconv.Itoa(h.port))
 }
 
 func (h *HostInfo) String() string {
@@ -480,7 +512,6 @@ type ReplicaInfo struct {
 
 // Experimental, this interface and use may change
 type TabletInfo struct {
-	mu           sync.RWMutex
 	keyspaceName string
 	tableName    string
 	firstToken   int64
@@ -489,32 +520,22 @@ type TabletInfo struct {
 }
 
 func (t *TabletInfo) KeyspaceName() string {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
 	return t.keyspaceName
 }
 
 func (t *TabletInfo) FirstToken() int64 {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
 	return t.firstToken
 }
 
 func (t *TabletInfo) LastToken() int64 {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
 	return t.lastToken
 }
 
 func (t *TabletInfo) TableName() string {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
 	return t.tableName
 }
 
 func (t *TabletInfo) Replicas() []ReplicaInfo {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
 	return t.replicas
 }
 
@@ -591,7 +612,7 @@ func addTabletToTabletsList(tablets []*TabletInfo, tablet *TabletInfo) []*Tablet
 }
 
 // Search for place in tablets table for token starting from index l to index r
-func findTabletForToken(tablets []*TabletInfo, token token, l int, r int) *TabletInfo {
+func findTabletForToken(tablets []*TabletInfo, token Token, l int, r int) *TabletInfo {
 	for l < r {
 		var m int
 		if r*l > 0 {
@@ -621,7 +642,7 @@ type ringDescriber struct {
 
 // Returns true if we are using system_schema.keyspaces instead of system.schema_keyspaces
 func checkSystemSchema(control *controlConn) (bool, error) {
-	iter := control.query("SELECT * FROM system_schema.keyspaces")
+	iter := control.query("SELECT * FROM system_schema.keyspaces" + control.session.usingTimeoutClause)
 	if err := iter.err; err != nil {
 		if errf, ok := err.(*errorFrame); ok {
 			if errf.code == ErrCodeSyntax {

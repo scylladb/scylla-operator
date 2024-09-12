@@ -1,4 +1,6 @@
+//go:build !cassandra
 // +build !cassandra
+
 // Copyright (C) 2017 ScyllaDB
 
 package gocql
@@ -18,6 +20,12 @@ import (
 // user defined types, tables, indexes, functions, aggregates and views associated
 // with this keyspace.
 func (km *KeyspaceMetadata) ToCQL() (string, error) {
+	// Be aware that `CreateStmts` is not only a cache for ToCQL,
+	// but it also can be populated from response to `DESCRIBE KEYSPACE %s WITH INTERNALS`
+	if len(km.CreateStmts) != 0 {
+		return km.CreateStmts, nil
+	}
+
 	var sb strings.Builder
 
 	if err := km.keyspaceToCQL(&sb); err != nil {
@@ -61,7 +69,8 @@ func (km *KeyspaceMetadata) ToCQL() (string, error) {
 		}
 	}
 
-	return sb.String(), nil
+	km.CreateStmts = sb.String()
+	return km.CreateStmts, nil
 }
 
 func (km *KeyspaceMetadata) typesSortedTopologically() []*TypeMetadata {
@@ -317,13 +326,11 @@ func (h toCQLHelpers) tableOptionsToCQL(ops TableMetadataOptions) ([]string, err
 		"bloom_filter_fp_chance":      ops.BloomFilterFpChance,
 		"comment":                     ops.Comment,
 		"crc_check_chance":            ops.CrcCheckChance,
-		"dclocal_read_repair_chance":  ops.DcLocalReadRepairChance,
 		"default_time_to_live":        ops.DefaultTimeToLive,
 		"gc_grace_seconds":            ops.GcGraceSeconds,
 		"max_index_interval":          ops.MaxIndexInterval,
 		"memtable_flush_period_in_ms": ops.MemtableFlushPeriodInMs,
 		"min_index_interval":          ops.MinIndexInterval,
-		"read_repair_chance":          ops.ReadRepairChance,
 		"speculative_retry":           ops.SpeculativeRetry,
 	}
 
@@ -494,12 +501,12 @@ type scyllaEncryptionOptions struct {
 
 // UnmarshalBinary deserializes blob into scyllaEncryptionOptions.
 // Format:
-//  * 4 bytes - size of KV map
-//  Size times:
-//  * 4 bytes - length of key
-//  * len_of_key bytes - key
-//  * 4 bytes - length of value
-//  * len_of_value bytes - value
+//   - 4 bytes - size of KV map
+//     Size times:
+//   - 4 bytes - length of key
+//   - len_of_key bytes - key
+//   - 4 bytes - length of value
+//   - len_of_value bytes - value
 func (enc *scyllaEncryptionOptions) UnmarshalBinary(data []byte) error {
 	size := binary.LittleEndian.Uint32(data[0:4])
 

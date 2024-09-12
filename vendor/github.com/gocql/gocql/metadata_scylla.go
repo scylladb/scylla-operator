@@ -25,6 +25,7 @@ type KeyspaceMetadata struct {
 	Types           map[string]*TypeMetadata
 	Indexes         map[string]*IndexMetadata
 	Views           map[string]*ViewMetadata
+	CreateStmts     string
 }
 
 // schema metadata for a table (a.k.a. column family)
@@ -244,7 +245,7 @@ type schemaDescriber struct {
 	session *Session
 	mu      sync.Mutex
 
-	cache        map[string]*KeyspaceMetadata
+	cache map[string]*KeyspaceMetadata
 
 	// Experimental, this interface and use may change
 	tabletsCache *TabletsMetadata
@@ -358,8 +359,13 @@ func (s *schemaDescriber) refreshSchema(keyspaceName string) error {
 		return err
 	}
 
+	createStmts, err := getCreateStatements(s.session, keyspaceName)
+	if err != nil {
+		return err
+	}
+
 	// organize the schema data
-	compileMetadata(keyspace, tables, columns, functions, aggregates, types, indexes, views)
+	compileMetadata(keyspace, tables, columns, functions, aggregates, types, indexes, views, createStmts)
 
 	// update the cache
 	s.cache[keyspaceName] = keyspace
@@ -381,6 +387,7 @@ func compileMetadata(
 	types []TypeMetadata,
 	indexes []IndexMetadata,
 	views []ViewMetadata,
+	createStmts []byte,
 ) {
 	keyspace.Tables = make(map[string]*TableMetadata)
 	for i := range tables {
@@ -452,6 +459,8 @@ func compileMetadata(
 		v := &views[i]
 		v.PartitionKey, v.ClusteringColumns, v.OrderedColumns = compileColumns(v.Columns, v.OrderedColumns)
 	}
+
+	keyspace.CreateStmts = string(createStmts)
 }
 
 func compileColumns(columns map[string]*ColumnMetadata, orderedColumns []string) (
@@ -513,7 +522,7 @@ func getKeyspaceMetadata(session *Session, keyspaceName string) (*KeyspaceMetada
 
 	var replication map[string]string
 
-	iter := session.control.query(stmt, keyspaceName)
+	iter := session.control.query(stmt+session.usingTimeoutClause, keyspaceName)
 	if iter.NumRows() == 0 {
 		return nil, ErrKeyspaceDoesNotExist
 	}
@@ -541,7 +550,7 @@ func getTableMetadata(session *Session, keyspaceName string) ([]TableMetadata, e
 	}
 
 	stmt := `SELECT * FROM system_schema.tables WHERE keyspace_name = ?`
-	iter := session.control.query(stmt, keyspaceName)
+	iter := session.control.query(stmt+session.usingTimeoutClause, keyspaceName)
 
 	var tables []TableMetadata
 	table := TableMetadata{Keyspace: keyspaceName}
@@ -553,13 +562,11 @@ func getTableMetadata(session *Session, keyspaceName string) ([]TableMetadata, e
 		"compaction":                  &table.Options.Compaction,
 		"compression":                 &table.Options.Compression,
 		"crc_check_chance":            &table.Options.CrcCheckChance,
-		"dclocal_read_repair_chance":  &table.Options.DcLocalReadRepairChance,
 		"default_time_to_live":        &table.Options.DefaultTimeToLive,
 		"gc_grace_seconds":            &table.Options.GcGraceSeconds,
 		"max_index_interval":          &table.Options.MaxIndexInterval,
 		"memtable_flush_period_in_ms": &table.Options.MemtableFlushPeriodInMs,
 		"min_index_interval":          &table.Options.MinIndexInterval,
-		"read_repair_chance":          &table.Options.ReadRepairChance,
 		"speculative_retry":           &table.Options.SpeculativeRetry,
 		"flags":                       &table.Flags,
 		"extensions":                  &table.Extensions,
@@ -575,7 +582,7 @@ func getTableMetadata(session *Session, keyspaceName string) ([]TableMetadata, e
 
 	stmt = `SELECT * FROM system_schema.scylla_tables WHERE keyspace_name = ? AND table_name = ?`
 	for i, t := range tables {
-		iter := session.control.query(stmt, keyspaceName, t.Name)
+		iter := session.control.query(stmt+session.usingTimeoutClause, keyspaceName, t.Name)
 
 		table := TableMetadata{}
 		if iter.MapScan(map[string]interface{}{
@@ -603,7 +610,7 @@ func getColumnMetadata(session *Session, keyspaceName string) ([]ColumnMetadata,
 
 	var columns []ColumnMetadata
 
-	iter := session.control.query(stmt, keyspaceName)
+	iter := session.control.query(stmt+session.usingTimeoutClause, keyspaceName)
 	column := ColumnMetadata{Keyspace: keyspaceName}
 
 	for iter.MapScan(map[string]interface{}{
@@ -632,7 +639,7 @@ func getTypeMetadata(session *Session, keyspaceName string) ([]TypeMetadata, err
 	}
 
 	stmt := `SELECT * FROM system_schema.types WHERE keyspace_name = ?`
-	iter := session.control.query(stmt, keyspaceName)
+	iter := session.control.query(stmt+session.usingTimeoutClause, keyspaceName)
 
 	var types []TypeMetadata
 	tm := TypeMetadata{Keyspace: keyspaceName}
@@ -663,7 +670,7 @@ func getFunctionsMetadata(session *Session, keyspaceName string) ([]FunctionMeta
 	var functions []FunctionMetadata
 	function := FunctionMetadata{Keyspace: keyspaceName}
 
-	iter := session.control.query(stmt, keyspaceName)
+	iter := session.control.query(stmt+session.usingTimeoutClause, keyspaceName)
 	for iter.MapScan(map[string]interface{}{
 		"function_name":        &function.Name,
 		"argument_types":       &function.ArgumentTypes,
@@ -695,7 +702,7 @@ func getAggregatesMetadata(session *Session, keyspaceName string) ([]AggregateMe
 	var aggregates []AggregateMetadata
 	aggregate := AggregateMetadata{Keyspace: keyspaceName}
 
-	iter := session.control.query(stmt, keyspaceName)
+	iter := session.control.query(stmt+session.usingTimeoutClause, keyspaceName)
 	for iter.MapScan(map[string]interface{}{
 		"aggregate_name": &aggregate.Name,
 		"argument_types": &aggregate.ArgumentTypes,
@@ -727,7 +734,7 @@ func getIndexMetadata(session *Session, keyspaceName string) ([]IndexMetadata, e
 	var indexes []IndexMetadata
 	index := IndexMetadata{}
 
-	iter := session.control.query(stmt, keyspaceName)
+	iter := session.control.query(stmt+session.usingTimeoutClause, keyspaceName)
 	for iter.MapScan(map[string]interface{}{
 		"index_name":    &index.Name,
 		"keyspace_name": &index.KeyspaceName,
@@ -746,6 +753,35 @@ func getIndexMetadata(session *Session, keyspaceName string) ([]IndexMetadata, e
 	return indexes, nil
 }
 
+// get create statements for the keyspace
+func getCreateStatements(session *Session, keyspaceName string) ([]byte, error) {
+	if !session.useSystemSchema {
+		return nil, nil
+	}
+	iter := session.control.query(fmt.Sprintf(`DESCRIBE KEYSPACE %s WITH INTERNALS`, keyspaceName))
+
+	var createStatements []string
+
+	var stmt string
+	for iter.Scan(nil, nil, nil, &stmt) {
+		if stmt == "" {
+			continue
+		}
+		createStatements = append(createStatements, stmt)
+	}
+
+	if err := iter.Close(); err != nil {
+		if errFrame, ok := err.(errorFrame); ok && errFrame.code == ErrCodeSyntax {
+			// DESCRIBE KEYSPACE is not supported on older versions of Cassandra and Scylla
+			// For such case schema statement is going to be recreated on the client side
+			return nil, nil
+		}
+		return nil, fmt.Errorf("error querying keyspace schema: %v", err)
+	}
+
+	return []byte(strings.Join(createStatements, "\n")), nil
+}
+
 // query for view metadata in the system_schema.views
 func getViewMetadata(session *Session, keyspaceName string) ([]ViewMetadata, error) {
 	if !session.useSystemSchema {
@@ -754,7 +790,7 @@ func getViewMetadata(session *Session, keyspaceName string) ([]ViewMetadata, err
 
 	stmt := `SELECT * FROM system_schema.views WHERE keyspace_name = ?`
 
-	iter := session.control.query(stmt, keyspaceName)
+	iter := session.control.query(stmt+session.usingTimeoutClause, keyspaceName)
 
 	var views []ViewMetadata
 	view := ViewMetadata{KeyspaceName: keyspaceName}
@@ -772,13 +808,11 @@ func getViewMetadata(session *Session, keyspaceName string) ([]ViewMetadata, err
 		"compaction":                  &view.Options.Compaction,
 		"compression":                 &view.Options.Compression,
 		"crc_check_chance":            &view.Options.CrcCheckChance,
-		"dclocal_read_repair_chance":  &view.Options.DcLocalReadRepairChance,
 		"default_time_to_live":        &view.Options.DefaultTimeToLive,
 		"gc_grace_seconds":            &view.Options.GcGraceSeconds,
 		"max_index_interval":          &view.Options.MaxIndexInterval,
 		"memtable_flush_period_in_ms": &view.Options.MemtableFlushPeriodInMs,
 		"min_index_interval":          &view.Options.MinIndexInterval,
-		"read_repair_chance":          &view.Options.ReadRepairChance,
 		"speculative_retry":           &view.Options.SpeculativeRetry,
 		"extensions":                  &view.Extensions,
 	}) {

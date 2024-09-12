@@ -12,7 +12,7 @@ function scylla_up() {
 
   echo "==> Running Scylla ${SCYLLA_IMAGE}"
   docker pull ${SCYLLA_IMAGE}
-  docker compose up -d --wait
+  docker compose up -d --wait || ( docker compose ps --format json | jq -M 'select(.Health == "unhealthy") | .Service' | xargs docker compose logs; exit 1 )
 }
 
 function scylla_down() {
@@ -26,6 +26,8 @@ function scylla_restart() {
 }
 
 scylla_restart
+
+sudo chmod 0777 /tmp/scylla/cql.m
 
 readonly clusterSize=1
 readonly multiNodeClusterSize=3

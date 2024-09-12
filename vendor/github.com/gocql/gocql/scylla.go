@@ -353,7 +353,7 @@ func newScyllaConnPicker(conn *Conn) *scyllaConnPicker {
 	}
 }
 
-func (p *scyllaConnPicker) Pick(t token, keyspace string, table string) *Conn {
+func (p *scyllaConnPicker) Pick(t Token, qry ExecutableQuery) *Conn {
 	if len(p.conns) == 0 {
 		return nil
 	}
@@ -375,16 +375,15 @@ func (p *scyllaConnPicker) Pick(t token, keyspace string, table string) *Conn {
 			continue
 		}
 
-		conn.mu.Lock()
-		if conn.tabletsRoutingV1 {
+		if qry != nil && conn.isTabletSupported() {
 			tablets := conn.session.getTablets()
-	
+
 			// Search for tablets with Keyspace and Table from the Query
-			l, r := findTablets(tablets, keyspace, table)
-	
+			l, r := findTablets(tablets, qry.Keyspace(), qry.Table())
+
 			if l != -1 {
 				tablet := findTabletForToken(tablets, mmt, l, r)
-	
+
 				for _, replica := range tablet.replicas {
 					if replica.hostId.String() == p.hostId {
 						idx = replica.shardId
@@ -392,11 +391,10 @@ func (p *scyllaConnPicker) Pick(t token, keyspace string, table string) *Conn {
 				}
 			}
 		}
-		conn.mu.Unlock()
 
 		break
 	}
-	
+
 	if idx == -1 {
 		idx = p.shardOf(mmt)
 	}
@@ -405,6 +403,9 @@ func (p *scyllaConnPicker) Pick(t token, keyspace string, table string) *Conn {
 		// We have this shard's connection
 		// so let's give it to the caller.
 		// But only if it's not loaded too much and load is well distributed.
+		if qry != nil && qry.IsLWT() {
+			return c
+		}
 		return p.maybeReplaceWithLessBusyConnection(c)
 	}
 	return p.leastBusyConn()
@@ -415,7 +416,7 @@ func (p *scyllaConnPicker) maybeReplaceWithLessBusyConnection(c *Conn) *Conn {
 		return c
 	}
 	alternative := p.leastBusyConn()
-	if alternative == nil || alternative.AvailableStreams() * 120 > c.AvailableStreams() * 100 {
+	if alternative == nil || alternative.AvailableStreams()*120 > c.AvailableStreams()*100 {
 		return c
 	} else {
 		return alternative
@@ -423,7 +424,7 @@ func (p *scyllaConnPicker) maybeReplaceWithLessBusyConnection(c *Conn) *Conn {
 }
 
 func isHeavyLoaded(c *Conn) bool {
-    return c.streams.NumStreams / 2 > c.AvailableStreams();
+	return c.streams.NumStreams/2 > c.AvailableStreams()
 }
 
 func (p *scyllaConnPicker) leastBusyConn() *Conn {
@@ -542,6 +543,16 @@ func (p *scyllaConnPicker) Remove(conn *Conn) {
 		p.conns[shard] = nil
 		p.nrConns--
 	}
+}
+
+func (p *scyllaConnPicker) InFlight() int {
+	result := 0
+	for _, conn := range p.conns {
+		if conn != nil {
+			result = result + (conn.streams.InUse())
+		}
+	}
+	return result
 }
 
 func (p *scyllaConnPicker) Size() (int, int) {
@@ -770,14 +781,16 @@ type ScyllaShardAwareDialer struct {
 	net.Dialer
 }
 
-func (d *ScyllaShardAwareDialer) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+func (d *ScyllaShardAwareDialer) DialContext(ctx context.Context, network, addr string) (conn net.Conn, err error) {
 	sourcePort := ScyllaGetSourcePort(ctx)
-	localAddr, err := net.ResolveTCPAddr(network, fmt.Sprintf(":%d", sourcePort))
+	if sourcePort == 0 {
+		return d.Dialer.DialContext(ctx, network, addr)
+	}
+	dialerWithLocalAddr := d.Dialer
+	dialerWithLocalAddr.LocalAddr, err = net.ResolveTCPAddr(network, fmt.Sprintf(":%d", sourcePort))
 	if err != nil {
 		return nil, err
 	}
-	var dialerWithLocalAddr net.Dialer = d.Dialer
-	dialerWithLocalAddr.LocalAddr = localAddr
 
 	return dialerWithLocalAddr.DialContext(ctx, network, addr)
 }
@@ -848,7 +861,7 @@ func ScyllaGetSourcePort(ctx context.Context) uint16 {
 
 // Returns a partitioner specific to the table, or "nil"
 // if the cluster-global partitioner should be used
-func scyllaGetTablePartitioner(session *Session, keyspaceName, tableName string) (partitioner, error) {
+func scyllaGetTablePartitioner(session *Session, keyspaceName, tableName string) (Partitioner, error) {
 	isCdc, err := scyllaIsCdcTable(session, keyspaceName, tableName)
 	if err != nil {
 		return nil, err

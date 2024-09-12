@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"net"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -64,7 +63,7 @@ func (c *cowHostList) add(host *HostInfo) bool {
 	return true
 }
 
-func (c *cowHostList) remove(ip net.IP) bool {
+func (c *cowHostList) remove(host *HostInfo) bool {
 	c.mu.Lock()
 	l := c.get()
 	size := len(l)
@@ -76,7 +75,7 @@ func (c *cowHostList) remove(ip net.IP) bool {
 	found := false
 	newL := make([]*HostInfo, 0, size)
 	for i := 0; i < len(l); i++ {
-		if !l[i].ConnectAddress().Equal(ip) {
+		if !l[i].Equal(host) {
 			newL = append(newL, l[i])
 		} else {
 			found = true
@@ -157,6 +156,14 @@ type RetryPolicy interface {
 	GetRetryType(error) RetryType
 }
 
+// LWTRetryPolicy is a similar interface to RetryPolicy
+// If a query is recognized as an LWT query and its RetryPolicy satisfies this
+// interface, then this interface will be used instead of RetryPolicy.
+type LWTRetryPolicy interface {
+	AttemptLWT(RetryableQuery) bool
+	GetRetryTypeLWT(error) RetryType
+}
+
 // SimpleRetryPolicy has simple logic for attempting a query a fixed number of times.
 //
 // See below for examples of usage:
@@ -176,8 +183,20 @@ func (s *SimpleRetryPolicy) Attempt(q RetryableQuery) bool {
 	return q.Attempts() <= s.NumRetries
 }
 
+func (s *SimpleRetryPolicy) AttemptLWT(q RetryableQuery) bool {
+	return s.Attempt(q)
+}
+
 func (s *SimpleRetryPolicy) GetRetryType(err error) RetryType {
 	return RetryNextHost
+}
+
+// Retrying on a different host is fine for normal (non-LWT) queries,
+// but in case of LWTs it will cause Paxos contention and possibly
+// even timeouts if other clients send statements touching the same
+// partition to the original node at the same time.
+func (s *SimpleRetryPolicy) GetRetryTypeLWT(err error) RetryType {
+	return Retry
 }
 
 // ExponentialBackoffRetryPolicy sleeps between attempts
@@ -192,6 +211,10 @@ func (e *ExponentialBackoffRetryPolicy) Attempt(q RetryableQuery) bool {
 	}
 	time.Sleep(e.napTime(q.Attempts()))
 	return true
+}
+
+func (e *ExponentialBackoffRetryPolicy) AttemptLWT(q RetryableQuery) bool {
+	return e.Attempt(q)
 }
 
 // used to calculate exponentially growing time
@@ -214,6 +237,14 @@ func getExponentialTime(min time.Duration, max time.Duration, attempts int) time
 
 func (e *ExponentialBackoffRetryPolicy) GetRetryType(err error) RetryType {
 	return RetryNextHost
+}
+
+// Retrying on a different host is fine for normal (non-LWT) queries,
+// but in case of LWTs it will cause Paxos contention and possibly
+// even timeouts if other clients send statements touching the same
+// partition to the original node at the same time.
+func (e *ExponentialBackoffRetryPolicy) GetRetryTypeLWT(err error) RetryType {
+	return Retry
 }
 
 // DowngradingConsistencyRetryPolicy: Next retry will be with the next consistency level
@@ -311,32 +342,37 @@ type HostSelectionPolicy interface {
 	SetTablets
 	KeyspaceChanged(KeyspaceUpdateEvent)
 	Init(*Session)
+	// Reset is opprotunity to reset HostSelectionPolicy if Session initilization failed and we want to
+	// call HostSelectionPolicy.Init() again with new Session
+	Reset()
 	IsLocal(host *HostInfo) bool
 	// Pick returns an iteration function over selected hosts.
 	// Multiple attempts of a single query execution won't call the returned NextHost function concurrently,
 	// so it's safe to have internal state without additional synchronization as long as every call to Pick returns
 	// a different instance of NextHost.
 	Pick(ExecutableQuery) NextHost
+	// IsOperational checks if host policy can properly work with given Session/Cluster/ClusterConfig
+	IsOperational(*Session) error
 }
 
 // SelectedHost is an interface returned when picking a host from a host
 // selection policy.
 type SelectedHost interface {
 	Info() *HostInfo
-	Token() token
+	Token() Token
 	Mark(error)
 }
 
 type selectedHost struct {
 	info  *HostInfo
-	token token
+	token Token
 }
 
 func (host selectedHost) Info() *HostInfo {
 	return host.info
 }
 
-func (host selectedHost) Token() token {
+func (host selectedHost) Token() Token {
 	return host.token
 }
 
@@ -360,6 +396,8 @@ func (r *roundRobinHostPolicy) IsLocal(*HostInfo) bool              { return tru
 func (r *roundRobinHostPolicy) KeyspaceChanged(KeyspaceUpdateEvent) {}
 func (r *roundRobinHostPolicy) SetPartitioner(partitioner string)   {}
 func (r *roundRobinHostPolicy) Init(*Session)                       {}
+func (r *roundRobinHostPolicy) Reset()                              {}
+func (r *roundRobinHostPolicy) IsOperational(*Session) error        { return nil }
 
 // Experimental, this interface and use may change
 func (r *roundRobinHostPolicy) SetTablets(tablets []*TabletInfo) {}
@@ -374,7 +412,7 @@ func (r *roundRobinHostPolicy) AddHost(host *HostInfo) {
 }
 
 func (r *roundRobinHostPolicy) RemoveHost(host *HostInfo) {
-	r.hosts.remove(host.ConnectAddress())
+	r.hosts.remove(host)
 }
 
 func (r *roundRobinHostPolicy) HostUp(host *HostInfo) {
@@ -388,6 +426,17 @@ func (r *roundRobinHostPolicy) HostDown(host *HostInfo) {
 func ShuffleReplicas() func(*tokenAwareHostPolicy) {
 	return func(t *tokenAwareHostPolicy) {
 		t.shuffleReplicas = true
+	}
+}
+
+// AvoidSlowReplicas enabled avoiding slow replicas
+//
+// TokenAwareHostPolicy normally does not check how busy replica is, with avoidSlowReplicas enabled it avoids replicas
+// if they have equal or more than MAX_IN_FLIGHT_THRESHOLD requests in flight
+func AvoidSlowReplicas(max_in_flight_threshold int) func(policy *tokenAwareHostPolicy) {
+	return func(t *tokenAwareHostPolicy) {
+		t.avoidSlowReplicas = true
+		MAX_IN_FLIGHT_THRESHOLD = max_in_flight_threshold
 	}
 }
 
@@ -424,6 +473,8 @@ type clusterMeta struct {
 	tokenRing *tokenRing
 }
 
+var MAX_IN_FLIGHT_THRESHOLD int = 10
+
 type tokenAwareHostPolicy struct {
 	fallback            HostSelectionPolicy
 	getKeyspaceMetadata func(keyspace string) (*KeyspaceMetadata, error)
@@ -443,6 +494,8 @@ type tokenAwareHostPolicy struct {
 
 	// Experimental, this interface and use may change
 	tablets cowTabletList
+
+	avoidSlowReplicas bool
 }
 
 func (t *tokenAwareHostPolicy) Init(s *Session) {
@@ -456,6 +509,23 @@ func (t *tokenAwareHostPolicy) Init(s *Session) {
 	t.getKeyspaceMetadata = s.KeyspaceMetadata
 	t.getKeyspaceName = func() string { return s.cfg.Keyspace }
 	t.logger = s.logger
+}
+
+func (t *tokenAwareHostPolicy) Reset() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	// Sharing token aware host selection policy between sessions is not supported
+	// but session initialization can failed for some reasons. So in our application
+	// may be we want to create new session again.
+	// Reset method should be called in Session.Close method
+	t.getKeyspaceMetadata = nil
+	t.getKeyspaceName = nil
+	t.logger = nil
+}
+
+func (t *tokenAwareHostPolicy) IsOperational(session *Session) error {
+	return t.fallback.IsOperational(session)
 }
 
 func (t *tokenAwareHostPolicy) IsLocal(host *HostInfo) bool {
@@ -551,7 +621,7 @@ func (t *tokenAwareHostPolicy) AddHosts(hosts []*HostInfo) {
 
 func (t *tokenAwareHostPolicy) RemoveHost(host *HostInfo) {
 	t.mu.Lock()
-	if t.hosts.remove(host.ConnectAddress()) {
+	if t.hosts.remove(host) {
 		meta := t.getMetadataForUpdate()
 		meta.resetTokenRing(t.partitioner, t.hosts.get(), t.logger)
 		t.updateReplicas(meta, t.getKeyspaceName())
@@ -637,54 +707,53 @@ func (t *tokenAwareHostPolicy) Pick(qry ExecutableQuery) NextHost {
 	var replicas []*HostInfo
 
 	if qry.GetSession() != nil && qry.GetSession().tabletsRoutingV1 {
-		t.tablets.mu.Lock()
 		tablets := t.tablets.get()
 
 		// Search for tablets with Keyspace and Table from the Query
 		l, r := findTablets(tablets, qry.Keyspace(), qry.Table())
 		if l != -1 {
 			tablet := findTabletForToken(tablets, token, l, r)
-
-			replicas = []*HostInfo{}
+			hosts := t.hosts.get()
 			for _, replica := range tablet.Replicas() {
-				t.hosts.mu.Lock()
-				hosts := t.hosts.get()
 				for _, host := range hosts {
 					if host.hostId == replica.hostId.String() {
 						replicas = append(replicas, host)
 						break
 					}
 				}
-				t.hosts.mu.Unlock()
-			}
-		} else {
-			ht := meta.replicas[qry.Keyspace()].replicasFor(token)
-
-			if ht == nil {
-				host, _ := meta.tokenRing.GetHostForToken(token)
-				replicas = []*HostInfo{host}
-			} else {
-				replicas = ht.hosts
 			}
 		}
+	}
 
-		if t.shuffleReplicas && !qry.IsLWT() {
-			replicas = shuffleHosts(replicas)
-		}
-
-		t.tablets.mu.Unlock()
-	} else {
+	if len(replicas) == 0 {
 		ht := meta.replicas[qry.Keyspace()].replicasFor(token)
-
-		if ht == nil {
-			host, _ := meta.tokenRing.GetHostForToken(token)
-			replicas = []*HostInfo{host}
-		} else {
+		if ht != nil {
 			replicas = ht.hosts
-			if t.shuffleReplicas && !qry.IsLWT() {
-				replicas = shuffleHosts(replicas)
+		}
+	}
+
+	if len(replicas) == 0 {
+		host, _ := meta.tokenRing.GetHostForToken(token)
+		replicas = []*HostInfo{host}
+	}
+
+	if t.shuffleReplicas && !qry.IsLWT() && len(replicas) > 1 {
+		replicas = shuffleHosts(replicas)
+	}
+
+	if s := qry.GetSession(); s != nil && t.avoidSlowReplicas {
+		healthyReplicas := make([]*HostInfo, 0, len(replicas))
+		unhealthyReplicas := make([]*HostInfo, 0, len(replicas))
+
+		for _, h := range replicas {
+			if h.IsBusy(s) {
+				unhealthyReplicas = append(unhealthyReplicas, h)
+			} else {
+				healthyReplicas = append(healthyReplicas, h)
 			}
 		}
+
+		replicas = append(healthyReplicas, unhealthyReplicas...)
 	}
 
 	var (
@@ -792,6 +861,8 @@ type hostPoolHostPolicy struct {
 }
 
 func (r *hostPoolHostPolicy) Init(*Session)                       {}
+func (r *hostPoolHostPolicy) Reset()                              {}
+func (r *hostPoolHostPolicy) IsOperational(*Session) error        { return nil }
 func (r *hostPoolHostPolicy) KeyspaceChanged(KeyspaceUpdateEvent) {}
 func (r *hostPoolHostPolicy) SetPartitioner(string)               {}
 func (r *hostPoolHostPolicy) IsLocal(*HostInfo) bool              { return true }
@@ -898,7 +969,7 @@ func (host selectedHostPoolHost) Info() *HostInfo {
 	return host.info
 }
 
-func (host selectedHostPoolHost) Token() token {
+func (host selectedHostPoolHost) Token() Token {
 	return nil
 }
 
@@ -917,22 +988,62 @@ func (host selectedHostPoolHost) Mark(err error) {
 }
 
 type dcAwareRR struct {
-	local           string
-	localHosts      cowHostList
-	remoteHosts     cowHostList
-	lastUsedHostIdx uint64
+	local             string
+	localHosts        cowHostList
+	remoteHosts       cowHostList
+	lastUsedHostIdx   uint64
+	disableDCFailover bool
+}
+
+type dcFailoverDisabledPolicy interface {
+	setDCFailoverDisabled()
+}
+
+type dcAwarePolicyOption func(p dcFailoverDisabledPolicy)
+
+func HostPolicyOptionDisableDCFailover(p dcFailoverDisabledPolicy) {
+	p.setDCFailoverDisabled()
 }
 
 // DCAwareRoundRobinPolicy is a host selection policies which will prioritize and
 // return hosts which are in the local datacentre before returning hosts in all
 // other datercentres
-func DCAwareRoundRobinPolicy(localDC string) HostSelectionPolicy {
-	return &dcAwareRR{local: localDC}
+func DCAwareRoundRobinPolicy(localDC string, opts ...dcAwarePolicyOption) HostSelectionPolicy {
+	p := &dcAwareRR{local: localDC, disableDCFailover: false}
+	for _, opt := range opts {
+		opt(p)
+	}
+	return p
 }
 
+func (d *dcAwareRR) setDCFailoverDisabled() {
+	d.disableDCFailover = true
+}
 func (d *dcAwareRR) Init(*Session)                       {}
+func (d *dcAwareRR) Reset()                              {}
 func (d *dcAwareRR) KeyspaceChanged(KeyspaceUpdateEvent) {}
 func (d *dcAwareRR) SetPartitioner(p string)             {}
+
+func (d *dcAwareRR) IsOperational(session *Session) error {
+	if session.cfg.disableInit || session.cfg.disableControlConn {
+		return nil
+	}
+
+	hosts, _, err := session.hostSource.GetHosts()
+	if err != nil {
+		return fmt.Errorf("gocql: unable to check if session is operational: %v", err)
+	}
+	for _, host := range hosts {
+		if !session.cfg.filterHost(host) && host.DataCenter() == d.local {
+			// Policy can work properly only if there is at least one host from target DC
+			// No need to check host status, since it could be down due to the outage
+			// We only need to make sure that policy is not misconfigured with wrong DC
+			return nil
+		}
+	}
+
+	return fmt.Errorf("gocql: datacenter %s in the policy was not found in the topology - probable DC aware policy misconfiguration", d.local)
+}
 
 func (d *dcAwareRR) IsLocal(host *HostInfo) bool {
 	return host.DataCenter() == d.local
@@ -951,9 +1062,9 @@ func (d *dcAwareRR) AddHost(host *HostInfo) {
 
 func (d *dcAwareRR) RemoveHost(host *HostInfo) {
 	if d.IsLocal(host) {
-		d.localHosts.remove(host.ConnectAddress())
+		d.localHosts.remove(host)
 	} else {
-		d.remoteHosts.remove(host.ConnectAddress())
+		d.remoteHosts.remove(host)
 	}
 }
 
@@ -1003,6 +1114,9 @@ func roundRobbin(shift int, hosts ...[]*HostInfo) NextHost {
 
 func (d *dcAwareRR) Pick(q ExecutableQuery) NextHost {
 	nextStartOffset := atomic.AddUint64(&d.lastUsedHostIdx, 1)
+	if d.disableDCFailover {
+		return roundRobbin(int(nextStartOffset), d.localHosts.get())
+	}
 	return roundRobbin(int(nextStartOffset), d.localHosts.get(), d.remoteHosts.get())
 }
 
@@ -1015,23 +1129,51 @@ type rackAwareRR struct {
 	// It is accessed atomically and needs to be aligned to 64 bits, so we
 	// keep it first in the struct. Do not move it or add new struct members
 	// before it.
-	lastUsedHostIdx uint64
-	localDC         string
-	localRack       string
-	hosts           []cowHostList
+	lastUsedHostIdx   uint64
+	localDC           string
+	localRack         string
+	hosts             []cowHostList
+	disableDCFailover bool
 }
 
-func RackAwareRoundRobinPolicy(localDC string, localRack string) HostSelectionPolicy {
-	hosts := make([]cowHostList, 3)
-	return &rackAwareRR{localDC: localDC, localRack: localRack, hosts: hosts}
+func RackAwareRoundRobinPolicy(localDC string, localRack string, opts ...dcAwarePolicyOption) HostSelectionPolicy {
+	p := &rackAwareRR{localDC: localDC, localRack: localRack, hosts: make([]cowHostList, 3), disableDCFailover: false}
+	for _, opt := range opts {
+		opt(p)
+	}
+	return p
 }
 
 func (d *rackAwareRR) Init(*Session)                       {}
+func (d *rackAwareRR) Reset()                              {}
 func (d *rackAwareRR) KeyspaceChanged(KeyspaceUpdateEvent) {}
 func (d *rackAwareRR) SetPartitioner(p string)             {}
 
+func (d *rackAwareRR) IsOperational(session *Session) error {
+	if session.cfg.disableInit || session.cfg.disableControlConn {
+		return nil
+	}
+	hosts, _, err := session.hostSource.GetHosts()
+	if err != nil {
+		return fmt.Errorf("gocql: unable to check if session is operational: %v", err)
+	}
+	for _, host := range hosts {
+		if !session.cfg.filterHost(host) && host.DataCenter() == d.localDC && host.Rack() == d.localRack {
+			// Policy can work properly only if there is at least one host from target DC+Rack
+			// No need to check host status, since it could be down due to the outage
+			// We only need to make sure that policy is not misconfigured with wrong DC+Rack
+			return nil
+		}
+	}
+	return fmt.Errorf("gocql: rack %s/%s was not found in the topology - probable Rack aware policy misconfiguration", d.localDC, d.localRack)
+}
+
 func (d *rackAwareRR) MaxHostTier() uint {
 	return 2
+}
+
+func (d *rackAwareRR) setDCFailoverDisabled() {
+	d.disableDCFailover = true
 }
 
 // Experimental, this interface and use may change
@@ -1060,7 +1202,7 @@ func (d *rackAwareRR) AddHost(host *HostInfo) {
 
 func (d *rackAwareRR) RemoveHost(host *HostInfo) {
 	dist := d.HostTier(host)
-	d.hosts[dist].remove(host.ConnectAddress())
+	d.hosts[dist].remove(host)
 }
 
 func (d *rackAwareRR) HostUp(host *HostInfo)   { d.AddHost(host) }
@@ -1068,6 +1210,9 @@ func (d *rackAwareRR) HostDown(host *HostInfo) { d.RemoveHost(host) }
 
 func (d *rackAwareRR) Pick(q ExecutableQuery) NextHost {
 	nextStartOffset := atomic.AddUint64(&d.lastUsedHostIdx, 1)
+	if d.disableDCFailover {
+		return roundRobbin(int(nextStartOffset), d.hosts[0].get(), d.hosts[1].get())
+	}
 	return roundRobbin(int(nextStartOffset), d.hosts[0].get(), d.hosts[1].get(), d.hosts[2].get())
 }
 

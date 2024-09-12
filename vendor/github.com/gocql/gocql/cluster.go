@@ -117,7 +117,7 @@ type ClusterConfig struct {
 	// Default reconnection policy to use for reconnecting before trying to mark host as down.
 	ReconnectionPolicy ReconnectionPolicy
 
-	// The keepalive period to use, enabled if > 0 (default: 0)
+	// The keepalive period to use, enabled if > 0 (default: 15 seconds)
 	// SocketKeepalive is used to set up the default dialer and is ignored if Dialer or HostDialer is provided.
 	SocketKeepalive time.Duration
 
@@ -255,6 +255,9 @@ type ClusterConfig struct {
 	// If not specified, defaults to the global gocql.Logger.
 	Logger StdLogger
 
+	// The timeout for the requests to the schema tables. (default: 60s)
+	MetadataSchemaRequestTimeout time.Duration
+
 	// internal config for testing
 	disableControlConn bool
 	disableInit        bool
@@ -275,22 +278,24 @@ type Dialer interface {
 // the same host, and will not mark the node being down or up from events.
 func NewCluster(hosts ...string) *ClusterConfig {
 	cfg := &ClusterConfig{
-		Hosts:                  hosts,
-		CQLVersion:             "3.0.0",
-		Timeout:                11 * time.Second,
-		ConnectTimeout:         11 * time.Second,
-		Port:                   9042,
-		NumConns:               2,
-		Consistency:            Quorum,
-		MaxPreparedStmts:       defaultMaxPreparedStmts,
-		MaxRoutingKeyInfo:      1000,
-		PageSize:               5000,
-		DefaultTimestamp:       true,
-		MaxWaitSchemaAgreement: 60 * time.Second,
-		ReconnectInterval:      60 * time.Second,
-		ConvictionPolicy:       &SimpleConvictionPolicy{},
-		ReconnectionPolicy:     &ConstantReconnectionPolicy{MaxRetries: 3, Interval: 1 * time.Second},
-		WriteCoalesceWaitTime:  200 * time.Microsecond,
+		Hosts:                        hosts,
+		CQLVersion:                   "3.0.0",
+		Timeout:                      11 * time.Second,
+		ConnectTimeout:               11 * time.Second,
+		Port:                         9042,
+		NumConns:                     2,
+		Consistency:                  Quorum,
+		MaxPreparedStmts:             defaultMaxPreparedStmts,
+		MaxRoutingKeyInfo:            1000,
+		PageSize:                     5000,
+		DefaultTimestamp:             true,
+		MaxWaitSchemaAgreement:       60 * time.Second,
+		ReconnectInterval:            60 * time.Second,
+		ConvictionPolicy:             &SimpleConvictionPolicy{},
+		ReconnectionPolicy:           &ConstantReconnectionPolicy{MaxRetries: 3, Interval: 1 * time.Second},
+		SocketKeepalive:              15 * time.Second,
+		WriteCoalesceWaitTime:        200 * time.Microsecond,
+		MetadataSchemaRequestTimeout: 60 * time.Second,
 	}
 
 	return cfg

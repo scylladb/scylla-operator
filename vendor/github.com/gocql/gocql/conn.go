@@ -209,7 +209,7 @@ type Conn struct {
 	timeouts int64
 
 	logger           StdLogger
-	tabletsRoutingV1 bool
+	tabletsRoutingV1 int32
 }
 
 // connect establishes a connection to a Cassandra node using session's connection config.
@@ -604,6 +604,18 @@ func (c *Conn) closeWithError(err error) {
 	}
 }
 
+func (c *Conn) isTabletSupported() bool {
+	return atomic.LoadInt32(&c.tabletsRoutingV1) == 1
+}
+
+func (c *Conn) setTabletSupported(val bool) {
+	intVal := int32(0)
+	if val {
+		intVal = 1
+	}
+	atomic.StoreInt32(&c.tabletsRoutingV1, intVal)
+}
+
 func (c *Conn) close() error {
 	return c.conn.Close()
 }
@@ -680,7 +692,7 @@ func (c *Conn) heartBeat(ctx context.Context) {
 		switch resp.(type) {
 		case *supportedFrame:
 			// Everything ok
-			sleepTime = 5 * time.Second
+			sleepTime = 30 * time.Second
 			failures = 0
 		case error:
 			// TODO: should we do something here?
@@ -725,9 +737,7 @@ func (c *Conn) recv(ctx context.Context) error {
 	} else if head.stream == -1 {
 		// TODO: handle cassandra event frames, we shouldnt get any currently
 		framer := newFramerWithExts(c.compressor, c.version, c.cqlProtoExts)
-		c.mu.Lock()
-		c.tabletsRoutingV1 = framer.tabletsRoutingV1
-		c.mu.Unlock()
+		c.setTabletSupported(framer.tabletsRoutingV1)
 		if err := framer.readFrame(c, &head); err != nil {
 			return err
 		}
@@ -737,9 +747,7 @@ func (c *Conn) recv(ctx context.Context) error {
 		// reserved stream that we dont use, probably due to a protocol error
 		// or a bug in Cassandra, this should be an error, parse it and return.
 		framer := newFramerWithExts(c.compressor, c.version, c.cqlProtoExts)
-		c.mu.Lock()
-		c.tabletsRoutingV1 = framer.tabletsRoutingV1
-		c.mu.Unlock()
+		c.setTabletSupported(framer.tabletsRoutingV1)
 		if err := framer.readFrame(c, &head); err != nil {
 			return err
 		}
@@ -769,7 +777,7 @@ func (c *Conn) recv(ctx context.Context) error {
 		panic(fmt.Sprintf("call has incorrect streamID: got %d expected %d", call.streamID, head.stream))
 	}
 
-	framer := newFramer(c.compressor, c.version)
+	framer := newFramerWithExts(c.compressor, c.version, c.cqlProtoExts)
 
 	err = framer.readFrame(c, &head)
 	if err != nil {
@@ -1076,9 +1084,7 @@ func (c *Conn) exec(ctx context.Context, req frameBuilder, tracer Tracer) (*fram
 
 	// resp is basically a waiting semaphore protecting the framer
 	framer := newFramerWithExts(c.compressor, c.version, c.cqlProtoExts)
-	c.mu.Lock()
-	c.tabletsRoutingV1 = framer.tabletsRoutingV1
-	c.mu.Unlock()
+	c.setTabletSupported(framer.tabletsRoutingV1)
 
 	call := &callReq{
 		timeout:  make(chan struct{}),
@@ -1763,12 +1769,20 @@ func (c *Conn) query(ctx context.Context, statement string, values ...interface{
 }
 
 func (c *Conn) querySystemPeers(ctx context.Context, version cassVersion) *Iter {
-	const (
-		peerSchema    = "SELECT * FROM system.peers"
-		peerV2Schemas = "SELECT * FROM system.peers_v2"
+	usingClause := ""
+	if c.session.control != nil {
+		usingClause = c.session.usingTimeoutClause
+	}
+	var (
+		peerSchema    = "SELECT * FROM system.peers" + usingClause
+		peerV2Schemas = "SELECT * FROM system.peers_v2" + usingClause
 	)
 
 	c.mu.Lock()
+	if isScyllaConn((c)) { // ScyllaDB does not support system.peers_v2
+		c.isSchemaV2 = false
+	}
+
 	isSchemaV2 := c.isSchemaV2
 	c.mu.Unlock()
 
@@ -1794,11 +1808,19 @@ func (c *Conn) querySystemPeers(ctx context.Context, version cassVersion) *Iter 
 }
 
 func (c *Conn) querySystemLocal(ctx context.Context) *Iter {
-	return c.query(ctx, "SELECT * FROM system.local WHERE key='local'")
+	usingClause := ""
+	if c.session.control != nil {
+		usingClause = c.session.usingTimeoutClause
+	}
+	return c.query(ctx, "SELECT * FROM system.local WHERE key='local'"+usingClause)
 }
 
 func (c *Conn) awaitSchemaAgreement(ctx context.Context) (err error) {
-	const localSchemas = "SELECT schema_version FROM system.local WHERE key='local'"
+	usingClause := ""
+	if c.session.control != nil {
+		usingClause = c.session.usingTimeoutClause
+	}
+	var localSchemas = "SELECT schema_version FROM system.local WHERE key='local'" + usingClause
 
 	var versions map[string]struct{}
 	var schemaVersion string

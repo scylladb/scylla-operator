@@ -251,7 +251,7 @@ spec:
       serviceAccountName: scylla-manager
       containers:
       - name: scylla-manager
-        image: docker.io/scylladb/scylla-manager:3.3.0@sha256:e8c5b62c9330f91dfca24f109b033df78113d3ffaac306edf6d3c4346e1fa0bf
+        image: docker.io/scylladb/scylla-manager:3.3.3@sha256:b7b342bf0a8bd1e2374b733a3d40e43504e75ef1b9c21fe85c21e08bd08d47e0
         imagePullPolicy: IfNotPresent
         command:
         - /usr/bin/scylla-manager
@@ -283,7 +283,7 @@ metadata:
   namespace: scylla-manager
 spec:
   version: 6.1.1
-  agentVersion: 3.3.0@sha256:dc2684f51e961d88da5a8eac2d9f165cb7a960cbf91f67f49332e7224317c96b
+  agentVersion: 3.3.3@sha256:40e31739e8fb1d48af87abaeaa8ee29f71607964daa8434fe2526dfc6f665920
   repository: docker.io/scylladb/scylla
   agentRepository: docker.io/scylladb/scylla-manager-agent
   developerMode: true

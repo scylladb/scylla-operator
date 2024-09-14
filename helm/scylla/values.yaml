@@ -66,6 +66,12 @@ racks:
       requests:
         cpu: 1
         memory: 4Gi
+    placement:
+      tolerations:
+        - key: role
+          operator: Equal
+          value: scylla-clusters
+          effect: NoSchedule
 # Whether to create Prometheus ServiceMonitor
 serviceMonitor:
   create: false

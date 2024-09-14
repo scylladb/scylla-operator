@@ -25,3 +25,9 @@ spec:
         requests:
           cpu: 1
           memory: 200Mi
+      placement:
+        tolerations:
+        - key: role
+          operator: Equal
+          value: scylla-clusters
+          effect: NoSchedule

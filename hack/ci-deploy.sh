@@ -15,6 +15,8 @@ if [[ -z ${1+x} ]]; then
     exit 1
 fi
 
+SO_INSTALL_PROMETHEUS_OPERATOR="${SO_INSTALL_PROMETHEUS_OPERATOR:-yes}"
+
 ARTIFACTS=${ARTIFACTS:-$( mktemp -d )}
 OPERATOR_IMAGE_REF=${1}
 
@@ -41,8 +43,10 @@ if [[ -n ${SCYLLA_OPERATOR_FEATURE_GATES+x} ]]; then
     yq e --inplace '.spec.template.spec.containers[0].args += "--feature-gates="+ strenv(SCYLLA_OPERATOR_FEATURE_GATES)' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
 fi
 
-kubectl_create -n prometheus-operator -f "${DEPLOY_DIR}/prometheus-operator"
-kubectl_create -n haproxy-ingress -f "${DEPLOY_DIR}/haproxy-ingress"
+if [[ "${SO_INSTALL_PROMETHEUS_OPERATOR}" == "yes" ]]; then
+  kubectl_create -n=prometheus-operator -f="${DEPLOY_DIR}/prometheus-operator"
+fi
+kubectl_create -n=haproxy-ingress -f="${DEPLOY_DIR}/haproxy-ingress"
 kubectl_create -f "${DEPLOY_DIR}"/cert-manager.yaml
 
 # Wait for cert-manager
@@ -85,10 +89,13 @@ kubectl -n=scylla-manager wait --timeout=10m --for='condition=Available=True' sc
 kubectl -n scylla-manager rollout status --timeout=10m deployment.apps/scylla-manager
 kubectl -n scylla-manager rollout status --timeout=10m deployment.apps/scylla-manager-controller
 
-kubectl -n haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-ingress
 kubectl -n haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-ingress deploy/ingress-default-backend deploy/prometheus
 
 kubectl wait --for condition=established crd/nodeconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scyllaoperatorconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scylladbmonitorings.scylla.scylladb.com
-kubectl wait --for condition=established $( find "${DEPLOY_DIR}/prometheus-operator/" -name '*.crd.yaml' -printf '-f=%p\n' )
+
+if [[ "${SO_INSTALL_PROMETHEUS_OPERATOR}" == "yes" ]]; then
+  kubectl wait --for condition=established $( find "${DEPLOY_DIR}/prometheus-operator/" -name '*.crd.yaml' -printf '-f=%p\n' )
+  kubectl -n=prometheus-operator rollout status deploy/prometheus-operator
+fi

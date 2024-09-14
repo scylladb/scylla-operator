@@ -53,6 +53,7 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 			"name":              sc.Name,
 			"namespace":         sc.Namespace,
 			"scyllaClusterName": sc.Name,
+			"storageClassName":  framework.TestContext.ScyllaClusterOptions.StorageClassName,
 		}
 		if framework.TestContext.IngressController != nil {
 			renderArgs["ingressClassName"] = framework.TestContext.IngressController.IngressClassName

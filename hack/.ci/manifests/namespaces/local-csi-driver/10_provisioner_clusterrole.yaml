@@ -4,6 +4,14 @@ metadata:
   name: scylladb:csi-external-provisioner
 rules:
 - apiGroups:
+  - security.openshift.io
+  resourceNames:
+  - privileged
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use
+- apiGroups:
   - ""
   resources:
   - "persistentvolumes"

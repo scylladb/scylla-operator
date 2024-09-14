@@ -64,6 +64,12 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - pods/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ""
+  resources:
   - pods/eviction
   verbs:
   - create
@@ -96,6 +102,7 @@ rules:
   resources:
   - statefulsets
   - daemonsets
+  - daemonsets/finalizers
   - deployments
   verbs:
   - create
@@ -115,7 +122,9 @@ rules:
   - scylla.scylladb.com
   resources:
   - scyllaclusters
+  - scyllaclusters/finalizers
   - scylladbmonitorings
+  - scylladbmonitorings/finalizers
   verbs:
   - create
   - delete
@@ -139,6 +148,7 @@ rules:
   - ""
   resources:
   - configmaps
+  - configmaps/finalizers
   verbs:
   - create
   - delete
@@ -175,6 +185,8 @@ rules:
   - scylla.scylladb.com
   resources:
   - nodeconfigs
+  - nodeconfigs/status
+  - nodeconfigs/finalizers
   verbs:
   - create
   - delete
@@ -202,18 +214,6 @@ rules:
   - clusterrolebindings
   - roles
   - rolebindings
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - scylla.scylladb.com
-  resources:
-  - nodeconfigs/status
   verbs:
   - create
   - delete
@@ -285,6 +285,14 @@ rules:
   - patch
   - update
   - delete
+- apiGroups:
+  - security.openshift.io
+  resourceNames:
+  - privileged
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use
 
 ---
 apiVersion: v1
@@ -5129,6 +5137,7 @@ rules:
   - ""
   resources:
   - configmaps
+  - configmaps/finalizers
   verbs:
   - get
   - list
@@ -5158,6 +5167,14 @@ rules:
   - scyllaclusters
   verbs:
   - get
+- apiGroups:
+  - security.openshift.io
+  resourceNames:
+  - privileged
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1

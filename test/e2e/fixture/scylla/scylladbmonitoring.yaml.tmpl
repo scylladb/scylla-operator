@@ -28,6 +28,9 @@ spec:
             resources:
               requests:
                 storage: 1Gi
+        {{- if .storageClassName }}
+            storageClassName: {{ .storageClassName }}
+        {{- end }}
     grafana:
       exposeOptions:
         webInterface:

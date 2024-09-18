@@ -41,7 +41,7 @@ var _ = g.Describe("MultiDC cluster", func() {
 		sc1, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, ns1Client.ScyllaClient().ScyllaV1().ScyllaClusters(sc1.Namespace), sc1.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, ns1Client.KubeClient(), sc1)
+		verifyScyllaCluster(ctx, ns1Client.KubeClient(), ns1Client.ScyllaClient(), sc1)
 		waitForFullQuorum(ctx, ns1Client.KubeClient().CoreV1(), sc1)
 
 		hosts1, hostIDs1, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, ns1Client.KubeClient().CoreV1(), sc1)
@@ -74,7 +74,7 @@ var _ = g.Describe("MultiDC cluster", func() {
 		sc2, err = controllerhelpers.WaitForScyllaClusterState(waitCtx2, ns2Client.ScyllaClient().ScyllaV1().ScyllaClusters(sc2.Namespace), sc2.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, ns2Client.KubeClient(), sc2)
+		verifyScyllaCluster(ctx, ns2Client.KubeClient(), ns2Client.ScyllaClient(), sc2)
 
 		framework.By("Verifying a multi datacenter cluster was formed with the first ScyllaCluster")
 		dcClientMap := make(map[string]corev1client.CoreV1Interface, 2)

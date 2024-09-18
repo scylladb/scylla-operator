@@ -80,7 +80,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		sourceSC, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sourceSC.Namespace), sourceSC.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sourceSC)
+		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sourceSC)
 		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sourceSC)
 
 		sourceHosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sourceSC)
@@ -316,7 +316,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		targetSC, err = controllerhelpers.WaitForScyllaClusterState(waitCtx7, f.ScyllaClient().ScyllaV1().ScyllaClusters(targetSC.Namespace), targetSC.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), targetSC)
+		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), targetSC)
 		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), targetSC)
 
 		framework.By("Verifying that target cluster is missing the source cluster data")
@@ -406,7 +406,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		targetSC, err = controllerhelpers.WaitForScyllaClusterState(waitCtx9, f.ScyllaClient().ScyllaV1().ScyllaClusters(targetSC.Namespace), targetSC.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), targetSC)
+		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), targetSC)
 		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), targetSC)
 
 		if e.postSchemaRestoreHook != nil {
@@ -477,7 +477,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 				targetSC, err = controllerhelpers.WaitForScyllaClusterState(waitCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(targetSC.Namespace), targetSC.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 				o.Expect(err).NotTo(o.HaveOccurred())
 
-				verifyScyllaCluster(ctx, f.KubeClient(), targetSC)
+				verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), targetSC)
 				waitForFullQuorum(ctx, f.KubeClient().CoreV1(), targetSC)
 			},
 		}),
@@ -518,7 +518,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), sc)
+		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
 		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)

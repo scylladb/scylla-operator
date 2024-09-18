@@ -1,4 +1,4 @@
-package scyllacluster
+package scylladbdatacenter
 
 import (
 	"fmt"
@@ -7,7 +7,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -24,7 +25,7 @@ import (
 )
 
 func TestMemberService(t *testing.T) {
-	basicSC := &scyllav1.ScyllaCluster{
+	basicSC := &scyllav1alpha1.ScyllaDBDatacenter{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "basic",
 			UID:  "the-uid",
@@ -35,19 +36,18 @@ func TestMemberService(t *testing.T) {
 				"default-sc-annotation": "bar",
 			},
 		},
-		Spec: scyllav1.ScyllaClusterSpec{
-			Datacenter: scyllav1.DatacenterSpec{
-				Name: "dc",
-			},
+		Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+			DatacenterName: pointer.Ptr("dc"),
+			ClusterName:    "basic",
 		},
-		Status: scyllav1.ScyllaClusterStatus{
-			Racks: map[string]scyllav1.RackStatus{},
+		Status: scyllav1alpha1.ScyllaDBDatacenterStatus{
+			Racks: []scyllav1alpha1.RackStatus{},
 		},
 	}
 	basicSCOwnerRefs := []metav1.OwnerReference{
 		{
-			APIVersion:         "scylla.scylladb.com/v1",
-			Kind:               "ScyllaCluster",
+			APIVersion:         "scylla.scylladb.com/v1alpha1",
+			Kind:               "ScyllaDBDatacenter",
 			Name:               "basic",
 			UID:                "the-uid",
 			Controller:         pointer.Ptr(true),
@@ -128,51 +128,21 @@ func TestMemberService(t *testing.T) {
 	}
 
 	tt := []struct {
-		name            string
-		scyllaCluster   *scyllav1.ScyllaCluster
-		rackName        string
-		svcName         string
-		oldService      *corev1.Service
-		jobs            map[string]*batchv1.Job
-		expectedService *corev1.Service
+		name               string
+		scyllaDBDatacenter *scyllav1alpha1.ScyllaDBDatacenter
+		rackName           string
+		svcName            string
+		oldService         *corev1.Service
+		jobs               map[string]*batchv1.Job
+		expectedService    *corev1.Service
 	}{
 		{
-			name:          "new service",
-			scyllaCluster: basicSC,
-			rackName:      basicRackName,
-			svcName:       basicSVCName,
-			oldService:    nil,
-			jobs:          nil,
-			expectedService: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            basicSVCName,
-					Labels:          basicSVCLabels(),
-					Annotations:     basicSVCAnnotations(),
-					OwnerReferences: basicSCOwnerRefs,
-				},
-				Spec: corev1.ServiceSpec{
-					Type:                     corev1.ServiceTypeClusterIP,
-					Selector:                 basicSVCSelector,
-					PublishNotReadyAddresses: true,
-					Ports:                    basicPorts,
-				},
-			},
-		},
-		// This behaviour is based on the fact the we merge labels on apply.
-		// TODO: to be addressed with https://github.com/scylladb/scylla-operator/issues/1440.
-		{
-			name:          "new service with unsaved IP and existing replace label",
-			scyllaCluster: basicSC,
-			rackName:      basicRackName,
-			svcName:       basicSVCName,
-			oldService: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						naming.ReplaceLabel: "10.0.0.1",
-					},
-				},
-			},
-			jobs: nil,
+			name:               "new service",
+			scyllaDBDatacenter: basicSC,
+			rackName:           basicRackName,
+			svcName:            basicSVCName,
+			oldService:         nil,
+			jobs:               nil,
 			expectedService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:            basicSVCName,
@@ -189,38 +159,10 @@ func TestMemberService(t *testing.T) {
 			},
 		},
 		{
-			name:          "existing initial service with IP",
-			scyllaCluster: basicSC.DeepCopy(),
-			rackName:      basicRackName,
-			svcName:       basicSVCName,
-			oldService: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						naming.ReplaceLabel: "",
-					},
-				},
-			},
-			jobs: nil,
-			expectedService: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            basicSVCName,
-					Labels:          basicSVCLabels(),
-					Annotations:     basicSVCAnnotations(),
-					OwnerReferences: basicSCOwnerRefs,
-				},
-				Spec: corev1.ServiceSpec{
-					Type:                     corev1.ServiceTypeClusterIP,
-					Selector:                 basicSVCSelector,
-					PublishNotReadyAddresses: true,
-					Ports:                    basicPorts,
-				},
-			},
-		},
-		{
-			name:          "existing service",
-			scyllaCluster: basicSC,
-			rackName:      basicRackName,
-			svcName:       basicSVCName,
+			name:               "existing service",
+			scyllaDBDatacenter: basicSC,
+			rackName:           basicRackName,
+			svcName:            basicSVCName,
 			oldService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: nil,
@@ -243,10 +185,10 @@ func TestMemberService(t *testing.T) {
 			},
 		},
 		{
-			name:          "existing service with maintenance mode label, it is not carried over into required object - #1252",
-			scyllaCluster: basicSC,
-			rackName:      basicRackName,
-			svcName:       basicSVCName,
+			name:               "existing service with maintenance mode label, it is not carried over into required object - #1252",
+			scyllaDBDatacenter: basicSC,
+			rackName:           basicRackName,
+			svcName:            basicSVCName,
 			oldService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
@@ -271,10 +213,10 @@ func TestMemberService(t *testing.T) {
 			},
 		},
 		{
-			name:          "last cleaned up annotation is rewritten from current one when it's missing in existing service",
-			scyllaCluster: basicSC,
-			rackName:      basicRackName,
-			svcName:       basicSVCName,
+			name:               "last cleaned up annotation is rewritten from current one when it's missing in existing service",
+			scyllaDBDatacenter: basicSC,
+			rackName:           basicRackName,
+			svcName:            basicSVCName,
 			oldService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
@@ -302,11 +244,11 @@ func TestMemberService(t *testing.T) {
 			},
 		},
 		{
-			name:          "last cleaned up annotation is added when cleanup job is completed",
-			scyllaCluster: basicSC,
-			rackName:      basicRackName,
-			svcName:       basicSVCName,
-			oldService:    nil,
+			name:               "last cleaned up annotation is added when cleanup job is completed",
+			scyllaDBDatacenter: basicSC,
+			rackName:           basicRackName,
+			svcName:            basicSVCName,
+			oldService:         nil,
 			jobs: map[string]*batchv1.Job{
 				"cleanup-member": {
 					ObjectMeta: metav1.ObjectMeta{
@@ -340,11 +282,11 @@ func TestMemberService(t *testing.T) {
 		},
 		{
 			name: "Service properties are taken from ExposeOptions.NodeService",
-			scyllaCluster: func() *scyllav1.ScyllaCluster {
-				sc := basicSC.DeepCopy()
-				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
-					NodeService: &scyllav1.NodeServiceTemplate{
-						ObjectTemplateMetadata: scyllav1.ObjectTemplateMetadata{
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := basicSC.DeepCopy()
+				sdc.Spec.ExposeOptions = &scyllav1alpha1.ExposeOptions{
+					NodeService: &scyllav1alpha1.NodeServiceTemplate{
+						ObjectTemplateMetadata: scyllav1alpha1.ObjectTemplateMetadata{
 							Annotations: map[string]string{
 								"foo": "bar",
 							},
@@ -352,7 +294,7 @@ func TestMemberService(t *testing.T) {
 								"user-label": "user-label-value",
 							},
 						},
-						Type:                          scyllav1.NodeServiceTypeLoadBalancer,
+						Type:                          scyllav1alpha1.NodeServiceTypeLoadBalancer,
 						ExternalTrafficPolicy:         pointer.Ptr(corev1.ServiceExternalTrafficPolicyLocal),
 						AllocateLoadBalancerNodePorts: pointer.Ptr(true),
 						LoadBalancerClass:             pointer.Ptr("my-lb-class"),
@@ -360,7 +302,7 @@ func TestMemberService(t *testing.T) {
 					},
 				}
 
-				return sc
+				return sdc
 			}(),
 			rackName:   basicRackName,
 			svcName:    basicSVCName,
@@ -398,11 +340,11 @@ func TestMemberService(t *testing.T) {
 		},
 		{
 			name: "headless service type in node service template",
-			scyllaCluster: func() *scyllav1.ScyllaCluster {
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
 				sc := basicSC.DeepCopy()
-				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
-					NodeService: &scyllav1.NodeServiceTemplate{
-						Type: scyllav1.NodeServiceTypeHeadless,
+				sc.Spec.ExposeOptions = &scyllav1alpha1.ExposeOptions{
+					NodeService: &scyllav1alpha1.NodeServiceTemplate{
+						Type: scyllav1alpha1.NodeServiceTypeHeadless,
 					},
 				}
 
@@ -430,11 +372,11 @@ func TestMemberService(t *testing.T) {
 		},
 		{
 			name: "ClusterIP service type in node service template",
-			scyllaCluster: func() *scyllav1.ScyllaCluster {
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
 				sc := basicSC.DeepCopy()
-				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
-					NodeService: &scyllav1.NodeServiceTemplate{
-						Type: scyllav1.NodeServiceTypeClusterIP,
+				sc.Spec.ExposeOptions = &scyllav1alpha1.ExposeOptions{
+					NodeService: &scyllav1alpha1.NodeServiceTemplate{
+						Type: scyllav1alpha1.NodeServiceTypeClusterIP,
 					},
 				}
 
@@ -461,11 +403,11 @@ func TestMemberService(t *testing.T) {
 		},
 		{
 			name: "LoadBalancer service type in node service template",
-			scyllaCluster: func() *scyllav1.ScyllaCluster {
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
 				sc := basicSC.DeepCopy()
-				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
-					NodeService: &scyllav1.NodeServiceTemplate{
-						Type: scyllav1.NodeServiceTypeLoadBalancer,
+				sc.Spec.ExposeOptions = &scyllav1alpha1.ExposeOptions{
+					NodeService: &scyllav1alpha1.NodeServiceTemplate{
+						Type: scyllav1alpha1.NodeServiceTypeLoadBalancer,
 					},
 				}
 
@@ -494,7 +436,7 @@ func TestMemberService(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := MemberService(tc.scyllaCluster, tc.rackName, tc.svcName, tc.oldService, tc.jobs)
+			got, err := MemberService(tc.scyllaDBDatacenter, tc.rackName, tc.svcName, tc.oldService, tc.jobs)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -509,17 +451,21 @@ func TestMemberService(t *testing.T) {
 func TestStatefulSetForRack(t *testing.T) {
 	t.Logf("Running TestStatefulSetForRack with TLS feature enabled: %t", utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates))
 
-	newBasicRack := func() scyllav1.RackSpec {
-		return scyllav1.RackSpec{
+	newBasicRack := func() scyllav1alpha1.RackSpec {
+		return scyllav1alpha1.RackSpec{
 			Name: "rack",
-			Storage: scyllav1.Storage{
-				Capacity: "1Gi",
+			RackTemplate: scyllav1alpha1.RackTemplate{
+				ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+					Storage: &scyllav1alpha1.StorageOptions{
+						Capacity: "1Gi",
+					},
+				},
 			},
 		}
 	}
 
-	newBasicScyllaCluster := func() *scyllav1.ScyllaCluster {
-		return &scyllav1.ScyllaCluster{
+	newBasicScyllaDBDatacenter := func() *scyllav1alpha1.ScyllaDBDatacenter {
+		return &scyllav1alpha1.ScyllaDBDatacenter{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "basic",
 				UID:  "the-uid",
@@ -530,16 +476,21 @@ func TestStatefulSetForRack(t *testing.T) {
 					"default-sc-annotation": "bar",
 				},
 			},
-			Spec: scyllav1.ScyllaClusterSpec{
-				Datacenter: scyllav1.DatacenterSpec{
-					Name: "dc",
-					Racks: []scyllav1.RackSpec{
-						newBasicRack(),
-					},
+			Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+				ClusterName:    "basic",
+				DatacenterName: pointer.Ptr("dc"),
+				ScyllaDB: scyllav1alpha1.ScyllaDB{
+					Image: "scylladb/scylla:latest",
+				},
+				ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgent{
+					Image: pointer.Ptr("scylladb/scylla-manager-agent:latest"),
+				},
+				Racks: []scyllav1alpha1.RackSpec{
+					newBasicRack(),
 				},
 			},
-			Status: scyllav1.ScyllaClusterStatus{
-				Racks: map[string]scyllav1.RackStatus{},
+			Status: scyllav1alpha1.ScyllaDBDatacenterStatus{
+				Racks: []scyllav1alpha1.RackStatus{},
 			},
 		}
 	}
@@ -553,7 +504,7 @@ func TestStatefulSetForRack(t *testing.T) {
 			"scylla/cluster":               "basic",
 			"scylla/datacenter":            "dc",
 			"scylla/rack":                  "rack",
-			"scylla/scylla-version":        "",
+			"scylla/scylla-version":        "latest",
 			"scylla/rack-ordinal":          fmt.Sprintf("%d", ordinal),
 		}
 	}
@@ -568,8 +519,8 @@ func TestStatefulSetForRack(t *testing.T) {
 				},
 				OwnerReferences: []metav1.OwnerReference{
 					{
-						APIVersion:         "scylla.scylladb.com/v1",
-						Kind:               "ScyllaCluster",
+						APIVersion:         "scylla.scylladb.com/v1alpha1",
+						Kind:               "ScyllaDBDatacenter",
 						Name:               "basic",
 						UID:                "the-uid",
 						Controller:         pointer.Ptr(true),
@@ -726,7 +677,7 @@ func TestStatefulSetForRack(t *testing.T) {
 						Containers: []corev1.Container{
 							{
 								Name:            "scylla",
-								Image:           ":",
+								Image:           "scylladb/scylla:latest",
 								ImagePullPolicy: corev1.PullIfNotPresent,
 								Ports: []corev1.ContainerPort{
 									{
@@ -816,7 +767,13 @@ exec /mnt/shared/scylla-operator sidecar \
 										},
 									},
 								},
-								Resources: newBasicRack().Resources,
+								Resources: func() corev1.ResourceRequirements {
+									rack := newBasicRack()
+									if rack.ScyllaDB != nil && rack.ScyllaDB.Resources != nil {
+										return *rack.ScyllaDB.Resources
+									}
+									return corev1.ResourceRequirements{}
+								}(),
 								VolumeMounts: func() []corev1.VolumeMount {
 									mounts := []corev1.VolumeMount{
 										{
@@ -1021,7 +978,7 @@ wait`,
 							},
 							{
 								Name:            "scylla-manager-agent",
-								Image:           ":",
+								Image:           "scylladb/scylla-manager-agent:latest",
 								ImagePullPolicy: corev1.PullIfNotPresent,
 								Command: []string{
 									"/usr/bin/bash",
@@ -1079,7 +1036,13 @@ scylla-manager-agent \
 										ReadOnly:  true,
 									},
 								},
-								Resources: newBasicRack().Resources,
+								Resources: func() corev1.ResourceRequirements {
+									rack := newBasicRack()
+									if rack.ScyllaDBManagerAgent != nil && rack.ScyllaDBManagerAgent.Resources != nil {
+										return *rack.ScyllaDBManagerAgent.Resources
+									}
+									return corev1.ResourceRequirements{}
+								}(),
 							},
 						},
 						DNSPolicy:                     "ClusterFirstWithHostNet",
@@ -1107,10 +1070,10 @@ scylla-manager-agent \
 						},
 						Spec: corev1.PersistentVolumeClaimSpec{
 							AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-							StorageClassName: newBasicRack().Storage.StorageClassName,
+							StorageClassName: newBasicRack().ScyllaDB.Storage.StorageClassName,
 							Resources: corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
-									corev1.ResourceStorage: resource.MustParse(newBasicRack().Storage.Capacity),
+									corev1.ResourceStorage: resource.MustParse(newBasicRack().ScyllaDB.Storage.Capacity),
 								},
 							},
 						},
@@ -1178,8 +1141,8 @@ scylla-manager-agent \
 
 	tt := []struct {
 		name                string
-		rack                scyllav1.RackSpec
-		scyllaCluster       *scyllav1.ScyllaCluster
+		rack                scyllav1alpha1.RackSpec
+		scyllaDBDatacenter  *scyllav1alpha1.ScyllaDBDatacenter
 		existingStatefulSet *appsv1.StatefulSet
 		expectedStatefulSet *appsv1.StatefulSet
 		expectedError       error
@@ -1187,30 +1150,32 @@ scylla-manager-agent \
 		{
 			name:                "new StatefulSet",
 			rack:                newBasicRack(),
-			scyllaCluster:       newBasicScyllaCluster(),
+			scyllaDBDatacenter:  newBasicScyllaDBDatacenter(),
 			existingStatefulSet: nil,
 			expectedStatefulSet: newBasicStatefulSet(),
 			expectedError:       nil,
 		},
 		{
 			name: "error for invalid Rack storage",
-			rack: func() scyllav1.RackSpec {
+			rack: func() scyllav1alpha1.RackSpec {
 				r := newBasicRack()
-				r.Storage = scyllav1.Storage{
-					Capacity: "",
+				r.ScyllaDB = &scyllav1alpha1.ScyllaDBTemplate{
+					Storage: &scyllav1alpha1.StorageOptions{
+						Capacity: "",
+					},
 				}
 				return r
 			}(),
-			scyllaCluster:       newBasicScyllaCluster(),
+			scyllaDBDatacenter:  newBasicScyllaDBDatacenter(),
 			existingStatefulSet: nil,
 			expectedStatefulSet: nil,
-			expectedError:       fmt.Errorf(`cannot parse "": %v`, resource.ErrFormatWrong),
+			expectedError:       fmt.Errorf(`cannot parse storage capacity "": %v`, resource.ErrFormatWrong),
 		},
 		{
 			name: "new StatefulSet with non-nil Tolerations",
-			rack: func() scyllav1.RackSpec {
+			rack: func() scyllav1alpha1.RackSpec {
 				r := newBasicRack()
-				r.Placement = &scyllav1.PlacementSpec{
+				r.Placement = &scyllav1alpha1.Placement{
 					Tolerations: []corev1.Toleration{
 						{
 							Key:      "key",
@@ -1222,7 +1187,7 @@ scylla-manager-agent \
 				}
 				return r
 			}(),
-			scyllaCluster:       newBasicScyllaCluster(),
+			scyllaDBDatacenter:  newBasicScyllaDBDatacenter(),
 			existingStatefulSet: nil,
 			expectedStatefulSet: func() *appsv1.StatefulSet {
 				s := newBasicStatefulSet()
@@ -1240,14 +1205,14 @@ scylla-manager-agent \
 		},
 		{
 			name: "new StatefulSet with non-nil NodeAffinity",
-			rack: func() scyllav1.RackSpec {
+			rack: func() scyllav1alpha1.RackSpec {
 				r := newBasicRack()
-				r.Placement = &scyllav1.PlacementSpec{
+				r.Placement = &scyllav1alpha1.Placement{
 					NodeAffinity: newNodeAffinity(),
 				}
 				return r
 			}(),
-			scyllaCluster:       newBasicScyllaCluster(),
+			scyllaDBDatacenter:  newBasicScyllaDBDatacenter(),
 			existingStatefulSet: nil,
 			expectedStatefulSet: func() *appsv1.StatefulSet {
 				s := newBasicStatefulSet()
@@ -1258,14 +1223,14 @@ scylla-manager-agent \
 		},
 		{
 			name: "new StatefulSet with non-nil PodAffinity",
-			rack: func() scyllav1.RackSpec {
+			rack: func() scyllav1alpha1.RackSpec {
 				r := newBasicRack()
-				r.Placement = &scyllav1.PlacementSpec{
+				r.Placement = &scyllav1alpha1.Placement{
 					PodAffinity: newPodAffinity(),
 				}
 				return r
 			}(),
-			scyllaCluster:       newBasicScyllaCluster(),
+			scyllaDBDatacenter:  newBasicScyllaDBDatacenter(),
 			existingStatefulSet: nil,
 			expectedStatefulSet: func() *appsv1.StatefulSet {
 				s := newBasicStatefulSet()
@@ -1276,14 +1241,14 @@ scylla-manager-agent \
 		},
 		{
 			name: "new StatefulSet with non-nil PodAntiAffinity",
-			rack: func() scyllav1.RackSpec {
+			rack: func() scyllav1alpha1.RackSpec {
 				r := newBasicRack()
-				r.Placement = &scyllav1.PlacementSpec{
+				r.Placement = &scyllav1alpha1.Placement{
 					PodAntiAffinity: newPodAntiAffinity(),
 				}
 				return r
 			}(),
-			scyllaCluster:       newBasicScyllaCluster(),
+			scyllaDBDatacenter:  newBasicScyllaDBDatacenter(),
 			existingStatefulSet: nil,
 			expectedStatefulSet: func() *appsv1.StatefulSet {
 				s := newBasicStatefulSet()
@@ -1295,8 +1260,8 @@ scylla-manager-agent \
 		{
 			name: "new StatefulSet with non-nil ImagePullSecrets",
 			rack: newBasicRack(),
-			scyllaCluster: func() *scyllav1.ScyllaCluster {
-				sc := newBasicScyllaCluster()
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sc := newBasicScyllaDBDatacenter()
 				sc.Spec.ImagePullSecrets = []corev1.LocalObjectReference{
 					{
 						Name: "basic-secrets",
@@ -1319,9 +1284,9 @@ scylla-manager-agent \
 		{
 			name: "new StatefulSet with non-nil ForceRedeploymentReason",
 			rack: newBasicRack(),
-			scyllaCluster: func() *scyllav1.ScyllaCluster {
-				sc := newBasicScyllaCluster()
-				sc.Spec.ForceRedeploymentReason = "reason"
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sc := newBasicScyllaDBDatacenter()
+				sc.Spec.ForceRedeploymentReason = pointer.Ptr("reason")
 				return sc
 			}(),
 			existingStatefulSet: nil,
@@ -1335,9 +1300,9 @@ scylla-manager-agent \
 		{
 			name: "new StatefulSet with non-empty externalSeeds in scylla container",
 			rack: newBasicRack(),
-			scyllaCluster: func() *scyllav1.ScyllaCluster {
-				sc := newBasicScyllaCluster()
-				sc.Spec.ExternalSeeds = []string{"10.0.1.1", "10.0.1.2", "10.0.1.3"}
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sc := newBasicScyllaDBDatacenter()
+				sc.Spec.ScyllaDB.ExternalSeeds = []string{"10.0.1.1", "10.0.1.2", "10.0.1.3"}
 				return sc
 			}(),
 			existingStatefulSet: nil,
@@ -1353,9 +1318,9 @@ scylla-manager-agent \
 		{
 			name: "new StatefulSet with custom pod metadata uses the new values and doesn't inherit from the ScyllaCluster",
 			rack: newBasicRack(),
-			scyllaCluster: func() *scyllav1.ScyllaCluster {
-				sc := newBasicScyllaCluster()
-				sc.Spec.PodMetadata = &scyllav1.ObjectTemplateMetadata{
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sc := newBasicScyllaDBDatacenter()
+				sc.Spec.Metadata = &scyllav1alpha1.ObjectTemplateMetadata{
 					Annotations: map[string]string{
 						"custom-pod-annotation": "custom-pod-annotation-value",
 					},
@@ -1384,7 +1349,7 @@ scylla-manager-agent \
 					"scylla/datacenter":            "dc",
 					"scylla/rack":                  "rack",
 					"scylla/rack-ordinal":          "0",
-					"scylla/scylla-version":        "",
+					"scylla/scylla-version":        "latest",
 				}
 
 				return sts
@@ -1394,8 +1359,8 @@ scylla-manager-agent \
 		{
 			name: "new StatefulSet with custom minReadySeconds",
 			rack: newBasicRack(),
-			scyllaCluster: func() *scyllav1.ScyllaCluster {
-				sc := newBasicScyllaCluster()
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sc := newBasicScyllaDBDatacenter()
 				sc.Spec.MinReadySeconds = pointer.Ptr(int32(1234))
 				return sc
 			}(),
@@ -1411,8 +1376,8 @@ scylla-manager-agent \
 		{
 			name: "new StatefulSet with custom readiness gates",
 			rack: newBasicRack(),
-			scyllaCluster: func() *scyllav1.ScyllaCluster {
-				sc := newBasicScyllaCluster()
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sc := newBasicScyllaDBDatacenter()
 				sc.Spec.ReadinessGates = []corev1.PodReadinessGate{
 					{
 						ConditionType: "my-custom-pod-readiness-gate-1",
@@ -1442,9 +1407,9 @@ scylla-manager-agent \
 		{
 			name: "new StatefulSet with default Alternator enabled",
 			rack: newBasicRack(),
-			scyllaCluster: func() *scyllav1.ScyllaCluster {
-				sc := newBasicScyllaCluster()
-				sc.Spec.Alternator = &scyllav1.AlternatorSpec{}
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sc := newBasicScyllaDBDatacenter()
+				sc.Spec.ScyllaDB.AlternatorOptions = &scyllav1alpha1.AlternatorOptions{}
 				return sc
 			}(),
 			existingStatefulSet: nil,
@@ -1484,12 +1449,10 @@ scylla-manager-agent \
 		{
 			name: "new StatefulSet with default Alternator enabled and disabled http",
 			rack: newBasicRack(),
-			scyllaCluster: func() *scyllav1.ScyllaCluster {
-				sc := newBasicScyllaCluster()
-				sc.Spec.Alternator = &scyllav1.AlternatorSpec{
-					InsecureEnableHTTP: pointer.Ptr(false),
-				}
-				return sc
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				sdc.Spec.ScyllaDB.AlternatorOptions = &scyllav1alpha1.AlternatorOptions{}
+				return sdc
 			}(),
 			existingStatefulSet: nil,
 			expectedStatefulSet: func() *appsv1.StatefulSet {
@@ -1531,11 +1494,11 @@ scylla-manager-agent \
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := StatefulSetForRack(tc.rack, tc.scyllaCluster, tc.existingStatefulSet, "scylladb/scylla-operator:latest", 0, "")
+			got, err := StatefulSetForRack(tc.rack, tc.scyllaDBDatacenter, tc.existingStatefulSet, "scylladb/scylla-operator:latest", 0, "")
 
 			if !reflect.DeepEqual(err, tc.expectedError) {
 				t.Fatalf("expected and actual errors differ: %s",
-					cmp.Diff(tc.expectedError, err))
+					cmp.Diff(tc.expectedError, err, cmpopts.EquateErrors()))
 			}
 
 			if !apiequality.Semantic.DeepEqual(got, tc.expectedStatefulSet) {
@@ -1558,7 +1521,7 @@ func TestStatefulSetForRackWithReversedTLSFeature(t *testing.T) {
 }
 
 func TestMakeIngresses(t *testing.T) {
-	basicScyllaCluster := &scyllav1.ScyllaCluster{
+	basicScyllaCluster := &scyllav1alpha1.ScyllaDBDatacenter{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "basic",
 			UID:  "the-uid",
@@ -1569,14 +1532,17 @@ func TestMakeIngresses(t *testing.T) {
 				"default-sc-label": "foo",
 			},
 		},
-		Spec: scyllav1.ScyllaClusterSpec{
-			Datacenter: scyllav1.DatacenterSpec{
-				Name: "dc",
-				Racks: []scyllav1.RackSpec{
-					{
-						Name: "rack",
-						Storage: scyllav1.Storage{
-							Capacity: "1Gi",
+		Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+			ClusterName:    "basic",
+			DatacenterName: pointer.Ptr("dc"),
+			Racks: []scyllav1alpha1.RackSpec{
+				{
+					Name: "rack",
+					RackTemplate: scyllav1alpha1.RackTemplate{
+						ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+							Storage: &scyllav1alpha1.StorageOptions{
+								Capacity: "1Gi",
+							},
 						},
 					},
 				},
@@ -1618,40 +1584,29 @@ func TestMakeIngresses(t *testing.T) {
 	pathTypePrefix := networkingv1.PathTypePrefix
 
 	tt := []struct {
-		name              string
-		cluster           *scyllav1.ScyllaCluster
-		services          map[string]*corev1.Service
-		expectedIngresses []*networkingv1.Ingress
+		name               string
+		scyllaDBDatacenter *scyllav1alpha1.ScyllaDBDatacenter
+		services           map[string]*corev1.Service
+		expectedIngresses  []*networkingv1.Ingress
 	}{
 		{
-			name:              "no ingresses when cluster isn't exposed",
-			cluster:           basicScyllaCluster,
-			services:          map[string]*corev1.Service{},
-			expectedIngresses: nil,
+			name:               "no ingresses when cluster isn't exposed",
+			scyllaDBDatacenter: basicScyllaCluster,
+			services:           map[string]*corev1.Service{},
+			expectedIngresses:  nil,
 		},
 		{
 			name: "no ingresses when ingresses are explicitly disabled",
-			cluster: func() *scyllav1.ScyllaCluster {
-				cluster := basicScyllaCluster.DeepCopy()
-				cluster.Spec.DNSDomains = []string{"public.scylladb.com", "private.scylladb.com"}
-				cluster.Spec.ExposeOptions = &scyllav1.ExposeOptions{
-					CQL: &scyllav1.CQLExposeOptions{
-						Ingress: &scyllav1.IngressOptions{
-							Disabled:         pointer.Ptr(true),
-							IngressClassName: "cql-ingress-class",
-							ObjectTemplateMetadata: scyllav1.ObjectTemplateMetadata{
-								Annotations: map[string]string{
-									"my-cql-custom-annotation": "my-cql-custom-annotation-value",
-								},
-								Labels: map[string]string{
-									"my-cql-custom-label": "my-cql-custom-label-value",
-								},
-							},
-						},
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := basicScyllaCluster.DeepCopy()
+				sdc.Spec.DNSDomains = []string{"public.scylladb.com", "private.scylladb.com"}
+				sdc.Spec.ExposeOptions = &scyllav1alpha1.ExposeOptions{
+					CQL: &scyllav1alpha1.CQLExposeOptions{
+						Ingress: nil,
 					},
 				}
 
-				return cluster
+				return sdc
 			}(),
 			services:          map[string]*corev1.Service{},
 			expectedIngresses: nil,
@@ -1664,14 +1619,14 @@ func TestMakeIngresses(t *testing.T) {
 				"node-2": newMemberService("node-2", "host-id-2"),
 				"node-3": newMemberService("node-3", "host-id-3"),
 			},
-			cluster: func() *scyllav1.ScyllaCluster {
-				cluster := basicScyllaCluster.DeepCopy()
-				cluster.Spec.DNSDomains = []string{"public.scylladb.com", "private.scylladb.com"}
-				cluster.Spec.ExposeOptions = &scyllav1.ExposeOptions{
-					CQL: &scyllav1.CQLExposeOptions{
-						Ingress: &scyllav1.IngressOptions{
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := basicScyllaCluster.DeepCopy()
+				sdc.Spec.DNSDomains = []string{"public.scylladb.com", "private.scylladb.com"}
+				sdc.Spec.ExposeOptions = &scyllav1alpha1.ExposeOptions{
+					CQL: &scyllav1alpha1.CQLExposeOptions{
+						Ingress: &scyllav1alpha1.CQLExposeIngressOptions{
 							IngressClassName: "cql-ingress-class",
-							ObjectTemplateMetadata: scyllav1.ObjectTemplateMetadata{
+							ObjectTemplateMetadata: scyllav1alpha1.ObjectTemplateMetadata{
 								Annotations: map[string]string{
 									"my-cql-custom-annotation": "my-cql-custom-annotation-value",
 								},
@@ -1680,7 +1635,7 @@ func TestMakeIngresses(t *testing.T) {
 					},
 				}
 
-				return cluster
+				return sdc
 			}(),
 			expectedIngresses: []*networkingv1.Ingress{
 				{
@@ -1699,8 +1654,8 @@ func TestMakeIngresses(t *testing.T) {
 						},
 						OwnerReferences: []metav1.OwnerReference{
 							{
-								APIVersion:         "scylla.scylladb.com/v1",
-								Kind:               "ScyllaCluster",
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
 								Name:               "basic",
 								UID:                "the-uid",
 								Controller:         pointer.Ptr(true),
@@ -1772,8 +1727,8 @@ func TestMakeIngresses(t *testing.T) {
 						},
 						OwnerReferences: []metav1.OwnerReference{
 							{
-								APIVersion:         "scylla.scylladb.com/v1",
-								Kind:               "ScyllaCluster",
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
 								Name:               "basic",
 								UID:                "the-uid",
 								Controller:         pointer.Ptr(true),
@@ -1845,8 +1800,8 @@ func TestMakeIngresses(t *testing.T) {
 						},
 						OwnerReferences: []metav1.OwnerReference{
 							{
-								APIVersion:         "scylla.scylladb.com/v1",
-								Kind:               "ScyllaCluster",
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
 								Name:               "basic",
 								UID:                "the-uid",
 								Controller:         pointer.Ptr(true),
@@ -1918,8 +1873,8 @@ func TestMakeIngresses(t *testing.T) {
 						},
 						OwnerReferences: []metav1.OwnerReference{
 							{
-								APIVersion:         "scylla.scylladb.com/v1",
-								Kind:               "ScyllaCluster",
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
 								Name:               "basic",
 								UID:                "the-uid",
 								Controller:         pointer.Ptr(true),
@@ -1978,22 +1933,22 @@ func TestMakeIngresses(t *testing.T) {
 			},
 		},
 		{
-			name: "ingress objects inherit scyllacluster labels and annotations if none are specified",
+			name: "ingress objects inherit scylladbdatacenter labels and annotations if none are specified",
 			services: map[string]*corev1.Service{
 				"any":    newIdentityService("any"),
 				"node-1": newMemberService("node-1", "host-id-1"),
 			},
-			cluster: func() *scyllav1.ScyllaCluster {
-				cluster := basicScyllaCluster.DeepCopy()
-				cluster.Spec.ExposeOptions = &scyllav1.ExposeOptions{
-					CQL: &scyllav1.CQLExposeOptions{
-						Ingress: &scyllav1.IngressOptions{
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := basicScyllaCluster.DeepCopy()
+				sdc.Spec.ExposeOptions = &scyllav1alpha1.ExposeOptions{
+					CQL: &scyllav1alpha1.CQLExposeOptions{
+						Ingress: &scyllav1alpha1.CQLExposeIngressOptions{
 							IngressClassName: "cql-ingress-class",
 						},
 					},
 				}
 
-				return cluster
+				return sdc
 			}(),
 			expectedIngresses: []*networkingv1.Ingress{
 				{
@@ -2012,8 +1967,8 @@ func TestMakeIngresses(t *testing.T) {
 						},
 						OwnerReferences: []metav1.OwnerReference{
 							{
-								APIVersion:         "scylla.scylladb.com/v1",
-								Kind:               "ScyllaCluster",
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
 								Name:               "basic",
 								UID:                "the-uid",
 								Controller:         pointer.Ptr(true),
@@ -2042,8 +1997,8 @@ func TestMakeIngresses(t *testing.T) {
 						},
 						OwnerReferences: []metav1.OwnerReference{
 							{
-								APIVersion:         "scylla.scylladb.com/v1",
-								Kind:               "ScyllaCluster",
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
 								Name:               "basic",
 								UID:                "the-uid",
 								Controller:         pointer.Ptr(true),
@@ -2064,7 +2019,7 @@ func TestMakeIngresses(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := MakeIngresses(tc.cluster, tc.services)
+			got := MakeIngresses(tc.scyllaDBDatacenter, tc.services)
 			if !apiequality.Semantic.DeepEqual(got, tc.expectedIngresses) {
 				t.Errorf("expected and actual Ingresses differ: %s", cmp.Diff(tc.expectedIngresses, got))
 			}
@@ -2073,7 +2028,7 @@ func TestMakeIngresses(t *testing.T) {
 }
 
 func TestMakeJobs(t *testing.T) {
-	basicScyllaCluster := &scyllav1.ScyllaCluster{
+	basicScyllaDBDatacenter := &scyllav1alpha1.ScyllaDBDatacenter{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "basic",
 			Namespace: "default",
@@ -2085,16 +2040,19 @@ func TestMakeJobs(t *testing.T) {
 				"default-sc-annotation": "bar",
 			},
 		},
-		Spec: scyllav1.ScyllaClusterSpec{
-			Datacenter: scyllav1.DatacenterSpec{
-				Name: "dc",
-				Racks: []scyllav1.RackSpec{
-					{
-						Name: "rack",
-						Storage: scyllav1.Storage{
-							Capacity: "1Gi",
+		Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+			ClusterName:    "basic",
+			DatacenterName: pointer.Ptr("dc"),
+			Racks: []scyllav1alpha1.RackSpec{
+				{
+					Name: "rack",
+					RackTemplate: scyllav1alpha1.RackTemplate{
+						ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+							Storage: &scyllav1alpha1.StorageOptions{
+								Capacity: "1Gi",
+							},
 						},
-						Members: 1,
+						Nodes: pointer.Ptr[int32](1),
 					},
 				},
 			},
@@ -2115,16 +2073,16 @@ func TestMakeJobs(t *testing.T) {
 
 	tt := []struct {
 		name               string
-		cluster            *scyllav1.ScyllaCluster
+		scyllaDBDatacenter *scyllav1alpha1.ScyllaDBDatacenter
 		services           map[string]*corev1.Service
 		expectedJobs       []*batchv1.Job
 		expectedConditions []metav1.Condition
 	}{
 		{
-			name:         "progressing condition rack member service is not present",
-			cluster:      basicScyllaCluster,
-			services:     map[string]*corev1.Service{},
-			expectedJobs: nil,
+			name:               "progressing condition rack member service is not present",
+			scyllaDBDatacenter: basicScyllaDBDatacenter,
+			services:           map[string]*corev1.Service{},
+			expectedJobs:       nil,
 			expectedConditions: []metav1.Condition{
 				{
 					Type:    "JobControllerProgressing",
@@ -2135,8 +2093,8 @@ func TestMakeJobs(t *testing.T) {
 			},
 		},
 		{
-			name:    "progressing condition when member service doesn't have current token ring hash annotation",
-			cluster: basicScyllaCluster,
+			name:               "progressing condition when member service doesn't have current token ring hash annotation",
+			scyllaDBDatacenter: basicScyllaDBDatacenter,
 			services: map[string]*corev1.Service{
 				"basic-dc-rack-0": newMemberService("basic-dc-rack-0", map[string]string{}),
 			},
@@ -2151,8 +2109,8 @@ func TestMakeJobs(t *testing.T) {
 			},
 		},
 		{
-			name:    "progressing condition when member service current token ring hash annotation is empty",
-			cluster: basicScyllaCluster,
+			name:               "progressing condition when member service current token ring hash annotation is empty",
+			scyllaDBDatacenter: basicScyllaDBDatacenter,
 			services: map[string]*corev1.Service{
 				"basic-dc-rack-0": newMemberService("basic-dc-rack-0", map[string]string{
 					"internal.scylla-operator.scylladb.com/current-token-ring-hash": "",
@@ -2169,8 +2127,8 @@ func TestMakeJobs(t *testing.T) {
 			},
 		},
 		{
-			name:    "progressing condition when member service doesn't have latest token ring hash annotation",
-			cluster: basicScyllaCluster,
+			name:               "progressing condition when member service doesn't have latest token ring hash annotation",
+			scyllaDBDatacenter: basicScyllaDBDatacenter,
 			services: map[string]*corev1.Service{
 				"basic-dc-rack-0": newMemberService("basic-dc-rack-0", map[string]string{
 					"internal.scylla-operator.scylladb.com/current-token-ring-hash": "abc",
@@ -2187,8 +2145,8 @@ func TestMakeJobs(t *testing.T) {
 			},
 		},
 		{
-			name:    "progressing condition when member service last cleaned up token ring hash annotation is empty",
-			cluster: basicScyllaCluster,
+			name:               "progressing condition when member service last cleaned up token ring hash annotation is empty",
+			scyllaDBDatacenter: basicScyllaDBDatacenter,
 			services: map[string]*corev1.Service{
 				"basic-dc-rack-0": newMemberService("basic-dc-rack-0", map[string]string{
 					"internal.scylla-operator.scylladb.com/current-token-ring-hash":         "abc",
@@ -2206,8 +2164,8 @@ func TestMakeJobs(t *testing.T) {
 			},
 		},
 		{
-			name:    "no cleanup jobs when member service token ring hash annotations are equal",
-			cluster: basicScyllaCluster,
+			name:               "no cleanup jobs when member service token ring hash annotations are equal",
+			scyllaDBDatacenter: basicScyllaDBDatacenter,
 			services: map[string]*corev1.Service{
 				"basic-dc-rack-0": newMemberService("basic-dc-rack-0", map[string]string{
 					"internal.scylla-operator.scylladb.com/current-token-ring-hash":         "abc",
@@ -2218,8 +2176,8 @@ func TestMakeJobs(t *testing.T) {
 			expectedConditions: nil,
 		},
 		{
-			name:    "cleanup job when member service token ring hash annotations differ",
-			cluster: basicScyllaCluster,
+			name:               "cleanup job when member service token ring hash annotations differ",
+			scyllaDBDatacenter: basicScyllaDBDatacenter,
 			services: func() map[string]*corev1.Service {
 				return map[string]*corev1.Service{
 					"basic-dc-rack-0": newMemberService("basic-dc-rack-0", map[string]string{
@@ -2245,8 +2203,8 @@ func TestMakeJobs(t *testing.T) {
 						},
 						OwnerReferences: []metav1.OwnerReference{
 							{
-								APIVersion:         "scylla.scylladb.com/v1",
-								Kind:               "ScyllaCluster",
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
 								Name:               "basic",
 								UID:                "the-uid",
 								Controller:         pointer.Ptr(true),
@@ -2311,9 +2269,9 @@ func TestMakeJobs(t *testing.T) {
 		},
 		{
 			name: "cleanup job has the same placement requirements as ScyllaCluster",
-			cluster: func() *scyllav1.ScyllaCluster {
-				cluster := basicScyllaCluster.DeepCopy()
-				cluster.Spec.Datacenter.Racks[0].Placement = &scyllav1.PlacementSpec{
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				scyllaDBDatacenter := basicScyllaDBDatacenter.DeepCopy()
+				scyllaDBDatacenter.Spec.Racks[0].Placement = &scyllav1alpha1.Placement{
 					NodeAffinity: &corev1.NodeAffinity{
 						RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
 							NodeSelectorTerms: []corev1.NodeSelectorTerm{
@@ -2363,68 +2321,72 @@ func TestMakeJobs(t *testing.T) {
 						},
 					},
 				}
-				cluster.Spec.Datacenter.Racks = append(cluster.Spec.Datacenter.Racks,
-					scyllav1.RackSpec{
+				scyllaDBDatacenter.Spec.Racks = append(scyllaDBDatacenter.Spec.Racks,
+					scyllav1alpha1.RackSpec{
 						Name: "rack-2",
-						Storage: scyllav1.Storage{
-							Capacity: "1Gi",
-						},
-						Members: 1,
-						Placement: &scyllav1.PlacementSpec{
-							NodeAffinity: &corev1.NodeAffinity{
-								RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-									NodeSelectorTerms: []corev1.NodeSelectorTerm{
-										{
-											MatchExpressions: []corev1.NodeSelectorRequirement{
-												{
-													Key:      "topology.kubernetes.io/zone",
-													Operator: corev1.NodeSelectorOpIn,
-													Values:   []string{"zone-3", "zone-4"},
+						RackTemplate: scyllav1alpha1.RackTemplate{
+							ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+								Storage: &scyllav1alpha1.StorageOptions{
+									Capacity: "1Gi",
+								},
+							},
+							Nodes: pointer.Ptr[int32](1),
+							Placement: &scyllav1alpha1.Placement{
+								NodeAffinity: &corev1.NodeAffinity{
+									RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+										NodeSelectorTerms: []corev1.NodeSelectorTerm{
+											{
+												MatchExpressions: []corev1.NodeSelectorRequirement{
+													{
+														Key:      "topology.kubernetes.io/zone",
+														Operator: corev1.NodeSelectorOpIn,
+														Values:   []string{"zone-3", "zone-4"},
+													},
 												},
 											},
 										},
 									},
 								},
-							},
-							PodAffinity: &corev1.PodAffinity{
-								RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
-									{
-										LabelSelector: &metav1.LabelSelector{
-											MatchLabels: map[string]string{
-												"app.kubernetes.io/name": "scylla",
-												"scylla/rack":            "rack-2",
+								PodAffinity: &corev1.PodAffinity{
+									RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+										{
+											LabelSelector: &metav1.LabelSelector{
+												MatchLabels: map[string]string{
+													"app.kubernetes.io/name": "scylla",
+													"scylla/rack":            "rack-2",
+												},
 											},
+											TopologyKey: "kubernetes.io/hostname",
 										},
-										TopologyKey: "kubernetes.io/hostname",
 									},
 								},
-							},
-							PodAntiAffinity: &corev1.PodAntiAffinity{
-								RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
-									{
-										LabelSelector: &metav1.LabelSelector{
-											MatchLabels: map[string]string{
-												"scylla-operator.scylladb.com/node-job-type": "Cleanup",
-												"scylla/rack-ordinal":                        "0",
+								PodAntiAffinity: &corev1.PodAntiAffinity{
+									RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+										{
+											LabelSelector: &metav1.LabelSelector{
+												MatchLabels: map[string]string{
+													"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+													"scylla/rack-ordinal":                        "0",
+												},
 											},
+											TopologyKey: "kubernetes.io/hostname",
 										},
-										TopologyKey: "kubernetes.io/hostname",
 									},
 								},
-							},
-							Tolerations: []corev1.Toleration{
-								{
-									Key:      "role",
-									Operator: corev1.TolerationOpEqual,
-									Value:    "scylla-clusters-rack-2",
-									Effect:   corev1.TaintEffectNoSchedule,
+								Tolerations: []corev1.Toleration{
+									{
+										Key:      "role",
+										Operator: corev1.TolerationOpEqual,
+										Value:    "scylla-clusters-rack-2",
+										Effect:   corev1.TaintEffectNoSchedule,
+									},
 								},
 							},
 						},
 					},
 				)
 
-				return cluster
+				return scyllaDBDatacenter
 			}(),
 			services: func() map[string]*corev1.Service {
 				return map[string]*corev1.Service{
@@ -2455,8 +2417,8 @@ func TestMakeJobs(t *testing.T) {
 						},
 						OwnerReferences: []metav1.OwnerReference{
 							{
-								APIVersion:         "scylla.scylladb.com/v1",
-								Kind:               "ScyllaCluster",
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
 								Name:               "basic",
 								UID:                "the-uid",
 								Controller:         pointer.Ptr(true),
@@ -2582,8 +2544,8 @@ func TestMakeJobs(t *testing.T) {
 						},
 						OwnerReferences: []metav1.OwnerReference{
 							{
-								APIVersion:         "scylla.scylladb.com/v1",
-								Kind:               "ScyllaCluster",
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
 								Name:               "basic",
 								UID:                "the-uid",
 								Controller:         pointer.Ptr(true),
@@ -2703,7 +2665,10 @@ func TestMakeJobs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			gotJobs, gotConditions := MakeJobs(tc.cluster, tc.services, "scylladb/scylla-operator:latest")
+			gotJobs, gotConditions, err := MakeJobs(tc.scyllaDBDatacenter, tc.services, "scylladb/scylla-operator:latest")
+			if err != nil {
+				t.Errorf("expected nil err, got: %v", err)
+			}
 			if !apiequality.Semantic.DeepEqual(gotJobs, tc.expectedJobs) {
 				t.Errorf("expected and actual Job differ: %s", cmp.Diff(tc.expectedJobs, gotJobs))
 			}
@@ -2717,14 +2682,14 @@ func TestMakeJobs(t *testing.T) {
 func Test_MakeManagedScyllaDBConfig(t *testing.T) {
 	tt := []struct {
 		name                 string
-		sc                   *scyllav1.ScyllaCluster
+		sdc                  *scyllav1alpha1.ScyllaDBDatacenter
 		enableTLSFeatureGate bool
 		expectedCM           *corev1.ConfigMap
 		expectedErr          error
 	}{
 		{
 			name: "no TLS config when the feature is disabled",
-			sc: &scyllav1.ScyllaCluster{
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "foo-ns",
 					Name:      "foo",
@@ -2732,6 +2697,9 @@ func Test_MakeManagedScyllaDBConfig(t *testing.T) {
 					Labels: map[string]string{
 						"user-label": "user-label-value",
 					},
+				},
+				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+					ClusterName: "foo",
 				},
 			},
 			enableTLSFeatureGate: false,
@@ -2749,8 +2717,8 @@ func Test_MakeManagedScyllaDBConfig(t *testing.T) {
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBDatacenter",
 							Name:               "foo",
 							UID:                "uid-42",
 							Controller:         pointer.Ptr(true),
@@ -2771,7 +2739,7 @@ internode_compression: "all"
 		},
 		{
 			name: "TLS config present when the feature is enabled",
-			sc: &scyllav1.ScyllaCluster{
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "foo-ns",
 					Name:      "foo",
@@ -2779,6 +2747,9 @@ internode_compression: "all"
 					Labels: map[string]string{
 						"user-label": "user-label-value",
 					},
+				},
+				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+					ClusterName: "foo",
 				},
 			},
 			enableTLSFeatureGate: true,
@@ -2796,8 +2767,8 @@ internode_compression: "all"
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBDatacenter",
 							Name:               "foo",
 							UID:                "uid-42",
 							Controller:         pointer.Ptr(true),
@@ -2827,7 +2798,7 @@ client_encryption_options:
 		},
 		{
 			name: "alternator is setup on TLS-only with authorization by default",
-			sc: &scyllav1.ScyllaCluster{
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "foo-ns",
 					Name:      "foo",
@@ -2836,9 +2807,10 @@ client_encryption_options:
 						"user-label": "user-label-value",
 					},
 				},
-				Spec: scyllav1.ScyllaClusterSpec{
-					Alternator: &scyllav1.AlternatorSpec{
-						InsecureEnableHTTP: nil,
+				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+					ClusterName: "foo",
+					ScyllaDB: scyllav1alpha1.ScyllaDB{
+						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
 					},
 				},
 			},
@@ -2857,8 +2829,8 @@ client_encryption_options:
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBDatacenter",
 							Name:               "foo",
 							UID:                "uid-42",
 							Controller:         pointer.Ptr(true),
@@ -2894,7 +2866,7 @@ alternator_encryption_options:
 		},
 		{
 			name: "alternator is setup on TLS-only when insecure port is disabled",
-			sc: &scyllav1.ScyllaCluster{
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "foo-ns",
 					Name:      "foo",
@@ -2902,10 +2874,14 @@ alternator_encryption_options:
 					Labels: map[string]string{
 						"user-label": "user-label-value",
 					},
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/alternator-insecure-enable-http": "false",
+					},
 				},
-				Spec: scyllav1.ScyllaClusterSpec{
-					Alternator: &scyllav1.AlternatorSpec{
-						InsecureEnableHTTP: pointer.Ptr(false),
+				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+					ClusterName: "foo",
+					ScyllaDB: scyllav1alpha1.ScyllaDB{
+						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
 					},
 				},
 			},
@@ -2922,10 +2898,13 @@ alternator_encryption_options:
 						"scylla/cluster": "foo",
 						"user-label":     "user-label-value",
 					},
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/alternator-insecure-enable-http": "false",
+					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBDatacenter",
 							Name:               "foo",
 							UID:                "uid-42",
 							Controller:         pointer.Ptr(true),
@@ -2961,7 +2940,7 @@ alternator_encryption_options:
 		},
 		{
 			name: "alternator is setup both on TLS and insecure when insecure port is enabled",
-			sc: &scyllav1.ScyllaCluster{
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "foo-ns",
 					Name:      "foo",
@@ -2969,10 +2948,14 @@ alternator_encryption_options:
 					Labels: map[string]string{
 						"user-label": "user-label-value",
 					},
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/alternator-insecure-enable-http": "true",
+					},
 				},
-				Spec: scyllav1.ScyllaClusterSpec{
-					Alternator: &scyllav1.AlternatorSpec{
-						InsecureEnableHTTP: pointer.Ptr(true),
+				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+					ClusterName: "foo",
+					ScyllaDB: scyllav1alpha1.ScyllaDB{
+						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
 					},
 				},
 			},
@@ -2989,10 +2972,13 @@ alternator_encryption_options:
 						"scylla/cluster": "foo",
 						"user-label":     "user-label-value",
 					},
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/alternator-insecure-enable-http": "true",
+					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBDatacenter",
 							Name:               "foo",
 							UID:                "uid-42",
 							Controller:         pointer.Ptr(true),
@@ -3029,7 +3015,7 @@ alternator_encryption_options:
 		},
 		{
 			name: "alternator is setup without authorization when manual port is specified for backwards compatibility",
-			sc: &scyllav1.ScyllaCluster{
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "foo-ns",
 					Name:      "foo",
@@ -3037,10 +3023,14 @@ alternator_encryption_options:
 					Labels: map[string]string{
 						"user-label": "user-label-value",
 					},
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/alternator-port": "42",
+					},
 				},
-				Spec: scyllav1.ScyllaClusterSpec{
-					Alternator: &scyllav1.AlternatorSpec{
-						Port: 42,
+				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+					ClusterName: "foo",
+					ScyllaDB: scyllav1alpha1.ScyllaDB{
+						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
 					},
 				},
 			},
@@ -3057,10 +3047,13 @@ alternator_encryption_options:
 						"scylla/cluster": "foo",
 						"user-label":     "user-label-value",
 					},
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/alternator-port": "42",
+					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBDatacenter",
 							Name:               "foo",
 							UID:                "uid-42",
 							Controller:         pointer.Ptr(true),
@@ -3097,7 +3090,7 @@ alternator_encryption_options:
 		},
 		{
 			name: "alternator is setup with authorization when manual port is specified and authorization is enabled",
-			sc: &scyllav1.ScyllaCluster{
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "foo-ns",
 					Name:      "foo",
@@ -3105,11 +3098,15 @@ alternator_encryption_options:
 					Labels: map[string]string{
 						"user-label": "user-label-value",
 					},
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/alternator-port":                           "42",
+						"internal.scylla-operator.scylladb.com/alternator-insecure-disable-authorization": "false",
+					},
 				},
-				Spec: scyllav1.ScyllaClusterSpec{
-					Alternator: &scyllav1.AlternatorSpec{
-						Port:                         42,
-						InsecureDisableAuthorization: pointer.Ptr(false),
+				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+					ClusterName: "foo",
+					ScyllaDB: scyllav1alpha1.ScyllaDB{
+						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
 					},
 				},
 			},
@@ -3126,10 +3123,14 @@ alternator_encryption_options:
 						"scylla/cluster": "foo",
 						"user-label":     "user-label-value",
 					},
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/alternator-port":                           "42",
+						"internal.scylla-operator.scylladb.com/alternator-insecure-disable-authorization": "false",
+					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBDatacenter",
 							Name:               "foo",
 							UID:                "uid-42",
 							Controller:         pointer.Ptr(true),
@@ -3166,7 +3167,7 @@ alternator_encryption_options:
 		},
 		{
 			name: "alternator is setup without authorization when it's disabled and using manual port",
-			sc: &scyllav1.ScyllaCluster{
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "foo-ns",
 					Name:      "foo",
@@ -3174,11 +3175,15 @@ alternator_encryption_options:
 					Labels: map[string]string{
 						"user-label": "user-label-value",
 					},
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/alternator-port":                           "42",
+						"internal.scylla-operator.scylladb.com/alternator-insecure-disable-authorization": "true",
+					},
 				},
-				Spec: scyllav1.ScyllaClusterSpec{
-					Alternator: &scyllav1.AlternatorSpec{
-						Port:                         42,
-						InsecureDisableAuthorization: pointer.Ptr(true),
+				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+					ClusterName: "foo",
+					ScyllaDB: scyllav1alpha1.ScyllaDB{
+						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
 					},
 				},
 			},
@@ -3195,10 +3200,14 @@ alternator_encryption_options:
 						"scylla/cluster": "foo",
 						"user-label":     "user-label-value",
 					},
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/alternator-port":                           "42",
+						"internal.scylla-operator.scylladb.com/alternator-insecure-disable-authorization": "true",
+					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBDatacenter",
 							Name:               "foo",
 							UID:                "uid-42",
 							Controller:         pointer.Ptr(true),
@@ -3235,7 +3244,7 @@ alternator_encryption_options:
 		},
 		{
 			name: "alternator is setup with authorization when manual port is specified and authorization is enabled",
-			sc: &scyllav1.ScyllaCluster{
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "foo-ns",
 					Name:      "foo",
@@ -3243,11 +3252,15 @@ alternator_encryption_options:
 					Labels: map[string]string{
 						"user-label": "user-label-value",
 					},
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/alternator-port":                           "42",
+						"internal.scylla-operator.scylladb.com/alternator-insecure-disable-authorization": "false",
+					},
 				},
-				Spec: scyllav1.ScyllaClusterSpec{
-					Alternator: &scyllav1.AlternatorSpec{
-						Port:                         42,
-						InsecureDisableAuthorization: pointer.Ptr(false),
+				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+					ClusterName: "foo",
+					ScyllaDB: scyllav1alpha1.ScyllaDB{
+						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
 					},
 				},
 			},
@@ -3264,10 +3277,14 @@ alternator_encryption_options:
 						"scylla/cluster": "foo",
 						"user-label":     "user-label-value",
 					},
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/alternator-port":                           "42",
+						"internal.scylla-operator.scylladb.com/alternator-insecure-disable-authorization": "false",
+					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBDatacenter",
 							Name:               "foo",
 							UID:                "uid-42",
 							Controller:         pointer.Ptr(true),
@@ -3304,7 +3321,7 @@ alternator_encryption_options:
 		},
 		{
 			name: "alternator is setup without authorization when it's disabled",
-			sc: &scyllav1.ScyllaCluster{
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "foo-ns",
 					Name:      "foo",
@@ -3312,10 +3329,14 @@ alternator_encryption_options:
 					Labels: map[string]string{
 						"user-label": "user-label-value",
 					},
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/alternator-insecure-disable-authorization": "true",
+					},
 				},
-				Spec: scyllav1.ScyllaClusterSpec{
-					Alternator: &scyllav1.AlternatorSpec{
-						InsecureDisableAuthorization: pointer.Ptr(true),
+				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+					ClusterName: "foo",
+					ScyllaDB: scyllav1alpha1.ScyllaDB{
+						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
 					},
 				},
 			},
@@ -3332,10 +3353,13 @@ alternator_encryption_options:
 						"scylla/cluster": "foo",
 						"user-label":     "user-label-value",
 					},
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/alternator-insecure-disable-authorization": "true",
+					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBDatacenter",
 							Name:               "foo",
 							UID:                "uid-42",
 							Controller:         pointer.Ptr(true),
@@ -3379,7 +3403,7 @@ alternator_encryption_options:
 				tc.enableTLSFeatureGate,
 			)()
 
-			got, err := MakeManagedScyllaDBConfig(tc.sc)
+			got, err := MakeManagedScyllaDBConfig(tc.sdc)
 			if !reflect.DeepEqual(err, tc.expectedErr) {
 				t.Errorf("expected and actual errors differ: %s", cmp.Diff(tc.expectedErr, err))
 			}

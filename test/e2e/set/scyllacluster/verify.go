@@ -7,6 +7,8 @@ import (
 
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllaclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -30,7 +32,7 @@ func verifyPersistentVolumeClaims(ctx context.Context, coreClient corev1client.C
 
 	framework.Infof("Found %d pvc(s) in namespace %q", len(pvcList.Items), sc.Namespace)
 
-	pvcNamePrefix := naming.PVCNamePrefixForScyllaCluster(sc.Name)
+	pvcNamePrefix := naming.PVCNamePrefixForScyllaCluster(sc)
 
 	var scPVCNames []string
 	for _, pvc := range pvcList.Items {
@@ -51,7 +53,7 @@ func verifyPersistentVolumeClaims(ctx context.Context, coreClient corev1client.C
 	var expectedPvcNames []string
 	for _, rack := range sc.Spec.Datacenter.Racks {
 		for ord := int32(0); ord < rack.Members; ord++ {
-			stsName := naming.StatefulSetNameForRack(rack, sc)
+			stsName := naming.StatefulSetNameForRackForScyllaCluster(rack, sc)
 			expectedPvcNames = append(expectedPvcNames, naming.PVCNameForStatefulSet(stsName, ord))
 		}
 	}
@@ -61,7 +63,19 @@ func verifyPersistentVolumeClaims(ctx context.Context, coreClient corev1client.C
 	o.Expect(scPVCNames).To(o.BeEquivalentTo(expectedPvcNames))
 }
 
-func verifyStatefulset(sts *appsv1.StatefulSet) {
+func verifyStatefulset(sts *appsv1.StatefulSet, sdc *scyllav1alpha1.ScyllaDBDatacenter) {
+	o.Expect(sts.ObjectMeta.OwnerReferences).To(o.BeEquivalentTo(
+		[]metav1.OwnerReference{
+			{
+				APIVersion:         "scylla.scylladb.com/v1alpha1",
+				Kind:               "ScyllaDBDatacenter",
+				Name:               sdc.Name,
+				UID:                sdc.UID,
+				BlockOwnerDeletion: pointer.Ptr(true),
+				Controller:         pointer.Ptr(true),
+			},
+		}),
+	)
 	o.Expect(sts.DeletionTimestamp).To(o.BeNil())
 	o.Expect(sts.Status.ObservedGeneration).To(o.Equal(sts.Generation))
 	o.Expect(sts.Spec.Replicas).NotTo(o.BeNil())
@@ -69,24 +83,24 @@ func verifyStatefulset(sts *appsv1.StatefulSet) {
 	o.Expect(sts.Status.CurrentRevision).To(o.Equal(sts.Status.UpdateRevision))
 }
 
-func verifyPodDisruptionBudget(sc *scyllav1.ScyllaCluster, pdb *policyv1.PodDisruptionBudget) {
+func verifyPodDisruptionBudget(sc *scyllav1.ScyllaCluster, pdb *policyv1.PodDisruptionBudget, sdc *scyllav1alpha1.ScyllaDBDatacenter) {
 	o.Expect(pdb.ObjectMeta.OwnerReferences).To(o.BeEquivalentTo(
 		[]metav1.OwnerReference{
 			{
-				APIVersion:         "scylla.scylladb.com/v1",
-				Kind:               "ScyllaCluster",
-				Name:               sc.Name,
-				UID:                sc.UID,
+				APIVersion:         "scylla.scylladb.com/v1alpha1",
+				Kind:               "ScyllaDBDatacenter",
+				Name:               sdc.Name,
+				UID:                sdc.UID,
 				BlockOwnerDeletion: pointer.Ptr(true),
 				Controller:         pointer.Ptr(true),
 			},
 		}),
 	)
 	o.Expect(pdb.Spec.MaxUnavailable.IntValue()).To(o.Equal(1))
-	o.Expect(pdb.Spec.Selector).To(o.Equal(metav1.SetAsLabelSelector(naming.ClusterLabels(sc))))
+	o.Expect(pdb.Spec.Selector).To(o.Equal(metav1.SetAsLabelSelector(naming.ClusterLabelsForScyllaCluster(sc))))
 }
 
-func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, sc *scyllav1.ScyllaCluster) {
+func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, scyllaClient scyllaclient.Interface, sc *scyllav1.ScyllaCluster) {
 	framework.By("Verifying the ScyllaCluster")
 
 	sc = sc.DeepCopy()
@@ -201,6 +215,14 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 				condType: "ConfigControllerDegraded",
 				status:   metav1.ConditionFalse,
 			},
+			{
+				condType: "ScyllaDBDatacenterControllerProgressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "ScyllaDBDatacenterControllerDegraded",
+				status:   metav1.ConditionFalse,
+			},
 		}
 
 		if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) || sc.Spec.Alternator != nil {
@@ -230,6 +252,20 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 		return expectedConditions
 	}()...))
 
+	sdc, err := scyllaClient.ScyllaV1alpha1().ScyllaDBDatacenters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(sdc.ObjectMeta.OwnerReferences).To(o.BeEquivalentTo(
+		[]metav1.OwnerReference{
+			{
+				APIVersion:         "scylla.scylladb.com/v1",
+				Kind:               "ScyllaCluster",
+				Name:               sc.Name,
+				UID:                sc.UID,
+				BlockOwnerDeletion: pointer.Ptr(true),
+				Controller:         pointer.Ptr(true),
+			},
+		}),
+	)
 	statefulsets, err := utils.GetStatefulSetsForScyllaCluster(ctx, kubeClient.AppsV1(), sc)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(statefulsets).To(o.HaveLen(len(sc.Spec.Datacenter.Racks)))
@@ -240,7 +276,7 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 
 		s := statefulsets[r.Name]
 
-		verifyStatefulset(s)
+		verifyStatefulset(s, sdc)
 
 		o.Expect(sc.Status.Racks[r.Name].Stale).NotTo(o.BeNil())
 		o.Expect(*sc.Status.Racks[r.Name].Stale).To(o.BeFalse())
@@ -254,15 +290,15 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 		o.Expect(sc.Status.Upgrade.FromVersion).To(o.Equal(sc.Status.Upgrade.ToVersion))
 	}
 
-	pdb, err := kubeClient.PolicyV1().PodDisruptionBudgets(sc.Namespace).Get(ctx, naming.PodDisruptionBudgetName(sc), metav1.GetOptions{})
+	pdb, err := kubeClient.PolicyV1().PodDisruptionBudgets(sc.Namespace).Get(ctx, naming.PodDisruptionBudgetNameForScyllaCluster(sc), metav1.GetOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
-	verifyPodDisruptionBudget(sc, pdb)
+	verifyPodDisruptionBudget(sc, pdb, sdc)
 
 	verifyPersistentVolumeClaims(ctx, kubeClient.CoreV1(), sc)
 
-	scyllaClient, hosts, err := utils.GetScyllaClient(ctx, kubeClient.CoreV1(), sc)
+	clusterClient, hosts, err := utils.GetScyllaClient(ctx, kubeClient.CoreV1(), sc)
 	o.Expect(err).NotTo(o.HaveOccurred())
-	defer scyllaClient.Close()
+	defer clusterClient.Close()
 
 	o.Expect(hosts).To(o.HaveLen(memberCount))
 }

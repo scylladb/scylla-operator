@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,8 +56,8 @@ func TestMember_GetSeeds(t *testing.T) {
 		name                       string
 		memberService              *corev1.Service
 		memberPod                  *corev1.Pod
-		memberClientsBroadcastType scyllav1.BroadcastAddressType
-		memberNodesBroadcastType   scyllav1.BroadcastAddressType
+		memberClientsBroadcastType scyllav1alpha1.BroadcastAddressType
+		memberNodesBroadcastType   scyllav1alpha1.BroadcastAddressType
 		externalSeeds              []string
 		objects                    []runtime.Object
 		expectSeeds                []string
@@ -67,8 +67,8 @@ func TestMember_GetSeeds(t *testing.T) {
 			name:                       "error when no pods are found",
 			memberPod:                  firstPod,
 			memberService:              firstService,
-			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
-			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			objects:                    []runtime.Object{},
 			expectError:                fmt.Errorf("internal error: can't find any pod for this cluster, including itself"),
 		},
@@ -76,8 +76,8 @@ func TestMember_GetSeeds(t *testing.T) {
 			name:                       "bootstrap with external seeds only when cluster is empty and external seeds are provided",
 			memberPod:                  firstPod,
 			memberService:              firstService,
-			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
-			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			objects:                    []runtime.Object{firstPod, firstService},
 			externalSeeds:              []string{"10.0.1.1", "10.0.1.2"},
 			expectSeeds:                []string{"10.0.1.1", "10.0.1.2"},
@@ -86,8 +86,8 @@ func TestMember_GetSeeds(t *testing.T) {
 			name:                       "bootstrap with external seeds and first created UN node when external seeds are provided",
 			memberPod:                  firstPod,
 			memberService:              firstService,
-			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
-			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			objects:                    []runtime.Object{firstPod, firstService, markPodReady(secondPod), secondService, markPodReady(thirdPod), thirdService},
 			externalSeeds:              []string{"10.0.1.1", "10.0.1.2"},
 			expectSeeds:                []string{"10.0.1.1", "10.0.1.2", secondService.Spec.ClusterIP},
@@ -96,8 +96,8 @@ func TestMember_GetSeeds(t *testing.T) {
 			name:                       "bootstrap with external seeds and first created Pod when all Pods from DC are down and external seeds are provided",
 			memberPod:                  firstPod,
 			memberService:              firstService,
-			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
-			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			objects:                    []runtime.Object{firstPod, firstService, secondPod, secondService, thirdPod, thirdService},
 			externalSeeds:              []string{"10.0.1.1", "10.0.1.2"},
 			expectSeeds:                []string{"10.0.1.1", "10.0.1.2", secondService.Spec.ClusterIP},
@@ -106,8 +106,8 @@ func TestMember_GetSeeds(t *testing.T) {
 			name:                       "bootstraps with itself using node-to-node identifier of ClusterIP type when cluster is empty",
 			memberPod:                  firstPod,
 			memberService:              firstService,
-			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
-			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			objects:                    []runtime.Object{firstPod, firstService},
 			expectSeeds:                []string{firstService.Spec.ClusterIP},
 		},
@@ -115,8 +115,8 @@ func TestMember_GetSeeds(t *testing.T) {
 			name:                       "bootstraps with itself using node-to-node identifier of ClusterIP type when cluster is empty",
 			memberPod:                  firstPod,
 			memberService:              firstService,
-			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
-			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			objects:                    []runtime.Object{firstPod, firstService},
 			expectSeeds:                []string{firstService.Spec.ClusterIP},
 		},
@@ -128,8 +128,8 @@ func TestMember_GetSeeds(t *testing.T) {
 				return pod
 			}(),
 			memberService:              firstService,
-			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
-			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypePodIP,
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypePodIP,
 			objects:                    []runtime.Object{firstPod, firstService},
 			expectSeeds:                []string{"1.2.3.4"},
 		},
@@ -148,8 +148,8 @@ func TestMember_GetSeeds(t *testing.T) {
 				}
 				return svc
 			}(),
-			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
-			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
 			objects:                    []runtime.Object{firstPod, firstService},
 			expectSeeds:                []string{"4.3.2.1"},
 		},
@@ -168,8 +168,8 @@ func TestMember_GetSeeds(t *testing.T) {
 				}
 				return svc
 			}(),
-			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
-			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
 			objects:                    []runtime.Object{firstPod, firstService},
 			expectSeeds:                []string{"node-1-hostname.scylladb.com"},
 		},
@@ -177,8 +177,8 @@ func TestMember_GetSeeds(t *testing.T) {
 			name:                       "bootstrap with first created UN node",
 			memberPod:                  firstPod,
 			memberService:              firstService,
-			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
-			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			objects:                    []runtime.Object{firstPod, firstService, markPodReady(secondPod), secondService, markPodReady(thirdPod), thirdService},
 			expectSeeds:                []string{secondService.Spec.ClusterIP},
 		},
@@ -186,8 +186,8 @@ func TestMember_GetSeeds(t *testing.T) {
 			name:                       "bootstrap only with UN node",
 			memberPod:                  firstPod,
 			memberService:              firstService,
-			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
-			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			objects:                    []runtime.Object{firstPod, firstService, secondPod, secondService, markPodReady(thirdPod), thirdService},
 			expectSeeds:                []string{thirdService.Spec.ClusterIP},
 		},
@@ -195,8 +195,8 @@ func TestMember_GetSeeds(t *testing.T) {
 			name:                       "bootstrap with first created Pod when all are down",
 			memberPod:                  firstPod,
 			memberService:              firstService,
-			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
-			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			objects:                    []runtime.Object{firstPod, firstService, secondPod, secondService, thirdPod, thirdService},
 			expectSeeds:                []string{secondService.Spec.ClusterIP},
 		},
@@ -208,8 +208,8 @@ func TestMember_GetSeeds(t *testing.T) {
 				return pod
 			}(),
 			memberService:              firstService,
-			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
-			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypePodIP,
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypePodIP,
 			objects: []runtime.Object{
 				func() runtime.Object {
 					pod := firstPod.DeepCopy()
@@ -237,8 +237,8 @@ func TestMember_GetSeeds(t *testing.T) {
 			name:                       "use ClusterIP from Service when node broadcast address type is ClusterIP",
 			memberPod:                  firstPod,
 			memberService:              firstService,
-			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
-			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			objects: []runtime.Object{
 				firstPod,
 				firstService,
@@ -268,8 +268,8 @@ func TestMember_GetSeeds(t *testing.T) {
 				}
 				return svc
 			}(),
-			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
-			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
 			objects: []runtime.Object{
 				firstPod,
 				func() runtime.Object {
@@ -318,8 +318,8 @@ func TestMember_GetSeeds(t *testing.T) {
 				}
 				return svc
 			}(),
-			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
-			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
 			objects: []runtime.Object{
 				firstPod,
 				func() runtime.Object {
@@ -356,8 +356,8 @@ func TestMember_GetSeeds(t *testing.T) {
 			name:                       "error when node is not first in rack, but there are no other pods",
 			memberPod:                  secondPod,
 			memberService:              secondService,
-			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
-			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			objects:                    []runtime.Object{secondPod, secondService},
 			expectSeeds:                nil,
 			expectError:                fmt.Errorf("pod is not first in the cluster, but there are no other pods"),
@@ -370,8 +370,8 @@ func TestMember_GetSeeds(t *testing.T) {
 				return pod
 			}(),
 			memberService:              firstService,
-			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
-			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			objects:                    []runtime.Object{firstPod, firstService},
 			expectSeeds:                nil,
 			expectError:                fmt.Errorf("pod is not first in the cluster, but there are no other pods"),
@@ -384,8 +384,8 @@ func TestMember_GetSeeds(t *testing.T) {
 				return pod
 			}(),
 			memberService:              secondService,
-			memberClientsBroadcastType: scyllav1.BroadcastAddressTypeServiceClusterIP,
-			memberNodesBroadcastType:   scyllav1.BroadcastAddressTypeServiceClusterIP,
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			objects:                    []runtime.Object{firstPod, firstService, secondPod, secondService},
 			expectSeeds:                []string{firstService.Spec.ClusterIP},
 		},

@@ -106,6 +106,7 @@ rules:
   resources:
   - scyllaclusters
   - scylladbmonitorings
+  - scylladbdatacenters
   verbs:
   - create
   - delete
@@ -119,6 +120,7 @@ rules:
   resources:
   - scyllaclusters/status
   - scylladbmonitorings/status
+  - scylladbdatacenters/status
   verbs:
   - get
   - list

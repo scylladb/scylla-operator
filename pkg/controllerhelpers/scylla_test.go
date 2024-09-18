@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"testing"
 
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -169,17 +169,17 @@ func TestIsNodeConfigSelectingNode(t *testing.T) {
 func TestGetScyllaHost(t *testing.T) {
 	t.Parallel()
 
-	sc := &scyllav1.ScyllaCluster{
+	sdc := &scyllav1alpha1.ScyllaDBDatacenter{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "simple-cluster",
 		},
-		Spec: scyllav1.ScyllaClusterSpec{
-			Datacenter: scyllav1.DatacenterSpec{
-				Name: "us-east1",
-				Racks: []scyllav1.RackSpec{
-					{
-						Name:    "us-east1-b",
-						Members: 1,
+		Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+			DatacenterName: pointer.Ptr("us-east1"),
+			Racks: []scyllav1alpha1.RackSpec{
+				{
+					Name: "us-east1-b",
+					RackTemplate: scyllav1alpha1.RackTemplate{
+						Nodes: pointer.Ptr[int32](1),
 					},
 				},
 			},
@@ -207,7 +207,7 @@ func TestGetScyllaHost(t *testing.T) {
 
 	tt := []struct {
 		name          string
-		scyllaCluster *scyllav1.ScyllaCluster
+		sdc           *scyllav1alpha1.ScyllaDBDatacenter
 		svc           *corev1.Service
 		pod           *corev1.Pod
 		expected      string
@@ -215,10 +215,10 @@ func TestGetScyllaHost(t *testing.T) {
 	}{
 		{
 			name: "service ClusterIP for nil expose options",
-			scyllaCluster: func() *scyllav1.ScyllaCluster {
-				sc := sc.DeepCopy()
-				sc.Spec.ExposeOptions = nil
-				return sc
+			sdc: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := sdc.DeepCopy()
+				sdc.Spec.ExposeOptions = nil
+				return sdc
 			}(),
 			svc:      svc,
 			pod:      pod,
@@ -226,10 +226,10 @@ func TestGetScyllaHost(t *testing.T) {
 		},
 		{
 			name: "service ClusterIP for nil broadcast options",
-			scyllaCluster: func() *scyllav1.ScyllaCluster {
-				sc := sc.DeepCopy()
-				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{}
-				return sc
+			sdc: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := sdc.DeepCopy()
+				sdc.Spec.ExposeOptions = &scyllav1alpha1.ExposeOptions{}
+				return sdc
 			}(),
 			svc:      svc,
 			pod:      pod,
@@ -241,7 +241,7 @@ func TestGetScyllaHost(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := GetScyllaHost(tc.scyllaCluster, tc.svc, tc.pod)
+			actual, err := GetScyllaHost(tc.sdc, tc.svc, tc.pod)
 
 			if !reflect.DeepEqual(err, tc.expectedError) {
 				t.Errorf("expected error %#+v, got %#+v", tc.expectedError, err)
@@ -277,7 +277,7 @@ func TestGetScyllaNodeBroadcastAddress(t *testing.T) {
 
 	tt := []struct {
 		name                     string
-		nodeBroadcastAddressType scyllav1.BroadcastAddressType
+		nodeBroadcastAddressType scyllav1alpha1.BroadcastAddressType
 		svc                      *corev1.Service
 		pod                      *corev1.Pod
 		expected                 string
@@ -286,14 +286,14 @@ func TestGetScyllaNodeBroadcastAddress(t *testing.T) {
 
 		{
 			name:                     "service ClusterIP for ClusterIP broadcast address type",
-			nodeBroadcastAddressType: scyllav1.BroadcastAddressTypeServiceClusterIP,
+			nodeBroadcastAddressType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			pod:                      pod,
 			svc:                      svc,
 			expected:                 "10.0.0.1",
 		},
 		{
 			name:                     "error for ClusterIP broadcast address type and none ClusterIP",
-			nodeBroadcastAddressType: scyllav1.BroadcastAddressTypeServiceClusterIP,
+			nodeBroadcastAddressType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			pod:                      pod,
 			svc: func() *corev1.Service {
 				svc := svc.DeepCopy()
@@ -307,7 +307,7 @@ func TestGetScyllaNodeBroadcastAddress(t *testing.T) {
 		},
 		{
 			name:                     "PodIP broadcast address type",
-			nodeBroadcastAddressType: scyllav1.BroadcastAddressTypePodIP,
+			nodeBroadcastAddressType: scyllav1alpha1.BroadcastAddressTypePodIP,
 			pod:                      pod,
 			svc:                      svc,
 			expected:                 "10.1.0.1",
@@ -315,7 +315,7 @@ func TestGetScyllaNodeBroadcastAddress(t *testing.T) {
 		},
 		{
 			name:                     "error for PodIP broadcast address type and empty PodIP",
-			nodeBroadcastAddressType: scyllav1.BroadcastAddressTypePodIP,
+			nodeBroadcastAddressType: scyllav1alpha1.BroadcastAddressTypePodIP,
 			pod: func() *corev1.Pod {
 				pod := pod.DeepCopy()
 
@@ -329,7 +329,7 @@ func TestGetScyllaNodeBroadcastAddress(t *testing.T) {
 		},
 		{
 			name:                     "error for broadcast address type service load balancer ingress and no service ingress status",
-			nodeBroadcastAddressType: scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
+			nodeBroadcastAddressType: scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
 			pod:                      pod,
 			svc: func() *corev1.Service {
 				svc := svc.DeepCopy()
@@ -344,7 +344,7 @@ func TestGetScyllaNodeBroadcastAddress(t *testing.T) {
 		},
 		{
 			name:                     "ip for broadcast address type service load balancer ingress and non-empty ip in service load balancer status",
-			nodeBroadcastAddressType: scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
+			nodeBroadcastAddressType: scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
 			pod:                      pod,
 			svc: func() *corev1.Service {
 				svc := svc.DeepCopy()
@@ -364,7 +364,7 @@ func TestGetScyllaNodeBroadcastAddress(t *testing.T) {
 		},
 		{
 			name:                     "hostname for broadcast address type service load balancer ingress, empty ip and non-empty hostname in service load balancer status",
-			nodeBroadcastAddressType: scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
+			nodeBroadcastAddressType: scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
 			pod:                      pod,
 			svc: func() *corev1.Service {
 				svc := svc.DeepCopy()
@@ -384,7 +384,7 @@ func TestGetScyllaNodeBroadcastAddress(t *testing.T) {
 		},
 		{
 			name:                     "error for broadcast address type service load balancer ingress and no external address in service load balancer status",
-			nodeBroadcastAddressType: scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
+			nodeBroadcastAddressType: scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
 			pod:                      pod,
 			svc: func() *corev1.Service {
 				svc := svc.DeepCopy()
@@ -404,7 +404,7 @@ func TestGetScyllaNodeBroadcastAddress(t *testing.T) {
 		},
 		{
 			name:                     "error for unsupported broadcast address type",
-			nodeBroadcastAddressType: scyllav1.BroadcastAddressType("Unsupported"),
+			nodeBroadcastAddressType: scyllav1alpha1.BroadcastAddressType("Unsupported"),
 			pod:                      pod,
 			svc:                      svc,
 			expected:                 "",
@@ -431,23 +431,23 @@ func TestGetScyllaNodeBroadcastAddress(t *testing.T) {
 func TestGetRequiredScyllaHosts(t *testing.T) {
 	t.Parallel()
 
-	sc := &scyllav1.ScyllaCluster{
+	sdc := &scyllav1alpha1.ScyllaDBDatacenter{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "simple-cluster",
 			Namespace: "test",
 		},
-		Spec: scyllav1.ScyllaClusterSpec{
-			Datacenter: scyllav1.DatacenterSpec{
-				Name: "us-east1",
-				Racks: []scyllav1.RackSpec{
-					{
-						Name:    "us-east1-b",
-						Members: 2,
+		Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+			ClusterName:    "simple-cluster",
+			DatacenterName: pointer.Ptr("us-east1"),
+			Racks: []scyllav1alpha1.RackSpec{
+				{
+					Name: "us-east1-b",
+					RackTemplate: scyllav1alpha1.RackTemplate{
+						Nodes: pointer.Ptr[int32](2),
 					},
 				},
 			},
 		},
-		Status: scyllav1.ScyllaClusterStatus{},
 	}
 
 	firstPod := &corev1.Pod{
@@ -494,7 +494,7 @@ func TestGetRequiredScyllaHosts(t *testing.T) {
 
 	tt := []struct {
 		name          string
-		sc            *scyllav1.ScyllaCluster
+		sdc           *scyllav1alpha1.ScyllaDBDatacenter
 		services      map[string]*corev1.Service
 		existingPods  []*corev1.Pod
 		expected      []string
@@ -502,7 +502,7 @@ func TestGetRequiredScyllaHosts(t *testing.T) {
 	}{
 		{
 			name: "missing service",
-			sc:   sc,
+			sdc:  sdc,
 			services: map[string]*corev1.Service{
 				"simple-cluster-us-east1-us-east1-b-0": firstService,
 			},
@@ -517,7 +517,7 @@ func TestGetRequiredScyllaHosts(t *testing.T) {
 		},
 		{
 			name: "missing pod",
-			sc:   sc,
+			sdc:  sdc,
 			services: map[string]*corev1.Service{
 				"simple-cluster-us-east1-us-east1-b-0": firstService,
 				"simple-cluster-us-east1-us-east1-b-1": secondService,
@@ -532,7 +532,7 @@ func TestGetRequiredScyllaHosts(t *testing.T) {
 		},
 		{
 			name: "ClusterIP aggregate",
-			sc:   sc,
+			sdc:  sdc,
 			services: map[string]*corev1.Service{
 				"simple-cluster-us-east1-us-east1-b-0": firstService,
 				"simple-cluster-us-east1-us-east1-b-1": secondService,
@@ -549,18 +549,18 @@ func TestGetRequiredScyllaHosts(t *testing.T) {
 		},
 		{
 			name: "PodIP aggregate",
-			sc: func() *scyllav1.ScyllaCluster {
-				sc := sc.DeepCopy()
+			sdc: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := sdc.DeepCopy()
 
-				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
-					BroadcastOptions: &scyllav1.NodeBroadcastOptions{
-						Nodes: scyllav1.BroadcastOptions{
-							Type: scyllav1.BroadcastAddressTypePodIP,
+				sdc.Spec.ExposeOptions = &scyllav1alpha1.ExposeOptions{
+					BroadcastOptions: &scyllav1alpha1.NodeBroadcastOptions{
+						Nodes: scyllav1alpha1.BroadcastOptions{
+							Type: scyllav1alpha1.BroadcastAddressTypePodIP,
 						},
 					},
 				}
 
-				return sc
+				return sdc
 			}(),
 			services: map[string]*corev1.Service{
 				"simple-cluster-us-east1-us-east1-b-0": firstService,
@@ -578,7 +578,7 @@ func TestGetRequiredScyllaHosts(t *testing.T) {
 		},
 		{
 			name: "service missing ClusterIP",
-			sc:   sc,
+			sdc:  sdc,
 			services: map[string]*corev1.Service{
 				"simple-cluster-us-east1-us-east1-b-0": firstService,
 				"simple-cluster-us-east1-us-east1-b-1": func() *corev1.Service {
@@ -613,10 +613,10 @@ func TestGetRequiredScyllaHosts(t *testing.T) {
 			}
 			podLister := corev1listers.NewPodLister(podCache)
 
-			actual, err := GetRequiredScyllaHosts(tc.sc, tc.services, podLister)
+			actual, err := GetRequiredScyllaHosts(tc.sdc, tc.services, podLister)
 
 			if !reflect.DeepEqual(err, tc.expectedError) {
-				t.Errorf("expected error %#+v, got %#+v", tc.expectedError, err)
+				t.Errorf("expected error %v, got %v", tc.expectedError, err)
 			}
 			if !reflect.DeepEqual(actual, tc.expected) {
 				t.Errorf("expected host %q, got %q", tc.expected, actual)

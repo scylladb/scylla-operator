@@ -88,7 +88,7 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 		validSC, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(validSC.Namespace), validSC.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), validSC)
+		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), validSC)
 		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), validSC)
 
 		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), validSC)

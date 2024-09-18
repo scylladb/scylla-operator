@@ -1,4 +1,4 @@
-package scyllacluster
+package scylladbdatacenter
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/features"
@@ -39,15 +39,15 @@ func getHostPort(host string, port int) string {
 }
 
 func makeScyllaConnectionConfig(
-	sc *scyllav1.ScyllaCluster,
+	sdc *scyllav1alpha1.ScyllaDBDatacenter,
 	secrets map[string]*corev1.Secret,
 	configMaps map[string]*corev1.ConfigMap,
 	cqlsIngressPort int,
 ) (*corev1.Secret, error) {
-	clientCertSecretName := naming.GetScyllaClusterLocalUserAdminCertName(sc.Name)
+	clientCertSecretName := naming.GetScyllaClusterLocalUserAdminCertName(sdc.Name)
 	clientCertSecret, found := secrets[clientCertSecretName]
 	if !found {
-		return nil, fmt.Errorf("secret %q doesn't exist or is not own by this object", naming.ManualRef(sc.Namespace, clientCertSecretName))
+		return nil, fmt.Errorf("secret %q doesn't exist or is not own by this object", naming.ManualRef(sdc.Namespace, clientCertSecretName))
 	}
 
 	clientCertsBytes, clientKeyBytes, err := okubecrypto.GetCertKeyDataFromSecret(clientCertSecret)
@@ -55,10 +55,10 @@ func makeScyllaConnectionConfig(
 		return nil, fmt.Errorf("can't get cert and key bytes from secret %q: %w", clientCertSecretName, err)
 	}
 
-	servingCAConfigMapName := naming.GetScyllaClusterLocalServingCAName(sc.Name)
+	servingCAConfigMapName := naming.GetScyllaClusterLocalServingCAName(sdc.Name)
 	servingCAConfigMap, found := configMaps[servingCAConfigMapName]
 	if !found {
-		return nil, fmt.Errorf("configmap %q doesn't exist or is not own by this object", naming.ManualRef(sc.Namespace, servingCAConfigMapName))
+		return nil, fmt.Errorf("configmap %q doesn't exist or is not own by this object", naming.ManualRef(sdc.Namespace, servingCAConfigMapName))
 	}
 
 	servingCABytes, err := okubecrypto.GetCABundleDataFromConfigMap(servingCAConfigMap)
@@ -68,18 +68,18 @@ func makeScyllaConnectionConfig(
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: sc.Namespace,
-			Name:      naming.GetScyllaClusterLocalAdminCQLConnectionConfigsName(sc.Name),
-			Labels:    naming.ClusterLabels(sc),
+			Namespace: sdc.Namespace,
+			Name:      naming.GetScyllaClusterLocalAdminCQLConnectionConfigsName(sdc.Name),
+			Labels:    naming.ClusterLabels(sdc),
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(sc, scyllaClusterControllerGVK),
+				*metav1.NewControllerRef(sdc, scyllaDBDatacenterControllerGVK),
 			},
 		},
-		Data: make(map[string][]byte, len(sc.Spec.DNSDomains)),
+		Data: make(map[string][]byte, len(sdc.Spec.DNSDomains)),
 		Type: corev1.SecretTypeOpaque,
 	}
 
-	for _, domain := range sc.Spec.DNSDomains {
+	for _, domain := range sdc.Spec.DNSDomains {
 		scyllaConnectionConfig := &cqlclientv1alpha1.CQLConnectionConfig{
 			AuthInfos: map[string]*cqlclientv1alpha1.AuthInfo{
 				"admin": {
@@ -90,7 +90,7 @@ func makeScyllaConnectionConfig(
 				},
 			},
 			Datacenters: map[string]*cqlclientv1alpha1.Datacenter{
-				sc.Spec.Datacenter.Name: {
+				naming.GetScyllaDBDatacenterGossipDatacenterName(sdc): {
 					Server:                   getHostPort(naming.GetCQLProtocolSubDomain(domain), cqlsIngressPort),
 					NodeDomain:               naming.GetCQLProtocolSubDomain(domain),
 					CertificateAuthorityData: servingCABytes,
@@ -99,7 +99,7 @@ func makeScyllaConnectionConfig(
 			Contexts: map[string]*cqlclientv1alpha1.Context{
 				"default": {
 					AuthInfoName:   "admin",
-					DatacenterName: sc.Spec.Datacenter.Name,
+					DatacenterName: naming.GetScyllaDBDatacenterGossipDatacenterName(sdc),
 				},
 			},
 			CurrentContext: "default",
@@ -121,9 +121,9 @@ func makeScyllaConnectionConfig(
 	return secret, nil
 }
 
-func (scc *Controller) syncCerts(
+func (sdcc *Controller) syncCerts(
 	ctx context.Context,
-	sc *scyllav1.ScyllaCluster,
+	sdc *scyllav1alpha1.ScyllaDBDatacenter,
 	secrets map[string]*corev1.Secret,
 	configMaps map[string]*corev1.ConfigMap,
 	serviceMap map[string]*corev1.Service,
@@ -136,26 +136,26 @@ func (scc *Controller) syncCerts(
 	var progressingConditions []metav1.Condition
 
 	cm := okubecrypto.NewCertificateManager(
-		scc.keyGetter,
-		scc.kubeClient.CoreV1(),
-		scc.secretLister,
-		scc.kubeClient.CoreV1(),
-		scc.configMapLister,
-		scc.eventRecorder,
+		sdcc.keyGetter,
+		sdcc.kubeClient.CoreV1(),
+		sdcc.secretLister,
+		sdcc.kubeClient.CoreV1(),
+		sdcc.configMapLister,
+		sdcc.eventRecorder,
 	)
 
-	clusterLabels := naming.ClusterLabels(sc)
+	clusterLabels := naming.ClusterLabels(sdc)
 
 	if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {
 		// Manage client certificates.
 		errs = append(errs, cm.ManageCertificates(
 			ctx,
 			time.Now,
-			&sc.ObjectMeta,
-			scyllaClusterControllerGVK,
+			&sdc.ObjectMeta,
+			scyllaDBDatacenterControllerGVK,
 			&okubecrypto.CAConfig{
 				MetaConfig: okubecrypto.MetaConfig{
-					Name:   naming.GetScyllaClusterLocalClientCAName(sc.Name),
+					Name:   naming.GetScyllaClusterLocalClientCAName(sdc.Name),
 					Labels: clusterLabels,
 				},
 				Validity: 10 * 365 * 24 * time.Hour,
@@ -163,14 +163,14 @@ func (scc *Controller) syncCerts(
 			},
 			&okubecrypto.CABundleConfig{
 				MetaConfig: okubecrypto.MetaConfig{
-					Name:   naming.GetScyllaClusterLocalClientCAName(sc.Name),
+					Name:   naming.GetScyllaClusterLocalClientCAName(sdc.Name),
 					Labels: clusterLabels,
 				},
 			},
 			[]*okubecrypto.CertificateConfig{
 				{
 					MetaConfig: okubecrypto.MetaConfig{
-						Name:   naming.GetScyllaClusterLocalUserAdminCertName(sc.Name),
+						Name:   naming.GetScyllaClusterLocalUserAdminCertName(sdc.Name),
 						Labels: clusterLabels,
 					},
 					Validity: 10 * 365 * 24 * time.Hour,
@@ -201,7 +201,7 @@ func (scc *Controller) syncCerts(
 	var ipAddresses []net.IP
 	var servingDNSNames []string
 
-	if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) || sc.Spec.Alternator != nil {
+	if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) || sdc.Spec.ScyllaDB.AlternatorOptions != nil {
 		for _, svc := range serviceMap {
 			svcType := svc.Labels[naming.ScyllaServiceTypeLabel]
 			if svcType != string(naming.ScyllaServiceTypeMember) && svcType != string(naming.ScyllaServiceTypeIdentity) {
@@ -243,7 +243,7 @@ func (scc *Controller) syncCerts(
 						Status:             metav1.ConditionTrue,
 						Reason:             internalapi.ProgressingReason,
 						Message:            fmt.Sprintf("waiting for external address in Service %q to be available", naming.ObjRef(svc)),
-						ObservedGeneration: sc.Generation,
+						ObservedGeneration: sdc.Generation,
 					})
 				}
 			}
@@ -253,20 +253,20 @@ func (scc *Controller) syncCerts(
 				continue
 			}
 
-			pod, err := scc.podLister.Pods(sc.Namespace).Get(svc.Name)
+			pod, err := sdcc.podLister.Pods(sdc.Namespace).Get(svc.Name)
 			if err != nil {
 				if apierrors.IsNotFound(err) {
 					progressingConditions = append(progressingConditions, metav1.Condition{
 						Type:               certControllerProgressingCondition,
 						Status:             metav1.ConditionTrue,
 						Reason:             internalapi.ProgressingReason,
-						Message:            fmt.Sprintf("waiting for Pod %q to be created", naming.ManualRef(sc.Namespace, svc.Name)),
-						ObservedGeneration: sc.Generation,
+						Message:            fmt.Sprintf("waiting for Pod %q to be created", naming.ManualRef(sdc.Namespace, svc.Name)),
+						ObservedGeneration: sdc.Generation,
 					})
 					continue
 				}
 
-				return progressingConditions, fmt.Errorf("can't get Pod %q: %w", naming.ManualRef(sc.Namespace, svc.Name), err)
+				return progressingConditions, fmt.Errorf("can't get Pod %q: %w", naming.ManualRef(sdc.Namespace, svc.Name), err)
 			}
 
 			if len(pod.Status.PodIP) == 0 {
@@ -274,8 +274,8 @@ func (scc *Controller) syncCerts(
 					Type:               certControllerProgressingCondition,
 					Status:             metav1.ConditionTrue,
 					Reason:             internalapi.ProgressingReason,
-					Message:            fmt.Sprintf("waiting for Pod %q to have an IP address", naming.ManualRef(sc.Namespace, svc.Name)),
-					ObservedGeneration: sc.Generation,
+					Message:            fmt.Sprintf("waiting for Pod %q to have an IP address", naming.ManualRef(sdc.Namespace, svc.Name)),
+					ObservedGeneration: sdc.Generation,
 				})
 				continue
 			}
@@ -316,7 +316,7 @@ func (scc *Controller) syncCerts(
 		}
 
 		// For every cluster domain we'll create "cql" subdomain and "UUID.cql" subdomains for every node.
-		for _, domain := range sc.Spec.DNSDomains {
+		for _, domain := range sdc.Spec.DNSDomains {
 			servingDNSNames = append(servingDNSNames, naming.GetCQLProtocolSubDomain(domain))
 
 			for _, hostID := range hostIDs {
@@ -342,7 +342,7 @@ func (scc *Controller) syncCerts(
 				Status:             metav1.ConditionTrue,
 				Reason:             internalapi.ProgressingReason,
 				Message:            strings.Join(progressingMessages, "\n"),
-				ObservedGeneration: sc.Generation,
+				ObservedGeneration: sdc.Generation,
 			})
 		}
 	}
@@ -351,11 +351,11 @@ func (scc *Controller) syncCerts(
 		errs = append(errs, cm.ManageCertificates(
 			ctx,
 			time.Now,
-			&sc.ObjectMeta,
-			scyllaClusterControllerGVK,
+			&sdc.ObjectMeta,
+			scyllaDBDatacenterControllerGVK,
 			&okubecrypto.CAConfig{
 				MetaConfig: okubecrypto.MetaConfig{
-					Name:   naming.GetScyllaClusterLocalServingCAName(sc.Name),
+					Name:   naming.GetScyllaClusterLocalServingCAName(sdc.Name),
 					Labels: clusterLabels,
 				},
 				Validity: 10 * 365 * 24 * time.Hour,
@@ -363,14 +363,14 @@ func (scc *Controller) syncCerts(
 			},
 			&okubecrypto.CABundleConfig{
 				MetaConfig: okubecrypto.MetaConfig{
-					Name:   naming.GetScyllaClusterLocalServingCAName(sc.Name),
+					Name:   naming.GetScyllaClusterLocalServingCAName(sdc.Name),
 					Labels: clusterLabels,
 				},
 			},
 			[]*okubecrypto.CertificateConfig{
 				{
 					MetaConfig: okubecrypto.MetaConfig{
-						Name:   naming.GetScyllaClusterLocalServingCertName(sc.Name),
+						Name:   naming.GetScyllaClusterLocalServingCertName(sdc.Name),
 						Labels: clusterLabels,
 					},
 					Validity: 30 * 24 * time.Hour,
@@ -390,13 +390,13 @@ func (scc *Controller) syncCerts(
 
 		// Build connection bundle.
 
-		scyllaConnectionConfigSecret, err := makeScyllaConnectionConfig(sc, secrets, configMaps, scc.cqlsIngressPort)
+		scyllaConnectionConfigSecret, err := makeScyllaConnectionConfig(sdc, secrets, configMaps, sdcc.cqlsIngressPort)
 		if err != nil {
 			errs = append(errs, err)
 		} else {
-			_, changed, err := resourceapply.ApplySecret(ctx, scc.kubeClient.CoreV1(), scc.secretLister, scc.eventRecorder, scyllaConnectionConfigSecret, resourceapply.ApplyOptions{})
+			_, changed, err := resourceapply.ApplySecret(ctx, sdcc.kubeClient.CoreV1(), sdcc.secretLister, sdcc.eventRecorder, scyllaConnectionConfigSecret, resourceapply.ApplyOptions{})
 			if changed {
-				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, certControllerProgressingCondition, scyllaConnectionConfigSecret, "apply", sc.Generation)
+				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, certControllerProgressingCondition, scyllaConnectionConfigSecret, "apply", sdc.Generation)
 			}
 			if err != nil {
 				return progressingConditions, fmt.Errorf("can't apply secret %q: %w", naming.ObjRef(scyllaConnectionConfigSecret), err)
@@ -405,19 +405,19 @@ func (scc *Controller) syncCerts(
 	}
 
 	// Setup Alternator certificates.
-	if sc.Spec.Alternator != nil &&
-		(sc.Spec.Alternator.ServingCertificate == nil || sc.Spec.Alternator.ServingCertificate.Type == scyllav1.TLSCertificateTypeOperatorManaged) {
+	if sdc.Spec.ScyllaDB.AlternatorOptions != nil &&
+		(sdc.Spec.ScyllaDB.AlternatorOptions.ServingCertificate == nil || sdc.Spec.ScyllaDB.AlternatorOptions.ServingCertificate.Type == scyllav1alpha1.TLSCertificateTypeOperatorManaged) {
 		var additionalDNSNames []string
-		if sc.Spec.Alternator.ServingCertificate.OperatorManagedOptions != nil && sc.Spec.Alternator.ServingCertificate.OperatorManagedOptions.AdditionalDNSNames != nil {
-			additionalDNSNames = sc.Spec.Alternator.ServingCertificate.OperatorManagedOptions.AdditionalDNSNames
+		if sdc.Spec.ScyllaDB.AlternatorOptions.ServingCertificate.OperatorManagedOptions != nil && sdc.Spec.ScyllaDB.AlternatorOptions.ServingCertificate.OperatorManagedOptions.AdditionalDNSNames != nil {
+			additionalDNSNames = sdc.Spec.ScyllaDB.AlternatorOptions.ServingCertificate.OperatorManagedOptions.AdditionalDNSNames
 		}
 		alternatorDNSNames := make([]string, 0, len(servingDNSNames)+len(additionalDNSNames))
 		alternatorDNSNames = append(alternatorDNSNames, servingDNSNames...)
 		alternatorDNSNames = append(alternatorDNSNames, additionalDNSNames...)
 
 		var additionalIPAddresses []net.IP
-		if sc.Spec.Alternator.ServingCertificate.OperatorManagedOptions != nil && sc.Spec.Alternator.ServingCertificate.OperatorManagedOptions.AdditionalIPAddresses != nil {
-			additionalIPAddresses, err = helpers.ParseIPs(sc.Spec.Alternator.ServingCertificate.OperatorManagedOptions.AdditionalIPAddresses)
+		if sdc.Spec.ScyllaDB.AlternatorOptions.ServingCertificate.OperatorManagedOptions != nil && sdc.Spec.ScyllaDB.AlternatorOptions.ServingCertificate.OperatorManagedOptions.AdditionalIPAddresses != nil {
+			additionalIPAddresses, err = helpers.ParseIPs(sdc.Spec.ScyllaDB.AlternatorOptions.ServingCertificate.OperatorManagedOptions.AdditionalIPAddresses)
 			if err != nil {
 				return nil, fmt.Errorf("can't parse additional IP addresses for alternator serving cert: %w", err)
 			}
@@ -429,11 +429,11 @@ func (scc *Controller) syncCerts(
 		errs = append(errs, cm.ManageCertificates(
 			ctx,
 			time.Now,
-			&sc.ObjectMeta,
-			scyllaClusterControllerGVK,
+			&sdc.ObjectMeta,
+			scyllaDBDatacenterControllerGVK,
 			&okubecrypto.CAConfig{
 				MetaConfig: okubecrypto.MetaConfig{
-					Name:   naming.GetScyllaClusterAlternatorLocalServingCAName(sc.Name),
+					Name:   naming.GetScyllaClusterAlternatorLocalServingCAName(sdc.Name),
 					Labels: clusterLabels,
 				},
 				Validity: 10 * 365 * 24 * time.Hour,
@@ -441,14 +441,14 @@ func (scc *Controller) syncCerts(
 			},
 			&okubecrypto.CABundleConfig{
 				MetaConfig: okubecrypto.MetaConfig{
-					Name:   naming.GetScyllaClusterAlternatorLocalServingCAName(sc.Name),
+					Name:   naming.GetScyllaClusterAlternatorLocalServingCAName(sdc.Name),
 					Labels: clusterLabels,
 				},
 			},
 			[]*okubecrypto.CertificateConfig{
 				{
 					MetaConfig: okubecrypto.MetaConfig{
-						Name:   naming.GetScyllaClusterAlternatorLocalServingCertName(sc.Name),
+						Name:   naming.GetScyllaClusterAlternatorLocalServingCertName(sdc.Name),
 						Labels: clusterLabels,
 					},
 					Validity: 30 * 24 * time.Hour,

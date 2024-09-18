@@ -212,7 +212,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		framework.By("Waiting for a ConfigMap to indicate blocking NodeConfig")
 		ctx1, ctx1Cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer ctx1Cancel()
-		podName := fmt.Sprintf("%s-%d", naming.StatefulSetNameForRack(sc.Spec.Datacenter.Racks[0], sc), 0)
+		podName := fmt.Sprintf("%s-%d", naming.StatefulSetNameForRackForScyllaCluster(sc.Spec.Datacenter.Racks[0], sc), 0)
 		pod, err := controllerhelpers.WaitForPodState(ctx1, f.KubeClient().CoreV1().Pods(sc.Namespace), podName, controllerhelpers.WaitForStateOptions{}, func(p *corev1.Pod) (bool, error) {
 			return true, nil
 		})

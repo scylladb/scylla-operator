@@ -1,3 +1,5 @@
+// Copyright (c) 2024 ScyllaDB.
+
 package scyllacluster
 
 import (
@@ -7,11 +9,13 @@ import (
 	"time"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	scyllav1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllaclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	scyllav1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1"
+	scyllav1alpha1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1alpha1"
 	scyllav1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1"
+	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	appsv1 "k8s.io/api/apps/v1"
@@ -21,7 +25,6 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -48,34 +51,28 @@ import (
 
 const (
 	ControllerName = "ScyllaClusterController"
-
-	artificialDelayForCachesToCatchUp = 10 * time.Second
 )
 
 var (
 	keyFunc                    = cache.DeletionHandlingMetaNamespaceKeyFunc
 	scyllaClusterControllerGVK = scyllav1.GroupVersion.WithKind("ScyllaCluster")
-	statefulSetControllerGVK   = appsv1.SchemeGroupVersion.WithKind("StatefulSet")
 )
 
 type Controller struct {
-	operatorImage   string
-	cqlsIngressPort int
-
 	kubeClient   kubernetes.Interface
-	scyllaClient scyllav1client.ScyllaV1Interface
+	scyllaClient scyllaclient.Interface
 
-	podLister            corev1listers.PodLister
-	serviceLister        corev1listers.ServiceLister
-	secretLister         corev1listers.SecretLister
-	configMapLister      corev1listers.ConfigMapLister
-	serviceAccountLister corev1listers.ServiceAccountLister
-	roleBindingLister    rbacv1listers.RoleBindingLister
-	statefulSetLister    appsv1listers.StatefulSetLister
-	pdbLister            policyv1listers.PodDisruptionBudgetLister
-	ingressLister        networkingv1listers.IngressLister
-	scyllaLister         scyllav1listers.ScyllaClusterLister
-	jobLister            batchv1listers.JobLister
+	serviceLister            corev1listers.ServiceLister
+	secretLister             corev1listers.SecretLister
+	configMapLister          corev1listers.ConfigMapLister
+	serviceAccountLister     corev1listers.ServiceAccountLister
+	roleBindingLister        rbacv1listers.RoleBindingLister
+	statefulSetLister        appsv1listers.StatefulSetLister
+	pdbLister                policyv1listers.PodDisruptionBudgetLister
+	ingressLister            networkingv1listers.IngressLister
+	jobLister                batchv1listers.JobLister
+	scyllaClusterLister      scyllav1listers.ScyllaClusterLister
+	scyllaDBDatacenterLister scyllav1alpha1listers.ScyllaDBDatacenterLister
 
 	cachesToSync []cache.InformerSynced
 
@@ -83,14 +80,11 @@ type Controller struct {
 
 	queue    workqueue.RateLimitingInterface
 	handlers *controllerhelpers.Handlers[*scyllav1.ScyllaCluster]
-
-	keyGetter crypto.RSAKeyGetter
 }
 
 func NewController(
 	kubeClient kubernetes.Interface,
-	scyllaClient scyllav1client.ScyllaV1Interface,
-	podInformer corev1informers.PodInformer,
+	scyllaClient scyllaclient.Interface,
 	serviceInformer corev1informers.ServiceInformer,
 	secretInformer corev1informers.SecretInformer,
 	configMapInformer corev1informers.ConfigMapInformer,
@@ -101,35 +95,29 @@ func NewController(
 	ingressInformer networkingv1informers.IngressInformer,
 	jobInformer batchv1informers.JobInformer,
 	scyllaClusterInformer scyllav1informers.ScyllaClusterInformer,
-	operatorImage string,
-	cqlsIngressPort int,
-	keyGetter crypto.RSAKeyGetter,
+	scyllaDBDatacenterInformer scyllav1alpha1informers.ScyllaDBDatacenterInformer,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
 	eventBroadcaster.StartRecordingToSink(&corev1client.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
 	scc := &Controller{
-		operatorImage:   operatorImage,
-		cqlsIngressPort: cqlsIngressPort,
-
 		kubeClient:   kubeClient,
 		scyllaClient: scyllaClient,
 
-		podLister:            podInformer.Lister(),
-		serviceLister:        serviceInformer.Lister(),
-		secretLister:         secretInformer.Lister(),
-		configMapLister:      configMapInformer.Lister(),
-		serviceAccountLister: serviceAccountInformer.Lister(),
-		roleBindingLister:    roleBindingInformer.Lister(),
-		statefulSetLister:    statefulSetInformer.Lister(),
-		pdbLister:            pdbInformer.Lister(),
-		ingressLister:        ingressInformer.Lister(),
-		scyllaLister:         scyllaClusterInformer.Lister(),
-		jobLister:            jobInformer.Lister(),
+		serviceLister:            serviceInformer.Lister(),
+		secretLister:             secretInformer.Lister(),
+		configMapLister:          configMapInformer.Lister(),
+		serviceAccountLister:     serviceAccountInformer.Lister(),
+		roleBindingLister:        roleBindingInformer.Lister(),
+		statefulSetLister:        statefulSetInformer.Lister(),
+		pdbLister:                pdbInformer.Lister(),
+		ingressLister:            ingressInformer.Lister(),
+		scyllaClusterLister:      scyllaClusterInformer.Lister(),
+		scyllaDBDatacenterLister: scyllaDBDatacenterInformer.Lister(),
+		jobLister:                jobInformer.Lister(),
 
 		cachesToSync: []cache.InformerSynced{
-			podInformer.Informer().HasSynced,
 			serviceInformer.Informer().HasSynced,
 			secretInformer.Informer().HasSynced,
 			configMapInformer.Informer().HasSynced,
@@ -138,15 +126,14 @@ func NewController(
 			statefulSetInformer.Informer().HasSynced,
 			pdbInformer.Informer().HasSynced,
 			ingressInformer.Informer().HasSynced,
-			scyllaClusterInformer.Informer().HasSynced,
 			jobInformer.Informer().HasSynced,
+			scyllaClusterInformer.Informer().HasSynced,
+			scyllaDBDatacenterInformer.Informer().HasSynced,
 		},
 
-		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scyllacluster-controller"}),
+		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scyllaclustermigration-controller"}),
 
-		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "scyllacluster"),
-
-		keyGetter: keyGetter,
+		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "scyllaclustermigration"),
 	}
 
 	var err error
@@ -157,10 +144,10 @@ func NewController(
 		scyllaClusterControllerGVK,
 		kubeinterfaces.NamespacedGetList[*scyllav1.ScyllaCluster]{
 			GetFunc: func(namespace, name string) (*scyllav1.ScyllaCluster, error) {
-				return scc.scyllaLister.ScyllaClusters(namespace).Get(name)
+				return scc.scyllaClusterLister.ScyllaClusters(namespace).Get(name)
 			},
 			ListFunc: func(namespace string, selector labels.Selector) (ret []*scyllav1.ScyllaCluster, err error) {
-				return scc.scyllaLister.ScyllaClusters(namespace).List(selector)
+				return scc.scyllaClusterLister.ScyllaClusters(namespace).List(selector)
 			},
 		},
 	)
@@ -184,13 +171,6 @@ func NewController(
 		AddFunc:    scc.addConfigMap,
 		UpdateFunc: scc.updateConfigMap,
 		DeleteFunc: scc.deleteConfigMap,
-	})
-
-	// We need pods events to know if a pod is ready after replace operation.
-	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    scc.addPod,
-		UpdateFunc: scc.updatePod,
-		DeleteFunc: scc.deletePod,
 	})
 
 	serviceAccountInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -229,6 +209,12 @@ func NewController(
 		DeleteFunc: scc.deleteScyllaCluster,
 	})
 
+	scyllaDBDatacenterInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    scc.addScyllaDBDatacenter,
+		UpdateFunc: scc.updateScyllaDBDatacenter,
+		DeleteFunc: scc.deleteScyllaDBDatacenter,
+	})
+
 	jobInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    scc.addJob,
 		UpdateFunc: scc.updateJob,
@@ -238,19 +224,19 @@ func NewController(
 	return scc, nil
 }
 
-func (scc *Controller) processNextItem(ctx context.Context) bool {
-	key, quit := scc.queue.Get()
+func (scmc *Controller) processNextItem(ctx context.Context) bool {
+	key, quit := scmc.queue.Get()
 	if quit {
 		return false
 	}
-	defer scc.queue.Done(key)
+	defer scmc.queue.Done(key)
 
-	err := scc.sync(ctx, key.(string))
+	err := scmc.sync(ctx, key.(string))
 	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
 	err = utilerrors.Reduce(err)
 	switch {
 	case err == nil:
-		scc.queue.Forget(key)
+		scmc.queue.Forget(key)
 		return true
 
 	case apierrors.IsConflict(err):
@@ -263,30 +249,30 @@ func (scc *Controller) processNextItem(ctx context.Context) bool {
 		utilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
 	}
 
-	scc.queue.AddRateLimited(key)
+	scmc.queue.AddRateLimited(key)
 
 	return true
 }
 
-func (scc *Controller) runWorker(ctx context.Context) {
-	for scc.processNextItem(ctx) {
+func (scmc *Controller) runWorker(ctx context.Context) {
+	for scmc.processNextItem(ctx) {
 	}
 }
 
-func (scc *Controller) Run(ctx context.Context, workers int) {
+func (scmc *Controller) Run(ctx context.Context, workers int) {
 	defer utilruntime.HandleCrash()
 
-	klog.InfoS("Starting controller", "controller", "ScyllaCluster")
+	klog.InfoS("Starting controller", "controller", ControllerName)
 
 	var wg sync.WaitGroup
 	defer func() {
-		klog.InfoS("Shutting down controller", "controller", "ScyllaCluster")
-		scc.queue.ShutDown()
+		klog.InfoS("Shutting down controller", "controller", ControllerName)
+		scmc.queue.ShutDown()
 		wg.Wait()
-		klog.InfoS("Shut down controller", "controller", "ScyllaCluster")
+		klog.InfoS("Shut down controller", "controller", ControllerName)
 	}()
 
-	if !cache.WaitForNamedCacheSync(ControllerName, ctx.Done(), scc.cachesToSync...) {
+	if !cache.WaitForNamedCacheSync(ControllerName, ctx.Done(), scmc.cachesToSync...) {
 		return
 	}
 
@@ -294,334 +280,262 @@ func (scc *Controller) Run(ctx context.Context, workers int) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			wait.UntilWithContext(ctx, scc.runWorker, time.Second)
+			wait.UntilWithContext(ctx, scmc.runWorker, time.Second)
 		}()
 	}
 
 	<-ctx.Done()
 }
 
-func (scc *Controller) resolveScyllaClusterController(obj metav1.Object) *scyllav1.ScyllaCluster {
-	controllerRef := metav1.GetControllerOf(obj)
-	if controllerRef == nil {
-		return nil
-	}
-
-	if controllerRef.Kind != scyllaClusterControllerGVK.Kind {
-		return nil
-	}
-
-	sc, err := scc.scyllaLister.ScyllaClusters(obj.GetNamespace()).Get(controllerRef.Name)
-	if err != nil {
-		return nil
-	}
-
-	if sc.UID != controllerRef.UID {
-		return nil
-	}
-
-	return sc
-}
-
-func (scc *Controller) resolveStatefulSetController(obj metav1.Object) *appsv1.StatefulSet {
-	controllerRef := metav1.GetControllerOf(obj)
-	if controllerRef == nil {
-		return nil
-	}
-
-	if controllerRef.Kind != statefulSetControllerGVK.Kind {
-		return nil
-	}
-
-	sts, err := scc.statefulSetLister.StatefulSets(obj.GetNamespace()).Get(controllerRef.Name)
-	if err != nil {
-		return nil
-	}
-
-	if sts.UID != controllerRef.UID {
-		return nil
-	}
-
-	return sts
-}
-
-func (scc *Controller) resolveScyllaClusterControllerThroughStatefulSet(obj metav1.Object) *scyllav1.ScyllaCluster {
-	sts := scc.resolveStatefulSetController(obj)
-	if sts == nil {
-		return nil
-	}
-	sc := scc.resolveScyllaClusterController(sts)
-	if sc == nil {
-		return nil
-	}
-
-	return sc
-}
-
-func (scc *Controller) enqueueOwnerThroughStatefulSetOwner(depth int, obj kubeinterfaces.ObjectInterface, op controllerhelpers.HandlerOperationType) {
-	sts := scc.resolveStatefulSetController(obj)
-	if sts == nil {
-		return
-	}
-
-	sc := scc.resolveScyllaClusterController(sts)
-	if sc == nil {
-		return
-	}
-
-	klog.V(4).InfoS("Enqueuing owner of StatefulSet", "StatefulSet", klog.KObj(sc), "ScyllaCluster", klog.KObj(sc))
-	scc.handlers.Enqueue(depth+1, sc, op)
-}
-
-func (scc *Controller) addService(obj interface{}) {
-	scc.handlers.HandleAdd(
+func (scmc *Controller) addService(obj interface{}) {
+	scmc.handlers.HandleAdd(
 		obj.(*corev1.Service),
-		scc.handlers.EnqueueOwner,
+		scmc.handlers.EnqueueOwner,
 	)
 }
 
-func (scc *Controller) updateService(old, cur interface{}) {
-	scc.handlers.HandleUpdate(
+func (scmc *Controller) updateService(old, cur interface{}) {
+	scmc.handlers.HandleUpdate(
 		old.(*corev1.Service),
 		cur.(*corev1.Service),
-		scc.handlers.EnqueueOwner,
-		scc.deleteService,
+		scmc.handlers.EnqueueOwner,
+		scmc.deleteService,
 	)
 }
 
-func (scc *Controller) deleteService(obj interface{}) {
-	scc.handlers.HandleDelete(
+func (scmc *Controller) deleteService(obj interface{}) {
+	scmc.handlers.HandleDelete(
 		obj,
-		scc.handlers.EnqueueOwner,
+		scmc.handlers.EnqueueOwner,
 	)
 }
 
-func (scc *Controller) addSecret(obj interface{}) {
-	scc.handlers.HandleAdd(
+func (scmc *Controller) addSecret(obj interface{}) {
+	scmc.handlers.HandleAdd(
 		obj.(*corev1.Secret),
-		scc.handlers.EnqueueOwner,
+		scmc.handlers.EnqueueOwner,
 	)
 }
 
-func (scc *Controller) updateSecret(old, cur interface{}) {
-	scc.handlers.HandleUpdate(
+func (scmc *Controller) updateSecret(old, cur interface{}) {
+	scmc.handlers.HandleUpdate(
 		old.(*corev1.Secret),
 		cur.(*corev1.Secret),
-		scc.handlers.EnqueueOwner,
-		scc.deleteSecret,
+		scmc.handlers.EnqueueOwner,
+		scmc.deleteSecret,
 	)
 }
 
-func (scc *Controller) deleteSecret(obj interface{}) {
-	scc.handlers.HandleDelete(
+func (scmc *Controller) deleteSecret(obj interface{}) {
+	scmc.handlers.HandleDelete(
 		obj,
-		scc.handlers.EnqueueOwner,
+		scmc.handlers.EnqueueOwner,
 	)
 }
 
-func (scc *Controller) addConfigMap(obj interface{}) {
-	scc.handlers.HandleAdd(
+func (scmc *Controller) addConfigMap(obj interface{}) {
+	scmc.handlers.HandleAdd(
 		obj.(*corev1.ConfigMap),
-		scc.handlers.EnqueueOwner,
+		scmc.handlers.EnqueueOwner,
 	)
 }
 
-func (scc *Controller) updateConfigMap(old, cur interface{}) {
-	scc.handlers.HandleUpdate(
+func (scmc *Controller) updateConfigMap(old, cur interface{}) {
+	scmc.handlers.HandleUpdate(
 		old.(*corev1.ConfigMap),
 		cur.(*corev1.ConfigMap),
-		scc.handlers.EnqueueOwner,
-		scc.deleteConfigMap,
+		scmc.handlers.EnqueueOwner,
+		scmc.deleteConfigMap,
 	)
 }
 
-func (scc *Controller) deleteConfigMap(obj interface{}) {
-	scc.handlers.HandleDelete(
+func (scmc *Controller) deleteConfigMap(obj interface{}) {
+	scmc.handlers.HandleDelete(
 		obj,
-		scc.handlers.EnqueueOwner,
+		scmc.handlers.EnqueueOwner,
 	)
 }
 
-func (scc *Controller) addServiceAccount(obj interface{}) {
-	scc.handlers.HandleAdd(
+func (scmc *Controller) addServiceAccount(obj interface{}) {
+	scmc.handlers.HandleAdd(
 		obj.(*corev1.ServiceAccount),
-		scc.handlers.EnqueueOwner,
+		scmc.handlers.EnqueueOwner,
 	)
 }
 
-func (scc *Controller) updateServiceAccount(old, cur interface{}) {
-	scc.handlers.HandleUpdate(
+func (scmc *Controller) updateServiceAccount(old, cur interface{}) {
+	scmc.handlers.HandleUpdate(
 		old.(*corev1.ServiceAccount),
 		cur.(*corev1.ServiceAccount),
-		scc.handlers.EnqueueOwner,
-		scc.deleteServiceAccount,
+		scmc.handlers.EnqueueOwner,
+		scmc.deleteServiceAccount,
 	)
 }
 
-func (scc *Controller) deleteServiceAccount(obj interface{}) {
-	scc.handlers.HandleDelete(
+func (scmc *Controller) deleteServiceAccount(obj interface{}) {
+	scmc.handlers.HandleDelete(
 		obj,
-		scc.handlers.EnqueueOwner,
+		scmc.handlers.EnqueueOwner,
 	)
 }
 
-func (scc *Controller) addRoleBinding(obj interface{}) {
-	scc.handlers.HandleAdd(
+func (scmc *Controller) addRoleBinding(obj interface{}) {
+	scmc.handlers.HandleAdd(
 		obj.(*rbacv1.RoleBinding),
-		scc.handlers.EnqueueOwner,
+		scmc.handlers.EnqueueOwner,
 	)
 }
 
-func (scc *Controller) updateRoleBinding(old, cur interface{}) {
-	scc.handlers.HandleUpdate(
+func (scmc *Controller) updateRoleBinding(old, cur interface{}) {
+	scmc.handlers.HandleUpdate(
 		old.(*rbacv1.RoleBinding),
 		cur.(*rbacv1.RoleBinding),
-		scc.handlers.EnqueueOwner,
-		scc.deleteRoleBinding,
+		scmc.handlers.EnqueueOwner,
+		scmc.deleteRoleBinding,
 	)
 }
 
-func (scc *Controller) deleteRoleBinding(obj interface{}) {
-	scc.handlers.HandleDelete(
+func (scmc *Controller) deleteRoleBinding(obj interface{}) {
+	scmc.handlers.HandleDelete(
 		obj,
-		scc.handlers.EnqueueOwner,
+		scmc.handlers.EnqueueOwner,
 	)
 }
 
-func (scc *Controller) addPod(obj interface{}) {
-	scc.handlers.HandleAdd(
-		obj.(*corev1.Pod),
-		scc.enqueueOwnerThroughStatefulSetOwner,
-	)
-}
-
-func (scc *Controller) updatePod(old, cur interface{}) {
-	scc.handlers.HandleUpdate(
-		old.(*corev1.Pod),
-		cur.(*corev1.Pod),
-		scc.enqueueOwnerThroughStatefulSetOwner,
-		scc.deletePod,
-	)
-}
-
-func (scc *Controller) deletePod(obj interface{}) {
-	scc.handlers.HandleDelete(
-		obj,
-		scc.enqueueOwnerThroughStatefulSetOwner,
-	)
-}
-
-func (scc *Controller) addStatefulSet(obj interface{}) {
-	scc.handlers.HandleAdd(
+func (scmc *Controller) addStatefulSet(obj interface{}) {
+	scmc.handlers.HandleAdd(
 		obj.(*appsv1.StatefulSet),
-		scc.handlers.EnqueueOwner,
+		scmc.handlers.EnqueueOwner,
 	)
 }
 
-func (scc *Controller) updateStatefulSet(old, cur interface{}) {
-	scc.handlers.HandleUpdate(
+func (scmc *Controller) updateStatefulSet(old, cur interface{}) {
+	scmc.handlers.HandleUpdate(
 		old.(*appsv1.StatefulSet),
 		cur.(*appsv1.StatefulSet),
-		scc.handlers.EnqueueOwner,
-		scc.deleteStatefulSet,
+		scmc.handlers.EnqueueOwner,
+		scmc.deleteStatefulSet,
 	)
 }
 
-func (scc *Controller) deleteStatefulSet(obj interface{}) {
-	scc.handlers.HandleDelete(
+func (scmc *Controller) deleteStatefulSet(obj interface{}) {
+	scmc.handlers.HandleDelete(
 		obj,
-		scc.handlers.EnqueueOwner,
+		scmc.handlers.EnqueueOwner,
 	)
 }
 
-func (scc *Controller) addPodDisruptionBudget(obj interface{}) {
-	scc.handlers.HandleAdd(
+func (scmc *Controller) addPodDisruptionBudget(obj interface{}) {
+	scmc.handlers.HandleAdd(
 		obj.(*policyv1.PodDisruptionBudget),
-		scc.handlers.EnqueueOwner,
+		scmc.handlers.EnqueueOwner,
 	)
 }
 
-func (scc *Controller) updatePodDisruptionBudget(old, cur interface{}) {
-	scc.handlers.HandleUpdate(
+func (scmc *Controller) updatePodDisruptionBudget(old, cur interface{}) {
+	scmc.handlers.HandleUpdate(
 		old.(*policyv1.PodDisruptionBudget),
 		cur.(*policyv1.PodDisruptionBudget),
-		scc.handlers.EnqueueOwner,
-		scc.deletePodDisruptionBudget,
+		scmc.handlers.EnqueueOwner,
+		scmc.deletePodDisruptionBudget,
 	)
 }
 
-func (scc *Controller) deletePodDisruptionBudget(obj interface{}) {
-	scc.handlers.HandleDelete(
+func (scmc *Controller) deletePodDisruptionBudget(obj interface{}) {
+	scmc.handlers.HandleDelete(
 		obj,
-		scc.handlers.EnqueueOwner,
+		scmc.handlers.EnqueueOwner,
 	)
 }
 
-func (scc *Controller) addIngress(obj interface{}) {
-	scc.handlers.HandleAdd(
+func (scmc *Controller) addIngress(obj interface{}) {
+	scmc.handlers.HandleAdd(
 		obj.(*networkingv1.Ingress),
-		scc.handlers.EnqueueOwner,
+		scmc.handlers.EnqueueOwner,
 	)
 }
 
-func (scc *Controller) updateIngress(old, cur interface{}) {
-	scc.handlers.HandleUpdate(
+func (scmc *Controller) updateIngress(old, cur interface{}) {
+	scmc.handlers.HandleUpdate(
 		old.(*networkingv1.Ingress),
 		cur.(*networkingv1.Ingress),
-		scc.handlers.EnqueueOwner,
-		scc.deleteIngress,
+		scmc.handlers.EnqueueOwner,
+		scmc.deleteIngress,
 	)
 }
 
-func (scc *Controller) deleteIngress(obj interface{}) {
-	scc.handlers.HandleDelete(
+func (scmc *Controller) deleteIngress(obj interface{}) {
+	scmc.handlers.HandleDelete(
 		obj,
-		scc.handlers.EnqueueOwner,
+		scmc.handlers.EnqueueOwner,
 	)
 }
 
-func (scc *Controller) addScyllaCluster(obj interface{}) {
-	scc.handlers.HandleAdd(
+func (scmc *Controller) addScyllaDBDatacenter(obj interface{}) {
+	scmc.handlers.HandleAdd(
+		obj.(*scyllav1alpha1.ScyllaDBDatacenter),
+		scmc.handlers.EnqueueOwner,
+	)
+}
+
+func (scmc *Controller) updateScyllaDBDatacenter(old, cur interface{}) {
+	scmc.handlers.HandleUpdate(
+		old.(*scyllav1alpha1.ScyllaDBDatacenter),
+		cur.(*scyllav1alpha1.ScyllaDBDatacenter),
+		scmc.handlers.EnqueueOwner,
+		scmc.deleteScyllaDBDatacenter,
+	)
+}
+
+func (scmc *Controller) deleteScyllaDBDatacenter(obj interface{}) {
+	scmc.handlers.HandleDelete(
+		obj,
+		scmc.handlers.EnqueueOwner,
+	)
+}
+
+func (scmc *Controller) addScyllaCluster(obj interface{}) {
+	scmc.handlers.HandleAdd(
 		obj.(*scyllav1.ScyllaCluster),
-		scc.handlers.Enqueue,
+		scmc.handlers.Enqueue,
 	)
 }
 
-func (scc *Controller) updateScyllaCluster(old, cur interface{}) {
-	scc.handlers.HandleUpdate(
+func (scmc *Controller) updateScyllaCluster(old, cur interface{}) {
+	scmc.handlers.HandleUpdate(
 		old.(*scyllav1.ScyllaCluster),
 		cur.(*scyllav1.ScyllaCluster),
-		scc.handlers.Enqueue,
-		scc.deleteScyllaCluster,
+		scmc.handlers.Enqueue,
+		scmc.deleteScyllaCluster,
 	)
 }
 
-func (scc *Controller) deleteScyllaCluster(obj interface{}) {
-	scc.handlers.HandleDelete(
+func (scmc *Controller) deleteScyllaCluster(obj interface{}) {
+	scmc.handlers.HandleDelete(
 		obj,
-		scc.handlers.Enqueue,
+		scmc.handlers.Enqueue,
 	)
 }
 
-func (scc *Controller) addJob(obj interface{}) {
-	scc.handlers.HandleAdd(
+func (scmc *Controller) addJob(obj interface{}) {
+	scmc.handlers.HandleAdd(
 		obj.(*batchv1.Job),
-		scc.handlers.EnqueueOwner,
+		scmc.handlers.EnqueueOwner,
 	)
 }
 
-func (scc *Controller) updateJob(old, cur interface{}) {
-	scc.handlers.HandleUpdate(
+func (scmc *Controller) updateJob(old, cur interface{}) {
+	scmc.handlers.HandleUpdate(
 		old.(*batchv1.Job),
 		cur.(*batchv1.Job),
-		scc.handlers.EnqueueOwner,
-		scc.deleteJob,
+		scmc.handlers.EnqueueOwner,
+		scmc.deleteJob,
 	)
 }
 
-func (scc *Controller) deleteJob(obj interface{}) {
-	scc.handlers.HandleDelete(
+func (scmc *Controller) deleteJob(obj interface{}) {
+	scmc.handlers.HandleDelete(
 		obj,
-		scc.handlers.EnqueueOwner,
+		scmc.handlers.EnqueueOwner,
 	)
 }

@@ -35,3 +35,4 @@ webhooks:
     resources:
     - nodeconfigs
     - scyllaoperatorconfigs
+    - scylladbdatacenters

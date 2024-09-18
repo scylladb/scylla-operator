@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
@@ -25,8 +25,8 @@ type Controller struct {
 
 	namespace                   string
 	serviceName                 string
-	nodesBroadcastAddressType   scyllav1.BroadcastAddressType
-	clientsBroadcastAddressType scyllav1.BroadcastAddressType
+	nodesBroadcastAddressType   scyllav1alpha1.BroadcastAddressType
+	clientsBroadcastAddressType scyllav1alpha1.BroadcastAddressType
 
 	ignited atomic.Bool
 
@@ -38,8 +38,8 @@ type Controller struct {
 func NewController(
 	namespace string,
 	serviceName string,
-	clientsBroadcastAddressType scyllav1.BroadcastAddressType,
-	nodesBroadcastAddressType scyllav1.BroadcastAddressType,
+	clientsBroadcastAddressType scyllav1alpha1.BroadcastAddressType,
+	nodesBroadcastAddressType scyllav1alpha1.BroadcastAddressType,
 	kubeClient kubernetes.Interface,
 	configMapInformer corev1informers.ConfigMapInformer,
 	serviceInformer corev1informers.ServiceInformer,
@@ -105,8 +105,8 @@ func (c *Controller) Sync(ctx context.Context) error {
 
 	// TODO: This isn't bound to the lifecycle of the ScyllaDB Pod and should be evaluated in the controller for the resource.
 	//       https://github.com/scylladb/scylla-operator/issues/604
-	if c.clientsBroadcastAddressType == scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress ||
-		c.nodesBroadcastAddressType == scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress {
+	if c.clientsBroadcastAddressType == scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress ||
+		c.nodesBroadcastAddressType == scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress {
 		if len(svc.Status.LoadBalancer.Ingress) == 0 {
 			klog.V(2).InfoS(
 				"Waiting for identity service to have at least one ingress point",

@@ -14,6 +14,7 @@ import (
 	o "github.com/onsi/gomega"
 	configassets "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	corev1 "k8s.io/api/core/v1"
@@ -163,6 +164,22 @@ func (f *Framework) GetDefaultZonalScyllaClusterWithThreeRacks() *scyllav1.Scyll
 	o.Expect(err).NotTo(o.HaveOccurred())
 
 	return sc
+}
+
+func (f *Framework) GetDefaultScyllaDBDatacenter() *scyllav1alpha1.ScyllaDBDatacenter {
+	renderArgs := map[string]any{
+		"scyllaDBVersion":             configassets.Project.Operator.ScyllaDBVersion,
+		"scyllaDBManagerVersion":      configassets.Project.Operator.ScyllaDBManagerVersion,
+		"nodeServiceType":             TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
+		"nodesBroadcastAddressType":   TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
+		"clientsBroadcastAddressType": TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
+		"storageClassName":            TestContext.ScyllaClusterOptions.StorageClassName,
+	}
+
+	sdc, _, err := scyllafixture.ScyllaDBDatacenterTemplate.RenderObject(renderArgs)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	return sdc
 }
 
 func (f *Framework) AddCleaners(cleaners ...CleanupInterface) {

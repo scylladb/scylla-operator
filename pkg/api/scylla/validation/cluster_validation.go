@@ -32,7 +32,7 @@ var (
 		AlternatorWriteIsolationOnlyRMWUsesLWT,
 	}
 
-	SupportedBroadcastAddressTypes = []scyllav1.BroadcastAddressType{
+	SupportedScyllaV1BroadcastAddressTypes = []scyllav1.BroadcastAddressType{
 		scyllav1.BroadcastAddressTypePodIP,
 		scyllav1.BroadcastAddressTypeServiceClusterIP,
 		scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
@@ -318,8 +318,8 @@ func ValidateNodeBroadcastOptions(options *scyllav1.NodeBroadcastOptions, nodeSe
 func ValidateBroadcastOptions(options scyllav1.BroadcastOptions, nodeService *scyllav1.NodeServiceTemplate, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	if !slices.ContainsItem(SupportedBroadcastAddressTypes, options.Type) {
-		allErrs = append(allErrs, field.NotSupported(fldPath.Child("type"), options.Type, slices.ConvertSlice(SupportedBroadcastAddressTypes, slices.ToString[scyllav1.BroadcastAddressType])))
+	if !slices.ContainsItem(SupportedScyllaV1BroadcastAddressTypes, options.Type) {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("type"), options.Type, slices.ConvertSlice(SupportedScyllaV1BroadcastAddressTypes, slices.ToString[scyllav1.BroadcastAddressType])))
 	}
 
 	var allowedNodeServiceTypesByBroadcastAddressType = map[scyllav1.BroadcastAddressType][]scyllav1.NodeServiceType{

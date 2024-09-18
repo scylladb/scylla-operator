@@ -13,6 +13,7 @@ import (
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/storage/names"
 	"k8s.io/klog/v2"
@@ -70,13 +71,21 @@ var _ = g.Describe("ScyllaCluster", func() {
 		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx1Cancel()
 		sa, err = controllerhelpers.WaitForServiceAccountState(waitCtx1, f.KubeClient().CoreV1().ServiceAccounts(sa.Namespace), sa.Name, controllerhelpers.WaitForStateOptions{}, func(sa *corev1.ServiceAccount) (bool, error) {
+			sdc, err := f.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(f.Namespace()).Get(ctx, sc.Name, metav1.GetOptions{})
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					return false, nil
+				}
+				return false, err
+			}
+
 			ref := metav1.GetControllerOfNoCopy(sa)
 			if ref == nil {
 				klog.V(2).InfoS("No controller ref")
 				return false, nil
 			}
 
-			if ref.UID == sc.UID {
+			if ref.UID == sdc.UID {
 				return true, nil
 			}
 
@@ -92,12 +101,20 @@ var _ = g.Describe("ScyllaCluster", func() {
 		waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc)
 		defer waitCtx2Cancel()
 		rb, err = controllerhelpers.WaitForRoleBindingState(waitCtx2, f.KubeClient().RbacV1().RoleBindings(rb.Namespace), rb.Name, controllerhelpers.WaitForStateOptions{}, func(sa *rbacv1.RoleBinding) (bool, error) {
+			sdc, err := f.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(f.Namespace()).Get(ctx, sc.Name, metav1.GetOptions{})
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					return false, nil
+				}
+				return false, err
+			}
+
 			ref := metav1.GetControllerOfNoCopy(sa)
 			if ref == nil {
 				return false, nil
 			}
 
-			if ref.UID == sc.UID {
+			if ref.UID == sdc.UID {
 				return true, nil
 			}
 

@@ -231,15 +231,6 @@ func GetStatefulSetsForScyllaCluster(ctx context.Context, client appv1client.App
 
 	res := map[string]*appsv1.StatefulSet{}
 	for _, s := range statefulsetList.Items {
-		controllerRef := metav1.GetControllerOfNoCopy(&s)
-		if controllerRef == nil {
-			continue
-		}
-
-		if controllerRef.UID != sc.UID {
-			continue
-		}
-
 		rackName := s.Labels[naming.RackNameLabel]
 		res[rackName] = &s
 	}
@@ -284,7 +275,7 @@ func GetScyllaClient(ctx context.Context, client corev1client.CoreV1Interface, s
 		return nil, nil, fmt.Errorf("no services found")
 	}
 
-	tokenSecret, err := client.Secrets(sc.Namespace).Get(ctx, naming.AgentAuthTokenSecretName(sc.Name), metav1.GetOptions{})
+	tokenSecret, err := client.Secrets(sc.Namespace).Get(ctx, naming.AgentAuthTokenSecretNameForScyllaCluster(sc), metav1.GetOptions{})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -323,9 +314,9 @@ func GetCurrentTokenRingHash(ctx context.Context, client corev1client.CoreV1Inte
 }
 
 func GetScyllaConfigClient(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, host string) (*scyllaclient.ConfigClient, error) {
-	tokenSecret, err := client.Secrets(sc.Namespace).Get(ctx, naming.AgentAuthTokenSecretName(sc.Name), metav1.GetOptions{})
+	tokenSecret, err := client.Secrets(sc.Namespace).Get(ctx, naming.AgentAuthTokenSecretNameForScyllaCluster(sc), metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("can't get Secret %q: %w", naming.ManualRef(sc.Namespace, naming.AgentAuthTokenSecretName(sc.Name)), err)
+		return nil, fmt.Errorf("can't get Secret %q: %w", naming.ManualRef(sc.Namespace, naming.AgentAuthTokenSecretNameForScyllaCluster(sc)), err)
 	}
 
 	authToken, err := helpers.GetAgentAuthTokenFromSecret(tokenSecret)
@@ -339,7 +330,7 @@ func GetScyllaConfigClient(ctx context.Context, client corev1client.CoreV1Interf
 
 func GetBroadcastAddresses(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
 	serviceList, err := client.Services(sc.Namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: GetMemberServiceSelector(sc.Name).String(),
+		LabelSelector: GetMemberServiceSelector(sc).String(),
 	})
 	if err != nil {
 		return nil, err
@@ -365,7 +356,7 @@ func GetBroadcastAddresses(ctx context.Context, client corev1client.CoreV1Interf
 }
 
 func GetBroadcastAddress(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, svc *corev1.Service, pod *corev1.Pod) (string, error) {
-	host, err := controllerhelpers.GetScyllaHost(sc, svc, pod)
+	host, err := controllerhelpers.GetScyllaHostForScyllaCluster(sc, svc, pod)
 	if err != nil {
 		return "", fmt.Errorf("can't get Scylla host for Service %q: %w", naming.ObjRef(svc), err)
 	}
@@ -384,7 +375,7 @@ func GetBroadcastAddress(ctx context.Context, client corev1client.CoreV1Interfac
 
 func GetBroadcastRPCAddresses(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
 	serviceList, err := client.Services(sc.Namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: GetMemberServiceSelector(sc.Name).String(),
+		LabelSelector: GetMemberServiceSelector(sc).String(),
 	})
 	if err != nil {
 		return nil, err
@@ -410,12 +401,12 @@ func GetBroadcastRPCAddressesAndUUIDsByDC(ctx context.Context, dcClientMap map[s
 	for _, sc := range scs {
 		client, ok := dcClientMap[sc.Spec.Datacenter.Name]
 		if !ok {
-			return nil, nil, fmt.Errorf("client is missing for datacenter %q of ScyllaCluster %q", sc.Spec.Datacenter.Name, naming.ObjRef(sc))
+			return nil, nil, fmt.Errorf("client is missing for ScyllaCluster %q", naming.ObjRef(sc))
 		}
 
 		broadcastRPCAddresses, uuids, err := GetBroadcastRPCAddressesAndUUIDs(ctx, client, sc)
 		if err != nil {
-			return nil, nil, fmt.Errorf("can't get broadcast rpc address and UUID for ScyllaCluster %q: %w", naming.ObjRef(sc), err)
+			return nil, nil, fmt.Errorf("can't get broadcast rpc address and UUID for ScyllaDBDatacenter %q: %w", naming.ObjRef(sc), err)
 		}
 		allBroadcastRPCAddresses[sc.Spec.Datacenter.Name] = broadcastRPCAddresses
 		allUUIDs[sc.Spec.Datacenter.Name] = uuids
@@ -489,7 +480,7 @@ func GetNodesServiceAndPodIPs(ctx context.Context, client corev1client.CoreV1Int
 
 func GetNodesServiceIPs(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
 	serviceList, err := client.Services(sc.Namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: GetMemberServiceSelector(sc.Name).String(),
+		LabelSelector: GetMemberServiceSelector(sc).String(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("can't get member services: %w", err)
@@ -512,7 +503,7 @@ func GetNodesServiceIPs(ctx context.Context, client corev1client.CoreV1Interface
 
 func GetNodesPodIPs(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
 	clusterPods, err := client.Pods(sc.Namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: naming.ClusterSelector(sc).String(),
+		LabelSelector: labels.SelectorFromSet(naming.ClusterLabelsForScyllaCluster(sc)).String(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("can't get cluster pods: %w", err)
@@ -528,7 +519,7 @@ func GetNodesPodIPs(ctx context.Context, client corev1client.CoreV1Interface, sc
 }
 
 func GetIdentityServiceIP(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) (string, error) {
-	svcName := naming.IdentityServiceName(sc)
+	svcName := naming.IdentityServiceNameForScyllaCluster(sc)
 	svc, err := client.Services(sc.Namespace).Get(ctx, svcName, metav1.GetOptions{})
 	if err != nil {
 		return "", fmt.Errorf("can't get service %q: %w", svcName, err)
@@ -576,9 +567,9 @@ func GetNodeName(sc *scyllav1.ScyllaCluster, idx int) string {
 	)
 }
 
-func GetMemberServiceSelector(scyllaClusterName string) labels.Selector {
+func GetMemberServiceSelector(sc *scyllav1.ScyllaCluster) labels.Selector {
 	return labels.Set{
-		naming.ClusterNameLabel:       scyllaClusterName,
+		naming.ClusterNameLabel:       sc.Name,
 		naming.ScyllaServiceTypeLabel: string(naming.ScyllaServiceTypeMember),
 	}.AsSelector()
 }
@@ -591,13 +582,13 @@ func WaitForFullMultiDCQuorum(ctx context.Context, dcClientMap map[string]corev1
 	for _, sc := range scs {
 		client, ok := dcClientMap[sc.Spec.Datacenter.Name]
 		if !ok {
-			errs = append(errs, fmt.Errorf("client is missing for datacenter %q of ScyllaCluster %q", sc.Spec.Datacenter.Name, naming.ObjRef(sc)))
+			errs = append(errs, fmt.Errorf("client is missing for ScyllaCluster %q", naming.ObjRef(sc)))
 			continue
 		}
 
 		hosts, err := GetBroadcastAddresses(ctx, client, sc)
 		if err != nil {
-			return fmt.Errorf("can't get broadcast addresses for ScyllaCluster %q: %w", sc.Name, err)
+			return fmt.Errorf("can't get broadcast addresses for ScyllaCluster %q: %w", naming.ObjRef(sc), err)
 		}
 		allBroadcastAddresses[sc.Spec.Datacenter.Name] = hosts
 		sortedAllBroadcastAddresses = append(sortedAllBroadcastAddresses, hosts...)
@@ -612,7 +603,7 @@ func WaitForFullMultiDCQuorum(ctx context.Context, dcClientMap map[string]corev1
 	for _, sc := range scs {
 		client, ok := dcClientMap[sc.Spec.Datacenter.Name]
 		if !ok {
-			errs = append(errs, fmt.Errorf("client is missing for datacenter %q of ScyllaCluster %q", sc.Spec.Datacenter.Name, naming.ObjRef(sc)))
+			errs = append(errs, fmt.Errorf("client is missing for ScyllaCluster %q", naming.ObjRef(sc)))
 			continue
 		}
 
@@ -730,7 +721,7 @@ func WaitUntilServingCertificateIsLive(ctx context.Context, client corev1client.
 
 	hosts, err := GetBroadcastRPCAddresses(ctx, client, sc)
 	if err != nil {
-		return fmt.Errorf("can't get v1.ScyllaCluster %q hosts: %w", naming.ObjRef(sc), err)
+		return fmt.Errorf("can't get v1.ScyllaDBDatacenter %q hosts: %w", naming.ObjRef(sc), err)
 	}
 
 	for _, host := range hosts {

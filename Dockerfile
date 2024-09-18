@@ -3,7 +3,7 @@ WORKDIR /go/src/github.com/scylladb/scylla-operator
 COPY . .
 RUN make build --warn-undefined-variables
 
-FROM quay.io/scylladb/scylla-operator-images:base-ubuntu-22.04
+FROM quay.io/scylladb/scylla-operator-images:base-ubi-9.4-minimal
 
 LABEL org.opencontainers.image.title="Scylla Operator" \
       org.opencontainers.image.description="ScyllaDB Operator for Kubernetes" \

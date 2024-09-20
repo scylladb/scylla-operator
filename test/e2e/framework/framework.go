@@ -135,6 +135,7 @@ func (f *Framework) CommonLabels() map[string]string {
 
 func (f *Framework) GetDefaultScyllaCluster() *scyllav1.ScyllaCluster {
 	renderArgs := map[string]any{
+		"scyllaDBRepository":          configassets.Project.Operator.ScyllaDBRepository,
 		"scyllaDBVersion":             configassets.Project.Operator.ScyllaDBVersion,
 		"scyllaDBManagerVersion":      configassets.Project.Operator.ScyllaDBManagerAgentVersion,
 		"nodeServiceType":             TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
@@ -151,6 +152,7 @@ func (f *Framework) GetDefaultScyllaCluster() *scyllav1.ScyllaCluster {
 
 func (f *Framework) GetDefaultZonalScyllaClusterWithThreeRacks() *scyllav1.ScyllaCluster {
 	renderArgs := map[string]any{
+		"scyllaDBRepository":          configassets.Project.Operator.ScyllaDBRepository,
 		"scyllaDBVersion":             configassets.Project.Operator.ScyllaDBVersion,
 		"scyllaDBManagerVersion":      configassets.Project.Operator.ScyllaDBManagerAgentVersion,
 		"nodeServiceType":             TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
@@ -168,6 +170,7 @@ func (f *Framework) GetDefaultZonalScyllaClusterWithThreeRacks() *scyllav1.Scyll
 
 func (f *Framework) GetDefaultScyllaDBDatacenter() *scyllav1alpha1.ScyllaDBDatacenter {
 	renderArgs := map[string]any{
+		"scyllaDBRepository":          configassets.Project.Operator.ScyllaDBRepository,
 		"scyllaDBVersion":             configassets.Project.Operator.ScyllaDBVersion,
 		"scyllaDBManagerVersion":      configassets.Project.Operator.ScyllaDBManagerVersion,
 		"nodeServiceType":             TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,

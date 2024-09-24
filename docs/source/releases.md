@@ -60,14 +60,14 @@ GA images aren't build from scratch but rather promoted from an existing release
 Support matrix table shows the version requirements for a particular **scylla-operator** version. Be sure to match these requirements, otherwise some functionality will not work.
 
 :::{table}
-| Component         | v1.13      | v1.12      | v1.11      | v1.10      |
-|:-----------------:|:----------:|:----------:|:----------:|:----------:|
-| Kubernetes        | `>=1.21`   | `>=1.21`   | `>=1.21`   | `>=1.21`   |
-| CRI API           | `v1`       | `v1`       | `v1`       | `v1`       |
-| Scylla OS         | `>=5.4`    | `>=5.0`    | `>=5.0`    | `>=5.0`    |
-| Scylla Enterprise | `>=2023.1` | `>=2021.1` | `>=2021.1` | `>=2021.1` |
-| Scylla Manager    | `>=3.2.8`  | `>=3.2.6`  | `>=3.2`    | `>=2.6`    |
-| Scylla Monitoring | `(CRD)`    | `(CRD)`    | `(CRD)`    | `>=4.0`    |
+| Component         | master                 | v1.14                 | v1.13                   |
+|:-----------------:|:----------------------:|:---------------------:|:-----------------------:|
+| Kubernetes        | `>=1.21`               | `>=1.21`               | `>=1.21`               |
+| CRI API           | `v1`                   | `v1`                   | `v1`                   |
+| Scylla OS         | `>=5.4 && <=6.1`       | `>=5.4 && <=6.1`       | `>=5.4 && <=6.1`       |
+| Scylla Enterprise | `>=2023.1 && <=2024.1` | `>=2023.1 && <=2024.1` | `>=2023.1 && <=2024.1` |
+| Scylla Manager    | `>=3.3.0 && <3.4`      | `>=3.3.0 && <3.4`      | `>=3.3.0 && <3.4`      |
+| Scylla Monitoring | `(CRD)`                | `(CRD)`                | `(CRD)`                |
 :::
 
 ### Supported Kubernetes platforms

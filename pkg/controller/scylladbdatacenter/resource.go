@@ -1691,7 +1691,7 @@ func MakeManagedScyllaDBConfig(sdc *scyllav1alpha1.ScyllaDBDatacenter) (*corev1.
 	cm, _, err := scylladbassets.ScyllaDBManagedConfigTemplate.RenderObject(
 		map[string]any{
 			"Namespace":                              sdc.Namespace,
-			"Name":                                   naming.GetScyllaDBManagedConfigCMName(sdc.Spec.ClusterName),
+			"Name":                                   naming.GetScyllaDBManagedConfigCMName(sdc.Name),
 			"ClusterName":                            sdc.Spec.ClusterName,
 			"ManagedConfigName":                      naming.ScyllaDBManagedConfigName,
 			"EnableTLS":                              utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates),
@@ -1720,6 +1720,7 @@ func MakeManagedScyllaDBConfig(sdc *scyllav1alpha1.ScyllaDBDatacenter) (*corev1.
 		cm.Labels = map[string]string{}
 	}
 	maps.Copy(cm.Labels, sdc.Labels)
+	maps.Copy(cm.Labels, naming.ClusterLabels(sdc))
 
 	if cm.Annotations == nil {
 		cm.Annotations = map[string]string{}

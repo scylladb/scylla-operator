@@ -2699,7 +2699,7 @@ func Test_MakeManagedScyllaDBConfig(t *testing.T) {
 					},
 				},
 				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-					ClusterName: "foo",
+					ClusterName: "foo-cluster",
 				},
 			},
 			enableTLSFeatureGate: false,
@@ -2712,8 +2712,11 @@ func Test_MakeManagedScyllaDBConfig(t *testing.T) {
 					Namespace: "foo-ns",
 					Name:      "foo-managed-config",
 					Labels: map[string]string{
-						"scylla/cluster": "foo",
-						"user-label":     "user-label-value",
+						"app":                          "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"app.kubernetes.io/name":       "scylla",
+						"scylla/cluster":               "foo",
+						"user-label":                   "user-label-value",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
@@ -2728,7 +2731,7 @@ func Test_MakeManagedScyllaDBConfig(t *testing.T) {
 				},
 				Data: map[string]string{
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
-cluster_name: "foo"
+cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
@@ -2749,7 +2752,7 @@ internode_compression: "all"
 					},
 				},
 				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-					ClusterName: "foo",
+					ClusterName: "foo-cluster",
 				},
 			},
 			enableTLSFeatureGate: true,
@@ -2762,8 +2765,11 @@ internode_compression: "all"
 					Namespace: "foo-ns",
 					Name:      "foo-managed-config",
 					Labels: map[string]string{
-						"scylla/cluster": "foo",
-						"user-label":     "user-label-value",
+						"app":                          "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"app.kubernetes.io/name":       "scylla",
+						"scylla/cluster":               "foo",
+						"user-label":                   "user-label-value",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
@@ -2778,7 +2784,7 @@ internode_compression: "all"
 				},
 				Data: map[string]string{
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
-cluster_name: "foo"
+cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
@@ -2808,7 +2814,7 @@ client_encryption_options:
 					},
 				},
 				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-					ClusterName: "foo",
+					ClusterName: "foo-cluster",
 					ScyllaDB: scyllav1alpha1.ScyllaDB{
 						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
 					},
@@ -2824,8 +2830,11 @@ client_encryption_options:
 					Namespace: "foo-ns",
 					Name:      "foo-managed-config",
 					Labels: map[string]string{
-						"scylla/cluster": "foo",
-						"user-label":     "user-label-value",
+						"app":                          "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"app.kubernetes.io/name":       "scylla",
+						"scylla/cluster":               "foo",
+						"user-label":                   "user-label-value",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
@@ -2840,7 +2849,7 @@ client_encryption_options:
 				},
 				Data: map[string]string{
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
-cluster_name: "foo"
+cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
@@ -2879,7 +2888,7 @@ alternator_encryption_options:
 					},
 				},
 				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-					ClusterName: "foo",
+					ClusterName: "foo-cluster",
 					ScyllaDB: scyllav1alpha1.ScyllaDB{
 						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
 					},
@@ -2895,8 +2904,11 @@ alternator_encryption_options:
 					Namespace: "foo-ns",
 					Name:      "foo-managed-config",
 					Labels: map[string]string{
-						"scylla/cluster": "foo",
-						"user-label":     "user-label-value",
+						"app":                          "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"app.kubernetes.io/name":       "scylla",
+						"scylla/cluster":               "foo",
+						"user-label":                   "user-label-value",
 					},
 					Annotations: map[string]string{
 						"internal.scylla-operator.scylladb.com/alternator-insecure-enable-http": "false",
@@ -2914,7 +2926,7 @@ alternator_encryption_options:
 				},
 				Data: map[string]string{
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
-cluster_name: "foo"
+cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
@@ -2953,7 +2965,7 @@ alternator_encryption_options:
 					},
 				},
 				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-					ClusterName: "foo",
+					ClusterName: "foo-cluster",
 					ScyllaDB: scyllav1alpha1.ScyllaDB{
 						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
 					},
@@ -2969,8 +2981,11 @@ alternator_encryption_options:
 					Namespace: "foo-ns",
 					Name:      "foo-managed-config",
 					Labels: map[string]string{
-						"scylla/cluster": "foo",
-						"user-label":     "user-label-value",
+						"app":                          "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"app.kubernetes.io/name":       "scylla",
+						"scylla/cluster":               "foo",
+						"user-label":                   "user-label-value",
 					},
 					Annotations: map[string]string{
 						"internal.scylla-operator.scylladb.com/alternator-insecure-enable-http": "true",
@@ -2988,7 +3003,7 @@ alternator_encryption_options:
 				},
 				Data: map[string]string{
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
-cluster_name: "foo"
+cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
@@ -3028,7 +3043,7 @@ alternator_encryption_options:
 					},
 				},
 				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-					ClusterName: "foo",
+					ClusterName: "foo-cluster",
 					ScyllaDB: scyllav1alpha1.ScyllaDB{
 						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
 					},
@@ -3044,8 +3059,11 @@ alternator_encryption_options:
 					Namespace: "foo-ns",
 					Name:      "foo-managed-config",
 					Labels: map[string]string{
-						"scylla/cluster": "foo",
-						"user-label":     "user-label-value",
+						"app":                          "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"app.kubernetes.io/name":       "scylla",
+						"scylla/cluster":               "foo",
+						"user-label":                   "user-label-value",
 					},
 					Annotations: map[string]string{
 						"internal.scylla-operator.scylladb.com/alternator-port": "42",
@@ -3063,7 +3081,7 @@ alternator_encryption_options:
 				},
 				Data: map[string]string{
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
-cluster_name: "foo"
+cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
@@ -3104,7 +3122,7 @@ alternator_encryption_options:
 					},
 				},
 				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-					ClusterName: "foo",
+					ClusterName: "foo-cluster",
 					ScyllaDB: scyllav1alpha1.ScyllaDB{
 						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
 					},
@@ -3120,8 +3138,11 @@ alternator_encryption_options:
 					Namespace: "foo-ns",
 					Name:      "foo-managed-config",
 					Labels: map[string]string{
-						"scylla/cluster": "foo",
-						"user-label":     "user-label-value",
+						"app":                          "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"app.kubernetes.io/name":       "scylla",
+						"scylla/cluster":               "foo",
+						"user-label":                   "user-label-value",
 					},
 					Annotations: map[string]string{
 						"internal.scylla-operator.scylladb.com/alternator-port":                           "42",
@@ -3140,7 +3161,7 @@ alternator_encryption_options:
 				},
 				Data: map[string]string{
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
-cluster_name: "foo"
+cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
@@ -3181,7 +3202,7 @@ alternator_encryption_options:
 					},
 				},
 				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-					ClusterName: "foo",
+					ClusterName: "foo-cluster",
 					ScyllaDB: scyllav1alpha1.ScyllaDB{
 						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
 					},
@@ -3197,8 +3218,11 @@ alternator_encryption_options:
 					Namespace: "foo-ns",
 					Name:      "foo-managed-config",
 					Labels: map[string]string{
-						"scylla/cluster": "foo",
-						"user-label":     "user-label-value",
+						"app":                          "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"app.kubernetes.io/name":       "scylla",
+						"scylla/cluster":               "foo",
+						"user-label":                   "user-label-value",
 					},
 					Annotations: map[string]string{
 						"internal.scylla-operator.scylladb.com/alternator-port":                           "42",
@@ -3217,7 +3241,7 @@ alternator_encryption_options:
 				},
 				Data: map[string]string{
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
-cluster_name: "foo"
+cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
@@ -3258,7 +3282,7 @@ alternator_encryption_options:
 					},
 				},
 				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-					ClusterName: "foo",
+					ClusterName: "foo-cluster",
 					ScyllaDB: scyllav1alpha1.ScyllaDB{
 						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
 					},
@@ -3274,8 +3298,11 @@ alternator_encryption_options:
 					Namespace: "foo-ns",
 					Name:      "foo-managed-config",
 					Labels: map[string]string{
-						"scylla/cluster": "foo",
-						"user-label":     "user-label-value",
+						"app":                          "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"app.kubernetes.io/name":       "scylla",
+						"scylla/cluster":               "foo",
+						"user-label":                   "user-label-value",
 					},
 					Annotations: map[string]string{
 						"internal.scylla-operator.scylladb.com/alternator-port":                           "42",
@@ -3294,7 +3321,7 @@ alternator_encryption_options:
 				},
 				Data: map[string]string{
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
-cluster_name: "foo"
+cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
@@ -3334,7 +3361,7 @@ alternator_encryption_options:
 					},
 				},
 				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-					ClusterName: "foo",
+					ClusterName: "foo-cluster",
 					ScyllaDB: scyllav1alpha1.ScyllaDB{
 						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
 					},
@@ -3350,8 +3377,11 @@ alternator_encryption_options:
 					Namespace: "foo-ns",
 					Name:      "foo-managed-config",
 					Labels: map[string]string{
-						"scylla/cluster": "foo",
-						"user-label":     "user-label-value",
+						"app":                          "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"app.kubernetes.io/name":       "scylla",
+						"scylla/cluster":               "foo",
+						"user-label":                   "user-label-value",
 					},
 					Annotations: map[string]string{
 						"internal.scylla-operator.scylladb.com/alternator-insecure-disable-authorization": "true",
@@ -3369,7 +3399,7 @@ alternator_encryption_options:
 				},
 				Data: map[string]string{
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
-cluster_name: "foo"
+cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"

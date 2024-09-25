@@ -11,7 +11,7 @@ import (
 // for the given Cluster.
 func ClusterLabels(sdc *scyllav1alpha1.ScyllaDBDatacenter) map[string]string {
 	labels := ScyllaLabels()
-	labels[ClusterNameLabel] = sdc.Spec.ClusterName
+	labels[ClusterNameLabel] = sdc.Name
 	return labels
 }
 

@@ -54,49 +54,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		nc := ncTemplate.DeepCopy()
 
 		framework.By("Creating a client Pod")
-		clientPod := &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "client",
-			},
-			Spec: corev1.PodSpec{
-				Containers: []corev1.Container{
-					{
-						Name:  "client",
-						Image: configassests.Project.OperatorTests.NodeSetupImage,
-						Command: []string{
-							"/bin/sh",
-							"-c",
-							"sleep 3600",
-						},
-						SecurityContext: &corev1.SecurityContext{
-							Privileged: pointer.Ptr(true),
-						},
-						VolumeMounts: []corev1.VolumeMount{
-							{
-								Name:             "host",
-								MountPath:        "/host",
-								MountPropagation: pointer.Ptr(corev1.MountPropagationBidirectional),
-							},
-						},
-					},
-				},
-				Tolerations:  nc.Spec.Placement.Tolerations,
-				NodeSelector: nc.Spec.Placement.NodeSelector,
-				Affinity:     &nc.Spec.Placement.Affinity,
-				Volumes: []corev1.Volume{
-					{
-						Name: "host",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/",
-							},
-						},
-					},
-				},
-				TerminationGracePeriodSeconds: pointer.Ptr(int64(1)),
-				RestartPolicy:                 corev1.RestartPolicyNever,
-			},
-		}
+		clientPod := newClientPod(nc)
 
 		clientPod, err := f.KubeClient().CoreV1().Pods(f.Namespace()).Create(ctx, clientPod, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -283,22 +241,33 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		g.Entry("out of three loop devices", 3),
 	)
 
-	g.It("should propagate degraded conditions for invalid configuration", func() {
-		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	type degradedEntry struct {
+		nodeConfigFunc            func() *scyllav1alpha1.NodeConfig
+		preNodeConfigCreationFunc func(ctx context.Context, nc *scyllav1alpha1.NodeConfig) func(context.Context)
+	}
+
+	g.DescribeTable("should propagate mount controller's degraded condition", func(specCtx g.SpecContext, e *degradedEntry) {
+		ctx, cancel := context.WithTimeout(specCtx, testTimeout)
 		defer cancel()
 
-		nc := ncTemplate.DeepCopy()
+		nc := e.nodeConfigFunc()
 
-		nc.Spec.LocalDiskSetup = &scyllav1alpha1.LocalDiskSetup{
-			Mounts: []scyllav1alpha1.MountConfiguration{
-				{
-					Device:             fmt.Sprintf("/dev/%s", f.Namespace()),
-					MountPoint:         fmt.Sprintf("/mnt/%s", f.Namespace()),
-					FSType:             string(scyllav1alpha1.XFSFilesystem),
-					UnsupportedOptions: []string{"prjquota"},
-				},
-			},
+		if e.preNodeConfigCreationFunc != nil {
+			cleanupFunc := e.preNodeConfigCreationFunc(ctx, nc)
+			defer cleanupFunc(specCtx)
 		}
+
+		rc := framework.NewRestoringCleaner(
+			ctx,
+			f.KubeAdminClient(),
+			f.DynamicAdminClient(),
+			nodeConfigResourceInfo,
+			nc.Namespace,
+			nc.Name,
+			framework.RestoreStrategyRecreate,
+		)
+		f.AddCleaners(rc)
+		rc.DeleteObject(ctx, true)
 
 		g.By("Creating NodeConfig")
 		nc, err := f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Create(ctx, nc, metav1.CreateOptions{})
@@ -325,8 +294,8 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 					return false, nil
 				}
 
-				nodeRaidControllerConditionType := fmt.Sprintf("MountControllerNode%sDegraded", n.GetName())
-				if !helpers.IsStatusConditionPresentAndTrue(statusConditions, nodeRaidControllerConditionType, nc.Generation) {
+				nodeMountControllerConditionType := fmt.Sprintf("MountControllerNode%sDegraded", n.GetName())
+				if !helpers.IsStatusConditionPresentAndTrue(statusConditions, nodeMountControllerConditionType, nc.Generation) {
 					return false, nil
 				}
 			}
@@ -346,8 +315,196 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 			isNodeConfigMountControllerDegraded,
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
-	})
+
+		// Disable disk setup before cleanup to not fight over resources
+		// TODO: can be removed once we support cleanup of filesystem and raid array
+		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			var freshNC, updatedNC *scyllav1alpha1.NodeConfig
+			freshNC, err = f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Get(ctx, nc.Name, metav1.GetOptions{})
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			freshNC.Spec.LocalDiskSetup = nil
+			updatedNC, err = f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Update(ctx, freshNC, metav1.UpdateOptions{})
+			if err == nil {
+				nc = updatedNC
+			}
+			return err
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the NodeConfig to deploy")
+		ctx2, ctx2Cancel := context.WithTimeout(ctx, nodeConfigRolloutTimeout)
+		defer ctx2Cancel()
+		nc, err = controllerhelpers.WaitForNodeConfigState(
+			ctx2,
+			f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs(),
+			nc.Name,
+			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
+			utils.IsNodeConfigRolledOut,
+			utils.IsNodeConfigDoneWithNodeTuningFunc(matchingNodes),
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+	},
+		g.Entry("for mount unit configured with a nonexistent device", &degradedEntry{
+			nodeConfigFunc: func() *scyllav1alpha1.NodeConfig {
+				nc := ncTemplate.DeepCopy()
+
+				nc.Spec.LocalDiskSetup = &scyllav1alpha1.LocalDiskSetup{
+					Mounts: []scyllav1alpha1.MountConfiguration{
+						{
+							Device:             fmt.Sprintf("/dev/%s", f.Namespace()),
+							MountPoint:         fmt.Sprintf("/mnt/%s", f.Namespace()),
+							FSType:             string(scyllav1alpha1.XFSFilesystem),
+							UnsupportedOptions: []string{"prjquota"},
+						},
+					},
+				}
+
+				return nc
+			},
+			preNodeConfigCreationFunc: nil,
+		}),
+		g.Entry("for mount unit configured with a device with an invalid filesystem type", &degradedEntry{
+			nodeConfigFunc: func() *scyllav1alpha1.NodeConfig {
+				nc := ncTemplate.DeepCopy()
+
+				nc.Spec.LocalDiskSetup = &scyllav1alpha1.LocalDiskSetup{
+					LoopDevices: []scyllav1alpha1.LoopDeviceConfiguration{
+						{
+							Name:      "disk",
+							ImagePath: fmt.Sprintf("/mnt/%s.img", f.Namespace()),
+							Size:      resource.MustParse("32M"),
+						},
+					},
+					Mounts: []scyllav1alpha1.MountConfiguration{
+						{
+							Device:             "/dev/loops/disk",
+							MountPoint:         fmt.Sprintf("/mnt/%s/mount", f.Namespace()),
+							FSType:             string(scyllav1alpha1.XFSFilesystem),
+							UnsupportedOptions: []string{"prjquota"},
+						},
+					},
+				}
+
+				return nc
+			},
+			preNodeConfigCreationFunc: nil,
+		}),
+		g.Entry("for mount unit configured to overwrite an existing mount unit", &degradedEntry{
+			nodeConfigFunc: func() *scyllav1alpha1.NodeConfig {
+				nc := ncTemplate.DeepCopy()
+
+				nc.Spec.LocalDiskSetup = &scyllav1alpha1.LocalDiskSetup{
+					LoopDevices: []scyllav1alpha1.LoopDeviceConfiguration{
+						{
+							Name:      "disk",
+							ImagePath: fmt.Sprintf("/mnt/%s.img", f.Namespace()),
+							Size:      resource.MustParse("32M"),
+						},
+					},
+					Filesystems: []scyllav1alpha1.FilesystemConfiguration{
+						{
+							Device: "/dev/loops/disk",
+							Type:   scyllav1alpha1.XFSFilesystem,
+						},
+					},
+					Mounts: []scyllav1alpha1.MountConfiguration{
+						{
+							Device:             "/dev/loops/disk",
+							MountPoint:         fmt.Sprintf("/mnt/%s", f.Namespace()),
+							FSType:             string(scyllav1alpha1.XFSFilesystem),
+							UnsupportedOptions: []string{"prjquota"},
+						},
+					},
+				}
+
+				return nc
+			},
+			preNodeConfigCreationFunc: func(ctx context.Context, nc *scyllav1alpha1.NodeConfig) func(context.Context) {
+				hostMountPath := fmt.Sprintf("/host/mnt/%s", f.Namespace())
+
+				framework.By("Creating a client Pod")
+				clientPod := newClientPod(nc)
+
+				clientPod, err := f.KubeClient().CoreV1().Pods(f.Namespace()).Create(ctx, clientPod, metav1.CreateOptions{})
+				o.Expect(err).NotTo(o.HaveOccurred())
+
+				waitCtx1, waitCtx1Cancel := utils.ContextForPodStartup(ctx)
+				defer waitCtx1Cancel()
+				clientPod, err = controllerhelpers.WaitForPodState(waitCtx1, f.KubeClient().CoreV1().Pods(clientPod.Namespace), clientPod.Name, controllerhelpers.WaitForStateOptions{}, utils.PodIsRunning)
+				o.Expect(err).NotTo(o.HaveOccurred())
+
+				framework.By("Creating a temp directory on host")
+				stdout, stderr, err := executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "mktemp", "--tmpdir=/host/tmp/", "--directory")
+				o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+
+				hostTMPDir := strings.TrimSpace(stdout)
+
+				framework.By("Creating the target mount point on host")
+				stdout, stderr, err = executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "mkdir", hostMountPath)
+				o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+
+				framework.By("Bind mounting temp directory on host to target mount point")
+				stdout, stderr, err = executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "mount", "--bind", hostTMPDir, hostMountPath)
+				o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+
+				cleanupFunc := func(ctx context.Context) {
+					framework.By("Unmounting bind mounted target")
+					stdout, stderr, err = executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "umount", hostMountPath)
+					o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+				}
+
+				return cleanupFunc
+			},
+		}),
+	)
 })
+
+func newClientPod(nc *scyllav1alpha1.NodeConfig) *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "client",
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:  "client",
+					Image: configassests.Project.OperatorTests.NodeSetupImage,
+					Command: []string{
+						"/bin/sh",
+						"-c",
+						"sleep 3600",
+					},
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: pointer.Ptr(true),
+					},
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:             "host",
+							MountPath:        "/host",
+							MountPropagation: pointer.Ptr(corev1.MountPropagationBidirectional),
+						},
+					},
+				},
+			},
+			Tolerations:  nc.Spec.Placement.Tolerations,
+			NodeSelector: nc.Spec.Placement.NodeSelector,
+			Affinity:     &nc.Spec.Placement.Affinity,
+			Volumes: []corev1.Volume{
+				{
+					Name: "host",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/",
+						},
+					},
+				},
+			},
+			TerminationGracePeriodSeconds: pointer.Ptr(int64(1)),
+			RestartPolicy:                 corev1.RestartPolicyNever,
+		},
+	}
+}
 
 func executeInPod(config *rest.Config, client corev1client.CoreV1Interface, pod *corev1.Pod, command string, args ...string) (string, string, error) {
 	return utils.ExecWithOptions(config, client, utils.ExecOptions{

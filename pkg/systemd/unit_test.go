@@ -2,6 +2,7 @@ package systemd
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"reflect"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	apierrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -119,35 +121,76 @@ managedUnits:
 	}
 }
 
-type NoopEnsureControl struct{}
+type NoopEnsureControl struct {
+	unitStatuses map[string]UnitStatus
+}
+
+func NewNoopEnsureControl(unitStatuses []UnitStatus) *NoopEnsureControl {
+	unitStatusesMap := make(map[string]UnitStatus, len(unitStatuses))
+	for _, unitStatus := range unitStatuses {
+		unitStatusesMap[unitStatus.Name] = unitStatus
+	}
+
+	return &NoopEnsureControl{
+		unitStatuses: unitStatusesMap,
+	}
+}
 
 var _ EnsureControlInterface = &NoopEnsureControl{}
 
-func (_ *NoopEnsureControl) DaemonReload(context.Context) error {
+func (f *NoopEnsureControl) DaemonReload(ctx context.Context) error {
 	return nil
 }
-func (_ *NoopEnsureControl) EnableAndStartUnit(context.Context, string) error {
+
+func (f *NoopEnsureControl) EnableUnit(ctx context.Context, unitFile string) error {
 	return nil
 }
-func (_ *NoopEnsureControl) DisableAndStopUnit(context.Context, string) error {
+
+func (f *NoopEnsureControl) StartUnit(ctx context.Context, unitFile string) error {
 	return nil
+}
+
+func (f *NoopEnsureControl) DisableAndStopUnit(ctx context.Context, unitFile string) error {
+	return nil
+}
+
+func (f *NoopEnsureControl) GetUnitStatuses(ctx context.Context, unitFiles []string) ([]UnitStatus, error) {
+	var unitStatuses []UnitStatus
+
+	for _, unitFile := range unitFiles {
+		unitStatus, ok := f.unitStatuses[unitFile]
+		if !ok {
+			unitStatus = UnitStatus{
+				Name:        unitFile,
+				LoadState:   "not-found",
+				ActiveState: "inactive",
+			}
+		}
+
+		unitStatuses = append(unitStatuses, unitStatus)
+	}
+
+	return unitStatuses, nil
 }
 
 func Test_unitManager_EnsureUnits(t *testing.T) {
 	tt := []struct {
-		name            string
-		existingUnits   []*NamedUnit
-		status          *unitManagerStatus
-		desiredUnits    []*NamedUnit
-		expectedUnits   []*NamedUnit
-		expectedStatus  *unitManagerStatus
-		expectedErrFunc func(string) error
-		expectedEvents  []string
+		name                        string
+		existingUnits               []*NamedUnit
+		existingUnitStatuses        []UnitStatus
+		status                      *unitManagerStatus
+		desiredUnits                []*NamedUnit
+		expectedUnits               []*NamedUnit
+		expectedStatus              *unitManagerStatus
+		expectedProgressingMessages []string
+		expectedErrFunc             func(string) error
+		expectedEvents              []string
 	}{
 		{
-			name:          "writing first unit succeeds",
-			existingUnits: nil,
-			status:        nil,
+			name:                 "writing first unit succeeds",
+			existingUnits:        nil,
+			existingUnitStatuses: nil,
+			status:               nil,
 			desiredUnits: []*NamedUnit{
 				{
 					FileName: "foo.mount",
@@ -164,6 +207,9 @@ func Test_unitManager_EnsureUnits(t *testing.T) {
 					FileName: "foo.mount",
 					Data:     []byte("bar"),
 				},
+			},
+			expectedProgressingMessages: []string{
+				`Awaiting unit "foo.mount" to be in active state "active".`,
 			},
 			expectedErrFunc: nil,
 			expectedEvents: []string{
@@ -184,6 +230,23 @@ func Test_unitManager_EnsureUnits(t *testing.T) {
 				{
 					FileName: "old.mount",
 					Data:     []byte("old"),
+				},
+			},
+			existingUnitStatuses: []UnitStatus{
+				{
+					Name:        "foreign.mount",
+					LoadState:   "loaded",
+					ActiveState: "active",
+				},
+				{
+					Name:        "managed.mount",
+					LoadState:   "loaded",
+					ActiveState: "active",
+				},
+				{
+					Name:        "old.mount",
+					LoadState:   "loaded",
+					ActiveState: "active",
 				},
 			},
 			status: &unitManagerStatus{
@@ -222,11 +285,211 @@ func Test_unitManager_EnsureUnits(t *testing.T) {
 					"new.mount",
 				},
 			},
+			expectedProgressingMessages: []string{
+				`Awaiting unit "new.mount" to be in active state "active".`,
+			},
 			expectedErrFunc: nil,
 			expectedEvents: []string{
 				"Normal MountDeleted Mount unit old.mount has been deleted",
 				"Normal MountCreated Mount unit new.mount has been created",
 			},
+		},
+		{
+			name: "reconciling existing, unmanaged unit results in an error",
+			existingUnits: []*NamedUnit{
+				{
+					FileName: "managed.mount",
+					Data:     []byte("managed"),
+				},
+			},
+			existingUnitStatuses: []UnitStatus{
+				{
+					Name:        "foreign.mount",
+					LoadState:   "loaded",
+					ActiveState: "active",
+				},
+				{
+					Name:        "managed.mount",
+					LoadState:   "loaded",
+					ActiveState: "active",
+				},
+			},
+			status: &unitManagerStatus{
+				ManagedUnits: []string{
+					"managed.mount",
+				},
+			},
+			desiredUnits: []*NamedUnit{
+				{
+					FileName: "foreign.mount",
+					Data:     []byte("managed"),
+				},
+				{
+					FileName: "managed.mount",
+					Data:     []byte("managed"),
+				},
+			},
+			expectedUnits: []*NamedUnit{
+				{
+					FileName: "managed.mount",
+					Data:     []byte("managed"),
+				},
+			},
+			expectedStatus: &unitManagerStatus{
+				ManagedUnits: []string{
+					"managed.mount",
+				},
+			},
+			expectedProgressingMessages: nil,
+			expectedErrFunc: func(_ string) error {
+				return apierrors.NewAggregate([]error{
+					fmt.Errorf(`required unit "foreign.mount" already exists and is not managed by us`),
+				})
+			},
+			expectedEvents: nil,
+		},
+		{
+			name: "reconciling unit in a failed state propagates an error",
+			existingUnits: []*NamedUnit{
+				{
+					FileName: "managed.mount",
+					Data:     []byte("managed"),
+				},
+				{
+					FileName: "failed.mount",
+					Data:     []byte("failed"),
+				},
+			},
+			existingUnitStatuses: []UnitStatus{
+				{
+					Name:        "managed.mount",
+					LoadState:   "loaded",
+					ActiveState: "active",
+				},
+				{
+					Name:        "failed.mount",
+					LoadState:   "loaded",
+					ActiveState: "failed",
+				},
+			},
+			status: &unitManagerStatus{
+				ManagedUnits: []string{
+					"managed.mount",
+					"failed.mount",
+				},
+			},
+			desiredUnits: []*NamedUnit{
+				{
+					FileName: "managed.mount",
+					Data:     []byte("managed"),
+				},
+				{
+					FileName: "failed.mount",
+					Data:     []byte("failed"),
+				},
+			},
+			expectedUnits: []*NamedUnit{
+				{
+					FileName: "managed.mount",
+					Data:     []byte("managed"),
+				},
+				{
+					FileName: "failed.mount",
+					Data:     []byte("failed"),
+				},
+			},
+			expectedStatus: &unitManagerStatus{
+				ManagedUnits: []string{
+					"managed.mount",
+					"failed.mount",
+				},
+			},
+			expectedProgressingMessages: []string{
+				`Awaiting unit "failed.mount" to be in active state "active".`,
+			},
+			expectedErrFunc: func(_ string) error {
+				return apierrors.NewAggregate([]error{
+					fmt.Errorf(`unit "failed.mount" is in a "failed" active state`),
+				})
+			},
+			expectedEvents: nil,
+		},
+		{
+			name: "errors coming from reconciling unmanaged and failed units are aggregated",
+			existingUnits: []*NamedUnit{
+
+				{
+					FileName: "managed.mount",
+					Data:     []byte("managed"),
+				},
+				{
+					FileName: "failed.mount",
+					Data:     []byte("failed"),
+				},
+			},
+			existingUnitStatuses: []UnitStatus{
+				{
+					Name:        "foreign.mount",
+					LoadState:   "loaded",
+					ActiveState: "active",
+				},
+				{
+					Name:        "managed.mount",
+					LoadState:   "loaded",
+					ActiveState: "active",
+				},
+				{
+					Name:        "failed.mount",
+					LoadState:   "loaded",
+					ActiveState: "failed",
+				},
+			},
+			status: &unitManagerStatus{
+				ManagedUnits: []string{
+					"managed.mount",
+					"failed.mount",
+				},
+			},
+			desiredUnits: []*NamedUnit{
+				{
+					FileName: "foreign.mount",
+					Data:     []byte("managed"),
+				},
+				{
+					FileName: "managed.mount",
+					Data:     []byte("managed"),
+				},
+				{
+					FileName: "failed.mount",
+					Data:     []byte("failed"),
+				},
+			},
+			expectedUnits: []*NamedUnit{
+				{
+					FileName: "managed.mount",
+					Data:     []byte("managed"),
+				},
+				{
+					FileName: "failed.mount",
+					Data:     []byte("failed"),
+				},
+			},
+			expectedStatus: &unitManagerStatus{
+				ManagedUnits: []string{
+					"managed.mount",
+					"failed.mount",
+				},
+			},
+			expectedProgressingMessages: []string{
+				`Awaiting unit "failed.mount" to be in active state "active".`,
+			},
+			expectedErrFunc: func(_ string) error {
+				return apierrors.NewAggregate([]error{
+					fmt.Errorf(`required unit "foreign.mount" already exists and is not managed by us`),
+					fmt.Errorf(`unit "failed.mount" is in a "failed" active state`),
+				})
+			},
+			expectedEvents: nil,
 		},
 	}
 	for _, tc := range tt {
@@ -261,7 +524,13 @@ func Test_unitManager_EnsureUnits(t *testing.T) {
 				expectedErr = tc.expectedErrFunc(tmpDir)
 			}
 
-			err = m.EnsureUnits(ctx, nil, recorder, tc.desiredUnits, &NoopEnsureControl{})
+			control := NewNoopEnsureControl(tc.existingUnitStatuses)
+
+			var progressingMessages []string
+			progressingMessages, err = m.EnsureUnits(ctx, nil, recorder, tc.desiredUnits, control)
+			if !reflect.DeepEqual(progressingMessages, tc.expectedProgressingMessages) {
+				t.Fatalf("expected and got progressing messages differ:\n%s", cmp.Diff(tc.expectedProgressingMessages, progressingMessages))
+			}
 			if !reflect.DeepEqual(err, expectedErr) {
 				t.Fatalf("expected and got errors differ:\n%s", cmp.Diff(expectedErr, err, cmpopts.EquateErrors()))
 			}

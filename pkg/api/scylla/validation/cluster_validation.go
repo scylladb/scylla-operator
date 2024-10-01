@@ -11,7 +11,6 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
-	"github.com/scylladb/scylla-operator/pkg/semver"
 	"github.com/scylladb/scylla-operator/pkg/util/duration"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -157,13 +156,6 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 
 	if spec.Alternator != nil {
 		allErrs = append(allErrs, ValidateAlternatorSpec(spec.Alternator, fldPath.Child("alternator"))...)
-	}
-
-	if len(spec.ScyllaArgs) > 0 {
-		version := semver.NewScyllaVersion(spec.Version)
-		if !version.SupportFeatureUnsafe(semver.ScyllaVersionThatSupportsArgs) {
-			allErrs = append(allErrs, field.Forbidden(fldPath.Child("scyllaArgs"), fmt.Sprintf("ScyllaArgs is only supported starting from %s", semver.ScyllaVersionThatSupportsArgs)))
-		}
 	}
 
 	for i, rack := range spec.Datacenter.Racks {

@@ -613,6 +613,16 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 							Ports:           scyllaContainerPorts,
 							// TODO: unprivileged entrypoint
 							Command: func() []string {
+								var positionalArgs []string
+
+								if len(sdc.Spec.ScyllaDB.AdditionalScyllaDBArguments) > 0 {
+									positionalArgs = append(positionalArgs, sdc.Spec.ScyllaDB.AdditionalScyllaDBArguments...)
+								}
+
+								if sdc.Spec.ScyllaDB.EnableDeveloperMode != nil && *sdc.Spec.ScyllaDB.EnableDeveloperMode {
+									positionalArgs = append(positionalArgs, "--developer-mode=1")
+								}
+
 								cmd := []string{
 									"/usr/bin/bash",
 									"-euEo",
@@ -653,13 +663,28 @@ exec /mnt/shared/scylla-operator sidecar \
 --service-name=$(SERVICE_NAME) \
 --cpu-count=$(CPU_COUNT) \
 --loglevel=2 \
-` + func() string {
-										if len(sdc.Spec.ScyllaDB.ExternalSeeds) > 0 {
-											return fmt.Sprintf("--external-seeds=%s", strings.Join(sdc.Spec.ScyllaDB.ExternalSeeds, ","))
-										}
-										return ""
-									}(),
+` +
+										func() string {
+											var optionalArgs []string
+
+											if len(sdc.Spec.ScyllaDB.ExternalSeeds) > 0 {
+												optionalArgs = append(optionalArgs, fmt.Sprintf("--external-seeds=%s", strings.Join(sdc.Spec.ScyllaDB.ExternalSeeds, ",")))
+											}
+
+											return strings.Join(optionalArgs, ` \`)
+										}() +
+										func() string {
+											if len(positionalArgs) > 0 {
+												return ` -- "$@"`
+											}
+											return ""
+										}(),
 									),
+								}
+
+								if len(positionalArgs) > 0 {
+									cmd = append(cmd, "--")
+									cmd = append(cmd, positionalArgs...)
 								}
 
 								return cmd

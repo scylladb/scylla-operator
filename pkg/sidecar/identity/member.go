@@ -29,14 +29,15 @@ type Member struct {
 	ServiceLabels map[string]string
 	PodID         string
 
-	Overprovisioned     bool
-	BroadcastRPCAddress string
-	BroadcastAddress    string
+	Overprovisioned             bool
+	BroadcastRPCAddress         string
+	BroadcastAddress            string
+	AdditionalScyllaDBArguments []string
 
 	NodesBroadcastAddressType scyllav1alpha1.BroadcastAddressType
 }
 
-func NewMember(service *corev1.Service, pod *corev1.Pod, nodesAddressType, clientAddressType scyllav1alpha1.BroadcastAddressType) (*Member, error) {
+func NewMember(service *corev1.Service, pod *corev1.Pod, nodesAddressType, clientAddressType scyllav1alpha1.BroadcastAddressType, additionalScyllaDBArguments []string) (*Member, error) {
 	rackOrdinalString, ok := pod.Labels[naming.RackOrdinalLabel]
 	if !ok {
 		return nil, fmt.Errorf("pod %q is missing %q label", naming.ObjRef(pod), naming.RackOrdinalLabel)
@@ -47,16 +48,17 @@ func NewMember(service *corev1.Service, pod *corev1.Pod, nodesAddressType, clien
 	}
 
 	m := &Member{
-		Namespace:                 service.Namespace,
-		Name:                      service.Name,
-		Rack:                      pod.Labels[naming.RackNameLabel],
-		RackOrdinal:               rackOrdinal,
-		Datacenter:                pod.Labels[naming.DatacenterNameLabel],
-		Cluster:                   pod.Labels[naming.ClusterNameLabel],
-		ServiceLabels:             service.Labels,
-		PodID:                     string(pod.UID),
-		Overprovisioned:           pod.Status.QOSClass != corev1.PodQOSGuaranteed,
-		NodesBroadcastAddressType: nodesAddressType,
+		Namespace:                   service.Namespace,
+		Name:                        service.Name,
+		Rack:                        pod.Labels[naming.RackNameLabel],
+		RackOrdinal:                 rackOrdinal,
+		Datacenter:                  pod.Labels[naming.DatacenterNameLabel],
+		Cluster:                     pod.Labels[naming.ClusterNameLabel],
+		ServiceLabels:               service.Labels,
+		PodID:                       string(pod.UID),
+		Overprovisioned:             pod.Status.QOSClass != corev1.PodQOSGuaranteed,
+		NodesBroadcastAddressType:   nodesAddressType,
+		AdditionalScyllaDBArguments: additionalScyllaDBArguments,
 	}
 
 	m.BroadcastAddress, err = controllerhelpers.GetScyllaBroadcastAddress(nodesAddressType, service, pod)

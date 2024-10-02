@@ -167,7 +167,7 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 	}
 
 	for i, rack := range spec.Datacenter.Racks {
-		allErrs = append(allErrs, ValidateScyllaClusterRackSpec(rack, rackNames, spec.CpuSet, fldPath.Child("datacenter", "racks").Index(i))...)
+		allErrs = append(allErrs, ValidateScyllaClusterRackSpec(rack, rackNames, fldPath.Child("datacenter", "racks").Index(i))...)
 	}
 
 	managerRepairTaskNames := sets.New[string]()
@@ -393,7 +393,7 @@ func ValidateIngressOptions(options *scyllav1.IngressOptions, fldPath *field.Pat
 	return allErrs
 }
 
-func ValidateScyllaClusterRackSpec(rack scyllav1.RackSpec, rackNames sets.String, cpuSet bool, fldPath *field.Path) field.ErrorList {
+func ValidateScyllaClusterRackSpec(rack scyllav1.RackSpec, rackNames sets.String, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	// Check that no two racks have the same name
@@ -406,30 +406,6 @@ func ValidateScyllaClusterRackSpec(rack scyllav1.RackSpec, rackNames sets.String
 	limits := rack.Resources.Limits
 	if limits == nil || limits.Cpu().Value() == 0 || limits.Memory().Value() == 0 {
 		allErrs = append(allErrs, field.Required(fldPath.Child("resources", "limits"), "set cpu, memory resource limits"))
-	}
-
-	// If the cluster has cpuset
-	if cpuSet {
-		cores := limits.Cpu().MilliValue()
-
-		// CPU limits must be whole cores
-		if cores%1000 != 0 {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("resources", "limits", "cpu"), cores, "when using cpuset, you must use whole cpu cores"))
-		}
-
-		// Requests == Limits and Requests must be set and equal for QOS class guaranteed
-		requests := rack.Resources.Requests
-		if requests != nil {
-			if requests.Cpu().MilliValue() != limits.Cpu().MilliValue() {
-				allErrs = append(allErrs, field.Invalid(fldPath.Child("resources", "requests", "cpu"), requests.Cpu().MilliValue(), "when using cpuset, cpu requests must be the same as cpu limits"))
-			}
-			if requests.Memory().MilliValue() != limits.Memory().MilliValue() {
-				allErrs = append(allErrs, field.Invalid(fldPath.Child("resources", "requests", "memory"), requests.Cpu().MilliValue(), "when using cpuset, memory requests must be the same as memory limits"))
-			}
-		} else {
-			// Copy the limits
-			rack.Resources.Requests = limits.DeepCopy()
-		}
 	}
 
 	return allErrs

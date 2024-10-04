@@ -32,16 +32,14 @@ func (c *Controller) calculateStatus(sc *scyllav1.ScyllaCluster, managerState *s
 		managerTaskStatus, isInManagerState := managerState.RepairTasks[rt.Name]
 		if isInManagerState {
 			repairTaskStatus = scyllav1.RepairTaskStatus(managerTaskStatus)
-		}
+		} else {
+			// Retain the error from client.
+			err, hasClientError := repairTaskClientErrorMap[rt.Name]
+			if !hasClientError {
+				continue
+			}
 
-		// Retain the error from client.
-		err, hasClientError := repairTaskClientErrorMap[rt.Name]
-		if hasClientError {
 			repairTaskStatus.Error = &err
-		}
-
-		if !isInManagerState && !hasClientError {
-			continue
 		}
 
 		status.Repairs = append(status.Repairs, repairTaskStatus)
@@ -65,16 +63,14 @@ func (c *Controller) calculateStatus(sc *scyllav1.ScyllaCluster, managerState *s
 		managerTaskStatus, isInManagerState := managerState.BackupTasks[bt.Name]
 		if isInManagerState {
 			backupTaskStatus = scyllav1.BackupTaskStatus(managerTaskStatus)
-		}
+		} else {
+			// Retain the error from client.
+			err, hasClientError := backupTaskClientErrorMap[bt.Name]
+			if !hasClientError {
+				continue
+			}
 
-		// Retain the error from client.
-		err, hasClientError := backupTaskClientErrorMap[bt.Name]
-		if hasClientError {
 			backupTaskStatus.Error = &err
-		}
-
-		if !isInManagerState && !hasClientError {
-			continue
 		}
 
 		status.Backups = append(status.Backups, backupTaskStatus)

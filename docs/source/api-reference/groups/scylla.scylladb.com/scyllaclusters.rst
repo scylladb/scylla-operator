@@ -4801,6 +4801,9 @@ object
    * - keyspace
      - array (string)
      - keyspace reflects a list of keyspace/tables glob patterns, e.g. 'keyspace,!keyspace.table_prefix_*' used to include or exclude keyspaces from repair.
+   * - :ref:`labels<api-scylla.scylladb.com-scyllaclusters-v1-.status.backups[].labels>`
+     - object
+     - labels reflects the labels of a task.
    * - location
      - array (string)
      - location reflects a list of backup locations in the format [<dc>:]<provider>:<name> ex. s3:my-bucket.
@@ -4828,6 +4831,20 @@ object
    * - uploadParallel
      - array (string)
      - uploadParallel reflects a list of upload parallelism limits in the format [<dc>:]<limit>.
+
+.. _api-scylla.scylladb.com-scyllaclusters-v1-.status.backups[].labels:
+
+.status.backups[].labels
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+labels reflects the labels of a task.
+
+Type
+""""
+object
+
 
 .. _api-scylla.scylladb.com-scyllaclusters-v1-.status.conditions[]:
 
@@ -4933,6 +4950,9 @@ object
    * - keyspace
      - array (string)
      - keyspace reflects a list of keyspace/tables glob patterns, e.g. 'keyspace,!keyspace.table_prefix_*' used to include or exclude keyspaces from repair.
+   * - :ref:`labels<api-scylla.scylladb.com-scyllaclusters-v1-.status.repairs[].labels>`
+     - object
+     - labels reflects the labels of a task.
    * - name
      - string
      - name reflects the name of a task.
@@ -4951,6 +4971,20 @@ object
    * - timezone
      - string
      - timezone reflects the timezone of cron field.
+
+.. _api-scylla.scylladb.com-scyllaclusters-v1-.status.repairs[].labels:
+
+.status.repairs[].labels
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+labels reflects the labels of a task.
+
+Type
+""""
+object
+
 
 .. _api-scylla.scylladb.com-scyllaclusters-v1-.status.upgrade:
 

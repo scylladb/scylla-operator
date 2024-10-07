@@ -207,6 +207,14 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		overprovisioned = "1"
 	}
 
+	cpusAllowed, err := getCPUsAllowedList("/proc/1/status")
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	if err := s.validateCpuSet(ctx, cpusAllowed, s.cpuCount); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
 	// Listen on all interfaces so users or a service mesh can use localhost.
 	listenAddress := "0.0.0.0"
 	prometheusAddress := "0.0.0.0"
@@ -219,6 +227,7 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		"prometheus-address":    &prometheusAddress,
 		"broadcast-address":     &m.BroadcastAddress,
 		"broadcast-rpc-address": &m.BroadcastRPCAddress,
+		"cpuset":                &cpusAllowed,
 	}
 
 	if hostID, ok := m.ServiceLabels[naming.ReplacingNodeHostIDLabel]; ok {
@@ -227,22 +236,6 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		} else {
 			args["replace-node-first-boot"] = pointer.Ptr(hostID)
 		}
-	}
-
-	// See if we need to use cpu-pinning
-	// TODO: Add more checks to make sure this is valid.
-	// eg. parse the cpuset and check the number of cpus is the same as cpu limits
-	// Now we rely completely on the user to have the cpu policy correctly
-	// configured in the kubelet, otherwise scylla will crash.
-	if cluster.Spec.CpuSet {
-		cpusAllowed, err := getCPUsAllowedList("/proc/1/status")
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		if err := s.validateCpuSet(ctx, cpusAllowed, s.cpuCount); err != nil {
-			return nil, errors.WithStack(err)
-		}
-		args["cpuset"] = &cpusAllowed
 	}
 
 	version := semver.NewScyllaVersion(cluster.Spec.Version)

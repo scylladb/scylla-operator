@@ -281,7 +281,7 @@
           "type": "array"
         },
         "cpuset": {
-          "description": "cpuset determines if the cluster will use cpu-pinning. Deprecated: `cpuset` is deprecated and may be ignored in the future.",
+          "description": "cpuset determines if the cluster will use cpu-pinning. Deprecated: `cpuset` is deprecated. It is now treated as if it is always set to true regardless of its value.",
           "type": "boolean"
         },
         "datacenter": {

@@ -564,6 +564,8 @@ verify-examples:
 define embed-dashboard
 	if [[ ! -d '$(2)' ]]; then mkdir '$(2)'; fi
 	cp -r '$(1)'/*.json '$(2)'
+	# FIXME: Amnon: This need to be fixed in the monitoring repo
+	find '$(2)' -name '*.json' -exec sed -i -e 's/job=\\"scylla\\"/job=~\\"$$cluster|$$^\\"/g' {} \;
 
 endef
 

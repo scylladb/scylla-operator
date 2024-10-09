@@ -1234,6 +1234,13 @@ func MakePodDisruptionBudget(sdc *scyllav1alpha1.ScyllaDBDatacenter) *policyv1.P
 	sdcAnnotations := maps.Clone(sdc.Annotations)
 	delete(sdcAnnotations, naming.ManagedHash)
 
+	// Ignore any Job Pods that share the selector with ScyllaDB Pods, they shouldn't be accounted for PDB.
+	selector := metav1.SetAsLabelSelector(selectorLabels)
+	selector.MatchExpressions = append(selector.MatchExpressions, metav1.LabelSelectorRequirement{
+		Key:      "batch.kubernetes.io/job-name",
+		Operator: metav1.LabelSelectorOpDoesNotExist,
+	})
+
 	return &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      naming.PodDisruptionBudgetName(sdc),
@@ -1246,7 +1253,7 @@ func MakePodDisruptionBudget(sdc *scyllav1alpha1.ScyllaDBDatacenter) *policyv1.P
 		},
 		Spec: policyv1.PodDisruptionBudgetSpec{
 			MaxUnavailable: &maxUnavailable,
-			Selector:       metav1.SetAsLabelSelector(selectorLabels),
+			Selector:       selector,
 		},
 	}
 }

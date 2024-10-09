@@ -97,7 +97,14 @@ func verifyPodDisruptionBudget(sc *scyllav1.ScyllaCluster, pdb *policyv1.PodDisr
 		}),
 	)
 	o.Expect(pdb.Spec.MaxUnavailable.IntValue()).To(o.Equal(1))
-	o.Expect(pdb.Spec.Selector).To(o.Equal(metav1.SetAsLabelSelector(naming.ClusterLabelsForScyllaCluster(sc))))
+	o.Expect(pdb.Spec.Selector).ToNot(o.BeNil())
+	o.Expect(pdb.Spec.Selector.MatchLabels).To(o.Equal(naming.ClusterLabelsForScyllaCluster(sc)))
+	o.Expect(pdb.Spec.Selector.MatchExpressions).To(o.Equal([]metav1.LabelSelectorRequirement{
+		{
+			Key:      "batch.kubernetes.io/job-name",
+			Operator: metav1.LabelSelectorOpDoesNotExist,
+		},
+	}))
 }
 
 func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, scyllaClient scyllaclient.Interface, sc *scyllav1.ScyllaCluster) {

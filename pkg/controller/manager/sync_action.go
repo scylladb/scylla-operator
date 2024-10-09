@@ -367,8 +367,6 @@ func (a *deleteTaskAction) Execute(ctx context.Context, client *managerclient.Cl
 		return fmt.Errorf("can't stop and delete task %q: %w", a.taskName, err)
 	}
 
-	clearTaskStatusError(a.taskType, a.taskName, status)
-
 	return nil
 }
 
@@ -407,8 +405,6 @@ func (a *addTaskAction) Execute(ctx context.Context, client *managerclient.Clien
 		return fmt.Errorf("can't create task %q: %w", a.task.Name, err)
 	}
 
-	clearTaskStatusError(a.task.Type, a.task.Name, status)
-
 	return nil
 }
 
@@ -428,8 +424,6 @@ func (a *updateTaskAction) Execute(ctx context.Context, client *managerclient.Cl
 		return fmt.Errorf("can't update task %q: %w", a.task.Name, err)
 	}
 
-	clearTaskStatusError(a.task.Type, a.task.Name, status)
-
 	return nil
 }
 
@@ -443,25 +437,6 @@ func messageOf(err error) string {
 		return v.GetPayload().Message
 	}
 	return err.Error()
-}
-
-func clearTaskStatusError(taskType string, taskName string, status *scyllav1.ScyllaClusterStatus) {
-	switch taskType {
-	case managerclient.RepairTask:
-		_, i, ok := slices.Find(status.Repairs, func(rts scyllav1.RepairTaskStatus) bool {
-			return rts.Name == taskName
-		})
-		if ok {
-			status.Repairs[i].Error = nil
-		}
-	case managerclient.BackupTask:
-		_, i, ok := slices.Find(status.Backups, func(bts scyllav1.BackupTaskStatus) bool {
-			return bts.Name == taskName
-		})
-		if ok {
-			status.Backups[i].Error = nil
-		}
-	}
 }
 
 func setTaskStatusError(taskType string, taskName string, taskErr string, status *scyllav1.ScyllaClusterStatus) {

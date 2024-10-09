@@ -13,6 +13,8 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 )
@@ -68,7 +70,7 @@ func (m *UnitManager) ReadStatus() (*unitManagerStatus, error) {
 		return nil, fmt.Errorf("can't open status file %q: %w", statusFile, err)
 	}
 
-	status := &unitManagerStatus{}
+	status := newUnitManagerStatus()
 	err = yaml.Unmarshal(data, status)
 	if err != nil {
 		return nil, fmt.Errorf("can't decode unit manager status: %w", err)
@@ -92,17 +94,34 @@ func (m *UnitManager) WriteStatus(status *unitManagerStatus) error {
 	return nil
 }
 
+const (
+	loadStateNotFound = "not-found"
+
+	activeStateActive = "active"
+	activeStateFailed = "failed"
+)
+
+type UnitStatus struct {
+	Name        string
+	LoadState   string
+	ActiveState string
+}
+
 type EnsureControlInterface interface {
 	DaemonReload(ctx context.Context) error
-	EnableAndStartUnit(ctx context.Context, unitFile string) error
+	EnableUnit(ctx context.Context, unitFile string) error
+	StartUnit(ctx context.Context, unitFile string) error
 	DisableAndStopUnit(ctx context.Context, unitFile string) error
+	GetUnitStatuses(ctx context.Context, unitFiles []string) ([]UnitStatus, error)
 }
 
 // EnsureUnits will make sure to remove any unit that is no longer desired and create/update those that are.
-func (m *UnitManager) EnsureUnits(ctx context.Context, nc *scyllav1alpha1.NodeConfig, recorder record.EventRecorder, requiredUnits []*NamedUnit, control EnsureControlInterface) error {
+func (m *UnitManager) EnsureUnits(ctx context.Context, nc *scyllav1alpha1.NodeConfig, recorder record.EventRecorder, requiredUnits []*NamedUnit, control EnsureControlInterface) ([]string, error) {
+	var progressingMessages []string
+
 	status, err := m.ReadStatus()
 	if err != nil {
-		return fmt.Errorf("can't list managed units: %w", err)
+		return progressingMessages, fmt.Errorf("can't list managed units: %w", err)
 	}
 
 	klog.V(4).InfoS(
@@ -114,7 +133,7 @@ func (m *UnitManager) EnsureUnits(ctx context.Context, nc *scyllav1alpha1.NodeCo
 	// Reload unit definitions for pruning in case that we didn't make it to daemon reload when writing them.
 	err = control.DaemonReload(ctx)
 	if err != nil {
-		return fmt.Errorf("can't reload systemd: %w", err)
+		return progressingMessages, fmt.Errorf("can't reload systemd: %w", err)
 	}
 
 	for _, existingUnitName := range status.ManagedUnits {
@@ -135,7 +154,7 @@ func (m *UnitManager) EnsureUnits(ctx context.Context, nc *scyllav1alpha1.NodeCo
 			if errors.Is(err, ErrNotExist) {
 				klog.V(2).InfoS("Skipped disabling and stopping unit that doesn't exist", "Name", existingUnitName)
 			} else {
-				return fmt.Errorf("can't disable unit %q: %w", existingUnitName, err)
+				return progressingMessages, fmt.Errorf("can't disable unit %q: %w", existingUnitName, err)
 			}
 		}
 
@@ -143,7 +162,7 @@ func (m *UnitManager) EnsureUnits(ctx context.Context, nc *scyllav1alpha1.NodeCo
 		existingUnitPath := m.GetUnitPath(existingUnitName)
 		err = os.Remove(existingUnitPath)
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("can't prune unit %q: %w", existingUnitName, err)
+			return progressingMessages, fmt.Errorf("can't prune unit %q: %w", existingUnitName, err)
 		}
 		recorder.Eventf(
 			nc,
@@ -154,44 +173,72 @@ func (m *UnitManager) EnsureUnits(ctx context.Context, nc *scyllav1alpha1.NodeCo
 		)
 	}
 
-	// First save the updated list of managed units first,
-	// so we can clean up in the next run, if we were interrupted.
-	status.ManagedUnits = slices.ConvertToSlice(func(unit *NamedUnit) string {
+	unitStatuses, err := control.GetUnitStatuses(ctx, slices.ConvertSlice(requiredUnits, func(unit *NamedUnit) string {
 		return unit.FileName
-	}, requiredUnits...)
+	}))
+	if err != nil {
+		return progressingMessages, fmt.Errorf("can't get unit statuses: %w", err)
+	}
+
+	foundUnitStatuses := slices.FilterOut(unitStatuses, func(status UnitStatus) bool {
+		return status.LoadState == loadStateNotFound
+	})
+	existingUnitsSet := sets.New(slices.ConvertSlice(foundUnitStatuses, func(status UnitStatus) string {
+		return status.Name
+	})...)
+
+	managedUnitsSet := sets.New(status.ManagedUnits...)
+
+	// Do not try to reconcile units which are not managed by us.
+	var managedRequiredUnits []*NamedUnit
+	var errs []error
+	for _, requiredUnit := range requiredUnits {
+		if existingUnitsSet.Has(requiredUnit.FileName) && !managedUnitsSet.Has(requiredUnit.FileName) {
+			errs = append(errs, fmt.Errorf("required unit %q already exists and is not managed by us", requiredUnit.FileName))
+			continue
+		}
+
+		managedRequiredUnits = append(managedRequiredUnits, requiredUnit)
+	}
+
+	// First save the updated list of managed units,
+	// so we can clean up in the next run, if we were interrupted.
+	status.ManagedUnits = slices.ConvertSlice(managedRequiredUnits, func(unit *NamedUnit) string {
+		return unit.FileName
+	})
 
 	err = m.WriteStatus(status)
 	if err != nil {
-		return fmt.Errorf("can't write status: %w", err)
+		return progressingMessages, fmt.Errorf("can't write status: %w", err)
 	}
 
-	for _, requiredUnit := range requiredUnits {
-		klog.V(4).InfoS("Ensuring unit", "Name", requiredUnit.FileName)
-		requiredUnitPath := m.GetUnitPath(requiredUnit.FileName)
+	for _, managedRequiredUnit := range managedRequiredUnits {
+		klog.V(4).InfoS("Ensuring unit", "Name", managedRequiredUnit.FileName)
+		managedRequiredUnitPath := m.GetUnitPath(managedRequiredUnit.FileName)
 
 		exists := true
-		_, err := os.Stat(requiredUnitPath)
+		_, err = os.Stat(managedRequiredUnitPath)
 		if err != nil {
 			if os.IsNotExist(err) {
 				exists = false
 			} else {
-				return fmt.Errorf("can't stat unit %q: %w", requiredUnitPath, err)
+				return progressingMessages, fmt.Errorf("can't stat unit %q: %w", managedRequiredUnitPath, err)
 			}
 		}
 
-		err = os.WriteFile(requiredUnitPath, requiredUnit.Data, 0666)
+		err = os.WriteFile(managedRequiredUnitPath, managedRequiredUnit.Data, 0666)
 		if err != nil {
-			return fmt.Errorf("can't write unit %q: %w", requiredUnitPath, err)
+			return progressingMessages, fmt.Errorf("can't write unit %q: %w", managedRequiredUnitPath, err)
 		}
 
 		if !exists {
-			klog.V(2).InfoS("Mount unit has been created", "Name", requiredUnit.FileName)
+			klog.V(2).InfoS("Mount unit has been created", "Name", managedRequiredUnit.FileName)
 			recorder.Eventf(
 				nc,
 				corev1.EventTypeNormal,
 				"MountCreated",
 				"Mount unit %s has been created",
-				requiredUnit.FileName,
+				managedRequiredUnit.FileName,
 			)
 		}
 	}
@@ -199,16 +246,48 @@ func (m *UnitManager) EnsureUnits(ctx context.Context, nc *scyllav1alpha1.NodeCo
 	// Reload unit definitions to enable and start them.
 	err = control.DaemonReload(ctx)
 	if err != nil {
-		return fmt.Errorf("can't reload systemd: %w", err)
+		return progressingMessages, fmt.Errorf("can't reload systemd: %w", err)
 	}
 
-	for _, requiredUnit := range requiredUnits {
-		klog.V(2).InfoS("Enabling and starting unit", "Name", requiredUnit.FileName)
-		err = control.EnableAndStartUnit(ctx, requiredUnit.FileName)
+	for _, managedRequiredUnit := range managedRequiredUnits {
+		klog.V(2).InfoS("Enabling unit", "Name", managedRequiredUnit.FileName)
+		err = control.EnableUnit(ctx, managedRequiredUnit.FileName)
 		if err != nil {
-			return fmt.Errorf("can't enable unit %q: %w", requiredUnit.FileName, err)
+			errs = append(errs, fmt.Errorf("can't enable unit %q: %w", managedRequiredUnit.FileName, err))
+			continue
+		}
+
+		unitStatuses, err = control.GetUnitStatuses(ctx, []string{managedRequiredUnit.FileName})
+		if err != nil {
+			errs = append(errs, fmt.Errorf("can't get unit statuses for unit %q: %w", managedRequiredUnit.FileName, err))
+			continue
+		}
+		if len(unitStatuses) == 0 {
+			errs = append(errs, fmt.Errorf("missing status for unit %q", managedRequiredUnit.FileName))
+			continue
+		}
+		unitStatus := unitStatuses[0]
+
+		switch unitStatus.ActiveState {
+		case activeStateActive:
+			// Unit is already in an "active" active state, no condition to set.
+
+		case activeStateFailed:
+			// Append error to propagate a degraded condition but do not break early to retry starting the unit.
+			errs = append(errs, fmt.Errorf("unit %q is in a %q active state", managedRequiredUnit.FileName, activeStateFailed))
+			fallthrough
+
+		default:
+			progressingMessages = append(progressingMessages, fmt.Sprintf("Awaiting unit %q to be in active state %q.", managedRequiredUnit.FileName, activeStateActive))
+		}
+
+		klog.V(2).InfoS("Starting unit", "Name", managedRequiredUnit.FileName)
+		err = control.StartUnit(ctx, managedRequiredUnit.FileName)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("can't start unit %q: %w", managedRequiredUnit.FileName, err))
+			continue
 		}
 	}
 
-	return nil
+	return progressingMessages, apierrors.NewAggregate(errs)
 }

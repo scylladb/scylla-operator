@@ -5,6 +5,7 @@ package nodesetup
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/disks"
@@ -47,13 +48,19 @@ func (nsc *Controller) syncMounts(ctx context.Context, nc *scyllav1alpha1.NodeCo
 		}
 	}
 
-	err := nsc.systemdUnitManager.EnsureUnits(ctx, nc, nsc.eventRecorder, mountUnits, nsc.systemdControl)
+	progressingMessages, err := nsc.systemdUnitManager.EnsureUnits(ctx, nc, nsc.eventRecorder, mountUnits, nsc.systemdControl)
+	if len(progressingMessages) > 0 {
+		progressingConditions = append(progressingConditions, metav1.Condition{
+			Type:               fmt.Sprintf(mountControllerNodeProgressingConditionFormat, nsc.nodeName),
+			Status:             metav1.ConditionTrue,
+			Reason:             "WaitingForMountUnitsSync",
+			Message:            strings.Join(progressingMessages, "\n"),
+			ObservedGeneration: nc.Generation,
+		})
+	}
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't ensure units: %w", err))
 	}
-
-	// TODO: Check mount units for failures.
-	//       https://github.com/scylladb/scylla-operator/issues/1334
 
 	err = utilerrors.NewAggregate(errs)
 	if err != nil {

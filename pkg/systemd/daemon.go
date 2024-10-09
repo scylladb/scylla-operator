@@ -8,6 +8,7 @@ import (
 
 	"github.com/coreos/go-systemd/v22/dbus"
 	godbus "github.com/godbus/dbus/v5"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 )
 
 var ErrNotExist = errors.New("unit does not exist")
@@ -112,20 +113,6 @@ func (c *SystemdControl) StopUnit(ctx context.Context, unitFile string) error {
 	return nil
 }
 
-func (c *SystemdControl) EnableAndStartUnit(ctx context.Context, unitFile string) error {
-	err := c.EnableUnit(ctx, unitFile)
-	if err != nil {
-		return err
-	}
-
-	err = c.StartUnit(ctx, unitFile)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (c *SystemdControl) DisableAndStopUnit(ctx context.Context, unitFile string) error {
 	err := c.DisableUnit(ctx, unitFile)
 	if err != nil {
@@ -138,4 +125,21 @@ func (c *SystemdControl) DisableAndStopUnit(ctx context.Context, unitFile string
 	}
 
 	return nil
+}
+
+func (c *SystemdControl) GetUnitStatuses(ctx context.Context, unitFiles []string) ([]UnitStatus, error) {
+	statuses, err := c.conn.ListUnitsByNamesContext(ctx, unitFiles)
+	if err != nil {
+		return nil, fmt.Errorf("can't list units by names %q: %w", strings.Join(unitFiles, ", "), transformSystemdError(err))
+	}
+
+	unitStatuses := slices.ConvertSlice(statuses, func(s dbus.UnitStatus) UnitStatus {
+		return UnitStatus{
+			Name:        s.Name,
+			LoadState:   s.LoadState,
+			ActiveState: s.ActiveState,
+		}
+	})
+
+	return unitStatuses, nil
 }

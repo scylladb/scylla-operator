@@ -1,12 +1,12 @@
 # Releases
 
 ## Schedule
-We are aiming to ship a new release approximately every 6 weeks. The following release schedule is only advisory, there are no commitments made to hitting these dates.
+We are aiming to ship a new release approximately every 2 months. The following release schedule is only advisory, there are no commitments made to hitting these dates.
 
 :::{table}
 | Release | Code freeze | General availability |
 |:-------:|:-----------:|:--------------------:|
-|  1.14   | 2024-08-14  |      2024-08-31      |
+|  1.15   | 2024-11-05  |      2024-11-19      |
 :::
 
 ## Supported releases
@@ -15,8 +15,9 @@ We support the latest 2 releases of the operator to give everyone time to upgrad
 :::{table}
 | Release | General availability |  Support ends   |
 |:-------:|:--------------------:|:---------------:|
+|  1.14   |      2024-09-19      | Release of 1.16 |
 |  1.13   |      2024-06-20      | Release of 1.15 |
-|  1.12   |      2024-03-28      | Release of 1.14 |
+|  1.12   |      2024-03-28      |   2024-09-19    |
 |  1.11   |      2023-11-09      |   2024-06-20    |
 |  1.10   |      2023-08-25      |   2024-03-28    |
 |   1.9   |      2023-07-04      |   2023-11-09    |
@@ -59,14 +60,14 @@ GA images aren't build from scratch but rather promoted from an existing release
 Support matrix table shows the version requirements for a particular **scylla-operator** version. Be sure to match these requirements, otherwise some functionality will not work.
 
 :::{table}
-| Component         | v1.13      | v1.12      | v1.11      | v1.10      |
-|:-----------------:|:----------:|:----------:|:----------:|:----------:|
-| Kubernetes        | `>=1.21`   | `>=1.21`   | `>=1.21`   | `>=1.21`   |
-| CRI API           | `v1`       | `v1`       | `v1`       | `v1`       |
-| Scylla OS         | `>=5.4`    | `>=5.0`    | `>=5.0`    | `>=5.0`    |
-| Scylla Enterprise | `>=2023.1` | `>=2021.1` | `>=2021.1` | `>=2021.1` |
-| Scylla Manager    | `>=3.2.8`  | `>=3.2.6`  | `>=3.2`    | `>=2.6`    |
-| Scylla Monitoring | `(CRD)`    | `(CRD)`    | `(CRD)`    | `>=4.0`    |
+| Component         | master                 | v1.14                 | v1.13                   |
+|:-----------------:|:----------------------:|:---------------------:|:-----------------------:|
+| Kubernetes        | `>=1.21`               | `>=1.21`               | `>=1.21`               |
+| CRI API           | `v1`                   | `v1`                   | `v1`                   |
+| Scylla OS         | `>=5.4 && <=6.1`       | `>=5.4 && <=6.1`       | `>=5.4 && <=6.1`       |
+| Scylla Enterprise | `>=2023.1 && <=2024.1` | `>=2023.1 && <=2024.1` | `>=2023.1 && <=2024.1` |
+| Scylla Manager    | `>=3.3.0 && <3.4`      | `>=3.3.0 && <3.4`      | `>=3.3.0 && <3.4`      |
+| Scylla Monitoring | `(CRD)`                | `(CRD)`                | `(CRD)`                |
 :::
 
 ### Supported Kubernetes platforms

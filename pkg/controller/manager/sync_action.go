@@ -5,7 +5,6 @@ package manager
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -21,8 +20,8 @@ import (
 
 type state struct {
 	Clusters    []*managerclient.Cluster
-	RepairTasks map[string]RepairTaskStatus
-	BackupTasks map[string]BackupTaskStatus
+	RepairTasks map[string]scyllav1.RepairTaskStatus
+	BackupTasks map[string]scyllav1.BackupTaskStatus
 }
 
 func runSync(ctx context.Context, cluster *scyllav1.ScyllaCluster, authToken string, state *state) ([]action, bool, error) {
@@ -146,14 +145,26 @@ func syncBackupTasks(clusterID string, cluster *scyllav1.ScyllaCluster, managerS
 	var actions []action
 
 	for _, bt := range cluster.Spec.Backups {
-		action, err := syncBackupTask(clusterID, managerState, &bt)
+		taskStatusFunc := func() (*scyllav1.TaskStatus, bool) {
+			s, ok := managerState.BackupTasks[bt.Name]
+			if !ok {
+				return nil, false
+			}
+
+			return &s.TaskStatus, true
+		}
+
+		backupTaskSpecCopy := bt.DeepCopy()
+		backupTaskSpec := BackupTaskSpec(*backupTaskSpecCopy)
+
+		a, err := syncTask(clusterID, &backupTaskSpec, taskStatusFunc)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't sync backup task %q: %w", bt.Name, err))
 			continue
 		}
 
-		if action != nil {
-			actions = append(actions, action)
+		if a != nil {
+			actions = append(actions, a)
 		}
 	}
 
@@ -163,55 +174,6 @@ func syncBackupTasks(clusterID string, cluster *scyllav1.ScyllaCluster, managerS
 	}
 
 	return actions, nil
-}
-
-func syncBackupTask(clusterID string, managerState *state, backupTaskSpec *scyllav1.BackupTaskSpec) (action, error) {
-	backupTaskSpecCopy := backupTaskSpec.DeepCopy()
-	backupTask := BackupTaskSpec(*backupTaskSpecCopy)
-
-	managerTaskStatus, ok := managerState.BackupTasks[backupTask.Name]
-	if !ok {
-		managerClientTask, err := backupTask.ToManager()
-		if err != nil {
-			return nil, fmt.Errorf("can't convert backup task to manager task: %w", err)
-		}
-
-		return &addTaskAction{
-			clusterID: clusterID,
-			task:      managerClientTask,
-		}, nil
-	}
-
-	if managerTaskStatus.ID == nil {
-		// Sanity check.
-		return nil, fmt.Errorf("manager task status is missing an id")
-	}
-
-	evaluateDates(&backupTask, &managerTaskStatus)
-
-	// FIXME: Task spec is converted to status to compare it with its current state in manager.
-	// This is a temporary workaround and should be replaced with hash comparison when manager allows for storing metadata.
-	// Ref: https://github.com/scylladb/scylla-operator/issues/1827.
-	if isBackupTaskDeepEqual(&backupTask, &managerTaskStatus) {
-		return nil, nil
-	}
-
-	managerClientTask, err := backupTask.ToManager()
-	if err != nil {
-		return nil, fmt.Errorf("can't convert backup task to manager task: %w", err)
-	}
-	managerClientTask.ID = *managerTaskStatus.ID
-
-	return &updateTaskAction{
-		clusterID: clusterID,
-		task:      managerClientTask,
-	}, nil
-}
-
-func isBackupTaskDeepEqual(backupTaskSpec *BackupTaskSpec, managerBackupTaskStatus *BackupTaskStatus) bool {
-	backupTaskStatus := backupTaskSpec.ToStatus()
-	backupTaskStatus.ID = managerBackupTaskStatus.ID
-	return reflect.DeepEqual(backupTaskStatus, managerBackupTaskStatus)
 }
 
 func syncRepairTasks(clusterID string, cluster *scyllav1.ScyllaCluster, managerState *state) ([]action, error) {
@@ -219,14 +181,26 @@ func syncRepairTasks(clusterID string, cluster *scyllav1.ScyllaCluster, managerS
 	var actions []action
 
 	for _, rt := range cluster.Spec.Repairs {
-		action, err := syncRepairTask(clusterID, managerState, &rt)
+		taskStatusFunc := func() (*scyllav1.TaskStatus, bool) {
+			s, ok := managerState.RepairTasks[rt.Name]
+			if !ok {
+				return nil, false
+			}
+
+			return &s.TaskStatus, true
+		}
+
+		repairTaskSpecCopy := rt.DeepCopy()
+		repairTaskSpec := RepairTaskSpec(*repairTaskSpecCopy)
+
+		a, err := syncTask(clusterID, &repairTaskSpec, taskStatusFunc)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't sync repair task %q: %w", rt.Name, err))
 			continue
 		}
 
-		if action != nil {
-			actions = append(actions, action)
+		if a != nil {
+			actions = append(actions, a)
 		}
 	}
 
@@ -238,16 +212,20 @@ func syncRepairTasks(clusterID string, cluster *scyllav1.ScyllaCluster, managerS
 	return actions, nil
 }
 
-func syncRepairTask(clusterID string, managerState *state, repairTaskSpec *scyllav1.RepairTaskSpec) (action, error) {
-	repairTaskSpecCopy := repairTaskSpec.DeepCopy()
-	repairTask := RepairTaskSpec(*repairTaskSpecCopy)
+func syncTask(clusterID string, spec taskSpecInterface, statusFunc func() (*scyllav1.TaskStatus, bool)) (action, error) {
+	managedHash, err := spec.GetObjectHash()
+	if err != nil {
+		return nil, fmt.Errorf("can't get object hash: %w", err)
+	}
 
-	managerTaskStatus, ok := managerState.RepairTasks[repairTask.Name]
+	var managerClientTask *managerclient.Task
+	status, ok := statusFunc()
 	if !ok {
-		managerClientTask, err := repairTask.ToManager()
+		managerClientTask, err = spec.ToManager()
 		if err != nil {
-			return nil, fmt.Errorf("can't convert repair task to manager task: %w", err)
+			return nil, fmt.Errorf("can't convert task to manager task: %w", err)
 		}
+		setManagerClientTaskManagedHashLabel(managerClientTask, managedHash)
 
 		return &addTaskAction{
 			clusterID: clusterID,
@@ -255,25 +233,23 @@ func syncRepairTask(clusterID string, managerState *state, repairTaskSpec *scyll
 		}, nil
 	}
 
-	if managerTaskStatus.ID == nil {
-		// Sanity check.
-		return nil, fmt.Errorf("manager task status is missing an id")
-	}
-
-	evaluateDates(&repairTask, &managerTaskStatus)
-
-	// FIXME: Task spec is converted to status to compare it with its current state in manager.
-	// This is a temporary workaround and should be replaced with hash comparison when manager allows for storing metadata.
-	// Ref: https://github.com/scylladb/scylla-operator/issues/1827.
-	if isRepairTaskDeepEqual(&repairTask, &managerTaskStatus) {
+	if managedHash == status.Labels[naming.ManagedHash] {
+		// Tasks are equal, do nothing.
 		return nil, nil
 	}
 
-	managerClientTask, err := repairTask.ToManager()
+	evaluateDates(spec.GetTaskSpec(), status)
+	managerClientTask, err = spec.ToManager()
 	if err != nil {
-		return nil, fmt.Errorf("can't convert repair task to manager task: %w", err)
+		return nil, fmt.Errorf("can't convert task to manager task: %w", err)
 	}
-	managerClientTask.ID = *managerTaskStatus.ID
+	setManagerClientTaskManagedHashLabel(managerClientTask, managedHash)
+
+	if status.ID == nil {
+		// Sanity check.
+		return nil, fmt.Errorf("manager task status is missing an id")
+	}
+	managerClientTask.ID = *status.ID
 
 	return &updateTaskAction{
 		clusterID: clusterID,
@@ -281,17 +257,20 @@ func syncRepairTask(clusterID string, managerState *state, repairTaskSpec *scyll
 	}, nil
 }
 
-func isRepairTaskDeepEqual(repairTaskSpec *RepairTaskSpec, managerRepairTaskStatus *RepairTaskStatus) bool {
-	repairTaskStatus := repairTaskSpec.ToStatus()
-	repairTaskStatus.ID = managerRepairTaskStatus.ID
-	return reflect.DeepEqual(repairTaskStatus, managerRepairTaskStatus)
-}
+func evaluateDates(spec *scyllav1.TaskSpec, taskStatus *scyllav1.TaskStatus) {
+	var specStartDate string
+	if spec.StartDate != nil {
+		specStartDate = *spec.StartDate
+	}
 
-func evaluateDates(spec startDateGetterSetter, managerTask startDateGetter) {
-	startDate := spec.GetStartDateOrEmpty()
 	// Keep special "now" value evaluated on task creation.
-	if len(startDate) == 0 || strings.HasPrefix(startDate, "now") {
-		spec.SetStartDate(managerTask.GetStartDateOrEmpty())
+	if len(specStartDate) == 0 || strings.HasPrefix(specStartDate, "now") {
+		var statusStartDate string
+		if taskStatus.StartDate != nil {
+			statusStartDate = *taskStatus.StartDate
+		}
+
+		spec.StartDate = &statusStartDate
 	}
 }
 
@@ -486,4 +465,11 @@ func updateBackupTaskStatusError(backupTaskStatuses *[]scyllav1.BackupTaskStatus
 	}
 
 	*backupTaskStatuses = append(*backupTaskStatuses, backupTaskStatus)
+}
+
+func setManagerClientTaskManagedHashLabel(task *managerclient.Task, hash string) {
+	if task.Labels == nil {
+		task.Labels = map[string]string{}
+	}
+	task.Labels[naming.ManagedHash] = hash
 }

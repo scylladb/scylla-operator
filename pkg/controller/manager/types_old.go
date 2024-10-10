@@ -4,6 +4,7 @@ package manager
 
 import (
 	"fmt"
+	"maps"
 	"math"
 	"regexp"
 	"strconv"
@@ -17,20 +18,22 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/util/duration"
+	hashutil "github.com/scylladb/scylla-operator/pkg/util/hash"
 )
 
-type startDateGetter interface {
-	GetStartDateOrEmpty() string
-}
-
-type startDateGetterSetter interface {
-	startDateGetter
-	SetStartDate(sd string)
+type taskSpecInterface interface {
+	GetTaskSpec() *scyllav1.TaskSpec
+	ToManager() (*managerclient.Task, error)
+	GetObjectHash() (string, error)
 }
 
 type RepairTaskSpec scyllav1.RepairTaskSpec
 
-var _ startDateGetterSetter = &RepairTaskSpec{}
+var _ taskSpecInterface = &RepairTaskSpec{}
+
+func (r *RepairTaskSpec) GetTaskSpec() *scyllav1.TaskSpec {
+	return &r.TaskSpec
+}
 
 func (r *RepairTaskSpec) ToManager() (*managerclient.Task, error) {
 	t := &managerclient.Task{
@@ -83,8 +86,12 @@ func (r *RepairTaskSpec) ToManager() (*managerclient.Task, error) {
 	return t, nil
 }
 
-func (r *RepairTaskSpec) ToStatus() *RepairTaskStatus {
-	rts := &RepairTaskStatus{
+func (r *RepairTaskSpec) GetObjectHash() (string, error) {
+	return hashutil.HashObjects(r)
+}
+
+func (r *RepairTaskSpec) ToStatus() *scyllav1.RepairTaskStatus {
+	rts := &scyllav1.RepairTaskStatus{
 		DC:                  r.DC,
 		Keyspace:            r.Keyspace,
 		FailFast:            pointer.Ptr(r.FailFast),
@@ -102,24 +109,8 @@ func (r *RepairTaskSpec) ToStatus() *RepairTaskStatus {
 	return rts
 }
 
-func (r *RepairTaskSpec) GetStartDateOrEmpty() string {
-	if r.StartDate != nil {
-		return *r.StartDate
-	}
-
-	return ""
-}
-
-func (r *RepairTaskSpec) SetStartDate(sd string) {
-	r.StartDate = &sd
-}
-
-type RepairTaskStatus scyllav1.RepairTaskStatus
-
-var _ startDateGetter = &RepairTaskStatus{}
-
-func NewRepairStatusFromManager(t *managerclient.TaskListItem) (*RepairTaskStatus, error) {
-	rts := &RepairTaskStatus{}
+func NewRepairStatusFromManager(t *managerclient.TaskListItem) (*scyllav1.RepairTaskStatus, error) {
+	rts := &scyllav1.RepairTaskStatus{}
 
 	rts.TaskStatus = newTaskStatusFromManager(t)
 
@@ -133,15 +124,13 @@ func NewRepairStatusFromManager(t *managerclient.TaskListItem) (*RepairTaskStatu
 	return rts, nil
 }
 
-func (r *RepairTaskStatus) GetStartDateOrEmpty() string {
-	if r.StartDate != nil {
-		return *r.StartDate
-	}
-
-	return ""
-}
-
 type BackupTaskSpec scyllav1.BackupTaskSpec
+
+var _ taskSpecInterface = &BackupTaskSpec{}
+
+func (b *BackupTaskSpec) GetTaskSpec() *scyllav1.TaskSpec {
+	return &b.TaskSpec
+}
 
 func (b *BackupTaskSpec) ToManager() (*managerclient.Task, error) {
 	t := &managerclient.Task{
@@ -186,8 +175,12 @@ func (b *BackupTaskSpec) ToManager() (*managerclient.Task, error) {
 	return t, nil
 }
 
-func (b *BackupTaskSpec) ToStatus() *BackupTaskStatus {
-	bts := &BackupTaskStatus{
+func (b *BackupTaskSpec) GetObjectHash() (string, error) {
+	return hashutil.HashObjects(b)
+}
+
+func (b *BackupTaskSpec) ToStatus() *scyllav1.BackupTaskStatus {
+	bts := &scyllav1.BackupTaskStatus{
 		DC:               b.DC,
 		Keyspace:         b.Keyspace,
 		Location:         b.Location,
@@ -202,26 +195,8 @@ func (b *BackupTaskSpec) ToStatus() *BackupTaskStatus {
 	return bts
 }
 
-func (b *BackupTaskSpec) GetStartDateOrEmpty() string {
-	if b.StartDate != nil {
-		return *b.StartDate
-	}
-
-	return ""
-}
-
-func (b *BackupTaskSpec) SetStartDate(sd string) {
-	b.StartDate = &sd
-}
-
-var _ startDateGetterSetter = &BackupTaskSpec{}
-
-type BackupTaskStatus scyllav1.BackupTaskStatus
-
-var _ startDateGetter = &BackupTaskStatus{}
-
-func NewBackupStatusFromManager(t *managerclient.TaskListItem) (*BackupTaskStatus, error) {
-	bts := &BackupTaskStatus{}
+func NewBackupStatusFromManager(t *managerclient.TaskListItem) (*scyllav1.BackupTaskStatus, error) {
+	bts := &scyllav1.BackupTaskStatus{}
 
 	bts.TaskStatus = newTaskStatusFromManager(t)
 
@@ -233,14 +208,6 @@ func NewBackupStatusFromManager(t *managerclient.TaskListItem) (*BackupTaskStatu
 	}
 
 	return bts, nil
-}
-
-func (b *BackupTaskStatus) GetStartDateOrEmpty() string {
-	if b.StartDate != nil {
-		return *b.StartDate
-	}
-
-	return ""
 }
 
 func schedulerTaskSpecToManager(schedulerTaskSpec *scyllav1.SchedulerTaskSpec) (*managerclient.Schedule, error) {
@@ -310,6 +277,7 @@ func newTaskStatusFromManager(t *managerclient.TaskListItem) scyllav1.TaskStatus
 	taskStatus := scyllav1.TaskStatus{
 		SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{},
 		Name:                t.Name,
+		Labels:              maps.Clone(t.Labels),
 		ID:                  pointer.Ptr(t.ID),
 	}
 

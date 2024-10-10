@@ -3221,6 +3221,11 @@ spec:
                         items:
                           type: string
                         type: array
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: labels reflects the labels of a task.
+                        type: object
                       location:
                         description: location reflects a list of backup locations in the format [<dc>:]<provider>:<name> ex. s3:my-bucket.
                         items:
@@ -3405,6 +3410,11 @@ spec:
                         items:
                           type: string
                         type: array
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: labels reflects the labels of a task.
+                        type: object
                       name:
                         description: name reflects the name of a task.
                         type: string

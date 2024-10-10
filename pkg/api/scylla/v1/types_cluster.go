@@ -632,6 +632,10 @@ type TaskStatus struct {
 	// +optional
 	ID *string `json:"id,omitempty"`
 
+	// labels reflects the labels of a task.
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
+
 	// error holds the task error, if any.
 	// +optional
 	Error *string `json:"error,omitempty"`

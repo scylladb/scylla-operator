@@ -152,17 +152,20 @@ func TestRepairTask_FromManager(t *testing.T) {
 	tt := []struct {
 		name          string
 		managerTask   *managerclient.TaskListItem
-		expected      *RepairTaskStatus
+		expected      *scyllav1.RepairTaskStatus
 		expectedError error
 	}{
 		{
 			name: "fields and properties are propagated",
 			managerTask: &managerclient.TaskListItem{
-				ClusterID:      "cluster_id",
-				Name:           "repair_task_name",
-				Enabled:        true,
-				ErrorCount:     1,
-				ID:             "repair_task_id",
+				ClusterID:  "cluster_id",
+				Name:       "repair_task_name",
+				Enabled:    true,
+				ErrorCount: 1,
+				ID:         "repair_task_id",
+				Labels: map[string]string{
+					"scylla-operator.scylladb.com/managed-hash": "managed-hash-value",
+				},
 				LastError:      validDateTime,
 				LastSuccess:    validDateTime,
 				NextActivation: validDateTime,
@@ -192,7 +195,7 @@ func TestRepairTask_FromManager(t *testing.T) {
 				Suspended:    false,
 				Type:         managerclient.RepairTask,
 			},
-			expected: &RepairTaskStatus{
+			expected: &scyllav1.RepairTaskStatus{
 				TaskStatus: scyllav1.TaskStatus{
 					Name: "repair_task_name",
 					SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
@@ -204,6 +207,9 @@ func TestRepairTask_FromManager(t *testing.T) {
 					},
 					ID:    pointer.Ptr("repair_task_id"),
 					Error: nil,
+					Labels: map[string]string{
+						"scylla-operator.scylladb.com/managed-hash": "managed-hash-value",
+					},
 				},
 				DC:                  []string{"us-east1"},
 				FailFast:            pointer.Ptr(true),
@@ -334,19 +340,22 @@ func TestBackupTask_FromManager(t *testing.T) {
 	tt := []struct {
 		name          string
 		managerTask   *managerclient.TaskListItem
-		expected      *BackupTaskStatus
+		expected      *scyllav1.BackupTaskStatus
 		expectedError error
 	}{
 		{
 			name: "fields and properties are propagated",
 			managerTask: &managerclient.TaskListItem{
-				ClusterID:      "cluster_id",
-				Enabled:        true,
-				ErrorCount:     1,
-				ID:             "backup_task_id",
-				LastError:      validDateTime,
-				LastSuccess:    validDateTime,
-				Name:           "backup_task_name",
+				ClusterID:   "cluster_id",
+				Enabled:     true,
+				ErrorCount:  1,
+				ID:          "backup_task_id",
+				LastError:   validDateTime,
+				LastSuccess: validDateTime,
+				Name:        "backup_task_name",
+				Labels: map[string]string{
+					"scylla-operator.scylladb.com/managed-hash": "managed-hash-value",
+				},
 				NextActivation: validDateTime,
 				Properties: map[string]interface{}{
 					"location": []string{
@@ -383,7 +392,7 @@ func TestBackupTask_FromManager(t *testing.T) {
 				Suspended:    false,
 				Type:         managerclient.BackupTask,
 			},
-			expected: &BackupTaskStatus{
+			expected: &scyllav1.BackupTaskStatus{
 				TaskStatus: scyllav1.TaskStatus{
 					Name: "backup_task_name",
 					SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
@@ -395,6 +404,9 @@ func TestBackupTask_FromManager(t *testing.T) {
 					},
 					ID:    pointer.Ptr("backup_task_id"),
 					Error: nil,
+					Labels: map[string]string{
+						"scylla-operator.scylladb.com/managed-hash": "managed-hash-value",
+					},
 				},
 				DC:               []string{"us-east1"},
 				Keyspace:         []string{"test"},

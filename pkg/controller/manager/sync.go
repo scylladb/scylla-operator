@@ -30,8 +30,8 @@ func (c *Controller) getManagerState(ctx context.Context, clusterID string) (*st
 		return nil, err
 	}
 	var (
-		repairTasks map[string]RepairTaskStatus
-		backupTasks map[string]BackupTaskStatus
+		repairTasks map[string]scyllav1.RepairTaskStatus
+		backupTasks map[string]scyllav1.BackupTaskStatus
 	)
 
 	if clusterID != "" {
@@ -48,7 +48,7 @@ func (c *Controller) getManagerState(ctx context.Context, clusterID string) (*st
 				return nil, err
 			}
 
-			repairTasks = make(map[string]RepairTaskStatus, len(managerRepairTasks.TaskListItemSlice))
+			repairTasks = make(map[string]scyllav1.RepairTaskStatus, len(managerRepairTasks.TaskListItemSlice))
 			for _, managerRepairTask := range managerRepairTasks.TaskListItemSlice {
 				rts, err := NewRepairStatusFromManager(managerRepairTask)
 				if err != nil {
@@ -62,7 +62,7 @@ func (c *Controller) getManagerState(ctx context.Context, clusterID string) (*st
 				return nil, err
 			}
 
-			backupTasks = make(map[string]BackupTaskStatus, len(managerBackupTasks.TaskListItemSlice))
+			backupTasks = make(map[string]scyllav1.BackupTaskStatus, len(managerBackupTasks.TaskListItemSlice))
 			for _, managerBackupTask := range managerBackupTasks.TaskListItemSlice {
 				bts, err := NewBackupStatusFromManager(managerBackupTask)
 				if err != nil {

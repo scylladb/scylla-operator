@@ -2913,6 +2913,17 @@
         "type": "object"
       },
       "type": "array"
+    },
+    "serviceMonitor": {
+      "type": "object",
+      "properties": {
+        "create": {
+          "type": "boolean"
+        },
+        "labels": {
+          "type": "object"
+        }
+      }
     }
   },
   "type": "object"

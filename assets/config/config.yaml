@@ -1,5 +1,6 @@
 operator:
   scyllaDBVersion: "6.1.1"
+  grafanaDefaultDashboard: "scylladb-6.0/scylla-overview.6.0.json"
   # scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride sets enterprise version
   # that requires consistent_cluster_management workaround for restore.
   # In the future, enterprise versions should be run as a different config instance in its own run.

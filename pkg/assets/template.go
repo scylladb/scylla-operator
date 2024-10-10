@@ -11,15 +11,16 @@ import (
 )
 
 var TemplateFuncs template.FuncMap = template.FuncMap{
-	"toYAML":     MarshalYAML,
-	"indent":     Indent,
-	"nindent":    NIndent,
-	"indentNext": IndentNext,
-	"toBytes":    ToBytes,
-	"toBase64":   ToBase64,
-	"map":        MakeMap,
-	"repeat":     Repeat,
-	"isTrue":     IsTrue,
+	"toYAML":               MarshalYAML,
+	"indent":               Indent,
+	"nindent":              NIndent,
+	"indentNext":           IndentNext,
+	"toBytes":              ToBytes,
+	"toBase64":             ToBase64,
+	"map":                  MakeMap,
+	"repeat":               Repeat,
+	"isTrue":               IsTrue,
+	"sanitizeDNSSubdomain": SanitizeDNSSubdomain,
 }
 
 func MarshalYAML(v any) (string, error) {
@@ -63,6 +64,11 @@ func ToBase64(data []byte) string {
 
 func IsTrue(v *bool) bool {
 	return v != nil && *v
+}
+
+func SanitizeDNSSubdomain(s string) string {
+	r := strings.ReplaceAll(s, ".", "-")
+	return r
 }
 
 func MakeMap(kvs ...any) (map[any]any, error) {

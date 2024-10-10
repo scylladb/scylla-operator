@@ -18,7 +18,8 @@ var (
 )
 
 type OperatorConfig struct {
-	ScyllaDBVersion string `json:"scyllaDBVersion"`
+	ScyllaDBRepository string `json:"scyllaDBRepository"`
+	ScyllaDBVersion    string `json:"scyllaDBVersion"`
 	// scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride sets enterprise version
 	// that requires consistent_cluster_management workaround for restore.
 	// In the future, enterprise versions should be run as a different config instance in its own run.
@@ -37,8 +38,9 @@ type ScyllaDBTestVersions struct {
 }
 
 type OperatorTestsConfig struct {
-	ScyllaDBVersions ScyllaDBTestVersions `json:"scyllaDBVersions"`
-	NodeSetupImage   string               `json:"nodeSetupImage"`
+	ScyllaDBRepository string               `json:"scyllaDBRepository"`
+	ScyllaDBVersions   ScyllaDBTestVersions `json:"scyllaDBVersions"`
+	NodeSetupImage     string               `json:"nodeSetupImage"`
 }
 
 type ProjectConfig struct {

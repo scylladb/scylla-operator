@@ -1,5 +1,6 @@
 operator:
-  scyllaDBVersion: "6.1.1"
+  scyllaDBRepository: "docker.io/scylladb/scylla-enterprise"
+  scyllaDBVersion: "2024.2.0-rc2"
   # scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride sets enterprise version
   # that requires consistent_cluster_management workaround for restore.
   # In the future, enterprise versions should be run as a different config instance in its own run.
@@ -12,7 +13,8 @@ operator:
   grafanaImage: "docker.io/grafana/grafana:9.5.12@sha256:7d2f2a8b7aebe30bf3f9ae0f190e508e571b43f65753ba3b1b1adf0800bc9256"
   prometheusVersion: "v2.44.0"
 operatorTests:
+  scyllaDBRepository: "docker.io/scylladb/scylla-enterprise"
   scyllaDBVersions:
-    updateFrom: "6.1.0"
-    upgradeFrom: "6.0.2"
+    updateFrom: "2024.2.0-rc1"
+    upgradeFrom: "2024.1.9"
   nodeSetupImage: "quay.io/scylladb/scylla-operator-images:node-setup-v0.0.2@sha256:210b1dd9bd60a5bf4056783f3132bdeef0cf9ab0a19eff0b620b2dfa5c4e5d61"

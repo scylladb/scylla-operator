@@ -1,10 +1,12 @@
 package v1
 
 import (
+	"embed"
 	_ "embed"
 
 	"github.com/scylladb/scylla-operator/pkg/assets"
 	monitoringv1 "github.com/scylladb/scylla-operator/pkg/externalapi/monitoring/v1"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -37,13 +39,21 @@ var (
 	scyllaDBServiceMonitorTemplateString string
 	ScyllaDBServiceMonitorTemplate       = ParseObjectTemplateOrDie[*monitoringv1.ServiceMonitor]("scylladb-servicemonitor", scyllaDBServiceMonitorTemplateString)
 
-	//go:embed "recording.prometheusrule.yaml"
-	recordingPrometheusRuleTemplateString string
-	RecordingPrometheusRuleTemplate       = ParseObjectTemplateOrDie[*monitoringv1.PrometheusRule]("recording-prometheus-rule", recordingPrometheusRuleTemplateString)
+	//go:embed "rules/**"
+	prometheusRulesFS embed.FS
+	PrometheusRules   = helpers.Must(NewPrometheusRulesFromFS(prometheusRulesFS))
+
+	//go:embed "latency.prometheusrule.yaml"
+	latencyPrometheusRuleTemplateString string
+	LatencyPrometheusRuleTemplate       = ParseObjectTemplateOrDie[*monitoringv1.PrometheusRule]("latency-prometheus-rule", latencyPrometheusRuleTemplateString)
 
 	//go:embed "alerts.prometheusrule.yaml"
 	alertsPrometheusRuleTemplateString string
 	AlertsPrometheusRuleTemplate       = ParseObjectTemplateOrDie[*monitoringv1.PrometheusRule]("alerts-prometheus-rule", alertsPrometheusRuleTemplateString)
+
+	//go:embed "table.prometheusrule.yaml"
+	tablePrometheusRuleTemplateString string
+	TablePrometheusRuleTemplate       = ParseObjectTemplateOrDie[*monitoringv1.PrometheusRule]("table-prometheus-rule", tablePrometheusRuleTemplateString)
 
 	//go:embed "ingress.yaml"
 	prometheusIngressTemplateString string

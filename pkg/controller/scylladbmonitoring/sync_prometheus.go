@@ -96,15 +96,42 @@ func makeScyllaDBServiceMonitor(sm *scyllav1alpha1.ScyllaDBMonitoring) (*monitor
 	})
 }
 
-func makeRecodingPrometheusRule(sm *scyllav1alpha1.ScyllaDBMonitoring) (*monitoringv1.PrometheusRule, string, error) {
-	return prometheusv1assets.RecordingPrometheusRuleTemplate.RenderObject(map[string]any{
+func makeLatencyPrometheusRule(sm *scyllav1alpha1.ScyllaDBMonitoring) (*monitoringv1.PrometheusRule, string, error) {
+	const latencyRulesFile = "prometheus.latency.rules.yml"
+	latencyRules, found := prometheusv1assets.PrometheusRules[latencyRulesFile]
+	if !found {
+		return nil, "", fmt.Errorf("can't find latency rules file %q in the assets", latencyRulesFile)
+	}
+
+	return prometheusv1assets.LatencyPrometheusRuleTemplate.RenderObject(map[string]any{
 		"scyllaDBMonitoringName": sm.Name,
+		"groups":                 latencyRules.Get(),
 	})
 }
 
 func makeAlertsPrometheusRule(sm *scyllav1alpha1.ScyllaDBMonitoring) (*monitoringv1.PrometheusRule, string, error) {
+	const alertsRulesFile = "prometheus.rules.yml"
+	rule, found := prometheusv1assets.PrometheusRules[alertsRulesFile]
+	if !found {
+		return nil, "", fmt.Errorf("can't find alerts rules file %q in the assets", alertsRulesFile)
+	}
+
 	return prometheusv1assets.AlertsPrometheusRuleTemplate.RenderObject(map[string]any{
 		"scyllaDBMonitoringName": sm.Name,
+		"groups":                 rule.Get(),
+	})
+}
+
+func makeTablePrometheusRule(sm *scyllav1alpha1.ScyllaDBMonitoring) (*monitoringv1.PrometheusRule, string, error) {
+	const tableRulesFile = "prometheus.table.yml"
+	rule, found := prometheusv1assets.PrometheusRules[tableRulesFile]
+	if !found {
+		return nil, "", fmt.Errorf("can't find table rules file %q in the assets", tableRulesFile)
+	}
+
+	return prometheusv1assets.TablePrometheusRuleTemplate.RenderObject(map[string]any{
+		"scyllaDBMonitoringName": sm.Name,
+		"groups":                 rule.Get(),
 	})
 }
 
@@ -284,10 +311,13 @@ func (smc *Controller) syncPrometheus(
 	requiredPrometheus, _, err := makePrometheus(sm, soc)
 	renderErrors = append(renderErrors, err)
 
-	requiredRecodingPrometheusRule, _, err := makeRecodingPrometheusRule(sm)
+	requiredLatencyPrometheusRule, _, err := makeLatencyPrometheusRule(sm)
 	renderErrors = append(renderErrors, err)
 
 	requiredAlertsPrometheusRule, _, err := makeAlertsPrometheusRule(sm)
+	renderErrors = append(renderErrors, err)
+
+	requiredTablePrometheusRule, _, err := makeTablePrometheusRule(sm)
 	renderErrors = append(renderErrors, err)
 
 	requiredScyllaDBServiceMonitor, _, err := makeScyllaDBServiceMonitor(sm)
@@ -358,7 +388,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		slices.ToSlice(requiredRecodingPrometheusRule, requiredAlertsPrometheusRule),
+		slices.ToSlice(requiredLatencyPrometheusRule, requiredAlertsPrometheusRule, requiredTablePrometheusRule),
 		prometheusRules,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.monitoringClient.PrometheusRules(sm.Namespace).Delete,
@@ -453,7 +483,7 @@ func (smc *Controller) syncPrometheus(
 			},
 		}.ToUntyped(),
 		resourceapply.ApplyConfig[*monitoringv1.PrometheusRule]{
-			Required: requiredRecodingPrometheusRule,
+			Required: requiredLatencyPrometheusRule,
 			Control: resourceapply.ApplyControlFuncs[*monitoringv1.PrometheusRule]{
 				GetCachedFunc: smc.prometheusRuleLister.PrometheusRules(sm.Namespace).Get,
 				CreateFunc:    smc.monitoringClient.PrometheusRules(sm.Namespace).Create,
@@ -463,6 +493,15 @@ func (smc *Controller) syncPrometheus(
 		}.ToUntyped(),
 		resourceapply.ApplyConfig[*monitoringv1.PrometheusRule]{
 			Required: requiredAlertsPrometheusRule,
+			Control: resourceapply.ApplyControlFuncs[*monitoringv1.PrometheusRule]{
+				GetCachedFunc: smc.prometheusRuleLister.PrometheusRules(sm.Namespace).Get,
+				CreateFunc:    smc.monitoringClient.PrometheusRules(sm.Namespace).Create,
+				UpdateFunc:    smc.monitoringClient.PrometheusRules(sm.Namespace).Update,
+				DeleteFunc:    smc.monitoringClient.PrometheusRules(sm.Namespace).Delete,
+			},
+		}.ToUntyped(),
+		resourceapply.ApplyConfig[*monitoringv1.PrometheusRule]{
+			Required: requiredTablePrometheusRule,
 			Control: resourceapply.ApplyControlFuncs[*monitoringv1.PrometheusRule]{
 				GetCachedFunc: smc.prometheusRuleLister.PrometheusRules(sm.Namespace).Get,
 				CreateFunc:    smc.monitoringClient.PrometheusRules(sm.Namespace).Create,

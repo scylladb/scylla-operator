@@ -28,6 +28,7 @@ type OperatorConfig struct {
 	ScyllaDBManagerAgentVersion                                         string `json:"scyllaDBManagerAgentVersion"`
 	BashToolsImage                                                      string `json:"bashToolsImage"`
 	GrafanaImage                                                        string `json:"grafanaImage"`
+	GrafanaDefaultDashboard                                             string `json:"grafanaDefaultDashboard"`
 	PrometheusVersion                                                   string `json:"prometheusVersion"`
 }
 

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -34,6 +35,7 @@ const (
 	scyllaRackDCPropertiesPath          = configDirScylla + "/" + naming.ScyllaRackDCPropertiesName
 	scyllaRackDCPropertiesConfigMapPath = naming.ScyllaConfigDirName + "/" + naming.ScyllaRackDCPropertiesName
 	entrypointPath                      = "/docker-entrypoint.py"
+	supervisordConfDir                  = "/etc/supervisord.conf.d"
 )
 
 var scyllaJMXPaths = []string{"/usr/lib/scylla/jmx/scylla-jmx", "/opt/scylladb/jmx/scylla-jmx"}
@@ -80,6 +82,22 @@ func (s *ScyllaConfig) Setup(ctx context.Context) (*exec.Cmd, error) {
 	cmd, err := s.setupEntrypoint(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("can't setup entrypoint: %w", err)
+	}
+
+	klog.Info("Disabling undesirable supervisord services")
+	// Make sure the directory is present, individual files may be missing between versions.
+	_, err = os.Stat(supervisordConfDir)
+	if err != nil {
+		return nil, fmt.Errorf("can't stat supervisord config directory %q: %w", supervisordConfDir, err)
+	}
+	for _, serviceConfigName := range []string{
+		"scylla-jmx.conf",
+	} {
+		p := filepath.Join(supervisordConfDir, serviceConfigName)
+		err = os.Remove(p)
+		if err != nil && !os.IsNotExist(err) {
+			return nil, fmt.Errorf("can't remove service config %q: %w", p, err)
+		}
 	}
 
 	return cmd, nil

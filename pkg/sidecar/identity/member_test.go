@@ -398,7 +398,7 @@ func TestMember_GetSeeds(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			member, err := NewMember(test.memberService, test.memberPod, test.memberNodesBroadcastType, test.memberClientsBroadcastType)
+			member, err := NewMember(test.memberService, test.memberPod, test.memberNodesBroadcastType, test.memberClientsBroadcastType, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

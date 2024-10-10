@@ -16,10 +16,8 @@ import (
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
-	"github.com/scylladb/scylla-operator/pkg/semver"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/util/cpuset"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/yaml"
@@ -48,11 +46,10 @@ type ScyllaConfig struct {
 	externalSeeds                       []string
 }
 
-func NewScyllaConfig(m *identity.Member, kubeClient kubernetes.Interface, scyllaClient scyllaversionedclient.Interface, cpuCount int, externalSeeds []string) *ScyllaConfig {
+func NewScyllaConfig(m *identity.Member, kubeClient kubernetes.Interface, cpuCount int, externalSeeds []string) *ScyllaConfig {
 	return &ScyllaConfig{
 		member:                              m,
 		kubeClient:                          kubeClient,
-		scyllaClient:                        scyllaClient,
 		scyllaRackDCPropertiesPath:          scyllaRackDCPropertiesPath,
 		scyllaRackDCPropertiesConfigMapPath: scyllaRackDCPropertiesConfigMapPath,
 		cpuCount:                            cpuCount,
@@ -192,16 +189,6 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		return nil, fmt.Errorf("can't get seeds: %w", err)
 	}
 
-	// Check if we need to run in developer mode
-	devMode := "0"
-	cluster, err := s.scyllaClient.ScyllaV1().ScyllaClusters(s.member.Namespace).Get(ctx, s.member.Cluster, metav1.GetOptions{})
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting cluster")
-	}
-	if cluster.Spec.DeveloperMode {
-		devMode = "1"
-	}
-
 	overprovisioned := "0"
 	if m.Overprovisioned {
 		overprovisioned = "1"
@@ -221,7 +208,6 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	args := map[string]*string{
 		"listen-address":        &listenAddress,
 		"seeds":                 pointer.Ptr(strings.Join(seeds, ",")),
-		"developer-mode":        &devMode,
 		"overprovisioned":       &overprovisioned,
 		"smp":                   pointer.Ptr(strconv.Itoa(s.cpuCount)),
 		"prometheus-address":    &prometheusAddress,
@@ -238,22 +224,13 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		}
 	}
 
-	version := semver.NewScyllaVersion(cluster.Spec.Version)
-
-	klog.InfoS("Scylla version detected", "version", version)
-
-	if len(cluster.Spec.ScyllaArgs) > 0 {
-		if !version.SupportFeatureUnsafe(semver.ScyllaVersionThatSupportsArgs) {
-			klog.InfoS("This scylla version does not support ScyllaArgs. ScyllaArgs is ignored", "version", cluster.Spec.Version)
-		} else {
-			appendScyllaArguments(ctx, s, cluster.Spec.ScyllaArgs, args)
-		}
+	if len(m.AdditionalScyllaDBArguments) > 0 {
+		appendScyllaArguments(ctx, s, strings.Join(m.AdditionalScyllaDBArguments, " "), args)
 	}
 
-	if _, err := os.Stat(scyllaIOPropertiesPath); err == nil && version.SupportFeatureSafe(semver.ScyllaVersionThatSupportsDisablingIOTuning) {
+	if _, err := os.Stat(scyllaIOPropertiesPath); err == nil {
 		klog.InfoS("Scylla IO properties are already set, skipping io tuning")
-		ioSetup := "0"
-		args["io-setup"] = &ioSetup
+		args["io-setup"] = pointer.Ptr("0")
 		args["io-properties-file"] = pointer.Ptr(scyllaIOPropertiesPath)
 	}
 

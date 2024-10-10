@@ -1316,6 +1316,49 @@ scylla-manager-agent \
 			expectedError: nil,
 		},
 		{
+			name: "new StatefulSet with non-empty additional scyllaDB arguments",
+			rack: newBasicRack(),
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sc := newBasicScyllaDBDatacenter()
+				sc.Spec.ScyllaDB.AdditionalScyllaDBArguments = []string{
+					"--batch-size-warn-threshold-in-kb=128",
+					"--batch-size-fail-threshold-in-kb",
+					"1024",
+					`--commitlog-sync="batch"`,
+				}
+				return sc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+
+				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command[len(sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command)-1] += "\n -- \"$@\""
+				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command = append(sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command, "--", "--batch-size-warn-threshold-in-kb=128", "--batch-size-fail-threshold-in-kb", "1024", "--commitlog-sync=\"batch\"")
+
+				return sts
+			}(),
+			expectedError: nil,
+		},
+		{
+			name: "new StatefulSet with developer mode",
+			rack: newBasicRack(),
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sc := newBasicScyllaDBDatacenter()
+				sc.Spec.ScyllaDB.EnableDeveloperMode = pointer.Ptr(true)
+				return sc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+
+				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command[len(sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command)-1] += "\n -- \"$@\""
+				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command = append(sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command, "--", "--developer-mode=1")
+
+				return sts
+			}(),
+			expectedError: nil,
+		},
+		{
 			name: "new StatefulSet with custom pod metadata uses the new values and doesn't inherit from the ScyllaCluster",
 			rack: newBasicRack(),
 			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {

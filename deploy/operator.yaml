@@ -13092,6 +13092,9 @@ rules:
   - list
   - patch
   - watch
+# Sidecar no longer fetches ScyllaClusters. Necessary information is provided by the Operator to sidecar via ScyllaDB config or arguments.
+# However, to ensure smooth Operator updates, this cannot be removed earlier than in 1.16.
+# TODO: remove this permission in Operator >=1.16 (https://github.com/scylladb/scylla-operator/issues/2141)
 - apiGroups:
   - scylla.scylladb.com
   resources:

@@ -64,6 +64,7 @@ func NewSidecarCmd(streams genericclioptions.IOStreams) *cobra.Command {
 		Use:   "sidecar",
 		Short: "Run the scylla sidecar.",
 		Long:  `Run the scylla sidecar.`,
+		Args:  cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := o.Validate()
 			if err != nil {
@@ -75,7 +76,7 @@ func NewSidecarCmd(streams genericclioptions.IOStreams) *cobra.Command {
 				return err
 			}
 
-			err = o.Run(streams, cmd)
+			err = o.Run(streams, cmd, args)
 			if err != nil {
 				return err
 			}
@@ -141,20 +142,18 @@ func (o *SidecarOptions) Complete() error {
 		return fmt.Errorf("can't build kubernetes clientset: %w", err)
 	}
 
-	o.scyllaClient, err = scyllaversionedclient.NewForConfig(o.RestConfig)
-	if err != nil {
-		return fmt.Errorf("can't build scylla clientset: %w", err)
-	}
-
 	o.clientsBroadcastAddressType = scyllav1alpha1.BroadcastAddressType(o.ClientsBroadcastAddressTypeString)
 	o.nodesBroadcastAddressType = scyllav1alpha1.BroadcastAddressType(o.NodesBroadcastAddressTypeString)
 
 	return nil
 }
 
-func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command) error {
+func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command, args []string) error {
 	klog.Infof("%s version %s", cmd.Name(), version.Get())
 	cliflag.PrintFlags(cmd.Flags())
+	for _, arg := range args {
+		klog.V(1).Infof("ARG: %q", arg)
+	}
 
 	stopCh := signals.StopChannel()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -208,14 +207,14 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 		return fmt.Errorf("can't get pod %q: %w", o.ServiceName, err)
 	}
 
-	member, err := identity.NewMember(service, pod, o.nodesBroadcastAddressType, o.clientsBroadcastAddressType)
+	member, err := identity.NewMember(service, pod, o.nodesBroadcastAddressType, o.clientsBroadcastAddressType, args)
 	if err != nil {
 		return fmt.Errorf("can't create new member from objects: %w", err)
 	}
 
 	klog.V(2).InfoS("Starting scylla")
 
-	cfg := config.NewScyllaConfig(member, o.kubeClient, o.scyllaClient, o.CPUCount, o.ExternalSeeds)
+	cfg := config.NewScyllaConfig(member, o.kubeClient, o.CPUCount, o.ExternalSeeds)
 	scyllaCmd, err := cfg.Setup(ctx)
 	if err != nil {
 		return fmt.Errorf("can't set up scylla: %w", err)

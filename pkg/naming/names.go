@@ -29,7 +29,7 @@ func ObjRefWithUID(obj metav1.Object) string {
 }
 
 func StatefulSetNameForRack(r scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
-	return fmt.Sprintf("%s-%s-%s", sdc.Spec.ClusterName, GetScyllaDBDatacenterGossipDatacenterName(sdc), r.Name)
+	return fmt.Sprintf("%s-%s-%s", sdc.Name, GetScyllaDBDatacenterGossipDatacenterName(sdc), r.Name)
 }
 
 func StatefulSetNameForRackForScyllaCluster(r scyllav1.RackSpec, sc *scyllav1.ScyllaCluster) string {
@@ -42,13 +42,13 @@ func PodNameFromService(svc *corev1.Service) string {
 }
 
 func AgentAuthTokenSecretName(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
-	return fmt.Sprintf("%s-auth-token", sdc.Spec.ClusterName)
+	return fmt.Sprintf("%s-auth-token", sdc.Name)
 }
 
 func AgentAuthTokenSecretNameForScyllaCluster(sc *scyllav1.ScyllaCluster) string {
 	return AgentAuthTokenSecretName(&scyllav1alpha1.ScyllaDBDatacenter{
-		Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-			ClusterName: sc.Name,
+		ObjectMeta: metav1.ObjectMeta{
+			Name: sc.Name,
 		},
 	})
 }
@@ -62,7 +62,7 @@ func MemberServiceNameForScyllaCluster(r scyllav1.RackSpec, sc *scyllav1.ScyllaC
 }
 
 func IdentityServiceName(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
-	return fmt.Sprintf("%s-client", sdc.Spec.ClusterName)
+	return fmt.Sprintf("%s-client", sdc.Name)
 }
 
 func IdentityServiceNameForScyllaCluster(sc *scyllav1.ScyllaCluster) string {
@@ -70,7 +70,7 @@ func IdentityServiceNameForScyllaCluster(sc *scyllav1.ScyllaCluster) string {
 }
 
 func PodDisruptionBudgetName(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
-	return sdc.Spec.ClusterName
+	return sdc.Name
 }
 
 func PodDisruptionBudgetNameForScyllaCluster(sc *scyllav1.ScyllaCluster) string {
@@ -94,7 +94,7 @@ func PVCNameForService(svcName string) string {
 }
 
 func PVCNamePrefix(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
-	return fmt.Sprintf("%s-%s-", PVCTemplateName, sdc.Spec.ClusterName)
+	return fmt.Sprintf("%s-%s-", PVCTemplateName, sdc.Name)
 }
 
 func PVCNamePrefixForScyllaCluster(sc *scyllav1.ScyllaCluster) string {

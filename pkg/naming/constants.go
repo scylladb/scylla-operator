@@ -70,6 +70,9 @@ const (
 
 // Generic Labels used on objects created by the operator.
 const (
+	// ClusterNameLabel specifies ScyllaCluster name. It's used as a selector by both ScyllaCluster and ScyllaDBDatacenter controllers.
+	// As controller selector cannot be changed, this may be misleading in the context of ScyllaDBDatacenter. It should
+	// specify the ScyllaCluster object name ScyllaDBDatacenter originated from or object name in case it wasn't migrated.
 	ClusterNameLabel             = "scylla/cluster"
 	DatacenterNameLabel          = "scylla/datacenter"
 	RackNameLabel                = "scylla/rack"

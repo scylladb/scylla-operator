@@ -75,6 +75,9 @@ CONTROLLER_GEN ?=$(GO) run ./vendor/sigs.k8s.io/controller-tools/cmd/controller-
 CRD_PATH ?= pkg/api/scylla/v1/scylla.scylladb.com_scyllaclusters.yaml
 CRD_FILES ?=$(shell find ./pkg/api/ -name '*.yaml')$(if $(filter $(.SHELLSTATUS),0),,$(error "can't find CRDs"))
 
+MONITORING_DASHBOARDS_DIR :=./submodules/github.com/scylladb/scylla-monitoring/grafana/build
+MONITORING_RULES_DIR :=./submodules/github.com/scylladb/scylla-monitoring/prometheus/prom_rules
+
 define version-ldflags
 -X $(1).versionFromGit="$(GIT_TAG)" \
 -X $(1).commitFromGit="$(GIT_COMMIT)" \
@@ -155,6 +158,10 @@ build:
 clean:
 	$(RM) $(go_build_binaries)
 .PHONY: clean
+
+submodules:
+	$(GIT) submodule update --init --recursive
+.PHONY: submodules
 
 verify-govet:
 	$(GO) vet $(GO_PACKAGES)
@@ -552,6 +559,50 @@ verify-examples:
 	$(diff) -r '$(tmp_dir)'/ ./examples
 .PHONY: verify-examples
 
+# $1 - dashboard dir
+# $2 - output configmap location
+define embed-dashboard
+	if [[ ! -d '$(2)' ]]; then mkdir '$(2)'; fi
+	cp -r '$(1)'/*.json '$(2)'
+
+endef
+
+# $1 - monitoring assets dir
+define embed-dashboards
+	$(foreach d,$(wildcard $(MONITORING_DASHBOARDS_DIR)/ver_*),$(call embed-dashboard,$(d),$(1)/$(subst ver_,scylladb-,$(notdir $(d)))))
+	$(foreach d,$(wildcard $(MONITORING_DASHBOARDS_DIR)/manager_*),$(call embed-dashboard,$(d),$(1)/$(subst manager_,manager-,$(notdir $(d)))))
+
+endef
+
+# $1 - rules assets dir
+define embed-rules
+	cp '$(MONITORING_RULES_DIR)'/*.yml '$(1)'/
+
+endef
+
+# $1 - rules assets dir
+define embed-monitoring
+	$(RM) -r '$(1)/grafana/v1alpha1/dashboards/platform/'*/
+	$(RM) -r '$(1)/prometheus/v1/rules/'*/
+	$(call embed-dashboards,$(1)/grafana/v1alpha1/dashboards/platform)
+	$(call embed-rules,$(1)/prometheus/v1/rules)
+
+endef
+
+update-monitoring: submodules
+	$(call embed-monitoring,./assets/monitoring)
+.PHONY: update-monitoring
+
+verify-monitoring: tmp_dir :=$(shell mktemp -d)
+verify-monitoring: submodules
+	cp -r ./assets/monitoring/. '$(tmp_dir)/'
+	$(RM) -r '$(tmp_dir)/'{grafana/v1alpha1/dashboards/platform/*,prometheus/v1/rules/*}
+
+	$(call embed-monitoring,$(tmp_dir)/)
+
+	$(diff) -r '$(tmp_dir)'/ ./assets/monitoring
+.PHONY: verify-monitoring
+
 # $1 - extra flags
 define run-update-docs
 	$(GO) run ./cmd/gen-api-reference/ --templates-dir ./docs/source/api-reference/templates $(1) $(CRD_FILES)
@@ -577,10 +628,10 @@ verify-links:
 	fi;
 .PHONY: verify-links
 
-verify: verify-gofmt verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-govet verify-helm-lint verify-links verify-examples verify-docs-api
+verify: verify-gofmt verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-govet verify-helm-lint verify-links verify-examples verify-docs-api verify-monitoring
 .PHONY: verify
 
-update: update-gofmt update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-docs-api
+update: update-gofmt update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-docs-api update-monitoring
 .PHONY: update
 
 test-unit:

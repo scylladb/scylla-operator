@@ -14,7 +14,7 @@
                 "class": "annotation_restart",
                 "datasource": "prometheus",
                 "enable": true,
-                "expr": "resets(scylla_gossip_heart_beat{cluster=~\"$cluster|$^\"}[$__rate_interval])>0",
+                "expr": "resets(scylla_gossip_heart_beat{cluster=\"$cluster\"}[$__rate_interval])>0",
                 "hide": false,
                 "iconColor": "rgba(255, 96, 96, 1)",
                 "limit": 100,
@@ -29,7 +29,7 @@
                 "class": "annotation_manager_task",
                 "datasource": "prometheus",
                 "enable": true,
-                "expr": "scylla_manager_task_active_count{type=~\"repair|backup\",cluster=~\"$cluster|$^\"}>0",
+                "expr": "scylla_manager_task_active_count{type=~\"repair|backup\",cluster=\"$cluster\"}>0",
                 "hide": false,
                 "iconColor": "#73BF69",
                 "limit": 100,
@@ -44,7 +44,7 @@
                 "class": "annotation_manager_task_failed",
                 "datasource": "prometheus",
                 "enable": true,
-                "expr": "sum(changes(scylla_manager_task_run_total{status=\"ERROR\", cluster=~\"$cluster|$^\"}[$__rate_interval])) by(type)>0",
+                "expr": "sum(changes(scylla_manager_task_run_total{status=\"ERROR\", cluster=\"$cluster\"}[$__rate_interval])) by(type)>0",
                 "hide": false,
                 "iconColor": "#73BF69",
                 "limit": 100,
@@ -224,7 +224,7 @@
             "pluginVersion": "7.1.3",
             "targets": [
                 {
-                    "expr": "count(scylla_manager_healthcheck_cql_rtt_ms{cluster=~\"$cluster|$^\"})",
+                    "expr": "count(scylla_manager_healthcheck_cql_rtt_ms{cluster=\"$cluster\"})",
                     "intervalFactor": 1,
                     "legendFormat": "Total Nodes",
                     "refId": "A",
@@ -286,7 +286,7 @@
             "pluginVersion": "7.1.3",
             "targets": [
                 {
-                    "expr": "count(scylla_manager_healthcheck_cql_status{cluster=~\"$cluster|$^\"}==-1) OR vector(0)",
+                    "expr": "count(scylla_manager_healthcheck_cql_status{cluster=\"$cluster\"}==-1) OR vector(0)",
                     "intervalFactor": 1,
                     "legendFormat": "Nodes without CQL connection",
                     "refId": "A",
@@ -316,7 +316,7 @@
                             }
                         ]
                     },
-                    "unit": "percentunit"
+                    "unit": "percent"
                 },
                 "overrides": []
             },
@@ -343,7 +343,7 @@
             "span": 2,
             "targets": [
                 {
-                    "expr": "manager:repair_progress{cluster=~\"[[cluster]]\"}",
+                    "expr": "sum(scylla_manager_repair_progress{cluster=\"$cluster\", job=\"scylla_manager\"}) or on() manager:repair_progress{cluster=~\"[[cluster]]\"}*100",
                     "format": "time_series",
                     "intervalFactor": 2,
                     "refId": "A"
@@ -638,7 +638,7 @@
             "type": "stat"
         },
         {
-            "class": "percentunit_panel",
+            "class": "percent_panel",
             "datasource": "prometheus",
             "editable": true,
             "error": false,
@@ -651,7 +651,6 @@
                     "custom": {
                         "axisLabel": "",
                         "axisPlacement": "auto",
-                        "axisSoftMax": 1,
                         "axisSoftMin": 0,
                         "barAlignment": 0,
                         "class": "fieldConfig_defaults_custom",
@@ -680,7 +679,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "percentunit"
+                    "unit": "percent"
                 },
                 "overrides": []
             },
@@ -700,14 +699,18 @@
                     "placement": "bottom"
                 },
                 "tooltip": {
+                    "maxHeight": 600,
                     "mode": "multi",
-                    "sort": "asc"
+                    "sort": "desc"
                 }
             },
+            "seriesOverrides": [
+                {}
+            ],
             "span": 2,
             "targets": [
                 {
-                    "expr": "manager:repair_progress{cluster=~\"[[cluster]]\"}",
+                    "expr": "sum(scylla_manager_repair_progress{cluster=\"$cluster\", job=\"scylla_manager\"}) or on() manager:repair_progress{cluster=~\"[[cluster]]\"}*100",
                     "format": "time_series",
                     "intervalFactor": 2,
                     "refId": "A"
@@ -744,8 +747,9 @@
                     "placement": "bottom"
                 },
                 "tooltip": {
+                    "maxHeight": 600,
                     "mode": "multi",
-                    "sort": "asc"
+                    "sort": "desc"
                 }
             },
             "seriesOverrides": [
@@ -754,7 +758,7 @@
             "span": 5,
             "targets": [
                 {
-                    "expr": "sum(rate(scylla_manager_repair_token_ranges_success{cluster=~\"[[cluster]]\", instance=~\"$instance\", shard=~\"$shard\"}[60s])) by ([[by]])",
+                    "expr": "sum(rate(scylla_manager_repair_token_ranges_success{cluster=~\"[[cluster]]\", instance=~\"$instance\", shard=~\"$shard\"}[$__rate_interval])) by ([[by]])",
                     "intervalFactor": 1,
                     "refId": "A",
                     "step": 4
@@ -791,8 +795,9 @@
                     "placement": "bottom"
                 },
                 "tooltip": {
+                    "maxHeight": 600,
                     "mode": "multi",
-                    "sort": "asc"
+                    "sort": "desc"
                 }
             },
             "seriesOverrides": [
@@ -801,7 +806,7 @@
             "span": 5,
             "targets": [
                 {
-                    "expr": "sum(rate(scylla_manager_repair_token_ranges_error{cluster=~\"[[cluster]]\", instance=~\"$instance\", shard=~\"$shard\"}[60s])) by ([[by]])",
+                    "expr": "sum(rate(scylla_manager_repair_token_ranges_error{cluster=~\"[[cluster]]\", instance=~\"$instance\", shard=~\"$shard\"}[$__rate_interval])) by ([[by]])",
                     "intervalFactor": 1,
                     "refId": "A",
                     "step": 4
@@ -873,8 +878,9 @@
                     "placement": "bottom"
                 },
                 "tooltip": {
+                    "maxHeight": 600,
                     "mode": "multi",
-                    "sort": "asc"
+                    "sort": "desc"
                 }
             },
             "span": 2,
@@ -917,8 +923,9 @@
                     "placement": "bottom"
                 },
                 "tooltip": {
+                    "maxHeight": 600,
                     "mode": "multi",
-                    "sort": "asc"
+                    "sort": "desc"
                 }
             },
             "seriesOverrides": [
@@ -964,8 +971,9 @@
                     "placement": "bottom"
                 },
                 "tooltip": {
+                    "maxHeight": 600,
                     "mode": "multi",
-                    "sort": "asc"
+                    "sort": "desc"
                 }
             },
             "seriesOverrides": [
@@ -1011,8 +1019,9 @@
                     "placement": "bottom"
                 },
                 "tooltip": {
+                    "maxHeight": 600,
                     "mode": "multi",
-                    "sort": "asc"
+                    "sort": "desc"
                 }
             },
             "seriesOverrides": [
@@ -1031,15 +1040,50 @@
             "type": "timeseries"
         },
         {
-            "class": "ops_panel",
+            "class": "percent_panel",
+            "dashversion": ">3.2",
             "datasource": "prometheus",
-            "description": "Shows restore progress, the remaining bytes to complete",
+            "description": "Shows current restore progress",
             "editable": true,
             "error": false,
             "fieldConfig": {
                 "defaults": {
-                    "links": [],
-                    "unit": "decbytes"
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "percent"
                 },
                 "overrides": []
             },
@@ -1059,8 +1103,58 @@
                     "placement": "bottom"
                 },
                 "tooltip": {
+                    "maxHeight": 600,
                     "mode": "multi",
-                    "sort": "asc"
+                    "sort": "desc"
+                }
+            },
+            "seriesOverrides": [
+                {}
+            ],
+            "span": 4,
+            "targets": [
+                {
+                    "expr": "scylla_manager_restore_progress{cluster=~\"[[cluster]]\"} < 100",
+                    "intervalFactor": 1,
+                    "refId": "A",
+                    "step": 4
+                }
+            ],
+            "title": "Restore Progress",
+            "type": "timeseries"
+        },
+        {
+            "class": "ops_panel",
+            "datasource": "prometheus",
+            "description": "Shows restore progress, the remaining bytes to complete",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "links": [],
+                    "unit": "decbytes"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 8,
+                "x": 8,
+                "y": 19
+            },
+            "id": 19,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
                 }
             },
             "seriesOverrides": [
@@ -1075,7 +1169,7 @@
                     "step": 4
                 }
             ],
-            "title": "Restore Remaining bytes",
+            "title": "Restore Remaining Bytes",
             "type": "timeseries"
         },
         {
@@ -1131,7 +1225,7 @@
                 "x": 0,
                 "y": 25
             },
-            "id": 19,
+            "id": 20,
             "isNew": true,
             "links": [],
             "options": {
@@ -1141,8 +1235,9 @@
                     "placement": "bottom"
                 },
                 "tooltip": {
+                    "maxHeight": 600,
                     "mode": "multi",
-                    "sort": "asc"
+                    "sort": "desc"
                 }
             },
             "span": 5,
@@ -1175,7 +1270,7 @@
                 "x": 0,
                 "y": 31
             },
-            "id": 20,
+            "id": 21,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -1239,7 +1334,7 @@
                 "x": 0,
                 "y": 33
             },
-            "id": 21,
+            "id": 22,
             "isNew": true,
             "links": [],
             "options": {
@@ -1249,8 +1344,9 @@
                     "placement": "bottom"
                 },
                 "tooltip": {
+                    "maxHeight": 600,
                     "mode": "multi",
-                    "sort": "asc"
+                    "sort": "desc"
                 }
             },
             "span": 5,
@@ -1318,7 +1414,7 @@
                 "x": 10,
                 "y": 33
             },
-            "id": 22,
+            "id": 23,
             "isNew": true,
             "links": [],
             "options": {
@@ -1328,8 +1424,9 @@
                     "placement": "bottom"
                 },
                 "tooltip": {
+                    "maxHeight": 600,
                     "mode": "multi",
-                    "sort": "asc"
+                    "sort": "desc"
                 }
             },
             "span": 5,
@@ -1361,12 +1458,12 @@
                 "x": 0,
                 "y": 39
             },
-            "id": 23,
+            "id": 24,
             "isNew": true,
             "links": [],
             "mode": "html",
             "options": {
-                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.4.5</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.8.1</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                 "mode": "html"
             },
             "span": 12,
@@ -1500,7 +1597,7 @@
                 "multi": true,
                 "name": "instance",
                 "options": [],
-                "query": "label_values(scylla_manager_healthcheck_cql_rtt_ms{cluster=~\"$cluster|$^\"}, instance)",
+                "query": "label_values(scylla_manager_healthcheck_cql_rtt_ms{cluster=\"$cluster\"}, instance)",
                 "refresh": 2,
                 "regex": "",
                 "skipUrlSync": false,
@@ -1571,8 +1668,8 @@
                 "allValue": null,
                 "class": "monitor_version_var",
                 "current": {
-                    "text": "4.4.5",
-                    "value": "4.4.5"
+                    "text": "4.8.1",
+                    "value": "4.8.1"
                 },
                 "error": null,
                 "hide": 2,
@@ -1583,11 +1680,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "4.4.5",
-                        "value": "4.4.5"
+                        "text": "4.8.1",
+                        "value": "4.8.1"
                     }
                 ],
-                "query": "4.4.5",
+                "query": "4.8.1",
                 "skipUrlSync": false,
                 "type": "custom"
             }

@@ -2,6 +2,7 @@ package configassests
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -23,6 +24,19 @@ func validateImage(image string) error {
 
 func validateSemanticVersion(v string) error {
 	return validation.ValidateSemanticVersion(v, &field.Path{}).ToAggregate()
+}
+
+var (
+	dashboardPathRegexFmt = `^[^ /]+/[^ /]+$`
+	dashboardPathRegex    = regexp.MustCompile(dashboardPathRegexFmt)
+)
+
+func validateDashboardPath(p string) error {
+	if dashboardPathRegex.MatchString(p) {
+		return nil
+	}
+
+	return fmt.Errorf("path %q is invalid: doesn't match regex %q", p, dashboardPathRegexFmt)
 }
 
 func TestProjectConfig(t *testing.T) {
@@ -59,6 +73,11 @@ func TestProjectConfig(t *testing.T) {
 	}
 
 	err = validateImage(Project.Operator.GrafanaImage)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = validateDashboardPath(Project.Operator.GrafanaDefaultPlatformDashboard)
 	if err != nil {
 		t.Error(err)
 	}

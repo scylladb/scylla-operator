@@ -8,8 +8,10 @@ import (
 	"github.com/google/go-cmp/cmp"
 	configassests "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	monitoringv1 "github.com/scylladb/scylla-operator/pkg/externalapi/monitoring/v1"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -249,7 +251,7 @@ kind: Prometheus
 metadata:
   name: "sm-name"
 spec:
-  version: "v2.44.0"
+  version: "`+configassests.Project.Operator.PrometheusVersion+`"
   serviceAccountName: "sm-name-prometheus"
   securityContext:
     runAsNonRoot: true
@@ -326,7 +328,7 @@ kind: Prometheus
 metadata:
   name: "sm-name"
 spec:
-  version: "v2.44.0"
+  version: "`+configassests.Project.Operator.PrometheusVersion+`"
   serviceAccountName: "sm-name-prometheus"
   securityContext:
     runAsNonRoot: true
@@ -398,6 +400,98 @@ spec:
 					strings.Split(tc.expectedString, "\n"),
 					strings.Split(objString, "\n"),
 				))
+			}
+		})
+	}
+}
+
+func Test_PrometheusRules(t *testing.T) {
+	tt := []struct {
+		name         string
+		genFunc      func(sm *scyllav1alpha1.ScyllaDBMonitoring) (*monitoringv1.PrometheusRule, string, error)
+		sm           *scyllav1alpha1.ScyllaDBMonitoring
+		expectedRule *monitoringv1.PrometheusRule
+		expectedErr  error
+	}{
+		{
+			name:    "latency rule renders correctly",
+			genFunc: makeLatencyPrometheusRule,
+			sm: &scyllav1alpha1.ScyllaDBMonitoring{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "sm-name",
+				},
+			},
+			expectedRule: &monitoringv1.PrometheusRule{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "PrometheusRule",
+					APIVersion: monitoringv1.SchemeGroupVersion.String(),
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "sm-name-latency",
+					Labels: map[string]string{
+						"scylla-operator.scylladb.com/scylladbmonitoring-name": "sm-name",
+					},
+				},
+			},
+		},
+		{
+			name:    "alerts rule renders correctly",
+			genFunc: makeAlertsPrometheusRule,
+			sm: &scyllav1alpha1.ScyllaDBMonitoring{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "sm-name",
+				},
+			},
+			expectedRule: &monitoringv1.PrometheusRule{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "PrometheusRule",
+					APIVersion: monitoringv1.SchemeGroupVersion.String(),
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "sm-name-alerts",
+					Labels: map[string]string{
+						"scylla-operator.scylladb.com/scylladbmonitoring-name": "sm-name",
+					},
+				},
+			},
+		},
+		{
+			name:    "table rule renders correctly",
+			genFunc: makeTablePrometheusRule,
+			sm: &scyllav1alpha1.ScyllaDBMonitoring{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "sm-name",
+				},
+			},
+			expectedRule: &monitoringv1.PrometheusRule{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "PrometheusRule",
+					APIVersion: monitoringv1.SchemeGroupVersion.String(),
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "sm-name-table",
+					Labels: map[string]string{
+						"scylla-operator.scylladb.com/scylladbmonitoring-name": "sm-name",
+					},
+				},
+			},
+		},
+	}
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			promRule, _, err := tc.genFunc(tc.sm)
+
+			if !reflect.DeepEqual(err, tc.expectedErr) {
+				t.Fatalf("expected and got errors differ:\n%s", cmp.Diff(tc.expectedErr, err))
+			}
+
+			if len(promRule.Spec.Groups) == 0 {
+				t.Errorf("each prometheus rule should have at least one group")
+			}
+
+			promRule.Spec = monitoringv1.PrometheusRuleSpec{}
+			if !apiequality.Semantic.DeepEqual(tc.expectedRule, promRule) {
+				t.Fatalf("expected and got prometheus rules differ:\n%s", cmp.Diff(tc.expectedRule, promRule))
 			}
 		})
 	}

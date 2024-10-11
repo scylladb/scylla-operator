@@ -175,6 +175,14 @@ type ScyllaDBMonitoringSpec struct {
 	Type *ScyllaDBMonitoringType `json:"type,omitempty"`
 }
 
+func (smc *ScyllaDBMonitoringSpec) GetType() ScyllaDBMonitoringType {
+	if smc.Type == nil {
+		return ScyllaDBMonitoringTypeSAAS
+	}
+
+	return *smc.Type
+}
+
 // ScyllaDBMonitoringStatus defines the observed state of ScyllaDBMonitoring.
 type ScyllaDBMonitoringStatus struct {
 	// observedGeneration is the most recent generation observed for this ScyllaDBMonitoring. It corresponds to the

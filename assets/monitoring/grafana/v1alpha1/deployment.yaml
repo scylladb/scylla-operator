@@ -31,9 +31,11 @@ spec:
         - -c
         args:
         - |
-          find /var/run/configmaps -type d -mindepth 1 -maxdepth 1 | while read -r d; do
-            mkdir /var/run/decompressed-configmaps/"${d##*/}"
-            find "${d}" -maxdepth 1 -name '*.gz.base64' -exec cp -L -t /var/run/decompressed-configmaps/"${d##*/}" {} +
+          mkdir /var/run/decompressed-configmaps/grafana-scylladb-dashboards
+          find /var/run/configmaps -mindepth 2 -maxdepth 2 -type d | while read -r d; do
+            tp="/var/run/decompressed-configmaps/${d#"/var/run/configmaps/"}"
+            mkdir "${tp}"
+            find "${d}" -mindepth 1 -maxdepth 1 -name '*.gz.base64' -exec cp -L -t "${tp}" {} +
           done
           find /var/run/decompressed-configmaps -name '*.gz.base64' | while read -r f; do
             base64 -d "${f}" > "${f%.base64}"
@@ -43,8 +45,12 @@ spec:
         volumeMounts:
         - name: decompressed-configmaps
           mountPath: /var/run/decompressed-configmaps
-        - name: grafana-scylladb-dashboards
-          mountPath: /var/run/configmaps/grafana-scylladb-dashboards
+        {{- range $_, $cm := .dashboardsCMs }}
+        - name: "{{ $cm.Name }}"
+          mountPath: "/var/run/configmaps/grafana-scylladb-dashboards/{{ index $cm.Annotations "internal.scylla-operator.scylladb.com/dashboard-name" }}"
+        {{- else }}
+        !!! No dashboards names found !!!
+        {{- end }}
       containers:
       - name: grafana
         image: "{{ .grafanaImage }}"
@@ -136,9 +142,13 @@ spec:
       - name: grafana-configs
         configMap:
           name: "{{ .scyllaDBMonitoringName }}-grafana-configs"
-      - name: grafana-scylladb-dashboards
+      {{- range $_, $cm := .dashboardsCMs }}
+      - name: "{{ $cm.Name }}"
         configMap:
-          name: "{{ .scyllaDBMonitoringName }}-grafana-scylladb-dashboards"
+          name: "{{ $cm.Name }}"
+      {{- else }}
+      !!! No dashboards names found !!!
+      {{- end }}
       - name: grafana-provisioning
         configMap:
           name: "{{ .scyllaDBMonitoringName }}-grafana-provisioning"

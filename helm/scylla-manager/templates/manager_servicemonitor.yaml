@@ -4,6 +4,10 @@ kind: ServiceMonitor
 metadata:
   name: scylla-manager
   namespace: scylla-manager
+  {{- if .Values.serviceMonitor.labels }}
+  labels:
+    {{- toYaml .Values.serviceMonitor.labels | nindent 4 }}
+  {{- end }}
 spec:
   jobLabel: "app"
   selector:

@@ -154,6 +154,11 @@ In order for the example to work you need to modify the cluster definition in th
 sed -i "s/<gcp_region>/${GCP_REGION}/g;s/<gcp_zone>/${GCP_ZONE}/g" examples/gke/cluster.yaml
 ```
 
+#### Mac users
+```
+sed -i '' "s/<gcp_region>/${GCP_REGION}/g;s/<gcp_zone>/${GCP_ZONE}/g" examples/gke/cluster.yaml
+```
+
 This will inject your region and zone into the cluster definition so that it matches the kubernetes cluster you just created.
 
 ### Deploying ScyllaDB

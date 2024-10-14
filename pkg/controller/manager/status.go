@@ -31,7 +31,7 @@ func (c *Controller) calculateStatus(sc *scyllav1.ScyllaCluster, managerState *s
 
 		managerTaskStatus, isInManagerState := managerState.RepairTasks[rt.Name]
 		if isInManagerState {
-			repairTaskStatus = scyllav1.RepairTaskStatus(managerTaskStatus)
+			repairTaskStatus = managerTaskStatus
 		} else {
 			// Retain the error from client.
 			err, hasClientError := repairTaskClientErrorMap[rt.Name]
@@ -62,7 +62,7 @@ func (c *Controller) calculateStatus(sc *scyllav1.ScyllaCluster, managerState *s
 
 		managerTaskStatus, isInManagerState := managerState.BackupTasks[bt.Name]
 		if isInManagerState {
-			backupTaskStatus = scyllav1.BackupTaskStatus(managerTaskStatus)
+			backupTaskStatus = managerTaskStatus
 		} else {
 			// Retain the error from client.
 			err, hasClientError := backupTaskClientErrorMap[bt.Name]

@@ -8,13 +8,15 @@ data:
     disable_login_form = false
     disable_signout_menu = false
 
-    {{ if .enableAnonymousAccess -}}
+    {{- if .enableAnonymousAccess }}
     [auth.anonymous]
     enabled = true
     {{- end }}
 
     [dashboards]
-    default_home_dashboard_path = /var/run/dashboards/scylladb/overview.json
+    {{- with .defaultDashboard }}
+    default_home_dashboard_path = /var/run/dashboards/scylladb/{{ . }}
+    {{- end }}
 
     [log]
     level = error

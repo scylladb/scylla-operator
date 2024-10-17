@@ -14,83 +14,98 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	hashutil "github.com/scylladb/scylla-operator/pkg/util/hash"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/klog/v2"
 )
 
-type state struct {
-	Clusters    []*managerclient.Cluster
+type managerClusterState struct {
+	Cluster     *managerclient.Cluster
 	RepairTasks map[string]scyllav1.RepairTaskStatus
 	BackupTasks map[string]scyllav1.BackupTaskStatus
 }
 
-func runSync(ctx context.Context, cluster *scyllav1.ScyllaCluster, authToken string, state *state) ([]action, bool, error) {
-	var actions []action
-	requeue := false
-	clusterID := ""
-	clusterName := naming.ManagerClusterName(cluster)
-	if cluster.Status.ManagerID != nil {
-		clusterID = *cluster.Status.ManagerID
+func runSync(ctx context.Context, sc *scyllav1.ScyllaCluster, authToken string, managerClusterState *managerClusterState) ([]action, bool, error) {
+	clusterAction, err := syncCluster(sc, authToken, managerClusterState.Cluster)
+	if err != nil {
+		return nil, false, fmt.Errorf("can't sync cluster %q: %w", naming.ObjRef(sc), err)
 	}
-	found := false
-	for _, c := range state.Clusters {
-		if c.Name == clusterName || c.ID == clusterID {
-			found = true
-			if c.ID == clusterID {
-				// TODO: can't detect changes for following params:
-				// * known hosts aren't returned by the API
-				// * username/password are not part of Cluster CRD
-				if c.AuthToken != authToken {
-					actions = append(actions, &updateClusterAction{
-						cluster: &managerclient.Cluster{
-							ID:        c.ID,
-							Name:      naming.ManagerClusterName(cluster),
-							Host:      naming.CrossNamespaceServiceNameForCluster(cluster),
-							AuthToken: authToken,
-							// TODO: enable CQL over TLS when https://github.com/scylladb/scylla-operator/issues/1766 is completed
-							ForceNonSslSessionPort: true,
-							ForceTLSDisabled:       true,
-						},
-					})
-					requeue = true
-				}
-			} else {
-				// Delete old to avoid name collision.
-				actions = append(actions, &deleteClusterAction{clusterID: c.ID})
-				found = false
-			}
-		}
-	}
-	if !found {
-		actions = append(actions, &addClusterAction{
-			cluster: &managerclient.Cluster{
-				Host:      naming.CrossNamespaceServiceNameForCluster(cluster),
-				Name:      naming.ManagerClusterName(cluster),
-				AuthToken: authToken,
-				// TODO: enable CQL over TLS when https://github.com/scylladb/scylla-operator/issues/1766 is completed
-				ForceNonSslSessionPort: true,
-				ForceTLSDisabled:       true,
-			},
-		})
-		requeue = true
+	if clusterAction != nil {
+		// Execute the cluster action first and requeue to avoid potential errors in task execution in the same iteration.
+		return []action{clusterAction}, true, nil
 	}
 
-	if found {
-		taskActions, err := syncTasks(clusterID, cluster, state)
-		if err != nil {
-			return nil, false, err
-		}
-		actions = append(actions, taskActions...)
+	var taskActions []action
+	taskActions, err = syncTasks(managerClusterState.Cluster.ID, sc, managerClusterState)
+	if err != nil {
+		return nil, false, fmt.Errorf("can't sync tasks for cluster %q: %w", naming.ObjRef(sc), err)
 	}
 
-	return actions, requeue, nil
+	return taskActions, false, nil
 }
 
-func syncTasks(clusterID string, cluster *scyllav1.ScyllaCluster, state *state) ([]action, error) {
+func syncCluster(sc *scyllav1.ScyllaCluster, authToken string, existingManagerCluster *managerclient.Cluster) (action, error) {
+	clusterName := naming.ManagerClusterName(sc)
+	managerCluster := &managerclient.Cluster{
+		Name:      clusterName,
+		Host:      naming.CrossNamespaceServiceNameForCluster(sc),
+		AuthToken: authToken,
+		// TODO: enable CQL over TLS when https://github.com/scylladb/scylla-operator/issues/1673 is completed
+		ForceNonSslSessionPort: true,
+		ForceTLSDisabled:       true,
+		Labels: map[string]string{
+			naming.OwnerUIDLabel: string(sc.UID),
+		},
+	}
+
+	managedHash, err := hashutil.HashObjects(managerCluster)
+	if err != nil {
+		return nil, fmt.Errorf("can't calculate managed hash for cluster %q: %w", clusterName, err)
+	}
+	managerCluster.Labels[naming.ManagedHash] = managedHash
+
+	if existingManagerCluster == nil {
+		return &addClusterAction{
+			Cluster: managerCluster,
+		}, nil
+	}
+
+	// Sanity check.
+	if len(existingManagerCluster.ID) == 0 {
+		return nil, fmt.Errorf("manager cluster is missing an id")
+	}
+
+	existingManagerClusterOwnerUIDLabelValue, existingManagerClusterHasOwnerUIDLabel := existingManagerCluster.Labels[naming.OwnerUIDLabel]
+	if !existingManagerClusterHasOwnerUIDLabel {
+		klog.Warningf("Cluster %q is missing an owner UID label.", existingManagerCluster.Name)
+	}
+
+	if existingManagerClusterOwnerUIDLabelValue != string(sc.UID) {
+		klog.V(4).InfoS("Cluster is in manager state, but it's not owned by ScyllaCluster. Scheduling it for deletion to avoid a name collision.", "ClusterName", existingManagerCluster.Name, "ScyllaCluster", naming.ObjRef(sc))
+
+		// We're not certain the cluster is owned by us - we have to delete it to avoid a name collision.
+		return &deleteClusterAction{
+			ClusterID: existingManagerCluster.ID,
+		}, nil
+	}
+
+	if existingManagerCluster.Labels != nil && managedHash == existingManagerCluster.Labels[naming.ManagedHash] {
+		// Cluster matches the desired state, nothing to do.
+		return nil, nil
+	}
+
+	managerCluster.ID = existingManagerCluster.ID
+	return &updateClusterAction{
+		Cluster: managerCluster,
+	}, nil
+}
+
+func syncTasks(clusterID string, sc *scyllav1.ScyllaCluster, state *managerClusterState) ([]action, error) {
 	var errs []error
 	var actions []action
 
-	repairTaskSpecNames := sets.New(slices.ConvertSlice(cluster.Spec.Repairs, func(b scyllav1.RepairTaskSpec) string {
+	repairTaskSpecNames := sets.New(slices.ConvertSlice(sc.Spec.Repairs, func(b scyllav1.RepairTaskSpec) string {
 		return b.Name
 	})...)
 	for taskName, task := range state.RepairTasks {
@@ -99,13 +114,13 @@ func syncTasks(clusterID string, cluster *scyllav1.ScyllaCluster, state *state) 
 		}
 
 		actions = append(actions, &deleteTaskAction{
-			clusterID: clusterID,
-			taskType:  managerclient.RepairTask,
-			taskID:    *task.ID,
+			ClusterID: clusterID,
+			TaskType:  managerclient.RepairTask,
+			TaskID:    *task.ID,
 		})
 	}
 
-	backupTaskSpecNames := sets.New(slices.ConvertSlice(cluster.Spec.Backups, func(b scyllav1.BackupTaskSpec) string {
+	backupTaskSpecNames := sets.New(slices.ConvertSlice(sc.Spec.Backups, func(b scyllav1.BackupTaskSpec) string {
 		return b.Name
 	})...)
 	for taskName, task := range state.BackupTasks {
@@ -114,19 +129,19 @@ func syncTasks(clusterID string, cluster *scyllav1.ScyllaCluster, state *state) 
 		}
 
 		actions = append(actions, &deleteTaskAction{
-			clusterID: clusterID,
-			taskType:  managerclient.BackupTask,
-			taskID:    *task.ID,
+			ClusterID: clusterID,
+			TaskType:  managerclient.BackupTask,
+			TaskID:    *task.ID,
 		})
 	}
 
-	repairActions, err := syncRepairTasks(clusterID, cluster, state)
+	repairActions, err := syncRepairTasks(clusterID, sc, state)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't sync repair tasks: %w", err))
 	}
 	actions = append(actions, repairActions...)
 
-	backupActions, err := syncBackupTasks(clusterID, cluster, state)
+	backupActions, err := syncBackupTasks(clusterID, sc, state)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't sync backup tasks: %w", err))
 	}
@@ -140,13 +155,13 @@ func syncTasks(clusterID string, cluster *scyllav1.ScyllaCluster, state *state) 
 	return actions, nil
 }
 
-func syncBackupTasks(clusterID string, cluster *scyllav1.ScyllaCluster, managerState *state) ([]action, error) {
+func syncBackupTasks(clusterID string, cluster *scyllav1.ScyllaCluster, state *managerClusterState) ([]action, error) {
 	var errs []error
 	var actions []action
 
 	for _, bt := range cluster.Spec.Backups {
 		taskStatusFunc := func() (*scyllav1.TaskStatus, bool) {
-			s, ok := managerState.BackupTasks[bt.Name]
+			s, ok := state.BackupTasks[bt.Name]
 			if !ok {
 				return nil, false
 			}
@@ -176,13 +191,13 @@ func syncBackupTasks(clusterID string, cluster *scyllav1.ScyllaCluster, managerS
 	return actions, nil
 }
 
-func syncRepairTasks(clusterID string, cluster *scyllav1.ScyllaCluster, managerState *state) ([]action, error) {
+func syncRepairTasks(clusterID string, cluster *scyllav1.ScyllaCluster, state *managerClusterState) ([]action, error) {
 	var errs []error
 	var actions []action
 
 	for _, rt := range cluster.Spec.Repairs {
 		taskStatusFunc := func() (*scyllav1.TaskStatus, bool) {
-			s, ok := managerState.RepairTasks[rt.Name]
+			s, ok := state.RepairTasks[rt.Name]
 			if !ok {
 				return nil, false
 			}
@@ -228,8 +243,8 @@ func syncTask(clusterID string, spec taskSpecInterface, statusFunc func() (*scyl
 		setManagerClientTaskManagedHashLabel(managerClientTask, managedHash)
 
 		return &addTaskAction{
-			clusterID: clusterID,
-			task:      managerClientTask,
+			ClusterID: clusterID,
+			Task:      managerClientTask,
 		}, nil
 	}
 
@@ -252,8 +267,8 @@ func syncTask(clusterID string, spec taskSpecInterface, statusFunc func() (*scyl
 	managerClientTask.ID = *status.ID
 
 	return &updateTaskAction{
-		clusterID: clusterID,
-		task:      managerClientTask,
+		ClusterID: clusterID,
+		Task:      managerClientTask,
 	}, nil
 }
 
@@ -279,14 +294,13 @@ type action interface {
 }
 
 type addClusterAction struct {
-	cluster   *managerclient.Cluster
-	clusterID string
+	Cluster *managerclient.Cluster
 }
 
 func (a *addClusterAction) Execute(ctx context.Context, client *managerclient.Client, status *scyllav1.ScyllaClusterStatus) error {
-	id, err := client.CreateCluster(ctx, a.cluster)
+	id, err := client.CreateCluster(ctx, a.Cluster)
 	if err != nil {
-		return fmt.Errorf("can't create cluster %q: %w", a.cluster.Name, err)
+		return fmt.Errorf("can't create cluster %q: %w", a.Cluster.Name, err)
 	} else {
 		status.ManagerID = &id
 	}
@@ -295,55 +309,55 @@ func (a *addClusterAction) Execute(ctx context.Context, client *managerclient.Cl
 }
 
 func (a *addClusterAction) String() string {
-	return fmt.Sprintf("add cluster %q", a.clusterID)
+	return fmt.Sprintf("add cluster %q", a.Cluster.Name)
 }
 
 type updateClusterAction struct {
-	cluster *managerclient.Cluster
+	Cluster *managerclient.Cluster
 }
 
 func (a *updateClusterAction) Execute(ctx context.Context, client *managerclient.Client, _ *scyllav1.ScyllaClusterStatus) error {
-	err := client.UpdateCluster(ctx, a.cluster)
+	err := client.UpdateCluster(ctx, a.Cluster)
 	if err != nil {
-		return fmt.Errorf("can't update cluster %q: %w", a.cluster.ID, err)
+		return fmt.Errorf("can't update cluster %q: %w", a.Cluster.ID, err)
 	}
 
 	return nil
 }
 
 func (a *updateClusterAction) String() string {
-	return fmt.Sprintf("update cluster %q", a.cluster.ID)
+	return fmt.Sprintf("update cluster %q", a.Cluster.ID)
 }
 
 type deleteClusterAction struct {
-	clusterID string
+	ClusterID string
 }
 
 func (a *deleteClusterAction) Execute(ctx context.Context, client *managerclient.Client, status *scyllav1.ScyllaClusterStatus) error {
-	err := client.DeleteCluster(ctx, a.clusterID)
+	err := client.DeleteCluster(ctx, a.ClusterID)
 	if err != nil {
-		return fmt.Errorf("can't delete cluster %q: %w", a.clusterID, err)
+		return fmt.Errorf("can't delete cluster %q: %w", a.ClusterID, err)
 	}
 
 	return nil
 }
 
 func (a *deleteClusterAction) String() string {
-	return fmt.Sprintf("delete cluster %q", a.clusterID)
+	return fmt.Sprintf("delete cluster %q", a.ClusterID)
 }
 
 type deleteTaskAction struct {
-	clusterID string
-	taskType  string
-	taskID    string
-	taskName  string
+	ClusterID string
+	TaskType  string
+	TaskID    string
+	TaskName  string
 }
 
 func (a *deleteTaskAction) Execute(ctx context.Context, client *managerclient.Client, status *scyllav1.ScyllaClusterStatus) error {
 	err := a.stopAndDeleteTask(ctx, client)
 	if err != nil {
-		setTaskStatusError(a.taskType, a.taskName, messageOf(err), status)
-		return fmt.Errorf("can't stop and delete task %q: %w", a.taskName, err)
+		setTaskStatusError(a.TaskType, a.TaskName, messageOf(err), status)
+		return fmt.Errorf("can't stop and delete task %q: %w", a.TaskName, err)
 	}
 
 	return nil
@@ -351,56 +365,56 @@ func (a *deleteTaskAction) Execute(ctx context.Context, client *managerclient.Cl
 
 func (a *deleteTaskAction) stopAndDeleteTask(ctx context.Context, client *managerclient.Client) error {
 	// StopTask is idempotent
-	err := client.StopTask(ctx, a.clusterID, a.taskType, uuid.MustParse(a.taskID), false)
+	err := client.StopTask(ctx, a.ClusterID, a.TaskType, uuid.MustParse(a.TaskID), false)
 	if err != nil {
-		return fmt.Errorf("can't stop task %q: %w", a.taskID, err)
+		return fmt.Errorf("can't stop task %q: %w", a.TaskID, err)
 	}
 
-	err = client.DeleteTask(ctx, a.clusterID, a.taskType, uuid.MustParse(a.taskID))
+	err = client.DeleteTask(ctx, a.ClusterID, a.TaskType, uuid.MustParse(a.TaskID))
 	if err != nil {
-		return fmt.Errorf("can't delete task %q: %w", a.taskID, err)
+		return fmt.Errorf("can't delete task %q: %w", a.TaskID, err)
 	}
 
 	return nil
 }
 
 func (a *deleteTaskAction) String() string {
-	return fmt.Sprintf("delete task %q", a.taskID)
+	return fmt.Sprintf("delete task %q", a.TaskID)
 }
 
 type addTaskAction struct {
-	clusterID string
-	task      *managerclient.Task
+	ClusterID string
+	Task      *managerclient.Task
 }
 
 func (a *addTaskAction) String() string {
-	return fmt.Sprintf("add task %+v", a.task)
+	return fmt.Sprintf("add task %+v", a.Task)
 }
 
 func (a *addTaskAction) Execute(ctx context.Context, client *managerclient.Client, status *scyllav1.ScyllaClusterStatus) error {
-	_, err := client.CreateTask(ctx, a.clusterID, a.task)
+	_, err := client.CreateTask(ctx, a.ClusterID, a.Task)
 	if err != nil {
-		setTaskStatusError(a.task.Type, a.task.Name, messageOf(err), status)
-		return fmt.Errorf("can't create task %q: %w", a.task.Name, err)
+		setTaskStatusError(a.Task.Type, a.Task.Name, messageOf(err), status)
+		return fmt.Errorf("can't create task %q: %w", a.Task.Name, err)
 	}
 
 	return nil
 }
 
 type updateTaskAction struct {
-	clusterID string
-	task      *managerclient.Task
+	ClusterID string
+	Task      *managerclient.Task
 }
 
 func (a *updateTaskAction) String() string {
-	return fmt.Sprintf("update task %+v", a.task)
+	return fmt.Sprintf("update task %+v", a.Task)
 }
 
 func (a *updateTaskAction) Execute(ctx context.Context, client *managerclient.Client, status *scyllav1.ScyllaClusterStatus) error {
-	err := client.UpdateTask(ctx, a.clusterID, a.task)
+	err := client.UpdateTask(ctx, a.ClusterID, a.Task)
 	if err != nil {
-		setTaskStatusError(a.task.Type, a.task.Name, messageOf(err), status)
-		return fmt.Errorf("can't update task %q: %w", a.task.Name, err)
+		setTaskStatusError(a.Task.Type, a.Task.Name, messageOf(err), status)
+		return fmt.Errorf("can't update task %q: %w", a.Task.Name, err)
 	}
 
 	return nil

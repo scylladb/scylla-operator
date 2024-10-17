@@ -5,6 +5,7 @@ Scylla performs the best when it has fast disks and direct access to the cpu.
 This requires some extra setup, which is platform-specific.
 For specific configuration and setup, check for details about your particular environment:
 
+* [EKS](eks.md)
 * [GKE](gke.md)
 
 ## Prerequisites

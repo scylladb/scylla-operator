@@ -18,6 +18,7 @@ func (ncc *Controller) makeServiceAccounts() []*corev1.ServiceAccount {
 	serviceAccounts := []*corev1.ServiceAccount{
 		makeNodeConfigServiceAccount(),
 		makePerftuneServiceAccount(),
+		makeRlimitsServiceAccount(),
 	}
 
 	return serviceAccounts

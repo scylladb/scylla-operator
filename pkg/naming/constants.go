@@ -114,6 +114,7 @@ const (
 	SidecarInjectorContainerName = "sidecar-injection"
 	PerftuneContainerName        = "perftune"
 	CleanupContainerName         = "cleanup"
+	RLimitsContainerName         = "rlimits"
 
 	PVCTemplateName = "data"
 
@@ -155,15 +156,17 @@ const (
 
 	SingletonName = "cluster"
 
-	PerftuneJobPrefixName      = "perftune"
-	PerftuneServiceAccountName = "perftune"
+	PerftuneJobPrefixName        = "perftune"
+	PerftuneServiceAccountName   = "perftune"
+	RlimitsJobServiceAccountName = "rlimits"
 )
 
 type NodeConfigJobType string
 
 const (
-	NodeConfigJobTypeNode       NodeConfigJobType = "Node"
-	NodeConfigJobTypeContainers NodeConfigJobType = "Containers"
+	NodeConfigJobTypeNode                    NodeConfigJobType = "Node"
+	NodeConfigJobTypeContainerPerftune       NodeConfigJobType = "ContainerPerftune"
+	NodeConfigJobTypeContainerResourceLimits NodeConfigJobType = "ContainerResourceLimits"
 )
 
 type ConfigMapType string

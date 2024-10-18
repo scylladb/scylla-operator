@@ -40,6 +40,7 @@ type NodeSetupDaemonOptions struct {
 	NodeConfigName       string
 	NodeConfigUID        string
 	ScyllaImage          string
+	OperatorImage        string
 	DisableOptimizations bool
 
 	CRIEndpoints                []string
@@ -103,6 +104,7 @@ func NewNodeSetupCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd.Flags().BoolVarP(&o.DisableOptimizations, "disable-optimizations", "", o.DisableOptimizations, "Controls if optimizations are disabled")
 	cmd.Flags().StringArrayVarP(&o.CRIEndpoints, "cri-endpoint", "", o.CRIEndpoints, "CRI endpoint to connect to. It will try to connect to any of them, in the given order.")
 	cmd.Flags().StringVarP(&o.KubeletPodResourcesEndpoint, "kubelet-pod-resources-endpoint", "", o.KubeletPodResourcesEndpoint, "Endpoint to kubelet PodResources API server")
+	cmd.Flags().StringVarP(&o.OperatorImage, "operator-image", "", o.OperatorImage, "Operator image used for running tuning.")
 
 	return cmd
 }
@@ -252,6 +254,7 @@ func (o *NodeSetupDaemonOptions) Run(streams genericclioptions.IOStreams, cmd *c
 		o.NodeConfigName,
 		types.UID(o.NodeConfigUID),
 		o.ScyllaImage,
+		o.OperatorImage,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create node config instance controller: %w", err)

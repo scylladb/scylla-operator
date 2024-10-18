@@ -190,6 +190,7 @@ type ContainerStatusInfoRuntimeSpec struct {
 
 type ContainerStatusInfo struct {
 	RuntimeSpec *ContainerStatusInfoRuntimeSpec `json:"runtimeSpec,omitempty"`
+	PID         *int                            `json:"pid,omitempty"`
 }
 
 type ContainerStatus struct {

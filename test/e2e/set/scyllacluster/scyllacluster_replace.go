@@ -170,7 +170,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 	},
 		g.Entry(describeEntry, &entry{
-			scyllaImageRepository: scyllaOSImageRepository,
+			scyllaImageRepository: scyllaEnterpriseImageRepository,
 			scyllaVersion:         configassests.Project.Operator.ScyllaDBVersion,
 			validateScyllaConfig:  validateReplaceViaHostID,
 		}),

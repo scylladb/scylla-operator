@@ -1,0 +1,3 @@
+[submodule "scylla-monitoring"]
+	path = submodules/github.com/scylladb/scylla-monitoring
+	url = https://github.com/scylladb/scylla-monitoring.git

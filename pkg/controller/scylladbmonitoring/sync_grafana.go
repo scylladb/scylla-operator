@@ -1,18 +1,21 @@
 package scylladbmonitoring
 
 import (
+	"cmp"
 	"context"
 	"crypto/x509/pkix"
 	"fmt"
+	"slices"
 	"time"
 
+	configassests "github.com/scylladb/scylla-operator/assets/config"
 	grafanav1alpha1assets "github.com/scylladb/scylla-operator/assets/monitoring/grafana/v1alpha1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	okubecrypto "github.com/scylladb/scylla-operator/pkg/kubecrypto"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -74,7 +77,7 @@ func getGrafanaIngressDomains(sm *scyllav1alpha1.ScyllaDBMonitoring) []string {
 	return nil
 }
 
-func makeGrafanaDeployment(sm *scyllav1alpha1.ScyllaDBMonitoring, soc *scyllav1alpha1.ScyllaOperatorConfig, grafanaServingCertSecretName string, restartTriggerHash string) (*appsv1.Deployment, string, error) {
+func makeGrafanaDeployment(sm *scyllav1alpha1.ScyllaDBMonitoring, soc *scyllav1alpha1.ScyllaOperatorConfig, grafanaServingCertSecretName string, dashboardsCMs []*corev1.ConfigMap, restartTriggerHash string) (*appsv1.Deployment, string, error) {
 	spec := getGrafanaSpec(sm)
 
 	var affinity corev1.Affinity
@@ -102,6 +105,10 @@ func makeGrafanaDeployment(sm *scyllav1alpha1.ScyllaDBMonitoring, soc *scyllav1a
 	}
 	bashToolsImage := soc.Status.BashToolsImage
 
+	if len(dashboardsCMs) == 0 {
+		return nil, "", fmt.Errorf("dashboardsCMs can't be empty")
+	}
+
 	return grafanav1alpha1assets.GrafanaDeploymentTemplate.RenderObject(map[string]any{
 		"grafanaImage":           grafanaImage,
 		"bashToolsImage":         bashToolsImage,
@@ -111,6 +118,7 @@ func makeGrafanaDeployment(sm *scyllav1alpha1.ScyllaDBMonitoring, soc *scyllav1a
 		"tolerations":            tolerations,
 		"resources":              resources,
 		"restartTriggerHash":     restartTriggerHash,
+		"dashboardsCMs":          dashboardsCMs,
 	})
 }
 
@@ -147,33 +155,53 @@ func makeGrafanaConfigs(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.ConfigMa
 		enableAnonymousAccess = spec.Authentication.InsecureEnableAnonymousAccess
 	}
 
-	return grafanav1alpha1assets.GrafanaConfigsTemplate.RenderObject(map[string]any{
-		"scyllaDBMonitoringName": sm.Name,
-		"enableAnonymousAccess":  enableAnonymousAccess,
-	})
-}
-
-func makeGrafanaDashboards(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.ConfigMap, string, error) {
-	t := scyllav1alpha1.ScyllaDBMonitoringTypeSAAS
-	// It should have a default value, but it can be nil due to a version skew.
-	if sm.Spec.Type != nil {
-		t = *sm.Spec.Type
-	}
-
-	var dashboards map[string]string
-	switch t {
+	var defaultDashboard string
+	switch t := sm.Spec.GetType(); t {
 	case scyllav1alpha1.ScyllaDBMonitoringTypePlatform:
-		dashboards = grafanav1alpha1assets.GrafanaDashboardsPlatform
+		defaultDashboard = configassests.Project.Operator.GrafanaDefaultPlatformDashboard
 	case scyllav1alpha1.ScyllaDBMonitoringTypeSAAS:
-		dashboards = grafanav1alpha1assets.GrafanaDashboardsSAAS
+		defaultDashboard = "scylladb-latest/overview.json"
 	default:
 		return nil, "", fmt.Errorf("unkown monitoring type: %q", t)
 	}
 
-	return grafanav1alpha1assets.GrafanaDashboardsConfigMapTemplate.RenderObject(map[string]any{
+	return grafanav1alpha1assets.GrafanaConfigsTemplate.RenderObject(map[string]any{
 		"scyllaDBMonitoringName": sm.Name,
-		"dashboards":             dashboards,
+		"enableAnonymousAccess":  enableAnonymousAccess,
+		"defaultDashboard":       defaultDashboard,
 	})
+}
+
+func makeGrafanaDashboards(sm *scyllav1alpha1.ScyllaDBMonitoring) ([]*corev1.ConfigMap, error) {
+	var dashboardsFoldersMap grafanav1alpha1assets.GrafanaDashboardsFoldersMap
+	switch t := sm.Spec.GetType(); t {
+	case scyllav1alpha1.ScyllaDBMonitoringTypePlatform:
+		dashboardsFoldersMap = grafanav1alpha1assets.GrafanaDashboardsPlatform
+	case scyllav1alpha1.ScyllaDBMonitoringTypeSAAS:
+		dashboardsFoldersMap = grafanav1alpha1assets.GrafanaDashboardsSAAS
+	default:
+		return nil, fmt.Errorf("unkown monitoring type: %q", t)
+	}
+
+	var cms []*corev1.ConfigMap
+	for name, folder := range dashboardsFoldersMap {
+		cm, _, err := grafanav1alpha1assets.GrafanaDashboardsConfigMapTemplate.RenderObject(map[string]any{
+			"scyllaDBMonitoringName": sm.Name,
+			"dashboardsName":         name,
+			"dashboards":             folder,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		cms = append(cms, cm)
+	}
+
+	slices.SortStableFunc(cms, func(lhs, rhs *corev1.ConfigMap) int {
+		return cmp.Compare(lhs.Name, rhs.Name)
+	})
+
+	return cms, nil
 }
 
 func makeGrafanaProvisionings(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.ConfigMap, string, error) {
@@ -285,7 +313,7 @@ func (smc *Controller) syncGrafana(
 	requiredConfigsCM, _, err := makeGrafanaConfigs(sm)
 	renderErrors = append(renderErrors, err)
 
-	requiredDahsboardsCM, _, err := makeGrafanaDashboards(sm)
+	requiredDahsboardsCMs, err := makeGrafanaDashboards(sm)
 	renderErrors = append(renderErrors, err)
 
 	requiredProvisioningsCM, _, err := makeGrafanaProvisionings(sm)
@@ -296,11 +324,11 @@ func (smc *Controller) syncGrafana(
 
 	var requiredDeployment *appsv1.Deployment
 	// Trigger restart for inputs that are not live reloaded.
-	grafanaRestartHash, hashErr := hash.HashObjects(requiredConfigsCM, requiredProvisioningsCM, requiredDahsboardsCM)
+	grafanaRestartHash, hashErr := hash.HashObjects(requiredConfigsCM, requiredProvisioningsCM, requiredDahsboardsCMs)
 	if hashErr != nil {
 		renderErrors = append(renderErrors, hashErr)
 	} else {
-		requiredDeployment, _, err = makeGrafanaDeployment(sm, soc, grafanaServingCertSecretName, grafanaRestartHash)
+		requiredDeployment, _, err = makeGrafanaDeployment(sm, soc, grafanaServingCertSecretName, requiredDahsboardsCMs, grafanaRestartHash)
 		renderErrors = append(renderErrors, err)
 	}
 
@@ -320,7 +348,7 @@ func (smc *Controller) syncGrafana(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		slices.ToSlice(requiredGrafanaSA),
+		oslices.ToSlice(requiredGrafanaSA),
 		serviceAccounts,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Delete,
@@ -329,16 +357,15 @@ func (smc *Controller) syncGrafana(
 	)
 	pruneErrors = append(pruneErrors, err)
 
+	allCMs := []*corev1.ConfigMap{
+		requiredConfigsCM,
+		requiredProvisioningsCM,
+	}
+	allCMs = append(allCMs, requiredDahsboardsCMs...)
+	allCMs = append(allCMs, certChainConfigs.GetMetaConfigMaps()...)
 	err = controllerhelpers.Prune(
 		ctx,
-		append(
-			[]*corev1.ConfigMap{
-				requiredConfigsCM,
-				requiredDahsboardsCM,
-				requiredProvisioningsCM,
-			},
-			certChainConfigs.GetMetaConfigMaps()...,
-		),
+		allCMs,
 		configMaps,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.CoreV1().ConfigMaps(sm.Namespace).Delete,
@@ -360,7 +387,7 @@ func (smc *Controller) syncGrafana(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		slices.ToSlice(requiredService),
+		oslices.ToSlice(requiredService),
 		services,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.CoreV1().Services(sm.Namespace).Delete,
@@ -371,7 +398,7 @@ func (smc *Controller) syncGrafana(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		slices.ToSlice(requiredDeployment),
+		oslices.ToSlice(requiredDeployment),
 		deployments,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.AppsV1().Deployments(sm.Namespace).Delete,
@@ -382,7 +409,7 @@ func (smc *Controller) syncGrafana(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		slices.FilterOutNil(slices.ToSlice(requiredIngress)),
+		oslices.FilterOutNil(oslices.ToSlice(requiredIngress)),
 		ingresses,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.NetworkingV1().Ingresses(sm.Namespace).Delete,
@@ -410,15 +437,6 @@ func (smc *Controller) syncGrafana(
 		}.ToUntyped(),
 		resourceapply.ApplyConfig[*corev1.ConfigMap]{
 			Required: requiredConfigsCM,
-			Control: resourceapply.ApplyControlFuncs[*corev1.ConfigMap]{
-				GetCachedFunc: smc.configMapLister.ConfigMaps(sm.Namespace).Get,
-				CreateFunc:    smc.kubeClient.CoreV1().ConfigMaps(sm.Namespace).Create,
-				UpdateFunc:    smc.kubeClient.CoreV1().ConfigMaps(sm.Namespace).Update,
-				DeleteFunc:    smc.kubeClient.CoreV1().ConfigMaps(sm.Namespace).Delete,
-			},
-		}.ToUntyped(),
-		resourceapply.ApplyConfig[*corev1.ConfigMap]{
-			Required: requiredDahsboardsCM,
 			Control: resourceapply.ApplyControlFuncs[*corev1.ConfigMap]{
 				GetCachedFunc: smc.configMapLister.ConfigMaps(sm.Namespace).Get,
 				CreateFunc:    smc.kubeClient.CoreV1().ConfigMaps(sm.Namespace).Create,
@@ -462,6 +480,20 @@ func (smc *Controller) syncGrafana(
 				DeleteFunc:    smc.kubeClient.CoreV1().Services(sm.Namespace).Delete,
 			},
 		}.ToUntyped(),
+	}
+	for _, cm := range requiredDahsboardsCMs {
+		applyConfigurations = append(
+			applyConfigurations,
+			resourceapply.ApplyConfig[*corev1.ConfigMap]{
+				Required: cm,
+				Control: resourceapply.ApplyControlFuncs[*corev1.ConfigMap]{
+					GetCachedFunc: smc.configMapLister.ConfigMaps(sm.Namespace).Get,
+					CreateFunc:    smc.kubeClient.CoreV1().ConfigMaps(sm.Namespace).Create,
+					UpdateFunc:    smc.kubeClient.CoreV1().ConfigMaps(sm.Namespace).Update,
+					DeleteFunc:    smc.kubeClient.CoreV1().ConfigMaps(sm.Namespace).Delete,
+				},
+			}.ToUntyped(),
+		)
 	}
 
 	if requiredIngress != nil {

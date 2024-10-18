@@ -3,13 +3,19 @@
 package scylladbmonitoring
 
 import (
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
+	"path/filepath"
+	"strings"
 	"time"
 
 	gapi "github.com/grafana/grafana-api-golang-client"
@@ -17,6 +23,9 @@ import (
 	o "github.com/onsi/gomega"
 	prometheusappclient "github.com/prometheus/client_golang/api"
 	promeheusappv1api "github.com/prometheus/client_golang/api/prometheus/v1"
+	configassests "github.com/scylladb/scylla-operator/assets/config"
+	grafanav1alpha1assets "github.com/scylladb/scylla-operator/assets/monitoring/grafana/v1alpha1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
@@ -24,12 +33,105 @@ import (
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"github.com/scylladb/scylla-operator/test/e2e/verification"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
 )
+
+type grafanaDashboard struct {
+	Title string   `json:"title"`
+	Tags  []string `json:"tags"`
+	UID   string   `json:"uid"`
+}
+
+func decodeGrafanaDashboardFromGZBase64String(s string) (*grafanaDashboard, error) {
+	b64Reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(s))
+	zr, err := gzip.NewReader(b64Reader)
+	if err != nil {
+		return nil, fmt.Errorf("can't create gzip reader: %w", err)
+	}
+	defer func() {
+		closeErr := zr.Close()
+		if closeErr != nil {
+			klog.ErrorS(err, "can't close gzip writer")
+		}
+	}()
+
+	data, err := io.ReadAll(zr)
+	if err != nil {
+		return nil, fmt.Errorf("can't read data from gzip reader: %w", err)
+	}
+
+	res := &grafanaDashboard{}
+	err = json.Unmarshal(data, &res)
+	if err != nil {
+		return nil, fmt.Errorf("can't unmarshal grafana dashboard: %w", err)
+	}
+
+	return res, nil
+}
+
+// expectedPlatformFolderDashboardSearchResponse contains the expected grafana dashboards.
+// Platform dashboards come directly from ScyllaDB Monitoring, so we do not know the expected values
+// and given the size they are not feasible to be maintained as a duplicate.
+// Contrary to our testing practice, in this case we'll just make sure it's not empty and load
+// the expected values dynamically.
+var expectedPlatformFolderDashboardSearchResponse []gapi.FolderDashboardSearchResponse
+var expectedPlatformHomeDashboardUID string
+
+var _ = g.BeforeSuite(func() {
+	for dashboardFolderName, dashboardFolder := range grafanav1alpha1assets.GrafanaDashboardsPlatform {
+		for _, dashboardString := range dashboardFolder {
+			o.Expect(dashboardString).NotTo(o.BeEmpty())
+
+			gd, err := decodeGrafanaDashboardFromGZBase64String(dashboardString)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(gd).NotTo(o.BeZero())
+
+			expectedPlatformFolderDashboardSearchResponse = append(expectedPlatformFolderDashboardSearchResponse, gapi.FolderDashboardSearchResponse{
+				Title:       gd.Title,
+				Tags:        gd.Tags,
+				Type:        "dash-db",
+				FolderTitle: dashboardFolderName,
+			})
+		}
+	}
+	o.Expect(expectedPlatformFolderDashboardSearchResponse).NotTo(o.BeEmpty())
+
+	homeDashboardDir, homeDashboardFile := filepath.Split(configassests.Project.Operator.GrafanaDefaultPlatformDashboard)
+	homeDashboardDir = strings.TrimSuffix(homeDashboardDir, "/")
+	o.Expect(homeDashboardDir).NotTo(o.BeZero())
+	o.Expect(homeDashboardDir).NotTo(o.ContainSubstring("/"))
+	o.Expect(homeDashboardFile).NotTo(o.BeZero())
+	o.Expect(homeDashboardFile).NotTo(o.ContainSubstring("/"))
+	homeDashboardFile += ".gz.base64"
+
+	o.Expect(grafanav1alpha1assets.GrafanaDashboardsPlatform).To(o.HaveKey(homeDashboardDir))
+	homeDashboardFolder := grafanav1alpha1assets.GrafanaDashboardsPlatform[homeDashboardDir]
+	o.Expect(homeDashboardFolder).NotTo(o.BeEmpty())
+	o.Expect(homeDashboardFolder).To(o.HaveKey(homeDashboardFile))
+	homeDashboardString := homeDashboardFolder[homeDashboardFile]
+	o.Expect(homeDashboardString).NotTo(o.BeZero())
+	ghd, err := decodeGrafanaDashboardFromGZBase64String(homeDashboardString)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(ghd).NotTo(o.BeZero())
+	o.Expect(ghd.UID).NotTo(o.BeZero())
+
+	expectedPlatformHomeDashboardUID = ghd.UID
+})
 
 var _ = g.Describe("ScyllaDBMonitoring", func() {
 	f := framework.NewFramework("scylladbmonitoring")
 
-	g.It("should setup monitoring stack", func() {
+	type entry struct {
+		Type                     scyllav1alpha1.ScyllaDBMonitoringType
+		ExpectedDashboards       *[]gapi.FolderDashboardSearchResponse
+		ExpectedHomeDashboardUID *string
+	}
+
+	describeEntry := func(e *entry) string {
+		return fmt.Sprintf("with %q monitoring type", e.Type)
+	}
+
+	g.DescribeTable("should setup monitoring stack", func(e *entry) {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 		defer cancel()
 
@@ -60,6 +162,7 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 		}
 		sm, _, err := scyllafixture.ScyllaDBMonitoringTemplate.RenderObject(renderArgs)
 		o.Expect(err).NotTo(o.HaveOccurred())
+		sm.Spec.Type = &e.Type
 
 		sm, err = f.ScyllaClient().ScyllaV1alpha1().ScyllaDBMonitorings(sc.Namespace).Create(
 			ctx,
@@ -145,7 +248,7 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 			defer ctxTargetsCancel()
 
 			targets, err := promClient.Targets(ctxTargets)
-			framework.Infof("Listing grafana targets: err: %v, active: %d, dropped: %d", err, len(targets.Active), len(targets.Dropped))
+			framework.Infof("Listing Prometheus targets: err: %v, active: %d, dropped: %d", err, len(targets.Active), len(targets.Dropped))
 			eo.Expect(err).NotTo(o.HaveOccurred())
 
 			// This should match the number of rules in service monitors used. We can possibly extend this to compare those
@@ -161,25 +264,26 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 			// o.Expect(targets.Dropped).To(o.HaveLen(0))
 
 			rulesResult, err := promClient.Rules(ctxTargets)
-			framework.Infof("Listing grafana rules: err: %v, groupCount: %d", err, len(rulesResult.Groups))
+			framework.Infof("Listing Prometheus rules: err: %v, groupCount: %d", err, len(rulesResult.Groups))
 			eo.Expect(err).NotTo(o.HaveOccurred())
 
-			eo.Expect(rulesResult.Groups).NotTo(o.HaveLen(0))
-			eo.Expect(rulesResult.Groups[0].Name).To(o.Equal("scylla.rules"))
-			eo.Expect(rulesResult.Groups[0].Rules).NotTo(o.BeEmpty())
-			for _, rule := range rulesResult.Groups[0].Rules {
-				switch r := rule.(type) {
-				case promeheusappv1api.AlertingRule:
-					eo.Expect(r.Health).To(o.BeEquivalentTo(promeheusappv1api.RuleHealthGood))
+			eo.Expect(rulesResult.Groups).To(o.HaveLen(3))
+			for _, ruleGroup := range rulesResult.Groups {
+				eo.Expect(ruleGroup.Name).To(o.Equal("scylla.rules"))
+				eo.Expect(ruleGroup.Rules).NotTo(o.BeEmpty())
+				for _, rule := range ruleGroup.Rules {
+					switch r := rule.(type) {
+					case promeheusappv1api.AlertingRule:
+						eo.Expect(r.Health).To(o.BeEquivalentTo(promeheusappv1api.RuleHealthGood))
 
-				case promeheusappv1api.RecordingRule:
-					eo.Expect(r.Health).To(o.BeEquivalentTo(promeheusappv1api.RuleHealthGood))
+					case promeheusappv1api.RecordingRule:
+						eo.Expect(r.Health).To(o.BeEquivalentTo(promeheusappv1api.RuleHealthGood))
 
-				default:
-					eo.Expect(fmt.Errorf("unexpected rule type %t", rule)).NotTo(o.HaveOccurred())
+					default:
+						eo.Expect(fmt.Errorf("unexpected rule type %t", rule)).NotTo(o.HaveOccurred())
+					}
 				}
 			}
-
 		}).WithTimeout(5 * time.Minute).WithPolling(1 * time.Second).Should(o.Succeed())
 
 		framework.By("Verifying that Grafana is configured correctly")
@@ -206,63 +310,99 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 		o.Expect(sm.Spec.Components.Grafana.ExposeOptions.WebInterface.Ingress.DNSDomains).To(o.HaveLen(1))
 		grafanaServerName := sm.Spec.Components.Grafana.ExposeOptions.WebInterface.Ingress.DNSDomains[0]
 
+		httpClient := &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					ServerName: grafanaServerName,
+					RootCAs:    grafanaServingCAPool,
+				},
+				Proxy: http.ProxyFromEnvironment,
+				DialContext: (&net.Dialer{
+					Timeout:   30 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}).DialContext,
+				ForceAttemptHTTP2:     true,
+				MaxIdleConns:          100,
+				IdleConnTimeout:       90 * time.Second,
+				TLSHandshakeTimeout:   10 * time.Second,
+				ExpectContinueTimeout: 1 * time.Second,
+			},
+			Timeout: 15 * time.Second,
+		}
+		grafanaBaseURL := "https://" + f.GetIngressAddress(grafanaServerName)
 		grafanaClient, err := gapi.New(
-			"https://"+f.GetIngressAddress(grafanaServerName),
+			grafanaBaseURL,
 			gapi.Config{
 				BasicAuth: url.UserPassword(grafanaUsername, grafanaPassword),
-				Client: &http.Client{
-					Transport: &http.Transport{
-						TLSClientConfig: &tls.Config{
-							ServerName: grafanaServerName,
-							RootCAs:    grafanaServingCAPool,
-						},
-						Proxy: http.ProxyFromEnvironment,
-						DialContext: (&net.Dialer{
-							Timeout:   30 * time.Second,
-							KeepAlive: 30 * time.Second,
-						}).DialContext,
-						ForceAttemptHTTP2:     true,
-						MaxIdleConns:          100,
-						IdleConnTimeout:       90 * time.Second,
-						TLSHandshakeTimeout:   10 * time.Second,
-						ExpectContinueTimeout: 1 * time.Second,
-					},
-					Timeout: 15 * time.Second,
-				},
+				Client:    httpClient,
 			},
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
-
-		expectedDashboards := []gapi.FolderDashboardSearchResponse{
-			{
-				ID:          2,
-				Title:       "CQL Overview",
-				URI:         "db/cql-overview",
-				Slug:        "",
-				Type:        "dash-db",
-				Tags:        []string{},
-				IsStarred:   false,
-				FolderID:    1,
-				FolderTitle: "scylladb",
-			},
-		}
 
 		var dashboards []gapi.FolderDashboardSearchResponse
 		o.Eventually(func(eo o.Gomega) {
 			dashboards, err = grafanaClient.Dashboards()
 			framework.Infof("Listing grafana dashboards: err: %v, count: %d", err, len(dashboards))
 			eo.Expect(err).NotTo(o.HaveOccurred())
-			eo.Expect(dashboards).To(o.HaveLen(len(expectedDashboards)))
+			eo.Expect(dashboards).To(o.HaveLen(len(*e.ExpectedDashboards)))
 		}).WithTimeout(10 * time.Minute).WithPolling(1 * time.Second).Should(o.Succeed())
 
-		// Clear random fields for comparison.
 		for i := range dashboards {
 			d := &dashboards[i]
+
+			// Clear random fields for comparison.
 			d.UID = ""
 			d.URL = ""
 			d.FolderUID = ""
 			d.FolderURL = ""
+
+			// Clear order dependent fields for comparison.
+			d.ID = 0
+			d.FolderID = 0
+
+			// Clear fields we don't want to compare
+			d.URI = ""
 		}
-		o.Expect(dashboards).To(o.Equal(expectedDashboards))
-	})
+		o.Expect(dashboards).To(o.ConsistOf(*e.ExpectedDashboards))
+
+		// The home dashboard API is not exposed in the client and OrgPreferences return empty values,
+		// so we have to call the API directly here.
+		ghdReq, err := http.NewRequestWithContext(ctx, "GET", grafanaBaseURL+"/api/dashboards/home", nil)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		ghdReq.SetBasicAuth(grafanaUsername, grafanaPassword)
+		ghdResp, err := httpClient.Do(ghdReq)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer func() {
+			closeErr := ghdResp.Body.Close()
+			o.Expect(closeErr).NotTo(o.HaveOccurred())
+		}()
+		ghdRespBody, err := io.ReadAll(ghdResp.Body)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		type homeDashboardResponse struct {
+			Dashboard grafanaDashboard `json:"dashboard"`
+		}
+		hdResp := &homeDashboardResponse{}
+		err = json.Unmarshal(ghdRespBody, hdResp)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(hdResp.Dashboard.UID).To(o.Equal(*e.ExpectedHomeDashboardUID))
+	},
+		g.Entry(describeEntry, &entry{
+			Type:                     scyllav1alpha1.ScyllaDBMonitoringTypeSAAS,
+			ExpectedHomeDashboardUID: pointer.Ptr("cql-overview"),
+			ExpectedDashboards: pointer.Ptr([]gapi.FolderDashboardSearchResponse{
+				{
+					Title:       "CQL Overview",
+					Type:        "dash-db",
+					FolderTitle: "scylladb-latest",
+					Tags:        []string{},
+				},
+			}),
+		}),
+		g.Entry(describeEntry, &entry{
+			Type:                     scyllav1alpha1.ScyllaDBMonitoringTypePlatform,
+			ExpectedHomeDashboardUID: &expectedPlatformHomeDashboardUID,
+			ExpectedDashboards:       &expectedPlatformFolderDashboardSearchResponse,
+		}),
+	)
 })

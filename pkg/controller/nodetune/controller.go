@@ -75,6 +75,7 @@ type Controller struct {
 	nodeConfigName string
 	nodeConfigUID  types.UID
 	scyllaImage    string
+	operatorImage  string
 
 	cachesToSync []cache.InformerSynced
 
@@ -100,6 +101,7 @@ func NewController(
 	nodeConfigName string,
 	nodeConfigUID types.UID,
 	scyllaImage string,
+	operatorImage string,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
@@ -124,6 +126,7 @@ func NewController(
 		nodeConfigName: nodeConfigName,
 		nodeConfigUID:  nodeConfigUID,
 		scyllaImage:    scyllaImage,
+		operatorImage:  operatorImage,
 
 		cachesToSync: []cache.InformerSynced{
 			nodeConfigInformer.Informer().HasSynced,

@@ -23,6 +23,7 @@ func (ncc *Controller) syncRoleBindings(
 
 	requiredRoleBindings := []*rbacv1.RoleBinding{
 		makePerftuneRoleBinding(),
+		makeRlimitsRoleBinding(),
 	}
 
 	// Delete any excessive RoleBindings.

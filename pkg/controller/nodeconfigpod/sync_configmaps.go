@@ -75,10 +75,6 @@ func (ncpc *Controller) makeConfigMap(ctx context.Context, pod *corev1.Pod) (*co
 				continue
 			}
 
-			if !controllerhelpers.IsPodTunable(pod) {
-				continue
-			}
-
 			if controllerhelpers.IsNodeTunedForContainer(nc, node.Name, containerID) {
 				continue
 			}

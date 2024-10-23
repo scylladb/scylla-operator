@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	g "github.com/onsi/ginkgo/v2"
@@ -114,6 +115,81 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		sort.Strings(matchingNodeNames)
 
 		o.Expect(jobNodeNames).To(o.BeEquivalentTo(matchingNodeNames))
+	})
+
+	g.It("should set Scylla process nofile rlimit to maximum", func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		nc := ncTemplate.DeepCopy()
+
+		ncRC := framework.NewRestoringCleaner(
+			ctx,
+			f.KubeAdminClient(),
+			f.DynamicAdminClient(),
+			nodeConfigResourceInfo,
+			nc.Namespace,
+			nc.Name,
+			framework.RestoreStrategyRecreate,
+		)
+		f.AddCleaners(ncRC)
+		ncRC.DeleteObject(ctx, true)
+
+		g.By("Creating a NodeConfig")
+		nc, err := f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Create(ctx, nc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		const (
+			nrOpenLimit = "12345678"
+		)
+		sc := f.GetDefaultScyllaCluster()
+		sc.Spec.Sysctls = []string{
+			fmt.Sprintf("fs.nr_open=%s", nrOpenLimit),
+		}
+
+		framework.By("Creating a ScyllaCluster")
+		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
+		ctx1, ctx1Cancel := utils.ContextForRollout(ctx, sc)
+		defer ctx1Cancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(ctx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Validating soft file limit of Scylla process")
+		podName := fmt.Sprintf("%s-%d", naming.StatefulSetNameForRackForScyllaCluster(sc.Spec.Datacenter.Racks[0], sc), 0)
+		scyllaPod, err := f.KubeClient().CoreV1().Pods(sc.Namespace).Get(ctx, podName, metav1.GetOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		stdout, stderr, err := executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), scyllaPod,
+			"bash",
+			"-euExo",
+			"pipefail",
+			"-O",
+			"inherit_errexit",
+			"-c",
+			`prlimit --pid=$(pidof scylla) --nofile --noheadings --output=SOFT`,
+		)
+		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+
+		stdout = strings.TrimSpace(stdout)
+		o.Expect(stdout).To(o.Equal(nrOpenLimit))
+
+		framework.By("Validating hard file limit of Scylla process")
+		stdout, stderr, err = executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), scyllaPod,
+			"bash",
+			"-euExo",
+			"pipefail",
+			"-O",
+			"inherit_errexit",
+			"-c",
+			`prlimit --pid=$(pidof scylla) --nofile --noheadings --output=HARD`,
+		)
+		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+
+		stdout = strings.TrimSpace(stdout)
+		o.Expect(stdout).To(o.Equal(nrOpenLimit))
 	})
 
 	g.It("should correctly project state for each scylla pod", func() {

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	batchv1 "k8s.io/api/batch/v1"
@@ -101,7 +102,81 @@ func makePerftuneJobForNode(controllerRef *metav1.OwnerReference, namespace, nod
 	return job
 }
 
-type perftuneJobForContainersData struct {
+func makeRlimitsJobForContainer(controllerRef *metav1.OwnerReference, namespace, nodeConfigName, nodeName string, nodeUID types.UID, image string, podSpec *corev1.PodSpec, scyllaPod *corev1.Pod, scyllaHostPID int) (*batchv1.Job, error) {
+	scyllaContainerID, err := controllerhelpers.GetScyllaContainerID(scyllaPod)
+	if err != nil {
+		return nil, fmt.Errorf("can't get scylla container id: %w", err)
+	}
+
+	jobData := containerJobData{
+		ContainerIDs: []string{scyllaContainerID},
+	}
+	jobDataBytes, err := json.Marshal(jobData)
+	if err != nil {
+		return nil, fmt.Errorf("can't marshal job data: %w", err)
+	}
+
+	labels := map[string]string{
+		naming.NodeConfigNameLabel:          nodeConfigName,
+		naming.NodeConfigJobForNodeUIDLabel: string(nodeUID),
+		naming.NodeConfigJobTypeLabel:       string(naming.NodeConfigJobTypeContainerResourceLimits),
+	}
+	annotations := map[string]string{
+		naming.NodeConfigJobForNodeKey: nodeName,
+		naming.NodeConfigJobData:       string(jobDataBytes),
+	}
+
+	return &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:       namespace,
+			Name:            fmt.Sprintf("containers-rlimits-%s", scyllaPod.UID),
+			OwnerReferences: []metav1.OwnerReference{*controllerRef},
+			Labels:          labels,
+			Annotations:     annotations,
+		},
+		Spec: batchv1.JobSpec{
+			// TODO: handle failed jobs and retry.
+			BackoffLimit: pointer.Ptr(int32(math.MaxInt32)),
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      labels,
+					Annotations: annotations,
+				},
+				Spec: corev1.PodSpec{
+					Tolerations:        podSpec.Tolerations,
+					NodeName:           nodeName,
+					RestartPolicy:      corev1.RestartPolicyOnFailure,
+					HostPID:            true,
+					ServiceAccountName: naming.RlimitsJobServiceAccountName,
+					Containers: []corev1.Container{
+						{
+							Name:            naming.RLimitsContainerName,
+							Image:           image,
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Command: []string{
+								"/usr/bin/scylla-operator",
+								"rlimits-job",
+								fmt.Sprintf("--pid=%d", scyllaHostPID),
+								"--loglevel=2",
+							},
+							SecurityContext: &corev1.SecurityContext{
+								Privileged: pointer.Ptr(true),
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("50Mi"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}, nil
+}
+
+type containerJobData struct {
 	ContainerIDs []string `json:"containerIDs"`
 }
 
@@ -129,7 +204,7 @@ func makePerftuneJobForContainers(controllerRef *metav1.OwnerReference, namespac
 		args = append(args, "--write-back-cache", "false")
 	}
 
-	jobData := perftuneJobForContainersData{
+	jobData := containerJobData{
 		ContainerIDs: scyllaContainerIDs,
 	}
 	jobDataBytes, err := json.Marshal(jobData)
@@ -140,7 +215,7 @@ func makePerftuneJobForContainers(controllerRef *metav1.OwnerReference, namespac
 	labels := map[string]string{
 		naming.NodeConfigNameLabel:          nodeConfigName,
 		naming.NodeConfigJobForNodeUIDLabel: string(nodeUID),
-		naming.NodeConfigJobTypeLabel:       string(naming.NodeConfigJobTypeContainers),
+		naming.NodeConfigJobTypeLabel:       string(naming.NodeConfigJobTypeContainerPerftune),
 	}
 	annotations := map[string]string{
 		naming.NodeConfigJobForNodeKey: nodeName,

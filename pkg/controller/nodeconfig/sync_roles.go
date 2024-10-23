@@ -19,6 +19,7 @@ func (ncc *Controller) syncRoles(ctx context.Context, nc *scyllav1alpha1.NodeCon
 
 	requiredRoles := []*rbacv1.Role{
 		makePerftuneRole(),
+		makeRlimitsRole(),
 	}
 
 	// Delete any excessive Roles.

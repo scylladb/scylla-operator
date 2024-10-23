@@ -32,7 +32,7 @@ eval $(minikube docker-env)
 ## Download Scylla Operator
 In this guide you will be using the examples and manifests from [Scylla Operator repository](https://github.com/scylladb/scylla-operator), so start off by cloning it to your local machine.
 ```console
-git clone git@github.com:scylladb/scylla-operator.git
+git clone https://github.com/scylladb/scylla-operator.git
 cd scylla-operator
 ```
 

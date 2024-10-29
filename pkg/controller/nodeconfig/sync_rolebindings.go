@@ -8,6 +8,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,7 +34,7 @@ func (ncc *Controller) syncRoleBindings(
 		requiredRoleBindings,
 		roleBindings,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: ncc.kubeClient.RbacV1().RoleBindings(nc.Namespace).Delete,
+			DeleteFunc: ncc.kubeClient.RbacV1().RoleBindings(naming.ScyllaOperatorNodeTuningNamespace).Delete,
 		},
 		ncc.eventRecorder)
 	if err != nil {

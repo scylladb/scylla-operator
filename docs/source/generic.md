@@ -40,7 +40,7 @@ cd scylla-operator
 First deploy Cert Manager, you can either follow [upsteam instructions](https://cert-manager.io/docs/installation/kubernetes/) or use following command:
 
 ```console
-kubectl apply -f examples/common/cert-manager.yaml
+kubectl apply --server-side -f examples/common/cert-manager.yaml
 ```
 This will install Cert Manager to provision a self-signed certificate.
 
@@ -56,7 +56,7 @@ kubectl -n cert-manager rollout status deployment.apps/cert-manager-webhook
 Deploy the Scylla Operator using the following commands:
 
 ```console
-kubectl apply -f deploy/operator.yaml
+kubectl apply --server-side -f deploy/operator.yaml
 ```
 
 This will install the operator in namespace `scylla-operator`.

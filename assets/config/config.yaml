@@ -16,4 +16,4 @@ operatorTests:
   scyllaDBVersions:
     updateFrom: "6.2.0-rc2"
     upgradeFrom: "6.1.2"
-  nodeSetupImage: "quay.io/scylladb/scylla-operator-images:node-setup-v0.0.2@sha256:210b1dd9bd60a5bf4056783f3132bdeef0cf9ab0a19eff0b620b2dfa5c4e5d61"
+  nodeSetupImage: "quay.io/scylladb/scylla-operator-images:node-setup-v0.0.3@sha256:c6b3de240cc5c884d5c617485bae35c51572cdfd39b6431d2e1f759c7d7feea1"

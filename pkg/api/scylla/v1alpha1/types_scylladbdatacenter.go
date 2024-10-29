@@ -179,8 +179,6 @@ type RackSpec struct {
 
 // ScyllaDB holds configuration options related to ScyllaDB.
 type ScyllaDB struct {
-	ScyllaDBTemplate `json:",inline"`
-
 	// image holds a reference to the ScyllaDB container image.
 	Image string `json:"image"`
 
@@ -267,8 +265,6 @@ type AlternatorOptions struct {
 
 // ScyllaDBManagerAgent holds configuration options related to ScyllaDB Manager Agent.
 type ScyllaDBManagerAgent struct {
-	ScyllaDBManagerAgentTemplate `json:",inline"`
-
 	// image holds a reference to the ScyllaDB Manager Agent container image.
 	// +optional
 	Image *string `json:"image,omitempty"`

@@ -126,6 +126,9 @@
       "properties": {
         "create": {
           "type": "boolean"
+        },
+        "labels": {
+          "type": "object"
         }
       }
     }

@@ -69,3 +69,4 @@ racks:
 # Whether to create Prometheus ServiceMonitor
 serviceMonitor:
   create: false
+  labels: {}

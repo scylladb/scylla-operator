@@ -4,6 +4,10 @@ kind: ServiceMonitor
 metadata:
   name: {{ printf "%s-service-monitor" (include "scylla.fullname" .) }}
   namespace: {{ .Release.Namespace }}
+  {{- if .Values.serviceMonitor.labels }}
+  labels:
+    {{- toYaml .Values.serviceMonitor.labels | nindent 4 }}
+  {{- end }}
 spec:
   jobLabel: "app"
   targetLabels: ["scylla/cluster"]

@@ -38,8 +38,6 @@ func MigrateV1ScyllaClusterSpecToV1Alpha1ScyllaDBDatacenterSpec(scName string, s
 		ClusterName:    scName,
 		DatacenterName: pointer.Ptr(scSpec.Datacenter.Name),
 		ScyllaDB: scyllav1alpha1.ScyllaDB{
-			// v1.ScyllaCluster doesn't provide API to specify cluster/datacenter wide properties of scylladb.
-			ScyllaDBTemplate: scyllav1alpha1.ScyllaDBTemplate{},
 			Image: func() string {
 				if len(scSpec.Repository) == 0 {
 					migrateErrs = append(migrateErrs, fmt.Errorf("v1alpha1.ScyllaCluster ScyllaDB repository cannot be empty"))
@@ -90,8 +88,6 @@ func MigrateV1ScyllaClusterSpecToV1Alpha1ScyllaDBDatacenterSpec(scName string, s
 			EnableDeveloperMode:         pointer.Ptr(scSpec.DeveloperMode),
 		},
 		ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgent{
-			// v1.ScyllaCluster doesn't provide API to specify cluster/datacenter wide properties of scylladb manager agent.
-			ScyllaDBManagerAgentTemplate: scyllav1alpha1.ScyllaDBManagerAgentTemplate{},
 			Image: func() *string {
 				if len(scSpec.AgentRepository) == 0 {
 					migrateErrs = append(migrateErrs, fmt.Errorf("v1alpha1.ScyllaCluster ScyllaDB Manager Agent repository cannot be empty"))

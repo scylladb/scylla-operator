@@ -3,24 +3,23 @@
 package scyllacluster
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"net"
-	"sync"
-	"time"
+	"math/rand"
 
-	"github.com/gocql/gocql"
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	"github.com/scylladb/gocqlx/v2"
+	configassests "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/util/cql"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/utils/pointer"
 )
 
 var _ = g.Describe("ScyllaCluster", func() {
@@ -28,9 +27,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 	g.It("should allow to build connection pool using shard aware ports", func() {
 		const (
-			nonShardAwarePort = 9042
-			shardAwarePort    = 19042
-			nrShards          = 4
+			nrShards = 4
 		)
 
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
@@ -69,57 +66,81 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(1))
 
-		connections := make(map[uint16]string)
-		var connectionsMut sync.Mutex
-
-		clusterConfig := gocql.NewCluster(hosts...)
-		clusterConfig.Dialer = DialerFunc(func(ctx context.Context, network, addr string) (net.Conn, error) {
-			sourcePort := gocql.ScyllaGetSourcePort(ctx)
-			localAddr, err := net.ResolveTCPAddr(network, fmt.Sprintf(":%d", sourcePort))
-			if err != nil {
-				return nil, err
-			}
-
-			framework.Infof("Connecting to %s using %d source port", addr, sourcePort)
-			connectionsMut.Lock()
-			connections[sourcePort] = addr
-			connectionsMut.Unlock()
-
-			d := &net.Dialer{LocalAddr: localAddr}
-			return d.DialContext(ctx, network, addr)
-		})
-
-		framework.By("Waiting for the driver to establish connection to shards")
-		session, err := gocqlx.WrapSession(clusterConfig.CreateSession())
-		o.Expect(err).NotTo(o.HaveOccurred())
-		defer session.Close()
-
-		err = wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, 5*time.Second, true, func(context.Context) (done bool, err error) {
-			return len(connections) == nrShards, nil
-		})
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		shardAwareAttempts := 0
-		for sourcePort, addr := range connections {
-			// Control connection is also put in pool, and it always uses the default port.
-			if sourcePort == 0 {
-				o.Expect(addr).To(o.HaveSuffix(fmt.Sprintf("%d", nonShardAwarePort)))
-				continue
-			}
-			o.Expect(addr).To(o.HaveSuffix(fmt.Sprintf("%d", shardAwarePort)))
-			shardAwareAttempts++
+		clientPod := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "client",
+			},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{
+						Name:  "client",
+						Image: configassests.Project.OperatorTests.NodeSetupImage,
+						Command: []string{
+							"sleep",
+							"infinity",
+						},
+					},
+				},
+				TerminationGracePeriodSeconds: pointer.Int64(1),
+				RestartPolicy:                 corev1.RestartPolicyNever,
+			},
 		}
+		clientPod, err = f.KubeClient().CoreV1().Pods(f.Namespace()).Create(ctx, clientPod, metav1.CreateOptions{})
 
-		// Control connection used for shard number discovery, lands on some random shard.
-		// This connection is also put in pool, and driver only establish connections to missing shards
-		// using shard-aware-port.
-		// Connections to shard-aware-port are guaranteed to land on shard driver wants.
-		o.Expect(shardAwareAttempts).To(o.Equal(nrShards - 1))
+		waitCtx2, waitCtx2Cancel := utils.ContextForPodStartup(ctx)
+		defer waitCtx2Cancel()
+		clientPod, err = controllerhelpers.WaitForPodState(waitCtx2, f.KubeClient().CoreV1().Pods(clientPod.Namespace), clientPod.Name, controllerhelpers.WaitForStateOptions{}, utils.PodIsRunning)
+
+		const (
+			scyllaShardKey = "SCYLLA_SHARD"
+			shardAwarePort = 19042
+
+			connectionAttempts = 10
+		)
+
+		for shard := range nrShards {
+			port := shardPort(shard, nrShards)
+
+			for i := range connectionAttempts {
+				framework.By("Establishing connection number %d to shard number %d", i, shard)
+				stdout, stderr, err := utils.ExecWithOptions(f.ClientConfig(), f.KubeClient().CoreV1(), utils.ExecOptions{
+					Command: []string{
+						"/usr/bin/bash",
+						"-euEo",
+						"pipefail",
+						"-O",
+						"inherit_errexit",
+						"-c",
+						fmt.Sprintf(`echo -e '%s' | nc -p %d %s %d`, cql.OptionsFrame, port, hosts[0], shardAwarePort)},
+					Namespace:     clientPod.Namespace,
+					PodName:       clientPod.Name,
+					ContainerName: clientPod.Name,
+					CaptureStdout: true,
+					CaptureStderr: true,
+				})
+				o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+				o.Expect(stderr).To(o.BeEmpty())
+				o.Expect(stdout).ToNot(o.BeEmpty())
+
+				fp := cql.NewFrameParser(bytes.NewBuffer([]byte(stdout)))
+				fp.SkipHeader()
+
+				scyllaSupported := fp.ReadStringMultiMap()
+				o.Expect(scyllaSupported[scyllaShardKey]).To(o.HaveLen(1))
+				o.Expect(scyllaSupported[scyllaShardKey][0]).To(o.Equal(fmt.Sprintf("%d", shard)))
+			}
+		}
 	})
 })
 
-type DialerFunc func(ctx context.Context, network, addr string) (net.Conn, error)
-
-func (f DialerFunc) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
-	return f(ctx, network, addr)
+// Ref: https://github.com/scylladb/scylla-rust-driver/blob/de7d8a5c78ea0702bf6da80197f7c495a145c188/scylla/src/routing.rs#L104-L110
+func shardPort(shard, nrShards int) int {
+	const (
+		maxPort = 65535
+		minPort = 49152
+	)
+	maxRange := maxPort - nrShards + 1
+	minRange := minPort + nrShards - 1
+	r := rand.Intn(maxRange-minRange+1) + minRange
+	return r/nrShards*nrShards + shard
 }

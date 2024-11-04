@@ -50,13 +50,9 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		defer di.Close()
 
 		framework.By("Waiting for ScyllaCluster to register with Scylla Manager")
-		registeredInManagerCond := func(sc *scyllav1.ScyllaCluster) (bool, error) {
-			return sc.Status.ManagerID != nil, nil
-		}
-
 		waitCtx2, waitCtx2Cancel := utils.ContextForManagerSync(ctx, sc)
 		defer waitCtx2Cancel()
-		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, registeredInManagerCond)
+		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRegisteredWithManager)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Scheduling a repair task")

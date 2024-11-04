@@ -16,7 +16,7 @@ import (
 func (c *Controller) calculateStatus(sc *scyllav1.ScyllaCluster, state *managerClusterState) *scyllav1.ScyllaClusterStatus {
 	status := sc.Status.DeepCopy()
 
-	status.ManagerID = pointer.Ptr("")
+	status.ManagerID = nil
 	status.Backups = []scyllav1.BackupTaskStatus{}
 	status.Repairs = []scyllav1.RepairTaskStatus{}
 

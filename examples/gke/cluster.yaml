@@ -11,7 +11,7 @@ metadata:
   name: scylla-cluster
   namespace: scylla
 spec:
-  agentVersion: 3.3.3@sha256:40e31739e8fb1d48af87abaeaa8ee29f71607964daa8434fe2526dfc6f665920
+  agentVersion: 3.5.0-dev-0.20241105.c9a79e43c
   version: 6.2.0
   automaticOrphanedNodeCleanup: true
   sysctls:

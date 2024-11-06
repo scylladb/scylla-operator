@@ -6,6 +6,7 @@ import (
 
 	o "github.com/onsi/gomega"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
@@ -44,16 +45,16 @@ func verifyNodeConfig(ctx context.Context, kubeClient kubernetes.Interface, nc *
 		c.LastTransitionTime = metav1.Time{}
 	}
 
+	dsPods, err := kubeClient.CoreV1().Pods(ds.Namespace).List(ctx, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(ds.Spec.Selector.MatchLabels).String()})
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	dsNodeNames := make([]string, 0, len(dsPods.Items))
+	for _, dsPod := range dsPods.Items {
+		dsNodeNames = append(dsNodeNames, dsPod.Spec.NodeName)
+	}
+
 	o.Expect(nc.Status.Conditions).To(o.ConsistOf(func() []interface{} {
 		var expectedConditions []interface{}
-
-		dsPods, err := kubeClient.CoreV1().Pods(ds.Namespace).List(ctx, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(ds.Spec.Selector.MatchLabels).String()})
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		dsNodeNames := make([]string, 0, len(dsPods.Items))
-		for _, dsPod := range dsPods.Items {
-			dsNodeNames = append(dsNodeNames, dsPod.Spec.NodeName)
-		}
 
 		type condValue struct {
 			condType string
@@ -73,7 +74,6 @@ func verifyNodeConfig(ctx context.Context, kubeClient kubernetes.Interface, nc *
 				condType: "Degraded",
 				status:   corev1.ConditionFalse,
 			},
-
 			// Controller conditions
 			{
 				condType: "NamespaceControllerProgressing",
@@ -148,37 +148,72 @@ func verifyNodeConfig(ctx context.Context, kubeClient kubernetes.Interface, nc *
 					condType: fmt.Sprintf("Node%sDegraded", nodeName),
 					status:   corev1.ConditionFalse,
 				},
-				// Node controller conditions
+				// Node setup aggregated conditions
 				{
-					condType: fmt.Sprintf("FilesystemControllerNode%sProgressing", nodeName),
+					condType: fmt.Sprintf("NodeSetup%sAvailable", nodeName),
+					status:   corev1.ConditionTrue,
+				},
+				{
+					condType: fmt.Sprintf("NodeSetup%sProgressing", nodeName),
 					status:   corev1.ConditionFalse,
 				},
 				{
-					condType: fmt.Sprintf("FilesystemControllerNode%sDegraded", nodeName),
+					condType: fmt.Sprintf("NodeSetup%sDegraded", nodeName),
+					status:   corev1.ConditionFalse,
+				},
+				// Node tune aggregated conditions
+				{
+					condType: fmt.Sprintf("NodeTune%sAvailable", nodeName),
+					status:   corev1.ConditionTrue,
+				},
+				{
+					condType: fmt.Sprintf("NodeTune%sProgressing", nodeName),
 					status:   corev1.ConditionFalse,
 				},
 				{
-					condType: fmt.Sprintf("MountControllerNode%sProgressing", nodeName),
+					condType: fmt.Sprintf("NodeTune%sDegraded", nodeName),
+					status:   corev1.ConditionFalse,
+				},
+				// Node setup controller conditions
+				{
+					condType: fmt.Sprintf("FilesystemControllerNodeSetup%sProgressing", nodeName),
 					status:   corev1.ConditionFalse,
 				},
 				{
-					condType: fmt.Sprintf("MountControllerNode%sDegraded", nodeName),
+					condType: fmt.Sprintf("FilesystemControllerNodeSetup%sDegraded", nodeName),
 					status:   corev1.ConditionFalse,
 				},
 				{
-					condType: fmt.Sprintf("RaidControllerNode%sProgressing", nodeName),
+					condType: fmt.Sprintf("MountControllerNodeSetup%sProgressing", nodeName),
 					status:   corev1.ConditionFalse,
 				},
 				{
-					condType: fmt.Sprintf("RaidControllerNode%sDegraded", nodeName),
+					condType: fmt.Sprintf("MountControllerNodeSetup%sDegraded", nodeName),
 					status:   corev1.ConditionFalse,
 				},
 				{
-					condType: fmt.Sprintf("LoopDeviceControllerNode%sProgressing", nodeName),
+					condType: fmt.Sprintf("RaidControllerNodeSetup%sProgressing", nodeName),
 					status:   corev1.ConditionFalse,
 				},
 				{
-					condType: fmt.Sprintf("LoopDeviceControllerNode%sDegraded", nodeName),
+					condType: fmt.Sprintf("RaidControllerNodeSetup%sDegraded", nodeName),
+					status:   corev1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("LoopDeviceControllerNodeSetup%sProgressing", nodeName),
+					status:   corev1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("LoopDeviceControllerNodeSetup%sDegraded", nodeName),
+					status:   corev1.ConditionFalse,
+				},
+				// Node tune controller conditions
+				{
+					condType: fmt.Sprintf("JobControllerNodeTune%sProgressing", nodeName),
+					status:   corev1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("JobControllerNodeTune%sDegraded", nodeName),
 					status:   corev1.ConditionFalse,
 				},
 			}
@@ -206,4 +241,14 @@ func verifyNodeConfig(ctx context.Context, kubeClient kubernetes.Interface, nc *
 
 		return expectedConditions
 	}()...))
+
+	isNodeStatusNodeTuned := func(nodeStatus scyllav1alpha1.NodeConfigNodeStatus) bool {
+		return nodeStatus.TunedNode
+	}
+	getNodeStatusName := func(nodeStatus scyllav1alpha1.NodeConfigNodeStatus) string {
+		return nodeStatus.Name
+	}
+
+	tunedNodes := slices.ConvertSlice(slices.Filter(nc.Status.NodeStatuses, isNodeStatusNodeTuned), getNodeStatusName)
+	o.Expect(tunedNodes).To(o.ConsistOf(dsNodeNames))
 }

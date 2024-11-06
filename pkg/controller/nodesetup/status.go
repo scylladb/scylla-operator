@@ -6,20 +6,41 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 )
 
-func (nsc *Controller) calculateStatus(nc *v1alpha1.NodeConfig) *v1alpha1.NodeConfigStatus {
+var deprecatedConditionTypeFormats = []string{
+	deprecatedRaidControllerNodeSetupProgressingConditionFormat,
+	deprecatedRaidControllerNodeSetupDegradedConditionFormat,
+	deprecatedFilesystemControllerNodeSetupProgressingConditionFormat,
+	deprecatedFilesystemControllerNodeSetupDegradedConditionFormat,
+	deprecatedMountControllerNodeSetupProgressingConditionFormat,
+	deprecatedMountControllerNodeSetupDegradedConditionFormat,
+	deprecatedLoopDeviceControllerNodeSetupProgressingConditionFormat,
+	deprecatedLoopDeviceControllerNodeSetupDegradedConditionFormat,
+}
+
+func (nsc *Controller) calculateStatus(nc *scyllav1alpha1.NodeConfig) *scyllav1alpha1.NodeConfigStatus {
 	status := nc.Status.DeepCopy()
-	status.ObservedGeneration = nc.Generation
+
+	deprecatedConditionTypes := sets.New(slices.ConvertSlice(deprecatedConditionTypeFormats, func(conditionTypeFormat string) string {
+		return fmt.Sprintf(conditionTypeFormat, nsc.nodeName)
+	})...)
+
+	statusConditions := status.Conditions.ToMetaV1Conditions()
+	status.Conditions = scyllav1alpha1.NewNodeConfigConditions(slices.FilterOut(statusConditions, func(c metav1.Condition) bool {
+		return deprecatedConditionTypes.Has(c.Type)
+	}))
 
 	return status
 }
 
-func (nsc *Controller) updateStatus(ctx context.Context, currentNC *v1alpha1.NodeConfig, status *v1alpha1.NodeConfigStatus) error {
+func (nsc *Controller) updateStatus(ctx context.Context, currentNC *scyllav1alpha1.NodeConfig, status *scyllav1alpha1.NodeConfigStatus) error {
 	if apiequality.Semantic.DeepEqual(currentNC.Status, status) {
 		return nil
 	}

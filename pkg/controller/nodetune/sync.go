@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -38,52 +40,35 @@ func (ncdc *Controller) getCanAdoptFunc(ctx context.Context) func() error {
 	}
 }
 
-func (ncdc *Controller) getCurrentNodeConfig(ctx context.Context) (*v1alpha1.NodeConfig, error) {
-	nc, err := ncdc.nodeConfigLister.Get(ncdc.nodeConfigName)
-	if err != nil {
-		return nil, fmt.Errorf("can't get current node config %q: %w", ncdc.nodeConfigName, err)
-	}
-
-	if nc.UID != ncdc.nodeConfigUID {
-		// In normal circumstances we should be deleted first by GC because of an ownerRef to the NodeConfig.
-		return nil, fmt.Errorf("nodeConfig UID %q doesn't match the expected UID %q", nc.UID, nc.UID)
-	}
-
-	return nc, nil
-}
-
-func (ncdc *Controller) updateNodeStatus(ctx context.Context, nodeStatus *v1alpha1.NodeConfigNodeStatus) error {
-	oldNC, err := ncdc.getCurrentNodeConfig(ctx)
-	if err != nil {
-		return err
-	}
-
-	nc := oldNC.DeepCopy()
-
-	nc.Status.NodeStatuses = controllerhelpers.SetNodeStatus(nc.Status.NodeStatuses, nodeStatus)
-
-	if apiequality.Semantic.DeepEqual(nc.Status.NodeStatuses, oldNC.Status.NodeStatuses) {
-		return nil
-	}
-
-	klog.V(2).InfoS("Updating status", "NodeConfig", klog.KObj(oldNC), "Node", nodeStatus.Name)
-
-	_, err = ncdc.scyllaClient.ScyllaV1alpha1().NodeConfigs().UpdateStatus(ctx, nc, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("can't update node config status %q: %w", ncdc.nodeConfigName, err)
-	}
-
-	klog.V(2).InfoS("Status updated", "NodeConfig", klog.KObj(oldNC), "Node", nodeStatus.Name)
-
-	return nil
-}
-
 func (ncdc *Controller) sync(ctx context.Context) error {
 	startTime := time.Now()
 	klog.V(4).InfoS("Started sync", "startTime", startTime)
 	defer func() {
 		klog.V(4).InfoS("Finished sync", "duration", time.Since(startTime))
 	}()
+
+	nc, err := ncdc.nodeConfigLister.Get(ncdc.nodeConfigName)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return fmt.Errorf("can't get current nodeconfig %q: %w", ncdc.nodeConfigName, err)
+		}
+
+		klog.V(2).InfoS("NodeConfig has been deleted", "NodeConfig", klog.KRef("", ncdc.nodeConfigName))
+		return nil
+	}
+
+	if nc.UID != ncdc.nodeConfigUID {
+		// In normal circumstances we should be deleted first by GC because of an ownerRef to the NodeConfig.
+		return fmt.Errorf("nodeConfig UID %q doesn't match the expected UID %q", nc.UID, nc.UID)
+	}
+
+	status := ncdc.calculateStatus(nc)
+
+	if nc.DeletionTimestamp != nil {
+		return ncdc.updateStatus(ctx, nc, status)
+	}
+
+	statusConditions := status.Conditions.ToMetaV1Conditions()
 
 	type CT = *appsv1.DaemonSet
 	var objectErrs []error
@@ -124,18 +109,84 @@ func (ncdc *Controller) sync(ctx context.Context) error {
 		return objectErr
 	}
 
-	nodeStatus := &v1alpha1.NodeConfigNodeStatus{
+	nodeStatus := &scyllav1alpha1.NodeConfigNodeStatus{
 		Name: ncdc.nodeName,
 	}
 
 	var errs []error
-
-	err = ncdc.syncJobs(ctx, jobs, nodeStatus)
+	err = controllerhelpers.RunSync(
+		&statusConditions,
+		fmt.Sprintf(jobControllerNodeTuneProgressingConditionFormat, ncdc.nodeName),
+		fmt.Sprintf(jobControllerNodeTuneDegradedConditionFormat, ncdc.nodeName),
+		nc.Generation,
+		func() ([]metav1.Condition, error) {
+			return ncdc.syncJobs(ctx, nc, jobs, nodeStatus)
+		},
+	)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't sync jobs: %w", err))
 	}
 
-	err = ncdc.updateNodeStatus(ctx, nodeStatus)
+	// Aggregate node conditions.
+	var aggregationErrs []error
+	nodeTuneAvailableConditionType := fmt.Sprintf(internalapi.NodeTuneAvailableConditionFormat, ncdc.nodeName)
+	nodeTuneAvailableCondition, err := controllerhelpers.AggregateStatusConditions(
+		controllerhelpers.FindStatusConditionsWithSuffix(statusConditions, nodeTuneAvailableConditionType),
+		metav1.Condition{
+			Type:               nodeTuneAvailableConditionType,
+			Status:             metav1.ConditionTrue,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: nc.Generation,
+		},
+	)
+	if err != nil {
+		aggregationErrs = append(aggregationErrs, fmt.Errorf("can't aggregate available node tune status conditions: %w", err))
+	}
+
+	nodeTuneProgressingConditionType := fmt.Sprintf(internalapi.NodeTuneProgressingConditionFormat, ncdc.nodeName)
+	nodeTuneProgressingCondition, err := controllerhelpers.AggregateStatusConditions(
+		controllerhelpers.FindStatusConditionsWithSuffix(statusConditions, nodeTuneProgressingConditionType),
+		metav1.Condition{
+			Type:               nodeTuneProgressingConditionType,
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: nc.Generation,
+		},
+	)
+	if err != nil {
+		aggregationErrs = append(aggregationErrs, fmt.Errorf("can't aggregate progressing node tune status conditions: %w", err))
+	}
+
+	nodeTuneDegradedConditionType := fmt.Sprintf(internalapi.NodeTuneDegradedConditionFormat, ncdc.nodeName)
+	nodeTuneDegradedCondition, err := controllerhelpers.AggregateStatusConditions(
+		controllerhelpers.FindStatusConditionsWithSuffix(statusConditions, nodeTuneDegradedConditionType),
+		metav1.Condition{
+			Type:               nodeTuneDegradedConditionType,
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: nc.Generation,
+		},
+	)
+	if err != nil {
+		aggregationErrs = append(aggregationErrs, fmt.Errorf("can't aggregate degraded node tune status conditions: %w", err))
+	}
+
+	if len(aggregationErrs) > 0 {
+		errs = append(errs, aggregationErrs...)
+		return utilerrors.NewAggregate(errs)
+	}
+
+	apimeta.SetStatusCondition(&statusConditions, nodeTuneAvailableCondition)
+	apimeta.SetStatusCondition(&statusConditions, nodeTuneProgressingCondition)
+	apimeta.SetStatusCondition(&statusConditions, nodeTuneDegradedCondition)
+
+	status.Conditions = scyllav1alpha1.NewNodeConfigConditions(statusConditions)
+	status.NodeStatuses = controllerhelpers.SetNodeStatus(status.NodeStatuses, nodeStatus)
+
+	err = ncdc.updateStatus(ctx, nc, status)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't update status: %w", err))
 	}

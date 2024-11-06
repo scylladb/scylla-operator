@@ -3,15 +3,28 @@
 package nodesetup
 
 const (
-	raidControllerNodeProgressingConditionFormat = "RaidControllerNode%sProgressing"
-	raidControllerNodeDegradedConditionFormat    = "RaidControllerNode%sDegraded"
+	raidControllerNodeSetupProgressingConditionFormat = "RaidControllerNodeSetup%sProgressing"
+	raidControllerNodeSetupDegradedConditionFormat    = "RaidControllerNodeSetup%sDegraded"
 
-	filesystemControllerNodeProgressingConditionFormat = "FilesystemControllerNode%sProgressing"
-	filesystemControllerNodeDegradedConditionFormat    = "FilesystemControllerNode%sDegraded"
+	filesystemControllerNodeSetupProgressingConditionFormat = "FilesystemControllerNodeSetup%sProgressing"
+	filesystemControllerNodeSetupDegradedConditionFormat    = "FilesystemControllerNodeSetup%sDegraded"
 
-	mountControllerNodeProgressingConditionFormat = "MountControllerNode%sProgressing"
-	mountControllerNodeDegradedConditionFormat    = "MountControllerNode%sDegraded"
+	mountControllerNodeSetupProgressingConditionFormat = "MountControllerNodeSetup%sProgressing"
+	mountControllerNodeSetupDegradedConditionFormat    = "MountControllerNodeSetup%sDegraded"
 
-	loopDeviceControllerNodeProgressingConditionFormat = "LoopDeviceControllerNode%sProgressing"
-	loopDeviceControllerNodeDegradedConditionFormat    = "LoopDeviceControllerNode%sDegraded"
+	loopDeviceControllerNodeSetupProgressingConditionFormat = "LoopDeviceControllerNodeSetup%sProgressing"
+	loopDeviceControllerNodeSetupDegradedConditionFormat    = "LoopDeviceControllerNodeSetup%sDegraded"
+
+	//TODO(rzetelskik): remove deprecated conditions in >=1.16
+	deprecatedRaidControllerNodeSetupProgressingConditionFormat = "RaidControllerNode%sProgressing"
+	deprecatedRaidControllerNodeSetupDegradedConditionFormat    = "RaidControllerNode%sDegraded"
+
+	deprecatedFilesystemControllerNodeSetupProgressingConditionFormat = "FilesystemControllerNode%sProgressing"
+	deprecatedFilesystemControllerNodeSetupDegradedConditionFormat    = "FilesystemControllerNode%sDegraded"
+
+	deprecatedMountControllerNodeSetupProgressingConditionFormat = "MountControllerNode%sProgressing"
+	deprecatedMountControllerNodeSetupDegradedConditionFormat    = "MountControllerNode%sDegraded"
+
+	deprecatedLoopDeviceControllerNodeSetupProgressingConditionFormat = "LoopDeviceControllerNode%sProgressing"
+	deprecatedLoopDeviceControllerNodeSetupDegradedConditionFormat    = "LoopDeviceControllerNode%sDegraded"
 )

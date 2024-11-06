@@ -167,7 +167,7 @@ func listBlockDevices(ctx context.Context, executor exec.Interface, nc *scyllav1
 				}
 
 				progressingConditions = append(progressingConditions, metav1.Condition{
-					Type:               raidControllerNodeProgressingConditionFormat,
+					Type:               raidControllerNodeSetupProgressingConditionFormat,
 					Status:             metav1.ConditionTrue,
 					Reason:             "AwaitingLoopDevice",
 					Message:            fmt.Sprintf("Loop device %q not created yet", lc.Name),

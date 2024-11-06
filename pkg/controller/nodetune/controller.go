@@ -141,6 +141,12 @@ func NewController(
 		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "nodeconfigdaemon"),
 	}
 
+	nodeConfigInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    snc.addNodeConfig,
+		UpdateFunc: snc.updateNodeConfig,
+		DeleteFunc: snc.deleteNodeConfig,
+	})
+
 	localScyllaPodsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    snc.addPod,
 		UpdateFunc: snc.updatePod,
@@ -216,6 +222,74 @@ func (ncdc *Controller) Run(ctx context.Context) {
 
 func (ncdc *Controller) enqueue() {
 	ncdc.queue.Add(controllerKey)
+}
+
+func (ncdc *Controller) addNodeConfig(obj interface{}) {
+	nc := obj.(*scyllav1alpha1.NodeConfig)
+
+	if !ncdc.isNodeConfigControlled(nc) {
+		klog.V(5).InfoS("Not enqueueing NodeConfig not controlled by us", "NodeConfig", klog.KObj(nc), "RV", nc.ResourceVersion)
+		return
+	}
+
+	klog.V(4).InfoS("Observed addition of NodeConfig", "NodeConfig", klog.KObj(nc), "RV", nc.ResourceVersion)
+	ncdc.enqueue()
+}
+
+func (ncdc *Controller) updateNodeConfig(old, cur interface{}) {
+	oldNC := old.(*scyllav1alpha1.NodeConfig)
+	currentNC := cur.(*scyllav1alpha1.NodeConfig)
+
+	if currentNC.UID != oldNC.UID {
+		key, err := keyFunc(oldNC)
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldNC, err))
+			return
+		}
+		ncdc.deleteNodeConfig(cache.DeletedFinalStateUnknown{
+			Key: key,
+			Obj: oldNC,
+		})
+	}
+
+	controlled := ncdc.isNodeConfigControlled(currentNC)
+	if !controlled {
+		klog.V(5).InfoS("Not enqueueing NodeConfig not controlled by us", "NodeConfig", klog.KObj(currentNC), "RV", currentNC.ResourceVersion)
+		return
+	}
+
+	klog.V(4).InfoS(
+		"Observed update of NodeConfig",
+		"NodeConfig", klog.KObj(currentNC),
+		"RV", fmt.Sprintf("%s->%s", oldNC.ResourceVersion, currentNC.ResourceVersion),
+		"UID", fmt.Sprintf("%s->%s", oldNC.UID, currentNC.UID),
+	)
+	ncdc.enqueue()
+}
+
+func (ncdc *Controller) deleteNodeConfig(obj interface{}) {
+	nc, ok := obj.(*scyllav1alpha1.NodeConfig)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
+			return
+		}
+		nc, ok = tombstone.Obj.(*scyllav1alpha1.NodeConfig)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a NodeConfig %#v", obj))
+			return
+		}
+	}
+
+	controlled := ncdc.isNodeConfigControlled(nc)
+	if !controlled {
+		klog.V(5).InfoS("Not enqueueing NodeConfig not controlled by us", "NodeConfig", klog.KObj(nc), "RV", nc.ResourceVersion)
+		return
+	}
+
+	klog.V(4).InfoS("Observed deletion of NodeConfig", "NodeConfig", klog.KObj(nc), "RV", nc.ResourceVersion)
+	ncdc.enqueue()
 }
 
 func (ncdc *Controller) addPod(obj interface{}) {
@@ -370,4 +444,8 @@ func (ncdc *Controller) newNodeConfigObjectRef() *corev1.ObjectReference {
 		UID:             ncdc.nodeConfigUID,
 		ResourceVersion: "",
 	}
+}
+
+func (ncdc *Controller) isNodeConfigControlled(nc *scyllav1alpha1.NodeConfig) bool {
+	return nc.Name == ncdc.nodeConfigName && nc.UID == ncdc.nodeConfigUID
 }

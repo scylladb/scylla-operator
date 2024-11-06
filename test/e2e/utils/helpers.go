@@ -77,24 +77,6 @@ func GetMatchingNodesForNodeConfig(ctx context.Context, nodeGetter corev1client.
 	return matchingNodes, nil
 }
 
-func IsNodeConfigDoneWithContainerTuningFunc(nodeName, containerID string) func(nc *scyllav1alpha1.NodeConfig) (bool, error) {
-	return func(nc *scyllav1alpha1.NodeConfig) (bool, error) {
-		containerTuned := controllerhelpers.IsNodeTunedForContainer(nc, nodeName, containerID)
-		return containerTuned, nil
-	}
-}
-
-func IsNodeConfigDoneWithNodeTuningFunc(nodes []*corev1.Node) func(nc *scyllav1alpha1.NodeConfig) (bool, error) {
-	return func(nc *scyllav1alpha1.NodeConfig) (bool, error) {
-		for _, node := range nodes {
-			if !controllerhelpers.IsNodeTuned(nc.Status.NodeStatuses, node.Name) {
-				return false, nil
-			}
-		}
-		return true, nil
-	}
-}
-
 func RolloutTimeoutForScyllaCluster(sc *scyllav1.ScyllaCluster) time.Duration {
 	return SyncTimeout + time.Duration(GetMemberCount(sc))*memberRolloutTimeout + cleanupJobTimeout
 }

@@ -25,6 +25,10 @@ type ScyllaOperatorConfigSpec struct {
 	// Setting this field renders your cluster unsupported. Use at your own risk.
 	// +optional
 	UnsupportedPrometheusVersionOverride *string `json:"unsupportedPrometheusVersionOverride,omitempty"`
+
+	// configuredClusterDomain allows users to set the configured Kubernetes cluster domain explicitly, instead of letting Scylla Operator automatically discover it.
+	// +optional
+	ConfiguredClusterDomain *string `json:"configuredClusterDomain,omitempty"`
 }
 
 type ScyllaOperatorConfigStatus struct {
@@ -32,6 +36,9 @@ type ScyllaOperatorConfigStatus struct {
 	// ScyllaOperatorConfig's generation, which is updated on mutation by the API Server.
 	// +optional
 	ObservedGeneration *int64 `json:"observedGeneration,omitempty"`
+
+	// conditions hold conditions describing ScyllaOperatorConfig state.
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
 	// scyllaDBUtilsImage is the ScyllaDB image used for running ScyllaDB utilities.
 	// +optional
@@ -48,6 +55,9 @@ type ScyllaOperatorConfigStatus struct {
 	// prometheusVersion is the Prometheus version used by the operator to create a Prometheus instance.
 	// +optional
 	PrometheusVersion *string `json:"prometheusVersion"`
+
+	// clusterDomain is the Kubernetes cluster domain used by the Scylla Operator.
+	ClusterDomain *string `json:"clusterDomain,omitempty"`
 }
 
 // +kubebuilder:object:root=true

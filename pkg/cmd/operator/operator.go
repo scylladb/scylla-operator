@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"sync"
 	"time"
 
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
+	"github.com/scylladb/scylla-operator/pkg/clusterdomain"
 	"github.com/scylladb/scylla-operator/pkg/controller/nodeconfig"
 	"github.com/scylladb/scylla-operator/pkg/controller/nodeconfigpod"
 	"github.com/scylladb/scylla-operator/pkg/controller/orphanedpv"
@@ -44,9 +46,10 @@ type OperatorOptions struct {
 	genericclioptions.InClusterReflection
 	genericclioptions.LeaderElection
 
-	kubeClient       kubernetes.Interface
-	scyllaClient     scyllaversionedclient.Interface
-	monitoringClient monitoringversionedclient.Interface
+	kubeClient                 kubernetes.Interface
+	scyllaClient               scyllaversionedclient.Interface
+	monitoringClient           monitoringversionedclient.Interface
+	dynamicClusterDomainGetter *clusterdomain.DynamicClusterDomain
 
 	ConcurrentSyncs int
 	OperatorImage   string
@@ -190,6 +193,8 @@ func (o *OperatorOptions) Complete(cmd *cobra.Command) error {
 	if err != nil {
 		return fmt.Errorf("can't build monitoring clientset: %w", err)
 	}
+
+	o.dynamicClusterDomainGetter = clusterdomain.NewDynamicClusterDomain(net.DefaultResolver)
 
 	maxChanged := cmd.Flags().Lookup(cryptoKeyBufferSizeMaxFlagKey).Changed
 	if !maxChanged && o.CryptoKeyBufferSizeMin > o.CryptoKeyBufferSizeMax {
@@ -342,6 +347,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		o.kubeClient,
 		o.scyllaClient.ScyllaV1alpha1(),
 		scyllaOperatorConfigInformers.Scylla().V1alpha1().ScyllaOperatorConfigs(),
+		o.dynamicClusterDomainGetter.GetClusterDomain,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create scyllaoperatorconfig controller: %w", err)

@@ -18,6 +18,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -34,13 +35,16 @@ const (
 	ControllerName = "ScyllaOperatorConfigController"
 	// maxSyncDuration enforces preemption. Do not raise the value! Controllers shouldn't actively wait,
 	// but rather use the queue.
-	maxSyncDuration = 30 * time.Second
+	maxSyncDuration           = 30 * time.Second
+	clusterDomainPollInterval = 5 * time.Minute
 )
 
 var (
 	keyFunc                           = cache.DeletionHandlingMetaNamespaceKeyFunc
 	scyllaOperatorConfigControllerGVK = scyllav1.GroupVersion.WithKind("ScyllaOperatorConfig")
 )
+
+type GetClusterDomainFunc func(context.Context) (string, error)
 
 type Controller struct {
 	kubeClient   kubernetes.Interface
@@ -49,6 +53,8 @@ type Controller struct {
 	scyllaOperatorConfigLister scyllav1alpha1listers.ScyllaOperatorConfigLister
 
 	cachesToSync []cache.InformerSynced
+
+	getClusterDomainFunc GetClusterDomainFunc
 
 	eventRecorder record.EventRecorder
 
@@ -62,6 +68,7 @@ func NewController(
 	kubeClient kubernetes.Interface,
 	scyllaClient scyllav1alpha1client.ScyllaV1alpha1Interface,
 	scyllaOperatorConfigInformer scyllav1alpha1informers.ScyllaOperatorConfigInformer,
+	getClusterDomain GetClusterDomainFunc,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
@@ -76,6 +83,8 @@ func NewController(
 		cachesToSync: []cache.InformerSynced{
 			scyllaOperatorConfigInformer.Informer().HasSynced,
 		},
+
+		getClusterDomainFunc: getClusterDomain,
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "orphanedpv-controller"}),
 
@@ -184,6 +193,25 @@ func (opc *Controller) Run(ctx context.Context, workers int) {
 			wait.UntilWithContext(ctx, opc.runWorker, time.Second)
 		}()
 	}
+
+	opc.wg.Add(1)
+	go func() {
+		defer opc.wg.Done()
+		wait.UntilWithContext(ctx, func(ctx context.Context) {
+			klog.V(4).InfoS("Periodically enqueuing %q ScyllaOperatorConfig", naming.SingletonName)
+
+			key, err := keyFunc(metav1.ObjectMeta{
+				Namespace: "",
+				Name:      naming.SingletonName,
+			})
+			if err != nil {
+				utilruntime.HandleError(fmt.Errorf("couldn't get key for object name %#v: %v", naming.SingletonName, err))
+				return
+			}
+
+			opc.queue.Add(key)
+		}, clusterDomainPollInterval)
+	}()
 
 	<-ctx.Done()
 }

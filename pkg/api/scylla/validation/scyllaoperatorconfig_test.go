@@ -200,6 +200,55 @@ func TestValidateScyllaOperatorConfig(t *testing.T) {
 			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
+		{
+			name: "ConfiguredClusterDomain accepts valid domain",
+			ScyllaOperatorConfig: &scyllav1alpha1.ScyllaOperatorConfig{
+				Spec: scyllav1alpha1.ScyllaOperatorConfigSpec{
+					ConfiguredClusterDomain: pointer.Ptr("cluster.local"),
+				},
+			},
+			expectedErrorList:   nil,
+			expectedErrorString: "",
+		},
+		{
+			name: "ConfiguredClusterDomain can't be empty",
+			ScyllaOperatorConfig: &scyllav1alpha1.ScyllaOperatorConfig{
+				Spec: scyllav1alpha1.ScyllaOperatorConfigSpec{
+					ConfiguredClusterDomain: pointer.Ptr(""),
+				},
+			},
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeRequired,
+					Field:    "spec.configuredClusterDomain",
+					BadValue: "",
+				},
+			},
+			expectedErrorString: `spec.configuredClusterDomain: Required value`,
+		},
+		{
+			name: "ConfiguredClusterDomain must match label value regex",
+			ScyllaOperatorConfig: &scyllav1alpha1.ScyllaOperatorConfig{
+				Spec: scyllav1alpha1.ScyllaOperatorConfigSpec{
+					ConfiguredClusterDomain: pointer.Ptr("-foo"),
+				},
+			},
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "spec.configuredClusterDomain",
+					BadValue: "-foo",
+					Detail:   `a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')`,
+				},
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "spec.configuredClusterDomain",
+					BadValue: "-foo",
+					Detail:   `a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')`,
+				},
+			},
+			expectedErrorString: `[spec.configuredClusterDomain: Invalid value: "-foo": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*'), spec.configuredClusterDomain: Invalid value: "-foo": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')]`,
+		},
 	}
 
 	for _, tc := range tt {

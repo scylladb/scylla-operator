@@ -1546,6 +1546,11 @@ func (in *ScyllaOperatorConfigSpec) DeepCopyInto(out *ScyllaOperatorConfigSpec) 
 		*out = new(string)
 		**out = **in
 	}
+	if in.ConfiguredClusterDomain != nil {
+		in, out := &in.ConfiguredClusterDomain, &out.ConfiguredClusterDomain
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
@@ -1567,6 +1572,13 @@ func (in *ScyllaOperatorConfigStatus) DeepCopyInto(out *ScyllaOperatorConfigStat
 		*out = new(int64)
 		**out = **in
 	}
+	if in.Conditions != nil {
+		in, out := &in.Conditions, &out.Conditions
+		*out = make([]metav1.Condition, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.ScyllaDBUtilsImage != nil {
 		in, out := &in.ScyllaDBUtilsImage, &out.ScyllaDBUtilsImage
 		*out = new(string)
@@ -1584,6 +1596,11 @@ func (in *ScyllaOperatorConfigStatus) DeepCopyInto(out *ScyllaOperatorConfigStat
 	}
 	if in.PrometheusVersion != nil {
 		in, out := &in.PrometheusVersion, &out.PrometheusVersion
+		*out = new(string)
+		**out = **in
+	}
+	if in.ClusterDomain != nil {
+		in, out := &in.ClusterDomain, &out.ClusterDomain
 		*out = new(string)
 		**out = **in
 	}

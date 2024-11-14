@@ -48,8 +48,8 @@ func (nsc *Controller) sync(ctx context.Context) error {
 	var errs []error
 	err = controllerhelpers.RunSync(
 		&statusConditions,
-		fmt.Sprintf(loopDeviceControllerNodeProgressingConditionFormat, nsc.nodeName),
-		fmt.Sprintf(loopDeviceControllerNodeDegradedConditionFormat, nsc.nodeName),
+		fmt.Sprintf(loopDeviceControllerNodeSetupProgressingConditionFormat, nsc.nodeName),
+		fmt.Sprintf(loopDeviceControllerNodeSetupDegradedConditionFormat, nsc.nodeName),
 		nc.Generation,
 		func() ([]metav1.Condition, error) {
 			return nsc.syncLoopDevices(ctx, nc)
@@ -61,8 +61,8 @@ func (nsc *Controller) sync(ctx context.Context) error {
 
 	err = controllerhelpers.RunSync(
 		&statusConditions,
-		fmt.Sprintf(raidControllerNodeProgressingConditionFormat, nsc.nodeName),
-		fmt.Sprintf(raidControllerNodeDegradedConditionFormat, nsc.nodeName),
+		fmt.Sprintf(raidControllerNodeSetupProgressingConditionFormat, nsc.nodeName),
+		fmt.Sprintf(raidControllerNodeSetupDegradedConditionFormat, nsc.nodeName),
 		nc.Generation,
 		func() ([]metav1.Condition, error) {
 			return nsc.syncRAIDs(ctx, nc)
@@ -74,8 +74,8 @@ func (nsc *Controller) sync(ctx context.Context) error {
 
 	err = controllerhelpers.RunSync(
 		&statusConditions,
-		fmt.Sprintf(filesystemControllerNodeProgressingConditionFormat, nsc.nodeName),
-		fmt.Sprintf(filesystemControllerNodeDegradedConditionFormat, nsc.nodeName),
+		fmt.Sprintf(filesystemControllerNodeSetupProgressingConditionFormat, nsc.nodeName),
+		fmt.Sprintf(filesystemControllerNodeSetupDegradedConditionFormat, nsc.nodeName),
 		nc.Generation,
 		func() ([]metav1.Condition, error) {
 			return nsc.syncFilesystems(ctx, nc)
@@ -87,8 +87,8 @@ func (nsc *Controller) sync(ctx context.Context) error {
 
 	err = controllerhelpers.RunSync(
 		&statusConditions,
-		fmt.Sprintf(mountControllerNodeProgressingConditionFormat, nsc.nodeName),
-		fmt.Sprintf(mountControllerNodeDegradedConditionFormat, nsc.nodeName),
+		fmt.Sprintf(mountControllerNodeSetupProgressingConditionFormat, nsc.nodeName),
+		fmt.Sprintf(mountControllerNodeSetupDegradedConditionFormat, nsc.nodeName),
 		nc.Generation,
 		func() ([]metav1.Condition, error) {
 			return nsc.syncMounts(ctx, nc)
@@ -100,11 +100,11 @@ func (nsc *Controller) sync(ctx context.Context) error {
 
 	// Aggregate node conditions.
 	var aggregationErrs []error
-	nodeAvailableConditionType := fmt.Sprintf(internalapi.NodeAvailableConditionFormat, nsc.nodeName)
-	nodeAvailableCondition, err := controllerhelpers.AggregateStatusConditions(
-		controllerhelpers.FindStatusConditionsWithSuffix(statusConditions, nodeAvailableConditionType),
+	nodeSetupAvailableConditionType := fmt.Sprintf(internalapi.NodeSetupAvailableConditionFormat, nsc.nodeName)
+	nodeSetupAvailableCondition, err := controllerhelpers.AggregateStatusConditions(
+		controllerhelpers.FindStatusConditionsWithSuffix(statusConditions, nodeSetupAvailableConditionType),
 		metav1.Condition{
-			Type:               nodeAvailableConditionType,
+			Type:               nodeSetupAvailableConditionType,
 			Status:             metav1.ConditionTrue,
 			Reason:             internalapi.AsExpectedReason,
 			Message:            "",
@@ -112,14 +112,14 @@ func (nsc *Controller) sync(ctx context.Context) error {
 		},
 	)
 	if err != nil {
-		aggregationErrs = append(aggregationErrs, fmt.Errorf("can't aggregate available node status conditions: %w", err))
+		aggregationErrs = append(aggregationErrs, fmt.Errorf("can't aggregate available node setup status conditions: %w", err))
 	}
 
-	nodeProgressingConditionType := fmt.Sprintf(internalapi.NodeProgressingConditionFormat, nsc.nodeName)
-	nodeProgressingCondition, err := controllerhelpers.AggregateStatusConditions(
-		controllerhelpers.FindStatusConditionsWithSuffix(statusConditions, nodeProgressingConditionType),
+	nodeSetupProgressingConditionType := fmt.Sprintf(internalapi.NodeSetupProgressingConditionFormat, nsc.nodeName)
+	nodeSetupProgressingCondition, err := controllerhelpers.AggregateStatusConditions(
+		controllerhelpers.FindStatusConditionsWithSuffix(statusConditions, nodeSetupProgressingConditionType),
 		metav1.Condition{
-			Type:               nodeProgressingConditionType,
+			Type:               nodeSetupProgressingConditionType,
 			Status:             metav1.ConditionFalse,
 			Reason:             internalapi.AsExpectedReason,
 			Message:            "",
@@ -127,14 +127,14 @@ func (nsc *Controller) sync(ctx context.Context) error {
 		},
 	)
 	if err != nil {
-		aggregationErrs = append(aggregationErrs, fmt.Errorf("can't aggregate progressing node status conditions: %w", err))
+		aggregationErrs = append(aggregationErrs, fmt.Errorf("can't aggregate progressing node setup status conditions: %w", err))
 	}
 
-	nodeDegradedConditionType := fmt.Sprintf(internalapi.NodeDegradedConditionFormat, nsc.nodeName)
-	nodeDegradedCondition, err := controllerhelpers.AggregateStatusConditions(
-		controllerhelpers.FindStatusConditionsWithSuffix(statusConditions, nodeDegradedConditionType),
+	nodeSetupDegradedConditionType := fmt.Sprintf(internalapi.NodeSetupDegradedConditionFormat, nsc.nodeName)
+	nodeSetupDegradedCondition, err := controllerhelpers.AggregateStatusConditions(
+		controllerhelpers.FindStatusConditionsWithSuffix(statusConditions, nodeSetupDegradedConditionType),
 		metav1.Condition{
-			Type:               nodeDegradedConditionType,
+			Type:               nodeSetupDegradedConditionType,
 			Status:             metav1.ConditionFalse,
 			Reason:             internalapi.AsExpectedReason,
 			Message:            "",
@@ -142,7 +142,7 @@ func (nsc *Controller) sync(ctx context.Context) error {
 		},
 	)
 	if err != nil {
-		aggregationErrs = append(aggregationErrs, fmt.Errorf("can't aggregate degraded node status conditions: %w", err))
+		aggregationErrs = append(aggregationErrs, fmt.Errorf("can't aggregate degraded node setup status conditions: %w", err))
 	}
 
 	if len(aggregationErrs) > 0 {
@@ -150,9 +150,9 @@ func (nsc *Controller) sync(ctx context.Context) error {
 		return utilerrors.NewAggregate(errs)
 	}
 
-	apimeta.SetStatusCondition(&statusConditions, nodeAvailableCondition)
-	apimeta.SetStatusCondition(&statusConditions, nodeProgressingCondition)
-	apimeta.SetStatusCondition(&statusConditions, nodeDegradedCondition)
+	apimeta.SetStatusCondition(&statusConditions, nodeSetupAvailableCondition)
+	apimeta.SetStatusCondition(&statusConditions, nodeSetupProgressingCondition)
+	apimeta.SetStatusCondition(&statusConditions, nodeSetupDegradedCondition)
 
 	status.Conditions = scyllav1alpha1.NewNodeConfigConditions(statusConditions)
 	err = nsc.updateStatus(ctx, nc, status)

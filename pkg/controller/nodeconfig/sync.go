@@ -107,7 +107,12 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 		return objectErr
 	}
 
-	status := ncc.calculateStatus(nc)
+	matchingNodes, err := ncc.getMatchingNodes(nc)
+	if err != nil {
+		return fmt.Errorf("can't get matching Nodes: %w", err)
+	}
+
+	status := ncc.calculateStatus(nc, matchingNodes)
 
 	if nc.DeletionTimestamp != nil {
 		return ncc.updateStatus(ctx, nc, status)
@@ -207,37 +212,41 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 		errs = append(errs, fmt.Errorf("can't sync DaemonSet(s): %w", err))
 	}
 
-	matchingNodes, err := ncc.getMatchingNodes(nc)
-	if err != nil {
-		errs = append(errs, fmt.Errorf("can't get matching Nodes: %w", err))
-		return utilerrors.NewAggregate(errs)
-	}
-
 	// Aggregate conditions.
 	var aggregationErrs []error
 
 	availableConditions := controllerhelpers.FindStatusConditionsWithSuffix(statusConditions, scyllav1alpha1.AvailableCondition)
 
-	// Use a default available node condition for nodes which haven't propagated their conditions to status yet.
-	nodeAvailableConditionTypeFunc := func(node *corev1.Node) string {
-		return fmt.Sprintf(internalapi.NodeAvailableConditionFormat, node.Name)
-	}
-	defaultNodeAvailableConditions := makeDefaultNodeConditions(
-		nc.Generation,
-		matchingNodes,
-		availableConditions,
-		nodeAvailableConditionTypeFunc,
-		func(node *corev1.Node) metav1.Condition {
-			return metav1.Condition{
-				Type:               nodeAvailableConditionTypeFunc(node),
-				Status:             metav1.ConditionFalse,
-				ObservedGeneration: nc.Generation,
-				Reason:             internalapi.AwaitingConditionReason,
-				Message:            fmt.Sprintf("Awaiting Available condition of node %q to be set.", naming.ObjRef(node)),
-			}
+	controllerNodeAvailableConditionTypeFuncs := []func(*corev1.Node) string{
+		func(n *corev1.Node) string {
+			return fmt.Sprintf(internalapi.NodeSetupAvailableConditionFormat, n.Name)
 		},
+		func(n *corev1.Node) string {
+			return fmt.Sprintf(internalapi.NodeTuneAvailableConditionFormat, n.Name)
+		},
+	}
+	newNodeAvailableConditionFunc := func(generation int64, node *corev1.Node) metav1.Condition {
+		return metav1.Condition{
+			Type:               fmt.Sprintf(internalapi.NodeAvailableConditionFormat, node.Name),
+			Status:             metav1.ConditionTrue,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: generation,
+		}
+	}
+	nodeAvailableConditions, err := aggregateNodeStatusConditions(
+		nc.Generation,
+		availableConditions,
+		matchingNodes,
+		controllerNodeAvailableConditionTypeFuncs,
+		newNodeAvailableConditionFunc,
 	)
-	availableConditions = append(availableConditions, defaultNodeAvailableConditions...)
+	if err != nil {
+		aggregationErrs = append(aggregationErrs, fmt.Errorf("can't aggregate node available conditions: %w", err))
+	} else {
+		availableConditions = append(availableConditions, nodeAvailableConditions...)
+	}
+
 	availableCondition, err := controllerhelpers.AggregateStatusConditions(
 		availableConditions,
 		metav1.Condition{
@@ -254,26 +263,36 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 
 	progressingConditions := controllerhelpers.FindStatusConditionsWithSuffix(statusConditions, scyllav1alpha1.ProgressingCondition)
 
-	// Use a default progressing node condition for nodes which haven't propagated their conditions to status yet.
-	nodeProgressingConditionTypeFunc := func(node *corev1.Node) string {
-		return fmt.Sprintf(internalapi.NodeProgressingConditionFormat, node.Name)
-	}
-	defaultNodeProgressingConditions := makeDefaultNodeConditions(
-		nc.Generation,
-		matchingNodes,
-		progressingConditions,
-		nodeProgressingConditionTypeFunc,
-		func(node *corev1.Node) metav1.Condition {
-			return metav1.Condition{
-				Type:               nodeProgressingConditionTypeFunc(node),
-				Status:             metav1.ConditionTrue,
-				ObservedGeneration: nc.Generation,
-				Reason:             internalapi.AwaitingConditionReason,
-				Message:            fmt.Sprintf("Awaiting Progressing condition of node %q to be set.", naming.ObjRef(node)),
-			}
+	controllerNodeProgressingConditionTypeFuncs := []func(*corev1.Node) string{
+		func(n *corev1.Node) string {
+			return fmt.Sprintf(internalapi.NodeSetupProgressingConditionFormat, n.Name)
 		},
+		func(n *corev1.Node) string {
+			return fmt.Sprintf(internalapi.NodeTuneProgressingConditionFormat, n.Name)
+		},
+	}
+	newNodeProgressingConditionFunc := func(generation int64, node *corev1.Node) metav1.Condition {
+		return metav1.Condition{
+			Type:               fmt.Sprintf(internalapi.NodeProgressingConditionFormat, node.Name),
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: generation,
+		}
+	}
+	nodeProgressingConditions, err := aggregateNodeStatusConditions(
+		nc.Generation,
+		progressingConditions,
+		matchingNodes,
+		controllerNodeProgressingConditionTypeFuncs,
+		newNodeProgressingConditionFunc,
 	)
-	progressingConditions = append(progressingConditions, defaultNodeProgressingConditions...)
+	if err != nil {
+		aggregationErrs = append(aggregationErrs, fmt.Errorf("can't aggregate node progressing conditions: %w", err))
+	} else {
+		progressingConditions = append(progressingConditions, nodeProgressingConditions...)
+	}
+
 	progressingCondition, err := controllerhelpers.AggregateStatusConditions(
 		progressingConditions,
 		metav1.Condition{
@@ -288,8 +307,40 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 		aggregationErrs = append(aggregationErrs, fmt.Errorf("can't aggregate progressing status conditions: %w", err))
 	}
 
+	degradedConditions := controllerhelpers.FindStatusConditionsWithSuffix(statusConditions, scyllav1alpha1.DegradedCondition)
+
+	controllerNodeDegradedConditionTypeFuncs := []func(*corev1.Node) string{
+		func(n *corev1.Node) string {
+			return fmt.Sprintf(internalapi.NodeSetupDegradedConditionFormat, n.Name)
+		},
+		func(n *corev1.Node) string {
+			return fmt.Sprintf(internalapi.NodeTuneDegradedConditionFormat, n.Name)
+		},
+	}
+	newNodeDegradedConditionFunc := func(generation int64, node *corev1.Node) metav1.Condition {
+		return metav1.Condition{
+			Type:               fmt.Sprintf(internalapi.NodeDegradedConditionFormat, node.Name),
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: generation,
+		}
+	}
+	nodeDegradedConditions, err := aggregateNodeStatusConditions(
+		nc.Generation,
+		degradedConditions,
+		matchingNodes,
+		controllerNodeDegradedConditionTypeFuncs,
+		newNodeDegradedConditionFunc,
+	)
+	if err != nil {
+		aggregationErrs = append(aggregationErrs, fmt.Errorf("can't aggregate node degraded conditions: %w", err))
+	} else {
+		degradedConditions = append(degradedConditions, nodeDegradedConditions...)
+	}
+
 	degradedCondition, err := controllerhelpers.AggregateStatusConditions(
-		controllerhelpers.FindStatusConditionsWithSuffix(statusConditions, scyllav1alpha1.DegradedCondition),
+		degradedConditions,
 		metav1.Condition{
 			Type:               scyllav1alpha1.DegradedCondition,
 			Status:             metav1.ConditionFalse,
@@ -307,8 +358,19 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 		return utilerrors.NewAggregate(errs)
 	}
 
+	for _, c := range nodeAvailableConditions {
+		apimeta.SetStatusCondition(&statusConditions, c)
+	}
 	apimeta.SetStatusCondition(&statusConditions, availableCondition)
+
+	for _, c := range nodeProgressingConditions {
+		apimeta.SetStatusCondition(&statusConditions, c)
+	}
 	apimeta.SetStatusCondition(&statusConditions, progressingCondition)
+
+	for _, c := range nodeDegradedConditions {
+		apimeta.SetStatusCondition(&statusConditions, c)
+	}
 	apimeta.SetStatusCondition(&statusConditions, degradedCondition)
 
 	// TODO(rzetelskik): remove NodeConfigReconciledConditionType in next API version.
@@ -447,20 +509,6 @@ func (ncc *Controller) getMatchingNodes(nc *scyllav1alpha1.NodeConfig) ([]*corev
 	return matchingNodes, nil
 }
 
-func makeDefaultNodeConditions(nodeConfigGeneration int64, nodes []*corev1.Node, conditions []metav1.Condition, nodeConditionTypeFunc func(*corev1.Node) string, defaultNodeConditionFunc func(*corev1.Node) metav1.Condition) []metav1.Condition {
-	var defaultNodeConditions []metav1.Condition
-
-	for _, n := range nodes {
-		nodeConditionType := nodeConditionTypeFunc(n)
-		nodeCondition := apimeta.FindStatusCondition(conditions, nodeConditionType)
-		if nodeCondition == nil || nodeCondition.ObservedGeneration < nodeConfigGeneration {
-			defaultNodeConditions = append(defaultNodeConditions, defaultNodeConditionFunc(n))
-		}
-	}
-
-	return defaultNodeConditions
-}
-
 func getNodeConfigReconciledCondition(conditions []metav1.Condition, generation int64) metav1.Condition {
 	reconciled := helpers.IsStatusConditionPresentAndTrue(conditions, scyllav1alpha1.AvailableCondition, generation) &&
 		helpers.IsStatusConditionPresentAndFalse(conditions, scyllav1alpha1.ProgressingCondition, generation) &&
@@ -482,4 +530,38 @@ func getNodeConfigReconciledCondition(conditions []metav1.Condition, generation 
 	}
 
 	return reconciledCondition
+}
+
+func aggregateNodeStatusConditions(generation int64, conditions []metav1.Condition, nodes []*corev1.Node, controllerNodeConditionTypeFuncs []func(*corev1.Node) string, nodeAggregateConditionFunc func(int64, *corev1.Node) metav1.Condition) ([]metav1.Condition, error) {
+	var nodeAggregateConditions []metav1.Condition
+
+	var errs []error
+	for _, n := range nodes {
+		var controllerNodeConditions []metav1.Condition
+		for _, f := range controllerNodeConditionTypeFuncs {
+			controllerNodeConditionType := f(n)
+			controllerNodeCondition := apimeta.FindStatusCondition(conditions, controllerNodeConditionType)
+			if controllerNodeCondition == nil || controllerNodeCondition.ObservedGeneration < generation {
+				errs = append(errs, fmt.Errorf("controller node condition missing in generation %q: %q", generation, controllerNodeConditionType))
+				continue
+			}
+
+			controllerNodeConditions = append(controllerNodeConditions, *controllerNodeCondition)
+		}
+
+		nodeAggregateCondition, err := controllerhelpers.AggregateStatusConditions(controllerNodeConditions, nodeAggregateConditionFunc(generation, n))
+		if err != nil {
+			errs = append(errs, fmt.Errorf("can't aggregate status conditions for node %q: %w", naming.ObjRef(n), err))
+			continue
+		}
+
+		nodeAggregateConditions = append(nodeAggregateConditions, nodeAggregateCondition)
+	}
+
+	err := utilerrors.NewAggregate(errs)
+	if err != nil {
+		return nil, err
+	}
+
+	return nodeAggregateConditions, nil
 }

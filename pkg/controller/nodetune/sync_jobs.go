@@ -250,15 +250,17 @@ func (ncdc *Controller) makeJobsForContainers(ctx context.Context) ([]*batchv1.J
 	return containerJobs, nil
 }
 
-func (ncdc *Controller) syncJobs(ctx context.Context, jobs map[string]*batchv1.Job, nodeStatus *scyllav1alpha1.NodeConfigNodeStatus) error {
+func (ncdc *Controller) syncJobs(ctx context.Context, nc *scyllav1alpha1.NodeConfig, jobs map[string]*batchv1.Job, nodeStatus *scyllav1alpha1.NodeConfigNodeStatus) ([]metav1.Condition, error) {
+	var progressingConditions []metav1.Condition
+
 	requiredForNode, err := ncdc.makeJobsForNode(ctx)
 	if err != nil {
-		return fmt.Errorf("can't make Jobs for node: %w", err)
+		return progressingConditions, fmt.Errorf("can't make Jobs for node: %w", err)
 	}
 
 	requiredForContainers, err := ncdc.makeJobsForContainers(ctx)
 	if err != nil {
-		return fmt.Errorf("can't make Jobs for containers: %w", err)
+		return progressingConditions, fmt.Errorf("can't make Jobs for containers: %w", err)
 	}
 
 	var requiredJobs []*batchv1.Job
@@ -269,7 +271,7 @@ func (ncdc *Controller) syncJobs(ctx context.Context, jobs map[string]*batchv1.J
 
 	err = ncdc.pruneJobs(ctx, jobs, requiredJobs)
 	if err != nil {
-		return fmt.Errorf("can't prune Jobs: %w", err)
+		return progressingConditions, fmt.Errorf("can't prune Jobs: %w", err)
 	}
 
 	finished := true
@@ -281,12 +283,12 @@ func (ncdc *Controller) syncJobs(ctx context.Context, jobs map[string]*batchv1.J
 	for _, j := range requiredJobs {
 		fresh, _, err := resourceapply.ApplyJob(ctx, ncdc.kubeClient.BatchV1(), ncdc.namespacedJobLister, ncdc.eventRecorder, j, resourceapply.ApplyOptions{})
 		if err != nil {
-			return fmt.Errorf("can't create job %s: %w", naming.ObjRef(j), err)
+			return progressingConditions, fmt.Errorf("can't create job %s: %w", naming.ObjRef(j), err)
 		}
 
 		t, found := j.Labels[naming.NodeConfigJobTypeLabel]
 		if !found {
-			return fmt.Errorf("job %q is missing %q label", naming.ObjRef(j), naming.NodeConfigJobTypeLabel)
+			return progressingConditions, fmt.Errorf("job %q is missing %q label", naming.ObjRef(j), naming.NodeConfigJobTypeLabel)
 		}
 
 		switch jobType := naming.NodeConfigJobType(t); jobType {
@@ -294,6 +296,13 @@ func (ncdc *Controller) syncJobs(ctx context.Context, jobs map[string]*batchv1.J
 			// FIXME: Extract into a function and double check how jobs report status.
 			if fresh.Status.CompletionTime == nil {
 				klog.V(4).InfoS("Job isn't completed yet", "Job", klog.KObj(fresh))
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               fmt.Sprintf(jobControllerNodeTuneProgressingConditionFormat, ncdc.nodeName),
+					Status:             metav1.ConditionTrue,
+					ObservedGeneration: nc.Generation,
+					Reason:             "AwaitingJobCompletion",
+					Message:            fmt.Sprintf("Waiting for Job %q to complete.", naming.ObjRef(fresh)),
+				})
 				finished = false
 				break
 			}
@@ -303,13 +312,13 @@ func (ncdc *Controller) syncJobs(ctx context.Context, jobs map[string]*batchv1.J
 			// We have successfully applied the job definition so the data should always be present at this point.
 			nodeConfigJobDataString, found := fresh.Annotations[naming.NodeConfigJobData]
 			if !found {
-				return fmt.Errorf("internal error: job %q is missing %q annotation", klog.KObj(fresh), naming.NodeConfigJobData)
+				return progressingConditions, fmt.Errorf("internal error: job %q is missing %q annotation", klog.KObj(fresh), naming.NodeConfigJobData)
 			}
 
 			jobData := &containerJobData{}
 			err = json.Unmarshal([]byte(nodeConfigJobDataString), jobData)
 			if err != nil {
-				return fmt.Errorf("internal error: can't unmarshal node config data for job %q: %w", klog.KObj(fresh), err)
+				return progressingConditions, fmt.Errorf("internal error: can't unmarshal node config data for job %q: %w", klog.KObj(fresh), err)
 			}
 
 			for _, containerID := range jobData.ContainerIDs {
@@ -321,10 +330,17 @@ func (ncdc *Controller) syncJobs(ctx context.Context, jobs map[string]*batchv1.J
 
 			if fresh.Status.CompletionTime == nil {
 				klog.V(4).InfoS("Job isn't completed yet", "Job", klog.KObj(fresh))
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               fmt.Sprintf(jobControllerNodeTuneProgressingConditionFormat, ncdc.nodeName),
+					Status:             metav1.ConditionTrue,
+					ObservedGeneration: nc.Generation,
+					Reason:             "AwaitingJobCompletion",
+					Message:            fmt.Sprintf("Waiting for Job %q to complete.", naming.ObjRef(fresh)),
+				})
 				break
 			}
 		default:
-			return fmt.Errorf("job %q has an unkown type %q", naming.ObjRef(j), t)
+			return progressingConditions, fmt.Errorf("job %q has an unkown type %q", naming.ObjRef(j), t)
 		}
 	}
 
@@ -336,7 +352,7 @@ func (ncdc *Controller) syncJobs(ctx context.Context, jobs map[string]*batchv1.J
 	}
 	sort.Strings(nodeStatus.TunedContainers)
 
-	return nil
+	return progressingConditions, nil
 }
 
 func (ncdc *Controller) pruneJobs(ctx context.Context, jobs map[string]*batchv1.Job, requiredJobs []*batchv1.Job) error {

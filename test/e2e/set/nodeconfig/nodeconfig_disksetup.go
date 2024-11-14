@@ -144,7 +144,6 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 			nc.Name,
 			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
 			utils.IsNodeConfigRolledOut,
-			utils.IsNodeConfigDoneWithNodeTuningFunc(matchingNodes),
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -232,7 +231,6 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 			nc.Name,
 			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
 			utils.IsNodeConfigRolledOut,
-			utils.IsNodeConfigDoneWithNodeTuningFunc(matchingNodes),
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -293,7 +291,12 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 					return false, nil
 				}
 
-				nodeMountControllerConditionType := fmt.Sprintf("MountControllerNode%sDegraded", n.GetName())
+				nodeSetupDegradedConditionType := fmt.Sprintf(internalapi.NodeSetupDegradedConditionFormat, n.GetName())
+				if !helpers.IsStatusConditionPresentAndTrue(statusConditions, nodeSetupDegradedConditionType, nc.Generation) {
+					return false, nil
+				}
+
+				nodeMountControllerConditionType := fmt.Sprintf("MountControllerNodeSetup%sDegraded", n.GetName())
 				if !helpers.IsStatusConditionPresentAndTrue(statusConditions, nodeMountControllerConditionType, nc.Generation) {
 					return false, nil
 				}
@@ -310,7 +313,6 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 			f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs(),
 			nc.Name,
 			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
-			utils.IsNodeConfigDoneWithNodeTuningFunc(matchingNodes),
 			isNodeConfigMountControllerDegraded,
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -340,7 +342,6 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 			nc.Name,
 			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
 			utils.IsNodeConfigRolledOut,
-			utils.IsNodeConfigDoneWithNodeTuningFunc(matchingNodes),
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 	},

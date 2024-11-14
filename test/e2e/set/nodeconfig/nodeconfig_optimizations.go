@@ -81,7 +81,6 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 			nc.Name,
 			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
 			utils.IsNodeConfigRolledOut,
-			utils.IsNodeConfigDoneWithNodeTuningFunc(matchingNodes),
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -356,12 +355,13 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 			nc.Name,
 			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
 			utils.IsNodeConfigRolledOut,
-			utils.IsNodeConfigDoneWithNodeTuningFunc(matchingNodes),
-			utils.IsNodeConfigDoneWithContainerTuningFunc(pod.Spec.NodeName, scyllaContainerID),
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyNodeConfig(ctx, f.KubeAdminClient(), nc)
+
+		isNodeTunedForScyllaContainer := controllerhelpers.IsNodeTunedForContainer(nc, pod.Spec.NodeName, scyllaContainerID)
+		o.Expect(isNodeTunedForScyllaContainer).To(o.BeTrue())
 
 		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
 		ctx4, ctx4Cancel := utils.ContextForRollout(ctx, sc)

@@ -51,7 +51,7 @@ func (nsc *Controller) syncMounts(ctx context.Context, nc *scyllav1alpha1.NodeCo
 	progressingMessages, err := nsc.systemdUnitManager.EnsureUnits(ctx, nc, nsc.eventRecorder, mountUnits, nsc.systemdControl)
 	if len(progressingMessages) > 0 {
 		progressingConditions = append(progressingConditions, metav1.Condition{
-			Type:               fmt.Sprintf(mountControllerNodeProgressingConditionFormat, nsc.nodeName),
+			Type:               fmt.Sprintf(mountControllerNodeSetupProgressingConditionFormat, nsc.nodeName),
 			Status:             metav1.ConditionTrue,
 			Reason:             "WaitingForMountUnitsSync",
 			Message:            strings.Join(progressingMessages, "\n"),

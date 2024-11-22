@@ -1,0 +1,30 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: my-cluster
+  region: eu-central-1
+availabilityZones:
+- eu-central-1a
+- eu-central-1b
+- eu-central-1c
+nodeGroups:
+- name: scylla-pool
+  instanceType: i4i.2xlarge
+  desiredCapacity: 3
+  labels:
+    scylla.scylladb.com/node-type: scylla
+  taints:
+    scylla-operator.scylladb.com/dedicated: "scyllaclusters:NoSchedule"
+  kubeletExtraConfig:
+    cpuManagerPolicy: static
+  availabilityZones:
+  - eu-central-1a
+  - eu-central-1b
+  - eu-central-1c
+- name: infra-pool
+  instanceType: i3.large
+  desiredCapacity: 1
+  labels:
+    scylla.scylladb.com/node-type: infra
+  ssh:
+    allow: true

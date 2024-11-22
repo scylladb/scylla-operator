@@ -1,0 +1,93 @@
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: basic
+spec:
+  agentVersion: 3.4.0@sha256:441403aed8880cad1feef68aa7a8ee9ffd99a458dc1dcff3dc54ce5bf3cb07b7
+  version: 6.2.0
+  sysctls:
+    - fs.aio-max-nr=2097152
+  datacenter:
+    name: us-east-1
+    racks:
+      - name: a
+        members: 1
+        storage:
+          storageClassName: scylladb-local-xfs
+          capacity: 1800G
+        resources:
+          limits:
+            cpu: 7
+            memory: 56G
+        placement:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                    - key: topology.kubernetes.io/zone
+                      operator: In
+                      values:
+                        - us-east-1a
+                    - key: scylla.scylladb.com/node-type
+                      operator: In
+                      values:
+                        - scylla
+          tolerations:
+            - key: role
+              operator: Equal
+              value: scylla-clusters
+              effect: NoSchedule
+      - name: b
+        members: 1
+        storage:
+          storageClassName: scylladb-local-xfs
+          capacity: 1800G
+        resources:
+          limits:
+            cpu: 7
+            memory: 56G
+        placement:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                    - key: topology.kubernetes.io/zone
+                      operator: In
+                      values:
+                        - us-east-1b
+                    - key: scylla.scylladb.com/node-type
+                      operator: In
+                      values:
+                        - scylla
+          tolerations:
+            - key: role
+              operator: Equal
+              value: scylla-clusters
+              effect: NoSchedule
+      - name: c
+        members: 1
+        storage:
+          storageClassName: scylladb-local-xfs
+          capacity: 1800G
+        resources:
+          limits:
+            cpu: 7
+            memory: 56G
+        placement:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                    - key: topology.kubernetes.io/zone
+                      operator: In
+                      values:
+                        - us-east-1c
+                    - key: scylla.scylladb.com/node-type
+                      operator: In
+                      values:
+                        - scylla
+          tolerations:
+            - key: role
+              operator: Equal
+              value: scylla-clusters
+              effect: NoSchedule

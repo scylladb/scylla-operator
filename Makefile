@@ -532,10 +532,10 @@ update-examples:
 update-examples:
 	$(call update-scylla-helm-versions,./examples/helm/values.cluster.yaml)
 	$(call update-scylla-manager-helm-versions,./examples/helm/values.manager.yaml)
-	$(call replace-scyllacluster-versions,./examples/eks/cluster.yaml,1)
-	$(call replace-scyllacluster-versions,./examples/generic/cluster.yaml,1)
-	$(call replace-scyllacluster-versions,./examples/gke/cluster.yaml,1)
-	$(call replace-scyllacluster-versions,./examples/gke/cluster.yaml,1)
+	$(call replace-scyllacluster-versions,./examples/eks/scyllacluster.yaml,1)
+	$(call replace-scyllacluster-versions,./examples/generic/scyllacluster.yaml,1)
+	$(call replace-scyllacluster-versions,./examples/gke/scyllacluster.yaml,1)
+	$(call replace-scyllacluster-versions,./examples/gke/scyllacluster.yaml,1)
 	$(call replace-scyllacluster-versions,./examples/scylladb/scylla.scyllacluster.yaml,0)
 
 	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/haproxy-ingress/*.yaml)),./examples/third-party/haproxy-ingress.yaml)
@@ -548,9 +548,9 @@ verify-examples:
 
 	$(call update-scylla-helm-versions,$(tmp_dir)/helm/values.cluster.yaml)
 	$(call update-scylla-manager-helm-versions,$(tmp_dir)/helm/values.manager.yaml)
-	$(call replace-scyllacluster-versions,$(tmp_dir)/eks/cluster.yaml,1)
-	$(call replace-scyllacluster-versions,$(tmp_dir)/generic/cluster.yaml,1)
-	$(call replace-scyllacluster-versions,$(tmp_dir)/gke/cluster.yaml,1)
+	$(call replace-scyllacluster-versions,$(tmp_dir)/eks/scyllacluster.yaml,1)
+	$(call replace-scyllacluster-versions,$(tmp_dir)/generic/scyllacluster.yaml,1)
+	$(call replace-scyllacluster-versions,$(tmp_dir)/gke/scyllacluster.yaml,1)
 	$(call replace-scyllacluster-versions,$(tmp_dir)/scylladb/scylla.scyllacluster.yaml,0)
 
 	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/haproxy-ingress/*.yaml)),$(tmp_dir)/third-party/haproxy-ingress.yaml)

@@ -12,5 +12,6 @@ filters:
   "go\\.(mod|sum)$":
     required_reviewers:
     - tnozicka
+    - zimnx
     labels:
     - area/dependency

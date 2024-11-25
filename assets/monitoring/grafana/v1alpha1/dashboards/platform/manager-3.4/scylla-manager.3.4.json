@@ -1477,7 +1477,7 @@
     "schemaVersion": 26,
     "style": "dark",
     "tags": [
-        "3.3"
+        "3.4"
     ],
     "templating": {
         "list": [
@@ -1644,8 +1644,8 @@
                 "allValue": null,
                 "class": "template_variable_custom",
                 "current": {
-                    "text": "3.3",
-                    "value": "3.3"
+                    "text": "3.4",
+                    "value": "3.4"
                 },
                 "error": null,
                 "hide": 2,
@@ -1656,11 +1656,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "3.3",
-                        "value": "3.3"
+                        "text": "3.4",
+                        "value": "3.4"
                     }
                 ],
-                "query": "3.3",
+                "query": "3.4",
                 "skipUrlSync": false,
                 "type": "custom"
             },
@@ -1722,6 +1722,6 @@
     },
     "timezone": "utc",
     "title": "Scylla Manager Metrics",
-    "uid": "manager-3-3",
+    "uid": "manager-3-4",
     "version": 3
 }

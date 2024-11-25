@@ -20,6 +20,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
+	"github.com/scylladb/scylla-operator/pkg/scheme"
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
@@ -316,7 +317,7 @@ func validate(ar *admissionv1.AdmissionReview, validators map[schema.GroupVersio
 		Resource: ar.Request.Resource.Resource,
 	}
 
-	deserializer := codecs.UniversalDeserializer()
+	deserializer := scheme.Codecs.UniversalDeserializer()
 
 	var err error
 	var obj, oldObj runtime.Object

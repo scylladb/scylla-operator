@@ -1,9 +1,16 @@
 apiVersion: scylla.scylladb.com/v1alpha1
 kind: NodeConfig
 metadata:
-  name: cluster
+  name: scylladb-nodepool-1
 spec:
   localDiskSetup:
+    raids:
+    - name: nvmes
+      type: RAID0
+      RAID0:
+        devices:
+          modelRegex: Amazon EC2 NVMe Instance Storage
+          nameRegex: ^/dev/nvme\d+n\d+$
     filesystems:
     - device: /dev/md/nvmes
       type: xfs
@@ -12,18 +19,11 @@ spec:
       mountPoint: /mnt/persistent-volumes
       unsupportedOptions:
       - prjquota
-    raids:
-    - name: nvmes
-      type: RAID0
-      RAID0:
-        devices:
-          modelRegex: Amazon EC2 NVMe Instance Storage
-          nameRegex: ^/dev/nvme\d+n\d+$
   placement:
     nodeSelector:
       scylla.scylladb.com/node-type: scylla
     tolerations:
     - effect: NoSchedule
-      key: role
+      key: scylla-operator.scylladb.com/dedicated
       operator: Equal
-      value: scylla-clusters
+      value: scyllaclusters

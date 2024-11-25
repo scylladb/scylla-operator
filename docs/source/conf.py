@@ -50,8 +50,18 @@ todo_include_todos = True
 
 # -- Options for myst parser
 
-myst_enable_extensions = ["colon_fence"]
+myst_enable_extensions = ["colon_fence", "attrs_inline", "substitution"]
 myst_heading_anchors = 6
+myst_substitutions = {
+  "productName": "Scylla Operator",
+  "repository": "scylladb/scylla-operator",
+  "revision": "master",
+  "imageRepository": "docker.io/scylladb/scylla",
+  "imageTag": "6.2.0",
+  "enterpriseImageRepository": "docker.io/scylladb/scylla-enterprise",
+  "enterpriseImageTag": "2024.1.12",
+  "agentVersion": "3.4.0",
+}
 
 # -- Options for not found extension
 

@@ -205,7 +205,7 @@ spec:
       serviceAccountName: scylla-manager-controller
       containers:
       - name: scylla-manager-controller
-        image: docker.io/scylladb/scylla-operator:latest
+        image: docker.io/scylladb/scylla-operator:1.15
         imagePullPolicy: IfNotPresent
         env:
         - name: POD_NAME

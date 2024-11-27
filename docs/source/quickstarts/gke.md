@@ -2,7 +2,7 @@
 
 This is a quickstart guide to help you set up a basic GKE cluster quickly with local NVMes and solid performance.
 
-This is by no means a complete guide, and you should always consult your provider's documentation.
+This is by no means a complete guide, and you should always consult your Kubernetes provider's documentation.
 
 
 ## Creating a GKE cluster

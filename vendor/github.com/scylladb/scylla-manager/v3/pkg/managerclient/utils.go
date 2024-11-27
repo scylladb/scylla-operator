@@ -191,10 +191,10 @@ func FormatDuration(t0, t1 strfmt.DateTime) string {
 	return d.Truncate(time.Second).String()
 }
 
-// FormatMsDuration returns string representation of duration as number of
-// milliseconds.
+// FormatMsDuration returns string representation of given amount of milliseconds
+// as duration rounded up to a full second.
 func FormatMsDuration(d int64) string {
-	return (time.Duration(d) * time.Millisecond).Truncate(time.Second).String()
+	return (time.Duration(d)*time.Millisecond + time.Second - 1).Truncate(time.Second).String()
 }
 
 func isZero(t strfmt.DateTime) bool {

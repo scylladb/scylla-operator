@@ -37,25 +37,25 @@ func (x SizeSuffix) string() (string, string) {
 	case x < 0:
 		return "off", ""
 	case x == 0:
-		return "0", ""
+		return "0", "B"
 	case x < 1<<10:
 		scaled = float64(x)
-		suffix = ""
+		suffix = "B"
 	case x < 1<<20:
 		scaled = float64(x) / (1 << 10)
-		suffix = "k"
+		suffix = "KiB"
 	case x < 1<<30:
 		scaled = float64(x) / (1 << 20)
-		suffix = "M"
+		suffix = "MiB"
 	case x < 1<<40:
 		scaled = float64(x) / (1 << 30)
-		suffix = "G"
+		suffix = "GiB"
 	case x < 1<<50:
 		scaled = float64(x) / (1 << 40)
-		suffix = "T"
+		suffix = "TiB"
 	default:
 		scaled = float64(x) / (1 << 50)
-		suffix = "P"
+		suffix = "PiB"
 	}
 	if math.Floor(scaled) == scaled {
 		return fmt.Sprintf("%.0f", scaled), suffix

@@ -461,6 +461,17 @@ Locations:
 Snapshot Tag:	{{ .SnapshotTag }}
 Batch Size:     {{ .BatchSize }}
 Parallel:       {{ .Parallel }}
+Transfers:      {{ .Transfers }}
+Compaction:     {{ if .AllowCompaction -}} allowed {{ else -}} not allowed {{ end }}
+Agent CPU:      {{ if .UnpinAgentCPU -}} unpinned {{ else -}} pinned {{ end }}
+Download Rate Limits:
+{{- if .RateLimit -}}
+{{ range .RateLimit }}
+  - {{ . }} MiB/s
+{{- end }}
+{{- else }}
+  - Unlimited
+{{- end }}
 `
 
 // Render implements Renderer interface.
@@ -1010,6 +1021,9 @@ Duration:	{{ FormatDuration .StartTime .EndTime }}
 {{ end -}}
 {{ with .Progress }}Progress:	{{ if ne .Size 0 }}{{ FormatRestoreProgress .Size .Restored .Downloaded .Failed }}{{else}}-{{ end }}
 Snapshot Tag:	{{ .SnapshotTag }}
+Bandwidth:
+  - Download:    {{ avgDownload .Hosts }}
+  - Load&stream: {{ avgStream .Hosts }}
 {{ else }}Progress:	0%
 {{ end }}
 {{- if .Errors -}}
@@ -1027,6 +1041,8 @@ func (rp RestoreProgress) addHeader(w io.Writer) error {
 		"FormatError":           FormatError,
 		"FormatRestoreProgress": FormatRestoreProgress,
 		"status":                rp.status,
+		"avgDownload":           avgDownload,
+		"avgStream":             avgStream,
 	}).Parse(restoreProgressTemplate))
 	return temp.Execute(w, rp)
 }
@@ -1042,6 +1058,37 @@ func (rp RestoreProgress) status() string {
 		s += " (" + stage + ")"
 	}
 	return s
+}
+
+func avgDownload(hosts []*models.RestoreHostProgress) string {
+	var bytes, milliseconds, shards int64
+	for _, hp := range hosts {
+		bytes += hp.DownloadedBytes
+		milliseconds += hp.DownloadDuration
+		shards += hp.ShardCnt
+	}
+	return formatBandwidth(bytes, milliseconds, shards)
+}
+
+func avgStream(hosts []*models.RestoreHostProgress) string {
+	var bytes, milliseconds, shards int64
+	for _, hp := range hosts {
+		bytes += hp.StreamedBytes
+		milliseconds += hp.StreamDuration
+		shards += hp.ShardCnt
+	}
+	return formatBandwidth(bytes, milliseconds, shards)
+}
+
+func formatBandwidth(bytes, milliseconds, shards int64) string {
+	if milliseconds <= 0 {
+		return "unknown"
+	}
+	bs := bytes * 1000 / milliseconds
+	if shards <= 0 {
+		return FormatSizeSuffix(bs) + "/s"
+	}
+	return FormatSizeSuffix(bs/shards) + "/s/shard"
 }
 
 func (rp RestoreProgress) hideKeyspace(keyspace string) bool {
@@ -1071,34 +1118,73 @@ func (rp RestoreProgress) Render(w io.Writer) error {
 		}
 	}
 
-	if rp.Detailed && rp.Progress.Size > 0 {
-		if err := rp.addTableProgress(w); err != nil {
+	if rp.Detailed {
+		if err := rp.addHostProgress(w); err != nil {
 			return err
+		}
+		if rp.Progress.Size > 0 {
+			if err := rp.addTableProgress(w); err != nil {
+				return err
+			}
 		}
 	}
 
 	// Check if there is repair progress to display
 	if rp.Progress.RepairProgress != nil {
 		fmt.Fprintf(w, "\nPost-restore repair progress\n")
-
-		repairRunPr := &models.TaskRunRepairProgress{
-			Progress: rp.Progress.RepairProgress,
-			Run:      rp.Run,
-		}
-		repairPr := RepairProgress{
-			TaskRunRepairProgress: repairRunPr,
-			Task:                  rp.Task,
-			Detailed:              rp.Detailed,
-			keyspaceFilter:        rp.KeyspaceFilter,
-		}
-
-		if err := repairPr.Render(w); err != nil {
+		if err := rp.postRestoreRepairProgress().Render(w); err != nil {
 			return err
 		}
 	}
 
 	rp.addViewProgress(w)
 	return nil
+}
+
+func (rp RestoreProgress) postRestoreRepairProgress() RepairProgress {
+	repair := rp.Progress.RepairProgress
+
+	repairRun := &models.TaskRun{
+		ClusterID: rp.Task.ClusterID,
+		Type:      RepairTask,
+	}
+	if repair.StartedAt != nil {
+		repairRun.StartTime = *repair.StartedAt
+	}
+	if repair.CompletedAt != nil {
+		repairRun.EndTime = *repair.CompletedAt
+	}
+	if rp.Progress.Stage == RestoreStageRepair {
+		repairRun.Cause = rp.Run.Cause
+		repairRun.Status = rp.Run.Status
+	} else {
+		switch {
+		case repair.Success == repair.TokenRanges:
+			repairRun.Status = TaskStatusDone
+		case repair.Error > 0:
+			repairRun.Status = TaskStatusError
+		}
+	}
+
+	repairTask := &models.Task{
+		ClusterID: rp.Task.ClusterID,
+		Enabled:   true,
+		Properties: map[string]any{
+			"intensity": repair.Intensity,
+			"parallel":  repair.Parallel,
+		},
+		Type: RepairTask,
+	}
+
+	return RepairProgress{
+		TaskRunRepairProgress: &models.TaskRunRepairProgress{
+			Progress: repair,
+			Run:      repairRun,
+		},
+		Task:           repairTask,
+		Detailed:       rp.Detailed,
+		keyspaceFilter: rp.KeyspaceFilter,
+	}
 }
 
 func (rp RestoreProgress) addKeyspaceProgress(t *table.Table) {
@@ -1162,6 +1248,29 @@ func (rp RestoreProgress) addTableProgress(w io.Writer) error {
 		if _, err := w.Write([]byte(t.String())); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (rp RestoreProgress) addHostProgress(w io.Writer) error {
+	_, _ = fmt.Fprintf(w, "\nHosts info\n")
+	t := table.New("Host", "Shards", "Download bandwidth", "Download duration", "Load&stream bandwidth", "Load&stream duration")
+	for i, hp := range rp.Progress.Hosts {
+		if i > 0 {
+			t.AddSeparator()
+		}
+		t.AddRow(
+			hp.Host,
+			hp.ShardCnt,
+			formatBandwidth(hp.DownloadedBytes, hp.DownloadDuration, hp.ShardCnt),
+			FormatMsDuration(hp.DownloadDuration),
+			formatBandwidth(hp.StreamedBytes, hp.StreamDuration, hp.ShardCnt),
+			FormatMsDuration(hp.StreamDuration),
+		)
+	}
+	t.SetColumnAlignment(termtables.AlignRight, 1, 2, 3, 4, 5)
+	if _, err := w.Write([]byte(t.String())); err != nil {
+		return err
 	}
 	return nil
 }

@@ -26,7 +26,7 @@ gcloud container \
 clusters create 'my-k8s-cluster' \
 --zone='us-central1' \
 --cluster-version="latest" \
---machine-type='n1-standard-8' \
+--machine-type='n2-standard-8' \
 --num-nodes='2' \
 --disk-type='pd-ssd' --disk-size='20' \
 --image-type='UBUNTU_CONTAINERD' \
@@ -44,7 +44,7 @@ node-pools create 'scyllaclusters' \
 --zone='us-central1' \
 --cluster='my-k8s-cluster' \
 --node-version="latest" \
---machine-type='n1-standard-16' \
+--machine-type='n2-standard-16' \
 --num-nodes='4' \
 --disk-type='pd-ssd' --disk-size='20' \
 --local-nvme-ssd-block='count=4' \

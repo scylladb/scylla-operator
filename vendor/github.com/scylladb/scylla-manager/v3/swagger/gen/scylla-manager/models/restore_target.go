@@ -18,6 +18,9 @@ import (
 // swagger:model RestoreTarget
 type RestoreTarget struct {
 
+	// allow compaction
+	AllowCompaction bool `json:"allow_compaction,omitempty"`
+
 	// batch size
 	BatchSize int64 `json:"batch_size,omitempty"`
 
@@ -30,14 +33,23 @@ type RestoreTarget struct {
 	// parallel
 	Parallel int64 `json:"parallel,omitempty"`
 
+	// rate limit
+	RateLimit []string `json:"rate_limit"`
+
 	// size
 	Size int64 `json:"size,omitempty"`
 
 	// snapshot tag
 	SnapshotTag string `json:"snapshot_tag,omitempty"`
 
+	// transfers
+	Transfers int64 `json:"transfers,omitempty"`
+
 	// units
 	Units []*RestoreUnit `json:"units"`
+
+	// unpin agent cpu
+	UnpinAgentCPU bool `json:"unpin_agent_cpu,omitempty"`
 
 	// views
 	Views []*RestoreView `json:"views"`

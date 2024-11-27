@@ -29,6 +29,9 @@ type RestoreProgress struct {
 	// failed
 	Failed int64 `json:"failed,omitempty"`
 
+	// hosts
+	Hosts []*RestoreHostProgress `json:"hosts"`
+
 	// keyspaces
 	Keyspaces []*RestoreKeyspaceProgress `json:"keyspaces"`
 
@@ -63,6 +66,10 @@ func (m *RestoreProgress) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateHosts(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateKeyspaces(formats); err != nil {
 		res = append(res, err)
 	}
@@ -93,6 +100,31 @@ func (m *RestoreProgress) validateCompletedAt(formats strfmt.Registry) error {
 
 	if err := validate.FormatOf("completed_at", "body", "date-time", m.CompletedAt.String(), formats); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (m *RestoreProgress) validateHosts(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.Hosts) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.Hosts); i++ {
+		if swag.IsZero(m.Hosts[i]) { // not required
+			continue
+		}
+
+		if m.Hosts[i] != nil {
+			if err := m.Hosts[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("hosts" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
 	}
 
 	return nil

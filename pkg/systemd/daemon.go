@@ -9,6 +9,8 @@ import (
 	"github.com/coreos/go-systemd/v22/dbus"
 	godbus "github.com/godbus/dbus/v5"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 var ErrNotExist = errors.New("unit does not exist")
@@ -128,18 +130,59 @@ func (c *SystemdControl) DisableAndStopUnit(ctx context.Context, unitFile string
 }
 
 func (c *SystemdControl) GetUnitStatuses(ctx context.Context, unitFiles []string) ([]UnitStatus, error) {
-	statuses, err := c.conn.ListUnitsByNamesContext(ctx, unitFiles)
+	dbusUnitStatuses, err := c.conn.ListUnitsContext(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("can't list units by names %q: %w", strings.Join(unitFiles, ", "), transformSystemdError(err))
+		return nil, fmt.Errorf("can't list units %q: %w", strings.Join(unitFiles, ", "), transformSystemdError(err))
 	}
 
-	unitStatuses := slices.ConvertSlice(statuses, func(s dbus.UnitStatus) UnitStatus {
+	unitNameSet := sets.New(unitFiles...)
+	dbusUnitStatuses = slices.Filter(dbusUnitStatuses, func(us dbus.UnitStatus) bool {
+		return unitNameSet.Has(us.Name)
+	})
+
+	unitStatuses := slices.ConvertSlice(dbusUnitStatuses, func(us dbus.UnitStatus) UnitStatus {
 		return UnitStatus{
-			Name:        s.Name,
-			LoadState:   s.LoadState,
-			ActiveState: s.ActiveState,
+			Name:        us.Name,
+			LoadState:   us.LoadState,
+			ActiveState: us.ActiveState,
 		}
 	})
+
+	getUnitName := func(us UnitStatus) string {
+		return us.Name
+	}
+	missingUnitNames := unitNameSet.Difference(sets.New(slices.ConvertSlice(unitStatuses, getUnitName)...)).UnsortedList()
+
+	var unitPropertiesErrs []error
+	for _, name := range missingUnitNames {
+		var info map[string]interface{}
+
+		info, err = c.conn.GetUnitPropertiesContext(ctx, name)
+		if err != nil {
+			unitPropertiesErrs = append(unitPropertiesErrs, fmt.Errorf("can't get properties of unit %q: %w", name, transformSystemdError(err)))
+			continue
+		}
+
+		us := UnitStatus{
+			Name:        name,
+			LoadState:   loadStateNotFound,
+			ActiveState: activeStateInactive,
+		}
+
+		if loadStateString, ok := info["LoadState"].(string); ok {
+			us.LoadState = loadStateString
+		}
+		if activeStateString, ok := info["ActiveState"].(string); ok {
+			us.ActiveState = activeStateString
+		}
+
+		unitStatuses = append(unitStatuses, us)
+	}
+
+	err = utilerrors.NewAggregate(unitPropertiesErrs)
+	if err != nil {
+		return nil, err
+	}
 
 	return unitStatuses, nil
 }

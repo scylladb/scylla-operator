@@ -1,0 +1,980 @@
+
+
+<!DOCTYPE html>
+<html class="no-js" lang="en" style="visibility: hidden;">
+    
+    
+
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width initial-scale=1" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <title>
+             Deploying Scylla on a Kubernetes Cluster | ScyllaDB Docs 
+        </title>
+        <meta name="description" content="ScyllaDB is an Apache Cassandra-compatible NoSQL data store that can handle 1 million transactions per second on a single server." />
+        <link rel="icon" href="_static/img/favicon.ico" type="image/x-icon" />
+        <link rel="icon" href="_static/img/favicon-32x32.png" sizes="32x32" />
+        <link rel="icon" href="_static/img/favicon-228x228.png" sizes="192x192" />
+        <link rel="apple-touch-icon" href="_static/img/favicon-228x228.png" />
+        <meta name="msapplication-TileImage" href="_static/img/favicon-228x228.png" />
+
+        
+            
+            
+        
+
+        
+            
+            <link rel="canonical" href="https://operator.docs.scylladb.com/stable/generic.html"/>
+        
+
+        <link rel="author" href="mailto:info@scylladb.com" />
+
+        
+            
+        <!-- increase expertrec loading priority-->
+        <link rel="dns-prefetch" href="https://cse.expertrec.com">
+
+        <!-- increase font loading priority -->
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link rel="preload" as="style"
+              href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+
+        <!-- async CSS -->
+        <link rel="stylesheet" media="print" onload="this.onload=null;this.removeAttribute('media');"
+              href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+
+        <!-- no-JS fallback -->
+        <noscript>
+            <link rel="stylesheet"
+                  href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+        </noscript>
+        
+            
+                <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="_static/css/main.css?v=a77d7859" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="_static/sphinx_collapse.css?v=226d88b4" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+            
+        
+    
+        
+        
+            
+        <script type="text/javascript" src="_static/js/runtime.bundle.js"></script>
+        <script type="text/javascript" src="_static/js/main.bundle.js"></script>
+        
+            
+                <script src="_static/documentation_options.js?v=5929fcd5"></script>
+            
+        
+            
+                <script src="_static/doctools.js?v=9bcbadda"></script>
+            
+        
+            
+                <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+            
+        
+            
+                <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+            
+        
+            
+                <script src="_static/copybutton.js?v=f281be69"></script>
+            
+        
+            
+                <script src="_static/design-tabs.js?v=f930bc37"></script>
+            
+        
+    
+            
+                <!-- Local meta tags -->
+            
+            
+                <!-- Google Tag Manager docs -->
+<script>
+    (function (w, d, s, l, i) {
+        w[l] = w[l] || [];
+        w[l].push({
+            "gtm.start": new Date().getTime(),
+            event: "gtm.js"
+        });
+        var f = d.getElementsByTagName(s)[0],
+            j = d.createElement(s),
+            dl = l != "dataLayer" ? "&l=" + l : "";
+        j.async = true;
+        j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
+        f.parentNode.insertBefore(j, f);
+    })(window, document, "script", "dataLayer", "GTM-54NWVS4");
+</script>
+<!-- End Google Tag Manager -->
+
+<!-- Google Tag Manager global -->
+<script>
+    (function (w, d, s, l, i) {
+        w[l] = w[l] || [];
+        w[l].push({
+            "gtm.start": new Date().getTime(),
+            event: "gtm.js"
+        });
+        var f = d.getElementsByTagName(s)[0],
+            j = d.createElement(s),
+            dl = l != "dataLayer" ? "&l=" + l : "";
+        j.async = true;
+        j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
+        f.parentNode.insertBefore(j, f);
+    })(window, document, "script", "dataLayer", "GTM-T8P2JP");
+</script>
+<!-- End Google Tag Manager -->
+
+<!-- Expertrec -->
+<script>
+    var id = "e2077224-9ccf-11e9-a0c9-0242ac130002";
+    var ci_search = document.createElement("script");
+    ci_search.type = "text/javascript";
+    ci_search.async = true;
+    ci_search.src = "https://cse.expertrec.com/api/js/ci_common.js?id=" + id;
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(ci_search, s);
+</script>
+<!-- End Expertrec -->
+            
+        
+    </head>
+
+    <body>
+        <section class="promo-banner  promo-banner--hide" style="display: none;">
+    <div class="promo-banner-wrapper">
+        
+        <div class="promo-banner__title">ScyllaDB University Live | Free Virtual Training Event</div>
+        <a class="promo-banner__button button button--reverse" href="#"
+           target="_blank" rel="noopener noreferrer">Learn more</a>
+        <button class="promo-banner__close">
+            <i class="icon-cancel"></i>
+        </button>
+    </div>
+</section>
+        <header class="header">
+    <div class="header-logo">
+        <a class="header-logo__img" href="https://scylladb.com/">
+            <img src="_static/img/scylladb-logo-horizontal.svg" alt="ScyllaDB Documentation Logo" />
+        </a>
+        <span class="header-logo__bar"></span>
+        <a class="header-logo__text" href="https://docs.scylladb.com/">
+            Documentation
+        </a>
+    </div>
+    <div class="header-navigation">
+        <ul class="dropdown menu scylla-dropdown scylla-dropdown--header" data-dropdown-menu>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Server
+                    <i class="chevron icon-arrow-dropdown"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://opensource.docs.scylladb.com/">
+                            <i class="icon-docs-open-source"></i>
+                            ScyllaDB Open Source
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://enterprise.docs.scylladb.com/">
+                            <i class="icon-docs-enterprise"></i>ScyllaDB Enterprise
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://scylla.docs.scylladb.com/stable/alternator/alternator.html">
+                            <i class="icon-docs-alternator"></i>
+                            ScyllaDB Alternator
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <li class="scylla-dropdown__item">
+                <a href="https://docs.scylladb.com/scylla-cloud/" class="scylla-dropdown__title">Cloud</a>
+            </li>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Tools <i class="chevron icon-arrow-dropdown"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://manager.docs.scylladb.com/">
+                            <i class="icon-docs-manager"></i>ScyllaDB Manager</a>
+                    </li>
+                    <li>
+                        <a href="https://monitoring.docs.scylladb.com/">
+                            <i class="icon-docs-monitoring"></i>ScyllaDB
+                            Monitoring Stack</a>
+                    </li>
+                    <li>
+                        <a href="https://operator.docs.scylladb.com/">
+                            <i class="icon-docs-operator"></i>ScyllaDB Operator
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Drivers <i class="chevron icon-arrow-dropdown"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://docs.scylladb.com/using-scylla/drivers/cql-drivers/">
+                            <i class="icon-docs-nsql-guides"></i>CQL Drivers
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://docs.scylladb.com/using-scylla/drivers/dynamo-drivers/">
+                            <i class="icon-docs-alternator"></i>DynamoDB Drivers
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+        <div class="header-button">
+            <a href="https://www.scylladb.com/download/" class="button">Download</a>
+        </div>
+    </div>
+    <div class="header-search-box">
+        <i class="dark-theme-toggler icon-theme"></i>
+        <div class="search-box">
+            <ci-search></ci-search>
+        </div>
+    </div>
+    <div class="side-nav-toggle">
+    <i class="dark-theme-toggler icon-theme"></i>
+    <div class="side-nav-toggle__button" data-toggle="side-nav">
+        <i class="icon-menu"></i>
+    </div>
+</div>
+</header>
+        <section
+            class="layout  layout--sidebar layout--has-secondary-sidebar ">
+            <div class="content large-order-2">
+                
+                    
+    <div class="admonition caution">
+        <p class="admonition-title">Caution</p>
+        <p>
+            
+                You're viewing documentation for a previous version of Scylla Operator.
+            
+            <a href="../stable/index.html">Switch to the latest stable version.</a>
+        </p>
+    </div>
+
+                
+                
+                    <div class="pre-content">
+                        <div class="breadcrumbs">
+    <span class="bread__item">
+        <a href="https://docs.scylladb.com"
+           class="bread__highlight">
+            <i class="icon-home"></i> ScyllaDB Docs
+        </a>
+    </span>
+    <span class="bread__item">
+        <a href="index.html"
+           class="bread__highlight">
+            Scylla Operator
+        </a>
+    </span>
+    
+    <span class="bread__item bread__item--last">Deploying Scylla on a Kubernetes Cluster</span>
+</div>
+                    </div>
+                
+                <section id="deploying-scylla-on-a-kubernetes-cluster">
+<h1>Deploying Scylla on a Kubernetes Cluster<a class="headerlink" href="#deploying-scylla-on-a-kubernetes-cluster" title="Link to this heading">¶</a></h1>
+<p>This is a guide to deploy a Scylla Cluster in a generic Kubernetes environment, meaning that Scylla will not be deployed with the ideal performance.
+Scylla performs the best when it has fast disks and direct access to the cpu.
+This requires some extra setup, which is platform-specific.
+For specific configuration and setup, check for details about your particular environment:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="gke.html"><span class="std std-doc">GKE</span></a></p></li>
+</ul>
+<section id="prerequisites">
+<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>A Kubernetes cluster</p></li>
+<li><p>A <a class="reference external" href="https://kubernetes.io/docs/concepts/storage/storage-classes/">Storage Class</a> to provision <a class="reference external" href="https://kubernetes.io/docs/concepts/storage/persistent-volumes/">PersistentVolumes</a>.</p></li>
+<li><p>Helm 3 installed, Go to the <a class="reference external" href="https://docs.helm.sh/using_helm/#installing-helm">helm docs</a> if you need to install it.
+Make sure that you enable the <a class="reference external" href="https://github.com/helm/charts#how-do-i-enable-the-stable-repository-for-helm-3">stable repository</a></p></li>
+</ul>
+</section>
+<section id="running-locally">
+<h2>Running locally<a class="headerlink" href="#running-locally" title="Link to this heading">¶</a></h2>
+<p>Running kubernetes locally is a daunting and error prone task.
+Fortunately there are ways to make life easier and <a class="reference external" href="https://minikube.sigs.k8s.io/docs/">Minikube</a> makes it a breeze.</p>
+<p>We need to give minikube a little bit more resources than default so start minikube like this:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">minikube start --cpus=6</span>
+</pre></div>
+</div>
+<p>Then make kubectl aware of this local installation like this:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">eval $(minikube docker-env)</span>
+</pre></div>
+</div>
+</section>
+<section id="download-scylla-operator">
+<h2>Download Scylla Operator<a class="headerlink" href="#download-scylla-operator" title="Link to this heading">¶</a></h2>
+<p>In this guide you will be using the examples and manifests from <a class="reference external" href="https://github.com/scylladb/scylla-operator">Scylla Operator repository</a>, so start off by cloning it to your local machine.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">git clone git@github.com:scylladb/scylla-operator.git</span>
+<span class="go">cd scylla-operator</span>
+</pre></div>
+</div>
+</section>
+<section id="deploy-cert-manager">
+<h2>Deploy Cert Manager<a class="headerlink" href="#deploy-cert-manager" title="Link to this heading">¶</a></h2>
+<p>First deploy Cert Manager, you can either follow <a class="reference external" href="https://cert-manager.io/docs/installation/kubernetes/">upsteam instructions</a> or use following command:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl apply -f examples/common/cert-manager.yaml</span>
+</pre></div>
+</div>
+<p>This will install Cert Manager to provision a self-signed certificate.</p>
+<p>Once it’s deployed, wait until Cert Manager is ready:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl wait --for condition=established crd/certificates.cert-manager.io crd/issuers.cert-manager.io</span>
+<span class="go">kubectl -n cert-manager rollout status deployment.apps/cert-manager-webhook</span>
+</pre></div>
+</div>
+</section>
+<section id="deploy-scylla-operator">
+<h2>Deploy Scylla Operator<a class="headerlink" href="#deploy-scylla-operator" title="Link to this heading">¶</a></h2>
+<p>Deploy the Scylla Operator using the following commands:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl apply -f deploy/operator.yaml</span>
+</pre></div>
+</div>
+<p>This will install the operator in namespace <code class="docutils literal notranslate"><span class="pre">scylla-operator</span></code>.
+Wait until it’s ready:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl wait --for condition=established crd/scyllaclusters.scylla.scylladb.com</span>
+<span class="go">kubectl -n scylla-operator rollout status deployment.apps/scylla-operator</span>
+</pre></div>
+</div>
+<p>If you want to check the logs of the operator you can do so with:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl -n scylla-operator logs deployment.apps/scylla-operator</span>
+</pre></div>
+</div>
+</section>
+<section id="create-and-initialize-a-scylla-cluster">
+<h2>Create and Initialize a Scylla Cluster<a class="headerlink" href="#create-and-initialize-a-scylla-cluster" title="Link to this heading">¶</a></h2>
+<p>Now that the operator is running, we can create an instance of a Scylla cluster by creating an instance of the <code class="docutils literal notranslate"><span class="pre">clusters.scylla.scylladb.com</span></code> resource.
+Some of that resource’s values are configurable, so feel free to browse <code class="docutils literal notranslate"><span class="pre">cluster.yaml</span></code> and tweak the settings to your liking.
+Full details for all the configuration options can be found in the <a class="reference internal" href="api-reference/groups/scylla.scylladb.com/scyllaclusters.html"><span class="std std-doc">Scylla Cluster CRD documentation</span></a>.</p>
+<p>When you are ready to create a Scylla cluster, simply run:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl create -f examples/generic/cluster.yaml</span>
+</pre></div>
+</div>
+<p>We can verify that a Kubernetes object has been created that represents our new Scylla cluster with the command below.
+This is important because it shows that  has successfully extended Kubernetes to make Scylla clusters a first class citizen in the Kubernetes cloud-native environment.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl -n scylla get ScyllaCluster</span>
+</pre></div>
+</div>
+<p>Checking the pods that are created is as easy as:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl -n scylla get pods</span>
+</pre></div>
+</div>
+<p>The output should be something like:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">NAME                                    READY   STATUS    RESTARTS   AGE</span>
+<span class="go">simple-cluster-us-east-1-us-east-1a-0   2/2     Running   0          9m49s</span>
+<span class="go">simple-cluster-us-east-1-us-east-1a-1   2/2     Running   0          7m43s</span>
+<span class="go">simple-cluster-us-east-1-us-east-1a-2   2/2     Running   0          6m46s</span>
+</pre></div>
+</div>
+<p>It is important to note that the operator creates these instances according to a pattern.
+This pattern is as follows: <code class="docutils literal notranslate"><span class="pre">CLUSTER_NAME-DATACENTER_NAME-RACK_NAME-INSTANCE_NUMBER</span></code> as specified in <code class="docutils literal notranslate"><span class="pre">cluster.yaml</span></code>.</p>
+<p>In the above example we have the following properties:</p>
+<ul class="simple">
+<li><p>CLUSTER_NAME: <code class="docutils literal notranslate"><span class="pre">simple-cluster</span></code></p></li>
+<li><p>DATACENTER_NAME: <code class="docutils literal notranslate"><span class="pre">us-east-1</span></code></p></li>
+<li><p>RACK_NAME: <code class="docutils literal notranslate"><span class="pre">us-east-1a</span></code></p></li>
+<li><p>INSTANCE_NUMBER: An automatically generated number attached to the pod name.</p></li>
+</ul>
+<p>We picked the names to resemble something you can find in a cloud service but this is inconsequential, they can be set to anything you want.</p>
+<p>To check if all the desired members are running, you should see the same number of entries from the following command as the number of members that was specified in <code class="docutils literal notranslate"><span class="pre">cluster.yaml</span></code>:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl -n scylla get pod -l app=scylla</span>
+</pre></div>
+</div>
+<p>You can also track the state of a Scylla cluster from its status. To check the current status of a Cluster, run:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl -n scylla describe ScyllaCluster simple-cluster</span>
+</pre></div>
+</div>
+<p>Checking the logs of the running scylla instances can be done like this:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl -n scylla logs simple-cluster-us-east-1-us-east-1a-0 scylla</span>
+</pre></div>
+</div>
+<section id="configure-host-networking">
+<h3>Configure host networking<a class="headerlink" href="#configure-host-networking" title="Link to this heading">¶</a></h3>
+<p>To squeeze the most out of your deployment it is sometimes necessary to employ <a class="reference external" href="https://kubernetes.io/docs/concepts/services-networking/">host networking</a>.
+To enable this the CRD allows for specifying a <code class="docutils literal notranslate"><span class="pre">network</span></code> parameter as such:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="w">  </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5.4.0</span>
+<span class="w">  </span><span class="nt">agentVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3.2.5</span>
+<span class="w">  </span><span class="nt">cpuset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">network</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">hostNetworking</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</pre></div>
+</div>
+<p>This will result in hosts network to be used for the Scylla Stateful Set deployment.</p>
+</section>
+<section id="configure-container-kernel-parameters">
+<h3>Configure container kernel parameters<a class="headerlink" href="#configure-container-kernel-parameters" title="Link to this heading">¶</a></h3>
+<p>Sometimes it is necessary to run the container with different kernel parameters.
+In order to support this, the Scylla Operator defines a cluster property <code class="docutils literal notranslate"><span class="pre">sysctls</span></code> that is a list of the desired key-value pairs to set.</p>
+<p><em><strong>For example</strong></em>: To increase the number events available for asynchronous IO processing in the Linux kernel to N set sysctls to<code class="docutils literal notranslate"><span class="pre">fs.aio-max-nr=N</span></code>.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">sysctls</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;fs.aio-max-nr=2097152&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="deploying-alternator">
+<h3>Deploying Alternator<a class="headerlink" href="#deploying-alternator" title="Link to this heading">¶</a></h3>
+<p>The operator is also capable of deploying <a class="reference external" href="https://www.scylladb.com/alternator/">Alternator</a> instead of the regular Scylla.
+This requires a small change in the cluster definition.
+Change the <code class="docutils literal notranslate"><span class="pre">cluster.yaml</span></code> file from this:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">agentVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3.2.5</span>
+<span class="w">  </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5.4.0</span>
+<span class="w">  </span><span class="nt">developerMode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">datacenter</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">us-east-1</span>
+</pre></div>
+</div>
+<p>to this:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5.4.0</span>
+<span class="w">  </span><span class="nt">alternator</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8000</span>
+<span class="w">    </span><span class="nt">writeIsolation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">only_rmw_uses_lwt</span>
+<span class="w">  </span><span class="nt">agentVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3.2.5</span>
+<span class="w">  </span><span class="nt">developerMode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">datacenter</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">us-east-1</span>
+</pre></div>
+</div>
+<p>You can specify whichever port you want.</p>
+<p>You must provide desired write isolation, supported values are: “always”, “forbid_rmw”, “only_rmw_uses_lwt”.
+Difference between those isolation levels can be found in Scylla Alternator documentation.</p>
+<p>Once this is done the regular CQL ports will no longer be available, the cluster is a pure Alternator cluster.</p>
+</section>
+</section>
+<section id="accessing-the-database">
+<h2>Accessing the Database<a class="headerlink" href="#accessing-the-database" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>From kubectl:</p></li>
+</ul>
+<p>To get a cqlsh shell in your new Cluster:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl exec -n scylla -it simple-cluster-us-east-1-us-east-1a-0 -- cqlsh</span>
+<span class="go">&gt; DESCRIBE KEYSPACES;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>From inside a Pod:</p></li>
+</ul>
+<p>When you create a new Cluster,  automatically creates a Service for the clients to use in order to access the Cluster.
+The service’s name follows the convention <code class="docutils literal notranslate"><span class="pre">&lt;cluster-name&gt;-client</span></code>.
+You can see this Service in your cluster by running:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl -n scylla describe service simple-cluster-client</span>
+</pre></div>
+</div>
+<p>Pods running inside the Kubernetes cluster can use this Service to connect to Scylla.
+Here’s an example using the <a class="reference external" href="https://github.com/datastax/python-driver">Python Driver</a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cassandra.cluster</span> <span class="kn">import</span> <span class="n">Cluster</span>
+
+<span class="n">cluster</span> <span class="o">=</span> <span class="n">Cluster</span><span class="p">([</span><span class="s1">&#39;simple-cluster-client.scylla.svc&#39;</span><span class="p">])</span>
+<span class="n">session</span> <span class="o">=</span> <span class="n">cluster</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>If you are running the Alternator you can access the API on the port you specified using plain http.</p>
+</section>
+<section id="configure-scylla">
+<h2>Configure Scylla<a class="headerlink" href="#configure-scylla" title="Link to this heading">¶</a></h2>
+<p>The operator can take a ConfigMap and apply it to the scylla.yaml configuration file.
+This is done by adding a ConfigMap to Kubernetes and refering to this in the Rack specification.
+The ConfigMap is just a file called <code class="docutils literal notranslate"><span class="pre">scylla.yaml</span></code> that has the properties you want to change in it.
+The operator will take the default properties for the rest of the configuration.</p>
+<ul class="simple">
+<li><p>Create a ConfigMap the default name that the operator uses is <code class="docutils literal notranslate"><span class="pre">scylla-config</span></code>:</p></li>
+</ul>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl create configmap scylla-config -n scylla --from-file=/path/to/scylla.yaml</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Wait for the mount to propagate and then restart the cluster:</p></li>
+</ul>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl rollout restart -n scylla statefulset/simple-cluster-us-east-1-us-east-1a</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>The new config should be applied automatically by the operator, check the logs to be sure.</p></li>
+</ul>
+<p>Configuring <code class="docutils literal notranslate"><span class="pre">cassandra-rackdc.properties</span></code> is done by adding the file to the same mount as <code class="docutils literal notranslate"><span class="pre">scylla.yaml</span></code>.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl create configmap scylla-config -n scylla --from-file=/tmp/scylla.yaml --from-file=/tmp/cassandra-rackdc.properties -o yaml --dry-run | kubectl replace -f -</span>
+</pre></div>
+</div>
+<p>The operator will then apply the overridable properties <code class="docutils literal notranslate"><span class="pre">prefer_local</span></code> and <code class="docutils literal notranslate"><span class="pre">dc_suffix</span></code> if they are available in the provided mounted file.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If you want to enable authentication, you first need to adjust <code class="docutils literal notranslate"><span class="pre">system_auth</span></code> keyspace replication factor to the number of nodes in the datacenter via cqlsh. It allows you to ensure that the user’s information is kept highly available for the cluster. If <code class="docutils literal notranslate"><span class="pre">system_auth</span></code> is not equal to the number of nodes and a node fails, the user whose information is on that node will be denied access.
+For production environments only use <code class="docutils literal notranslate"><span class="pre">NetworkTopologyStrategy</span></code>.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>kubectl<span class="w"> </span>-n<span class="w"> </span>scylla<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>pods/simple-cluster-us-east-1-us-east-1a-0<span class="w"> </span>-c<span class="w"> </span>scylla<span class="w"> </span>--<span class="w"> </span>cqlsh<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;ALTER KEYSPACE system_auth WITH REPLICATION = {&#39;class&#39; : &#39;NetworkTopologyStrategy&#39;, &#39;us-east-1&#39; : &lt;replication_factor&gt;};&quot;</span>
+</pre></div>
+</div>
+<p>You can read more about enabling authentication in the <a class="reference external" href="https://opensource.docs.scylladb.com/stable/operating-scylla/security/authentication.html">Enable authentication</a> section of ScyllaDB’s documentation.</p>
+</div>
+</section>
+<section id="configure-scylla-manager-agent">
+<h2>Configure Scylla Manager Agent<a class="headerlink" href="#configure-scylla-manager-agent" title="Link to this heading">¶</a></h2>
+<p>The operator creates a second container for each scylla instance that runs <a class="reference external" href="https://hub.docker.com/r/scylladb/scylla-manager-agent">Scylla Manager Agent</a>.
+This container serves as a sidecar and it’s the main endpoint for interacting with Scylla API.
+The Scylla Manager Agent can be configured with various things such as the security token used to allow access to Scylla API and storage providers for backups.</p>
+<p>To configure the agent you just create a new secret called <em>scylla-agent-config-secret</em> and populate it with the contents in the <code class="docutils literal notranslate"><span class="pre">scylla-manager-agent.yaml</span></code> file like this:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl create secret -n scylla generic scylla-agent-config-secret --from-file scylla-manager-agent.yaml</span>
+</pre></div>
+</div>
+<p>See <a class="reference external" href="https://manager.docs.scylladb.com/stable/config/scylla-manager-config.html">Scylla Manager Agent configuration</a> for a complete reference of the Scylla Manager agent config file.</p>
+<section id="scylla-manager-agent-auth-token">
+<h3>Scylla Manager Agent auth token<a class="headerlink" href="#scylla-manager-agent-auth-token" title="Link to this heading">¶</a></h3>
+<p>Operator provisions Agent auth token by copying value from user provided config secret or auto generates it if it’s empty.
+To check which value is being used, decode content of <code class="docutils literal notranslate"><span class="pre">&lt;cluster-name&gt;-auth-token</span></code> secret.
+To change it simply remove the secret. Operator will create a new one. To pick up the change in the cluster, initiate a rolling restart.</p>
+</section>
+</section>
+<section id="set-up-monitoring">
+<h2>Set up monitoring<a class="headerlink" href="#set-up-monitoring" title="Link to this heading">¶</a></h2>
+<p>To set up monitoring using Prometheus and Grafana follow <a class="reference internal" href="monitoring.html"><span class="std std-doc">this guide</span></a>.</p>
+</section>
+<section id="scale-a-scyllacluster">
+<h2>Scale a ScyllaCluster<a class="headerlink" href="#scale-a-scyllacluster" title="Link to this heading">¶</a></h2>
+<p>The operator supports adding new nodes to existing racks, adding new racks to the cluster, as well as removing both single nodes and entire racks. To introduce the changes, edit the cluster with:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl -n scylla edit scyllaclusters.scylla.scylladb.com/simple-cluster</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>To modify the number of nodes in a rack, update the <code class="docutils literal notranslate"><span class="pre">members</span></code> field of the selected rack to a desired value.</p></li>
+<li><p>To add a new rack, append it to the <code class="docutils literal notranslate"><span class="pre">.spec.datacenter.racks</span></code> list. Remember to choose a unique rack name for the new rack.</p></li>
+<li><p>To remove a rack, first scale it down to zero nodes, and then remove it from <code class="docutils literal notranslate"><span class="pre">.spec.datacenter.racks</span></code> list.</p></li>
+</ul>
+<p>Having edited and saved the yaml, you can check your cluster’s Status and Events to retrieve information about what’s happening:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl -n scylla describe scyllaclusters.scylla.scylladb.com/simple-cluster</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If you have configured ScyllaDB with <code class="docutils literal notranslate"><span class="pre">authenticator</span></code> set to <code class="docutils literal notranslate"><span class="pre">PasswordAuthenticator</span></code>, you need to manually configure the replication factor of the <code class="docutils literal notranslate"><span class="pre">system_auth</span></code> keyspace with every scaling operation.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>kubectl<span class="w"> </span>-n<span class="w"> </span>scylla<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>pods/simple-cluster-us-east-1-us-east-1a-0<span class="w"> </span>-c<span class="w"> </span>scylla<span class="w"> </span>--<span class="w"> </span>cqlsh<span class="w"> </span>-u<span class="w"> </span>&lt;username&gt;<span class="w"> </span>-p<span class="w"> </span>&lt;password&gt;<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;ALTER KEYSPACE system_auth WITH REPLICATION = {&#39;class&#39; : &#39;NetworkTopologyStrategy&#39;, &#39;us-east-1&#39; : &lt;new_replication_factor&gt;};&quot;</span>
+</pre></div>
+</div>
+<p>It is recommended to set <code class="docutils literal notranslate"><span class="pre">system_auth</span></code> replication factor to the number of nodes in each datacenter.</p>
+</div>
+</section>
+<section id="benchmark-with-cassandra-stress">
+<h2>Benchmark with cassandra-stress<a class="headerlink" href="#benchmark-with-cassandra-stress" title="Link to this heading">¶</a></h2>
+<p>After deploying our cluster along with the monitoring, we can benchmark it using cassandra-stress and see its performance in Grafana. We have a mini cli that generates Kubernetes Jobs that run cassandra-stress against a cluster.</p>
+<blockquote>
+<div><p>Because cassandra-stress doesn’t scale well to multiple cores, we use multiple jobs with a small core count for each</p>
+</div></blockquote>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run a benchmark with 10 jobs, with 6 cpus and 50.000.000 operations each.</span>
+<span class="c1"># Each Job will throttle throughput to 30.000 ops/sec for a total of 300.000 ops/sec.</span>
+hack/cass-stress-gen.py<span class="w"> </span>--num-jobs<span class="o">=</span><span class="m">10</span><span class="w"> </span>--cpu<span class="o">=</span><span class="m">6</span><span class="w"> </span>--memory<span class="o">=</span>20G<span class="w"> </span>--ops<span class="o">=</span><span class="m">50000000</span><span class="w"> </span>--limit<span class="o">=</span><span class="m">30000</span>
+kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>scripts/cassandra-stress.yaml
+</pre></div>
+</div>
+<p>Make sure you set the proper arguments in case you have altered things such as <em>name</em> or <em>namespace</em>.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>./hack/cass-stress-gen.py<span class="w"> </span>-h
+usage:<span class="w"> </span>cass-stress-gen.py<span class="w"> </span><span class="o">[</span>-h<span class="o">]</span><span class="w"> </span><span class="o">[</span>--num-jobs<span class="w"> </span>NUM_JOBS<span class="o">]</span><span class="w"> </span><span class="o">[</span>--name<span class="w"> </span>NAME<span class="o">]</span><span class="w"> </span><span class="o">[</span>--namespace<span class="w"> </span>NAMESPACE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--scylla-version<span class="w"> </span>SCYLLA_VERSION<span class="o">]</span><span class="w"> </span><span class="o">[</span>--host<span class="w"> </span>HOST<span class="o">]</span><span class="w"> </span><span class="o">[</span>--cpu<span class="w"> </span>CPU<span class="o">]</span><span class="w"> </span><span class="o">[</span>--memory<span class="w"> </span>MEMORY<span class="o">]</span><span class="w"> </span><span class="o">[</span>--ops<span class="w"> </span>OPS<span class="o">]</span><span class="w"> </span><span class="o">[</span>--threads<span class="w"> </span>THREADS<span class="o">]</span><span class="w"> </span><span class="o">[</span>--limit<span class="w"> </span>LIMIT<span class="o">]</span>
+<span class="w">                          </span><span class="o">[</span>--connections-per-host<span class="w"> </span>CONNECTIONS_PER_HOST<span class="o">]</span><span class="w"> </span><span class="o">[</span>--print-to-stdout<span class="o">]</span><span class="w"> </span><span class="o">[</span>--nodeselector<span class="w"> </span>NODESELECTOR<span class="o">]</span>
+
+Generate<span class="w"> </span>cassandra-stress<span class="w"> </span>job<span class="w"> </span>templates<span class="w"> </span><span class="k">for</span><span class="w"> </span>Kubernetes.
+
+optional<span class="w"> </span>arguments:
+<span class="w">  </span>-h,<span class="w"> </span>--help<span class="w">            </span>show<span class="w"> </span>this<span class="w"> </span><span class="nb">help</span><span class="w"> </span>message<span class="w"> </span>and<span class="w"> </span><span class="nb">exit</span>
+<span class="w">  </span>--num-jobs<span class="w"> </span>NUM_JOBS<span class="w">   </span>number<span class="w"> </span>of<span class="w"> </span>Kubernetes<span class="w"> </span><span class="nb">jobs</span><span class="w"> </span>to<span class="w"> </span>generate<span class="w"> </span>-<span class="w"> </span>defaults<span class="w"> </span>to<span class="w"> </span><span class="m">1</span>
+<span class="w">  </span>--name<span class="w"> </span>NAME<span class="w">           </span>name<span class="w"> </span>of<span class="w"> </span>the<span class="w"> </span>generated<span class="w"> </span>yaml<span class="w"> </span>file<span class="w"> </span>-<span class="w"> </span>defaults<span class="w"> </span>to<span class="w"> </span>cassandra-stress
+<span class="w">  </span>--namespace<span class="w"> </span>NAMESPACE
+<span class="w">                        </span>namespace<span class="w"> </span>of<span class="w"> </span>the<span class="w"> </span>cassandra-stress<span class="w"> </span><span class="nb">jobs</span><span class="w"> </span>-<span class="w"> </span>defaults<span class="w"> </span>to<span class="w"> </span><span class="s2">&quot;default&quot;</span>
+<span class="w">  </span>--scylla-version<span class="w"> </span>SCYLLA_VERSION
+<span class="w">                        </span>version<span class="w"> </span>of<span class="w"> </span>scylla<span class="w"> </span>server<span class="w"> </span>to<span class="w"> </span>use<span class="w"> </span><span class="k">for</span><span class="w"> </span>cassandra-stress<span class="w"> </span>-<span class="w"> </span>defaults<span class="w"> </span>to<span class="w"> </span><span class="m">4</span>.0.0
+<span class="w">  </span>--host<span class="w"> </span>HOST<span class="w">           </span>ip<span class="w"> </span>or<span class="w"> </span>dns<span class="w"> </span>name<span class="w"> </span>of<span class="w"> </span>host<span class="w"> </span>to<span class="w"> </span>connect<span class="w"> </span>to<span class="w"> </span>-<span class="w"> </span>defaults<span class="w"> </span>to<span class="w"> </span>scylla-cluster-client.scylla.svc
+<span class="w">  </span>--cpu<span class="w"> </span>CPU<span class="w">             </span>number<span class="w"> </span>of<span class="w"> </span>cpus<span class="w"> </span>that<span class="w"> </span>will<span class="w"> </span>be<span class="w"> </span>used<span class="w"> </span><span class="k">for</span><span class="w"> </span>each<span class="w"> </span>job<span class="w"> </span>-<span class="w"> </span>defaults<span class="w"> </span>to<span class="w"> </span><span class="m">1</span>
+<span class="w">  </span>--memory<span class="w"> </span>MEMORY<span class="w">       </span>memory<span class="w"> </span>that<span class="w"> </span>will<span class="w"> </span>be<span class="w"> </span>used<span class="w"> </span><span class="k">for</span><span class="w"> </span>each<span class="w"> </span>job<span class="w"> </span><span class="k">in</span><span class="w"> </span>GB,<span class="w"> </span>ie<span class="w"> </span>2G<span class="w"> </span>-<span class="w"> </span>defaults<span class="w"> </span>to<span class="w"> </span>2G<span class="w"> </span>*<span class="w"> </span>cpu
+<span class="w">  </span>--ops<span class="w"> </span>OPS<span class="w">             </span>number<span class="w"> </span>of<span class="w"> </span>operations<span class="w"> </span><span class="k">for</span><span class="w"> </span>each<span class="w"> </span>job<span class="w"> </span>-<span class="w"> </span>defaults<span class="w"> </span>to<span class="w"> </span><span class="m">10000000</span>
+<span class="w">  </span>--threads<span class="w"> </span>THREADS<span class="w">     </span>number<span class="w"> </span>of<span class="w"> </span>threads<span class="w"> </span>used<span class="w"> </span><span class="k">for</span><span class="w"> </span>each<span class="w"> </span>job<span class="w"> </span>-<span class="w"> </span>defaults<span class="w"> </span>to<span class="w"> </span><span class="m">50</span><span class="w"> </span>*<span class="w"> </span>cpu
+<span class="w">  </span>--limit<span class="w"> </span>LIMIT<span class="w">         </span>rate<span class="w"> </span>limit<span class="w"> </span><span class="k">for</span><span class="w"> </span>each<span class="w"> </span>job<span class="w"> </span>-<span class="w"> </span>defaults<span class="w"> </span>to<span class="w"> </span>no<span class="w"> </span>rate-limiting
+<span class="w">  </span>--connections-per-host<span class="w"> </span>CONNECTIONS_PER_HOST
+<span class="w">                        </span>number<span class="w"> </span>of<span class="w"> </span>connections<span class="w"> </span>per<span class="w"> </span>host<span class="w"> </span>-<span class="w"> </span>defaults<span class="w"> </span>to<span class="w"> </span>number<span class="w"> </span>of<span class="w"> </span>cpus
+<span class="w">  </span>--print-to-stdout<span class="w">     </span>print<span class="w"> </span>to<span class="w"> </span>stdout<span class="w"> </span>instead<span class="w"> </span>of<span class="w"> </span>writing<span class="w"> </span>to<span class="w"> </span>a<span class="w"> </span>file
+<span class="w">  </span>--nodeselector<span class="w"> </span>NODESELECTOR
+<span class="w">                        </span>nodeselector<span class="w"> </span>limits<span class="w"> </span>cassandra-stress<span class="w"> </span>pods<span class="w"> </span>to<span class="w"> </span>certain<span class="w"> </span>nodes.<span class="w"> </span>Use<span class="w"> </span>as<span class="w"> </span>a<span class="w"> </span>label<span class="w"> </span>selector,<span class="w"> </span>eg.<span class="w"> </span>--nodeselector<span class="w"> </span><span class="nv">role</span><span class="o">=</span>scylla
+</pre></div>
+</div>
+<p>While the benchmark is running, open up Grafana and take a look at the monitoring metrics.</p>
+<p>After the Jobs finish, clean them up with:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>kubectl<span class="w"> </span>delete<span class="w"> </span>-f<span class="w"> </span>scripts/cassandra-stress.yaml
+</pre></div>
+</div>
+</section>
+<section id="clean-up">
+<h2>Clean Up<a class="headerlink" href="#clean-up" title="Link to this heading">¶</a></h2>
+<p>To clean up all resources associated with this walk-through, you can run the commands below.</p>
+<p><strong>NOTE:</strong> this will destroy your database and delete all of its associated data.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl delete -f examples/generic/cluster.yaml</span>
+<span class="go">kubectl delete -f deploy/operator.yaml</span>
+<span class="go">kubectl delete -f examples/common/cert-manager.yaml</span>
+</pre></div>
+</div>
+</section>
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading">¶</a></h2>
+<p>If the cluster does not come up, the first step would be to examine the operator’s logs:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl -n scylla-operator logs deployment.apps/scylla-operator</span>
+</pre></div>
+</div>
+<p>If everything looks OK in the operator logs, you can also look in the logs for one of the Scylla instances:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl -n scylla logs simple-cluster-us-east-1-us-east-1a-0</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+                
+                    <div class="post-content">
+                        
+    <div class="feedback-container">
+        <p class="feedback-container__title">Was this page helpful?</p>
+        <span data-tooltip tabindex="1" title="Yes" data-position="top">
+            <button class="feedback-container__button" id="feedback-positive">
+                <i class="feedback-container__icon icon-docs-thumbs-up"></i>
+            </button>
+        </span>
+        <span data-tooltip tabindex="1" title="No" data-position="top">
+            <button class="feedback-container__button" id="feedback-negative">
+                <i class="feedback-container__icon icon-docs-thumbs-down"></i>
+            </button>
+        </span>
+        <div class="feedback-container__message" id="feedback-message"></div>
+    </div>
+
+    <script>
+        function resetFeedbackButtonActive() {
+            const feedbackButtons = document.getElementsByClassName('feedback-container__button');
+            for (let i = 0; i < feedbackButtons.length; i++) {
+                feedbackButtons[i].classList.remove('active');
+            }
+        }
+
+        function showMessage(liked) {
+            const feedbackMessage = document.getElementById('feedback-message');
+            const themeGithubRepository = true;
+            let message = 'Great! Thanks for your feedback.';
+            if (themeGithubRepository && !liked) {
+                message = "Thanks for your feedback! Please don't hesitate to <a href='https://github.com/scylladb/scylla-operator/issues/new?title=docs:%20Issue on page Deploying Scylla on a Kubernetes Cluster&&body=I%20would%20like%20to%20report%20an%20issue%20on%20page%20https://operator.docs.scylladb.com/v1.12/generic%0A%0A%23%23%23%20Problem%0A%0A%23%23%23%20%20Suggest%20a%20fix&labels=documentation'>create an issue</a> if you have any suggestions on how we can improve.";
+            }
+            feedbackMessage.innerHTML = message;
+        }
+
+        function sendGaEvent(liked) {
+            const event_label = liked ? "positive" : "negative";
+            const event = "feedback_" + event_label;
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({
+                'event': event,
+            });
+        }
+
+        const positiveFeebackButton = document.getElementById('feedback-positive');
+        const negativeFeedbackButton = document.getElementById('feedback-negative');
+
+        positiveFeebackButton.addEventListener('click', function() {
+            resetFeedbackButtonActive();
+            sendGaEvent(true);
+            showMessage(true);
+            positiveFeebackButton.classList.add('active');
+        });
+
+        negativeFeedbackButton.addEventListener('click', function() {
+            resetFeedbackButtonActive();
+            sendGaEvent(false);
+            showMessage(false);
+            negativeFeedbackButton.classList.add('active');
+        });
+    </script>
+
+                        <div class="content-navigation">
+    <div class="navigation navigation--prev">
+        
+            <a class="navigation__link" href="index.html">
+                <button class="navigation__button">
+                    <i class="icon-chevron-left"></i>
+                </button>
+                <div class="navigation__title">
+                    <span class="colored">PREVIOUS</span> <br />Scylla Operator Documentation
+                </div>
+            </a>
+        
+    </div>
+    <div class="navigation navigation--next">
+        
+            <a class="navigation__link" href="eks.html">
+                <div class="navigation__title">
+                    <span class="colored">NEXT</span> <br />Deploying Scylla on EKS
+                </div>
+                <button class="navigation__button">
+                    <i class="icon-chevron-right"></i>
+                </button>
+            </a>
+        
+    </div>
+</div>
+                        <!-- Post content text -->
+                    </div>
+                
+            </div>
+            <div class="sidebar-left  large-order-1">
+                
+                    
+                        <div id="side-nav" class="side-nav custom-scroll-bar" data-closable data-toggler=".show">
+    <button class="collapsible-button">
+        <i class="icon-docs-menu-collapse"></i>
+    </button>
+    <div class="side-nav-content" style="visibility: hidden;">
+        <div class="side-nav__search">
+            <div class="search-box">
+                <ci-search></ci-search>
+            </div>
+        </div>
+        <div class="side-nav__title">
+            <a href="index.html">Scylla Operator</a>
+        </div>
+        <div class="side-nav__versions"><ul class="dropdown menu scylla-dropdown scylla-dropdown--versions" data-dropdown-menu>
+    <li class="scylla-dropdown__item">
+        <a class="scylla-dropdown__title" href="#">
+            
+                v1.12
+            
+            <i class="chevron icon-docs-chevron-right"></i>
+        </a>
+        <ul class="menu scylla-dropdown__content">
+            
+                
+                    <li>
+                        <a href="../v1.15/index.html">v1.15</a>
+                    </li>
+                
+            
+                
+                    <li>
+                        <a href="../stable/index.html">v1.14</a>
+                    </li>
+                
+            
+                
+                    <li>
+                        <a href="../v1.13/index.html">v1.13</a>
+                    </li>
+                
+            
+                
+                    <li>
+                        <a href="generic.html">v1.12</a>
+                    </li>
+                
+            
+                
+                    <li>
+                        <a href="../master/index.html">master</a>
+                    </li>
+                
+            
+            
+        </ul>
+    </li>
+</ul></div>
+        <div class="side-nav__content">
+            <ul class="current">
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Deploying Scylla on a Kubernetes Cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="eks.html">Deploying Scylla on EKS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gke.html">Deploying Scylla on GKE</a></li>
+<li class="toctree-l1"><a class="reference internal" href="helm.html">Deploying Scylla stack using Helm Charts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="manager.html">Deploying Scylla Manager on a Kubernetes Cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="monitoring.html">Monitoring</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="clients/index.html">Using ScyllaDB APIs</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label for="toctree-checkbox-1"><i class="icon-arrow-dropdown"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="clients/discovery.html">Discovering ScyllaDB Nodes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="clients/cql.html">Using CQL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="clients/alternator.html">Using Alternator (DynamoDB)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="migration.html">Version  migrations</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="nodeoperations/index.html">Node operations using Scylla Operator</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label for="toctree-checkbox-2"><i class="icon-arrow-dropdown"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="nodeoperations/scylla-upgrade.html">Upgrading version of Scylla</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nodeoperations/replace-node.html">Replacing a Scylla node</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nodeoperations/automatic-cleanup.html">Automatic cleanup and replacement in case when k8s node is lost</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nodeoperations/maintenance-mode.html">Maintenance mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nodeoperations/restore.html">Restore from backup</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="exposing.html">Exposing ScyllaCluster</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="multidc/index.html">Deploying multi-datacenter ScyllaDB clusters in Kubernetes</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label for="toctree-checkbox-3"><i class="icon-arrow-dropdown"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="multidc/eks.html">Build multiple Amazon EKS clusters with inter-Kubernetes networking</a></li>
+<li class="toctree-l2"><a class="reference internal" href="multidc/gke.html">Build multiple GKE clusters with inter-Kubernetes networking</a></li>
+<li class="toctree-l2"><a class="reference internal" href="multidc/multidc.html">Deploy a multi-datacenter ScyllaDB cluster in multiple interconnected Kubernetes clusters</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="performance.html">Performance tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="upgrade.html">Upgrade of Scylla Operator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Releases</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="support/index.html">Support</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label for="toctree-checkbox-4"><i class="icon-arrow-dropdown"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="support/overview.html">Support overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="support/known-issues.html">Known issues</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="support/troubleshooting/index.html">Troubleshooting</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/><label for="toctree-checkbox-5"><i class="icon-arrow-dropdown"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="support/troubleshooting/installation.html">Troubleshooting installation issues</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="support/must-gather.html">Gathering data with must-gather</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="api-reference/index.html">API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label for="toctree-checkbox-6"><i class="icon-arrow-dropdown"></i></label><div class="break"></div><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="api-reference/groups/scylla.scylladb.com.html">scylla.scylladb.com</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label for="toctree-checkbox-7"><i class="icon-arrow-dropdown"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="api-reference/groups/scylla.scylladb.com/nodeconfigs.html">NodeConfig (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api-reference/groups/scylla.scylladb.com/scyllaclusters.html">ScyllaCluster (scylla.scylladb.com/v1)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api-reference/groups/scylla.scylladb.com/scylladbmonitorings.html">ScyllaDBMonitoring (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api-reference/groups/scylla.scylladb.com/scyllaoperatorconfigs.html">ScyllaOperatorConfig (scylla.scylladb.com/v1alpha1)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to Scylla Operator</a></li>
+</ul>
+
+        </div>
+    </div>
+</div>
+                    
+                
+            </div>
+            
+                <div class="sidebar-right large-order-3">
+                    <div class="secondary-side-nav custom-scroll-bar">
+    
+    <ul class="contribute">
+        <li class="contribute__item">
+            <a href="https://github.com/scylladb/scylla-operator/issues/new?title=docs:%20Issue on page Deploying Scylla on a Kubernetes Cluster&&body=I%20would%20like%20to%20report%20an%20issue%20on%20page%20https://operator.docs.scylladb.com/v1.12/generic%0A%0A%23%23%23%20Problem%0A%0A%23%23%23%20%20Suggest%20a%20fix&labels=documentation"
+               target="_blank">
+                <i class="icon-github" aria-hidden="true"></i>Create an issue
+            </a>
+        </li>
+        
+            <li class="contribute__item">
+                <a href="https://github.com/scylladb/scylla-operator/edit/master/docs/source/generic.md"
+                   target="_blank">
+                    <i class="icon-edit" aria-hidden="true"></i>Edit this page
+                </a>
+            </li>
+        
+    </ul>
+
+    
+        <div class="secondary-side-nav__content">
+            <p class="topic-title">On this page</p>
+            <ul>
+<li><a class="reference internal" href="#">Deploying Scylla on a Kubernetes Cluster</a><ul>
+<li><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+<li><a class="reference internal" href="#running-locally">Running locally</a></li>
+<li><a class="reference internal" href="#download-scylla-operator">Download Scylla Operator</a></li>
+<li><a class="reference internal" href="#deploy-cert-manager">Deploy Cert Manager</a></li>
+<li><a class="reference internal" href="#deploy-scylla-operator">Deploy Scylla Operator</a></li>
+<li><a class="reference internal" href="#create-and-initialize-a-scylla-cluster">Create and Initialize a Scylla Cluster</a><ul>
+<li><a class="reference internal" href="#configure-host-networking">Configure host networking</a></li>
+<li><a class="reference internal" href="#configure-container-kernel-parameters">Configure container kernel parameters</a></li>
+<li><a class="reference internal" href="#deploying-alternator">Deploying Alternator</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#accessing-the-database">Accessing the Database</a></li>
+<li><a class="reference internal" href="#configure-scylla">Configure Scylla</a></li>
+<li><a class="reference internal" href="#configure-scylla-manager-agent">Configure Scylla Manager Agent</a><ul>
+<li><a class="reference internal" href="#scylla-manager-agent-auth-token">Scylla Manager Agent auth token</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#set-up-monitoring">Set up monitoring</a></li>
+<li><a class="reference internal" href="#scale-a-scyllacluster">Scale a ScyllaCluster</a></li>
+<li><a class="reference internal" href="#benchmark-with-cassandra-stress">Benchmark with cassandra-stress</a></li>
+<li><a class="reference internal" href="#clean-up">Clean Up</a></li>
+<li><a class="reference internal" href="#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+    
+</div>
+                </div>
+            
+        </section>
+
+        <footer class="footer">
+    <div class="footer-group">
+        <div class="footer-top">
+            <a class="footer-logo" href="https://www.scylladb.com"></a>
+            <div class="footer-links">
+                <a class="footer-links__link" href="https://docs.scylladb.com/" target="_blank">Docs</a>
+                <a class="footer-links__link" href="https://university.scylladb.com/" target="_blank">University</a>
+                <a class="footer-links__link" href="https://www.scylladb.com/company/contact-us/"
+                    target="_blank">Contact Us</a>
+                <a class="footer-links__link" href="https://www.scylladb.com/company/" target="_blank">About Us</a>
+            </div>
+            <div class="footer-actions">
+                <a class="footer-actions__link" href="http://slack.scylladb.com/" target="_blank">
+                    <span data-tooltip tabindex="1" title="User Slack channel" data-position="bottom">
+                        <i class="icon-slack"></i>
+                    </span>
+                </a>
+                <a class="footer-actions__link" href="https://forum.scylladb.com/" target="_blank">
+                    <span data-tooltip tabindex="1" title="Community forum" data-position="bottom">
+                        <i class="icon-docs-community"></i>
+                    </span>
+                </a>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            
+                <div class="footer-bottom__copyright">
+                    
+                        
+                            &#169; 2024, ScyllaDB. All rights reserved.
+                        
+                    
+                </div>
+            
+            
+                <div class="footer-bottom__last-updated">
+                    
+                        Last updated on 28 November 2024.
+                    
+                </div>
+            
+            <div class="footer-bottom__version">
+                Powered by
+                <a href="http://sphinx-doc.org/">Sphinx 8.1.3</a> &amp;
+                <a href="https://sphinx-theme.scylladb.com/">ScyllaDB Theme 1.8.3</a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+        <noscript>
+            <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-T8P2JP" height="0" width="0"
+                    style="display: none; visibility: hidden"></iframe>
+        </noscript>
+    </body>
+
+</html>

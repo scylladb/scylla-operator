@@ -97,8 +97,9 @@ func (m *UnitManager) WriteStatus(status *unitManagerStatus) error {
 const (
 	loadStateNotFound = "not-found"
 
-	activeStateActive = "active"
-	activeStateFailed = "failed"
+	activeStateActive   = "active"
+	activeStateInactive = "inactive"
+	activeStateFailed   = "failed"
 )
 
 type UnitStatus struct {

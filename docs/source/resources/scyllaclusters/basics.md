@@ -128,6 +128,11 @@ kubectl wait --for='condition=Degraded=False' scyllacluster.scylla.scylladb.com/
 kubectl wait --for='condition=Available=True' scyllacluster.scylla.scylladb.com/scylladb
 :::
 
+## Performance tuning
+
+To get the best performance and latency, you should make sure you have the automatic tuning enabled.
+Please read our [dedicated section about tuning architecture](../../architecture/tuning.md) and get familiar with [NodeConfig resource](../nodeconfigs.md).
+
 ## Forcing a rolling restart
 
 When you change a ScyllaDB config option that's not live reloaded by ScyllaDB, or want to trigger a rolling restart for a different reason, ScyllaCluster allows triggering the rolling restarts declaratively by changing `ScyllaCluster.spec.forceRedeploymentReason` to any other value. This will trigger a rolling restart of all ScyllaDB nodes in sequence, always respecting the [PodDistruptionsBudget](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/#pod-disruption-budgets) and keeping the cluster available.

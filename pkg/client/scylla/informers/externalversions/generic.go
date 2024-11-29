@@ -44,6 +44,12 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		// Group=scylla.scylladb.com, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("nodeconfigs"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Scylla().V1alpha1().NodeConfigs().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("remotekubernetesclusters"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Scylla().V1alpha1().RemoteKubernetesClusters().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("remoteowners"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Scylla().V1alpha1().RemoteOwners().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("scylladbclusters"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Scylla().V1alpha1().ScyllaDBClusters().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("scylladbdatacenters"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Scylla().V1alpha1().ScyllaDBDatacenters().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("scylladbmonitorings"):

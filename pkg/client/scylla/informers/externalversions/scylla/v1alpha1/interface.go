@@ -10,6 +10,12 @@ import (
 type Interface interface {
 	// NodeConfigs returns a NodeConfigInformer.
 	NodeConfigs() NodeConfigInformer
+	// RemoteKubernetesClusters returns a RemoteKubernetesClusterInformer.
+	RemoteKubernetesClusters() RemoteKubernetesClusterInformer
+	// RemoteOwners returns a RemoteOwnerInformer.
+	RemoteOwners() RemoteOwnerInformer
+	// ScyllaDBClusters returns a ScyllaDBClusterInformer.
+	ScyllaDBClusters() ScyllaDBClusterInformer
 	// ScyllaDBDatacenters returns a ScyllaDBDatacenterInformer.
 	ScyllaDBDatacenters() ScyllaDBDatacenterInformer
 	// ScyllaDBMonitorings returns a ScyllaDBMonitoringInformer.
@@ -32,6 +38,21 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // NodeConfigs returns a NodeConfigInformer.
 func (v *version) NodeConfigs() NodeConfigInformer {
 	return &nodeConfigInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// RemoteKubernetesClusters returns a RemoteKubernetesClusterInformer.
+func (v *version) RemoteKubernetesClusters() RemoteKubernetesClusterInformer {
+	return &remoteKubernetesClusterInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// RemoteOwners returns a RemoteOwnerInformer.
+func (v *version) RemoteOwners() RemoteOwnerInformer {
+	return &remoteOwnerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// ScyllaDBClusters returns a ScyllaDBClusterInformer.
+func (v *version) ScyllaDBClusters() ScyllaDBClusterInformer {
+	return &scyllaDBClusterInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // ScyllaDBDatacenters returns a ScyllaDBDatacenterInformer.

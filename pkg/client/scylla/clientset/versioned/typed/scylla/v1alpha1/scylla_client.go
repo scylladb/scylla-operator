@@ -13,6 +13,9 @@ import (
 type ScyllaV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	NodeConfigsGetter
+	RemoteKubernetesClustersGetter
+	RemoteOwnersGetter
+	ScyllaDBClustersGetter
 	ScyllaDBDatacentersGetter
 	ScyllaDBMonitoringsGetter
 	ScyllaOperatorConfigsGetter
@@ -25,6 +28,18 @@ type ScyllaV1alpha1Client struct {
 
 func (c *ScyllaV1alpha1Client) NodeConfigs() NodeConfigInterface {
 	return newNodeConfigs(c)
+}
+
+func (c *ScyllaV1alpha1Client) RemoteKubernetesClusters() RemoteKubernetesClusterInterface {
+	return newRemoteKubernetesClusters(c)
+}
+
+func (c *ScyllaV1alpha1Client) RemoteOwners(namespace string) RemoteOwnerInterface {
+	return newRemoteOwners(c, namespace)
+}
+
+func (c *ScyllaV1alpha1Client) ScyllaDBClusters(namespace string) ScyllaDBClusterInterface {
+	return newScyllaDBClusters(c, namespace)
 }
 
 func (c *ScyllaV1alpha1Client) ScyllaDBDatacenters(namespace string) ScyllaDBDatacenterInterface {

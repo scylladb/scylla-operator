@@ -6,6 +6,26 @@ package v1alpha1
 // NodeConfigLister.
 type NodeConfigListerExpansion interface{}
 
+// RemoteKubernetesClusterListerExpansion allows custom methods to be added to
+// RemoteKubernetesClusterLister.
+type RemoteKubernetesClusterListerExpansion interface{}
+
+// RemoteOwnerListerExpansion allows custom methods to be added to
+// RemoteOwnerLister.
+type RemoteOwnerListerExpansion interface{}
+
+// RemoteOwnerNamespaceListerExpansion allows custom methods to be added to
+// RemoteOwnerNamespaceLister.
+type RemoteOwnerNamespaceListerExpansion interface{}
+
+// ScyllaDBClusterListerExpansion allows custom methods to be added to
+// ScyllaDBClusterLister.
+type ScyllaDBClusterListerExpansion interface{}
+
+// ScyllaDBClusterNamespaceListerExpansion allows custom methods to be added to
+// ScyllaDBClusterNamespaceLister.
+type ScyllaDBClusterNamespaceListerExpansion interface{}
+
 // ScyllaDBDatacenterListerExpansion allows custom methods to be added to
 // ScyllaDBDatacenterLister.
 type ScyllaDBDatacenterListerExpansion interface{}

@@ -306,7 +306,7 @@ func (ncdc *Controller) syncJobs(ctx context.Context, nc *scyllav1alpha1.NodeCon
 				finished = false
 				break
 			}
-			klog.V(4).InfoS("Job is completed", "Job", klog.KObj(fresh))
+			klog.V(2).InfoS("Job is completed", "Job", klog.KObj(fresh))
 
 		case naming.NodeConfigJobTypeContainerPerftune, naming.NodeConfigJobTypeContainerResourceLimits:
 			// We have successfully applied the job definition so the data should always be present at this point.
@@ -339,6 +339,8 @@ func (ncdc *Controller) syncJobs(ctx context.Context, nc *scyllav1alpha1.NodeCon
 				})
 				break
 			}
+			klog.V(2).InfoS("Job is completed", "Job", klog.KObj(fresh))
+
 		default:
 			return progressingConditions, fmt.Errorf("job %q has an unkown type %q", naming.ObjRef(j), t)
 		}

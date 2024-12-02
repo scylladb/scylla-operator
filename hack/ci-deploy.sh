@@ -28,7 +28,7 @@ cp ./deploy/manager/dev/*.yaml "${DEPLOY_DIR}/manager"
 cp ./deploy/operator/*.yaml "${DEPLOY_DIR}/operator"
 cp ./examples/third-party/prometheus-operator/*.yaml "${DEPLOY_DIR}/prometheus-operator"
 cp ./examples/third-party/haproxy-ingress/*.yaml "${DEPLOY_DIR}/haproxy-ingress"
-cp ./examples/common/cert-manager.yaml "${DEPLOY_DIR}/"
+cp ./examples/third-party/cert-manager.yaml "${DEPLOY_DIR}/"
 
 for f in $( find "${DEPLOY_DIR}"/ -type f -name '*.yaml' ); do
     sed -i -E -e "s~docker\.io/scylladb/scylla-operator:[^ @]+$~${OPERATOR_IMAGE_REF}~" "${f}"

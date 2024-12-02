@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -344,6 +345,33 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		scyllaContainerID, err := controllerhelpers.GetScyllaContainerID(pod)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for tuning to become healthy")
+
+		dsList, err := f.KubeAdminClient().AppsV1().DaemonSets(naming.ScyllaOperatorNodeTuningNamespace).List(ctx, metav1.ListOptions{
+			LabelSelector: labels.Set{
+				"app.kubernetes.io/name": naming.NodeConfigAppName,
+			}.AsSelector().String(),
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(dsList.Items).To(o.HaveLen(1), "there should be exactly 1 matching NodeConfig in this test")
+		ds := &dsList.Items[0]
+
+		// At this point the DaemonSet controller in kube-controller-manager is notably rate-limited
+		// because of resource quota failures. We have to trigger an event to reset its queue rate limiter,
+		// or there will be a large delay.
+		ds, err = f.KubeAdminClient().AppsV1().DaemonSets(naming.ScyllaOperatorNodeTuningNamespace).Patch(
+			ctx,
+			ds.Name,
+			types.JSONPatchType,
+			[]byte(fmt.Sprintf(`[{"op": "add", "path": "/metadata/annotations/e2e-requeue", "value": %q}]`, time.Now())),
+			metav1.PatchOptions{},
+		)
+
+		ctxTuningDS, ctxTuningDSCancel := utils.ContextForRollout(ctx, sc)
+		defer ctxTuningDSCancel()
+		ds, err = controllerhelpers.WaitForDaemonSetState(ctxTuningDS, f.KubeAdminClient().AppsV1().DaemonSets(ds.Namespace), ds.Name, controllerhelpers.WaitForStateOptions{}, controllerhelpers.IsDaemonSetRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the NodeConfig to deploy")

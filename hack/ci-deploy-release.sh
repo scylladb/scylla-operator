@@ -42,7 +42,7 @@ mkdir -p "${ARTIFACTS_DEPLOY_DIR}/"{operator,manager}
 kubectl_create -n=prometheus-operator -f="${source_url}/${revision}/examples/third-party/prometheus-operator.yaml"
 kubectl_create -n=haproxy-ingress -f="${source_url}/${revision}/examples/third-party/haproxy-ingress.yaml"
 
-kubectl_create -f="${source_url}/${revision}/examples/common/cert-manager.yaml"
+kubectl_create -f="${source_url}/${revision}/examples/third-party/cert-manager.yaml"
 # Wait for cert-manager crd and webhooks
 kubectl wait --for condition=established --timeout=60s crd/certificates.cert-manager.io crd/issuers.cert-manager.io
 for d in cert-manager{,-cainjector,-webhook}; do

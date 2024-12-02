@@ -19,17 +19,19 @@ func (sdcc *Controller) syncConfigs(
 	var errs []error
 	var progressingConditions []metav1.Condition
 
-	cm, err := MakeManagedScyllaDBConfig(sdc)
+	requiredConfigMaps, err := MakeManagedScyllaDBConfigMaps(sdc)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't make managed scylladb config: %w", err)
 	}
 
-	_, changed, err := resourceapply.ApplyConfigMap(ctx, sdcc.kubeClient.CoreV1(), sdcc.configMapLister, sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
-	if changed {
-		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, configControllerProgressingCondition, cm, "apply", sdc.Generation)
-	}
-	if err != nil {
-		return progressingConditions, fmt.Errorf("can't apply configmap %q: %w", naming.ObjRef(cm), err)
+	for _, cm := range requiredConfigMaps {
+		_, changed, err := resourceapply.ApplyConfigMap(ctx, sdcc.kubeClient.CoreV1(), sdcc.configMapLister, sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
+		if changed {
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, configControllerProgressingCondition, cm, "apply", sdc.Generation)
+		}
+		if err != nil {
+			errs = append(errs, fmt.Errorf("can't apply configmap %q: %w", naming.ObjRef(cm), err))
+		}
 	}
 
 	return progressingConditions, errors.NewAggregate(errs)

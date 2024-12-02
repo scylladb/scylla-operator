@@ -587,6 +587,17 @@ func TestStatefulSetForRack(t *testing.T) {
 									},
 								},
 								{
+									Name: "scylladb-snitch-config",
+									VolumeSource: corev1.VolumeSource{
+										ConfigMap: &corev1.ConfigMapVolumeSource{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "basic-rack-snitch-config",
+											},
+											Optional: pointer.Ptr(false),
+										},
+									},
+								},
+								{
 									Name: "scylla-agent-config-volume",
 									VolumeSource: corev1.VolumeSource{
 										Secret: &corev1.SecretVolumeSource{
@@ -797,6 +808,11 @@ exec /mnt/shared/scylla-operator sidecar \
 										{
 											Name:      "scylladb-managed-config",
 											MountPath: "/var/run/configmaps/scylla-operator.scylladb.com/scylladb/managed-config",
+											ReadOnly:  true,
+										},
+										{
+											Name:      "scylladb-snitch-config",
+											MountPath: "/var/run/configmaps/scylla-operator.scylladb.com/scylladb/snitch-config",
 											ReadOnly:  true,
 										},
 										{
@@ -3491,6 +3507,198 @@ alternator_encryption_options:
 
 			if !apiequality.Semantic.DeepEqual(got, tc.expectedCM) {
 				t.Errorf("expected and actual configmaps differ:\n%s", cmp.Diff(tc.expectedCM, got))
+			}
+		})
+	}
+}
+
+func TestMakeManagedScyllaDBSnitchConfig(t *testing.T) {
+	tt := []struct {
+		name        string
+		sdc         *scyllav1alpha1.ScyllaDBDatacenter
+		expectedErr error
+		expectedCMs []*corev1.ConfigMap
+	}{
+		{
+			name: "snitch config per dc rack",
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo",
+					UID:       "uid-42",
+					Labels: map[string]string{
+						"user-label": "user-label-value",
+					},
+					Annotations: map[string]string{
+						"user-annotation": "user-annotation-value",
+					},
+				},
+				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+					ClusterName: "foo-cluster",
+					Racks: []scyllav1alpha1.RackSpec{
+						{
+							Name: "rack0",
+						},
+						{
+							Name: "rack1",
+						},
+					},
+				},
+			},
+			expectedCMs: []*corev1.ConfigMap{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "ConfigMap",
+						APIVersion: "v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "foo-ns",
+						Name:      "foo-rack0-snitch-config",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"app.kubernetes.io/name":       "scylla",
+							"scylla/cluster":               "foo",
+							"user-label":                   "user-label-value",
+						},
+						Annotations: map[string]string{
+							"user-annotation": "user-annotation-value",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
+								Name:               "foo",
+								UID:                "uid-42",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Data: map[string]string{
+						"cassandra-rackdc.properties": strings.TrimLeft(`
+dc=foo
+rack=rack0
+prefer_local=false
+`, "\n"),
+					},
+				},
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "ConfigMap",
+						APIVersion: "v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "foo-ns",
+						Name:      "foo-rack1-snitch-config",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"app.kubernetes.io/name":       "scylla",
+							"scylla/cluster":               "foo",
+							"user-label":                   "user-label-value",
+						},
+						Annotations: map[string]string{
+							"user-annotation": "user-annotation-value",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
+								Name:               "foo",
+								UID:                "uid-42",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Data: map[string]string{
+						"cassandra-rackdc.properties": strings.TrimLeft(`
+dc=foo
+rack=rack1
+prefer_local=false
+`, "\n"),
+					},
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "snitch datacenter name is taken from scylladbdatacenter.spec.datacenterName when it's provided",
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo",
+					UID:       "uid-42",
+					Labels: map[string]string{
+						"user-label": "user-label-value",
+					},
+					Annotations: map[string]string{
+						"user-annotation": "user-annotation-value",
+					},
+				},
+				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+					ClusterName:    "foo-cluster",
+					DatacenterName: pointer.Ptr("dc0"),
+					Racks: []scyllav1alpha1.RackSpec{
+						{
+							Name: "rack0",
+						},
+					},
+				},
+			},
+			expectedCMs: []*corev1.ConfigMap{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "ConfigMap",
+						APIVersion: "v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "foo-ns",
+						Name:      "foo-rack0-snitch-config",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"app.kubernetes.io/name":       "scylla",
+							"scylla/cluster":               "foo",
+							"user-label":                   "user-label-value",
+						},
+						Annotations: map[string]string{
+							"user-annotation": "user-annotation-value",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
+								Name:               "foo",
+								UID:                "uid-42",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Data: map[string]string{
+						"cassandra-rackdc.properties": strings.TrimLeft(`
+dc=dc0
+rack=rack0
+prefer_local=false
+`, "\n"),
+					},
+				},
+			},
+			expectedErr: nil,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := MakeManagedScyllaDBSnitchConfig(tc.sdc)
+			if !reflect.DeepEqual(err, tc.expectedErr) {
+				t.Errorf("expected and actual errors differ: %s", cmp.Diff(tc.expectedErr, err))
+			}
+
+			if !apiequality.Semantic.DeepEqual(got, tc.expectedCMs) {
+				t.Errorf("expected and actual configmaps differ:\n%s", cmp.Diff(tc.expectedCMs, got))
 			}
 		})
 	}

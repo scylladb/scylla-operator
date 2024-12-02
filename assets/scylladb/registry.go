@@ -20,4 +20,10 @@ var (
 	ScyllaDBManagedConfigTemplate       = lazy.New(func() *assets.ObjectTemplate[*corev1.ConfigMap] {
 		return ParseObjectTemplateOrDie[*corev1.ConfigMap]("scylladb-managed-config", scyllaDBManagedConfigTemplateString)
 	})
+
+	//go:embed "snitchconfig.cm.yaml"
+	scyllaDBSnitchConfigTemplateString string
+	ScyllaDBSnitchConfigTemplate       = lazy.New(func() *assets.ObjectTemplate[*corev1.ConfigMap] {
+		return ParseObjectTemplateOrDie[*corev1.ConfigMap]("scylladb-snitch-config", scyllaDBSnitchConfigTemplateString)
+	})
 )

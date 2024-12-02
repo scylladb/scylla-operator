@@ -4,58 +4,134 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/magiconair/properties"
+	"k8s.io/apimachinery/pkg/api/equality"
 )
 
-func TestCreateRackDCProperties(t *testing.T) {
-	tests := map[string]struct {
-		input *properties.Properties
-		dc    string
-		rack  string
-		want  *properties.Properties
+func TestMergeSnitchConfigs(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name           string
+		userConfig     *properties.Properties
+		operatorConfig *properties.Properties
+		expectedConfig *properties.Properties
 	}{
-		"empty input": {
-			input: properties.LoadMap(map[string]string{}),
-			dc:    "dc",
-			rack:  "rack",
-			want:  properties.LoadMap(map[string]string{"dc": "dc", "rack": "rack", "prefer_local": "false"}),
+		{
+			name: "values provided by Operator are preferred over user provided ones for dc, rack and prefer_local keys",
+			userConfig: properties.LoadMap(map[string]string{
+				"dc":           "user-dc",
+				"rack":         "user-rack",
+				"prefer_local": "true",
+			}),
+			operatorConfig: properties.LoadMap(map[string]string{
+				"dc":           "operator-dc",
+				"rack":         "operator-rack",
+				"prefer_local": "false",
+			}),
+			expectedConfig: properties.LoadMap(map[string]string{
+				"dc":           "operator-dc",
+				"rack":         "operator-rack",
+				"prefer_local": "false",
+			}),
 		},
-		"override dc": {
-			input: properties.LoadMap(map[string]string{"dc": "dc2"}),
-			dc:    "dc",
-			rack:  "rack",
-			want:  properties.LoadMap(map[string]string{"dc": "dc", "rack": "rack", "prefer_local": "false"}),
+		{
+			name: "dc_suffix is taken from user config",
+			userConfig: properties.LoadMap(map[string]string{
+				"dc":           "user-dc",
+				"rack":         "user-rack",
+				"prefer_local": "true",
+				"dc_suffix":    "user-dc-suffix",
+			}),
+			operatorConfig: properties.LoadMap(map[string]string{
+				"dc":           "operator-dc",
+				"rack":         "operator-rack",
+				"prefer_local": "false",
+				"dc_suffix":    "operator-dc-suffix",
+			}),
+			expectedConfig: properties.LoadMap(map[string]string{
+				"dc":           "operator-dc",
+				"rack":         "operator-rack",
+				"prefer_local": "false",
+				"dc_suffix":    "user-dc-suffix",
+			}),
 		},
-		"override rack": {
-			input: properties.LoadMap(map[string]string{"rack": "rack2"}),
-			dc:    "dc",
-			rack:  "rack",
-			want:  properties.LoadMap(map[string]string{"dc": "dc", "rack": "rack", "prefer_local": "false"}),
-		},
-		"override prefer_local": {
-			input: properties.LoadMap(map[string]string{"prefer_local": "true"}),
-			dc:    "dc",
-			rack:  "rack",
-			want:  properties.LoadMap(map[string]string{"dc": "dc", "rack": "rack", "prefer_local": "true"}),
-		},
-		"override dc_suffix": {
-			input: properties.LoadMap(map[string]string{"dc_suffix": "suffix"}),
-			dc:    "dc",
-			rack:  "rack",
-			want:  properties.LoadMap(map[string]string{"dc": "dc", "rack": "rack", "prefer_local": "false", "dc_suffix": "suffix"}),
+		{
+			name:       "operator config is rewritten when user config is not created",
+			userConfig: nil,
+			operatorConfig: properties.LoadMap(map[string]string{
+				"dc":           "operator-dc",
+				"rack":         "operator-rack",
+				"prefer_local": "false",
+			}),
+			expectedConfig: properties.LoadMap(map[string]string{
+				"dc":           "operator-dc",
+				"rack":         "operator-rack",
+				"prefer_local": "false",
+			}),
 		},
 	}
 
-	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
-			got := createRackDCProperties(tc.input, tc.dc, tc.rack)
-			if diff := cmp.Diff(tc.want.Map(), got.Map()); diff != "" {
-				t.Fatalf("expected: %v, got: %v, diff: %s", tc.want, got, diff)
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tmpDir := t.TempDir()
+
+			userConfigPath := filepath.Join(tmpDir, "user.properties")
+			operatorConfigPath := filepath.Join(tmpDir, "operator.properties")
+			resultConfigPath := filepath.Join(tmpDir, "result.properties")
+
+			if tc.userConfig != nil {
+				userConfigFile, err := os.Create(userConfigPath)
+				if err != nil {
+					t.Fatalf("can't create user config file: %v", err)
+				}
+
+				_, err = tc.userConfig.Write(userConfigFile, properties.UTF8)
+				if err != nil {
+					t.Fatalf("can't write user config file: %v", err)
+				}
+
+				err = userConfigFile.Close()
+				if err != nil {
+					t.Fatalf("can't close user config file: %v", err)
+				}
+			}
+
+			operatorConfigFile, err := os.Create(operatorConfigPath)
+			if err != nil {
+				t.Fatalf("can't create user config file: %v", err)
+			}
+
+			_, err = tc.operatorConfig.Write(operatorConfigFile, properties.UTF8)
+			if err != nil {
+				t.Fatalf("can't write user config file: %v", err)
+			}
+
+			err = operatorConfigFile.Close()
+			if err != nil {
+				t.Fatalf("can't close operator config file: %v", err)
+			}
+
+			err = mergeSnitchConfigs(userConfigPath, operatorConfigPath, resultConfigPath)
+			if err != nil {
+				t.Fatalf("expected nil error, got %v", err)
+			}
+
+			gotConfig, err := properties.LoadFile(resultConfigPath, properties.UTF8)
+			if err != nil {
+				t.Fatalf("can't load result config: %v", err)
+			}
+
+			if !equality.Semantic.DeepEqual(tc.expectedConfig.Map(), gotConfig.Map()) {
+				t.Fatalf("expected and got configs differ, diff: %q", cmp.Diff(tc.expectedConfig.Map(), gotConfig.Map()))
 			}
 		})
 	}

@@ -17,4 +17,8 @@ var (
 	//go:embed "managedconfig.cm.yaml"
 	scyllaDBManagedConfigTemplateString string
 	ScyllaDBManagedConfigTemplate       = ParseObjectTemplateOrDie[*corev1.ConfigMap]("scylladb-managed-config", scyllaDBManagedConfigTemplateString)
+
+	//go:embed "snitchconfig.cm.yaml"
+	scyllaDBSnitchConfigTemplateString string
+	ScyllaDBSnitchConfigTemplate       = ParseObjectTemplateOrDie[*corev1.ConfigMap]("scylladb-snitch-config", scyllaDBSnitchConfigTemplateString)
 )

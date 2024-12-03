@@ -236,6 +236,10 @@ func GetScyllaDBManagedConfigCMName(clusterName string) string {
 	return fmt.Sprintf("%s-managed-config", clusterName)
 }
 
+func GetScyllaDBRackSnitchConfigCMName(sdc *scyllav1alpha1.ScyllaDBDatacenter, rack *scyllav1alpha1.RackSpec) string {
+	return fmt.Sprintf("%s-%s-snitch-config", sdc.Name, rack.Name)
+}
+
 func GetScyllaDBDatacenterGossipDatacenterName(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
 	if sdc.Spec.DatacenterName != nil && len(*sdc.Spec.DatacenterName) != 0 {
 		return *sdc.Spec.DatacenterName

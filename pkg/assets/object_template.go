@@ -13,19 +13,19 @@ type ObjectTemplate[T runtime.Object] struct {
 	decoder runtime.Decoder
 }
 
-func ParseObjectTemplate[T runtime.Object](name, tmplString string, funcMap template.FuncMap, decoder runtime.Decoder) (ObjectTemplate[T], error) {
+func ParseObjectTemplate[T runtime.Object](name, tmplString string, funcMap template.FuncMap, decoder runtime.Decoder) (*ObjectTemplate[T], error) {
 	tmpl, err := template.New(name).Funcs(funcMap).Parse(tmplString)
 	if err != nil {
-		return *new(ObjectTemplate[T]), fmt.Errorf("can't parse template %q: %w", name, err)
+		return new(ObjectTemplate[T]), fmt.Errorf("can't parse template %q: %w", name, err)
 	}
 
-	return ObjectTemplate[T]{
+	return &ObjectTemplate[T]{
 		tmpl:    tmpl,
 		decoder: decoder,
 	}, nil
 }
 
-func ParseObjectTemplateOrDie[T runtime.Object](name, tmplString string, funcMap template.FuncMap, decoder runtime.Decoder) ObjectTemplate[T] {
+func ParseObjectTemplateOrDie[T runtime.Object](name, tmplString string, funcMap template.FuncMap, decoder runtime.Decoder) *ObjectTemplate[T] {
 	return helpers.Must(ParseObjectTemplate[T](name, tmplString, funcMap, decoder))
 }
 

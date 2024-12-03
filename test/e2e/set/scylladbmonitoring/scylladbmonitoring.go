@@ -78,7 +78,7 @@ var expectedPlatformFolderDashboardSearchResponse []gapi.FolderDashboardSearchRe
 var expectedPlatformHomeDashboardUID string
 
 var _ = g.BeforeSuite(func() {
-	for dashboardFolderName, dashboardFolder := range grafanav1alpha1assets.GrafanaDashboardsPlatform {
+	for dashboardFolderName, dashboardFolder := range grafanav1alpha1assets.GrafanaDashboardsPlatform.Get() {
 		for _, dashboardString := range dashboardFolder {
 			o.Expect(dashboardString).NotTo(o.BeEmpty())
 
@@ -104,8 +104,8 @@ var _ = g.BeforeSuite(func() {
 	o.Expect(homeDashboardFile).NotTo(o.ContainSubstring("/"))
 	homeDashboardFile += ".gz.base64"
 
-	o.Expect(grafanav1alpha1assets.GrafanaDashboardsPlatform).To(o.HaveKey(homeDashboardDir))
-	homeDashboardFolder := grafanav1alpha1assets.GrafanaDashboardsPlatform[homeDashboardDir]
+	o.Expect(grafanav1alpha1assets.GrafanaDashboardsPlatform.Get()).To(o.HaveKey(homeDashboardDir))
+	homeDashboardFolder := grafanav1alpha1assets.GrafanaDashboardsPlatform.Get()[homeDashboardDir]
 	o.Expect(homeDashboardFolder).NotTo(o.BeEmpty())
 	o.Expect(homeDashboardFolder).To(o.HaveKey(homeDashboardFile))
 	homeDashboardString := homeDashboardFolder[homeDashboardFile]

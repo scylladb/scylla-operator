@@ -13,6 +13,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -60,8 +61,8 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
-			waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+			scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+			scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 			hosts, hostIDs, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
 			o.Expect(err).NotTo(o.HaveOccurred())
@@ -70,7 +71,7 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			o.Expect(hosts).To(o.HaveLen(numNodes))
 			o.Expect(hostIDs).To(o.HaveLen(numNodes))
 
-			di := insertAndVerifyCQLData(ctx, hosts)
+			di := scyllaclusterverification.InsertAndVerifyCQLData(ctx, hosts)
 			defer di.Close()
 
 			framework.By("triggering and update")
@@ -94,8 +95,8 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
-			waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+			scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+			scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 			oldHosts := hosts
 			oldHostIDs := hostIDs
@@ -108,7 +109,7 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 				err = di.SetClientEndpoints(hosts)
 				o.Expect(err).NotTo(o.HaveOccurred())
 			}
-			verifyCQLData(ctx, di)
+			scyllaclusterverification.VerifyCQLData(ctx, di)
 		},
 		// Test 1 and 3 member rack to cover e.g. handling PDBs correctly.
 		g.Entry(describeEntry, &entry{

@@ -24,6 +24,7 @@ import (
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/scheme"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	"github.com/scylladb/scylla-operator/test/e2e/verification"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -65,13 +66,13 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
-		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		initialHosts, initialHostIDs, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(initialHosts).To(o.HaveLen(1))
-		di := insertAndVerifyCQLData(ctx, initialHosts)
+		di := scyllaclusterverification.InsertAndVerifyCQLData(ctx, initialHosts)
 		defer di.Close()
 
 		for _, tc := range []struct {
@@ -122,8 +123,8 @@ var _ = g.Describe("ScyllaCluster", func() {
 				sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtxL1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 				o.Expect(err).NotTo(o.HaveOccurred())
 
-				verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
-				waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+				scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+				scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 				hosts, hostIDs, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
 				o.Expect(err).NotTo(o.HaveOccurred())
@@ -169,9 +170,9 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 				adminClientConnectionConfigsSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-cql-connection-configs-admin", sc.Name), metav1.GetOptions{})
 				o.Expect(err).NotTo(o.HaveOccurred())
-				_ = verifyAndParseCQLConnectionConfigs(adminClientConnectionConfigsSecret, verifyCQLConnectionConfigsOptions{
-					domains:               sc.Spec.DNSDomains,
-					datacenters:           []string{sc.Spec.Datacenter.Name},
+				_ = scyllaclusterverification.VerifyAndParseCQLConnectionConfigs(adminClientConnectionConfigsSecret, scyllaclusterverification.VerifyCQLConnectionConfigsOptions{
+					Domains:               sc.Spec.DNSDomains,
+					Datacenters:           []string{sc.Spec.Datacenter.Name},
 					ServingCAData:         servingCACertBytes,
 					ClientCertificateData: adminClientCertBytes,
 					ClientKeyData:         adminClientKeyBytes,
@@ -280,13 +281,13 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
-		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		initialHosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(initialHosts).To(o.HaveLen(1))
-		di := insertAndVerifyCQLData(ctx, initialHosts)
+		di := scyllaclusterverification.InsertAndVerifyCQLData(ctx, initialHosts)
 		defer di.Close()
 
 		// This test rotates CAs which makes it dependent on the order.

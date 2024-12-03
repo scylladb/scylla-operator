@@ -109,7 +109,7 @@ func makeGrafanaDeployment(sm *scyllav1alpha1.ScyllaDBMonitoring, soc *scyllav1a
 		return nil, "", fmt.Errorf("dashboardsCMs can't be empty")
 	}
 
-	return grafanav1alpha1assets.GrafanaDeploymentTemplate.RenderObject(map[string]any{
+	return grafanav1alpha1assets.GrafanaDeploymentTemplate.Get().RenderObject(map[string]any{
 		"grafanaImage":           grafanaImage,
 		"bashToolsImage":         bashToolsImage,
 		"scyllaDBMonitoringName": sm.Name,
@@ -135,14 +135,14 @@ func makeGrafanaAdminCredentials(sm *scyllav1alpha1.ScyllaDBMonitoring, secrets 
 		existingPassword = []byte(rand.String(grafanaPasswordLength))
 	}
 
-	return grafanav1alpha1assets.GrafanaAdminCredentialsSecretTemplate.RenderObject(map[string]any{
+	return grafanav1alpha1assets.GrafanaAdminCredentialsSecretTemplate.Get().RenderObject(map[string]any{
 		"name":     secretName,
 		"password": existingPassword,
 	})
 }
 
 func makeGrafanaSA(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.ServiceAccount, string, error) {
-	return grafanav1alpha1assets.GrafanaSATemplate.RenderObject(map[string]any{
+	return grafanav1alpha1assets.GrafanaSATemplate.Get().RenderObject(map[string]any{
 		"namespace":              sm.Namespace,
 		"scyllaDBMonitoringName": sm.Name,
 	})
@@ -165,7 +165,7 @@ func makeGrafanaConfigs(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.ConfigMa
 		return nil, "", fmt.Errorf("unkown monitoring type: %q", t)
 	}
 
-	return grafanav1alpha1assets.GrafanaConfigsTemplate.RenderObject(map[string]any{
+	return grafanav1alpha1assets.GrafanaConfigsTemplate.Get().RenderObject(map[string]any{
 		"scyllaDBMonitoringName": sm.Name,
 		"enableAnonymousAccess":  enableAnonymousAccess,
 		"defaultDashboard":       defaultDashboard,
@@ -176,16 +176,16 @@ func makeGrafanaDashboards(sm *scyllav1alpha1.ScyllaDBMonitoring) ([]*corev1.Con
 	var dashboardsFoldersMap grafanav1alpha1assets.GrafanaDashboardsFoldersMap
 	switch t := sm.Spec.GetType(); t {
 	case scyllav1alpha1.ScyllaDBMonitoringTypePlatform:
-		dashboardsFoldersMap = grafanav1alpha1assets.GrafanaDashboardsPlatform
+		dashboardsFoldersMap = grafanav1alpha1assets.GrafanaDashboardsPlatform.Get()
 	case scyllav1alpha1.ScyllaDBMonitoringTypeSAAS:
-		dashboardsFoldersMap = grafanav1alpha1assets.GrafanaDashboardsSAAS
+		dashboardsFoldersMap = grafanav1alpha1assets.GrafanaDashboardsSAAS.Get()
 	default:
 		return nil, fmt.Errorf("unkown monitoring type: %q", t)
 	}
 
 	var cms []*corev1.ConfigMap
 	for name, folder := range dashboardsFoldersMap {
-		cm, _, err := grafanav1alpha1assets.GrafanaDashboardsConfigMapTemplate.RenderObject(map[string]any{
+		cm, _, err := grafanav1alpha1assets.GrafanaDashboardsConfigMapTemplate.Get().RenderObject(map[string]any{
 			"scyllaDBMonitoringName": sm.Name,
 			"dashboardsName":         name,
 			"dashboards":             folder,
@@ -205,13 +205,13 @@ func makeGrafanaDashboards(sm *scyllav1alpha1.ScyllaDBMonitoring) ([]*corev1.Con
 }
 
 func makeGrafanaProvisionings(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.ConfigMap, string, error) {
-	return grafanav1alpha1assets.GrafanaProvisioningConfigMapTemplate.RenderObject(map[string]any{
+	return grafanav1alpha1assets.GrafanaProvisioningConfigMapTemplate.Get().RenderObject(map[string]any{
 		"scyllaDBMonitoringName": sm.Name,
 	})
 }
 
 func makeGrafanaService(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.Service, string, error) {
-	return grafanav1alpha1assets.GrafanaServiceTemplate.RenderObject(map[string]any{
+	return grafanav1alpha1assets.GrafanaServiceTemplate.Get().RenderObject(map[string]any{
 		"scyllaDBMonitoringName": sm.Name,
 	})
 }
@@ -230,7 +230,7 @@ func makeGrafanaIngress(sm *scyllav1alpha1.ScyllaDBMonitoring) (*networkingv1.In
 		return nil, "", nil
 	}
 
-	return grafanav1alpha1assets.GrafanaIngressTemplate.RenderObject(map[string]any{
+	return grafanav1alpha1assets.GrafanaIngressTemplate.Get().RenderObject(map[string]any{
 		"scyllaDBMonitoringName": sm.Name,
 		"dnsDomains":             ingressOptions.DNSDomains,
 		"ingressAnnotations":     ingressOptions.Annotations,

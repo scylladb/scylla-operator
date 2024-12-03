@@ -15,7 +15,7 @@ func TestMain(m *testing.M) {
 	// We need to make sure that all prometheus rules (coming from scylladb monitoring) are wired.
 	// Note that this can also mean we just lack coverage but both cases should be fixed.
 	var errs []error
-	for f, r := range prometheusv1assets.PrometheusRules {
+	for f, r := range prometheusv1assets.PrometheusRules.Get() {
 		if !r.Accessed() {
 			errs = append(errs, fmt.Errorf("prometheus rule %q has not been used in any test and may not be used in the codebase", f))
 		}

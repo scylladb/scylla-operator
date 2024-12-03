@@ -3,14 +3,17 @@
 package cmdutil
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
+	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"k8s.io/apimachinery/pkg/util/errors"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 )
 
@@ -55,7 +58,7 @@ func ReadFlagsFromEnv(prefix string, cmd *cobra.Command) error {
 		return
 	})
 
-	return errors.NewAggregate(errs)
+	return utilerrors.NewAggregate(errs)
 }
 
 func InstallKlog(cmd *cobra.Command) {
@@ -74,11 +77,25 @@ func InstallKlog(cmd *cobra.Command) {
 	}
 }
 
-func GetLoglevel() string {
+func getLoglevelOrDefault() (int, error) {
 	f := flag.CommandLine.Lookup("v")
-	if f != nil {
-		return f.Value.String()
+	if f == nil {
+		return 0, errors.New(`can't lookup klog "v" flag`)
 	}
 
-	return ""
+	s := f.Value.String()
+	if len(s) == 0 {
+		return 0, nil
+	}
+
+	loglevel, err := strconv.Atoi(s)
+	if err != nil {
+		panic(fmt.Errorf("can't parse log level %q: %q", s, err))
+	}
+
+	return loglevel, nil
+}
+
+func GetLoglevelOrDefaultOrDie() int {
+	return helpers.Must(getLoglevelOrDefault())
 }

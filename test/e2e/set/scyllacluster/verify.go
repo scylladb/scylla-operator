@@ -81,6 +81,7 @@ func verifyStatefulset(sts *appsv1.StatefulSet, sdc *scyllav1alpha1.ScyllaDBData
 	o.Expect(sts.Spec.Replicas).NotTo(o.BeNil())
 	o.Expect(sts.Status.ReadyReplicas).To(o.Equal(*sts.Spec.Replicas))
 	o.Expect(sts.Status.CurrentRevision).To(o.Equal(sts.Status.UpdateRevision))
+	o.Expect(sts.Status.Replicas).To(o.Equal(*sts.Spec.Replicas))
 }
 
 func verifyPodDisruptionBudget(sc *scyllav1.ScyllaCluster, pdb *policyv1.PodDisruptionBudget, sdc *scyllav1alpha1.ScyllaDBDatacenter) {

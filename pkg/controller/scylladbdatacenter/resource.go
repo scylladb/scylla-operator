@@ -621,6 +621,8 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 
 								if sdc.Spec.ScyllaDB.EnableDeveloperMode != nil && *sdc.Spec.ScyllaDB.EnableDeveloperMode {
 									positionalArgs = append(positionalArgs, "--developer-mode=1")
+								} else {
+									positionalArgs = append(positionalArgs, "--developer-mode=0")
 								}
 
 								cmd := []string{
@@ -673,19 +675,12 @@ exec /mnt/shared/scylla-operator sidecar \
 
 											return strings.Join(optionalArgs, ` \`)
 										}() +
-										func() string {
-											if len(positionalArgs) > 0 {
-												return ` -- "$@"`
-											}
-											return ""
-										}(),
+										` -- "$@"`,
 									),
 								}
 
-								if len(positionalArgs) > 0 {
-									cmd = append(cmd, "--")
-									cmd = append(cmd, positionalArgs...)
-								}
+								cmd = append(cmd, "--")
+								cmd = append(cmd, positionalArgs...)
 
 								return cmd
 							}(),

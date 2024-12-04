@@ -147,7 +147,7 @@ func Test_makeGrafanaDashboards(t *testing.T) {
 		t.Helper()
 
 		var expectedPlatformConfigMaps []*corev1.ConfigMap
-		for dashboardFolderName, dashboardFolder := range grafanav1alpha1assets.GrafanaDashboardsPlatform {
+		for dashboardFolderName, dashboardFolder := range grafanav1alpha1assets.GrafanaDashboardsPlatform.Get() {
 			cm := &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "ConfigMap",

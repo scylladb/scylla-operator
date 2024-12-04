@@ -69,28 +69,28 @@ func getPrometheusIngressDomains(sm *scyllav1alpha1.ScyllaDBMonitoring) []string
 }
 
 func makePrometheusSA(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.ServiceAccount, string, error) {
-	return prometheusv1assets.PrometheusSATemplate.RenderObject(map[string]any{
+	return prometheusv1assets.PrometheusSATemplate.Get().RenderObject(map[string]any{
 		"namespace":              sm.Namespace,
 		"scyllaDBMonitoringName": sm.Name,
 	})
 }
 
 func makePrometheusRoleBinding(sm *scyllav1alpha1.ScyllaDBMonitoring) (*rbacv1.RoleBinding, string, error) {
-	return prometheusv1assets.PrometheusRoleBindingTemplate.RenderObject(map[string]any{
+	return prometheusv1assets.PrometheusRoleBindingTemplate.Get().RenderObject(map[string]any{
 		"namespace":              sm.Namespace,
 		"scyllaDBMonitoringName": sm.Name,
 	})
 }
 
 func makePrometheusService(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.Service, string, error) {
-	return prometheusv1assets.PrometheusServiceTemplate.RenderObject(map[string]any{
+	return prometheusv1assets.PrometheusServiceTemplate.Get().RenderObject(map[string]any{
 		"namespace":              sm.Namespace,
 		"scyllaDBMonitoringName": sm.Name,
 	})
 }
 
 func makeScyllaDBServiceMonitor(sm *scyllav1alpha1.ScyllaDBMonitoring) (*monitoringv1.ServiceMonitor, string, error) {
-	return prometheusv1assets.ScyllaDBServiceMonitorTemplate.RenderObject(map[string]any{
+	return prometheusv1assets.ScyllaDBServiceMonitorTemplate.Get().RenderObject(map[string]any{
 		"scyllaDBMonitoringName": sm.Name,
 		"endpointsSelector":      sm.Spec.EndpointsSelector,
 	})
@@ -98,12 +98,12 @@ func makeScyllaDBServiceMonitor(sm *scyllav1alpha1.ScyllaDBMonitoring) (*monitor
 
 func makeLatencyPrometheusRule(sm *scyllav1alpha1.ScyllaDBMonitoring) (*monitoringv1.PrometheusRule, string, error) {
 	const latencyRulesFile = "prometheus.latency.rules.yml"
-	latencyRules, found := prometheusv1assets.PrometheusRules[latencyRulesFile]
+	latencyRules, found := prometheusv1assets.PrometheusRules.Get()[latencyRulesFile]
 	if !found {
 		return nil, "", fmt.Errorf("can't find latency rules file %q in the assets", latencyRulesFile)
 	}
 
-	return prometheusv1assets.LatencyPrometheusRuleTemplate.RenderObject(map[string]any{
+	return prometheusv1assets.LatencyPrometheusRuleTemplate.Get().RenderObject(map[string]any{
 		"scyllaDBMonitoringName": sm.Name,
 		"groups":                 latencyRules.Get(),
 	})
@@ -111,12 +111,12 @@ func makeLatencyPrometheusRule(sm *scyllav1alpha1.ScyllaDBMonitoring) (*monitori
 
 func makeAlertsPrometheusRule(sm *scyllav1alpha1.ScyllaDBMonitoring) (*monitoringv1.PrometheusRule, string, error) {
 	const alertsRulesFile = "prometheus.rules.yml"
-	rule, found := prometheusv1assets.PrometheusRules[alertsRulesFile]
+	rule, found := prometheusv1assets.PrometheusRules.Get()[alertsRulesFile]
 	if !found {
 		return nil, "", fmt.Errorf("can't find alerts rules file %q in the assets", alertsRulesFile)
 	}
 
-	return prometheusv1assets.AlertsPrometheusRuleTemplate.RenderObject(map[string]any{
+	return prometheusv1assets.AlertsPrometheusRuleTemplate.Get().RenderObject(map[string]any{
 		"scyllaDBMonitoringName": sm.Name,
 		"groups":                 rule.Get(),
 	})
@@ -124,12 +124,12 @@ func makeAlertsPrometheusRule(sm *scyllav1alpha1.ScyllaDBMonitoring) (*monitorin
 
 func makeTablePrometheusRule(sm *scyllav1alpha1.ScyllaDBMonitoring) (*monitoringv1.PrometheusRule, string, error) {
 	const tableRulesFile = "prometheus.table.yml"
-	rule, found := prometheusv1assets.PrometheusRules[tableRulesFile]
+	rule, found := prometheusv1assets.PrometheusRules.Get()[tableRulesFile]
 	if !found {
 		return nil, "", fmt.Errorf("can't find table rules file %q in the assets", tableRulesFile)
 	}
 
-	return prometheusv1assets.TablePrometheusRuleTemplate.RenderObject(map[string]any{
+	return prometheusv1assets.TablePrometheusRuleTemplate.Get().RenderObject(map[string]any{
 		"scyllaDBMonitoringName": sm.Name,
 		"groups":                 rule.Get(),
 	})
@@ -166,7 +166,7 @@ func makePrometheus(sm *scyllav1alpha1.ScyllaDBMonitoring, soc *scyllav1alpha1.S
 		resources = spec.Resources
 	}
 
-	return prometheusv1assets.PrometheusTemplate.RenderObject(map[string]any{
+	return prometheusv1assets.PrometheusTemplate.Get().RenderObject(map[string]any{
 		"prometheusVersion":      soc.Status.PrometheusVersion,
 		"namespace":              sm.Namespace,
 		"scyllaDBMonitoringName": sm.Name,
@@ -191,7 +191,7 @@ func makePrometheusIngress(sm *scyllav1alpha1.ScyllaDBMonitoring) (*networkingv1
 		return nil, "", nil
 	}
 
-	return prometheusv1assets.PrometheusIngressTemplate.RenderObject(map[string]any{
+	return prometheusv1assets.PrometheusIngressTemplate.Get().RenderObject(map[string]any{
 		"scyllaDBMonitoringName": sm.Name,
 		"dnsDomains":             ingressOptions.DNSDomains,
 		"ingressAnnotations":     ingressOptions.Annotations,

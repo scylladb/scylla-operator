@@ -164,10 +164,10 @@ spec:
                 values:
                 - scylla
         tolerations:
-        - key: role
+        - effect: NoSchedule
+          key: scylla-operator.scylladb.com/dedicated
           operator: Equal
-          value: scylla-clusters
-          effect: NoSchedule
+          value: scyllaclusters
     - name: b
       members: 1
       storage:
@@ -208,10 +208,10 @@ spec:
                 values:
                 - scylla
         tolerations:
-        - key: role
+        - effect: NoSchedule
+          key: scylla-operator.scylladb.com/dedicated
           operator: Equal
-          value: scylla-clusters
-          effect: NoSchedule
+          value: scyllaclusters
     - name: c
       members: 1
       storage:
@@ -252,10 +252,10 @@ spec:
                 values:
                 - scylla
         tolerations:
-        - key: role
+        - effect: NoSchedule
+          key: scylla-operator.scylladb.com/dedicated
           operator: Equal
-          value: scylla-clusters
-          effect: NoSchedule
+          value: scyllaclusters
 ```
 
 Apply the manifest:
@@ -418,10 +418,10 @@ spec:
                 values:
                 - scylla
         tolerations:
-        - key: role
+        - effect: NoSchedule
+          key: scylla-operator.scylladb.com/dedicated
           operator: Equal
-          value: scylla-clusters
-          effect: NoSchedule
+          value: scyllaclusters
     - name: b
       members: 1
       storage:
@@ -462,10 +462,10 @@ spec:
                 values:
                 - scylla
         tolerations:
-        - key: role
+        - effect: NoSchedule
+          key: scylla-operator.scylladb.com/dedicated
           operator: Equal
-          value: scylla-clusters
-          effect: NoSchedule
+          value: scyllaclusters
     - name: c
       members: 1
       storage:
@@ -506,10 +506,10 @@ spec:
                 values:
                 - scylla
         tolerations:
-        - key: role
+        - effect: NoSchedule
+          key: scylla-operator.scylladb.com/dedicated
           operator: Equal
-          value: scylla-clusters
-          effect: NoSchedule
+          value: scyllaclusters
 ```
 
 To apply the manifest, run:

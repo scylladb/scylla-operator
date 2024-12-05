@@ -1720,7 +1720,7 @@ func MakeManagedScyllaDBConfig(sdc *scyllav1alpha1.ScyllaDBDatacenter) (*corev1.
 		return pointer.Ptr(false)
 	}
 
-	cm, _, err := scylladbassets.ScyllaDBManagedConfigTemplate.RenderObject(
+	cm, _, err := scylladbassets.ScyllaDBManagedConfigTemplate.Get().RenderObject(
 		map[string]any{
 			"Namespace":                              sdc.Namespace,
 			"Name":                                   naming.GetScyllaDBManagedConfigCMName(sdc.Name),

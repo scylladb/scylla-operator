@@ -38,3 +38,9 @@ scylla:
         requests:
           cpu: 1
           memory: 200Mi
+      placement:
+        tolerations:
+          - effect: NoSchedule
+            key: scylla-operator.scylladb.com/dedicated
+            operator: Equal
+            value: scyllaclusters

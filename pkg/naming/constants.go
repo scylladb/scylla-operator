@@ -110,11 +110,12 @@ const (
 
 // Configuration Values
 const (
-	ScyllaContainerName          = "scylla"
-	SidecarInjectorContainerName = "sidecar-injection"
-	PerftuneContainerName        = "perftune"
-	CleanupContainerName         = "cleanup"
-	RLimitsContainerName         = "rlimits"
+	ScyllaContainerName           = "scylla"
+	ScyllaDBIgnitionContainerName = "scylladb-ignition"
+	SidecarInjectorContainerName  = "sidecar-injection"
+	PerftuneContainerName         = "perftune"
+	CleanupContainerName          = "cleanup"
+	RLimitsContainerName          = "rlimits"
 
 	PVCTemplateName = "data"
 

@@ -165,7 +165,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		scyllaPod, err := f.KubeClient().CoreV1().Pods(sc.Namespace).Get(ctx, podName, metav1.GetOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		stdout, stderr, err := executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), scyllaPod,
+		stdout, stderr, err := executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), scyllaPod,
 			"bash",
 			"-euExo",
 			"pipefail",
@@ -180,7 +180,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		o.Expect(stdout).To(o.Equal(nrOpenLimit))
 
 		framework.By("Validating hard file limit of Scylla process")
-		stdout, stderr, err = executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), scyllaPod,
+		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), scyllaPod,
 			"bash",
 			"-euExo",
 			"pipefail",

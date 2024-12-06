@@ -11,6 +11,7 @@ import (
 	scyllav1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1"
 	scyllav1alpha1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -19,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
+	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
 	"k8s.io/client-go/tools/cache"
@@ -181,4 +183,8 @@ func WaitForSecretState(ctx context.Context, client corev1client.SecretInterface
 
 func WaitForServiceState(ctx context.Context, client corev1client.ServiceInterface, name string, options WaitForStateOptions, condition func(*corev1.Service) (bool, error), additionalConditions ...func(*corev1.Service) (bool, error)) (*corev1.Service, error) {
 	return WaitForObjectState[*corev1.Service, *corev1.ServiceList](ctx, client, name, options, condition, additionalConditions...)
+}
+
+func WaitForDaemonSetState(ctx context.Context, client appsv1client.DaemonSetInterface, name string, options WaitForStateOptions, condition func(*appsv1.DaemonSet) (bool, error), additionalConditions ...func(set *appsv1.DaemonSet) (bool, error)) (*appsv1.DaemonSet, error) {
+	return WaitForObjectState[*appsv1.DaemonSet, *appsv1.DaemonSetList](ctx, client, name, options, condition, additionalConditions...)
 }

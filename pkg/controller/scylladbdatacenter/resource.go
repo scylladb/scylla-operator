@@ -890,7 +890,7 @@ wait
 							},
 						},
 						{
-							Name:            "scylladb-ignition",
+							Name:            naming.ScyllaDBIgnitionContainerName,
 							Image:           sidecarImage,
 							ImagePullPolicy: corev1.PullIfNotPresent,
 							Command: []string{

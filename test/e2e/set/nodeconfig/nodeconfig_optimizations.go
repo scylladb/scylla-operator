@@ -263,6 +263,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		sc := f.GetDefaultScyllaCluster()
+		o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
 		sc.Spec.Datacenter.Racks[0].AgentResources = corev1.ResourceRequirements{
 			Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceCPU:    resource.MustParse("50m"),
@@ -331,6 +332,25 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace).Get(ctx, sc.Name, metav1.GetOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(utils.IsScyllaClusterRolledOut(sc)).To(o.BeFalse())
+
+		framework.By("Verifying the containers are blocked and not ready")
+		podSelector := labels.Set(naming.ClusterLabelsForScyllaCluster(sc)).AsSelector()
+		scPods, err := f.KubeClient().CoreV1().Pods(sc.Namespace).List(ctx, metav1.ListOptions{
+			LabelSelector: podSelector.String(),
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(scPods.Items).NotTo(o.BeEmpty())
+
+		for _, pod := range scPods.Items {
+			crm := utils.GetContainerReadinessMap(&pod)
+			o.Expect(crm).To(
+				o.And(
+					o.HaveKeyWithValue(naming.ScyllaContainerName, false),
+					o.HaveKeyWithValue(naming.ScyllaDBIgnitionContainerName, false),
+				),
+				fmt.Sprintf("container(s) in Pod %q don't match the expected state", pod.Name),
+			)
+		}
 
 		framework.By("Unblocking tuning")
 		intermittentArtifactsDir := ""

@@ -9,6 +9,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/pkg/util/hash"
+	"golang.org/x/time/rate"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -99,8 +100,20 @@ func NewController(
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scyllasidecar-controller"}),
 
-		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "scyllasidecar"),
-		key:   key,
+		queue: workqueue.NewRateLimitingQueueWithConfig(
+			workqueue.NewMaxOfRateLimiter(
+				workqueue.NewItemExponentialFailureRateLimiter(
+					5*time.Millisecond,
+					// This is a single key controller just for its node, the upper bound should be fairly low.
+					10*time.Second,
+				),
+				&workqueue.BucketRateLimiter{Limiter: rate.NewLimiter(rate.Limit(10), 100)},
+			),
+			workqueue.RateLimitingQueueConfig{
+				Name: "scyllasidecar",
+			},
+		),
+		key: key,
 	}
 
 	singleServiceInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{

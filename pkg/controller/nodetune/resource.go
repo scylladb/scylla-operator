@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -157,7 +158,7 @@ func makeRlimitsJobForContainer(controllerRef *metav1.OwnerReference, namespace,
 								"/usr/bin/scylla-operator",
 								"rlimits-job",
 								fmt.Sprintf("--pid=%d", scyllaHostPID),
-								"--loglevel=2",
+								fmt.Sprintf("--loglevel=%d", cmdutil.GetLoglevelOrDefaultOrDie()),
 							},
 							SecurityContext: &corev1.SecurityContext{
 								Privileged: pointer.Ptr(true),

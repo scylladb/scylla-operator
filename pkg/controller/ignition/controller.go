@@ -196,22 +196,21 @@ func (c *Controller) Sync(ctx context.Context) error {
 
 	if ignited {
 		klog.V(2).InfoS("Ignition successful", "SignalFile", naming.ScyllaDBIgnitionDonePath)
+		err = helpers.TouchFile(naming.ScyllaDBIgnitionDonePath)
+		if err != nil {
+			return fmt.Errorf("can't touch signal file %q: %w", naming.ScyllaDBIgnitionDonePath, err)
+		}
 	} else {
 		klog.V(2).InfoS("Waiting for ignition to complete.", "SignalFile", naming.ScyllaDBIgnitionDonePath)
 	}
 
-	klog.V(2).InfoS("Updating ignition", "Ignited", ignited, "SignalFile", naming.ScyllaDBIgnitionDonePath)
+	klog.V(2).InfoS("Updating ignition", "Ignited", ignited)
 
 	oldIgnited := c.ignited.Load()
 	if ignited != oldIgnited {
 		klog.InfoS("Ignition state has changed", "New", ignited, "Old", oldIgnited)
 	}
 	c.ignited.Store(ignited)
-
-	err = helpers.TouchFile(naming.ScyllaDBIgnitionDonePath)
-	if err != nil {
-		return fmt.Errorf("can't touch signal file %q: %w", naming.ScyllaDBIgnitionDonePath, err)
-	}
 
 	return nil
 }

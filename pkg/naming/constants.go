@@ -26,6 +26,9 @@ const (
 	// Readiness check will always fail when this label is added to member service.
 	NodeMaintenanceLabel = "scylla/node-maintenance"
 
+	// ForceIgnitionValueAnnotation allows to force ignition state. The value can be either "true" or "false".
+	ForceIgnitionValueAnnotation = "internal.scylla-operator.scylladb.com/force-ignition-value"
+
 	LabelValueTrue  = "true"
 	LabelValueFalse = "false"
 )

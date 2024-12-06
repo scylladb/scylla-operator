@@ -635,7 +635,8 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 									strings.TrimSpace(`
 printf 'INFO %s ignition - Waiting for /mnt/shared/ignition.done\n' "$( date '+%Y-%m-%d %H:%M:%S,%3N' )" > /dev/stderr
 until [[ -f "/mnt/shared/ignition.done" ]]; do
-  sleep 1;
+  sleep 1 &
+  wait
 done
 printf 'INFO %s ignition - Ignited. Starting ScyllaDB...\n' "$( date '+%Y-%m-%d %H:%M:%S,%3N' )" > /dev/stderr
 
@@ -1177,7 +1178,8 @@ func getScyllaDBManagerAgentContainer(r scyllav1alpha1.RackSpec, sdc *scyllav1al
 			strings.TrimSpace(`
 printf '{"L":"INFO","T":"%s","M":"Waiting for /mnt/shared/ignition.done"}\n' "$( date -u '+%Y-%m-%dT%H:%M:%S,%3NZ' )" > /dev/stderr
 until [[ -f "/mnt/shared/ignition.done" ]]; do
-  sleep 1;
+  sleep 1 &
+  wait
 done
 printf '{"L":"INFO","T":"%s","M":"Ignited. Starting ScyllaDB Manager Agent"}\n' "$( date -u '+%Y-%m-%dT%H:%M:%S,%3NZ' )" > /dev/stderr
 

@@ -19,7 +19,7 @@ data:
       certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.crt"
       keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.key"
       require_client_auth: true
-      truststore: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/client-ca/tls.crt"
+      truststore: "/var/run/configmaps/scylla-operator.scylladb.com/scylladb/client-ca/ca-bundle.crt"
     {{- end }}
     {{- if .Spec.ScyllaDB.AlternatorOptions }}
     alternator_write_isolation: {{ or .Spec.ScyllaDB.AlternatorOptions.WriteIsolation "always_use_lwt" }}

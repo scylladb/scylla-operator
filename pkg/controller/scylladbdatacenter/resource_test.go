@@ -744,7 +744,10 @@ exec /mnt/shared/scylla-operator sidecar \
 --service-name=$(SERVICE_NAME) \
 --cpu-count=$(CPU_COUNT) \
 --loglevel=2 \
+ -- "$@"
 `),
+										"--",
+										"--developer-mode=0",
 									}
 								}(),
 								Env: []corev1.EnvVar{
@@ -1309,7 +1312,12 @@ scylla-manager-agent \
 			expectedStatefulSet: func() *appsv1.StatefulSet {
 				sts := newBasicStatefulSet()
 
-				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command[len(sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command)-1] += "\n--external-seeds=10.0.1.1,10.0.1.2,10.0.1.3"
+				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command[len(sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command)-3] = strings.Replace(
+					sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command[len(sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command)-3],
+					` -- "$@"`,
+					"--external-seeds=10.0.1.1,10.0.1.2,10.0.1.3 -- \"$@\"",
+					1,
+				)
 
 				return sts
 			}(),
@@ -1332,8 +1340,7 @@ scylla-manager-agent \
 			expectedStatefulSet: func() *appsv1.StatefulSet {
 				sts := newBasicStatefulSet()
 
-				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command[len(sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command)-1] += "\n -- \"$@\""
-				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command = append(sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command, "--", "--batch-size-warn-threshold-in-kb=128", "--batch-size-fail-threshold-in-kb", "1024", "--commitlog-sync=\"batch\"")
+				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command = append(sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command[:len(sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command)-1], "--batch-size-warn-threshold-in-kb=128", "--batch-size-fail-threshold-in-kb", "1024", "--commitlog-sync=\"batch\"", "--developer-mode=0")
 
 				return sts
 			}(),
@@ -1351,8 +1358,7 @@ scylla-manager-agent \
 			expectedStatefulSet: func() *appsv1.StatefulSet {
 				sts := newBasicStatefulSet()
 
-				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command[len(sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command)-1] += "\n -- \"$@\""
-				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command = append(sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command, "--", "--developer-mode=1")
+				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command[len(sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Command)-1] = "--developer-mode=1"
 
 				return sts
 			}(),

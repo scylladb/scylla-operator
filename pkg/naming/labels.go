@@ -1,10 +1,15 @@
 package naming
 
 import (
+	"fmt"
+	"maps"
+
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // ClusterLabels returns a map of label keys and values
@@ -84,4 +89,119 @@ func mergeLabels(l1, l2 map[string]string) map[string]string {
 		res[k] = v
 	}
 	return res
+}
+
+func ManagedResourcesLabels(managingClusterDomain string) map[string]string {
+	return map[string]string{
+		ManagedByClusterLabel: managingClusterDomain,
+	}
+}
+
+func ScyllaDBClusterDatacenterSelectorLabels(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter) map[string]string {
+	selectorLabels := make(map[string]string)
+	maps.Copy(selectorLabels, ScyllaDBClusterSelectorLabels(sc))
+	selectorLabels[ParentClusterDatacenterNameLabel] = dc.Name
+	return selectorLabels
+}
+
+func ScyllaDBClusterDatacenterLabels(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, managingClusterDomain string) map[string]string {
+	dcLabels := make(map[string]string)
+	if sc.Spec.Metadata != nil {
+		maps.Copy(dcLabels, sc.Spec.Metadata.Labels)
+	}
+
+	if dc.Metadata != nil {
+		maps.Copy(dcLabels, dc.Metadata.Labels)
+	}
+	maps.Copy(dcLabels, ManagedResourcesLabels(managingClusterDomain))
+	maps.Copy(dcLabels, ScyllaDBClusterSelectorLabels(sc))
+	dcLabels[ParentClusterDatacenterNameLabel] = dc.Name
+	return dcLabels
+}
+
+func ScyllaDBClusterDatacenterAnnotations(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter) map[string]string {
+	dcAnnotations := make(map[string]string)
+	if sc.Spec.Metadata != nil {
+		maps.Copy(dcAnnotations, sc.Spec.Metadata.Annotations)
+	}
+
+	if dc.Metadata != nil {
+		maps.Copy(dcAnnotations, dc.Metadata.Annotations)
+	}
+	return dcAnnotations
+}
+
+func ScyllaDBClusterSelectorLabels(sc *scyllav1alpha1.ScyllaDBCluster) map[string]string {
+	clusterLabels := make(map[string]string)
+
+	maps.Copy(clusterLabels, map[string]string{
+		ParentClusterNamespaceLabel: sc.Namespace,
+		ParentClusterNameLabel:      sc.Name,
+	})
+
+	return clusterLabels
+}
+
+func ScyllaDBClusterSelector(sc *scyllav1alpha1.ScyllaDBCluster) labels.Selector {
+	return labels.SelectorFromSet(ScyllaDBClusterSelectorLabels(sc))
+}
+
+func ScyllaDBClusterDatacenterEndpointsLabels(sc *scyllav1alpha1.ScyllaDBCluster, dc scyllav1alpha1.ScyllaDBClusterDatacenter, managingClusterDomain string) map[string]string {
+	dcLabels := make(map[string]string)
+	if sc.Spec.Metadata != nil {
+		maps.Copy(dcLabels, sc.Spec.Metadata.Labels)
+	}
+
+	if dc.Metadata != nil {
+		maps.Copy(dcLabels, dc.Metadata.Labels)
+	}
+	maps.Copy(dcLabels, ManagedResourcesLabels(managingClusterDomain))
+	maps.Copy(dcLabels, ScyllaDBClusterEndpointsSelectorLabels(sc))
+	dcLabels[ParentClusterDatacenterNameLabel] = dc.Name
+	return dcLabels
+}
+
+func ScyllaDBClusterEndpointsSelectorLabels(sc *scyllav1alpha1.ScyllaDBCluster) map[string]string {
+	scSelectorLabels := ScyllaDBClusterSelectorLabels(sc)
+	scSelectorLabels[ClusterEndpointsLabel] = sc.Name
+
+	return scSelectorLabels
+}
+
+func ScyllaDBClusterEndpointsSelector(sc *scyllav1alpha1.ScyllaDBCluster) labels.Selector {
+	return labels.SelectorFromSet(ScyllaDBClusterEndpointsSelectorLabels(sc))
+}
+
+func DatacenterPodsSelector(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter) labels.Selector {
+	return labels.SelectorFromSet(
+		ClusterLabels(
+			&scyllav1alpha1.ScyllaDBDatacenter{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: ScyllaDBDatacenterName(sc, dc),
+				},
+			},
+		),
+	)
+}
+
+func GroupVersionResourceToLabelValue(gvr schema.GroupVersionResource) string {
+	return fmt.Sprintf("%s-%s-%s", gvr.Group, gvr.Version, gvr.Resource)
+}
+
+func RemoteOwnerSelectorLabels(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter) map[string]string {
+	return map[string]string{
+		RemoteOwnerClusterLabel:   dc.RemoteKubernetesClusterName,
+		RemoteOwnerNamespaceLabel: sc.Namespace,
+		RemoteOwnerNameLabel:      sc.Name,
+		RemoteOwnerGVR:            GroupVersionResourceToLabelValue(scyllav1alpha1.GroupVersion.WithResource("scylladbclusters")),
+	}
+}
+
+func RemoteOwnerLabels(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, managingClusterDomain string) map[string]string {
+	remoteOwnerLabels := make(map[string]string)
+
+	maps.Copy(remoteOwnerLabels, ManagedResourcesLabels(managingClusterDomain))
+	maps.Copy(remoteOwnerLabels, RemoteOwnerSelectorLabels(sc, dc))
+
+	return remoteOwnerLabels
 }

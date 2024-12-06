@@ -8,13 +8,16 @@ import (
 	"sync"
 	"time"
 
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
 	"github.com/scylladb/scylla-operator/pkg/clusterdomain"
 	"github.com/scylladb/scylla-operator/pkg/controller/nodeconfig"
 	"github.com/scylladb/scylla-operator/pkg/controller/nodeconfigpod"
 	"github.com/scylladb/scylla-operator/pkg/controller/orphanedpv"
+	"github.com/scylladb/scylla-operator/pkg/controller/remotekubernetescluster"
 	"github.com/scylladb/scylla-operator/pkg/controller/scyllacluster"
+	"github.com/scylladb/scylla-operator/pkg/controller/scylladbcluster"
 	"github.com/scylladb/scylla-operator/pkg/controller/scylladbdatacenter"
 	"github.com/scylladb/scylla-operator/pkg/controller/scylladbmonitoring"
 	"github.com/scylladb/scylla-operator/pkg/controller/scyllaoperatorconfig"
@@ -24,15 +27,24 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/leaderelection"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	remoteclient "github.com/scylladb/scylla-operator/pkg/remoteclient/client"
+	remoteinformers "github.com/scylladb/scylla-operator/pkg/remoteclient/informers"
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	apierrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/clientcmd"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
 )
@@ -50,6 +62,9 @@ type OperatorOptions struct {
 	scyllaClient               scyllaversionedclient.Interface
 	monitoringClient           monitoringversionedclient.Interface
 	dynamicClusterDomainGetter *clusterdomain.DynamicClusterDomain
+
+	clusterKubeClient   remoteclient.ClusterClient[kubernetes.Interface]
+	clusterScyllaClient remoteclient.ClusterClient[scyllaversionedclient.Interface]
 
 	ConcurrentSyncs int
 	OperatorImage   string
@@ -196,6 +211,34 @@ func (o *OperatorOptions) Complete(cmd *cobra.Command) error {
 
 	o.dynamicClusterDomainGetter = clusterdomain.NewDynamicClusterDomain(net.DefaultResolver)
 
+	o.clusterKubeClient = *remoteclient.NewClusterClient(func(config []byte) (kubernetes.Interface, error) {
+		restConfig, err := clientcmd.RESTConfigFromKubeConfig(config)
+		if err != nil {
+			return nil, fmt.Errorf("can't create REST config from kubeconfig: %w", err)
+		}
+
+		client, err := kubernetes.NewForConfig(restConfig)
+		if err != nil {
+			return nil, fmt.Errorf("can't build kubernetes clientset: %w", err)
+		}
+
+		return client, nil
+	})
+
+	o.clusterScyllaClient = *remoteclient.NewClusterClient(func(config []byte) (scyllaversionedclient.Interface, error) {
+		restConfig, err := clientcmd.RESTConfigFromKubeConfig(config)
+		if err != nil {
+			return nil, fmt.Errorf("can't create REST config from kubeconfig: %w", err)
+		}
+
+		client, err := scyllaversionedclient.NewForConfig(restConfig)
+		if err != nil {
+			return nil, fmt.Errorf("can't build scylla clientset: %w", err)
+		}
+
+		return client, nil
+	})
+
 	maxChanged := cmd.Flags().Lookup(cryptoKeyBufferSizeMaxFlagKey).Changed
 	if !maxChanged && o.CryptoKeyBufferSizeMin > o.CryptoKeyBufferSizeMax {
 		o.CryptoKeyBufferSizeMax = o.CryptoKeyBufferSizeMin
@@ -251,6 +294,19 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 
 	kubeInformers := informers.NewSharedInformerFactory(o.kubeClient, resyncPeriod)
 	scyllaInformers := scyllainformers.NewSharedInformerFactory(o.scyllaClient, resyncPeriod)
+
+	remoteKubernetesInformer := remoteinformers.NewSharedInformerFactory[kubernetes.Interface](&o.clusterKubeClient, resyncPeriod)
+	remoteScyllaInformer := remoteinformers.NewSharedInformerFactory[scyllaversionedclient.Interface](&o.clusterScyllaClient, resyncPeriod)
+
+	remoteScyllaPodInformer := remoteinformers.NewSharedInformerFactoryWithOptions[kubernetes.Interface](
+		&o.clusterKubeClient,
+		resyncPeriod,
+		remoteinformers.WithTweakListOptions[kubernetes.Interface](
+			func(options *metav1.ListOptions) {
+				options.LabelSelector = labels.SelectorFromSet(naming.ScyllaLabels()).String()
+			},
+		),
+	)
 
 	scyllaOperatorConfigInformers := scyllainformers.NewSharedInformerFactoryWithOptions(o.scyllaClient, resyncPeriod, scyllainformers.WithTweakListOptions(
 		func(options *metav1.ListOptions) {
@@ -376,6 +432,177 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		return fmt.Errorf("can't create scylladbmonitoring controller: %w", err)
 	}
 
+	rkcc, err := remotekubernetescluster.NewController(
+		o.kubeClient,
+		o.scyllaClient.ScyllaV1alpha1(),
+		scyllaInformers.Scylla().V1alpha1().RemoteKubernetesClusters(),
+		kubeInformers.Core().V1().Secrets(),
+		[]remoteclient.DynamicClusterInterface{
+			&o.clusterKubeClient,
+			&o.clusterScyllaClient,
+			remoteKubernetesInformer,
+			remoteScyllaInformer,
+			remoteScyllaPodInformer,
+		},
+		&o.clusterKubeClient,
+		&o.clusterScyllaClient,
+	)
+	if err != nil {
+		return fmt.Errorf("can't create RemoteKubernetesCluster controller: %w", err)
+	}
+
+	sdbcc, err := scylladbcluster.NewController(
+		o.kubeClient,
+		o.scyllaClient,
+		&o.clusterKubeClient,
+		&o.clusterScyllaClient,
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBClusters(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaOperatorConfigs(),
+		remoteScyllaInformer.ForResource(&scyllav1alpha1.RemoteOwner{}, remoteinformers.ClusterListWatch[scyllaversionedclient.Interface]{
+			ListFunc: func(client remoteclient.ClusterClientInterface[scyllaversionedclient.Interface], cluster, ns string) cache.ListFunc {
+				return func(options metav1.ListOptions) (runtime.Object, error) {
+					clusterClient, err := client.Cluster(cluster)
+					if err != nil {
+						return nil, err
+					}
+					return clusterClient.ScyllaV1alpha1().RemoteOwners(ns).List(ctx, options)
+				}
+			},
+			WatchFunc: func(client remoteclient.ClusterClientInterface[scyllaversionedclient.Interface], cluster, ns string) cache.WatchFunc {
+				return func(options metav1.ListOptions) (watch.Interface, error) {
+					clusterClient, err := client.Cluster(cluster)
+					if err != nil {
+						return nil, err
+					}
+					return clusterClient.ScyllaV1alpha1().RemoteOwners(ns).Watch(ctx, options)
+				}
+			},
+		}),
+		remoteScyllaInformer.ForResource(&scyllav1alpha1.ScyllaDBDatacenter{}, remoteinformers.ClusterListWatch[scyllaversionedclient.Interface]{
+			ListFunc: func(client remoteclient.ClusterClientInterface[scyllaversionedclient.Interface], cluster, ns string) cache.ListFunc {
+				return func(options metav1.ListOptions) (runtime.Object, error) {
+					clusterClient, err := client.Cluster(cluster)
+					if err != nil {
+						return nil, err
+					}
+					return clusterClient.ScyllaV1alpha1().ScyllaDBDatacenters(ns).List(ctx, options)
+				}
+			},
+			WatchFunc: func(client remoteclient.ClusterClientInterface[scyllaversionedclient.Interface], cluster, ns string) cache.WatchFunc {
+				return func(options metav1.ListOptions) (watch.Interface, error) {
+					clusterClient, err := client.Cluster(cluster)
+					if err != nil {
+						return nil, err
+					}
+					return clusterClient.ScyllaV1alpha1().ScyllaDBDatacenters(ns).Watch(ctx, options)
+				}
+			},
+		}),
+		remoteKubernetesInformer.ForResource(&corev1.Namespace{}, remoteinformers.ClusterListWatch[kubernetes.Interface]{
+			ListFunc: func(client remoteclient.ClusterClientInterface[kubernetes.Interface], cluster, ns string) cache.ListFunc {
+				return func(options metav1.ListOptions) (runtime.Object, error) {
+					clusterClient, err := client.Cluster(cluster)
+					if err != nil {
+						return nil, err
+					}
+					return clusterClient.CoreV1().Namespaces().List(ctx, options)
+				}
+			},
+			WatchFunc: func(client remoteclient.ClusterClientInterface[kubernetes.Interface], cluster, ns string) cache.WatchFunc {
+				return func(options metav1.ListOptions) (watch.Interface, error) {
+					clusterClient, err := client.Cluster(cluster)
+					if err != nil {
+						return nil, err
+					}
+					return clusterClient.CoreV1().Namespaces().Watch(ctx, options)
+				}
+			},
+		}),
+		remoteKubernetesInformer.ForResource(&corev1.Service{}, remoteinformers.ClusterListWatch[kubernetes.Interface]{
+			ListFunc: func(client remoteclient.ClusterClientInterface[kubernetes.Interface], cluster, ns string) cache.ListFunc {
+				return func(options metav1.ListOptions) (runtime.Object, error) {
+					clusterClient, err := client.Cluster(cluster)
+					if err != nil {
+						return nil, err
+					}
+					return clusterClient.CoreV1().Services(ns).List(ctx, options)
+				}
+			},
+			WatchFunc: func(client remoteclient.ClusterClientInterface[kubernetes.Interface], cluster, ns string) cache.WatchFunc {
+				return func(options metav1.ListOptions) (watch.Interface, error) {
+					clusterClient, err := client.Cluster(cluster)
+					if err != nil {
+						return nil, err
+					}
+					return clusterClient.CoreV1().Services(ns).Watch(ctx, options)
+				}
+			},
+		}),
+		remoteKubernetesInformer.ForResource(&discoveryv1.EndpointSlice{}, remoteinformers.ClusterListWatch[kubernetes.Interface]{
+			ListFunc: func(client remoteclient.ClusterClientInterface[kubernetes.Interface], cluster, ns string) cache.ListFunc {
+				return func(options metav1.ListOptions) (runtime.Object, error) {
+					clusterClient, err := client.Cluster(cluster)
+					if err != nil {
+						return nil, err
+					}
+					return clusterClient.DiscoveryV1().EndpointSlices(ns).List(ctx, options)
+				}
+			},
+			WatchFunc: func(client remoteclient.ClusterClientInterface[kubernetes.Interface], cluster, ns string) cache.WatchFunc {
+				return func(options metav1.ListOptions) (watch.Interface, error) {
+					clusterClient, err := client.Cluster(cluster)
+					if err != nil {
+						return nil, err
+					}
+					return clusterClient.DiscoveryV1().EndpointSlices(ns).Watch(ctx, options)
+				}
+			},
+		}),
+		remoteKubernetesInformer.ForResource(&corev1.Endpoints{}, remoteinformers.ClusterListWatch[kubernetes.Interface]{
+			ListFunc: func(client remoteclient.ClusterClientInterface[kubernetes.Interface], cluster, ns string) cache.ListFunc {
+				return func(options metav1.ListOptions) (runtime.Object, error) {
+					clusterClient, err := client.Cluster(cluster)
+					if err != nil {
+						return nil, err
+					}
+					return clusterClient.CoreV1().Endpoints(ns).List(ctx, options)
+				}
+			},
+			WatchFunc: func(client remoteclient.ClusterClientInterface[kubernetes.Interface], cluster, ns string) cache.WatchFunc {
+				return func(options metav1.ListOptions) (watch.Interface, error) {
+					clusterClient, err := client.Cluster(cluster)
+					if err != nil {
+						return nil, err
+					}
+					return clusterClient.CoreV1().Endpoints(ns).Watch(ctx, options)
+				}
+			},
+		}),
+		remoteScyllaPodInformer.ForResource(&corev1.Pod{}, remoteinformers.ClusterListWatch[kubernetes.Interface]{
+			ListFunc: func(client remoteclient.ClusterClientInterface[kubernetes.Interface], cluster, ns string) cache.ListFunc {
+				return func(options metav1.ListOptions) (runtime.Object, error) {
+					clusterClient, err := client.Cluster(cluster)
+					if err != nil {
+						return nil, err
+					}
+					return clusterClient.CoreV1().Pods(ns).List(ctx, options)
+				}
+			},
+			WatchFunc: func(client remoteclient.ClusterClientInterface[kubernetes.Interface], cluster, ns string) cache.WatchFunc {
+				return func(options metav1.ListOptions) (watch.Interface, error) {
+					clusterClient, err := client.Cluster(cluster)
+					if err != nil {
+						return nil, err
+					}
+					return clusterClient.CoreV1().Pods(ns).Watch(ctx, options)
+				}
+			},
+		}),
+	)
+	if err != nil {
+		return fmt.Errorf("can't create ScyllaDBCluster controller: %w", err)
+	}
+
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
@@ -407,6 +634,24 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 	go func() {
 		defer wg.Done()
 		monitoringInformers.Start(ctx.Done())
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		remoteKubernetesInformer.Start(ctx.Done())
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		remoteScyllaInformer.Start(ctx.Done())
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		remoteScyllaPodInformer.Start(ctx.Done())
 	}()
 
 	wg.Add(1)
@@ -449,6 +694,18 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 	go func() {
 		defer wg.Done()
 		mc.Run(ctx, o.ConcurrentSyncs)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		rkcc.Run(ctx, o.ConcurrentSyncs)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		sdbcc.Run(ctx, o.ConcurrentSyncs)
 	}()
 
 	<-ctx.Done()

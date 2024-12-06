@@ -42,3 +42,35 @@ func ApplyScyllaDBDatacenter(
 		options,
 	)
 }
+
+func ApplyRemoteOwnerWithControl(
+	ctx context.Context,
+	control ApplyControlInterface[*scyllav1alpha1.RemoteOwner],
+	recorder record.EventRecorder,
+	required *scyllav1alpha1.RemoteOwner,
+	options ApplyOptions,
+) (*scyllav1alpha1.RemoteOwner, bool, error) {
+	return ApplyGeneric[*scyllav1alpha1.RemoteOwner](ctx, control, recorder, required, options)
+}
+
+func ApplyRemoteOwner(
+	ctx context.Context,
+	client scyllav1alpha1client.RemoteOwnersGetter,
+	lister scyllav1alpha1listers.RemoteOwnerLister,
+	recorder record.EventRecorder,
+	required *scyllav1alpha1.RemoteOwner,
+	options ApplyOptions,
+) (*scyllav1alpha1.RemoteOwner, bool, error) {
+	return ApplyRemoteOwnerWithControl(
+		ctx,
+		ApplyControlFuncs[*scyllav1alpha1.RemoteOwner]{
+			GetCachedFunc: lister.RemoteOwners(required.Namespace).Get,
+			CreateFunc:    client.RemoteOwners(required.Namespace).Create,
+			UpdateFunc:    client.RemoteOwners(required.Namespace).Update,
+			DeleteFunc:    client.RemoteOwners(required.Namespace).Delete,
+		},
+		recorder,
+		required,
+		options,
+	)
+}

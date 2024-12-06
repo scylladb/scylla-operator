@@ -1,0 +1,41 @@
+apiVersion: scylla.scylladb.com/v1alpha1
+kind: ScyllaDBCluster
+metadata:
+  generateName: basic-
+spec:
+  exposeOptions:
+    nodeService:
+      type: {{ .nodeServiceType }}
+    broadcastOptions:
+      nodes:
+        type: {{ .nodesBroadcastAddressType }}
+      clients:
+        type: {{ .clientsBroadcastAddressType }}
+  scyllaDB:
+    image: "docker.io/scylladb/scylla:{{ .scyllaDBVersion }}"
+    enableDeveloperMode: true
+  scyllaDBManagerAgent:
+    image: "docker.io/scylladb/scylla-manager-agent:{{ .scyllaDBManagerVersion }}"
+  datacenterTemplate:
+    scyllaDB:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 100Mi
+        limits:
+          cpu: 1
+          memory: 1Gi
+      storage:
+        capacity: 1Gi
+        {{- if .storageClassName }}
+        storageClassName: {{ .storageClassName }}
+        {{- end }}
+    rackTemplate:
+      nodes: 1
+    racks:
+    - name: a
+  datacenters:
+  {{- range $rkcIdx, $rkc := .remoteKubernetesClusters }}
+  - name: dc-{{ $rkcIdx }}
+    remoteKubernetesClusterName: {{ $rkc.Name }}
+  {{- end }}

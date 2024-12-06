@@ -4,6 +4,7 @@ package utils
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net/http"
 
@@ -28,7 +29,7 @@ type ExecOptions struct {
 // ExecWithOptions executes a command in the specified container,
 // returning stdout, stderr and error. `options` allowed for
 // additional parameters to be passed.
-func ExecWithOptions(config *rest.Config, client corev1client.CoreV1Interface, options ExecOptions) (string, string, error) {
+func ExecWithOptions(ctx context.Context, config *rest.Config, client corev1client.CoreV1Interface, options ExecOptions) (string, string, error) {
 	const tty = false
 
 	req := client.RESTClient().Post().
@@ -52,12 +53,14 @@ func ExecWithOptions(config *rest.Config, client corev1client.CoreV1Interface, o
 	if err != nil {
 		return "", "", err
 	}
-	err = exec.Stream(remotecommand.StreamOptions{
-		Stdin:  options.Stdin,
-		Stdout: &stdout,
-		Stderr: &stderr,
-		Tty:    tty,
-	})
+	err = exec.StreamWithContext(
+		ctx,
+		remotecommand.StreamOptions{
+			Stdin:  options.Stdin,
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Tty:    tty,
+		})
 
 	return stdout.String(), stderr.String(), err
 }

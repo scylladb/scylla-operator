@@ -104,7 +104,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 			for i := range connectionAttempts {
 				framework.By("Establishing connection number %d to shard number %d", i, shard)
-				stdout, stderr, err := utils.ExecWithOptions(f.ClientConfig(), f.KubeClient().CoreV1(), utils.ExecOptions{
+				stdout, stderr, err := utils.ExecWithOptions(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), utils.ExecOptions{
 					Command: []string{
 						"/usr/bin/bash",
 						"-euEo",

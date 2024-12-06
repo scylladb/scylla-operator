@@ -354,7 +354,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		scyllaManagerPod := scyllaManagerPods.Items[0]
 
 		framework.By("Creating a schema restore task")
-		stdout, stderr, err := utils.ExecWithOptions(f.AdminClientConfig(), f.KubeAdminClient().CoreV1(), utils.ExecOptions{
+		stdout, stderr, err := utils.ExecWithOptions(ctx, f.AdminClientConfig(), f.KubeAdminClient().CoreV1(), utils.ExecOptions{
 			Command: []string{
 				"sctool",
 				"restore",
@@ -419,7 +419,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		}
 
 		framework.By("Creating a tables restore task")
-		stdout, stderr, err = utils.ExecWithOptions(f.AdminClientConfig(), f.KubeAdminClient().CoreV1(), utils.ExecOptions{
+		stdout, stderr, err = utils.ExecWithOptions(ctx, f.AdminClientConfig(), f.KubeAdminClient().CoreV1(), utils.ExecOptions{
 			Command: []string{
 				"sctool",
 				"restore",

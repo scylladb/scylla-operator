@@ -6,6 +6,7 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 )
 
 func HashObjects(objs ...interface{}) (string, error) {
@@ -18,4 +19,14 @@ func HashObjects(objs ...interface{}) (string, error) {
 	}
 
 	return base64.StdEncoding.EncodeToString(hasher.Sum(nil)), nil
+}
+
+func HashBytes(buf []byte) (string, error) {
+	hasher := sha512.New()
+
+	_, err := hasher.Write(buf)
+	if err != nil {
+		return "", fmt.Errorf("can't write bytes to hasher: %w", err)
+	}
+	return string(hasher.Sum(nil)), nil
 }

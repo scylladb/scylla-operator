@@ -6,6 +6,7 @@ import (
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -283,4 +284,62 @@ func GetRackNodeCount(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName string) (
 
 	// TODO: support scale subresource, until it's missing, mimic default value of rack members from v1.ScyllaCluster
 	return pointer.Ptr[int32](0), nil
+}
+
+func IsScyllaDBDatacenterRolledOut(sdc *scyllav1alpha1.ScyllaDBDatacenter) (bool, error) {
+	if !helpers.IsStatusConditionPresentAndTrue(sdc.Status.Conditions, scyllav1alpha1.AvailableCondition, sdc.Generation) {
+		return false, nil
+	}
+
+	if !helpers.IsStatusConditionPresentAndFalse(sdc.Status.Conditions, scyllav1alpha1.ProgressingCondition, sdc.Generation) {
+		return false, nil
+	}
+
+	if !helpers.IsStatusConditionPresentAndFalse(sdc.Status.Conditions, scyllav1alpha1.DegradedCondition, sdc.Generation) {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func GetScyllaDBClusterNodeCount(sc *scyllav1alpha1.ScyllaDBCluster) int32 {
+	nodes := int32(0)
+	for _, dc := range sc.Spec.Datacenters {
+		nodes += GetScyllaDBClusterDatacenterNodeCount(sc, dc)
+	}
+
+	return nodes
+}
+
+func GetScyllaDBClusterDatacenterNodeCount(sc *scyllav1alpha1.ScyllaDBCluster, dc scyllav1alpha1.ScyllaDBClusterDatacenter) int32 {
+	var racks []scyllav1alpha1.RackSpec
+	nodes := int32(0)
+	rackNodes := int32(0)
+
+	if sc.Spec.DatacenterTemplate != nil {
+		if sc.Spec.DatacenterTemplate.RackTemplate != nil && sc.Spec.DatacenterTemplate.RackTemplate.Nodes != nil {
+			rackNodes = *sc.Spec.DatacenterTemplate.RackTemplate.Nodes
+		}
+		if sc.Spec.DatacenterTemplate.Racks != nil {
+			racks = sc.Spec.DatacenterTemplate.Racks
+		}
+	}
+
+	if dc.RackTemplate != nil && dc.RackTemplate.Nodes != nil {
+		rackNodes = *dc.RackTemplate.Nodes
+	}
+
+	if dc.Racks != nil {
+		racks = dc.Racks
+	}
+
+	for _, rack := range racks {
+		if rack.Nodes != nil {
+			nodes += *rack.Nodes
+		} else {
+			nodes += rackNodes
+		}
+	}
+
+	return nodes
 }

@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog/v2"
 )
 
 type ControlleeManagerGetObjectsInterface[CT, T kubeinterfaces.ObjectInterface] interface {
@@ -204,4 +205,59 @@ func SetAggregatedWorkloadConditions(conditions *[]metav1.Condition, generation 
 	apimeta.SetStatusCondition(conditions, degradedCondition)
 
 	return nil
+}
+
+type ClusterControlleeManagerGetObjectsInterface[CT, T kubeinterfaces.ObjectInterface] interface {
+	Cluster(string) (ControlleeManagerGetObjectsInterface[CT, T], error)
+}
+
+type ClusterControlleeManagerGetObjectsFuncs[CT, T kubeinterfaces.ObjectInterface] struct {
+	ClusterFunc func(string) (ControlleeManagerGetObjectsInterface[CT, T], error)
+}
+
+func (c *ClusterControlleeManagerGetObjectsFuncs[CT, T]) Cluster(cluster string) (ControlleeManagerGetObjectsInterface[CT, T], error) {
+	return c.ClusterFunc(cluster)
+}
+
+func GetRemoteObjects[CT, T kubeinterfaces.ObjectInterface](
+	ctx context.Context,
+	remoteClusters []string,
+	controllerMap map[string]metav1.Object,
+	controllerGVK schema.GroupVersionKind,
+	selector labels.Selector,
+	control ClusterControlleeManagerGetObjectsInterface[CT, T],
+) (map[string]map[string]T, error) {
+	remoteObjectMapMap := make(map[string]map[string]T, len(remoteClusters))
+	for _, remoteCluster := range remoteClusters {
+		clusterControl, err := control.Cluster(remoteCluster)
+		if err != nil {
+			return nil, fmt.Errorf("can't get cluster %q control: %w", remoteCluster, err)
+		}
+		if clusterControl == ControlleeManagerGetObjectsInterface[CT, T](nil) {
+			klog.InfoS("Cluster control is not yet available, it may not have been created yet", "Cluster", remoteCluster)
+			return nil, nil
+		}
+
+		controller, ok := controllerMap[remoteCluster]
+		if !ok {
+			klog.InfoS("Controller object for cluster is missing, it may not have been created yet", "Cluster", remoteCluster)
+			remoteObjectMapMap[remoteCluster] = make(map[string]T)
+			continue
+		}
+
+		objs, err := GetObjects[CT, T](
+			ctx,
+			controller,
+			controllerGVK,
+			selector,
+			clusterControl,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("can't get objects: %w", err)
+		}
+
+		remoteObjectMapMap[remoteCluster] = objs
+	}
+
+	return remoteObjectMapMap, nil
 }

@@ -2,6 +2,7 @@ package scyllacluster
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -59,7 +60,7 @@ func verifyPersistentVolumeClaims(ctx context.Context, coreClient corev1client.C
 	o.Expect(scPVCNames).To(o.BeEquivalentTo(expectedPvcNames))
 }
 
-func verifyStatefulset(sts *appsv1.StatefulSet, sdc *scyllav1alpha1.ScyllaDBDatacenter) {
+func verifyStatefulset(ctx context.Context, client corev1client.CoreV1Interface, sts *appsv1.StatefulSet, sdc *scyllav1alpha1.ScyllaDBDatacenter) {
 	o.Expect(sts.ObjectMeta.OwnerReferences).To(o.BeEquivalentTo(
 		[]metav1.OwnerReference{
 			{
@@ -75,8 +76,22 @@ func verifyStatefulset(sts *appsv1.StatefulSet, sdc *scyllav1alpha1.ScyllaDBData
 	o.Expect(sts.DeletionTimestamp).To(o.BeNil())
 	o.Expect(sts.Status.ObservedGeneration).To(o.Equal(sts.Generation))
 	o.Expect(sts.Spec.Replicas).NotTo(o.BeNil())
+	o.Expect(sts.Status.Replicas).To(o.Equal(*sts.Spec.Replicas))
 	o.Expect(sts.Status.ReadyReplicas).To(o.Equal(*sts.Spec.Replicas))
 	o.Expect(sts.Status.CurrentRevision).To(o.Equal(sts.Status.UpdateRevision))
+
+	// Verify pod invariants.
+	podMap, err := utils.GetPodsForStatefulSet(ctx, client, sts)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(podMap).To(o.HaveLen(int(sts.Status.Replicas)))
+
+	// No container in the Pod should be restarted.
+	for _, pod := range podMap {
+		o.Expect(pod.Status.ContainerStatuses).NotTo(o.BeEmpty())
+		for _, cs := range pod.Status.ContainerStatuses {
+			o.Expect(cs.RestartCount).To(o.BeZero(), fmt.Sprintf("container %q in pod %q should not be restarted", cs.Name, pod.Name))
+		}
+	}
 }
 
 func verifyPodDisruptionBudget(sc *scyllav1.ScyllaCluster, pdb *policyv1.PodDisruptionBudget, sdc *scyllav1alpha1.ScyllaDBDatacenter) {
@@ -279,7 +294,7 @@ func Verify(ctx context.Context, kubeClient kubernetes.Interface, scyllaClient s
 
 		s := statefulsets[r.Name]
 
-		verifyStatefulset(s, sdc)
+		verifyStatefulset(ctx, kubeClient.CoreV1(), s, sdc)
 
 		o.Expect(sc.Status.Racks[r.Name].Stale).NotTo(o.BeNil())
 		o.Expect(*sc.Status.Racks[r.Name].Stale).To(o.BeFalse())

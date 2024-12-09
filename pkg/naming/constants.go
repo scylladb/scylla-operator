@@ -198,3 +198,32 @@ const (
 const (
 	UpgradeContextConfigMapKey = "upgrade-context.json"
 )
+
+const (
+	ManagedByClusterLabel = "scylla-operator.scylladb.com/managed-by-cluster"
+)
+
+const (
+	ParentClusterNameLabel           = "scylla-operator.scylladb.com/parent-scylladbcluster-name"
+	ParentClusterNamespaceLabel      = "scylla-operator.scylladb.com/parent-scylladbcluster-namespace"
+	ParentClusterDatacenterNameLabel = "scylla-operator.scylladb.com/parent-scylladbcluster-datacenter-name"
+)
+
+const (
+	RemoteOwnerClusterLabel   = "internal.scylla-operator.scylladb.com/remote-owner-cluster"
+	RemoteOwnerNamespaceLabel = "internal.scylla-operator.scylladb.com/remote-owner-namespace"
+	RemoteOwnerNameLabel      = "internal.scylla-operator.scylladb.com/remote-owner-name"
+	RemoteOwnerGVR            = "internal.scylla-operator.scylladb.com/remote-owner-gvr"
+)
+
+const (
+	ClusterEndpointsLabel = "scylla-operator.scylladb.com/cluster-endpoints"
+)
+
+const (
+	KubeConfigSecretKey string = "kubeconfig"
+)
+
+const (
+	OperatorAppNameWithDomain = "scylla-operator.scylladb.com"
+)

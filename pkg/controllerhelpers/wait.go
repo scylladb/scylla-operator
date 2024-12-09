@@ -188,3 +188,11 @@ func WaitForServiceState(ctx context.Context, client corev1client.ServiceInterfa
 func WaitForDaemonSetState(ctx context.Context, client appsv1client.DaemonSetInterface, name string, options WaitForStateOptions, condition func(*appsv1.DaemonSet) (bool, error), additionalConditions ...func(set *appsv1.DaemonSet) (bool, error)) (*appsv1.DaemonSet, error) {
 	return WaitForObjectState[*appsv1.DaemonSet, *appsv1.DaemonSetList](ctx, client, name, options, condition, additionalConditions...)
 }
+
+func WaitForRemoteKubernetesClusterState(ctx context.Context, client scyllav1alpha1client.RemoteKubernetesClusterInterface, name string, options WaitForStateOptions, condition func(*scyllav1alpha1.RemoteKubernetesCluster) (bool, error), additionalConditions ...func(*scyllav1alpha1.RemoteKubernetesCluster) (bool, error)) (*scyllav1alpha1.RemoteKubernetesCluster, error) {
+	return WaitForObjectState[*scyllav1alpha1.RemoteKubernetesCluster, *scyllav1alpha1.RemoteKubernetesClusterList](ctx, client, name, options, condition, additionalConditions...)
+}
+
+func WaitForScyllaDBClusterState(ctx context.Context, client scyllav1alpha1client.ScyllaDBClusterInterface, name string, options WaitForStateOptions, condition func(cluster *scyllav1alpha1.ScyllaDBCluster) (bool, error), additionalConditions ...func(cluster *scyllav1alpha1.ScyllaDBCluster) (bool, error)) (*scyllav1alpha1.ScyllaDBCluster, error) {
+	return WaitForObjectState[*scyllav1alpha1.ScyllaDBCluster, *scyllav1alpha1.ScyllaDBClusterList](ctx, client, name, options, condition, additionalConditions...)
+}

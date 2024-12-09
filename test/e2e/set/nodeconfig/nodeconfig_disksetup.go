@@ -154,14 +154,14 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		o.Eventually(func(g o.Gomega) {
 			for _, ldName := range loopDeviceNames {
 				loopDevicePath := path.Join(hostLoopsDir, ldName)
-				stdout, stderr, err := executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "stat", loopDevicePath)
+				stdout, stderr, err := executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "stat", loopDevicePath)
 				g.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 			}
 		}).WithPolling(1 * time.Second).WithTimeout(3 * time.Minute).Should(o.Succeed())
 
 		var findmntOutput string
 		o.Eventually(func(g o.Gomega) {
-			stdout, stderr, err := executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "findmnt", "--raw", "--output=SOURCE", "--noheadings", hostMountPath)
+			stdout, stderr, err := executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "findmnt", "--raw", "--output=SOURCE", "--noheadings", hostMountPath)
 			g.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 			findmntOutput = stdout
 		}).WithPolling(10 * time.Second).WithTimeout(3 * time.Minute).Should(o.Succeed())
@@ -173,15 +173,15 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 
 		framework.By("Checking if RAID device has been created at %q", discoveredRaidDevice)
 		o.Eventually(func(g o.Gomega) {
-			stdout, stderr, err := executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "stat", discoveredRaidDeviceOnHost)
+			stdout, stderr, err := executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "stat", discoveredRaidDeviceOnHost)
 			g.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 
-			stdout, stderr, err = executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "readlink", "-f", discoveredRaidDeviceOnHost)
+			stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "readlink", "-f", discoveredRaidDeviceOnHost)
 			g.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 
 			raidDeviceName := path.Base(discoveredRaidDeviceOnHost)
 
-			stdout, stderr, err = executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "cat", fmt.Sprintf("/sys/block/%s/md/level", raidDeviceName))
+			stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "cat", fmt.Sprintf("/sys/block/%s/md/level", raidDeviceName))
 			g.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 
 			raidLevel := strings.TrimSpace(stdout)
@@ -190,7 +190,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 
 		framework.By("Checking if RAID device has been formatted")
 		o.Eventually(func(g o.Gomega) {
-			stdout, stderr, err := executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "blkid", "--output=value", "--match-tag=TYPE", discoveredRaidDeviceOnHost)
+			stdout, stderr, err := executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "blkid", "--output=value", "--match-tag=TYPE", discoveredRaidDeviceOnHost)
 			g.Expect(err).NotTo(o.HaveOccurred(), stderr)
 
 			g.Expect(strings.TrimSpace(stdout)).To(o.Equal("xfs"))
@@ -198,7 +198,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 
 		framework.By("Checking if RAID was mounted at the provided location with correct options")
 		o.Eventually(func(g o.Gomega) {
-			stdout, stderr, err := executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "mount")
+			stdout, stderr, err := executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "mount")
 			g.Expect(err).NotTo(o.HaveOccurred(), stderr)
 
 			// mount output format
@@ -437,22 +437,22 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 				o.Expect(err).NotTo(o.HaveOccurred())
 
 				framework.By("Creating a temp directory on host")
-				stdout, stderr, err := executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "mktemp", "--tmpdir=/host/tmp/", "--directory")
+				stdout, stderr, err := executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "mktemp", "--tmpdir=/host/tmp/", "--directory")
 				o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 
 				hostTMPDir := strings.TrimSpace(stdout)
 
 				framework.By("Creating the target mount point on host")
-				stdout, stderr, err = executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "mkdir", hostMountPath)
+				stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "mkdir", hostMountPath)
 				o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 
 				framework.By("Bind mounting temp directory on host to target mount point")
-				stdout, stderr, err = executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "mount", "--bind", hostTMPDir, hostMountPath)
+				stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "mount", "--bind", hostTMPDir, hostMountPath)
 				o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 
 				cleanupFunc := func(ctx context.Context) {
 					framework.By("Unmounting bind mounted target")
-					stdout, stderr, err = executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "umount", hostMountPath)
+					stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "umount", hostMountPath)
 					o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 				}
 
@@ -509,15 +509,15 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 				o.Expect(err).NotTo(o.HaveOccurred())
 
 				framework.By("Verifying XFS filesystem integrity")
-				stdout, stderr, err := executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_repair", "-o", "force_geometry", "-f", "-n", hostDevicePath)
+				stdout, stderr, err := executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_repair", "-o", "force_geometry", "-f", "-n", hostDevicePath)
 				o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 
 				framework.By("Corrupting XFS filesystem")
-				stdout, stderr, err = executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_db", "-x", "-c", "blockget", "-c", "blocktrash -s 12345678 -n 1000", hostDevicePath)
+				stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_db", "-x", "-c", "blockget", "-c", "blocktrash -s 12345678 -n 1000", hostDevicePath)
 				o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 
 				framework.By("Verifying that XFS filesystem is corrupted")
-				stdout, stderr, err = executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_repair", "-o", "force_geometry", "-f", "-n", hostDevicePath)
+				stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_repair", "-o", "force_geometry", "-f", "-n", hostDevicePath)
 				o.Expect(err).To(o.HaveOccurred())
 
 				framework.By("Patching NodeConfig's mount configuration with a mount over a corrupted filesystem")
@@ -589,8 +589,8 @@ func newClientPod(nc *scyllav1alpha1.NodeConfig) *corev1.Pod {
 	}
 }
 
-func executeInPod(config *rest.Config, client corev1client.CoreV1Interface, pod *corev1.Pod, command string, args ...string) (string, string, error) {
-	return utils.ExecWithOptions(config, client, utils.ExecOptions{
+func executeInPod(ctx context.Context, config *rest.Config, client corev1client.CoreV1Interface, pod *corev1.Pod, command string, args ...string) (string, string, error) {
+	return utils.ExecWithOptions(ctx, config, client, utils.ExecOptions{
 		Command:       append([]string{command}, args...),
 		Namespace:     pod.Namespace,
 		PodName:       pod.Name,

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	appsv1 "k8s.io/api/apps/v1"
@@ -370,7 +371,7 @@ exec chroot ./ /scylla-operator/usr/bin/scylla-operator node-setup-daemon \
 --scylla-image=` + fmt.Sprintf("%q", scyllaImage) + ` \
 --operator-image=` + fmt.Sprintf("%q", operatorImage) + ` \
 --disable-optimizations=` + fmt.Sprintf("%t", nc.Spec.DisableOptimizations) + ` \
---loglevel=` + fmt.Sprintf("%d", 4) + `
+` + fmt.Sprintf("--loglevel=%d", cmdutil.GetLoglevelOrDefaultOrDie()) + `
 							`},
 							Env: []corev1.EnvVar{
 								{

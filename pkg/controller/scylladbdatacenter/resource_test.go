@@ -722,9 +722,12 @@ func TestStatefulSetForRack(t *testing.T) {
 										"inherit_errexit",
 										"-c",
 										strings.TrimSpace(`
+trap 'kill $( jobs -p ); exit 0' TERM
+
 printf 'INFO %s ignition - Waiting for /mnt/shared/ignition.done\n' "$( date '+%Y-%m-%d %H:%M:%S,%3N' )" > /dev/stderr
 until [[ -f "/mnt/shared/ignition.done" ]]; do
-  sleep 1;
+  sleep 1 &
+  wait
 done
 printf 'INFO %s ignition - Ignited. Starting ScyllaDB...\n' "$( date '+%Y-%m-%d %H:%M:%S,%3N' )" > /dev/stderr
 
@@ -876,10 +879,13 @@ exec /mnt/shared/scylla-operator sidecar \
 												"-O",
 												"inherit_errexit",
 												"-c",
-												`trap 'rm /mnt/shared/ignition.done' EXIT
+												strings.TrimSpace(`
+trap 'kill $( jobs -p ); exit 0' TERM
+trap 'rm -f /mnt/shared/ignition.done' EXIT
+
 nodetool drain &
 sleep 15 &
-wait`,
+wait`),
 											},
 										},
 									},
@@ -991,13 +997,16 @@ wait`,
 									"inherit_errexit",
 									"-c",
 									strings.TrimSpace(`
+trap 'kill $( jobs -p ); exit 0' TERM
+
 printf '{"L":"INFO","T":"%s","M":"Waiting for /mnt/shared/ignition.done"}\n' "$( date -u '+%Y-%m-%dT%H:%M:%S,%3NZ' )" > /dev/stderr
 until [[ -f "/mnt/shared/ignition.done" ]]; do
-  sleep 1;
+  sleep 1 &
+  wait
 done
 printf '{"L":"INFO","T":"%s","M":"Ignited. Starting ScyllaDB Manager Agent"}\n' "$( date -u '+%Y-%m-%dT%H:%M:%S,%3NZ' )" > /dev/stderr
 
-scylla-manager-agent \
+exec scylla-manager-agent \
 -c "/etc/scylla-manager-agent/scylla-manager-agent.yaml" \
 -c "/mnt/scylla-agent-config/scylla-manager-agent.yaml" \
 -c "/mnt/scylla-agent-config/auth-token.yaml"

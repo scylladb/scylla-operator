@@ -347,6 +347,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 				o.And(
 					o.HaveKeyWithValue(naming.ScyllaContainerName, false),
 					o.HaveKeyWithValue(naming.ScyllaDBIgnitionContainerName, false),
+					o.HaveKeyWithValue(naming.ScyllaManagerAgentContainerName, false),
 				),
 				fmt.Sprintf("container(s) in Pod %q don't match the expected state", pod.Name),
 			)
@@ -420,7 +421,20 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(ctx4, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+		scyllaclusterverification.VerifyWithOptions(
+			ctx,
+			f.KubeClient(),
+			f.ScyllaClient(),
+			sc,
+			scyllaclusterverification.VerifyOptions{
+				VerifyStatefulSetOptions: scyllaclusterverification.VerifyStatefulSetOptions{
+					PodRestartCountAssertion: func(a o.Assertion, containerName, podName string) {
+						// We expect restart(s) from the startup probe, usually 1.
+						a.To(o.BeNumerically("<=", 2), fmt.Sprintf("container %q in pod %q should not be restarted by the startup probe more than twice", containerName, podName))
+					},
+				},
+			},
+		)
 
 		framework.By("Verifying ConfigMap content")
 		ctx5, ctx5Cancel := context.WithTimeout(ctx, apiCallTimeout)

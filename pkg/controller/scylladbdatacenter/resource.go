@@ -634,9 +634,12 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 									"inherit_errexit",
 									"-c",
 									strings.TrimSpace(`
+trap 'kill $( jobs -p ); exit 0' TERM
+
 printf 'INFO %s ignition - Waiting for /mnt/shared/ignition.done\n' "$( date '+%Y-%m-%d %H:%M:%S,%3N' )" > /dev/stderr
 until [[ -f "/mnt/shared/ignition.done" ]]; do
-  sleep 1;
+  sleep 1 &
+  wait
 done
 printf 'INFO %s ignition - Ignited. Starting ScyllaDB...\n' "$( date '+%Y-%m-%d %H:%M:%S,%3N' )" > /dev/stderr
 
@@ -834,7 +837,9 @@ exec /mnt/shared/scylla-operator sidecar \
 											"inherit_errexit",
 											"-c",
 											strings.TrimSpace(`
-trap 'rm /mnt/shared/ignition.done' EXIT
+trap 'kill $( jobs -p ); exit 0' TERM
+trap 'rm -f /mnt/shared/ignition.done' EXIT
+
 nodetool drain &
 sleep ` + strconv.Itoa(minTerminationGracePeriodSeconds) + ` &
 wait
@@ -1164,7 +1169,7 @@ func getScyllaDBManagerAgentContainer(r scyllav1alpha1.RackSpec, sdc *scyllav1al
 	}
 
 	cnt := &corev1.Container{
-		Name:            "scylla-manager-agent",
+		Name:            naming.ScyllaManagerAgentContainerName,
 		Image:           *sdc.Spec.ScyllaDBManagerAgent.Image,
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		// There is no point in starting scylla-manager before ScyllaDB is tuned and ignited. The manager agent fails after 60 attempts and hits backoff unnecessarily.
@@ -1176,13 +1181,16 @@ func getScyllaDBManagerAgentContainer(r scyllav1alpha1.RackSpec, sdc *scyllav1al
 			"inherit_errexit",
 			"-c",
 			strings.TrimSpace(`
+trap 'kill $( jobs -p ); exit 0' TERM
+
 printf '{"L":"INFO","T":"%s","M":"Waiting for /mnt/shared/ignition.done"}\n' "$( date -u '+%Y-%m-%dT%H:%M:%S,%3NZ' )" > /dev/stderr
 until [[ -f "/mnt/shared/ignition.done" ]]; do
-  sleep 1;
+  sleep 1 &
+  wait
 done
 printf '{"L":"INFO","T":"%s","M":"Ignited. Starting ScyllaDB Manager Agent"}\n' "$( date -u '+%Y-%m-%dT%H:%M:%S,%3NZ' )" > /dev/stderr
 
-scylla-manager-agent \
+exec scylla-manager-agent \
 -c ` + fmt.Sprintf("%q ", naming.ScyllaAgentConfigDefaultFile) + `\
 -c ` + fmt.Sprintf("%q ", path.Join(naming.ScyllaAgentConfigDirName, naming.ScyllaAgentConfigFileName)) + `\
 -c ` + fmt.Sprintf("%q ", path.Join(naming.ScyllaAgentConfigDirName, naming.ScyllaAgentAuthTokenFileName)) + `

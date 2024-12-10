@@ -2,6 +2,7 @@ package ignition
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	corev1informers "k8s.io/client-go/informers/core/v1"
@@ -89,18 +91,10 @@ func (c *Controller) IsIgnited() bool {
 	return c.ignited.Load()
 }
 
-func (c *Controller) Sync(ctx context.Context) error {
-	startTime := time.Now()
-	klog.V(4).InfoS("Started syncing observer", "Name", c.Observer.Name(), "startTime", startTime)
-	defer func() {
-		klog.V(4).InfoS("Finished syncing observer", "Name", c.Observer.Name(), "duration", time.Since(startTime))
-	}()
-
-	ignited := true
-
+func (c *Controller) evaluateIgnitionState() (bool, error) {
 	svc, err := c.serviceLister.Services(c.namespace).Get(c.serviceName)
 	if err != nil {
-		return fmt.Errorf("can't get service %q: %w", c.serviceName, err)
+		return false, fmt.Errorf("can't get service %q: %w", c.serviceName, err)
 	}
 
 	// TODO: This isn't bound to the lifecycle of the ScyllaDB Pod and should be evaluated in the controller for the resource.
@@ -112,41 +106,38 @@ func (c *Controller) Sync(ctx context.Context) error {
 				"Waiting for identity service to have at least one ingress point",
 				"Service", naming.ManualRef(c.namespace, c.serviceName),
 			)
-			ignited = false
-		} else {
-			klog.V(2).InfoS(
-				"Service is available and has an IP address",
-				"Service", naming.ManualRef(svc.Namespace, svc.Name),
-				"UID", svc.UID,
-			)
+			return false, nil
 		}
+		klog.V(2).InfoS(
+			"Service is available and has an IP address",
+			"Service", naming.ManualRef(svc.Namespace, svc.Name),
+			"UID", svc.UID,
+		)
 	}
 
 	pod, err := c.podLister.Pods(c.namespace).Get(c.serviceName)
 	if err != nil {
-		return fmt.Errorf("can't get pod %q: %w", c.serviceName, err)
+		return false, fmt.Errorf("can't get pod %q: %w", c.serviceName, err)
 	}
 
 	if len(pod.Status.PodIP) == 0 {
 		klog.V(2).InfoS("PodIP is not yet set", "Pod", klog.KObj(pod), "UID", pod.UID)
-		ignited = false
-	} else {
-		klog.V(2).InfoS("PodIP is present on the Pod", "Pod", klog.KObj(pod), "UID", pod.UID, "IP", pod.Status.PodIP)
+		return false, nil
 	}
+	klog.V(2).InfoS("PodIP is present on the Pod", "Pod", klog.KObj(pod), "UID", pod.UID, "IP", pod.Status.PodIP)
 
 	containerID, err := controllerhelpers.GetScyllaContainerID(pod)
 	if err != nil {
-		return controllertools.NonRetriable(
+		return false, controllertools.NonRetriable(
 			fmt.Errorf("can't get scylla container id in pod %q: %v", naming.ObjRef(pod), err),
 		)
 	}
 
 	if len(containerID) == 0 {
 		klog.V(2).InfoS("ScyllaDB ContainerID is not yet set", "Pod", klog.KObj(pod), "UID", pod.UID)
-		ignited = false
-	} else {
-		klog.V(2).InfoS("Pod has ScyllaDB ContainerID set", "Pod", klog.KObj(pod), "UID", pod.UID, "ContainerID", containerID)
+		return false, nil
 	}
+	klog.V(2).InfoS("Pod has ScyllaDB ContainerID set", "Pod", klog.KObj(pod), "UID", pod.UID, "ContainerID", containerID)
 
 	cmLabelSelector := labels.Set{
 		naming.OwnerUIDLabel:      string(pod.UID),
@@ -154,20 +145,20 @@ func (c *Controller) Sync(ctx context.Context) error {
 	}.AsSelector()
 	configMaps, err := c.configMapLister.ConfigMaps(c.namespace).List(cmLabelSelector)
 	if err != nil {
-		return fmt.Errorf("can't list tuning configmap: %w", err)
+		return false, fmt.Errorf("can't list tuning configmap: %w", err)
 	}
 
 	switch l := len(configMaps); l {
 	case 0:
 		klog.V(2).InfoS("Tuning ConfigMap for pod is not yet available", "Pod", klog.KObj(pod), "UID", pod.UID)
-		ignited = false
+		return false, nil
 
 	case 1:
 		cm := configMaps[0]
 		src := &internalapi.SidecarRuntimeConfig{}
 		src, err = controllerhelpers.GetSidecarRuntimeConfigFromConfigMap(cm)
 		if err != nil {
-			return controllertools.NonRetriable(
+			return false, controllertools.NonRetriable(
 				fmt.Errorf("can't get sidecar runtime config from configmap %q: %w", naming.ObjRef(cm), err),
 			)
 		}
@@ -179,7 +170,7 @@ func (c *Controller) Sync(ctx context.Context) error {
 					"ContainerID", containerID,
 					"NodeConfig", src.BlockingNodeConfigs,
 				)
-				ignited = false
+				return false, nil
 			}
 		} else {
 			klog.V(2).InfoS("Scylla runtime config is not yet updated with our ContainerID",
@@ -187,11 +178,52 @@ func (c *Controller) Sync(ctx context.Context) error {
 				"ConfigContainerID", src.ContainerID,
 				"SidecarContainerID", containerID,
 			)
-			ignited = false
+			return false, nil
 		}
 
 	default:
-		return fmt.Errorf("mutiple tuning configmaps are present for pod %q with UID %q", naming.ObjRef(pod), pod.UID)
+		return false, fmt.Errorf("mutiple tuning configmaps are present for pod %q with UID %q", naming.ObjRef(pod), pod.UID)
+	}
+
+	return true, nil
+}
+func (c *Controller) Sync(ctx context.Context) error {
+	startTime := time.Now()
+	klog.V(4).InfoS("Started syncing observer", "Name", c.Observer.Name(), "startTime", startTime)
+	defer func() {
+		klog.V(4).InfoS("Finished syncing observer", "Name", c.Observer.Name(), "duration", time.Since(startTime))
+	}()
+
+	svc, err := c.serviceLister.Services(c.namespace).Get(c.serviceName)
+	if err != nil {
+		return fmt.Errorf("can't get service %q: %w", c.serviceName, err)
+	}
+
+	var ignitionOverride *bool
+	if svc.Annotations != nil {
+		forceIgnitionString, hasForceIgnitionString := svc.Annotations[naming.ForceIgnitionValueAnnotation]
+		if hasForceIgnitionString {
+			switch forceIgnitionString {
+			case "true":
+				ignitionOverride = pointer.Ptr(true)
+			case "false":
+				ignitionOverride = pointer.Ptr(false)
+			default:
+				klog.ErrorS(errors.New("invalid ignition override value"), "Value", forceIgnitionString, "Key", naming.ForceIgnitionValueAnnotation)
+				ignitionOverride = nil
+			}
+		}
+	}
+
+	var ignited bool
+	if ignitionOverride != nil {
+		ignited = *ignitionOverride
+		klog.InfoS("Forcing ignition state", "Ignited", ignited, "Annotation", naming.ForceIgnitionValueAnnotation)
+	} else {
+		ignited, err = c.evaluateIgnitionState()
+		if err != nil {
+			return fmt.Errorf("can't evaluate ignition state: %w", err)
+		}
 	}
 
 	if ignited {

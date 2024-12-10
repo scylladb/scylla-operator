@@ -547,8 +547,10 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 								{
 									Name: scylladbClientCAVolumeName,
 									VolumeSource: corev1.VolumeSource{
-										Secret: &corev1.SecretVolumeSource{
-											SecretName: naming.GetScyllaClusterLocalClientCAName(sdc.Name),
+										ConfigMap: &corev1.ConfigMapVolumeSource{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: naming.GetScyllaClusterLocalClientCAName(sdc.Name),
+											},
 										},
 									},
 								},
@@ -747,7 +749,7 @@ exec /mnt/shared/scylla-operator sidecar \
 										},
 										{
 											Name:      scylladbClientCAVolumeName,
-											MountPath: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/client-ca",
+											MountPath: "/var/run/configmaps/scylla-operator.scylladb.com/scylladb/client-ca",
 											ReadOnly:  true,
 										},
 										{

@@ -115,6 +115,30 @@ func ContextForPodStartup(parent context.Context) (context.Context, context.Canc
 	return context.WithTimeout(parent, imagePullTimeout)
 }
 
+func RolloutTimeoutForRemoteKubernetesCluster(rkc *scyllav1alpha1.RemoteKubernetesCluster) time.Duration {
+	healthcheckProbesTimeout := time.Duration(0)
+	if rkc.Spec.ClientHealthcheckProbes != nil {
+		healthcheckProbesTimeout = 2 * time.Duration(rkc.Spec.ClientHealthcheckProbes.PeriodSeconds) * time.Second
+	}
+	return time.Minute + healthcheckProbesTimeout
+}
+
+func ContextForRemoteKubernetesClusterRollout(ctx context.Context, rkc *scyllav1alpha1.RemoteKubernetesCluster) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, RolloutTimeoutForRemoteKubernetesCluster(rkc))
+}
+
+func RolloutTimeoutForScyllaDBCluster(sc *scyllav1alpha1.ScyllaDBCluster) time.Duration {
+	return SyncTimeout + time.Duration(controllerhelpers.GetScyllaDBClusterNodeCount(sc))*memberRolloutTimeout
+}
+
+func RolloutTimeoutForMultiDatacenterScyllaDBCluster(sc *scyllav1alpha1.ScyllaDBCluster) time.Duration {
+	return SyncTimeout + time.Duration(controllerhelpers.GetScyllaDBClusterNodeCount(sc))*multiDatacenterMemberRolloutTimeout
+}
+
+func ContextForMultiDatacenterScyllaDBClusterRollout(ctx context.Context, sc *scyllav1alpha1.ScyllaDBCluster) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, RolloutTimeoutForMultiDatacenterScyllaDBCluster(sc))
+}
+
 func IsScyllaClusterRolledOut(sc *scyllav1.ScyllaCluster) (bool, error) {
 	if !helpers.IsStatusConditionPresentAndTrue(sc.Status.Conditions, scyllav1.AvailableCondition, sc.Generation) {
 		return false, nil
@@ -147,6 +171,42 @@ func IsScyllaDBMonitoringRolledOut(sm *scyllav1alpha1.ScyllaDBMonitoring) (bool,
 	}
 
 	framework.Infof("ScyllaDBMonitoring %s (RV=%s) is rolled out", klog.KObj(sm), sm.ResourceVersion)
+
+	return true, nil
+}
+
+func IsRemoteKubernetesClusterRolledOut(rkc *scyllav1alpha1.RemoteKubernetesCluster) (bool, error) {
+	if !helpers.IsStatusConditionPresentAndTrue(rkc.Status.Conditions, scyllav1alpha1.AvailableCondition, rkc.Generation) {
+		return false, nil
+	}
+
+	if !helpers.IsStatusConditionPresentAndFalse(rkc.Status.Conditions, scyllav1alpha1.ProgressingCondition, rkc.Generation) {
+		return false, nil
+	}
+
+	if !helpers.IsStatusConditionPresentAndFalse(rkc.Status.Conditions, scyllav1alpha1.DegradedCondition, rkc.Generation) {
+		return false, nil
+	}
+
+	framework.Infof("RemoteKubernetesCluster %s (RV=%s) is rolled out", klog.KObj(rkc), rkc.ResourceVersion)
+
+	return true, nil
+}
+
+func IsScyllaDBClusterRolledOut(sc *scyllav1alpha1.ScyllaDBCluster) (bool, error) {
+	if !helpers.IsStatusConditionPresentAndTrue(sc.Status.Conditions, scyllav1alpha1.AvailableCondition, sc.Generation) {
+		return false, nil
+	}
+
+	if !helpers.IsStatusConditionPresentAndFalse(sc.Status.Conditions, scyllav1alpha1.ProgressingCondition, sc.Generation) {
+		return false, nil
+	}
+
+	if !helpers.IsStatusConditionPresentAndFalse(sc.Status.Conditions, scyllav1alpha1.DegradedCondition, sc.Generation) {
+		return false, nil
+	}
+
+	framework.Infof("ScyllaDBCluster %s (RV=%s) is rolled out", klog.KObj(sc), sc.ResourceVersion)
 
 	return true, nil
 }

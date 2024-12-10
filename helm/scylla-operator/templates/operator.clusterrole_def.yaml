@@ -107,6 +107,8 @@ rules:
   - scyllaclusters
   - scylladbmonitorings
   - scylladbdatacenters
+  - remotekubernetesclusters
+  - scylladbclusters
   verbs:
   - create
   - delete
@@ -121,6 +123,8 @@ rules:
   - scyllaclusters/status
   - scylladbmonitorings/status
   - scylladbdatacenters/status
+  - remotekubernetesclusters/status
+  - scylladbclusters/status
   verbs:
   - get
   - list

@@ -723,3 +723,285 @@ func TestIsNodeTunedForContainer(t *testing.T) {
 		})
 	}
 }
+
+// Test names follow the following naming format:
+// DCT() - refers to DatacenterTemplate
+// RT() - refers to RackTemplate
+// R - refers to RackSpec
+// Objects may be embedded within each other via parentheses.
+// Number close to or embedded in means the number of nodes is specified there.
+func TestGetNodeCount(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name              string
+		cluster           *scyllav1alpha1.ScyllaDBCluster
+		expectedNodeCount int32
+	}{
+		{
+			name: "DCT(RT(3),R,R,R)-DC()",
+			cluster: &scyllav1alpha1.ScyllaDBCluster{
+				Spec: scyllav1alpha1.ScyllaDBClusterSpec{
+					DatacenterTemplate: &scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
+						RackTemplate: &scyllav1alpha1.RackTemplate{
+							Nodes: pointer.Ptr[int32](3),
+						},
+						Racks: []scyllav1alpha1.RackSpec{
+							{
+								Name: "a",
+							},
+							{
+								Name: "b",
+							},
+							{
+								Name: "c",
+							},
+						},
+					},
+					Datacenters: []scyllav1alpha1.ScyllaDBClusterDatacenter{
+						{
+							Name: "dc1",
+						},
+					},
+				},
+			},
+			expectedNodeCount: 9,
+		},
+		{
+			name: "DCT(RT(3),R,R,R)-DC(),DC(),DC()",
+			cluster: &scyllav1alpha1.ScyllaDBCluster{
+				Spec: scyllav1alpha1.ScyllaDBClusterSpec{
+					DatacenterTemplate: &scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
+						RackTemplate: &scyllav1alpha1.RackTemplate{
+							Nodes: pointer.Ptr[int32](3),
+						},
+						Racks: []scyllav1alpha1.RackSpec{
+							{
+								Name: "a",
+							},
+							{
+								Name: "b",
+							},
+							{
+								Name: "c",
+							},
+						},
+					},
+					Datacenters: []scyllav1alpha1.ScyllaDBClusterDatacenter{
+						{
+							Name: "dc1",
+						},
+						{
+							Name: "dc2",
+						},
+						{
+							Name: "dc3",
+						},
+					},
+				},
+			},
+			expectedNodeCount: 27,
+		},
+		{
+			name: "DCT(RT(3),R,R,R)-DC(),DC(RT(1)),DC()",
+			cluster: &scyllav1alpha1.ScyllaDBCluster{
+				Spec: scyllav1alpha1.ScyllaDBClusterSpec{
+					DatacenterTemplate: &scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
+						RackTemplate: &scyllav1alpha1.RackTemplate{
+							Nodes: pointer.Ptr[int32](3),
+						},
+						Racks: []scyllav1alpha1.RackSpec{
+							{
+								Name: "a",
+							},
+							{
+								Name: "b",
+							},
+							{
+								Name: "c",
+							},
+						},
+					},
+					Datacenters: []scyllav1alpha1.ScyllaDBClusterDatacenter{
+						{
+							Name: "dc1",
+						},
+						{
+							ScyllaDBClusterDatacenterTemplate: scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
+								RackTemplate: &scyllav1alpha1.RackTemplate{
+									Nodes: pointer.Ptr[int32](1),
+								},
+							},
+							Name: "dc2",
+						},
+						{
+							Name: "dc3",
+						},
+					},
+				},
+			},
+			expectedNodeCount: 21,
+		},
+		{
+			name: "DCT(RT(3),R,R,R)-DC(),DC(RT(1),R,R4),DC()",
+			cluster: &scyllav1alpha1.ScyllaDBCluster{
+				Spec: scyllav1alpha1.ScyllaDBClusterSpec{
+					DatacenterTemplate: &scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
+						RackTemplate: &scyllav1alpha1.RackTemplate{
+							Nodes: pointer.Ptr[int32](3),
+						},
+						Racks: []scyllav1alpha1.RackSpec{
+							{
+								Name: "a",
+							},
+							{
+								Name: "b",
+							},
+							{
+								Name: "c",
+							},
+						},
+					},
+					Datacenters: []scyllav1alpha1.ScyllaDBClusterDatacenter{
+						{
+							Name: "dc1",
+						},
+						{
+							ScyllaDBClusterDatacenterTemplate: scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
+								RackTemplate: &scyllav1alpha1.RackTemplate{
+									Nodes: pointer.Ptr[int32](1),
+								},
+								Racks: []scyllav1alpha1.RackSpec{
+									{
+										Name: "a",
+									},
+									{
+										Name: "b",
+										RackTemplate: scyllav1alpha1.RackTemplate{
+											Nodes: pointer.Ptr[int32](4),
+										},
+									},
+								},
+							},
+							Name: "dc2",
+						},
+						{
+							Name: "dc3",
+						},
+					},
+				},
+			},
+			expectedNodeCount: 23,
+		},
+		{
+			name: "DC(R1),DC(R1,R2),DC(R3,R2,R1)",
+			cluster: &scyllav1alpha1.ScyllaDBCluster{
+				Spec: scyllav1alpha1.ScyllaDBClusterSpec{
+					Datacenters: []scyllav1alpha1.ScyllaDBClusterDatacenter{
+						{
+							Name: "dc1",
+							ScyllaDBClusterDatacenterTemplate: scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
+								Racks: []scyllav1alpha1.RackSpec{
+									{
+										Name: "a",
+										RackTemplate: scyllav1alpha1.RackTemplate{
+											Nodes: pointer.Ptr[int32](1),
+										},
+									},
+								},
+							},
+						},
+						{
+							ScyllaDBClusterDatacenterTemplate: scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
+								Racks: []scyllav1alpha1.RackSpec{
+									{
+										Name: "a",
+										RackTemplate: scyllav1alpha1.RackTemplate{
+											Nodes: pointer.Ptr[int32](1),
+										},
+									},
+									{
+										Name: "b",
+										RackTemplate: scyllav1alpha1.RackTemplate{
+											Nodes: pointer.Ptr[int32](2),
+										},
+									},
+								},
+							},
+							Name: "dc2",
+						},
+						{
+							ScyllaDBClusterDatacenterTemplate: scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
+								Racks: []scyllav1alpha1.RackSpec{
+									{
+										Name: "a",
+										RackTemplate: scyllav1alpha1.RackTemplate{
+											Nodes: pointer.Ptr[int32](3),
+										},
+									},
+									{
+										Name: "b",
+										RackTemplate: scyllav1alpha1.RackTemplate{
+											Nodes: pointer.Ptr[int32](2),
+										},
+									},
+									{
+										Name: "c",
+										RackTemplate: scyllav1alpha1.RackTemplate{
+											Nodes: pointer.Ptr[int32](1),
+										},
+									},
+								},
+							},
+							Name: "dc3",
+						},
+					},
+				},
+			},
+			expectedNodeCount: 10,
+		},
+		{
+			name: "DC(RT(3),R,R2,R)",
+			cluster: &scyllav1alpha1.ScyllaDBCluster{
+				Spec: scyllav1alpha1.ScyllaDBClusterSpec{
+					Datacenters: []scyllav1alpha1.ScyllaDBClusterDatacenter{
+						{
+							ScyllaDBClusterDatacenterTemplate: scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
+								RackTemplate: &scyllav1alpha1.RackTemplate{
+									Nodes: pointer.Ptr[int32](3),
+								},
+								Racks: []scyllav1alpha1.RackSpec{
+									{
+										Name: "a",
+									},
+									{
+										Name: "b",
+										RackTemplate: scyllav1alpha1.RackTemplate{
+											Nodes: pointer.Ptr[int32](2),
+										},
+									},
+									{
+										Name: "c",
+									},
+								},
+							},
+							Name: "dc1",
+						},
+					},
+				},
+			},
+			expectedNodeCount: 8,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			gotNodeCount := GetScyllaDBClusterNodeCount(tc.cluster)
+			if gotNodeCount != tc.expectedNodeCount {
+				t.Errorf("expected node count to be %d, got %d", tc.expectedNodeCount, gotNodeCount)
+			}
+		})
+	}
+}

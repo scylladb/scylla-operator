@@ -246,3 +246,17 @@ func GetScyllaDBDatacenterGossipDatacenterName(sdc *scyllav1alpha1.ScyllaDBDatac
 func UpgradeContextConfigMapName(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
 	return fmt.Sprintf("%s-upgrade-context", sdc.Name)
 }
+
+func DCNameFromSeedServiceAddress(sc *scyllav1alpha1.ScyllaDBCluster, seedServiceAddress, namespace string) string {
+	dcName := strings.TrimPrefix(seedServiceAddress, fmt.Sprintf("%s-", sc.Name))
+	dcName = strings.TrimSuffix(dcName, fmt.Sprintf("-seed.%s.svc", namespace))
+	return dcName
+}
+
+func SeedService(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter) string {
+	return fmt.Sprintf("%s-%s-seed", sc.Name, dc.Name)
+}
+
+func ScyllaDBDatacenterName(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter) string {
+	return fmt.Sprintf("%s-%s", sc.Name, dc.Name)
+}

@@ -165,7 +165,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		scyllaPod, err := f.KubeClient().CoreV1().Pods(sc.Namespace).Get(ctx, podName, metav1.GetOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		stdout, stderr, err := executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), scyllaPod,
+		stdout, stderr, err := executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), scyllaPod,
 			"bash",
 			"-euExo",
 			"pipefail",
@@ -180,7 +180,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		o.Expect(stdout).To(o.Equal(nrOpenLimit))
 
 		framework.By("Validating hard file limit of Scylla process")
-		stdout, stderr, err = executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), scyllaPod,
+		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), scyllaPod,
 			"bash",
 			"-euExo",
 			"pipefail",
@@ -263,6 +263,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		sc := f.GetDefaultScyllaCluster()
+		o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
 		sc.Spec.Datacenter.Racks[0].AgentResources = corev1.ResourceRequirements{
 			Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceCPU:    resource.MustParse("50m"),
@@ -332,6 +333,26 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(utils.IsScyllaClusterRolledOut(sc)).To(o.BeFalse())
 
+		framework.By("Verifying the containers are blocked and not ready")
+		podSelector := labels.Set(naming.ClusterLabelsForScyllaCluster(sc)).AsSelector()
+		scPods, err := f.KubeClient().CoreV1().Pods(sc.Namespace).List(ctx, metav1.ListOptions{
+			LabelSelector: podSelector.String(),
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(scPods.Items).NotTo(o.BeEmpty())
+
+		for _, pod := range scPods.Items {
+			crm := utils.GetContainerReadinessMap(&pod)
+			o.Expect(crm).To(
+				o.And(
+					o.HaveKeyWithValue(naming.ScyllaContainerName, false),
+					o.HaveKeyWithValue(naming.ScyllaDBIgnitionContainerName, false),
+					o.HaveKeyWithValue(naming.ScyllaManagerAgentContainerName, false),
+				),
+				fmt.Sprintf("container(s) in Pod %q don't match the expected state", pod.Name),
+			)
+		}
+
 		framework.By("Unblocking tuning")
 		intermittentArtifactsDir := ""
 		if len(f.GetDefaultArtifactsDir()) != 0 {
@@ -400,7 +421,20 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(ctx4, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+		scyllaclusterverification.VerifyWithOptions(
+			ctx,
+			f.KubeClient(),
+			f.ScyllaClient(),
+			sc,
+			scyllaclusterverification.VerifyOptions{
+				VerifyStatefulSetOptions: scyllaclusterverification.VerifyStatefulSetOptions{
+					PodRestartCountAssertion: func(a o.Assertion, containerName, podName string) {
+						// We expect restart(s) from the startup probe, usually 1.
+						a.To(o.BeNumerically("<=", 2), fmt.Sprintf("container %q in pod %q should not be restarted by the startup probe more than twice", containerName, podName))
+					},
+				},
+			},
+		)
 
 		framework.By("Verifying ConfigMap content")
 		ctx5, ctx5Cancel := context.WithTimeout(ctx, apiCallTimeout)

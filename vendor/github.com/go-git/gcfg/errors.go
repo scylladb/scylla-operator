@@ -1,41 +1,50 @@
 package gcfg
 
 import (
-	"gopkg.in/warnings.v0"
+	"errors"
+	"fmt"
+)
+
+var (
+	ErrSyntaxWarning = errors.New("syntax warning")
+
+	ErrMissingEscapeSequence = errors.New("missing escape sequence")
+	ErrMissingEndQuote       = errors.New("missing end quote")
 )
 
 // FatalOnly filters the results of a Read*Into invocation and returns only
 // fatal errors. That is, errors (warnings) indicating data for unknown
 // sections / variables is ignored. Example invocation:
 //
-//  err := gcfg.FatalOnly(gcfg.ReadFileInto(&cfg, configFile))
-//  if err != nil {
-//      ...
-//
+//	err := gcfg.FatalOnly(gcfg.ReadFileInto(&cfg, configFile))
+//	if err != nil {
+//	    ...
 func FatalOnly(err error) error {
-	return warnings.FatalOnly(err)
-}
-
-func isFatal(err error) bool {
-	_, ok := err.(extraData)
-	return !ok
-}
-
-type extraData struct {
-	section    string
-	subsection *string
-	variable   *string
-}
-
-func (e extraData) Error() string {
-	s := "can't store data at section \"" + e.section + "\""
-	if e.subsection != nil {
-		s += ", subsection \"" + *e.subsection + "\""
+	for {
+		if err == nil {
+			return nil
+		}
+		err = errors.Unwrap(err)
+		if !errors.Is(err, ErrSyntaxWarning) {
+			return err
+		}
 	}
-	if e.variable != nil {
-		s += ", variable \"" + *e.variable + "\""
-	}
-	return s
 }
 
-var _ error = extraData{}
+func newSyntaxWarning(sec, sub, variable string) error {
+	msg := fmt.Sprintf("can't store data in section %q", sec)
+	if sub != "" {
+		msg += fmt.Sprintf(", subsection %q", sub)
+	}
+	if variable != "" {
+		msg += fmt.Sprintf(", variable %q", variable)
+	}
+	return fmt.Errorf("%w: %s", ErrSyntaxWarning, msg)
+}
+
+func joinNonFatal(prev, cur error) (error, bool) {
+	if !errors.Is(cur, ErrSyntaxWarning) {
+		return cur, true
+	}
+	return errors.Join(prev, cur), false
+}

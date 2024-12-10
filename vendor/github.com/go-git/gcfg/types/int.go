@@ -1,8 +1,14 @@
 package types
 
 import (
+	"errors"
 	"fmt"
 	"strings"
+)
+
+var (
+	ErrAmbiguousInt    = fmt.Errorf("ambiguous integer value; must include '0' prefix")
+	ErrUnsupportedMode = errors.New("unsupported mode")
 )
 
 // An IntMode is a mode for parsing integer values, representing a set of
@@ -30,8 +36,6 @@ func (m IntMode) String() string {
 	}
 	return "IntMode(" + strings.Join(modes, "|") + ")"
 }
-
-var errIntAmbig = fmt.Errorf("ambiguous integer value; must include '0' prefix")
 
 func prefix0(val string) bool {
 	return strings.HasPrefix(val, "0") || strings.HasPrefix(val, "-0")
@@ -76,11 +80,11 @@ func ParseInt(intptr interface{}, val string, mode IntMode) error {
 		if prefix0(val) {
 			verb = 'v'
 		} else {
-			return errIntAmbig
+			return ErrAmbiguousInt
 		}
 	}
 	if verb == 0 {
-		panic("unsupported mode")
+		return ErrUnsupportedMode
 	}
 	return ScanFully(intptr, val, verb)
 }

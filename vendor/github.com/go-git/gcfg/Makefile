@@ -10,7 +10,7 @@ COVERAGE_REPORT = coverage.out
 COVERAGE_MODE = count
 
 test:
-	$(GOTEST) ./...
+	$(GOTEST) -race ./...
 
 test-coverage:
 	echo "" > $(COVERAGE_REPORT); \

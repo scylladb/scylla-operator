@@ -1,3 +1,23 @@
+# v1.15.22 (2024-12-19)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.15.21 (2024-12-11)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.15.20 (2024-12-03.2)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.15.19 (2024-12-03)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.15.18 (2024-12-02)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.15.17 (2024-11-18)
 
 * **Dependency Update**: Update to smithy-go v1.22.1.

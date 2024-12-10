@@ -11,6 +11,7 @@
 package scanner
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"unicode"
@@ -18,6 +19,8 @@ import (
 
 	"github.com/go-git/gcfg/token"
 )
+
+var ErrSourceLenAndSizeMismatch = errors.New("source length and file size mismatch")
 
 // An ErrorHandler may be provided to Scanner.Init. If a syntax error is
 // encountered and a handler was installed, the handler is called with a
@@ -49,7 +52,7 @@ type Scanner struct {
 
 // Read the next Unicode char into s.ch.
 // s.ch < 0 means end-of-file.
-func (s *Scanner) next() {
+func (s *Scanner) next() error {
 	if s.rdOffset < len(s.src) {
 		s.offset = s.rdOffset
 		if s.ch == '\n' {
@@ -59,12 +62,18 @@ func (s *Scanner) next() {
 		r, w := rune(s.src[s.rdOffset]), 1
 		switch {
 		case r == 0:
-			s.error(s.offset, "illegal character NUL")
+			err := s.error(s.offset, "illegal character NUL")
+			if err != nil {
+				return err
+			}
 		case r >= 0x80:
 			// not ASCII
 			r, w = utf8.DecodeRune(s.src[s.rdOffset:])
 			if r == utf8.RuneError && w == 1 {
-				s.error(s.offset, "illegal UTF-8 encoding")
+				err := s.error(s.offset, "illegal UTF-8 encoding")
+				if err != nil {
+					return err
+				}
 			}
 		}
 		s.rdOffset += w
@@ -77,6 +86,7 @@ func (s *Scanner) next() {
 		}
 		s.ch = -1 // eof
 	}
+	return nil
 }
 
 // A mode value is a set of flags (or 0).
@@ -91,8 +101,9 @@ const (
 // scanner at the beginning of src. The scanner uses the file set file
 // for position information and it adds line information for each line.
 // It is ok to re-use the same file when re-scanning the same file as
-// line information which is already present is ignored. Init causes a
-// panic if the file size does not match the src size.
+// line information which is already present is ignored. Init returns
+// ErrSourceLenAndSizeMismatch if the file size does not match the src
+// size.
 //
 // Calls to Scan will invoke the error handler err if they encounter a
 // syntax error and err is not nil. Also, for each error encountered,
@@ -101,10 +112,11 @@ const (
 //
 // Note that Init may call err if there is an error in the first character
 // of the file.
-func (s *Scanner) Init(file *token.File, src []byte, err ErrorHandler, mode Mode) {
+func (s *Scanner) Init(file *token.File, src []byte, err ErrorHandler, mode Mode) error {
 	// Explicitly initialize all fields since a scanner may be reused.
 	if file.Size() != len(src) {
-		panic(fmt.Sprintf("file size (%d) does not match src len (%d)", file.Size(), len(src)))
+		return fmt.Errorf("%w: file size (%d) src len (%d)",
+			ErrSourceLenAndSizeMismatch, file.Size(), len(src))
 	}
 	s.file = file
 	s.dir, _ = filepath.Split(file.Name())
@@ -120,13 +132,23 @@ func (s *Scanner) Init(file *token.File, src []byte, err ErrorHandler, mode Mode
 	s.nextVal = false
 
 	s.next()
+	return nil
 }
 
-func (s *Scanner) error(offs int, msg string) {
+func (s *Scanner) error(offs int, msg string) error {
 	if s.err != nil {
-		s.err(s.file.Position(s.file.Pos(offs)), msg)
+		pos, err := s.file.Pos(offs)
+		if err != nil {
+			return err
+		}
+		position, err := s.file.Position(pos)
+		if err != nil {
+			return err
+		}
+		s.err(position, msg)
 	}
 	s.ErrorCount++
+	return nil
 }
 
 func (s *Scanner) scanComment() string {
@@ -156,7 +178,7 @@ func (s *Scanner) scanIdentifier() string {
 }
 
 // val indicate if we are scanning a value (vs a header)
-func (s *Scanner) scanEscape(val bool) {
+func (s *Scanner) scanEscape(val bool) error {
 	offs := s.offset
 	ch := s.ch
 	s.next() // always make progress
@@ -169,11 +191,15 @@ func (s *Scanner) scanEscape(val bool) {
 		}
 		fallthrough
 	default:
-		s.error(offs, "unknown escape sequence")
+		err := s.error(offs, "unknown escape sequence")
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func (s *Scanner) scanString() string {
+func (s *Scanner) scanString() (string, error) {
 	// '"' opening already consumed
 	offs := s.offset - 1
 
@@ -181,7 +207,10 @@ func (s *Scanner) scanString() string {
 		ch := s.ch
 		s.next()
 		if ch == '\n' || ch < 0 {
-			s.error(offs, "string not terminated")
+			err := s.error(offs, "string not terminated")
+			if err != nil {
+				return "", err
+			}
 			break
 		}
 		if ch == '\\' {
@@ -189,9 +218,12 @@ func (s *Scanner) scanString() string {
 		}
 	}
 
-	s.next()
+	err := s.next()
+	if err != nil {
+		return "", err
+	}
 
-	return string(s.src[offs:s.offset])
+	return string(s.src[offs:s.offset]), nil
 }
 
 func stripCR(b []byte) []byte {
@@ -206,7 +238,7 @@ func stripCR(b []byte) []byte {
 	return c[:i]
 }
 
-func (s *Scanner) scanValString() string {
+func (s *Scanner) scanValString() (string, error) {
 	offs := s.offset
 
 	hasCR := false
@@ -234,7 +266,10 @@ loop:
 		case ch == '\r':
 			hasCR = true
 		case ch < 0 || inQuote && ch == '\n':
-			s.error(offs, "string not terminated")
+			err := s.error(offs, "string not terminated")
+			if err != nil {
+				return "", err
+			}
 			break loop
 		}
 		if inQuote || !isWhiteSpace(ch) {
@@ -247,7 +282,7 @@ loop:
 		lit = stripCR(lit)
 	}
 
-	return string(lit)
+	return string(lit), nil
 }
 
 func isWhiteSpace(ch rune) bool {
@@ -282,17 +317,27 @@ func (s *Scanner) skipWhitespace() {
 // Scan adds line information to the file added to the file
 // set with Init. Token positions are relative to that file
 // and thus relative to the file set.
-func (s *Scanner) Scan() (pos token.Pos, tok token.Token, lit string) {
+func (s *Scanner) Scan() (pos token.Pos, tok token.Token, lit string, err error) {
 scanAgain:
 	s.skipWhitespace()
 
 	// current token start
-	pos = s.file.Pos(s.offset)
+	p, err2 := s.file.Pos(s.offset)
+	if err2 != nil {
+		err = fmt.Errorf("unexpected error at pos %v offset %d: %w", p, s.offset, err2)
+		return
+	}
+	pos = p
 
 	// determine token value
 	switch ch := s.ch; {
 	case s.nextVal:
-		lit = s.scanValString()
+		l, err2 := s.scanValString()
+		if err2 != nil {
+			err = fmt.Errorf("unexpected error at ch %v: %w", ch, err2)
+			return
+		}
+		lit = l
 		tok = token.STRING
 		s.nextVal = false
 	case isLetter(ch):
@@ -307,7 +352,12 @@ scanAgain:
 			tok = token.EOL
 		case '"':
 			tok = token.STRING
-			lit = s.scanString()
+			l, err2 := s.scanString()
+			if err2 != nil {
+				err = fmt.Errorf("unexpected error at ch %v: %w", ch, err2)
+				return
+			}
+			lit = l
 		case '[':
 			tok = token.LBRACK
 		case ']':
@@ -324,7 +374,17 @@ scanAgain:
 			tok = token.ASSIGN
 			s.nextVal = true
 		default:
-			s.error(s.file.Offset(pos), fmt.Sprintf("illegal character %#U", ch))
+			offset, err2 := s.file.Offset(pos)
+			if err2 != nil {
+				err = fmt.Errorf("unexpected error at pos %v: %w", pos, err2)
+				return
+			}
+
+			err2 = s.error(offset, fmt.Sprintf("illegal character %#U", ch))
+			if err2 != nil {
+				err = fmt.Errorf("unexpected error at ch %v offset %d: %w", ch, s.offset, err2)
+				return
+			}
 			tok = token.ILLEGAL
 			lit = string(ch)
 		}

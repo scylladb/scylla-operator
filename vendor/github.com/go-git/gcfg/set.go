@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -11,9 +12,15 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"gopkg.in/warnings.v0"
-
 	"github.com/go-git/gcfg/types"
+)
+
+var (
+	ErrUnsupportedType             = errors.New("unsupported type")
+	ErrBlankUnsupported            = errors.New("blank value not supported for type")
+	ErrConfigMustBePointerToStruct = errors.New("config must be a pointer to a struct")
+	ErrInvalidMapFieldForSection   = errors.New("map field for section must have string keys and pointer-to-struct values")
+	ErrInvalidFieldForSection      = errors.New("field for section must be a map or a struct")
 )
 
 type tag struct {
@@ -59,9 +66,6 @@ func fieldFold(v reflect.Value, name string) (reflect.Value, tag) {
 
 type setter func(destp interface{}, blank bool, val string, t tag) error
 
-var errUnsupportedType = fmt.Errorf("unsupported type")
-var errBlankUnsupported = fmt.Errorf("blank value not supported for type")
-
 var setters = []setter{
 	typeSetter, textUnmarshalerSetter, kindSetter, scanSetter,
 }
@@ -69,10 +73,10 @@ var setters = []setter{
 func textUnmarshalerSetter(d interface{}, blank bool, val string, t tag) error {
 	dtu, ok := d.(encoding.TextUnmarshaler)
 	if !ok {
-		return errUnsupportedType
+		return ErrUnsupportedType
 	}
 	if blank {
-		return errBlankUnsupported
+		return ErrBlankUnsupported
 	}
 	return dtu.UnmarshalText([]byte(val))
 }
@@ -128,7 +132,7 @@ func intModeDefault(t reflect.Type) types.IntMode {
 
 func intSetter(d interface{}, blank bool, val string, t tag) error {
 	if blank {
-		return errBlankUnsupported
+		return ErrBlankUnsupported
 	}
 	mode := intMode(t.intMode)
 	if mode == 0 {
@@ -139,11 +143,11 @@ func intSetter(d interface{}, blank bool, val string, t tag) error {
 
 func stringSetter(d interface{}, blank bool, val string, t tag) error {
 	if blank {
-		return errBlankUnsupported
+		return ErrBlankUnsupported
 	}
 	dsp, ok := d.(*string)
 	if !ok {
-		return errUnsupportedType
+		return ErrUnsupportedType
 	}
 	*dsp = val
 	return nil
@@ -173,7 +177,7 @@ func typeSetter(d interface{}, blank bool, val string, tt tag) error {
 	t := reflect.ValueOf(d).Type().Elem()
 	setter, ok := typeSetters[t]
 	if !ok {
-		return errUnsupportedType
+		return ErrUnsupportedType
 	}
 	return setter(d, blank, val, tt)
 }
@@ -182,19 +186,19 @@ func kindSetter(d interface{}, blank bool, val string, tt tag) error {
 	k := reflect.ValueOf(d).Type().Elem().Kind()
 	setter, ok := kindSetters[k]
 	if !ok {
-		return errUnsupportedType
+		return ErrUnsupportedType
 	}
 	return setter(d, blank, val, tt)
 }
 
 func scanSetter(d interface{}, blank bool, val string, tt tag) error {
 	if blank {
-		return errBlankUnsupported
+		return ErrBlankUnsupported
 	}
 	return types.ScanFully(d, val, 'v')
 }
 
-func newValue(c *warnings.Collector, sect string, vCfg reflect.Value,
+func newValue(sect string, vCfg reflect.Value,
 	vType reflect.Type) (reflect.Value, error) {
 	//
 	pv := reflect.New(vType)
@@ -204,29 +208,31 @@ func newValue(c *warnings.Collector, sect string, vCfg reflect.Value,
 	if dfltField.IsValid() {
 		b := bytes.NewBuffer(nil)
 		ge := gob.NewEncoder(b)
-		if err = c.Collect(ge.EncodeValue(dfltField)); err != nil {
+		err = ge.EncodeValue(dfltField)
+		if err != nil && errors.Is(err, ErrSyntaxWarning) {
 			return pv, err
 		}
+
 		gd := gob.NewDecoder(bytes.NewReader(b.Bytes()))
-		if err = c.Collect(gd.DecodeValue(pv.Elem())); err != nil {
+		err = gd.DecodeValue(pv.Elem())
+		if err != nil && errors.Is(err, ErrSyntaxWarning) {
 			return pv, err
 		}
 	}
 	return pv, nil
 }
 
-func set(c *warnings.Collector, cfg interface{}, sect, sub, name string,
-	 value string, blankValue bool, subsectPass bool) error {
+func set(cfg interface{}, sect, sub, name string,
+	value string, blankValue bool, subsectPass bool) error {
 	//
 	vPCfg := reflect.ValueOf(cfg)
 	if vPCfg.Kind() != reflect.Ptr || vPCfg.Elem().Kind() != reflect.Struct {
-		panic(fmt.Errorf("config must be a pointer to a struct"))
+		return ErrConfigMustBePointerToStruct
 	}
 	vCfg := vPCfg.Elem()
 	vSect, _ := fieldFold(vCfg, sect)
 	if !vSect.IsValid() {
-		err := extraData{section: sect}
-		return c.Collect(err)
+		return newSyntaxWarning(sect, "", "")
 	}
 	isSubsect := vSect.Kind() == reflect.Map
 	if subsectPass != isSubsect {
@@ -237,8 +243,7 @@ func set(c *warnings.Collector, cfg interface{}, sect, sub, name string,
 		if vst.Key().Kind() != reflect.String ||
 			vst.Elem().Kind() != reflect.Ptr ||
 			vst.Elem().Elem().Kind() != reflect.Struct {
-			panic(fmt.Errorf("map field for section must have string keys and "+
-				" pointer-to-struct values: section %q", sect))
+			return fmt.Errorf("%w: section %q", ErrInvalidMapFieldForSection, sect)
 		}
 		if vSect.IsNil() {
 			vSect.Set(reflect.MakeMap(vst))
@@ -248,18 +253,16 @@ func set(c *warnings.Collector, cfg interface{}, sect, sub, name string,
 		if !pv.IsValid() {
 			vType := vSect.Type().Elem().Elem()
 			var err error
-			if pv, err = newValue(c, sect, vCfg, vType); err != nil {
+			if pv, err = newValue(sect, vCfg, vType); err != nil {
 				return err
 			}
 			vSect.SetMapIndex(k, pv)
 		}
 		vSect = pv.Elem()
 	} else if vSect.Kind() != reflect.Struct {
-		panic(fmt.Errorf("field for section must be a map or a struct: "+
-			"section %q", sect))
+		return fmt.Errorf("%w: section %q", ErrInvalidFieldForSection, sect)
 	} else if sub != "" {
-		err := extraData{section: sect, subsection: &sub}
-		return c.Collect(err)
+		return newSyntaxWarning(sect, sub, "")
 	}
 	// Empty name is a special value, meaning that only the
 	// section/subsection object is to be created, with no values set.
@@ -270,11 +273,11 @@ func set(c *warnings.Collector, cfg interface{}, sect, sub, name string,
 	if !vVar.IsValid() {
 		var err error
 		if isSubsect {
-			err = extraData{section: sect, subsection: &sub, variable: &name}
+			err = newSyntaxWarning(sect, sub, name)
 		} else {
-			err = extraData{section: sect, variable: &name}
+			err = newSyntaxWarning(sect, "", name)
 		}
-		return c.Collect(err)
+		return err
 	}
 	// vVal is either single-valued var, or newly allocated value within multi-valued var
 	var vVal reflect.Value
@@ -316,12 +319,12 @@ func set(c *warnings.Collector, cfg interface{}, sect, sub, name string,
 			ok = true
 			break
 		}
-		if err != errUnsupportedType {
+		if !errors.Is(err, ErrUnsupportedType) {
 			return err
 		}
 	}
 	if !ok {
-		// in case all setters returned errUnsupportedType
+		// in case all setters returned ErrUnsupportedType
 		return err
 	}
 	if isNew { // set reference if it was dereferenced and newly allocated

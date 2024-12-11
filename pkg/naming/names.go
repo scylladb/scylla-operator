@@ -61,6 +61,10 @@ func MemberServiceNameForScyllaCluster(r scyllav1.RackSpec, sc *scyllav1.ScyllaC
 	return fmt.Sprintf("%s-%d", StatefulSetNameForRackForScyllaCluster(r, sc), idx)
 }
 
+func PodNameForScyllaCluster(r scyllav1.RackSpec, sc *scyllav1.ScyllaCluster, idx int) string {
+	return MemberServiceNameForScyllaCluster(r, sc, idx)
+}
+
 func IdentityServiceName(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
 	return fmt.Sprintf("%s-client", sdc.Name)
 }

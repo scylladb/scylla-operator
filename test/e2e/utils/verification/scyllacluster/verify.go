@@ -60,7 +60,11 @@ func verifyPersistentVolumeClaims(ctx context.Context, coreClient corev1client.C
 	o.Expect(scPVCNames).To(o.BeEquivalentTo(expectedPvcNames))
 }
 
-func verifyStatefulset(ctx context.Context, client corev1client.CoreV1Interface, sts *appsv1.StatefulSet, sdc *scyllav1alpha1.ScyllaDBDatacenter) {
+type VerifyStatefulSetOptions struct {
+	PodRestartCountAssertion func(a o.Assertion, containerName, podName string)
+}
+
+func verifyStatefulset(ctx context.Context, client corev1client.CoreV1Interface, sts *appsv1.StatefulSet, sdc *scyllav1alpha1.ScyllaDBDatacenter, options VerifyStatefulSetOptions) {
 	o.Expect(sts.ObjectMeta.OwnerReferences).To(o.BeEquivalentTo(
 		[]metav1.OwnerReference{
 			{
@@ -89,7 +93,7 @@ func verifyStatefulset(ctx context.Context, client corev1client.CoreV1Interface,
 	for _, pod := range podMap {
 		o.Expect(pod.Status.ContainerStatuses).NotTo(o.BeEmpty())
 		for _, cs := range pod.Status.ContainerStatuses {
-			o.Expect(cs.RestartCount).To(o.BeZero(), fmt.Sprintf("container %q in pod %q should not be restarted", cs.Name, pod.Name))
+			options.PodRestartCountAssertion(o.ExpectWithOffset(1, cs.RestartCount), cs.Name, pod.Name)
 		}
 	}
 }
@@ -118,7 +122,11 @@ func verifyPodDisruptionBudget(sc *scyllav1.ScyllaCluster, pdb *policyv1.PodDisr
 	}))
 }
 
-func Verify(ctx context.Context, kubeClient kubernetes.Interface, scyllaClient scyllaclient.Interface, sc *scyllav1.ScyllaCluster) {
+type VerifyOptions struct {
+	VerifyStatefulSetOptions
+}
+
+func VerifyWithOptions(ctx context.Context, kubeClient kubernetes.Interface, scyllaClient scyllaclient.Interface, sc *scyllav1.ScyllaCluster, options VerifyOptions) {
 	framework.By("Verifying the ScyllaCluster")
 
 	sc = sc.DeepCopy()
@@ -294,7 +302,7 @@ func Verify(ctx context.Context, kubeClient kubernetes.Interface, scyllaClient s
 
 		s := statefulsets[r.Name]
 
-		verifyStatefulset(ctx, kubeClient.CoreV1(), s, sdc)
+		verifyStatefulset(ctx, kubeClient.CoreV1(), s, sdc, options.VerifyStatefulSetOptions)
 
 		o.Expect(sc.Status.Racks[r.Name].Stale).NotTo(o.BeNil())
 		o.Expect(*sc.Status.Racks[r.Name].Stale).To(o.BeFalse())
@@ -319,4 +327,20 @@ func Verify(ctx context.Context, kubeClient kubernetes.Interface, scyllaClient s
 	defer clusterClient.Close()
 
 	o.Expect(hosts).To(o.HaveLen(memberCount))
+}
+
+func Verify(ctx context.Context, kubeClient kubernetes.Interface, scyllaClient scyllaclient.Interface, sc *scyllav1.ScyllaCluster) {
+	VerifyWithOptions(
+		ctx,
+		kubeClient,
+		scyllaClient,
+		sc,
+		VerifyOptions{
+			VerifyStatefulSetOptions: VerifyStatefulSetOptions{
+				PodRestartCountAssertion: func(a o.Assertion, containerName, podName string) {
+					a.To(o.BeZero(), fmt.Sprintf("container %q in pod %q should not be restarted", containerName, podName))
+				},
+			},
+		},
+	)
 }

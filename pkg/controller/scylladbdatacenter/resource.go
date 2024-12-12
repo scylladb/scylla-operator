@@ -12,6 +12,7 @@ import (
 	scylladbassets "github.com/scylladb/scylla-operator/assets/scylladb"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
@@ -667,7 +668,7 @@ exec /mnt/shared/scylla-operator sidecar \
 									}() + ` \
 --service-name=$(SERVICE_NAME) \
 --cpu-count=$(CPU_COUNT) \
---loglevel=2 \
+` + fmt.Sprintf("--loglevel=%d", cmdutil.GetLoglevelOrDefaultOrDie()) + ` \
 ` +
 										func() string {
 											var optionalArgs []string
@@ -860,7 +861,7 @@ wait
 								"scylladb-api-status",
 								fmt.Sprintf("--port=%d", naming.ScyllaDBAPIStatusProbePort),
 								"--service-name=$(SERVICE_NAME)",
-								"--loglevel=2",
+								fmt.Sprintf("--loglevel=%d", cmdutil.GetLoglevelOrDefaultOrDie()),
 							},
 							Env: []corev1.EnvVar{
 								{
@@ -913,7 +914,7 @@ wait
 									}
 									return scyllav1alpha1.BroadcastAddressTypeServiceClusterIP
 								}()),
-								"--loglevel=2",
+								fmt.Sprintf("--loglevel=%d", cmdutil.GetLoglevelOrDefaultOrDie()),
 							},
 							Env: []corev1.EnvVar{
 								{

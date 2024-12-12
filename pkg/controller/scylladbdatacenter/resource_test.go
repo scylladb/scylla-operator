@@ -746,7 +746,7 @@ exec /mnt/shared/scylla-operator sidecar \
 --clients-broadcast-address-type=ServiceClusterIP \
 --service-name=$(SERVICE_NAME) \
 --cpu-count=$(CPU_COUNT) \
---loglevel=2 \
+--loglevel=0 \
  -- "$@"
 `),
 										"--",
@@ -901,7 +901,7 @@ wait`),
 									"scylladb-api-status",
 									"--port=8080",
 									"--service-name=$(SERVICE_NAME)",
-									"--loglevel=2",
+									"--loglevel=0",
 								},
 								Env: []corev1.EnvVar{
 									{
@@ -944,7 +944,7 @@ wait`),
 									"--service-name=$(SERVICE_NAME)",
 									"--nodes-broadcast-address-type=ServiceClusterIP",
 									"--clients-broadcast-address-type=ServiceClusterIP",
-									"--loglevel=2",
+									"--loglevel=0",
 								},
 								Env: []corev1.EnvVar{
 									{

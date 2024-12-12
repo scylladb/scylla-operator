@@ -40,5 +40,11 @@ spec:
         type: {{ .clientsBroadcastAddressType }}
   rackTemplate:
     nodes: 1
+    placement:
+      tolerations:
+      - effect: NoSchedule
+        key: scylla-operator.scylladb.com/dedicated
+        operator: Equal
+        value: scyllaclusters
   racks:
   - name: us-east-1a

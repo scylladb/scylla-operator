@@ -28,6 +28,12 @@ spec:
             resources:
               requests:
                 storage: 1Gi
+      placement:
+        tolerations:
+        - effect: NoSchedule
+          key: scylla-operator.scylladb.com/dedicated
+          operator: Equal
+          value: scyllaclusters
     grafana:
       exposeOptions:
         webInterface:

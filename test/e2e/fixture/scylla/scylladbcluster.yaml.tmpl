@@ -34,6 +34,12 @@ spec:
       nodes: 1
     racks:
     - name: a
+    placement:
+      tolerations:
+      - effect: NoSchedule
+        key: scylla-operator.scylladb.com/dedicated
+        operator: Equal
+        value: scyllaclusters
   datacenters:
   {{- range $rkcIdx, $rkc := .remoteKubernetesClusters }}
   - name: dc-{{ $rkcIdx }}

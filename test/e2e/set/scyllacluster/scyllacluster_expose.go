@@ -26,6 +26,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	"github.com/scylladb/scylla-operator/test/e2e/verification"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -78,14 +79,14 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
 
 		// Wait until node picks up regenerated certificate.
 		err = utils.WaitUntilServingCertificateIsLive(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		framework.By("Nodes reloaded the certificate")
 
-		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -137,7 +138,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 				session, err := gocqlx.WrapSession(cluster.CreateSession())
 				g.Expect(err).NotTo(o.HaveOccurred())
 
-				di := insertAndVerifyCQLData(ctx, hosts, utils.WithSession(&session))
+				di := scyllaclusterverification.InsertAndVerifyCQLData(ctx, hosts, utils.WithSession(&session))
 				di.Close()
 			}).WithTimeout(30 * time.Second).WithPolling(time.Second).Should(o.Succeed())
 		}
@@ -181,7 +182,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
 
 		svc, err = f.KubeClient().CoreV1().Services(sc.Namespace).Get(ctx, svcName, metav1.GetOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -422,7 +423,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
 
 		framework.By("Verifying AnyNode Ingresses")
 		services, err := f.KubeClient().CoreV1().Services(sc.Namespace).List(ctx, metav1.ListOptions{

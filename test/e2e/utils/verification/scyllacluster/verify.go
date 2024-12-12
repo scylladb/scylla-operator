@@ -2,6 +2,7 @@ package scyllacluster
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -12,15 +13,11 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
-	cqlclientv1alpha1 "github.com/scylladb/scylla-operator/pkg/scylla/api/cqlclient/v1alpha1"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
-	"github.com/scylladb/scylla-operator/test/e2e/scheme"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -63,7 +60,11 @@ func verifyPersistentVolumeClaims(ctx context.Context, coreClient corev1client.C
 	o.Expect(scPVCNames).To(o.BeEquivalentTo(expectedPvcNames))
 }
 
-func verifyStatefulset(sts *appsv1.StatefulSet, sdc *scyllav1alpha1.ScyllaDBDatacenter) {
+type VerifyStatefulSetOptions struct {
+	PodRestartCountAssertion func(a o.Assertion, containerName, podName string)
+}
+
+func verifyStatefulset(ctx context.Context, client corev1client.CoreV1Interface, sts *appsv1.StatefulSet, sdc *scyllav1alpha1.ScyllaDBDatacenter, options VerifyStatefulSetOptions) {
 	o.Expect(sts.ObjectMeta.OwnerReferences).To(o.BeEquivalentTo(
 		[]metav1.OwnerReference{
 			{
@@ -79,8 +80,22 @@ func verifyStatefulset(sts *appsv1.StatefulSet, sdc *scyllav1alpha1.ScyllaDBData
 	o.Expect(sts.DeletionTimestamp).To(o.BeNil())
 	o.Expect(sts.Status.ObservedGeneration).To(o.Equal(sts.Generation))
 	o.Expect(sts.Spec.Replicas).NotTo(o.BeNil())
+	o.Expect(sts.Status.Replicas).To(o.Equal(*sts.Spec.Replicas))
 	o.Expect(sts.Status.ReadyReplicas).To(o.Equal(*sts.Spec.Replicas))
 	o.Expect(sts.Status.CurrentRevision).To(o.Equal(sts.Status.UpdateRevision))
+
+	// Verify pod invariants.
+	podMap, err := utils.GetPodsForStatefulSet(ctx, client, sts)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(podMap).To(o.HaveLen(int(sts.Status.Replicas)))
+
+	// No container in the Pod should be restarted.
+	for _, pod := range podMap {
+		o.Expect(pod.Status.ContainerStatuses).NotTo(o.BeEmpty())
+		for _, cs := range pod.Status.ContainerStatuses {
+			options.PodRestartCountAssertion(o.ExpectWithOffset(1, cs.RestartCount), cs.Name, pod.Name)
+		}
+	}
 }
 
 func verifyPodDisruptionBudget(sc *scyllav1.ScyllaCluster, pdb *policyv1.PodDisruptionBudget, sdc *scyllav1alpha1.ScyllaDBDatacenter) {
@@ -107,7 +122,11 @@ func verifyPodDisruptionBudget(sc *scyllav1.ScyllaCluster, pdb *policyv1.PodDisr
 	}))
 }
 
-func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, scyllaClient scyllaclient.Interface, sc *scyllav1.ScyllaCluster) {
+type VerifyOptions struct {
+	VerifyStatefulSetOptions
+}
+
+func VerifyWithOptions(ctx context.Context, kubeClient kubernetes.Interface, scyllaClient scyllaclient.Interface, sc *scyllav1.ScyllaCluster, options VerifyOptions) {
 	framework.By("Verifying the ScyllaCluster")
 
 	sc = sc.DeepCopy()
@@ -283,7 +302,7 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 
 		s := statefulsets[r.Name]
 
-		verifyStatefulset(s, sdc)
+		verifyStatefulset(ctx, kubeClient.CoreV1(), s, sdc, options.VerifyStatefulSetOptions)
 
 		o.Expect(sc.Status.Racks[r.Name].Stale).NotTo(o.BeNil())
 		o.Expect(*sc.Status.Racks[r.Name].Stale).To(o.BeFalse())
@@ -310,115 +329,18 @@ func verifyScyllaCluster(ctx context.Context, kubeClient kubernetes.Interface, s
 	o.Expect(hosts).To(o.HaveLen(memberCount))
 }
 
-func waitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) {
-	dcClientMap := make(map[string]corev1client.CoreV1Interface, 1)
-	dcClientMap[sc.Spec.Datacenter.Name] = client
-	waitForFullMultiDCQuorum(ctx, dcClientMap, []*scyllav1.ScyllaCluster{sc})
-}
-
-func waitForFullMultiDCQuorum(ctx context.Context, dcClientMap map[string]corev1client.CoreV1Interface, scs []*scyllav1.ScyllaCluster) {
-	framework.By("Waiting for the ScyllaCluster(s) to reach consistency ALL")
-	err := utils.WaitForFullMultiDCQuorum(ctx, dcClientMap, scs)
-	o.Expect(err).NotTo(o.HaveOccurred())
-}
-
-func verifyCQLData(ctx context.Context, di *utils.DataInserter) {
-	err := di.AwaitSchemaAgreement(ctx)
-	o.Expect(err).NotTo(o.HaveOccurred())
-
-	framework.By("Verifying the data")
-	data, err := di.Read()
-	o.Expect(err).NotTo(o.HaveOccurred())
-	o.Expect(data).To(o.Equal(di.GetExpected()))
-}
-
-func insertAndVerifyCQLData(ctx context.Context, hosts []string, options ...utils.DataInserterOption) *utils.DataInserter {
-	framework.By("Inserting data")
-	di, err := utils.NewDataInserter(hosts, options...)
-	o.Expect(err).NotTo(o.HaveOccurred())
-
-	insertAndVerifyCQLDataUsingDataInserter(ctx, di)
-	return di
-}
-
-func insertAndVerifyCQLDataByDC(ctx context.Context, hosts map[string][]string) *utils.DataInserter {
-	di, err := utils.NewMultiDCDataInserter(hosts)
-	o.Expect(err).NotTo(o.HaveOccurred())
-
-	insertAndVerifyCQLDataUsingDataInserter(ctx, di)
-	return di
-}
-
-func insertAndVerifyCQLDataUsingDataInserter(ctx context.Context, di *utils.DataInserter) *utils.DataInserter {
-	framework.By("Inserting data")
-	err := di.Insert()
-	o.Expect(err).NotTo(o.HaveOccurred())
-
-	verifyCQLData(ctx, di)
-
-	return di
-}
-
-type verifyCQLConnectionConfigsOptions struct {
-	domains               []string
-	datacenters           []string
-	ServingCAData         []byte
-	ClientCertificateData []byte
-	ClientKeyData         []byte
-}
-
-func verifyAndParseCQLConnectionConfigs(secret *corev1.Secret, options verifyCQLConnectionConfigsOptions) map[string]*cqlclientv1alpha1.CQLConnectionConfig {
-	o.Expect(secret.Type).To(o.Equal(corev1.SecretType("Opaque")))
-	o.Expect(secret.Data).To(o.HaveLen(len(options.domains)))
-
-	connectionConfigs := make(map[string]*cqlclientv1alpha1.CQLConnectionConfig, len(secret.Data))
-	for _, domain := range options.domains {
-		o.Expect(secret.Data).To(o.HaveKey(domain))
-		obj, err := runtime.Decode(
-			scheme.Codecs.DecoderToVersion(scheme.Codecs.UniversalDeserializer(), cqlclientv1alpha1.GroupVersion),
-			secret.Data[domain],
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		cfg := obj.(*cqlclientv1alpha1.CQLConnectionConfig)
-
-		o.Expect(cfg.Datacenters).NotTo(o.BeEmpty())
-		o.Expect(cfg.Datacenters).To(o.HaveLen(len(options.datacenters)))
-		for _, dcName := range options.datacenters {
-			o.Expect(cfg.Datacenters).To(o.HaveKey(dcName))
-			dc := cfg.Datacenters[dcName]
-			o.Expect(dc.Server).To(o.Equal("cql." + domain))
-			o.Expect(dc.NodeDomain).To(o.Equal("cql." + domain))
-			o.Expect(dc.InsecureSkipTLSVerify).To(o.BeFalse())
-			o.Expect(dc.CertificateAuthorityData).To(o.Equal(options.ServingCAData))
-			o.Expect(dc.CertificateAuthorityPath).To(o.BeEmpty())
-			o.Expect(dc.ProxyURL).To(o.BeEmpty())
-		}
-
-		o.Expect(cfg.AuthInfos).To(o.HaveLen(1))
-		o.Expect(cfg.AuthInfos).To(o.HaveKey("admin"))
-		admAuthInfo := cfg.AuthInfos["admin"]
-		o.Expect(admAuthInfo.Username).To(o.Equal("cassandra"))
-		o.Expect(admAuthInfo.Password).To(o.Equal("cassandra"))
-		o.Expect(admAuthInfo.ClientCertificateData).To(o.Equal(options.ClientCertificateData))
-		o.Expect(admAuthInfo.ClientCertificatePath).To(o.BeEmpty())
-		o.Expect(admAuthInfo.ClientKeyData).To(o.Equal(options.ClientKeyData))
-		o.Expect(admAuthInfo.ClientKeyPath).To(o.BeEmpty())
-
-		o.Expect(cfg.Contexts).To(o.HaveLen(1))
-		o.Expect(cfg.Contexts).To(o.HaveKey("default"))
-		defaultContext := cfg.Contexts["default"]
-		o.Expect(defaultContext.DatacenterName).To(o.Equal(options.datacenters[0]))
-		o.Expect(defaultContext.AuthInfoName).To(o.Equal("admin"))
-
-		o.Expect(cfg.CurrentContext).To(o.Equal("default"))
-
-		o.Expect(cfg.Parameters).NotTo(o.BeNil())
-		o.Expect(cfg.Parameters.DefaultConsistency).To(o.BeEquivalentTo("QUORUM"))
-		o.Expect(cfg.Parameters.DefaultSerialConsistency).To(o.BeEquivalentTo("SERIAL"))
-
-		connectionConfigs[domain] = cfg
-	}
-
-	return connectionConfigs
+func Verify(ctx context.Context, kubeClient kubernetes.Interface, scyllaClient scyllaclient.Interface, sc *scyllav1.ScyllaCluster) {
+	VerifyWithOptions(
+		ctx,
+		kubeClient,
+		scyllaClient,
+		sc,
+		VerifyOptions{
+			VerifyStatefulSetOptions: VerifyStatefulSetOptions{
+				PodRestartCountAssertion: func(a o.Assertion, containerName, podName string) {
+					a.To(o.BeZero(), fmt.Sprintf("container %q in pod %q should not be restarted", containerName, podName))
+				},
+			},
+		},
+	)
 }

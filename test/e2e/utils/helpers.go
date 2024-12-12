@@ -220,6 +220,27 @@ func GetStatefulSetsForScyllaCluster(ctx context.Context, client appv1client.App
 	return res, nil
 }
 
+func GetPodsForStatefulSet(ctx context.Context, client corev1client.CoreV1Interface, sts *appsv1.StatefulSet) (map[string]*corev1.Pod, error) {
+	selector, err := metav1.LabelSelectorAsSelector(sts.Spec.Selector)
+	if err != nil {
+		return nil, fmt.Errorf("can't convert StatefulSet %q selector: %w", naming.ObjRef(sts), err)
+	}
+
+	podList, err := client.Pods(sts.Namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: selector.String(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("can't list Pods for StatefulSet %q: %w", naming.ObjRef(sts), err)
+	}
+
+	res := map[string]*corev1.Pod{}
+	for _, pod := range podList.Items {
+		res[pod.Name] = &pod
+	}
+
+	return res, nil
+}
+
 func GetDaemonSetsForNodeConfig(ctx context.Context, client appv1client.AppsV1Interface, nc *scyllav1alpha1.NodeConfig) ([]*appsv1.DaemonSet, error) {
 	daemonSetList, err := client.DaemonSets(naming.ScyllaOperatorNodeTuningNamespace).List(ctx, metav1.ListOptions{
 		LabelSelector: labels.Set{
@@ -765,4 +786,20 @@ func WaitForScyllaOperatorConfigStatus(ctx context.Context, client scyllav1alpha
 
 func IsScyllaClusterRegisteredWithManager(sc *scyllav1.ScyllaCluster) (bool, error) {
 	return sc.Status.ManagerID != nil && len(*sc.Status.ManagerID) > 0, nil
+}
+
+func GetContainerReadinessMap(pod *corev1.Pod) map[string]bool {
+	res := map[string]bool{}
+
+	for _, statusSet := range [][]corev1.ContainerStatus{
+		pod.Status.InitContainerStatuses,
+		pod.Status.ContainerStatuses,
+		pod.Status.EphemeralContainerStatuses,
+	} {
+		for _, cs := range statusSet {
+			res[cs.Name] = cs.Ready
+		}
+	}
+
+	return res
 }

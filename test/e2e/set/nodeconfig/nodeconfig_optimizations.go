@@ -19,11 +19,13 @@ import (
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -156,12 +158,14 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(ctx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
+		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+
 		framework.By("Validating soft file limit of Scylla process")
 		podName := fmt.Sprintf("%s-%d", naming.StatefulSetNameForRackForScyllaCluster(sc.Spec.Datacenter.Racks[0], sc), 0)
 		scyllaPod, err := f.KubeClient().CoreV1().Pods(sc.Namespace).Get(ctx, podName, metav1.GetOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		stdout, stderr, err := executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), scyllaPod,
+		stdout, stderr, err := executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), scyllaPod,
 			"bash",
 			"-euExo",
 			"pipefail",
@@ -176,7 +180,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		o.Expect(stdout).To(o.Equal(nrOpenLimit))
 
 		framework.By("Validating hard file limit of Scylla process")
-		stdout, stderr, err = executeInPod(f.ClientConfig(), f.KubeClient().CoreV1(), scyllaPod,
+		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), scyllaPod,
 			"bash",
 			"-euExo",
 			"pipefail",
@@ -259,6 +263,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		sc := f.GetDefaultScyllaCluster()
+		o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
 		sc.Spec.Datacenter.Racks[0].AgentResources = corev1.ResourceRequirements{
 			Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceCPU:    resource.MustParse("50m"),
@@ -328,6 +333,26 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(utils.IsScyllaClusterRolledOut(sc)).To(o.BeFalse())
 
+		framework.By("Verifying the containers are blocked and not ready")
+		podSelector := labels.Set(naming.ClusterLabelsForScyllaCluster(sc)).AsSelector()
+		scPods, err := f.KubeClient().CoreV1().Pods(sc.Namespace).List(ctx, metav1.ListOptions{
+			LabelSelector: podSelector.String(),
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(scPods.Items).NotTo(o.BeEmpty())
+
+		for _, pod := range scPods.Items {
+			crm := utils.GetContainerReadinessMap(&pod)
+			o.Expect(crm).To(
+				o.And(
+					o.HaveKeyWithValue(naming.ScyllaContainerName, false),
+					o.HaveKeyWithValue(naming.ScyllaDBIgnitionContainerName, false),
+					o.HaveKeyWithValue(naming.ScyllaManagerAgentContainerName, false),
+				),
+				fmt.Sprintf("container(s) in Pod %q don't match the expected state", pod.Name),
+			)
+		}
+
 		framework.By("Unblocking tuning")
 		intermittentArtifactsDir := ""
 		if len(f.GetDefaultArtifactsDir()) != 0 {
@@ -344,6 +369,33 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		scyllaContainerID, err := controllerhelpers.GetScyllaContainerID(pod)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Bumping tuning DaemonSet sync and waiting for it to become healthy")
+
+		dsList, err := f.KubeAdminClient().AppsV1().DaemonSets(naming.ScyllaOperatorNodeTuningNamespace).List(ctx, metav1.ListOptions{
+			LabelSelector: labels.Set{
+				"app.kubernetes.io/name": naming.NodeConfigAppName,
+			}.AsSelector().String(),
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(dsList.Items).To(o.HaveLen(1), "there should be exactly 1 matching NodeConfig in this test")
+		ds := &dsList.Items[0]
+
+		// At this point the DaemonSet controller in kube-controller-manager is notably rate-limited
+		// because of resource quota failures. We have to trigger an event to reset its queue rate limiter,
+		// or there will be a large delay.
+		ds, err = f.KubeAdminClient().AppsV1().DaemonSets(naming.ScyllaOperatorNodeTuningNamespace).Patch(
+			ctx,
+			ds.Name,
+			types.JSONPatchType,
+			[]byte(fmt.Sprintf(`[{"op": "add", "path": "/metadata/annotations/e2e-requeue", "value": %q}]`, time.Now())),
+			metav1.PatchOptions{},
+		)
+
+		ctxTuningDS, ctxTuningDSCancel := utils.ContextForRollout(ctx, sc)
+		defer ctxTuningDSCancel()
+		ds, err = controllerhelpers.WaitForDaemonSetState(ctxTuningDS, f.KubeAdminClient().AppsV1().DaemonSets(ds.Namespace), ds.Name, controllerhelpers.WaitForStateOptions{}, controllerhelpers.IsDaemonSetRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the NodeConfig to deploy")
@@ -368,6 +420,21 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		defer ctx4Cancel()
 		sc, err = controllerhelpers.WaitForScyllaClusterState(ctx4, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
+
+		scyllaclusterverification.VerifyWithOptions(
+			ctx,
+			f.KubeClient(),
+			f.ScyllaClient(),
+			sc,
+			scyllaclusterverification.VerifyOptions{
+				VerifyStatefulSetOptions: scyllaclusterverification.VerifyStatefulSetOptions{
+					PodRestartCountAssertion: func(a o.Assertion, containerName, podName string) {
+						// We expect restart(s) from the startup probe, usually 1.
+						a.To(o.BeNumerically("<=", 2), fmt.Sprintf("container %q in pod %q should not be restarted by the startup probe more than twice", containerName, podName))
+					},
+				},
+			},
+		)
 
 		framework.By("Verifying ConfigMap content")
 		ctx5, ctx5Cancel := context.WithTimeout(ctx, apiCallTimeout)

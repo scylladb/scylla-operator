@@ -16,6 +16,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/util/cql"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,8 +60,8 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
-		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -103,7 +104,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 			for i := range connectionAttempts {
 				framework.By("Establishing connection number %d to shard number %d", i, shard)
-				stdout, stderr, err := utils.ExecWithOptions(f.ClientConfig(), f.KubeClient().CoreV1(), utils.ExecOptions{
+				stdout, stderr, err := utils.ExecWithOptions(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), utils.ExecOptions{
 					Command: []string{
 						"/usr/bin/bash",
 						"-euEo",

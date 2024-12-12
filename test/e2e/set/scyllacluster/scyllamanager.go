@@ -15,6 +15,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -40,13 +41,13 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaCluster(ctx, f.KubeClient(), f.ScyllaClient(), sc)
-		waitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(1))
-		di := insertAndVerifyCQLData(ctx, hosts)
+		di := scyllaclusterverification.InsertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
 
 		framework.By("Waiting for ScyllaCluster to register with Scylla Manager")

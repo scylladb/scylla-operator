@@ -153,6 +153,11 @@ spec:
           wait
       nodeSelector:
         scylla.scylladb.com/node-type: scylla
+      tolerations:
+      - effect: NoSchedule
+        key: scylla-operator.scylladb.com/dedicated
+        operator: Equal
+        value: scyllaclusters
 EOF
   kubectl -n=default rollout status daemonset/sysctl
 }

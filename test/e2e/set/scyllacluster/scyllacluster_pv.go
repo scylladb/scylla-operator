@@ -82,20 +82,26 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 		sc.Spec.AutomaticOrphanedNodeCleanup = true
 		sc.Spec.Datacenter.Racks[0].Members = 3
 		sc.Spec.Datacenter.Racks[0].Storage.StorageClassName = pointer.Ptr(testStorageClassName)
-		sc.Spec.Datacenter.Racks[0].Placement = &scyllav1.PlacementSpec{
-			PodAffinity: &corev1.PodAffinity{
-				RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
-					{
-						LabelSelector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								cloneLabelKey: f.Namespace(),
-							},
-						},
-						TopologyKey: corev1.LabelHostname,
+		if sc.Spec.Datacenter.Racks[0].Placement == nil {
+			sc.Spec.Datacenter.Racks[0].Placement = &scyllav1.PlacementSpec{}
+		}
+
+		defaultScyllaClusterPlacement := sc.Spec.Datacenter.Racks[0].Placement.DeepCopy()
+
+		if sc.Spec.Datacenter.Racks[0].Placement.PodAffinity == nil {
+			sc.Spec.Datacenter.Racks[0].Placement.PodAffinity = &corev1.PodAffinity{}
+		}
+		sc.Spec.Datacenter.Racks[0].Placement.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution = append(
+			sc.Spec.Datacenter.Racks[0].Placement.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution,
+			corev1.PodAffinityTerm{
+				LabelSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						cloneLabelKey: f.Namespace(),
 					},
 				},
+				TopologyKey: corev1.LabelHostname,
 			},
-		}
+		)
 
 		// This test to trigger the orphaned PV cleanup is updating NodeAffinity of PV used by ScyllaCluster to not exiting Node.
 		// The problem is, that local volume storage provisioners which we use in CI, may set this field, which is immutable.
@@ -178,8 +184,15 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 							},
 							TerminationGracePeriodSeconds: pointer.Ptr(int64(1)),
 							RestartPolicy:                 corev1.RestartPolicyNever,
+							Tolerations:                   defaultScyllaClusterPlacement.Tolerations,
+							Affinity: &corev1.Affinity{
+								NodeAffinity:    defaultScyllaClusterPlacement.NodeAffinity,
+								PodAffinity:     defaultScyllaClusterPlacement.PodAffinity,
+								PodAntiAffinity: defaultScyllaClusterPlacement.PodAntiAffinity,
+							},
 						},
 					}
+
 					_, err = f.KubeClient().CoreV1().Pods(f.Namespace()).Create(ctx, consumerPod, metav1.CreateOptions{})
 					o.Expect(err).NotTo(o.HaveOccurred())
 				case watch.Modified:

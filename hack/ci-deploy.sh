@@ -34,6 +34,8 @@ for f in $( find "${DEPLOY_DIR}"/ -type f -name '*.yaml' ); do
     sed -i -E -e "s~docker\.io/scylladb/scylla-operator:[^ @]+$~${OPERATOR_IMAGE_REF}~" "${f}"
 done
 
+yq e --inplace '.spec.template.spec.containers[0].resources = {"requestes": {"cpu": "4", "memory": "1Gi"}, "limits": {"cpu": "4", "memory": "1Gi"}}' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
+
 yq e --inplace '.spec.template.spec.containers[0].args += ["--qps=200", "--burst=400"]' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
 yq e --inplace '.spec.template.spec.containers[0].args += ["--crypto-key-buffer-size-min=3", "--crypto-key-buffer-size-max=6", "--crypto-key-buffer-delay=2s"]' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
 

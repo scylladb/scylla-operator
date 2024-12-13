@@ -69,6 +69,13 @@ patches:
             env:
             - name: SCYLLA_OPERATOR_IMAGE
               value: "${operator_image_ref}"
+            resources:
+              requests:
+                cpu: 4
+                memory: 1Gi
+              limits:
+                cpu: 4
+                memory: 1Gi
 EOF
 kubectl kustomize "${ARTIFACTS_DEPLOY_DIR}/operator" | kubectl_create -n=scylla-operator -f=-
 

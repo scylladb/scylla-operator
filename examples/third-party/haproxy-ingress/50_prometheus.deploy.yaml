@@ -32,8 +32,13 @@ spec:
         volumeMounts:
         - mountPath: /etc/prometheus/config
           name: prometheus-cfg
+        - name: prometheus
+          mountPath: /prometheus
       serviceAccountName: prometheus
       volumes:
       - configMap:
           name: prometheus-cfg
         name: prometheus-cfg
+      - name: prometheus
+        emptyDir:
+          sizeLimit: 10Mi

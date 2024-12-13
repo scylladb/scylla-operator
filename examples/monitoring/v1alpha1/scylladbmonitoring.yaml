@@ -38,6 +38,6 @@ spec:
           ingress:
             ingressClassName: haproxy
             dnsDomains:
-            - test-grafana.test.svc.cluster.local
+            - example-grafana.test.svc.cluster.local
             annotations:
               haproxy-ingress.github.io/ssl-passthrough: "true"

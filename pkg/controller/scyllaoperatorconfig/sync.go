@@ -71,7 +71,9 @@ func (opc *Controller) sync(ctx context.Context) error {
 		errs = append(errs, fmt.Errorf("can't aggregate workload conditions: %w", err))
 	} else {
 		err = opc.updateStatus(ctx, soc, status)
-		errs = append(errs, fmt.Errorf("can't update status: %w", err))
+		if err != nil {
+			errs = append(errs, fmt.Errorf("can't update status: %w", err))
+		}
 	}
 
 	return utilerrors.NewAggregate(errs)

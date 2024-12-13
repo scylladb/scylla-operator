@@ -24,6 +24,7 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/discovery"
 	appsv1informers "k8s.io/client-go/informers/apps/v1"
 	corev1informers "k8s.io/client-go/informers/core/v1"
 	rbacv1informers "k8s.io/client-go/informers/rbac/v1"
@@ -52,8 +53,9 @@ var (
 )
 
 type Controller struct {
-	kubeClient   kubernetes.Interface
-	scyllaClient scyllav1alpha1client.ScyllaV1alpha1Interface
+	discoveryClient discovery.DiscoveryInterface
+	kubeClient      kubernetes.Interface
+	scyllaClient    scyllav1alpha1client.ScyllaV1alpha1Interface
 
 	nodeConfigLister           scyllav1alpha1listers.NodeConfigLister
 	scyllaOperatorConfigLister scyllav1alpha1listers.ScyllaOperatorConfigLister
@@ -81,6 +83,7 @@ func isManagedByNodeConfigController(obj kubeinterfaces.ObjectInterface) bool {
 }
 
 func NewController(
+	discoveryClient discovery.DiscoveryInterface,
 	kubeClient kubernetes.Interface,
 	scyllaClient scyllav1alpha1client.ScyllaV1alpha1Interface,
 	nodeConfigInformer scyllav1alpha1informers.NodeConfigInformer,
@@ -100,8 +103,9 @@ func NewController(
 	eventBroadcaster.StartRecordingToSink(&corev1client.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
 	ncc := &Controller{
-		kubeClient:   kubeClient,
-		scyllaClient: scyllaClient,
+		discoveryClient: discoveryClient,
+		kubeClient:      kubeClient,
+		scyllaClient:    scyllaClient,
 
 		nodeConfigLister:           nodeConfigInformer.Lister(),
 		scyllaOperatorConfigLister: scyllaOperatorConfigInformer.Lister(),

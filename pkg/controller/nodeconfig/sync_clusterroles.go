@@ -14,9 +14,9 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
-func (ncc *Controller) makeClusterRoles() []*rbacv1.ClusterRole {
+func (ncc *Controller) makeClusterRoles(sccAvailable bool) []*rbacv1.ClusterRole {
 	clusterRoles := []*rbacv1.ClusterRole{
-		NodeConfigClusterRole(),
+		NodeConfigClusterRole(sccAvailable),
 	}
 
 	return clusterRoles
@@ -58,7 +58,12 @@ func (ncc *Controller) pruneClusterRoles(ctx context.Context, requiredClusterRol
 func (ncc *Controller) syncClusterRoles(ctx context.Context, nc *scyllav1alpha1.NodeConfig, clusterRoles map[string]*rbacv1.ClusterRole) ([]metav1.Condition, error) {
 	var progressingConditions []metav1.Condition
 
-	requiredClusterRoles := ncc.makeClusterRoles()
+	sccAvailable, err := controllerhelpers.IsSCCAvailable(ncc.discoveryClient)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't discover scc: %w", err)
+	}
+
+	requiredClusterRoles := ncc.makeClusterRoles(sccAvailable)
 
 	// Delete any excessive ClusterRoles.
 	// Delete has to be the first action to avoid getting stuck on quota.

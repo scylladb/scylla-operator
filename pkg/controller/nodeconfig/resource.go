@@ -63,8 +63,8 @@ func makeRlimitsServiceAccount() *corev1.ServiceAccount {
 	}
 }
 
-func NodeConfigClusterRole() *rbacv1.ClusterRole {
-	return &rbacv1.ClusterRole{
+func NodeConfigClusterRole(sccAvailable bool) *rbacv1.ClusterRole {
+	cr := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      naming.NodeConfigAppName,
 			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
@@ -99,6 +99,12 @@ func NodeConfigClusterRole() *rbacv1.ClusterRole {
 				Verbs:     []string{"get", "list", "watch"},
 			},
 			{
+				APIGroups: []string{"apps"},
+				Resources: []string{"daemonsets/finalizers"},
+				// Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
+				Verbs: []string{"update"},
+			},
+			{
 				APIGroups: []string{"batch"},
 				Resources: []string{"jobs"},
 				Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
@@ -115,10 +121,21 @@ func NodeConfigClusterRole() *rbacv1.ClusterRole {
 			},
 		},
 	}
+
+	if sccAvailable {
+		cr.Rules = append(cr.Rules, rbacv1.PolicyRule{
+			APIGroups:     []string{"security.openshift.io"},
+			ResourceNames: []string{"privileged"},
+			Resources:     []string{"securitycontextconstraints"},
+			Verbs:         []string{"use"},
+		})
+	}
+
+	return cr
 }
 
-func makePerftuneRole() *rbacv1.Role {
-	return &rbacv1.Role{
+func makePerftuneRole(sccAvailable bool) *rbacv1.Role {
+	role := &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
 			Name:      naming.PerftuneServiceAccountName,
@@ -128,10 +145,21 @@ func makePerftuneRole() *rbacv1.Role {
 		},
 		Rules: []rbacv1.PolicyRule{},
 	}
+
+	if sccAvailable {
+		role.Rules = append(role.Rules, rbacv1.PolicyRule{
+			APIGroups:     []string{"security.openshift.io"},
+			Resources:     []string{"securitycontextconstraints"},
+			ResourceNames: []string{"privileged"},
+			Verbs:         []string{"use"},
+		})
+	}
+
+	return role
 }
 
-func makeRlimitsRole() *rbacv1.Role {
-	return &rbacv1.Role{
+func makeRlimitsRole(sccAvailable bool) *rbacv1.Role {
+	role := &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
 			Name:      naming.RlimitsJobServiceAccountName,
@@ -141,6 +169,17 @@ func makeRlimitsRole() *rbacv1.Role {
 		},
 		Rules: []rbacv1.PolicyRule{},
 	}
+
+	if sccAvailable {
+		role.Rules = append(role.Rules, rbacv1.PolicyRule{
+			APIGroups:     []string{"security.openshift.io"},
+			Resources:     []string{"securitycontextconstraints"},
+			ResourceNames: []string{"privileged"},
+			Verbs:         []string{"use"},
+		})
+	}
+
+	return role
 }
 
 func makeNodeConfigClusterRoleBinding() *rbacv1.ClusterRoleBinding {

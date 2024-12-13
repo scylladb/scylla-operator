@@ -18,14 +18,19 @@ import (
 func (ncc *Controller) syncRoles(ctx context.Context, nc *scyllav1alpha1.NodeConfig, roles map[string]*rbacv1.Role) ([]metav1.Condition, error) {
 	var progressingConditions []metav1.Condition
 
+	sccAvailable, err := controllerhelpers.IsSCCAvailable(ncc.discoveryClient)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't discover scc: %w", err)
+	}
+
 	requiredRoles := []*rbacv1.Role{
-		makePerftuneRole(),
-		makeRlimitsRole(),
+		makePerftuneRole(sccAvailable),
+		makeRlimitsRole(sccAvailable),
 	}
 
 	// Delete any excessive Roles.
 	// Delete has to be the first action to avoid getting stuck on quota.
-	err := controllerhelpers.Prune(
+	err = controllerhelpers.Prune(
 		ctx,
 		requiredRoles,
 		roles,

@@ -232,3 +232,7 @@ const (
 const (
 	OperatorAppNameWithDomain = "scylla-operator.scylladb.com"
 )
+
+const (
+	RemoteKubernetesClusterFinalizer = "scylla-operator.scylladb.com/remotekubernetescluster-protection"
+)

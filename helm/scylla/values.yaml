@@ -67,6 +67,14 @@ racks:
         cpu: 1
         memory: 4Gi
     placement:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: scylla.scylladb.com/node-type
+                  operator: In
+                  values:
+                    - scylla
       tolerations:
         - effect: NoSchedule
           key: scylla-operator.scylladb.com/dedicated

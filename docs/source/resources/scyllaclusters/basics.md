@@ -79,6 +79,14 @@ spec:
           cpu: 1
           memory: 8Gi
       placement:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: scylla.scylladb.com/node-type
+                operator: In
+                values:
+                - scylla
         tolerations:
         - key: scylla-operator.scylladb.com/dedicated
           operator: Equal

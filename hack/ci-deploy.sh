@@ -35,10 +35,19 @@ for f in $( find "${DEPLOY_DIR}"/ -type f -name '*.yaml' ); do
 done
 
 yq e --inplace '.spec.template.spec.containers[0].args += ["--qps=200", "--burst=400"]' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
-yq e --inplace '.spec.template.spec.containers[0].args += ["--crypto-key-buffer-size-min=3", "--crypto-key-buffer-size-max=6", "--crypto-key-buffer-delay=2s"]' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
+
+CRYPTO_KEY_BUFFER_SIZE_MIN=6
+export CRYPTO_KEY_BUFFER_SIZE_MIN
+CRYPTO_KEY_BUFFER_SIZE_MAX=10
+export CRYPTO_KEY_BUFFER_SIZE_MAX
+if [[ -n "${SO_E2E_PARALLELISM-}" ]]; then
+  CRYPTO_KEY_BUFFER_SIZE_MIN=$(( "${CRYPTO_KEY_BUFFER_SIZE_MIN}" * "${SO_E2E_PARALLELISM}" ))
+  CRYPTO_KEY_BUFFER_SIZE_MAX=$(( "${CRYPTO_KEY_BUFFER_SIZE_MAX}" * "${SO_E2E_PARALLELISM}" ))
+fi
+yq e --inplace '.spec.template.spec.containers[0].args += ["--crypto-key-buffer-size-min="+env(CRYPTO_KEY_BUFFER_SIZE_MIN), "--crypto-key-buffer-size-max="+env(CRYPTO_KEY_BUFFER_SIZE_MAX), "--crypto-key-buffer-delay=2s"]' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
 
 if [[ -n ${SCYLLA_OPERATOR_FEATURE_GATES+x} ]]; then
-    yq e --inplace '.spec.template.spec.containers[0].args += "--feature-gates="+ strenv(SCYLLA_OPERATOR_FEATURE_GATES)' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
+    yq e --inplace '.spec.template.spec.containers[0].args += "--feature-gates="+ env(SCYLLA_OPERATOR_FEATURE_GATES)' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
 fi
 
 kubectl_create -n prometheus-operator -f "${DEPLOY_DIR}/prometheus-operator"

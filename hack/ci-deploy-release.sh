@@ -50,6 +50,7 @@ for d in cert-manager{,-cainjector,-webhook}; do
 done
 wait-for-object-creation cert-manager secret/cert-manager-webhook-ca
 
+# TODO: add resources
 cat > "${ARTIFACTS_DEPLOY_DIR}/operator/kustomization.yaml" << EOF
 resources:
 - ${source_url}/${revision}/deploy/operator.yaml

@@ -502,6 +502,17 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 								},
 							},
 							{
+								Name: "scylladb-snitch-config",
+								VolumeSource: corev1.VolumeSource{
+									ConfigMap: &corev1.ConfigMapVolumeSource{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: naming.GetScyllaDBRackSnitchConfigCMName(sdc, &rack),
+										},
+										Optional: pointer.Ptr(false),
+									},
+								},
+							},
+							{
 								Name: scyllaAgentConfigVolumeName,
 								VolumeSource: corev1.VolumeSource{
 									Secret: &corev1.SecretVolumeSource{
@@ -735,6 +746,11 @@ exec /mnt/shared/scylla-operator sidecar \
 										Name:      "scylladb-managed-config",
 										MountPath: naming.ScyllaDBManagedConfigDir,
 										ReadOnly:  true,
+									},
+									{
+										Name:      "scylladb-snitch-config",
+										ReadOnly:  true,
+										MountPath: naming.ScyllaDBSnitchConfigDir,
 									},
 									{
 										Name:      "scylla-client-config-volume",
@@ -1701,6 +1717,76 @@ func MakeJobs(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev
 	}
 
 	return jobs, progressingConditions, nil
+}
+
+func MakeManagedScyllaDBConfigMaps(sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]*corev1.ConfigMap, error) {
+	var managedCMs []*corev1.ConfigMap
+
+	scyllaDBConfigCM, err := MakeManagedScyllaDBConfig(sdc)
+	if err != nil {
+		return nil, fmt.Errorf("can't make managed scylladb config: %w", err)
+	}
+
+	managedCMs = append(managedCMs, scyllaDBConfigCM)
+
+	scyllaDBSnitchConfigCMs, err := MakeManagedScyllaDBSnitchConfig(sdc)
+	if err != nil {
+		return nil, fmt.Errorf("can't make managed scylladb snitch config: %w", err)
+	}
+
+	managedCMs = append(managedCMs, scyllaDBSnitchConfigCMs...)
+
+	return managedCMs, nil
+}
+
+func MakeManagedScyllaDBSnitchConfig(sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]*corev1.ConfigMap, error) {
+	snitchConfigsCMs := make([]*corev1.ConfigMap, 0, len(sdc.Spec.Racks))
+
+	for _, rack := range sdc.Spec.Racks {
+		cm, _, err := scylladbassets.ScyllaDBSnitchConfigTemplate.Get().RenderObject(
+			map[string]any{
+				"Namespace":        sdc.Namespace,
+				"Name":             naming.GetScyllaDBRackSnitchConfigCMName(sdc, &rack),
+				"SnitchConfigName": naming.ScyllaRackDCPropertiesName,
+				"DatacenterName":   naming.GetScyllaDBDatacenterGossipDatacenterName(sdc),
+				"RackName":         rack.Name,
+			},
+		)
+		if err != nil {
+			return nil, fmt.Errorf("can't render scylladb snitch config for rack %q: %w", rack.Name, err)
+		}
+
+		cm.SetOwnerReferences([]metav1.OwnerReference{
+			{
+				APIVersion:         scyllaDBDatacenterControllerGVK.GroupVersion().String(),
+				Kind:               scyllaDBDatacenterControllerGVK.Kind,
+				Name:               sdc.Name,
+				UID:                sdc.UID,
+				Controller:         pointer.Ptr(true),
+				BlockOwnerDeletion: pointer.Ptr(true),
+			},
+		})
+
+		if cm.Labels == nil {
+			cm.Labels = map[string]string{}
+		}
+		maps.Copy(cm.Labels, sdc.Labels)
+		maps.Copy(cm.Labels, naming.ClusterLabels(sdc))
+
+		if cm.Annotations == nil {
+			cm.Annotations = map[string]string{}
+		}
+		// As ScyllaDBDatacenter may be managed object (when user is using scyllav1.ScyllaCluster API), managed
+		// hash from it shouldn't propagate into dependency objects to not trigger unnecessary double rollouts.
+		sdcAnnotations := maps.Clone(sdc.Annotations)
+		delete(sdcAnnotations, naming.ManagedHash)
+
+		maps.Copy(cm.Annotations, sdcAnnotations)
+
+		snitchConfigsCMs = append(snitchConfigsCMs, cm)
+	}
+
+	return snitchConfigsCMs, nil
 }
 
 func MakeManagedScyllaDBConfig(sdc *scyllav1alpha1.ScyllaDBDatacenter) (*corev1.ConfigMap, error) {

@@ -18,9 +18,10 @@ fi
 
 trap cleanup-bg-jobs-on-exit EXIT
 
+SO_INSTALL_PROMETHEUS_OPERATOR="${SO_INSTALL_PROMETHEUS_OPERATOR:-yes}"
+
 ARTIFACTS=${ARTIFACTS:-$( mktemp -d )}
 OPERATOR_IMAGE_REF=${1}
-OPERATOR_PLATFORM=${OPERATOR_PLATFORM:-kubernetes}
 
 if [ -z "${DEPLOY_DIR+x}" ]; then
   DEPLOY_DIR=${ARTIFACTS}/deploy
@@ -29,21 +30,7 @@ fi
 mkdir -p "${DEPLOY_DIR}/"{operator,manager,prometheus-operator,haproxy-ingress}
 
 cp ./deploy/manager/dev/*.yaml "${DEPLOY_DIR}/manager"
-
-case "${OPERATOR_PLATFORM}" in
-  "kubernetes")
-    cp ./deploy/operator/kubernetes/*.yaml "${DEPLOY_DIR}/operator"
-    ;;
-
-  "openshift")
-    cp ./deploy/operator/openshift/*.yaml "${DEPLOY_DIR}/operator"
-    ;;
-
-  *)
-    printf 'unknown operator platform %q' "${OPERATOR_PLATFORM}" >/dev/stderr
-    exit 1
-    ;;
-esac
+cp ./deploy/operator/*.yaml "${DEPLOY_DIR}/operator"
 
 cp ./examples/third-party/prometheus-operator/*.yaml "${DEPLOY_DIR}/prometheus-operator"
 cp ./examples/third-party/haproxy-ingress/*.yaml "${DEPLOY_DIR}/haproxy-ingress"

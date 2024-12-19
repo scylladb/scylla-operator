@@ -297,6 +297,91 @@ rules:
   - patch
   - update
   - delete
+- apiGroups:
+  - ""
+  resources:
+  - configmaps/finalizers
+  - secrets/finalizers
+  - pods/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - scyllaclusters/finalizers
+  - scylladbdatacenters/finalizers
+  - scylladbmonitorings/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - policy
+  resources:
+  - poddisruptionbudgets/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - nodeconfigs/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - configmaps/finalizers
+  - secrets/finalizers
+  - pods/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - scyllaclusters/finalizers
+  - scylladbdatacenters/finalizers
+  - scylladbmonitorings/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - policy
+  resources:
+  - poddisruptionbudgets/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - nodeconfigs/finalizers
+  verbs:
+  - update
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scylladb:controller:aggregate-to-operator-openshift
+  labels:
+    rbac.operator.scylladb.com/aggregate-to-scylla-operator: "true"
+rules:
+- apiGroups:
+  - security.openshift.io
+  resourceNames:
+  - privileged
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -27904,6 +27989,57 @@ rules:
   - scyllaclusters
   verbs:
   - get
+- apiGroups:
+  - ""
+  resources:
+  - configmaps/finalizers
+  - secrets/finalizers
+  verbs:
+  - update
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scylladb:aggregate-to-scyllacluster-member-openshift
+  labels:
+    rbac.operator.scylladb.com/aggregate-to-scylla-member: "true"
+rules:
+- apiGroups:
+  - security.openshift.io
+  resourceNames:
+  - privileged
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scylladb:monitoring:grafana
+aggregationRule:
+  clusterRoleSelectors:
+  - matchLabels:
+      rbac.operator.scylladb.com/aggregate-to-scylladb-monitoring-grafana: "true"
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scylladb:aggregate-to-scylladb-monitoring-grafana-openshift
+  labels:
+    rbac.operator.scylladb.com/aggregate-to-scylladb-monitoring-grafana: "true"
+rules:
+- apiGroups:
+  - security.openshift.io
+  resourceNames:
+  - privileged
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -27939,6 +28075,23 @@ rules:
   - configmaps
   verbs:
   - get
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scylladb:aggregate-to-scylladb-monitoring-prometheus-openshift
+  labels:
+    rbac.operator.scylladb.com/aggregate-to-scylladb-monitoring-prometheus: "true"
+rules:
+- apiGroups:
+  - security.openshift.io
+  resourceNames:
+  - privileged
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use
 
 ---
 apiVersion: cert-manager.io/v1

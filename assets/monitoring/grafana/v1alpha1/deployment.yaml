@@ -15,6 +15,7 @@ spec:
       labels:
         scylla-operator.scylladb.com/deployment-name: "{{ .scyllaDBMonitoringName }}-grafana"
     spec:
+      serviceAccountName: "{{ .scyllaDBMonitoringName }}-grafana"
       affinity:
         {{- .affinity | toYAML | nindent 8 }}
       tolerations:
@@ -129,9 +130,9 @@ spec:
         securityContext:
           allowPrivilegeEscalation: false
           privileged: false
-#          runAsNonRoot: true
-#          runAsUser: 472
-#          runAsGroup: 472
+          runAsNonRoot: true
+          runAsUser: 472
+          runAsGroup: 472
           capabilities:
             drop:
             - ALL
@@ -168,9 +169,9 @@ spec:
         emptyDir:
           sizeLimit: 100Mi
       securityContext:
-#        runAsNonRoot: true
-#        runAsUser: 472
-#        runAsGroup: 472
-#        fsGroup: 472
+        runAsNonRoot: true
+        runAsUser: 472
+        runAsGroup: 472
+        fsGroup: 472
         seccompProfile:
           type: RuntimeDefault

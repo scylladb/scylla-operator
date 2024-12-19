@@ -9,6 +9,7 @@
 set -euxEo pipefail
 shopt -s inherit_errexit
 
+source "$( dirname "${BASH_SOURCE[0]}" )/lib/bash.sh"
 source "$( dirname "${BASH_SOURCE[0]}" )/lib/kube.sh"
 
 if [[ -n "${1+x}" ]]; then
@@ -17,6 +18,8 @@ else
     echo "Missing operator image ref.\nUsage: ${0} <operator_image_ref>" >&2 >/dev/null
     exit 1
 fi
+
+trap cleanup-bg-jobs-on-exit EXIT
 
 source_raw="$( skopeo inspect --format='{{ index .Labels "org.opencontainers.image.source" }}' "docker://${operator_image_ref}" )"
 if [[ -z "${source_raw}" ]]; then

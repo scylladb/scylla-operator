@@ -63,6 +63,11 @@ spec:
       regex:  '(.+)'
       targetLabel: dc
       replacement: '${1}'
+    # Scylla Monitoring OS Metrics dashboard expect node exporter metrics to have 'job=node_exporter'
+    - sourceLabels: [__meta_kubernetes_endpoint_port_name]
+      regex: '(.+)'
+      replacement: 'node_exporter'
+      targetLabel: job
   - port: prometheus
     honorLabels: false
     metricRelabelings:
@@ -168,6 +173,11 @@ spec:
       regex:  '(.+)'
       targetLabel: dc
       replacement: '${1}'
+    # Scylla Monitoring OS Metrics dashboard expect node exporter metrics to have 'job=node_exporter'
+    - sourceLabels: [__meta_kubernetes_endpoint_port_name]
+      regex: '(.+)'
+      replacement: 'node_exporter'
+      targetLabel: job
   - port: prometheus
     honorLabels: false
     metricRelabelings:

@@ -17,7 +17,7 @@ spec:
       type: RAID0
       RAID0:
         devices:
-          nameRegex: ^/dev/nvme0n[1-9]\d*$
+          nameRegex: ^/dev/nvme[1-9]\d*n\d+$
   placement:
     nodeSelector:
       scylla.scylladb.com/node-type: scylla

@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scylladb:aggregate-to-scylladb-monitoring-prometheus-openshift
+  labels:
+    rbac.operator.scylladb.com/aggregate-to-scylladb-monitoring-prometheus: "true"
+rules:
+- apiGroups:
+  - security.openshift.io
+  resourceNames:
+  - privileged
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use

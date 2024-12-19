@@ -6,6 +6,8 @@
 set -euExo pipefail
 shopt -s inherit_errexit
 
+trap 'kill $( jobs -p ); exit 0' EXIT
+
 if [ -z "${ARTIFACTS+x}" ]; then
   echo "ARTIFACTS can't be empty" > /dev/stderr
   exit 2

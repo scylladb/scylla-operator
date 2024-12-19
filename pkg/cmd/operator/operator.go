@@ -41,6 +41,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/watch"
+	memcacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -292,6 +293,8 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 	}
 	defer rsaKeyGenerator.Close()
 
+	cachedDiscoverClient := memcacheddiscovery.NewMemCacheClient(o.kubeClient.Discovery())
+
 	kubeInformers := informers.NewSharedInformerFactory(o.kubeClient, resyncPeriod)
 	scyllaInformers := scyllainformers.NewSharedInformerFactory(o.scyllaClient, resyncPeriod)
 
@@ -369,6 +372,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 	}
 
 	ncc, err := nodeconfig.NewController(
+		cachedDiscoverClient,
 		o.kubeClient,
 		o.scyllaClient.ScyllaV1alpha1(),
 		scyllaInformers.Scylla().V1alpha1().NodeConfigs(),

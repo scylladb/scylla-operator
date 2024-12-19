@@ -273,6 +273,7 @@ func (smc *Controller) sync(ctx context.Context, key string) error {
 				controllerhelpers.FilterObjectMapByLabel(secrets, grafanaSelector),
 				controllerhelpers.FilterObjectMapByLabel(services, grafanaSelector),
 				controllerhelpers.FilterObjectMapByLabel(serviceAccounts, grafanaSelector),
+				controllerhelpers.FilterObjectMapByLabel(roleBindings, grafanaSelector),
 				controllerhelpers.FilterObjectMapByLabel(deployments, grafanaSelector),
 				controllerhelpers.FilterObjectMapByLabel(ingresses, grafanaSelector),
 			)

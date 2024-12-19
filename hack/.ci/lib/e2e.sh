@@ -6,6 +6,7 @@
 set -euExo pipefail
 shopt -s inherit_errexit
 
+source "$( dirname "${BASH_SOURCE[0]}" )/../../lib/bash.sh"
 source "$( dirname "${BASH_SOURCE[0]}" )/../../lib/kube.sh"
 
 if [ -z "${KUBECONFIG_DIR+x}" ]; then
@@ -84,6 +85,8 @@ EOF
 }
 
 function gather-artifacts-on-exit {
+  ec=$?
+
   for i in "${!KUBECONFIGS[@]}"; do
     KUBECONFIG="${KUBECONFIGS[$i]}" gather-artifacts "${ARTIFACTS}/must-gather/${i}" &
     gather_artifacts_bg_pids["${i}"]=$!
@@ -92,6 +95,8 @@ function gather-artifacts-on-exit {
   for pid in "${gather_artifacts_bg_pids[@]}"; do
     wait "${pid}"
   done
+
+  cleanup-bg-jobs "${ec}"
 }
 
 function apply-e2e-workarounds {

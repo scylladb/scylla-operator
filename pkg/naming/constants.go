@@ -232,3 +232,7 @@ const (
 const (
 	OperatorAppNameWithDomain = "scylla-operator.scylladb.com"
 )
+
+const (
+	ScyllaDBClusterFinalizer = "scylla-operator.scylladb.com/scylladbcluster-protection"
+)

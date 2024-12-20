@@ -1,7 +1,9 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: scylladb:csi-external-provisioner
+  name: scylladb:aggregate-to-csi-external-provisioner
+  labels:
+    rbac.operator.scylladb.com/aggregate-to-csi-external-provisioner: "true"
 rules:
 - apiGroups:
   - ""

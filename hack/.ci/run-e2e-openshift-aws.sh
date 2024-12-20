@@ -19,18 +19,18 @@ parent_dir="$( dirname "${BASH_SOURCE[0]}" )"
 
 trap gather-artifacts-on-exit EXIT
 
-SO_NODECONFIG_PATH="${SO_NODECONFIG_PATH=./hack/.ci/manifests/cluster/nodeconfig.yaml}"
+REENTRANT="${REENTRANT=false}"
+export REENTRANT
+
+SO_INSTALL_PROMETHEUS_OPERATOR="true"
+export SO_INSTALL_PROMETHEUS_OPERATOR
+
+SO_NODECONFIG_PATH="${SO_NODECONFIG_PATH=${parent_dir}/manifests/cluster/nodeconfig-openshift-aws.yaml}"
 export SO_NODECONFIG_PATH
-SO_CSI_DRIVER_PATH="${parent_dir}/manifests/namespaces/local-csi-driver/"
+SO_CSI_DRIVER_PATH="${SO_CSI_DRIVER_PATH=${parent_dir}/manifests/namespaces/local-csi-driver/}"
 export SO_CSI_DRIVER_PATH
 SO_SCYLLACLUSTER_STORAGECLASS_NAME="${SO_SCYLLACLUSTER_STORAGECLASS_NAME=scylladb-local-xfs}"
 export SO_SCYLLACLUSTER_STORAGECLASS_NAME
-
-# Backwards compatibility. Remove when release repo stops using SO_DISABLE_NODECONFIG.
-if [[ "${SO_DISABLE_NODECONFIG:-false}" == "true" ]]; then
-  SO_NODECONFIG_PATH=""
-  SO_CSI_DRIVER_PATH=""
-fi
 
 SCYLLA_OPERATOR_FEATURE_GATES="${SCYLLA_OPERATOR_FEATURE_GATES:-AllAlpha=true,AllBeta=true}"
 export SCYLLA_OPERATOR_FEATURE_GATES

@@ -120,6 +120,8 @@ func attachLoopDevice(ctx context.Context, executor exec.Interface, imagePath st
 		return false, "", fmt.Errorf("can't list loop devices: %w", err)
 	}
 
+	klog.V(4).InfoS("Listed loop devices", "LoopDevices", loopDevices)
+
 	for _, ld := range loopDevices {
 		if imagePath == ld.BackingFile {
 			klog.V(4).InfoS("Loop device already exists, nothing to do.", "Device", ld.Name, "Image", ld.BackingFile)

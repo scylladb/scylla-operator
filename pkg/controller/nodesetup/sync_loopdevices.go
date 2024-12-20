@@ -30,6 +30,8 @@ func (nsc *Controller) syncLoopDevices(ctx context.Context, nc *scyllav1alpha1.N
 		return progressingConditions, fmt.Errorf("can't get node config loop devices: %w", err)
 	}
 
+	klog.V(4).InfoS("Syncing loop devices", "Required", requiredLoopDeviceImages, "Existing", existingLoopDevices)
+
 	err = nsc.pruneLoopDevices(ctx, nc, existingLoopDevices, requiredLoopDeviceImages)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't prune loop devices: %w", err)
@@ -99,6 +101,7 @@ func (nsc *Controller) pruneLoopDevices(ctx context.Context, nc *scyllav1alpha1.
 			errs = append(errs, fmt.Errorf("can't evaluate device symlink %q: %w", ld.Symlink, err))
 			continue
 		}
+		klog.V(2).InfoS("Deleting loop device because it's no longer required", "DevicePath", devicePath, "Symlink", ld.Symlink, "Image", ld.Image)
 		err = disks.DeleteLoopDevice(ctx, nsc.executor, ld.Symlink, devicePath, ld.Image)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't delete loop device %q: %w", ld.Name, err))
@@ -137,6 +140,8 @@ func discoverNodeConfigLoopDevices(ctx context.Context, executor exec.Interface,
 	if err != nil {
 		return nil, fmt.Errorf("can't glob symlinks directory: %w", err)
 	}
+
+	klog.V(4).InfoS("Listed loop devices", "Devices", systemLoopDevices, "Symlinks", ncDeviceSymlinks)
 
 	loopDeviceToSymlink := make(map[string]string, len(ncDeviceSymlinks))
 	for _, ds := range ncDeviceSymlinks {

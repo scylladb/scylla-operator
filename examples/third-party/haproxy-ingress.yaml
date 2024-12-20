@@ -80,20 +80,6 @@ rules:
   - watch
 
 ---
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: haproxy-ingress
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: haproxy-ingress
-subjects:
-- kind: ServiceAccount
-  name: haproxy-ingress
-  namespace: haproxy-ingress
-
----
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -128,6 +114,185 @@ data:
     option tcplog
   stats-config-snippet: |
     option dontlog-normal
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: haproxy-ingress
+rules:
+- apiGroups:
+  - security.openshift.io
+  resourceNames:
+  - privileged
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: haproxy-ingress
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: haproxy-ingress
+spec:
+  selector:
+    app.kubernetes.io/name: haproxy-ingress
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: 8443
+  - name: cql-ssl
+    port: 9142
+    protocol: TCP
+    targetPort: 8443
+  - name: stat
+    port: 1024
+    protocol: TCP
+    targetPort: 1024
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-default-backend
+spec:
+  selector:
+    app.kubernetes.io/name: ingress-default-backend
+  ports:
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: 8080
+  - name: cql-ssl
+    port: 9142
+    protocol: TCP
+    targetPort: 8080
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ingress-default-ssl-certificate
+type: kubernetes.io/tls
+data:
+  tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR1ekNDQXFPZ0F3SUJBZ0lVY0lxVXJoVnkvKzlWdGVaMkFkQVFxb0FiVDl3d0RRWUpLb1pJaHZjTkFRRUwKQlFBd2JURUxNQWtHQTFVRUJoTUNRMW94RVRBUEJnTlZCQWdNQ0ZaNWMyOWphVzVoTVJBd0RnWURWUVFIREFkSwphV2hzWVhaaE1SVXdFd1lEVlFRS0RBeFRZM2xzYkdGRVFpQk1kR1F4RURBT0JnTlZCQXNNQjJoaGNISnZlSGt4CkVEQU9CZ05WQkFNTUIyaGhjSEp2ZUhrd0hoY05Nakl3TWpFMU1USTBNekF6V2hjTk1qSXdNekUzTVRJME16QXoKV2pCdE1Rc3dDUVlEVlFRR0V3SkRXakVSTUE4R0ExVUVDQXdJVm5semIyTnBibUV4RURBT0JnTlZCQWNNQjBwcAphR3hoZG1FeEZUQVRCZ05WQkFvTURGTmplV3hzWVVSQ0lFeDBaREVRTUE0R0ExVUVDd3dIYUdGd2NtOTRlVEVRCk1BNEdBMVVFQXd3SGFHRndjbTk0ZVRDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUIKQU1hUkhPWEV2Ri9pSy9LVXJwZWN4TFBkN0FqMjNlZHV3c3hiWnN5ZCtoRk53R1FYR2lhZTlydEMvYTJaMmxuTgpYRXdTdENGWlpEbkgxSXZIT0pHYkdEd2txam1tK0FrVzRjdEF2RzFoL0NMK3k1TkpPUWJjZ2NzZ1B3TVkzNXU2Cll3VVVGby8xZEVtV2pzSGE4NjZSdHFMdzZtR2lrdUcySlBRN0xpdnUvWXpXdTQ3TzdjS2oyanhoUGQxQ214NisKR1c3bm4xTEVWTW1BS21JRDVFUmZSdTJCWW40VEFnaDdhUlJTZHZ1UTNZZldoSUo2K3kyTHp5WGE5SmJPQlVrMwpUTEJ1QS9mTTNqSHRjdWJudjZHMHpHaEg5WmJFYmVmSVNnRnQ5cUtYMXdWb29nenZydktBZmFyREthSndCY3BPCkpnZFU4eCtBc3c4QVJISkJITUxWZ2FrQ0F3RUFBYU5UTUZFd0hRWURWUjBPQkJZRUZBVXAxaHFzRW43eXRoSkYKcXBGN2ZIUk0yNXFYTUI4R0ExVWRJd1FZTUJhQUZBVXAxaHFzRW43eXRoSkZxcEY3ZkhSTTI1cVhNQThHQTFVZApFd0VCL3dRRk1BTUJBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUNnRlNlVTZjQ2YzUmRjMVJPMGE0ck5nClQvZC80SE5qcE1UTXQ4TVhOLzBzQXdWNTg2UmRFWUVGRnhQSmQ4ZjhHUVMydVFBbUNRMDlZd1pyQXh3L2pFc24KamloTTRWdlJvOHJJcXlJZmlYTkpUNDgvd0lmVEc1T3d0UzJ5eExoQjdkRUtFTUhkL0loRjNDQ3ptTzQzV0xPaApRVVl6bUY1UXZEV2Q4eGJKelRjaHAxSy9tRG5BUE5vS1FxZ3RJTGg5ekpITndWOWNROUJhUmRQN1NueE1mQUcwCnAybllHcmhmcGlJZ2g4MTdWUVZ3SHZIODRLYlVjQzJRUlQrOG43T1dyUitRVVArdjJLYVFzKytGOVFpc1RrL0MKSGhDNlhDMGNWNHBHNmIvSlpmU2VCRWJDRDVMSzZ1aW1GSlB1T05SVXlrVzdWOGxMOXVKRHpkVlBNSGMvQTBRPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+  tls.key: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JSUV2UUlCQURBTkJna3Foa2lHOXcwQkFRRUZBQVNDQktjd2dnU2pBZ0VBQW9JQkFRREdrUnpseEx4ZjRpdnkKbEs2WG5NU3ozZXdJOXQzbmJzTE1XMmJNbmZvUlRjQmtGeG9tbnZhN1F2MnRtZHBaelZ4TUVyUWhXV1E1eDlTTAp4emlSbXhnOEpLbzVwdmdKRnVITFFMeHRZZndpL3N1VFNUa0czSUhMSUQ4REdOK2J1bU1GRkJhUDlYUkpsbzdCCjJ2T3VrYmFpOE9waG9wTGh0aVQwT3k0cjd2Mk0xcnVPenUzQ285bzhZVDNkUXBzZXZobHU1NTlTeEZUSmdDcGkKQStSRVgwYnRnV0orRXdJSWUya1VVbmI3a04ySDFvU0NldnN0aTg4bDJ2U1d6Z1ZKTjB5d2JnUDN6TjR4N1hMbQo1NytodE14b1IvV1d4RzNueUVvQmJmYWlsOWNGYUtJTTc2N3lnSDJxd3ltaWNBWEtUaVlIVlBNZmdMTVBBRVJ5ClFSekMxWUdwQWdNQkFBRUNnZ0VBQm1TWnA1UWo5SHBWcStPNWswd0swVGV0NThQNjlQNk42d0p1VnR3bk52Tm4KNUZFU0dIZzV2V0cweFNnVTdaczlBMzMrcXF3MEcrQWhLYmJxVFZYTysvQzZRa3pyNDI4SEtnSVZqdmYrcENuTAo2QndOWi9rbGZLSzNKS1JpWHFNcm1QaENtYlB2WUljbVpYdGxLUk9yNjZjU0JMNjFOK3NqV1hHbVZPZkc1Z2ZkClAwbnJqRDZMcmVNZmJyNkdlOXpRTHpuNkhCZjB5cUxxZmpEWThPVURsK0R4TlZwOGZkd2ZlcWZOUXBRQk04NHIKei90ZzFSK0hFYXBkWUR0WXhKNnV1SzVMTmdHVG1RWUlaZmFmVVp0YmlBWCtDdFVoZ3FiRXowdFVFUXpQQWRsSAphblpKc0FmbmVzTXJabkRjNERLaU0xUk9KNW1jNGNHNm51RVZDQmMxWVFLQmdRRDQzSG4zQjd3d2dialdCa2s1CjNPZlYxY0JXZElQdXdEY1NvWlJ0QUsrVEtSaUZPTG1oVTk4bVhnblJhVk9BSXY1cEVNa2VpSkFkZ2xZRGRTbFgKMVpzdzBhay9samtqanJQM2Q1aFVuY3Z1WnY3cUhKckVaSVRtVU1wWmdmVnlpTVo5MVc1RmY3TlhmWTIyZVVQZwpKVG9qTlExU0l5ZHZIR2RTZ3h5b1BHYXdKUUtCZ1FETVEwd2djbGNNN0EvYjJERklzN29jU0pLZVJobDNiM3AxCkNnb2tUdHFYd1BLUFY5UHYxRkxSRGpZM0hoaitTKzFEdE1QMlRoSEFpZDNlbmdtQUZGQTg4c2tsNUVXa2U3ZDkKWUdKdW9KVURjdWU3aXorenV3b3dQVnlYL0Y5cHZ0ZmJjN2c3eW5MdzlGbFh5Y2NMRVI1bGxncE15OWlacmxacApmU0dOM0l2Q05RS0JnRDlHRjRDV3ArT1JhQVNLenAxMnJEOXpQSmIrd3ZpMlNJcGxLTTdhS01uNjNmQXBieEUwCnVQMFJWZCszcnZKYWMyTVZVSDJCN1ZxRFpBazNCYzcrVVpvRkJNcFZFS3dZd1dzL0xpejlmZmRjbXAyOXJpQVgKQ3E5Z2hVSml4NXhhYUZWZ0tjeGozcDUxSHMzeFlTK2haM25DS0dQazZrYlc2dkpRd2IySXRmYzlBb0dCQUw5cQpaV0dXcE5yNE1OaGRYYm42cXZLc1U3RzhrVXJxamdBMSsxRVJFQ25iNTdMS3BGS0FUMmVYZ05qZi9KMzV1d3VTCnozejJwZzRmWkdxbEFOUWt0UmlZa0VWUkNLNWVQWkpoaTN5T1FYWnM3SnBFb05xbDhhTkpMWWRFT29tWERTT2EKNnRBbEpOZUd0RjdmT1FhMjhSeFRvYTFiN2N2K292M1NCR3F6ZmNqdEFvR0FYaW9oZWlFdk9jZFFPK3RmcHEwNApnR1pScXRwMzZBU3NxQ2RhN1pSelc0cFNqb0RzZ1VmRmZHMm1qYnBOeVdyTFByS041bjdoWHp5RUxxbExTNHh1CkllSkM4dHhyN0lhMUt5ZXNPbysyemxCeHdjWGNDbWZoVUV1RHRwN2RqdytBcFRNZ2dTK0R5MVhyck5hOXN0RGoKcnMvREMwb2R1UUlaV2trWllJQ2w4cFU9Ci0tLS0tRU5EIFBSSVZBVEUgS0VZLS0tLS0K
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-cfg
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 10s
+      scrape_timeout: 10s
+    scrape_configs:
+    - job_name: haproxy
+      kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+          - haproxy-ingress
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_run]
+        regex: haproxy-ingress
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_container_port_number]
+        regex: 1024
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_node_name]
+        target_label: hostname
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: prometheus
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - services
+  - endpoints
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+spec:
+  ports:
+  - port: 9090
+  selector:
+    app.kubernetes.io/instance: prometheus
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: haproxy-ingress
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: haproxy-ingress
+subjects:
+- kind: ServiceAccount
+  name: haproxy-ingress
+  namespace: haproxy-ingress
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: haproxy-ingress
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: haproxy-ingress
+subjects:
+- kind: ServiceAccount
+  name: haproxy-ingress
+  namespace: haproxy-ingress
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: prometheus
+subjects:
+- kind: ServiceAccount
+  name: prometheus
+  namespace: haproxy-ingress
 
 ---
 apiVersion: apps/v1
@@ -203,39 +368,6 @@ spec:
               fieldPath: metadata.namespace
 
 ---
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: haproxy-ingress
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: haproxy-ingress
-spec:
-  selector:
-    app.kubernetes.io/name: haproxy-ingress
-  type: LoadBalancer
-  ports:
-  - name: http
-    port: 80
-    protocol: TCP
-    targetPort: 8080
-  - name: https
-    port: 443
-    protocol: TCP
-    targetPort: 8443
-  - name: cql-ssl
-    port: 9142
-    protocol: TCP
-    targetPort: 8443
-  - name: stat
-    port: 1024
-    protocol: TCP
-    targetPort: 1024
-
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -259,61 +391,6 @@ spec:
           requests:
             cpu: 10m
             memory: 50Mi
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: ingress-default-backend
-spec:
-  selector:
-    app.kubernetes.io/name: ingress-default-backend
-  ports:
-  - name: https
-    port: 443
-    protocol: TCP
-    targetPort: 8080
-  - name: cql-ssl
-    port: 9142
-    protocol: TCP
-    targetPort: 8080
-
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: ingress-default-ssl-certificate
-type: kubernetes.io/tls
-data:
-  tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR1ekNDQXFPZ0F3SUJBZ0lVY0lxVXJoVnkvKzlWdGVaMkFkQVFxb0FiVDl3d0RRWUpLb1pJaHZjTkFRRUwKQlFBd2JURUxNQWtHQTFVRUJoTUNRMW94RVRBUEJnTlZCQWdNQ0ZaNWMyOWphVzVoTVJBd0RnWURWUVFIREFkSwphV2hzWVhaaE1SVXdFd1lEVlFRS0RBeFRZM2xzYkdGRVFpQk1kR1F4RURBT0JnTlZCQXNNQjJoaGNISnZlSGt4CkVEQU9CZ05WQkFNTUIyaGhjSEp2ZUhrd0hoY05Nakl3TWpFMU1USTBNekF6V2hjTk1qSXdNekUzTVRJME16QXoKV2pCdE1Rc3dDUVlEVlFRR0V3SkRXakVSTUE4R0ExVUVDQXdJVm5semIyTnBibUV4RURBT0JnTlZCQWNNQjBwcAphR3hoZG1FeEZUQVRCZ05WQkFvTURGTmplV3hzWVVSQ0lFeDBaREVRTUE0R0ExVUVDd3dIYUdGd2NtOTRlVEVRCk1BNEdBMVVFQXd3SGFHRndjbTk0ZVRDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUIKQU1hUkhPWEV2Ri9pSy9LVXJwZWN4TFBkN0FqMjNlZHV3c3hiWnN5ZCtoRk53R1FYR2lhZTlydEMvYTJaMmxuTgpYRXdTdENGWlpEbkgxSXZIT0pHYkdEd2txam1tK0FrVzRjdEF2RzFoL0NMK3k1TkpPUWJjZ2NzZ1B3TVkzNXU2Cll3VVVGby8xZEVtV2pzSGE4NjZSdHFMdzZtR2lrdUcySlBRN0xpdnUvWXpXdTQ3TzdjS2oyanhoUGQxQ214NisKR1c3bm4xTEVWTW1BS21JRDVFUmZSdTJCWW40VEFnaDdhUlJTZHZ1UTNZZldoSUo2K3kyTHp5WGE5SmJPQlVrMwpUTEJ1QS9mTTNqSHRjdWJudjZHMHpHaEg5WmJFYmVmSVNnRnQ5cUtYMXdWb29nenZydktBZmFyREthSndCY3BPCkpnZFU4eCtBc3c4QVJISkJITUxWZ2FrQ0F3RUFBYU5UTUZFd0hRWURWUjBPQkJZRUZBVXAxaHFzRW43eXRoSkYKcXBGN2ZIUk0yNXFYTUI4R0ExVWRJd1FZTUJhQUZBVXAxaHFzRW43eXRoSkZxcEY3ZkhSTTI1cVhNQThHQTFVZApFd0VCL3dRRk1BTUJBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUNnRlNlVTZjQ2YzUmRjMVJPMGE0ck5nClQvZC80SE5qcE1UTXQ4TVhOLzBzQXdWNTg2UmRFWUVGRnhQSmQ4ZjhHUVMydVFBbUNRMDlZd1pyQXh3L2pFc24KamloTTRWdlJvOHJJcXlJZmlYTkpUNDgvd0lmVEc1T3d0UzJ5eExoQjdkRUtFTUhkL0loRjNDQ3ptTzQzV0xPaApRVVl6bUY1UXZEV2Q4eGJKelRjaHAxSy9tRG5BUE5vS1FxZ3RJTGg5ekpITndWOWNROUJhUmRQN1NueE1mQUcwCnAybllHcmhmcGlJZ2g4MTdWUVZ3SHZIODRLYlVjQzJRUlQrOG43T1dyUitRVVArdjJLYVFzKytGOVFpc1RrL0MKSGhDNlhDMGNWNHBHNmIvSlpmU2VCRWJDRDVMSzZ1aW1GSlB1T05SVXlrVzdWOGxMOXVKRHpkVlBNSGMvQTBRPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  tls.key: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JSUV2UUlCQURBTkJna3Foa2lHOXcwQkFRRUZBQVNDQktjd2dnU2pBZ0VBQW9JQkFRREdrUnpseEx4ZjRpdnkKbEs2WG5NU3ozZXdJOXQzbmJzTE1XMmJNbmZvUlRjQmtGeG9tbnZhN1F2MnRtZHBaelZ4TUVyUWhXV1E1eDlTTAp4emlSbXhnOEpLbzVwdmdKRnVITFFMeHRZZndpL3N1VFNUa0czSUhMSUQ4REdOK2J1bU1GRkJhUDlYUkpsbzdCCjJ2T3VrYmFpOE9waG9wTGh0aVQwT3k0cjd2Mk0xcnVPenUzQ285bzhZVDNkUXBzZXZobHU1NTlTeEZUSmdDcGkKQStSRVgwYnRnV0orRXdJSWUya1VVbmI3a04ySDFvU0NldnN0aTg4bDJ2U1d6Z1ZKTjB5d2JnUDN6TjR4N1hMbQo1NytodE14b1IvV1d4RzNueUVvQmJmYWlsOWNGYUtJTTc2N3lnSDJxd3ltaWNBWEtUaVlIVlBNZmdMTVBBRVJ5ClFSekMxWUdwQWdNQkFBRUNnZ0VBQm1TWnA1UWo5SHBWcStPNWswd0swVGV0NThQNjlQNk42d0p1VnR3bk52Tm4KNUZFU0dIZzV2V0cweFNnVTdaczlBMzMrcXF3MEcrQWhLYmJxVFZYTysvQzZRa3pyNDI4SEtnSVZqdmYrcENuTAo2QndOWi9rbGZLSzNKS1JpWHFNcm1QaENtYlB2WUljbVpYdGxLUk9yNjZjU0JMNjFOK3NqV1hHbVZPZkc1Z2ZkClAwbnJqRDZMcmVNZmJyNkdlOXpRTHpuNkhCZjB5cUxxZmpEWThPVURsK0R4TlZwOGZkd2ZlcWZOUXBRQk04NHIKei90ZzFSK0hFYXBkWUR0WXhKNnV1SzVMTmdHVG1RWUlaZmFmVVp0YmlBWCtDdFVoZ3FiRXowdFVFUXpQQWRsSAphblpKc0FmbmVzTXJabkRjNERLaU0xUk9KNW1jNGNHNm51RVZDQmMxWVFLQmdRRDQzSG4zQjd3d2dialdCa2s1CjNPZlYxY0JXZElQdXdEY1NvWlJ0QUsrVEtSaUZPTG1oVTk4bVhnblJhVk9BSXY1cEVNa2VpSkFkZ2xZRGRTbFgKMVpzdzBhay9samtqanJQM2Q1aFVuY3Z1WnY3cUhKckVaSVRtVU1wWmdmVnlpTVo5MVc1RmY3TlhmWTIyZVVQZwpKVG9qTlExU0l5ZHZIR2RTZ3h5b1BHYXdKUUtCZ1FETVEwd2djbGNNN0EvYjJERklzN29jU0pLZVJobDNiM3AxCkNnb2tUdHFYd1BLUFY5UHYxRkxSRGpZM0hoaitTKzFEdE1QMlRoSEFpZDNlbmdtQUZGQTg4c2tsNUVXa2U3ZDkKWUdKdW9KVURjdWU3aXorenV3b3dQVnlYL0Y5cHZ0ZmJjN2c3eW5MdzlGbFh5Y2NMRVI1bGxncE15OWlacmxacApmU0dOM0l2Q05RS0JnRDlHRjRDV3ArT1JhQVNLenAxMnJEOXpQSmIrd3ZpMlNJcGxLTTdhS01uNjNmQXBieEUwCnVQMFJWZCszcnZKYWMyTVZVSDJCN1ZxRFpBazNCYzcrVVpvRkJNcFZFS3dZd1dzL0xpejlmZmRjbXAyOXJpQVgKQ3E5Z2hVSml4NXhhYUZWZ0tjeGozcDUxSHMzeFlTK2haM25DS0dQazZrYlc2dkpRd2IySXRmYzlBb0dCQUw5cQpaV0dXcE5yNE1OaGRYYm42cXZLc1U3RzhrVXJxamdBMSsxRVJFQ25iNTdMS3BGS0FUMmVYZ05qZi9KMzV1d3VTCnozejJwZzRmWkdxbEFOUWt0UmlZa0VWUkNLNWVQWkpoaTN5T1FYWnM3SnBFb05xbDhhTkpMWWRFT29tWERTT2EKNnRBbEpOZUd0RjdmT1FhMjhSeFRvYTFiN2N2K292M1NCR3F6ZmNqdEFvR0FYaW9oZWlFdk9jZFFPK3RmcHEwNApnR1pScXRwMzZBU3NxQ2RhN1pSelc0cFNqb0RzZ1VmRmZHMm1qYnBOeVdyTFByS041bjdoWHp5RUxxbExTNHh1CkllSkM4dHhyN0lhMUt5ZXNPbysyemxCeHdjWGNDbWZoVUV1RHRwN2RqdytBcFRNZ2dTK0R5MVhyck5hOXN0RGoKcnMvREMwb2R1UUlaV2trWllJQ2w4cFU9Ci0tLS0tRU5EIFBSSVZBVEUgS0VZLS0tLS0K
-
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: prometheus-cfg
-data:
-  prometheus.yml: |
-    global:
-      scrape_interval: 10s
-      scrape_timeout: 10s
-    scrape_configs:
-    - job_name: haproxy
-      kubernetes_sd_configs:
-      - role: pod
-        namespaces:
-          names:
-          - haproxy-ingress
-      relabel_configs:
-      - source_labels: [__meta_kubernetes_pod_label_run]
-        regex: haproxy-ingress
-        action: keep
-      - source_labels: [__meta_kubernetes_pod_container_port_number]
-        regex: 1024
-        action: keep
-      - source_labels: [__meta_kubernetes_pod_node_name]
-        target_label: hostname
 
 ---
 apiVersion: apps/v1
@@ -350,58 +427,15 @@ spec:
         volumeMounts:
         - mountPath: /etc/prometheus/config
           name: prometheus-cfg
+        - name: prometheus
+          mountPath: /prometheus
       serviceAccountName: prometheus
       volumes:
       - configMap:
           name: prometheus-cfg
         name: prometheus-cfg
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: prometheus
-rules:
-- apiGroups:
-  - ""
-  resources:
-  - services
-  - endpoints
-  - pods
-  verbs:
-  - get
-  - list
-  - watch
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: prometheus
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: prometheus
-subjects:
-- kind: ServiceAccount
-  name: prometheus
-  namespace: haproxy-ingress
-
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: prometheus
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: prometheus
-spec:
-  ports:
-  - port: 9090
-  selector:
-    app.kubernetes.io/instance: prometheus
+      - name: prometheus
+        emptyDir:
+          sizeLimit: 10Mi
 
 ---

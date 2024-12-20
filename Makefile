@@ -374,14 +374,19 @@ define generate-operator-manifests
 
 	mv '$(3)'/scylla-operator/templates/operator.clusterrole.yaml '$(2)'/00_operator.clusterrole.yaml
 	mv '$(3)'/scylla-operator/templates/operator.clusterrole_def.yaml '$(2)'/00_operator.clusterrole_def.yaml
+	mv '$(3)'/scylla-operator/templates/operator.clusterrole_def_openshift.yaml '$(2)'/00_operator.clusterrole_def_openshift.yaml
 	mv '$(3)'/scylla-operator/templates/operator_remote.clusterrole.yaml '$(2)'/00_operator_remote.clusterrole.yaml
 	mv '$(3)'/scylla-operator/templates/operator_remote.clusterrole_def.yaml '$(2)'/00_operator_remote.clusterrole_def.yaml
 	mv '$(3)'/scylla-operator/templates/view_clusterrole.yaml '$(2)'/00_scyllacluster_clusterrole_view.yaml
 	mv '$(3)'/scylla-operator/templates/edit_clusterrole.yaml '$(2)'/00_scyllacluster_clusterrole_edit.yaml
 	mv '$(3)'/scylla-operator/templates/scyllacluster_member_clusterrole.yaml '$(2)'/00_scyllacluster_member_clusterrole.yaml
 	mv '$(3)'/scylla-operator/templates/scyllacluster_member_clusterrole_def.yaml '$(2)'/00_scyllacluster_member_clusterrole_def.yaml
+	mv '$(3)'/scylla-operator/templates/scyllacluster_member_clusterrole_def_openshift.yaml '$(2)'/00_scyllacluster_member_clusterrole_def_openshift.yaml
 	mv '$(3)'/scylla-operator/templates/scylladbmonitoring_prometheus_clusterrole.yaml '$(2)'/00_scylladbmonitoring_prometheus_clusterrole.yaml
 	mv '$(3)'/scylla-operator/templates/scylladbmonitoring_prometheus_clusterrole_def.yaml '$(2)'/00_scylladbmonitoring_prometheus_clusterrole_def.yaml
+	mv '$(3)'/scylla-operator/templates/scylladbmonitoring_prometheus_clusterrole_def_openshift.yaml '$(2)'/00_scylladbmonitoring_prometheus_clusterrole_def_openshift.yaml
+	mv '$(3)'/scylla-operator/templates/scylladbmonitoring_grafana_clusterrole.yaml '$(2)'/00_scylladbmonitoring_grafana_clusterrole.yaml
+	mv '$(3)'/scylla-operator/templates/scylladbmonitoring_grafana_clusterrole_def_openshift.yaml '$(2)'/00_scylladbmonitoring_grafana_clusterrole_def_openshift.yaml
 
 	mv '$(3)'/scylla-operator/templates/issuer.yaml '$(2)'/10_issuer.yaml
 	mv '$(3)'/scylla-operator/templates/certificate.yaml '$(2)'/10_certificate.yaml
@@ -415,6 +420,7 @@ define generate-manager-manifests-prod
 	mv '$(3)'/scylla-manager/templates/manager_service.yaml '$(2)'/10_manager_service.yaml
 	mv '$(3)'/scylla-manager/templates/manager_serviceaccount.yaml '$(2)'/10_manager_serviceaccount.yaml
 	mv '$(3)'/scylla-manager/templates/manager_configmap.yaml '$(2)'/10_manager_configmap.yaml
+	mv '$(3)'/scylla-manager/templates/manager_networkpolicy.yaml '$(2)'/10_manager_networkpolicy.yaml
 
 	mv '$(3)'/scylla-manager/templates/controller_clusterrolebinding.yaml '$(2)'/20_controller_clusterrolebinding.yaml
 
@@ -490,6 +496,7 @@ update-deploy: tmp_dir:=$(shell mktemp -d)
 update-deploy:
 	$(call generate-operator-manifests,helm/deploy/operator.yaml,./deploy/operator,$(tmp_dir))
 	$(call concat-manifests,$(sort $(wildcard deploy/operator/*.yaml)),./deploy/operator.yaml)
+
 	$(call generate-manager-manifests-prod,helm/deploy/manager_prod.yaml,./deploy/manager/prod,$(tmp_dir))
 	$(call concat-manifests,$(sort $(wildcard ./deploy/manager/prod/*.yaml)),./deploy/manager-prod.yaml)
 	$(call generate-manager-manifests-dev,./deploy/manager/dev)
@@ -504,8 +511,6 @@ verify-deploy:
 	cp -r deploy/operator/. $(tmp_dir)/operator/.
 	$(call generate-operator-manifests,helm/deploy/operator.yaml,$(tmp_dir)/operator,$(tmp_dir_generate))
 	$(diff) -r '$(tmp_dir)'/operator deploy/operator
-	$(call concat-manifests,$(sort $(wildcard ./deploy/operator/*.yaml)),'$(tmp_dir)'/operator.yaml)
-	$(diff) '$(tmp_dir)'/operator.yaml deploy/operator.yaml
 
 	cp -r deploy/manager/prod/. $(tmp_dir)/manager/prod/.
 	$(call generate-manager-manifests-prod,helm/deploy/manager_prod.yaml,$(tmp_dir)/manager/prod,$(tmp_dir_generate))
@@ -517,7 +522,6 @@ verify-deploy:
 	$(diff) -r '$(tmp_dir)'/manager/dev deploy/manager/dev
 	$(call concat-manifests,$(sort $(wildcard ./deploy/manager/dev/*.yaml)),'$(tmp_dir)'/manager-dev.yaml)
 	$(diff) '$(tmp_dir)'/manager-dev.yaml deploy/manager-dev.yaml
-
 .PHONY: verify-deploy
 
 # $1 - file name

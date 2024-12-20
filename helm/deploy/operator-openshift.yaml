@@ -1,9 +1,0 @@
-image:
-  repository: docker.io/scylladb
-
-resources:
-  requests:
-    cpu: 100m
-    memory: 20Mi
-
-platform: "openshift"

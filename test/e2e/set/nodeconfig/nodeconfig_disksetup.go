@@ -66,7 +66,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		raidName := rand.String(8)
-		mountPath := fmt.Sprintf("/mnt/disk-setup-%s", f.Namespace())
+		mountPath := fmt.Sprintf("/var/mnt/disk-setup-%s", f.Namespace())
 		hostMountPath := path.Join("/host", mountPath)
 
 		filesystem := scyllav1alpha1.XFSFilesystem
@@ -84,8 +84,9 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 				for _, ldName := range loopDeviceNames {
 					ldcs = append(ldcs, scyllav1alpha1.LoopDeviceConfiguration{
 						Name:      ldName,
-						ImagePath: fmt.Sprintf("/mnt/%s-%s.img", ldName, f.Namespace()),
-						Size:      resource.MustParse("32M"),
+						ImagePath: fmt.Sprintf("/var/mnt/%s-%s.img", ldName, f.Namespace()),
+						// mkfs.xfs requires at least 300MB
+						Size: resource.MustParse("320M"),
 					})
 				}
 
@@ -353,7 +354,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 					Mounts: []scyllav1alpha1.MountConfiguration{
 						{
 							Device:             fmt.Sprintf("/dev/%s", f.Namespace()),
-							MountPoint:         fmt.Sprintf("/mnt/%s", f.Namespace()),
+							MountPoint:         fmt.Sprintf("/var/mnt/%s", f.Namespace()),
 							FSType:             string(scyllav1alpha1.XFSFilesystem),
 							UnsupportedOptions: []string{"prjquota"},
 						},
@@ -373,14 +374,14 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 					LoopDevices: []scyllav1alpha1.LoopDeviceConfiguration{
 						{
 							Name:      "disk",
-							ImagePath: fmt.Sprintf("/mnt/%s.img", f.Namespace()),
+							ImagePath: fmt.Sprintf("/var/mnt/%s.img", f.Namespace()),
 							Size:      resource.MustParse("32M"),
 						},
 					},
 					Mounts: []scyllav1alpha1.MountConfiguration{
 						{
 							Device:             "/dev/loops/disk",
-							MountPoint:         fmt.Sprintf("/mnt/%s/mount", f.Namespace()),
+							MountPoint:         fmt.Sprintf("/var/mnt/%s/mount", f.Namespace()),
 							FSType:             string(scyllav1alpha1.XFSFilesystem),
 							UnsupportedOptions: []string{"prjquota"},
 						},
@@ -400,7 +401,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 					LoopDevices: []scyllav1alpha1.LoopDeviceConfiguration{
 						{
 							Name:      "disk",
-							ImagePath: fmt.Sprintf("/mnt/%s.img", f.Namespace()),
+							ImagePath: fmt.Sprintf("/var/mnt/%s.img", f.Namespace()),
 							Size:      resource.MustParse("32M"),
 						},
 					},
@@ -413,7 +414,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 					Mounts: []scyllav1alpha1.MountConfiguration{
 						{
 							Device:             "/dev/loops/disk",
-							MountPoint:         fmt.Sprintf("/mnt/%s", f.Namespace()),
+							MountPoint:         fmt.Sprintf("/var/mnt/%s", f.Namespace()),
 							FSType:             string(scyllav1alpha1.XFSFilesystem),
 							UnsupportedOptions: []string{"prjquota"},
 						},
@@ -467,7 +468,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 					LoopDevices: []scyllav1alpha1.LoopDeviceConfiguration{
 						{
 							Name:      "disk",
-							ImagePath: fmt.Sprintf("/mnt/%s.img", f.Namespace()),
+							ImagePath: fmt.Sprintf("/var/mnt/%s.img", f.Namespace()),
 							Size:      resource.MustParse("32M"),
 						},
 					},
@@ -525,7 +526,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 				ncCopy.Spec.LocalDiskSetup.Mounts = []scyllav1alpha1.MountConfiguration{
 					{
 						Device:             "/dev/loops/disk",
-						MountPoint:         fmt.Sprintf("/mnt/%s", f.Namespace()),
+						MountPoint:         fmt.Sprintf("/var/mnt/%s", f.Namespace()),
 						FSType:             string(scyllav1alpha1.XFSFilesystem),
 						UnsupportedOptions: []string{"prjquota"},
 					},

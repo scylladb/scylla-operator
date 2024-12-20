@@ -6,6 +6,8 @@
 set -euExo pipefail
 shopt -s inherit_errexit
 
+trap 'kill $( jobs -p ); exit 0' EXIT
+
 if [ -z "${ARTIFACTS+x}" ]; then
   echo "ARTIFACTS can't be empty" > /dev/stderr
   exit 2
@@ -20,12 +22,12 @@ trap gather-artifacts-on-exit EXIT
 REENTRANT="${REENTRANT=false}"
 export REENTRANT
 
-SO_INSTALL_PROMETHEUS_OPERATOR="false"
+SO_INSTALL_PROMETHEUS_OPERATOR="true"
 export SO_INSTALL_PROMETHEUS_OPERATOR
 
-SO_NODECONFIG_PATH="${SO_NODECONFIG_PATH=${parent_dir}/manifests/cluster/nodeconfig.yaml}"
+SO_NODECONFIG_PATH="${SO_NODECONFIG_PATH=${parent_dir}/manifests/cluster/nodeconfig-openshift-aws.yaml}"
 export SO_NODECONFIG_PATH
-SO_CSI_DRIVER_PATH="${parent_dir}/manifests/namespaces/local-csi-driver/"
+SO_CSI_DRIVER_PATH="${SO_CSI_DRIVER_PATH=${parent_dir}/manifests/namespaces/local-csi-driver/}"
 export SO_CSI_DRIVER_PATH
 SO_SCYLLACLUSTER_STORAGECLASS_NAME="${SO_SCYLLACLUSTER_STORAGECLASS_NAME=scylladb-local-xfs}"
 export SO_SCYLLACLUSTER_STORAGECLASS_NAME
@@ -34,7 +36,7 @@ SCYLLA_OPERATOR_FEATURE_GATES="${SCYLLA_OPERATOR_FEATURE_GATES:-AllAlpha=true,Al
 export SCYLLA_OPERATOR_FEATURE_GATES
 
 for i in "${!KUBECONFIGS[@]}"; do
-  KUBECONFIG="${KUBECONFIGS[$i]}" DEPLOY_DIR="${ARTIFACTS}/deploy/${i}" OPERATOR_PLATFORM=openshift timeout --foreground -v 10m "${parent_dir}/../ci-deploy.sh" "${SO_IMAGE}" &
+  KUBECONFIG="${KUBECONFIGS[$i]}" DEPLOY_DIR="${ARTIFACTS}/deploy/${i}" timeout --foreground -v 10m "${parent_dir}/../ci-deploy.sh" "${SO_IMAGE}" &
   ci_deploy_bg_pids["${i}"]=$!
 done
 

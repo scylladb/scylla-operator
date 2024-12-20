@@ -1,9 +1,9 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: scylladb:aggregate-to-scyllacluster-member-openshift
+  name: scylladb:aggregate-to-scylladb-monitoring-grafana-openshift
   labels:
-    rbac.operator.scylladb.com/aggregate-to-scylla-member: "true"
+    rbac.operator.scylladb.com/aggregate-to-scylladb-monitoring-grafana: "true"
 rules:
 - apiGroups:
   - security.openshift.io

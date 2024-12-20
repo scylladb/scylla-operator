@@ -8,7 +8,7 @@ import (
 
 var (
 	Scheme = runtime.NewScheme()
-	Codecs = serializer.NewCodecFactory(Scheme)
+	Codecs = serializer.NewCodecFactory(Scheme, serializer.EnableStrict)
 )
 
 func DefaultJSONEncoder() runtime.Encoder {

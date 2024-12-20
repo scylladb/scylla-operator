@@ -11,25 +11,9 @@ spec:
   datacenterName: us-east-1
   scyllaDB:
     image: "docker.io/scylladb/scylla:{{ .scyllaDBVersion }}"
-    developerMode: true
-    resources:
-      requests:
-        cpu: 10m
-        memory: 100Mi
-      limits:
-        cpu: 1
-        memory: 1Gi
-    storage:
-      capacity: 1Gi
-      {{- if .storageClassName }}
-      storageClassName: {{ .storageClassName }}
-      {{- end }}
+    enableDeveloperMode: true
   scyllaDBManagerAgent:
     image: "docker.io/scylladb/scylla-manager-agent:{{ .scyllaDBManagerVersion }}"
-    resources:
-      requests:
-        cpu: 10m
-        memory: 100Mi
   exposeOptions:
     nodeService:
       type: {{ .nodeServiceType }}
@@ -40,6 +24,24 @@ spec:
         type: {{ .clientsBroadcastAddressType }}
   rackTemplate:
     nodes: 1
+    scyllaDB:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 100Mi
+        limits:
+          cpu: 1
+          memory: 1Gi
+      storage:
+        capacity: 1Gi
+        {{- if .storageClassName }}
+        storageClassName: {{ .storageClassName }}
+        {{- end }}
+    scyllaDBManagerAgent:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 100Mi
     placement:
       nodeAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:

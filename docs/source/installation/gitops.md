@@ -55,11 +55,6 @@ kubectl wait --for='condition=established' crd/prometheuses.monitoring.coreos.co
 
 # Wait for prometheus operator deployment.
 kubectl -n=prometheus-operator rollout status --timeout=10m deployment.apps/prometheus-operator
-
-# Wait for webhook CA secret to be created.
-for i in {1..30}; do
-    { kubectl -n=cert-manager get secret/cert-manager-webhook-ca && break; } || sleep 1
-done
 :::
 
 ### {{productName}}

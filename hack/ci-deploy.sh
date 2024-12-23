@@ -8,12 +8,15 @@
 set -euxEo pipefail
 shopt -s inherit_errexit
 
+source "$( dirname "${BASH_SOURCE[0]}" )/lib/bash.sh"
 source "$( dirname "${BASH_SOURCE[0]}" )/lib/kube.sh"
 
 if [[ -z ${1+x} ]]; then
     echo "Missing operator image ref.\nUsage: ${0} <operator_image_ref>" >&2 >/dev/null
     exit 1
 fi
+
+trap cleanup-bg-jobs-on-exit EXIT
 
 ARTIFACTS=${ARTIFACTS:-$( mktemp -d )}
 OPERATOR_IMAGE_REF=${1}

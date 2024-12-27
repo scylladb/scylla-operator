@@ -56,3 +56,10 @@ rules:
   - scyllaclusters
   verbs:
   - get
+- apiGroups:
+  - ""
+  resources:
+  - configmaps/finalizers
+  - secrets/finalizers
+  verbs:
+  - update

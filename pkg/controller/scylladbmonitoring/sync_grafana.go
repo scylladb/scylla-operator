@@ -26,6 +26,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	kutilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -148,6 +149,13 @@ func makeGrafanaSA(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.ServiceAccoun
 	})
 }
 
+func makeGrafanaRoleBinding(sm *scyllav1alpha1.ScyllaDBMonitoring) (*rbacv1.RoleBinding, string, error) {
+	return grafanav1alpha1assets.GrafanaRoleBindingTemplate.Get().RenderObject(map[string]any{
+		"namespace":              sm.Namespace,
+		"scyllaDBMonitoringName": sm.Name,
+	})
+}
+
 func makeGrafanaConfigs(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.ConfigMap, string, error) {
 	enableAnonymousAccess := false
 	spec := getGrafanaSpec(sm)
@@ -246,6 +254,7 @@ func (smc *Controller) syncGrafana(
 	secrets map[string]*corev1.Secret,
 	services map[string]*corev1.Service,
 	serviceAccounts map[string]*corev1.ServiceAccount,
+	roleBindings map[string]*rbacv1.RoleBinding,
 	deployments map[string]*appsv1.Deployment,
 	ingresses map[string]*networkingv1.Ingress,
 ) ([]metav1.Condition, error) {
@@ -310,6 +319,9 @@ func (smc *Controller) syncGrafana(
 	requiredGrafanaSA, _, err := makeGrafanaSA(sm)
 	renderErrors = append(renderErrors, err)
 
+	requiredGrafanaRoleBinding, _, err := makeGrafanaRoleBinding(sm)
+	renderErrors = append(renderErrors, err)
+
 	requiredConfigsCM, _, err := makeGrafanaConfigs(sm)
 	renderErrors = append(renderErrors, err)
 
@@ -352,6 +364,17 @@ func (smc *Controller) syncGrafana(
 		serviceAccounts,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Delete,
+		},
+		smc.eventRecorder,
+	)
+	pruneErrors = append(pruneErrors, err)
+
+	err = controllerhelpers.Prune(
+		ctx,
+		oslices.ToSlice(requiredGrafanaRoleBinding),
+		roleBindings,
+		&controllerhelpers.PruneControlFuncs{
+			DeleteFunc: smc.kubeClient.RbacV1().RoleBindings(sm.Namespace).Delete,
 		},
 		smc.eventRecorder,
 	)
@@ -433,6 +456,15 @@ func (smc *Controller) syncGrafana(
 				CreateFunc:    smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Create,
 				UpdateFunc:    smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Update,
 				DeleteFunc:    smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Delete,
+			},
+		}.ToUntyped(),
+		resourceapply.ApplyConfig[*rbacv1.RoleBinding]{
+			Required: requiredGrafanaRoleBinding,
+			Control: resourceapply.ApplyControlFuncs[*rbacv1.RoleBinding]{
+				GetCachedFunc: smc.roleBindingLister.RoleBindings(sm.Namespace).Get,
+				CreateFunc:    smc.kubeClient.RbacV1().RoleBindings(sm.Namespace).Create,
+				UpdateFunc:    smc.kubeClient.RbacV1().RoleBindings(sm.Namespace).Update,
+				DeleteFunc:    smc.kubeClient.RbacV1().RoleBindings(sm.Namespace).Delete,
 			},
 		}.ToUntyped(),
 		resourceapply.ApplyConfig[*corev1.ConfigMap]{

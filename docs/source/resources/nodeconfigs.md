@@ -22,7 +22,7 @@ spec:
       type: xfs
     mounts:
     - device: /dev/md/nvmes
-      mountPoint: /mnt/persistent-volumes
+      mountPoint: /var/lib/persistent-volumes
       unsupportedOptions:
       - prjquota
   placement:

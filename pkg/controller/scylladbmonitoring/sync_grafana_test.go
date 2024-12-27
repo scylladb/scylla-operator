@@ -329,6 +329,7 @@ spec:
       labels:
         scylla-operator.scylladb.com/deployment-name: "sm-name-grafana"
     spec:
+      serviceAccountName: "sm-name-grafana"
       affinity:
         {}
       tolerations:
@@ -532,6 +533,7 @@ spec:
       labels:
         scylla-operator.scylladb.com/deployment-name: "sm-name-grafana"
     spec:
+      serviceAccountName: "sm-name-grafana"
       affinity:
         {}
       tolerations:

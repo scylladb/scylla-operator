@@ -6,14 +6,14 @@ spec:
   localDiskSetup:
     loopDevices:
     - name: persistent-volumes
-      imagePath: /mnt/persistent-volumes.img
+      imagePath: /var/lib/persistent-volumes.img
       size: 80Gi
     filesystems:
     - device: /dev/loops/persistent-volumes
       type: xfs
     mounts:
     - device: /dev/loops/persistent-volumes
-      mountPoint: /mnt/persistent-volumes
+      mountPoint: /var/lib/persistent-volumes
       unsupportedOptions:
       - prjquota
   placement:

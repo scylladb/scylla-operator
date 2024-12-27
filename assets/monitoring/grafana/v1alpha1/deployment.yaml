@@ -15,6 +15,7 @@ spec:
       labels:
         scylla-operator.scylladb.com/deployment-name: "{{ .scyllaDBMonitoringName }}-grafana"
     spec:
+      serviceAccountName: "{{ .scyllaDBMonitoringName }}-grafana"
       affinity:
         {{- .affinity | toYAML | nindent 8 }}
       tolerations:

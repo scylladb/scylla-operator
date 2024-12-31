@@ -220,42 +220,40 @@ verify-helm-lint:
 	@$(foreach chart,$(HELM_CHARTS),$(call lint-helm,$(chart)))
 .PHONY: verify-helm-lint
 
+# $1 - codegen command
+# $2 - extra args
 define run-codegen
-	GOPATH=$(GOPATH) $(GO) run "$(CODEGEN_PKG)/cmd/$(1)" --go-header-file='$(CODEGEN_HEADER_FILE)' $(2)
+	$(GO) run "$(CODEGEN_PKG)/cmd/$(1)" --go-header-file='$(CODEGEN_HEADER_FILE)' $(2)
 
 endef
 
 # $1 - api packages
-# $2 - extra args
 define run-deepcopy-gen
-	$(call run-codegen,deepcopy-gen,--input-dirs='$(1)' --output-file-base='zz_generated.deepcopy' $(2))
+	$(call run-codegen,deepcopy-gen,--output-file='zz_generated.deepcopy.go' $(1))
 
 endef
 
 # $1 - group
 # $2 - api packages
 # $3 - client dir
-# $4 - extra args
 define run-client-gen
-	$(call run-codegen,client-gen,--clientset-name=versioned --input-base='./' --input='$(2)' --output-package='$(GO_PACKAGE)/$(3)/$(1)/clientset' $(4))
+	$(call run-codegen,client-gen,--clientset-name=versioned --input-base='./' --output-pkg='$(GO_PACKAGE)/$(3)/$(1)/clientset' --output-dir='./$(3)/$(1)/clientset/' $(foreach p,$(2),--input='$(p)' ))
 
 endef
 
 # $1 - group
 # $2 - api packages
 # $3 - client dir
-# $4 - extra args
 define run-lister-gen
-	$(call run-codegen,lister-gen,--input-dirs='$(2)' --output-package='$(GO_PACKAGE)/$(3)/$(1)/listers' $(4))
+	$(call run-codegen,lister-gen,--output-pkg='$(GO_PACKAGE)/$(3)/$(1)/listers' --output-dir='./$(3)/$(1)/listers/' $(4) $(2))
 
 endef
 
 # $1 - group
 # $2 - api packages
 # $3 - client dir
-# $4 - extra args
 define run-informer-gen
-	$(call run-codegen,informer-gen,--input-dirs='$(2)' --output-package='$(GO_PACKAGE)/$(3)/$(1)/informers' --versioned-clientset-package '$(GO_PACKAGE)/$(3)/$(1)/clientset/versioned' --listers-package='$(GO_PACKAGE)/$(3)/$(1)/listers' $(4))
+	$(call run-codegen,informer-gen,--output-pkg='$(GO_PACKAGE)/$(3)/$(1)/informers' --output-dir='./$(3)/$(1)/informers/' --versioned-clientset-package '$(GO_PACKAGE)/$(3)/$(1)/clientset/versioned' --listers-package='$(GO_PACKAGE)/$(3)/$(1)/listers' $(4) $(2))
 
 endef
 
@@ -271,28 +269,33 @@ expand_go_packages_with_spaces=$(shell echo '$(call expand_go_packages_to_json,$
 # $1 - group
 # $2 - api packages
 # $3 - client dir
-# $4 - extra args
 define run-client-generators
-	$(call run-client-gen,$(1),$(2),$(3),$(4))
-	$(call run-lister-gen,$(1),$(2),$(3),$(4))
-	$(call run-informer-gen,$(1),$(2),$(3),$(4))
+	$(info "run-client-generators:$(1),$(2),$(3)")
+	$(call run-client-gen,$(1),$(2),$(3))
+	$(call run-lister-gen,$(1),$(2),$(3))
+	$(call run-informer-gen,$(1),$(2),$(3))
 
 endef
 
-# $1 - extra args
 define run-update-codegen
-	$(call run-deepcopy-gen,$(call expand_go_packages_with_commas,$(addsuffix /...,$(api_groups)) $(addsuffix /...,$(nonrest_api_groups)) $(addsuffix /...,$(external_api_groups))),$(1))
-	$(foreach group,$(api_groups),$(call run-client-generators,$(notdir $(group)),$(call expand_go_packages_with_commas,$(group)/...),pkg/client,$(1)))
-	$(foreach group,$(external_api_groups),$(call run-client-generators,$(notdir $(group)),$(call expand_go_packages_with_commas,$(group)/...),pkg/externalclient,$(1)))
+	$(call run-deepcopy-gen,$(addsuffix /...,$(api_groups)) $(addsuffix /...,$(nonrest_api_groups)) $(addsuffix /...,$(external_api_groups)))
+	$(foreach group,$(api_groups),$(call run-client-generators,$(notdir $(group)),$(call expand_go_packages_with_spaces,$(group)/...),pkg/client))
+	$(foreach group,$(external_api_groups),$(call run-client-generators,$(notdir $(group)),$(call expand_go_packages_with_spaces,$(group)/...),pkg/externalclient))
 
 endef
 
 update-codegen:
-	$(call run-update-codegen,)
+	$(call run-update-codegen)
 .PHONY: update-codegen
 
+verify-codegen: tmp_dir:=$(shell mktemp -d /tmp/codegen-TMPXXXXXX)
 verify-codegen:
-	$(call run-update-codegen,--verify-only)
+	ln -s $(abspath ./) "$(tmp_dir)"/current
+	cp -R -H ./ "$(tmp_dir)"/updated
+	find "$(tmp_dir)"/updated/ -name '*.zz_generated.deepcopy.go' -delete
+	$(RM) -r "$(tmp_dir)"/updated/pkg/client
+	+$(MAKE) -C "$(tmp_dir)"/updated update-codegen
+	cd "$(tmp_dir)" && $(diff) -r {current,updated}/vendor/ > updated/deps.diff || true
 .PHONY: verify-codegen
 
 # $1 - api package

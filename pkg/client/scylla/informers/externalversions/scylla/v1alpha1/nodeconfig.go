@@ -3,13 +3,13 @@
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	apiscyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	versioned "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	internalinterfaces "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -20,7 +20,7 @@ import (
 // NodeConfigs.
 type NodeConfigInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.NodeConfigLister
+	Lister() scyllav1alpha1.NodeConfigLister
 }
 
 type nodeConfigInformer struct {
@@ -54,7 +54,7 @@ func NewFilteredNodeConfigInformer(client versioned.Interface, resyncPeriod time
 				return client.ScyllaV1alpha1().NodeConfigs().Watch(context.TODO(), options)
 			},
 		},
-		&scyllav1alpha1.NodeConfig{},
+		&apiscyllav1alpha1.NodeConfig{},
 		resyncPeriod,
 		indexers,
 	)
@@ -65,9 +65,9 @@ func (f *nodeConfigInformer) defaultInformer(client versioned.Interface, resyncP
 }
 
 func (f *nodeConfigInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&scyllav1alpha1.NodeConfig{}, f.defaultInformer)
+	return f.factory.InformerFor(&apiscyllav1alpha1.NodeConfig{}, f.defaultInformer)
 }
 
-func (f *nodeConfigInformer) Lister() v1alpha1.NodeConfigLister {
-	return v1alpha1.NewNodeConfigLister(f.Informer().GetIndexer())
+func (f *nodeConfigInformer) Lister() scyllav1alpha1.NodeConfigLister {
+	return scyllav1alpha1.NewNodeConfigLister(f.Informer().GetIndexer())
 }

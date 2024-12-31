@@ -3,15 +3,14 @@
 package v1alpha1
 
 import (
-	"context"
-	"time"
+	context "context"
 
-	v1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	scheme "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
-	rest "k8s.io/client-go/rest"
+	gentype "k8s.io/client-go/gentype"
 )
 
 // ScyllaDBClustersGetter has a method to return a ScyllaDBClusterInterface.
@@ -22,158 +21,34 @@ type ScyllaDBClustersGetter interface {
 
 // ScyllaDBClusterInterface has methods to work with ScyllaDBCluster resources.
 type ScyllaDBClusterInterface interface {
-	Create(ctx context.Context, scyllaDBCluster *v1alpha1.ScyllaDBCluster, opts v1.CreateOptions) (*v1alpha1.ScyllaDBCluster, error)
-	Update(ctx context.Context, scyllaDBCluster *v1alpha1.ScyllaDBCluster, opts v1.UpdateOptions) (*v1alpha1.ScyllaDBCluster, error)
-	UpdateStatus(ctx context.Context, scyllaDBCluster *v1alpha1.ScyllaDBCluster, opts v1.UpdateOptions) (*v1alpha1.ScyllaDBCluster, error)
+	Create(ctx context.Context, scyllaDBCluster *scyllav1alpha1.ScyllaDBCluster, opts v1.CreateOptions) (*scyllav1alpha1.ScyllaDBCluster, error)
+	Update(ctx context.Context, scyllaDBCluster *scyllav1alpha1.ScyllaDBCluster, opts v1.UpdateOptions) (*scyllav1alpha1.ScyllaDBCluster, error)
+	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+	UpdateStatus(ctx context.Context, scyllaDBCluster *scyllav1alpha1.ScyllaDBCluster, opts v1.UpdateOptions) (*scyllav1alpha1.ScyllaDBCluster, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.ScyllaDBCluster, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.ScyllaDBClusterList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*scyllav1alpha1.ScyllaDBCluster, error)
+	List(ctx context.Context, opts v1.ListOptions) (*scyllav1alpha1.ScyllaDBClusterList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ScyllaDBCluster, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *scyllav1alpha1.ScyllaDBCluster, err error)
 	ScyllaDBClusterExpansion
 }
 
 // scyllaDBClusters implements ScyllaDBClusterInterface
 type scyllaDBClusters struct {
-	client rest.Interface
-	ns     string
+	*gentype.ClientWithList[*scyllav1alpha1.ScyllaDBCluster, *scyllav1alpha1.ScyllaDBClusterList]
 }
 
 // newScyllaDBClusters returns a ScyllaDBClusters
 func newScyllaDBClusters(c *ScyllaV1alpha1Client, namespace string) *scyllaDBClusters {
 	return &scyllaDBClusters{
-		client: c.RESTClient(),
-		ns:     namespace,
+		gentype.NewClientWithList[*scyllav1alpha1.ScyllaDBCluster, *scyllav1alpha1.ScyllaDBClusterList](
+			"scylladbclusters",
+			c.RESTClient(),
+			scheme.ParameterCodec,
+			namespace,
+			func() *scyllav1alpha1.ScyllaDBCluster { return &scyllav1alpha1.ScyllaDBCluster{} },
+			func() *scyllav1alpha1.ScyllaDBClusterList { return &scyllav1alpha1.ScyllaDBClusterList{} },
+		),
 	}
-}
-
-// Get takes name of the scyllaDBCluster, and returns the corresponding scyllaDBCluster object, and an error if there is any.
-func (c *scyllaDBClusters) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ScyllaDBCluster, err error) {
-	result = &v1alpha1.ScyllaDBCluster{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("scylladbclusters").
-		Name(name).
-		VersionedParams(&options, scheme.ParameterCodec).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// List takes label and field selectors, and returns the list of ScyllaDBClusters that match those selectors.
-func (c *scyllaDBClusters) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ScyllaDBClusterList, err error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	result = &v1alpha1.ScyllaDBClusterList{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("scylladbclusters").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Watch returns a watch.Interface that watches the requested scyllaDBClusters.
-func (c *scyllaDBClusters) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	opts.Watch = true
-	return c.client.Get().
-		Namespace(c.ns).
-		Resource("scylladbclusters").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch(ctx)
-}
-
-// Create takes the representation of a scyllaDBCluster and creates it.  Returns the server's representation of the scyllaDBCluster, and an error, if there is any.
-func (c *scyllaDBClusters) Create(ctx context.Context, scyllaDBCluster *v1alpha1.ScyllaDBCluster, opts v1.CreateOptions) (result *v1alpha1.ScyllaDBCluster, err error) {
-	result = &v1alpha1.ScyllaDBCluster{}
-	err = c.client.Post().
-		Namespace(c.ns).
-		Resource("scylladbclusters").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(scyllaDBCluster).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Update takes the representation of a scyllaDBCluster and updates it. Returns the server's representation of the scyllaDBCluster, and an error, if there is any.
-func (c *scyllaDBClusters) Update(ctx context.Context, scyllaDBCluster *v1alpha1.ScyllaDBCluster, opts v1.UpdateOptions) (result *v1alpha1.ScyllaDBCluster, err error) {
-	result = &v1alpha1.ScyllaDBCluster{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("scylladbclusters").
-		Name(scyllaDBCluster.Name).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(scyllaDBCluster).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *scyllaDBClusters) UpdateStatus(ctx context.Context, scyllaDBCluster *v1alpha1.ScyllaDBCluster, opts v1.UpdateOptions) (result *v1alpha1.ScyllaDBCluster, err error) {
-	result = &v1alpha1.ScyllaDBCluster{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("scylladbclusters").
-		Name(scyllaDBCluster.Name).
-		SubResource("status").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(scyllaDBCluster).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Delete takes name of the scyllaDBCluster and deletes it. Returns an error if one occurs.
-func (c *scyllaDBClusters) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("scylladbclusters").
-		Name(name).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *scyllaDBClusters) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
-	}
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("scylladbclusters").
-		VersionedParams(&listOpts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// Patch applies the patch and returns the patched scyllaDBCluster.
-func (c *scyllaDBClusters) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ScyllaDBCluster, err error) {
-	result = &v1alpha1.ScyllaDBCluster{}
-	err = c.client.Patch(pt).
-		Namespace(c.ns).
-		Resource("scylladbclusters").
-		Name(name).
-		SubResource(subresources...).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(data).
-		Do(ctx).
-		Into(result)
-	return
 }

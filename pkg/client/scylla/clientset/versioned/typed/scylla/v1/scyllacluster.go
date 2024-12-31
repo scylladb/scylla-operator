@@ -3,15 +3,14 @@
 package v1
 
 import (
-	"context"
-	"time"
+	context "context"
 
-	v1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scheme "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
-	rest "k8s.io/client-go/rest"
+	gentype "k8s.io/client-go/gentype"
 )
 
 // ScyllaClustersGetter has a method to return a ScyllaClusterInterface.
@@ -22,158 +21,34 @@ type ScyllaClustersGetter interface {
 
 // ScyllaClusterInterface has methods to work with ScyllaCluster resources.
 type ScyllaClusterInterface interface {
-	Create(ctx context.Context, scyllaCluster *v1.ScyllaCluster, opts metav1.CreateOptions) (*v1.ScyllaCluster, error)
-	Update(ctx context.Context, scyllaCluster *v1.ScyllaCluster, opts metav1.UpdateOptions) (*v1.ScyllaCluster, error)
-	UpdateStatus(ctx context.Context, scyllaCluster *v1.ScyllaCluster, opts metav1.UpdateOptions) (*v1.ScyllaCluster, error)
+	Create(ctx context.Context, scyllaCluster *scyllav1.ScyllaCluster, opts metav1.CreateOptions) (*scyllav1.ScyllaCluster, error)
+	Update(ctx context.Context, scyllaCluster *scyllav1.ScyllaCluster, opts metav1.UpdateOptions) (*scyllav1.ScyllaCluster, error)
+	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+	UpdateStatus(ctx context.Context, scyllaCluster *scyllav1.ScyllaCluster, opts metav1.UpdateOptions) (*scyllav1.ScyllaCluster, error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.ScyllaCluster, error)
-	List(ctx context.Context, opts metav1.ListOptions) (*v1.ScyllaClusterList, error)
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*scyllav1.ScyllaCluster, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*scyllav1.ScyllaClusterList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.ScyllaCluster, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *scyllav1.ScyllaCluster, err error)
 	ScyllaClusterExpansion
 }
 
 // scyllaClusters implements ScyllaClusterInterface
 type scyllaClusters struct {
-	client rest.Interface
-	ns     string
+	*gentype.ClientWithList[*scyllav1.ScyllaCluster, *scyllav1.ScyllaClusterList]
 }
 
 // newScyllaClusters returns a ScyllaClusters
 func newScyllaClusters(c *ScyllaV1Client, namespace string) *scyllaClusters {
 	return &scyllaClusters{
-		client: c.RESTClient(),
-		ns:     namespace,
+		gentype.NewClientWithList[*scyllav1.ScyllaCluster, *scyllav1.ScyllaClusterList](
+			"scyllaclusters",
+			c.RESTClient(),
+			scheme.ParameterCodec,
+			namespace,
+			func() *scyllav1.ScyllaCluster { return &scyllav1.ScyllaCluster{} },
+			func() *scyllav1.ScyllaClusterList { return &scyllav1.ScyllaClusterList{} },
+		),
 	}
-}
-
-// Get takes name of the scyllaCluster, and returns the corresponding scyllaCluster object, and an error if there is any.
-func (c *scyllaClusters) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.ScyllaCluster, err error) {
-	result = &v1.ScyllaCluster{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("scyllaclusters").
-		Name(name).
-		VersionedParams(&options, scheme.ParameterCodec).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// List takes label and field selectors, and returns the list of ScyllaClusters that match those selectors.
-func (c *scyllaClusters) List(ctx context.Context, opts metav1.ListOptions) (result *v1.ScyllaClusterList, err error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	result = &v1.ScyllaClusterList{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("scyllaclusters").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Watch returns a watch.Interface that watches the requested scyllaClusters.
-func (c *scyllaClusters) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	opts.Watch = true
-	return c.client.Get().
-		Namespace(c.ns).
-		Resource("scyllaclusters").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch(ctx)
-}
-
-// Create takes the representation of a scyllaCluster and creates it.  Returns the server's representation of the scyllaCluster, and an error, if there is any.
-func (c *scyllaClusters) Create(ctx context.Context, scyllaCluster *v1.ScyllaCluster, opts metav1.CreateOptions) (result *v1.ScyllaCluster, err error) {
-	result = &v1.ScyllaCluster{}
-	err = c.client.Post().
-		Namespace(c.ns).
-		Resource("scyllaclusters").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(scyllaCluster).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Update takes the representation of a scyllaCluster and updates it. Returns the server's representation of the scyllaCluster, and an error, if there is any.
-func (c *scyllaClusters) Update(ctx context.Context, scyllaCluster *v1.ScyllaCluster, opts metav1.UpdateOptions) (result *v1.ScyllaCluster, err error) {
-	result = &v1.ScyllaCluster{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("scyllaclusters").
-		Name(scyllaCluster.Name).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(scyllaCluster).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *scyllaClusters) UpdateStatus(ctx context.Context, scyllaCluster *v1.ScyllaCluster, opts metav1.UpdateOptions) (result *v1.ScyllaCluster, err error) {
-	result = &v1.ScyllaCluster{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("scyllaclusters").
-		Name(scyllaCluster.Name).
-		SubResource("status").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(scyllaCluster).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Delete takes name of the scyllaCluster and deletes it. Returns an error if one occurs.
-func (c *scyllaClusters) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("scyllaclusters").
-		Name(name).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *scyllaClusters) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
-	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
-	}
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("scyllaclusters").
-		VersionedParams(&listOpts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// Patch applies the patch and returns the patched scyllaCluster.
-func (c *scyllaClusters) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.ScyllaCluster, err error) {
-	result = &v1.ScyllaCluster{}
-	err = c.client.Patch(pt).
-		Namespace(c.ns).
-		Resource("scyllaclusters").
-		Name(name).
-		SubResource(subresources...).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(data).
-		Do(ctx).
-		Into(result)
-	return
 }

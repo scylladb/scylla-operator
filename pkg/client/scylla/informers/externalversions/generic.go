@@ -3,7 +3,7 @@
 package externalversions
 
 import (
-	"fmt"
+	fmt "fmt"
 
 	v1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	v1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"

@@ -3,13 +3,13 @@
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	monitoringv1 "github.com/scylladb/scylla-operator/pkg/externalapi/monitoring/v1"
+	externalapimonitoringv1 "github.com/scylladb/scylla-operator/pkg/externalapi/monitoring/v1"
 	versioned "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/clientset/versioned"
 	internalinterfaces "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/informers/externalversions/internalinterfaces"
-	v1 "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/listers/monitoring/v1"
+	monitoringv1 "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/listers/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -20,7 +20,7 @@ import (
 // PodMonitors.
 type PodMonitorInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.PodMonitorLister
+	Lister() monitoringv1.PodMonitorLister
 }
 
 type podMonitorInformer struct {
@@ -55,7 +55,7 @@ func NewFilteredPodMonitorInformer(client versioned.Interface, namespace string,
 				return client.MonitoringV1().PodMonitors(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&monitoringv1.PodMonitor{},
+		&externalapimonitoringv1.PodMonitor{},
 		resyncPeriod,
 		indexers,
 	)
@@ -66,9 +66,9 @@ func (f *podMonitorInformer) defaultInformer(client versioned.Interface, resyncP
 }
 
 func (f *podMonitorInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&monitoringv1.PodMonitor{}, f.defaultInformer)
+	return f.factory.InformerFor(&externalapimonitoringv1.PodMonitor{}, f.defaultInformer)
 }
 
-func (f *podMonitorInformer) Lister() v1.PodMonitorLister {
-	return v1.NewPodMonitorLister(f.Informer().GetIndexer())
+func (f *podMonitorInformer) Lister() monitoringv1.PodMonitorLister {
+	return monitoringv1.NewPodMonitorLister(f.Informer().GetIndexer())
 }

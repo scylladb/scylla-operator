@@ -3,15 +3,14 @@
 package v1alpha1
 
 import (
-	"context"
-	"time"
+	context "context"
 
-	v1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	scheme "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
-	rest "k8s.io/client-go/rest"
+	gentype "k8s.io/client-go/gentype"
 )
 
 // RemoteKubernetesClustersGetter has a method to return a RemoteKubernetesClusterInterface.
@@ -22,147 +21,36 @@ type RemoteKubernetesClustersGetter interface {
 
 // RemoteKubernetesClusterInterface has methods to work with RemoteKubernetesCluster resources.
 type RemoteKubernetesClusterInterface interface {
-	Create(ctx context.Context, remoteKubernetesCluster *v1alpha1.RemoteKubernetesCluster, opts v1.CreateOptions) (*v1alpha1.RemoteKubernetesCluster, error)
-	Update(ctx context.Context, remoteKubernetesCluster *v1alpha1.RemoteKubernetesCluster, opts v1.UpdateOptions) (*v1alpha1.RemoteKubernetesCluster, error)
-	UpdateStatus(ctx context.Context, remoteKubernetesCluster *v1alpha1.RemoteKubernetesCluster, opts v1.UpdateOptions) (*v1alpha1.RemoteKubernetesCluster, error)
+	Create(ctx context.Context, remoteKubernetesCluster *scyllav1alpha1.RemoteKubernetesCluster, opts v1.CreateOptions) (*scyllav1alpha1.RemoteKubernetesCluster, error)
+	Update(ctx context.Context, remoteKubernetesCluster *scyllav1alpha1.RemoteKubernetesCluster, opts v1.UpdateOptions) (*scyllav1alpha1.RemoteKubernetesCluster, error)
+	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+	UpdateStatus(ctx context.Context, remoteKubernetesCluster *scyllav1alpha1.RemoteKubernetesCluster, opts v1.UpdateOptions) (*scyllav1alpha1.RemoteKubernetesCluster, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.RemoteKubernetesCluster, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.RemoteKubernetesClusterList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*scyllav1alpha1.RemoteKubernetesCluster, error)
+	List(ctx context.Context, opts v1.ListOptions) (*scyllav1alpha1.RemoteKubernetesClusterList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.RemoteKubernetesCluster, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *scyllav1alpha1.RemoteKubernetesCluster, err error)
 	RemoteKubernetesClusterExpansion
 }
 
 // remoteKubernetesClusters implements RemoteKubernetesClusterInterface
 type remoteKubernetesClusters struct {
-	client rest.Interface
+	*gentype.ClientWithList[*scyllav1alpha1.RemoteKubernetesCluster, *scyllav1alpha1.RemoteKubernetesClusterList]
 }
 
 // newRemoteKubernetesClusters returns a RemoteKubernetesClusters
 func newRemoteKubernetesClusters(c *ScyllaV1alpha1Client) *remoteKubernetesClusters {
 	return &remoteKubernetesClusters{
-		client: c.RESTClient(),
+		gentype.NewClientWithList[*scyllav1alpha1.RemoteKubernetesCluster, *scyllav1alpha1.RemoteKubernetesClusterList](
+			"remotekubernetesclusters",
+			c.RESTClient(),
+			scheme.ParameterCodec,
+			"",
+			func() *scyllav1alpha1.RemoteKubernetesCluster { return &scyllav1alpha1.RemoteKubernetesCluster{} },
+			func() *scyllav1alpha1.RemoteKubernetesClusterList {
+				return &scyllav1alpha1.RemoteKubernetesClusterList{}
+			},
+		),
 	}
-}
-
-// Get takes name of the remoteKubernetesCluster, and returns the corresponding remoteKubernetesCluster object, and an error if there is any.
-func (c *remoteKubernetesClusters) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.RemoteKubernetesCluster, err error) {
-	result = &v1alpha1.RemoteKubernetesCluster{}
-	err = c.client.Get().
-		Resource("remotekubernetesclusters").
-		Name(name).
-		VersionedParams(&options, scheme.ParameterCodec).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// List takes label and field selectors, and returns the list of RemoteKubernetesClusters that match those selectors.
-func (c *remoteKubernetesClusters) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.RemoteKubernetesClusterList, err error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	result = &v1alpha1.RemoteKubernetesClusterList{}
-	err = c.client.Get().
-		Resource("remotekubernetesclusters").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Watch returns a watch.Interface that watches the requested remoteKubernetesClusters.
-func (c *remoteKubernetesClusters) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	opts.Watch = true
-	return c.client.Get().
-		Resource("remotekubernetesclusters").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch(ctx)
-}
-
-// Create takes the representation of a remoteKubernetesCluster and creates it.  Returns the server's representation of the remoteKubernetesCluster, and an error, if there is any.
-func (c *remoteKubernetesClusters) Create(ctx context.Context, remoteKubernetesCluster *v1alpha1.RemoteKubernetesCluster, opts v1.CreateOptions) (result *v1alpha1.RemoteKubernetesCluster, err error) {
-	result = &v1alpha1.RemoteKubernetesCluster{}
-	err = c.client.Post().
-		Resource("remotekubernetesclusters").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(remoteKubernetesCluster).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Update takes the representation of a remoteKubernetesCluster and updates it. Returns the server's representation of the remoteKubernetesCluster, and an error, if there is any.
-func (c *remoteKubernetesClusters) Update(ctx context.Context, remoteKubernetesCluster *v1alpha1.RemoteKubernetesCluster, opts v1.UpdateOptions) (result *v1alpha1.RemoteKubernetesCluster, err error) {
-	result = &v1alpha1.RemoteKubernetesCluster{}
-	err = c.client.Put().
-		Resource("remotekubernetesclusters").
-		Name(remoteKubernetesCluster.Name).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(remoteKubernetesCluster).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *remoteKubernetesClusters) UpdateStatus(ctx context.Context, remoteKubernetesCluster *v1alpha1.RemoteKubernetesCluster, opts v1.UpdateOptions) (result *v1alpha1.RemoteKubernetesCluster, err error) {
-	result = &v1alpha1.RemoteKubernetesCluster{}
-	err = c.client.Put().
-		Resource("remotekubernetesclusters").
-		Name(remoteKubernetesCluster.Name).
-		SubResource("status").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(remoteKubernetesCluster).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Delete takes name of the remoteKubernetesCluster and deletes it. Returns an error if one occurs.
-func (c *remoteKubernetesClusters) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	return c.client.Delete().
-		Resource("remotekubernetesclusters").
-		Name(name).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *remoteKubernetesClusters) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
-	}
-	return c.client.Delete().
-		Resource("remotekubernetesclusters").
-		VersionedParams(&listOpts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// Patch applies the patch and returns the patched remoteKubernetesCluster.
-func (c *remoteKubernetesClusters) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.RemoteKubernetesCluster, err error) {
-	result = &v1alpha1.RemoteKubernetesCluster{}
-	err = c.client.Patch(pt).
-		Resource("remotekubernetesclusters").
-		Name(name).
-		SubResource(subresources...).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(data).
-		Do(ctx).
-		Into(result)
-	return
 }

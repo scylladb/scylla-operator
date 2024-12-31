@@ -3,10 +3,10 @@
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // ScyllaDBDatacenterLister helps list ScyllaDBDatacenters.
@@ -14,7 +14,7 @@ import (
 type ScyllaDBDatacenterLister interface {
 	// List lists all ScyllaDBDatacenters in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.ScyllaDBDatacenter, err error)
+	List(selector labels.Selector) (ret []*scyllav1alpha1.ScyllaDBDatacenter, err error)
 	// ScyllaDBDatacenters returns an object that can list and get ScyllaDBDatacenters.
 	ScyllaDBDatacenters(namespace string) ScyllaDBDatacenterNamespaceLister
 	ScyllaDBDatacenterListerExpansion
@@ -22,25 +22,17 @@ type ScyllaDBDatacenterLister interface {
 
 // scyllaDBDatacenterLister implements the ScyllaDBDatacenterLister interface.
 type scyllaDBDatacenterLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*scyllav1alpha1.ScyllaDBDatacenter]
 }
 
 // NewScyllaDBDatacenterLister returns a new ScyllaDBDatacenterLister.
 func NewScyllaDBDatacenterLister(indexer cache.Indexer) ScyllaDBDatacenterLister {
-	return &scyllaDBDatacenterLister{indexer: indexer}
-}
-
-// List lists all ScyllaDBDatacenters in the indexer.
-func (s *scyllaDBDatacenterLister) List(selector labels.Selector) (ret []*v1alpha1.ScyllaDBDatacenter, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.ScyllaDBDatacenter))
-	})
-	return ret, err
+	return &scyllaDBDatacenterLister{listers.New[*scyllav1alpha1.ScyllaDBDatacenter](indexer, scyllav1alpha1.Resource("scylladbdatacenter"))}
 }
 
 // ScyllaDBDatacenters returns an object that can list and get ScyllaDBDatacenters.
 func (s *scyllaDBDatacenterLister) ScyllaDBDatacenters(namespace string) ScyllaDBDatacenterNamespaceLister {
-	return scyllaDBDatacenterNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return scyllaDBDatacenterNamespaceLister{listers.NewNamespaced[*scyllav1alpha1.ScyllaDBDatacenter](s.ResourceIndexer, namespace)}
 }
 
 // ScyllaDBDatacenterNamespaceLister helps list and get ScyllaDBDatacenters.
@@ -48,36 +40,15 @@ func (s *scyllaDBDatacenterLister) ScyllaDBDatacenters(namespace string) ScyllaD
 type ScyllaDBDatacenterNamespaceLister interface {
 	// List lists all ScyllaDBDatacenters in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.ScyllaDBDatacenter, err error)
+	List(selector labels.Selector) (ret []*scyllav1alpha1.ScyllaDBDatacenter, err error)
 	// Get retrieves the ScyllaDBDatacenter from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.ScyllaDBDatacenter, error)
+	Get(name string) (*scyllav1alpha1.ScyllaDBDatacenter, error)
 	ScyllaDBDatacenterNamespaceListerExpansion
 }
 
 // scyllaDBDatacenterNamespaceLister implements the ScyllaDBDatacenterNamespaceLister
 // interface.
 type scyllaDBDatacenterNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all ScyllaDBDatacenters in the indexer for a given namespace.
-func (s scyllaDBDatacenterNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.ScyllaDBDatacenter, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.ScyllaDBDatacenter))
-	})
-	return ret, err
-}
-
-// Get retrieves the ScyllaDBDatacenter from the indexer for a given namespace and name.
-func (s scyllaDBDatacenterNamespaceLister) Get(name string) (*v1alpha1.ScyllaDBDatacenter, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("scylladbdatacenter"), name)
-	}
-	return obj.(*v1alpha1.ScyllaDBDatacenter), nil
+	listers.ResourceIndexer[*scyllav1alpha1.ScyllaDBDatacenter]
 }

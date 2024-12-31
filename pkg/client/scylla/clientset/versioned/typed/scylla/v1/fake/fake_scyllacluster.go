@@ -3,123 +3,32 @@
 package fake
 
 import (
-	"context"
-
 	v1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeScyllaClusters implements ScyllaClusterInterface
-type FakeScyllaClusters struct {
+// fakeScyllaClusters implements ScyllaClusterInterface
+type fakeScyllaClusters struct {
+	*gentype.FakeClientWithList[*v1.ScyllaCluster, *v1.ScyllaClusterList]
 	Fake *FakeScyllaV1
-	ns   string
 }
 
-var scyllaclustersResource = v1.SchemeGroupVersion.WithResource("scyllaclusters")
-
-var scyllaclustersKind = v1.SchemeGroupVersion.WithKind("ScyllaCluster")
-
-// Get takes name of the scyllaCluster, and returns the corresponding scyllaCluster object, and an error if there is any.
-func (c *FakeScyllaClusters) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.ScyllaCluster, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(scyllaclustersResource, c.ns, name), &v1.ScyllaCluster{})
-
-	if obj == nil {
-		return nil, err
+func newFakeScyllaClusters(fake *FakeScyllaV1, namespace string) scyllav1.ScyllaClusterInterface {
+	return &fakeScyllaClusters{
+		gentype.NewFakeClientWithList[*v1.ScyllaCluster, *v1.ScyllaClusterList](
+			fake.Fake,
+			namespace,
+			v1.SchemeGroupVersion.WithResource("scyllaclusters"),
+			v1.SchemeGroupVersion.WithKind("ScyllaCluster"),
+			func() *v1.ScyllaCluster { return &v1.ScyllaCluster{} },
+			func() *v1.ScyllaClusterList { return &v1.ScyllaClusterList{} },
+			func(dst, src *v1.ScyllaClusterList) { dst.ListMeta = src.ListMeta },
+			func(list *v1.ScyllaClusterList) []*v1.ScyllaCluster { return gentype.ToPointerSlice(list.Items) },
+			func(list *v1.ScyllaClusterList, items []*v1.ScyllaCluster) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1.ScyllaCluster), err
-}
-
-// List takes label and field selectors, and returns the list of ScyllaClusters that match those selectors.
-func (c *FakeScyllaClusters) List(ctx context.Context, opts metav1.ListOptions) (result *v1.ScyllaClusterList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewListAction(scyllaclustersResource, scyllaclustersKind, c.ns, opts), &v1.ScyllaClusterList{})
-
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1.ScyllaClusterList{ListMeta: obj.(*v1.ScyllaClusterList).ListMeta}
-	for _, item := range obj.(*v1.ScyllaClusterList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested scyllaClusters.
-func (c *FakeScyllaClusters) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(scyllaclustersResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a scyllaCluster and creates it.  Returns the server's representation of the scyllaCluster, and an error, if there is any.
-func (c *FakeScyllaClusters) Create(ctx context.Context, scyllaCluster *v1.ScyllaCluster, opts metav1.CreateOptions) (result *v1.ScyllaCluster, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(scyllaclustersResource, c.ns, scyllaCluster), &v1.ScyllaCluster{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.ScyllaCluster), err
-}
-
-// Update takes the representation of a scyllaCluster and updates it. Returns the server's representation of the scyllaCluster, and an error, if there is any.
-func (c *FakeScyllaClusters) Update(ctx context.Context, scyllaCluster *v1.ScyllaCluster, opts metav1.UpdateOptions) (result *v1.ScyllaCluster, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(scyllaclustersResource, c.ns, scyllaCluster), &v1.ScyllaCluster{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.ScyllaCluster), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeScyllaClusters) UpdateStatus(ctx context.Context, scyllaCluster *v1.ScyllaCluster, opts metav1.UpdateOptions) (*v1.ScyllaCluster, error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(scyllaclustersResource, "status", c.ns, scyllaCluster), &v1.ScyllaCluster{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.ScyllaCluster), err
-}
-
-// Delete takes name of the scyllaCluster and deletes it. Returns an error if one occurs.
-func (c *FakeScyllaClusters) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(scyllaclustersResource, c.ns, name, opts), &v1.ScyllaCluster{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeScyllaClusters) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(scyllaclustersResource, c.ns, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1.ScyllaClusterList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched scyllaCluster.
-func (c *FakeScyllaClusters) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.ScyllaCluster, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(scyllaclustersResource, c.ns, name, pt, data, subresources...), &v1.ScyllaCluster{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.ScyllaCluster), err
 }

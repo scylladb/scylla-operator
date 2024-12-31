@@ -3,8 +3,8 @@
 package versioned
 
 import (
-	"fmt"
-	"net/http"
+	fmt "fmt"
+	http "net/http"
 
 	monitoringv1 "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/clientset/versioned/typed/monitoring/v1"
 	discovery "k8s.io/client-go/discovery"

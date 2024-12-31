@@ -29,7 +29,7 @@ spec:
         args:
         - --listen=/csi/csi.sock
         - --node-name=$(NODE_NAME)
-        - --volumes-dir=/mnt/persistent-volumes
+        - --volumes-dir=/var/lib/persistent-volumes
         - --v=2
         env:
         - name: NODE_NAME
@@ -43,7 +43,7 @@ spec:
         - name: plugin-dir
           mountPath: /csi
         - name: volumes-dir
-          mountPath: /mnt/persistent-volumes
+          mountPath: /var/lib/persistent-volumes
         ports:
         - name: healthz
           containerPort: 9809
@@ -121,5 +121,5 @@ spec:
           type: Directory
       - name: volumes-dir
         hostPath:
-          path: /mnt/persistent-volumes
+          path: /var/lib/persistent-volumes
           type: Directory

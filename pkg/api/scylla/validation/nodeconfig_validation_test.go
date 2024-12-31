@@ -52,9 +52,9 @@ func TestValidateNodeConfig(t *testing.T) {
 				return nc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeDuplicate, Field: "spec.localDiskSetup.mounts[1].mountPoint", BadValue: "/mnt/persistent-volumes"},
+				&field.Error{Type: field.ErrorTypeDuplicate, Field: "spec.localDiskSetup.mounts[1].mountPoint", BadValue: "/var/lib/persistent-volumes"},
 			},
-			expectedErrorString: `spec.localDiskSetup.mounts[1].mountPoint: Duplicate value: "/mnt/persistent-volumes"`,
+			expectedErrorString: `spec.localDiskSetup.mounts[1].mountPoint: Duplicate value: "/var/lib/persistent-volumes"`,
 		},
 		{
 			name: "raid type specified but without configuration",

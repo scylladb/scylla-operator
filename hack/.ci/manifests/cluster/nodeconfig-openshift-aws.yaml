@@ -1,15 +1,9 @@
 apiVersion: scylla.scylladb.com/v1alpha1
 kind: NodeConfig
 metadata:
-  name: scylladb-nodepool-1
+  name: cluster
 spec:
   localDiskSetup:
-    raids:
-    - name: nvmes
-      type: RAID0
-      RAID0:
-        devices:
-          nameRegex: ^/dev/nvme\d+n\d+$
     filesystems:
     - device: /dev/md/nvmes
       type: xfs
@@ -18,6 +12,12 @@ spec:
       mountPoint: /var/lib/persistent-volumes
       unsupportedOptions:
       - prjquota
+    raids:
+    - name: nvmes
+      type: RAID0
+      RAID0:
+        devices:
+          nameRegex: ^/dev/nvme[1-9]\d*n\d+$
   placement:
     nodeSelector:
       scylla.scylladb.com/node-type: scylla

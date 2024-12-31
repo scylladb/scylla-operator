@@ -11,6 +11,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -29,6 +30,12 @@ var (
 	grafanaSATemplateString string
 	GrafanaSATemplate       = lazy.New(func() *assets.ObjectTemplate[*corev1.ServiceAccount] {
 		return ParseObjectTemplateOrDie[*corev1.ServiceAccount]("grafana-sa", grafanaSATemplateString)
+	})
+
+	//go:embed "rolebinding.yaml"
+	grafanaRoleBindingTemplateString string
+	GrafanaRoleBindingTemplate       = lazy.New(func() *assets.ObjectTemplate[*rbacv1.RoleBinding] {
+		return ParseObjectTemplateOrDie[*rbacv1.RoleBinding]("grafana-rolebinding", grafanaRoleBindingTemplateString)
 	})
 
 	//go:embed "configs.cm.yaml"

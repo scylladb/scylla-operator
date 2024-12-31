@@ -66,6 +66,7 @@ if [[ -z "${SO_NODECONFIG_PATH:-}" ]]; then
   echo "Skipping NodeConfig creation"
 else
   kubectl_create -f="${SO_NODECONFIG_PATH}"
+  kubectl wait --for='condition=Reconciled' --timeout=10m -f="${SO_NODECONFIG_PATH}"
 fi
 
 if [[ -z "${SO_CSI_DRIVER_PATH:-}" ]]; then
@@ -95,3 +96,4 @@ kubectl wait --for condition=established crd/nodeconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scyllaoperatorconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scylladbmonitorings.scylla.scylladb.com
 kubectl wait --for condition=established $( find "${DEPLOY_DIR}/prometheus-operator/" -name '*.crd.yaml' -printf '-f=%p\n' )
+kubectl -n=prometheus-operator rollout status deploy/prometheus-operator

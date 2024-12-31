@@ -281,3 +281,71 @@ rules:
   - patch
   - update
   - delete
+- apiGroups:
+  - ""
+  resources:
+  - configmaps/finalizers
+  - secrets/finalizers
+  - pods/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - scyllaclusters/finalizers
+  - scylladbdatacenters/finalizers
+  - scylladbmonitorings/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - policy
+  resources:
+  - poddisruptionbudgets/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - nodeconfigs/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - configmaps/finalizers
+  - secrets/finalizers
+  - pods/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - scyllaclusters/finalizers
+  - scylladbdatacenters/finalizers
+  - scylladbmonitorings/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - policy
+  resources:
+  - poddisruptionbudgets/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - nodeconfigs/finalizers
+  verbs:
+  - update

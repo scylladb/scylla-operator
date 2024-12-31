@@ -99,6 +99,11 @@ func NodeConfigClusterRole() *rbacv1.ClusterRole {
 				Verbs:     []string{"get", "list", "watch"},
 			},
 			{
+				APIGroups: []string{"apps"},
+				Resources: []string{"daemonsets/finalizers"},
+				Verbs:     []string{"update"},
+			},
+			{
 				APIGroups: []string{"batch"},
 				Resources: []string{"jobs"},
 				Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
@@ -113,6 +118,12 @@ func NodeConfigClusterRole() *rbacv1.ClusterRole {
 				Resources: []string{"nodeconfigs/status"},
 				Verbs:     []string{"update"},
 			},
+			{
+				APIGroups:     []string{"security.openshift.io"},
+				ResourceNames: []string{"privileged"},
+				Resources:     []string{"securitycontextconstraints"},
+				Verbs:         []string{"use"},
+			},
 		},
 	}
 }
@@ -126,7 +137,14 @@ func makePerftuneRole() *rbacv1.Role {
 				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
 			},
 		},
-		Rules: []rbacv1.PolicyRule{},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups:     []string{"security.openshift.io"},
+				Resources:     []string{"securitycontextconstraints"},
+				ResourceNames: []string{"privileged"},
+				Verbs:         []string{"use"},
+			},
+		},
 	}
 }
 
@@ -139,7 +157,14 @@ func makeRlimitsRole() *rbacv1.Role {
 				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
 			},
 		},
-		Rules: []rbacv1.PolicyRule{},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups:     []string{"security.openshift.io"},
+				Resources:     []string{"securitycontextconstraints"},
+				ResourceNames: []string{"privileged"},
+				Verbs:         []string{"use"},
+			},
+		},
 	}
 }
 

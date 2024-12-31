@@ -200,7 +200,7 @@ func (opc *Controller) Run(ctx context.Context, workers int) {
 		wait.UntilWithContext(ctx, func(ctx context.Context) {
 			klog.V(4).InfoS("Periodically enqueuing %q ScyllaOperatorConfig", naming.SingletonName)
 
-			key, err := keyFunc(metav1.ObjectMeta{
+			key, err := keyFunc(&metav1.ObjectMeta{
 				Namespace: "",
 				Name:      naming.SingletonName,
 			})

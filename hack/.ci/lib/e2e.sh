@@ -240,7 +240,7 @@ function run-e2e {
   fi
 
   ingress_class_name='haproxy'
-  ingress_custom_annotations='haproxy.org/ssl-passthrough=true'
+  ingress_custom_annotations='haproxy.org/ssl-passthrough=true,route.openshift.io/termination=passthrough'
   ingress_controller_address="$( kubectl -n=haproxy-ingress get svc haproxy-ingress --template='{{ .spec.clusterIP }}' ):9142"
 
   kubectl_create -n=e2e -f=- <<EOF

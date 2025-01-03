@@ -53,6 +53,7 @@ for d in cert-manager{,-cainjector,-webhook}; do
 done
 wait-for-object-creation cert-manager secret/cert-manager-webhook-ca
 
+# TODO: modify log level
 cat > "${ARTIFACTS_DEPLOY_DIR}/operator/kustomization.yaml" << EOF
 resources:
 - ${source_url}/${revision}/deploy/operator.yaml
@@ -96,6 +97,7 @@ else
   echo "Skipping CSI driver creation"
 fi
 
+# TODO: modify log level
 if [[ -z "${SO_SCYLLACLUSTER_STORAGECLASS_NAME+x}" ]]; then
   kubectl_create -n=scylla-manager -f="${source_url}/${revision}/deploy/manager-prod.yaml"
 elif [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME}" ]]; then

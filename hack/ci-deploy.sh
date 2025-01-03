@@ -37,6 +37,12 @@ for f in $( find "${DEPLOY_DIR}"/ -type f -name '*.yaml' ); do
     sed -i -E -e "s~docker\.io/scylladb/scylla-operator:[^ @]+$~${OPERATOR_IMAGE_REF}~" "${f}"
 done
 
+# TODO: Replace it with ScyllaOperatorConfig field when available.
+if [[ -n "${SO_SCYLLA_OPERATOR_LOGLEVEL:-}" ]]; then
+  yq e --inplace '.spec.template.spec.containers[0].args += "--loglevel=" + env(SO_SCYLLA_OPERATOR_LOGLEVEL)' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
+  yq e --inplace '.spec.template.spec.containers[0].args += "--loglevel=" + env(SO_SCYLLA_OPERATOR_LOGLEVEL)' "${DEPLOY_DIR}/manager/50_controller_deployment.yaml"
+fi
+
 yq e --inplace '.spec.template.spec.containers[0].args += ["--qps=200", "--burst=400"]' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
 yq e --inplace '.spec.template.spec.containers[0].args += ["--crypto-key-buffer-size-min=3", "--crypto-key-buffer-size-max=6", "--crypto-key-buffer-delay=2s"]' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
 

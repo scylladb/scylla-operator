@@ -211,15 +211,6 @@ function run-e2e {
   kubectl create clusterrolebinding e2e --clusterrole=cluster-admin --serviceaccount=e2e:default --dry-run=client -o=yaml | kubectl_create -f=-
   kubectl create -n=e2e pdb my-pdb --selector='app=e2e' --min-available=1 --dry-run=client -o=yaml | kubectl_create -f=-
 
-
-  # Raise loglevel in CI.
-  # TODO: Replace it with ScyllaOperatorConfig field when available.
-  kubectl -n=scylla-operator patch --field-manager="${FIELD_MANAGER}" deployment/scylla-operator --type=json -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--loglevel=4"}]'
-  kubectl -n=scylla-operator rollout status deployment/scylla-operator
-
-  kubectl -n=scylla-manager patch --field-manager="${FIELD_MANAGER}" deployment/scylla-manager-controller --type=json -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--loglevel=4"}]'
-  kubectl -n=scylla-manager rollout status deployment/scylla-manager-controller
-
   kubectl create -n=e2e secret generic kubeconfigs ${KUBECONFIGS[@]/#/--from-file=} --dry-run=client -o=yaml | kubectl_create -f=-
   kubeconfigs_in_container_path=$( IFS=','; basenames=( "${KUBECONFIGS[@]##*/}" ) && in_container_paths="${basenames[@]/#//var/run/secrets/kubeconfigs/}" && echo "${in_container_paths[*]}" )
 

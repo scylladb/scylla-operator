@@ -248,8 +248,8 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 
 	type degradedEntry struct {
 		nodeConfigFunc             func() *scyllav1alpha1.NodeConfig
-		preNodeConfigCreationFunc  func(ctx context.Context, nc *scyllav1alpha1.NodeConfig) func(context.Context)
-		postNodeConfigCreationFunc func(ctx context.Context, nc *scyllav1alpha1.NodeConfig) func(context.Context)
+		preNodeConfigCreationFunc  func(ctx context.Context, nc *scyllav1alpha1.NodeConfig, nodeUnderTest *corev1.Node) func(context.Context)
+		postNodeConfigCreationFunc func(ctx context.Context, nc *scyllav1alpha1.NodeConfig, nodeUnderTest *corev1.Node) func(context.Context)
 	}
 
 	g.DescribeTable("should propagate mount controller's degraded condition", func(specCtx g.SpecContext, e *degradedEntry) {
@@ -257,9 +257,10 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		defer cancel()
 
 		nc := e.nodeConfigFunc()
+		nodeUnderTest := matchingNodes[0]
 
 		if e.preNodeConfigCreationFunc != nil {
-			cleanupFunc := e.preNodeConfigCreationFunc(ctx, nc)
+			cleanupFunc := e.preNodeConfigCreationFunc(ctx, nc, nodeUnderTest)
 			defer cleanupFunc(specCtx)
 		}
 
@@ -280,7 +281,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		if e.postNodeConfigCreationFunc != nil {
-			cleanupFunc := e.postNodeConfigCreationFunc(ctx, nc)
+			cleanupFunc := e.postNodeConfigCreationFunc(ctx, nc, nodeUnderTest)
 			defer cleanupFunc(specCtx)
 		}
 
@@ -291,21 +292,19 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 				return false, nil
 			}
 
-			for _, n := range matchingNodes {
-				nodeDegradedConditionType := fmt.Sprintf(internalapi.NodeDegradedConditionFormat, n.GetName())
-				if !helpers.IsStatusConditionPresentAndTrue(statusConditions, nodeDegradedConditionType, nc.Generation) {
-					return false, nil
-				}
+			nodeDegradedConditionType := fmt.Sprintf(internalapi.NodeDegradedConditionFormat, nodeUnderTest.GetName())
+			if !helpers.IsStatusConditionPresentAndTrue(statusConditions, nodeDegradedConditionType, nc.Generation) {
+				return false, nil
+			}
 
-				nodeSetupDegradedConditionType := fmt.Sprintf(internalapi.NodeSetupDegradedConditionFormat, n.GetName())
-				if !helpers.IsStatusConditionPresentAndTrue(statusConditions, nodeSetupDegradedConditionType, nc.Generation) {
-					return false, nil
-				}
+			nodeSetupDegradedConditionType := fmt.Sprintf(internalapi.NodeSetupDegradedConditionFormat, nodeUnderTest.GetName())
+			if !helpers.IsStatusConditionPresentAndTrue(statusConditions, nodeSetupDegradedConditionType, nc.Generation) {
+				return false, nil
+			}
 
-				nodeMountControllerConditionType := fmt.Sprintf("MountControllerNodeSetup%sDegraded", n.GetName())
-				if !helpers.IsStatusConditionPresentAndTrue(statusConditions, nodeMountControllerConditionType, nc.Generation) {
-					return false, nil
-				}
+			nodeMountControllerConditionType := fmt.Sprintf("MountControllerNodeSetup%sDegraded", nodeUnderTest.GetName())
+			if !helpers.IsStatusConditionPresentAndTrue(statusConditions, nodeMountControllerConditionType, nc.Generation) {
+				return false, nil
 			}
 
 			return true, nil
@@ -428,11 +427,12 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 
 				return nc
 			},
-			preNodeConfigCreationFunc: func(ctx context.Context, nc *scyllav1alpha1.NodeConfig) func(context.Context) {
+			preNodeConfigCreationFunc: func(ctx context.Context, nc *scyllav1alpha1.NodeConfig, nodeUnderTest *corev1.Node) func(context.Context) {
 				hostMountPath := fmt.Sprintf("/host/var/lib/%s", f.Namespace())
 
 				framework.By("Creating a client Pod")
 				clientPod := newClientPod(nc)
+				clientPod.Spec.NodeName = nodeUnderTest.GetName()
 
 				clientPod, err := f.KubeClient().CoreV1().Pods(f.Namespace()).Create(ctx, clientPod, metav1.CreateOptions{})
 				o.Expect(err).NotTo(o.HaveOccurred())
@@ -487,11 +487,12 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 				return nc
 			},
 			preNodeConfigCreationFunc: nil,
-			postNodeConfigCreationFunc: func(ctx context.Context, nc *scyllav1alpha1.NodeConfig) func(context.Context) {
+			postNodeConfigCreationFunc: func(ctx context.Context, nc *scyllav1alpha1.NodeConfig, nodeUnderTest *corev1.Node) func(context.Context) {
 				hostDevicePath := "/host/dev/loops/disk"
 
 				framework.By("Creating a client Pod")
 				clientPod := newClientPod(nc)
+				clientPod.Spec.NodeName = nodeUnderTest.GetName()
 
 				clientPod, err := f.KubeClient().CoreV1().Pods(f.Namespace()).Create(ctx, clientPod, metav1.CreateOptions{})
 				o.Expect(err).NotTo(o.HaveOccurred())

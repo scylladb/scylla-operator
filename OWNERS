@@ -4,11 +4,14 @@ filters:
   ".*":
     approvers:
     - zimnx
+    - mflendrich
     reviewers:
     - zimnx
     - rzetelskik
+    - mflendrich
   "go\\.(mod|sum)$":
     required_reviewers:
     - zimnx
+    - mflendrich
     labels:
     - area/dependency

@@ -17,7 +17,8 @@ spec:
       type: RAID0
       RAID0:
         devices:
-          nameRegex: ^/dev/nvme[1-9]\d*n\d+$
+          modelRegex: Amazon EC2 NVMe Instance Storage
+          nameRegex: ^/dev/nvme\d+n\d+$
   placement:
     nodeSelector:
       scylla.scylladb.com/node-type: scylla

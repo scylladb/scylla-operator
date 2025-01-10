@@ -14,13 +14,14 @@
 ![](logo.png)
 
 ## Deploying the Operator
-For version requirements see the [support matrix](./docs/source/releases.md).
+For version requirements see the [releases page](https://operator.docs.scylladb.com/stable/support/releases.html).
+You have two equivalent options:
 
-### GitOps
-Kubernetes manifests are located in the `deploy/` folder. To deploy the operator manually using Kubernetes manifests or to integrate it into your GitOps flow please follow [these instructions](./deploy/README.md). 
+### GitOps (`kubectl`)
+Kubernetes manifests are located in the `deploy/` folder. To deploy the operator manually using Kubernetes manifests or to integrate it into your GitOps flow please follow [the GitOps (`kubectl`) installation guide](https://operator.docs.scylladb.com/stable/installation/gitops.html). 
 
 ### Helm Charts
-You can also use Helm charts to deploy both Scylla Operator and Scylla clusters:
+You can also use Helm charts to deploy both Scylla Operator and Scylla clusters by following [the Helm installation guide](https://operator.docs.scylladb.com/stable/installation/helm.html).
 
 #### Stable
 ```bash
@@ -31,21 +32,6 @@ helm repo add scylla-operator https://storage.googleapis.com/scylla-operator-cha
 ```bash
 helm repo add scylla-operator https://storage.googleapis.com/scylla-operator-charts/latest
 ```
-
-
-## Quickstarts and Training
-To quickly deploy a ScyllaCluster, you can choose one of the following options:
-
-* [Generic](docs/source/generic.md): Follow this guide for the general way to use the operator.
-* [GKE](docs/source/gke.md): An advanced guide for deploying Scylla with the **best performance settings** on [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine).
-* [EKS](docs/source/eks.md): An advanced guide for deploying Scylla with the **best performance settings** on [Amazon Elastic Kubernetes Service](https://aws.amazon.com/eks/).
-* [Scylla University Lesson](https://university.scylladb.com/courses/scylla-operations/lessons/kubernetes-operator/): Follow this lesson on Scylla University to learn more about the Operator and how to use it. The lesson includes some hands-on examples which you can run yourself. 
-
-## Releases
-To find out more about our releases, support matrix and how our CI/CD is set up there is a [dedicated docs page](./docs/source/releases.md).
-
-## Documentation
-Scylla Operator documentation is available on https://operator.docs.scylladb.com
 
 ## Features
 * Deploying multi-zone clusters
@@ -59,6 +45,21 @@ Scylla Operator documentation is available on https://operator.docs.scylladb.com
 * Repairs
 * Autohealing
 
+## Documentation
+
+Scylla Operator has a [documentation site](https://operator.docs.scylladb.com/stable/).
+
+Topics include:
+* [Architecture overview](https://operator.docs.scylladb.com/stable/architecture/overview).
+* An understanding-oriented [installation section](https://operator.docs.scylladb.com/stable/installation/overview.html).
+* Scylla Operator CRD [explanation](https://operator.docs.scylladb.com/stable/resources/overview.html) and [API reference](https://operator.docs.scylladb.com/stable/api-reference/index.html).
+* [Support/troubleshooting overview](https://operator.docs.scylladb.com/stable/support/overview.html) including a [support matrix](https://operator.docs.scylladb.com/stable/support/releases.html#support-matrix).
+* Performance-tuned instructions ("quickstarts") for:
+    * [Creating a dedicated GKE cluster for ScyllaDB in Google Cloud](https://operator.docs.scylladb.com/stable/quickstarts/gke.html),
+    * [Creating a dedicated EKS cluster for ScyllaDB in Amazon AWS](https://operator.docs.scylladb.com/stable/quickstarts/eks.html).
+
+There is also a [Scylla University Lesson](https://university.scylladb.com/courses/scylla-operations/lessons/kubernetes-operator/) focused on Scylla Operator: Follow this lesson on Scylla University to learn more about the Operator and how to use it. The lesson includes some hands-on examples which you can run yourself. 
+
 ## Roadmap
 <!---
 TODO: Link a dedicated roadmap.
@@ -66,9 +67,10 @@ TODO: Link a dedicated roadmap.
 * Restore
 
 ## Support
-If you find a bug please file an [issue](https://github.com/scylladb/scylla-operator/issues) for us.
+If you find a bug please refer to the [support page](https://operator.docs.scylladb.com/stable/support/overview.html). You can file a [GitHub issue](https://github.com/scylladb/scylla-operator/issues) as well.
 
-We are also available on `#scylla-operator` channel on [Slack](https://scylladb-users-slackin.herokuapp.com/) if you have questions.
+We are also available on the `#scylla-operator` channel on the [ScyllaDB users Slack](https://scylladb-users-slackin.herokuapp.com/) if you have questions.
 
 ## Contributing
-We would **love** you to contribute to Scylla Operator, help make it even better and learn together! Have a look at the [Contributing Guide](docs/source/contributing.md) or reach out to us on `#scylla-operator` channel on [Slack](https://scylladb-users-slackin.herokuapp.com/) if you have questions.
+We would **love** you to contribute to Scylla Operator, help make it even better and learn together! Reach out to us on `#scylla-operator` channel on [the ScyllaDB Users Slack](https://scylladb-users-slackin.herokuapp.com/) if you have questions.
+

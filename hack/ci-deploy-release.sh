@@ -58,6 +58,11 @@ wait-for-object-creation cert-manager secret/cert-manager-webhook-ca
 SO_SCYLLA_OPERATOR_LOGLEVEL="${SO_SCYLLA_OPERATOR_LOGLEVEL:-4}"
 export SO_SCYLLA_OPERATOR_LOGLEVEL
 
+SO_CRYPTO_KEY_BUFFER_SIZE_MIN="${SO_CRYPTO_KEY_BUFFER_SIZE_MIN:-6}"
+export SO_CRYPTO_KEY_BUFFER_SIZE_MIN
+SO_CRYPTO_KEY_BUFFER_SIZE_MAX="${SO_CRYPTO_KEY_BUFFER_SIZE_MAX:-10}"
+export SO_CRYPTO_KEY_BUFFER_SIZE_MAX
+
 cat > "${ARTIFACTS_DEPLOY_DIR}/operator/kustomization.yaml" << EOF
 resources:
 - ${source_url}/${revision}/deploy/operator.yaml
@@ -86,6 +91,21 @@ patches:
     version: v1
     kind: Deployment
     name: scylla-operator
+- patch: |
+    - op: add
+      path: /spec/template/spec/containers/0/args/-
+      value: "--crypto-key-buffer-size-min=${SO_CRYPTO_KEY_BUFFER_SIZE_MIN}"
+    - op: add
+      path: /spec/template/spec/containers/0/args/-
+      value: "--crypto-key-buffer-size-max=${SO_CRYPTO_KEY_BUFFER_SIZE_MAX}"
+    - op: add
+      path: /spec/template/spec/containers/0/args/-
+      value: "--crypto-key-buffer-delay=2s"
+  target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: scylla-operator
 EOF
 
 if [[ -n "${SO_SCYLLA_OPERATOR_REPLICAS:-}" ]]; then

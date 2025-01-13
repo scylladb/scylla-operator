@@ -15,6 +15,7 @@ fi
 
 source "$( dirname "${BASH_SOURCE[0]}" )/../lib/kube.sh"
 source "$( dirname "${BASH_SOURCE[0]}" )/lib/e2e.sh"
+source "$( dirname "${BASH_SOURCE[0]}" )/run-e2e-shared.env.sh"
 parent_dir="$( dirname "${BASH_SOURCE[0]}" )"
 
 trap gather-artifacts-on-exit EXIT
@@ -28,9 +29,6 @@ SO_CSI_DRIVER_PATH="${SO_CSI_DRIVER_PATH=${parent_dir}/manifests/namespaces/loca
 export SO_CSI_DRIVER_PATH
 SO_SCYLLACLUSTER_STORAGECLASS_NAME="${SO_SCYLLACLUSTER_STORAGECLASS_NAME=scylladb-local-xfs}"
 export SO_SCYLLACLUSTER_STORAGECLASS_NAME
-
-SCYLLA_OPERATOR_FEATURE_GATES="${SCYLLA_OPERATOR_FEATURE_GATES:-AllAlpha=true,AllBeta=true}"
-export SCYLLA_OPERATOR_FEATURE_GATES
 
 for i in "${!KUBECONFIGS[@]}"; do
   KUBECONFIG="${KUBECONFIGS[$i]}" DEPLOY_DIR="${ARTIFACTS}/deploy/${i}" timeout --foreground -v 10m "${parent_dir}/../ci-deploy.sh" "${SO_IMAGE}" &

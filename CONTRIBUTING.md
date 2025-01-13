@@ -1,14 +1,5 @@
 # Contributing to Scylla Operator
 
-## Prerequisites
-
-To develop Scylla Operator, ensure your environment has the following items configured:
-
-1. [Go](https://golang.org/dl)
-   * Check `go.mod` for minimal version requirement.
-2. Git client
-3. GitHub account
-
 ## Initial Setup
 
 ### Fork the repository
@@ -55,27 +46,21 @@ To maintain a clean commit history, aim for a minimal number of logical commits.
 
 ### Commits and PRs
 
-The first line of your commit message and PR title should summarize the change in one clear sentence that would be meaningful to a user of the Operator. The sentence should use a verb in its base form to describe the change, e.g. "Add support for XYZ." .
-Every release note is based on these first lines, so make them concise yet informative.
+The **subject line** of your commit message **and the PR title** should summarize the change in one clear sentence that would be meaningful to a user of the Operator. The sentence should be **written in the imperative**, i.e. written as if giving a command or instruction, e.g. "Add support for XYZ". A properly formed Git commit subject line should always be able to complete the sentence "If applied, this commit will...", e.g.  "If applied, this commit will **Add support for XYZ**".
+Changelog entries are verbatim PR titles, so make them concise yet informative.
 
-If you have more to say about the change, then enter a blank line and carry on the description.
-Remember to say why the change was needed - the commit itself shows what was changed.
+Further details should be added after a blank line. Explain why the change was necessary, not just what was changed. In the general case, extensive descriptions are well-received. Comparing the behavior before and after the change is especially helpful. Write the message with the mindset that you’ll need to revisit the code in the future.
+If your PR fixes an issue, include "Resolves #1234" in the description, replacing "1234" with the issue number.
 
-Writing more is better than less. Comparing the behavior before the change to that after the change is beneficial.
-Imagine writing to yourself in 12 months when you've forgotten everything about what you just did, and you need to get up to speed quickly.
-
-If the change fixes an issue, then write Fixes #1234 in the PR description.
-
-Here is an example of a good commit message and PR title/description:
 ```
-
+**Description of your changes:**
 Add new XYZ field to ScyllaCluster CRD.
-
 The new field allows for configuration of ZYX feature of ScyllaDB.
 <more details>
 API change was discussed in the following enhancement: <link>.
 
-Fixes #1234
+**Which issue is resolved by this Pull Request:**
+Resolves #1234 
 ```
 
 ### Code review

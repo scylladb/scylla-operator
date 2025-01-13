@@ -53,6 +53,11 @@ for d in cert-manager{,-cainjector,-webhook}; do
 done
 wait-for-object-creation cert-manager secret/cert-manager-webhook-ca
 
+# TODO: Replace it with ScyllaOperatorConfig field when available.
+# Ref: https://github.com/scylladb/scylla-operator/issues/2314.
+SO_SCYLLA_OPERATOR_LOGLEVEL="${SO_SCYLLA_OPERATOR_LOGLEVEL:-4}"
+export SO_SCYLLA_OPERATOR_LOGLEVEL
+
 cat > "${ARTIFACTS_DEPLOY_DIR}/operator/kustomization.yaml" << EOF
 resources:
 - ${source_url}/${revision}/deploy/operator.yaml
@@ -72,7 +77,17 @@ patches:
             env:
             - name: SCYLLA_OPERATOR_IMAGE
               value: "${operator_image_ref}"
+- patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/args/-
+      value: "--loglevel=${SO_SCYLLA_OPERATOR_LOGLEVEL}"
+  target:
+    group: apps
+    version: v1
+    kind: Deployment
+    name: scylla-operator
 EOF
+
 kubectl kustomize "${ARTIFACTS_DEPLOY_DIR}/operator" | kubectl_create -n=scylla-operator -f=-
 
 # Manager needs scylla CRD registered and the webhook running
@@ -96,40 +111,51 @@ else
   echo "Skipping CSI driver creation"
 fi
 
-if [[ -z "${SO_SCYLLACLUSTER_STORAGECLASS_NAME+x}" ]]; then
-  kubectl_create -n=scylla-manager -f="${source_url}/${revision}/deploy/manager-prod.yaml"
-elif [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME}" ]]; then
-  cat > "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" << EOF
+cat > "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" << EOF
 resources:
 - ${source_url}/${revision}/deploy/manager-prod.yaml
 patches:
-- target:
-    group: scylla.scylladb.com
+- patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/args/-
+      value: "--loglevel=${SO_SCYLLA_OPERATOR_LOGLEVEL}"
+  target:
+    group: apps
     version: v1
-    kind: ScyllaCluster
-    name: scylla-manager-cluster
-  patch: |
-    - op: replace
-      path: /spec/datacenter/racks/0/storage/storageClassName
-      value: "${SO_SCYLLACLUSTER_STORAGECLASS_NAME}"
+    kind: Deployment
+    name: scylla-manager-controller
 EOF
-  kubectl kustomize "${ARTIFACTS_DEPLOY_DIR}/manager" | kubectl_create -n=scylla-manager -f=-
-else
-  cat > "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" << EOF
-resources:
-- ${source_url}/${revision}/deploy/manager-prod.yaml
-patches:
-- target:
-    group: scylla.scylladb.com
-    version: v1
-    kind: ScyllaCluster
-    name: scylla-manager-cluster
-  patch: |
-    - op: remove
-      path: /spec/datacenter/racks/0/storage/storageClassName
+
+if [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME:-}" ]]; then
+  # SO_SCYLLACLUSTER_STORAGECLASS_NAME is set and nonempty.
+  cat << EOF | \
+yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" -
+patch: |-
+  - op: replace
+    path: /spec/datacenter/racks/0/storage/storageClassName
+    value: "${SO_SCYLLACLUSTER_STORAGECLASS_NAME}"
+target:
+  group: scylla.scylladb.com
+  version: v1
+  kind: ScyllaCluster
+  name: scylla-manager-cluster
 EOF
-  kubectl kustomize "${ARTIFACTS_DEPLOY_DIR}/manager" | kubectl_create -n=scylla-manager -f=-
+elif [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME+x}" ]]; then
+  # SO_SCYLLACLUSTER_STORAGECLASS_NAME is set and empty.
+  cat << EOF | \
+yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" -
+patch: |-
+  - op: remove
+    path: /spec/datacenter/racks/0/storage/storageClassName
+target:
+  group: scylla.scylladb.com
+  version: v1
+  kind: ScyllaCluster
+  name: scylla-manager-cluster
+EOF
 fi
+
+kubectl kustomize "${ARTIFACTS_DEPLOY_DIR}/manager" | kubectl_create -n=scylla-manager -f=-
 
 kubectl -n=scylla-manager wait --timeout=5m --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
 kubectl -n=scylla-manager wait --timeout=5m --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster

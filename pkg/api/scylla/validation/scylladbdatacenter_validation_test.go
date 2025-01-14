@@ -486,9 +486,9 @@ func TestValidateScyllaDBDatacenter(t *testing.T) {
 				return sdc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.scyllaDB.alternator.servingCertificate.operatorManagedOptions.additionalIPAddresses", BadValue: []string{"0.not-an-ip.0.0"}, Detail: `must be a valid IP address, (e.g. 10.9.8.7 or 2001:db8::ffff)`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.scyllaDB.alternator.servingCertificate.operatorManagedOptions.additionalIPAddresses", BadValue: "0.not-an-ip.0.0", Detail: `must be a valid IP address, (e.g. 10.9.8.7 or 2001:db8::ffff)`},
 			},
-			expectedErrorString: `spec.scyllaDB.alternator.servingCertificate.operatorManagedOptions.additionalIPAddresses: Invalid value: []string{"0.not-an-ip.0.0"}: must be a valid IP address, (e.g. 10.9.8.7 or 2001:db8::ffff)`,
+			expectedErrorString: `spec.scyllaDB.alternator.servingCertificate.operatorManagedOptions.additionalIPAddresses: Invalid value: "0.not-an-ip.0.0": must be a valid IP address, (e.g. 10.9.8.7 or 2001:db8::ffff)`,
 		},
 		{
 			name: "negative rackTemplate nodes",

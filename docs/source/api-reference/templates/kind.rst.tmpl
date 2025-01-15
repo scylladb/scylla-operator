@@ -40,7 +40,7 @@ Specification
    * - {{ $key }}
                 {{- end }}
      - {{ $value.Type }}{{ if $value.Items }} ({{ $value.Items.Schema.Type }}){{ end }}
-     - {{ $value.Description | indentNext 7 }}
+     - {{ $value.Description | foldMultiline }}
             {{- end }}
         {{- end }}
     {{- end }}
@@ -57,7 +57,7 @@ Specification
 
 Description
 """""""""""
-{{ $value.Description }}
+{{ $value.Description | foldMultiline }}
 
 Type
 """"

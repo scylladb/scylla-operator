@@ -111,13 +111,18 @@ func getObjectLink(key string, fieldProps apiextensionsv1.JSONSchemaProps) strin
 	}
 }
 
+func foldMultiline(s string) string {
+	return strings.TrimSpace(strings.ReplaceAll(s, "\n", " "))
+}
+
 var templateFuncs = template.FuncMap{
-	"indentNext":   assets.IndentNext,
-	"repeat":       assets.Repeat,
-	"map":          assets.MakeMap,
-	"labelForKey":  getLabelForKey,
-	"ensurePrefix": ensurePrefix,
-	"objectLink":   getObjectLink,
+	"indentNext":    assets.IndentNext,
+	"repeat":        assets.Repeat,
+	"map":           assets.MakeMap,
+	"labelForKey":   getLabelForKey,
+	"ensurePrefix":  ensurePrefix,
+	"objectLink":    getObjectLink,
+	"foldMultiline": foldMultiline,
 }
 
 func (o *GenerateAPIRefsOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command) error {

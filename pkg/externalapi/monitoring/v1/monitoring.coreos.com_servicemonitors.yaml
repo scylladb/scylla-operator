@@ -3,8 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.11.3
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: servicemonitors.monitoring.coreos.com
 spec:
   group: monitoring.coreos.com
@@ -25,18 +24,31 @@ spec:
           description: ServiceMonitor defines monitoring for a set of services.
           properties:
             apiVersion:
-              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
               type: string
             kind:
-              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
               type: string
             metadata:
               type: object
             spec:
-              description: Specification of desired Service selection for target discovery by Prometheus.
+              description: |-
+                Specification of desired Service selection for target discovery by
+                Prometheus.
               properties:
                 attachMetadata:
-                  description: Attaches node metadata to discovered targets. Requires Prometheus v2.37.0 and above.
+                  description: |-
+                    Attaches node metadata to discovered targets.
+                    Requires Prometheus v2.37.0 and above.
                   properties:
                     node:
                       description: When set to true, Prometheus must have permissions to get Nodes.
@@ -57,7 +69,13 @@ spec:
                                 description: The key of the secret to select from.  Must be a valid secret key.
                                 type: string
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                                default: ""
+                                description: |-
+                                  Name of the referent.
+                                  This field is effectively required, but due to backwards compatibility is
+                                  allowed to be empty. Instances of this type with an empty value here are
+                                  almost certainly wrong.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                                 type: string
                               optional:
                                 description: Specify whether the Secret or its key must be defined
@@ -67,20 +85,32 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                           type:
-                            description: Set the authentication type. Defaults to Bearer, Basic will cause an error
+                            description: |-
+                              Set the authentication type. Defaults to Bearer, Basic will cause an
+                              error
                             type: string
                         type: object
                       basicAuth:
-                        description: 'BasicAuth allow an endpoint to authenticate over basic authentication More info: https://prometheus.io/docs/operating/configuration/#endpoints'
+                        description: |-
+                          BasicAuth allow an endpoint to authenticate over basic authentication
+                          More info: https://prometheus.io/docs/operating/configuration/#endpoints
                         properties:
                           password:
-                            description: The secret in the service monitor namespace that contains the password for authentication.
+                            description: |-
+                              The secret in the service monitor namespace that contains the password
+                              for authentication.
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must be a valid secret key.
                                 type: string
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                                default: ""
+                                description: |-
+                                  Name of the referent.
+                                  This field is effectively required, but due to backwards compatibility is
+                                  allowed to be empty. Instances of this type with an empty value here are
+                                  almost certainly wrong.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                                 type: string
                               optional:
                                 description: Specify whether the Secret or its key must be defined
@@ -90,13 +120,21 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                           username:
-                            description: The secret in the service monitor namespace that contains the username for authentication.
+                            description: |-
+                              The secret in the service monitor namespace that contains the username
+                              for authentication.
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must be a valid secret key.
                                 type: string
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                                default: ""
+                                description: |-
+                                  Name of the referent.
+                                  This field is effectively required, but due to backwards compatibility is
+                                  allowed to be empty. Instances of this type with an empty value here are
+                                  almost certainly wrong.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                                 type: string
                               optional:
                                 description: Specify whether the Secret or its key must be defined
@@ -110,13 +148,22 @@ spec:
                         description: File to read bearer token for scraping targets.
                         type: string
                       bearerTokenSecret:
-                        description: Secret to mount to read bearer token for scraping targets. The secret needs to be in the same namespace as the service monitor and accessible by the Prometheus Operator.
+                        description: |-
+                          Secret to mount to read bearer token for scraping targets. The secret
+                          needs to be in the same namespace as the service monitor and accessible by
+                          the Prometheus Operator.
                         properties:
                           key:
                             description: The key of the secret to select from.  Must be a valid secret key.
                             type: string
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                             type: string
                           optional:
                             description: Specify whether the Secret or its key must be defined
@@ -129,7 +176,9 @@ spec:
                         description: Whether to enable HTTP2.
                         type: boolean
                       filterRunning:
-                        description: 'Drop pods that are not running. (Failed, Succeeded). Enabled by default. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase'
+                        description: |-
+                          Drop pods that are not running. (Failed, Succeeded). Enabled by default.
+                          More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase
                         type: boolean
                       followRedirects:
                         description: FollowRedirects configures whether scrape requests follow HTTP 3xx redirects.
@@ -141,17 +190,24 @@ spec:
                         description: HonorTimestamps controls whether Prometheus respects the timestamps present in scraped data.
                         type: boolean
                       interval:
-                        description: Interval at which metrics should be scraped If not specified Prometheus' global scrape interval is used.
+                        description: |-
+                          Interval at which metrics should be scraped
+                          If not specified Prometheus' global scrape interval is used.
                         pattern: ^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$
                         type: string
                       metricRelabelings:
                         description: MetricRelabelConfigs to apply to samples before ingestion.
                         items:
-                          description: 'RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion. It defines `<metric_relabel_configs>`-section of Prometheus configuration. More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs'
+                          description: |-
+                            RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
+                            It defines `<metric_relabel_configs>`-section of Prometheus configuration.
+                            More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
                           properties:
                             action:
                               default: replace
-                              description: Action to perform based on regex matching. Default is 'replace'. uppercase and lowercase actions require Prometheus >= 2.36.
+                              description: |-
+                                Action to perform based on regex matching. Default is 'replace'.
+                                uppercase and lowercase actions require Prometheus >= 2.36.
                               enum:
                                 - replace
                                 - Replace
@@ -180,20 +236,27 @@ spec:
                               description: Regular expression against which the extracted value is matched. Default is '(.*)'
                               type: string
                             replacement:
-                              description: Replacement value against which a regex replace is performed if the regular expression matches. Regex capture groups are available. Default is '$1'
+                              description: |-
+                                Replacement value against which a regex replace is performed if the
+                                regular expression matches. Regex capture groups are available. Default is '$1'
                               type: string
                             separator:
                               description: Separator placed between concatenated source label values. default is ';'.
                               type: string
                             sourceLabels:
-                              description: The source labels select values from existing labels. Their content is concatenated using the configured separator and matched against the configured regular expression for the replace, keep, and drop actions.
+                              description: |-
+                                The source labels select values from existing labels. Their content is concatenated
+                                using the configured separator and matched against the configured regular expression
+                                for the replace, keep, and drop actions.
                               items:
                                 description: LabelName is a valid Prometheus label name which may only contain ASCII letters, numbers, as well as underscores.
                                 pattern: ^[a-zA-Z_][a-zA-Z0-9_]*$
                                 type: string
                               type: array
                             targetLabel:
-                              description: Label to which the resulting value is written in a replace action. It is mandatory for replace actions. Regex capture groups are available.
+                              description: |-
+                                Label to which the resulting value is written in a replace action.
+                                It is mandatory for replace actions. Regex capture groups are available.
                               type: string
                           type: object
                         type: array
@@ -210,7 +273,13 @@ spec:
                                     description: The key to select.
                                     type: string
                                   name:
-                                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                                    default: ""
+                                    description: |-
+                                      Name of the referent.
+                                      This field is effectively required, but due to backwards compatibility is
+                                      allowed to be empty. Instances of this type with an empty value here are
+                                      almost certainly wrong.
+                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                                     type: string
                                   optional:
                                     description: Specify whether the ConfigMap or its key must be defined
@@ -226,7 +295,13 @@ spec:
                                     description: The key of the secret to select from.  Must be a valid secret key.
                                     type: string
                                   name:
-                                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                                    default: ""
+                                    description: |-
+                                      Name of the referent.
+                                      This field is effectively required, but due to backwards compatibility is
+                                      allowed to be empty. Instances of this type with an empty value here are
+                                      almost certainly wrong.
+                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                                     type: string
                                   optional:
                                     description: Specify whether the Secret or its key must be defined
@@ -243,7 +318,13 @@ spec:
                                 description: The key of the secret to select from.  Must be a valid secret key.
                                 type: string
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                                default: ""
+                                description: |-
+                                  Name of the referent.
+                                  This field is effectively required, but due to backwards compatibility is
+                                  allowed to be empty. Instances of this type with an empty value here are
+                                  almost certainly wrong.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                                 type: string
                               optional:
                                 description: Specify whether the Secret or its key must be defined
@@ -275,7 +356,9 @@ spec:
                         description: Optional HTTP URL parameters
                         type: object
                       path:
-                        description: HTTP path to scrape for metrics. If empty, Prometheus uses the default value (e.g. `/metrics`).
+                        description: |-
+                          HTTP path to scrape for metrics.
+                          If empty, Prometheus uses the default value (e.g. `/metrics`).
                         type: string
                       port:
                         description: Name of the service port this endpoint refers to. Mutually exclusive with targetPort.
@@ -284,13 +367,22 @@ spec:
                         description: ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.
                         type: string
                       relabelings:
-                        description: 'RelabelConfigs to apply to samples before scraping. Prometheus Operator automatically adds relabelings for a few standard Kubernetes fields. The original scrape job''s name is available via the `__tmp_prometheus_job_name` label. More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config'
+                        description: |-
+                          RelabelConfigs to apply to samples before scraping.
+                          Prometheus Operator automatically adds relabelings for a few standard Kubernetes fields.
+                          The original scrape job's name is available via the `__tmp_prometheus_job_name` label.
+                          More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
                         items:
-                          description: 'RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion. It defines `<metric_relabel_configs>`-section of Prometheus configuration. More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs'
+                          description: |-
+                            RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
+                            It defines `<metric_relabel_configs>`-section of Prometheus configuration.
+                            More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
                           properties:
                             action:
                               default: replace
-                              description: Action to perform based on regex matching. Default is 'replace'. uppercase and lowercase actions require Prometheus >= 2.36.
+                              description: |-
+                                Action to perform based on regex matching. Default is 'replace'.
+                                uppercase and lowercase actions require Prometheus >= 2.36.
                               enum:
                                 - replace
                                 - Replace
@@ -319,20 +411,27 @@ spec:
                               description: Regular expression against which the extracted value is matched. Default is '(.*)'
                               type: string
                             replacement:
-                              description: Replacement value against which a regex replace is performed if the regular expression matches. Regex capture groups are available. Default is '$1'
+                              description: |-
+                                Replacement value against which a regex replace is performed if the
+                                regular expression matches. Regex capture groups are available. Default is '$1'
                               type: string
                             separator:
                               description: Separator placed between concatenated source label values. default is ';'.
                               type: string
                             sourceLabels:
-                              description: The source labels select values from existing labels. Their content is concatenated using the configured separator and matched against the configured regular expression for the replace, keep, and drop actions.
+                              description: |-
+                                The source labels select values from existing labels. Their content is concatenated
+                                using the configured separator and matched against the configured regular expression
+                                for the replace, keep, and drop actions.
                               items:
                                 description: LabelName is a valid Prometheus label name which may only contain ASCII letters, numbers, as well as underscores.
                                 pattern: ^[a-zA-Z_][a-zA-Z0-9_]*$
                                 type: string
                               type: array
                             targetLabel:
-                              description: Label to which the resulting value is written in a replace action. It is mandatory for replace actions. Regex capture groups are available.
+                              description: |-
+                                Label to which the resulting value is written in a replace action.
+                                It is mandatory for replace actions. Regex capture groups are available.
                               type: string
                           type: object
                         type: array
@@ -340,7 +439,9 @@ spec:
                         description: HTTP scheme to use for scraping.
                         type: string
                       scrapeTimeout:
-                        description: Timeout after which the scrape is ended If not specified, the Prometheus global scrape timeout is used unless it is less than `Interval` in which the latter is used.
+                        description: |-
+                          Timeout after which the scrape is ended
+                          If not specified, the Prometheus global scrape timeout is used unless it is less than `Interval` in which the latter is used.
                         pattern: ^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$
                         type: string
                       targetPort:
@@ -362,7 +463,13 @@ spec:
                                     description: The key to select.
                                     type: string
                                   name:
-                                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                                    default: ""
+                                    description: |-
+                                      Name of the referent.
+                                      This field is effectively required, but due to backwards compatibility is
+                                      allowed to be empty. Instances of this type with an empty value here are
+                                      almost certainly wrong.
+                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                                     type: string
                                   optional:
                                     description: Specify whether the ConfigMap or its key must be defined
@@ -378,7 +485,13 @@ spec:
                                     description: The key of the secret to select from.  Must be a valid secret key.
                                     type: string
                                   name:
-                                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                                    default: ""
+                                    description: |-
+                                      Name of the referent.
+                                      This field is effectively required, but due to backwards compatibility is
+                                      allowed to be empty. Instances of this type with an empty value here are
+                                      almost certainly wrong.
+                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                                     type: string
                                   optional:
                                     description: Specify whether the Secret or its key must be defined
@@ -401,7 +514,13 @@ spec:
                                     description: The key to select.
                                     type: string
                                   name:
-                                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                                    default: ""
+                                    description: |-
+                                      Name of the referent.
+                                      This field is effectively required, but due to backwards compatibility is
+                                      allowed to be empty. Instances of this type with an empty value here are
+                                      almost certainly wrong.
+                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                                     type: string
                                   optional:
                                     description: Specify whether the ConfigMap or its key must be defined
@@ -417,7 +536,13 @@ spec:
                                     description: The key of the secret to select from.  Must be a valid secret key.
                                     type: string
                                   name:
-                                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                                    default: ""
+                                    description: |-
+                                      Name of the referent.
+                                      This field is effectively required, but due to backwards compatibility is
+                                      allowed to be empty. Instances of this type with an empty value here are
+                                      almost certainly wrong.
+                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                                     type: string
                                   optional:
                                     description: Specify whether the Secret or its key must be defined
@@ -443,7 +568,13 @@ spec:
                                 description: The key of the secret to select from.  Must be a valid secret key.
                                 type: string
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                                default: ""
+                                description: |-
+                                  Name of the referent.
+                                  This field is effectively required, but due to backwards compatibility is
+                                  allowed to be empty. Instances of this type with an empty value here are
+                                  almost certainly wrong.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                                 type: string
                               optional:
                                 description: Specify whether the Secret or its key must be defined
@@ -459,25 +590,40 @@ spec:
                     type: object
                   type: array
                 jobLabel:
-                  description: "JobLabel selects the label from the associated Kubernetes service which will be used as the `job` label for all metrics. \n For example: If in `ServiceMonitor.spec.jobLabel: foo` and in `Service.metadata.labels.foo: bar`, then the `job=\"bar\"` label is added to all metrics. \n If the value of this field is empty or if the label doesn't exist for the given Service, the `job` label of the metrics defaults to the name of the Kubernetes Service."
+                  description: |-
+                    JobLabel selects the label from the associated Kubernetes service which will be used as the `job` label for all metrics.
+
+                    For example:
+                    If in `ServiceMonitor.spec.jobLabel: foo` and in `Service.metadata.labels.foo: bar`,
+                    then the `job="bar"` label is added to all metrics.
+
+                    If the value of this field is empty or if the label doesn't exist for the given Service, the `job` label of the metrics defaults to the name of the Kubernetes Service.
                   type: string
                 labelLimit:
-                  description: Per-scrape limit on number of labels that will be accepted for a sample. Only valid in Prometheus versions 2.27.0 and newer.
+                  description: |-
+                    Per-scrape limit on number of labels that will be accepted for a sample.
+                    Only valid in Prometheus versions 2.27.0 and newer.
                   format: int64
                   type: integer
                 labelNameLengthLimit:
-                  description: Per-scrape limit on length of labels name that will be accepted for a sample. Only valid in Prometheus versions 2.27.0 and newer.
+                  description: |-
+                    Per-scrape limit on length of labels name that will be accepted for a sample.
+                    Only valid in Prometheus versions 2.27.0 and newer.
                   format: int64
                   type: integer
                 labelValueLengthLimit:
-                  description: Per-scrape limit on length of labels value that will be accepted for a sample. Only valid in Prometheus versions 2.27.0 and newer.
+                  description: |-
+                    Per-scrape limit on length of labels value that will be accepted for a sample.
+                    Only valid in Prometheus versions 2.27.0 and newer.
                   format: int64
                   type: integer
                 namespaceSelector:
                   description: Selector to select which namespaces the Kubernetes Endpoints objects are discovered from.
                   properties:
                     any:
-                      description: Boolean describing whether all namespaces are selected in contrast to a list restricting them.
+                      description: |-
+                        Boolean describing whether all namespaces are selected in contrast to a
+                        list restricting them.
                       type: boolean
                     matchNames:
                       description: List of namespace names to select from.
@@ -500,28 +646,41 @@ spec:
                     matchExpressions:
                       description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
                       items:
-                        description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                        description: |-
+                          A label selector requirement is a selector that contains values, a key, and an operator that
+                          relates the key and values.
                         properties:
                           key:
                             description: key is the label key that the selector applies to.
                             type: string
                           operator:
-                            description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                            description: |-
+                              operator represents a key's relationship to a set of values.
+                              Valid operators are In, NotIn, Exists and DoesNotExist.
                             type: string
                           values:
-                            description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                            description: |-
+                              values is an array of string values. If the operator is In or NotIn,
+                              the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                              the values array must be empty. This array is replaced during a strategic
+                              merge patch.
                             items:
                               type: string
                             type: array
+                            x-kubernetes-list-type: atomic
                         required:
                           - key
                           - operator
                         type: object
                       type: array
+                      x-kubernetes-list-type: atomic
                     matchLabels:
                       additionalProperties:
                         type: string
-                      description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                      description: |-
+                        matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                        map is equivalent to an element of matchExpressions, whose key field is "key", the
+                        operator is "In", and the values array contains only "value". The requirements are ANDed.
                       type: object
                   type: object
                   x-kubernetes-map-type: atomic

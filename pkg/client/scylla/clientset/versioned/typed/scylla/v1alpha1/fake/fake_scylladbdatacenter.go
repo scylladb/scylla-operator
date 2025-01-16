@@ -25,22 +25,24 @@ var scylladbdatacentersKind = v1alpha1.SchemeGroupVersion.WithKind("ScyllaDBData
 
 // Get takes name of the scyllaDBDatacenter, and returns the corresponding scyllaDBDatacenter object, and an error if there is any.
 func (c *FakeScyllaDBDatacenters) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ScyllaDBDatacenter, err error) {
+	emptyResult := &v1alpha1.ScyllaDBDatacenter{}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(scylladbdatacentersResource, c.ns, name), &v1alpha1.ScyllaDBDatacenter{})
+		Invokes(testing.NewGetActionWithOptions(scylladbdatacentersResource, c.ns, name, options), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScyllaDBDatacenter), err
 }
 
 // List takes label and field selectors, and returns the list of ScyllaDBDatacenters that match those selectors.
 func (c *FakeScyllaDBDatacenters) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ScyllaDBDatacenterList, err error) {
+	emptyResult := &v1alpha1.ScyllaDBDatacenterList{}
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(scylladbdatacentersResource, scylladbdatacentersKind, c.ns, opts), &v1alpha1.ScyllaDBDatacenterList{})
+		Invokes(testing.NewListActionWithOptions(scylladbdatacentersResource, scylladbdatacentersKind, c.ns, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 
 	label, _, _ := testing.ExtractFromListOptions(opts)
@@ -59,40 +61,43 @@ func (c *FakeScyllaDBDatacenters) List(ctx context.Context, opts v1.ListOptions)
 // Watch returns a watch.Interface that watches the requested scyllaDBDatacenters.
 func (c *FakeScyllaDBDatacenters) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(scylladbdatacentersResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchActionWithOptions(scylladbdatacentersResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a scyllaDBDatacenter and creates it.  Returns the server's representation of the scyllaDBDatacenter, and an error, if there is any.
 func (c *FakeScyllaDBDatacenters) Create(ctx context.Context, scyllaDBDatacenter *v1alpha1.ScyllaDBDatacenter, opts v1.CreateOptions) (result *v1alpha1.ScyllaDBDatacenter, err error) {
+	emptyResult := &v1alpha1.ScyllaDBDatacenter{}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(scylladbdatacentersResource, c.ns, scyllaDBDatacenter), &v1alpha1.ScyllaDBDatacenter{})
+		Invokes(testing.NewCreateActionWithOptions(scylladbdatacentersResource, c.ns, scyllaDBDatacenter, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScyllaDBDatacenter), err
 }
 
 // Update takes the representation of a scyllaDBDatacenter and updates it. Returns the server's representation of the scyllaDBDatacenter, and an error, if there is any.
 func (c *FakeScyllaDBDatacenters) Update(ctx context.Context, scyllaDBDatacenter *v1alpha1.ScyllaDBDatacenter, opts v1.UpdateOptions) (result *v1alpha1.ScyllaDBDatacenter, err error) {
+	emptyResult := &v1alpha1.ScyllaDBDatacenter{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(scylladbdatacentersResource, c.ns, scyllaDBDatacenter), &v1alpha1.ScyllaDBDatacenter{})
+		Invokes(testing.NewUpdateActionWithOptions(scylladbdatacentersResource, c.ns, scyllaDBDatacenter, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScyllaDBDatacenter), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeScyllaDBDatacenters) UpdateStatus(ctx context.Context, scyllaDBDatacenter *v1alpha1.ScyllaDBDatacenter, opts v1.UpdateOptions) (*v1alpha1.ScyllaDBDatacenter, error) {
+func (c *FakeScyllaDBDatacenters) UpdateStatus(ctx context.Context, scyllaDBDatacenter *v1alpha1.ScyllaDBDatacenter, opts v1.UpdateOptions) (result *v1alpha1.ScyllaDBDatacenter, err error) {
+	emptyResult := &v1alpha1.ScyllaDBDatacenter{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(scylladbdatacentersResource, "status", c.ns, scyllaDBDatacenter), &v1alpha1.ScyllaDBDatacenter{})
+		Invokes(testing.NewUpdateSubresourceActionWithOptions(scylladbdatacentersResource, "status", c.ns, scyllaDBDatacenter, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScyllaDBDatacenter), err
 }
@@ -107,7 +112,7 @@ func (c *FakeScyllaDBDatacenters) Delete(ctx context.Context, name string, opts 
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeScyllaDBDatacenters) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(scylladbdatacentersResource, c.ns, listOpts)
+	action := testing.NewDeleteCollectionActionWithOptions(scylladbdatacentersResource, c.ns, opts, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.ScyllaDBDatacenterList{})
 	return err
@@ -115,11 +120,12 @@ func (c *FakeScyllaDBDatacenters) DeleteCollection(ctx context.Context, opts v1.
 
 // Patch applies the patch and returns the patched scyllaDBDatacenter.
 func (c *FakeScyllaDBDatacenters) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ScyllaDBDatacenter, err error) {
+	emptyResult := &v1alpha1.ScyllaDBDatacenter{}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(scylladbdatacentersResource, c.ns, name, pt, data, subresources...), &v1alpha1.ScyllaDBDatacenter{})
+		Invokes(testing.NewPatchSubresourceActionWithOptions(scylladbdatacentersResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScyllaDBDatacenter), err
 }

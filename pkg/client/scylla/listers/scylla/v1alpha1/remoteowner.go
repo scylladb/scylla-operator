@@ -4,8 +4,8 @@ package v1alpha1
 
 import (
 	v1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/listers"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -22,25 +22,17 @@ type RemoteOwnerLister interface {
 
 // remoteOwnerLister implements the RemoteOwnerLister interface.
 type remoteOwnerLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*v1alpha1.RemoteOwner]
 }
 
 // NewRemoteOwnerLister returns a new RemoteOwnerLister.
 func NewRemoteOwnerLister(indexer cache.Indexer) RemoteOwnerLister {
-	return &remoteOwnerLister{indexer: indexer}
-}
-
-// List lists all RemoteOwners in the indexer.
-func (s *remoteOwnerLister) List(selector labels.Selector) (ret []*v1alpha1.RemoteOwner, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.RemoteOwner))
-	})
-	return ret, err
+	return &remoteOwnerLister{listers.New[*v1alpha1.RemoteOwner](indexer, v1alpha1.Resource("remoteowner"))}
 }
 
 // RemoteOwners returns an object that can list and get RemoteOwners.
 func (s *remoteOwnerLister) RemoteOwners(namespace string) RemoteOwnerNamespaceLister {
-	return remoteOwnerNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return remoteOwnerNamespaceLister{listers.NewNamespaced[*v1alpha1.RemoteOwner](s.ResourceIndexer, namespace)}
 }
 
 // RemoteOwnerNamespaceLister helps list and get RemoteOwners.
@@ -58,26 +50,5 @@ type RemoteOwnerNamespaceLister interface {
 // remoteOwnerNamespaceLister implements the RemoteOwnerNamespaceLister
 // interface.
 type remoteOwnerNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all RemoteOwners in the indexer for a given namespace.
-func (s remoteOwnerNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.RemoteOwner, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.RemoteOwner))
-	})
-	return ret, err
-}
-
-// Get retrieves the RemoteOwner from the indexer for a given namespace and name.
-func (s remoteOwnerNamespaceLister) Get(name string) (*v1alpha1.RemoteOwner, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("remoteowner"), name)
-	}
-	return obj.(*v1alpha1.RemoteOwner), nil
+	listers.ResourceIndexer[*v1alpha1.RemoteOwner]
 }

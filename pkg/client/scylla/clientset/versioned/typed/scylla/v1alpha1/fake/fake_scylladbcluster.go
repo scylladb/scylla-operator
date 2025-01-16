@@ -25,22 +25,24 @@ var scylladbclustersKind = v1alpha1.SchemeGroupVersion.WithKind("ScyllaDBCluster
 
 // Get takes name of the scyllaDBCluster, and returns the corresponding scyllaDBCluster object, and an error if there is any.
 func (c *FakeScyllaDBClusters) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ScyllaDBCluster, err error) {
+	emptyResult := &v1alpha1.ScyllaDBCluster{}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(scylladbclustersResource, c.ns, name), &v1alpha1.ScyllaDBCluster{})
+		Invokes(testing.NewGetActionWithOptions(scylladbclustersResource, c.ns, name, options), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScyllaDBCluster), err
 }
 
 // List takes label and field selectors, and returns the list of ScyllaDBClusters that match those selectors.
 func (c *FakeScyllaDBClusters) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ScyllaDBClusterList, err error) {
+	emptyResult := &v1alpha1.ScyllaDBClusterList{}
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(scylladbclustersResource, scylladbclustersKind, c.ns, opts), &v1alpha1.ScyllaDBClusterList{})
+		Invokes(testing.NewListActionWithOptions(scylladbclustersResource, scylladbclustersKind, c.ns, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 
 	label, _, _ := testing.ExtractFromListOptions(opts)
@@ -59,40 +61,43 @@ func (c *FakeScyllaDBClusters) List(ctx context.Context, opts v1.ListOptions) (r
 // Watch returns a watch.Interface that watches the requested scyllaDBClusters.
 func (c *FakeScyllaDBClusters) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(scylladbclustersResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchActionWithOptions(scylladbclustersResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a scyllaDBCluster and creates it.  Returns the server's representation of the scyllaDBCluster, and an error, if there is any.
 func (c *FakeScyllaDBClusters) Create(ctx context.Context, scyllaDBCluster *v1alpha1.ScyllaDBCluster, opts v1.CreateOptions) (result *v1alpha1.ScyllaDBCluster, err error) {
+	emptyResult := &v1alpha1.ScyllaDBCluster{}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(scylladbclustersResource, c.ns, scyllaDBCluster), &v1alpha1.ScyllaDBCluster{})
+		Invokes(testing.NewCreateActionWithOptions(scylladbclustersResource, c.ns, scyllaDBCluster, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScyllaDBCluster), err
 }
 
 // Update takes the representation of a scyllaDBCluster and updates it. Returns the server's representation of the scyllaDBCluster, and an error, if there is any.
 func (c *FakeScyllaDBClusters) Update(ctx context.Context, scyllaDBCluster *v1alpha1.ScyllaDBCluster, opts v1.UpdateOptions) (result *v1alpha1.ScyllaDBCluster, err error) {
+	emptyResult := &v1alpha1.ScyllaDBCluster{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(scylladbclustersResource, c.ns, scyllaDBCluster), &v1alpha1.ScyllaDBCluster{})
+		Invokes(testing.NewUpdateActionWithOptions(scylladbclustersResource, c.ns, scyllaDBCluster, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScyllaDBCluster), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeScyllaDBClusters) UpdateStatus(ctx context.Context, scyllaDBCluster *v1alpha1.ScyllaDBCluster, opts v1.UpdateOptions) (*v1alpha1.ScyllaDBCluster, error) {
+func (c *FakeScyllaDBClusters) UpdateStatus(ctx context.Context, scyllaDBCluster *v1alpha1.ScyllaDBCluster, opts v1.UpdateOptions) (result *v1alpha1.ScyllaDBCluster, err error) {
+	emptyResult := &v1alpha1.ScyllaDBCluster{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(scylladbclustersResource, "status", c.ns, scyllaDBCluster), &v1alpha1.ScyllaDBCluster{})
+		Invokes(testing.NewUpdateSubresourceActionWithOptions(scylladbclustersResource, "status", c.ns, scyllaDBCluster, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScyllaDBCluster), err
 }
@@ -107,7 +112,7 @@ func (c *FakeScyllaDBClusters) Delete(ctx context.Context, name string, opts v1.
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeScyllaDBClusters) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(scylladbclustersResource, c.ns, listOpts)
+	action := testing.NewDeleteCollectionActionWithOptions(scylladbclustersResource, c.ns, opts, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.ScyllaDBClusterList{})
 	return err
@@ -115,11 +120,12 @@ func (c *FakeScyllaDBClusters) DeleteCollection(ctx context.Context, opts v1.Del
 
 // Patch applies the patch and returns the patched scyllaDBCluster.
 func (c *FakeScyllaDBClusters) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ScyllaDBCluster, err error) {
+	emptyResult := &v1alpha1.ScyllaDBCluster{}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(scylladbclustersResource, c.ns, name, pt, data, subresources...), &v1alpha1.ScyllaDBCluster{})
+		Invokes(testing.NewPatchSubresourceActionWithOptions(scylladbclustersResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScyllaDBCluster), err
 }

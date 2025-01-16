@@ -6,7 +6,7 @@ We are aiming to ship a new release approximately every 2 months. The following 
 :::{table}
 | Release | Code freeze | General availability |
 |:-------:|:-----------:|:--------------------:|
-|  1.16   | 2025-02-24  |      2024-03-03      |
+|  1.16   | 2025-02-24  |      2025-03-03      |
 :::
 
 ## Supported releases

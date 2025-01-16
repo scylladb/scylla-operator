@@ -220,42 +220,40 @@ verify-helm-lint:
 	@$(foreach chart,$(HELM_CHARTS),$(call lint-helm,$(chart)))
 .PHONY: verify-helm-lint
 
+# $1 - codegen command
+# $2 - extra args
 define run-codegen
-	GOPATH=$(GOPATH) $(GO) run "$(CODEGEN_PKG)/cmd/$(1)" --go-header-file='$(CODEGEN_HEADER_FILE)' $(2)
+	$(GO) run "$(CODEGEN_PKG)/cmd/$(1)" --go-header-file='$(CODEGEN_HEADER_FILE)' $(2)
 
 endef
 
 # $1 - api packages
-# $2 - extra args
 define run-deepcopy-gen
-	$(call run-codegen,deepcopy-gen,--input-dirs='$(1)' --output-file-base='zz_generated.deepcopy' $(2))
+	$(call run-codegen,deepcopy-gen,--output-file='zz_generated.deepcopy.go' $(1))
 
 endef
 
 # $1 - group
 # $2 - api packages
 # $3 - client dir
-# $4 - extra args
 define run-client-gen
-	$(call run-codegen,client-gen,--clientset-name=versioned --input-base='./' --input='$(2)' --output-package='$(GO_PACKAGE)/$(3)/$(1)/clientset' $(4))
+	$(call run-codegen,client-gen,--clientset-name=versioned --input-base='./' --output-pkg='$(GO_PACKAGE)/$(3)/$(1)/clientset' --output-dir='./$(3)/$(1)/clientset/' $(foreach p,$(2),--input='$(p)'))
 
 endef
 
 # $1 - group
 # $2 - api packages
 # $3 - client dir
-# $4 - extra args
 define run-lister-gen
-	$(call run-codegen,lister-gen,--input-dirs='$(2)' --output-package='$(GO_PACKAGE)/$(3)/$(1)/listers' $(4))
+	$(call run-codegen,lister-gen,--output-pkg='$(GO_PACKAGE)/$(3)/$(1)/listers' --output-dir='./$(3)/$(1)/listers/' $(2))
 
 endef
 
 # $1 - group
 # $2 - api packages
 # $3 - client dir
-# $4 - extra args
 define run-informer-gen
-	$(call run-codegen,informer-gen,--input-dirs='$(2)' --output-package='$(GO_PACKAGE)/$(3)/$(1)/informers' --versioned-clientset-package '$(GO_PACKAGE)/$(3)/$(1)/clientset/versioned' --listers-package='$(GO_PACKAGE)/$(3)/$(1)/listers' $(4))
+	$(call run-codegen,informer-gen,--output-pkg='$(GO_PACKAGE)/$(3)/$(1)/informers' --output-dir='./$(3)/$(1)/informers/' --versioned-clientset-package '$(GO_PACKAGE)/$(3)/$(1)/clientset/versioned' --listers-package='$(GO_PACKAGE)/$(3)/$(1)/listers' $(2))
 
 endef
 
@@ -271,28 +269,46 @@ expand_go_packages_with_spaces=$(shell echo '$(call expand_go_packages_to_json,$
 # $1 - group
 # $2 - api packages
 # $3 - client dir
-# $4 - extra args
 define run-client-generators
-	$(call run-client-gen,$(1),$(2),$(3),$(4))
-	$(call run-lister-gen,$(1),$(2),$(3),$(4))
-	$(call run-informer-gen,$(1),$(2),$(3),$(4))
+	$(call run-client-gen,$(1),$(2),$(3))
+	$(call run-lister-gen,$(1),$(2),$(3))
+	$(call run-informer-gen,$(1),$(2),$(3))
 
 endef
 
-# $1 - extra args
 define run-update-codegen
-	$(call run-deepcopy-gen,$(call expand_go_packages_with_commas,$(addsuffix /...,$(api_groups)) $(addsuffix /...,$(nonrest_api_groups)) $(addsuffix /...,$(external_api_groups))),$(1))
-	$(foreach group,$(api_groups),$(call run-client-generators,$(notdir $(group)),$(call expand_go_packages_with_commas,$(group)/...),pkg/client,$(1)))
-	$(foreach group,$(external_api_groups),$(call run-client-generators,$(notdir $(group)),$(call expand_go_packages_with_commas,$(group)/...),pkg/externalclient,$(1)))
+	$(call run-deepcopy-gen,$(addsuffix /...,$(api_groups) $(nonrest_api_groups) $(external_api_groups)))
+	$(foreach group,$(api_groups),$(call run-client-generators,$(notdir $(group)),$(call expand_go_packages_with_spaces,$(group)/...),pkg/client))
+	$(foreach group,$(external_api_groups),$(call run-client-generators,$(notdir $(group)),$(call expand_go_packages_with_spaces,$(group)/...),pkg/externalclient))
 
 endef
 
 update-codegen:
-	$(call run-update-codegen,)
+	$(call run-update-codegen)
 .PHONY: update-codegen
 
+# $1 - original dir
+# $2 - generated dir
+define verify-group-deepcopy-gen
+	find $(1) $(2) -type f -name 'zz_generated.deepcopy.go' -printf '%P\n' | sort | uniq | while read -r f; do $(diff) -r "$(1)/$${f}" "$(2)/$${f}"; done
+
+endef
+
+verify-codegen: tmp_dir :=$(shell mktemp -d /tmp/codegen-TMPXXXXXX)
 verify-codegen:
-	$(call run-update-codegen,--verify-only)
+	cp -R -H ./ "$(tmp_dir)/original"
+
+	cp -R -H ./ "$(tmp_dir)/generated"
+	find $(foreach group,$(api_groups) $(nonrest_api_groups) $(external_api_groups),"$(tmp_dir)/generated/$(group)") -name 'zz_generated.deepcopy.go' -delete
+	$(RM) -r "$(tmp_dir)/generated/pkg/client"
+	$(RM) -r "$(tmp_dir)/generated/pkg/externalclient"
+
+	+$(MAKE) -C "$(tmp_dir)/generated" update-codegen
+
+	$(foreach group,$(api_groups) $(nonrest_api_groups) $(external_api_groups),$(call verify-group-deepcopy-gen,"$(tmp_dir)/original/$(group)","$(tmp_dir)/generated/$(group)"))
+	$(diff) -r "$(tmp_dir)/"{original,generated}/pkg/client
+	$(diff) -r "$(tmp_dir)/"{original,generated}/pkg/externalclient
+
 .PHONY: verify-codegen
 
 # $1 - api package
@@ -300,7 +316,7 @@ verify-codegen:
 # We need to cleanup `---` in the yaml output manually because it shouldn't be there and it breaks opm.
 define run-crd-gen
 	$(CONTROLLER_GEN) crd paths='$(1)' output:dir='$(2)'
-	find '$(2)' -mindepth 1 -maxdepth 1 -type f -name '*.yaml' -exec $(YQ) -i eval '.' {} \;
+	find '$(2)' -mindepth 1 -maxdepth 1 -type f -name '*.yaml' -exec $(YQ) -i eval '... style=""' {} \;
 
 endef
 

@@ -75,4 +75,4 @@ If you find a bug please file an [issue](https://github.com/scylladb/scylla-oper
 We are also available on `#scylla-operator` channel on [Slack](https://scylladb-users.slack.com) if you have questions.
 
 ## Contributing
-We would **love** you to contribute to Scylla Operator, help make it even better and learn together! Have a look at the [Contributing Guide](docs/source/contributing.md) or reach out to us on `#scylla-operator` channel on [Slack](https://scylladb-users.slack.com/) if you have questions.
+We would **love** you to contribute to Scylla Operator, help make it even better and learn together! Have a look at the [Contributing Guide](CONTRIBUTING.md) or reach out to us on `#scylla-operator` channel on [Slack](https://scylladb-users.slack.com/) if you have questions.

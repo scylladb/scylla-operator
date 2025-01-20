@@ -52,21 +52,21 @@ require (
 	golang.org/x/time v0.8.0
 	google.golang.org/grpc v1.68.0
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.29.11
-	k8s.io/apiextensions-apiserver v0.29.11
-	k8s.io/apimachinery v0.29.11
-	k8s.io/apiserver v0.29.11
-	k8s.io/cli-runtime v0.29.11
-	k8s.io/client-go v0.29.11
-	k8s.io/code-generator v0.29.11
-	k8s.io/component-base v0.29.11
-	k8s.io/component-helpers v0.29.11
-	k8s.io/cri-api v0.29.11
+	k8s.io/api v0.31.5
+	k8s.io/apiextensions-apiserver v0.31.5
+	k8s.io/apimachinery v0.31.5
+	k8s.io/apiserver v0.31.5
+	k8s.io/cli-runtime v0.31.5
+	k8s.io/client-go v0.31.5
+	k8s.io/code-generator v0.31.5
+	k8s.io/component-base v0.31.5
+	k8s.io/component-helpers v0.31.5
+	k8s.io/cri-api v0.31.5
 	k8s.io/klog/v2 v2.130.1
-	k8s.io/kubectl v0.29.11
-	k8s.io/kubelet v0.29.11
+	k8s.io/kubectl v0.31.5
+	k8s.io/kubelet v0.31.5
 	k8s.io/utils v0.0.0-20241104163129-6fe5fd82f078
-	sigs.k8s.io/controller-tools v0.11.3
+	sigs.k8s.io/controller-tools v0.16.5
 	sigs.k8s.io/yaml v1.4.0
 )
 
@@ -95,8 +95,9 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.12.1 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
-	github.com/fatih/color v1.14.1 // indirect
+	github.com/fatih/color v1.18.0 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
+	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/go-errors/errors v1.5.1 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.6.1 // indirect
@@ -111,7 +112,7 @@ require (
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/go-openapi/validate v0.24.0 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
-	github.com/gobuffalo/flect v1.0.2 // indirect
+	github.com/gobuffalo/flect v1.0.3 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
@@ -166,6 +167,7 @@ require (
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466 // indirect
 	github.com/skeema/knownhosts v1.3.0 // indirect
+	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xlab/treeprint v1.2.0 // indirect
 	go.mongodb.org/mongo-driver v1.17.1 // indirect
@@ -187,9 +189,8 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01 // indirect
-	k8s.io/gengo/v2 v2.0.0-20240826214909-a7b603a56eb7 // indirect
-	k8s.io/kube-openapi v0.0.0-20241105132330-32ad38e42d3f // indirect
+	k8s.io/gengo/v2 v2.0.0-20240228010128-51d4e06bde70 // indirect
+	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340 // indirect
 	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 // indirect
 	sigs.k8s.io/kustomize/api v0.18.0 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.18.1 // indirect

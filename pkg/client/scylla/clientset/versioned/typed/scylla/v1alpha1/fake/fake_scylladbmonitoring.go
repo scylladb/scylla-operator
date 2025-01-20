@@ -25,22 +25,24 @@ var scylladbmonitoringsKind = v1alpha1.SchemeGroupVersion.WithKind("ScyllaDBMoni
 
 // Get takes name of the scyllaDBMonitoring, and returns the corresponding scyllaDBMonitoring object, and an error if there is any.
 func (c *FakeScyllaDBMonitorings) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ScyllaDBMonitoring, err error) {
+	emptyResult := &v1alpha1.ScyllaDBMonitoring{}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(scylladbmonitoringsResource, c.ns, name), &v1alpha1.ScyllaDBMonitoring{})
+		Invokes(testing.NewGetActionWithOptions(scylladbmonitoringsResource, c.ns, name, options), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScyllaDBMonitoring), err
 }
 
 // List takes label and field selectors, and returns the list of ScyllaDBMonitorings that match those selectors.
 func (c *FakeScyllaDBMonitorings) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ScyllaDBMonitoringList, err error) {
+	emptyResult := &v1alpha1.ScyllaDBMonitoringList{}
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(scylladbmonitoringsResource, scylladbmonitoringsKind, c.ns, opts), &v1alpha1.ScyllaDBMonitoringList{})
+		Invokes(testing.NewListActionWithOptions(scylladbmonitoringsResource, scylladbmonitoringsKind, c.ns, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 
 	label, _, _ := testing.ExtractFromListOptions(opts)
@@ -59,40 +61,43 @@ func (c *FakeScyllaDBMonitorings) List(ctx context.Context, opts v1.ListOptions)
 // Watch returns a watch.Interface that watches the requested scyllaDBMonitorings.
 func (c *FakeScyllaDBMonitorings) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(scylladbmonitoringsResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchActionWithOptions(scylladbmonitoringsResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a scyllaDBMonitoring and creates it.  Returns the server's representation of the scyllaDBMonitoring, and an error, if there is any.
 func (c *FakeScyllaDBMonitorings) Create(ctx context.Context, scyllaDBMonitoring *v1alpha1.ScyllaDBMonitoring, opts v1.CreateOptions) (result *v1alpha1.ScyllaDBMonitoring, err error) {
+	emptyResult := &v1alpha1.ScyllaDBMonitoring{}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(scylladbmonitoringsResource, c.ns, scyllaDBMonitoring), &v1alpha1.ScyllaDBMonitoring{})
+		Invokes(testing.NewCreateActionWithOptions(scylladbmonitoringsResource, c.ns, scyllaDBMonitoring, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScyllaDBMonitoring), err
 }
 
 // Update takes the representation of a scyllaDBMonitoring and updates it. Returns the server's representation of the scyllaDBMonitoring, and an error, if there is any.
 func (c *FakeScyllaDBMonitorings) Update(ctx context.Context, scyllaDBMonitoring *v1alpha1.ScyllaDBMonitoring, opts v1.UpdateOptions) (result *v1alpha1.ScyllaDBMonitoring, err error) {
+	emptyResult := &v1alpha1.ScyllaDBMonitoring{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(scylladbmonitoringsResource, c.ns, scyllaDBMonitoring), &v1alpha1.ScyllaDBMonitoring{})
+		Invokes(testing.NewUpdateActionWithOptions(scylladbmonitoringsResource, c.ns, scyllaDBMonitoring, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScyllaDBMonitoring), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeScyllaDBMonitorings) UpdateStatus(ctx context.Context, scyllaDBMonitoring *v1alpha1.ScyllaDBMonitoring, opts v1.UpdateOptions) (*v1alpha1.ScyllaDBMonitoring, error) {
+func (c *FakeScyllaDBMonitorings) UpdateStatus(ctx context.Context, scyllaDBMonitoring *v1alpha1.ScyllaDBMonitoring, opts v1.UpdateOptions) (result *v1alpha1.ScyllaDBMonitoring, err error) {
+	emptyResult := &v1alpha1.ScyllaDBMonitoring{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(scylladbmonitoringsResource, "status", c.ns, scyllaDBMonitoring), &v1alpha1.ScyllaDBMonitoring{})
+		Invokes(testing.NewUpdateSubresourceActionWithOptions(scylladbmonitoringsResource, "status", c.ns, scyllaDBMonitoring, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScyllaDBMonitoring), err
 }
@@ -107,7 +112,7 @@ func (c *FakeScyllaDBMonitorings) Delete(ctx context.Context, name string, opts 
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeScyllaDBMonitorings) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(scylladbmonitoringsResource, c.ns, listOpts)
+	action := testing.NewDeleteCollectionActionWithOptions(scylladbmonitoringsResource, c.ns, opts, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.ScyllaDBMonitoringList{})
 	return err
@@ -115,11 +120,12 @@ func (c *FakeScyllaDBMonitorings) DeleteCollection(ctx context.Context, opts v1.
 
 // Patch applies the patch and returns the patched scyllaDBMonitoring.
 func (c *FakeScyllaDBMonitorings) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ScyllaDBMonitoring, err error) {
+	emptyResult := &v1alpha1.ScyllaDBMonitoring{}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(scylladbmonitoringsResource, c.ns, name, pt, data, subresources...), &v1alpha1.ScyllaDBMonitoring{})
+		Invokes(testing.NewPatchSubresourceActionWithOptions(scylladbmonitoringsResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScyllaDBMonitoring), err
 }

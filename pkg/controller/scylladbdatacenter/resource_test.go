@@ -1570,12 +1570,12 @@ exec scylla-manager-agent \
 }
 
 func TestStatefulSetForRackWithReversedTLSFeature(t *testing.T) {
-	defer featuregatetesting.SetFeatureGateDuringTest(
+	featuregatetesting.SetFeatureGateDuringTest(
 		t,
 		utilfeature.DefaultMutableFeatureGate,
 		features.AutomaticTLSCertificates,
 		!utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates),
-	)()
+	)
 
 	t.Run("", TestStatefulSetForRack)
 }
@@ -3486,12 +3486,12 @@ alternator_encryption_options:
 	}
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			defer featuregatetesting.SetFeatureGateDuringTest(
+			featuregatetesting.SetFeatureGateDuringTest(
 				t,
 				utilfeature.DefaultMutableFeatureGate,
 				features.AutomaticTLSCertificates,
 				tc.enableTLSFeatureGate,
-			)()
+			)
 
 			got, err := MakeManagedScyllaDBConfig(tc.sdc)
 			if !reflect.DeepEqual(err, tc.expectedErr) {

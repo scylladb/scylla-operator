@@ -68,8 +68,8 @@ func ValidateOperatorManagedTLSCertificateOptions(opts *scyllav1.OperatorManaged
 	}
 
 	for _, ip := range opts.AdditionalIPAddresses {
-		for _, msg := range apimachineryutilvalidation.IsValidIP(ip) {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("additionalIPAddresses"), opts.AdditionalIPAddresses, msg))
+		for _, fldErr := range apimachineryutilvalidation.IsValidIP(fldPath.Child("additionalIPAddresses"), ip) {
+			allErrs = append(allErrs, fldErr)
 		}
 	}
 

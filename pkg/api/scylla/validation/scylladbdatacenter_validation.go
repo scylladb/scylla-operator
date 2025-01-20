@@ -364,8 +364,8 @@ func ValidateScyllaDBDatacenterOperatorManagedTLSCertificateOptions(options *scy
 	}
 
 	for _, ip := range options.AdditionalIPAddresses {
-		for _, msg := range apimachineryutilvalidation.IsValidIP(ip) {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("additionalIPAddresses"), options.AdditionalIPAddresses, msg))
+		for _, fldErr := range apimachineryutilvalidation.IsValidIP(fldPath.Child("additionalIPAddresses"), ip) {
+			allErrs = append(allErrs, fldErr)
 		}
 	}
 	return allErrs

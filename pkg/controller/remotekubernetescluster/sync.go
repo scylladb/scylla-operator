@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/errors"
@@ -42,7 +44,28 @@ func (rkcc *Controller) sync(ctx context.Context, key string) error {
 
 	status := rkcc.calculateStatus(rkc)
 	if rkc.DeletionTimestamp != nil {
+		err = controllerhelpers.RunSync(
+			&status.Conditions,
+			remoteKubernetesClusterFinalizerProgressingCondition,
+			remoteKubernetesClusterFinalizerDegradedCondition,
+			rkc.Generation,
+			func() ([]metav1.Condition, error) {
+				return rkcc.syncFinalizer(ctx, rkc)
+			},
+		)
+		if err != nil {
+			return fmt.Errorf("can't finalize: %w", err)
+		}
+
 		return rkcc.updateStatus(ctx, rkc, status)
+	}
+
+	if !slices.ContainsItem(rkc.GetFinalizers(), naming.RemoteKubernetesClusterFinalizer) {
+		err = rkcc.addFinalizer(ctx, rkc)
+		if err != nil {
+			return fmt.Errorf("can't add finalizer: %w", err)
+		}
+		return nil
 	}
 
 	var errs []error

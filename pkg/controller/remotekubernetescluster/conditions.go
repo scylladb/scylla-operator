@@ -7,4 +7,7 @@ const (
 	clientHealthcheckControllerAvailableCondition   = "ClientHealthcheckControllerAvailable"
 	clientHealthcheckControllerProgressingCondition = "ClientHealthcheckControllerProgressing"
 	clientHealthcheckControllerDegradedCondition    = "ClientHealthcheckControllerDegraded"
+
+	remoteKubernetesClusterFinalizerProgressingCondition = "RemoteKubernetesClusterFinalizerProgressing"
+	remoteKubernetesClusterFinalizerDegradedCondition    = "RemoteKubernetesClusterFinalizerDegraded"
 )

@@ -436,6 +436,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		o.kubeClient,
 		o.scyllaClient.ScyllaV1alpha1(),
 		scyllaInformers.Scylla().V1alpha1().RemoteKubernetesClusters(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBClusters(),
 		kubeInformers.Core().V1().Secrets(),
 		[]remoteclient.DynamicClusterInterface{
 			&o.clusterKubeClient,

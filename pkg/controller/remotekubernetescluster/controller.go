@@ -47,6 +47,7 @@ type Controller struct {
 	scyllaClient scyllav1alpha1client.ScyllaV1alpha1Interface
 
 	remoteKubernetesClusterLister scyllav1alpha1listers.RemoteKubernetesClusterLister
+	scyllaDBClusterLister         scyllav1alpha1listers.ScyllaDBClusterLister
 	secretLister                  corev1listers.SecretLister
 
 	clusterKubeClient      remoteclient.ClusterClientInterface[kubernetes.Interface]
@@ -65,6 +66,7 @@ func NewController(
 	kubeClient kubernetes.Interface,
 	scyllaClient scyllav1alpha1client.ScyllaV1alpha1Interface,
 	remoteKubernetesClusterInformer scyllav1alpha1informers.RemoteKubernetesClusterInformer,
+	scyllaDBClusterInformer scyllav1alpha1informers.ScyllaDBClusterInformer,
 	secretInformer corev1informers.SecretInformer,
 	dynamicClusterHandlers []remoteclient.DynamicClusterInterface,
 	clusterKubeClient remoteclient.ClusterClientInterface[kubernetes.Interface],
@@ -79,6 +81,7 @@ func NewController(
 		scyllaClient: scyllaClient,
 
 		remoteKubernetesClusterLister: remoteKubernetesClusterInformer.Lister(),
+		scyllaDBClusterLister:         scyllaDBClusterInformer.Lister(),
 		secretLister:                  secretInformer.Lister(),
 
 		dynamicClusterHandlers: dynamicClusterHandlers,
@@ -88,6 +91,7 @@ func NewController(
 
 		cachesToSync: []cache.InformerSynced{
 			remoteKubernetesClusterInformer.Informer().HasSynced,
+			scyllaDBClusterInformer.Informer().HasSynced,
 			secretInformer.Informer().HasSynced,
 		},
 
@@ -121,6 +125,12 @@ func NewController(
 		AddFunc:    rkcc.addRemoteKubernetesCluster,
 		UpdateFunc: rkcc.updateRemoteKubernetesCluster,
 		DeleteFunc: rkcc.deleteRemoteKubernetesCluster,
+	})
+
+	scyllaDBClusterInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    rkcc.addScyllaDBCluster,
+		UpdateFunc: rkcc.updateScyllaDBCluster,
+		DeleteFunc: rkcc.deleteScyllaDBCluster,
 	})
 
 	secretInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -262,4 +272,40 @@ func (rkcc *Controller) enqueueRemoteKubernetesClusterUsingSecret(secret *corev1
 	return rkcc.handlers.EnqueueAllFunc(rkcc.handlers.EnqueueWithFilterFunc(func(rkc *scyllav1alpha1.RemoteKubernetesCluster) bool {
 		return rkc.Spec.KubeconfigSecretRef.Namespace == secret.Namespace && rkc.Spec.KubeconfigSecretRef.Name == secret.Name
 	}))
+}
+
+func (rkcc *Controller) addScyllaDBCluster(obj interface{}) {
+	rkcc.handlers.HandleAdd(
+		obj.(*scyllav1alpha1.ScyllaDBCluster),
+		rkcc.enqueueRemoteKubernetesClustersReferencedByScyllaDBCluster,
+	)
+}
+
+func (rkcc *Controller) updateScyllaDBCluster(old, cur interface{}) {
+	rkcc.handlers.HandleUpdate(
+		old.(*scyllav1alpha1.ScyllaDBCluster),
+		cur.(*scyllav1alpha1.ScyllaDBCluster),
+		rkcc.enqueueRemoteKubernetesClustersReferencedByScyllaDBCluster,
+		rkcc.deleteScyllaDBCluster,
+	)
+}
+
+func (rkcc *Controller) deleteScyllaDBCluster(obj interface{}) {
+	rkcc.handlers.HandleDelete(
+		obj,
+		rkcc.enqueueRemoteKubernetesClustersReferencedByScyllaDBCluster,
+	)
+}
+
+func (rkcc *Controller) enqueueRemoteKubernetesClustersReferencedByScyllaDBCluster(depth int, obj kubeinterfaces.ObjectInterface, op controllerhelpers.HandlerOperationType) {
+	sc := obj.(*scyllav1alpha1.ScyllaDBCluster)
+
+	for _, dc := range sc.Spec.Datacenters {
+		rkc, err := rkcc.remoteKubernetesClusterLister.Get(dc.RemoteKubernetesClusterName)
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("couldn't get RemoteKubernetesCluster %q: %w", dc.RemoteKubernetesClusterName, err))
+			continue
+		}
+		rkcc.handlers.Enqueue(depth+1, rkc, op)
+	}
 }

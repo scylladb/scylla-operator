@@ -132,6 +132,7 @@ const (
 	ScyllaAgentConfigDefaultFile = "/etc/scylla-manager-agent/scylla-manager-agent.yaml"
 	ScyllaClientConfigDirName    = "/mnt/scylla-client-config"
 	ScyllaDBManagedConfigDir     = "/var/run/configmaps/scylla-operator.scylladb.com/scylladb/managed-config"
+	ScyllaDBSnitchConfigDir      = "/var/run/configmaps/scylla-operator.scylladb.com/scylladb/snitch-config"
 	ScyllaConfigName             = "scylla.yaml"
 	ScyllaDBManagedConfigName    = "scylladb-managed-config.yaml"
 	ScyllaManagedConfigPath      = ScyllaDBManagedConfigDir + "/" + ScyllaDBManagedConfigName

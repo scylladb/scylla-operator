@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -37,23 +38,19 @@ const (
 var scyllaJMXPaths = []string{"/usr/lib/scylla/jmx/scylla-jmx", "/opt/scylladb/jmx/scylla-jmx"}
 
 type ScyllaConfig struct {
-	member                              *identity.Member
-	kubeClient                          kubernetes.Interface
-	scyllaClient                        scyllaversionedclient.Interface
-	scyllaRackDCPropertiesPath          string
-	scyllaRackDCPropertiesConfigMapPath string
-	cpuCount                            int
-	externalSeeds                       []string
+	member        *identity.Member
+	kubeClient    kubernetes.Interface
+	scyllaClient  scyllaversionedclient.Interface
+	cpuCount      int
+	externalSeeds []string
 }
 
 func NewScyllaConfig(m *identity.Member, kubeClient kubernetes.Interface, cpuCount int, externalSeeds []string) *ScyllaConfig {
 	return &ScyllaConfig{
-		member:                              m,
-		kubeClient:                          kubeClient,
-		scyllaRackDCPropertiesPath:          scyllaRackDCPropertiesPath,
-		scyllaRackDCPropertiesConfigMapPath: scyllaRackDCPropertiesConfigMapPath,
-		cpuCount:                            cpuCount,
-		externalSeeds:                       externalSeeds,
+		member:        m,
+		kubeClient:    kubeClient,
+		cpuCount:      cpuCount,
+		externalSeeds: externalSeeds,
 	}
 }
 
@@ -69,7 +66,7 @@ func (s *ScyllaConfig) Setup(ctx context.Context) (*exec.Cmd, error) {
 	}
 
 	klog.Info("Setting up cassandra-rackdc.properties")
-	if err := s.setupRackDCProperties(); err != nil {
+	if err := mergeSnitchConfigs(scyllaRackDCPropertiesConfigMapPath, filepath.Join(naming.ScyllaDBSnitchConfigDir, naming.ScyllaRackDCPropertiesName), scyllaRackDCPropertiesPath); err != nil {
 		return nil, fmt.Errorf("can't setup rackdc properties file: %w", err)
 	}
 
@@ -120,40 +117,63 @@ func (s *ScyllaConfig) setupScyllaYAML(configFilePath, managedConfigMapPath, con
 	return nil
 }
 
-func (s *ScyllaConfig) setupRackDCProperties() error {
-	suppliedProperties := loadProperties(s.scyllaRackDCPropertiesConfigMapPath)
-	rackDCProperties := createRackDCProperties(suppliedProperties, s.member.Datacenter, s.member.Rack)
-	f, err := os.Create(s.scyllaRackDCPropertiesPath)
+// Operator reconciles only three out of four possible settings in snitch config taking values from an API object.
+// Users can change the snitch being used and provide their own configuration.
+// The missing setting is taken from user provided config.
+func mergeSnitchConfigs(userSnitchConfigPath string, operatorSnitchConfigPath string, scylladbSnitchConfigPath string) error {
+	var userProperties, operatorProperties *properties.Properties
+	_, err := os.Stat(userSnitchConfigPath)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("can't stat %q: %w", userSnitchConfigPath, err)
+	}
+	if err == nil {
+		userProperties, err = properties.LoadFile(userSnitchConfigPath, properties.UTF8)
+		if err != nil {
+			return fmt.Errorf("can't read user snitch config from %q: %w", userSnitchConfigPath, err)
+		}
+	}
+
+	operatorProperties, err = properties.LoadFile(operatorSnitchConfigPath, properties.UTF8)
 	if err != nil {
-		return errors.Wrap(err, "error trying to create cassandra-rackdc.properties")
+		return fmt.Errorf("can't read operator snitch config from %q: %w", operatorSnitchConfigPath, err)
 	}
-	if _, err := rackDCProperties.Write(f, properties.UTF8); err != nil {
-		return errors.Wrap(err, "error trying to write cassandra-rackdc.properties")
+
+	mergedProperties, err := mergeSnitchConfigProperties(userProperties, operatorProperties)
+	if err != nil {
+		return fmt.Errorf("can't merge snitch configs: %w", err)
 	}
+
+	snitchConfigFile, err := os.Create(scylladbSnitchConfigPath)
+	if err != nil {
+		return fmt.Errorf("can't create snitch config file %q: %w", scylladbSnitchConfigPath, err)
+	}
+
+	_, err = mergedProperties.Write(snitchConfigFile, properties.UTF8)
+	if err != nil {
+		return fmt.Errorf("can't write snitch config file %q: %w", snitchConfigFile.Name(), err)
+	}
+
 	return nil
 }
 
-func createRackDCProperties(suppliedProperties *properties.Properties, dc, rack string) *properties.Properties {
-	suppliedProperties.DisableExpansion = true
-	rackDCProperties := properties.NewProperties()
-	rackDCProperties.DisableExpansion = true
-	rackDCProperties.Set("dc", dc)
-	rackDCProperties.Set("rack", rack)
-	rackDCProperties.Set("prefer_local", suppliedProperties.GetString("prefer_local", "false"))
-	if dcSuffix, ok := suppliedProperties.Get("dc_suffix"); ok {
-		rackDCProperties.Set("dc_suffix", dcSuffix)
+func mergeSnitchConfigProperties(userConfig, operatorConfig *properties.Properties) (*properties.Properties, error) {
+	if operatorConfig == nil {
+		return nil, fmt.Errorf("unexpected nil Operator snitch config")
 	}
-	return rackDCProperties
-}
 
-func loadProperties(fileName string) *properties.Properties {
-	l := &properties.Loader{Encoding: properties.UTF8}
-	p, err := l.LoadFile(scyllaRackDCPropertiesConfigMapPath)
-	if err != nil {
-		klog.InfoS("unable to read properties", "file", fileName)
-		return properties.NewProperties()
+	const dcSuffixKey = "dc_suffix"
+
+	if userConfig != nil {
+		userDCSuffix := userConfig.GetString(dcSuffixKey, "")
+		if len(userDCSuffix) != 0 {
+			_, _, err := operatorConfig.Set(dcSuffixKey, userDCSuffix)
+			if err != nil {
+				return nil, fmt.Errorf("can't set %q key in Operator snitch config: %w", dcSuffixKey, err)
+			}
+		}
 	}
-	return p
+
+	return operatorConfig, nil
 }
 
 var scyllaArgumentsRegexp = regexp.MustCompile(`--([^= ]+)(="[^"]+"|=\S+|\s+"[^"]+"|\s+[^\s-]+|\s+-?\d*\.?\d+[^\s-]+|)`)

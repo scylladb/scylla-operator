@@ -12,7 +12,6 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	configassets "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
@@ -135,8 +134,8 @@ func (f *Framework) CommonLabels() map[string]string {
 
 func (f *Framework) GetDefaultScyllaCluster() *scyllav1.ScyllaCluster {
 	renderArgs := map[string]any{
-		"scyllaDBVersion":             configassets.Project.Operator.ScyllaDBVersion,
-		"scyllaDBManagerVersion":      configassets.Project.Operator.ScyllaDBManagerAgentVersion,
+		"scyllaDBVersion":             TestContext.ScyllaDBVersion,
+		"scyllaDBManagerVersion":      TestContext.ScyllaDBManagerAgentVersion,
 		"nodeServiceType":             TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
 		"nodesBroadcastAddressType":   TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
 		"clientsBroadcastAddressType": TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
@@ -151,8 +150,8 @@ func (f *Framework) GetDefaultScyllaCluster() *scyllav1.ScyllaCluster {
 
 func (f *Framework) GetDefaultZonalScyllaClusterWithThreeRacks() *scyllav1.ScyllaCluster {
 	renderArgs := map[string]any{
-		"scyllaDBVersion":             configassets.Project.Operator.ScyllaDBVersion,
-		"scyllaDBManagerVersion":      configassets.Project.Operator.ScyllaDBManagerAgentVersion,
+		"scyllaDBVersion":             TestContext.ScyllaDBVersion,
+		"scyllaDBManagerVersion":      TestContext.ScyllaDBManagerAgentVersion,
 		"nodeServiceType":             TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
 		"nodesBroadcastAddressType":   TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
 		"clientsBroadcastAddressType": TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
@@ -168,8 +167,8 @@ func (f *Framework) GetDefaultZonalScyllaClusterWithThreeRacks() *scyllav1.Scyll
 
 func (f *Framework) GetDefaultScyllaDBDatacenter() *scyllav1alpha1.ScyllaDBDatacenter {
 	renderArgs := map[string]any{
-		"scyllaDBVersion":             configassets.Project.Operator.ScyllaDBVersion,
-		"scyllaDBManagerVersion":      configassets.Project.Operator.ScyllaDBManagerVersion,
+		"scyllaDBVersion":             TestContext.ScyllaDBVersion,
+		"scyllaDBManagerVersion":      TestContext.ScyllaDBManagerAgentVersion,
 		"nodeServiceType":             TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
 		"nodesBroadcastAddressType":   TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
 		"clientsBroadcastAddressType": TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
@@ -184,8 +183,8 @@ func (f *Framework) GetDefaultScyllaDBDatacenter() *scyllav1alpha1.ScyllaDBDatac
 
 func (f *Framework) GetDefaultScyllaDBCluster(rkcs []*scyllav1alpha1.RemoteKubernetesCluster) *scyllav1alpha1.ScyllaDBCluster {
 	renderArgs := map[string]any{
-		"scyllaDBVersion":             configassets.Project.Operator.ScyllaDBVersion,
-		"scyllaDBManagerVersion":      configassets.Project.Operator.ScyllaDBManagerAgentVersion,
+		"scyllaDBVersion":             TestContext.ScyllaDBVersion,
+		"scyllaDBManagerVersion":      TestContext.ScyllaDBManagerAgentVersion,
 		"nodeServiceType":             TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
 		"nodesBroadcastAddressType":   TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
 		"clientsBroadcastAddressType": TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,

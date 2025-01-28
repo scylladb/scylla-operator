@@ -8,7 +8,6 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	configassets "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
@@ -115,32 +114,32 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 		g.Entry(describeEntry, &entry{
 			rackCount:      1,
 			rackSize:       1,
-			initialVersion: configassets.Project.OperatorTests.ScyllaDBVersions.UpdateFrom,
-			updatedVersion: configassets.Project.Operator.ScyllaDBVersion,
+			initialVersion: framework.TestContext.ScyllaDBUpdateFrom,
+			updatedVersion: framework.TestContext.ScyllaDBVersion,
 		}),
 		g.Entry(describeEntry, &entry{
 			rackCount:      1,
 			rackSize:       3,
-			initialVersion: configassets.Project.OperatorTests.ScyllaDBVersions.UpdateFrom,
-			updatedVersion: configassets.Project.Operator.ScyllaDBVersion,
+			initialVersion: framework.TestContext.ScyllaDBUpdateFrom,
+			updatedVersion: framework.TestContext.ScyllaDBVersion,
 		}),
 		g.Entry(describeEntry, &entry{
 			rackCount:      1,
 			rackSize:       1,
-			initialVersion: configassets.Project.OperatorTests.ScyllaDBVersions.UpgradeFrom,
-			updatedVersion: configassets.Project.Operator.ScyllaDBVersion,
+			initialVersion: framework.TestContext.ScyllaDBUpgradeFrom,
+			updatedVersion: framework.TestContext.ScyllaDBVersion,
 		}),
 		g.Entry(describeEntry, &entry{
 			rackCount:      1,
 			rackSize:       3,
-			initialVersion: configassets.Project.OperatorTests.ScyllaDBVersions.UpgradeFrom,
-			updatedVersion: configassets.Project.Operator.ScyllaDBVersion,
+			initialVersion: framework.TestContext.ScyllaDBUpgradeFrom,
+			updatedVersion: framework.TestContext.ScyllaDBVersion,
 		}),
 		g.Entry(describeEntry, &entry{
 			rackCount:      2,
 			rackSize:       3,
-			initialVersion: configassets.Project.OperatorTests.ScyllaDBVersions.UpgradeFrom,
-			updatedVersion: configassets.Project.Operator.ScyllaDBVersion,
+			initialVersion: framework.TestContext.ScyllaDBUpgradeFrom,
+			updatedVersion: framework.TestContext.ScyllaDBVersion,
 		}),
 	)
 })

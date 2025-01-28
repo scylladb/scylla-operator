@@ -275,6 +275,51 @@ target:
 EOF
 fi
 
+if [[ -n "${SCYLLADB_VERSION:-}" ]]; then
+  cat << EOF | \
+  yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" -
+patch: |-
+  - op: replace
+    path: /spec/version
+    value: "${SCYLLADB_VERSION}"
+target:
+  group: scylla.scylladb.com
+  version: v1
+  kind: ScyllaCluster
+  name: scylla-manager-cluster
+EOF
+fi
+
+if [[ -n "${SCYLLA_MANAGER_VERSION:-}" ]]; then
+  cat << EOF | \
+  yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" -
+patch: |-
+  - op: replace
+    path: /spec/template/spec/containers/0/image
+    value: "docker.io/scylladb/scylla-manager:${SCYLLA_MANAGER_VERSION}"
+target:
+  group: apps
+  version: v1
+  kind: Deployment
+  name: scylla-manager
+EOF
+fi
+
+if [[ -n "${SCYLLA_MANAGER_AGENT_VERSION:-}" ]]; then
+  cat << EOF | \
+  yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" -
+patch: |-
+  - op: replace
+    path: /spec/agentVersion
+    value: "${SCYLLA_MANAGER_AGENT_VERSION}"
+target:
+  group: scylla.scylladb.com
+  version: v1
+  kind: ScyllaCluster
+  name: scylla-manager-cluster
+EOF
+fi
+
 kubectl kustomize "${ARTIFACTS_DEPLOY_DIR}/manager" | kubectl_create -n=scylla-manager -f=-
 
 kubectl -n=scylla-manager wait --timeout=5m --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster

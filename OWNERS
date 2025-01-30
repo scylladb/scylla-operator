@@ -3,15 +3,11 @@
 filters:
   ".*":
     approvers:
-    - zimnx
-    - mflendrich
+    - operator-approvers
     reviewers:
-    - zimnx
-    - rzetelskik
-    - mflendrich
+    - operator-reviewers
   "go\\.(mod|sum)$":
     required_reviewers:
-    - zimnx
-    - mflendrich
+    - operator-approvers
     labels:
     - area/dependency

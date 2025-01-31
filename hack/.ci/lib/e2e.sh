@@ -257,7 +257,7 @@ spec:
     command:
     - scylla-operator-tests
     - run
-    - "${SO_SUITE}"
+    - all
     - "--kubeconfig=${kubeconfigs_in_container_path}"
     - --loglevel=2
     - --color=false

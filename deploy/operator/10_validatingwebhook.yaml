@@ -36,3 +36,4 @@ webhooks:
     - nodeconfigs
     - scyllaoperatorconfigs
     - scylladbdatacenters
+    - scylladbclusters

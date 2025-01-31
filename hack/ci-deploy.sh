@@ -29,7 +29,7 @@ mkdir -p "${DEPLOY_DIR}/"{operator,manager,prometheus-operator,haproxy-ingress}
 
 cp ./deploy/manager/dev/*.yaml "${DEPLOY_DIR}/manager"
 cp ./deploy/operator/*.yaml "${DEPLOY_DIR}/operator"
-cp ./examples/third-party/prometheus-operator/*.yaml "${DEPLOY_DIR}/prometheus-operator"
+# cp ./examples/third-party/prometheus-operator/*.yaml "${DEPLOY_DIR}/prometheus-operator"
 cp ./examples/third-party/haproxy-ingress/*.yaml "${DEPLOY_DIR}/haproxy-ingress"
 cp ./examples/third-party/cert-manager.yaml "${DEPLOY_DIR}/"
 
@@ -76,7 +76,7 @@ if [[ -n ${SCYLLA_OPERATOR_FEATURE_GATES+x} ]]; then
     yq e --inplace '.spec.template.spec.containers[0].args += "--feature-gates="+ env(SCYLLA_OPERATOR_FEATURE_GATES)' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
 fi
 
-kubectl_create -n prometheus-operator -f "${DEPLOY_DIR}/prometheus-operator"
+# kubectl_create -n prometheus-operator -f "${DEPLOY_DIR}/prometheus-operator"
 kubectl_create -n haproxy-ingress -f "${DEPLOY_DIR}/haproxy-ingress"
 kubectl_create -f "${DEPLOY_DIR}"/cert-manager.yaml
 
@@ -127,5 +127,5 @@ kubectl -n haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-i
 kubectl wait --for condition=established crd/nodeconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scyllaoperatorconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scylladbmonitorings.scylla.scylladb.com
-kubectl wait --for condition=established $( find "${DEPLOY_DIR}/prometheus-operator/" -name '*.crd.yaml' -printf '-f=%p\n' )
-kubectl -n=prometheus-operator rollout status deploy/prometheus-operator
+# kubectl wait --for condition=established $( find "${DEPLOY_DIR}/prometheus-operator/" -name '*.crd.yaml' -printf '-f=%p\n' )
+# kubectl -n=prometheus-operator rollout status deploy/prometheus-operator

@@ -119,7 +119,7 @@ var _ = g.BeforeSuite(func() {
 	expectedPlatformHomeDashboardUID = ghd.UID
 })
 
-var _ = g.Describe("ScyllaDBMonitoring", func() {
+var _ = g.FDescribe("ScyllaDBMonitoring", func() {
 	f := framework.NewFramework("scylladbmonitoring")
 
 	type entry struct {

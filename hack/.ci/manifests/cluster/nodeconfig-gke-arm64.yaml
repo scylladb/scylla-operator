@@ -1,0 +1,26 @@
+apiVersion: scylla.scylladb.com/v1alpha1
+kind: NodeConfig
+metadata:
+  name: cluster
+spec:
+  localDiskSetup:
+    loopDevices:
+    - name: persistent-volumes
+      imagePath: /var/lib/persistent-volumes.img
+      size: 80Gi
+    filesystems:
+    - device: /dev/loops/persistent-volumes
+      type: xfs
+    mounts:
+    - device: /dev/loops/persistent-volumes
+      mountPoint: /var/lib/persistent-volumes
+      unsupportedOptions:
+      - prjquota
+  placement:
+    nodeSelector:
+      scylla.scylladb.com/node-type: scylla
+    tolerations:
+    - effect: NoSchedule
+      key: scylla-operator.scylladb.com/dedicated
+      operator: Equal
+      value: scyllaclusters

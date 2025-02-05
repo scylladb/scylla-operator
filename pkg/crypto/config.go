@@ -5,6 +5,5 @@ import (
 )
 
 var (
-	keySize            = 4096
 	signatureAlgorithm = x509.SHA512WithRSA
 )

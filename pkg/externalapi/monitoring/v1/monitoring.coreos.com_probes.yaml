@@ -21,7 +21,14 @@ spec:
     - name: v1
       schema:
         openAPIV3Schema:
-          description: Probe defines monitoring for a set of static targets or ingresses.
+          description: |-
+            The `Probe` custom resource definition (CRD) defines how to scrape metrics from prober exporters such as the [blackbox exporter](https://github.com/prometheus/blackbox_exporter).
+
+            The `Probe` resource needs 2 pieces of information:
+            * The list of probed addresses which can be defined statically or by discovering Kubernetes Ingress objects.
+            * The prober which exposes the availability of probed endpoints (over various protocols such HTTP, TCP, ICMP, ...) as Prometheus metrics.
+
+            `Prometheus` and `PrometheusAgent` objects select `Probe` objects using label and namespace selectors.
           properties:
             apiVersion:
               description: |-
@@ -47,7 +54,7 @@ spec:
                   description: Authorization section for this endpoint
                   properties:
                     credentials:
-                      description: The secret's key that contains the credentials of the request
+                      description: Selects a key of a Secret in the namespace that contains the credentials for authentication.
                       properties:
                         key:
                           description: The key of the secret to select from.  Must be a valid secret key.
@@ -70,8 +77,11 @@ spec:
                       x-kubernetes-map-type: atomic
                     type:
                       description: |-
-                        Set the authentication type. Defaults to Bearer, Basic will cause an
-                        error
+                        Defines the authentication type. The value is case-insensitive.
+
+                        "Basic" is not a supported value.
+
+                        Default: "Bearer"
                       type: string
                   type: object
                 basicAuth:
@@ -81,8 +91,8 @@ spec:
                   properties:
                     password:
                       description: |-
-                        The secret in the service monitor namespace that contains the password
-                        for authentication.
+                        `password` specifies a key of a Secret containing the password for
+                        authentication.
                       properties:
                         key:
                           description: The key of the secret to select from.  Must be a valid secret key.
@@ -105,8 +115,8 @@ spec:
                       x-kubernetes-map-type: atomic
                     username:
                       description: |-
-                        The secret in the service monitor namespace that contains the username
-                        for authentication.
+                        `username` specifies a key of a Secret containing the username for
+                        authentication.
                       properties:
                         key:
                           description: The key of the secret to select from.  Must be a valid secret key.
@@ -153,6 +163,18 @@ spec:
                     - key
                   type: object
                   x-kubernetes-map-type: atomic
+                fallbackScrapeProtocol:
+                  description: |-
+                    The protocol to use if a scrape returns blank, unparseable, or otherwise invalid Content-Type.
+
+                    It requires Prometheus >= v3.0.0.
+                  enum:
+                    - PrometheusProto
+                    - OpenMetricsText0.0.1
+                    - OpenMetricsText1.0.0
+                    - PrometheusText0.0.4
+                    - PrometheusText1.0.0
+                  type: string
                 interval:
                   description: |-
                     Interval at which targets are probed using the configured prober.
@@ -162,6 +184,14 @@ spec:
                 jobName:
                   description: The job name assigned to scraped metrics by default.
                   type: string
+                keepDroppedTargets:
+                  description: |-
+                    Per-scrape limit on the number of targets dropped by relabeling
+                    that will be kept in memory. 0 means no limit.
+
+                    It requires Prometheus >= v2.47.0.
+                  format: int64
+                  type: integer
                 labelLimit:
                   description: |-
                     Per-scrape limit on number of labels that will be accepted for a sample.
@@ -184,15 +214,20 @@ spec:
                   description: MetricRelabelConfigs to apply to samples before ingestion.
                   items:
                     description: |-
-                      RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                      It defines `<metric_relabel_configs>`-section of Prometheus configuration.
-                      More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                      RelabelConfig allows dynamic rewriting of the label set for targets, alerts,
+                      scraped samples and remote write samples.
+
+                      More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
                     properties:
                       action:
                         default: replace
                         description: |-
-                          Action to perform based on regex matching. Default is 'replace'.
-                          uppercase and lowercase actions require Prometheus >= 2.36.
+                          Action to perform based on the regex matching.
+
+                          `Uppercase` and `Lowercase` actions require Prometheus >= v2.36.0.
+                          `DropEqual` and `KeepEqual` actions require Prometheus >= v2.41.0.
+
+                          Default: "Replace"
                         enum:
                           - replace
                           - Replace
@@ -212,36 +247,51 @@ spec:
                           - Lowercase
                           - uppercase
                           - Uppercase
+                          - keepequal
+                          - KeepEqual
+                          - dropequal
+                          - DropEqual
                         type: string
                       modulus:
-                        description: Modulus to take of the hash of the source label values.
+                        description: |-
+                          Modulus to take of the hash of the source label values.
+
+                          Only applicable when the action is `HashMod`.
                         format: int64
                         type: integer
                       regex:
-                        description: Regular expression against which the extracted value is matched. Default is '(.*)'
+                        description: Regular expression against which the extracted value is matched.
                         type: string
                       replacement:
                         description: |-
-                          Replacement value against which a regex replace is performed if the
-                          regular expression matches. Regex capture groups are available. Default is '$1'
+                          Replacement value against which a Replace action is performed if the
+                          regular expression matches.
+
+                          Regex capture groups are available.
                         type: string
                       separator:
-                        description: Separator placed between concatenated source label values. default is ';'.
+                        description: Separator is the string between concatenated SourceLabels.
                         type: string
                       sourceLabels:
                         description: |-
-                          The source labels select values from existing labels. Their content is concatenated
-                          using the configured separator and matched against the configured regular expression
-                          for the replace, keep, and drop actions.
+                          The source labels select values from existing labels. Their content is
+                          concatenated using the configured Separator and matched against the
+                          configured regular expression.
                         items:
-                          description: LabelName is a valid Prometheus label name which may only contain ASCII letters, numbers, as well as underscores.
+                          description: |-
+                            LabelName is a valid Prometheus label name which may only contain ASCII
+                            letters, numbers, as well as underscores.
                           pattern: ^[a-zA-Z_][a-zA-Z0-9_]*$
                           type: string
                         type: array
                       targetLabel:
                         description: |-
-                          Label to which the resulting value is written in a replace action.
-                          It is mandatory for replace actions. Regex capture groups are available.
+                          Label to which the resulting string is written in a replacement.
+
+                          It is mandatory for `Replace`, `HashMod`, `Lowercase`, `Uppercase`,
+                          `KeepEqual` and `DropEqual` actions.
+
+                          Regex capture groups are available.
                         type: string
                     type: object
                   type: array
@@ -251,11 +301,30 @@ spec:
                     Example module configuring in the blackbox exporter:
                     https://github.com/prometheus/blackbox_exporter/blob/master/example.yml
                   type: string
+                nativeHistogramBucketLimit:
+                  description: |-
+                    If there are more than this many buckets in a native histogram,
+                    buckets will be merged to stay within the limit.
+                    It requires Prometheus >= v2.45.0.
+                  format: int64
+                  type: integer
+                nativeHistogramMinBucketFactor:
+                  anyOf:
+                    - type: integer
+                    - type: string
+                  description: |-
+                    If the growth factor of one bucket to the next is smaller than this,
+                    buckets will be merged to increase the factor sufficiently.
+                    It requires Prometheus >= v2.50.0.
+                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                  x-kubernetes-int-or-string: true
                 oauth2:
                   description: OAuth2 for the URL. Only valid in Prometheus versions 2.27.0 and newer.
                   properties:
                     clientId:
-                      description: The secret or configmap containing the OAuth2 client id
+                      description: |-
+                        `clientId` specifies a key of a Secret or ConfigMap containing the
+                        OAuth2 client's ID.
                       properties:
                         configMap:
                           description: ConfigMap containing data to use for the targets.
@@ -303,7 +372,9 @@ spec:
                           x-kubernetes-map-type: atomic
                       type: object
                     clientSecret:
-                      description: The secret containing the OAuth2 client secret
+                      description: |-
+                        `clientSecret` specifies a key of a Secret containing the OAuth2
+                        client's secret.
                       properties:
                         key:
                           description: The key of the secret to select from.  Must be a valid secret key.
@@ -327,15 +398,219 @@ spec:
                     endpointParams:
                       additionalProperties:
                         type: string
-                      description: Parameters to append to the token URL
+                      description: |-
+                        `endpointParams` configures the HTTP parameters to append to the token
+                        URL.
                       type: object
+                    noProxy:
+                      description: |-
+                        `noProxy` is a comma-separated string that can contain IPs, CIDR notation, domain names
+                        that should be excluded from proxying. IP and domain names can
+                        contain port numbers.
+
+                        It requires Prometheus >= v2.43.0 or Alertmanager >= 0.25.0.
+                      type: string
+                    proxyConnectHeader:
+                      additionalProperties:
+                        items:
+                          description: SecretKeySelector selects a key of a Secret.
+                          properties:
+                            key:
+                              description: The key of the secret to select from.  Must be a valid secret key.
+                              type: string
+                            name:
+                              default: ""
+                              description: |-
+                                Name of the referent.
+                                This field is effectively required, but due to backwards compatibility is
+                                allowed to be empty. Instances of this type with an empty value here are
+                                almost certainly wrong.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              type: string
+                            optional:
+                              description: Specify whether the Secret or its key must be defined
+                              type: boolean
+                          required:
+                            - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        type: array
+                      description: |-
+                        ProxyConnectHeader optionally specifies headers to send to
+                        proxies during CONNECT requests.
+
+                        It requires Prometheus >= v2.43.0 or Alertmanager >= 0.25.0.
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    proxyFromEnvironment:
+                      description: |-
+                        Whether to use the proxy configuration defined by environment variables (HTTP_PROXY, HTTPS_PROXY, and NO_PROXY).
+
+                        It requires Prometheus >= v2.43.0 or Alertmanager >= 0.25.0.
+                      type: boolean
+                    proxyUrl:
+                      description: '`proxyURL` defines the HTTP proxy server to use.'
+                      pattern: ^http(s)?://.+$
+                      type: string
                     scopes:
-                      description: OAuth2 scopes used for the token request
+                      description: '`scopes` defines the OAuth2 scopes used for the token request.'
                       items:
                         type: string
                       type: array
+                    tlsConfig:
+                      description: |-
+                        TLS configuration to use when connecting to the OAuth2 server.
+                        It requires Prometheus >= v2.43.0.
+                      properties:
+                        ca:
+                          description: Certificate authority used when verifying server certificates.
+                          properties:
+                            configMap:
+                              description: ConfigMap containing data to use for the targets.
+                              properties:
+                                key:
+                                  description: The key to select.
+                                  type: string
+                                name:
+                                  default: ""
+                                  description: |-
+                                    Name of the referent.
+                                    This field is effectively required, but due to backwards compatibility is
+                                    allowed to be empty. Instances of this type with an empty value here are
+                                    almost certainly wrong.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  type: string
+                                optional:
+                                  description: Specify whether the ConfigMap or its key must be defined
+                                  type: boolean
+                              required:
+                                - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            secret:
+                              description: Secret containing data to use for the targets.
+                              properties:
+                                key:
+                                  description: The key of the secret to select from.  Must be a valid secret key.
+                                  type: string
+                                name:
+                                  default: ""
+                                  description: |-
+                                    Name of the referent.
+                                    This field is effectively required, but due to backwards compatibility is
+                                    allowed to be empty. Instances of this type with an empty value here are
+                                    almost certainly wrong.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  type: string
+                                optional:
+                                  description: Specify whether the Secret or its key must be defined
+                                  type: boolean
+                              required:
+                                - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                          type: object
+                        cert:
+                          description: Client certificate to present when doing client-authentication.
+                          properties:
+                            configMap:
+                              description: ConfigMap containing data to use for the targets.
+                              properties:
+                                key:
+                                  description: The key to select.
+                                  type: string
+                                name:
+                                  default: ""
+                                  description: |-
+                                    Name of the referent.
+                                    This field is effectively required, but due to backwards compatibility is
+                                    allowed to be empty. Instances of this type with an empty value here are
+                                    almost certainly wrong.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  type: string
+                                optional:
+                                  description: Specify whether the ConfigMap or its key must be defined
+                                  type: boolean
+                              required:
+                                - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            secret:
+                              description: Secret containing data to use for the targets.
+                              properties:
+                                key:
+                                  description: The key of the secret to select from.  Must be a valid secret key.
+                                  type: string
+                                name:
+                                  default: ""
+                                  description: |-
+                                    Name of the referent.
+                                    This field is effectively required, but due to backwards compatibility is
+                                    allowed to be empty. Instances of this type with an empty value here are
+                                    almost certainly wrong.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  type: string
+                                optional:
+                                  description: Specify whether the Secret or its key must be defined
+                                  type: boolean
+                              required:
+                                - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                          type: object
+                        insecureSkipVerify:
+                          description: Disable target certificate validation.
+                          type: boolean
+                        keySecret:
+                          description: Secret containing the client key file for the targets.
+                          properties:
+                            key:
+                              description: The key of the secret to select from.  Must be a valid secret key.
+                              type: string
+                            name:
+                              default: ""
+                              description: |-
+                                Name of the referent.
+                                This field is effectively required, but due to backwards compatibility is
+                                allowed to be empty. Instances of this type with an empty value here are
+                                almost certainly wrong.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              type: string
+                            optional:
+                              description: Specify whether the Secret or its key must be defined
+                              type: boolean
+                          required:
+                            - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        maxVersion:
+                          description: |-
+                            Maximum acceptable TLS version.
+
+                            It requires Prometheus >= v2.41.0.
+                          enum:
+                            - TLS10
+                            - TLS11
+                            - TLS12
+                            - TLS13
+                          type: string
+                        minVersion:
+                          description: |-
+                            Minimum acceptable TLS version.
+
+                            It requires Prometheus >= v2.35.0.
+                          enum:
+                            - TLS10
+                            - TLS11
+                            - TLS12
+                            - TLS13
+                          type: string
+                        serverName:
+                          description: Used to verify the hostname for the targets.
+                          type: string
+                      type: object
                     tokenUrl:
-                      description: The URL to fetch the token from
+                      description: '`tokenURL` configures the URL to fetch the token from.'
                       minLength: 1
                       type: string
                   type: object
@@ -356,7 +631,11 @@ spec:
                     scheme:
                       description: |-
                         HTTP scheme to use for scraping.
-                        Defaults to `http`.
+                        `http` and `https` are the expected values unless you rewrite the `__scheme__` label via relabeling.
+                        If empty, Prometheus uses the default value `http`.
+                      enum:
+                        - http
+                        - https
                       type: string
                     url:
                       description: Mandatory URL of the prober.
@@ -366,10 +645,46 @@ spec:
                   description: SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
                   format: int64
                   type: integer
+                scrapeClass:
+                  description: The scrape class to apply.
+                  minLength: 1
+                  type: string
+                scrapeClassicHistograms:
+                  description: |-
+                    Whether to scrape a classic histogram that is also exposed as a native histogram.
+                    It requires Prometheus >= v2.45.0.
+                  type: boolean
+                scrapeProtocols:
+                  description: |-
+                    `scrapeProtocols` defines the protocols to negotiate during a scrape. It tells clients the
+                    protocols supported by Prometheus in order of preference (from most to least preferred).
+
+                    If unset, Prometheus uses its default value.
+
+                    It requires Prometheus >= v2.49.0.
+                  items:
+                    description: |-
+                      ScrapeProtocol represents a protocol used by Prometheus for scraping metrics.
+                      Supported values are:
+                      * `OpenMetricsText0.0.1`
+                      * `OpenMetricsText1.0.0`
+                      * `PrometheusProto`
+                      * `PrometheusText0.0.4`
+                      * `PrometheusText1.0.0`
+                    enum:
+                      - PrometheusProto
+                      - OpenMetricsText0.0.1
+                      - OpenMetricsText1.0.0
+                      - PrometheusText0.0.4
+                      - PrometheusText1.0.0
+                    type: string
+                  type: array
+                  x-kubernetes-list-type: set
                 scrapeTimeout:
                   description: |-
                     Timeout for scraping metrics from the Prometheus exporter.
-                    If not specified, the Prometheus global scrape interval is used.
+                    If not specified, the Prometheus global scrape timeout is used.
+                    The value cannot be greater than the scrape interval otherwise the operator will reject the resource.
                   pattern: ^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$
                   type: string
                 targetLimit:
@@ -410,15 +725,20 @@ spec:
                             More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
                           items:
                             description: |-
-                              RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                              It defines `<metric_relabel_configs>`-section of Prometheus configuration.
-                              More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                              RelabelConfig allows dynamic rewriting of the label set for targets, alerts,
+                              scraped samples and remote write samples.
+
+                              More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
                             properties:
                               action:
                                 default: replace
                                 description: |-
-                                  Action to perform based on regex matching. Default is 'replace'.
-                                  uppercase and lowercase actions require Prometheus >= 2.36.
+                                  Action to perform based on the regex matching.
+
+                                  `Uppercase` and `Lowercase` actions require Prometheus >= v2.36.0.
+                                  `DropEqual` and `KeepEqual` actions require Prometheus >= v2.41.0.
+
+                                  Default: "Replace"
                                 enum:
                                   - replace
                                   - Replace
@@ -438,36 +758,51 @@ spec:
                                   - Lowercase
                                   - uppercase
                                   - Uppercase
+                                  - keepequal
+                                  - KeepEqual
+                                  - dropequal
+                                  - DropEqual
                                 type: string
                               modulus:
-                                description: Modulus to take of the hash of the source label values.
+                                description: |-
+                                  Modulus to take of the hash of the source label values.
+
+                                  Only applicable when the action is `HashMod`.
                                 format: int64
                                 type: integer
                               regex:
-                                description: Regular expression against which the extracted value is matched. Default is '(.*)'
+                                description: Regular expression against which the extracted value is matched.
                                 type: string
                               replacement:
                                 description: |-
-                                  Replacement value against which a regex replace is performed if the
-                                  regular expression matches. Regex capture groups are available. Default is '$1'
+                                  Replacement value against which a Replace action is performed if the
+                                  regular expression matches.
+
+                                  Regex capture groups are available.
                                 type: string
                               separator:
-                                description: Separator placed between concatenated source label values. default is ';'.
+                                description: Separator is the string between concatenated SourceLabels.
                                 type: string
                               sourceLabels:
                                 description: |-
-                                  The source labels select values from existing labels. Their content is concatenated
-                                  using the configured separator and matched against the configured regular expression
-                                  for the replace, keep, and drop actions.
+                                  The source labels select values from existing labels. Their content is
+                                  concatenated using the configured Separator and matched against the
+                                  configured regular expression.
                                 items:
-                                  description: LabelName is a valid Prometheus label name which may only contain ASCII letters, numbers, as well as underscores.
+                                  description: |-
+                                    LabelName is a valid Prometheus label name which may only contain ASCII
+                                    letters, numbers, as well as underscores.
                                   pattern: ^[a-zA-Z_][a-zA-Z0-9_]*$
                                   type: string
                                 type: array
                               targetLabel:
                                 description: |-
-                                  Label to which the resulting value is written in a replace action.
-                                  It is mandatory for replace actions. Regex capture groups are available.
+                                  Label to which the resulting string is written in a replacement.
+
+                                  It is mandatory for `Replace`, `HashMod`, `Lowercase`, `Uppercase`,
+                                  `KeepEqual` and `DropEqual` actions.
+
+                                  Regex capture groups are available.
                                 type: string
                             type: object
                           type: array
@@ -535,15 +870,20 @@ spec:
                             More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
                           items:
                             description: |-
-                              RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                              It defines `<metric_relabel_configs>`-section of Prometheus configuration.
-                              More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                              RelabelConfig allows dynamic rewriting of the label set for targets, alerts,
+                              scraped samples and remote write samples.
+
+                              More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
                             properties:
                               action:
                                 default: replace
                                 description: |-
-                                  Action to perform based on regex matching. Default is 'replace'.
-                                  uppercase and lowercase actions require Prometheus >= 2.36.
+                                  Action to perform based on the regex matching.
+
+                                  `Uppercase` and `Lowercase` actions require Prometheus >= v2.36.0.
+                                  `DropEqual` and `KeepEqual` actions require Prometheus >= v2.41.0.
+
+                                  Default: "Replace"
                                 enum:
                                   - replace
                                   - Replace
@@ -563,36 +903,51 @@ spec:
                                   - Lowercase
                                   - uppercase
                                   - Uppercase
+                                  - keepequal
+                                  - KeepEqual
+                                  - dropequal
+                                  - DropEqual
                                 type: string
                               modulus:
-                                description: Modulus to take of the hash of the source label values.
+                                description: |-
+                                  Modulus to take of the hash of the source label values.
+
+                                  Only applicable when the action is `HashMod`.
                                 format: int64
                                 type: integer
                               regex:
-                                description: Regular expression against which the extracted value is matched. Default is '(.*)'
+                                description: Regular expression against which the extracted value is matched.
                                 type: string
                               replacement:
                                 description: |-
-                                  Replacement value against which a regex replace is performed if the
-                                  regular expression matches. Regex capture groups are available. Default is '$1'
+                                  Replacement value against which a Replace action is performed if the
+                                  regular expression matches.
+
+                                  Regex capture groups are available.
                                 type: string
                               separator:
-                                description: Separator placed between concatenated source label values. default is ';'.
+                                description: Separator is the string between concatenated SourceLabels.
                                 type: string
                               sourceLabels:
                                 description: |-
-                                  The source labels select values from existing labels. Their content is concatenated
-                                  using the configured separator and matched against the configured regular expression
-                                  for the replace, keep, and drop actions.
+                                  The source labels select values from existing labels. Their content is
+                                  concatenated using the configured Separator and matched against the
+                                  configured regular expression.
                                 items:
-                                  description: LabelName is a valid Prometheus label name which may only contain ASCII letters, numbers, as well as underscores.
+                                  description: |-
+                                    LabelName is a valid Prometheus label name which may only contain ASCII
+                                    letters, numbers, as well as underscores.
                                   pattern: ^[a-zA-Z_][a-zA-Z0-9_]*$
                                   type: string
                                 type: array
                               targetLabel:
                                 description: |-
-                                  Label to which the resulting value is written in a replace action.
-                                  It is mandatory for replace actions. Regex capture groups are available.
+                                  Label to which the resulting string is written in a replacement.
+
+                                  It is mandatory for `Replace`, `HashMod`, `Lowercase`, `Uppercase`,
+                                  `KeepEqual` and `DropEqual` actions.
+
+                                  Regex capture groups are available.
                                 type: string
                             type: object
                           type: array
@@ -727,6 +1082,28 @@ spec:
                         - key
                       type: object
                       x-kubernetes-map-type: atomic
+                    maxVersion:
+                      description: |-
+                        Maximum acceptable TLS version.
+
+                        It requires Prometheus >= v2.41.0.
+                      enum:
+                        - TLS10
+                        - TLS11
+                        - TLS12
+                        - TLS13
+                      type: string
+                    minVersion:
+                      description: |-
+                        Minimum acceptable TLS version.
+
+                        It requires Prometheus >= v2.35.0.
+                      enum:
+                        - TLS10
+                        - TLS11
+                        - TLS12
+                        - TLS13
+                      type: string
                     serverName:
                       description: Used to verify the hostname for the targets.
                       type: string

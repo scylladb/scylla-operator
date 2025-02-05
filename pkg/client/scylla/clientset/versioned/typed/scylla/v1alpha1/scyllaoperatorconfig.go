@@ -3,9 +3,9 @@
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	scheme "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -21,33 +21,34 @@ type ScyllaOperatorConfigsGetter interface {
 
 // ScyllaOperatorConfigInterface has methods to work with ScyllaOperatorConfig resources.
 type ScyllaOperatorConfigInterface interface {
-	Create(ctx context.Context, scyllaOperatorConfig *v1alpha1.ScyllaOperatorConfig, opts v1.CreateOptions) (*v1alpha1.ScyllaOperatorConfig, error)
-	Update(ctx context.Context, scyllaOperatorConfig *v1alpha1.ScyllaOperatorConfig, opts v1.UpdateOptions) (*v1alpha1.ScyllaOperatorConfig, error)
+	Create(ctx context.Context, scyllaOperatorConfig *scyllav1alpha1.ScyllaOperatorConfig, opts v1.CreateOptions) (*scyllav1alpha1.ScyllaOperatorConfig, error)
+	Update(ctx context.Context, scyllaOperatorConfig *scyllav1alpha1.ScyllaOperatorConfig, opts v1.UpdateOptions) (*scyllav1alpha1.ScyllaOperatorConfig, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, scyllaOperatorConfig *v1alpha1.ScyllaOperatorConfig, opts v1.UpdateOptions) (*v1alpha1.ScyllaOperatorConfig, error)
+	UpdateStatus(ctx context.Context, scyllaOperatorConfig *scyllav1alpha1.ScyllaOperatorConfig, opts v1.UpdateOptions) (*scyllav1alpha1.ScyllaOperatorConfig, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.ScyllaOperatorConfig, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.ScyllaOperatorConfigList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*scyllav1alpha1.ScyllaOperatorConfig, error)
+	List(ctx context.Context, opts v1.ListOptions) (*scyllav1alpha1.ScyllaOperatorConfigList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ScyllaOperatorConfig, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *scyllav1alpha1.ScyllaOperatorConfig, err error)
 	ScyllaOperatorConfigExpansion
 }
 
 // scyllaOperatorConfigs implements ScyllaOperatorConfigInterface
 type scyllaOperatorConfigs struct {
-	*gentype.ClientWithList[*v1alpha1.ScyllaOperatorConfig, *v1alpha1.ScyllaOperatorConfigList]
+	*gentype.ClientWithList[*scyllav1alpha1.ScyllaOperatorConfig, *scyllav1alpha1.ScyllaOperatorConfigList]
 }
 
 // newScyllaOperatorConfigs returns a ScyllaOperatorConfigs
 func newScyllaOperatorConfigs(c *ScyllaV1alpha1Client) *scyllaOperatorConfigs {
 	return &scyllaOperatorConfigs{
-		gentype.NewClientWithList[*v1alpha1.ScyllaOperatorConfig, *v1alpha1.ScyllaOperatorConfigList](
+		gentype.NewClientWithList[*scyllav1alpha1.ScyllaOperatorConfig, *scyllav1alpha1.ScyllaOperatorConfigList](
 			"scyllaoperatorconfigs",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			"",
-			func() *v1alpha1.ScyllaOperatorConfig { return &v1alpha1.ScyllaOperatorConfig{} },
-			func() *v1alpha1.ScyllaOperatorConfigList { return &v1alpha1.ScyllaOperatorConfigList{} }),
+			func() *scyllav1alpha1.ScyllaOperatorConfig { return &scyllav1alpha1.ScyllaOperatorConfig{} },
+			func() *scyllav1alpha1.ScyllaOperatorConfigList { return &scyllav1alpha1.ScyllaOperatorConfigList{} },
+		),
 	}
 }

@@ -13,7 +13,7 @@ type FakeScyllaV1 struct {
 }
 
 func (c *FakeScyllaV1) ScyllaClusters(namespace string) v1.ScyllaClusterInterface {
-	return &FakeScyllaClusters{c, namespace}
+	return newFakeScyllaClusters(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

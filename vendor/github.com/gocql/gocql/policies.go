@@ -94,34 +94,6 @@ func (c *cowHostList) remove(host *HostInfo) bool {
 	return true
 }
 
-// cowTabletList implements a copy on write tablet list, its equivalent type is []*TabletInfo
-// Experimental, this interface and use may change
-type cowTabletList struct {
-	list atomic.Value
-	mu   sync.Mutex
-}
-
-func (c *cowTabletList) get() []*TabletInfo {
-	l, ok := c.list.Load().(*[]*TabletInfo)
-	if !ok {
-		return nil
-	}
-	return *l
-}
-
-func (c *cowTabletList) set(tablets []*TabletInfo) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	n := len(tablets)
-	l := make([]*TabletInfo, n)
-	for i := 0; i < n; i++ {
-		l[i] = tablets[i]
-	}
-
-	c.list.Store(&l)
-}
-
 // RetryableQuery is an interface that represents a query or batch statement that
 // exposes the correct functions for the retry policy logic to evaluate correctly.
 type RetryableQuery interface {
@@ -188,6 +160,10 @@ func (s *SimpleRetryPolicy) AttemptLWT(q RetryableQuery) bool {
 }
 
 func (s *SimpleRetryPolicy) GetRetryType(err error) RetryType {
+	var executedErr *QueryError
+	if errors.As(err, &executedErr) && executedErr.PotentiallyExecuted() && !executedErr.IsIdempotent() {
+		return Rethrow
+	}
 	return RetryNextHost
 }
 
@@ -196,6 +172,10 @@ func (s *SimpleRetryPolicy) GetRetryType(err error) RetryType {
 // even timeouts if other clients send statements touching the same
 // partition to the original node at the same time.
 func (s *SimpleRetryPolicy) GetRetryTypeLWT(err error) RetryType {
+	var executedErr *QueryError
+	if errors.As(err, &executedErr) && executedErr.PotentiallyExecuted() && !executedErr.IsIdempotent() {
+		return Rethrow
+	}
 	return Retry
 }
 
@@ -236,6 +216,10 @@ func getExponentialTime(min time.Duration, max time.Duration, attempts int) time
 }
 
 func (e *ExponentialBackoffRetryPolicy) GetRetryType(err error) RetryType {
+	var executedErr *QueryError
+	if errors.As(err, &executedErr) && executedErr.PotentiallyExecuted() && !executedErr.IsIdempotent() {
+		return Rethrow
+	}
 	return RetryNextHost
 }
 
@@ -244,6 +228,10 @@ func (e *ExponentialBackoffRetryPolicy) GetRetryType(err error) RetryType {
 // even timeouts if other clients send statements touching the same
 // partition to the original node at the same time.
 func (e *ExponentialBackoffRetryPolicy) GetRetryTypeLWT(err error) RetryType {
+	var executedErr *QueryError
+	if errors.As(err, &executedErr) && executedErr.PotentiallyExecuted() && !executedErr.IsIdempotent() {
+		return Rethrow
+	}
 	return Retry
 }
 
@@ -278,6 +266,14 @@ func (d *DowngradingConsistencyRetryPolicy) Attempt(q RetryableQuery) bool {
 }
 
 func (d *DowngradingConsistencyRetryPolicy) GetRetryType(err error) RetryType {
+	var executedErr *QueryError
+	if errors.As(err, &executedErr) {
+		err = executedErr.err
+		if executedErr.PotentiallyExecuted() && !executedErr.IsIdempotent() {
+			return Rethrow
+		}
+	}
+
 	switch t := err.(type) {
 	case *RequestErrUnavailable:
 		if t.Alive > 0 {
@@ -338,8 +334,6 @@ type HostTierer interface {
 type HostSelectionPolicy interface {
 	HostStateNotifier
 	SetPartitioner
-	// Experimental, this interface and use may change
-	SetTablets
 	KeyspaceChanged(KeyspaceUpdateEvent)
 	Init(*Session)
 	// Reset is opprotunity to reset HostSelectionPolicy if Session initilization failed and we want to
@@ -398,9 +392,6 @@ func (r *roundRobinHostPolicy) SetPartitioner(partitioner string)   {}
 func (r *roundRobinHostPolicy) Init(*Session)                       {}
 func (r *roundRobinHostPolicy) Reset()                              {}
 func (r *roundRobinHostPolicy) IsOperational(*Session) error        { return nil }
-
-// Experimental, this interface and use may change
-func (r *roundRobinHostPolicy) SetTablets(tablets []*TabletInfo) {}
 
 func (r *roundRobinHostPolicy) Pick(qry ExecutableQuery) NextHost {
 	nextStartOffset := atomic.AddUint64(&r.lastUsedHostIdx, 1)
@@ -492,9 +483,6 @@ type tokenAwareHostPolicy struct {
 
 	logger StdLogger
 
-	// Experimental, this interface and use may change
-	tablets cowTabletList
-
 	avoidSlowReplicas bool
 }
 
@@ -577,14 +565,6 @@ func (t *tokenAwareHostPolicy) SetPartitioner(partitioner string) {
 		t.updateReplicas(meta, t.getKeyspaceName())
 		t.metadata.Store(meta)
 	}
-}
-
-// Experimental, this interface and use may change
-func (t *tokenAwareHostPolicy) SetTablets(tablets []*TabletInfo) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	t.tablets.set(tablets)
 }
 
 func (t *tokenAwareHostPolicy) AddHost(host *HostInfo) {
@@ -706,13 +686,13 @@ func (t *tokenAwareHostPolicy) Pick(qry ExecutableQuery) NextHost {
 
 	var replicas []*HostInfo
 
-	if qry.GetSession() != nil && qry.GetSession().tabletsRoutingV1 {
-		tablets := t.tablets.get()
+	if session := qry.GetSession(); session != nil && session.tabletsRoutingV1 {
+		tablets := session.metadataDescriber.getTablets()
 
 		// Search for tablets with Keyspace and Table from the Query
-		l, r := findTablets(tablets, qry.Keyspace(), qry.Table())
+		l, r := tablets.findTablets(qry.Keyspace(), qry.Table())
 		if l != -1 {
-			tablet := findTabletForToken(tablets, token, l, r)
+			tablet := tablets.findTabletForToken(token, l, r)
 			hosts := t.hosts.get()
 			for _, replica := range tablet.Replicas() {
 				for _, host := range hosts {
@@ -866,9 +846,6 @@ func (r *hostPoolHostPolicy) IsOperational(*Session) error        { return nil }
 func (r *hostPoolHostPolicy) KeyspaceChanged(KeyspaceUpdateEvent) {}
 func (r *hostPoolHostPolicy) SetPartitioner(string)               {}
 func (r *hostPoolHostPolicy) IsLocal(*HostInfo) bool              { return true }
-
-// Experimental, this interface and use may change
-func (r *hostPoolHostPolicy) SetTablets(tablets []*TabletInfo) {}
 
 func (r *hostPoolHostPolicy) SetHosts(hosts []*HostInfo) {
 	peers := make([]string, len(hosts))
@@ -1029,10 +1006,7 @@ func (d *dcAwareRR) IsOperational(session *Session) error {
 		return nil
 	}
 
-	hosts, _, err := session.hostSource.GetHosts()
-	if err != nil {
-		return fmt.Errorf("gocql: unable to check if session is operational: %v", err)
-	}
+	hosts := session.hostSource.getHostsList()
 	for _, host := range hosts {
 		if !session.cfg.filterHost(host) && host.DataCenter() == d.local {
 			// Policy can work properly only if there is at least one host from target DC
@@ -1048,9 +1022,6 @@ func (d *dcAwareRR) IsOperational(session *Session) error {
 func (d *dcAwareRR) IsLocal(host *HostInfo) bool {
 	return host.DataCenter() == d.local
 }
-
-// Experimental, this interface and use may change
-func (d *dcAwareRR) SetTablets(tablets []*TabletInfo) {}
 
 func (d *dcAwareRR) AddHost(host *HostInfo) {
 	if d.IsLocal(host) {
@@ -1153,10 +1124,7 @@ func (d *rackAwareRR) IsOperational(session *Session) error {
 	if session.cfg.disableInit || session.cfg.disableControlConn {
 		return nil
 	}
-	hosts, _, err := session.hostSource.GetHosts()
-	if err != nil {
-		return fmt.Errorf("gocql: unable to check if session is operational: %v", err)
-	}
+	hosts := session.hostSource.getHostsList()
 	for _, host := range hosts {
 		if !session.cfg.filterHost(host) && host.DataCenter() == d.localDC && host.Rack() == d.localRack {
 			// Policy can work properly only if there is at least one host from target DC+Rack
@@ -1175,9 +1143,6 @@ func (d *rackAwareRR) MaxHostTier() uint {
 func (d *rackAwareRR) setDCFailoverDisabled() {
 	d.disableDCFailover = true
 }
-
-// Experimental, this interface and use may change
-func (d *rackAwareRR) SetTablets(tablets []*TabletInfo) {}
 
 func (d *rackAwareRR) HostTier(host *HostInfo) uint {
 	if host.DataCenter() == d.localDC {
@@ -1287,6 +1252,22 @@ func (e *SimpleConvictionPolicy) Reset(host *HostInfo) {}
 type ReconnectionPolicy interface {
 	GetInterval(currentRetry int) time.Duration
 	GetMaxRetries() int
+}
+
+// NoReconnectionPolicy is a policy to have no retry.
+//
+// Examples of usage:
+//
+//	cluster.InitialReconnectionPolicy = &NoReconnectionPolicy{}
+type NoReconnectionPolicy struct {
+}
+
+func (c *NoReconnectionPolicy) GetInterval(currentRetry int) time.Duration {
+	return time.Duration(0)
+}
+
+func (c *NoReconnectionPolicy) GetMaxRetries() int {
+	return 1
 }
 
 // ConstantReconnectionPolicy has simple logic for returning a fixed reconnection interval.

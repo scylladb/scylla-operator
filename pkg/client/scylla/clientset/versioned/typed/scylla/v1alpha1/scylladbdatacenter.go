@@ -3,9 +3,9 @@
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	scheme "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -21,33 +21,34 @@ type ScyllaDBDatacentersGetter interface {
 
 // ScyllaDBDatacenterInterface has methods to work with ScyllaDBDatacenter resources.
 type ScyllaDBDatacenterInterface interface {
-	Create(ctx context.Context, scyllaDBDatacenter *v1alpha1.ScyllaDBDatacenter, opts v1.CreateOptions) (*v1alpha1.ScyllaDBDatacenter, error)
-	Update(ctx context.Context, scyllaDBDatacenter *v1alpha1.ScyllaDBDatacenter, opts v1.UpdateOptions) (*v1alpha1.ScyllaDBDatacenter, error)
+	Create(ctx context.Context, scyllaDBDatacenter *scyllav1alpha1.ScyllaDBDatacenter, opts v1.CreateOptions) (*scyllav1alpha1.ScyllaDBDatacenter, error)
+	Update(ctx context.Context, scyllaDBDatacenter *scyllav1alpha1.ScyllaDBDatacenter, opts v1.UpdateOptions) (*scyllav1alpha1.ScyllaDBDatacenter, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, scyllaDBDatacenter *v1alpha1.ScyllaDBDatacenter, opts v1.UpdateOptions) (*v1alpha1.ScyllaDBDatacenter, error)
+	UpdateStatus(ctx context.Context, scyllaDBDatacenter *scyllav1alpha1.ScyllaDBDatacenter, opts v1.UpdateOptions) (*scyllav1alpha1.ScyllaDBDatacenter, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.ScyllaDBDatacenter, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.ScyllaDBDatacenterList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*scyllav1alpha1.ScyllaDBDatacenter, error)
+	List(ctx context.Context, opts v1.ListOptions) (*scyllav1alpha1.ScyllaDBDatacenterList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ScyllaDBDatacenter, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *scyllav1alpha1.ScyllaDBDatacenter, err error)
 	ScyllaDBDatacenterExpansion
 }
 
 // scyllaDBDatacenters implements ScyllaDBDatacenterInterface
 type scyllaDBDatacenters struct {
-	*gentype.ClientWithList[*v1alpha1.ScyllaDBDatacenter, *v1alpha1.ScyllaDBDatacenterList]
+	*gentype.ClientWithList[*scyllav1alpha1.ScyllaDBDatacenter, *scyllav1alpha1.ScyllaDBDatacenterList]
 }
 
 // newScyllaDBDatacenters returns a ScyllaDBDatacenters
 func newScyllaDBDatacenters(c *ScyllaV1alpha1Client, namespace string) *scyllaDBDatacenters {
 	return &scyllaDBDatacenters{
-		gentype.NewClientWithList[*v1alpha1.ScyllaDBDatacenter, *v1alpha1.ScyllaDBDatacenterList](
+		gentype.NewClientWithList[*scyllav1alpha1.ScyllaDBDatacenter, *scyllav1alpha1.ScyllaDBDatacenterList](
 			"scylladbdatacenters",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.ScyllaDBDatacenter { return &v1alpha1.ScyllaDBDatacenter{} },
-			func() *v1alpha1.ScyllaDBDatacenterList { return &v1alpha1.ScyllaDBDatacenterList{} }),
+			func() *scyllav1alpha1.ScyllaDBDatacenter { return &scyllav1alpha1.ScyllaDBDatacenter{} },
+			func() *scyllav1alpha1.ScyllaDBDatacenterList { return &scyllav1alpha1.ScyllaDBDatacenterList{} },
+		),
 	}
 }

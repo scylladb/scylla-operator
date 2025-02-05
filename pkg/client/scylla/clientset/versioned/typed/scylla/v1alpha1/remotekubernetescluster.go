@@ -3,9 +3,9 @@
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	scheme "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -21,33 +21,36 @@ type RemoteKubernetesClustersGetter interface {
 
 // RemoteKubernetesClusterInterface has methods to work with RemoteKubernetesCluster resources.
 type RemoteKubernetesClusterInterface interface {
-	Create(ctx context.Context, remoteKubernetesCluster *v1alpha1.RemoteKubernetesCluster, opts v1.CreateOptions) (*v1alpha1.RemoteKubernetesCluster, error)
-	Update(ctx context.Context, remoteKubernetesCluster *v1alpha1.RemoteKubernetesCluster, opts v1.UpdateOptions) (*v1alpha1.RemoteKubernetesCluster, error)
+	Create(ctx context.Context, remoteKubernetesCluster *scyllav1alpha1.RemoteKubernetesCluster, opts v1.CreateOptions) (*scyllav1alpha1.RemoteKubernetesCluster, error)
+	Update(ctx context.Context, remoteKubernetesCluster *scyllav1alpha1.RemoteKubernetesCluster, opts v1.UpdateOptions) (*scyllav1alpha1.RemoteKubernetesCluster, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, remoteKubernetesCluster *v1alpha1.RemoteKubernetesCluster, opts v1.UpdateOptions) (*v1alpha1.RemoteKubernetesCluster, error)
+	UpdateStatus(ctx context.Context, remoteKubernetesCluster *scyllav1alpha1.RemoteKubernetesCluster, opts v1.UpdateOptions) (*scyllav1alpha1.RemoteKubernetesCluster, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.RemoteKubernetesCluster, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.RemoteKubernetesClusterList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*scyllav1alpha1.RemoteKubernetesCluster, error)
+	List(ctx context.Context, opts v1.ListOptions) (*scyllav1alpha1.RemoteKubernetesClusterList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.RemoteKubernetesCluster, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *scyllav1alpha1.RemoteKubernetesCluster, err error)
 	RemoteKubernetesClusterExpansion
 }
 
 // remoteKubernetesClusters implements RemoteKubernetesClusterInterface
 type remoteKubernetesClusters struct {
-	*gentype.ClientWithList[*v1alpha1.RemoteKubernetesCluster, *v1alpha1.RemoteKubernetesClusterList]
+	*gentype.ClientWithList[*scyllav1alpha1.RemoteKubernetesCluster, *scyllav1alpha1.RemoteKubernetesClusterList]
 }
 
 // newRemoteKubernetesClusters returns a RemoteKubernetesClusters
 func newRemoteKubernetesClusters(c *ScyllaV1alpha1Client) *remoteKubernetesClusters {
 	return &remoteKubernetesClusters{
-		gentype.NewClientWithList[*v1alpha1.RemoteKubernetesCluster, *v1alpha1.RemoteKubernetesClusterList](
+		gentype.NewClientWithList[*scyllav1alpha1.RemoteKubernetesCluster, *scyllav1alpha1.RemoteKubernetesClusterList](
 			"remotekubernetesclusters",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			"",
-			func() *v1alpha1.RemoteKubernetesCluster { return &v1alpha1.RemoteKubernetesCluster{} },
-			func() *v1alpha1.RemoteKubernetesClusterList { return &v1alpha1.RemoteKubernetesClusterList{} }),
+			func() *scyllav1alpha1.RemoteKubernetesCluster { return &scyllav1alpha1.RemoteKubernetesCluster{} },
+			func() *scyllav1alpha1.RemoteKubernetesClusterList {
+				return &scyllav1alpha1.RemoteKubernetesClusterList{}
+			},
+		),
 	}
 }

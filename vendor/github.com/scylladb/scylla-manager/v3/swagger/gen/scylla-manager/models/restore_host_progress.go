@@ -15,22 +15,28 @@ import (
 // swagger:model RestoreHostProgress
 type RestoreHostProgress struct {
 
-	// Total time spent by host on download in milliseconds
+	// Total time spent by host on download in milliseconds (included in restore_duration)
 	DownloadDuration int64 `json:"download_duration,omitempty"`
 
-	// Total bytes downloaded by host
+	// Total bytes downloaded by host (included in restored_bytes)
 	DownloadedBytes int64 `json:"downloaded_bytes,omitempty"`
 
 	// host
 	Host string `json:"host,omitempty"`
 
+	// Total time spent by host on restore in milliseconds
+	RestoreDuration int64 `json:"restore_duration,omitempty"`
+
+	// Total bytes restored by host
+	RestoredBytes int64 `json:"restored_bytes,omitempty"`
+
 	// Host shard count
 	ShardCnt int64 `json:"shard_cnt,omitempty"`
 
-	// Total time spent by host on load&stream in milliseconds
+	// Total time spent by host on load&stream in milliseconds (included in restore_duration)
 	StreamDuration int64 `json:"stream_duration,omitempty"`
 
-	// Total bytes load&streamed by host
+	// Total bytes load&streamed by host (included in restored_bytes)
 	StreamedBytes int64 `json:"streamed_bytes,omitempty"`
 }
 

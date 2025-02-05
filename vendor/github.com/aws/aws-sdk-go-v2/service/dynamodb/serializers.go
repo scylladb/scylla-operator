@@ -4729,6 +4729,11 @@ func awsAwsjson10_serializeDocumentPointInTimeRecoverySpecification(v *types.Poi
 		ok.Boolean(*v.PointInTimeRecoveryEnabled)
 	}
 
+	if v.RecoveryPeriodInDays != nil {
+		ok := object.Key("RecoveryPeriodInDays")
+		ok.Integer(*v.RecoveryPeriodInDays)
+	}
+
 	return nil
 }
 
@@ -7268,6 +7273,11 @@ func awsAwsjson10_serializeOpDocumentUpdateTableInput(v *UpdateTableInput, value
 		if err := awsAwsjson10_serializeDocumentGlobalSecondaryIndexUpdateList(v.GlobalSecondaryIndexUpdates, ok); err != nil {
 			return err
 		}
+	}
+
+	if len(v.MultiRegionConsistency) > 0 {
+		ok := object.Key("MultiRegionConsistency")
+		ok.String(string(v.MultiRegionConsistency))
 	}
 
 	if v.OnDemandThroughput != nil {

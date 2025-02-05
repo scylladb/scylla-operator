@@ -21,7 +21,7 @@ type RestoreTableProgress struct {
 	// Format: date-time
 	CompletedAt *strfmt.DateTime `json:"completed_at,omitempty"`
 
-	// downloaded
+	// This field is DEPRECATED. Total bytes downloaded from table (included in restored)
 	Downloaded int64 `json:"downloaded,omitempty"`
 
 	// error

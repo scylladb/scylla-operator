@@ -6,20 +6,16 @@ const (
 	mainModule = "github.com/gocql/gocql"
 )
 
-var driverName string
-
-var driverVersion string
+var defaultDriverVersion string
 
 func init() {
 	buildInfo, ok := debug.ReadBuildInfo()
 	if ok {
 		for _, d := range buildInfo.Deps {
 			if d.Path == mainModule {
-				driverName = mainModule
-				driverVersion = d.Version
+				defaultDriverVersion = d.Version
 				if d.Replace != nil {
-					driverName = d.Replace.Path
-					driverVersion = d.Replace.Version
+					defaultDriverVersion = d.Replace.Version
 				}
 				break
 			}

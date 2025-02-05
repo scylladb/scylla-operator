@@ -3,10 +3,10 @@
 package v1
 
 import (
-	v1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // ScyllaClusterLister helps list ScyllaClusters.
@@ -14,7 +14,7 @@ import (
 type ScyllaClusterLister interface {
 	// List lists all ScyllaClusters in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.ScyllaCluster, err error)
+	List(selector labels.Selector) (ret []*scyllav1.ScyllaCluster, err error)
 	// ScyllaClusters returns an object that can list and get ScyllaClusters.
 	ScyllaClusters(namespace string) ScyllaClusterNamespaceLister
 	ScyllaClusterListerExpansion
@@ -22,17 +22,17 @@ type ScyllaClusterLister interface {
 
 // scyllaClusterLister implements the ScyllaClusterLister interface.
 type scyllaClusterLister struct {
-	listers.ResourceIndexer[*v1.ScyllaCluster]
+	listers.ResourceIndexer[*scyllav1.ScyllaCluster]
 }
 
 // NewScyllaClusterLister returns a new ScyllaClusterLister.
 func NewScyllaClusterLister(indexer cache.Indexer) ScyllaClusterLister {
-	return &scyllaClusterLister{listers.New[*v1.ScyllaCluster](indexer, v1.Resource("scyllacluster"))}
+	return &scyllaClusterLister{listers.New[*scyllav1.ScyllaCluster](indexer, scyllav1.Resource("scyllacluster"))}
 }
 
 // ScyllaClusters returns an object that can list and get ScyllaClusters.
 func (s *scyllaClusterLister) ScyllaClusters(namespace string) ScyllaClusterNamespaceLister {
-	return scyllaClusterNamespaceLister{listers.NewNamespaced[*v1.ScyllaCluster](s.ResourceIndexer, namespace)}
+	return scyllaClusterNamespaceLister{listers.NewNamespaced[*scyllav1.ScyllaCluster](s.ResourceIndexer, namespace)}
 }
 
 // ScyllaClusterNamespaceLister helps list and get ScyllaClusters.
@@ -40,15 +40,15 @@ func (s *scyllaClusterLister) ScyllaClusters(namespace string) ScyllaClusterName
 type ScyllaClusterNamespaceLister interface {
 	// List lists all ScyllaClusters in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.ScyllaCluster, err error)
+	List(selector labels.Selector) (ret []*scyllav1.ScyllaCluster, err error)
 	// Get retrieves the ScyllaCluster from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.ScyllaCluster, error)
+	Get(name string) (*scyllav1.ScyllaCluster, error)
 	ScyllaClusterNamespaceListerExpansion
 }
 
 // scyllaClusterNamespaceLister implements the ScyllaClusterNamespaceLister
 // interface.
 type scyllaClusterNamespaceLister struct {
-	listers.ResourceIndexer[*v1.ScyllaCluster]
+	listers.ResourceIndexer[*scyllav1.ScyllaCluster]
 }

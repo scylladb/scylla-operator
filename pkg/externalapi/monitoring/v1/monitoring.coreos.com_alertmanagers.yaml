@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.5
+    controller-gen.kubebuilder.io/version: v0.17.1
   name: alertmanagers.monitoring.coreos.com
 spec:
   group: monitoring.coreos.com
@@ -27,6 +27,16 @@ spec:
           jsonPath: .spec.replicas
           name: Replicas
           type: integer
+        - description: The number of ready replicas
+          jsonPath: .status.availableReplicas
+          name: Ready
+          type: integer
+        - jsonPath: .status.conditions[?(@.type == 'Reconciled')].status
+          name: Reconciled
+          type: string
+        - jsonPath: .status.conditions[?(@.type == 'Available')].status
+          name: Available
+          type: string
         - jsonPath: .metadata.creationTimestamp
           name: Age
           type: date
@@ -38,7 +48,12 @@ spec:
       name: v1
       schema:
         openAPIV3Schema:
-          description: Alertmanager describes an Alertmanager cluster.
+          description: |-
+            The `Alertmanager` custom resource definition (CRD) defines a desired [Alertmanager](https://prometheus.io/docs/alerting) setup to run in a Kubernetes cluster. It allows to specify many options such as the number of replicas, persistent storage and many more.
+
+            For each `Alertmanager` resource, the Operator deploys a `StatefulSet` in the same namespace. When there are two or more configured replicas, the Operator runs the Alertmanager instances in high-availability mode.
+
+            The resource defines via label and namespace selectors which `AlertmanagerConfig` objects should be associated to the deployed Alertmanager instances.
           properties:
             apiVersion:
               description: |-
@@ -950,15 +965,17 @@ spec:
                   type: object
                 alertmanagerConfigMatcherStrategy:
                   description: |-
-                    The AlertmanagerConfigMatcherStrategy defines how AlertmanagerConfig objects match the alerts.
-                    In the future more options may be added.
+                    AlertmanagerConfigMatcherStrategy defines how AlertmanagerConfig objects
+                    process incoming alerts.
                   properties:
                     type:
                       default: OnNamespace
                       description: |-
-                        If set to `OnNamespace`, the operator injects a label matcher matching the namespace of the AlertmanagerConfig object for all its routes and inhibition rules.
-                        `None` will not add any additional matchers other than the ones specified in the AlertmanagerConfig.
-                        Default is `OnNamespace`.
+                        AlertmanagerConfigMatcherStrategyType defines the strategy used by
+                        AlertmanagerConfig objects to match alerts in the routes and inhibition
+                        rules.
+
+                        The default value is `OnNamespace`.
                       enum:
                         - OnNamespace
                         - None
@@ -1056,9 +1073,12 @@ spec:
                   x-kubernetes-map-type: atomic
                 alertmanagerConfiguration:
                   description: |-
-                    EXPERIMENTAL: alertmanagerConfiguration specifies the configuration of Alertmanager.
+                    alertmanagerConfiguration specifies the configuration of Alertmanager.
+
                     If defined, it takes precedence over the `configSecret` field.
-                    This field may change in future releases.
+
+                    This is an *experimental feature*, it may change in any upcoming release
+                    in a breaking way.
                   properties:
                     global:
                       description: Defines the global parameters of the Alertmanager configuration.
@@ -1072,7 +1092,7 @@ spec:
                                 This is mutually exclusive with BasicAuth and is only available starting from Alertmanager v0.22+.
                               properties:
                                 credentials:
-                                  description: The secret's key that contains the credentials of the request
+                                  description: Selects a key of a Secret in the namespace that contains the credentials for authentication.
                                   properties:
                                     key:
                                       description: The key of the secret to select from.  Must be a valid secret key.
@@ -1095,8 +1115,11 @@ spec:
                                   x-kubernetes-map-type: atomic
                                 type:
                                   description: |-
-                                    Set the authentication type. Defaults to Bearer, Basic will cause an
-                                    error
+                                    Defines the authentication type. The value is case-insensitive.
+
+                                    "Basic" is not a supported value.
+
+                                    Default: "Bearer"
                                   type: string
                               type: object
                             basicAuth:
@@ -1106,8 +1129,8 @@ spec:
                               properties:
                                 password:
                                   description: |-
-                                    The secret in the service monitor namespace that contains the password
-                                    for authentication.
+                                    `password` specifies a key of a Secret containing the password for
+                                    authentication.
                                   properties:
                                     key:
                                       description: The key of the secret to select from.  Must be a valid secret key.
@@ -1130,8 +1153,8 @@ spec:
                                   x-kubernetes-map-type: atomic
                                 username:
                                   description: |-
-                                    The secret in the service monitor namespace that contains the username
-                                    for authentication.
+                                    `username` specifies a key of a Secret containing the username for
+                                    authentication.
                                   properties:
                                     key:
                                       description: The key of the secret to select from.  Must be a valid secret key.
@@ -1182,11 +1205,21 @@ spec:
                             followRedirects:
                               description: FollowRedirects specifies whether the client should follow HTTP 3xx redirects.
                               type: boolean
+                            noProxy:
+                              description: |-
+                                `noProxy` is a comma-separated string that can contain IPs, CIDR notation, domain names
+                                that should be excluded from proxying. IP and domain names can
+                                contain port numbers.
+
+                                It requires Prometheus >= v2.43.0 or Alertmanager >= 0.25.0.
+                              type: string
                             oauth2:
                               description: OAuth2 client credentials used to fetch a token for the targets.
                               properties:
                                 clientId:
-                                  description: The secret or configmap containing the OAuth2 client id
+                                  description: |-
+                                    `clientId` specifies a key of a Secret or ConfigMap containing the
+                                    OAuth2 client's ID.
                                   properties:
                                     configMap:
                                       description: ConfigMap containing data to use for the targets.
@@ -1234,7 +1267,9 @@ spec:
                                       x-kubernetes-map-type: atomic
                                   type: object
                                 clientSecret:
-                                  description: The secret containing the OAuth2 client secret
+                                  description: |-
+                                    `clientSecret` specifies a key of a Secret containing the OAuth2
+                                    client's secret.
                                   properties:
                                     key:
                                       description: The key of the secret to select from.  Must be a valid secret key.
@@ -1258,20 +1293,263 @@ spec:
                                 endpointParams:
                                   additionalProperties:
                                     type: string
-                                  description: Parameters to append to the token URL
+                                  description: |-
+                                    `endpointParams` configures the HTTP parameters to append to the token
+                                    URL.
                                   type: object
+                                noProxy:
+                                  description: |-
+                                    `noProxy` is a comma-separated string that can contain IPs, CIDR notation, domain names
+                                    that should be excluded from proxying. IP and domain names can
+                                    contain port numbers.
+
+                                    It requires Prometheus >= v2.43.0 or Alertmanager >= 0.25.0.
+                                  type: string
+                                proxyConnectHeader:
+                                  additionalProperties:
+                                    items:
+                                      description: SecretKeySelector selects a key of a Secret.
+                                      properties:
+                                        key:
+                                          description: The key of the secret to select from.  Must be a valid secret key.
+                                          type: string
+                                        name:
+                                          default: ""
+                                          description: |-
+                                            Name of the referent.
+                                            This field is effectively required, but due to backwards compatibility is
+                                            allowed to be empty. Instances of this type with an empty value here are
+                                            almost certainly wrong.
+                                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          type: string
+                                        optional:
+                                          description: Specify whether the Secret or its key must be defined
+                                          type: boolean
+                                      required:
+                                        - key
+                                      type: object
+                                      x-kubernetes-map-type: atomic
+                                    type: array
+                                  description: |-
+                                    ProxyConnectHeader optionally specifies headers to send to
+                                    proxies during CONNECT requests.
+
+                                    It requires Prometheus >= v2.43.0 or Alertmanager >= 0.25.0.
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                proxyFromEnvironment:
+                                  description: |-
+                                    Whether to use the proxy configuration defined by environment variables (HTTP_PROXY, HTTPS_PROXY, and NO_PROXY).
+
+                                    It requires Prometheus >= v2.43.0 or Alertmanager >= 0.25.0.
+                                  type: boolean
+                                proxyUrl:
+                                  description: '`proxyURL` defines the HTTP proxy server to use.'
+                                  pattern: ^http(s)?://.+$
+                                  type: string
                                 scopes:
-                                  description: OAuth2 scopes used for the token request
+                                  description: '`scopes` defines the OAuth2 scopes used for the token request.'
                                   items:
                                     type: string
                                   type: array
+                                tlsConfig:
+                                  description: |-
+                                    TLS configuration to use when connecting to the OAuth2 server.
+                                    It requires Prometheus >= v2.43.0.
+                                  properties:
+                                    ca:
+                                      description: Certificate authority used when verifying server certificates.
+                                      properties:
+                                        configMap:
+                                          description: ConfigMap containing data to use for the targets.
+                                          properties:
+                                            key:
+                                              description: The key to select.
+                                              type: string
+                                            name:
+                                              default: ""
+                                              description: |-
+                                                Name of the referent.
+                                                This field is effectively required, but due to backwards compatibility is
+                                                allowed to be empty. Instances of this type with an empty value here are
+                                                almost certainly wrong.
+                                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                              type: string
+                                            optional:
+                                              description: Specify whether the ConfigMap or its key must be defined
+                                              type: boolean
+                                          required:
+                                            - key
+                                          type: object
+                                          x-kubernetes-map-type: atomic
+                                        secret:
+                                          description: Secret containing data to use for the targets.
+                                          properties:
+                                            key:
+                                              description: The key of the secret to select from.  Must be a valid secret key.
+                                              type: string
+                                            name:
+                                              default: ""
+                                              description: |-
+                                                Name of the referent.
+                                                This field is effectively required, but due to backwards compatibility is
+                                                allowed to be empty. Instances of this type with an empty value here are
+                                                almost certainly wrong.
+                                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                              type: string
+                                            optional:
+                                              description: Specify whether the Secret or its key must be defined
+                                              type: boolean
+                                          required:
+                                            - key
+                                          type: object
+                                          x-kubernetes-map-type: atomic
+                                      type: object
+                                    cert:
+                                      description: Client certificate to present when doing client-authentication.
+                                      properties:
+                                        configMap:
+                                          description: ConfigMap containing data to use for the targets.
+                                          properties:
+                                            key:
+                                              description: The key to select.
+                                              type: string
+                                            name:
+                                              default: ""
+                                              description: |-
+                                                Name of the referent.
+                                                This field is effectively required, but due to backwards compatibility is
+                                                allowed to be empty. Instances of this type with an empty value here are
+                                                almost certainly wrong.
+                                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                              type: string
+                                            optional:
+                                              description: Specify whether the ConfigMap or its key must be defined
+                                              type: boolean
+                                          required:
+                                            - key
+                                          type: object
+                                          x-kubernetes-map-type: atomic
+                                        secret:
+                                          description: Secret containing data to use for the targets.
+                                          properties:
+                                            key:
+                                              description: The key of the secret to select from.  Must be a valid secret key.
+                                              type: string
+                                            name:
+                                              default: ""
+                                              description: |-
+                                                Name of the referent.
+                                                This field is effectively required, but due to backwards compatibility is
+                                                allowed to be empty. Instances of this type with an empty value here are
+                                                almost certainly wrong.
+                                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                              type: string
+                                            optional:
+                                              description: Specify whether the Secret or its key must be defined
+                                              type: boolean
+                                          required:
+                                            - key
+                                          type: object
+                                          x-kubernetes-map-type: atomic
+                                      type: object
+                                    insecureSkipVerify:
+                                      description: Disable target certificate validation.
+                                      type: boolean
+                                    keySecret:
+                                      description: Secret containing the client key file for the targets.
+                                      properties:
+                                        key:
+                                          description: The key of the secret to select from.  Must be a valid secret key.
+                                          type: string
+                                        name:
+                                          default: ""
+                                          description: |-
+                                            Name of the referent.
+                                            This field is effectively required, but due to backwards compatibility is
+                                            allowed to be empty. Instances of this type with an empty value here are
+                                            almost certainly wrong.
+                                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          type: string
+                                        optional:
+                                          description: Specify whether the Secret or its key must be defined
+                                          type: boolean
+                                      required:
+                                        - key
+                                      type: object
+                                      x-kubernetes-map-type: atomic
+                                    maxVersion:
+                                      description: |-
+                                        Maximum acceptable TLS version.
+
+                                        It requires Prometheus >= v2.41.0.
+                                      enum:
+                                        - TLS10
+                                        - TLS11
+                                        - TLS12
+                                        - TLS13
+                                      type: string
+                                    minVersion:
+                                      description: |-
+                                        Minimum acceptable TLS version.
+
+                                        It requires Prometheus >= v2.35.0.
+                                      enum:
+                                        - TLS10
+                                        - TLS11
+                                        - TLS12
+                                        - TLS13
+                                      type: string
+                                    serverName:
+                                      description: Used to verify the hostname for the targets.
+                                      type: string
+                                  type: object
                                 tokenUrl:
-                                  description: The URL to fetch the token from
+                                  description: '`tokenURL` configures the URL to fetch the token from.'
                                   minLength: 1
                                   type: string
                               type: object
-                            proxyURL:
-                              description: Optional proxy URL.
+                            proxyConnectHeader:
+                              additionalProperties:
+                                items:
+                                  description: SecretKeySelector selects a key of a Secret.
+                                  properties:
+                                    key:
+                                      description: The key of the secret to select from.  Must be a valid secret key.
+                                      type: string
+                                    name:
+                                      default: ""
+                                      description: |-
+                                        Name of the referent.
+                                        This field is effectively required, but due to backwards compatibility is
+                                        allowed to be empty. Instances of this type with an empty value here are
+                                        almost certainly wrong.
+                                        More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                      type: string
+                                    optional:
+                                      description: Specify whether the Secret or its key must be defined
+                                      type: boolean
+                                  required:
+                                    - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                type: array
+                              description: |-
+                                ProxyConnectHeader optionally specifies headers to send to
+                                proxies during CONNECT requests.
+
+                                It requires Prometheus >= v2.43.0 or Alertmanager >= 0.25.0.
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            proxyFromEnvironment:
+                              description: |-
+                                Whether to use the proxy configuration defined by environment variables (HTTP_PROXY, HTTPS_PROXY, and NO_PROXY).
+
+                                It requires Prometheus >= v2.43.0 or Alertmanager >= 0.25.0.
+                              type: boolean
+                            proxyUrl:
+                              description: '`proxyURL` defines the HTTP proxy server to use.'
+                              pattern: ^http(s)?://.+$
                               type: string
                             tlsConfig:
                               description: TLS configuration for the client.
@@ -1397,11 +1675,80 @@ spec:
                                     - key
                                   type: object
                                   x-kubernetes-map-type: atomic
+                                maxVersion:
+                                  description: |-
+                                    Maximum acceptable TLS version.
+
+                                    It requires Prometheus >= v2.41.0.
+                                  enum:
+                                    - TLS10
+                                    - TLS11
+                                    - TLS12
+                                    - TLS13
+                                  type: string
+                                minVersion:
+                                  description: |-
+                                    Minimum acceptable TLS version.
+
+                                    It requires Prometheus >= v2.35.0.
+                                  enum:
+                                    - TLS10
+                                    - TLS11
+                                    - TLS12
+                                    - TLS13
+                                  type: string
                                 serverName:
                                   description: Used to verify the hostname for the targets.
                                   type: string
                               type: object
                           type: object
+                        opsGenieApiKey:
+                          description: The default OpsGenie API Key.
+                          properties:
+                            key:
+                              description: The key of the secret to select from.  Must be a valid secret key.
+                              type: string
+                            name:
+                              default: ""
+                              description: |-
+                                Name of the referent.
+                                This field is effectively required, but due to backwards compatibility is
+                                allowed to be empty. Instances of this type with an empty value here are
+                                almost certainly wrong.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              type: string
+                            optional:
+                              description: Specify whether the Secret or its key must be defined
+                              type: boolean
+                          required:
+                            - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        opsGenieApiUrl:
+                          description: The default OpsGenie API URL.
+                          properties:
+                            key:
+                              description: The key of the secret to select from.  Must be a valid secret key.
+                              type: string
+                            name:
+                              default: ""
+                              description: |-
+                                Name of the referent.
+                                This field is effectively required, but due to backwards compatibility is
+                                allowed to be empty. Instances of this type with an empty value here are
+                                almost certainly wrong.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              type: string
+                            optional:
+                              description: Specify whether the Secret or its key must be defined
+                              type: boolean
+                          required:
+                            - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        pagerdutyUrl:
+                          description: The default Pagerduty URL.
+                          type: string
                         resolveTimeout:
                           description: |-
                             ResolveTimeout is the default value used by alertmanager if the alert does
@@ -1409,6 +1756,105 @@ spec:
                             This has no impact on alerts from Prometheus, as they always include EndsAt.
                           pattern: ^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$
                           type: string
+                        slackApiUrl:
+                          description: The default Slack API URL.
+                          properties:
+                            key:
+                              description: The key of the secret to select from.  Must be a valid secret key.
+                              type: string
+                            name:
+                              default: ""
+                              description: |-
+                                Name of the referent.
+                                This field is effectively required, but due to backwards compatibility is
+                                allowed to be empty. Instances of this type with an empty value here are
+                                almost certainly wrong.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              type: string
+                            optional:
+                              description: Specify whether the Secret or its key must be defined
+                              type: boolean
+                          required:
+                            - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        smtp:
+                          description: Configures global SMTP parameters.
+                          properties:
+                            authIdentity:
+                              description: SMTP Auth using PLAIN
+                              type: string
+                            authPassword:
+                              description: SMTP Auth using LOGIN and PLAIN.
+                              properties:
+                                key:
+                                  description: The key of the secret to select from.  Must be a valid secret key.
+                                  type: string
+                                name:
+                                  default: ""
+                                  description: |-
+                                    Name of the referent.
+                                    This field is effectively required, but due to backwards compatibility is
+                                    allowed to be empty. Instances of this type with an empty value here are
+                                    almost certainly wrong.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  type: string
+                                optional:
+                                  description: Specify whether the Secret or its key must be defined
+                                  type: boolean
+                              required:
+                                - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            authSecret:
+                              description: SMTP Auth using CRAM-MD5.
+                              properties:
+                                key:
+                                  description: The key of the secret to select from.  Must be a valid secret key.
+                                  type: string
+                                name:
+                                  default: ""
+                                  description: |-
+                                    Name of the referent.
+                                    This field is effectively required, but due to backwards compatibility is
+                                    allowed to be empty. Instances of this type with an empty value here are
+                                    almost certainly wrong.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  type: string
+                                optional:
+                                  description: Specify whether the Secret or its key must be defined
+                                  type: boolean
+                              required:
+                                - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            authUsername:
+                              description: SMTP Auth using CRAM-MD5, LOGIN and PLAIN. If empty, Alertmanager doesn't authenticate to the SMTP server.
+                              type: string
+                            from:
+                              description: The default SMTP From header field.
+                              type: string
+                            hello:
+                              description: The default hostname to identify to the SMTP server.
+                              type: string
+                            requireTLS:
+                              description: |-
+                                The default SMTP TLS requirement.
+                                Note that Go does not support unencrypted connections to remote SMTP endpoints.
+                              type: boolean
+                            smartHost:
+                              description: The default SMTP smarthost used for sending emails.
+                              properties:
+                                host:
+                                  description: Defines the host's address, it can be a DNS name or a literal IP address.
+                                  minLength: 1
+                                  type: string
+                                port:
+                                  description: Defines the host's port, it can be a literal port number or a port name.
+                                  minLength: 1
+                                  type: string
+                              type: object
+                          type: object
                       type: object
                     name:
                       description: |-
@@ -1469,10 +1915,15 @@ spec:
                         type: object
                       type: array
                   type: object
+                automountServiceAccountToken:
+                  description: |-
+                    AutomountServiceAccountToken indicates whether a service account token should be automatically mounted in the pod.
+                    If the service account has `automountServiceAccountToken: true`, set the field to `false` to opt out of automounting API credentials.
+                  type: boolean
                 baseImage:
                   description: |-
                     Base image that is used to deploy pods, without tag.
-                    Deprecated: use 'image' instead
+                    Deprecated: use 'image' instead.
                   type: string
                 clusterAdvertiseAddress:
                   description: |-
@@ -1483,6 +1934,11 @@ spec:
                 clusterGossipInterval:
                   description: Interval between gossip attempts.
                   pattern: ^(0|(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$
+                  type: string
+                clusterLabel:
+                  description: |-
+                    Defines the identifier that uniquely identifies the Alertmanager cluster.
+                    You should only set it when the Alertmanager cluster includes Alertmanager instances which are external to this Alertmanager resource. In practice, the addresses of the external instances are provided via the `.spec.additionalPeers` field.
                   type: string
                 clusterPeerTimeout:
                   description: Timeout for cluster peering.
@@ -1750,7 +2206,7 @@ spec:
                               More info: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks
                             properties:
                               exec:
-                                description: Exec specifies the action to take.
+                                description: Exec specifies a command to execute in the container.
                                 properties:
                                   command:
                                     description: |-
@@ -1765,7 +2221,7 @@ spec:
                                     x-kubernetes-list-type: atomic
                                 type: object
                               httpGet:
-                                description: HTTPGet specifies the http request to perform.
+                                description: HTTPGet specifies an HTTP GET request to perform.
                                 properties:
                                   host:
                                     description: |-
@@ -1812,7 +2268,7 @@ spec:
                                   - port
                                 type: object
                               sleep:
-                                description: Sleep represents the duration that the container should sleep before being terminated.
+                                description: Sleep represents a duration that the container should sleep.
                                 properties:
                                   seconds:
                                     description: Seconds is the number of seconds to sleep.
@@ -1824,8 +2280,8 @@ spec:
                               tcpSocket:
                                 description: |-
                                   Deprecated. TCPSocket is NOT supported as a LifecycleHandler and kept
-                                  for the backward compatibility. There are no validation of this field and
-                                  lifecycle hooks will fail in runtime when tcp handler is specified.
+                                  for backward compatibility. There is no validation of this field and
+                                  lifecycle hooks will fail at runtime when it is specified.
                                 properties:
                                   host:
                                     description: 'Optional: Host name to connect to, defaults to the pod IP.'
@@ -1856,7 +2312,7 @@ spec:
                               More info: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks
                             properties:
                               exec:
-                                description: Exec specifies the action to take.
+                                description: Exec specifies a command to execute in the container.
                                 properties:
                                   command:
                                     description: |-
@@ -1871,7 +2327,7 @@ spec:
                                     x-kubernetes-list-type: atomic
                                 type: object
                               httpGet:
-                                description: HTTPGet specifies the http request to perform.
+                                description: HTTPGet specifies an HTTP GET request to perform.
                                 properties:
                                   host:
                                     description: |-
@@ -1918,7 +2374,7 @@ spec:
                                   - port
                                 type: object
                               sleep:
-                                description: Sleep represents the duration that the container should sleep before being terminated.
+                                description: Sleep represents a duration that the container should sleep.
                                 properties:
                                   seconds:
                                     description: Seconds is the number of seconds to sleep.
@@ -1930,8 +2386,8 @@ spec:
                               tcpSocket:
                                 description: |-
                                   Deprecated. TCPSocket is NOT supported as a LifecycleHandler and kept
-                                  for the backward compatibility. There are no validation of this field and
-                                  lifecycle hooks will fail in runtime when tcp handler is specified.
+                                  for backward compatibility. There is no validation of this field and
+                                  lifecycle hooks will fail at runtime when it is specified.
                                 properties:
                                   host:
                                     description: 'Optional: Host name to connect to, defaults to the pod IP.'
@@ -1958,7 +2414,7 @@ spec:
                           More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
                         properties:
                           exec:
-                            description: Exec specifies the action to take.
+                            description: Exec specifies a command to execute in the container.
                             properties:
                               command:
                                 description: |-
@@ -1979,7 +2435,7 @@ spec:
                             format: int32
                             type: integer
                           grpc:
-                            description: GRPC specifies an action involving a GRPC port.
+                            description: GRPC specifies a GRPC HealthCheckRequest.
                             properties:
                               port:
                                 description: Port number of the gRPC service. Number must be in the range 1 to 65535.
@@ -1997,7 +2453,7 @@ spec:
                               - port
                             type: object
                           httpGet:
-                            description: HTTPGet specifies the http request to perform.
+                            description: HTTPGet specifies an HTTP GET request to perform.
                             properties:
                               host:
                                 description: |-
@@ -2062,7 +2518,7 @@ spec:
                             format: int32
                             type: integer
                           tcpSocket:
-                            description: TCPSocket specifies an action involving a TCP port.
+                            description: TCPSocket specifies a connection to a TCP port.
                             properties:
                               host:
                                 description: 'Optional: Host name to connect to, defaults to the pod IP.'
@@ -2164,7 +2620,7 @@ spec:
                           More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
                         properties:
                           exec:
-                            description: Exec specifies the action to take.
+                            description: Exec specifies a command to execute in the container.
                             properties:
                               command:
                                 description: |-
@@ -2185,7 +2641,7 @@ spec:
                             format: int32
                             type: integer
                           grpc:
-                            description: GRPC specifies an action involving a GRPC port.
+                            description: GRPC specifies a GRPC HealthCheckRequest.
                             properties:
                               port:
                                 description: Port number of the gRPC service. Number must be in the range 1 to 65535.
@@ -2203,7 +2659,7 @@ spec:
                               - port
                             type: object
                           httpGet:
-                            description: HTTPGet specifies the http request to perform.
+                            description: HTTPGet specifies an HTTP GET request to perform.
                             properties:
                               host:
                                 description: |-
@@ -2268,7 +2724,7 @@ spec:
                             format: int32
                             type: integer
                           tcpSocket:
-                            description: TCPSocket specifies an action involving a TCP port.
+                            description: TCPSocket specifies a connection to a TCP port.
                             properties:
                               host:
                                 description: 'Optional: Host name to connect to, defaults to the pod IP.'
@@ -2607,7 +3063,7 @@ spec:
                           More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
                         properties:
                           exec:
-                            description: Exec specifies the action to take.
+                            description: Exec specifies a command to execute in the container.
                             properties:
                               command:
                                 description: |-
@@ -2628,7 +3084,7 @@ spec:
                             format: int32
                             type: integer
                           grpc:
-                            description: GRPC specifies an action involving a GRPC port.
+                            description: GRPC specifies a GRPC HealthCheckRequest.
                             properties:
                               port:
                                 description: Port number of the gRPC service. Number must be in the range 1 to 65535.
@@ -2646,7 +3102,7 @@ spec:
                               - port
                             type: object
                           httpGet:
-                            description: HTTPGet specifies the http request to perform.
+                            description: HTTPGet specifies an HTTP GET request to perform.
                             properties:
                               host:
                                 description: |-
@@ -2711,7 +3167,7 @@ spec:
                             format: int32
                             type: integer
                           tcpSocket:
-                            description: TCPSocket specifies an action involving a TCP port.
+                            description: TCPSocket specifies a connection to a TCP port.
                             properties:
                               host:
                                 description: 'Optional: Host name to connect to, defaults to the pod IP.'
@@ -2889,6 +3345,68 @@ spec:
                       - name
                     type: object
                   type: array
+                dnsConfig:
+                  description: Defines the DNS configuration for the pods.
+                  properties:
+                    nameservers:
+                      description: |-
+                        A list of DNS name server IP addresses.
+                        This will be appended to the base nameservers generated from DNSPolicy.
+                      items:
+                        minLength: 1
+                        type: string
+                      type: array
+                      x-kubernetes-list-type: set
+                    options:
+                      description: |-
+                        A list of DNS resolver options.
+                        This will be merged with the base options generated from DNSPolicy.
+                        Resolution options given in Options
+                        will override those that appear in the base DNSPolicy.
+                      items:
+                        description: PodDNSConfigOption defines DNS resolver options of a pod.
+                        properties:
+                          name:
+                            description: Name is required and must be unique.
+                            minLength: 1
+                            type: string
+                          value:
+                            description: Value is optional.
+                            type: string
+                        type: object
+                      type: array
+                      x-kubernetes-list-map-keys:
+                        - name
+                      x-kubernetes-list-type: map
+                    searches:
+                      description: |-
+                        A list of DNS search domains for host-name lookup.
+                        This will be appended to the base search paths generated from DNSPolicy.
+                      items:
+                        minLength: 1
+                        type: string
+                      type: array
+                      x-kubernetes-list-type: set
+                  type: object
+                dnsPolicy:
+                  description: Defines the DNS policy for the pods.
+                  enum:
+                    - ClusterFirstWithHostNet
+                    - ClusterFirst
+                    - Default
+                    - None
+                  type: string
+                enableFeatures:
+                  description: |-
+                    Enable access to Alertmanager feature flags. By default, no features are enabled.
+                    Enabling features which are disabled by default is entirely outside the
+                    scope of what the maintainers will support and by doing so, you accept
+                    that this behaviour may break at any time without notice.
+
+                    It requires Alertmanager >= 0.27.0.
+                  items:
+                    type: string
+                  type: array
                 externalUrl:
                   description: |-
                     The external URL the Alertmanager instances will be available under. This is
@@ -2930,6 +3448,16 @@ spec:
                     Prometheus Operator knows what version of Alertmanager is being
                     configured.
                   type: string
+                imagePullPolicy:
+                  description: |-
+                    Image pull policy for the 'alertmanager', 'init-config-reloader' and 'config-reloader' containers.
+                    See https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy for more details.
+                  enum:
+                    - ""
+                    - Always
+                    - Never
+                    - IfNotPresent
+                  type: string
                 imagePullSecrets:
                   description: |-
                     An optional list of references to secrets in the same namespace
@@ -2957,9 +3485,12 @@ spec:
                     InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
                     fetch secrets for injection into the Alertmanager configuration from external sources. Any
                     errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
-                    Using initContainers for any use case other then secret fetching is entirely outside the scope
-                    of what the maintainers will support and by doing so, you accept that this behaviour may break
-                    at any time without notice.
+                    InitContainers described here modify an operator
+                    generated init containers if they share the same name and modifications are
+                    done via a strategic merge patch. The current init container name is:
+                    `init-config-reloader`. Overriding init containers is entirely outside the
+                    scope of what the maintainers will support and by doing so, you accept that
+                    this behaviour may break at any time without notice.
                   items:
                     description: A single application container that you want to run within a pod.
                     properties:
@@ -3184,7 +3715,7 @@ spec:
                               More info: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks
                             properties:
                               exec:
-                                description: Exec specifies the action to take.
+                                description: Exec specifies a command to execute in the container.
                                 properties:
                                   command:
                                     description: |-
@@ -3199,7 +3730,7 @@ spec:
                                     x-kubernetes-list-type: atomic
                                 type: object
                               httpGet:
-                                description: HTTPGet specifies the http request to perform.
+                                description: HTTPGet specifies an HTTP GET request to perform.
                                 properties:
                                   host:
                                     description: |-
@@ -3246,7 +3777,7 @@ spec:
                                   - port
                                 type: object
                               sleep:
-                                description: Sleep represents the duration that the container should sleep before being terminated.
+                                description: Sleep represents a duration that the container should sleep.
                                 properties:
                                   seconds:
                                     description: Seconds is the number of seconds to sleep.
@@ -3258,8 +3789,8 @@ spec:
                               tcpSocket:
                                 description: |-
                                   Deprecated. TCPSocket is NOT supported as a LifecycleHandler and kept
-                                  for the backward compatibility. There are no validation of this field and
-                                  lifecycle hooks will fail in runtime when tcp handler is specified.
+                                  for backward compatibility. There is no validation of this field and
+                                  lifecycle hooks will fail at runtime when it is specified.
                                 properties:
                                   host:
                                     description: 'Optional: Host name to connect to, defaults to the pod IP.'
@@ -3290,7 +3821,7 @@ spec:
                               More info: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks
                             properties:
                               exec:
-                                description: Exec specifies the action to take.
+                                description: Exec specifies a command to execute in the container.
                                 properties:
                                   command:
                                     description: |-
@@ -3305,7 +3836,7 @@ spec:
                                     x-kubernetes-list-type: atomic
                                 type: object
                               httpGet:
-                                description: HTTPGet specifies the http request to perform.
+                                description: HTTPGet specifies an HTTP GET request to perform.
                                 properties:
                                   host:
                                     description: |-
@@ -3352,7 +3883,7 @@ spec:
                                   - port
                                 type: object
                               sleep:
-                                description: Sleep represents the duration that the container should sleep before being terminated.
+                                description: Sleep represents a duration that the container should sleep.
                                 properties:
                                   seconds:
                                     description: Seconds is the number of seconds to sleep.
@@ -3364,8 +3895,8 @@ spec:
                               tcpSocket:
                                 description: |-
                                   Deprecated. TCPSocket is NOT supported as a LifecycleHandler and kept
-                                  for the backward compatibility. There are no validation of this field and
-                                  lifecycle hooks will fail in runtime when tcp handler is specified.
+                                  for backward compatibility. There is no validation of this field and
+                                  lifecycle hooks will fail at runtime when it is specified.
                                 properties:
                                   host:
                                     description: 'Optional: Host name to connect to, defaults to the pod IP.'
@@ -3392,7 +3923,7 @@ spec:
                           More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
                         properties:
                           exec:
-                            description: Exec specifies the action to take.
+                            description: Exec specifies a command to execute in the container.
                             properties:
                               command:
                                 description: |-
@@ -3413,7 +3944,7 @@ spec:
                             format: int32
                             type: integer
                           grpc:
-                            description: GRPC specifies an action involving a GRPC port.
+                            description: GRPC specifies a GRPC HealthCheckRequest.
                             properties:
                               port:
                                 description: Port number of the gRPC service. Number must be in the range 1 to 65535.
@@ -3431,7 +3962,7 @@ spec:
                               - port
                             type: object
                           httpGet:
-                            description: HTTPGet specifies the http request to perform.
+                            description: HTTPGet specifies an HTTP GET request to perform.
                             properties:
                               host:
                                 description: |-
@@ -3496,7 +4027,7 @@ spec:
                             format: int32
                             type: integer
                           tcpSocket:
-                            description: TCPSocket specifies an action involving a TCP port.
+                            description: TCPSocket specifies a connection to a TCP port.
                             properties:
                               host:
                                 description: 'Optional: Host name to connect to, defaults to the pod IP.'
@@ -3598,7 +4129,7 @@ spec:
                           More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
                         properties:
                           exec:
-                            description: Exec specifies the action to take.
+                            description: Exec specifies a command to execute in the container.
                             properties:
                               command:
                                 description: |-
@@ -3619,7 +4150,7 @@ spec:
                             format: int32
                             type: integer
                           grpc:
-                            description: GRPC specifies an action involving a GRPC port.
+                            description: GRPC specifies a GRPC HealthCheckRequest.
                             properties:
                               port:
                                 description: Port number of the gRPC service. Number must be in the range 1 to 65535.
@@ -3637,7 +4168,7 @@ spec:
                               - port
                             type: object
                           httpGet:
-                            description: HTTPGet specifies the http request to perform.
+                            description: HTTPGet specifies an HTTP GET request to perform.
                             properties:
                               host:
                                 description: |-
@@ -3702,7 +4233,7 @@ spec:
                             format: int32
                             type: integer
                           tcpSocket:
-                            description: TCPSocket specifies an action involving a TCP port.
+                            description: TCPSocket specifies a connection to a TCP port.
                             properties:
                               host:
                                 description: 'Optional: Host name to connect to, defaults to the pod IP.'
@@ -4041,7 +4572,7 @@ spec:
                           More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
                         properties:
                           exec:
-                            description: Exec specifies the action to take.
+                            description: Exec specifies a command to execute in the container.
                             properties:
                               command:
                                 description: |-
@@ -4062,7 +4593,7 @@ spec:
                             format: int32
                             type: integer
                           grpc:
-                            description: GRPC specifies an action involving a GRPC port.
+                            description: GRPC specifies a GRPC HealthCheckRequest.
                             properties:
                               port:
                                 description: Port number of the gRPC service. Number must be in the range 1 to 65535.
@@ -4080,7 +4611,7 @@ spec:
                               - port
                             type: object
                           httpGet:
-                            description: HTTPGet specifies the http request to perform.
+                            description: HTTPGet specifies an HTTP GET request to perform.
                             properties:
                               host:
                                 description: |-
@@ -4145,7 +4676,7 @@ spec:
                             format: int32
                             type: integer
                           tcpSocket:
-                            description: TCPSocket specifies an action involving a TCP port.
+                            description: TCPSocket specifies a connection to a TCP port.
                             properties:
                               host:
                                 description: 'Optional: Host name to connect to, defaults to the pod IP.'
@@ -4350,7 +4881,7 @@ spec:
                     Minimum number of seconds for which a newly created pod should be ready
                     without any of its container crashing for it to be considered available.
                     Defaults to 0 (pod will be considered available as soon as it is ready)
-                    This is an alpha field and requires enabling StatefulSetMinReadySeconds feature gate.
+                    This is an alpha field from kubernetes 1.22 until 1.24 which requires enabling the StatefulSetMinReadySeconds feature gate.
                   format: int32
                   type: integer
                 nodeSelector:
@@ -4363,8 +4894,40 @@ spec:
                     If set to true all actions on the underlying managed objects are not
                     goint to be performed, except for delete actions.
                   type: boolean
+                persistentVolumeClaimRetentionPolicy:
+                  description: |-
+                    The field controls if and how PVCs are deleted during the lifecycle of a StatefulSet.
+                    The default behavior is all PVCs are retained.
+                    This is an alpha field from kubernetes 1.23 until 1.26 and a beta field from 1.26.
+                    It requires enabling the StatefulSetAutoDeletePVC feature gate.
+                  properties:
+                    whenDeleted:
+                      description: |-
+                        WhenDeleted specifies what happens to PVCs created from StatefulSet
+                        VolumeClaimTemplates when the StatefulSet is deleted. The default policy
+                        of `Retain` causes PVCs to not be affected by StatefulSet deletion. The
+                        `Delete` policy causes those PVCs to be deleted.
+                      type: string
+                    whenScaled:
+                      description: |-
+                        WhenScaled specifies what happens to PVCs created from StatefulSet
+                        VolumeClaimTemplates when the StatefulSet is scaled down. The default
+                        policy of `Retain` causes PVCs to not be affected by a scaledown. The
+                        `Delete` policy causes the associated PVCs for any excess pods above
+                        the replica count to be deleted.
+                      type: string
+                  type: object
                 podMetadata:
-                  description: PodMetadata configures Labels and Annotations which are propagated to the alertmanager pods.
+                  description: |-
+                    PodMetadata configures labels and annotations which are propagated to the Alertmanager pods.
+
+                    The following items are reserved and cannot be overridden:
+                    * "alertmanager" label, set to the name of the Alertmanager instance.
+                    * "app.kubernetes.io/instance" label, set to the name of the Alertmanager instance.
+                    * "app.kubernetes.io/managed-by" label, set to "prometheus-operator".
+                    * "app.kubernetes.io/name" label, set to "alertmanager".
+                    * "app.kubernetes.io/version" label, set to the Alertmanager version.
+                    * "kubectl.kubernetes.io/default-container" annotation, set to "alertmanager".
                   properties:
                     annotations:
                       additionalProperties:
@@ -4395,9 +4958,10 @@ spec:
                       type: string
                   type: object
                 portName:
+                  default: web
                   description: |-
                     Port name used for the pods and governing service.
-                    This defaults to web
+                    Defaults to `web`.
                   type: string
                 priorityClassName:
                   description: Priority class assigned to the Pods
@@ -4572,6 +5136,32 @@ spec:
                         Note that this field cannot be set when spec.os.name is windows.
                       format: int64
                       type: integer
+                    seLinuxChangePolicy:
+                      description: |-
+                        seLinuxChangePolicy defines how the container's SELinux label is applied to all volumes used by the Pod.
+                        It has no effect on nodes that do not support SELinux or to volumes does not support SELinux.
+                        Valid values are "MountOption" and "Recursive".
+
+                        "Recursive" means relabeling of all files on all Pod volumes by the container runtime.
+                        This may be slow for large volumes, but allows mixing privileged and unprivileged Pods sharing the same volume on the same node.
+
+                        "MountOption" mounts all eligible Pod volumes with `-o context` mount option.
+                        This requires all Pods that share the same volume to use the same SELinux label.
+                        It is not possible to share the same volume among privileged and unprivileged Pods.
+                        Eligible volumes are in-tree FibreChannel and iSCSI volumes, and all CSI volumes
+                        whose CSI driver announces SELinux support by setting spec.seLinuxMount: true in their
+                        CSIDriver instance. Other volumes are always re-labelled recursively.
+                        "MountOption" value is allowed only when SELinuxMount feature gate is enabled.
+
+                        If not specified and SELinuxMount feature gate is enabled, "MountOption" is used.
+                        If not specified and SELinuxMount feature gate is disabled, "MountOption" is used for ReadWriteOncePod volumes
+                        and "Recursive" for all other volumes.
+
+                        This field affects only Pods that have SELinux label set, either in PodSecurityContext or in SecurityContext of all containers.
+
+                        All Pods that use the same volume should use the same seLinuxChangePolicy, otherwise some pods can get stuck in ContainerCreating state.
+                        Note that this field cannot be set when spec.os.name is windows.
+                      type: string
                     seLinuxOptions:
                       description: |-
                         The SELinux context to be applied to all containers.
@@ -4704,8 +5294,7 @@ spec:
                     SHA of Alertmanager container image to be deployed. Defaults to the value of `version`.
                     Similar to a tag, but the SHA explicitly deploys an immutable container image.
                     Version and Tag are ignored if SHA is set.
-                    Deprecated: use 'image' instead.  The image digest can be specified
-                    as part of the image URL.
+                    Deprecated: use 'image' instead. The image digest can be specified as part of the image URL.
                   type: string
                 storage:
                   description: |-
@@ -4713,14 +5302,13 @@ spec:
                     instances.
                   properties:
                     disableMountSubPath:
-                      description: |-
-                        Deprecated: subPath usage will be disabled by default in a future release, this option will become unnecessary.
-                        DisableMountSubPath allows to remove any subPath usage in volume mounts.
+                      description: 'Deprecated: subPath usage will be removed in a future release.'
                       type: boolean
                     emptyDir:
                       description: |-
-                        EmptyDirVolumeSource to be used by the Prometheus StatefulSets. If specified, used in place of any volumeClaimTemplate. More
-                        info: https://kubernetes.io/docs/concepts/storage/volumes/#emptydir
+                        EmptyDirVolumeSource to be used by the StatefulSet.
+                        If specified, it takes precedence over `ephemeral` and `volumeClaimTemplate`.
+                        More info: https://kubernetes.io/docs/concepts/storage/volumes/#emptydir
                       properties:
                         medium:
                           description: |-
@@ -4745,8 +5333,9 @@ spec:
                       type: object
                     ephemeral:
                       description: |-
-                        EphemeralVolumeSource to be used by the Prometheus StatefulSets.
-                        This is a beta field in k8s 1.21, for lower versions, starting with k8s 1.19, it requires enabling the GenericEphemeralVolume feature gate.
+                        EphemeralVolumeSource to be used by the StatefulSet.
+                        This is a beta field in k8s 1.21 and GA in 1.15.
+                        For lower versions, starting with k8s 1.19, it requires enabling the GenericEphemeralVolume feature gate.
                         More info: https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes
                       properties:
                         volumeClaimTemplate:
@@ -4981,7 +5570,10 @@ spec:
                           type: object
                       type: object
                     volumeClaimTemplate:
-                      description: A PVC spec to be used by the Prometheus StatefulSets.
+                      description: |-
+                        Defines the PVC spec to be used by the Prometheus StatefulSets.
+                        The easiest way to use a volume that cannot be automatically provisioned
+                        is to use a label selector alongside manually created PersistentVolumes.
                       properties:
                         apiVersion:
                           description: |-
@@ -5031,7 +5623,7 @@ spec:
                           type: object
                         spec:
                           description: |-
-                            Spec defines the desired characteristics of a volume requested by a pod author.
+                            Defines the desired characteristics of a volume requested by a pod author.
                             More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
                           properties:
                             accessModes:
@@ -5225,10 +5817,7 @@ spec:
                               type: string
                           type: object
                         status:
-                          description: |-
-                            Status represents the current information/status of a persistent volume claim.
-                            Read-only.
-                            More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
+                          description: 'Deprecated: this field is never set.'
                           properties:
                             accessModes:
                               description: |-
@@ -5348,18 +5937,15 @@ spec:
                                       persistent volume is being resized.
                                     type: string
                                   status:
+                                    description: |-
+                                      Status is the status of the condition.
+                                      Can be True, False, Unknown.
+                                      More info: https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#:~:text=state%20of%20pvc-,conditions.status,-(string)%2C%20required
                                     type: string
                                   type:
                                     description: |-
-                                      PersistentVolumeClaimConditionType defines the condition of PV claim.
-                                      Valid values are:
-                                        - "Resizing", "FileSystemResizePending"
-
-                                      If RecoverVolumeExpansionFailure feature gate is enabled, then following additional values can be expected:
-                                        - "ControllerResizeError", "NodeResizeError"
-
-                                      If VolumeAttributesClass feature gate is enabled, then following additional values can be expected:
-                                        - "ModifyVolumeError", "ModifyingVolume"
+                                      Type is the type of the condition.
+                                      More info: https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#:~:text=set%20to%20%27ResizeStarted%27.-,PersistentVolumeClaimCondition,-contains%20details%20about
                                     type: string
                                 required:
                                   - status
@@ -5410,8 +5996,7 @@ spec:
                   description: |-
                     Tag of Alertmanager container image to be deployed. Defaults to the value of `version`.
                     Version is ignored if Tag is set.
-                    Deprecated: use 'image' instead.  The image tag can be specified
-                    as part of the image URL.
+                    Deprecated: use 'image' instead. The image tag can be specified as part of the image URL.
                   type: string
                 tolerations:
                   description: If specified, the pod's tolerations.
@@ -5706,6 +6291,8 @@ spec:
                         description: |-
                           awsElasticBlockStore represents an AWS Disk resource that is attached to a
                           kubelet's host machine and then exposed to the pod.
+                          Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree
+                          awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver.
                           More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
                         properties:
                           fsType:
@@ -5737,7 +6324,10 @@ spec:
                           - volumeID
                         type: object
                       azureDisk:
-                        description: azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+                        description: |-
+                          azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+                          Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type
+                          are redirected to the disk.csi.azure.com CSI driver.
                         properties:
                           cachingMode:
                             description: 'cachingMode is the Host Caching mode: None, Read Only, Read Write.'
@@ -5769,7 +6359,10 @@ spec:
                           - diskURI
                         type: object
                       azureFile:
-                        description: azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+                        description: |-
+                          azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+                          Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type
+                          are redirected to the file.csi.azure.com CSI driver.
                         properties:
                           readOnly:
                             description: |-
@@ -5787,7 +6380,9 @@ spec:
                           - shareName
                         type: object
                       cephfs:
-                        description: cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+                        description: |-
+                          cephFS represents a Ceph FS mount on the host that shares a pod's lifetime.
+                          Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
                         properties:
                           monitors:
                             description: |-
@@ -5838,6 +6433,8 @@ spec:
                       cinder:
                         description: |-
                           cinder represents a cinder volume attached and mounted on kubelets host machine.
+                          Deprecated: Cinder is deprecated. All operations for the in-tree cinder type
+                          are redirected to the cinder.csi.openstack.org CSI driver.
                           More info: https://examples.k8s.io/mysql-cinder-pd/README.md
                         properties:
                           fsType:
@@ -5944,7 +6541,7 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                       csi:
-                        description: csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+                        description: csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
                         properties:
                           driver:
                             description: |-
@@ -6386,6 +6983,7 @@ spec:
                         description: |-
                           flexVolume represents a generic volume resource that is
                           provisioned/attached using an exec based plugin.
+                          Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
                         properties:
                           driver:
                             description: driver is the name of the driver to use for this volume.
@@ -6429,7 +7027,9 @@ spec:
                           - driver
                         type: object
                       flocker:
-                        description: flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+                        description: |-
+                          flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running.
+                          Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
                         properties:
                           datasetName:
                             description: |-
@@ -6444,6 +7044,8 @@ spec:
                         description: |-
                           gcePersistentDisk represents a GCE Disk resource that is attached to a
                           kubelet's host machine and then exposed to the pod.
+                          Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree
+                          gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver.
                           More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
                         properties:
                           fsType:
@@ -6479,7 +7081,7 @@ spec:
                       gitRepo:
                         description: |-
                           gitRepo represents a git repository at a particular revision.
-                          DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an
+                          Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an
                           EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir
                           into the Pod's container.
                         properties:
@@ -6502,6 +7104,7 @@ spec:
                       glusterfs:
                         description: |-
                           glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime.
+                          Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported.
                           More info: https://examples.k8s.io/volumes/glusterfs/README.md
                         properties:
                           endpoints:
@@ -6708,7 +7311,9 @@ spec:
                           - claimName
                         type: object
                       photonPersistentDisk:
-                        description: photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+                        description: |-
+                          photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine.
+                          Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
                         properties:
                           fsType:
                             description: |-
@@ -6723,7 +7328,11 @@ spec:
                           - pdID
                         type: object
                       portworxVolume:
-                        description: portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+                        description: |-
+                          portworxVolume represents a portworx volume attached and mounted on kubelets host machine.
+                          Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type
+                          are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate
+                          is on.
                         properties:
                           fsType:
                             description: |-
@@ -7058,7 +7667,9 @@ spec:
                             x-kubernetes-list-type: atomic
                         type: object
                       quobyte:
-                        description: quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+                        description: |-
+                          quobyte represents a Quobyte mount on the host that shares a pod's lifetime.
+                          Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
                         properties:
                           group:
                             description: |-
@@ -7096,6 +7707,7 @@ spec:
                       rbd:
                         description: |-
                           rbd represents a Rados Block Device mount on the host that shares a pod's lifetime.
+                          Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported.
                           More info: https://examples.k8s.io/volumes/rbd/README.md
                         properties:
                           fsType:
@@ -7168,7 +7780,9 @@ spec:
                           - monitors
                         type: object
                       scaleIO:
-                        description: scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+                        description: |-
+                          scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+                          Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
                         properties:
                           fsType:
                             default: xfs
@@ -7294,7 +7908,9 @@ spec:
                             type: string
                         type: object
                       storageos:
-                        description: storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+                        description: |-
+                          storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+                          Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
                         properties:
                           fsType:
                             description: |-
@@ -7339,7 +7955,10 @@ spec:
                             type: string
                         type: object
                       vsphereVolume:
-                        description: vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+                        description: |-
+                          vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine.
+                          Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type
+                          are redirected to the csi.vsphere.vmware.com CSI driver.
                         properties:
                           fsType:
                             description: |-
@@ -7366,6 +7985,12 @@ spec:
                 web:
                   description: Defines the web command line flags when starting Alertmanager.
                   properties:
+                    getConcurrency:
+                      description: |-
+                        Maximum number of GET requests processed concurrently. This corresponds to the
+                        Alertmanager's `--web.get-concurrency` flag.
+                      format: int32
+                      type: integer
                     httpConfig:
                       description: Defines HTTP parameters for web server.
                       properties:
@@ -7419,11 +8044,22 @@ spec:
                             Whenever the value of the field changes, a rolling update will be triggered.
                           type: boolean
                       type: object
+                    timeout:
+                      description: |-
+                        Timeout for HTTP requests. This corresponds to the Alertmanager's
+                        `--web.timeout` flag.
+                      format: int32
+                      type: integer
                     tlsConfig:
                       description: Defines the TLS parameters for HTTPS.
                       properties:
                         cert:
-                          description: Contains the TLS certificate for the server.
+                          description: |-
+                            Secret or ConfigMap containing the TLS certificate for the web server.
+
+                            Either `keySecret` or `keyFile` must be defined.
+
+                            It is mutually exclusive with `certFile`.
                           properties:
                             configMap:
                               description: ConfigMap containing data to use for the targets.
@@ -7470,16 +8106,30 @@ spec:
                               type: object
                               x-kubernetes-map-type: atomic
                           type: object
+                        certFile:
+                          description: |-
+                            Path to the TLS certificate file in the container for the web server.
+
+                            Either `keySecret` or `keyFile` must be defined.
+
+                            It is mutually exclusive with `cert`.
+                          type: string
                         cipherSuites:
                           description: |-
-                            List of supported cipher suites for TLS versions up to TLS 1.2. If empty,
-                            Go default cipher suites are used. Available cipher suites are documented
-                            in the go documentation: https://golang.org/pkg/crypto/tls/#pkg-constants
+                            List of supported cipher suites for TLS versions up to TLS 1.2.
+
+                            If not defined, the Go default cipher suites are used.
+                            Available cipher suites are documented in the Go documentation:
+                            https://golang.org/pkg/crypto/tls/#pkg-constants
                           items:
                             type: string
                           type: array
                         client_ca:
-                          description: Contains the CA certificate for client certificate authentication to the server.
+                          description: |-
+                            Secret or ConfigMap containing the CA certificate for client certificate
+                            authentication to the server.
+
+                            It is mutually exclusive with `clientCAFile`.
                           properties:
                             configMap:
                               description: ConfigMap containing data to use for the targets.
@@ -7528,20 +8178,43 @@ spec:
                           type: object
                         clientAuthType:
                           description: |-
-                            Server policy for client authentication. Maps to ClientAuth Policies.
+                            The server policy for client TLS authentication.
+
                             For more detail on clientAuth options:
                             https://golang.org/pkg/crypto/tls/#ClientAuthType
+                          type: string
+                        clientCAFile:
+                          description: |-
+                            Path to the CA certificate file for client certificate authentication to
+                            the server.
+
+                            It is mutually exclusive with `client_ca`.
                           type: string
                         curvePreferences:
                           description: |-
                             Elliptic curves that will be used in an ECDHE handshake, in preference
-                            order. Available curves are documented in the go documentation:
+                            order.
+
+                            Available curves are documented in the Go documentation:
                             https://golang.org/pkg/crypto/tls/#CurveID
                           items:
                             type: string
                           type: array
+                        keyFile:
+                          description: |-
+                            Path to the TLS private key file in the container for the web server.
+
+                            If defined, either `cert` or `certFile` must be defined.
+
+                            It is mutually exclusive with `keySecret`.
+                          type: string
                         keySecret:
-                          description: Secret containing the TLS key for the server.
+                          description: |-
+                            Secret containing the TLS private key for the web server.
+
+                            Either `cert` or `certFile` must be defined.
+
+                            It is mutually exclusive with `keyFile`.
                           properties:
                             key:
                               description: The key of the secret to select from.  Must be a valid secret key.
@@ -7563,16 +8236,17 @@ spec:
                           type: object
                           x-kubernetes-map-type: atomic
                         maxVersion:
-                          description: Maximum TLS version that is acceptable. Defaults to TLS13.
+                          description: Maximum TLS version that is acceptable.
                           type: string
                         minVersion:
-                          description: Minimum TLS version that is acceptable. Defaults to TLS12.
+                          description: Minimum TLS version that is acceptable.
                           type: string
                         preferServerCipherSuites:
                           description: |-
-                            Controls whether the server selects the
-                            client's most preferred cipher suite, or the server's most preferred
-                            cipher suite. If true then the server's preference, as expressed in
+                            Controls whether the server selects the client's most preferred cipher
+                            suite, or the server's most preferred cipher suite.
+
+                            If true then the server's preference, as expressed in
                             the order of elements in cipherSuites, is used.
                           type: boolean
                       type: object
@@ -7580,9 +8254,8 @@ spec:
               type: object
             status:
               description: |-
-                Most recent observed status of the Alertmanager cluster. Read-only. Not
-                included when requesting from the apiserver, only from the Prometheus
-                Operator API itself. More info:
+                Most recent observed status of the Alertmanager cluster. Read-only.
+                More info:
                 https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
               properties:
                 availableReplicas:
@@ -7591,6 +8264,49 @@ spec:
                     targeted by this Alertmanager cluster.
                   format: int32
                   type: integer
+                conditions:
+                  description: The current state of the Alertmanager object.
+                  items:
+                    description: |-
+                      Condition represents the state of the resources associated with the
+                      Prometheus, Alertmanager or ThanosRuler resource.
+                    properties:
+                      lastTransitionTime:
+                        description: lastTransitionTime is the time of the last update to the current status property.
+                        format: date-time
+                        type: string
+                      message:
+                        description: Human-readable message indicating details for the condition's last transition.
+                        type: string
+                      observedGeneration:
+                        description: |-
+                          ObservedGeneration represents the .metadata.generation that the
+                          condition was set based upon. For instance, if `.metadata.generation` is
+                          currently 12, but the `.status.conditions[].observedGeneration` is 9, the
+                          condition is out of date with respect to the current state of the
+                          instance.
+                        format: int64
+                        type: integer
+                      reason:
+                        description: Reason for the condition's last transition.
+                        type: string
+                      status:
+                        description: Status of the condition.
+                        minLength: 1
+                        type: string
+                      type:
+                        description: Type of the condition being reported.
+                        minLength: 1
+                        type: string
+                    required:
+                      - lastTransitionTime
+                      - status
+                      - type
+                    type: object
+                  type: array
+                  x-kubernetes-list-map-keys:
+                    - type
+                  x-kubernetes-list-type: map
                 paused:
                   description: |-
                     Represents whether any actions on the underlying managed objects are
@@ -7599,21 +8315,29 @@ spec:
                 replicas:
                   description: |-
                     Total number of non-terminated pods targeted by this Alertmanager
-                    cluster (their labels match the selector).
+                    object (their labels match the selector).
                   format: int32
                   type: integer
+                selector:
+                  description: The selector used to match the pods targeted by this Alertmanager object.
+                  type: string
                 unavailableReplicas:
-                  description: Total number of unavailable pods targeted by this Alertmanager cluster.
+                  description: Total number of unavailable pods targeted by this Alertmanager object.
                   format: int32
                   type: integer
                 updatedReplicas:
                   description: |-
                     Total number of non-terminated pods targeted by this Alertmanager
-                    cluster that have the desired version spec.
+                    object that have the desired version spec.
                   format: int32
                   type: integer
               type: object
           type: object
       served: true
       storage: true
-      subresources: {}
+      subresources:
+        scale:
+          labelSelectorPath: .status.selector
+          specReplicasPath: .spec.replicas
+          statusReplicasPath: .status.replicas
+        status: {}

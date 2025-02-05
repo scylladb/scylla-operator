@@ -3,13 +3,13 @@
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	monitoringv1 "github.com/scylladb/scylla-operator/pkg/externalapi/monitoring/v1"
+	externalapimonitoringv1 "github.com/scylladb/scylla-operator/pkg/externalapi/monitoring/v1"
 	versioned "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/clientset/versioned"
 	internalinterfaces "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/informers/externalversions/internalinterfaces"
-	v1 "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/listers/monitoring/v1"
+	monitoringv1 "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/listers/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -20,7 +20,7 @@ import (
 // ThanosRulers.
 type ThanosRulerInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.ThanosRulerLister
+	Lister() monitoringv1.ThanosRulerLister
 }
 
 type thanosRulerInformer struct {
@@ -55,7 +55,7 @@ func NewFilteredThanosRulerInformer(client versioned.Interface, namespace string
 				return client.MonitoringV1().ThanosRulers(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&monitoringv1.ThanosRuler{},
+		&externalapimonitoringv1.ThanosRuler{},
 		resyncPeriod,
 		indexers,
 	)
@@ -66,9 +66,9 @@ func (f *thanosRulerInformer) defaultInformer(client versioned.Interface, resync
 }
 
 func (f *thanosRulerInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&monitoringv1.ThanosRuler{}, f.defaultInformer)
+	return f.factory.InformerFor(&externalapimonitoringv1.ThanosRuler{}, f.defaultInformer)
 }
 
-func (f *thanosRulerInformer) Lister() v1.ThanosRulerLister {
-	return v1.NewThanosRulerLister(f.Informer().GetIndexer())
+func (f *thanosRulerInformer) Lister() monitoringv1.ThanosRulerLister {
+	return monitoringv1.NewThanosRulerLister(f.Informer().GetIndexer())
 }

@@ -3,10 +3,10 @@
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // RemoteOwnerLister helps list RemoteOwners.
@@ -14,7 +14,7 @@ import (
 type RemoteOwnerLister interface {
 	// List lists all RemoteOwners in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.RemoteOwner, err error)
+	List(selector labels.Selector) (ret []*scyllav1alpha1.RemoteOwner, err error)
 	// RemoteOwners returns an object that can list and get RemoteOwners.
 	RemoteOwners(namespace string) RemoteOwnerNamespaceLister
 	RemoteOwnerListerExpansion
@@ -22,17 +22,17 @@ type RemoteOwnerLister interface {
 
 // remoteOwnerLister implements the RemoteOwnerLister interface.
 type remoteOwnerLister struct {
-	listers.ResourceIndexer[*v1alpha1.RemoteOwner]
+	listers.ResourceIndexer[*scyllav1alpha1.RemoteOwner]
 }
 
 // NewRemoteOwnerLister returns a new RemoteOwnerLister.
 func NewRemoteOwnerLister(indexer cache.Indexer) RemoteOwnerLister {
-	return &remoteOwnerLister{listers.New[*v1alpha1.RemoteOwner](indexer, v1alpha1.Resource("remoteowner"))}
+	return &remoteOwnerLister{listers.New[*scyllav1alpha1.RemoteOwner](indexer, scyllav1alpha1.Resource("remoteowner"))}
 }
 
 // RemoteOwners returns an object that can list and get RemoteOwners.
 func (s *remoteOwnerLister) RemoteOwners(namespace string) RemoteOwnerNamespaceLister {
-	return remoteOwnerNamespaceLister{listers.NewNamespaced[*v1alpha1.RemoteOwner](s.ResourceIndexer, namespace)}
+	return remoteOwnerNamespaceLister{listers.NewNamespaced[*scyllav1alpha1.RemoteOwner](s.ResourceIndexer, namespace)}
 }
 
 // RemoteOwnerNamespaceLister helps list and get RemoteOwners.
@@ -40,15 +40,15 @@ func (s *remoteOwnerLister) RemoteOwners(namespace string) RemoteOwnerNamespaceL
 type RemoteOwnerNamespaceLister interface {
 	// List lists all RemoteOwners in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.RemoteOwner, err error)
+	List(selector labels.Selector) (ret []*scyllav1alpha1.RemoteOwner, err error)
 	// Get retrieves the RemoteOwner from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.RemoteOwner, error)
+	Get(name string) (*scyllav1alpha1.RemoteOwner, error)
 	RemoteOwnerNamespaceListerExpansion
 }
 
 // remoteOwnerNamespaceLister implements the RemoteOwnerNamespaceLister
 // interface.
 type remoteOwnerNamespaceLister struct {
-	listers.ResourceIndexer[*v1alpha1.RemoteOwner]
+	listers.ResourceIndexer[*scyllav1alpha1.RemoteOwner]
 }

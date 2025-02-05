@@ -6,10 +6,17 @@ package gocql
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
+	"fmt"
+	"io/ioutil"
 	"net"
+	"sync/atomic"
 	"time"
 )
+
+const defaultDriverName = "ScyllaDB GoCQL Driver"
 
 // PoolConfig configures the connection pool used by the driver, it defaults to
 // using a round-robin host selection policy and a round-robin connection selection
@@ -82,7 +89,13 @@ type ClusterConfig struct {
 	// Initial keyspace. Optional.
 	Keyspace string
 
-	// Number of connections per host.
+	// The size of the connection pool for each host.
+	// The pool filling runs in separate gourutine during the session initialization phase.
+	// gocql will always try to get 1 connection on each host pool
+	// during session initialization AND it will attempt
+	// to fill each pool afterward asynchronously if NumConns > 1.
+	// Notice: There is no guarantee that pool filling will be finished in the initialization phase.
+	// Also, it describes a maximum number of connections at the same time.
 	// Default: 2
 	NumConns int
 
@@ -102,6 +115,8 @@ type ClusterConfig struct {
 	// Default: nil
 	Authenticator Authenticator
 
+	WarningsHandlerBuilder WarningHandlerBuilder
+
 	// An Authenticator factory. Can be used to create alternative authenticators.
 	// Default: nil
 	AuthProvider func(h *HostInfo) (Authenticator, error)
@@ -116,6 +131,9 @@ type ClusterConfig struct {
 
 	// Default reconnection policy to use for reconnecting before trying to mark host as down.
 	ReconnectionPolicy ReconnectionPolicy
+
+	// A reconnection policy to use for reconnecting when connecting to the cluster first time.
+	InitialReconnectionPolicy ReconnectionPolicy
 
 	// The keepalive period to use, enabled if > 0 (default: 15 seconds)
 	// SocketKeepalive is used to set up the default dialer and is ignored if Dialer or HostDialer is provided.
@@ -139,11 +157,20 @@ type ClusterConfig struct {
 
 	// SslOpts configures TLS use when HostDialer is not set.
 	// SslOpts is ignored if HostDialer is set.
-	SslOpts *SslOptions
+	SslOpts       *SslOptions
+	actualSslOpts atomic.Value
 
 	// Sends a client side timestamp for all requests which overrides the timestamp at which it arrives at the server.
 	// Default: true, only enabled for protocol 3 and above.
 	DefaultTimestamp bool
+
+	// The name of the driver that is going to be reported to the server.
+	// Default: "ScyllaDB GoLang Driver"
+	DriverName string
+
+	// The version of the driver that is going to be reported to the server.
+	// Defaulted to current library version
+	DriverVersion string
 
 	// PoolConfig configures the underlying connection pool, allowing the
 	// configuration of host selection and connection selection policies.
@@ -197,6 +224,9 @@ type ClusterConfig struct {
 	// statement.
 	//
 	// See https://issues.apache.org/jira/browse/CASSANDRA-10786
+	// See https://github.com/scylladb/scylladb/issues/20860
+	//
+	// Default: true
 	DisableSkipMetadata bool
 
 	// QueryObserver will set the provided query observer on all queries created from this session.
@@ -289,13 +319,18 @@ func NewCluster(hosts ...string) *ClusterConfig {
 		MaxRoutingKeyInfo:            1000,
 		PageSize:                     5000,
 		DefaultTimestamp:             true,
+		DriverName:                   defaultDriverName,
+		DriverVersion:                defaultDriverVersion,
 		MaxWaitSchemaAgreement:       60 * time.Second,
 		ReconnectInterval:            60 * time.Second,
 		ConvictionPolicy:             &SimpleConvictionPolicy{},
 		ReconnectionPolicy:           &ConstantReconnectionPolicy{MaxRetries: 3, Interval: 1 * time.Second},
+		InitialReconnectionPolicy:    &NoReconnectionPolicy{},
 		SocketKeepalive:              15 * time.Second,
 		WriteCoalesceWaitTime:        200 * time.Microsecond,
 		MetadataSchemaRequestTimeout: 60 * time.Second,
+		DisableSkipMetadata:          true,
+		WarningsHandlerBuilder:       DefaultWarningHandlerBuilder,
 	}
 
 	return cfg
@@ -312,6 +347,10 @@ func (cfg *ClusterConfig) logger() StdLogger {
 // session object that can be used to interact with the database.
 func (cfg *ClusterConfig) CreateSession() (*Session, error) {
 	return NewSession(*cfg)
+}
+
+func (cfg *ClusterConfig) CreateSessionNonBlocking() (*Session, error) {
+	return NewSessionNonBlocking(*cfg)
 }
 
 // translateAddressPort is a helper method that will use the given AddressTranslator
@@ -333,8 +372,170 @@ func (cfg *ClusterConfig) filterHost(host *HostInfo) bool {
 	return !(cfg.HostFilter == nil || cfg.HostFilter.Accept(host))
 }
 
+func (cfg *ClusterConfig) ValidateAndInitSSL() error {
+	if cfg.SslOpts == nil {
+		return nil
+	}
+	actualTLSConfig, err := setupTLSConfig(cfg.SslOpts)
+	if err != nil {
+		return fmt.Errorf("failed to initialize ssl configuration: %s", err.Error())
+	}
+
+	cfg.actualSslOpts.Store(actualTLSConfig)
+	return nil
+}
+
+func (cfg *ClusterConfig) getActualTLSConfig() *tls.Config {
+	val, ok := cfg.actualSslOpts.Load().(*tls.Config)
+	if !ok {
+		return nil
+	}
+	return val.Clone()
+}
+
+func (cfg *ClusterConfig) Validate() error {
+	if len(cfg.Hosts) == 0 {
+		return ErrNoHosts
+	}
+
+	if cfg.Authenticator != nil && cfg.AuthProvider != nil {
+		return errors.New("Can't use both Authenticator and AuthProvider in cluster config.")
+	}
+
+	if cfg.InitialReconnectionPolicy == nil {
+		return errors.New("InitialReconnectionPolicy is nil")
+	}
+
+	if cfg.InitialReconnectionPolicy.GetMaxRetries() <= 0 {
+		return errors.New("InitialReconnectionPolicy.GetMaxRetries returns negative number")
+	}
+
+	if cfg.ReconnectionPolicy == nil {
+		return errors.New("ReconnectionPolicy is nil")
+	}
+
+	if cfg.InitialReconnectionPolicy.GetMaxRetries() <= 0 {
+		return errors.New("ReconnectionPolicy.GetMaxRetries returns negative number")
+	}
+
+	if cfg.PageSize < 0 {
+		return errors.New("PageSize should be positive number or zero")
+	}
+
+	if cfg.MaxRoutingKeyInfo < 0 {
+		return errors.New("MaxRoutingKeyInfo should be positive number or zero")
+	}
+
+	if cfg.MaxPreparedStmts < 0 {
+		return errors.New("MaxPreparedStmts should be positive number or zero")
+	}
+
+	if cfg.SocketKeepalive < 0 {
+		return errors.New("SocketKeepalive should be positive time.Duration or zero")
+	}
+
+	if cfg.MaxRequestsPerConn < 0 {
+		return errors.New("MaxRequestsPerConn should be positive number or zero")
+	}
+
+	if cfg.NumConns < 0 {
+		return errors.New("NumConns should be positive non-zero number or zero")
+	}
+
+	if cfg.Port <= 0 || cfg.Port > 65535 {
+		return errors.New("Port should be a valid port number: a number between 1 and 65535")
+	}
+
+	if cfg.WriteTimeout < 0 {
+		return errors.New("WriteTimeout should be positive time.Duration or zero")
+	}
+
+	if cfg.Timeout < 0 {
+		return errors.New("Timeout should be positive time.Duration or zero")
+	}
+
+	if cfg.ConnectTimeout < 0 {
+		return errors.New("ConnectTimeout should be positive time.Duration or zero")
+	}
+
+	if cfg.MetadataSchemaRequestTimeout < 0 {
+		return errors.New("MetadataSchemaRequestTimeout should be positive time.Duration or zero")
+	}
+
+	if cfg.WriteCoalesceWaitTime < 0 {
+		return errors.New("WriteCoalesceWaitTime should be positive time.Duration or zero")
+	}
+
+	if cfg.ReconnectInterval < 0 {
+		return errors.New("ReconnectInterval should be positive time.Duration or zero")
+	}
+
+	if cfg.MaxWaitSchemaAgreement < 0 {
+		return errors.New("MaxWaitSchemaAgreement should be positive time.Duration or zero")
+	}
+
+	if cfg.ProtoVersion < 0 {
+		return errors.New("ProtoVersion should be positive number or zero")
+	}
+
+	if !cfg.DisableSkipMetadata {
+		Logger.Println("warning: enabling skipping metadata can lead to unpredictible results when executing query and altering columns involved in the query.")
+	}
+
+	return cfg.ValidateAndInitSSL()
+}
+
 var (
 	ErrNoHosts              = errors.New("no hosts provided")
 	ErrNoConnectionsStarted = errors.New("no connections were made when creating the session")
 	ErrHostQueryFailed      = errors.New("unable to populate Hosts")
 )
+
+func setupTLSConfig(sslOpts *SslOptions) (*tls.Config, error) {
+	//  Config.InsecureSkipVerify | EnableHostVerification | Result
+	//  Config is nil             | true                   | verify host
+	//  Config is nil             | false                  | do not verify host
+	//  false                     | false                  | verify host
+	//  true                      | false                  | do not verify host
+	//  false                     | true                   | verify host
+	//  true                      | true                   | verify host
+	var tlsConfig *tls.Config
+	if sslOpts.Config == nil {
+		tlsConfig = &tls.Config{
+			InsecureSkipVerify: !sslOpts.EnableHostVerification,
+		}
+	} else {
+		// use clone to avoid race.
+		tlsConfig = sslOpts.Config.Clone()
+	}
+
+	if tlsConfig.InsecureSkipVerify && sslOpts.EnableHostVerification {
+		tlsConfig.InsecureSkipVerify = false
+	}
+
+	// ca cert is optional
+	if sslOpts.CaPath != "" {
+		if tlsConfig.RootCAs == nil {
+			tlsConfig.RootCAs = x509.NewCertPool()
+		}
+
+		pem, err := ioutil.ReadFile(sslOpts.CaPath)
+		if err != nil {
+			return nil, fmt.Errorf("unable to open CA certs: %v", err)
+		}
+
+		if !tlsConfig.RootCAs.AppendCertsFromPEM(pem) {
+			return nil, errors.New("failed parsing or CA certs")
+		}
+	}
+
+	if sslOpts.CertPath != "" || sslOpts.KeyPath != "" {
+		mycert, err := tls.LoadX509KeyPair(sslOpts.CertPath, sslOpts.KeyPath)
+		if err != nil {
+			return nil, fmt.Errorf("unable to load X509 key pair: %v", err)
+		}
+		tlsConfig.Certificates = append(tlsConfig.Certificates, mycert)
+	}
+
+	return tlsConfig, nil
+}

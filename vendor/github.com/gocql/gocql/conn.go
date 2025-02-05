@@ -23,25 +23,11 @@ import (
 	"github.com/gocql/gocql/internal/streams"
 )
 
-var (
-	defaultApprovedAuthenticators = []string{
-		"org.apache.cassandra.auth.PasswordAuthenticator",
-		"com.instaclustr.cassandra.auth.SharedSecretAuthenticator",
-		"com.datastax.bdp.cassandra.auth.DseAuthenticator",
-		"io.aiven.cassandra.auth.AivenAuthenticator",
-		"com.ericsson.bss.cassandra.ecaudit.auth.AuditPasswordAuthenticator",
-		"com.amazon.helenus.auth.HelenusAuthenticator",
-		"com.ericsson.bss.cassandra.ecaudit.auth.AuditAuthenticator",
-		"com.scylladb.auth.SaslauthdAuthenticator",
-		"com.scylladb.auth.TransitionalAuthenticator",
-		"com.instaclustr.cassandra.auth.InstaclustrPasswordAuthenticator",
-	}
-)
-
-// approve the authenticator with the list of allowed authenticators or default list if approvedAuthenticators is empty.
+// approve the authenticator with the list of allowed authenticators. If the provided list is empty,
+// the given authenticator is allowed.
 func approve(authenticator string, approvedAuthenticators []string) bool {
 	if len(approvedAuthenticators) == 0 {
-		approvedAuthenticators = defaultApprovedAuthenticators
+		return true
 	}
 	for _, s := range approvedAuthenticators {
 		if authenticator == s {
@@ -66,9 +52,21 @@ type Authenticator interface {
 	Success(data []byte) error
 }
 
+type WarningHandlerBuilder func(session *Session) WarningHandler
+
+type WarningHandler interface {
+	HandleWarnings(qry ExecutableQuery, host *HostInfo, warnings []string)
+}
+
+// PasswordAuthenticator specifies credentials to be used when authenticating.
+// It can be configured with an "allow list" of authenticator class names to avoid
+// attempting to authenticate with Cassandra if it doesn't provide an expected authenticator.
 type PasswordAuthenticator struct {
-	Username              string
-	Password              string
+	Username string
+	Password string
+	// Setting this to nil or empty will allow authenticating with any authenticator
+	// provided by the server.  This is the default behavior of most other driver
+	// implementations.
 	AllowedAuthenticators []string
 }
 
@@ -162,6 +160,18 @@ func (fn connErrorHandlerFn) HandleError(conn *Conn, err error, closed bool) {
 // Deprecated.
 var TimeoutLimit int64 = 0
 
+type ConnInterface interface {
+	Close()
+	exec(ctx context.Context, req frameBuilder, tracer Tracer) (*framer, error)
+	awaitSchemaAgreement(ctx context.Context) error
+	executeQuery(ctx context.Context, qry *Query) *Iter
+	querySystem(ctx context.Context, query string) *Iter
+	getIsSchemaV2() bool
+	setSchemaV2(s bool)
+	query(ctx context.Context, statement string, values ...interface{}) (iter *Iter)
+	getScyllaSupported() scyllaSupported
+}
+
 // Conn is a single connection to a Cassandra node. It can be used to execute
 // queries, but users are usually advised to use a more reliable, higher
 // level API.
@@ -210,6 +220,18 @@ type Conn struct {
 
 	logger           StdLogger
 	tabletsRoutingV1 int32
+}
+
+func (c *Conn) getIsSchemaV2() bool {
+	return c.isSchemaV2
+}
+
+func (c *Conn) setSchemaV2(s bool) {
+	c.isSchemaV2 = s
+}
+
+func (c *Conn) getScyllaSupported() scyllaSupported {
+	return c.scyllaSupported
 }
 
 // connect establishes a connection to a Cassandra node using session's connection config.
@@ -350,6 +372,10 @@ func (c *Conn) init(ctx context.Context, dialedHost *DialedHost) error {
 		c.w = newWriteCoalescer(c.conn, c.writeTimeout, c.session.cfg.WriteCoalesceWaitTime, ctx.Done())
 	}
 
+	if c.isScyllaConn() { // ScyllaDB does not support system.peers_v2
+		c.setSchemaV2(false)
+	}
+
 	go c.serve(ctx)
 	go c.heartBeat(ctx)
 
@@ -470,8 +496,8 @@ func (s *startupCoordinator) options(ctx context.Context) error {
 func (s *startupCoordinator) startup(ctx context.Context) error {
 	m := map[string]string{
 		"CQL_VERSION":    s.conn.cfg.CQLVersion,
-		"DRIVER_NAME":    driverName,
-		"DRIVER_VERSION": driverVersion,
+		"DRIVER_NAME":    s.conn.session.cfg.DriverName,
+		"DRIVER_VERSION": s.conn.session.cfg.DriverVersion,
 	}
 
 	if s.conn.compressor != nil {
@@ -1073,13 +1099,13 @@ func (c *Conn) addCall(call *callReq) error {
 
 func (c *Conn) exec(ctx context.Context, req frameBuilder, tracer Tracer) (*framer, error) {
 	if ctxErr := ctx.Err(); ctxErr != nil {
-		return nil, ctxErr
+		return nil, &QueryError{err: ctxErr, potentiallyExecuted: false}
 	}
 
 	// TODO: move tracer onto conn
 	stream, ok := c.streams.GetStream()
 	if !ok {
-		return nil, ErrNoStreams
+		return nil, &QueryError{err: ErrNoStreams, potentiallyExecuted: false}
 	}
 
 	// resp is basically a waiting semaphore protecting the framer
@@ -1097,7 +1123,7 @@ func (c *Conn) exec(ctx context.Context, req frameBuilder, tracer Tracer) (*fram
 	}
 
 	if err := c.addCall(call); err != nil {
-		return nil, err
+		return nil, &QueryError{err: err, potentiallyExecuted: false}
 	}
 
 	// After this point, we need to either read from call.resp or close(call.timeout)
@@ -1129,7 +1155,7 @@ func (c *Conn) exec(ctx context.Context, req frameBuilder, tracer Tracer) (*fram
 		// We need to release the stream after we remove the call from c.calls, otherwise the existingCall != nil
 		// check above could fail.
 		c.releaseStream(call)
-		return nil, err
+		return nil, &QueryError{err: err, potentiallyExecuted: false}
 	}
 
 	n, err := c.w.writeContext(ctx, framer.buf)
@@ -1157,7 +1183,7 @@ func (c *Conn) exec(ctx context.Context, req frameBuilder, tracer Tracer) (*fram
 			// send a frame on, with all the streams used up and not returned.
 			c.closeWithError(err)
 		}
-		return nil, err
+		return nil, &QueryError{err: err, potentiallyExecuted: true}
 	}
 
 	var timeoutCh <-chan time.Time
@@ -1194,7 +1220,7 @@ func (c *Conn) exec(ctx context.Context, req frameBuilder, tracer Tracer) (*fram
 				// connection to close.
 				c.releaseStream(call)
 			}
-			return nil, resp.err
+			return nil, &QueryError{err: resp.err, potentiallyExecuted: true}
 		}
 		// dont release the stream if detect a timeout as another request can reuse
 		// that stream and get a response for the old request, which we have no
@@ -1205,20 +1231,20 @@ func (c *Conn) exec(ctx context.Context, req frameBuilder, tracer Tracer) (*fram
 		defer c.releaseStream(call)
 
 		if v := resp.framer.header.version.version(); v != c.version {
-			return nil, NewErrProtocol("unexpected protocol version in response: got %d expected %d", v, c.version)
+			return nil, &QueryError{err: NewErrProtocol("unexpected protocol version in response: got %d expected %d", v, c.version), potentiallyExecuted: true}
 		}
 
 		return resp.framer, nil
 	case <-timeoutCh:
 		close(call.timeout)
 		c.handleTimeout()
-		return nil, ErrTimeoutNoResponse
+		return nil, &QueryError{err: ErrTimeoutNoResponse, potentiallyExecuted: true}
 	case <-ctxDone:
 		close(call.timeout)
-		return nil, ctx.Err()
+		return nil, &QueryError{err: ctx.Err(), potentiallyExecuted: true}
 	case <-c.ctx.Done():
 		close(call.timeout)
-		return nil, ErrConnectionClosed
+		return nil, &QueryError{err: ErrConnectionClosed, potentiallyExecuted: true}
 	}
 }
 
@@ -1376,7 +1402,16 @@ func marshalQueryValue(typ TypeInfo, value interface{}, dst *queryValues) error 
 	return nil
 }
 
-func (c *Conn) executeQuery(ctx context.Context, qry *Query) *Iter {
+func (c *Conn) executeQuery(ctx context.Context, qry *Query) (iter *Iter) {
+	defer func() {
+		if iter == nil || c.session == nil {
+			return
+		}
+		warnings := iter.Warnings()
+		if len(warnings) > 0 && c.session.warningHandler != nil {
+			c.session.warningHandler.HandleWarnings(qry, iter.host, warnings)
+		}
+	}()
 	params := queryParams{
 		consistency: qry.cons,
 	}
@@ -1522,7 +1557,7 @@ func (c *Conn) executeQuery(ctx context.Context, qry *Query) *Iter {
 			tablet.keyspaceName = qry.routingInfo.keyspace
 			tablet.tableName = qry.routingInfo.table
 
-			addTablet(c.session.hostSource, &tablet)
+			c.session.metadataDescriber.addTablet(&tablet)
 		}
 	}
 
@@ -1642,7 +1677,17 @@ func (c *Conn) UseKeyspace(keyspace string) error {
 	return nil
 }
 
-func (c *Conn) executeBatch(ctx context.Context, batch *Batch) *Iter {
+func (c *Conn) executeBatch(ctx context.Context, batch *Batch) (iter *Iter) {
+	defer func() {
+		if iter == nil || c.session == nil {
+			return
+		}
+		warnings := iter.Warnings()
+		if len(warnings) > 0 && c.session.warningHandler != nil {
+			c.session.warningHandler.HandleWarnings(batch, iter.host, warnings)
+		}
+	}()
+
 	if c.version == protoVersion1 {
 		return &Iter{err: ErrUnsupported}
 	}
@@ -1768,131 +1813,152 @@ func (c *Conn) query(ctx context.Context, statement string, values ...interface{
 	return c.executeQuery(ctx, q)
 }
 
-func (c *Conn) querySystemPeers(ctx context.Context, version cassVersion) *Iter {
+func (c *Conn) querySystem(ctx context.Context, query string) *Iter {
 	usingClause := ""
 	if c.session.control != nil {
 		usingClause = c.session.usingTimeoutClause
 	}
-	var (
-		peerSchema    = "SELECT * FROM system.peers" + usingClause
-		peerV2Schemas = "SELECT * FROM system.peers_v2" + usingClause
-	)
+	queryStmt := query + usingClause
+	return c.query(ctx, queryStmt)
+}
 
-	c.mu.Lock()
-	if isScyllaConn((c)) { // ScyllaDB does not support system.peers_v2
-		c.isSchemaV2 = false
-	}
+const qrySystemPeers = "SELECT * FROM system.peers"
+const qrySystemPeersV2 = "SELECT * FROM system.peers_2"
 
-	isSchemaV2 := c.isSchemaV2
-	c.mu.Unlock()
+const qrySystemLocal = "SELECT * FROM system.local WHERE key='local'"
 
-	if version.AtLeast(4, 0, 0) && isSchemaV2 {
-		// Try "system.peers_v2" and fallback to "system.peers" if it's not found
-		iter := c.query(ctx, peerV2Schemas)
+func getSchemaAgreement(queryLocalSchemasRows []string, querySystemPeersRows []map[string]interface{}, connectAddress net.IP, port int, translateAddressPort func(addr net.IP, port int) (net.IP, int), logger StdLogger) (err error) {
+	versions := make(map[string]struct{})
 
-		err := iter.checkErrAndNotFound()
+	for _, row := range querySystemPeersRows {
+		var host *HostInfo
+		host, err = hostInfoFromMap(row, &HostInfo{connectAddress: connectAddress, port: port}, translateAddressPort)
 		if err != nil {
-			if errFrame, ok := err.(errorFrame); ok && errFrame.code == ErrCodeInvalid { // system.peers_v2 not found, try system.peers
-				c.mu.Lock()
-				c.isSchemaV2 = false
-				c.mu.Unlock()
-				return c.query(ctx, peerSchema)
-			} else {
-				return iter
-			}
+			return err
 		}
-		return iter
-	} else {
-		return c.query(ctx, peerSchema)
+		if !isValidPeer(host) || host.schemaVersion == "" {
+			logger.Printf("invalid peer or peer with empty schema_version: peer=%q", host)
+			continue
+		}
+
+		versions[host.schemaVersion] = struct{}{}
 	}
+
+	for _, schemaVersion := range queryLocalSchemasRows {
+		versions[schemaVersion] = struct{}{}
+		schemaVersion = ""
+	}
+
+	if len(versions) > 1 {
+		schemas := make([]string, 0, len(versions))
+		for schema := range versions {
+			schemas = append(schemas, schema)
+		}
+
+		return &ErrSchemaMismatch{schemas: schemas}
+	}
+
+	return nil
 }
 
-func (c *Conn) querySystemLocal(ctx context.Context) *Iter {
-	usingClause := ""
-	if c.session.control != nil {
-		usingClause = c.session.usingTimeoutClause
-	}
-	return c.query(ctx, "SELECT * FROM system.local WHERE key='local'"+usingClause)
-}
+func (c *Conn) awaitSchemaAgreement(ctx context.Context) error {
+	var localSchemas = "SELECT schema_version FROM system.local WHERE key='local'"
 
-func (c *Conn) awaitSchemaAgreement(ctx context.Context) (err error) {
-	usingClause := ""
-	if c.session.control != nil {
-		usingClause = c.session.usingTimeoutClause
-	}
-	var localSchemas = "SELECT schema_version FROM system.local WHERE key='local'" + usingClause
-
-	var versions map[string]struct{}
 	var schemaVersion string
 
 	endDeadline := time.Now().Add(c.session.cfg.MaxWaitSchemaAgreement)
 
+	var err error
+	ticker := time.NewTicker(200 * time.Millisecond) // Create a ticker that ticks every 200ms
+	defer ticker.Stop()
+
+	waitForNextTick := func() error {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			return nil
+		}
+	}
+
 	for time.Now().Before(endDeadline) {
-		iter := c.querySystemPeers(ctx, c.host.version)
-
-		versions = make(map[string]struct{})
-
-		rows, err := iter.SliceMap()
+		var iter *Iter
+		if c.getIsSchemaV2() {
+			iter = c.querySystem(ctx, qrySystemPeersV2)
+		} else {
+			iter = c.querySystem(ctx, qrySystemPeers)
+		}
+		var systemPeersRows []map[string]interface{}
+		systemPeersRows, err = iter.SliceMap()
 		if err != nil {
-			goto cont
+			return err
 		}
-
-		for _, row := range rows {
-			host, err := c.session.hostInfoFromMap(row, &HostInfo{connectAddress: c.host.ConnectAddress(), port: c.session.cfg.Port})
-			if err != nil {
-				goto cont
-			}
-			if !isValidPeer(host) || host.schemaVersion == "" {
-				c.logger.Printf("invalid peer or peer with empty schema_version: peer=%q", host)
-				continue
-			}
-
-			versions[host.schemaVersion] = struct{}{}
-		}
-
 		if err = iter.Close(); err != nil {
-			goto cont
+			return err
 		}
 
-		iter = c.query(ctx, localSchemas)
+		schemaVersions := []string{}
+
+		iter = c.querySystem(ctx, localSchemas)
 		for iter.Scan(&schemaVersion) {
-			versions[schemaVersion] = struct{}{}
+			schemaVersions = append(schemaVersions, schemaVersion)
 			schemaVersion = ""
 		}
 
 		if err = iter.Close(); err != nil {
-			goto cont
+			return err
+		}
+		err = getSchemaAgreement(schemaVersions, systemPeersRows, c.host.ConnectAddress(), c.session.cfg.Port, c.session.cfg.translateAddressPort, c.logger)
+
+		if err == ErrConnectionClosed || err == nil {
+			return err
 		}
 
-		if len(versions) <= 1 {
-			return nil
-		}
-
-	cont:
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(200 * time.Millisecond):
+		if tickerErr := waitForNextTick(); tickerErr != nil {
+			return tickerErr
 		}
 	}
 
-	if err != nil {
-		return err
-	}
-
-	schemas := make([]string, 0, len(versions))
-	for schema := range versions {
-		schemas = append(schemas, schema)
-	}
-
-	// not exported
-	return fmt.Errorf("gocql: cluster schema versions not consistent: %+v", schemas)
+	return err
 }
 
 var (
-	ErrQueryArgLength    = errors.New("gocql: query argument length mismatch")
-	ErrTimeoutNoResponse = errors.New("gocql: no response received from cassandra within timeout period")
-	ErrTooManyTimeouts   = errors.New("gocql: too many query timeouts on the connection")
-	ErrConnectionClosed  = errors.New("gocql: connection closed waiting for response")
-	ErrNoStreams         = errors.New("gocql: no streams available on connection")
+	ErrQueryArgLength      = errors.New("gocql: query argument length mismatch")
+	ErrTimeoutNoResponse   = errors.New("gocql: no response received from cassandra within timeout period")
+	ErrTooManyTimeouts     = errors.New("gocql: too many query timeouts on the connection")
+	ErrConnectionClosed    = errors.New("gocql: connection closed waiting for response")
+	ErrNoStreams           = errors.New("gocql: no streams available on connection")
+	ErrHostDown            = errors.New("gocql: host is nil or down")
+	ErrNoPool              = errors.New("gocql: host does not have a pool")
+	ErrNoConnectionsInPool = errors.New("gocql: host pool does not have connections")
 )
+
+type ErrSchemaMismatch struct {
+	schemas []string
+}
+
+func (e *ErrSchemaMismatch) Error() string {
+	return fmt.Sprintf("gocql: cluster schema versions not consistent: %+v", e.schemas)
+}
+
+type QueryError struct {
+	err                 error
+	potentiallyExecuted bool
+	isIdempotent        bool
+}
+
+func (e *QueryError) IsIdempotent() bool {
+	return e.isIdempotent
+}
+
+func (e *QueryError) PotentiallyExecuted() bool {
+	return e.potentiallyExecuted
+}
+
+func (e *QueryError) Error() string {
+	return fmt.Sprintf("%s (potentially executed: %v)", e.err.Error(), e.potentiallyExecuted)
+}
+
+func (e *QueryError) Unwrap() error {
+	return e.err
+}

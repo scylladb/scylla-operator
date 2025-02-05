@@ -85,6 +85,14 @@ func ParseUUID(input string) (UUID, error) {
 	return u, nil
 }
 
+func ParseUUIDMust(input string) UUID {
+	uuid, err := ParseUUID(input)
+	if err != nil {
+		panic(err)
+	}
+	return uuid
+}
+
 // UUIDFromBytes converts a raw byte slice to an UUID.
 func UUIDFromBytes(input []byte) (UUID, error) {
 	var u UUID

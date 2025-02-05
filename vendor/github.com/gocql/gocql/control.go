@@ -35,6 +35,16 @@ const (
 	controlConnClosing  = -1
 )
 
+type controlConnection interface {
+	getConn() *connHost
+	awaitSchemaAgreement() error
+	query(statement string, values ...interface{}) (iter *Iter)
+	discoverProtocol(hosts []*HostInfo) (int, error)
+	connect(hosts []*HostInfo) error
+	close()
+	getSession() *Session
+}
+
 // Ensure that the atomic variable is aligned to a 64bit boundary
 // so that atomic operations can be applied on 32bit architectures.
 type controlConn struct {
@@ -47,6 +57,10 @@ type controlConn struct {
 	retry RetryPolicy
 
 	quit chan struct{}
+}
+
+func (c *controlConn) getSession() *Session {
+	return c.session
 }
 
 func createControlConn(session *Session) *controlConn {
@@ -264,23 +278,23 @@ func (c *controlConn) connect(hosts []*HostInfo) error {
 }
 
 type connHost struct {
-	conn *Conn
+	conn ConnInterface
 	host *HostInfo
 }
 
 func (c *controlConn) setupConn(conn *Conn) error {
 	// we need up-to-date host info for the filterHost call below
-	iter := conn.querySystemLocal(context.TODO())
+	iter := conn.querySystem(context.TODO(), qrySystemLocal)
 	defaultPort := 9042
 	if tcpAddr, ok := conn.conn.RemoteAddr().(*net.TCPAddr); ok {
 		defaultPort = tcpAddr.Port
 	}
-	host, err := c.session.hostInfoFromIter(iter, conn.host.connectAddress, defaultPort)
+	host, err := hostInfoFromIter(iter, conn.host.connectAddress, defaultPort, c.session.cfg.translateAddressPort)
 	if err != nil {
 		return err
 	}
 
-	host = c.session.ring.addOrUpdate(host)
+	host = c.session.hostSource.addOrUpdate(host)
 
 	if c.session.cfg.filterHost(host) {
 		return fmt.Errorf("host was filtered: %v", host.ConnectAddress())
@@ -359,14 +373,19 @@ func (c *controlConn) reconnect() {
 		return
 	}
 
-	err = c.session.refreshRing()
+	err = c.session.refreshRingNow()
 	if err != nil {
 		c.session.logger.Printf("gocql: unable to refresh ring: %v\n", err)
+	}
+
+	err = c.session.metadataDescriber.refreshAllSchema()
+	if err != nil {
+		c.session.logger.Printf("gocql: unable to refresh the schema: %v\n", err)
 	}
 }
 
 func (c *controlConn) attemptReconnect() (*Conn, error) {
-	hosts := c.session.ring.allHosts()
+	hosts := c.session.hostSource.getHostsList()
 	hosts = shuffleHosts(hosts)
 
 	// keep the old behavior of connecting to the old host first by moving it to
@@ -457,45 +476,14 @@ func (c *controlConn) writeFrame(w frameBuilder) (frame, error) {
 	return framer.parseFrame()
 }
 
-func (c *controlConn) withConnHost(fn func(*connHost) *Iter) *Iter {
-	const maxConnectAttempts = 5
-	connectAttempts := 0
-
-	for i := 0; i < maxConnectAttempts; i++ {
-		ch := c.getConn()
-		if ch == nil {
-			if connectAttempts > maxConnectAttempts {
-				break
-			}
-
-			connectAttempts++
-
-			c.reconnect()
-			continue
-		}
-
-		return fn(ch)
-	}
-
-	return &Iter{err: errNoControl}
-}
-
-func (c *controlConn) withConn(fn func(*Conn) *Iter) *Iter {
-	return c.withConnHost(func(ch *connHost) *Iter {
-		return fn(ch.conn)
-	})
-}
-
 // query will return nil if the connection is closed or nil
 func (c *controlConn) query(statement string, values ...interface{}) (iter *Iter) {
 	q := c.session.Query(statement, values...).Consistency(One).RoutingKey([]byte{}).Trace(nil)
 
 	for {
-		iter = c.withConn(func(conn *Conn) *Iter {
-			// we want to keep the query on the control connection
-			q.conn = conn
-			return conn.executeQuery(context.TODO(), q)
-		})
+		ch := c.getConn()
+		q.conn = ch.conn.(*Conn)
+		iter = ch.conn.executeQuery(context.TODO(), q)
 
 		if gocqlDebug && iter.err != nil {
 			c.session.logger.Printf("control: error executing %q: %v\n", statement, iter.err)
@@ -511,9 +499,8 @@ func (c *controlConn) query(statement string, values ...interface{}) (iter *Iter
 }
 
 func (c *controlConn) awaitSchemaAgreement() error {
-	return c.withConn(func(conn *Conn) *Iter {
-		return &Iter{err: conn.awaitSchemaAgreement(context.TODO())}
-	}).err
+	ch := c.getConn()
+	return (&Iter{err: ch.conn.awaitSchemaAgreement(context.TODO())}).err
 }
 
 func (c *controlConn) close() {

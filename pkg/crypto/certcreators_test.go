@@ -79,7 +79,7 @@ func TestX509CertCreator_MakeCertificate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			keygen, err := NewRSAKeyGenerator(1, 1, 42*time.Hour)
+			keygen, err := NewRSAKeyGenerator(1, 1, 4096, 42*time.Hour)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -207,6 +207,13 @@ function run-e2e {
   SO_BUCKET_NAME="${SO_BUCKET_NAME:-}"
   SO_E2E_PARALLELISM="${SO_E2E_PARALLELISM:-0}"
 
+  config_file="$(realpath "$(dirname "${BASH_SOURCE[0]}")/../../../assets/config/config.yaml")"
+  SCYLLADB_VERSION="${SCYLLADB_VERSION:-$(yq '.operator.scyllaDBVersion' "$config_file")}"
+  SCYLLADB_MANAGER_VERSION="${SCYLLADB_MANAGER_VERSION:-$(yq '.operator.scyllaDBManagerVersion' "$config_file")}"
+  SCYLLADB_MANAGER_AGENT_VERSION="${SCYLLADB_MANAGER_AGENT_VERSION:-$(yq '.operator.scyllaDBManagerAgentVersion' "$config_file")}"
+  SCYLLADB_UPDATE_FROM_VERSION="${SCYLLADB_UPDATE_FROM_VERSION:-$(yq '.operatorTests.scyllaDBVersions.updateFrom' "$config_file")}"
+  SCYLLADB_UPGRADE_FROM_VERSION="${SCYLLADB_UPGRADE_FROM_VERSION:-$(yq '.operatorTests.scyllaDBVersions.upgradeFrom' "$config_file")}"
+
   kubectl create namespace e2e --dry-run=client -o=yaml | kubectl_create -f=-
   kubectl create clusterrolebinding e2e --clusterrole=cluster-admin --serviceaccount=e2e:default --dry-run=client -o=yaml | kubectl_create -f=-
   kubectl create -n=e2e pdb my-pdb --selector='app=e2e' --min-available=1 --dry-run=client -o=yaml | kubectl_create -f=-
@@ -274,6 +281,11 @@ spec:
     - "--object-storage-bucket=${SO_BUCKET_NAME}"
     - "--gcs-service-account-key-path=${gcs_sa_in_container_path}"
     - "--s3-credentials-file-path=${s3_credentials_in_container_path}"
+    - "--scylladb-version=${SCYLLADB_VERSION}"
+    - "--scylladb-manager-version=${SCYLLADB_MANAGER_VERSION}"
+    - "--scylladb-manager-agent-version=${SCYLLADB_MANAGER_AGENT_VERSION}"
+    - "--scylladb-update-from-version=${SCYLLADB_UPDATE_FROM_VERSION}"
+    - "--scylladb-upgrade-from-version=${SCYLLADB_UPGRADE_FROM_VERSION}"
     image: "${SO_IMAGE}"
     imagePullPolicy: Always
     volumeMounts:

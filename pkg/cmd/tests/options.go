@@ -2,8 +2,10 @@ package tests
 
 import (
 	"fmt"
+	configassets "github.com/scylladb/scylla-operator/assets/config"
 	"os"
 	"path"
+	"regexp"
 	"strings"
 
 	"github.com/onsi/ginkgo/v2"
@@ -55,7 +57,22 @@ type TestFrameworkOptions struct {
 	objectStorageType           framework.ObjectStorageType
 	gcsServiceAccountKey        []byte
 	s3CredentialsFile           []byte
+	ScyllaDBVersion             string
+	ScyllaDBManagerVersion      string
+	ScyllaDBManagerAgentVersion string
+	ScyllaDBUpdateFrom          string
+	ScyllaDBUpgradeFrom         string
 }
+
+const (
+	// https://github.com/distribution/reference/blob/8c942b0459dfdcc5b6685581dd0a5a470f615bff/regexp.go#L68
+	referenceTagRegexp = `[\w][\w.-]{0,127}`
+
+	// https://github.com/distribution/reference/blob/8c942b0459dfdcc5b6685581dd0a5a470f615bff/regexp.go#L81
+	digestRegexp = `[A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}`
+)
+
+var tagWithOptionalDigestRegexp = regexp.MustCompile("^" + referenceTagRegexp + "(?:@" + digestRegexp + ")?$")
 
 func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent string) *TestFrameworkOptions {
 	return &TestFrameworkOptions{
@@ -69,12 +86,17 @@ func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent stri
 			ClientsBroadcastAddressType: string(scyllav1.BroadcastAddressTypePodIP),
 			StorageClassName:            "",
 		},
-		ObjectStorageBucket:      "",
-		GCSServiceAccountKeyPath: "",
-		S3CredentialsFilePath:    "",
-		objectStorageType:        framework.ObjectStorageTypeNone,
-		gcsServiceAccountKey:     []byte{},
-		s3CredentialsFile:        []byte{},
+		ObjectStorageBucket:         "",
+		GCSServiceAccountKeyPath:    "",
+		S3CredentialsFilePath:       "",
+		objectStorageType:           framework.ObjectStorageTypeNone,
+		gcsServiceAccountKey:        []byte{},
+		s3CredentialsFile:           []byte{},
+		ScyllaDBVersion:             configassets.Project.Operator.ScyllaDBVersion,
+		ScyllaDBManagerVersion:      configassets.Project.Operator.ScyllaDBManagerVersion,
+		ScyllaDBManagerAgentVersion: configassets.Project.Operator.ScyllaDBManagerAgentVersion,
+		ScyllaDBUpdateFrom:          configassets.Project.OperatorTests.ScyllaDBVersions.UpdateFrom,
+		ScyllaDBUpgradeFrom:         configassets.Project.OperatorTests.ScyllaDBVersions.UpgradeFrom,
 	}
 }
 
@@ -118,6 +140,11 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVarP(&o.ObjectStorageBucket, "object-storage-bucket", "", o.ObjectStorageBucket, "Name of the object storage bucket.")
 	cmd.PersistentFlags().StringVarP(&o.GCSServiceAccountKeyPath, "gcs-service-account-key-path", "", o.GCSServiceAccountKeyPath, "Path to a file containing a GCS service account key.")
 	cmd.PersistentFlags().StringVarP(&o.S3CredentialsFilePath, "s3-credentials-file-path", "", o.S3CredentialsFilePath, "Path to the AWS credentials file providing access to the S3 bucket.")
+	cmd.PersistentFlags().StringVarP(&o.ScyllaDBVersion, "scylladb-version", "", o.ScyllaDBVersion, "Version of ScyllaDB to use.")
+	cmd.PersistentFlags().StringVarP(&o.ScyllaDBManagerVersion, "scylladb-manager-version", "", o.ScyllaDBManagerVersion, "Version of Scylla Manager to use.")
+	cmd.PersistentFlags().StringVarP(&o.ScyllaDBManagerAgentVersion, "scylladb-manager-agent-version", "", o.ScyllaDBManagerAgentVersion, "Version of Scylla Manager Agent to use.")
+	cmd.PersistentFlags().StringVarP(&o.ScyllaDBUpdateFrom, "scylladb-update-from-version", "", o.ScyllaDBUpdateFrom, "Version of ScyllaDB to update from.")
+	cmd.PersistentFlags().StringVarP(&o.ScyllaDBUpgradeFrom, "scylladb-upgrade-from-version", "", o.ScyllaDBUpgradeFrom, "Version of ScyllaDB to upgrade from.")
 }
 
 func (o *TestFrameworkOptions) Validate(args []string) error {
@@ -162,6 +189,41 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 
 	if len(o.GCSServiceAccountKeyPath) > 0 && len(o.S3CredentialsFilePath) > 0 {
 		errors = append(errors, fmt.Errorf("gcs-service-account-key-path and s3-credentials-file-path can't be set simultanously"))
+	}
+
+	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBVersion) {
+		errors = append(errors, fmt.Errorf(
+			"invalid scylladb-version format: %q. Expected format: <tag>[@<digest>], e.g., '6.2.0' or '6.2.0@sha256:abcdef...'",
+			o.ScyllaDBVersion,
+		))
+	}
+
+	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBUpdateFrom) {
+		errors = append(errors, fmt.Errorf(
+			"invalid scylladb-update-from-version format: %q. Expected format: <tag>[@<digest>], e.g., '6.2.0' or '6.2.0@sha256:abcdef...'",
+			o.ScyllaDBUpdateFrom,
+		))
+	}
+
+	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBUpgradeFrom) {
+		errors = append(errors, fmt.Errorf(
+			"invalid scylladb-upgrade-from-version format: %q. Expected format: <tag>[@<digest>], e.g., '6.1.2' or '6.1.2@sha256:abcdef...'",
+			o.ScyllaDBUpgradeFrom,
+		))
+	}
+
+	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBManagerVersion) {
+		errors = append(errors, fmt.Errorf(
+			"invalid scylladb-manager-version format: %q. Expected format: <tag>[@<digest>], e.g., '3.4.0' or '3.4.0@sha256:abcdef...'",
+			o.ScyllaDBManagerVersion,
+		))
+	}
+
+	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBManagerAgentVersion) {
+		errors = append(errors, fmt.Errorf(
+			"invalid scylladb-manager-agent-version format: %q. Expected format: <tag>[@<digest>], e.g., '3.4.0' or '3.4.0@sha256:abcdef...'",
+			o.ScyllaDBManagerAgentVersion,
+		))
 	}
 
 	if len(o.ArtifactsDir) > 0 {
@@ -226,13 +288,18 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 		RestConfigs: slices.ConvertSlice(o.ClientConfigs, func(cc genericclioptions.ClientConfig) *rest.Config {
 			return cc.RestConfig
 		}),
-		ArtifactsDir:         o.ArtifactsDir,
-		CleanupPolicy:        o.CleanupPolicy,
-		ScyllaClusterOptions: o.scyllaClusterOptions,
-		ObjectStorageType:    o.objectStorageType,
-		ObjectStorageBucket:  o.ObjectStorageBucket,
-		GCSServiceAccountKey: o.gcsServiceAccountKey,
-		S3CredentialsFile:    o.s3CredentialsFile,
+		ArtifactsDir:                o.ArtifactsDir,
+		CleanupPolicy:               o.CleanupPolicy,
+		ScyllaClusterOptions:        o.scyllaClusterOptions,
+		ObjectStorageType:           o.objectStorageType,
+		ObjectStorageBucket:         o.ObjectStorageBucket,
+		GCSServiceAccountKey:        o.gcsServiceAccountKey,
+		S3CredentialsFile:           o.s3CredentialsFile,
+		ScyllaDBVersion:             o.ScyllaDBVersion,
+		ScyllaDBManagerVersion:      o.ScyllaDBManagerVersion,
+		ScyllaDBManagerAgentVersion: o.ScyllaDBManagerAgentVersion,
+		ScyllaDBUpdateFrom:          o.ScyllaDBUpdateFrom,
+		ScyllaDBUpgradeFrom:         o.ScyllaDBUpgradeFrom,
 	}
 
 	if o.IngressController != nil {

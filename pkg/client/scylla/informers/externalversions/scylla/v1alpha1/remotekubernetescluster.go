@@ -3,13 +3,13 @@
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	apiscyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	versioned "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	internalinterfaces "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -20,7 +20,7 @@ import (
 // RemoteKubernetesClusters.
 type RemoteKubernetesClusterInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.RemoteKubernetesClusterLister
+	Lister() scyllav1alpha1.RemoteKubernetesClusterLister
 }
 
 type remoteKubernetesClusterInformer struct {
@@ -54,7 +54,7 @@ func NewFilteredRemoteKubernetesClusterInformer(client versioned.Interface, resy
 				return client.ScyllaV1alpha1().RemoteKubernetesClusters().Watch(context.TODO(), options)
 			},
 		},
-		&scyllav1alpha1.RemoteKubernetesCluster{},
+		&apiscyllav1alpha1.RemoteKubernetesCluster{},
 		resyncPeriod,
 		indexers,
 	)
@@ -65,9 +65,9 @@ func (f *remoteKubernetesClusterInformer) defaultInformer(client versioned.Inter
 }
 
 func (f *remoteKubernetesClusterInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&scyllav1alpha1.RemoteKubernetesCluster{}, f.defaultInformer)
+	return f.factory.InformerFor(&apiscyllav1alpha1.RemoteKubernetesCluster{}, f.defaultInformer)
 }
 
-func (f *remoteKubernetesClusterInformer) Lister() v1alpha1.RemoteKubernetesClusterLister {
-	return v1alpha1.NewRemoteKubernetesClusterLister(f.Informer().GetIndexer())
+func (f *remoteKubernetesClusterInformer) Lister() scyllav1alpha1.RemoteKubernetesClusterLister {
+	return scyllav1alpha1.NewRemoteKubernetesClusterLister(f.Informer().GetIndexer())
 }

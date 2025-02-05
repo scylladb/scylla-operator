@@ -3,13 +3,13 @@
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	monitoringv1 "github.com/scylladb/scylla-operator/pkg/externalapi/monitoring/v1"
+	externalapimonitoringv1 "github.com/scylladb/scylla-operator/pkg/externalapi/monitoring/v1"
 	versioned "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/clientset/versioned"
 	internalinterfaces "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/informers/externalversions/internalinterfaces"
-	v1 "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/listers/monitoring/v1"
+	monitoringv1 "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/listers/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -20,7 +20,7 @@ import (
 // Alertmanagers.
 type AlertmanagerInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.AlertmanagerLister
+	Lister() monitoringv1.AlertmanagerLister
 }
 
 type alertmanagerInformer struct {
@@ -55,7 +55,7 @@ func NewFilteredAlertmanagerInformer(client versioned.Interface, namespace strin
 				return client.MonitoringV1().Alertmanagers(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&monitoringv1.Alertmanager{},
+		&externalapimonitoringv1.Alertmanager{},
 		resyncPeriod,
 		indexers,
 	)
@@ -66,9 +66,9 @@ func (f *alertmanagerInformer) defaultInformer(client versioned.Interface, resyn
 }
 
 func (f *alertmanagerInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&monitoringv1.Alertmanager{}, f.defaultInformer)
+	return f.factory.InformerFor(&externalapimonitoringv1.Alertmanager{}, f.defaultInformer)
 }
 
-func (f *alertmanagerInformer) Lister() v1.AlertmanagerLister {
-	return v1.NewAlertmanagerLister(f.Informer().GetIndexer())
+func (f *alertmanagerInformer) Lister() monitoringv1.AlertmanagerLister {
+	return monitoringv1.NewAlertmanagerLister(f.Informer().GetIndexer())
 }

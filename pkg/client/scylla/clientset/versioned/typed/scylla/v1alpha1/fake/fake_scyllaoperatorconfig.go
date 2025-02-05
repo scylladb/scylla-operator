@@ -3,120 +3,34 @@
 package fake
 
 import (
-	"context"
-
 	v1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeScyllaOperatorConfigs implements ScyllaOperatorConfigInterface
-type FakeScyllaOperatorConfigs struct {
+// fakeScyllaOperatorConfigs implements ScyllaOperatorConfigInterface
+type fakeScyllaOperatorConfigs struct {
+	*gentype.FakeClientWithList[*v1alpha1.ScyllaOperatorConfig, *v1alpha1.ScyllaOperatorConfigList]
 	Fake *FakeScyllaV1alpha1
 }
 
-var scyllaoperatorconfigsResource = v1alpha1.SchemeGroupVersion.WithResource("scyllaoperatorconfigs")
-
-var scyllaoperatorconfigsKind = v1alpha1.SchemeGroupVersion.WithKind("ScyllaOperatorConfig")
-
-// Get takes name of the scyllaOperatorConfig, and returns the corresponding scyllaOperatorConfig object, and an error if there is any.
-func (c *FakeScyllaOperatorConfigs) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ScyllaOperatorConfig, err error) {
-	emptyResult := &v1alpha1.ScyllaOperatorConfig{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootGetActionWithOptions(scyllaoperatorconfigsResource, name, options), emptyResult)
-	if obj == nil {
-		return emptyResult, err
+func newFakeScyllaOperatorConfigs(fake *FakeScyllaV1alpha1) scyllav1alpha1.ScyllaOperatorConfigInterface {
+	return &fakeScyllaOperatorConfigs{
+		gentype.NewFakeClientWithList[*v1alpha1.ScyllaOperatorConfig, *v1alpha1.ScyllaOperatorConfigList](
+			fake.Fake,
+			"",
+			v1alpha1.SchemeGroupVersion.WithResource("scyllaoperatorconfigs"),
+			v1alpha1.SchemeGroupVersion.WithKind("ScyllaOperatorConfig"),
+			func() *v1alpha1.ScyllaOperatorConfig { return &v1alpha1.ScyllaOperatorConfig{} },
+			func() *v1alpha1.ScyllaOperatorConfigList { return &v1alpha1.ScyllaOperatorConfigList{} },
+			func(dst, src *v1alpha1.ScyllaOperatorConfigList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.ScyllaOperatorConfigList) []*v1alpha1.ScyllaOperatorConfig {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1alpha1.ScyllaOperatorConfigList, items []*v1alpha1.ScyllaOperatorConfig) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.ScyllaOperatorConfig), err
-}
-
-// List takes label and field selectors, and returns the list of ScyllaOperatorConfigs that match those selectors.
-func (c *FakeScyllaOperatorConfigs) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ScyllaOperatorConfigList, err error) {
-	emptyResult := &v1alpha1.ScyllaOperatorConfigList{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootListActionWithOptions(scyllaoperatorconfigsResource, scyllaoperatorconfigsKind, opts), emptyResult)
-	if obj == nil {
-		return emptyResult, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.ScyllaOperatorConfigList{ListMeta: obj.(*v1alpha1.ScyllaOperatorConfigList).ListMeta}
-	for _, item := range obj.(*v1alpha1.ScyllaOperatorConfigList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested scyllaOperatorConfigs.
-func (c *FakeScyllaOperatorConfigs) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewRootWatchActionWithOptions(scyllaoperatorconfigsResource, opts))
-}
-
-// Create takes the representation of a scyllaOperatorConfig and creates it.  Returns the server's representation of the scyllaOperatorConfig, and an error, if there is any.
-func (c *FakeScyllaOperatorConfigs) Create(ctx context.Context, scyllaOperatorConfig *v1alpha1.ScyllaOperatorConfig, opts v1.CreateOptions) (result *v1alpha1.ScyllaOperatorConfig, err error) {
-	emptyResult := &v1alpha1.ScyllaOperatorConfig{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateActionWithOptions(scyllaoperatorconfigsResource, scyllaOperatorConfig, opts), emptyResult)
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.ScyllaOperatorConfig), err
-}
-
-// Update takes the representation of a scyllaOperatorConfig and updates it. Returns the server's representation of the scyllaOperatorConfig, and an error, if there is any.
-func (c *FakeScyllaOperatorConfigs) Update(ctx context.Context, scyllaOperatorConfig *v1alpha1.ScyllaOperatorConfig, opts v1.UpdateOptions) (result *v1alpha1.ScyllaOperatorConfig, err error) {
-	emptyResult := &v1alpha1.ScyllaOperatorConfig{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateActionWithOptions(scyllaoperatorconfigsResource, scyllaOperatorConfig, opts), emptyResult)
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.ScyllaOperatorConfig), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeScyllaOperatorConfigs) UpdateStatus(ctx context.Context, scyllaOperatorConfig *v1alpha1.ScyllaOperatorConfig, opts v1.UpdateOptions) (result *v1alpha1.ScyllaOperatorConfig, err error) {
-	emptyResult := &v1alpha1.ScyllaOperatorConfig{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateSubresourceActionWithOptions(scyllaoperatorconfigsResource, "status", scyllaOperatorConfig, opts), emptyResult)
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.ScyllaOperatorConfig), err
-}
-
-// Delete takes name of the scyllaOperatorConfig and deletes it. Returns an error if one occurs.
-func (c *FakeScyllaOperatorConfigs) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteActionWithOptions(scyllaoperatorconfigsResource, name, opts), &v1alpha1.ScyllaOperatorConfig{})
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeScyllaOperatorConfigs) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionActionWithOptions(scyllaoperatorconfigsResource, opts, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.ScyllaOperatorConfigList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched scyllaOperatorConfig.
-func (c *FakeScyllaOperatorConfigs) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ScyllaOperatorConfig, err error) {
-	emptyResult := &v1alpha1.ScyllaOperatorConfig{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceActionWithOptions(scyllaoperatorconfigsResource, name, pt, data, opts, subresources...), emptyResult)
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.ScyllaOperatorConfig), err
 }

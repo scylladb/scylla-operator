@@ -3,13 +3,13 @@
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	apiscyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	versioned "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	internalinterfaces "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -20,7 +20,7 @@ import (
 // ScyllaOperatorConfigs.
 type ScyllaOperatorConfigInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.ScyllaOperatorConfigLister
+	Lister() scyllav1alpha1.ScyllaOperatorConfigLister
 }
 
 type scyllaOperatorConfigInformer struct {
@@ -54,7 +54,7 @@ func NewFilteredScyllaOperatorConfigInformer(client versioned.Interface, resyncP
 				return client.ScyllaV1alpha1().ScyllaOperatorConfigs().Watch(context.TODO(), options)
 			},
 		},
-		&scyllav1alpha1.ScyllaOperatorConfig{},
+		&apiscyllav1alpha1.ScyllaOperatorConfig{},
 		resyncPeriod,
 		indexers,
 	)
@@ -65,9 +65,9 @@ func (f *scyllaOperatorConfigInformer) defaultInformer(client versioned.Interfac
 }
 
 func (f *scyllaOperatorConfigInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&scyllav1alpha1.ScyllaOperatorConfig{}, f.defaultInformer)
+	return f.factory.InformerFor(&apiscyllav1alpha1.ScyllaOperatorConfig{}, f.defaultInformer)
 }
 
-func (f *scyllaOperatorConfigInformer) Lister() v1alpha1.ScyllaOperatorConfigLister {
-	return v1alpha1.NewScyllaOperatorConfigLister(f.Informer().GetIndexer())
+func (f *scyllaOperatorConfigInformer) Lister() scyllav1alpha1.ScyllaOperatorConfigLister {
+	return scyllav1alpha1.NewScyllaOperatorConfigLister(f.Informer().GetIndexer())
 }

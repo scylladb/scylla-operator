@@ -3,10 +3,10 @@
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // ScyllaDBMonitoringLister helps list ScyllaDBMonitorings.
@@ -14,7 +14,7 @@ import (
 type ScyllaDBMonitoringLister interface {
 	// List lists all ScyllaDBMonitorings in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.ScyllaDBMonitoring, err error)
+	List(selector labels.Selector) (ret []*scyllav1alpha1.ScyllaDBMonitoring, err error)
 	// ScyllaDBMonitorings returns an object that can list and get ScyllaDBMonitorings.
 	ScyllaDBMonitorings(namespace string) ScyllaDBMonitoringNamespaceLister
 	ScyllaDBMonitoringListerExpansion
@@ -22,17 +22,17 @@ type ScyllaDBMonitoringLister interface {
 
 // scyllaDBMonitoringLister implements the ScyllaDBMonitoringLister interface.
 type scyllaDBMonitoringLister struct {
-	listers.ResourceIndexer[*v1alpha1.ScyllaDBMonitoring]
+	listers.ResourceIndexer[*scyllav1alpha1.ScyllaDBMonitoring]
 }
 
 // NewScyllaDBMonitoringLister returns a new ScyllaDBMonitoringLister.
 func NewScyllaDBMonitoringLister(indexer cache.Indexer) ScyllaDBMonitoringLister {
-	return &scyllaDBMonitoringLister{listers.New[*v1alpha1.ScyllaDBMonitoring](indexer, v1alpha1.Resource("scylladbmonitoring"))}
+	return &scyllaDBMonitoringLister{listers.New[*scyllav1alpha1.ScyllaDBMonitoring](indexer, scyllav1alpha1.Resource("scylladbmonitoring"))}
 }
 
 // ScyllaDBMonitorings returns an object that can list and get ScyllaDBMonitorings.
 func (s *scyllaDBMonitoringLister) ScyllaDBMonitorings(namespace string) ScyllaDBMonitoringNamespaceLister {
-	return scyllaDBMonitoringNamespaceLister{listers.NewNamespaced[*v1alpha1.ScyllaDBMonitoring](s.ResourceIndexer, namespace)}
+	return scyllaDBMonitoringNamespaceLister{listers.NewNamespaced[*scyllav1alpha1.ScyllaDBMonitoring](s.ResourceIndexer, namespace)}
 }
 
 // ScyllaDBMonitoringNamespaceLister helps list and get ScyllaDBMonitorings.
@@ -40,15 +40,15 @@ func (s *scyllaDBMonitoringLister) ScyllaDBMonitorings(namespace string) ScyllaD
 type ScyllaDBMonitoringNamespaceLister interface {
 	// List lists all ScyllaDBMonitorings in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.ScyllaDBMonitoring, err error)
+	List(selector labels.Selector) (ret []*scyllav1alpha1.ScyllaDBMonitoring, err error)
 	// Get retrieves the ScyllaDBMonitoring from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.ScyllaDBMonitoring, error)
+	Get(name string) (*scyllav1alpha1.ScyllaDBMonitoring, error)
 	ScyllaDBMonitoringNamespaceListerExpansion
 }
 
 // scyllaDBMonitoringNamespaceLister implements the ScyllaDBMonitoringNamespaceLister
 // interface.
 type scyllaDBMonitoringNamespaceLister struct {
-	listers.ResourceIndexer[*v1alpha1.ScyllaDBMonitoring]
+	listers.ResourceIndexer[*scyllav1alpha1.ScyllaDBMonitoring]
 }

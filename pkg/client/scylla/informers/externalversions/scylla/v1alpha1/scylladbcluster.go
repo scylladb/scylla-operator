@@ -3,13 +3,13 @@
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	apiscyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	versioned "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	internalinterfaces "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -20,7 +20,7 @@ import (
 // ScyllaDBClusters.
 type ScyllaDBClusterInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.ScyllaDBClusterLister
+	Lister() scyllav1alpha1.ScyllaDBClusterLister
 }
 
 type scyllaDBClusterInformer struct {
@@ -55,7 +55,7 @@ func NewFilteredScyllaDBClusterInformer(client versioned.Interface, namespace st
 				return client.ScyllaV1alpha1().ScyllaDBClusters(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&scyllav1alpha1.ScyllaDBCluster{},
+		&apiscyllav1alpha1.ScyllaDBCluster{},
 		resyncPeriod,
 		indexers,
 	)
@@ -66,9 +66,9 @@ func (f *scyllaDBClusterInformer) defaultInformer(client versioned.Interface, re
 }
 
 func (f *scyllaDBClusterInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&scyllav1alpha1.ScyllaDBCluster{}, f.defaultInformer)
+	return f.factory.InformerFor(&apiscyllav1alpha1.ScyllaDBCluster{}, f.defaultInformer)
 }
 
-func (f *scyllaDBClusterInformer) Lister() v1alpha1.ScyllaDBClusterLister {
-	return v1alpha1.NewScyllaDBClusterLister(f.Informer().GetIndexer())
+func (f *scyllaDBClusterInformer) Lister() scyllav1alpha1.ScyllaDBClusterLister {
+	return scyllav1alpha1.NewScyllaDBClusterLister(f.Informer().GetIndexer())
 }

@@ -709,7 +709,7 @@ func addRetry(stack *middleware.Stack, o Options) error {
 		m.LogAttempts = o.ClientLogMode.IsRetries()
 		m.OperationMeter = o.MeterProvider.Meter("github.com/aws/aws-sdk-go-v2/service/dynamodb")
 	})
-	if err := stack.Finalize.Insert(attempt, "Signing", middleware.Before); err != nil {
+	if err := stack.Finalize.Insert(attempt, "ResolveAuthScheme", middleware.Before); err != nil {
 		return err
 	}
 	if err := stack.Finalize.Insert(&retry.MetricsHeader{}, attempt.ID(), middleware.After); err != nil {
@@ -883,6 +883,23 @@ func addUserAgentRetryMode(stack *middleware.Stack, options Options) error {
 		ua.AddUserAgentFeature(awsmiddleware.UserAgentFeatureRetryModeStandard)
 	case *retry.AdaptiveMode:
 		ua.AddUserAgentFeature(awsmiddleware.UserAgentFeatureRetryModeAdaptive)
+	}
+	return nil
+}
+
+func addUserAgentAccountIDEndpointMode(stack *middleware.Stack, options Options) error {
+	ua, err := getOrAddRequestUserAgent(stack)
+	if err != nil {
+		return err
+	}
+
+	switch options.AccountIDEndpointMode {
+	case aws.AccountIDEndpointModePreferred:
+		ua.AddUserAgentFeature(awsmiddleware.UserAgentFeatureAccountIDModePreferred)
+	case aws.AccountIDEndpointModeRequired:
+		ua.AddUserAgentFeature(awsmiddleware.UserAgentFeatureAccountIDModeRequired)
+	case aws.AccountIDEndpointModeDisabled:
+		ua.AddUserAgentFeature(awsmiddleware.UserAgentFeatureAccountIDModeDisabled)
 	}
 	return nil
 }

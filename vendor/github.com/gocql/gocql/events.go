@@ -110,23 +110,33 @@ func (s *Session) handleSchemaEvent(frames []frame) {
 	for _, frame := range frames {
 		switch f := frame.(type) {
 		case *schemaChangeKeyspace:
-			s.schemaDescriber.clearSchema(f.keyspace)
+			s.metadataDescriber.clearSchema(f.keyspace)
 			s.handleKeyspaceChange(f.keyspace, f.change)
 		case *schemaChangeTable:
-			s.schemaDescriber.clearSchema(f.keyspace)
+			s.metadataDescriber.clearSchema(f.keyspace)
+			s.handleTableChange(f.keyspace, f.object, f.change)
 		case *schemaChangeAggregate:
-			s.schemaDescriber.clearSchema(f.keyspace)
+			s.metadataDescriber.clearSchema(f.keyspace)
 		case *schemaChangeFunction:
-			s.schemaDescriber.clearSchema(f.keyspace)
+			s.metadataDescriber.clearSchema(f.keyspace)
 		case *schemaChangeType:
-			s.schemaDescriber.clearSchema(f.keyspace)
+			s.metadataDescriber.clearSchema(f.keyspace)
 		}
 	}
 }
 
 func (s *Session) handleKeyspaceChange(keyspace, change string) {
 	s.control.awaitSchemaAgreement()
+	if change == "DROPPED" || change == "UPDATED" {
+		s.metadataDescriber.removeTabletsWithKeyspace(keyspace)
+	}
 	s.policy.KeyspaceChanged(KeyspaceUpdateEvent{Keyspace: keyspace, Change: change})
+}
+
+func (s *Session) handleTableChange(keyspace, table, change string) {
+	if change == "DROPPED" || change == "UPDATED" {
+		s.metadataDescriber.removeTabletsWithTable(keyspace, table)
+	}
 }
 
 // handleNodeEvent handles inbound status and topology change events.
@@ -193,7 +203,7 @@ func (s *Session) handleNodeUp(eventIp net.IP, eventPort int) {
 		s.logger.Printf("gocql: Session.handleNodeUp: %s:%d\n", eventIp.String(), eventPort)
 	}
 
-	host, ok := s.ring.getHostByIP(eventIp.String())
+	host, ok := s.hostSource.getHostByIP(eventIp.String())
 	if !ok {
 		s.debounceRingRefresh()
 		return
@@ -232,7 +242,7 @@ func (s *Session) handleNodeDown(ip net.IP, port int) {
 		s.logger.Printf("gocql: Session.handleNodeDown: %s:%d\n", ip.String(), port)
 	}
 
-	host, ok := s.ring.getHostByIP(ip.String())
+	host, ok := s.hostSource.getHostByIP(ip.String())
 	if ok {
 		host.setState(NodeDown)
 		if s.cfg.filterHost(host) {

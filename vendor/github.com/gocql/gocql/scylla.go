@@ -282,8 +282,8 @@ func parseCQLProtocolExtensions(supported map[string][]string) []cqlProtocolExte
 }
 
 // isScyllaConn checks if conn is suitable for scyllaConnPicker.
-func isScyllaConn(conn *Conn) bool {
-	return conn.scyllaSupported.nrShards != 0
+func (conn *Conn) isScyllaConn() bool {
+	return conn.getScyllaSupported().nrShards != 0
 }
 
 // scyllaConnPicker is a specialised ConnPicker that selects connections based
@@ -379,10 +379,10 @@ func (p *scyllaConnPicker) Pick(t Token, qry ExecutableQuery) *Conn {
 			tablets := conn.session.getTablets()
 
 			// Search for tablets with Keyspace and Table from the Query
-			l, r := findTablets(tablets, qry.Keyspace(), qry.Table())
+			l, r := tablets.findTablets(qry.Keyspace(), qry.Table())
 
 			if l != -1 {
-				tablet := findTabletForToken(tablets, mmt, l, r)
+				tablet := tablets.findTabletForToken(mmt, l, r)
 
 				for _, replica := range tablet.replicas {
 					if replica.hostId.String() == p.hostId {

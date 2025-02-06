@@ -3,9 +3,9 @@
 package v1
 
 import (
-	"context"
+	context "context"
 
-	v1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scheme "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -21,33 +21,34 @@ type ScyllaClustersGetter interface {
 
 // ScyllaClusterInterface has methods to work with ScyllaCluster resources.
 type ScyllaClusterInterface interface {
-	Create(ctx context.Context, scyllaCluster *v1.ScyllaCluster, opts metav1.CreateOptions) (*v1.ScyllaCluster, error)
-	Update(ctx context.Context, scyllaCluster *v1.ScyllaCluster, opts metav1.UpdateOptions) (*v1.ScyllaCluster, error)
+	Create(ctx context.Context, scyllaCluster *scyllav1.ScyllaCluster, opts metav1.CreateOptions) (*scyllav1.ScyllaCluster, error)
+	Update(ctx context.Context, scyllaCluster *scyllav1.ScyllaCluster, opts metav1.UpdateOptions) (*scyllav1.ScyllaCluster, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, scyllaCluster *v1.ScyllaCluster, opts metav1.UpdateOptions) (*v1.ScyllaCluster, error)
+	UpdateStatus(ctx context.Context, scyllaCluster *scyllav1.ScyllaCluster, opts metav1.UpdateOptions) (*scyllav1.ScyllaCluster, error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.ScyllaCluster, error)
-	List(ctx context.Context, opts metav1.ListOptions) (*v1.ScyllaClusterList, error)
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*scyllav1.ScyllaCluster, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*scyllav1.ScyllaClusterList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.ScyllaCluster, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *scyllav1.ScyllaCluster, err error)
 	ScyllaClusterExpansion
 }
 
 // scyllaClusters implements ScyllaClusterInterface
 type scyllaClusters struct {
-	*gentype.ClientWithList[*v1.ScyllaCluster, *v1.ScyllaClusterList]
+	*gentype.ClientWithList[*scyllav1.ScyllaCluster, *scyllav1.ScyllaClusterList]
 }
 
 // newScyllaClusters returns a ScyllaClusters
 func newScyllaClusters(c *ScyllaV1Client, namespace string) *scyllaClusters {
 	return &scyllaClusters{
-		gentype.NewClientWithList[*v1.ScyllaCluster, *v1.ScyllaClusterList](
+		gentype.NewClientWithList[*scyllav1.ScyllaCluster, *scyllav1.ScyllaClusterList](
 			"scyllaclusters",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1.ScyllaCluster { return &v1.ScyllaCluster{} },
-			func() *v1.ScyllaClusterList { return &v1.ScyllaClusterList{} }),
+			func() *scyllav1.ScyllaCluster { return &scyllav1.ScyllaCluster{} },
+			func() *scyllav1.ScyllaClusterList { return &scyllav1.ScyllaClusterList{} },
+		),
 	}
 }

@@ -3,7 +3,7 @@
 package externalversions
 
 import (
-	"fmt"
+	fmt "fmt"
 
 	v1 "github.com/scylladb/scylla-operator/pkg/externalapi/monitoring/v1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

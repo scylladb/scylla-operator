@@ -13,31 +13,31 @@ type FakeScyllaV1alpha1 struct {
 }
 
 func (c *FakeScyllaV1alpha1) NodeConfigs() v1alpha1.NodeConfigInterface {
-	return &FakeNodeConfigs{c}
+	return newFakeNodeConfigs(c)
 }
 
 func (c *FakeScyllaV1alpha1) RemoteKubernetesClusters() v1alpha1.RemoteKubernetesClusterInterface {
-	return &FakeRemoteKubernetesClusters{c}
+	return newFakeRemoteKubernetesClusters(c)
 }
 
 func (c *FakeScyllaV1alpha1) RemoteOwners(namespace string) v1alpha1.RemoteOwnerInterface {
-	return &FakeRemoteOwners{c, namespace}
+	return newFakeRemoteOwners(c, namespace)
 }
 
 func (c *FakeScyllaV1alpha1) ScyllaDBClusters(namespace string) v1alpha1.ScyllaDBClusterInterface {
-	return &FakeScyllaDBClusters{c, namespace}
+	return newFakeScyllaDBClusters(c, namespace)
 }
 
 func (c *FakeScyllaV1alpha1) ScyllaDBDatacenters(namespace string) v1alpha1.ScyllaDBDatacenterInterface {
-	return &FakeScyllaDBDatacenters{c, namespace}
+	return newFakeScyllaDBDatacenters(c, namespace)
 }
 
 func (c *FakeScyllaV1alpha1) ScyllaDBMonitorings(namespace string) v1alpha1.ScyllaDBMonitoringInterface {
-	return &FakeScyllaDBMonitorings{c, namespace}
+	return newFakeScyllaDBMonitorings(c, namespace)
 }
 
 func (c *FakeScyllaV1alpha1) ScyllaOperatorConfigs() v1alpha1.ScyllaOperatorConfigInterface {
-	return &FakeScyllaOperatorConfigs{c}
+	return newFakeScyllaOperatorConfigs(c)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

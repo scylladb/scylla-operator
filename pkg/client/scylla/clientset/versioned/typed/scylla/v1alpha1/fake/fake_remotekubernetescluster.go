@@ -3,120 +3,34 @@
 package fake
 
 import (
-	"context"
-
 	v1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeRemoteKubernetesClusters implements RemoteKubernetesClusterInterface
-type FakeRemoteKubernetesClusters struct {
+// fakeRemoteKubernetesClusters implements RemoteKubernetesClusterInterface
+type fakeRemoteKubernetesClusters struct {
+	*gentype.FakeClientWithList[*v1alpha1.RemoteKubernetesCluster, *v1alpha1.RemoteKubernetesClusterList]
 	Fake *FakeScyllaV1alpha1
 }
 
-var remotekubernetesclustersResource = v1alpha1.SchemeGroupVersion.WithResource("remotekubernetesclusters")
-
-var remotekubernetesclustersKind = v1alpha1.SchemeGroupVersion.WithKind("RemoteKubernetesCluster")
-
-// Get takes name of the remoteKubernetesCluster, and returns the corresponding remoteKubernetesCluster object, and an error if there is any.
-func (c *FakeRemoteKubernetesClusters) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.RemoteKubernetesCluster, err error) {
-	emptyResult := &v1alpha1.RemoteKubernetesCluster{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootGetActionWithOptions(remotekubernetesclustersResource, name, options), emptyResult)
-	if obj == nil {
-		return emptyResult, err
+func newFakeRemoteKubernetesClusters(fake *FakeScyllaV1alpha1) scyllav1alpha1.RemoteKubernetesClusterInterface {
+	return &fakeRemoteKubernetesClusters{
+		gentype.NewFakeClientWithList[*v1alpha1.RemoteKubernetesCluster, *v1alpha1.RemoteKubernetesClusterList](
+			fake.Fake,
+			"",
+			v1alpha1.SchemeGroupVersion.WithResource("remotekubernetesclusters"),
+			v1alpha1.SchemeGroupVersion.WithKind("RemoteKubernetesCluster"),
+			func() *v1alpha1.RemoteKubernetesCluster { return &v1alpha1.RemoteKubernetesCluster{} },
+			func() *v1alpha1.RemoteKubernetesClusterList { return &v1alpha1.RemoteKubernetesClusterList{} },
+			func(dst, src *v1alpha1.RemoteKubernetesClusterList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.RemoteKubernetesClusterList) []*v1alpha1.RemoteKubernetesCluster {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1alpha1.RemoteKubernetesClusterList, items []*v1alpha1.RemoteKubernetesCluster) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.RemoteKubernetesCluster), err
-}
-
-// List takes label and field selectors, and returns the list of RemoteKubernetesClusters that match those selectors.
-func (c *FakeRemoteKubernetesClusters) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.RemoteKubernetesClusterList, err error) {
-	emptyResult := &v1alpha1.RemoteKubernetesClusterList{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootListActionWithOptions(remotekubernetesclustersResource, remotekubernetesclustersKind, opts), emptyResult)
-	if obj == nil {
-		return emptyResult, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.RemoteKubernetesClusterList{ListMeta: obj.(*v1alpha1.RemoteKubernetesClusterList).ListMeta}
-	for _, item := range obj.(*v1alpha1.RemoteKubernetesClusterList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested remoteKubernetesClusters.
-func (c *FakeRemoteKubernetesClusters) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewRootWatchActionWithOptions(remotekubernetesclustersResource, opts))
-}
-
-// Create takes the representation of a remoteKubernetesCluster and creates it.  Returns the server's representation of the remoteKubernetesCluster, and an error, if there is any.
-func (c *FakeRemoteKubernetesClusters) Create(ctx context.Context, remoteKubernetesCluster *v1alpha1.RemoteKubernetesCluster, opts v1.CreateOptions) (result *v1alpha1.RemoteKubernetesCluster, err error) {
-	emptyResult := &v1alpha1.RemoteKubernetesCluster{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateActionWithOptions(remotekubernetesclustersResource, remoteKubernetesCluster, opts), emptyResult)
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.RemoteKubernetesCluster), err
-}
-
-// Update takes the representation of a remoteKubernetesCluster and updates it. Returns the server's representation of the remoteKubernetesCluster, and an error, if there is any.
-func (c *FakeRemoteKubernetesClusters) Update(ctx context.Context, remoteKubernetesCluster *v1alpha1.RemoteKubernetesCluster, opts v1.UpdateOptions) (result *v1alpha1.RemoteKubernetesCluster, err error) {
-	emptyResult := &v1alpha1.RemoteKubernetesCluster{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateActionWithOptions(remotekubernetesclustersResource, remoteKubernetesCluster, opts), emptyResult)
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.RemoteKubernetesCluster), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeRemoteKubernetesClusters) UpdateStatus(ctx context.Context, remoteKubernetesCluster *v1alpha1.RemoteKubernetesCluster, opts v1.UpdateOptions) (result *v1alpha1.RemoteKubernetesCluster, err error) {
-	emptyResult := &v1alpha1.RemoteKubernetesCluster{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateSubresourceActionWithOptions(remotekubernetesclustersResource, "status", remoteKubernetesCluster, opts), emptyResult)
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.RemoteKubernetesCluster), err
-}
-
-// Delete takes name of the remoteKubernetesCluster and deletes it. Returns an error if one occurs.
-func (c *FakeRemoteKubernetesClusters) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteActionWithOptions(remotekubernetesclustersResource, name, opts), &v1alpha1.RemoteKubernetesCluster{})
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeRemoteKubernetesClusters) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionActionWithOptions(remotekubernetesclustersResource, opts, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.RemoteKubernetesClusterList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched remoteKubernetesCluster.
-func (c *FakeRemoteKubernetesClusters) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.RemoteKubernetesCluster, err error) {
-	emptyResult := &v1alpha1.RemoteKubernetesCluster{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceActionWithOptions(remotekubernetesclustersResource, name, pt, data, opts, subresources...), emptyResult)
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.RemoteKubernetesCluster), err
 }

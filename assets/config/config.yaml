@@ -1,5 +1,5 @@
 operator:
-  scyllaDBVersion: "6.2.0"
+  scyllaDBVersion: "2025.1.0-rc1"
   # scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride sets enterprise version
   # that requires consistent_cluster_management workaround for restore.
   # In the future, enterprise versions should be run as a different config instance in its own run.
@@ -13,6 +13,6 @@ operator:
   prometheusVersion: "v2.54.1"
 operatorTests:
   scyllaDBVersions:
-    updateFrom: "6.2.0-rc2"
-    upgradeFrom: "6.1.2"
+    updateFrom: "6.2.2"
+    upgradeFrom: "6.2.2"
   nodeSetupImage: "quay.io/scylladb/scylla-operator-images:node-setup-v0.0.3@sha256:c6b3de240cc5c884d5c617485bae35c51572cdfd39b6431d2e1f759c7d7feea1"

@@ -43,13 +43,18 @@ const (
 )
 
 type TestContextType struct {
-	RestConfigs          []*restclient.Config
-	ArtifactsDir         string
-	CleanupPolicy        CleanupPolicyType
-	IngressController    *IngressController
-	ScyllaClusterOptions *ScyllaClusterOptions
-	ObjectStorageType    ObjectStorageType
-	ObjectStorageBucket  string
-	GCSServiceAccountKey []byte
-	S3CredentialsFile    []byte
+	RestConfigs                 []*restclient.Config
+	ArtifactsDir                string
+	CleanupPolicy               CleanupPolicyType
+	IngressController           *IngressController
+	ScyllaClusterOptions        *ScyllaClusterOptions
+	ObjectStorageType           ObjectStorageType
+	ObjectStorageBucket         string
+	GCSServiceAccountKey        []byte
+	S3CredentialsFile           []byte
+	ScyllaDBVersion             string
+	ScyllaDBManagerVersion      string
+	ScyllaDBManagerAgentVersion string
+	ScyllaDBUpdateFrom          string
+	ScyllaDBUpgradeFrom         string
 }

@@ -113,6 +113,19 @@ if [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME:-}" ]]; then
 elif [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME+x}" ]]; then
   yq e --inplace 'del(.spec.datacenter.racks[0].storage.storageClassName)' "${DEPLOY_DIR}/manager/50_scyllacluster.yaml"
 fi
+
+if [[ -n "${SCYLLADB_VERSION:-}" ]]; then
+  yq e --inplace '.spec.version = env(SCYLLADB_VERSION)' "${DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+fi
+
+if [[ -n "${SCYLLA_MANAGER_VERSION:-}" ]]; then
+  yq e --inplace '.spec.template.spec.containers[0].image |= "docker.io/scylladb/scylla-manager:" + env(SCYLLA_MANAGER_VERSION)' "${DEPLOY_DIR}/manager/50_manager_deployment.yaml"
+fi
+
+if [[ -n "${SCYLLA_MANAGER_AGENT_VERSION:-}" ]]; then
+  yq e --inplace '.spec.agentVersion = env(SCYLLA_MANAGER_AGENT_VERSION)' "${DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+fi
+
 kubectl_create -f "${DEPLOY_DIR}"/manager
 
 kubectl -n=scylla-manager wait --timeout=10m --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster

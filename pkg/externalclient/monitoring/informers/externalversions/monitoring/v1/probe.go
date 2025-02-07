@@ -3,13 +3,13 @@
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	monitoringv1 "github.com/scylladb/scylla-operator/pkg/externalapi/monitoring/v1"
+	externalapimonitoringv1 "github.com/scylladb/scylla-operator/pkg/externalapi/monitoring/v1"
 	versioned "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/clientset/versioned"
 	internalinterfaces "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/informers/externalversions/internalinterfaces"
-	v1 "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/listers/monitoring/v1"
+	monitoringv1 "github.com/scylladb/scylla-operator/pkg/externalclient/monitoring/listers/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -20,7 +20,7 @@ import (
 // Probes.
 type ProbeInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.ProbeLister
+	Lister() monitoringv1.ProbeLister
 }
 
 type probeInformer struct {
@@ -55,7 +55,7 @@ func NewFilteredProbeInformer(client versioned.Interface, namespace string, resy
 				return client.MonitoringV1().Probes(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&monitoringv1.Probe{},
+		&externalapimonitoringv1.Probe{},
 		resyncPeriod,
 		indexers,
 	)
@@ -66,9 +66,9 @@ func (f *probeInformer) defaultInformer(client versioned.Interface, resyncPeriod
 }
 
 func (f *probeInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&monitoringv1.Probe{}, f.defaultInformer)
+	return f.factory.InformerFor(&externalapimonitoringv1.Probe{}, f.defaultInformer)
 }
 
-func (f *probeInformer) Lister() v1.ProbeLister {
-	return v1.NewProbeLister(f.Informer().GetIndexer())
+func (f *probeInformer) Lister() monitoringv1.ProbeLister {
+	return monitoringv1.NewProbeLister(f.Informer().GetIndexer())
 }

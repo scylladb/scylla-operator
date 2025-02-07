@@ -5,15 +5,13 @@
 package gocql
 
 import (
-	"crypto/tls"
-	"crypto/x509"
-	"errors"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/gocql/gocql/debounce"
 )
 
 // interface to implement to receive the host information
@@ -27,58 +25,8 @@ type SetPartitioner interface {
 }
 
 // interface to implement to receive the tablets value
-// Experimental, this interface and use may change
 type SetTablets interface {
-	SetTablets(tablets []*TabletInfo)
-}
-
-func setupTLSConfig(sslOpts *SslOptions) (*tls.Config, error) {
-	//  Config.InsecureSkipVerify | EnableHostVerification | Result
-	//  Config is nil             | true                   | verify host
-	//  Config is nil             | false                  | do not verify host
-	//  false                     | false                  | verify host
-	//  true                      | false                  | do not verify host
-	//  false                     | true                   | verify host
-	//  true                      | true                   | verify host
-	var tlsConfig *tls.Config
-	if sslOpts.Config == nil {
-		tlsConfig = &tls.Config{
-			InsecureSkipVerify: !sslOpts.EnableHostVerification,
-		}
-	} else {
-		// use clone to avoid race.
-		tlsConfig = sslOpts.Config.Clone()
-	}
-
-	if tlsConfig.InsecureSkipVerify && sslOpts.EnableHostVerification {
-		tlsConfig.InsecureSkipVerify = false
-	}
-
-	// ca cert is optional
-	if sslOpts.CaPath != "" {
-		if tlsConfig.RootCAs == nil {
-			tlsConfig.RootCAs = x509.NewCertPool()
-		}
-
-		pem, err := ioutil.ReadFile(sslOpts.CaPath)
-		if err != nil {
-			return nil, fmt.Errorf("connectionpool: unable to open CA certs: %v", err)
-		}
-
-		if !tlsConfig.RootCAs.AppendCertsFromPEM(pem) {
-			return nil, errors.New("connectionpool: failed parsing or CA certs")
-		}
-	}
-
-	if sslOpts.CertPath != "" || sslOpts.KeyPath != "" {
-		mycert, err := tls.LoadX509KeyPair(sslOpts.CertPath, sslOpts.KeyPath)
-		if err != nil {
-			return nil, fmt.Errorf("connectionpool: unable to load X509 key pair: %v", err)
-		}
-		tlsConfig.Certificates = append(tlsConfig.Certificates, mycert)
-	}
-
-	return tlsConfig, nil
+	SetTablets(tablets TabletInfoList)
 }
 
 type policyConnPool struct {
@@ -93,22 +41,9 @@ type policyConnPool struct {
 }
 
 func connConfig(cfg *ClusterConfig) (*ConnConfig, error) {
-	var (
-		err        error
-		hostDialer HostDialer
-	)
+	hostDialer := cfg.HostDialer
 
-	hostDialer = cfg.HostDialer
-	var tlsConfig *tls.Config
 	if hostDialer == nil {
-		// TODO(zariel): move tls config setup into session init.
-		if cfg.SslOpts != nil {
-			tlsConfig, err = setupTLSConfig(cfg.SslOpts)
-			if err != nil {
-				return nil, err
-			}
-		}
-
 		dialer := cfg.Dialer
 		if dialer == nil {
 			d := net.Dialer{
@@ -123,7 +58,7 @@ func connConfig(cfg *ClusterConfig) (*ConnConfig, error) {
 		hostDialer = &scyllaDialer{
 			dialer:    dialer,
 			logger:    cfg.logger(),
-			tlsConfig: tlsConfig,
+			tlsConfig: cfg.getActualTLSConfig(),
 			cfg:       cfg,
 		}
 	}
@@ -141,7 +76,7 @@ func connConfig(cfg *ClusterConfig) (*ConnConfig, error) {
 		AuthProvider:   cfg.AuthProvider,
 		Keepalive:      cfg.SocketKeepalive,
 		Logger:         cfg.logger(),
-		tlsConfig:      tlsConfig,
+		tlsConfig:      cfg.getActualTLSConfig(),
 	}, nil
 }
 
@@ -269,7 +204,7 @@ func (p *policyConnPool) addHost(host *HostInfo) {
 	}
 	p.mu.Unlock()
 
-	pool.fill()
+	pool.fill_debounce()
 }
 
 func (p *policyConnPool) removeHost(hostID string) {
@@ -298,6 +233,7 @@ type hostConnPool struct {
 	connPicker ConnPicker
 	closed     bool
 	filling    bool
+	debouncer  *debounce.SimpleDebouncer
 
 	logger StdLogger
 }
@@ -322,6 +258,7 @@ func newHostConnPool(session *Session, host *HostInfo, port, size int,
 		filling:    false,
 		closed:     false,
 		logger:     session.logger,
+		debouncer:  debounce.NewSimpleDebouncer(),
 	}
 
 	// the pool is not filled or connected
@@ -340,7 +277,7 @@ func (pool *hostConnPool) Pick(token Token, qry ExecutableQuery) *Conn {
 	size, missing := pool.connPicker.Size()
 	if missing > 0 {
 		// try to fill the pool
-		go pool.fill()
+		go pool.fill_debounce()
 
 		if size == 0 {
 			return nil
@@ -449,6 +386,10 @@ func (pool *hostConnPool) fill() {
 			go pool.session.handleNodeConnected(pool.host)
 		}
 	}()
+}
+
+func (pool *hostConnPool) fill_debounce() {
+	pool.debouncer.Debounce(pool.fill)
 }
 
 func (pool *hostConnPool) logConnectErr(err error) {
@@ -587,7 +528,7 @@ func (pool *hostConnPool) initConnPicker(conn *Conn) {
 		return
 	}
 
-	if isScyllaConn(conn) {
+	if conn.isScyllaConn() {
 		pool.connPicker = newScyllaConnPicker(conn)
 		return
 	}
@@ -617,4 +558,5 @@ func (pool *hostConnPool) HandleError(conn *Conn, err error, closed bool) {
 	}
 
 	pool.connPicker.Remove(conn)
+	go pool.fill_debounce()
 }

@@ -10,7 +10,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"strconv"
 	"strings"
@@ -19,6 +18,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/gocql/gocql/debounce"
 	"github.com/gocql/gocql/internal/lru"
 )
 
@@ -36,7 +36,7 @@ type Session struct {
 	pageSize            int
 	prefetch            float64
 	routingKeyInfoCache routingKeyInfoLRU
-	schemaDescriber     *schemaDescriber
+	metadataDescriber   *metadataDescriber
 	trace               Tracer
 	queryObserver       QueryObserver
 	batchObserver       BatchObserver
@@ -44,7 +44,7 @@ type Session struct {
 	frameObserver       FrameHeaderObserver
 	streamObserver      StreamObserver
 	hostSource          *ringDescriber
-	ringRefresher       *refreshDebouncer
+	ringRefresher       *debounce.RefreshDebouncer
 	stmtsLRU            *preparedLRU
 
 	connCfg *ConnConfig
@@ -53,12 +53,9 @@ type Session struct {
 	pool     *policyConnPool
 	policy   HostSelectionPolicy
 
-	ring     ring
-	metadata clusterMetadata
-
 	mu sync.RWMutex
 
-	control *controlConn
+	control controlConnection
 
 	// event handlers
 	nodeEvents   *eventDebouncer
@@ -82,12 +79,15 @@ type Session struct {
 	// isInitialized is true once Session.init succeeds.
 	// you can use initialized() to read the value.
 	isInitialized bool
+	initErr       error
+	readyCh       chan struct{}
 
 	logger StdLogger
 
 	tabletsRoutingV1 bool
 
 	usingTimeoutClause string
+	warningHandler     WarningHandler
 }
 
 var queryPool = &sync.Pool{
@@ -117,18 +117,10 @@ func addrsToHosts(addrs []string, defaultPort int, logger StdLogger) ([]*HostInf
 	return hosts, nil
 }
 
-// NewSession wraps an existing Node.
-func NewSession(cfg ClusterConfig) (*Session, error) {
-	// Check that hosts in the ClusterConfig is not empty
-	if len(cfg.Hosts) < 1 {
-		return nil, ErrNoHosts
+func newSessionCommon(cfg ClusterConfig) (*Session, error) {
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("gocql: unable to create session: cluster config validation failed: %v", err)
 	}
-
-	// Check that either Authenticator is set or AuthProvider, not both
-	if cfg.Authenticator != nil && cfg.AuthProvider != nil {
-		return nil, errors.New("Can't use both Authenticator and AuthProvider in cluster config.")
-	}
-
 	// TODO: we should take a context in here at some point
 	ctx, cancel := context.WithCancel(context.TODO())
 
@@ -142,6 +134,7 @@ func NewSession(cfg ClusterConfig) (*Session, error) {
 		ctx:             ctx,
 		cancel:          cancel,
 		logger:          cfg.logger(),
+		readyCh:         make(chan struct{}, 1),
 	}
 
 	// Close created resources on error otherwise they'll leak
@@ -152,15 +145,17 @@ func NewSession(cfg ClusterConfig) (*Session, error) {
 		}
 	}()
 
-	s.schemaDescriber = newSchemaDescriber(s)
+	s.metadataDescriber = newMetadataDescriber(s)
 
 	s.nodeEvents = newEventDebouncer("NodeEvents", s.handleNodeEvent, s.logger)
 	s.schemaEvents = newEventDebouncer("SchemaEvents", s.handleSchemaEvent, s.logger)
 
 	s.routingKeyInfoCache.lru = lru.New(cfg.MaxRoutingKeyInfo)
 
-	s.hostSource = &ringDescriber{session: s}
-	s.ringRefresher = newRefreshDebouncer(ringRefreshDebounceTime, func() error { return refreshRing(s.hostSource) })
+	s.hostSource = &ringDescriber{cfg: &s.cfg, logger: s.logger}
+	s.ringRefresher = debounce.NewRefreshDebouncer(debounce.RingRefreshDebounceTime, func() error {
+		return s.refreshRing()
+	})
 
 	if cfg.PoolConfig.HostSelectionPolicy == nil {
 		cfg.PoolConfig.HostSelectionPolicy = RoundRobinHostPolicy()
@@ -188,6 +183,18 @@ func NewSession(cfg ClusterConfig) (*Session, error) {
 		return nil, fmt.Errorf("gocql: unable to create session: %v", err)
 	}
 	s.connCfg = connCfg
+	if cfg.WarningsHandlerBuilder != nil {
+		s.warningHandler = cfg.WarningsHandlerBuilder(s)
+	}
+	return s, nil
+}
+
+// NewSession wraps an existing Node.
+func NewSession(cfg ClusterConfig) (*Session, error) {
+	s, err := newSessionCommon(cfg)
+	if err != nil {
+		return nil, err
+	}
 
 	if err = s.init(); err != nil {
 		if err == ErrNoConnectionsStarted {
@@ -200,9 +207,28 @@ func NewSession(cfg ClusterConfig) (*Session, error) {
 		}
 	}
 
-	if s.policy.IsOperational(s) != nil {
-		return nil, fmt.Errorf("gocql: unable to create session: %v", err)
+	s.readyCh <- struct{}{}
+	close(s.readyCh)
+
+	return s, nil
+}
+
+func NewSessionNonBlocking(cfg ClusterConfig) (*Session, error) {
+	s, err := newSessionCommon(cfg)
+	if err != nil {
+		return nil, err
 	}
+
+	go func() {
+		if initErr := s.init(); initErr != nil {
+			s.sessionStateMu.Lock()
+			s.initErr = fmt.Errorf("gocql: unable to create session: %v", initErr)
+			s.sessionStateMu.Unlock()
+		}
+
+		s.readyCh <- struct{}{}
+		close(s.readyCh)
+	}()
 
 	return s, nil
 }
@@ -216,37 +242,61 @@ func (s *Session) init() error {
 	if err != nil {
 		return err
 	}
-	s.ring.endpoints = hosts
 
 	if !s.cfg.disableControlConn {
 		s.control = createControlConn(s)
-		if s.cfg.ProtoVersion == 0 {
-			proto, err := s.control.discoverProtocol(hosts)
-			if err != nil {
-				return fmt.Errorf("unable to discover protocol version: %v", err)
-			} else if proto == 0 {
-				return errors.New("unable to discovery protocol version")
+		reconnectionPolicy := s.cfg.InitialReconnectionPolicy
+		var lastErr error
+		for i := 0; i < reconnectionPolicy.GetMaxRetries(); i++ {
+			lastErr = nil
+			if i != 0 {
+				time.Sleep(reconnectionPolicy.GetInterval(i))
 			}
 
-			// TODO(zariel): we really only need this in 1 place
-			s.cfg.ProtoVersion = proto
-			s.connCfg.ProtoVersion = proto
+			if s.cfg.ProtoVersion == 0 {
+				proto, err := s.control.discoverProtocol(hosts)
+				if err != nil {
+					err = fmt.Errorf("unable to discover protocol version: %v\n", err)
+					if gocqlDebug {
+						s.logger.Println(err.Error())
+					}
+					lastErr = err
+					continue
+				} else if proto == 0 {
+					return errors.New("unable to discovery protocol version")
+				}
+
+				// TODO(zariel): we really only need this in 1 place
+				s.cfg.ProtoVersion = proto
+				s.connCfg.ProtoVersion = proto
+			}
+
+			if err := s.control.connect(hosts); err != nil {
+				err = fmt.Errorf("unable to create control connection: %v\n", err)
+				if gocqlDebug {
+					s.logger.Println(err.Error())
+				}
+				lastErr = err
+				continue
+			}
+		}
+		if lastErr != nil {
+			return fmt.Errorf("unable to connect to the cluster, last error: %v", lastErr.Error())
 		}
 
-		if err := s.control.connect(hosts); err != nil {
-			return err
-		}
-		conn := s.control.getConn().conn
+		conn := s.control.getConn().conn.(*Conn)
 		conn.mu.Lock()
 		s.tabletsRoutingV1 = conn.isTabletSupported()
-		if s.cfg.MetadataSchemaRequestTimeout > time.Duration(0) && isScyllaConn(conn) {
+		if s.cfg.MetadataSchemaRequestTimeout > time.Duration(0) && conn.isScyllaConn() {
 			s.usingTimeoutClause = " USING TIMEOUT " + strconv.FormatInt(int64(s.cfg.MetadataSchemaRequestTimeout.Milliseconds()), 10) + "ms"
 		}
 		conn.mu.Unlock()
 
+		s.hostSource.setControlConn(s.control)
+
 		if !s.cfg.DisableInitialHostLookup {
 			var partitioner string
-			newHosts, partitioner, err := s.hostSource.GetHosts()
+			newHosts, partitioner, err := s.hostSource.GetHostsFromSystem()
 			if err != nil {
 				return err
 			}
@@ -261,9 +311,8 @@ func (s *Session) init() error {
 			hosts = filteredHosts
 
 			if s.tabletsRoutingV1 {
-				tablets := []*TabletInfo{}
-				s.ring.setTablets(tablets)
-				s.policy.SetTablets(tablets)
+				tablets := TabletInfoList{}
+				s.metadataDescriber.setTablets(tablets)
 			}
 		}
 	}
@@ -295,7 +344,7 @@ func (s *Session) init() error {
 	// again
 	atomic.AddInt64(&left, 1)
 	for _, host := range hostMap {
-		host := s.ring.addOrUpdate(host)
+		host := s.hostSource.addOrUpdate(host)
 		if s.cfg.filterHost(host) {
 			continue
 		}
@@ -357,7 +406,7 @@ func (s *Session) init() error {
 		newer, _ := checkSystemSchema(s.control)
 		s.useSystemSchema = newer
 	} else {
-		version := s.ring.rrHost().Version()
+		version := s.hostSource.getHostsList()[0].Version()
 		s.useSystemSchema = version.AtLeast(3, 0, 0)
 		s.hasAggregatesAndFunctions = version.AtLeast(2, 2, 0)
 	}
@@ -370,6 +419,10 @@ func (s *Session) init() error {
 	// parameters. This is used by tokenAwareHostPolicy to discover replicas.
 	if !s.cfg.disableControlConn && s.cfg.Keyspace != "" {
 		s.policy.KeyspaceChanged(KeyspaceUpdateEvent{Keyspace: s.cfg.Keyspace})
+	}
+
+	if err = s.policy.IsOperational(s); err != nil {
+		return fmt.Errorf("gocql: unable to create session: %v", err)
 	}
 
 	s.sessionStateMu.Lock()
@@ -389,9 +442,11 @@ func (s *Session) AwaitSchemaAgreement(ctx context.Context) error {
 	if s.cfg.disableControlConn {
 		return errNoControl
 	}
-	return s.control.withConn(func(conn *Conn) *Iter {
-		return &Iter{err: conn.awaitSchemaAgreement(ctx)}
-	}).err
+	if err := s.Ready(); err != nil {
+		return err
+	}
+	ch := s.control.getConn()
+	return (&Iter{err: ch.conn.awaitSchemaAgreement(ctx)}).err
 }
 
 func (s *Session) reconnectDownedHosts(intv time.Duration) {
@@ -401,11 +456,11 @@ func (s *Session) reconnectDownedHosts(intv time.Duration) {
 	for {
 		select {
 		case <-reconnectTicker.C:
-			hosts := s.ring.allHosts()
+			hosts := s.hostSource.getHostsList()
 
-			// Print session.ring for debug.
+			// Print session.hostSource for debug.
 			if gocqlDebug {
-				buf := bytes.NewBufferString("Session.ring:")
+				buf := bytes.NewBufferString("Session.hostSource:")
 				for _, h := range hosts {
 					buf.WriteString("[" + h.ConnectAddress().String() + ":" + h.State().String() + "]")
 				}
@@ -526,7 +581,7 @@ func (s *Session) Close() {
 	}
 
 	if s.ringRefresher != nil {
-		s.ringRefresher.stop()
+		s.ringRefresher.Stop()
 	}
 
 	if s.cancel != nil {
@@ -556,10 +611,28 @@ func (s *Session) initialized() bool {
 	return initialized
 }
 
+func (s *Session) Ready() error {
+	s.sessionStateMu.RLock()
+	err := ErrSessionNotReady
+	if s.isInitialized || s.initErr != nil {
+		err = s.initErr
+	}
+	s.sessionStateMu.RUnlock()
+	return err
+}
+
+func (s *Session) WaitUntilReady() error {
+	<-s.readyCh
+	return s.initErr
+}
+
 func (s *Session) executeQuery(qry *Query) (it *Iter) {
 	// fail fast
 	if s.Closed() {
 		return &Iter{err: ErrSessionClosed}
+	}
+	if err := s.Ready(); err != nil {
+		return &Iter{err: err}
 	}
 
 	iter, err := s.executor.executeQuery(qry)
@@ -577,7 +650,7 @@ func (s *Session) removeHost(h *HostInfo) {
 	s.policy.RemoveHost(h)
 	hostID := h.HostID()
 	s.pool.removeHost(hostID)
-	s.ring.removeHost(hostID)
+	s.hostSource.removeHost(hostID)
 }
 
 // KeyspaceMetadata returns the schema metadata for the keyspace specified. Returns an error if the keyspace does not exist.
@@ -585,28 +658,31 @@ func (s *Session) KeyspaceMetadata(keyspace string) (*KeyspaceMetadata, error) {
 	// fail fast
 	if s.Closed() {
 		return nil, ErrSessionClosed
+	} else if err := s.Ready(); err != nil {
+		return nil, err
 	} else if keyspace == "" {
 		return nil, ErrNoKeyspace
 	}
 
-	return s.schemaDescriber.getSchema(keyspace)
+	return s.metadataDescriber.getSchema(keyspace)
 }
 
 // TabletsMetadata returns the metadata about tablets
-// Experimental, this interface and use may change
-func (s *Session) TabletsMetadata() (*TabletsMetadata, error) {
+func (s *Session) TabletsMetadata() (TabletInfoList, error) {
 	// fail fast
 	if s.Closed() {
 		return nil, ErrSessionClosed
+	} else if err := s.Ready(); err != nil {
+		return nil, err
 	} else if !s.tabletsRoutingV1 {
 		return nil, ErrTabletsNotUsed
 	}
 
-	return s.schemaDescriber.getTabletsSchema(), nil
+	return s.metadataDescriber.getTablets(), nil
 }
 
 func (s *Session) getConn() *Conn {
-	hosts := s.ring.allHosts()
+	hosts := s.hostSource.getHostsList()
 	for _, host := range hosts {
 		if !host.IsUp() {
 			continue
@@ -623,12 +699,8 @@ func (s *Session) getConn() *Conn {
 	return nil
 }
 
-// Experimental, this interface and use may change
-func (s *Session) getTablets() []*TabletInfo {
-	s.ring.mu.Lock()
-	defer s.ring.mu.Unlock()
-
-	return s.ring.tabletList
+func (s *Session) getTablets() TabletInfoList {
+	return s.metadataDescriber.getTablets()
 }
 
 // returns routing key indexes and type info
@@ -784,10 +856,20 @@ func (b *Batch) execute(ctx context.Context, conn *Conn) *Iter {
 	return conn.executeBatch(ctx, b)
 }
 
+// Exec executes a batch operation and returns nil if successful
+// otherwise an error is returned describing the failure.
+func (b *Batch) Exec() error {
+	iter := b.session.executeBatch(b)
+	return iter.Close()
+}
+
 func (s *Session) executeBatch(batch *Batch) *Iter {
 	// fail fast
 	if s.Closed() {
 		return &Iter{err: ErrSessionClosed}
+	}
+	if err := s.Ready(); err != nil {
+		return &Iter{err: err}
 	}
 
 	// Prevent the execution of the batch if greater than the limit
@@ -964,7 +1046,7 @@ type Query struct {
 	trace                 Tracer
 	observer              QueryObserver
 	session               *Session
-	conn                  *Conn
+	conn                  ConnInterface
 	rt                    RetryPolicy
 	spec                  SpeculativeExecutionPolicy
 	binding               func(q *QueryInfo) ([]interface{}, error)
@@ -1539,7 +1621,7 @@ type Iter struct {
 	next    *nextIter
 	host    *HostInfo
 
-	framer *framer
+	framer framerInterface
 	closed int32
 }
 
@@ -1678,7 +1760,7 @@ func (iter *Iter) Scanner() Scanner {
 }
 
 func (iter *Iter) readColumn() ([]byte, error) {
-	return iter.framer.readBytesInternal()
+	return iter.framer.ReadBytesInternal()
 }
 
 // Scan consumes the next row of the iterator and copies the columns of the
@@ -1744,7 +1826,7 @@ func (iter *Iter) Scan(dest ...interface{}) bool {
 // See https://datastax.github.io/java-driver/manual/custom_payloads/
 func (iter *Iter) GetCustomPayload() map[string][]byte {
 	if iter.framer != nil {
-		return iter.framer.customPayload
+		return iter.framer.GetCustomPayload()
 	}
 	return nil
 }
@@ -1754,7 +1836,7 @@ func (iter *Iter) GetCustomPayload() map[string][]byte {
 // This is only available starting with CQL Protocol v4.
 func (iter *Iter) Warnings() []string {
 	if iter.framer != nil {
-		return iter.framer.header.warnings
+		return iter.framer.GetHeaderWarnings()
 	}
 	return nil
 }
@@ -1857,20 +1939,15 @@ type Batch struct {
 	routingInfo *queryRoutingInfo
 }
 
-// NewBatch creates a new batch operation without defaults from the cluster
+// NewBatch creates a new batch operation using defaults defined in the cluster
 //
-// Deprecated: use session.NewBatch instead
-func NewBatch(typ BatchType) *Batch {
-	return &Batch{
-		Type:        typ,
-		metrics:     &queryMetrics{m: make(map[string]*hostMetrics)},
-		spec:        &NonSpeculativeExecution{},
-		routingInfo: &queryRoutingInfo{},
-	}
+// Deprecated: use session.Batch instead
+func (s *Session) NewBatch(typ BatchType) *Batch {
+	return s.Batch(typ)
 }
 
-// NewBatch creates a new batch operation using defaults defined in the cluster
-func (s *Session) NewBatch(typ BatchType) *Batch {
+// Batch creates a new batch operation using defaults defined in the cluster
+func (s *Session) Batch(typ BatchType) *Batch {
 	s.mu.RLock()
 	batch := &Batch{
 		Type:             typ,
@@ -1982,8 +2059,9 @@ func (b *Batch) SpeculativeExecutionPolicy(sp SpeculativeExecutionPolicy) *Batch
 }
 
 // Query adds the query to the batch operation
-func (b *Batch) Query(stmt string, args ...interface{}) {
+func (b *Batch) Query(stmt string, args ...interface{}) *Batch {
 	b.Entries = append(b.Entries, BatchEntry{Stmt: stmt, Args: args})
+	return b
 }
 
 // Bind adds the query to the batch operation and correlates it with a binding callback
@@ -2241,72 +2319,6 @@ type inflightCachedEntry struct {
 	value interface{}
 }
 
-// Tracer is the interface implemented by query tracers. Tracers have the
-// ability to obtain a detailed event log of all events that happened during
-// the execution of a query from Cassandra. Gathering this information might
-// be essential for debugging and optimizing queries, but this feature should
-// not be used on production systems with very high load.
-type Tracer interface {
-	Trace(traceId []byte)
-}
-
-type traceWriter struct {
-	session *Session
-	w       io.Writer
-	mu      sync.Mutex
-}
-
-// NewTraceWriter returns a simple Tracer implementation that outputs
-// the event log in a textual format.
-func NewTraceWriter(session *Session, w io.Writer) Tracer {
-	return &traceWriter{session: session, w: w}
-}
-
-func (t *traceWriter) Trace(traceId []byte) {
-	var (
-		coordinator string
-		duration    int
-	)
-	iter := t.session.control.query(`SELECT coordinator, duration
-			FROM system_traces.sessions
-			WHERE session_id = ?`, traceId)
-
-	iter.Scan(&coordinator, &duration)
-	if err := iter.Close(); err != nil {
-		t.mu.Lock()
-		fmt.Fprintln(t.w, "Error:", err)
-		t.mu.Unlock()
-		return
-	}
-
-	var (
-		timestamp time.Time
-		activity  string
-		source    string
-		elapsed   int
-		thread    string
-	)
-
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	fmt.Fprintf(t.w, "Tracing session %016x (coordinator: %s, duration: %v):\n",
-		traceId, coordinator, time.Duration(duration)*time.Microsecond)
-
-	iter = t.session.control.query(`SELECT event_id, activity, source, source_elapsed, thread
-			FROM system_traces.events
-			WHERE session_id = ?`, traceId)
-
-	for iter.Scan(&timestamp, &activity, &source, &elapsed, &thread) {
-		fmt.Fprintf(t.w, "%s: %s [%s] (source: %s, elapsed: %d)\n",
-			timestamp.Format("2006/01/02 15:04:05.999999"), activity, thread, source, elapsed)
-	}
-
-	if err := iter.Close(); err != nil {
-		fmt.Fprintln(t.w, "Error:", err)
-	}
-}
-
 type ObservedQuery struct {
 	Keyspace  string
 	Statement string
@@ -2339,8 +2351,6 @@ type ObservedQuery struct {
 }
 
 // QueryObserver is the interface implemented by query observers / stat collectors.
-//
-// Experimental, this interface and use may change
 type QueryObserver interface {
 	// ObserveQuery gets called on every query to cassandra, including all queries in an iterator when paging is enabled.
 	// It doesn't get called if there is no query because the session is closed or there are no connections available.
@@ -2423,6 +2433,7 @@ var (
 	ErrKeyspaceDoesNotExist = errors.New("keyspace does not exist")
 	ErrNoMetadata           = errors.New("no metadata available")
 	ErrTabletsNotUsed       = errors.New("tablets not used")
+	ErrSessionNotReady      = errors.New("session is not ready yet")
 )
 
 type ErrProtocol struct{ error }

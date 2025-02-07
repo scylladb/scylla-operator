@@ -197,6 +197,10 @@ type RequestErrCASWriteUnknown struct {
 	BlockFor    int
 }
 
+type UnknownServerError struct {
+	errorFrame
+}
+
 type OpType uint8
 
 const (

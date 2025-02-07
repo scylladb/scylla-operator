@@ -3,9 +3,9 @@
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	scheme "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -21,33 +21,34 @@ type ScyllaDBClustersGetter interface {
 
 // ScyllaDBClusterInterface has methods to work with ScyllaDBCluster resources.
 type ScyllaDBClusterInterface interface {
-	Create(ctx context.Context, scyllaDBCluster *v1alpha1.ScyllaDBCluster, opts v1.CreateOptions) (*v1alpha1.ScyllaDBCluster, error)
-	Update(ctx context.Context, scyllaDBCluster *v1alpha1.ScyllaDBCluster, opts v1.UpdateOptions) (*v1alpha1.ScyllaDBCluster, error)
+	Create(ctx context.Context, scyllaDBCluster *scyllav1alpha1.ScyllaDBCluster, opts v1.CreateOptions) (*scyllav1alpha1.ScyllaDBCluster, error)
+	Update(ctx context.Context, scyllaDBCluster *scyllav1alpha1.ScyllaDBCluster, opts v1.UpdateOptions) (*scyllav1alpha1.ScyllaDBCluster, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, scyllaDBCluster *v1alpha1.ScyllaDBCluster, opts v1.UpdateOptions) (*v1alpha1.ScyllaDBCluster, error)
+	UpdateStatus(ctx context.Context, scyllaDBCluster *scyllav1alpha1.ScyllaDBCluster, opts v1.UpdateOptions) (*scyllav1alpha1.ScyllaDBCluster, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.ScyllaDBCluster, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.ScyllaDBClusterList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*scyllav1alpha1.ScyllaDBCluster, error)
+	List(ctx context.Context, opts v1.ListOptions) (*scyllav1alpha1.ScyllaDBClusterList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ScyllaDBCluster, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *scyllav1alpha1.ScyllaDBCluster, err error)
 	ScyllaDBClusterExpansion
 }
 
 // scyllaDBClusters implements ScyllaDBClusterInterface
 type scyllaDBClusters struct {
-	*gentype.ClientWithList[*v1alpha1.ScyllaDBCluster, *v1alpha1.ScyllaDBClusterList]
+	*gentype.ClientWithList[*scyllav1alpha1.ScyllaDBCluster, *scyllav1alpha1.ScyllaDBClusterList]
 }
 
 // newScyllaDBClusters returns a ScyllaDBClusters
 func newScyllaDBClusters(c *ScyllaV1alpha1Client, namespace string) *scyllaDBClusters {
 	return &scyllaDBClusters{
-		gentype.NewClientWithList[*v1alpha1.ScyllaDBCluster, *v1alpha1.ScyllaDBClusterList](
+		gentype.NewClientWithList[*scyllav1alpha1.ScyllaDBCluster, *scyllav1alpha1.ScyllaDBClusterList](
 			"scylladbclusters",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.ScyllaDBCluster { return &v1alpha1.ScyllaDBCluster{} },
-			func() *v1alpha1.ScyllaDBClusterList { return &v1alpha1.ScyllaDBClusterList{} }),
+			func() *scyllav1alpha1.ScyllaDBCluster { return &scyllav1alpha1.ScyllaDBCluster{} },
+			func() *scyllav1alpha1.ScyllaDBClusterList { return &scyllav1alpha1.ScyllaDBClusterList{} },
+		),
 	}
 }

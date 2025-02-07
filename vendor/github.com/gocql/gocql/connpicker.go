@@ -42,8 +42,9 @@ func (p *defaultConnPicker) Remove(conn *Conn) {
 
 	for i, candidate := range p.conns {
 		if candidate == conn {
-			p.conns[i] = nil
-			return
+			last := len(p.conns) - 1
+			p.conns[i], p.conns = p.conns[last], p.conns[:last]
+			break
 		}
 	}
 }

@@ -2901,25 +2901,25 @@ object
      - Description
    * - :ref:`awsElasticBlockStore<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].awsElasticBlockStore>`
      - object
-     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
    * - :ref:`azureDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].azureDisk>`
      - object
-     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
    * - :ref:`azureFile<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].azureFile>`
      - object
-     - azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+     - azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
    * - :ref:`cephfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].cephfs>`
      - object
-     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
    * - :ref:`cinder<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].cinder>`
      - object
-     - cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+     - cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
    * - :ref:`configMap<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].configMap>`
      - object
      - configMap represents a configMap that should populate this volume
    * - :ref:`csi<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].csi>`
      - object
-     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
    * - :ref:`downwardAPI<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].downwardAPI>`
      - object
      - downwardAPI represents downward API about the pod that should populate this volume
@@ -2934,19 +2934,19 @@ object
      - fc represents a Fibre Channel resource that is attached to a kubelet's host machine and then exposed to the pod.
    * - :ref:`flexVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].flexVolume>`
      - object
-     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
    * - :ref:`flocker<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].flocker>`
      - object
-     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
    * - :ref:`gcePersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].gcePersistentDisk>`
      - object
-     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
    * - :ref:`gitRepo<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].gitRepo>`
      - object
-     - gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+     - gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
    * - :ref:`glusterfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].glusterfs>`
      - object
-     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
    * - :ref:`hostPath<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].hostPath>`
      - object
      - hostPath represents a pre-existing file or directory on the host machine that is directly exposed to the container. This is generally used for system agents or other privileged things that are allowed to see the host machine. Most containers will NOT need this. More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
@@ -2967,31 +2967,31 @@ object
      - persistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
    * - :ref:`photonPersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].photonPersistentDisk>`
      - object
-     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
    * - :ref:`portworxVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].portworxVolume>`
      - object
-     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
    * - :ref:`projected<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].projected>`
      - object
      - projected items for all in one resources secrets, configmaps, and downward API
    * - :ref:`quobyte<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].quobyte>`
      - object
-     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
    * - :ref:`rbd<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].rbd>`
      - object
-     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
    * - :ref:`scaleIO<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].scaleIO>`
      - object
-     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
    * - :ref:`secret<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].secret>`
      - object
      - secret represents a secret that should populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret
    * - :ref:`storageos<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].storageos>`
      - object
-     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
    * - :ref:`vsphereVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].vsphereVolume>`
      - object
-     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].awsElasticBlockStore:
 
@@ -3000,7 +3000,7 @@ object
 
 Description
 """""""""""
-awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 
 Type
 """"
@@ -3034,7 +3034,7 @@ object
 
 Description
 """""""""""
-azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
 
 Type
 """"
@@ -3074,7 +3074,7 @@ object
 
 Description
 """""""""""
-azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
 
 Type
 """"
@@ -3105,7 +3105,7 @@ object
 
 Description
 """""""""""
-cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
 
 Type
 """"
@@ -3170,7 +3170,7 @@ object
 
 Description
 """""""""""
-cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
 
 Type
 """"
@@ -3294,7 +3294,7 @@ object
 
 Description
 """""""""""
-csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
 
 Type
 """"
@@ -3866,7 +3866,7 @@ object
 
 Description
 """""""""""
-flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
 
 Type
 """"
@@ -3942,7 +3942,7 @@ object
 
 Description
 """""""""""
-flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
 
 Type
 """"
@@ -3970,7 +3970,7 @@ object
 
 Description
 """""""""""
-gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
 
 Type
 """"
@@ -4004,7 +4004,7 @@ object
 
 Description
 """""""""""
-gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
 
 Type
 """"
@@ -4035,7 +4035,7 @@ object
 
 Description
 """""""""""
-glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
 
 Type
 """"
@@ -4261,7 +4261,7 @@ object
 
 Description
 """""""""""
-photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
 
 Type
 """"
@@ -4289,7 +4289,7 @@ object
 
 Description
 """""""""""
-portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
 
 Type
 """"
@@ -4768,7 +4768,7 @@ object
 
 Description
 """""""""""
-quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
 
 Type
 """"
@@ -4808,7 +4808,7 @@ object
 
 Description
 """""""""""
-rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
 
 Type
 """"
@@ -4879,7 +4879,7 @@ object
 
 Description
 """""""""""
-scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
 
 Type
 """"
@@ -5021,7 +5021,7 @@ object
 
 Description
 """""""""""
-storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
 
 Type
 """"
@@ -5083,7 +5083,7 @@ object
 
 Description
 """""""""""
-vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 Type
 """"
@@ -5297,25 +5297,25 @@ object
      - Description
    * - :ref:`awsElasticBlockStore<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].awsElasticBlockStore>`
      - object
-     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
    * - :ref:`azureDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].azureDisk>`
      - object
-     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
    * - :ref:`azureFile<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].azureFile>`
      - object
-     - azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+     - azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
    * - :ref:`cephfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].cephfs>`
      - object
-     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
    * - :ref:`cinder<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].cinder>`
      - object
-     - cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+     - cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
    * - :ref:`configMap<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].configMap>`
      - object
      - configMap represents a configMap that should populate this volume
    * - :ref:`csi<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].csi>`
      - object
-     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
    * - :ref:`downwardAPI<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].downwardAPI>`
      - object
      - downwardAPI represents downward API about the pod that should populate this volume
@@ -5330,19 +5330,19 @@ object
      - fc represents a Fibre Channel resource that is attached to a kubelet's host machine and then exposed to the pod.
    * - :ref:`flexVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].flexVolume>`
      - object
-     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
    * - :ref:`flocker<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].flocker>`
      - object
-     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
    * - :ref:`gcePersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].gcePersistentDisk>`
      - object
-     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
    * - :ref:`gitRepo<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].gitRepo>`
      - object
-     - gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+     - gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
    * - :ref:`glusterfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].glusterfs>`
      - object
-     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
    * - :ref:`hostPath<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].hostPath>`
      - object
      - hostPath represents a pre-existing file or directory on the host machine that is directly exposed to the container. This is generally used for system agents or other privileged things that are allowed to see the host machine. Most containers will NOT need this. More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
@@ -5363,31 +5363,31 @@ object
      - persistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
    * - :ref:`photonPersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].photonPersistentDisk>`
      - object
-     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
    * - :ref:`portworxVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].portworxVolume>`
      - object
-     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
    * - :ref:`projected<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].projected>`
      - object
      - projected items for all in one resources secrets, configmaps, and downward API
    * - :ref:`quobyte<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].quobyte>`
      - object
-     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
    * - :ref:`rbd<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].rbd>`
      - object
-     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
    * - :ref:`scaleIO<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].scaleIO>`
      - object
-     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
    * - :ref:`secret<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].secret>`
      - object
      - secret represents a secret that should populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret
    * - :ref:`storageos<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].storageos>`
      - object
-     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
    * - :ref:`vsphereVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].vsphereVolume>`
      - object
-     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].awsElasticBlockStore:
 
@@ -5396,7 +5396,7 @@ object
 
 Description
 """""""""""
-awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 
 Type
 """"
@@ -5430,7 +5430,7 @@ object
 
 Description
 """""""""""
-azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
 
 Type
 """"
@@ -5470,7 +5470,7 @@ object
 
 Description
 """""""""""
-azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
 
 Type
 """"
@@ -5501,7 +5501,7 @@ object
 
 Description
 """""""""""
-cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
 
 Type
 """"
@@ -5566,7 +5566,7 @@ object
 
 Description
 """""""""""
-cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
 
 Type
 """"
@@ -5690,7 +5690,7 @@ object
 
 Description
 """""""""""
-csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
 
 Type
 """"
@@ -6262,7 +6262,7 @@ object
 
 Description
 """""""""""
-flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
 
 Type
 """"
@@ -6338,7 +6338,7 @@ object
 
 Description
 """""""""""
-flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
 
 Type
 """"
@@ -6366,7 +6366,7 @@ object
 
 Description
 """""""""""
-gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
 
 Type
 """"
@@ -6400,7 +6400,7 @@ object
 
 Description
 """""""""""
-gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
 
 Type
 """"
@@ -6431,7 +6431,7 @@ object
 
 Description
 """""""""""
-glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
 
 Type
 """"
@@ -6657,7 +6657,7 @@ object
 
 Description
 """""""""""
-photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
 
 Type
 """"
@@ -6685,7 +6685,7 @@ object
 
 Description
 """""""""""
-portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
 
 Type
 """"
@@ -7164,7 +7164,7 @@ object
 
 Description
 """""""""""
-quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
 
 Type
 """"
@@ -7204,7 +7204,7 @@ object
 
 Description
 """""""""""
-rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
 
 Type
 """"
@@ -7275,7 +7275,7 @@ object
 
 Description
 """""""""""
-scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
 
 Type
 """"
@@ -7417,7 +7417,7 @@ object
 
 Description
 """""""""""
-storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
 
 Type
 """"
@@ -7479,7 +7479,7 @@ object
 
 Description
 """""""""""
-vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 Type
 """"
@@ -9025,25 +9025,25 @@ object
      - Description
    * - :ref:`awsElasticBlockStore<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].awsElasticBlockStore>`
      - object
-     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
    * - :ref:`azureDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].azureDisk>`
      - object
-     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
    * - :ref:`azureFile<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].azureFile>`
      - object
-     - azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+     - azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
    * - :ref:`cephfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].cephfs>`
      - object
-     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
    * - :ref:`cinder<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].cinder>`
      - object
-     - cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+     - cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
    * - :ref:`configMap<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].configMap>`
      - object
      - configMap represents a configMap that should populate this volume
    * - :ref:`csi<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].csi>`
      - object
-     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
    * - :ref:`downwardAPI<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].downwardAPI>`
      - object
      - downwardAPI represents downward API about the pod that should populate this volume
@@ -9058,19 +9058,19 @@ object
      - fc represents a Fibre Channel resource that is attached to a kubelet's host machine and then exposed to the pod.
    * - :ref:`flexVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].flexVolume>`
      - object
-     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
    * - :ref:`flocker<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].flocker>`
      - object
-     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
    * - :ref:`gcePersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].gcePersistentDisk>`
      - object
-     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
    * - :ref:`gitRepo<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].gitRepo>`
      - object
-     - gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+     - gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
    * - :ref:`glusterfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].glusterfs>`
      - object
-     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
    * - :ref:`hostPath<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].hostPath>`
      - object
      - hostPath represents a pre-existing file or directory on the host machine that is directly exposed to the container. This is generally used for system agents or other privileged things that are allowed to see the host machine. Most containers will NOT need this. More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
@@ -9091,31 +9091,31 @@ object
      - persistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
    * - :ref:`photonPersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].photonPersistentDisk>`
      - object
-     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
    * - :ref:`portworxVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].portworxVolume>`
      - object
-     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
    * - :ref:`projected<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].projected>`
      - object
      - projected items for all in one resources secrets, configmaps, and downward API
    * - :ref:`quobyte<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].quobyte>`
      - object
-     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
    * - :ref:`rbd<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].rbd>`
      - object
-     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
    * - :ref:`scaleIO<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].scaleIO>`
      - object
-     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
    * - :ref:`secret<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].secret>`
      - object
      - secret represents a secret that should populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret
    * - :ref:`storageos<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].storageos>`
      - object
-     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
    * - :ref:`vsphereVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].vsphereVolume>`
      - object
-     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].awsElasticBlockStore:
 
@@ -9124,7 +9124,7 @@ object
 
 Description
 """""""""""
-awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 
 Type
 """"
@@ -9158,7 +9158,7 @@ object
 
 Description
 """""""""""
-azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
 
 Type
 """"
@@ -9198,7 +9198,7 @@ object
 
 Description
 """""""""""
-azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
 
 Type
 """"
@@ -9229,7 +9229,7 @@ object
 
 Description
 """""""""""
-cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
 
 Type
 """"
@@ -9294,7 +9294,7 @@ object
 
 Description
 """""""""""
-cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
 
 Type
 """"
@@ -9418,7 +9418,7 @@ object
 
 Description
 """""""""""
-csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
 
 Type
 """"
@@ -9990,7 +9990,7 @@ object
 
 Description
 """""""""""
-flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
 
 Type
 """"
@@ -10066,7 +10066,7 @@ object
 
 Description
 """""""""""
-flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
 
 Type
 """"
@@ -10094,7 +10094,7 @@ object
 
 Description
 """""""""""
-gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
 
 Type
 """"
@@ -10128,7 +10128,7 @@ object
 
 Description
 """""""""""
-gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
 
 Type
 """"
@@ -10159,7 +10159,7 @@ object
 
 Description
 """""""""""
-glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
 
 Type
 """"
@@ -10385,7 +10385,7 @@ object
 
 Description
 """""""""""
-photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
 
 Type
 """"
@@ -10413,7 +10413,7 @@ object
 
 Description
 """""""""""
-portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
 
 Type
 """"
@@ -10892,7 +10892,7 @@ object
 
 Description
 """""""""""
-quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
 
 Type
 """"
@@ -10932,7 +10932,7 @@ object
 
 Description
 """""""""""
-rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
 
 Type
 """"
@@ -11003,7 +11003,7 @@ object
 
 Description
 """""""""""
-scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
 
 Type
 """"
@@ -11145,7 +11145,7 @@ object
 
 Description
 """""""""""
-storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
 
 Type
 """"
@@ -11207,7 +11207,7 @@ object
 
 Description
 """""""""""
-vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 Type
 """"
@@ -11421,25 +11421,25 @@ object
      - Description
    * - :ref:`awsElasticBlockStore<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].awsElasticBlockStore>`
      - object
-     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
    * - :ref:`azureDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].azureDisk>`
      - object
-     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
    * - :ref:`azureFile<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].azureFile>`
      - object
-     - azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+     - azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
    * - :ref:`cephfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].cephfs>`
      - object
-     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
    * - :ref:`cinder<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].cinder>`
      - object
-     - cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+     - cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
    * - :ref:`configMap<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].configMap>`
      - object
      - configMap represents a configMap that should populate this volume
    * - :ref:`csi<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].csi>`
      - object
-     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
    * - :ref:`downwardAPI<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].downwardAPI>`
      - object
      - downwardAPI represents downward API about the pod that should populate this volume
@@ -11454,19 +11454,19 @@ object
      - fc represents a Fibre Channel resource that is attached to a kubelet's host machine and then exposed to the pod.
    * - :ref:`flexVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].flexVolume>`
      - object
-     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
    * - :ref:`flocker<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].flocker>`
      - object
-     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
    * - :ref:`gcePersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].gcePersistentDisk>`
      - object
-     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
    * - :ref:`gitRepo<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].gitRepo>`
      - object
-     - gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+     - gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
    * - :ref:`glusterfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].glusterfs>`
      - object
-     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
    * - :ref:`hostPath<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].hostPath>`
      - object
      - hostPath represents a pre-existing file or directory on the host machine that is directly exposed to the container. This is generally used for system agents or other privileged things that are allowed to see the host machine. Most containers will NOT need this. More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
@@ -11487,31 +11487,31 @@ object
      - persistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
    * - :ref:`photonPersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].photonPersistentDisk>`
      - object
-     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
    * - :ref:`portworxVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].portworxVolume>`
      - object
-     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
    * - :ref:`projected<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].projected>`
      - object
      - projected items for all in one resources secrets, configmaps, and downward API
    * - :ref:`quobyte<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].quobyte>`
      - object
-     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
    * - :ref:`rbd<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].rbd>`
      - object
-     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
    * - :ref:`scaleIO<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].scaleIO>`
      - object
-     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
    * - :ref:`secret<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].secret>`
      - object
      - secret represents a secret that should populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret
    * - :ref:`storageos<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].storageos>`
      - object
-     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
    * - :ref:`vsphereVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].vsphereVolume>`
      - object
-     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].awsElasticBlockStore:
 
@@ -11520,7 +11520,7 @@ object
 
 Description
 """""""""""
-awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 
 Type
 """"
@@ -11554,7 +11554,7 @@ object
 
 Description
 """""""""""
-azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
 
 Type
 """"
@@ -11594,7 +11594,7 @@ object
 
 Description
 """""""""""
-azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
 
 Type
 """"
@@ -11625,7 +11625,7 @@ object
 
 Description
 """""""""""
-cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
 
 Type
 """"
@@ -11690,7 +11690,7 @@ object
 
 Description
 """""""""""
-cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
 
 Type
 """"
@@ -11814,7 +11814,7 @@ object
 
 Description
 """""""""""
-csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
 
 Type
 """"
@@ -12386,7 +12386,7 @@ object
 
 Description
 """""""""""
-flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
 
 Type
 """"
@@ -12462,7 +12462,7 @@ object
 
 Description
 """""""""""
-flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
 
 Type
 """"
@@ -12490,7 +12490,7 @@ object
 
 Description
 """""""""""
-gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
 
 Type
 """"
@@ -12524,7 +12524,7 @@ object
 
 Description
 """""""""""
-gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
 
 Type
 """"
@@ -12555,7 +12555,7 @@ object
 
 Description
 """""""""""
-glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
 
 Type
 """"
@@ -12781,7 +12781,7 @@ object
 
 Description
 """""""""""
-photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
 
 Type
 """"
@@ -12809,7 +12809,7 @@ object
 
 Description
 """""""""""
-portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
 
 Type
 """"
@@ -13288,7 +13288,7 @@ object
 
 Description
 """""""""""
-quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
 
 Type
 """"
@@ -13328,7 +13328,7 @@ object
 
 Description
 """""""""""
-rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
 
 Type
 """"
@@ -13399,7 +13399,7 @@ object
 
 Description
 """""""""""
-scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
 
 Type
 """"
@@ -13541,7 +13541,7 @@ object
 
 Description
 """""""""""
-storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
 
 Type
 """"
@@ -13603,7 +13603,7 @@ object
 
 Description
 """""""""""
-vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 Type
 """"
@@ -13921,25 +13921,25 @@ object
      - Description
    * - :ref:`awsElasticBlockStore<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].awsElasticBlockStore>`
      - object
-     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
    * - :ref:`azureDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].azureDisk>`
      - object
-     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
    * - :ref:`azureFile<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].azureFile>`
      - object
-     - azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+     - azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
    * - :ref:`cephfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].cephfs>`
      - object
-     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
    * - :ref:`cinder<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].cinder>`
      - object
-     - cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+     - cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
    * - :ref:`configMap<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].configMap>`
      - object
      - configMap represents a configMap that should populate this volume
    * - :ref:`csi<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].csi>`
      - object
-     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
    * - :ref:`downwardAPI<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].downwardAPI>`
      - object
      - downwardAPI represents downward API about the pod that should populate this volume
@@ -13954,19 +13954,19 @@ object
      - fc represents a Fibre Channel resource that is attached to a kubelet's host machine and then exposed to the pod.
    * - :ref:`flexVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].flexVolume>`
      - object
-     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
    * - :ref:`flocker<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].flocker>`
      - object
-     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
    * - :ref:`gcePersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].gcePersistentDisk>`
      - object
-     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
    * - :ref:`gitRepo<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].gitRepo>`
      - object
-     - gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+     - gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
    * - :ref:`glusterfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].glusterfs>`
      - object
-     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
    * - :ref:`hostPath<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].hostPath>`
      - object
      - hostPath represents a pre-existing file or directory on the host machine that is directly exposed to the container. This is generally used for system agents or other privileged things that are allowed to see the host machine. Most containers will NOT need this. More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
@@ -13987,31 +13987,31 @@ object
      - persistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
    * - :ref:`photonPersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].photonPersistentDisk>`
      - object
-     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
    * - :ref:`portworxVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].portworxVolume>`
      - object
-     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
    * - :ref:`projected<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].projected>`
      - object
      - projected items for all in one resources secrets, configmaps, and downward API
    * - :ref:`quobyte<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].quobyte>`
      - object
-     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
    * - :ref:`rbd<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].rbd>`
      - object
-     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
    * - :ref:`scaleIO<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].scaleIO>`
      - object
-     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
    * - :ref:`secret<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].secret>`
      - object
      - secret represents a secret that should populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret
    * - :ref:`storageos<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].storageos>`
      - object
-     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
    * - :ref:`vsphereVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].vsphereVolume>`
      - object
-     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].awsElasticBlockStore:
 
@@ -14020,7 +14020,7 @@ object
 
 Description
 """""""""""
-awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 
 Type
 """"
@@ -14054,7 +14054,7 @@ object
 
 Description
 """""""""""
-azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
 
 Type
 """"
@@ -14094,7 +14094,7 @@ object
 
 Description
 """""""""""
-azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
 
 Type
 """"
@@ -14125,7 +14125,7 @@ object
 
 Description
 """""""""""
-cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
 
 Type
 """"
@@ -14190,7 +14190,7 @@ object
 
 Description
 """""""""""
-cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
 
 Type
 """"
@@ -14314,7 +14314,7 @@ object
 
 Description
 """""""""""
-csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
 
 Type
 """"
@@ -14886,7 +14886,7 @@ object
 
 Description
 """""""""""
-flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
 
 Type
 """"
@@ -14962,7 +14962,7 @@ object
 
 Description
 """""""""""
-flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
 
 Type
 """"
@@ -14990,7 +14990,7 @@ object
 
 Description
 """""""""""
-gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
 
 Type
 """"
@@ -15024,7 +15024,7 @@ object
 
 Description
 """""""""""
-gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
 
 Type
 """"
@@ -15055,7 +15055,7 @@ object
 
 Description
 """""""""""
-glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
 
 Type
 """"
@@ -15281,7 +15281,7 @@ object
 
 Description
 """""""""""
-photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
 
 Type
 """"
@@ -15309,7 +15309,7 @@ object
 
 Description
 """""""""""
-portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
 
 Type
 """"
@@ -15788,7 +15788,7 @@ object
 
 Description
 """""""""""
-quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
 
 Type
 """"
@@ -15828,7 +15828,7 @@ object
 
 Description
 """""""""""
-rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
 
 Type
 """"
@@ -15899,7 +15899,7 @@ object
 
 Description
 """""""""""
-scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
 
 Type
 """"
@@ -16041,7 +16041,7 @@ object
 
 Description
 """""""""""
-storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
 
 Type
 """"
@@ -16103,7 +16103,7 @@ object
 
 Description
 """""""""""
-vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 Type
 """"
@@ -16317,25 +16317,25 @@ object
      - Description
    * - :ref:`awsElasticBlockStore<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].awsElasticBlockStore>`
      - object
-     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
    * - :ref:`azureDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].azureDisk>`
      - object
-     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
    * - :ref:`azureFile<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].azureFile>`
      - object
-     - azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+     - azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
    * - :ref:`cephfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].cephfs>`
      - object
-     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
    * - :ref:`cinder<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].cinder>`
      - object
-     - cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+     - cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
    * - :ref:`configMap<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].configMap>`
      - object
      - configMap represents a configMap that should populate this volume
    * - :ref:`csi<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].csi>`
      - object
-     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
    * - :ref:`downwardAPI<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].downwardAPI>`
      - object
      - downwardAPI represents downward API about the pod that should populate this volume
@@ -16350,19 +16350,19 @@ object
      - fc represents a Fibre Channel resource that is attached to a kubelet's host machine and then exposed to the pod.
    * - :ref:`flexVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].flexVolume>`
      - object
-     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
    * - :ref:`flocker<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].flocker>`
      - object
-     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
    * - :ref:`gcePersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].gcePersistentDisk>`
      - object
-     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
    * - :ref:`gitRepo<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].gitRepo>`
      - object
-     - gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+     - gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
    * - :ref:`glusterfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].glusterfs>`
      - object
-     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
    * - :ref:`hostPath<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].hostPath>`
      - object
      - hostPath represents a pre-existing file or directory on the host machine that is directly exposed to the container. This is generally used for system agents or other privileged things that are allowed to see the host machine. Most containers will NOT need this. More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
@@ -16383,31 +16383,31 @@ object
      - persistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
    * - :ref:`photonPersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].photonPersistentDisk>`
      - object
-     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
    * - :ref:`portworxVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].portworxVolume>`
      - object
-     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
    * - :ref:`projected<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].projected>`
      - object
      - projected items for all in one resources secrets, configmaps, and downward API
    * - :ref:`quobyte<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].quobyte>`
      - object
-     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
    * - :ref:`rbd<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].rbd>`
      - object
-     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
    * - :ref:`scaleIO<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].scaleIO>`
      - object
-     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
    * - :ref:`secret<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].secret>`
      - object
      - secret represents a secret that should populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret
    * - :ref:`storageos<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].storageos>`
      - object
-     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
    * - :ref:`vsphereVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].vsphereVolume>`
      - object
-     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].awsElasticBlockStore:
 
@@ -16416,7 +16416,7 @@ object
 
 Description
 """""""""""
-awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 
 Type
 """"
@@ -16450,7 +16450,7 @@ object
 
 Description
 """""""""""
-azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
 
 Type
 """"
@@ -16490,7 +16490,7 @@ object
 
 Description
 """""""""""
-azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
 
 Type
 """"
@@ -16521,7 +16521,7 @@ object
 
 Description
 """""""""""
-cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
 
 Type
 """"
@@ -16586,7 +16586,7 @@ object
 
 Description
 """""""""""
-cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
 
 Type
 """"
@@ -16710,7 +16710,7 @@ object
 
 Description
 """""""""""
-csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
 
 Type
 """"
@@ -17282,7 +17282,7 @@ object
 
 Description
 """""""""""
-flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
 
 Type
 """"
@@ -17358,7 +17358,7 @@ object
 
 Description
 """""""""""
-flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
 
 Type
 """"
@@ -17386,7 +17386,7 @@ object
 
 Description
 """""""""""
-gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
 
 Type
 """"
@@ -17420,7 +17420,7 @@ object
 
 Description
 """""""""""
-gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
 
 Type
 """"
@@ -17451,7 +17451,7 @@ object
 
 Description
 """""""""""
-glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
 
 Type
 """"
@@ -17677,7 +17677,7 @@ object
 
 Description
 """""""""""
-photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
 
 Type
 """"
@@ -17705,7 +17705,7 @@ object
 
 Description
 """""""""""
-portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
 
 Type
 """"
@@ -18184,7 +18184,7 @@ object
 
 Description
 """""""""""
-quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
 
 Type
 """"
@@ -18224,7 +18224,7 @@ object
 
 Description
 """""""""""
-rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
 
 Type
 """"
@@ -18295,7 +18295,7 @@ object
 
 Description
 """""""""""
-scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
 
 Type
 """"
@@ -18437,7 +18437,7 @@ object
 
 Description
 """""""""""
-storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
 
 Type
 """"
@@ -18499,7 +18499,7 @@ object
 
 Description
 """""""""""
-vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 Type
 """"
@@ -21338,25 +21338,25 @@ object
      - Description
    * - :ref:`awsElasticBlockStore<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].awsElasticBlockStore>`
      - object
-     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
    * - :ref:`azureDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].azureDisk>`
      - object
-     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
    * - :ref:`azureFile<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].azureFile>`
      - object
-     - azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+     - azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
    * - :ref:`cephfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].cephfs>`
      - object
-     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
    * - :ref:`cinder<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].cinder>`
      - object
-     - cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+     - cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
    * - :ref:`configMap<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].configMap>`
      - object
      - configMap represents a configMap that should populate this volume
    * - :ref:`csi<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].csi>`
      - object
-     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
    * - :ref:`downwardAPI<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].downwardAPI>`
      - object
      - downwardAPI represents downward API about the pod that should populate this volume
@@ -21371,19 +21371,19 @@ object
      - fc represents a Fibre Channel resource that is attached to a kubelet's host machine and then exposed to the pod.
    * - :ref:`flexVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].flexVolume>`
      - object
-     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
    * - :ref:`flocker<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].flocker>`
      - object
-     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
    * - :ref:`gcePersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].gcePersistentDisk>`
      - object
-     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
    * - :ref:`gitRepo<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].gitRepo>`
      - object
-     - gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+     - gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
    * - :ref:`glusterfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].glusterfs>`
      - object
-     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
    * - :ref:`hostPath<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].hostPath>`
      - object
      - hostPath represents a pre-existing file or directory on the host machine that is directly exposed to the container. This is generally used for system agents or other privileged things that are allowed to see the host machine. Most containers will NOT need this. More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
@@ -21404,31 +21404,31 @@ object
      - persistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
    * - :ref:`photonPersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].photonPersistentDisk>`
      - object
-     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
    * - :ref:`portworxVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].portworxVolume>`
      - object
-     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
    * - :ref:`projected<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].projected>`
      - object
      - projected items for all in one resources secrets, configmaps, and downward API
    * - :ref:`quobyte<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].quobyte>`
      - object
-     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
    * - :ref:`rbd<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].rbd>`
      - object
-     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
    * - :ref:`scaleIO<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].scaleIO>`
      - object
-     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
    * - :ref:`secret<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].secret>`
      - object
      - secret represents a secret that should populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret
    * - :ref:`storageos<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].storageos>`
      - object
-     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
    * - :ref:`vsphereVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].vsphereVolume>`
      - object
-     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].awsElasticBlockStore:
 
@@ -21437,7 +21437,7 @@ object
 
 Description
 """""""""""
-awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 
 Type
 """"
@@ -21471,7 +21471,7 @@ object
 
 Description
 """""""""""
-azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
 
 Type
 """"
@@ -21511,7 +21511,7 @@ object
 
 Description
 """""""""""
-azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
 
 Type
 """"
@@ -21542,7 +21542,7 @@ object
 
 Description
 """""""""""
-cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
 
 Type
 """"
@@ -21607,7 +21607,7 @@ object
 
 Description
 """""""""""
-cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
 
 Type
 """"
@@ -21731,7 +21731,7 @@ object
 
 Description
 """""""""""
-csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
 
 Type
 """"
@@ -22303,7 +22303,7 @@ object
 
 Description
 """""""""""
-flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
 
 Type
 """"
@@ -22379,7 +22379,7 @@ object
 
 Description
 """""""""""
-flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
 
 Type
 """"
@@ -22407,7 +22407,7 @@ object
 
 Description
 """""""""""
-gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
 
 Type
 """"
@@ -22441,7 +22441,7 @@ object
 
 Description
 """""""""""
-gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
 
 Type
 """"
@@ -22472,7 +22472,7 @@ object
 
 Description
 """""""""""
-glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
 
 Type
 """"
@@ -22698,7 +22698,7 @@ object
 
 Description
 """""""""""
-photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
 
 Type
 """"
@@ -22726,7 +22726,7 @@ object
 
 Description
 """""""""""
-portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
 
 Type
 """"
@@ -23205,7 +23205,7 @@ object
 
 Description
 """""""""""
-quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
 
 Type
 """"
@@ -23245,7 +23245,7 @@ object
 
 Description
 """""""""""
-rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
 
 Type
 """"
@@ -23316,7 +23316,7 @@ object
 
 Description
 """""""""""
-scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
 
 Type
 """"
@@ -23458,7 +23458,7 @@ object
 
 Description
 """""""""""
-storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
 
 Type
 """"
@@ -23520,7 +23520,7 @@ object
 
 Description
 """""""""""
-vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 Type
 """"
@@ -23734,25 +23734,25 @@ object
      - Description
    * - :ref:`awsElasticBlockStore<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].awsElasticBlockStore>`
      - object
-     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
    * - :ref:`azureDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].azureDisk>`
      - object
-     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
    * - :ref:`azureFile<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].azureFile>`
      - object
-     - azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+     - azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
    * - :ref:`cephfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].cephfs>`
      - object
-     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
    * - :ref:`cinder<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].cinder>`
      - object
-     - cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+     - cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
    * - :ref:`configMap<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].configMap>`
      - object
      - configMap represents a configMap that should populate this volume
    * - :ref:`csi<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].csi>`
      - object
-     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
    * - :ref:`downwardAPI<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].downwardAPI>`
      - object
      - downwardAPI represents downward API about the pod that should populate this volume
@@ -23767,19 +23767,19 @@ object
      - fc represents a Fibre Channel resource that is attached to a kubelet's host machine and then exposed to the pod.
    * - :ref:`flexVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].flexVolume>`
      - object
-     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
    * - :ref:`flocker<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].flocker>`
      - object
-     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
    * - :ref:`gcePersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].gcePersistentDisk>`
      - object
-     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
    * - :ref:`gitRepo<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].gitRepo>`
      - object
-     - gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+     - gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
    * - :ref:`glusterfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].glusterfs>`
      - object
-     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
    * - :ref:`hostPath<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].hostPath>`
      - object
      - hostPath represents a pre-existing file or directory on the host machine that is directly exposed to the container. This is generally used for system agents or other privileged things that are allowed to see the host machine. Most containers will NOT need this. More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
@@ -23800,31 +23800,31 @@ object
      - persistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
    * - :ref:`photonPersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].photonPersistentDisk>`
      - object
-     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
    * - :ref:`portworxVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].portworxVolume>`
      - object
-     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
    * - :ref:`projected<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].projected>`
      - object
      - projected items for all in one resources secrets, configmaps, and downward API
    * - :ref:`quobyte<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].quobyte>`
      - object
-     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
    * - :ref:`rbd<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].rbd>`
      - object
-     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
    * - :ref:`scaleIO<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].scaleIO>`
      - object
-     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
    * - :ref:`secret<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].secret>`
      - object
      - secret represents a secret that should populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret
    * - :ref:`storageos<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].storageos>`
      - object
-     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
    * - :ref:`vsphereVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].vsphereVolume>`
      - object
-     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].awsElasticBlockStore:
 
@@ -23833,7 +23833,7 @@ object
 
 Description
 """""""""""
-awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 
 Type
 """"
@@ -23867,7 +23867,7 @@ object
 
 Description
 """""""""""
-azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
 
 Type
 """"
@@ -23907,7 +23907,7 @@ object
 
 Description
 """""""""""
-azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
 
 Type
 """"
@@ -23938,7 +23938,7 @@ object
 
 Description
 """""""""""
-cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
 
 Type
 """"
@@ -24003,7 +24003,7 @@ object
 
 Description
 """""""""""
-cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
 
 Type
 """"
@@ -24127,7 +24127,7 @@ object
 
 Description
 """""""""""
-csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
 
 Type
 """"
@@ -24699,7 +24699,7 @@ object
 
 Description
 """""""""""
-flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
 
 Type
 """"
@@ -24775,7 +24775,7 @@ object
 
 Description
 """""""""""
-flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
 
 Type
 """"
@@ -24803,7 +24803,7 @@ object
 
 Description
 """""""""""
-gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
 
 Type
 """"
@@ -24837,7 +24837,7 @@ object
 
 Description
 """""""""""
-gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
 
 Type
 """"
@@ -24868,7 +24868,7 @@ object
 
 Description
 """""""""""
-glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
 
 Type
 """"
@@ -25094,7 +25094,7 @@ object
 
 Description
 """""""""""
-photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
 
 Type
 """"
@@ -25122,7 +25122,7 @@ object
 
 Description
 """""""""""
-portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
 
 Type
 """"
@@ -25601,7 +25601,7 @@ object
 
 Description
 """""""""""
-quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
 
 Type
 """"
@@ -25641,7 +25641,7 @@ object
 
 Description
 """""""""""
-rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
 
 Type
 """"
@@ -25712,7 +25712,7 @@ object
 
 Description
 """""""""""
-scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
 
 Type
 """"
@@ -25854,7 +25854,7 @@ object
 
 Description
 """""""""""
-storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
 
 Type
 """"
@@ -25916,7 +25916,7 @@ object
 
 Description
 """""""""""
-vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 Type
 """"
@@ -27462,25 +27462,25 @@ object
      - Description
    * - :ref:`awsElasticBlockStore<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].awsElasticBlockStore>`
      - object
-     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
    * - :ref:`azureDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].azureDisk>`
      - object
-     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
    * - :ref:`azureFile<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].azureFile>`
      - object
-     - azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+     - azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
    * - :ref:`cephfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].cephfs>`
      - object
-     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
    * - :ref:`cinder<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].cinder>`
      - object
-     - cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+     - cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
    * - :ref:`configMap<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].configMap>`
      - object
      - configMap represents a configMap that should populate this volume
    * - :ref:`csi<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].csi>`
      - object
-     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
    * - :ref:`downwardAPI<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].downwardAPI>`
      - object
      - downwardAPI represents downward API about the pod that should populate this volume
@@ -27495,19 +27495,19 @@ object
      - fc represents a Fibre Channel resource that is attached to a kubelet's host machine and then exposed to the pod.
    * - :ref:`flexVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].flexVolume>`
      - object
-     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
    * - :ref:`flocker<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].flocker>`
      - object
-     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
    * - :ref:`gcePersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].gcePersistentDisk>`
      - object
-     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
    * - :ref:`gitRepo<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].gitRepo>`
      - object
-     - gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+     - gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
    * - :ref:`glusterfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].glusterfs>`
      - object
-     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
    * - :ref:`hostPath<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].hostPath>`
      - object
      - hostPath represents a pre-existing file or directory on the host machine that is directly exposed to the container. This is generally used for system agents or other privileged things that are allowed to see the host machine. Most containers will NOT need this. More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
@@ -27528,31 +27528,31 @@ object
      - persistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
    * - :ref:`photonPersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].photonPersistentDisk>`
      - object
-     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
    * - :ref:`portworxVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].portworxVolume>`
      - object
-     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
    * - :ref:`projected<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].projected>`
      - object
      - projected items for all in one resources secrets, configmaps, and downward API
    * - :ref:`quobyte<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].quobyte>`
      - object
-     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
    * - :ref:`rbd<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].rbd>`
      - object
-     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
    * - :ref:`scaleIO<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].scaleIO>`
      - object
-     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
    * - :ref:`secret<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].secret>`
      - object
      - secret represents a secret that should populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret
    * - :ref:`storageos<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].storageos>`
      - object
-     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
    * - :ref:`vsphereVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].vsphereVolume>`
      - object
-     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].awsElasticBlockStore:
 
@@ -27561,7 +27561,7 @@ object
 
 Description
 """""""""""
-awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 
 Type
 """"
@@ -27595,7 +27595,7 @@ object
 
 Description
 """""""""""
-azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
 
 Type
 """"
@@ -27635,7 +27635,7 @@ object
 
 Description
 """""""""""
-azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
 
 Type
 """"
@@ -27666,7 +27666,7 @@ object
 
 Description
 """""""""""
-cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
 
 Type
 """"
@@ -27731,7 +27731,7 @@ object
 
 Description
 """""""""""
-cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
 
 Type
 """"
@@ -27855,7 +27855,7 @@ object
 
 Description
 """""""""""
-csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
 
 Type
 """"
@@ -28427,7 +28427,7 @@ object
 
 Description
 """""""""""
-flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
 
 Type
 """"
@@ -28503,7 +28503,7 @@ object
 
 Description
 """""""""""
-flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
 
 Type
 """"
@@ -28531,7 +28531,7 @@ object
 
 Description
 """""""""""
-gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
 
 Type
 """"
@@ -28565,7 +28565,7 @@ object
 
 Description
 """""""""""
-gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
 
 Type
 """"
@@ -28596,7 +28596,7 @@ object
 
 Description
 """""""""""
-glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
 
 Type
 """"
@@ -28822,7 +28822,7 @@ object
 
 Description
 """""""""""
-photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
 
 Type
 """"
@@ -28850,7 +28850,7 @@ object
 
 Description
 """""""""""
-portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
 
 Type
 """"
@@ -29329,7 +29329,7 @@ object
 
 Description
 """""""""""
-quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
 
 Type
 """"
@@ -29369,7 +29369,7 @@ object
 
 Description
 """""""""""
-rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
 
 Type
 """"
@@ -29440,7 +29440,7 @@ object
 
 Description
 """""""""""
-scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
 
 Type
 """"
@@ -29582,7 +29582,7 @@ object
 
 Description
 """""""""""
-storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
 
 Type
 """"
@@ -29644,7 +29644,7 @@ object
 
 Description
 """""""""""
-vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 Type
 """"
@@ -29858,25 +29858,25 @@ object
      - Description
    * - :ref:`awsElasticBlockStore<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].awsElasticBlockStore>`
      - object
-     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
    * - :ref:`azureDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].azureDisk>`
      - object
-     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
    * - :ref:`azureFile<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].azureFile>`
      - object
-     - azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+     - azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
    * - :ref:`cephfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].cephfs>`
      - object
-     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
    * - :ref:`cinder<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].cinder>`
      - object
-     - cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+     - cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
    * - :ref:`configMap<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].configMap>`
      - object
      - configMap represents a configMap that should populate this volume
    * - :ref:`csi<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].csi>`
      - object
-     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
    * - :ref:`downwardAPI<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].downwardAPI>`
      - object
      - downwardAPI represents downward API about the pod that should populate this volume
@@ -29891,19 +29891,19 @@ object
      - fc represents a Fibre Channel resource that is attached to a kubelet's host machine and then exposed to the pod.
    * - :ref:`flexVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].flexVolume>`
      - object
-     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
    * - :ref:`flocker<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].flocker>`
      - object
-     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
    * - :ref:`gcePersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].gcePersistentDisk>`
      - object
-     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
    * - :ref:`gitRepo<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].gitRepo>`
      - object
-     - gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+     - gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
    * - :ref:`glusterfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].glusterfs>`
      - object
-     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
    * - :ref:`hostPath<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].hostPath>`
      - object
      - hostPath represents a pre-existing file or directory on the host machine that is directly exposed to the container. This is generally used for system agents or other privileged things that are allowed to see the host machine. Most containers will NOT need this. More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
@@ -29924,31 +29924,31 @@ object
      - persistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
    * - :ref:`photonPersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].photonPersistentDisk>`
      - object
-     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
    * - :ref:`portworxVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].portworxVolume>`
      - object
-     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
    * - :ref:`projected<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].projected>`
      - object
      - projected items for all in one resources secrets, configmaps, and downward API
    * - :ref:`quobyte<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].quobyte>`
      - object
-     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
    * - :ref:`rbd<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].rbd>`
      - object
-     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
    * - :ref:`scaleIO<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].scaleIO>`
      - object
-     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
    * - :ref:`secret<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].secret>`
      - object
      - secret represents a secret that should populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret
    * - :ref:`storageos<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].storageos>`
      - object
-     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
    * - :ref:`vsphereVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].vsphereVolume>`
      - object
-     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].awsElasticBlockStore:
 
@@ -29957,7 +29957,7 @@ object
 
 Description
 """""""""""
-awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 
 Type
 """"
@@ -29991,7 +29991,7 @@ object
 
 Description
 """""""""""
-azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
 
 Type
 """"
@@ -30031,7 +30031,7 @@ object
 
 Description
 """""""""""
-azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
 
 Type
 """"
@@ -30062,7 +30062,7 @@ object
 
 Description
 """""""""""
-cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
 
 Type
 """"
@@ -30127,7 +30127,7 @@ object
 
 Description
 """""""""""
-cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
 
 Type
 """"
@@ -30251,7 +30251,7 @@ object
 
 Description
 """""""""""
-csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
 
 Type
 """"
@@ -30823,7 +30823,7 @@ object
 
 Description
 """""""""""
-flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
 
 Type
 """"
@@ -30899,7 +30899,7 @@ object
 
 Description
 """""""""""
-flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
 
 Type
 """"
@@ -30927,7 +30927,7 @@ object
 
 Description
 """""""""""
-gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
 
 Type
 """"
@@ -30961,7 +30961,7 @@ object
 
 Description
 """""""""""
-gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
 
 Type
 """"
@@ -30992,7 +30992,7 @@ object
 
 Description
 """""""""""
-glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
 
 Type
 """"
@@ -31218,7 +31218,7 @@ object
 
 Description
 """""""""""
-photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
 
 Type
 """"
@@ -31246,7 +31246,7 @@ object
 
 Description
 """""""""""
-portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
 
 Type
 """"
@@ -31725,7 +31725,7 @@ object
 
 Description
 """""""""""
-quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
 
 Type
 """"
@@ -31765,7 +31765,7 @@ object
 
 Description
 """""""""""
-rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
 
 Type
 """"
@@ -31836,7 +31836,7 @@ object
 
 Description
 """""""""""
-scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
 
 Type
 """"
@@ -31978,7 +31978,7 @@ object
 
 Description
 """""""""""
-storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
 
 Type
 """"
@@ -32040,7 +32040,7 @@ object
 
 Description
 """""""""""
-vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 Type
 """"
@@ -32358,25 +32358,25 @@ object
      - Description
    * - :ref:`awsElasticBlockStore<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].awsElasticBlockStore>`
      - object
-     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
    * - :ref:`azureDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].azureDisk>`
      - object
-     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
    * - :ref:`azureFile<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].azureFile>`
      - object
-     - azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+     - azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
    * - :ref:`cephfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].cephfs>`
      - object
-     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
    * - :ref:`cinder<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].cinder>`
      - object
-     - cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+     - cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
    * - :ref:`configMap<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].configMap>`
      - object
      - configMap represents a configMap that should populate this volume
    * - :ref:`csi<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].csi>`
      - object
-     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
    * - :ref:`downwardAPI<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].downwardAPI>`
      - object
      - downwardAPI represents downward API about the pod that should populate this volume
@@ -32391,19 +32391,19 @@ object
      - fc represents a Fibre Channel resource that is attached to a kubelet's host machine and then exposed to the pod.
    * - :ref:`flexVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].flexVolume>`
      - object
-     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
    * - :ref:`flocker<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].flocker>`
      - object
-     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
    * - :ref:`gcePersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].gcePersistentDisk>`
      - object
-     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
    * - :ref:`gitRepo<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].gitRepo>`
      - object
-     - gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+     - gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
    * - :ref:`glusterfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].glusterfs>`
      - object
-     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
    * - :ref:`hostPath<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].hostPath>`
      - object
      - hostPath represents a pre-existing file or directory on the host machine that is directly exposed to the container. This is generally used for system agents or other privileged things that are allowed to see the host machine. Most containers will NOT need this. More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
@@ -32424,31 +32424,31 @@ object
      - persistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
    * - :ref:`photonPersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].photonPersistentDisk>`
      - object
-     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
    * - :ref:`portworxVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].portworxVolume>`
      - object
-     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
    * - :ref:`projected<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].projected>`
      - object
      - projected items for all in one resources secrets, configmaps, and downward API
    * - :ref:`quobyte<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].quobyte>`
      - object
-     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
    * - :ref:`rbd<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].rbd>`
      - object
-     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
    * - :ref:`scaleIO<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].scaleIO>`
      - object
-     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
    * - :ref:`secret<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].secret>`
      - object
      - secret represents a secret that should populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret
    * - :ref:`storageos<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].storageos>`
      - object
-     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
    * - :ref:`vsphereVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].vsphereVolume>`
      - object
-     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].awsElasticBlockStore:
 
@@ -32457,7 +32457,7 @@ object
 
 Description
 """""""""""
-awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 
 Type
 """"
@@ -32491,7 +32491,7 @@ object
 
 Description
 """""""""""
-azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
 
 Type
 """"
@@ -32531,7 +32531,7 @@ object
 
 Description
 """""""""""
-azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
 
 Type
 """"
@@ -32562,7 +32562,7 @@ object
 
 Description
 """""""""""
-cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
 
 Type
 """"
@@ -32627,7 +32627,7 @@ object
 
 Description
 """""""""""
-cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
 
 Type
 """"
@@ -32751,7 +32751,7 @@ object
 
 Description
 """""""""""
-csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
 
 Type
 """"
@@ -33323,7 +33323,7 @@ object
 
 Description
 """""""""""
-flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
 
 Type
 """"
@@ -33399,7 +33399,7 @@ object
 
 Description
 """""""""""
-flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
 
 Type
 """"
@@ -33427,7 +33427,7 @@ object
 
 Description
 """""""""""
-gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
 
 Type
 """"
@@ -33461,7 +33461,7 @@ object
 
 Description
 """""""""""
-gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
 
 Type
 """"
@@ -33492,7 +33492,7 @@ object
 
 Description
 """""""""""
-glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
 
 Type
 """"
@@ -33718,7 +33718,7 @@ object
 
 Description
 """""""""""
-photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
 
 Type
 """"
@@ -33746,7 +33746,7 @@ object
 
 Description
 """""""""""
-portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
 
 Type
 """"
@@ -34225,7 +34225,7 @@ object
 
 Description
 """""""""""
-quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
 
 Type
 """"
@@ -34265,7 +34265,7 @@ object
 
 Description
 """""""""""
-rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
 
 Type
 """"
@@ -34336,7 +34336,7 @@ object
 
 Description
 """""""""""
-scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
 
 Type
 """"
@@ -34478,7 +34478,7 @@ object
 
 Description
 """""""""""
-storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
 
 Type
 """"
@@ -34540,7 +34540,7 @@ object
 
 Description
 """""""""""
-vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 Type
 """"
@@ -34754,25 +34754,25 @@ object
      - Description
    * - :ref:`awsElasticBlockStore<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].awsElasticBlockStore>`
      - object
-     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+     - awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
    * - :ref:`azureDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].azureDisk>`
      - object
-     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+     - azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
    * - :ref:`azureFile<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].azureFile>`
      - object
-     - azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+     - azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
    * - :ref:`cephfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].cephfs>`
      - object
-     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+     - cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
    * - :ref:`cinder<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].cinder>`
      - object
-     - cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+     - cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
    * - :ref:`configMap<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].configMap>`
      - object
      - configMap represents a configMap that should populate this volume
    * - :ref:`csi<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].csi>`
      - object
-     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+     - csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
    * - :ref:`downwardAPI<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].downwardAPI>`
      - object
      - downwardAPI represents downward API about the pod that should populate this volume
@@ -34787,19 +34787,19 @@ object
      - fc represents a Fibre Channel resource that is attached to a kubelet's host machine and then exposed to the pod.
    * - :ref:`flexVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].flexVolume>`
      - object
-     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+     - flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
    * - :ref:`flocker<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].flocker>`
      - object
-     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+     - flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
    * - :ref:`gcePersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].gcePersistentDisk>`
      - object
-     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+     - gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
    * - :ref:`gitRepo<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].gitRepo>`
      - object
-     - gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+     - gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
    * - :ref:`glusterfs<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].glusterfs>`
      - object
-     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+     - glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
    * - :ref:`hostPath<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].hostPath>`
      - object
      - hostPath represents a pre-existing file or directory on the host machine that is directly exposed to the container. This is generally used for system agents or other privileged things that are allowed to see the host machine. Most containers will NOT need this. More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
@@ -34820,31 +34820,31 @@ object
      - persistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
    * - :ref:`photonPersistentDisk<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].photonPersistentDisk>`
      - object
-     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+     - photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
    * - :ref:`portworxVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].portworxVolume>`
      - object
-     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+     - portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
    * - :ref:`projected<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].projected>`
      - object
      - projected items for all in one resources secrets, configmaps, and downward API
    * - :ref:`quobyte<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].quobyte>`
      - object
-     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+     - quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
    * - :ref:`rbd<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].rbd>`
      - object
-     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+     - rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
    * - :ref:`scaleIO<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].scaleIO>`
      - object
-     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+     - scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
    * - :ref:`secret<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].secret>`
      - object
      - secret represents a secret that should populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret
    * - :ref:`storageos<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].storageos>`
      - object
-     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+     - storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
    * - :ref:`vsphereVolume<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].vsphereVolume>`
      - object
-     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+     - vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].awsElasticBlockStore:
 
@@ -34853,7 +34853,7 @@ object
 
 Description
 """""""""""
-awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 
 Type
 """"
@@ -34887,7 +34887,7 @@ object
 
 Description
 """""""""""
-azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
+azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
 
 Type
 """"
@@ -34927,7 +34927,7 @@ object
 
 Description
 """""""""""
-azureFile represents an Azure File Service mount on the host and bind mount to the pod.
+azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
 
 Type
 """"
@@ -34958,7 +34958,7 @@ object
 
 Description
 """""""""""
-cephFS represents a Ceph FS mount on the host that shares a pod's lifetime
+cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
 
 Type
 """"
@@ -35023,7 +35023,7 @@ object
 
 Description
 """""""""""
-cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
 
 Type
 """"
@@ -35147,7 +35147,7 @@ object
 
 Description
 """""""""""
-csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
+csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
 
 Type
 """"
@@ -35719,7 +35719,7 @@ object
 
 Description
 """""""""""
-flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
+flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
 
 Type
 """"
@@ -35795,7 +35795,7 @@ object
 
 Description
 """""""""""
-flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
 
 Type
 """"
@@ -35823,7 +35823,7 @@ object
 
 Description
 """""""""""
-gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
 
 Type
 """"
@@ -35857,7 +35857,7 @@ object
 
 Description
 """""""""""
-gitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
 
 Type
 """"
@@ -35888,7 +35888,7 @@ object
 
 Description
 """""""""""
-glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
 
 Type
 """"
@@ -36114,7 +36114,7 @@ object
 
 Description
 """""""""""
-photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine
+photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
 
 Type
 """"
@@ -36142,7 +36142,7 @@ object
 
 Description
 """""""""""
-portworxVolume represents a portworx volume attached and mounted on kubelets host machine
+portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
 
 Type
 """"
@@ -36621,7 +36621,7 @@ object
 
 Description
 """""""""""
-quobyte represents a Quobyte mount on the host that shares a pod's lifetime
+quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
 
 Type
 """"
@@ -36661,7 +36661,7 @@ object
 
 Description
 """""""""""
-rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md
+rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
 
 Type
 """"
@@ -36732,7 +36732,7 @@ object
 
 Description
 """""""""""
-scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
+scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
 
 Type
 """"
@@ -36874,7 +36874,7 @@ object
 
 Description
 """""""""""
-storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
+storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
 
 Type
 """"
@@ -36936,7 +36936,7 @@ object
 
 Description
 """""""""""
-vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
+vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 
 Type
 """"

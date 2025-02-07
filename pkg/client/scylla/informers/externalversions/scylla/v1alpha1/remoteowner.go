@@ -3,13 +3,13 @@
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	apiscyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	versioned "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	internalinterfaces "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -20,7 +20,7 @@ import (
 // RemoteOwners.
 type RemoteOwnerInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.RemoteOwnerLister
+	Lister() scyllav1alpha1.RemoteOwnerLister
 }
 
 type remoteOwnerInformer struct {
@@ -55,7 +55,7 @@ func NewFilteredRemoteOwnerInformer(client versioned.Interface, namespace string
 				return client.ScyllaV1alpha1().RemoteOwners(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&scyllav1alpha1.RemoteOwner{},
+		&apiscyllav1alpha1.RemoteOwner{},
 		resyncPeriod,
 		indexers,
 	)
@@ -66,9 +66,9 @@ func (f *remoteOwnerInformer) defaultInformer(client versioned.Interface, resync
 }
 
 func (f *remoteOwnerInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&scyllav1alpha1.RemoteOwner{}, f.defaultInformer)
+	return f.factory.InformerFor(&apiscyllav1alpha1.RemoteOwner{}, f.defaultInformer)
 }
 
-func (f *remoteOwnerInformer) Lister() v1alpha1.RemoteOwnerLister {
-	return v1alpha1.NewRemoteOwnerLister(f.Informer().GetIndexer())
+func (f *remoteOwnerInformer) Lister() scyllav1alpha1.RemoteOwnerLister {
+	return scyllav1alpha1.NewRemoteOwnerLister(f.Informer().GetIndexer())
 }

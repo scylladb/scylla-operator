@@ -3,9 +3,9 @@
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	scheme "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -21,33 +21,34 @@ type NodeConfigsGetter interface {
 
 // NodeConfigInterface has methods to work with NodeConfig resources.
 type NodeConfigInterface interface {
-	Create(ctx context.Context, nodeConfig *v1alpha1.NodeConfig, opts v1.CreateOptions) (*v1alpha1.NodeConfig, error)
-	Update(ctx context.Context, nodeConfig *v1alpha1.NodeConfig, opts v1.UpdateOptions) (*v1alpha1.NodeConfig, error)
+	Create(ctx context.Context, nodeConfig *scyllav1alpha1.NodeConfig, opts v1.CreateOptions) (*scyllav1alpha1.NodeConfig, error)
+	Update(ctx context.Context, nodeConfig *scyllav1alpha1.NodeConfig, opts v1.UpdateOptions) (*scyllav1alpha1.NodeConfig, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, nodeConfig *v1alpha1.NodeConfig, opts v1.UpdateOptions) (*v1alpha1.NodeConfig, error)
+	UpdateStatus(ctx context.Context, nodeConfig *scyllav1alpha1.NodeConfig, opts v1.UpdateOptions) (*scyllav1alpha1.NodeConfig, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.NodeConfig, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.NodeConfigList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*scyllav1alpha1.NodeConfig, error)
+	List(ctx context.Context, opts v1.ListOptions) (*scyllav1alpha1.NodeConfigList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.NodeConfig, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *scyllav1alpha1.NodeConfig, err error)
 	NodeConfigExpansion
 }
 
 // nodeConfigs implements NodeConfigInterface
 type nodeConfigs struct {
-	*gentype.ClientWithList[*v1alpha1.NodeConfig, *v1alpha1.NodeConfigList]
+	*gentype.ClientWithList[*scyllav1alpha1.NodeConfig, *scyllav1alpha1.NodeConfigList]
 }
 
 // newNodeConfigs returns a NodeConfigs
 func newNodeConfigs(c *ScyllaV1alpha1Client) *nodeConfigs {
 	return &nodeConfigs{
-		gentype.NewClientWithList[*v1alpha1.NodeConfig, *v1alpha1.NodeConfigList](
+		gentype.NewClientWithList[*scyllav1alpha1.NodeConfig, *scyllav1alpha1.NodeConfigList](
 			"nodeconfigs",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			"",
-			func() *v1alpha1.NodeConfig { return &v1alpha1.NodeConfig{} },
-			func() *v1alpha1.NodeConfigList { return &v1alpha1.NodeConfigList{} }),
+			func() *scyllav1alpha1.NodeConfig { return &scyllav1alpha1.NodeConfig{} },
+			func() *scyllav1alpha1.NodeConfigList { return &scyllav1alpha1.NodeConfigList{} },
+		),
 	}
 }

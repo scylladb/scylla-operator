@@ -1,7 +1,6 @@
 package gocql
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -504,145 +503,9 @@ func (h *HostInfo) ScyllaShardAwarePortTLS() uint16 {
 	return h.scyllaShardAwarePortTLS
 }
 
-// Experimental, this interface and use may change
-type ReplicaInfo struct {
-	hostId  UUID
-	shardId int
-}
-
-// Experimental, this interface and use may change
-type TabletInfo struct {
-	keyspaceName string
-	tableName    string
-	firstToken   int64
-	lastToken    int64
-	replicas     []ReplicaInfo
-}
-
-func (t *TabletInfo) KeyspaceName() string {
-	return t.keyspaceName
-}
-
-func (t *TabletInfo) FirstToken() int64 {
-	return t.firstToken
-}
-
-func (t *TabletInfo) LastToken() int64 {
-	return t.lastToken
-}
-
-func (t *TabletInfo) TableName() string {
-	return t.tableName
-}
-
-func (t *TabletInfo) Replicas() []ReplicaInfo {
-	return t.replicas
-}
-
-// Search for place in tablets table with specific Keyspace and Table name
-func findTablets(tablets []*TabletInfo, k string, t string) (int, int) {
-	l := -1
-	r := -1
-	for i, tablet := range tablets {
-		if tablet.KeyspaceName() == k && tablet.TableName() == t {
-			if l == -1 {
-				l = i
-			}
-			r = i
-		} else if l != -1 {
-			break
-		}
-	}
-
-	return l, r
-}
-
-func addTabletToTabletsList(tablets []*TabletInfo, tablet *TabletInfo) []*TabletInfo {
-	l, r := findTablets(tablets, tablet.keyspaceName, tablet.tableName)
-	if l == -1 && r == -1 {
-		l = 0
-		r = 0
-	} else {
-		r = r + 1
-	}
-
-	l1, r1 := l, r
-	l2, r2 := l1, r1
-
-	// find first overlaping range
-	for l1 < r1 {
-		mid := (l1 + r1) / 2
-		if tablets[mid].FirstToken() < tablet.FirstToken() {
-			l1 = mid + 1
-		} else {
-			r1 = mid
-		}
-	}
-	start := l1
-
-	if start > l && tablets[start-1].LastToken() > tablet.FirstToken() {
-		start = start - 1
-	}
-
-	// find last overlaping range
-	for l2 < r2 {
-		mid := (l2 + r2) / 2
-		if tablets[mid].LastToken() < tablet.LastToken() {
-			l2 = mid + 1
-		} else {
-			r2 = mid
-		}
-	}
-	end := l2
-	if end < r && tablets[end].FirstToken() >= tablet.LastToken() {
-		end = end - 1
-	}
-	if end == len(tablets) {
-		end = end - 1
-	}
-
-	updated_tablets := tablets
-	if start <= end {
-		// Delete elements from index start to end
-		updated_tablets = append(tablets[:start], tablets[end+1:]...)
-	}
-	// Insert tablet element at index start
-	updated_tablets2 := append(updated_tablets[:start], append([]*TabletInfo{tablet}, updated_tablets[start:]...)...)
-	return updated_tablets2
-}
-
-// Search for place in tablets table for token starting from index l to index r
-func findTabletForToken(tablets []*TabletInfo, token Token, l int, r int) *TabletInfo {
-	for l < r {
-		var m int
-		if r*l > 0 {
-			m = l + (r-l)/2
-		} else {
-			m = (r + l) / 2
-		}
-		if int64Token(tablets[m].LastToken()).Less(token) {
-			l = m + 1
-		} else {
-			r = m
-		}
-	}
-
-	return tablets[l]
-}
-
-// Polls system.peers at a specific interval to find new hosts
-type ringDescriber struct {
-	session         *Session
-	mu              sync.Mutex
-	prevHosts       []*HostInfo
-	prevPartitioner string
-	// Experimental, this interface and use may change
-	prevTablets []*TabletInfo
-}
-
 // Returns true if we are using system_schema.keyspaces instead of system.schema_keyspaces
-func checkSystemSchema(control *controlConn) (bool, error) {
-	iter := control.query("SELECT * FROM system_schema.keyspaces" + control.session.usingTimeoutClause)
+func checkSystemSchema(control controlConnection) (bool, error) {
+	iter := control.query("SELECT * FROM system_schema.keyspaces" + control.getSession().usingTimeoutClause)
 	if err := iter.err; err != nil {
 		if errf, ok := err.(*errorFrame); ok {
 			if errf.code == ErrCodeSyntax {
@@ -658,7 +521,7 @@ func checkSystemSchema(control *controlConn) (bool, error) {
 
 // Given a map that represents a row from either system.local or system.peers
 // return as much information as we can in *HostInfo
-func (s *Session) hostInfoFromMap(row map[string]interface{}, host *HostInfo) (*HostInfo, error) {
+func hostInfoFromMap(row map[string]interface{}, host *HostInfo, translateAddressPort func(addr net.IP, port int) (net.IP, int)) (*HostInfo, error) {
 	const assertErrorMsg = "Assertion failed for %s"
 	var ok bool
 
@@ -771,14 +634,14 @@ func (s *Session) hostInfoFromMap(row map[string]interface{}, host *HostInfo) (*
 	}
 
 	host.untranslatedConnectAddress = host.ConnectAddress()
-	ip, port := s.cfg.translateAddressPort(host.untranslatedConnectAddress, host.port)
+	ip, port := translateAddressPort(host.untranslatedConnectAddress, host.port)
 	host.connectAddress = ip
 	host.port = port
 
 	return host, nil
 }
 
-func (s *Session) hostInfoFromIter(iter *Iter, connectAddress net.IP, defaultPort int) (*HostInfo, error) {
+func hostInfoFromIter(iter *Iter, connectAddress net.IP, defaultPort int, translateAddressPort func(addr net.IP, port int) (net.IP, int)) (*HostInfo, error) {
 	rows, err := iter.SliceMap()
 	if err != nil {
 		// TODO(zariel): make typed error
@@ -789,160 +652,21 @@ func (s *Session) hostInfoFromIter(iter *Iter, connectAddress net.IP, defaultPor
 		return nil, errors.New("query returned 0 rows")
 	}
 
-	host, err := s.hostInfoFromMap(rows[0], &HostInfo{connectAddress: connectAddress, port: defaultPort})
+	host, err := hostInfoFromMap(rows[0], &HostInfo{connectAddress: connectAddress, port: defaultPort}, translateAddressPort)
 	if err != nil {
 		return nil, err
 	}
 	return host, nil
 }
 
-// Ask the control node for the local host info
-func (r *ringDescriber) getLocalHostInfo() (*HostInfo, error) {
-	if r.session.control == nil {
-		return nil, errNoControl
-	}
-
-	iter := r.session.control.withConnHost(func(ch *connHost) *Iter {
-		return ch.conn.querySystemLocal(context.TODO())
-	})
-
-	if iter == nil {
-		return nil, errNoControl
-	}
-
-	host, err := r.session.hostInfoFromIter(iter, nil, r.session.cfg.Port)
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve local host info: %w", err)
-	}
-	return host, nil
-}
-
-// Ask the control node for host info on all it's known peers
-func (r *ringDescriber) getClusterPeerInfo(localHost *HostInfo) ([]*HostInfo, error) {
-	if r.session.control == nil {
-		return nil, errNoControl
-	}
-
-	var peers []*HostInfo
-	iter := r.session.control.withConnHost(func(ch *connHost) *Iter {
-		return ch.conn.querySystemPeers(context.TODO(), localHost.version)
-	})
-
-	if iter == nil {
-		return nil, errNoControl
-	}
-
-	rows, err := iter.SliceMap()
-	if err != nil {
-		// TODO(zariel): make typed error
-		return nil, fmt.Errorf("unable to fetch peer host info: %s", err)
-	}
-
-	for _, row := range rows {
-		// extract all available info about the peer
-		host, err := r.session.hostInfoFromMap(row, &HostInfo{port: r.session.cfg.Port})
-		if err != nil {
-			return nil, err
-		} else if !isValidPeer(host) {
-			// If it's not a valid peer
-			r.session.logger.Printf("Found invalid peer '%s' "+
-				"Likely due to a gossip or snitch issue, this host will be ignored", host)
-			continue
-		}
-
-		peers = append(peers, host)
-	}
-
-	return peers, nil
-}
-
-// Return true if the host is a valid peer
-func isValidPeer(host *HostInfo) bool {
-	return !(len(host.RPCAddress()) == 0 ||
-		host.hostId == "" ||
-		host.dataCenter == "" ||
-		host.rack == "" ||
-		len(host.tokens) == 0)
-}
-
-// GetHosts returns a list of hosts found via queries to system.local and system.peers
-func (r *ringDescriber) GetHosts() ([]*HostInfo, string, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	localHost, err := r.getLocalHostInfo()
-	if err != nil {
-		return r.prevHosts, r.prevPartitioner, err
-	}
-
-	peerHosts, err := r.getClusterPeerInfo(localHost)
-	if err != nil {
-		return r.prevHosts, r.prevPartitioner, err
-	}
-
-	hosts := append([]*HostInfo{localHost}, peerHosts...)
-	var partitioner string
-	if len(hosts) > 0 {
-		partitioner = hosts[0].Partitioner()
-	}
-
-	return hosts, partitioner, nil
-}
-
-// Given an ip/port return HostInfo for the specified ip/port
-func (r *ringDescriber) getHostInfo(hostID UUID) (*HostInfo, error) {
-	var host *HostInfo
-	for _, table := range []string{"system.peers", "system.local"} {
-		iter := r.session.control.withConnHost(func(ch *connHost) *Iter {
-			if ch.host.HostID() == hostID.String() {
-				host = ch.host
-				return nil
-			}
-
-			if table == "system.peers" {
-				return ch.conn.querySystemPeers(context.TODO(), ch.host.version)
-			} else {
-				return ch.conn.query(context.TODO(), fmt.Sprintf("SELECT * FROM %s", table))
-			}
-		})
-
-		if iter != nil {
-			rows, err := iter.SliceMap()
-			if err != nil {
-				return nil, err
-			}
-
-			for _, row := range rows {
-				h, err := r.session.hostInfoFromMap(row, &HostInfo{port: r.session.cfg.Port})
-				if err != nil {
-					return nil, err
-				}
-
-				if h.HostID() == hostID.String() {
-					host = h
-					break
-				}
-			}
-		}
-	}
-
-	if host == nil {
-		return nil, errors.New("unable to fetch host info: invalid control connection")
-	} else if host.invalidConnectAddr() {
-		return nil, fmt.Errorf("host ConnectAddress invalid ip=%v: %v", host.connectAddress, host)
-	}
-
-	return host, nil
-}
-
 // debounceRingRefresh submits a ring refresh request to the ring refresh debouncer.
 func (s *Session) debounceRingRefresh() {
-	s.ringRefresher.debounce()
+	s.ringRefresher.Debounce()
 }
 
 // refreshRing executes a ring refresh immediately and cancels pending debounce ring refresh requests.
-func (s *Session) refreshRing() error {
-	err, ok := <-s.ringRefresher.refreshNow()
+func (s *Session) refreshRingNow() error {
+	err, ok := <-s.ringRefresher.RefreshNow()
 	if !ok {
 		return errors.New("could not refresh ring because stop was requested")
 	}
@@ -950,21 +674,20 @@ func (s *Session) refreshRing() error {
 	return err
 }
 
-func refreshRing(r *ringDescriber) error {
-	hosts, partitioner, err := r.GetHosts()
+func (s *Session) refreshRing() error {
+	hosts, partitioner, err := s.hostSource.GetHostsFromSystem()
 	if err != nil {
 		return err
 	}
-
-	prevHosts := r.session.ring.currentHosts()
+	prevHosts := s.hostSource.getHostsMap()
 
 	for _, h := range hosts {
-		if r.session.cfg.filterHost(h) {
+		if s.cfg.filterHost(h) {
 			continue
 		}
 
-		if host, ok := r.session.ring.addHostIfMissing(h); !ok {
-			r.session.startPoolFill(h)
+		if host, ok := s.hostSource.addHostIfMissing(h); !ok {
+			s.startPoolFill(h)
 		} else {
 			// host (by hostID) already exists; determine if IP has changed
 			newHostID := h.HostID()
@@ -978,197 +701,22 @@ func refreshRing(r *ringDescriber) error {
 			} else {
 				// host IP has changed
 				// remove old HostInfo (w/old IP)
-				r.session.removeHost(existing)
-				if _, alreadyExists := r.session.ring.addHostIfMissing(h); alreadyExists {
+				s.removeHost(existing)
+				if _, alreadyExists := s.hostSource.addHostIfMissing(h); alreadyExists {
 					return fmt.Errorf("add new host=%s after removal: %w", h, ErrHostAlreadyExists)
 				}
 				// add new HostInfo (same hostID, new IP)
-				r.session.startPoolFill(h)
+				s.startPoolFill(h)
 			}
 		}
 		delete(prevHosts, h.HostID())
 	}
 
 	for _, host := range prevHosts {
-		r.session.removeHost(host)
+		s.metadataDescriber.removeTabletsWithHost(host)
+		s.removeHost(host)
 	}
-
-	r.session.metadata.setPartitioner(partitioner)
-	r.session.policy.SetPartitioner(partitioner)
+	s.policy.SetPartitioner(partitioner)
 
 	return nil
-}
-
-// Experimental, this interface and use may change
-func addTablet(r *ringDescriber, tablet *TabletInfo) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	tablets := r.session.getTablets()
-	tablets = addTabletToTabletsList(tablets, tablet)
-
-	r.session.ring.setTablets(tablets)
-	r.session.policy.SetTablets(tablets)
-
-	r.session.schemaDescriber.refreshTabletsSchema()
-
-	return nil
-}
-
-const (
-	ringRefreshDebounceTime = 1 * time.Second
-)
-
-// debounces requests to call a refresh function (currently used for ring refresh). It also supports triggering a refresh immediately.
-type refreshDebouncer struct {
-	mu           sync.Mutex
-	stopped      bool
-	broadcaster  *errorBroadcaster
-	interval     time.Duration
-	timer        *time.Timer
-	refreshNowCh chan struct{}
-	quit         chan struct{}
-	refreshFn    func() error
-}
-
-func newRefreshDebouncer(interval time.Duration, refreshFn func() error) *refreshDebouncer {
-	d := &refreshDebouncer{
-		stopped:      false,
-		broadcaster:  nil,
-		refreshNowCh: make(chan struct{}, 1),
-		quit:         make(chan struct{}),
-		interval:     interval,
-		timer:        time.NewTimer(interval),
-		refreshFn:    refreshFn,
-	}
-	d.timer.Stop()
-	go d.flusher()
-	return d
-}
-
-// debounces a request to call the refresh function
-func (d *refreshDebouncer) debounce() {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	if d.stopped {
-		return
-	}
-	d.timer.Reset(d.interval)
-}
-
-// requests an immediate refresh which will cancel pending refresh requests
-func (d *refreshDebouncer) refreshNow() <-chan error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	if d.broadcaster == nil {
-		d.broadcaster = newErrorBroadcaster()
-		select {
-		case d.refreshNowCh <- struct{}{}:
-		default:
-			// already a refresh pending
-		}
-	}
-	return d.broadcaster.newListener()
-}
-
-func (d *refreshDebouncer) flusher() {
-	for {
-		select {
-		case <-d.refreshNowCh:
-		case <-d.timer.C:
-		case <-d.quit:
-		}
-		d.mu.Lock()
-		if d.stopped {
-			if d.broadcaster != nil {
-				d.broadcaster.stop()
-				d.broadcaster = nil
-			}
-			d.timer.Stop()
-			d.mu.Unlock()
-			return
-		}
-
-		// make sure both request channels are cleared before we refresh
-		select {
-		case <-d.refreshNowCh:
-		default:
-		}
-
-		d.timer.Stop()
-		select {
-		case <-d.timer.C:
-		default:
-		}
-
-		curBroadcaster := d.broadcaster
-		d.broadcaster = nil
-		d.mu.Unlock()
-
-		err := d.refreshFn()
-		if curBroadcaster != nil {
-			curBroadcaster.broadcast(err)
-		}
-	}
-}
-
-func (d *refreshDebouncer) stop() {
-	d.mu.Lock()
-	if d.stopped {
-		d.mu.Unlock()
-		return
-	}
-	d.stopped = true
-	d.mu.Unlock()
-	d.quit <- struct{}{} // sync with flusher
-	close(d.quit)
-}
-
-// broadcasts an error to multiple channels (listeners)
-type errorBroadcaster struct {
-	listeners []chan<- error
-	mu        sync.Mutex
-}
-
-func newErrorBroadcaster() *errorBroadcaster {
-	return &errorBroadcaster{
-		listeners: nil,
-		mu:        sync.Mutex{},
-	}
-}
-
-func (b *errorBroadcaster) newListener() <-chan error {
-	ch := make(chan error, 1)
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	b.listeners = append(b.listeners, ch)
-	return ch
-}
-
-func (b *errorBroadcaster) broadcast(err error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	curListeners := b.listeners
-	if len(curListeners) > 0 {
-		b.listeners = nil
-	} else {
-		return
-	}
-
-	for _, listener := range curListeners {
-		listener <- err
-		close(listener)
-	}
-}
-
-func (b *errorBroadcaster) stop() {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	if len(b.listeners) == 0 {
-		return
-	}
-	for _, listener := range b.listeners {
-		close(listener)
-	}
-	b.listeners = nil
 }

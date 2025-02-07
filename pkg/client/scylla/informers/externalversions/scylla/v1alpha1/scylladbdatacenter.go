@@ -3,13 +3,13 @@
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	apiscyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	versioned "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	internalinterfaces "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -20,7 +20,7 @@ import (
 // ScyllaDBDatacenters.
 type ScyllaDBDatacenterInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.ScyllaDBDatacenterLister
+	Lister() scyllav1alpha1.ScyllaDBDatacenterLister
 }
 
 type scyllaDBDatacenterInformer struct {
@@ -55,7 +55,7 @@ func NewFilteredScyllaDBDatacenterInformer(client versioned.Interface, namespace
 				return client.ScyllaV1alpha1().ScyllaDBDatacenters(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&scyllav1alpha1.ScyllaDBDatacenter{},
+		&apiscyllav1alpha1.ScyllaDBDatacenter{},
 		resyncPeriod,
 		indexers,
 	)
@@ -66,9 +66,9 @@ func (f *scyllaDBDatacenterInformer) defaultInformer(client versioned.Interface,
 }
 
 func (f *scyllaDBDatacenterInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&scyllav1alpha1.ScyllaDBDatacenter{}, f.defaultInformer)
+	return f.factory.InformerFor(&apiscyllav1alpha1.ScyllaDBDatacenter{}, f.defaultInformer)
 }
 
-func (f *scyllaDBDatacenterInformer) Lister() v1alpha1.ScyllaDBDatacenterLister {
-	return v1alpha1.NewScyllaDBDatacenterLister(f.Informer().GetIndexer())
+func (f *scyllaDBDatacenterInformer) Lister() scyllav1alpha1.ScyllaDBDatacenterLister {
+	return scyllav1alpha1.NewScyllaDBDatacenterLister(f.Informer().GetIndexer())
 }

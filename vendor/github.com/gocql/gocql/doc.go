@@ -61,6 +61,16 @@
 //	 }
 //	 defer session.Close()
 //
+// By default, PasswordAuthenticator will attempt to authenticate regardless of what implementation the server returns
+// in its AUTHENTICATE message as its authenticator, (e.g. org.apache.cassandra.auth.PasswordAuthenticator).  If you
+// wish to restrict this you may use PasswordAuthenticator.AllowedAuthenticators:
+//
+//	 cluster.Authenticator = gocql.PasswordAuthenticator {
+//			Username:              "user",
+//			Password:              "password"
+//			AllowedAuthenticators: []string{"org.apache.cassandra.auth.PasswordAuthenticator"},
+//	 }
+//
 // # Transport layer security
 //
 // It is possible to secure traffic between the client and server with TLS.
@@ -280,7 +290,7 @@
 // # Batches
 //
 // The CQL protocol supports sending batches of DML statements (INSERT/UPDATE/DELETE) and so does gocql.
-// Use Session.NewBatch to create a new batch and then fill-in details of individual queries.
+// Use Session.Batch to create a new batch and then fill-in details of individual queries.
 // Then execute the batch with Session.ExecuteBatch.
 //
 // Logged batches ensure atomicity, either all or none of the operations in the batch will succeed, but they have
@@ -359,4 +369,7 @@
 // system_traces.events tables. NewTraceWriter returns an implementation of Tracer that writes the events to a writer.
 // Gathering trace information might be essential for debugging and optimizing queries, but writing traces has overhead,
 // so this feature should not be used on production systems with very high load unless you know what you are doing.
+// There is also a new implementation of Tracer - TracerEnhanced, that is intended to be more reliable and convinient to use.
+// It has a funcionality to check if trace is ready to be extracted and only actually gets it if requested which makes
+// the impact on a performance smaller.
 package gocql // import "github.com/gocql/gocql"

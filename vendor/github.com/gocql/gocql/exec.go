@@ -51,7 +51,6 @@ func NewSingleHostQueryExecutor(cfg *ClusterConfig) (e SingleHostQueryExecutor, 
 
 	// If protocol version not set assume 4 and skip discovery
 	if c.ProtoVersion == 0 {
-		e.session.logger.Print("gocql: setting protocol version 4")
 		c.ProtoVersion = 4
 	}
 

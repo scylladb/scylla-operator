@@ -50,13 +50,8 @@ func streamFromBucket(bucket, streamInBucket int) int {
 }
 
 func (s *IDGenerator) GetStream() (int, bool) {
-	// based closely on the java-driver stream ID generator
-	// avoid false sharing subsequent requests.
-	offset := atomic.LoadUint32(&s.offset)
-	for !atomic.CompareAndSwapUint32(&s.offset, offset, (offset+1)%s.numBuckets) {
-		offset = atomic.LoadUint32(&s.offset)
-	}
-	offset = (offset + 1) % s.numBuckets
+	// Reduce collisions by offsetting the starting point
+	offset := atomic.AddUint32(&s.offset, 1)
 
 	for i := uint32(0); i < s.numBuckets; i++ {
 		pos := int((i + offset) % s.numBuckets)

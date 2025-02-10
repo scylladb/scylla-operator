@@ -285,31 +285,6 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 			defer cleanupFunc(specCtx)
 		}
 
-		isNodeConfigMountControllerDegraded := func(nc *scyllav1alpha1.NodeConfig) (bool, error) {
-			statusConditions := nc.Status.Conditions.ToMetaV1Conditions()
-
-			if !helpers.IsStatusConditionPresentAndTrue(statusConditions, scyllav1alpha1.DegradedCondition, nc.Generation) {
-				return false, nil
-			}
-
-			nodeDegradedConditionType := fmt.Sprintf(internalapi.NodeDegradedConditionFormat, nodeUnderTest.GetName())
-			if !helpers.IsStatusConditionPresentAndTrue(statusConditions, nodeDegradedConditionType, nc.Generation) {
-				return false, nil
-			}
-
-			nodeSetupDegradedConditionType := fmt.Sprintf(internalapi.NodeSetupDegradedConditionFormat, nodeUnderTest.GetName())
-			if !helpers.IsStatusConditionPresentAndTrue(statusConditions, nodeSetupDegradedConditionType, nc.Generation) {
-				return false, nil
-			}
-
-			nodeMountControllerConditionType := fmt.Sprintf("MountControllerNodeSetup%sDegraded", nodeUnderTest.GetName())
-			if !helpers.IsStatusConditionPresentAndTrue(statusConditions, nodeMountControllerConditionType, nc.Generation) {
-				return false, nil
-			}
-
-			return true, nil
-		}
-
 		framework.By("Waiting for NodeConfig to be in a degraded state")
 		ctx1, ctx1Cancel := context.WithTimeout(ctx, nodeConfigRolloutTimeout)
 		defer ctx1Cancel()
@@ -318,7 +293,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 			f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs(),
 			nc.Name,
 			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
-			isNodeConfigMountControllerDegraded,
+			isNodeConfigMountControllerNodeSetupDegradedFunc(nodeUnderTest),
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -548,6 +523,168 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 			},
 		}),
 	)
+
+	g.It("should successfully start a failed mount unit with a corrupted filesystem when it's overwritten with a clean one", func(ctx context.Context) {
+		o.Expect(matchingNodes).NotTo(o.BeEmpty())
+		o.Expect(matchingNodes[0]).NotTo(o.BeNil())
+		nodeUnderTest := matchingNodes[0]
+
+		devicePath := fmt.Sprintf("/dev/loops/%s", f.Namespace())
+		hostDevicePath := path.Join("/host", devicePath)
+
+		nc := ncTemplate.DeepCopy()
+		nc.Spec.LocalDiskSetup = &scyllav1alpha1.LocalDiskSetup{
+			LoopDevices: []scyllav1alpha1.LoopDeviceConfiguration{
+				{
+					Name:      f.Namespace(),
+					ImagePath: fmt.Sprintf("/var/lib/%s.img", f.Namespace()),
+					Size:      xfsVolumeSize,
+				},
+			},
+			Filesystems: []scyllav1alpha1.FilesystemConfiguration{
+				{
+					Device: devicePath,
+					Type:   scyllav1alpha1.XFSFilesystem,
+				},
+			},
+		}
+
+		rc := framework.NewRestoringCleaner(
+			ctx,
+			f.KubeAdminClient(),
+			f.DynamicAdminClient(),
+			nodeConfigResourceInfo,
+			nc.Namespace,
+			nc.Name,
+			framework.RestoreStrategyRecreate,
+		)
+		f.AddCleaners(rc)
+		rc.DeleteObject(ctx, true)
+
+		g.By("Creating NodeConfig")
+		nc, err := f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Create(ctx, nc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Creating a client Pod")
+		clientPod := newClientPod(nc)
+
+		clientPod, err = f.KubeClient().CoreV1().Pods(f.Namespace()).Create(ctx, clientPod, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for client Pod to be in a running state")
+		waitCtx1, waitCtx1Cancel := utils.ContextForPodStartup(ctx)
+		defer waitCtx1Cancel()
+		clientPod, err = controllerhelpers.WaitForPodState(waitCtx1, f.KubeClient().CoreV1().Pods(clientPod.Namespace), clientPod.Name, controllerhelpers.WaitForStateOptions{}, utils.PodIsRunning)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for NodeConfig to roll out")
+		ctx1, ctx1Cancel := context.WithTimeout(ctx, nodeConfigRolloutTimeout)
+		defer ctx1Cancel()
+		nc, err = controllerhelpers.WaitForNodeConfigState(
+			ctx1,
+			f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs(),
+			nc.Name,
+			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
+			utils.IsNodeConfigRolledOut,
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Verifying the filesystem's integrity")
+		stdout, stderr, err := executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_repair", "-o", "force_geometry", "-f", "-n", hostDevicePath)
+		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+
+		framework.By("Getting the filesystem's block size")
+		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "stat", "--file-system", "--format=%s", hostDevicePath)
+		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+
+		blockSize := strings.TrimSpace(stdout)
+
+		framework.By("Corrupting the filesystem")
+		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_db", "-x", "-c", "blockget", "-c", "blocktrash -s 12345678 -n 1000", hostDevicePath)
+		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+
+		framework.By("Verifying that the filesystem is corrupted")
+		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_repair", "-o", "force_geometry", "-f", "-n", hostDevicePath)
+		o.Expect(err).To(o.HaveOccurred())
+
+		framework.By("Patching NodeConfig's mount configuration with a mount over a corrupted filesystem")
+		ncCopy := nc.DeepCopy()
+		ncCopy.Spec.LocalDiskSetup.Mounts = []scyllav1alpha1.MountConfiguration{
+			{
+				Device:             devicePath,
+				MountPoint:         fmt.Sprintf("/var/lib/%s", f.Namespace()),
+				FSType:             string(scyllav1alpha1.XFSFilesystem),
+				UnsupportedOptions: []string{"prjquota"},
+			},
+		}
+		patch, err := helpers.CreateTwoWayMergePatch(nc, ncCopy)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		_, err = f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Patch(ctx, nc.Name, types.MergePatchType, patch, metav1.PatchOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for NodeConfig to be in a degraded state")
+		ctx2, ctx2Cancel := context.WithTimeout(ctx, nodeConfigRolloutTimeout)
+		defer ctx2Cancel()
+		nc, err = controllerhelpers.WaitForNodeConfigState(
+			ctx2,
+			f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs(),
+			nc.Name,
+			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
+			isNodeConfigMountControllerNodeSetupDegradedFunc(nodeUnderTest),
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Overwriting the corrupted filesystem")
+		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "mkfs", "-t", string(scyllav1alpha1.XFSFilesystem), "-b", fmt.Sprintf("size=%s", blockSize), "-K", "-f", hostDevicePath)
+		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+
+		framework.By("Verifying the filesystem's integrity")
+		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_repair", "-o", "force_geometry", "-f", "-n", hostDevicePath)
+		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+
+		framework.By("Waiting for NodeConfig to roll out")
+		ctx3, ctx3Cancel := context.WithTimeout(ctx, nodeConfigRolloutTimeout)
+		defer ctx3Cancel()
+		nc, err = controllerhelpers.WaitForNodeConfigState(
+			ctx3,
+			f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs(),
+			nc.Name,
+			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
+			utils.IsNodeConfigRolledOut,
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// Disable disk setup before cleanup to not fight over resources
+		// TODO: can be removed once we support cleanup of filesystem and raid array
+		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			var freshNC, updatedNC *scyllav1alpha1.NodeConfig
+			freshNC, err = f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Get(ctx, nc.Name, metav1.GetOptions{})
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			freshNC.Spec.LocalDiskSetup = nil
+			updatedNC, err = f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Update(ctx, freshNC, metav1.UpdateOptions{})
+			if err == nil {
+				nc = updatedNC
+			}
+			return err
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for NodeConfig to deploy")
+		ctx4, ctx4Cancel := context.WithTimeout(ctx, nodeConfigRolloutTimeout)
+		defer ctx4Cancel()
+		nc, err = controllerhelpers.WaitForNodeConfigState(
+			ctx4,
+			f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs(),
+			nc.Name,
+			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
+			utils.IsNodeConfigRolledOut,
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		verifyNodeConfig(ctx, f.KubeAdminClient(), nc)
+	}, g.NodeTimeout(testTimeout))
 })
 
 func newClientPod(nc *scyllav1alpha1.NodeConfig) *corev1.Pod {
@@ -605,4 +742,31 @@ func executeInPod(ctx context.Context, config *rest.Config, client corev1client.
 		CaptureStdout: true,
 		CaptureStderr: true,
 	})
+}
+
+func isNodeConfigMountControllerNodeSetupDegradedFunc(node *corev1.Node) func(nc *scyllav1alpha1.NodeConfig) (bool, error) {
+	return func(nc *scyllav1alpha1.NodeConfig) (bool, error) {
+		statusConditions := nc.Status.Conditions.ToMetaV1Conditions()
+
+		if !helpers.IsStatusConditionPresentAndTrue(statusConditions, scyllav1alpha1.DegradedCondition, nc.Generation) {
+			return false, nil
+		}
+
+		nodeDegradedConditionType := fmt.Sprintf(internalapi.NodeDegradedConditionFormat, node.GetName())
+		if !helpers.IsStatusConditionPresentAndTrue(statusConditions, nodeDegradedConditionType, nc.Generation) {
+			return false, nil
+		}
+
+		nodeSetupDegradedConditionType := fmt.Sprintf(internalapi.NodeSetupDegradedConditionFormat, node.GetName())
+		if !helpers.IsStatusConditionPresentAndTrue(statusConditions, nodeSetupDegradedConditionType, nc.Generation) {
+			return false, nil
+		}
+
+		nodeMountControllerConditionType := fmt.Sprintf("MountControllerNodeSetup%sDegraded", node.GetName())
+		if !helpers.IsStatusConditionPresentAndTrue(statusConditions, nodeMountControllerConditionType, nc.Generation) {
+			return false, nil
+		}
+
+		return true, nil
+	}
 }

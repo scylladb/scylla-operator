@@ -46538,6 +46538,7 @@ webhooks:
     - nodeconfigs
     - scyllaoperatorconfigs
     - scylladbdatacenters
+    - scylladbclusters
 
 ---
 apiVersion: policy/v1

@@ -12,6 +12,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
+	corevalidation "github.com/scylladb/scylla-operator/pkg/thirdparty/k8s.io/kubernetes/pkg/apis/core/validation"
 	"k8s.io/apimachinery/pkg/api/resource"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	apimachinerymetav1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
@@ -25,6 +26,27 @@ var (
 		scyllav1alpha1.BroadcastAddressTypePodIP,
 		scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 		scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
+	}
+
+	allowedNodeServiceTypesByBroadcastAddressType = map[scyllav1alpha1.BroadcastAddressType][]scyllav1alpha1.NodeServiceType{
+		scyllav1alpha1.BroadcastAddressTypeServiceClusterIP: {
+			scyllav1alpha1.NodeServiceTypeClusterIP,
+			scyllav1alpha1.NodeServiceTypeLoadBalancer,
+		},
+		scyllav1alpha1.BroadcastAddressTypePodIP: {
+			scyllav1alpha1.NodeServiceTypeHeadless,
+			scyllav1alpha1.NodeServiceTypeClusterIP,
+			scyllav1alpha1.NodeServiceTypeLoadBalancer,
+		},
+		scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress: {
+			scyllav1alpha1.NodeServiceTypeLoadBalancer,
+		},
+	}
+
+	supportedNodeServiceTypes = []scyllav1alpha1.NodeServiceType{
+		scyllav1alpha1.NodeServiceTypeHeadless,
+		scyllav1alpha1.NodeServiceTypeClusterIP,
+		scyllav1alpha1.NodeServiceTypeLoadBalancer,
 	}
 )
 
@@ -87,38 +109,56 @@ func ValidateScyllaDBDatacenterRackTemplate(rackTemplate *scyllav1alpha1.RackTem
 	}
 
 	if rackTemplate.ScyllaDB != nil {
-		if rackTemplate.ScyllaDB.Storage != nil {
-			if rackTemplate.ScyllaDB.Storage.Metadata != nil {
-				allErrs = append(allErrs, apimachinerymetav1validation.ValidateLabels(rackTemplate.ScyllaDB.Storage.Metadata.Labels, fldPath.Child("scyllaDB", "storage", "metadata", "labels"))...)
-				allErrs = append(allErrs, apimachineryvalidation.ValidateAnnotations(rackTemplate.ScyllaDB.Storage.Metadata.Annotations, fldPath.Child("scyllaDB", "storage", "metadata", "annotations"))...)
-			}
+		allErrs = append(allErrs, ValidateScyllaDBDatacenterScyllaDBTemplate(rackTemplate.ScyllaDB, fldPath.Child("scyllaDB"))...)
+	}
 
-			storageCapacity, err := resource.ParseQuantity(rackTemplate.ScyllaDB.Storage.Capacity)
-			if err != nil {
-				allErrs = append(allErrs, field.Invalid(fldPath.Child("scyllaDB", "storage", "capacity"), rackTemplate.ScyllaDB.Storage.Capacity, fmt.Sprintf("unable to parse capacity: %v", err)))
-			} else if storageCapacity.CmpInt64(0) <= 0 {
-				allErrs = append(allErrs, field.Invalid(fldPath.Child("scyllaDB", "storage", "capacity"), rackTemplate.ScyllaDB.Storage.Capacity, "must be greater than zero"))
-			}
+	if rackTemplate.ScyllaDBManagerAgent != nil {
+		allErrs = append(allErrs, ValidateScyllaDBDatacenterScyllaDBManagerAgentTemplate(rackTemplate.ScyllaDBManagerAgent, fldPath.Child("scyllaDBManagerAgent"))...)
+	}
 
-			if rackTemplate.ScyllaDB.Storage.StorageClassName != nil {
-				for _, msg := range apimachineryvalidation.NameIsDNSSubdomain(*rackTemplate.ScyllaDB.Storage.StorageClassName, false) {
-					allErrs = append(allErrs, field.Invalid(fldPath.Child("scyllaDB", "storage", "storageClassName"), *rackTemplate.ScyllaDB.Storage.StorageClassName, msg))
-				}
-			}
+	// TODO: Add placement validation in >=v1alpha2
+
+	return allErrs
+}
+
+func ValidateScyllaDBDatacenterScyllaDBManagerAgentTemplate(scyllaDBManagerAgentTemplate *scyllav1alpha1.ScyllaDBManagerAgentTemplate, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if scyllaDBManagerAgentTemplate.CustomConfigSecretRef != nil {
+		for _, msg := range apimachineryvalidation.NameIsDNSSubdomain(*scyllaDBManagerAgentTemplate.CustomConfigSecretRef, false) {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("customConfigSecretRef"), *scyllaDBManagerAgentTemplate.CustomConfigSecretRef, msg))
+		}
+	}
+
+	return allErrs
+}
+
+func ValidateScyllaDBDatacenterScyllaDBTemplate(scyllaDBTemplate *scyllav1alpha1.ScyllaDBTemplate, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if scyllaDBTemplate.Storage != nil {
+		if scyllaDBTemplate.Storage.Metadata != nil {
+			allErrs = append(allErrs, apimachinerymetav1validation.ValidateLabels(scyllaDBTemplate.Storage.Metadata.Labels, fldPath.Child("storage", "metadata", "labels"))...)
+			allErrs = append(allErrs, apimachineryvalidation.ValidateAnnotations(scyllaDBTemplate.Storage.Metadata.Annotations, fldPath.Child("storage", "metadata", "annotations"))...)
 		}
 
-		if rackTemplate.ScyllaDB.CustomConfigMapRef != nil {
-			for _, msg := range apimachineryvalidation.NameIsDNSSubdomain(*rackTemplate.ScyllaDB.CustomConfigMapRef, false) {
-				allErrs = append(allErrs, field.Invalid(fldPath.Child("scyllaDB", "customConfigMapRef"), *rackTemplate.ScyllaDB.CustomConfigMapRef, msg))
+		storageCapacity, err := resource.ParseQuantity(scyllaDBTemplate.Storage.Capacity)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("storage", "capacity"), scyllaDBTemplate.Storage.Capacity, fmt.Sprintf("unable to parse capacity: %v", err)))
+		} else if storageCapacity.CmpInt64(0) <= 0 {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("storage", "capacity"), scyllaDBTemplate.Storage.Capacity, "must be greater than zero"))
+		}
+
+		if scyllaDBTemplate.Storage.StorageClassName != nil {
+			for _, msg := range apimachineryvalidation.NameIsDNSSubdomain(*scyllaDBTemplate.Storage.StorageClassName, false) {
+				allErrs = append(allErrs, field.Invalid(fldPath.Child("storage", "storageClassName"), *scyllaDBTemplate.Storage.StorageClassName, msg))
 			}
 		}
 	}
 
-	if rackTemplate.ScyllaDBManagerAgent != nil {
-		if rackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
-			for _, msg := range apimachineryvalidation.NameIsDNSSubdomain(*rackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef, false) {
-				allErrs = append(allErrs, field.Invalid(fldPath.Child("scyllaDBManagerAgent", "customConfigSecretRef"), *rackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef, msg))
-			}
+	if scyllaDBTemplate.CustomConfigMapRef != nil {
+		for _, msg := range apimachineryvalidation.NameIsDNSSubdomain(*scyllaDBTemplate.CustomConfigMapRef, false) {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("customConfigMapRef"), *scyllaDBTemplate.CustomConfigMapRef, msg))
 		}
 	}
 
@@ -195,16 +235,10 @@ func ValidateScyllaDBDatacenterIngressOptions(options *scyllav1alpha1.ExposeOpti
 func ValidateScyllaDBDatacenterNodeService(options *scyllav1alpha1.ExposeOptions, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	var supportedServiceTypes = []scyllav1alpha1.NodeServiceType{
-		scyllav1alpha1.NodeServiceTypeHeadless,
-		scyllav1alpha1.NodeServiceTypeClusterIP,
-		scyllav1alpha1.NodeServiceTypeLoadBalancer,
-	}
-
 	if len(options.NodeService.Type) == 0 {
-		allErrs = append(allErrs, field.Required(fldPath.Child("nodeService", "type"), fmt.Sprintf("supported values: %s", strings.Join(slices.ConvertSlice(supportedServiceTypes, slices.ToString[scyllav1alpha1.NodeServiceType]), ", "))))
+		allErrs = append(allErrs, field.Required(fldPath.Child("nodeService", "type"), fmt.Sprintf("supported values: %s", strings.Join(slices.ConvertSlice(supportedNodeServiceTypes, slices.ToString[scyllav1alpha1.NodeServiceType]), ", "))))
 	} else {
-		allErrs = append(allErrs, validateEnum(options.NodeService.Type, supportedServiceTypes, fldPath.Child("nodeService", "type"))...)
+		allErrs = append(allErrs, validateEnum(options.NodeService.Type, supportedNodeServiceTypes, fldPath.Child("nodeService", "type"))...)
 	}
 
 	if options.NodeService.LoadBalancerClass != nil && len(*options.NodeService.LoadBalancerClass) != 0 {
@@ -368,6 +402,28 @@ func ValidateScyllaDBDatacenterOperatorManagedTLSCertificateOptions(options *scy
 			allErrs = append(allErrs, fldErr)
 		}
 	}
+	return allErrs
+}
+
+func ValidateScyllaDBDatacenterPlacement(placement *scyllav1alpha1.Placement, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if placement.NodeAffinity != nil {
+		allErrs = append(allErrs, corevalidation.ValidateNodeAffinity(placement.NodeAffinity, fldPath.Child("nodeAffinity"))...)
+	}
+
+	if placement.PodAntiAffinity != nil {
+		allErrs = append(allErrs, corevalidation.ValidatePodAntiAffinity(placement.PodAntiAffinity, false, fldPath.Child("podAntiAffinity"))...)
+	}
+
+	if placement.PodAffinity != nil {
+		allErrs = append(allErrs, corevalidation.ValidatePodAffinity(placement.PodAffinity, false, fldPath.Child("podAffinity"))...)
+	}
+
+	if placement.Tolerations != nil {
+		allErrs = append(allErrs, corevalidation.ValidateTolerations(placement.Tolerations, fldPath.Child("tolerations"))...)
+	}
+
 	return allErrs
 }
 

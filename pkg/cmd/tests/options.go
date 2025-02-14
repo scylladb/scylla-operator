@@ -1,12 +1,17 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
 	"regexp"
 	"strings"
 
+	"github.com/containers/image/v5/docker"
+	"github.com/containers/image/v5/image"
+	"github.com/containers/image/v5/manifest"
+	"github.com/containers/image/v5/types"
 	"github.com/onsi/ginkgo/v2"
 	configassets "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
@@ -17,6 +22,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/rest"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -147,6 +153,56 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBUpgradeFrom, "scylladb-upgrade-from-version", "", o.ScyllaDBUpgradeFrom, "Version of ScyllaDB to upgrade from.")
 }
 
+func GetImageVersionAndDigest(imageReference string) (string, error) {
+	ctx := context.Background()
+	transport := docker.Transport
+
+	ref, err := transport.ParseReference(fmt.Sprintf("//%s", imageReference))
+	if err != nil {
+		return "", fmt.Errorf("can't parse image reference: %w", err)
+	}
+
+	sysCtx := &types.SystemContext{}
+
+	src, err := ref.NewImageSource(ctx, sysCtx)
+	if err != nil {
+		return "", fmt.Errorf("can't get new image source: %w", err)
+	}
+	defer func() {
+		if closeErr := src.Close(); closeErr != nil {
+			klog.ErrorS(closeErr, "failed to close image source")
+		}
+	}()
+
+	img, err := image.FromUnparsedImage(ctx, sysCtx, image.UnparsedInstance(src, nil))
+	if err != nil {
+		return "", fmt.Errorf("can't read unparsed image: %w", err)
+	}
+
+	inspect, err := img.Inspect(ctx)
+	if err != nil {
+		return "", fmt.Errorf("can't inspect image: %w", err)
+	}
+
+	version, ok := inspect.Labels["org.opencontainers.image.version"]
+	if !ok {
+		klog.Warningf("no org.opencontainers.image.version label found for image: %s", imageReference)
+		return imageReference, nil
+	}
+
+	manifestBytes, _, err := img.Manifest(ctx)
+	if err != nil {
+		return "", fmt.Errorf("can't get image manifest: %w", err)
+	}
+
+	digest, err := manifest.Digest(manifestBytes)
+	if err != nil {
+		return "", fmt.Errorf("can't compute digest: %w", err)
+	}
+
+	return fmt.Sprintf("%s@%s", version, digest), nil
+}
+
 func (o *TestFrameworkOptions) Validate(args []string) error {
 	var errors []error
 
@@ -197,6 +253,13 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 			o.ScyllaDBVersion,
 		))
 	}
+
+	imageRefScylla := fmt.Sprintf("scylladb/scylla:%s", o.ScyllaDBVersion)
+	actualVersionScylla, err := GetImageVersionAndDigest(imageRefScylla)
+	if err != nil {
+		return fmt.Errorf("failed to resolve ScyllaDB version: %w", err)
+	}
+	o.ScyllaDBVersion = actualVersionScylla
 
 	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBUpdateFrom) {
 		errors = append(errors, fmt.Errorf(

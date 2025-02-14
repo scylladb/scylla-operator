@@ -7,6 +7,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/containers/image/v5/docker"
 	"github.com/containers/image/v5/image"
@@ -34,6 +35,11 @@ const (
 )
 
 var tagWithOptionalDigestRegexp = regexp.MustCompile("^" + referenceTagRegexp + "(?:@" + digestRegexp + ")?$")
+
+var (
+	cacheScyllaDBImageVersionAndDigest     = make(map[string]string)
+	cacheLockScyllaDBImageVersionAndDigest sync.RWMutex
+)
 
 type IngressControllerOptions struct {
 	Address           string
@@ -154,6 +160,13 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 }
 
 func GetImageVersionAndDigest(imageReference string) (string, error) {
+	cacheLockScyllaDBImageVersionAndDigest.RLock()
+	if cached, ok := cacheScyllaDBImageVersionAndDigest[imageReference]; ok {
+		cacheLockScyllaDBImageVersionAndDigest.RUnlock()
+		return cached, nil
+	}
+	cacheLockScyllaDBImageVersionAndDigest.RUnlock()
+
 	ctx := context.Background()
 	transport := docker.Transport
 
@@ -200,7 +213,13 @@ func GetImageVersionAndDigest(imageReference string) (string, error) {
 		return "", fmt.Errorf("can't compute digest: %w", err)
 	}
 
-	return fmt.Sprintf("%s@%s", version, digest), nil
+	result := fmt.Sprintf("%s@%s", version, digest)
+
+	cacheLockScyllaDBImageVersionAndDigest.Lock()
+	cacheScyllaDBImageVersionAndDigest[imageReference] = result
+	cacheLockScyllaDBImageVersionAndDigest.Unlock()
+
+	return result, nil
 }
 
 func (o *TestFrameworkOptions) Validate(args []string) error {

@@ -241,6 +241,25 @@ func MigrateV1ScyllaClusterSpecToV1Alpha1ScyllaDBDatacenterSpec(scName string, s
 							}),
 							VolumeMounts: rack.AgentVolumeMounts,
 						},
+						ExposeOptions: func() *scyllav1alpha1.RackExposeOptions {
+							if rack.ExposeOptions == nil {
+								return nil
+							}
+
+							return &scyllav1alpha1.RackExposeOptions{
+								NodeService: func() *scyllav1alpha1.RackNodeServiceTemplate {
+									if rack.ExposeOptions.NodeService == nil {
+										return nil
+									}
+									return &scyllav1alpha1.RackNodeServiceTemplate{
+										ObjectTemplateMetadata: scyllav1alpha1.ObjectTemplateMetadata{
+											Labels:      maps.Clone(rack.ExposeOptions.NodeService.Labels),
+											Annotations: maps.Clone(rack.ExposeOptions.NodeService.Annotations),
+										},
+									}
+								}(),
+							}
+						}(),
 					},
 					Name: rack.Name,
 				})

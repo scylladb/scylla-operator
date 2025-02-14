@@ -39,6 +39,12 @@ func TestMemberService(t *testing.T) {
 		Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
 			DatacenterName: pointer.Ptr("dc"),
 			ClusterName:    "basic",
+			RackTemplate:   &scyllav1alpha1.RackTemplate{},
+			Racks: []scyllav1alpha1.RackSpec{
+				{
+					Name: "rack",
+				},
+			},
 		},
 		Status: scyllav1alpha1.ScyllaDBDatacenterStatus{
 			Racks: []scyllav1alpha1.RackStatus{},
@@ -426,6 +432,124 @@ func TestMemberService(t *testing.T) {
 				},
 				Spec: corev1.ServiceSpec{
 					Type:                     corev1.ServiceTypeLoadBalancer,
+					Selector:                 basicSVCSelector,
+					PublishNotReadyAddresses: true,
+					Ports:                    basicPorts,
+				},
+			},
+		},
+		{
+			name: "rack Service metadata in rack template and rack expose options",
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sc := basicSC.DeepCopy()
+				sc.Spec.RackTemplate.ExposeOptions = &scyllav1alpha1.RackExposeOptions{
+					NodeService: &scyllav1alpha1.RackNodeServiceTemplate{
+						ObjectTemplateMetadata: scyllav1alpha1.ObjectTemplateMetadata{
+							Labels: map[string]string{
+								"custom-rack-template-service-label": "custom-rack-template-service-label-value",
+							},
+							Annotations: map[string]string{
+								"custom-rack-template-service-annotation": "custom-rack-template-service-annotation-value",
+							},
+						},
+					},
+				}
+				sc.Spec.Racks[0].ExposeOptions = &scyllav1alpha1.RackExposeOptions{
+					NodeService: &scyllav1alpha1.RackNodeServiceTemplate{
+						ObjectTemplateMetadata: scyllav1alpha1.ObjectTemplateMetadata{
+							Labels: map[string]string{
+								"custom-rack-service-label": "custom-rack-service-label-value",
+							},
+							Annotations: map[string]string{
+								"custom-rack-service-annotation": "custom-rack-service-annotation-value",
+							},
+						},
+					},
+				}
+
+				return sc
+			}(),
+			rackName:   basicRackName,
+			svcName:    basicSVCName,
+			oldService: nil,
+			jobs:       nil,
+			expectedService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: basicSVCName,
+					Labels: func() map[string]string {
+						labels := basicSVCLabels()
+						labels["custom-rack-template-service-label"] = "custom-rack-template-service-label-value"
+						labels["custom-rack-service-label"] = "custom-rack-service-label-value"
+						return labels
+					}(),
+					Annotations: func() map[string]string {
+						annotations := basicSVCAnnotations()
+						annotations["custom-rack-template-service-annotation"] = "custom-rack-template-service-annotation-value"
+						annotations["custom-rack-service-annotation"] = "custom-rack-service-annotation-value"
+						return annotations
+					}(),
+					OwnerReferences: basicSCOwnerRefs,
+				},
+				Spec: corev1.ServiceSpec{
+					Type:                     corev1.ServiceTypeClusterIP,
+					Selector:                 basicSVCSelector,
+					PublishNotReadyAddresses: true,
+					Ports:                    basicPorts,
+				},
+			},
+		},
+		{
+			name: "rack spec Service metadata overrides one specified on rack template on collisions",
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sc := basicSC.DeepCopy()
+				sc.Spec.RackTemplate.ExposeOptions = &scyllav1alpha1.RackExposeOptions{
+					NodeService: &scyllav1alpha1.RackNodeServiceTemplate{
+						ObjectTemplateMetadata: scyllav1alpha1.ObjectTemplateMetadata{
+							Labels: map[string]string{
+								"custom-rack-service-label": "foo",
+							},
+							Annotations: map[string]string{
+								"custom-rack-service-annotation": "foo",
+							},
+						},
+					},
+				}
+				sc.Spec.Racks[0].ExposeOptions = &scyllav1alpha1.RackExposeOptions{
+					NodeService: &scyllav1alpha1.RackNodeServiceTemplate{
+						ObjectTemplateMetadata: scyllav1alpha1.ObjectTemplateMetadata{
+							Labels: map[string]string{
+								"custom-rack-service-label": "bar",
+							},
+							Annotations: map[string]string{
+								"custom-rack-service-annotation": "bar",
+							},
+						},
+					},
+				}
+
+				return sc
+			}(),
+			rackName:   basicRackName,
+			svcName:    basicSVCName,
+			oldService: nil,
+			jobs:       nil,
+			expectedService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: basicSVCName,
+					Labels: func() map[string]string {
+						labels := basicSVCLabels()
+						labels["custom-rack-service-label"] = "bar"
+						return labels
+					}(),
+					Annotations: func() map[string]string {
+						annotations := basicSVCAnnotations()
+						annotations["custom-rack-service-annotation"] = "bar"
+						return annotations
+					}(),
+					OwnerReferences: basicSCOwnerRefs,
+				},
+				Spec: corev1.ServiceSpec{
+					Type:                     corev1.ServiceTypeClusterIP,
 					Selector:                 basicSVCSelector,
 					PublishNotReadyAddresses: true,
 					Ports:                    basicPorts,

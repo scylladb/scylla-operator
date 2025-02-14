@@ -185,6 +185,20 @@ func MemberService(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName, name string
 		svc.Spec.ExternalTrafficPolicy = getValueOrDefault(ns.ExternalTrafficPolicy, "")
 	}
 
+	rackSpec, _, ok := slices.Find(sdc.Spec.Racks, func(rs scyllav1alpha1.RackSpec) bool {
+		return rs.Name == rackName
+	})
+	if !ok {
+		return nil, fmt.Errorf("can't find rack spec having %q name", rackName)
+	}
+
+	rackSpec = applyRackTemplateOnRackSpec(sdc.Spec.RackTemplate, rackSpec)
+
+	if rackSpec.ExposeOptions != nil && rackSpec.ExposeOptions.NodeService != nil {
+		svc.Labels = helpers.MergeMaps(svc.Labels, rackSpec.ExposeOptions.NodeService.Labels)
+		svc.Annotations = helpers.MergeMaps(svc.Annotations, rackSpec.ExposeOptions.NodeService.Annotations)
+	}
+
 	return svc, nil
 }
 
@@ -2038,6 +2052,34 @@ func applyRackTemplateOnRackSpec(rackTemplate *scyllav1alpha1.RackTemplate, rack
 						},
 					},
 				}
+			}(),
+			ExposeOptions: func() *scyllav1alpha1.RackExposeOptions {
+				if rackTemplate.ExposeOptions == nil && rack.ExposeOptions == nil {
+					return nil
+				}
+
+				dst := &scyllav1alpha1.RackExposeOptions{}
+				for _, reo := range []*scyllav1alpha1.RackExposeOptions{rackTemplate.ExposeOptions, rack.ExposeOptions} {
+					if reo == nil {
+						continue
+					}
+
+					if reo.NodeService != nil {
+						if dst.NodeService == nil {
+							dst.NodeService = &scyllav1alpha1.RackNodeServiceTemplate{
+								ObjectTemplateMetadata: scyllav1alpha1.ObjectTemplateMetadata{
+									Labels:      make(map[string]string),
+									Annotations: make(map[string]string),
+								},
+							}
+						}
+
+						maps.Copy(dst.NodeService.Labels, reo.NodeService.Labels)
+						maps.Copy(dst.NodeService.Annotations, reo.NodeService.Annotations)
+					}
+				}
+
+				return dst
 			}(),
 		},
 	}

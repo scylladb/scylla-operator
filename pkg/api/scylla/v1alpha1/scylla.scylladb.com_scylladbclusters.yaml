@@ -1008,6 +1008,24 @@ spec:
                         rackTemplate provides a template for every rack.
                         Every rack inherits properties specified in the template, unless it's overwritten on the rack level.
                       properties:
+                        exposeOptions:
+                          description: exposeOptions specifies rack-specific parameters related to exposing ScyllaDBDatacenter backends.
+                          properties:
+                            nodeService:
+                              description: nodeService controls properties of Service dedicated for each ScyllaDBDatacenter node in given rack.
+                              properties:
+                                annotations:
+                                  additionalProperties:
+                                    type: string
+                                  description: annotations specify a custom key value map that gets merged with managed object annotations.
+                                  type: object
+                                labels:
+                                  additionalProperties:
+                                    type: string
+                                  description: labels specify a custom key value map that gets merged with managed object labels.
+                                  type: object
+                              type: object
+                          type: object
                         nodes:
                           description: nodes specify the desired number of nodes in rack.
                           format: int32
@@ -5640,6 +5658,24 @@ spec:
                       items:
                         description: RackSpec is the desired state for a ScyllaDB Rack.
                         properties:
+                          exposeOptions:
+                            description: exposeOptions specifies rack-specific parameters related to exposing ScyllaDBDatacenter backends.
+                            properties:
+                              nodeService:
+                                description: nodeService controls properties of Service dedicated for each ScyllaDBDatacenter node in given rack.
+                                properties:
+                                  annotations:
+                                    additionalProperties:
+                                      type: string
+                                    description: annotations specify a custom key value map that gets merged with managed object annotations.
+                                    type: object
+                                  labels:
+                                    additionalProperties:
+                                      type: string
+                                    description: labels specify a custom key value map that gets merged with managed object labels.
+                                    type: object
+                                type: object
+                            type: object
                           name:
                             description: |-
                               name specifies the name of the ScyllaDB Rack. Used as rack name in GossipingPropertyFileSnitch.
@@ -14925,6 +14961,24 @@ spec:
                           rackTemplate provides a template for every rack.
                           Every rack inherits properties specified in the template, unless it's overwritten on the rack level.
                         properties:
+                          exposeOptions:
+                            description: exposeOptions specifies rack-specific parameters related to exposing ScyllaDBDatacenter backends.
+                            properties:
+                              nodeService:
+                                description: nodeService controls properties of Service dedicated for each ScyllaDBDatacenter node in given rack.
+                                properties:
+                                  annotations:
+                                    additionalProperties:
+                                      type: string
+                                    description: annotations specify a custom key value map that gets merged with managed object annotations.
+                                    type: object
+                                  labels:
+                                    additionalProperties:
+                                      type: string
+                                    description: labels specify a custom key value map that gets merged with managed object labels.
+                                    type: object
+                                type: object
+                            type: object
                           nodes:
                             description: nodes specify the desired number of nodes in rack.
                             format: int32
@@ -19557,6 +19611,24 @@ spec:
                         items:
                           description: RackSpec is the desired state for a ScyllaDB Rack.
                           properties:
+                            exposeOptions:
+                              description: exposeOptions specifies rack-specific parameters related to exposing ScyllaDBDatacenter backends.
+                              properties:
+                                nodeService:
+                                  description: nodeService controls properties of Service dedicated for each ScyllaDBDatacenter node in given rack.
+                                  properties:
+                                    annotations:
+                                      additionalProperties:
+                                        type: string
+                                      description: annotations specify a custom key value map that gets merged with managed object annotations.
+                                      type: object
+                                    labels:
+                                      additionalProperties:
+                                        type: string
+                                      description: labels specify a custom key value map that gets merged with managed object labels.
+                                      type: object
+                                  type: object
+                              type: object
                             name:
                               description: |-
                                 name specifies the name of the ScyllaDB Rack. Used as rack name in GossipingPropertyFileSnitch.

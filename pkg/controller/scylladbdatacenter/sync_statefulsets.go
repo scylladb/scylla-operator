@@ -17,6 +17,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
+	scyllasemver "github.com/scylladb/scylla-operator/pkg/semver"
 	"github.com/scylladb/scylla-operator/pkg/util/hash"
 	"github.com/scylladb/scylla-operator/pkg/util/parallel"
 	appsv1 "k8s.io/api/apps/v1"
@@ -976,14 +977,33 @@ func (sdcc *Controller) syncStatefulSets(
 			existingVersionString, existingVersionLabelPresent := existing.Labels[naming.ScyllaVersionLabel]
 
 			if requiredVersionLabelPresent && existingVersionLabelPresent {
-				requiredVersion, err := semver.Parse(requiredVersionString)
+				parsedVersion, err := semver.Parse(requiredVersionString)
 				if err != nil {
-					return progressingConditions, err
+					requiredVersionString, resolveRequiredVersionErr := scyllasemver.GetImageVersionAndDigest("scylla", requiredVersionString)
+					if resolveRequiredVersionErr != nil {
+						return progressingConditions, resolveRequiredVersionErr
+					}
+					parsedVersion, err = semver.Parse(requiredVersionString)
+					if err != nil {
+						return progressingConditions, err
+					}
 				}
-				existingVersion, err := semver.Parse(existingVersionString)
+
+				requiredVersion := parsedVersion
+
+				parsedExistingVersion, err := semver.Parse(existingVersionString)
 				if err != nil {
-					return progressingConditions, err
+					existingVersionString, resolveExistingVersionErr := scyllasemver.GetImageVersionAndDigest("scylla", existingVersionString)
+					if resolveExistingVersionErr != nil {
+						return progressingConditions, resolveExistingVersionErr
+					}
+					parsedExistingVersion, err = semver.Parse(existingVersionString)
+					if err != nil {
+						return progressingConditions, err
+					}
 				}
+
+				existingVersion := parsedExistingVersion
 
 				if requiredVersion.Major != existingVersion.Major ||
 					requiredVersion.Minor != existingVersion.Minor {

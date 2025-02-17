@@ -24,7 +24,7 @@ api-reference/index
 :::{grid-item}
 :columns: 12 12 12 4
 
-```{image} logo.png
+```{image} logo.svg
 :width: 150pt
 :class: sd-m-auto
 :name: landing-page-logo

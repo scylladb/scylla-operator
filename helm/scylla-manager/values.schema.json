@@ -751,6 +751,32 @@
                 },
                 "type": "array"
               },
+              "exposeOptions": {
+                "description": "exposeOptions specifies rack-specific parameters related to exposing ScyllaDBDatacenter backends.",
+                "properties": {
+                  "nodeService": {
+                    "description": "nodeService controls properties of Service dedicated for each ScyllaDBDatacenter node in given rack.",
+                    "properties": {
+                      "annotations": {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "description": "annotations is a custom key value map that gets merged with managed object annotations.",
+                        "type": "object"
+                      },
+                      "labels": {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "description": "labels is a custom key value map that gets merged with managed object labels.",
+                        "type": "object"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              },
               "members": {
                 "description": "members is the number of Scylla instances in this rack.",
                 "format": "int32",

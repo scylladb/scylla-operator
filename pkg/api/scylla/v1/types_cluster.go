@@ -263,6 +263,18 @@ type ExposeOptions struct {
 	BroadcastOptions *NodeBroadcastOptions `json:"broadcastOptions,omitempty"`
 }
 
+// RackExposeOptions hold options related to exposing rack of ScyllaDBDatacenter.
+type RackExposeOptions struct {
+	// nodeService controls properties of Service dedicated for each ScyllaDBDatacenter node in given rack.
+	// +optional
+	NodeService *RackNodeServiceTemplate `json:"nodeService,omitempty"`
+}
+
+// RackNodeServiceTemplate hold options related to properties of rack Service.
+type RackNodeServiceTemplate struct {
+	ObjectTemplateMetadata `json:",inline"`
+}
+
 // CQLExposeOptions hold options related to exposing CQL backend.
 // EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
 type CQLExposeOptions struct {
@@ -502,6 +514,10 @@ type RackSpec struct {
 
 	// Scylla config map name to customize scylla manager agent
 	ScyllaAgentConfig string `json:"scyllaAgentConfig"`
+
+	// exposeOptions specifies rack-specific parameters related to exposing ScyllaDBDatacenter backends.
+	// +optional
+	ExposeOptions *RackExposeOptions `json:"exposeOptions,omitempty"`
 }
 
 type PlacementSpec struct {

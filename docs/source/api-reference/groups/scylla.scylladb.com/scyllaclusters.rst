@@ -385,6 +385,9 @@ object
    * - :ref:`agentVolumeMounts<api-scylla.scylladb.com-scyllaclusters-v1-.spec.datacenter.racks[].agentVolumeMounts[]>`
      - array (object)
      - AgentVolumeMounts to be added to Agent container.
+   * - :ref:`exposeOptions<api-scylla.scylladb.com-scyllaclusters-v1-.spec.datacenter.racks[].exposeOptions>`
+     - object
+     - exposeOptions specifies rack-specific parameters related to exposing ScyllaDBDatacenter backends.
    * - members
      - integer
      - members is the number of Scylla instances in this rack.
@@ -542,6 +545,87 @@ object
    * - subPathExpr
      - string
      - Expanded path within the volume from which the container's volume should be mounted. Behaves similarly to SubPath but environment variable references $(VAR_NAME) are expanded using the container's environment. Defaults to "" (volume's root). SubPathExpr and SubPath are mutually exclusive.
+
+.. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.datacenter.racks[].exposeOptions:
+
+.spec.datacenter.racks[].exposeOptions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+exposeOptions specifies rack-specific parameters related to exposing ScyllaDBDatacenter backends.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - :ref:`nodeService<api-scylla.scylladb.com-scyllaclusters-v1-.spec.datacenter.racks[].exposeOptions.nodeService>`
+     - object
+     - nodeService controls properties of Service dedicated for each ScyllaDBDatacenter node in given rack.
+
+.. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.datacenter.racks[].exposeOptions.nodeService:
+
+.spec.datacenter.racks[].exposeOptions.nodeService
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+nodeService controls properties of Service dedicated for each ScyllaDBDatacenter node in given rack.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - :ref:`annotations<api-scylla.scylladb.com-scyllaclusters-v1-.spec.datacenter.racks[].exposeOptions.nodeService.annotations>`
+     - object
+     - annotations is a custom key value map that gets merged with managed object annotations.
+   * - :ref:`labels<api-scylla.scylladb.com-scyllaclusters-v1-.spec.datacenter.racks[].exposeOptions.nodeService.labels>`
+     - object
+     - labels is a custom key value map that gets merged with managed object labels.
+
+.. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.datacenter.racks[].exposeOptions.nodeService.annotations:
+
+.spec.datacenter.racks[].exposeOptions.nodeService.annotations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+annotations is a custom key value map that gets merged with managed object annotations.
+
+Type
+""""
+object
+
+
+.. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.datacenter.racks[].exposeOptions.nodeService.labels:
+
+.spec.datacenter.racks[].exposeOptions.nodeService.labels
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+labels is a custom key value map that gets merged with managed object labels.
+
+Type
+""""
+object
+
 
 .. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.datacenter.racks[].placement:
 

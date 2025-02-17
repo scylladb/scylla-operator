@@ -1420,6 +1420,9 @@ object
    * - Property
      - Type
      - Description
+   * - :ref:`exposeOptions<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.exposeOptions>`
+     - object
+     - exposeOptions specifies rack-specific parameters related to exposing ScyllaDBDatacenter backends.
    * - nodes
      - integer
      - nodes specify the desired number of nodes in rack.
@@ -1435,6 +1438,87 @@ object
    * - :ref:`topologyLabelSelector<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.topologyLabelSelector>`
      - object
      - topologyLabelSelector specifies a label selector which will be used to target nodes at specified topology constraints. Datacenter topologyLabelSelector is merged with rack topologyLabelSelector and then converted into nodeAffinity targeting nodes having specified topology.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.exposeOptions:
+
+.spec.datacenterTemplate.rackTemplate.exposeOptions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+exposeOptions specifies rack-specific parameters related to exposing ScyllaDBDatacenter backends.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - :ref:`nodeService<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.exposeOptions.nodeService>`
+     - object
+     - nodeService controls properties of Service dedicated for each ScyllaDBDatacenter node in given rack.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.exposeOptions.nodeService:
+
+.spec.datacenterTemplate.rackTemplate.exposeOptions.nodeService
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+nodeService controls properties of Service dedicated for each ScyllaDBDatacenter node in given rack.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - :ref:`annotations<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.exposeOptions.nodeService.annotations>`
+     - object
+     - annotations specify a custom key value map that gets merged with managed object annotations.
+   * - :ref:`labels<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.exposeOptions.nodeService.labels>`
+     - object
+     - labels specify a custom key value map that gets merged with managed object labels.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.exposeOptions.nodeService.annotations:
+
+.spec.datacenterTemplate.rackTemplate.exposeOptions.nodeService.annotations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+annotations specify a custom key value map that gets merged with managed object annotations.
+
+Type
+""""
+object
+
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.exposeOptions.nodeService.labels:
+
+.spec.datacenterTemplate.rackTemplate.exposeOptions.nodeService.labels
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+labels specify a custom key value map that gets merged with managed object labels.
+
+Type
+""""
+object
+
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.placement:
 
@@ -7541,6 +7625,9 @@ object
    * - Property
      - Type
      - Description
+   * - :ref:`exposeOptions<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].exposeOptions>`
+     - object
+     - exposeOptions specifies rack-specific parameters related to exposing ScyllaDBDatacenter backends.
    * - name
      - string
      - name specifies the name of the ScyllaDB Rack. Used as rack name in GossipingPropertyFileSnitch. This field is immutable.
@@ -7559,6 +7646,87 @@ object
    * - :ref:`topologyLabelSelector<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].topologyLabelSelector>`
      - object
      - topologyLabelSelector specifies a label selector which will be used to target nodes at specified topology constraints. Datacenter topologyLabelSelector is merged with rack topologyLabelSelector and then converted into nodeAffinity targeting nodes having specified topology.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].exposeOptions:
+
+.spec.datacenterTemplate.racks[].exposeOptions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+exposeOptions specifies rack-specific parameters related to exposing ScyllaDBDatacenter backends.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - :ref:`nodeService<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].exposeOptions.nodeService>`
+     - object
+     - nodeService controls properties of Service dedicated for each ScyllaDBDatacenter node in given rack.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].exposeOptions.nodeService:
+
+.spec.datacenterTemplate.racks[].exposeOptions.nodeService
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+nodeService controls properties of Service dedicated for each ScyllaDBDatacenter node in given rack.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - :ref:`annotations<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].exposeOptions.nodeService.annotations>`
+     - object
+     - annotations specify a custom key value map that gets merged with managed object annotations.
+   * - :ref:`labels<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].exposeOptions.nodeService.labels>`
+     - object
+     - labels specify a custom key value map that gets merged with managed object labels.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].exposeOptions.nodeService.annotations:
+
+.spec.datacenterTemplate.racks[].exposeOptions.nodeService.annotations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+annotations specify a custom key value map that gets merged with managed object annotations.
+
+Type
+""""
+object
+
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].exposeOptions.nodeService.labels:
+
+.spec.datacenterTemplate.racks[].exposeOptions.nodeService.labels
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+labels specify a custom key value map that gets merged with managed object labels.
+
+Type
+""""
+object
+
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].placement:
 
@@ -19857,6 +20025,9 @@ object
    * - Property
      - Type
      - Description
+   * - :ref:`exposeOptions<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.exposeOptions>`
+     - object
+     - exposeOptions specifies rack-specific parameters related to exposing ScyllaDBDatacenter backends.
    * - nodes
      - integer
      - nodes specify the desired number of nodes in rack.
@@ -19872,6 +20043,87 @@ object
    * - :ref:`topologyLabelSelector<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.topologyLabelSelector>`
      - object
      - topologyLabelSelector specifies a label selector which will be used to target nodes at specified topology constraints. Datacenter topologyLabelSelector is merged with rack topologyLabelSelector and then converted into nodeAffinity targeting nodes having specified topology.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.exposeOptions:
+
+.spec.datacenters[].rackTemplate.exposeOptions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+exposeOptions specifies rack-specific parameters related to exposing ScyllaDBDatacenter backends.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - :ref:`nodeService<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.exposeOptions.nodeService>`
+     - object
+     - nodeService controls properties of Service dedicated for each ScyllaDBDatacenter node in given rack.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.exposeOptions.nodeService:
+
+.spec.datacenters[].rackTemplate.exposeOptions.nodeService
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+nodeService controls properties of Service dedicated for each ScyllaDBDatacenter node in given rack.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - :ref:`annotations<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.exposeOptions.nodeService.annotations>`
+     - object
+     - annotations specify a custom key value map that gets merged with managed object annotations.
+   * - :ref:`labels<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.exposeOptions.nodeService.labels>`
+     - object
+     - labels specify a custom key value map that gets merged with managed object labels.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.exposeOptions.nodeService.annotations:
+
+.spec.datacenters[].rackTemplate.exposeOptions.nodeService.annotations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+annotations specify a custom key value map that gets merged with managed object annotations.
+
+Type
+""""
+object
+
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.exposeOptions.nodeService.labels:
+
+.spec.datacenters[].rackTemplate.exposeOptions.nodeService.labels
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+labels specify a custom key value map that gets merged with managed object labels.
+
+Type
+""""
+object
+
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.placement:
 
@@ -25978,6 +26230,9 @@ object
    * - Property
      - Type
      - Description
+   * - :ref:`exposeOptions<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].exposeOptions>`
+     - object
+     - exposeOptions specifies rack-specific parameters related to exposing ScyllaDBDatacenter backends.
    * - name
      - string
      - name specifies the name of the ScyllaDB Rack. Used as rack name in GossipingPropertyFileSnitch. This field is immutable.
@@ -25996,6 +26251,87 @@ object
    * - :ref:`topologyLabelSelector<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].topologyLabelSelector>`
      - object
      - topologyLabelSelector specifies a label selector which will be used to target nodes at specified topology constraints. Datacenter topologyLabelSelector is merged with rack topologyLabelSelector and then converted into nodeAffinity targeting nodes having specified topology.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].exposeOptions:
+
+.spec.datacenters[].racks[].exposeOptions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+exposeOptions specifies rack-specific parameters related to exposing ScyllaDBDatacenter backends.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - :ref:`nodeService<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].exposeOptions.nodeService>`
+     - object
+     - nodeService controls properties of Service dedicated for each ScyllaDBDatacenter node in given rack.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].exposeOptions.nodeService:
+
+.spec.datacenters[].racks[].exposeOptions.nodeService
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+nodeService controls properties of Service dedicated for each ScyllaDBDatacenter node in given rack.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - :ref:`annotations<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].exposeOptions.nodeService.annotations>`
+     - object
+     - annotations specify a custom key value map that gets merged with managed object annotations.
+   * - :ref:`labels<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].exposeOptions.nodeService.labels>`
+     - object
+     - labels specify a custom key value map that gets merged with managed object labels.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].exposeOptions.nodeService.annotations:
+
+.spec.datacenters[].racks[].exposeOptions.nodeService.annotations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+annotations specify a custom key value map that gets merged with managed object annotations.
+
+Type
+""""
+object
+
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].exposeOptions.nodeService.labels:
+
+.spec.datacenters[].racks[].exposeOptions.nodeService.labels
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+labels specify a custom key value map that gets merged with managed object labels.
+
+Type
+""""
+object
+
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].placement:
 

@@ -124,6 +124,10 @@ type RackTemplate struct {
 	// These override the settings set on Datacenter level.
 	// +optional
 	ScyllaDBManagerAgent *ScyllaDBManagerAgentTemplate `json:"scyllaDBManagerAgent,omitempty"`
+
+	// exposeOptions specifies rack-specific parameters related to exposing ScyllaDBDatacenter backends.
+	// +optional
+	ExposeOptions *RackExposeOptions `json:"exposeOptions,omitempty"`
 }
 
 // ScyllaDBTemplate allows overriding a subset of ScyllaDB settings.
@@ -363,6 +367,18 @@ type NodeServiceTemplate struct {
 	// Check Kubernetes corev1.Service documentation about semantic of this field.
 	// +optional
 	InternalTrafficPolicy *corev1.ServiceInternalTrafficPolicy `json:"internalTrafficPolicy,omitempty"`
+}
+
+// RackExposeOptions hold options related to exposing rack of ScyllaDBDatacenter.
+type RackExposeOptions struct {
+	// nodeService controls properties of Service dedicated for each ScyllaDBDatacenter node in given rack.
+	// +optional
+	NodeService *RackNodeServiceTemplate `json:"nodeService,omitempty"`
+}
+
+// RackNodeServiceTemplate hold options related to properties of rack Service.
+type RackNodeServiceTemplate struct {
+	ObjectTemplateMetadata `json:",inline"`
 }
 
 // ExposeOptions hold options related to exposing ScyllaDBDatacenter backends.

@@ -23,9 +23,7 @@ function kubectl_create {
 }
 
 function wait-for-object-creation {
-    for i in {1..30}; do
-        { kubectl -n "${1}" get "${2}" && break; } || sleep 1
-    done
+  kubectl wait --timeout=60s --for=create -n "${1}" "${2}"
 }
 
 # $1 - namespace

@@ -1,29 +1,24 @@
 package tests
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path"
 	"regexp"
 	"strings"
-	"sync"
 
-	"github.com/containers/image/v5/docker"
-	"github.com/containers/image/v5/image"
-	"github.com/containers/image/v5/manifest"
-	"github.com/containers/image/v5/types"
+	"github.com/blang/semver"
 	"github.com/onsi/ginkgo/v2"
 	configassets "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	scyllasemver "github.com/scylladb/scylla-operator/pkg/semver"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/rest"
-	"k8s.io/klog/v2"
 )
 
 const (
@@ -34,12 +29,7 @@ const (
 	digestRegexp = `[A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}`
 )
 
-var tagWithOptionalDigestRegexp = regexp.MustCompile("^" + referenceTagRegexp + "(?:@" + digestRegexp + ")?$")
-
-var (
-	cacheScyllaDBImageVersionAndDigest     = make(map[string]string)
-	cacheLockScyllaDBImageVersionAndDigest sync.RWMutex
-)
+var tagOrDigestRegexp = regexp.MustCompile("^(?:" + referenceTagRegexp + "(?:@" + digestRegexp + ")?|" + digestRegexp + ")$")
 
 type IngressControllerOptions struct {
 	Address           string
@@ -159,69 +149,6 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBUpgradeFrom, "scylladb-upgrade-from-version", "", o.ScyllaDBUpgradeFrom, "Version of ScyllaDB to upgrade from.")
 }
 
-func GetImageVersionAndDigest(imageReference string) (string, error) {
-	cacheLockScyllaDBImageVersionAndDigest.RLock()
-	if cached, ok := cacheScyllaDBImageVersionAndDigest[imageReference]; ok {
-		cacheLockScyllaDBImageVersionAndDigest.RUnlock()
-		return cached, nil
-	}
-	cacheLockScyllaDBImageVersionAndDigest.RUnlock()
-
-	ctx := context.Background()
-	transport := docker.Transport
-
-	ref, err := transport.ParseReference(fmt.Sprintf("//%s", imageReference))
-	if err != nil {
-		return "", fmt.Errorf("can't parse image reference: %w", err)
-	}
-
-	sysCtx := &types.SystemContext{}
-
-	src, err := ref.NewImageSource(ctx, sysCtx)
-	if err != nil {
-		return "", fmt.Errorf("can't get new image source: %w", err)
-	}
-	defer func() {
-		if closeErr := src.Close(); closeErr != nil {
-			klog.ErrorS(closeErr, "failed to close image source")
-		}
-	}()
-
-	img, err := image.FromUnparsedImage(ctx, sysCtx, image.UnparsedInstance(src, nil))
-	if err != nil {
-		return "", fmt.Errorf("can't read unparsed image: %w", err)
-	}
-
-	inspect, err := img.Inspect(ctx)
-	if err != nil {
-		return "", fmt.Errorf("can't inspect image: %w", err)
-	}
-
-	version, ok := inspect.Labels["org.opencontainers.image.version"]
-	if !ok {
-		klog.Warningf("no org.opencontainers.image.version label found for image: %s", imageReference)
-		return imageReference, nil
-	}
-
-	manifestBytes, _, err := img.Manifest(ctx)
-	if err != nil {
-		return "", fmt.Errorf("can't get image manifest: %w", err)
-	}
-
-	digest, err := manifest.Digest(manifestBytes)
-	if err != nil {
-		return "", fmt.Errorf("can't compute digest: %w", err)
-	}
-
-	result := fmt.Sprintf("%s@%s", version, digest)
-
-	cacheLockScyllaDBImageVersionAndDigest.Lock()
-	cacheScyllaDBImageVersionAndDigest[imageReference] = result
-	cacheLockScyllaDBImageVersionAndDigest.Unlock()
-
-	return result, nil
-}
-
 func (o *TestFrameworkOptions) Validate(args []string) error {
 	var errors []error
 
@@ -266,44 +193,45 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 		errors = append(errors, fmt.Errorf("gcs-service-account-key-path and s3-credentials-file-path can't be set simultanously"))
 	}
 
-	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBVersion) {
+	if !tagOrDigestRegexp.MatchString(o.ScyllaDBVersion) {
 		errors = append(errors, fmt.Errorf(
-			"invalid scylladb-version format: %q. Expected format: <tag>[@<digest>]",
+			"invalid scylladb-version format: %q. Expected format: <tag>, <tag>@<digest>, or <digest>",
 			o.ScyllaDBVersion,
 		))
 	}
 
-	imageRefScylla := fmt.Sprintf("scylladb/scylla:%s", o.ScyllaDBVersion)
-	actualVersionScylla, err := GetImageVersionAndDigest(imageRefScylla)
-	if err != nil {
-		return fmt.Errorf("failed to resolve ScyllaDB version: %w", err)
+	if _, err := semver.Parse(o.ScyllaDBVersion); err != nil {
+		actualVersionScylla, err := scyllasemver.GetImageVersionAndDigest("scylla", o.ScyllaDBVersion)
+		if err != nil {
+			return fmt.Errorf("failed to resolve ScyllaDB version: %w", err)
+		}
+		o.ScyllaDBVersion = actualVersionScylla
 	}
-	o.ScyllaDBVersion = actualVersionScylla
 
-	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBUpdateFrom) {
+	if !tagOrDigestRegexp.MatchString(o.ScyllaDBUpdateFrom) {
 		errors = append(errors, fmt.Errorf(
-			"invalid scylladb-update-from-version format: %q. Expected format: <tag>[@<digest>]",
+			"invalid scylladb-update-from-version format: %q. Expected format: <tag>, <tag>@<digest>, or <digest>",
 			o.ScyllaDBUpdateFrom,
 		))
 	}
 
-	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBUpgradeFrom) {
+	if !tagOrDigestRegexp.MatchString(o.ScyllaDBUpgradeFrom) {
 		errors = append(errors, fmt.Errorf(
-			"invalid scylladb-upgrade-from-version format: %q. Expected format: <tag>[@<digest>]",
+			"invalid scylladb-upgrade-from-version format: %q. Expected format: <tag>, <tag>@<digest>, or <digest>",
 			o.ScyllaDBUpgradeFrom,
 		))
 	}
 
-	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBManagerVersion) {
+	if !tagOrDigestRegexp.MatchString(o.ScyllaDBManagerVersion) {
 		errors = append(errors, fmt.Errorf(
-			"invalid scylladb-manager-version format: %q. Expected format: <tag>[@<digest>]",
+			"invalid scylladb-manager-version format: %q. Expected format: <tag>, <tag>@<digest>, or <digest>",
 			o.ScyllaDBManagerVersion,
 		))
 	}
 
-	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBManagerAgentVersion) {
+	if !tagOrDigestRegexp.MatchString(o.ScyllaDBManagerAgentVersion) {
 		errors = append(errors, fmt.Errorf(
-			"invalid scylladb-manager-agent-version format: %q. Expected format: <tag>[@<digest>]",
+			"invalid scylladb-manager-agent-version format: %q. Expected format: <tag>, <tag>@<digest>, or <digest>",
 			o.ScyllaDBManagerAgentVersion,
 		))
 	}

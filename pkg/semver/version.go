@@ -17,7 +17,21 @@ limitations under the License.
 package semver
 
 import (
+	"fmt"
+	"regexp"
+	"strings"
+	"sync"
+
 	"github.com/blang/semver"
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"k8s.io/klog/v2"
+)
+
+var (
+	cacheScyllaDBImageVersionAndDigest     = make(map[string]string)
+	cacheLockScyllaDBImageVersionAndDigest sync.RWMutex
 )
 
 var (
@@ -46,4 +60,74 @@ func (sv ScyllaVersion) SupportFeatureUnsafe(featureVersion semver.Version) bool
 // SupportFeatureSafe return true if a feature is supported (and always false if the version is unknown)
 func (sv ScyllaVersion) SupportFeatureSafe(featureVersion semver.Version) bool {
 	return !sv.unknown && sv.version.GTE(featureVersion)
+}
+
+func GetImageVersionAndDigest(imageName, version string) (string, error) {
+	// If the version is already a <tag>@<digest> format, return it as is
+	if strings.Contains(version, "@") {
+		return version, nil
+	}
+
+	imageReference := fmt.Sprintf("scylladb/%s", imageName)
+	if strings.Contains(version, ":") {
+		imageReference = fmt.Sprintf("%s@%s", imageReference, version)
+	} else {
+		imageReference = fmt.Sprintf("%s:%s", imageReference, version)
+	}
+
+	cacheLockScyllaDBImageVersionAndDigest.RLock()
+	cached, ok := cacheScyllaDBImageVersionAndDigest[imageReference]
+	cacheLockScyllaDBImageVersionAndDigest.RUnlock()
+	if ok {
+		return cached, nil
+	}
+
+	ref, err := name.ParseReference(imageReference)
+	if err != nil {
+		return "", fmt.Errorf("can't parse image reference: %w", err)
+	}
+
+	img, err := remote.Image(ref, remote.WithAuth(authn.Anonymous))
+	if err != nil {
+		return "", fmt.Errorf("can't fetch image: %w", err)
+	}
+
+	configFile, err := img.ConfigFile()
+	if err != nil {
+		return "", fmt.Errorf("can't get image config: %w", err)
+	}
+
+	versionLabel, ok := configFile.Config.Labels["org.opencontainers.image.version"]
+	if !ok {
+		klog.Warningf("no org.opencontainers.image.version label found for image: %s", imageReference)
+		return version, nil
+	}
+
+	digest, err := img.Digest()
+	if err != nil {
+		return "", fmt.Errorf("can't get image digest: %w", err)
+	}
+
+	resolvedVersion := fmt.Sprintf("%s@%s", versionLabel, digest)
+	klog.V(4).InfoS("Full image version", "imageName", imageName, "resolvedVersion", resolvedVersion)
+
+	reBaseVersion := regexp.MustCompile(`\d+\.\d+\.\d+`)
+	baseVersion := reBaseVersion.FindString(resolvedVersion)
+
+	reSuffix := regexp.MustCompile(`~([^\-]+)-`)
+	suffixMatch := reSuffix.FindStringSubmatch(resolvedVersion)
+	if len(suffixMatch) > 1 {
+		baseVersion = fmt.Sprintf("%s-%s", baseVersion, suffixMatch[1])
+	}
+
+	if baseVersion == "" {
+		klog.Warningf("could not extract semantic version from: %s", resolvedVersion)
+		return versionLabel, nil
+	}
+
+	cacheLockScyllaDBImageVersionAndDigest.Lock()
+	defer cacheLockScyllaDBImageVersionAndDigest.Unlock()
+	cacheScyllaDBImageVersionAndDigest[imageReference] = baseVersion
+
+	return baseVersion, nil
 }

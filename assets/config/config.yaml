@@ -13,6 +13,6 @@ operator:
   prometheusVersion: "v2.54.1"
 operatorTests:
   scyllaDBVersions:
-    updateFrom: "6.2.0-rc2"
-    upgradeFrom: "6.1.2"
+    updateFrom: "sha256:cf00b8bfcce4d27e8527cad913e83db89af842e6cfb64ff4736bce83594b33d1"
+    upgradeFrom: "sha256:0c1c6b49916230f62bdb0c2539b811b1a99d2c43d06ed810fad6f51015dea3ae"
   nodeSetupImage: "quay.io/scylladb/scylla-operator-images:node-setup-v0.0.3@sha256:c6b3de240cc5c884d5c617485bae35c51572cdfd39b6431d2e1f759c7d7feea1"

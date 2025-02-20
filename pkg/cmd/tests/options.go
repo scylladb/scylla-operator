@@ -7,11 +7,13 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/blang/semver"
 	"github.com/onsi/ginkgo/v2"
 	configassets "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	scyllasemver "github.com/scylladb/scylla-operator/pkg/semver"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/util/errors"
@@ -27,7 +29,7 @@ const (
 	digestRegexp = `[A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}`
 )
 
-var tagWithOptionalDigestRegexp = regexp.MustCompile("^" + referenceTagRegexp + "(?:@" + digestRegexp + ")?$")
+var tagOrDigestRegexp = regexp.MustCompile("^(?:" + referenceTagRegexp + "(?:@" + digestRegexp + ")?|" + digestRegexp + ")$")
 
 type IngressControllerOptions struct {
 	Address           string
@@ -191,37 +193,65 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 		errors = append(errors, fmt.Errorf("gcs-service-account-key-path and s3-credentials-file-path can't be set simultanously"))
 	}
 
-	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBVersion) {
+	if !tagOrDigestRegexp.MatchString(o.ScyllaDBVersion) {
 		errors = append(errors, fmt.Errorf(
-			"invalid scylladb-version format: %q. Expected format: <tag>[@<digest>]",
+			"invalid scylladb-version format: %q. Expected format: <tag>, <tag>@<digest>, or <digest>",
 			o.ScyllaDBVersion,
 		))
 	}
 
-	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBUpdateFrom) {
+	if _, err := semver.Parse(o.ScyllaDBVersion); err != nil {
+		semScyllaDBVersion, fullScyllaDBVersion, err := scyllasemver.GetImageVersionAndDigest("scylla", o.ScyllaDBVersion)
+		if err != nil {
+			return fmt.Errorf("failed to resolve ScyllaDB version: %w", err)
+		}
+		fmt.Println("Extracted", semScyllaDBVersion, "from ScyllaDB version:", fullScyllaDBVersion)
+
+		o.ScyllaDBVersion = semScyllaDBVersion
+	}
+
+	if !tagOrDigestRegexp.MatchString(o.ScyllaDBUpdateFrom) {
 		errors = append(errors, fmt.Errorf(
-			"invalid scylladb-update-from-version format: %q. Expected format: <tag>[@<digest>]",
+			"invalid scylladb-update-from-version format: %q. Expected format: <tag>, <tag>@<digest>, or <digest>",
 			o.ScyllaDBUpdateFrom,
 		))
 	}
 
-	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBUpgradeFrom) {
+	if _, err := semver.Parse(o.ScyllaDBUpdateFrom); err != nil {
+		semScyllaDBUpdateFromVersion, fullScyllaDBUpdateFromVersion, err := scyllasemver.GetImageVersionAndDigest("scylla", o.ScyllaDBUpdateFrom)
+		if err != nil {
+			return fmt.Errorf("failed to resolve ScyllaDB update from version: %w", err)
+		}
+		fmt.Println("Extracted", semScyllaDBUpdateFromVersion, "from ScyllaDB 'update from' version:", fullScyllaDBUpdateFromVersion)
+		o.ScyllaDBUpdateFrom = semScyllaDBUpdateFromVersion
+	}
+
+	if !tagOrDigestRegexp.MatchString(o.ScyllaDBUpgradeFrom) {
 		errors = append(errors, fmt.Errorf(
-			"invalid scylladb-upgrade-from-version format: %q. Expected format: <tag>[@<digest>]",
+			"invalid scylladb-upgrade-from-version format: %q. Expected format: <tag>, <tag>@<digest>, or <digest>",
 			o.ScyllaDBUpgradeFrom,
 		))
 	}
 
-	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBManagerVersion) {
+	if _, err := semver.Parse(o.ScyllaDBUpgradeFrom); err != nil {
+		semScyllaDBUpgradeFromVersion, fullScyllaDBUpgradeFromVersion, err := scyllasemver.GetImageVersionAndDigest("scylla", o.ScyllaDBUpgradeFrom)
+		if err != nil {
+			return fmt.Errorf("failed to resolve ScyllaDB upgrade from version: %w", err)
+		}
+		fmt.Println("Extracted", semScyllaDBUpgradeFromVersion, "from ScyllaDB 'upgrade from' version:", fullScyllaDBUpgradeFromVersion)
+		o.ScyllaDBUpgradeFrom = semScyllaDBUpgradeFromVersion
+	}
+
+	if !tagOrDigestRegexp.MatchString(o.ScyllaDBManagerVersion) {
 		errors = append(errors, fmt.Errorf(
-			"invalid scylladb-manager-version format: %q. Expected format: <tag>[@<digest>]",
+			"invalid scylladb-manager-version format: %q. Expected format: <tag>, <tag>@<digest>, or <digest>",
 			o.ScyllaDBManagerVersion,
 		))
 	}
 
-	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBManagerAgentVersion) {
+	if !tagOrDigestRegexp.MatchString(o.ScyllaDBManagerAgentVersion) {
 		errors = append(errors, fmt.Errorf(
-			"invalid scylladb-manager-agent-version format: %q. Expected format: <tag>[@<digest>]",
+			"invalid scylladb-manager-agent-version format: %q. Expected format: <tag>, <tag>@<digest>, or <digest>",
 			o.ScyllaDBManagerAgentVersion,
 		))
 	}

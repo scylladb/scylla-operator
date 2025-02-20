@@ -132,7 +132,8 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 		return fmt.Sprintf("with %q monitoring type", e.Type)
 	}
 
-	g.DescribeTable("should setup monitoring stack", func(e *entry) {
+	// Disabled on OpenShift because of https://github.com/scylladb/scylla-operator/issues/2319#issuecomment-2643287819
+	g.DescribeTable("should setup monitoring stack TESTCASE_DISABLED_ON_OPENSHIFT", func(e *entry) {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 		defer cancel()
 

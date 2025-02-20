@@ -23,6 +23,13 @@ trap gather-artifacts-on-exit EXIT
 REENTRANT="${REENTRANT=false}"
 export REENTRANT
 
+# Test cases including $test_disable_tag in their name will be skipped.
+# TODO: Get rid of this tagging method in favor of defined test suites, and mapping
+# specific test suites to specific runtime configurations.
+test_disable_tag="TESTCASE_DISABLED_ON_OPENSHIFT"
+SO_SKIPPED_TESTS="${SO_SKIPPED_TESTS:-$test_disable_tag}"
+export SO_SKIPPED_TESTS
+
 SO_NODECONFIG_PATH="${SO_NODECONFIG_PATH=${parent_dir}/manifests/cluster/nodeconfig-openshift-aws.yaml}"
 export SO_NODECONFIG_PATH
 

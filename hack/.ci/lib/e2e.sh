@@ -203,6 +203,7 @@ function run-e2e {
     exit 2
   fi
 
+  SO_SKIPPED_TESTS="${SO_SKIPPED_TESTS:-}"
   FIELD_MANAGER="${FIELD_MANAGER:-run-e2e-script}"
   SO_BUCKET_NAME="${SO_BUCKET_NAME:-}"
   SO_E2E_PARALLELISM="${SO_E2E_PARALLELISM:-0}"
@@ -265,6 +266,7 @@ spec:
     - scylla-operator-tests
     - run
     - "${SO_SUITE}"
+    - "--skip=${SO_SKIPPED_TESTS}"
     - "--kubeconfig=${kubeconfigs_in_container_path}"
     - --loglevel=2
     - --color=false

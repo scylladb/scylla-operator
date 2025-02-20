@@ -15,13 +15,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 )
 
-func MakeRemoteRemoteOwners(sc *scyllav1alpha1.ScyllaDBCluster, remoteNamespaces map[string]*corev1.Namespace, existingRemoteOwners map[string]map[string]*scyllav1alpha1.RemoteOwner, managingClusterDomain string) ([]metav1.Condition, map[string][]*scyllav1alpha1.RemoteOwner) {
+func MakeRemoteRemoteOwners(sc *scyllav1alpha1.ScyllaDBCluster, remoteNamespaces map[string]*corev1.Namespace, existingRemoteOwners map[string]map[string]*scyllav1alpha1.RemoteOwner, managingClusterDomain string) ([]metav1.Condition, map[string][]*scyllav1alpha1.RemoteOwner, error) {
 	var progressingConditions []metav1.Condition
 	requiredRemoteOwners := make(map[string][]*scyllav1alpha1.RemoteOwner, len(sc.Spec.Datacenters))
 
@@ -35,50 +34,42 @@ func MakeRemoteRemoteOwners(sc *scyllav1alpha1.ScyllaDBCluster, remoteNamespaces
 				Message:            fmt.Sprintf("Waiting for Namespace to be created in %q Cluster", dc.RemoteKubernetesClusterName),
 				ObservedGeneration: sc.Generation,
 			})
-			return progressingConditions, nil
+			return progressingConditions, nil, nil
 		}
 
-		namePrefix := fmt.Sprintf("%s-", sc.Name)
+		nameSuffix, err := naming.GenerateNameHash(sc.Namespace, dc.Name)
+		if err != nil {
+			return nil, nil, fmt.Errorf("can't generate remoteowner name suffix: %w", err)
+		}
+
 		ro := &scyllav1alpha1.RemoteOwner{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace:    ns.Name,
-				GenerateName: namePrefix,
-				Labels:       naming.RemoteOwnerLabels(sc, &dc, managingClusterDomain),
+				Namespace: ns.Name,
+				Name:      fmt.Sprintf("%s-%s", sc.Name, nameSuffix),
+				Labels:    naming.RemoteOwnerLabels(sc, &dc, managingClusterDomain),
 			},
-		}
-
-		labelsSelector := labels.SelectorFromSet(naming.RemoteOwnerSelectorLabels(sc, &dc))
-		for _, ero := range existingRemoteOwners[dc.RemoteKubernetesClusterName] {
-			if strings.HasPrefix(ero.Name, namePrefix) && labelsSelector.Matches(labels.Set(ero.Labels)) {
-				ro.Name = ero.Name
-				break
-			}
 		}
 
 		requiredRemoteOwners[dc.RemoteKubernetesClusterName] = append(requiredRemoteOwners[dc.RemoteKubernetesClusterName], ro)
 	}
 
-	return progressingConditions, requiredRemoteOwners
+	return progressingConditions, requiredRemoteOwners, nil
 }
 
 func MakeRemoteNamespaces(sc *scyllav1alpha1.ScyllaDBCluster, existingNamespaces map[string]map[string]*corev1.Namespace, managingClusterDomain string) (map[string][]*corev1.Namespace, error) {
 	requiredNamespaces := make(map[string][]*corev1.Namespace)
 
 	for _, dc := range sc.Spec.Datacenters {
-		namePrefix := fmt.Sprintf("%s-", sc.Namespace)
-		ns := &corev1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				GenerateName: namePrefix,
-				Labels:       naming.ScyllaDBClusterDatacenterLabels(sc, &dc, managingClusterDomain),
-			},
+		suffix, err := naming.GenerateNameHash(sc.Namespace, dc.Name)
+		if err != nil {
+			return nil, fmt.Errorf("can't generate namespace name suffix: %w", err)
 		}
 
-		labelsSelector := labels.SelectorFromSet(ns.Labels)
-		for _, ens := range existingNamespaces[dc.RemoteKubernetesClusterName] {
-			if strings.HasPrefix(ens.Name, namePrefix) && labelsSelector.Matches(labels.Set(ens.Labels)) {
-				ns.Name = ens.Name
-				break
-			}
+		ns := &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   fmt.Sprintf("%s-%s", sc.Namespace, suffix),
+				Labels: naming.ScyllaDBClusterDatacenterLabels(sc, &dc, managingClusterDomain),
+			},
 		}
 
 		requiredNamespaces[dc.RemoteKubernetesClusterName] = append(requiredNamespaces[dc.RemoteKubernetesClusterName], ns)

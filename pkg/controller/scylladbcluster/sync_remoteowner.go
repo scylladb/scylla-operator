@@ -22,7 +22,10 @@ func (scc *Controller) syncRemoteOwners(
 	remoteRemoteOwners map[string]map[string]*scyllav1alpha1.RemoteOwner,
 	managingClusterDomain string,
 ) ([]metav1.Condition, error) {
-	progressingConditions, requiredRemoteOwners := MakeRemoteRemoteOwners(sc, remoteNamespaces, remoteRemoteOwners, managingClusterDomain)
+	progressingConditions, requiredRemoteOwners, err := MakeRemoteRemoteOwners(sc, remoteNamespaces, remoteRemoteOwners, managingClusterDomain)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't make remote owners: %w", err)
+	}
 	if len(progressingConditions) > 0 {
 		return progressingConditions, nil
 	}

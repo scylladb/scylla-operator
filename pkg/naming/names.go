@@ -2,6 +2,7 @@ package naming
 
 import (
 	"fmt"
+	"github.com/scylladb/scylla-operator/pkg/util/hash"
 	"strconv"
 	"strings"
 
@@ -11,6 +12,10 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+const (
+	lengthOfNameSuffixHash = 5
 )
 
 func ManualRef(namespace, name string) string {
@@ -267,4 +272,13 @@ func SeedService(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDB
 
 func ScyllaDBDatacenterName(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter) string {
 	return fmt.Sprintf("%s-%s", sc.Name, dc.Name)
+}
+
+func GenerateNameHash(parts ...string) (string, error) {
+	h, err := hash.HashObjects(parts)
+	if err != nil {
+		return "", fmt.Errorf("can't hash name parts: %w", err)
+	}
+
+	return strings.ToLower(h[:lengthOfNameSuffixHash]), nil
 }

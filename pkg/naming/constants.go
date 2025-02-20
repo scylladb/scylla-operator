@@ -236,4 +236,5 @@ const (
 
 const (
 	RemoteKubernetesClusterFinalizer = "scylla-operator.scylladb.com/remotekubernetescluster-protection"
+	ScyllaDBClusterFinalizer         = "scylla-operator.scylladb.com/scylladbcluster-protection"
 )

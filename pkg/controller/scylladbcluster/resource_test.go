@@ -74,8 +74,8 @@ func TestMakeRemoteOwners(t *testing.T) {
 				"dc1-rkc": {
 					&scyllav1alpha1.RemoteOwner{
 						ObjectMeta: metav1.ObjectMeta{
-							Namespace:    "scylla-abc",
-							GenerateName: "cluster-",
+							Namespace: "scylla-abc",
+							Name:      "cluster-vg5nl",
 							Labels: map[string]string{
 								"internal.scylla-operator.scylladb.com/remote-owner-cluster":   "dc1-rkc",
 								"internal.scylla-operator.scylladb.com/remote-owner-namespace": "scylla",
@@ -89,8 +89,8 @@ func TestMakeRemoteOwners(t *testing.T) {
 				"dc2-rkc": {
 					&scyllav1alpha1.RemoteOwner{
 						ObjectMeta: metav1.ObjectMeta{
-							Namespace:    "scylla-def",
-							GenerateName: "cluster-",
+							Namespace: "scylla-def",
+							Name:      "cluster-wwkor",
 							Labels: map[string]string{
 								"internal.scylla-operator.scylladb.com/remote-owner-cluster":   "dc2-rkc",
 								"internal.scylla-operator.scylladb.com/remote-owner-namespace": "scylla",
@@ -104,72 +104,10 @@ func TestMakeRemoteOwners(t *testing.T) {
 				"dc3-rkc": {
 					&scyllav1alpha1.RemoteOwner{
 						ObjectMeta: metav1.ObjectMeta{
-							Namespace:    "scylla-ghj",
-							GenerateName: "cluster-",
+							Namespace: "scylla-ghj",
+							Name:      "cluster-fkvjv",
 							Labels: map[string]string{
 								"internal.scylla-operator.scylladb.com/remote-owner-cluster":   "dc3-rkc",
-								"internal.scylla-operator.scylladb.com/remote-owner-namespace": "scylla",
-								"internal.scylla-operator.scylladb.com/remote-owner-name":      "cluster",
-								"internal.scylla-operator.scylladb.com/remote-owner-gvr":       "scylla.scylladb.com-v1alpha1-scylladbclusters",
-								"scylla-operator.scylladb.com/managed-by-cluster":              "test-cluster.local",
-							},
-						},
-					},
-				},
-			},
-			expectedProgressingConditions: nil,
-		},
-		{
-			name: "RemoteOwner Name is rewritten in case there's an existing RemoteOwner matching prefix and labels",
-			cluster: &scyllav1alpha1.ScyllaDBCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "cluster",
-					Namespace: "scylla",
-				},
-				Spec: scyllav1alpha1.ScyllaDBClusterSpec{
-					Datacenters: []scyllav1alpha1.ScyllaDBClusterDatacenter{
-						{
-							Name:                        "dc1",
-							RemoteKubernetesClusterName: "dc1-rkc",
-						},
-					},
-				},
-			},
-			remoteNamespaces: map[string]*corev1.Namespace{
-				"dc1-rkc": {
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "scylla-abc",
-					},
-				},
-			},
-			existingRemoteOwners: map[string]map[string]*scyllav1alpha1.RemoteOwner{
-				"dc1-rkc": {
-					"cluster-abcdef": &scyllav1alpha1.RemoteOwner{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace:    "scylla-abc",
-							Name:         "cluster-abcdef",
-							GenerateName: "cluster-",
-							Labels: map[string]string{
-								"custom-label": "custom-value",
-								"internal.scylla-operator.scylladb.com/remote-owner-cluster":   "dc1-rkc",
-								"internal.scylla-operator.scylladb.com/remote-owner-namespace": "scylla",
-								"internal.scylla-operator.scylladb.com/remote-owner-name":      "cluster",
-								"internal.scylla-operator.scylladb.com/remote-owner-gvr":       "scylla.scylladb.com-v1alpha1-scylladbclusters",
-								"scylla-operator.scylladb.com/managed-by-cluster":              "test-cluster.local",
-							},
-						},
-					},
-				},
-			},
-			expectedRemoteOwners: map[string][]*scyllav1alpha1.RemoteOwner{
-				"dc1-rkc": {
-					&scyllav1alpha1.RemoteOwner{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace:    "scylla-abc",
-							Name:         "cluster-abcdef",
-							GenerateName: "cluster-",
-							Labels: map[string]string{
-								"internal.scylla-operator.scylladb.com/remote-owner-cluster":   "dc1-rkc",
 								"internal.scylla-operator.scylladb.com/remote-owner-namespace": "scylla",
 								"internal.scylla-operator.scylladb.com/remote-owner-name":      "cluster",
 								"internal.scylla-operator.scylladb.com/remote-owner-gvr":       "scylla.scylladb.com-v1alpha1-scylladbclusters",
@@ -215,7 +153,10 @@ func TestMakeRemoteOwners(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			gotProgressingConditions, gotRemoteOwners := MakeRemoteRemoteOwners(tc.cluster, tc.remoteNamespaces, tc.existingRemoteOwners, testClusterDomain)
+			gotProgressingConditions, gotRemoteOwners, err := MakeRemoteRemoteOwners(tc.cluster, tc.remoteNamespaces, tc.existingRemoteOwners, testClusterDomain)
+			if err != nil {
+				t.Fatalf("expected nil error, got %v", err)
+			}
 			if !equality.Semantic.DeepEqual(gotRemoteOwners, tc.expectedRemoteOwners) {
 				t.Errorf("expected and got remoteowners differ, diff: %s", cmp.Diff(gotRemoteOwners, tc.expectedRemoteOwners))
 			}
@@ -263,7 +204,7 @@ func TestMakeNamespaces(t *testing.T) {
 			expectedNamespaces: map[string][]*corev1.Namespace{
 				"dc1-rkc": {{
 					ObjectMeta: metav1.ObjectMeta{
-						GenerateName: "scylla-",
+						Name: "scylla-vg5nl",
 						Labels: map[string]string{
 							"scylla-operator.scylladb.com/parent-scylladbcluster-name":            "cluster",
 							"scylla-operator.scylladb.com/parent-scylladbcluster-namespace":       "scylla",
@@ -274,7 +215,7 @@ func TestMakeNamespaces(t *testing.T) {
 				}},
 				"dc2-rkc": {{
 					ObjectMeta: metav1.ObjectMeta{
-						GenerateName: "scylla-",
+						Name: "scylla-wwkor",
 						Labels: map[string]string{
 							"scylla-operator.scylladb.com/parent-scylladbcluster-name":            "cluster",
 							"scylla-operator.scylladb.com/parent-scylladbcluster-namespace":       "scylla",
@@ -285,58 +226,11 @@ func TestMakeNamespaces(t *testing.T) {
 				}},
 				"dc3-rkc": {{
 					ObjectMeta: metav1.ObjectMeta{
-						GenerateName: "scylla-",
+						Name: "scylla-fkvjv",
 						Labels: map[string]string{
 							"scylla-operator.scylladb.com/parent-scylladbcluster-name":            "cluster",
 							"scylla-operator.scylladb.com/parent-scylladbcluster-namespace":       "scylla",
 							"scylla-operator.scylladb.com/parent-scylladbcluster-datacenter-name": "dc3",
-							"scylla-operator.scylladb.com/managed-by-cluster":                     "test-cluster.local",
-						},
-					},
-				}},
-			},
-		},
-		{
-			name: "namespace name is rewritten when already exists one matching label selector",
-			cluster: &scyllav1alpha1.ScyllaDBCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "cluster",
-					Namespace: "scylla",
-				},
-				Spec: scyllav1alpha1.ScyllaDBClusterSpec{
-					Datacenters: []scyllav1alpha1.ScyllaDBClusterDatacenter{
-						{
-							Name:                        "dc1",
-							RemoteKubernetesClusterName: "dc1-rkc",
-						},
-					},
-				},
-			},
-			existingNamespaces: map[string]map[string]*corev1.Namespace{
-				"dc1-rkc": {
-					"scylla-abc": {
-						ObjectMeta: metav1.ObjectMeta{
-							Name:         "scylla-abc",
-							GenerateName: "scylla-",
-							Labels: map[string]string{
-								"scylla-operator.scylladb.com/parent-scylladbcluster-name":            "cluster",
-								"scylla-operator.scylladb.com/parent-scylladbcluster-namespace":       "scylla",
-								"scylla-operator.scylladb.com/parent-scylladbcluster-datacenter-name": "dc1",
-								"scylla-operator.scylladb.com/managed-by-cluster":                     "test-cluster.local",
-							},
-						},
-					},
-				},
-			},
-			expectedNamespaces: map[string][]*corev1.Namespace{
-				"dc1-rkc": {{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:         "scylla-abc",
-						GenerateName: "scylla-",
-						Labels: map[string]string{
-							"scylla-operator.scylladb.com/parent-scylladbcluster-name":            "cluster",
-							"scylla-operator.scylladb.com/parent-scylladbcluster-namespace":       "scylla",
-							"scylla-operator.scylladb.com/parent-scylladbcluster-datacenter-name": "dc1",
 							"scylla-operator.scylladb.com/managed-by-cluster":                     "test-cluster.local",
 						},
 					},

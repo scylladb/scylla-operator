@@ -86,6 +86,11 @@ define version-ldflags
 endef
 GO_LD_FLAGS ?=-ldflags '$(strip $(call version-ldflags,$(GO_PACKAGE)/pkg/version) $(GO_LD_EXTRA_FLAGS))'
 
+GET_SCYLLADB_VERSION_SCRIPT ?= $(GO) run ./cmd/get-scylla-version/get-scylla-version.go
+SCYLLADB_VERSION_FROM_CONFIG := $(shell yq e '.operator.scyllaDBVersion' ./assets/config/config.yaml)
+GET_SCYLLADB_VERSION_SCRIPT_RESULT := $(shell $(GET_SCYLLADB_VERSION_SCRIPT) --image scylla --version $(SCYLLADB_VERSION_FROM_CONFIG))
+SCYLLADB_SEM_VER := $(firstword $(GET_SCYLLADB_VERSION_SCRIPT_RESULT))
+
 # TODO: look into how to make these local to the targets
 export DOCKER_BUILDKIT :=1
 export GOVERSION :=$(shell go version)
@@ -463,7 +468,7 @@ endef
 # $1 - values.yaml
 define update-scylla-helm-versions
 	$(YQ) eval-all -i -P '\
-	select(fi==0).scyllaImage.tag = ( select(fi==1) | .operator.scyllaDBVersion ) | \
+	select(fi==0).scyllaImage.tag = ( select(fi==1) | "$(SCYLLADB_SEM_VER)" ) | \
 	select(fi==0).agentImage.tag = ( select(fi==1) | .operator.scyllaDBManagerAgentVersion ) | \
 	select(fi==0)' \
 	'$(1)' './assets/config/config.yaml'
@@ -472,7 +477,7 @@ endef
 # $1 - values.yaml
 define update-scylla-manager-helm-versions
 	$(YQ) eval-all -i -P '\
-	select(fi==0).scylla.scyllaImage.tag = ( select(fi==1) | .operator.scyllaDBVersion ) | \
+	select(fi==0).scylla.scyllaImage.tag = ( select(fi==1) | "$(SCYLLADB_SEM_VER)" ) | \
 	select(fi==0).scylla.agentImage.tag = ( select(fi==1) | .operator.scyllaDBManagerAgentVersion ) | \
 	select(fi==0).image.tag = ( select(fi==1) | .operator.scyllaDBManagerVersion ) | \
 	select(fi==0)' \
@@ -545,7 +550,7 @@ verify-deploy:
 # $2 - ScyllaCluster document index
 define replace-scyllacluster-versions
 	$(YQ) eval-all -i -P '\
-	select(fi==0 and di==$(2)).spec.version = ( select(fi==1) | .operator.scyllaDBVersion ) | \
+	select(fi==0 and di==$(2)).spec.version = ( select(fi==1) | "$(SCYLLADB_SEM_VER)" ) | \
 	select(fi==0 and di==$(2)).spec.agentVersion = ( select(fi==1) | .operator.scyllaDBManagerAgentVersion ) | \
 	select(fi==0)' \
 	'$(1)' './assets/config/config.yaml'

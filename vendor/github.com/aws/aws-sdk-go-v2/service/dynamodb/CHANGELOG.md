@@ -1,3 +1,13 @@
+# v1.40.2 (2025-02-18)
+
+* **Bug Fix**: Add missing AccountIDEndpointMode binding to endpoint resolution.
+* **Bug Fix**: Bump go version to 1.22
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.40.1 (2025-02-11)
+
+* No change notes available for this release.
+
 # v1.40.0 (2025-02-05)
 
 * **Feature**: Track AccountID endpoint mode in user-agent.

@@ -189,6 +189,18 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 	status := scc.calculateStatus(sc, remoteScyllaDBDatacenterMap)
 
 	if sc.DeletionTimestamp != nil {
+		err = controllerhelpers.RunSync(
+			&status.Conditions,
+			scyllaDBClusterFinalizerProgressingCondition,
+			scyllaDBClusterFinalizerDegradedCondition,
+			sc.Generation,
+			func() ([]metav1.Condition, error) {
+				return scc.syncFinalizer(ctx, sc, remoteNamespaces)
+			},
+		)
+		if err != nil {
+			return fmt.Errorf("can't finalize: %w", err)
+		}
 		return scc.updateStatus(ctx, sc, status)
 	}
 
@@ -197,6 +209,14 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		return controllertools.NewNonRetriable("ScyllaOperatorConfig doesn't yet have clusterDomain available in the status")
 	}
 	managingClusterDomain := *soc.Status.ClusterDomain
+
+	if !scc.hasFinalizer(sc.GetFinalizers()) {
+		err = scc.addFinalizer(ctx, sc)
+		if err != nil {
+			return fmt.Errorf("can't add finalizer: %w", err)
+		}
+		return nil
+	}
 
 	var errs []error
 

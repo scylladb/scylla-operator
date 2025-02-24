@@ -38,7 +38,7 @@ To deploy a ScyllaDB cluster please head to [our dedicated section on the topic]
 
 ## Accessing ScyllaDB
 
-We also hve a whole section dedicated to [how you can access teh ScyllaDB cluster you've just created](../resources/scyllaclusters/clients/index.md).
+We also hve a whole section dedicated to [how you can access the ScyllaDB cluster you've just created](../resources/scyllaclusters/clients/index.md).
 
 ## Deleting the EKS cluster
 

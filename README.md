@@ -14,7 +14,7 @@
 ![](logo.png)
 
 ## Deploying the Operator
-For version requirements see the [support matrix](./docs/source/support/releases.md).
+For version requirements see the [support matrix](https://operator.docs.scylladb.com/stable/support/releases.html).
 
 ### GitOps
 Kubernetes manifests are located in the `deploy/` folder. To deploy the operator manually using Kubernetes manifests or to integrate it into your GitOps flow please follow [these instructions](./deploy/README.md). 
@@ -36,17 +36,17 @@ helm repo add scylla-operator https://storage.googleapis.com/scylla-operator-cha
 ## Quickstarts and Training
 To quickly deploy a ScyllaCluster, you can choose one of the following options:
 
-* [GKE](./docs/source/quickstarts/gke.md): This is a quickstart guide to help you set up a basic [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine) cluster quickly with local NVMes and solid performance.
-* [EKS](./docs/source/quickstarts/eks.md): This is a quickstart guide to help you set up a basic [Amazon Elastic Kubernetes Service](https://aws.amazon.com/eks/) cluster quickly with local NVMes and solid performance.
+* [GKE](https://operator.docs.scylladb.com/stable/quickstarts/gke.html): This is a quickstart guide to help you set up a basic [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine) cluster quickly with local NVMes and solid performance.
+* [EKS](https://operator.docs.scylladb.com/stable/quickstarts/eks.html): This is a quickstart guide to help you set up a basic [Amazon Elastic Kubernetes Service](https://aws.amazon.com/eks/) cluster quickly with local NVMes and solid performance.
 
 ScyllaDB Installation: 
-* [Generic](./docs/source/installation/kubernetes/generic.md): Follow this guide for the general way to use the operator.
-* [GKE](./docs/source/installation/kubernetes/gke.md): An advanced guide for deploying Scylla with the **best performance settings** on [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine).
-* [EKS](./docs/source/installation/kubernetes/eks.md): An advanced guide for deploying Scylla with the **best performance settings** on [Amazon Elastic Kubernetes Service](https://aws.amazon.com/eks/).
+* [Generic](https://operator.docs.scylladb.com/stable/installation/kubernetes/generic.html): Follow this guide for the general way to use the operator.
+* [GKE](https://operator.docs.scylladb.com/stable/installation/kubernetes/gke.html): An advanced guide for deploying Scylla with the **best performance settings** on [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine).
+* [EKS](https://operator.docs.scylladb.com/stable/installation/kubernetes/eks.html): An advanced guide for deploying Scylla with the **best performance settings** on [Amazon Elastic Kubernetes Service](https://aws.amazon.com/eks/).
 * [Scylla University Lesson](https://university.scylladb.com/courses/scylla-operations/lessons/kubernetes-operator/): Follow this lesson on Scylla University to learn more about the Operator and how to use it. The lesson includes some hands-on examples which you can run yourself. 
 
 ## Releases
-To find out more about our releases, support matrix and how our CI/CD is set up there is a [dedicated docs page](./docs/source/support/releases.md).
+To find out more about our releases, support matrix and how our CI/CD is set up there is a [dedicated docs page](https://operator.docs.scylladb.com/stable/support/releases.html).
 
 ## Documentation
 Scylla Operator documentation is available on https://operator.docs.scylladb.com

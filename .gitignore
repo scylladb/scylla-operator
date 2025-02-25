@@ -2,6 +2,7 @@
 /scylla-operator-tests
 /gen-release-notes
 /gen-api-reference
+/get-scylla-version
 
 # Test binary, build with `go test -c`
 *.test

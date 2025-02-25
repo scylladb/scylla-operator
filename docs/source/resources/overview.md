@@ -23,7 +23,7 @@ kubectl explain --api-version='scylla.scylladb.com/v1alpha1' NodeConfig.spec
 
 ScyllaCluster defines a ScyllaDB datacenter and manages the racks within.
 +++
-[Learn more »](/resources/scyllaclusters/basics)
+[Learn more »](./scyllaclusters/basics.md)
 :::
 
 :::{grid-item-card} {material-round}`insights;2em` ScyllaDBMonitorings
@@ -31,7 +31,7 @@ ScyllaCluster defines a ScyllaDB datacenter and manages the racks within.
 
 ScyllaDBMonitoring defines and manages a ScyllaDB monitoring stack.
 +++
-[Learn more »](/resources/scylladbmonitorings)
+[Learn more »](./scylladbmonitorings.md)
 :::
 
 ::::
@@ -41,7 +41,7 @@ ScyllaDBMonitoring defines and manages a ScyllaDB monitoring stack.
 Cluster scoped resources declare the state for the whole cluster or control something at the cluster level which isn't multitenant.
 Therefore, working with these resources requires elevated privileges.
 
-Generally, there can be multiple instances of these resources but for some of them, like for [ScyllaOperatorConfigs](scyllaoperatorconfigs.md), it only makes sense to have one instance. We call them *singletons* and the single instance is named `cluster`. 
+Generally, there can be multiple instances of these resources but for some of them, like for [ScyllaOperatorConfigs](./scyllaoperatorconfigs.md), it only makes sense to have one instance. We call them *singletons* and the single instance is named `cluster`.
 
 ::::{grid} 1 1 2 3
 :gutter: 4
@@ -51,7 +51,7 @@ Generally, there can be multiple instances of these resources but for some of th
 
 NodeConfig manages setup and tuning for a set of Kubernetes nodes.
 +++
-[Learn more »](/resources/nodeconfigs)
+[Learn more »](./nodeconfigs.md)
 :::
 
 :::{grid-item-card} {material-regular}`settings;2em` ScyllaOperatorConfigs
@@ -59,7 +59,7 @@ NodeConfig manages setup and tuning for a set of Kubernetes nodes.
 
 ScyllaOperatorConfig configures the {{productName}} deployment and reports the status.
 +++
-[Learn more »](/resources/scyllaoperatorconfigs)
+[Learn more »](./scyllaoperatorconfigs.md)
 :::
 
 ::::

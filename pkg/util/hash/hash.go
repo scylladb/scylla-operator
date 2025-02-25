@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 )
 
 func HashObjects(objs ...interface{}) (string, error) {
@@ -29,4 +30,16 @@ func HashBytes(buf []byte) (string, error) {
 		return "", fmt.Errorf("can't write bytes to hasher: %w", err)
 	}
 	return string(hasher.Sum(nil)), nil
+}
+
+func HashObjectFNV64a(objs ...interface{}) (uint64, error) {
+	hasher := fnv.New64a()
+	encoder := json.NewEncoder(hasher)
+	for _, obj := range objs {
+		if err := encoder.Encode(obj); err != nil {
+			return 0, err
+		}
+	}
+
+	return hasher.Sum64(), nil
 }

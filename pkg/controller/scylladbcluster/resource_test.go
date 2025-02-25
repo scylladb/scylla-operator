@@ -75,7 +75,7 @@ func TestMakeRemoteOwners(t *testing.T) {
 					&scyllav1alpha1.RemoteOwner{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: "scylla-abc",
-							Name:      "cluster-vg5nl",
+							Name:      "cluster-28t03",
 							Labels: map[string]string{
 								"internal.scylla-operator.scylladb.com/remote-owner-cluster":   "dc1-rkc",
 								"internal.scylla-operator.scylladb.com/remote-owner-namespace": "scylla",
@@ -90,7 +90,7 @@ func TestMakeRemoteOwners(t *testing.T) {
 					&scyllav1alpha1.RemoteOwner{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: "scylla-def",
-							Name:      "cluster-wwkor",
+							Name:      "cluster-1513j",
 							Labels: map[string]string{
 								"internal.scylla-operator.scylladb.com/remote-owner-cluster":   "dc2-rkc",
 								"internal.scylla-operator.scylladb.com/remote-owner-namespace": "scylla",
@@ -105,7 +105,7 @@ func TestMakeRemoteOwners(t *testing.T) {
 					&scyllav1alpha1.RemoteOwner{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: "scylla-ghj",
-							Name:      "cluster-fkvjv",
+							Name:      "cluster-2p77z",
 							Labels: map[string]string{
 								"internal.scylla-operator.scylladb.com/remote-owner-cluster":   "dc3-rkc",
 								"internal.scylla-operator.scylladb.com/remote-owner-namespace": "scylla",
@@ -204,7 +204,7 @@ func TestMakeNamespaces(t *testing.T) {
 			expectedNamespaces: map[string][]*corev1.Namespace{
 				"dc1-rkc": {{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "scylla-vg5nl",
+						Name: "scylla-28t03",
 						Labels: map[string]string{
 							"scylla-operator.scylladb.com/parent-scylladbcluster-name":            "cluster",
 							"scylla-operator.scylladb.com/parent-scylladbcluster-namespace":       "scylla",
@@ -215,7 +215,7 @@ func TestMakeNamespaces(t *testing.T) {
 				}},
 				"dc2-rkc": {{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "scylla-wwkor",
+						Name: "scylla-1513j",
 						Labels: map[string]string{
 							"scylla-operator.scylladb.com/parent-scylladbcluster-name":            "cluster",
 							"scylla-operator.scylladb.com/parent-scylladbcluster-namespace":       "scylla",
@@ -226,7 +226,7 @@ func TestMakeNamespaces(t *testing.T) {
 				}},
 				"dc3-rkc": {{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "scylla-fkvjv",
+						Name: "scylla-2p77z",
 						Labels: map[string]string{
 							"scylla-operator.scylladb.com/parent-scylladbcluster-name":            "cluster",
 							"scylla-operator.scylladb.com/parent-scylladbcluster-namespace":       "scylla",

@@ -2,6 +2,8 @@ package scylladbcluster
 
 import (
 	"fmt"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/errors"
 	"maps"
 	"sort"
 	"strings"
@@ -910,4 +912,193 @@ func getRemoteNamespaceAndController(controllerProgressingType string, sc *scyll
 	}
 
 	return progressingConditions, remoteNamespace, remoteController
+}
+
+func MakeRemoteConfigMaps(sc *scyllav1alpha1.ScyllaDBCluster, remoteNamespaces map[string]*corev1.Namespace, remoteControllers map[string]metav1.Object, localConfigMapLister corev1listers.ConfigMapLister, managingClusterDomain string) ([]metav1.Condition, map[string][]*corev1.ConfigMap, error) {
+	requiredRemoteConfigMaps := make(map[string][]*corev1.ConfigMap)
+
+	progressingConditions, mirroredConfigMaps, err := makeMirroredRemoteConfigMaps(sc, remoteNamespaces, remoteControllers, localConfigMapLister, managingClusterDomain)
+	if err != nil {
+		return progressingConditions, nil, fmt.Errorf("can't make mirrored configmaps: %w", err)
+	}
+
+	for k, v := range mirroredConfigMaps {
+		requiredRemoteConfigMaps[k] = append(requiredRemoteConfigMaps[k], v...)
+	}
+
+	return progressingConditions, requiredRemoteConfigMaps, nil
+}
+
+func makeMirroredRemoteConfigMaps(sc *scyllav1alpha1.ScyllaDBCluster, remoteNamespaces map[string]*corev1.Namespace, remoteControllers map[string]metav1.Object, localConfigMapLister corev1listers.ConfigMapLister, managingClusterDomain string) ([]metav1.Condition, map[string][]*corev1.ConfigMap, error) {
+	var errs []error
+	var progressingConditions []metav1.Condition
+	requiredRemoteConfigMaps := make(map[string][]*corev1.ConfigMap, len(sc.Spec.Datacenters))
+
+	for _, dc := range sc.Spec.Datacenters {
+		dcProgressingConditions, remoteNamespace, remoteController := getRemoteNamespaceAndController(
+			remoteConfigMapControllerProgressingCondition,
+			sc,
+			dc.RemoteKubernetesClusterName,
+			remoteNamespaces,
+			remoteControllers,
+		)
+		if len(dcProgressingConditions) > 0 {
+			progressingConditions = append(progressingConditions, dcProgressingConditions...)
+			continue
+		}
+
+		var configMapsToMirror []string
+
+		if sc.Spec.DatacenterTemplate != nil && sc.Spec.DatacenterTemplate.ScyllaDB != nil && sc.Spec.DatacenterTemplate.ScyllaDB.CustomConfigMapRef != nil {
+			configMapsToMirror = append(configMapsToMirror, *sc.Spec.DatacenterTemplate.ScyllaDB.CustomConfigMapRef)
+		}
+
+		if sc.Spec.DatacenterTemplate != nil && sc.Spec.DatacenterTemplate.RackTemplate != nil && sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDB != nil && sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDB.CustomConfigMapRef != nil {
+			configMapsToMirror = append(configMapsToMirror, *sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDB.CustomConfigMapRef)
+		}
+
+		if dc.ScyllaDB != nil && dc.ScyllaDB.CustomConfigMapRef != nil {
+			configMapsToMirror = append(configMapsToMirror, *dc.ScyllaDB.CustomConfigMapRef)
+		}
+
+		if dc.RackTemplate != nil && dc.RackTemplate.ScyllaDB != nil && dc.RackTemplate.ScyllaDB.CustomConfigMapRef != nil {
+			configMapsToMirror = append(configMapsToMirror, *dc.RackTemplate.ScyllaDB.CustomConfigMapRef)
+		}
+
+		for _, rack := range dc.Racks {
+			if rack.ScyllaDB != nil && rack.ScyllaDB.CustomConfigMapRef != nil {
+				configMapsToMirror = append(configMapsToMirror, *rack.ScyllaDB.CustomConfigMapRef)
+			}
+		}
+
+		for _, cmName := range configMapsToMirror {
+			localConfigMap, err := localConfigMapLister.ConfigMaps(sc.Namespace).Get(cmName)
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					progressingConditions = append(progressingConditions, metav1.Condition{
+						Type:               remoteConfigMapControllerProgressingCondition,
+						Status:             metav1.ConditionTrue,
+						Reason:             "WaitingForConfigMap",
+						Message:            fmt.Sprintf("Waiting for ConfigMap %q to exist.", naming.ManualRef(sc.Namespace, cmName)),
+						ObservedGeneration: sc.Generation,
+					})
+					continue
+				}
+				errs = append(errs, fmt.Errorf("can't get %q ConfigMap: %w", naming.ManualRef(sc.Namespace, cmName), err))
+				continue
+			}
+
+			requiredRemoteConfigMaps[dc.RemoteKubernetesClusterName] = append(requiredRemoteConfigMaps[dc.RemoteKubernetesClusterName], &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            cmName,
+					Namespace:       remoteNamespace.Name,
+					Labels:          naming.ScyllaDBClusterDatacenterLabels(sc, &dc, managingClusterDomain),
+					Annotations:     naming.ScyllaDBClusterDatacenterAnnotations(sc, &dc),
+					OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(remoteController, remoteControllerGVK)},
+				},
+				Immutable:  localConfigMap.Immutable,
+				Data:       maps.Clone(localConfigMap.Data),
+				BinaryData: maps.Clone(localConfigMap.BinaryData),
+			})
+		}
+	}
+
+	err := errors.NewAggregate(errs)
+	if err != nil {
+		return progressingConditions, requiredRemoteConfigMaps, fmt.Errorf("can't make mirrored ConfigMaps: %w", err)
+	}
+
+	return progressingConditions, requiredRemoteConfigMaps, nil
+}
+
+func MakeRemoteSecrets(sc *scyllav1alpha1.ScyllaDBCluster, remoteNamespaces map[string]*corev1.Namespace, remoteControllers map[string]metav1.Object, localSecretLister corev1listers.SecretLister, managingClusterDomain string) ([]metav1.Condition, map[string][]*corev1.Secret, error) {
+	requiredRemoteSecrets := make(map[string][]*corev1.Secret)
+
+	progressingConditions, mirroredSecrets, err := makeMirroredRemoteSecrets(sc, remoteNamespaces, remoteControllers, localSecretLister, managingClusterDomain)
+	if err != nil {
+		return progressingConditions, nil, fmt.Errorf("can't make mirrored secrets: %w", err)
+	}
+
+	for k, v := range mirroredSecrets {
+		requiredRemoteSecrets[k] = append(requiredRemoteSecrets[k], v...)
+	}
+
+	return progressingConditions, requiredRemoteSecrets, nil
+}
+
+func makeMirroredRemoteSecrets(sc *scyllav1alpha1.ScyllaDBCluster, remoteNamespaces map[string]*corev1.Namespace, remoteControllers map[string]metav1.Object, localSecretLister corev1listers.SecretLister, managingClusterDomain string) ([]metav1.Condition, map[string][]*corev1.Secret, error) {
+	var progressingConditions []metav1.Condition
+	requiredRemoteSecrets := make(map[string][]*corev1.Secret, len(sc.Spec.Datacenters))
+
+	var errs []error
+	for _, dc := range sc.Spec.Datacenters {
+		dcProgressingConditions, remoteNamespace, remoteController := getRemoteNamespaceAndController(
+			remoteConfigMapControllerProgressingCondition,
+			sc,
+			dc.RemoteKubernetesClusterName,
+			remoteNamespaces,
+			remoteControllers,
+		)
+		if len(dcProgressingConditions) > 0 {
+			progressingConditions = append(progressingConditions, dcProgressingConditions...)
+			continue
+		}
+
+		var secretsToMirror []string
+
+		if sc.Spec.DatacenterTemplate != nil && sc.Spec.DatacenterTemplate.ScyllaDBManagerAgent != nil && sc.Spec.DatacenterTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+			secretsToMirror = append(secretsToMirror, *sc.Spec.DatacenterTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef)
+		}
+
+		if sc.Spec.DatacenterTemplate != nil && sc.Spec.DatacenterTemplate.RackTemplate != nil && sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDBManagerAgent != nil && sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+			secretsToMirror = append(secretsToMirror, *sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef)
+		}
+
+		if dc.ScyllaDBManagerAgent != nil && dc.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+			secretsToMirror = append(secretsToMirror, *dc.ScyllaDBManagerAgent.CustomConfigSecretRef)
+		}
+
+		if dc.RackTemplate != nil && dc.RackTemplate.ScyllaDBManagerAgent != nil && dc.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+			secretsToMirror = append(secretsToMirror, *dc.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef)
+		}
+
+		for _, rack := range dc.Racks {
+			if rack.ScyllaDBManagerAgent != nil && rack.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+				secretsToMirror = append(secretsToMirror, *rack.ScyllaDBManagerAgent.CustomConfigSecretRef)
+			}
+		}
+
+		for _, secretName := range secretsToMirror {
+			localSecret, err := localSecretLister.Secrets(sc.Namespace).Get(secretName)
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					progressingConditions = append(progressingConditions, metav1.Condition{
+						Type:               remoteSecretControllerProgressingCondition,
+						Status:             metav1.ConditionTrue,
+						Reason:             "WaitingForSecret",
+						Message:            fmt.Sprintf("Waiting for Secret %q to exist.", naming.ManualRef(sc.Namespace, secretName)),
+						ObservedGeneration: sc.Generation,
+					})
+					continue
+				}
+				errs = append(errs, fmt.Errorf("can't get %q Secret: %w", naming.ManualRef(sc.Namespace, secretName), err))
+				continue
+			}
+
+			requiredRemoteSecrets[dc.RemoteKubernetesClusterName] = append(requiredRemoteSecrets[dc.RemoteKubernetesClusterName], &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            secretName,
+					Namespace:       remoteNamespace.Name,
+					Labels:          naming.ScyllaDBClusterDatacenterLabels(sc, &dc, managingClusterDomain),
+					Annotations:     naming.ScyllaDBClusterDatacenterAnnotations(sc, &dc),
+					OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(remoteController, remoteControllerGVK)},
+				},
+				Immutable: localSecret.Immutable,
+				Data:      maps.Clone(localSecret.Data),
+				Type:      localSecret.Type,
+			})
+		}
+	}
+
+	return progressingConditions, requiredRemoteSecrets, nil
 }

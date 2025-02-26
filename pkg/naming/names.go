@@ -275,10 +275,9 @@ func ScyllaDBDatacenterName(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alph
 }
 
 func GenerateNameHash(parts ...string) (string, error) {
-	h, err := hash.HashObjects(parts)
+	h, err := hash.HashObjectFNV64a(parts)
 	if err != nil {
 		return "", fmt.Errorf("can't hash name parts: %w", err)
 	}
-
-	return strings.ToLower(h[:lengthOfNameSuffixHash]), nil
+	return strconv.FormatUint(h, 36)[:lengthOfNameSuffixHash], nil
 }

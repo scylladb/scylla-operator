@@ -1,6 +1,8 @@
 module github.com/scylladb/scylla-operator
 
-go 1.22.3
+go 1.23.0
+
+toolchain go1.23.1
 
 require (
 	cloud.google.com/go/compute/metadata v0.3.0
@@ -44,7 +46,7 @@ require (
 	go.uber.org/automaxprocs v1.5.3
 	go.uber.org/config v1.4.0
 	golang.org/x/oauth2 v0.22.0
-	golang.org/x/sys v0.29.0
+	golang.org/x/sys v0.30.0
 	google.golang.org/grpc v1.65.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.29.8
@@ -199,13 +201,13 @@ require (
 	go.starlark.net v0.0.0-20240725214946-42030a7cedce // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	golang.org/x/crypto v0.32.0 // indirect
+	golang.org/x/crypto v0.35.0 // indirect
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/net v0.34.0 // indirect
-	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/term v0.28.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/sync v0.11.0 // indirect
+	golang.org/x/term v0.29.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.29.0 // indirect
 	google.golang.org/api v0.195.0 // indirect

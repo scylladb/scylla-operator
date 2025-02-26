@@ -82,6 +82,7 @@ func TestMakeRemoteOwners(t *testing.T) {
 								"internal.scylla-operator.scylladb.com/remote-owner-name":      "cluster",
 								"internal.scylla-operator.scylladb.com/remote-owner-gvr":       "scylla.scylladb.com-v1alpha1-scylladbclusters",
 								"scylla-operator.scylladb.com/managed-by-cluster":              "test-cluster.local",
+								"app.kubernetes.io/managed-by":                                 "remote.scylla-operator.scylladb.com",
 							},
 						},
 					},
@@ -97,6 +98,7 @@ func TestMakeRemoteOwners(t *testing.T) {
 								"internal.scylla-operator.scylladb.com/remote-owner-name":      "cluster",
 								"internal.scylla-operator.scylladb.com/remote-owner-gvr":       "scylla.scylladb.com-v1alpha1-scylladbclusters",
 								"scylla-operator.scylladb.com/managed-by-cluster":              "test-cluster.local",
+								"app.kubernetes.io/managed-by":                                 "remote.scylla-operator.scylladb.com",
 							},
 						},
 					},
@@ -112,6 +114,7 @@ func TestMakeRemoteOwners(t *testing.T) {
 								"internal.scylla-operator.scylladb.com/remote-owner-name":      "cluster",
 								"internal.scylla-operator.scylladb.com/remote-owner-gvr":       "scylla.scylladb.com-v1alpha1-scylladbclusters",
 								"scylla-operator.scylladb.com/managed-by-cluster":              "test-cluster.local",
+								"app.kubernetes.io/managed-by":                                 "remote.scylla-operator.scylladb.com",
 							},
 						},
 					},
@@ -210,6 +213,7 @@ func TestMakeNamespaces(t *testing.T) {
 							"scylla-operator.scylladb.com/parent-scylladbcluster-namespace":       "scylla",
 							"scylla-operator.scylladb.com/parent-scylladbcluster-datacenter-name": "dc1",
 							"scylla-operator.scylladb.com/managed-by-cluster":                     "test-cluster.local",
+							"app.kubernetes.io/managed-by":                                        "remote.scylla-operator.scylladb.com",
 						},
 					},
 				}},
@@ -221,6 +225,7 @@ func TestMakeNamespaces(t *testing.T) {
 							"scylla-operator.scylladb.com/parent-scylladbcluster-namespace":       "scylla",
 							"scylla-operator.scylladb.com/parent-scylladbcluster-datacenter-name": "dc2",
 							"scylla-operator.scylladb.com/managed-by-cluster":                     "test-cluster.local",
+							"app.kubernetes.io/managed-by":                                        "remote.scylla-operator.scylladb.com",
 						},
 					},
 				}},
@@ -232,6 +237,7 @@ func TestMakeNamespaces(t *testing.T) {
 							"scylla-operator.scylladb.com/parent-scylladbcluster-namespace":       "scylla",
 							"scylla-operator.scylladb.com/parent-scylladbcluster-datacenter-name": "dc3",
 							"scylla-operator.scylladb.com/managed-by-cluster":                     "test-cluster.local",
+							"app.kubernetes.io/managed-by":                                        "remote.scylla-operator.scylladb.com",
 						},
 					},
 				}},
@@ -475,6 +481,7 @@ func TestMakeServices(t *testing.T) {
 								"scylla-operator.scylladb.com/parent-scylladbcluster-namespace":       "scylla",
 								"scylla-operator.scylladb.com/parent-scylladbcluster-datacenter-name": "dc1",
 								"scylla-operator.scylladb.com/managed-by-cluster":                     "test-cluster.local",
+								"app.kubernetes.io/managed-by":                                        "remote.scylla-operator.scylladb.com",
 							},
 							OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(&scyllav1alpha1.RemoteOwner{
 								ObjectMeta: metav1.ObjectMeta{
@@ -497,6 +504,7 @@ func TestMakeServices(t *testing.T) {
 								"scylla-operator.scylladb.com/parent-scylladbcluster-namespace":       "scylla",
 								"scylla-operator.scylladb.com/parent-scylladbcluster-datacenter-name": "dc1",
 								"scylla-operator.scylladb.com/managed-by-cluster":                     "test-cluster.local",
+								"app.kubernetes.io/managed-by":                                        "remote.scylla-operator.scylladb.com",
 							},
 							OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(&scyllav1alpha1.RemoteOwner{
 								ObjectMeta: metav1.ObjectMeta{
@@ -521,6 +529,7 @@ func TestMakeServices(t *testing.T) {
 								"scylla-operator.scylladb.com/parent-scylladbcluster-namespace":       "scylla",
 								"scylla-operator.scylladb.com/parent-scylladbcluster-datacenter-name": "dc2",
 								"scylla-operator.scylladb.com/managed-by-cluster":                     "test-cluster.local",
+								"app.kubernetes.io/managed-by":                                        "remote.scylla-operator.scylladb.com",
 							},
 							OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(&scyllav1alpha1.RemoteOwner{
 								ObjectMeta: metav1.ObjectMeta{
@@ -543,6 +552,7 @@ func TestMakeServices(t *testing.T) {
 								"scylla-operator.scylladb.com/parent-scylladbcluster-namespace":       "scylla",
 								"scylla-operator.scylladb.com/parent-scylladbcluster-datacenter-name": "dc2",
 								"scylla-operator.scylladb.com/managed-by-cluster":                     "test-cluster.local",
+								"app.kubernetes.io/managed-by":                                        "remote.scylla-operator.scylladb.com",
 							},
 							OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(&scyllav1alpha1.RemoteOwner{
 								ObjectMeta: metav1.ObjectMeta{
@@ -567,6 +577,7 @@ func TestMakeServices(t *testing.T) {
 								"scylla-operator.scylladb.com/parent-scylladbcluster-namespace":       "scylla",
 								"scylla-operator.scylladb.com/parent-scylladbcluster-datacenter-name": "dc3",
 								"scylla-operator.scylladb.com/managed-by-cluster":                     "test-cluster.local",
+								"app.kubernetes.io/managed-by":                                        "remote.scylla-operator.scylladb.com",
 							},
 							OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(&scyllav1alpha1.RemoteOwner{
 								ObjectMeta: metav1.ObjectMeta{
@@ -589,6 +600,7 @@ func TestMakeServices(t *testing.T) {
 								"scylla-operator.scylladb.com/parent-scylladbcluster-namespace":       "scylla",
 								"scylla-operator.scylladb.com/parent-scylladbcluster-datacenter-name": "dc3",
 								"scylla-operator.scylladb.com/managed-by-cluster":                     "test-cluster.local",
+								"app.kubernetes.io/managed-by":                                        "remote.scylla-operator.scylladb.com",
 							},
 							OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(&scyllav1alpha1.RemoteOwner{
 								ObjectMeta: metav1.ObjectMeta{
@@ -838,6 +850,7 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 					"scylla-operator.scylladb.com/parent-scylladbcluster-name":            "cluster",
 					"scylla-operator.scylladb.com/parent-scylladbcluster-namespace":       "scylla",
 					"scylla-operator.scylladb.com/managed-by-cluster":                     "test-cluster.local",
+					"app.kubernetes.io/managed-by":                                        "remote.scylla-operator.scylladb.com",
 				},
 				Annotations:     map[string]string{},
 				OwnerReferences: newBasicOwnerReference(namespace),

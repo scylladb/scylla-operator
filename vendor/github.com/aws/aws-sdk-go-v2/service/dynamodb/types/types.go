@@ -2295,6 +2295,12 @@ type PointInTimeRecoveryDescription struct {
 	//   - DISABLED - Point in time recovery is disabled.
 	PointInTimeRecoveryStatus PointInTimeRecoveryStatus
 
+	// The number of preceding days for which continuous backups are taken and
+	// maintained. Your table data is only recoverable to any point-in-time from within
+	// the configured recovery period. This parameter is optional. If no value is
+	// provided, the value will default to 35.
+	RecoveryPeriodInDays *int32
+
 	noSmithyDocumentSerde
 }
 
@@ -2306,6 +2312,12 @@ type PointInTimeRecoverySpecification struct {
 	//
 	// This member is required.
 	PointInTimeRecoveryEnabled *bool
+
+	// The number of preceding days for which continuous backups are taken and
+	// maintained. Your table data is only recoverable to any point-in-time from within
+	// the configured recovery period. This parameter is optional. If no value is
+	// provided, the value will default to 35.
+	RecoveryPeriodInDays *int32
 
 	noSmithyDocumentSerde
 }
@@ -3335,6 +3347,23 @@ type TableDescription struct {
 	// If the table is in the DELETING state, no information about indexes will be
 	// returned.
 	LocalSecondaryIndexes []LocalSecondaryIndexDescription
+
+	// Indicates one of the following consistency modes for a global table:
+	//
+	//   - EVENTUAL : Indicates that the global table is configured for multi-Region
+	//   eventual consistency.
+	//
+	//   - STRONG : Indicates that the global table is configured for multi-Region
+	//   strong consistency (preview).
+	//
+	// Multi-Region strong consistency (MRSC) is a new DynamoDB global tables
+	//   capability currently available in preview mode. For more information, see [Global tables multi-Region strong consistency].
+	//
+	// If you don't specify this field, the global table consistency mode defaults to
+	// EVENTUAL .
+	//
+	// [Global tables multi-Region strong consistency]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/PreviewFeatures.html#multi-region-strong-consistency-gt
+	MultiRegionConsistency MultiRegionConsistency
 
 	// The maximum number of read and write units for the specified on-demand table.
 	// If you use this parameter, you must specify MaxReadRequestUnits ,

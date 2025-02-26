@@ -1,3 +1,84 @@
+# v1.18.5 (2025-02-18)
+
+* **Bug Fix**: Bump go version to 1.22
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.18.4 (2025-02-11)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.18.3 (2025-02-06)
+
+* No change notes available for this release.
+
+# v1.18.2 (2025-02-05)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.18.1 (2025-02-04)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.18.0 (2025-01-31)
+
+* **Feature**: Add FixUnmarshalIndividualSetValues option to DecoderOptions to fix unmarshalling of individual values of StringSet, NumberSet, and BinarySet attributes.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.17.0 (2025-01-30)
+
+* **Feature**: Add FixUnmarshalIndividualSetValues option to DecoderOptions to fix unmarshalling of individual values of StringSet, NumberSet, and BinarySet attributes.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.16.0 (2025-01-24)
+
+* **Feature**: Add FixUnmarshalIndividualSetValues option to DecoderOptions to fix unmarshalling of individual values of StringSet, NumberSet, and BinarySet attributes.
+* **Dependency Update**: Updated to the latest SDK module versions
+* **Dependency Update**: Upgrade to smithy-go v1.22.2.
+
+# v1.15.28 (2025-01-17)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.15.27 (2025-01-15)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.15.26 (2025-01-14)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.15.25 (2025-01-09)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.15.24 (2025-01-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.15.23 (2025-01-07)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.15.22 (2024-12-19)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.15.21 (2024-12-11)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.15.20 (2024-12-03.2)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.15.19 (2024-12-03)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.15.18 (2024-12-02)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.15.17 (2024-11-18)
 
 * **Dependency Update**: Update to smithy-go v1.22.1.

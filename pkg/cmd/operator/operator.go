@@ -325,6 +325,18 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		),
 	)
 
+	remoteOperatorManagedResourcesOnlyInformer := remoteinformers.NewSharedInformerFactoryWithOptions[kubernetes.Interface](
+		&o.clusterKubeClient,
+		resyncPeriod,
+		remoteinformers.WithTweakListOptions[kubernetes.Interface](
+			func(options *metav1.ListOptions) {
+				options.LabelSelector = labels.SelectorFromSet(map[string]string{
+					naming.KubernetesManagedByLabel: naming.RemoteOperatorAppNameWithDomain,
+				}).String()
+			},
+		),
+	)
+
 	scyllaOperatorConfigInformers := scyllainformers.NewSharedInformerFactoryWithOptions(o.scyllaClient, resyncPeriod, scyllainformers.WithTweakListOptions(
 		func(options *metav1.ListOptions) {
 			options.FieldSelector = fields.OneTermEqualSelector("metadata.name", naming.SingletonName).String()
@@ -476,6 +488,8 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		&o.clusterScyllaClient,
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBClusters(),
 		scyllaInformers.Scylla().V1alpha1().ScyllaOperatorConfigs(),
+		kubeInformers.Core().V1().ConfigMaps(),
+		kubeInformers.Core().V1().Secrets(),
 		remoteScyllaInformer.ForResource(&scyllav1alpha1.RemoteOwner{}, remoteinformers.ClusterListWatch[scyllaversionedclient.Interface]{
 			ListFunc: func(client remoteclient.ClusterClientInterface[scyllaversionedclient.Interface], cluster, ns string) cache.ListFunc {
 				return func(options metav1.ListOptions) (runtime.Object, error) {
@@ -616,6 +630,46 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 				}
 			},
 		}),
+		remoteOperatorManagedResourcesOnlyInformer.ForResource(&corev1.ConfigMap{}, remoteinformers.ClusterListWatch[kubernetes.Interface]{
+			ListFunc: func(client remoteclient.ClusterClientInterface[kubernetes.Interface], cluster, ns string) cache.ListFunc {
+				return func(options metav1.ListOptions) (runtime.Object, error) {
+					clusterClient, err := client.Cluster(cluster)
+					if err != nil {
+						return nil, err
+					}
+					return clusterClient.CoreV1().ConfigMaps(ns).List(ctx, options)
+				}
+			},
+			WatchFunc: func(client remoteclient.ClusterClientInterface[kubernetes.Interface], cluster, ns string) cache.WatchFunc {
+				return func(options metav1.ListOptions) (watch.Interface, error) {
+					clusterClient, err := client.Cluster(cluster)
+					if err != nil {
+						return nil, err
+					}
+					return clusterClient.CoreV1().ConfigMaps(ns).Watch(ctx, options)
+				}
+			},
+		}),
+		remoteOperatorManagedResourcesOnlyInformer.ForResource(&corev1.Secret{}, remoteinformers.ClusterListWatch[kubernetes.Interface]{
+			ListFunc: func(client remoteclient.ClusterClientInterface[kubernetes.Interface], cluster, ns string) cache.ListFunc {
+				return func(options metav1.ListOptions) (runtime.Object, error) {
+					clusterClient, err := client.Cluster(cluster)
+					if err != nil {
+						return nil, err
+					}
+					return clusterClient.CoreV1().Secrets(ns).List(ctx, options)
+				}
+			},
+			WatchFunc: func(client remoteclient.ClusterClientInterface[kubernetes.Interface], cluster, ns string) cache.WatchFunc {
+				return func(options metav1.ListOptions) (watch.Interface, error) {
+					clusterClient, err := client.Cluster(cluster)
+					if err != nil {
+						return nil, err
+					}
+					return clusterClient.CoreV1().Secrets(ns).Watch(ctx, options)
+				}
+			},
+		}),
 	)
 	if err != nil {
 		return fmt.Errorf("can't create ScyllaDBCluster controller: %w", err)
@@ -670,6 +724,12 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 	go func() {
 		defer wg.Done()
 		remoteScyllaPodInformer.Start(ctx.Done())
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		remoteOperatorManagedResourcesOnlyInformer.Start(ctx.Done())
 	}()
 
 	wg.Add(1)

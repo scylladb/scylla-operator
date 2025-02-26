@@ -158,6 +158,52 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		objectErrs = append(objectErrs, fmt.Errorf("can't get remote endpoints: %w", err))
 	}
 
+	remoteConfigMapMap, err := controllerhelpers.GetRemoteObjects[remoteCT, *corev1.ConfigMap](ctx, remoteClusterNames, remoteControllers, remoteControllerGVK, scRemoteSelector, &controllerhelpers.ClusterControlleeManagerGetObjectsFuncs[remoteCT, *corev1.ConfigMap]{
+		ClusterFunc: func(clusterName string) (controllerhelpers.ControlleeManagerGetObjectsInterface[remoteCT, *corev1.ConfigMap], error) {
+			ns, ok := remoteNamespaces[clusterName]
+			if !ok {
+				return nil, nil
+			}
+
+			kubeClusterClient, scyllaClusterClient, err := scc.getClusterClients(clusterName)
+			if err != nil {
+				return nil, fmt.Errorf("can't get cluster %q clients: %w", clusterName, err)
+			}
+
+			return &controllerhelpers.ControlleeManagerGetObjectsFuncs[remoteCT, *corev1.ConfigMap]{
+				GetControllerUncachedFunc: scyllaClusterClient.ScyllaV1alpha1().RemoteOwners(ns.Name).Get,
+				ListObjectsFunc:           scc.remoteConfigMapLister.Cluster(clusterName).ConfigMaps(ns.Name).List,
+				PatchObjectFunc:           kubeClusterClient.CoreV1().ConfigMaps(ns.Name).Patch,
+			}, nil
+		},
+	})
+	if err != nil {
+		objectErrs = append(objectErrs, fmt.Errorf("can't get remote configmaps: %w", err))
+	}
+
+	remoteSecretMap, err := controllerhelpers.GetRemoteObjects[remoteCT, *corev1.Secret](ctx, remoteClusterNames, remoteControllers, remoteControllerGVK, scRemoteSelector, &controllerhelpers.ClusterControlleeManagerGetObjectsFuncs[remoteCT, *corev1.Secret]{
+		ClusterFunc: func(clusterName string) (controllerhelpers.ControlleeManagerGetObjectsInterface[remoteCT, *corev1.Secret], error) {
+			ns, ok := remoteNamespaces[clusterName]
+			if !ok {
+				return nil, nil
+			}
+
+			kubeClusterClient, scyllaClusterClient, err := scc.getClusterClients(clusterName)
+			if err != nil {
+				return nil, fmt.Errorf("can't get cluster %q clients: %w", clusterName, err)
+			}
+
+			return &controllerhelpers.ControlleeManagerGetObjectsFuncs[remoteCT, *corev1.Secret]{
+				GetControllerUncachedFunc: scyllaClusterClient.ScyllaV1alpha1().RemoteOwners(ns.Name).Get,
+				ListObjectsFunc:           scc.remoteSecretLister.Cluster(clusterName).Secrets(ns.Name).List,
+				PatchObjectFunc:           kubeClusterClient.CoreV1().Secrets(ns.Name).Patch,
+			}, nil
+		},
+	})
+	if err != nil {
+		objectErrs = append(objectErrs, fmt.Errorf("can't get remote configmaps: %w", err))
+	}
+
 	remoteScyllaDBDatacenterMap, err := controllerhelpers.GetRemoteObjects[remoteCT, *scyllav1alpha1.ScyllaDBDatacenter](ctx, remoteClusterNames, remoteControllers, remoteControllerGVK, scRemoteSelector, &controllerhelpers.ClusterControlleeManagerGetObjectsFuncs[remoteCT, *scyllav1alpha1.ScyllaDBDatacenter]{
 		ClusterFunc: func(clusterName string) (controllerhelpers.ControlleeManagerGetObjectsInterface[remoteCT, *scyllav1alpha1.ScyllaDBDatacenter], error) {
 			ns, ok := remoteNamespaces[clusterName]
@@ -283,6 +329,32 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 	)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't sync remote endpoints: %w", err))
+	}
+
+	err = controllerhelpers.RunSync(
+		&status.Conditions,
+		remoteConfigMapControllerProgressingCondition,
+		remoteConfigMapControllerDegradedCondition,
+		sc.Generation,
+		func() ([]metav1.Condition, error) {
+			return scc.syncConfigMaps(ctx, sc, remoteNamespaces, remoteControllers, remoteConfigMapMap, managingClusterDomain)
+		},
+	)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't sync remote configmaps: %w", err))
+	}
+
+	err = controllerhelpers.RunSync(
+		&status.Conditions,
+		remoteSecretControllerProgressingCondition,
+		remoteSecretControllerDegradedCondition,
+		sc.Generation,
+		func() ([]metav1.Condition, error) {
+			return scc.syncSecrets(ctx, sc, remoteNamespaces, remoteControllers, remoteSecretMap, managingClusterDomain)
+		},
+	)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't sync remote secrets: %w", err))
 	}
 
 	err = controllerhelpers.RunSync(

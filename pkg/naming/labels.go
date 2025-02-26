@@ -91,9 +91,10 @@ func mergeLabels(l1, l2 map[string]string) map[string]string {
 	return res
 }
 
-func ManagedResourcesLabels(managingClusterDomain string) map[string]string {
+func RemoteManagedResourcesLabels(managingClusterDomain string) map[string]string {
 	return map[string]string{
-		ManagedByClusterLabel: managingClusterDomain,
+		KubernetesManagedByLabel: RemoteOperatorAppNameWithDomain,
+		ManagedByClusterLabel:    managingClusterDomain,
 	}
 }
 
@@ -113,7 +114,7 @@ func ScyllaDBClusterDatacenterLabels(sc *scyllav1alpha1.ScyllaDBCluster, dc *scy
 	if dc.Metadata != nil {
 		maps.Copy(dcLabels, dc.Metadata.Labels)
 	}
-	maps.Copy(dcLabels, ManagedResourcesLabels(managingClusterDomain))
+	maps.Copy(dcLabels, RemoteManagedResourcesLabels(managingClusterDomain))
 	maps.Copy(dcLabels, ScyllaDBClusterSelectorLabels(sc))
 	dcLabels[ParentClusterDatacenterNameLabel] = dc.Name
 	return dcLabels
@@ -155,7 +156,7 @@ func ScyllaDBClusterDatacenterEndpointsLabels(sc *scyllav1alpha1.ScyllaDBCluster
 	if dc.Metadata != nil {
 		maps.Copy(dcLabels, dc.Metadata.Labels)
 	}
-	maps.Copy(dcLabels, ManagedResourcesLabels(managingClusterDomain))
+	maps.Copy(dcLabels, RemoteManagedResourcesLabels(managingClusterDomain))
 	maps.Copy(dcLabels, ScyllaDBClusterEndpointsSelectorLabels(sc))
 	dcLabels[ParentClusterDatacenterNameLabel] = dc.Name
 	return dcLabels
@@ -200,7 +201,7 @@ func RemoteOwnerSelectorLabels(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1a
 func RemoteOwnerLabels(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, managingClusterDomain string) map[string]string {
 	remoteOwnerLabels := make(map[string]string)
 
-	maps.Copy(remoteOwnerLabels, ManagedResourcesLabels(managingClusterDomain))
+	maps.Copy(remoteOwnerLabels, RemoteManagedResourcesLabels(managingClusterDomain))
 	maps.Copy(remoteOwnerLabels, RemoteOwnerSelectorLabels(sc, dc))
 
 	return remoteOwnerLabels

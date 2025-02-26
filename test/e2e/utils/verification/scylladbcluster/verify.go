@@ -104,6 +104,22 @@ func Verify(ctx context.Context, sc *scyllav1alpha1.ScyllaDBCluster, rkcClusterM
 				condType: "RemoteRemoteOwnerControllerDegraded",
 				status:   metav1.ConditionFalse,
 			},
+			{
+				condType: "RemoteConfigMapControllerProgressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "RemoteConfigMapControllerDegraded",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "RemoteSecretControllerProgressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "RemoteSecretControllerDegraded",
+				status:   metav1.ConditionFalse,
+			},
 		}
 
 		expectedConditions := make([]interface{}, 0, len(condList))

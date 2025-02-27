@@ -58,6 +58,8 @@ wait-for-object-creation cert-manager secret/cert-manager-webhook-ca
 SO_SCYLLA_OPERATOR_LOGLEVEL="${SO_SCYLLA_OPERATOR_LOGLEVEL:-4}"
 export SO_SCYLLA_OPERATOR_LOGLEVEL
 
+SO_CRYPTO_KEY_SIZE="${SO_CRYPTO_KEY_SIZE:-4096}"
+export SO_CRYPTO_KEY_SIZE
 SO_CRYPTO_KEY_BUFFER_SIZE_MIN="${SO_CRYPTO_KEY_BUFFER_SIZE_MIN:-6}"
 export SO_CRYPTO_KEY_BUFFER_SIZE_MIN
 SO_CRYPTO_KEY_BUFFER_SIZE_MAX="${SO_CRYPTO_KEY_BUFFER_SIZE_MAX:-10}"
@@ -92,6 +94,9 @@ patches:
     kind: Deployment
     name: scylla-operator
 - patch: |
+    - op: add
+      path: /spec/template/spec/containers/0/args/-
+      value: "--crypto-key-size=${SO_CRYPTO_KEY_SIZE}"
     - op: add
       path: /spec/template/spec/containers/0/args/-
       value: "--crypto-key-buffer-size-min=${SO_CRYPTO_KEY_BUFFER_SIZE_MIN}"

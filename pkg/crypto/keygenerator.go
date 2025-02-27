@@ -22,7 +22,7 @@ type RSAKeyGenerator struct {
 
 var _ RSAKeyGetter = &RSAKeyGenerator{}
 
-func NewRSAKeyGenerator(min, max int, delay time.Duration) (*RSAKeyGenerator, error) {
+func NewRSAKeyGenerator(min, max, keySize int, delay time.Duration) (*RSAKeyGenerator, error) {
 	g, err := itemgenerator.NewGenerator[rsa.PrivateKey]("RSAKeyGenerator", min, max, delay, func() (*rsa.PrivateKey, error) {
 		privateKey, err := rsa.GenerateKey(rand.Reader, keySize)
 		if err != nil {

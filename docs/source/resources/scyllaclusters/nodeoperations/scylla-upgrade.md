@@ -1,5 +1,13 @@
 # Upgrading version of Scylla
 
+**Review Release Notes Before Upgrading**
+
+Before initiating an upgrade, it's crucial to review the release notes for the target ScyllaDB version. Release notes provide essential information about new features, improvements, bug fixes, and any special upgrade instructions or considerations that may impact your deployment.
+
+You can find the release notes for ScyllaDB versions at [ScyllaDB Release Notes](https://www.scylladb.com/product/release-notes/).
+
+---
+
 To upgrade Scylla version using Operator user have to modify existing ScyllaCluster definition.
 
 In this example cluster will be upgraded to version `4.4.5`.

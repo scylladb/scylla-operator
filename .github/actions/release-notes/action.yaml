@@ -118,7 +118,7 @@ runs:
   
   - name: Upload artifact
     if: ${{ always() }}
-    uses: actions/upload-artifact@v3
+    uses: actions/upload-artifact@v4
     with:
       name: release_notes.md
       path: ~/release_notes.md

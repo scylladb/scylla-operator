@@ -1,6 +1,6 @@
 // Copyright (c) 2024 ScyllaDB.
 
-package scylladbcluster
+package multidatacenter
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
-	v1alpha1utils "github.com/scylladb/scylla-operator/test/e2e/utils/v1alpha1"
+	"github.com/scylladb/scylla-operator/test/e2e/utils/verification/scylladbcluster"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -91,8 +91,8 @@ var _ = g.Describe("ScyllaDBCluster finalizer", framework.MultiDatacenter, func(
 		sc, err = controllerhelpers.WaitForScyllaDBClusterState(waitCtx2, metaCluster.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaDBClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaDBCluster(ctx, sc, rkcClusterMap)
-		err = v1alpha1utils.WaitForFullScyllaDBClusterQuorum(ctx, rkcClusterMap, sc)
+		scylladbcluster.Verify(ctx, sc, rkcClusterMap)
+		err = scylladbcluster.WaitForFullQuorum(ctx, rkcClusterMap, sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		const expectedFinalizer = "scylla-operator.scylladb.com/scylladbcluster-protection"

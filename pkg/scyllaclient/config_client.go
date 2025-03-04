@@ -79,3 +79,12 @@ func (c *ConfigClient) ReplaceNodeFirstBoot(ctx context.Context) (string, error)
 	}
 	return resp.Payload, nil
 }
+
+// ReadRequestTimeoutInMs returns value of "read_request_timeout_in_ms" config parameter.
+func (c *ConfigClient) ReadRequestTimeoutInMs(ctx context.Context) (int64, error) {
+	resp, err := c.client.Config.FindConfigReadRequestTimeoutInMs(config.NewFindConfigReadRequestTimeoutInMsParamsWithContext(ctx))
+	if err != nil {
+		return 0, fmt.Errorf("can't get read_request_timeout_in_ms: %w", err)
+	}
+	return resp.Payload, nil
+}

@@ -1,10 +1,9 @@
 // Copyright (C) 2024 ScyllaDB
 
-package scyllacluster
+package multidatacenter
 
 import (
 	"context"
-
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
@@ -20,7 +19,7 @@ var _ = g.Describe("MultiDC cluster", framework.MultiDatacenter, func() {
 	f := framework.NewFramework("scyllacluster")
 
 	g.It("should form when external seeds are provided to ScyllaClusters", func() {
-		ctx, cancel := context.WithTimeout(context.Background(), multiDatacenterTestTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
 		const clusterName = "multi-datacenter-cluster"

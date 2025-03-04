@@ -1,4 +1,4 @@
-package scylladbcluster
+package multidatacenter
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
-	v1alpha1utils "github.com/scylladb/scylla-operator/test/e2e/utils/v1alpha1"
+	scylladbclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scylladbcluster"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -88,8 +88,8 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 		sc, err = controllerhelpers.WaitForScyllaDBClusterState(waitCtx2, metaCluster.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaDBClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		verifyScyllaDBCluster(ctx, sc, rkcClusterMap)
-		err = v1alpha1utils.WaitForFullScyllaDBClusterQuorum(ctx, rkcClusterMap, sc)
+		scylladbclusterverification.Verify(ctx, sc, rkcClusterMap)
+		err = scylladbclusterverification.WaitForFullQuorum(ctx, rkcClusterMap, sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 })

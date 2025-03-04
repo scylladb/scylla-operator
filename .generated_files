@@ -1,0 +1,35 @@
+# Files that should be ignored by tools which do not want to consider generated
+# code.
+#
+# https://github.com/kubernetes/test-infra/blob/master/prow/plugins/size/size.go
+#
+# This file is a series of lines, each of the form:
+#     <type> <name>
+#
+# Type can be:
+#    path - an exact path to a single file
+#    file-name - an exact leaf filename, regardless of path
+#    path-prefix - a prefix match on the file path
+#    file-prefix - a prefix match of the leaf filename (no path)
+#    paths-from-repo - read a file from the repo and load file paths
+#
+
+file-prefix zz_generated.
+
+path-prefix vendor/
+path-prefix docs/source/api-reference/
+
+path-prefix pkg/client/
+path-prefix pkg/externalclient/
+
+path-prefix deploy/operator/
+path-prefix deploy/manager/
+path deploy/operator.yaml
+path deploy/manager-dev.yaml
+path deploy/manager-prod.yaml
+file-name values.schema.json
+
+path examples/prometheus-operator.yaml
+path examples/haproxy-ingress.yaml
+path-prefix assets/monitoring/grafana/v1alpha1/dashboards/
+path-prefix assets/monitoring/prometheus/v1/rules/

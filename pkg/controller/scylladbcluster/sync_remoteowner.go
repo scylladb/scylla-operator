@@ -12,17 +12,17 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
-func (scc *Controller) syncRemoteOwners(
+func (scc *Controller) syncRemoteRemoteOwners(
 	ctx context.Context,
 	sc *scyllav1alpha1.ScyllaDBCluster,
+	dc *scyllav1alpha1.ScyllaDBClusterDatacenter,
 	remoteNamespaces map[string]*corev1.Namespace,
-	remoteRemoteOwners map[string]map[string]*scyllav1alpha1.RemoteOwner,
+	remoteRemoteOwners map[string]*scyllav1alpha1.RemoteOwner,
 	managingClusterDomain string,
 ) ([]metav1.Condition, error) {
-	progressingConditions, requiredRemoteOwners, err := MakeRemoteRemoteOwners(sc, remoteNamespaces, remoteRemoteOwners, managingClusterDomain)
+	progressingConditions, requiredRemoteOwners, err := MakeRemoteRemoteOwners(sc, dc, remoteNamespaces, remoteRemoteOwners, managingClusterDomain)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't make remote owners: %w", err)
 	}
@@ -30,23 +30,18 @@ func (scc *Controller) syncRemoteOwners(
 		return progressingConditions, nil
 	}
 
+	clusterClient, err := scc.scyllaRemoteClient.Cluster(dc.RemoteKubernetesClusterName)
+	if err != nil {
+		return nil, fmt.Errorf("can't get client to %q cluster: %w", dc.RemoteKubernetesClusterName, err)
+	}
+
 	// Delete any excessive RemoteOwners.
 	// Delete has to be the first action to avoid getting stuck on quota.
-	var deletionErrors []error
-	for _, dc := range sc.Spec.Datacenters {
-		ns, ok := remoteNamespaces[dc.RemoteKubernetesClusterName]
-		if !ok {
-			continue
-		}
-
-		clusterClient, err := scc.scyllaRemoteClient.Cluster(dc.RemoteKubernetesClusterName)
-		if err != nil {
-			return nil, fmt.Errorf("can't get client to %q cluster: %w", dc.RemoteKubernetesClusterName, err)
-		}
-
+	ns, ok := remoteNamespaces[dc.RemoteKubernetesClusterName]
+	if ok {
 		err = controllerhelpers.Prune(ctx,
-			requiredRemoteOwners[dc.RemoteKubernetesClusterName],
-			remoteRemoteOwners[dc.RemoteKubernetesClusterName],
+			requiredRemoteOwners,
+			remoteRemoteOwners,
 			&controllerhelpers.PruneControlFuncs{
 				DeleteFunc: clusterClient.ScyllaV1alpha1().RemoteOwners(ns.Name).Delete,
 			},
@@ -57,26 +52,15 @@ func (scc *Controller) syncRemoteOwners(
 		}
 	}
 
-	if err := utilerrors.NewAggregate(deletionErrors); err != nil {
-		return nil, fmt.Errorf("can't prune remote remoteowner(s): %w", err)
-	}
-
-	for _, dc := range sc.Spec.Datacenters {
-		clusterClient, err := scc.scyllaRemoteClient.Cluster(dc.RemoteKubernetesClusterName)
-		if err != nil {
-			return nil, fmt.Errorf("can't get client to %q cluster: %w", dc.Name, err)
+	for _, ro := range requiredRemoteOwners {
+		_, changed, err := resourceapply.ApplyRemoteOwner(ctx, clusterClient.ScyllaV1alpha1(), scc.remoteRemoteOwnerLister.Cluster(dc.RemoteKubernetesClusterName), scc.eventRecorder, ro, resourceapply.ApplyOptions{
+			AllowMissingControllerRef: true,
+		})
+		if changed {
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, remoteRemoteOwnerControllerProgressingCondition, ro, "apply", sc.Generation)
 		}
-
-		for _, ro := range requiredRemoteOwners[dc.RemoteKubernetesClusterName] {
-			_, changed, err := resourceapply.ApplyRemoteOwner(ctx, clusterClient.ScyllaV1alpha1(), scc.remoteRemoteOwnerLister.Cluster(dc.RemoteKubernetesClusterName), scc.eventRecorder, ro, resourceapply.ApplyOptions{
-				AllowMissingControllerRef: true,
-			})
-			if changed {
-				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, remoteRemoteOwnerControllerProgressingCondition, ro, "apply", sc.Generation)
-			}
-			if err != nil {
-				return nil, fmt.Errorf("can't apply remoteowner: %w", err)
-			}
+		if err != nil {
+			return nil, fmt.Errorf("can't apply remoteowner: %w", err)
 		}
 	}
 

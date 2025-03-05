@@ -8,6 +8,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
+	corev1 "k8s.io/api/core/v1"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -156,6 +157,46 @@ func RunSync(conditions *[]metav1.Condition, progressingConditionType, degradedC
 	apimeta.SetStatusCondition(conditions, progressingCondition)
 
 	return nil
+}
+
+func SyncRemoteNamespacedObject(conditions *[]metav1.Condition, progressingConditionType, degradedCondType string, observedGeneration int64, remoteClusterName string, remoteNamespace *corev1.Namespace, remoteController metav1.Object, syncFn func(*corev1.Namespace, metav1.Object) ([]metav1.Condition, error)) error {
+	return RunSync(
+		conditions,
+		progressingConditionType,
+		degradedCondType,
+		observedGeneration,
+		func() ([]metav1.Condition, error) {
+			var progressingConditions []metav1.Condition
+
+			if remoteNamespace == nil {
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               progressingConditionType,
+					Status:             metav1.ConditionTrue,
+					Reason:             "WaitingForRemoteNamespace",
+					Message:            fmt.Sprintf("Waiting for Namespace to be created in %q Cluster", remoteClusterName),
+					ObservedGeneration: observedGeneration,
+				})
+			}
+
+			if remoteController == metav1.Object(nil) {
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               progressingConditionType,
+					Status:             metav1.ConditionTrue,
+					Reason:             "WaitingForRemoteController",
+					Message:            fmt.Sprintf("Waiting for controller object to be created in %q Cluster", remoteClusterName),
+					ObservedGeneration: observedGeneration,
+				})
+			}
+
+			if len(progressingConditions) > 0 {
+				return progressingConditions, nil
+			}
+
+			syncProgressingConditions, err := syncFn(remoteNamespace, remoteController)
+			progressingConditions = append(progressingConditions, syncProgressingConditions...)
+			return progressingConditions, err
+		},
+	)
 }
 
 func SetAggregatedWorkloadConditions(conditions *[]metav1.Condition, generation int64) error {

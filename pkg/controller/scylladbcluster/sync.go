@@ -284,85 +284,103 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 			remoteRemoteOwnerControllerDegradedCondition,
 			sc.Generation,
 			func() ([]metav1.Condition, error) {
-				return scc.syncRemoteRemoteOwners(ctx, sc, remoteNamespaces, remoteRemoteOwnerMap, managingClusterDomain)
+				return scc.syncRemoteRemoteOwners(ctx, sc, &dc, remoteNamespaces[dc.RemoteKubernetesClusterName], remoteRemoteOwnerMap[dc.RemoteKubernetesClusterName], managingClusterDomain)
 			},
 		)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't sync remote remoteowners: %w", err))
 		}
 
-		err = controllerhelpers.RunSync(
+		err = controllerhelpers.SyncRemoteNamespacedObject(
 			&status.Conditions,
 			remoteServiceControllerProgressingCondition,
 			remoteServiceControllerDegradedCondition,
 			sc.Generation,
-			func() ([]metav1.Condition, error) {
-				return scc.syncServices(ctx, sc, remoteNamespaces, remoteControllers, remoteServiceMap, managingClusterDomain)
+			dc.RemoteKubernetesClusterName,
+			remoteNamespaces[dc.RemoteKubernetesClusterName],
+			remoteControllers[dc.RemoteKubernetesClusterName],
+			func(remoteNamespace *corev1.Namespace, remoteController metav1.Object) ([]metav1.Condition, error) {
+				return scc.syncRemoteServices(ctx, sc, &dc, remoteNamespace, remoteController, remoteServiceMap[dc.RemoteKubernetesClusterName], managingClusterDomain)
 			},
 		)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't sync remote services: %w", err))
 		}
 
-		err = controllerhelpers.RunSync(
+		err = controllerhelpers.SyncRemoteNamespacedObject(
 			&status.Conditions,
 			remoteEndpointSliceControllerProgressingCondition,
 			remoteEndpointSliceControllerDegradedCondition,
 			sc.Generation,
-			func() ([]metav1.Condition, error) {
-				return scc.syncEndpointSlices(ctx, sc, remoteNamespaces, remoteControllers, remoteEndpointSlicesMap, managingClusterDomain)
+			dc.RemoteKubernetesClusterName,
+			remoteNamespaces[dc.RemoteKubernetesClusterName],
+			remoteControllers[dc.RemoteKubernetesClusterName],
+			func(remoteNamespace *corev1.Namespace, remoteController metav1.Object) ([]metav1.Condition, error) {
+				return scc.syncRemoteEndpointSlices(ctx, sc, &dc, remoteNamespace, remoteController, remoteEndpointSlicesMap[dc.RemoteKubernetesClusterName], remoteNamespaces, managingClusterDomain)
 			},
 		)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't sync remote endpointslices: %w", err))
 		}
 
-		err = controllerhelpers.RunSync(
+		err = controllerhelpers.SyncRemoteNamespacedObject(
 			&status.Conditions,
 			remoteEndpointsControllerProgressingCondition,
 			remoteEndpointsControllerDegradedCondition,
 			sc.Generation,
-			func() ([]metav1.Condition, error) {
-				return scc.syncEndpoints(ctx, sc, remoteNamespaces, remoteControllers, remoteEndpointsMap, managingClusterDomain)
+			dc.RemoteKubernetesClusterName,
+			remoteNamespaces[dc.RemoteKubernetesClusterName],
+			remoteControllers[dc.RemoteKubernetesClusterName],
+			func(remoteNamespace *corev1.Namespace, remoteController metav1.Object) ([]metav1.Condition, error) {
+				return scc.syncRemoteEndpoints(ctx, sc, &dc, remoteNamespace, remoteController, remoteEndpointsMap[dc.RemoteKubernetesClusterName], remoteNamespaces, managingClusterDomain)
 			},
 		)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't sync remote endpoints: %w", err))
 		}
 
-		err = controllerhelpers.RunSync(
+		err = controllerhelpers.SyncRemoteNamespacedObject(
 			&status.Conditions,
 			remoteConfigMapControllerProgressingCondition,
 			remoteConfigMapControllerDegradedCondition,
 			sc.Generation,
-			func() ([]metav1.Condition, error) {
-				return scc.syncConfigMaps(ctx, sc, remoteNamespaces, remoteControllers, remoteConfigMapMap, managingClusterDomain)
+			dc.RemoteKubernetesClusterName,
+			remoteNamespaces[dc.RemoteKubernetesClusterName],
+			remoteControllers[dc.RemoteKubernetesClusterName],
+			func(remoteNamespace *corev1.Namespace, remoteController metav1.Object) ([]metav1.Condition, error) {
+				return scc.syncRemoteConfigMaps(ctx, sc, &dc, remoteNamespace, remoteController, remoteConfigMapMap[dc.RemoteKubernetesClusterName], managingClusterDomain)
 			},
 		)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't sync remote configmaps: %w", err))
 		}
 
-		err = controllerhelpers.RunSync(
+		err = controllerhelpers.SyncRemoteNamespacedObject(
 			&status.Conditions,
 			remoteSecretControllerProgressingCondition,
 			remoteSecretControllerDegradedCondition,
 			sc.Generation,
-			func() ([]metav1.Condition, error) {
-				return scc.syncSecrets(ctx, sc, remoteNamespaces, remoteControllers, remoteSecretMap, managingClusterDomain)
+			dc.RemoteKubernetesClusterName,
+			remoteNamespaces[dc.RemoteKubernetesClusterName],
+			remoteControllers[dc.RemoteKubernetesClusterName],
+			func(remoteNamespace *corev1.Namespace, remoteController metav1.Object) ([]metav1.Condition, error) {
+				return scc.syncRemoteSecrets(ctx, sc, &dc, remoteNamespace, remoteController, remoteSecretMap[dc.RemoteKubernetesClusterName], managingClusterDomain)
 			},
 		)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't sync remote secrets: %w", err))
 		}
 
-		err = controllerhelpers.RunSync(
+		err = controllerhelpers.SyncRemoteNamespacedObject(
 			&status.Conditions,
 			remoteScyllaDBDatacenterControllerProgressingCondition,
 			remoteScyllaDBDatacenterControllerDegradedCondition,
 			sc.Generation,
-			func() ([]metav1.Condition, error) {
-				return scc.syncScyllaDBDatacenters(ctx, sc, remoteNamespaces, remoteControllers, remoteScyllaDBDatacenterMap, managingClusterDomain)
+			dc.RemoteKubernetesClusterName,
+			remoteNamespaces[dc.RemoteKubernetesClusterName],
+			remoteControllers[dc.RemoteKubernetesClusterName],
+			func(remoteNamespace *corev1.Namespace, remoteController metav1.Object) ([]metav1.Condition, error) {
+				return scc.syncRemoteScyllaDBDatacenters(ctx, sc, &dc, remoteNamespace, remoteController, remoteScyllaDBDatacenterMap, managingClusterDomain)
 			},
 		)
 		if err != nil {

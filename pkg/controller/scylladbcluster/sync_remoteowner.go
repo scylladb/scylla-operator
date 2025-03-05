@@ -18,15 +18,26 @@ func (scc *Controller) syncRemoteRemoteOwners(
 	ctx context.Context,
 	sc *scyllav1alpha1.ScyllaDBCluster,
 	dc *scyllav1alpha1.ScyllaDBClusterDatacenter,
-	remoteNamespaces map[string]*corev1.Namespace,
+	remoteNamespace *corev1.Namespace,
 	remoteRemoteOwners map[string]*scyllav1alpha1.RemoteOwner,
 	managingClusterDomain string,
 ) ([]metav1.Condition, error) {
-	progressingConditions, requiredRemoteOwners, err := MakeRemoteRemoteOwners(sc, dc, remoteNamespaces, remoteRemoteOwners, managingClusterDomain)
+	progressingConditions, requiredRemoteOwners, err := MakeRemoteRemoteOwners(sc, dc, remoteNamespace, managingClusterDomain)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't make remote owners: %w", err)
 	}
 	if len(progressingConditions) > 0 {
+		return progressingConditions, nil
+	}
+
+	if remoteNamespace == nil {
+		progressingConditions = append(progressingConditions, metav1.Condition{
+			Type:               remoteRemoteOwnerControllerProgressingCondition,
+			Status:             metav1.ConditionTrue,
+			Reason:             "WaitingForRemoteNamespace",
+			Message:            fmt.Sprintf("Waiting for Namespace to be created in %q Cluster", dc.RemoteKubernetesClusterName),
+			ObservedGeneration: sc.Generation,
+		})
 		return progressingConditions, nil
 	}
 
@@ -37,19 +48,16 @@ func (scc *Controller) syncRemoteRemoteOwners(
 
 	// Delete any excessive RemoteOwners.
 	// Delete has to be the first action to avoid getting stuck on quota.
-	ns, ok := remoteNamespaces[dc.RemoteKubernetesClusterName]
-	if ok {
-		err = controllerhelpers.Prune(ctx,
-			requiredRemoteOwners,
-			remoteRemoteOwners,
-			&controllerhelpers.PruneControlFuncs{
-				DeleteFunc: clusterClient.ScyllaV1alpha1().RemoteOwners(ns.Name).Delete,
-			},
-			scc.eventRecorder,
-		)
-		if err != nil {
-			return progressingConditions, fmt.Errorf("can't prune remoteowner(s) in %q Datacenter of %q ScyllaDBCluster: %w", dc.Name, naming.ObjRef(sc), err)
-		}
+	err = controllerhelpers.Prune(ctx,
+		requiredRemoteOwners,
+		remoteRemoteOwners,
+		&controllerhelpers.PruneControlFuncs{
+			DeleteFunc: clusterClient.ScyllaV1alpha1().RemoteOwners(remoteNamespace.Name).Delete,
+		},
+		scc.eventRecorder,
+	)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't prune remoteowner(s) in %q Datacenter of %q ScyllaDBCluster: %w", dc.Name, naming.ObjRef(sc), err)
 	}
 
 	for _, ro := range requiredRemoteOwners {

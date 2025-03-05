@@ -226,16 +226,18 @@ func GetRemoteObjects[CT, T kubeinterfaces.ObjectInterface](
 	controllerGVK schema.GroupVersionKind,
 	selector labels.Selector,
 	control ClusterControlleeManagerGetObjectsInterface[CT, T],
-) (map[string]map[string]T, error) {
+) (map[string]map[string]T, map[string]error) {
 	remoteObjectMapMap := make(map[string]map[string]T, len(remoteClusters))
+	errs := make(map[string]error, len(remoteClusters))
 	for _, remoteCluster := range remoteClusters {
 		clusterControl, err := control.Cluster(remoteCluster)
 		if err != nil {
-			return nil, fmt.Errorf("can't get cluster %q control: %w", remoteCluster, err)
+			errs[remoteCluster] = fmt.Errorf("can't get cluster %q control: %w", remoteCluster, err)
+			continue
 		}
 		if clusterControl == ControlleeManagerGetObjectsInterface[CT, T](nil) {
 			klog.InfoS("Cluster control is not yet available, it may not have been created yet", "Cluster", remoteCluster)
-			return nil, nil
+			continue
 		}
 
 		controller, ok := controllerMap[remoteCluster]
@@ -253,11 +255,12 @@ func GetRemoteObjects[CT, T kubeinterfaces.ObjectInterface](
 			clusterControl,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("can't get objects: %w", err)
+			errs[remoteCluster] = fmt.Errorf("can't get objects: %w", err)
+			continue
 		}
 
 		remoteObjectMapMap[remoteCluster] = objs
 	}
 
-	return remoteObjectMapMap, nil
+	return remoteObjectMapMap, errs
 }

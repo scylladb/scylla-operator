@@ -87,7 +87,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		objectErrs = append(objectErrs, fmt.Errorf("can't choose remote controllers: %w", err))
 	}
 
-	remoteServiceMap, err := controllerhelpers.GetRemoteObjects[remoteCT, *corev1.Service](ctx, remoteClusterNames, remoteControllers, remoteControllerGVK, scRemoteSelector, &controllerhelpers.ClusterControlleeManagerGetObjectsFuncs[remoteCT, *corev1.Service]{
+	remoteServiceMap, errs := controllerhelpers.GetRemoteObjects[remoteCT, *corev1.Service](ctx, remoteClusterNames, remoteControllers, remoteControllerGVK, scRemoteSelector, &controllerhelpers.ClusterControlleeManagerGetObjectsFuncs[remoteCT, *corev1.Service]{
 		ClusterFunc: func(clusterName string) (controllerhelpers.ControlleeManagerGetObjectsInterface[remoteCT, *corev1.Service], error) {
 			ns, ok := remoteNamespaces[clusterName]
 			if !ok {

@@ -832,14 +832,6 @@ func (sdcc *Controller) syncStatefulSets(
 					}
 				}
 
-				if partition <= 0 {
-					continue
-				}
-
-				nextPartition := partition - 1
-
-				klog.V(4).InfoS("Upgrade is running a rollout", "Partition", partition, "NextPartition", nextPartition)
-
 				if partition < *sts.Spec.Replicas {
 					// TODO: Move the post-node-upgrade hook into a Job.
 					err = sdcc.afterNodeUpgrade(ctx, sdc, sts, partition, services, currentUpgradeContext)
@@ -848,6 +840,14 @@ func (sdcc *Controller) syncStatefulSets(
 					}
 					klog.V(2).InfoS("AfterNodeUpgrade hook finished", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
 				}
+
+				if partition <= 0 {
+					continue
+				}
+
+				nextPartition := partition - 1
+
+				klog.V(4).InfoS("Upgrade is running a rollout", "Partition", partition, "NextPartition", nextPartition)
 
 				// TODO: Move the pre-node-upgrade hook into a Job.
 				done, err := sdcc.beforeNodeUpgrade(ctx, sdc, sts, nextPartition, services, currentUpgradeContext)

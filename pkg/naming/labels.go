@@ -147,7 +147,7 @@ func ScyllaDBClusterSelector(sc *scyllav1alpha1.ScyllaDBCluster) labels.Selector
 	return labels.SelectorFromSet(ScyllaDBClusterSelectorLabels(sc))
 }
 
-func ScyllaDBClusterDatacenterEndpointsLabels(sc *scyllav1alpha1.ScyllaDBCluster, dc scyllav1alpha1.ScyllaDBClusterDatacenter, managingClusterDomain string) map[string]string {
+func ScyllaDBClusterDatacenterEndpointsLabels(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, managingClusterDomain string) map[string]string {
 	dcLabels := make(map[string]string)
 	if sc.Spec.Metadata != nil {
 		maps.Copy(dcLabels, sc.Spec.Metadata.Labels)

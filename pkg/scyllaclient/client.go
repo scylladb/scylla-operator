@@ -392,6 +392,33 @@ func (c *Client) HasSchemaAgreement(ctx context.Context) (bool, error) {
 	return len(versions) == 1, nil
 }
 
+type Snapshot struct {
+	Key      string
+	Keyspace string
+	Table    string
+}
+
+func (c *Client) ListSnapshots(ctx context.Context, host string) ([]*Snapshot, error) {
+	resp, err := c.scyllaClient.Operations.StorageServiceSnapshotsGet(&scyllaoperations.StorageServiceSnapshotsGetParams{Context: forceHost(ctx, host)})
+	if err != nil {
+		return nil, err
+	}
+
+	var snapshots []*Snapshot
+	for _, snapshotList := range resp.Payload {
+		key := snapshotList.Key
+		for _, snapshot := range snapshotList.Value {
+			snapshots = append(snapshots, &Snapshot{
+				Key:      key,
+				Keyspace: snapshot.Ks,
+				Table:    snapshot.Cf,
+			})
+		}
+	}
+
+	return snapshots, nil
+}
+
 func DefaultTransport() *http.Transport {
 	return &http.Transport{
 		Proxy: http.ProxyFromEnvironment,

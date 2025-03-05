@@ -120,6 +120,16 @@ git push git@github.com:scylladb/scylla-operator.git vX.Y.Z-alpha.I
 ```
 CI will automatically create a new release in GitHub and publish the [release notes](#release-notes) there, and it will automatically publish Helm charts.
 
+### Updating the X.Y rolling tag
+When making a generally available release (that is, `X.Y.Z`, not `-alpha.X`, not `-beta.X`, not `-rc.X`), you should update the `X.Y` tag in our container registries to match the latest `X.Y.Z`.
+
+```
+skopeo copy --all docker://quay.io/scylladb/scylla-operator:X.Y.Z docker://quay.io/scylladb/scylla-operator:X.Y
+```
+```
+skopeo copy --all docker://docker.io/scylladb/scylla-operator:X.Y.Z docker://docker.io/scylladb/scylla-operator:X.Y
+```
+
 ## Release announcements
 A new release should be published in several channels. This is usually done only for RC and GA releases.
 For GA release we first write a google doc and get it reviewed and approved by at least the PM and the TL.

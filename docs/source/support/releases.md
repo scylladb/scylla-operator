@@ -10,7 +10,7 @@ We are aiming to ship a new release approximately every 2 months. The following 
 :::
 
 ## Supported releases
-We support the latest 2 releases of the operator to give everyone time to upgrade.
+We support the latest 2 releases of Scylla Operator to give everyone time to upgrade.
 
 :::{table}
 | Release | General availability |  Support ends   |
@@ -55,11 +55,11 @@ We use [GitHub actions](https://github.com/scylladb/scylla-operator/actions/work
 :::
 
 ### Generally available
-GA images aren't build from scratch but rather promoted from an existing release candidates. When we decide a release candidate has the acceptable quality and QA sings it off, the release candidate is promoted to become the GA release. This makes sure the image has exactly the same content and SHA as the tested release candidate.
+GA images aren't built from scratch but rather promoted from an existing release candidate. When we decide a release candidate has the acceptable quality and QA signs it off, the release candidate is promoted to become the GA release. This ensures that the GA image has exactly the same content and SHA as the tested release candidate.
 
 ## Support matrix
 
-Support matrix table shows the version requirements for a particular **scylla-operator** version. Be sure to match these requirements, otherwise some functionality will not work.
+The support matrix table shows version requirements for a particular **Scylla Operator** version. Be sure to match these requirements, otherwise some functionality will not work.
 
 :::{table}
 | Component         | master                       | v1.16                        | v1.15                                 |

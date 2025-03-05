@@ -6,17 +6,18 @@ We are aiming to ship a new release approximately every 2 months. The following 
 :::{table}
 | Release | Code freeze | General availability |
 |:-------:|:-----------:|:--------------------:|
-|  1.16   | 2025-02-24  |      2025-03-03      |
+|  1.17   | 2025-05-12  |      2025-05-19      |
 :::
 
 ## Supported releases
-We support the latest 2 releases of the operator to give everyone time to upgrade.
+We support the latest 2 releases of Scylla Operator to give everyone time to upgrade.
 
 :::{table}
 | Release | General availability |  Support ends   |
 |:-------:|:--------------------:|:---------------:|
+|  1.16   |      2025-03-03      | Release of 1.18 |
 |  1.15   |      2024-12-19      | Release of 1.17 |
-|  1.14   |      2024-09-19      | Release of 1.16 |
+|  1.14   |      2024-09-19      |   2025-03-03    |
 |  1.13   |      2024-06-20      |   2024-12-19    |
 |  1.12   |      2024-03-28      |   2024-09-19    |
 |  1.11   |      2023-11-09      |   2024-06-20    |
@@ -54,21 +55,20 @@ We use [GitHub actions](https://github.com/scylladb/scylla-operator/actions/work
 :::
 
 ### Generally available
-GA images aren't build from scratch but rather promoted from an existing release candidates. When we decide a release candidate has the acceptable quality and QA sings it off, the release candidate is promoted to become the GA release. This makes sure the image has exactly the same content and SHA as the tested release candidate.
+GA images aren't built from scratch but rather promoted from an existing release candidate. When we decide a release candidate has the acceptable quality and QA signs it off, the release candidate is promoted to become the GA release. This ensures that the GA image has exactly the same content and SHA as the tested release candidate.
 
 ## Support matrix
 
-Support matrix table shows the version requirements for a particular **scylla-operator** version. Be sure to match these requirements, otherwise some functionality will not work.
+The support matrix table shows version requirements for a particular **Scylla Operator** version. Be sure to match these requirements, otherwise some functionality will not work.
 
 :::{table}
-| Component         | master                 | v1.15                 | v1.14                   |
-|:-----------------:|:----------------------:|:---------------------:|:-----------------------:|
-| Kubernetes        | `>=1.21`               | `>=1.21`               | `>=1.21`               |
-| CRI API           | `v1`                   | `v1`                   | `v1`                   |
-| Scylla OS         | `>=6.0 && <=6.2`       | `>=6.0 && <=6.2`       | `>=5.4 && <=6.1`       |
-| Scylla Enterprise | `>=2023.1 && <=2024.2` | `>=2023.1 && <=2024.2` | `>=2023.1 && <=2024.1` |
-| Scylla Manager    | `>=3.3.3 && <3.4`      | `>=3.3.3 && <3.4`      | `>=3.3.0 && <3.4`      |
-| Scylla Monitoring | `(CRD)`                | `(CRD)`                | `(CRD)`                |
+| Component         | master                       | v1.16                        | v1.15                                 |
+|:-----------------:|:----------------------------:|:----------------------------:|:-------------------------------------:|
+| Kubernetes        | `>=1.25`                     | `>=1.25`                     | `>=1.21`                              |
+| CRI API           | `v1`                         | `v1`                         | `v1`                                  |
+| ScyllaDB          | `>=6.0`, `2023.1 ... 2025.1` | `>=6.0`, `2023.1 ... 2025.1` | `>=6.0 && <=6.2`, `2023.1 ... 2024.2` |
+| Scylla Manager    | `>=3.3.3 && <=3.4`           | `>=3.3.3 && <=3.4`           | `>=3.3.3 && <=3.4`                    |
+| Scylla Monitoring | `(CRD)`                      | `(CRD)`                      | `(CRD)`                               |
 :::
 
 ### Architectures

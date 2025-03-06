@@ -109,6 +109,17 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 				o.Expect(err).NotTo(o.HaveOccurred())
 			}
 			scyllaclusterverification.VerifyCQLData(ctx, di)
+
+			framework.By("Validating if all snapshots created by upgrade hooks are cleared for every node")
+			scyllaClient, hosts, err := utils.GetScyllaClient(ctx, f.KubeClient().CoreV1(), sc)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			for _, host := range hosts {
+				snapshots, err := scyllaClient.ListSnapshots(ctx, host)
+				o.Expect(err).NotTo(o.HaveOccurred())
+
+				o.Expect(snapshots).To(o.BeEmpty())
+			}
 		},
 		// Test 1 and 3 member rack to cover e.g. handling PDBs correctly.
 		g.Entry(describeEntry, &entry{

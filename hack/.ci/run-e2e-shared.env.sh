@@ -22,6 +22,8 @@ if [[ -n "${SO_E2E_PARALLELISM:-}" && "${SO_E2E_PARALLELISM}" -ne 0 ]]; then
   crypto_key_buffer_size_multiplier="${SO_E2E_PARALLELISM}"
 fi
 
+SO_CRYPTO_KEY_SIZE="${SO_CRYPTO_KEY_SIZE:-2048}"
+export SO_CRYPTO_KEY_SIZE
 SO_CRYPTO_KEY_BUFFER_SIZE_MIN="${SO_CRYPTO_KEY_BUFFER_SIZE_MIN:-$(( 6 * "${crypto_key_buffer_size_multiplier}" ))}"
 export SO_CRYPTO_KEY_BUFFER_SIZE_MIN
 SO_CRYPTO_KEY_BUFFER_SIZE_MAX="${SO_CRYPTO_KEY_BUFFER_SIZE_MAX:-$(( 10 * "${crypto_key_buffer_size_multiplier}" ))}"

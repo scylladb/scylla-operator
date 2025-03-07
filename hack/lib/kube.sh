@@ -22,6 +22,12 @@ function kubectl_create {
     fi
 }
 
+function kubectl_cp {
+  for i in {1..60}; do
+    kubectl cp "$@" && break || echo "Attempt $i to kubectl copy failed, retrying"
+  done
+}
+
 function wait-for-object-creation {
   kubectl wait --timeout=60s --for=create -n "${1}" "${2}"
 }

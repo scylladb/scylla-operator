@@ -73,9 +73,7 @@ EOF
 
   exit_code="$( wait-for-container-exit-with-logs gather-artifacts must-gather must-gather )"
 
-  for i in {1..60}; do
-    kubectl -n=gather-artifacts cp -c=wait-for-artifacts must-gather:/tmp/artifacts "${1}" && break || echo "Attempt $i to collect artifacts failed, retrying"
-  done
+  kubectl_cp -n=gather-artifacts -c=wait-for-artifacts must-gather:/tmp/artifacts "${1}"
 
   ls -l "${1}"
 
@@ -100,6 +98,11 @@ function gather-artifacts-on-exit {
   done
 
   cleanup-bg-jobs "${ec}"
+}
+
+function gracefully-shutdown-e2es {
+  kubectl -n e2e exec e2e -c e2e -- bash -euEo pipefail -O inherit_errexit -c 'kill INT $(pidof scylla-operator-tests)' || true
+  kubectl_cp -n=e2e e2e:/tmp/artifacts -c=wait-for-artifacts "${ARTIFACTS}" || true
 }
 
 function apply-e2e-workarounds {
@@ -320,7 +323,8 @@ EOF
 
   exit_code="$( wait-for-container-exit-with-logs e2e e2e e2e )"
 
-  kubectl -n=e2e cp --retries=42 e2e:/tmp/artifacts -c=wait-for-artifacts "${ARTIFACTS}"
+  kubectl_cp -n=e2e e2e:/tmp/artifacts -c=wait-for-artifacts "${ARTIFACTS}"
+
   ls -l "${ARTIFACTS}"
 
   kubectl -n=e2e delete pod/e2e --wait=false

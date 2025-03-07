@@ -19,6 +19,7 @@ source "$( dirname "${BASH_SOURCE[0]}" )/run-e2e-shared.env.sh"
 parent_dir="$( dirname "${BASH_SOURCE[0]}" )"
 
 trap gather-artifacts-on-exit EXIT
+trap gracefully-shutdown-e2es-on-interrupt INT
 
 REENTRANT="${REENTRANT=false}"
 export REENTRANT

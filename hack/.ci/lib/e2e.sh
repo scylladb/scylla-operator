@@ -99,6 +99,10 @@ function gather-artifacts-on-exit {
   cleanup-bg-jobs "${ec}"
 }
 
+function gracefully-shutdown-e2es-on-interrupt {
+  kubectl -n e2e delete --ignore-not-found --wait --timeout=5m pod e2e
+}
+
 function apply-e2e-workarounds {
   if [ -z "${SO_IMAGE+x}" ]; then
     echo "SO_IMAGE can't be empty" > /dev/stderr

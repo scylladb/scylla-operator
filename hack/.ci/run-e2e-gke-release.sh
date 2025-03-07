@@ -18,6 +18,7 @@ source "$( dirname "${BASH_SOURCE[0]}" )/run-e2e-shared.env.sh"
 parent_dir="$( dirname "${BASH_SOURCE[0]}" )"
 
 trap gather-artifacts-on-exit EXIT
+trap gracefully-shutdown-e2es-on-interrupt INT
 
 SO_NODECONFIG_PATH="${SO_NODECONFIG_PATH=${parent_dir}/manifests/cluster/nodeconfig.yaml}"
 export SO_NODECONFIG_PATH

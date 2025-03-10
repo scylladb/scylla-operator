@@ -102,6 +102,10 @@ function gather-artifacts-on-exit {
   cleanup-bg-jobs "${ec}"
 }
 
+function gracefully-shutdown-e2es {
+  kubectl -n e2e exec -ti e2e -- bash -euEo pipefail -O inherit_errexit -c 'kill INT $(pidof scylla-operator-tests)'
+}
+
 function apply-e2e-workarounds {
   if [ -z "${SO_IMAGE+x}" ]; then
     echo "SO_IMAGE can't be empty" > /dev/stderr

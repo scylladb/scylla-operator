@@ -50,6 +50,11 @@ import (
 )
 
 const (
+	// RFC 5702: The key size of RSA/SHA-512 keys MUST NOT be less than 1024 bits and MUST NOT be more than 4096 bits.
+	// NIST Special Publication 800-57 Part 3 (DOI: 10.6028) recommends a minimum of 2048-bit keys for RSA.
+	rsaKeySizeMin = 2048
+	rsaKeySizeMax = 4096
+
 	cryptoKeyBufferSizeMaxFlagKey = "crypto-key-buffer-size-max"
 )
 
@@ -70,6 +75,7 @@ type OperatorOptions struct {
 	OperatorImage   string
 	CQLSIngressPort int
 
+	CryptoKeySize          int
 	CryptoKeyBufferSizeMin int
 	CryptoKeyBufferSizeMax int
 	CryptoKeyBufferDelay   time.Duration
@@ -85,6 +91,7 @@ func NewOperatorOptions(streams genericclioptions.IOStreams) *OperatorOptions {
 		OperatorImage:   "",
 		CQLSIngressPort: 0,
 
+		CryptoKeySize:          4096,
 		CryptoKeyBufferSizeMin: 10,
 		CryptoKeyBufferSizeMax: 30,
 		CryptoKeyBufferDelay:   200 * time.Millisecond,
@@ -134,6 +141,7 @@ func (o *OperatorOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&o.ConcurrentSyncs, "concurrent-syncs", "", o.ConcurrentSyncs, "The number of ScyllaCluster objects that are allowed to sync concurrently.")
 	cmd.Flags().StringVarP(&o.OperatorImage, "image", "", o.OperatorImage, "Image of the operator used.")
 	cmd.Flags().IntVarP(&o.CQLSIngressPort, "cqls-ingress-port", "", o.CQLSIngressPort, "Port on which is the ingress controller listening for secure CQL connections.")
+	cmd.Flags().IntVarP(&o.CryptoKeySize, "crypto-key-size", "", o.CryptoKeySize, "The size of the RSA key to use, in bits.")
 	cmd.Flags().IntVarP(&o.CryptoKeyBufferSizeMin, "crypto-key-buffer-size-min", "", o.CryptoKeyBufferSizeMin, "Minimal number of pre-generated crypto keys that are used for quick certificate issuance. The minimum size is 1.")
 	cmd.Flags().IntVarP(&o.CryptoKeyBufferSizeMax, cryptoKeyBufferSizeMaxFlagKey, "", o.CryptoKeyBufferSizeMax, "Maximum number of pre-generated crypto keys that are used for quick certificate issuance. The minimum size is 1. If not set, it will adjust to be at least the size of crypto-key-buffer-size-min.")
 	cmd.Flags().DurationVarP(&o.CryptoKeyBufferDelay, "crypto-key-buffer-delay", "", o.CryptoKeyBufferDelay, "Delay is the time to wait when generating next certificate in the (min, max) range. Certificate generation bellow the min threshold is not affected.")
@@ -152,6 +160,14 @@ func (o *OperatorOptions) Validate() error {
 
 	if len(o.OperatorImage) == 0 {
 		errs = append(errs, errors.New("operator image can't be empty"))
+	}
+
+	if o.CryptoKeySize < rsaKeySizeMin {
+		errs = append(errs, fmt.Errorf("crypto-key-size must not be less than %d", rsaKeySizeMin))
+	}
+
+	if o.CryptoKeySize > rsaKeySizeMax {
+		errs = append(errs, fmt.Errorf("crypto-key-size must not be more than %d", rsaKeySizeMax))
 	}
 
 	if o.CryptoKeyBufferSizeMin < 1 {
@@ -285,6 +301,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 	rsaKeyGenerator, err := crypto.NewRSAKeyGenerator(
 		o.CryptoKeyBufferSizeMin,
 		o.CryptoKeyBufferSizeMax,
+		o.CryptoKeySize,
 		o.CryptoKeyBufferDelay,
 	)
 	if err != nil {

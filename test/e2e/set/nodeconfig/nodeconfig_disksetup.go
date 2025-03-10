@@ -639,6 +639,10 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "mkfs", "-t", string(scyllav1alpha1.XFSFilesystem), "-b", fmt.Sprintf("size=%s", blockSize), "-K", "-f", hostDevicePath)
 		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 
+		framework.By("Zeroing XFS log")
+		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_repair", "-L", "-f", hostDevicePath)
+		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+
 		framework.By("Verifying the filesystem's integrity")
 		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_repair", "-o", "force_geometry", "-f", "-n", hostDevicePath)
 		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)

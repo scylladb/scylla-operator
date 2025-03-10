@@ -128,7 +128,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 					}
 
 					if b.Error != nil {
-						return false, fmt.Errorf(*b.Error)
+						return false, errors.New(*b.Error)
 					}
 
 					return true, nil
@@ -178,11 +178,11 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 			for _, b := range cluster.Status.Backups {
 				if b.Name == sourceSC.Spec.Backups[0].Name {
 					if b.ID == nil || len(*b.ID) == 0 {
-						return false, fmt.Errorf("got unexpected empty task ID in status")
+						return false, errors.New("got unexpected empty task ID in status")
 					}
 
 					if b.Error != nil {
-						return false, fmt.Errorf(*b.Error)
+						return false, errors.New(*b.Error)
 					}
 
 					return b.Retention != nil && *b.Retention == int64(1), nil

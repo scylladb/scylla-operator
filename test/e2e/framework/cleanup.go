@@ -39,13 +39,13 @@ var _ CleanupInterface = &NamespaceCleaner{}
 func (nc *NamespaceCleaner) CollectToLog(ctx context.Context) {
 	// Log events if the test failed.
 	if g.CurrentSpecReport().Failed() {
-		By(fmt.Sprintf("Collecting events from namespace %q.", nc.NS.Name))
+		By("Collecting events from namespace %q.", nc.NS.Name)
 		DumpEventsInNamespace(ctx, nc.Client, nc.NS.Name)
 	}
 }
 
 func (nc *NamespaceCleaner) Collect(ctx context.Context, artifactsDir string, _ string) {
-	By(fmt.Sprintf("Collecting dumps from namespace %q.", nc.NS.Name))
+	By("Collecting dumps from namespace %q.", nc.NS.Name)
 
 	err := DumpNamespace(ctx, cacheddiscovery.NewMemCacheClient(nc.Client.Discovery()), nc.DynamicClient, nc.Client.CoreV1(), artifactsDir, nc.NS.Name)
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -138,7 +138,7 @@ func (rc *RestoringCleaner) Collect(ctx context.Context, clusterArtifactsDir str
 		artifactsDir = filepath.Join(artifactsDir, "cluster-scoped-per-ns", ginkgoNamespace)
 	}
 
-	By(fmt.Sprintf("Collecting global %s %q for namespace %q.", rc.resourceInfo.Resource, naming.ObjRef(rc.object), ginkgoNamespace))
+	By("Collecting global %s %q for namespace %q.", rc.resourceInfo.Resource, naming.ObjRef(rc.object), ginkgoNamespace)
 
 	err := DumpResource(
 		ctx,

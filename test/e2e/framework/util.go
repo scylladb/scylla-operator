@@ -123,7 +123,7 @@ func DumpEventsInNamespace(ctx context.Context, c kubernetes.Interface, namespac
 	events, err := c.CoreV1().Events(namespace).List(ctx, metav1.ListOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	By(fmt.Sprintf("Found %d events.", len(events.Items)))
+	By("Found %d events.", len(events.Items))
 	// Sort events by their first timestamp
 	sortedEvents := events.Items
 	if len(sortedEvents) > 1 {

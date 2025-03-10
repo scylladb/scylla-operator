@@ -73,7 +73,10 @@ EOF
 
   exit_code="$( wait-for-container-exit-with-logs gather-artifacts must-gather must-gather )"
 
-  kubectl -n=gather-artifacts cp --retries=42 -c=wait-for-artifacts must-gather:/tmp/artifacts "${1}"
+  for i in {1..60}; do
+    kubectl -n=gather-artifacts cp -c=wait-for-artifacts must-gather:/tmp/artifacts "${1}" && break || echo "Attempt $i to collect artifacts failed, retrying"
+  done
+
   ls -l "${1}"
 
   kubectl -n=gather-artifacts delete pod/must-gather --wait=false

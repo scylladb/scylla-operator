@@ -43,7 +43,7 @@ func WithSession(session *gocqlx.Session) func(*DataInserter) {
 
 func NewDataInserter(hosts []string, options ...DataInserterOption) (*DataInserter, error) {
 	// Instead of specifying hosts for the provided datacenter, use 'replication_factor' as a single key to specify a default RF.
-	return NewMultiDCDataInserter(map[string][]string{"replication_factor": hosts})
+	return NewMultiDCDataInserter(map[string][]string{"replication_factor": hosts}, options...)
 }
 
 func NewMultiDCDataInserter(dcHosts map[string][]string, options ...DataInserterOption) (*DataInserter, error) {

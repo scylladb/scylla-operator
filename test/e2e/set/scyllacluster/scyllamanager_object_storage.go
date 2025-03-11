@@ -13,12 +13,14 @@ import (
 	"github.com/gocql/gocql"
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	"github.com/scylladb/gocqlx/v2"
 	"github.com/scylladb/scylla-manager/v3/pkg/managerclient"
 	configassests "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
+	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
@@ -43,8 +45,23 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
+		cm, _, err := scyllafixture.ScyllaDBConfigTemplate.RenderObject(map[string]any{
+			"config": strings.TrimPrefix(`
+authenticator: PasswordAuthenticator
+authorizer: CassandraAuthorizer
+`, "\n"),
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Creating a ScyllaDB config ConfigMap enabling AuthN+AuthZ")
+		cm, err = f.KubeClient().CoreV1().ConfigMaps(f.Namespace()).Create(ctx, cm, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
 		sourceSC := f.GetDefaultScyllaCluster()
+		o.Expect(sourceSC.Spec.Datacenter.Racks).NotTo(o.BeEmpty())
+		sourceSC.Spec.Datacenter.Racks = sourceSC.Spec.Datacenter.Racks[:1]
 		sourceSC.Spec.Datacenter.Racks[0].Members = 1
+		sourceSC.Spec.Datacenter.Racks[0].ScyllaConfig = cm.Name
 
 		if len(e.scyllaRepository) != 0 {
 			sourceSC.Spec.Repository = e.scyllaRepository
@@ -72,7 +89,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		objectStorageLocation := fmt.Sprintf("%s:%s", f.GetObjectStorageProvider(), f.GetObjectStorageBucket())
 
 		framework.By("Creating source ScyllaCluster")
-		sourceSC, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sourceSC, metav1.CreateOptions{})
+		sourceSC, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sourceSC, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for source ScyllaCluster to roll out (RV=%s)", sourceSC.ResourceVersion)
@@ -87,7 +104,20 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		sourceHosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sourceSC)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(sourceHosts).To(o.HaveLen(int(utils.GetMemberCount(sourceSC))))
-		di := scyllaclusterverification.InsertAndVerifyCQLData(ctx, sourceHosts)
+
+		sourceClusterConfig := gocql.NewCluster(sourceHosts...)
+		sourceClusterConfig.ReconnectInterval = 500 * time.Millisecond
+		sourceClusterConfig.Authenticator = gocql.PasswordAuthenticator{
+			Username: cqlDefaultUser,
+			Password: cqlDefaultPassword,
+		}
+
+		sourceSession, err := gocqlx.WrapSession(sourceClusterConfig.CreateSession())
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		sourceSession.SetConsistency(gocql.All)
+
+		di := scyllaclusterverification.InsertAndVerifyCQLData(ctx, sourceHosts, utils.WithSession(&sourceSession))
 		defer di.Close()
 
 		framework.By("Waiting for source ScyllaCluster to register with Scylla Manager")
@@ -282,7 +312,10 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		targetSC := f.GetDefaultScyllaCluster()
+		o.Expect(targetSC.Spec.Datacenter.Racks).NotTo(o.BeEmpty())
+		targetSC.Spec.Datacenter.Racks = targetSC.Spec.Datacenter.Racks[:1]
 		targetSC.Spec.Datacenter.Racks[0].Members = sourceSC.Spec.Datacenter.Racks[0].Members
+		targetSC.Spec.Datacenter.Racks[0].ScyllaConfig = sourceSC.Spec.Datacenter.Racks[0].ScyllaConfig
 		targetSC.Spec.Repository = sourceSC.Spec.Repository
 		targetSC.Spec.Version = sourceSC.Spec.Version
 
@@ -322,8 +355,20 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		targetHosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), targetSC)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(targetHosts).To(o.HaveLen(int(utils.GetMemberCount(targetSC))))
-		err = di.SetClientEndpoints(targetHosts)
+
+		targetClusterConfig := gocql.NewCluster(targetHosts...)
+		targetClusterConfig.ReconnectInterval = 500 * time.Millisecond
+		targetClusterConfig.Authenticator = gocql.PasswordAuthenticator{
+			Username: cqlDefaultUser,
+			Password: cqlDefaultPassword,
+		}
+
+		targetSession, err := gocqlx.WrapSession(targetClusterConfig.CreateSession())
 		o.Expect(err).NotTo(o.HaveOccurred())
+
+		targetSession.SetConsistency(gocql.All)
+
+		di.OverrideSession(&targetSession)
 		err = di.AwaitSchemaAgreement(ctx)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		_, err = di.Read()
@@ -492,8 +537,23 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
+		cm, _, err := scyllafixture.ScyllaDBConfigTemplate.RenderObject(map[string]any{
+			"config": strings.TrimPrefix(`
+authenticator: PasswordAuthenticator
+authorizer: CassandraAuthorizer
+`, "\n"),
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Creating a ScyllaDB config ConfigMap enabling AuthN+AuthZ")
+		cm, err = f.KubeClient().CoreV1().ConfigMaps(f.Namespace()).Create(ctx, cm, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
 		sc := f.GetDefaultScyllaCluster()
+		o.Expect(sc.Spec.Datacenter.Racks).NotTo(o.BeEmpty())
+		sc.Spec.Datacenter.Racks = sc.Spec.Datacenter.Racks[:1]
 		sc.Spec.Datacenter.Racks[0].Members = 1
+		sc.Spec.Datacenter.Racks[0].ScyllaConfig = cm.Name
 
 		objectStorageType := f.GetObjectStorageType()
 		switch objectStorageType {
@@ -514,7 +574,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		validObjectStorageLocation := fmt.Sprintf("%s:%s", f.GetObjectStorageProvider(), f.GetObjectStorageBucket())
 
 		framework.By("Creating a ScyllaCluster")
-		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
@@ -529,7 +589,20 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(1))
-		di := scyllaclusterverification.InsertAndVerifyCQLData(ctx, hosts)
+
+		clusterConfig := gocql.NewCluster(hosts...)
+		clusterConfig.ReconnectInterval = 500 * time.Millisecond
+		clusterConfig.Authenticator = gocql.PasswordAuthenticator{
+			Username: cqlDefaultUser,
+			Password: cqlDefaultPassword,
+		}
+
+		session, err := gocqlx.WrapSession(clusterConfig.CreateSession())
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		session.SetConsistency(gocql.All)
+
+		di := scyllaclusterverification.InsertAndVerifyCQLData(ctx, hosts, utils.WithSession(&session))
 		defer di.Close()
 
 		framework.By("Waiting for ScyllaCluster to register with Scylla Manager")

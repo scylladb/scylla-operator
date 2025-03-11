@@ -5,6 +5,7 @@ package scyllacluster
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -84,7 +85,7 @@ var _ = g.Describe("Scylla Manager integration", func() {
 					}
 
 					if r.Error != nil {
-						return false, fmt.Errorf(*r.Error)
+						return false, errors.New(*r.Error)
 					}
 
 					return true, nil
@@ -139,7 +140,7 @@ var _ = g.Describe("Scylla Manager integration", func() {
 					}
 
 					if r.Error != nil {
-						return false, fmt.Errorf(*r.Error)
+						return false, errors.New(*r.Error)
 					}
 
 					return r.Parallel != nil && *r.Parallel == int64(1), nil

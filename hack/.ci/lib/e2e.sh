@@ -101,7 +101,7 @@ function gather-artifacts-on-exit {
 }
 
 function gracefully-shutdown-e2es {
-  kubectl -n e2e exec e2e -c e2e -- bash -euEo pipefail -O inherit_errexit -c 'kill INT $(pidof scylla-operator-tests)' || true
+  kubectl -n e2e exec e2e -c e2e -- bash -euEo pipefail -O inherit_errexit -c 'kill -s SIGINT $(pidof scylla-operator-tests)' || true
   kubectl_cp -n=e2e e2e:/tmp/artifacts -c=wait-for-artifacts "${ARTIFACTS}" || true
 }
 

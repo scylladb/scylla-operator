@@ -15,4 +15,8 @@ const (
 	remoteEndpointsControllerDegradedCondition             = "RemoteEndpointsControllerDegraded"
 	scyllaDBClusterFinalizerProgressingCondition           = "ScyllaDBClusterFinalizerProgressing"
 	scyllaDBClusterFinalizerDegradedCondition              = "ScyllaDBClusterFinalizerDegraded"
+	remoteConfigMapControllerProgressingCondition          = "RemoteConfigMapControllerProgressing"
+	remoteConfigMapControllerDegradedCondition             = "RemoteConfigMapControllerDegraded"
+	remoteSecretControllerProgressingCondition             = "RemoteSecretControllerProgressing"
+	remoteSecretControllerDegradedCondition                = "RemoteSecretControllerDegraded"
 )

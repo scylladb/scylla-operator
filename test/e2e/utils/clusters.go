@@ -3,6 +3,9 @@ package utils
 import (
 	"context"
 	"fmt"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/gather/collect"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"time"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
@@ -16,6 +19,89 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
+
+var (
+	remoteKubernetesClusterResourceInfo = collect.ResourceInfo{
+		Resource: scyllav1alpha1.GroupVersion.WithResource("remotekubernetesclusters"),
+		Scope:    meta.RESTScopeRoot,
+	}
+)
+
+func SetUpRemoteKubernetesClustersFromRestConfigs(ctx context.Context, restConfigs []*rest.Config, f *framework.Framework) ([]*scyllav1alpha1.RemoteKubernetesCluster, map[string]framework.ClusterInterface, error) {
+	availableClusters := len(restConfigs)
+
+	framework.By("Creating RemoteKubernetesClusters")
+	rkcs := make([]*scyllav1alpha1.RemoteKubernetesCluster, 0, availableClusters)
+	rkcClusterMap := make(map[string]framework.ClusterInterface, availableClusters)
+
+	metaCluster := f.Cluster(0)
+	for idx := range availableClusters {
+		cluster := f.Cluster(idx)
+		userNs, _, ok := cluster.DefaultNamespaceIfAny()
+		if !ok {
+			userNs, _ = cluster.CreateUserNamespace(ctx)
+		}
+
+		clusterName := fmt.Sprintf("%s-%d", f.Namespace(), idx)
+
+		framework.By("Creating SA having Operator ClusterRole in #%d cluster", idx)
+		adminKubeconfig, err := GetKubeConfigHavingOperatorRemoteClusterRole(ctx, cluster.KubeAdminClient(), cluster.AdminClientConfig(), clusterName, userNs.Name)
+		if err != nil {
+			return nil, nil, fmt.Errorf("can't get kubeconfig for %d'th cluster: %w", idx, err)
+		}
+
+		kubeconfig, err := clientcmd.Write(adminKubeconfig)
+		if err != nil {
+			return nil, nil, fmt.Errorf("can't write kubeconfig for %d'th cluster: %w", idx, err)
+		}
+
+		rkc, err := GetRemoteKubernetesClusterWithKubeconfig(ctx, metaCluster.KubeAdminClient(), kubeconfig, clusterName, f.Namespace())
+		if err != nil {
+			return nil, nil, fmt.Errorf("can't make remotekubernetescluster for %d'th cluster: %w", idx, err)
+		}
+
+		rc := framework.NewRestoringCleaner(
+			ctx,
+			f.KubeAdminClient(),
+			f.DynamicAdminClient(),
+			remoteKubernetesClusterResourceInfo,
+			rkc.Namespace,
+			rkc.Name,
+			framework.RestoreStrategyRecreate,
+		)
+		f.AddCleaners(rc)
+		rc.DeleteObject(ctx, true)
+
+		framework.By("Creating RemoteKubernetesCluster %q with credentials to cluster #%d", clusterName, idx)
+		rkc, err = metaCluster.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters().Create(ctx, rkc, metav1.CreateOptions{})
+		if err != nil {
+			return nil, nil, fmt.Errorf("can't create remotekubernetescluster for %d'th cluster: %w", idx, err)
+		}
+
+		rkcs = append(rkcs, rkc)
+		rkcClusterMap[rkc.Name] = cluster
+	}
+
+	for _, rkc := range rkcs {
+		err := func() error {
+			framework.By("Waiting for the RemoteKubernetesCluster %q to roll out (RV=%s)", rkc.Name, rkc.ResourceVersion)
+			waitCtx1, waitCtx1Cancel := ContextForRemoteKubernetesClusterRollout(ctx, rkc)
+			defer waitCtx1Cancel()
+
+			_, err := controllerhelpers.WaitForRemoteKubernetesClusterState(waitCtx1, metaCluster.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters(), rkc.Name, controllerhelpers.WaitForStateOptions{}, IsRemoteKubernetesClusterRolledOut)
+			if err != nil {
+				return fmt.Errorf("can't wait for remotekubernetescluster %q to roll out: %w", rkc.Name, err)
+			}
+
+			return nil
+		}()
+		if err != nil {
+			return nil, nil, fmt.Errorf("can't wait for remotekubernetescluster %q to roll out: %w", rkc.Name, err)
+		}
+	}
+
+	return rkcs, rkcClusterMap, nil
+}
 
 func GetRemoteKubernetesClusterWithOperatorClusterRole(ctx context.Context, kubeAdminClient kubernetes.Interface, adminConfig *rest.Config, name, namespace string) (*scyllav1alpha1.RemoteKubernetesCluster, error) {
 	adminKubeconfig, err := GetKubeConfigHavingOperatorRemoteClusterRole(ctx, kubeAdminClient, adminConfig, name, namespace)

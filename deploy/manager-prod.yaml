@@ -310,18 +310,8 @@ spec:
   datacenter:
     name: manager-dc
     racks:
-    - name: manager-rack
-      members: 1
-      storage:
-        capacity: 5Gi
-        storageClassName: scylladb-local-xfs
-      resources:
-        limits:
-          cpu: 1
-          memory: 200Mi
-        requests:
-          cpu: 1
-          memory: 200Mi
+    - members: 1
+      name: manager-rack
       placement:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -332,9 +322,19 @@ spec:
                 values:
                 - scylla
         tolerations:
-          - effect: NoSchedule
-            key: scylla-operator.scylladb.com/dedicated
-            operator: Equal
-            value: scyllaclusters
+        - effect: NoSchedule
+          key: scylla-operator.scylladb.com/dedicated
+          operator: Equal
+          value: scyllaclusters
+      resources:
+        limits:
+          cpu: 1
+          memory: 200Mi
+        requests:
+          cpu: 1
+          memory: 200Mi
+      storage:
+        capacity: 5Gi
+        storageClassName: scylladb-local-xfs
 
 ---

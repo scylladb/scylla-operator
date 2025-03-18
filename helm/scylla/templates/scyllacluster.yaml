@@ -69,53 +69,7 @@ spec:
   {{- end }}
   datacenter:
     name: {{ .Values.datacenter }}
+    {{- with .Values.racks }}
     racks:
-    {{- range .Values.racks }}
-    - name: {{ .name }}
-      {{- with .scyllaConfig }}
-      scyllaConfig: {{ . }}
-      {{- end }}
-      {{- with .scyllaAgentConfig }}
-      scyllaAgentConfig: {{ . }}
-      {{- end }}
-      members: {{ .members }}
-      storage:
-        {{- .storage | toYaml | nindent 8 }}
-      resources:
-        {{- toYaml .resources | nindent 8 }}
-      {{- if .agentResources }}
-      agentResources:
-        {{- toYaml .agentResources | nindent 8 }}
-      {{- end }}
-      {{- if .volumes }}
-      volumes:
-        {{- toYaml .volumes | nindent 8 }}
-      {{- end }}
-      {{- if .volumeMounts }}
-      volumeMounts:
-        {{- toYaml .volumeMounts | nindent 8 }}
-      {{- end }}
-      {{- if .agentVolumeMounts }}
-      agentVolumeMounts:
-        {{- toYaml .agentVolumeMounts | nindent 8 }}
-      {{- end }}
-      {{- if .placement }}
-      placement:
-        {{- if .placement.podAffinity }}
-        podAffinity:
-          {{- toYaml .placement.podAffinity | nindent 10 }}
-        {{- end }}
-        {{- if .placement.podAntiAffinity }}
-        podAntiAffinity:
-          {{- toYaml .placement.podAntiAffinity | nindent 10 }}
-        {{- end }}
-        {{- if .placement.nodeAffinity }}
-        nodeAffinity:
-          {{- toYaml .placement.nodeAffinity | nindent 10 }}
-        {{- end }}
-        {{- if .placement.tolerations }}
-        tolerations:
-          {{- toYaml .placement.tolerations | nindent 10 }}
-        {{- end }}
-      {{- end }}
+    {{- toYaml . | nindent 4 }}
     {{- end }}

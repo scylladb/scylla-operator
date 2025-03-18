@@ -87,6 +87,10 @@ spec:
       agentResources:
         {{- toYaml .agentResources | nindent 8 }}
       {{- end }}
+      {{- with .exposeOptions }}
+      exposeOptions:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- if .volumes }}
       volumes:
         {{- toYaml .volumes | nindent 8 }}

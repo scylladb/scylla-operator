@@ -231,7 +231,8 @@ const (
 )
 
 const (
-	OperatorAppNameWithDomain = "scylla-operator.scylladb.com"
+	OperatorAppNameWithDomain       = "scylla-operator.scylladb.com"
+	RemoteOperatorAppNameWithDomain = "remote.scylla-operator.scylladb.com"
 )
 
 const (

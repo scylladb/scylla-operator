@@ -24,7 +24,7 @@ spec:
       - name: local-csi-driver
         securityContext:
           privileged: true
-        image: docker.io/scylladb/local-csi-driver:0.4.1@sha256:4da6cc8fc65f8983c3ff0d3f0f831c59ef013a04f9b2021615316aca7a790f16
+        image: docker.io/scylladb/local-csi-driver:0.5.0@sha256:46c1d2e9be8edf076d8dea7e82a3bb763d4bdda5adf43c794f617e9c94251079
         imagePullPolicy: IfNotPresent
         args:
         - --listen=/csi/csi.sock

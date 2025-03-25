@@ -35,7 +35,7 @@ func (nsc *Controller) syncFilesystems(ctx context.Context, nc *scyllav1alpha1.N
 			continue
 		}
 
-		changed, err := disks.MakeFS(ctx, nsc.executor, device, blockSize, string(fs.Type))
+		changed, err := disks.MakeFS(ctx, nsc.executor, device, blockSize, string(fs.Type), fs.XFSFlags)
 		if err != nil {
 			nsc.eventRecorder.Eventf(
 				nc,

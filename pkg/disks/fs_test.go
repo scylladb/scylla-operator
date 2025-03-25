@@ -92,7 +92,7 @@ func TestMakeFS(t *testing.T) {
 
 			executor := exectest.NewFakeExec(tc.expectedCommands...)
 
-			finished, err := MakeFS(ctx, executor, tc.device, tc.blockSize, tc.fsType)
+			finished, err := MakeFS(ctx, executor, tc.device, tc.blockSize, tc.fsType, nil)
 			if !reflect.DeepEqual(err, tc.expectedErr) {
 				t.Fatalf("expected %v error, got %v", tc.expectedErr, err)
 			}

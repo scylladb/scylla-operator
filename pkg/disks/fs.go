@@ -12,7 +12,7 @@ import (
 	"k8s.io/utils/exec"
 )
 
-func MakeFS(ctx context.Context, executor exec.Interface, device string, blockSize int, fsType string) (bool, error) {
+func MakeFS(ctx context.Context, executor exec.Interface, device string, blockSize int, fsType string, xfsFlags []string) (bool, error) {
 	existingFs, err := blkutils.GetFilesystemType(ctx, executor, device)
 	if err != nil {
 		return false, fmt.Errorf("can't determine existing filesystem type at %q: %w", device, err)
@@ -35,8 +35,16 @@ func MakeFS(ctx context.Context, executor exec.Interface, device string, blockSi
 		"-b", fmt.Sprintf("size=%d", blockSize),
 		// no discard
 		"-K",
-		device,
 	}
+
+	// Add XFS-specific flags if filesystem type is xfs
+	if fsType == "xfs" {
+		for _, flag := range xfsFlags {
+			args = append(args, "-m", flag)
+		}
+	}
+
+	args = append(args, device)
 	stdout, stderr, err := oexec.RunCommand(ctx, executor, "mkfs", args...)
 	if err != nil {
 		return false, fmt.Errorf("can't run mkfs with args %v: %w, stdout: %q, stderr: %q", args, err, stdout.String(), stderr.String())

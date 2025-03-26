@@ -19,6 +19,7 @@ func TestMakeFS(t *testing.T) {
 		device           string
 		blockSize        int
 		fsType           string
+		flags            []string
 		expectedCommands []exectest.Command
 		expectedFinished bool
 		expectedErr      error
@@ -81,6 +82,31 @@ func TestMakeFS(t *testing.T) {
 			expectedFinished: true,
 			expectedErr:      nil,
 		},
+		{
+			name:      "format the device with default XFS flags",
+			device:    "/dev/md0",
+			blockSize: 1024,
+			fsType:    "xfs",
+			flags:     []string{"rmapbt=0", "reflink=0"},
+			expectedCommands: []exectest.Command{
+				{
+					Cmd:    "lsblk",
+					Args:   []string{"--json", "--nodeps", "--paths", "--fs", "--output=NAME,MODEL,FSTYPE,PARTUUID", "/dev/md0"},
+					Stdout: []byte(`{"blockdevices":[{"name":"/dev/md0","model":"Amazon EC2 NVMe Instance Storage","fstype":"","partuuid":"1bbeb48b-101f-4d49-8ba4-67adc9878721"}]}`),
+					Stderr: nil,
+					Err:    nil,
+				},
+				{
+					Cmd:    "mkfs",
+					Args:   []string{"-t", "xfs", "-b", "size=1024", "-K", "-m", "rmapbt=0", "-m", "reflink=0", "/dev/md0"},
+					Stdout: nil,
+					Stderr: nil,
+					Err:    nil,
+				},
+			},
+			expectedFinished: true,
+			expectedErr:      nil,
+		},
 	}
 
 	for _, tc := range tt {
@@ -92,7 +118,7 @@ func TestMakeFS(t *testing.T) {
 
 			executor := exectest.NewFakeExec(tc.expectedCommands...)
 
-			finished, err := MakeFS(ctx, executor, tc.device, tc.blockSize, tc.fsType, nil)
+			finished, err := MakeFS(ctx, executor, tc.device, tc.blockSize, tc.fsType, tc.flags)
 			if !reflect.DeepEqual(err, tc.expectedErr) {
 				t.Fatalf("expected %v error, got %v", tc.expectedErr, err)
 			}

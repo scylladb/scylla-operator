@@ -35,7 +35,13 @@ func (nsc *Controller) syncFilesystems(ctx context.Context, nc *scyllav1alpha1.N
 			continue
 		}
 
-		changed, err := disks.MakeFS(ctx, nsc.executor, device, blockSize, string(fs.Type), fs.XFSFlags)
+		// Add default flags for XFS filesystem
+		flags := fs.Flags
+		if fs.Type == scyllav1alpha1.XFSFilesystem {
+			flags = append(flags, "rmapbt=0", "reflink=0")
+		}
+
+		changed, err := disks.MakeFS(ctx, nsc.executor, device, blockSize, string(fs.Type), flags)
 		if err != nil {
 			nsc.eventRecorder.Eventf(
 				nc,

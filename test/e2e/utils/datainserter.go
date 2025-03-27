@@ -174,6 +174,10 @@ func (di *DataInserter) Read() ([]*TestData, error) {
 	return res, nil
 }
 
+func (di *DataInserter) OverrideSession(session *gocqlx.Session) {
+	di.session = session
+}
+
 func (di *DataInserter) GetExpected() []*TestData {
 	return di.data
 }

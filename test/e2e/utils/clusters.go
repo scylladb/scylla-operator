@@ -3,10 +3,11 @@ package utils
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/gather/collect"
 	"k8s.io/apimachinery/pkg/api/meta"
-	"time"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -35,17 +36,15 @@ func SetUpRemoteKubernetesClustersFromRestConfigs(ctx context.Context, restConfi
 	rkcClusterMap := make(map[string]framework.ClusterInterface, availableClusters)
 
 	metaCluster := f.Cluster(0)
+	rkcSecretsNs, _ := metaCluster.CreateUserNamespace(ctx)
 	for idx := range availableClusters {
 		cluster := f.Cluster(idx)
-		userNs, _, ok := cluster.DefaultNamespaceIfAny()
-		if !ok {
-			userNs, _ = cluster.CreateUserNamespace(ctx)
-		}
+		tokenNs, _ := cluster.CreateUserNamespace(ctx)
 
 		clusterName := fmt.Sprintf("%s-%d", f.Namespace(), idx)
 
 		framework.By("Creating SA having Operator ClusterRole in #%d cluster", idx)
-		adminKubeconfig, err := GetKubeConfigHavingOperatorRemoteClusterRole(ctx, cluster.KubeAdminClient(), cluster.AdminClientConfig(), clusterName, userNs.Name)
+		adminKubeconfig, err := GetKubeConfigHavingOperatorRemoteClusterRole(ctx, cluster.KubeAdminClient(), cluster.AdminClientConfig(), clusterName, tokenNs.Name)
 		if err != nil {
 			return nil, nil, fmt.Errorf("can't get kubeconfig for %d'th cluster: %w", idx, err)
 		}
@@ -55,7 +54,7 @@ func SetUpRemoteKubernetesClustersFromRestConfigs(ctx context.Context, restConfi
 			return nil, nil, fmt.Errorf("can't write kubeconfig for %d'th cluster: %w", idx, err)
 		}
 
-		rkc, err := GetRemoteKubernetesClusterWithKubeconfig(ctx, metaCluster.KubeAdminClient(), kubeconfig, clusterName, f.Namespace())
+		rkc, err := GetRemoteKubernetesClusterWithKubeconfig(ctx, metaCluster.KubeAdminClient(), kubeconfig, clusterName, rkcSecretsNs.Name)
 		if err != nil {
 			return nil, nil, fmt.Errorf("can't make remotekubernetescluster for %d'th cluster: %w", idx, err)
 		}

@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	corev1informers "k8s.io/client-go/informers/core/v1"
+
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	scyllaclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	scyllav1alpha1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1alpha1"
@@ -54,6 +56,8 @@ type Controller struct {
 
 	scyllaDBClusterLister      scyllav1alpha1listers.ScyllaDBClusterLister
 	scyllaOperatorConfigLister scyllav1alpha1listers.ScyllaOperatorConfigLister
+	configMapLister            corev1listers.ConfigMapLister
+	secretLister               corev1listers.SecretLister
 
 	remoteRemoteOwnerLister        remotelister.GenericClusterLister[scyllav1alpha1listers.RemoteOwnerLister]
 	remoteScyllaDBDatacenterLister remotelister.GenericClusterLister[scyllav1alpha1listers.ScyllaDBDatacenterLister]
@@ -62,6 +66,8 @@ type Controller struct {
 	remoteEndpointSliceLister      remotelister.GenericClusterLister[discoveryv1listers.EndpointSliceLister]
 	remoteEndpointsLister          remotelister.GenericClusterLister[corev1listers.EndpointsLister]
 	remotePodLister                remotelister.GenericClusterLister[corev1listers.PodLister]
+	remoteConfigMapLister          remotelister.GenericClusterLister[corev1listers.ConfigMapLister]
+	remoteSecretLister             remotelister.GenericClusterLister[corev1listers.SecretLister]
 
 	cachesToSync []cache.InformerSynced
 
@@ -78,6 +84,8 @@ func NewController(
 	scyllaRemoteClient remoteclient.ClusterClientInterface[scyllaclient.Interface],
 	scyllaDBClusterInformer scyllav1alpha1informers.ScyllaDBClusterInformer,
 	scyllaOperatorConfigInformer scyllav1alpha1informers.ScyllaOperatorConfigInformer,
+	configMapInformer corev1informers.ConfigMapInformer,
+	secretInformer corev1informers.SecretInformer,
 	remoteRemoteOwnerInformer remoteinformers.GenericClusterInformer,
 	remoteScyllaDBDatacenterInformer remoteinformers.GenericClusterInformer,
 	remoteNamespaceInformer remoteinformers.GenericClusterInformer,
@@ -85,6 +93,8 @@ func NewController(
 	remoteEndpointSliceInformer remoteinformers.GenericClusterInformer,
 	remoteEndpointsInformer remoteinformers.GenericClusterInformer,
 	remotePodInformer remoteinformers.GenericClusterInformer,
+	remoteConfigMapInformer remoteinformers.GenericClusterInformer,
+	remoteSecretInformer remoteinformers.GenericClusterInformer,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
@@ -98,6 +108,8 @@ func NewController(
 
 		scyllaDBClusterLister:      scyllaDBClusterInformer.Lister(),
 		scyllaOperatorConfigLister: scyllaOperatorConfigInformer.Lister(),
+		configMapLister:            configMapInformer.Lister(),
+		secretLister:               secretInformer.Lister(),
 
 		remoteRemoteOwnerLister:        remotelister.NewClusterLister(scyllav1alpha1listers.NewRemoteOwnerLister, remoteRemoteOwnerInformer.Indexer().Cluster),
 		remoteScyllaDBDatacenterLister: remotelister.NewClusterLister(scyllav1alpha1listers.NewScyllaDBDatacenterLister, remoteScyllaDBDatacenterInformer.Indexer().Cluster),
@@ -106,9 +118,14 @@ func NewController(
 		remoteEndpointSliceLister:      remotelister.NewClusterLister(discoveryv1listers.NewEndpointSliceLister, remoteEndpointSliceInformer.Indexer().Cluster),
 		remoteEndpointsLister:          remotelister.NewClusterLister(corev1listers.NewEndpointsLister, remoteEndpointsInformer.Indexer().Cluster),
 		remotePodLister:                remotelister.NewClusterLister(corev1listers.NewPodLister, remotePodInformer.Indexer().Cluster),
+		remoteConfigMapLister:          remotelister.NewClusterLister(corev1listers.NewConfigMapLister, remoteConfigMapInformer.Indexer().Cluster),
+		remoteSecretLister:             remotelister.NewClusterLister(corev1listers.NewSecretLister, remoteSecretInformer.Indexer().Cluster),
 
 		cachesToSync: []cache.InformerSynced{
 			scyllaDBClusterInformer.Informer().HasSynced,
+			scyllaOperatorConfigInformer.Informer().HasSynced,
+			configMapInformer.Informer().HasSynced,
+			secretInformer.Informer().HasSynced,
 			remoteRemoteOwnerInformer.Informer().HasSynced,
 			remoteScyllaDBDatacenterInformer.Informer().HasSynced,
 			remoteNamespaceInformer.Informer().HasSynced,
@@ -116,6 +133,8 @@ func NewController(
 			remoteEndpointSliceInformer.Informer().HasSynced,
 			remoteEndpointsInformer.Informer().HasSynced,
 			remotePodInformer.Informer().HasSynced,
+			remoteConfigMapInformer.Informer().HasSynced,
+			remoteSecretInformer.Informer().HasSynced,
 		},
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scylladbcluster-controller"}),
@@ -153,6 +172,11 @@ func NewController(
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't register to ScyllaDBCluster events: %w", err))
 	}
+
+	// Local ConfigMap and Secret handlers are skipped to optimize number of syncs which doesn't do anything.
+	// Applying configuration change requires rolling restart of ScyllaDBCluster, so these resources will be synced upon
+	// ScyllaDBCluster update.
+	// These could be added once ConfigMaps and Secrets would require immediate sync.
 
 	// TODO: add error handling once these start returning errors
 	remoteRemoteOwnerInformer.Informer().AddEventHandler(
@@ -208,6 +232,22 @@ func NewController(
 			AddFunc:    scc.addRemotePod,
 			UpdateFunc: scc.updateRemotePod,
 			DeleteFunc: scc.deleteRemotePod,
+		},
+	)
+
+	remoteConfigMapInformer.Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc:    scc.addRemoteConfigMap,
+			UpdateFunc: scc.updateRemoteConfigMap,
+			DeleteFunc: scc.deleteRemoteConfigMap,
+		},
+	)
+
+	remoteSecretInformer.Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc:    scc.addRemoteSecret,
+			UpdateFunc: scc.updateRemoteSecret,
+			DeleteFunc: scc.deleteRemoteSecret,
 		},
 	)
 
@@ -535,6 +575,52 @@ func (scc *Controller) updateRemotePod(old, cur interface{}) {
 }
 
 func (scc *Controller) deleteRemotePod(obj interface{}) {
+	scc.handlers.HandleDelete(
+		obj,
+		scc.enqueueThroughParentLabel,
+	)
+}
+
+func (scc *Controller) addRemoteConfigMap(obj interface{}) {
+	scc.handlers.HandleAdd(
+		obj.(*corev1.ConfigMap),
+		scc.enqueueThroughParentLabel,
+	)
+}
+
+func (scc *Controller) updateRemoteConfigMap(old, cur interface{}) {
+	scc.handlers.HandleUpdate(
+		old.(*corev1.ConfigMap),
+		cur.(*corev1.ConfigMap),
+		scc.enqueueThroughParentLabel,
+		scc.deleteRemoteConfigMap,
+	)
+}
+
+func (scc *Controller) deleteRemoteConfigMap(obj interface{}) {
+	scc.handlers.HandleDelete(
+		obj,
+		scc.enqueueThroughParentLabel,
+	)
+}
+
+func (scc *Controller) addRemoteSecret(obj interface{}) {
+	scc.handlers.HandleAdd(
+		obj.(*corev1.Secret),
+		scc.enqueueThroughParentLabel,
+	)
+}
+
+func (scc *Controller) updateRemoteSecret(old, cur interface{}) {
+	scc.handlers.HandleUpdate(
+		old.(*corev1.Secret),
+		cur.(*corev1.Secret),
+		scc.enqueueThroughParentLabel,
+		scc.deleteRemoteSecret,
+	)
+}
+
+func (scc *Controller) deleteRemoteSecret(obj interface{}) {
 	scc.handlers.HandleDelete(
 		obj,
 		scc.enqueueThroughParentLabel,

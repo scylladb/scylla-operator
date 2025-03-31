@@ -32,25 +32,30 @@ This also allows us to deal with some of the issues and inconsistencies existing
 
 ## Proposal
 
-I propose to introduce support for ScyllaDBCluster registration with ScyllaDBManager with no changes to ScyllaDBCluster API.
-To support task scheduling, I propose to add a new API object: `ScyllaDBManagerTask.scylla.scylladb.com/v1alpha1`.
-A new set of controllers will be responsible for registering ScyllaDBClusters and scheduling tasks with ScyllaDB Manager.
-The existing ScyllaCluster controller, running as part of manager-controller, will be replaced with a controller reconciling ScyllaDBDatacenters instead.
+I propose to introduce support for ScyllaDBClusters' (scylla.scylladb.com/v1alpha1) and ScyllaDBDatacenters' (scylla.scylladb.com/v1alpha1) registration with ScyllaDBManager with no changes to ScyllaDBCluster nor ScyllaDBDatacenter API.
+For this measure, I propose adding a new API object: `ScyllaDBManagerClusterRegistration.scylla.scylladb.com/v1alpha1`. Other than keeping the metadata involved in cluster registration with ScyllaDB Manager, the purpose of the intermediate resource is future-proofing the approach for introduction of managed ScyllaDB Manager instances, in which case the new API can also be extended to serve as a reverse reference to a ScyllaDB Manager instance.
+It is an internal resource managed by Scylla Operator and users are not expected to perform any operations involving it.
 
+To support task scheduling, I propose to add a new API object: `ScyllaDBManagerTask.scylla.scylladb.com/v1alpha1`.
 The new API will allow for referencing both ScyllaDBClusters (scylla.scylladb.com/v1alpha1) and ScyllaDBDatacenters (scylla.scylladb.com/v1alpha1).
-To support the legacy API without duplicating the reconciliation logic, the existing controller responsible for ScyllaCluster translation will translate tasks defined in `scyllaclusters.scylla.scylladb.com/v1.spec.backups` and `scyllaclusters.scylla.scylladb.com/v1.spec.repairs` into the new API objects.
+
+Manager-controller, today deployed alongside ScyllaDB Manager server, will be removed in favour of a new set of controllers, extending Scylla Operator, responsible for registering ScyllaDB clusters and scheduling tasks with unmanaged ScyllaDB Manager server.
+This change is designed to decommission the external component (manager-controller) while maintaining full configuration compatibility on the Kubernetes object level.
+
+To support the legacy API without duplicating the reconciliation logic, the existing controller responsible for ScyllaCluster migration will translate tasks defined in `scyllaclusters.scylla.scylladb.com/v1.spec.backups` and `scyllaclusters.scylla.scylladb.com/v1.spec.repairs` into the new API objects.
+Correspondingly, all existing ScyllaCluster status fields related to ScyllaDB Manager will be updated by the translation controller. 
 
 ### User Stories
 
-#### Unmanaged deployment of ScyllaDB Manager server and manager-controller in multi-datacenter environments
+#### Unmanaged deployment of ScyllaDB Manager server in multi-datacenter environments
 
-As a user, I want to deploy ScyllaDB Manager server deployment, together with the manager-controller deployment, in a multi-datacenter environment, to work with automated, multi-datacenter ScyllaDB clusters.
-To do that, I deploy ScyllaDB Manager server and manager-controller in a single datacenter, alongside the ScyllaDBCluster object.
+As a user, I want to deploy ScyllaDB Manager server deployment in a multi-datacenter environment, to work with automated, multi-datacenter ScyllaDB clusters.
+To do that, I deploy the global ScyllaDB Manager server instance in `scylla-manager` namespace in a single Kubernetes cluster, in which the ScyllaDBCluster object is deployed.
 
 #### Multi-datacenter ScyllaDB cluster registration with unmanaged ScyllaDB Manager
 
-As a user, I want to register multi-datacenter ScyllaDB Clusters, reflected in Kubernetes by ScyllaDBClusters (scylla.scylladb.com/v1alpha1), with ScyllaDB Manager.
-To do that, I mark the ScyllaDBCluster object with an appropriate label. 
+As a user, I want to register multi-datacenter ScyllaDB clusters, reflected in Kubernetes by ScyllaDBClusters (scylla.scylladb.com/v1alpha1), with ScyllaDB Manager.
+To do that, I mark the ScyllaDBCluster object with a predefined label. 
 
 #### ScyllaDB Manager backup and repair task scheduling for multi-datacenter ScyllaDB clusters registered with ScyllaDB Manager
 
@@ -61,9 +66,9 @@ To do that, I create ScyllaDBManagerTask (scylla.scylladb.com/v1alpha1) objects 
 
 As a user, I want to maintain the possibility of scheduling backup and repair tasks for single-datacenter ScyllaDB clusters registered with ScyllaDB Manager.
 To do that, I either:
-- Create ScyllaDBManagerTask (scylla.scylladb.com/v1alpha1) objects referencing a single-datacenter ScyllaDBCluster.
-- Create ScyllaDBManagerTask (scylla.scylladb.com/v1alpha1) objects referencing a ScyllaDBDatacenter.
-- Configure the legacy ScyllaCluster (scylla.scylladb.com/v1) object with `scyllaclusters.scylla.scylladb.com/v1.spec.backups` and `scyllaclusters.scylla.scylladb.com/v1.spec.repairs`.
+- Use the legacy method: configure the legacy ScyllaCluster (scylla.scylladb.com/v1) object with `scyllaclusters.scylla.scylladb.com/v1.spec.backups` and `scyllaclusters.scylla.scylladb.com/v1.spec.repairs`.
+- Use the new method: create ScyllaDBManagerTask (scylla.scylladb.com/v1alpha1) objects referencing a single-datacenter ScyllaDBCluster.
+- Use the new method: create ScyllaDBManagerTask (scylla.scylladb.com/v1alpha1) objects referencing a ScyllaDBDatacenter.
 
 ### Risks and Mitigations
 
@@ -76,6 +81,13 @@ There are multiple insecure communication channels in the existing ScyllaDB Mana
 
 With this proposal we do not make any adjustments to the above. We do not, however, introduce any regressions in that area and the adjustments can be made independently.
 
+#### Manager-controller to in-operator controllers migration
+
+Migrating the ScyllaDB Manager integration logic from the standalone manager-controller application to in-operator controllers carries a risk of disrupting ScyllaDB Manager state.
+Clusters or tasks already existing in ScyllaDB Manager state should not be abandoned nor registered/scheduled multiple times.
+
+To mitigate this, we override the naming convention for clusters and tasks defined with legacy ScyllaCluster (scylla.scylladb.com/v1) API.
+
 #### Multiple ScyllaDB Manager server deployments reconciling the same cluster with a manual multi-datacenter procedure
 
 Users following the manual procedure for deploying multi-datacenter ScyllaDB clusters in interconnected Kubernetes clusters (["Deploy a multi-datacenter ScyllaDB cluster in multiple interconnected Kubernetes clusters"][5]) may end up with multiple ScyllaDB Manager server instances registering and working with the cluster if they deploy ScyllaDB Manager in multiple Kubernetes clusters [#2119][6].
@@ -83,30 +95,119 @@ Users will be expected to deploy ScyllaDB Manager in only one datacenter and/or 
 
 ## Design Details
 
-### Deployment mechanism for ScyllaDB Manager server
+### Deployment mechanism for ScyllaDB Manager
+
+#### Changes to the deployment mechanism in single-datacenter environments
+
+The existing deployment mechanism in single-datacenter environments is modified.
+The standalone manager-controller must no longer be deployed. Its functionality is replaced by a new set of controllers extending Scylla Operator.
+
+#### Deployment mechanism in multi-datacenter environments
 
 We introduce a new deployment mechanism for unmanaged ScyllaDB Manager server deployments in multi-datacenter environments.
-To work with ScyllaDBClusters in multi-datacenter environments, ScyllaDB Manager server must be deployed in the "meta" cluster, in which the ScyllaDBCluster, that the ScyllaDB Manager server should integrate with, is deployed.
-The manager-controller application should be deployed alongside the ScyllaDB Manager server in a dedicated Deployment.
-
-We maintain the same deployment mechanism for unmanaged ScyllaDB manager server deployments in single-datacenter environments with legacy ScyllaClusters.
-
-The managed ScyllaDB Manager server deployments will be a part of a separate effort, not described in this proposal.
+To work with ScyllaDBClusters in multi-datacenter environments, ScyllaDB Manager server must be deployed in the "control plane" cluster, in which the ScyllaDBCluster, that the ScyllaDB Manager server should integrate with, is deployed.
+ScyllaDB Manager server must be deployed in `scylla-manager` namespace.
+The standalone manager-controller must not be deployed.
 
 ### Registration of ScyllaDB clusters with ScyllaDB Manager
 
-The existing manager-controller application will be extended with a dedicated controller reconciling ScyllaDBClusters.
-The new controller will be responsible for registering ScyllaDBClusters with ScyllaDB Manager server.
+To support ScyllaDB cluster registration of both ScyllaDBClusters (scylla.scylladb.com/v1alpha1) and ScyllaDBDatacenters (scylla.scylladb.com/v1alpha1), we introduce a new API: `ScyllaDBManagerClusterRegistration.scylla.scylladb.com/v1alpha1`.
+We extend Scylla Operator with a new controller: GlobalScyllaDBManager controller. The controller does not correspond to any existing Kubernetes resources but the "virtual" ScyllaDB Manager instance.
+GlobalScyllaDBManager controller will create a ScyllaDBManagerClusterRegistration all ScyllaDBCluster and ScyllaDBDatacenter objects across all namespaces with `"scylla-operator.scylladb.com/register-with-global-scylladb-manager": "true"` label in their corresponding namespaces.
+No other clusters in ScyllaDB Manager's state will be subject to reconciliation.
 
-The existing controller reconciling ScyllaClusters, running as part of manager-controller, is replaced with a controller reconciling ScyllaDBDatacenters.
+The GlobalScyllaDBManager controller will not create any ScyllaDBManagerClusterRegistration objects if `scylla-manager` namespace is not present.
 
-To mark ScyllaDBClusters or ScyllaDBDatacenters for registration with ScyllaDB Manager, users will label the objects with a dedicated label: `scylla-operator.scylladb.com/register-with-scylladb-manager`.
-The dedicated label serves as an intermediate step before we introduce managed ScyllaDB Manager server deployments, when the dedicated label will no longer be required as the dedicated API object will be able to select ScyllaDBClusters or ScyllaDBDatacenters using the standard labels.
-We do not modify either API object for this purpose. To save the identification number internal to ScyllaDB Manager state in Kubernetes state, a new, internal annotation is used: `internal.scylla-operator.scylladb.com/scylladb-manager-clusterid`.
+The ScyllaDBManagerClusterRegistration created by GlobalScyllaDBManager controller will have an internal label set up `"internal.scylla-operator.scylladb.com/global-scylladb-manager": "true"`.
 
-To ensure backwards compatibility and keep reconciling all ScyllaClusters in the Kubernetes cluster in which the application and ScyllaDB Manager server deployment are deployed, the translating controller labels all ScyllaDBDatacenters created as a result of translation from ScyllaClusters with the dedicated label.
+The ScyllaDBManagerClusterRegistration objects created for ScyllaDBDatacenters and ScyllaDBClusters matched by the global ScyllaDBManager instance will adhere to the following declarative naming convention to avoid name collisions and exceeding max DNS1123 subdomain length:
+```
+concatenate(
+  truncate(
+    concatenate(toLower(SCYLLADB_CLUSTER_KIND), '-', SCYLLADB_CLUSTER_NAME), 
+    min(len(concatenate(SCYLLADB_CLUSTER_KIND, '-', SCYLLADB_CLUSTER_NAME)), DNS1123SubdomainMaxLength - 5)
+  ),
+  truncate(FNV-1a(SCYLLADB_CLUSTER_KIND, SCYLLADB_CLUSTER_NAME), 5)
+)
+```
+where `FNV-1a` computes a base-36 string representation of a 64-bit FNV-1a hash. `SCYLLADB_CLUSTER_*` parameters refer to ScyllaDBDatacenter or ScyllaDBCluster objects. 
 
-To avoid ScyllaDB manager registering the same cluster through both ScyllaDBCluster and the underlying ScyllaDBDatacenters, the ScyllaDBCluster controller does not propagate the label to the created ScyllaDBDatacenters.
+Scylla Operator will be extended with a controller reconciling ScyllaDBManagerClusterRegistration, responsible for registering ScyllaDBDatacenter and ScyllaDBCluster objects with a ScyllaDB Manager instance.
+For the time being, only ScyllaDBManagerClusterRegistration objects with the internal label `"internal.scylla-operator.scylladb.com/global-scylladb-manager": "true"` will be reconciled.
+The internal label will be used as a selector by GlobalScyllaDBManager controller.
+
+To mark ScyllaDBClusters or ScyllaDBDatacenters for registration with the global ScyllaDB Manager server, users will label the objects with a dedicated label: `"scylla-operator.scylladb.com/register-with-global-scylladb-manager": "true"`.
+To avoid ScyllaDB manager registering the same cluster through both ScyllaDBCluster and the underlying ScyllaDBDatacenters, the ScyllaDBCluster controller will not propagate the label to the created ScyllaDBDatacenters.
+
+#### Naming convention in ScyllaDB Manager state
+
+ScyllaDBManagerClusterRegistration controller create clusters in ScyllaDB Manager state with the following name: `<scylladbmanagerclusterregistration.scylla.scylladb.com/v1alpha1.spec.scyllaDBClusterRef.Kind>/<scylladbmanagerclusterregistration.scylla.scylladb.com/v1alpha1.spec.scyllaDBClusterRef.Name>`
+ScyllaDB Manager clusters created for ScyllaDBManagerClusterRegistration objects with `"internal.scylla-operator.scylladb.com/global-scylladb-manager": "true"` label will additionally be prefixed with `<scylladbmanagerclusterregistration.scylla.scylladb.com/v1alpha1.metadata.namespace>/`.
+
+To ensure continuity with the existing state of global ScyllaDB Manager instance, we will enable overriding the name with an internal annotation `"internal.scylla-operator.scylladb.com/scylladb-manager-cluster-name-override"`.
+GlobalScyllaDBManager controller will propagate the annotation from ScyllaDBDatacenter and ScyllaDBCluster object to ScyllaDBManagerClusterRegistration objects.
+
+#### Definition of `ScyllaDBManagerClusterRegistration.scylla.scylladb.com/v1alpha1`
+
+```go
+type LocalScyllaDBReference struct {
+	// kind specifies the type of the resource.
+	Kind string `json:"kind"`
+	// name specifies the name of the resource.
+	Name string `json:"name"`
+}
+
+type ScyllaDBManagerClusterRegistrationSpec struct {
+	// scyllaDBClusterRef specifies the typed reference to the local ScyllaDB cluster.
+	// Supported kinds are ScyllaDBCluster and ScyllaDBDatacenter in scylla.scylladb.com group.
+	ScyllaDBClusterRef LocalScyllaDBReference `json:"scyllaDBClusterRef"`
+}
+
+type ScyllaDBManagerClusterRegistrationStatus struct {
+	// observedGeneration is the most recent generation observed for this ScyllaDBManagerClusterRegistration. It corresponds to the
+	// ScyllaDBManagerTask's generation, which is updated on mutation by the API Server.
+	// +optional
+	ObservedGeneration *int64 `json:"observedGeneration,omitempty"`
+
+	// conditions hold conditions describing ScyllaDBManagerClusterRegistration state.
+	// +optional
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	
+	// clusterID reflects the internal identification number of the cluster in ScyllaDB Manager state.
+	// +optional
+	ClusterID *string `json:"clusterID,omitempty"`
+}
+
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:storageversion
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:printcolumn:name="PROGRESSING",type=string,JSONPath=".status.conditions[?(@.type=='Progressing')].status"
+// +kubebuilder:printcolumn:name="DEGRADED",type=string,JSONPath=".status.conditions[?(@.type=='Degraded')].status"
+// +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
+
+type ScyllaDBManagerClusterRegistration struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	// spec defines the desired state of ScyllaDBManagerClusterRegistration.
+	Spec ScyllaDBManagerClusterRegistrationSpec `json:"spec,omitempty"`
+
+	// status reflects the observed state of ScyllaDBManagerClusterRegistration.
+	Status ScyllaDBManagerClusterRegistrationStatus `json:"status,omitempty"`
+}
+```
+
+#### `ScyllaCluster.scylla.scylladb.com/v1` conversion mechanism
+
+The existing ScyllaCluster (scylla.scylladb.com/v1) controller, running as part of the standalone manager-controller, will be removed.
+To ensure that users delete the `manager-controller` component, Scylla Operator will verify that the corresponding Deployment is not present in `scylla-manager` namespace. Otherwise, the command will fail to start and log a message with the reason and instructions explaining that `manager-controller` Deployment should be removed.
+
+To ensure backwards compatibility and keep reconciling all ScyllaClusters in the Kubernetes cluster with the global ScyllaDB Manager instance, the migration controller by default labels all ScyllaDBDatacenters created as a result of migration from ScyllaClusters with the label: `"scylla-operator.scylladb.com/register-with-global-scylladb-manager": "true"`. 
+Conversely, the migration controller will translate the status of ScyllaDBManagerClusterRegistration object created for the underlying ScyllaDBDatacenter into ScyllaCluster's status and update it.
+
+The translation controller will set the internal annotation `"internal.scylla-operator.scylladb.com/name-override": "<scyllaclusters.scylla.scylladb.com/v1.metadata.namespace>/<scyllaclusters.scylla.scylladb.com/v1.metadata.name>"` on all ScyllaDBDatacenters created as a result of translation.
 
 #### Auth tokens
 
@@ -116,30 +217,33 @@ In case the annotation is absent, it will retain the already generated token or 
 
 #### Finalizers
 
-Both the ScyllaDBCluster controller and the ScyllaDBDatacenter controller, running as part of the manager-controller, will set a `scylla-operator.scylladb.com/scylladb-manager-cluster` finalizer on the reconciled object so that the clusters are deleted from ScyllaDB Manager state on deletion [#1930][2].
+ScyllaDBManagerClusterRegistration controller, running as part of the operator, will set a `scylla-operator.scylladb.com/scylladbmanagerclusterregistration-deletion` finalizer on the reconciled object so that the clusters are deleted from ScyllaDB Manager state on deletion [#1930][2].
+ScyllaDBManagerClusterRegistration objects registering with global ScyllaDB Manager instance will be considered deregistered if `scylla-manager` namespace no longer exists or has a deletion timestamp set.
 
 #### Status conditions
 
-Both the ScyllaDBCluster controller and the ScyllaDBDatacenter controller, running as part of the manager-controller, will wait for the reconciled object to be rolled out to register it with ScyllaDB Manager.
+ScyllaDBManagerClusterRegistration controller, running as part of the operator, will propagate ScyllaDB Manager client errors to `Degraded` status condition of ScyllaDBManagerClusterRegistration object.
+
+#### `ScyllaDBManagerClusterRegistration.scylla.scylladb.com/v1alpha1` validation
+
+A validating admission webhook will be set up for `ScyllaDBManagerClusterRegistration.scylla.scylladb.com/v1alpha1`.
+All fields will be validated. Only the objects with `"internal.scylla-operator.scylladb.com/global-scylladb-manager": "true"` internal label will be admitted.
 
 ### Scheduling of backup and repair tasks with ScyllaDB Manager
 
-We introduce a new API, `ScyllaDBManagerTask.scylla.scylladb.com/v1alpha1`, which allows users to schedule backup and repair tasks for ScyllaDBClusters and ScyllaDBDatacenters registered with ScyllaDB Manager.
-The existing manager-controller application will be extended with a dedicated controller reconciling ScyllaDBManagerTask objects, responsible for scheduling the specified tasks with ScyllaDB Manager.
+We introduce a new API, `ScyllaDBManagerTask.scylla.scylladb.com/v1alpha1`, which allows users to schedule backup and repair tasks for ScyllaDBClusters and ScyllaDBDatacenters registered with the global ScyllaDB Manager instance.
+Scylla Operator will be extended with a dedicated controller reconciling ScyllaDBManagerTask objects, responsible for scheduling the specified tasks with ScyllaDB Manager.
+No other tasks in ScyllaDB Manager's state will be subject to reconciliation.
 
-Backup and repair tasks defined in `scyllaclusters.scylla.scylladb.com/v1.spec.backups` and `scyllaclusters.scylla.scylladb.com/v1.spec.repairs` will no longer be reconciled directly by manager-controller.
-Instead, the existing ScyllaCluster translation controller, running as part of the operator, is extended to convert the backup and repair tasks defined in `scyllaclusters.scylla.scylladb.com/v1.spec.backups` and `scyllaclusters.scylla.scylladb.com/v1.spec.repairs` into the ScyllaDBManagerTask objects and apply them.
+ScyllaDBManagerTask controller will retrieve the ScyllaDBManager instance that it should schedule the tasks with for the ScyllaDBDatacenter/ScyllaDBCluster object that it refers to through the use of the declaratively named ScyllaDBManagerClusterRegistration object created by GlobalScyllaDBManager controller. 
+For ScyllaDBDatacenter/ScyllaDBCluster objects with `scylla-operator.scylladb.com/register-with-global-scylladb-manager: "true"` label, ScyllaDBManagerTask controller will retrieve the intermediate ScyllaDBManagerClusterRegistration objects from `scylla-manager` namespace.
+For the time being, only ScyllaDBDatacenter/ScyllaDBCluster objects with `scylla-operator.scylladb.com/register-with-global-scylladb-manager: "true"` label will be supported.
 
-ScyllaDBManagerTask objects, created by the translation controller, adhere to the following naming convention to avoid name collisions and exceeding max DNS1123 subdomain length:
-```
-concatenate(
-  truncate(concatenate(SCYLLA_CLUSTER_NAME, '-', TASK_TYPE, '-', TASK_NAME), DNS1123SubdomainMaxLength - 5),
-  truncate(FNV-1a(SCYLLA_CLUSTER_NAME, TASK_TYPE, TASK_NAME), 5)
-)
-```
-where `FNV-1a` computes a base-36 string representation of a 64-bit FNV-1a hash.
+#### Naming convention in ScyllaDB Manager state
 
-Conversely, the controller will convert ScyllaDBManagerTasks' statuses into ScyllaCluster's status and update it.
+ScyllaDBManagerTask controller will set the name of the clusters registered in the global ScyllaDB Manager's state to `scylladbmanagertask.scylla.scylladb.com/v1alpha1.metadata.name`.
+
+To ensure continuity with the existing state of global ScyllaDB Manager instance, we will enable overriding the name with an internal annotation `"internal.scylla-operator.scylladb.com/name-override"`.
 
 #### Definition of `ScyllaDBManagerTask.scylla.scylladb.com/v1alpha1`
 
@@ -254,18 +358,11 @@ type ScyllaDBManagerRepairTaskOptions struct {
 	SmallTableThreshold *resource.Quantity `json:"smallTableThreshold,omitempty"`
 }
 
-type LocalScyllaDBReference struct {
-    // kind is the type of resource being referenced.
-    Kind string `json:"kind"`
-    // name is the name of resource being referenced.
-    Name string `json:"name"`
-}
-
 type ScyllaDBManagerTaskSpec struct {
     // scyllaDBClusterRef is a typed reference to the target cluster in the same namespace.
     // Supported kinds are ScyllaDBCluster (scylla.scylladb.com/v1alpha1) and ScyllaDBDatacenter (scylla.scylladb.com/v1alpha1).
     ScyllaDBClusterRef LocalScyllaDBReference `json:"scyllaDBClusterRef"`
-    
+
     // type specifies the type of the task.
     Type ScyllaDBManagerTaskType `json:"type"`
     
@@ -298,6 +395,7 @@ type ScyllaDBManagerTaskStatus struct {
 // +kubebuilder:storageversion
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:printcolumn:name="PROGRESSING",type=string,JSONPath=".status.conditions[?(@.type=='Progressing')].status"
 // +kubebuilder:printcolumn:name="DEGRADED",type=string,JSONPath=".status.conditions[?(@.type=='Degraded')].status"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 
@@ -313,7 +411,31 @@ type ScyllaDBManagerTask struct {
 }
 ```
 
-#### Notable changes between `ScyllaDBManagerTask.scylla.scylladb.com/v1alpha1` and legacy `ScyllaClusters.scylla.scylladb.com/v1` and the conversion mechanisms
+#### `ScyllaCluster.scylla.scylladb.com/v1` conversion mechanism
+
+The existing ScyllaCluster (scylla.scylladb.com/v1) controller, running as part of the standalone manager-controller, will be removed. Backup and repair tasks defined in `scyllaclusters.scylla.scylladb.com/v1.spec.backups` and `scyllaclusters.scylla.scylladb.com/v1.spec.repairs` will no longer be reconciled directly.
+Instead, the existing ScyllaCluster migration controller, running as part of the operator, is extended to convert the backup and repair tasks defined in `scyllaclusters.scylla.scylladb.com/v1.spec.backups` and `scyllaclusters.scylla.scylladb.com/v1.spec.repairs` into the ScyllaDBManagerTask objects and apply them.
+
+ScyllaDBManagerTask objects, created by the translation controller, adhere to the following naming convention to avoid name collisions and exceeding max DNS1123 subdomain length:
+```
+concatenate(
+  truncate(
+    concatenate(SCYLLA_CLUSTER_NAME, '-', TASK_TYPE, '-', TASK_NAME), 
+    min(len(concatenate(SCYLLA_CLUSTER_NAME, '-', TASK_TYPE, '-', TASK_NAME)), DNS1123SubdomainMaxLength - 5)
+  ),
+  truncate(FNV-1a(SCYLLA_CLUSTER_NAME, TASK_TYPE, TASK_NAME), 5)
+)
+```
+where `FNV-1a` computes a base-36 string representation of a 64-bit FNV-1a hash.
+
+To maintain backwards compatibility, we keep reflecting the tasks' state in ScyllaDB Manager in `scyllaclusters.scylla.scylladb.com/v1.status.backups` and `scyllaclusters.scylla.scylladb.com/v1.status.repairs`.
+The new ScyllaDBManagerTask controller will update ScyllaDBManagerTask objects with an internal annotation `internal.scylla-operator.scylladb.com/scylladb-manager-task-status` in respective JSON encoded structs.
+The translating controller will use the annotation values to update the ScyllaCluster status.
+
+The translation controller will set the internal annotation `"internal.scylla-operator.scylladb.com/scylladb-manager-task-name-override"` on all ScyllaDBManagerTasks created as a result of translation.
+The annotation value will be set to `"<scyllaclusters.scylla.scylladb.com/v1.spec.backups[].name>"` for backup tasks and `"<scyllaclusters.scylla.scylladb.com/v1.spec.repairs[].name>"` for repair tasks created.
+
+#### Notable changes between `ScyllaDBManagerTask.scylla.scylladb.com/v1alpha1` and `ScyllaClusters.scylla.scylladb.com/v1`
 
 ##### Status
 
@@ -321,10 +443,6 @@ The new API drops all status propagation but the internal identification number 
 This is due to the fact that the new ScyllaDBCluster, ScyllaDBDatacenter and ScyllaDBManagerTask controllers will no longer use the objects' statuses for performing updates.
 
 The dedicated controller will propagate any errors returned by the ScyllaDB Manager client to the object's status conditions.
-
-To maintain backwards compatibility, we keep reflecting the tasks' state in ScyllaDB Manager in `scyllaclusters.scylla.scylladb.com/v1.status.backups` and `scyllaclusters.scylla.scylladb.com/v1.status.repairs`.
-The new ScyllaDBManagerTask controller will update ScyllaDBManagerTask objects with an internal annotation `internal.scylla-operator.scylladb.com/scylladb-manager-task-status` in respective JSON encoded structs.
-The translating controller will use the annotation values to update the ScyllaCluster status.
 
 ##### Spec
 The notable changes, as compared to the existing `scyllaclusters.scylla.scylladb.com/v1.spec.backups` and `scyllaclusters.scylla.scylladb.com/v1.spec.repairs`, and the corresponding conversion mechanisms are described below.
@@ -362,7 +480,7 @@ The translating controller will keep respecting the default values defined in Sc
 
 #### Finalizers
 
-The new ScyllaDBManagerTask controller will set a `scylla-operator.scylladb.com/scylladb-manager-task` finalizer on ScyllaDBManagerTask objects so that the tasks are deleted from ScyllaDB Manager state on object deletion.
+The new ScyllaDBManagerTask controller will set a `scylla-operator.scylladb.com/scylladbmanagertask-deletion` finalizer on ScyllaDBManagerTask objects so that the tasks are deleted from ScyllaDB Manager state on object deletion.
 
 #### Status conditions
 
@@ -374,8 +492,6 @@ The translating controller will propagate the error to a corresponding task's st
 
 The translating controller will set the owner references of the created ScyllaDBManagerTask objects to a corresponding ScyllaCluster. The created ScyllaDBManagerTask objects will be garbage collected on ScyllaCluster's deletion according to the deletion policy.
 
-When referencing a ScyllaDBCluster, ScyllaDBManagerTask objects created by the user will not be garbage collected on ScyllaDBCluster deletion. Users will be responsible for deleting the objects.
-
 #### Providing credentials for object storage access by ScyllaDB Manager agent sidecar
 
 ScyllaDB Manager agent containers require credentials to the corresponding regional object storage.
@@ -383,15 +499,16 @@ Users will be responsible for configuring the credentials for each datacenter by
 
 ### Test Plan
 
-The existing set of E2E tests related to ScyllaCluster integration with ScyllaDB Manager will be maintained in an unchanged form. 
-The tests will cover correctness of ScyllaCluster's task spec conversion to ScyllaDBManagerTasks and ScyllaDBManagerTasks' statuses to ScyllaCluster's task statuses.
-Conversion logic between ScyllaCluster's (scylla.scylladb.com/v1) in-manager state, reflected in its status, and ScyllaDBDatacenter's (scylla.scylladb.com/v1alpha1) annotations will be covered by unit tests.
+The existing set of E2E tests related to ScyllaCluster integration with ScyllaDB Manager will be maintained in an unchanged form.
+The tests will cover correctness of ScyllaCluster's task spec conversion to ScyllaDBManagerTasks' specs and ScyllaDBManagerTasks' statuses to ScyllaClusters' task statuses.
+
+Conversion logic between ScyllaCluster's (scylla.scylladb.com/v1) in-manager state, reflected in its status, and ScyllaDBManagerClusterRegistration (scylla.scylladb.com/v1alpha1) will be covered by unit tests.
 Conversion logic between ScyllaCluster's (scylla.scylladb.com/v1) task specification and ScyllaDBManagerTasks (scylla.scylladb.com/v1alpha1) will be covered by unit tests.
 
 A set of new E2E tests will be introduced to test ScyllaDBCluster and ScyllaDBDatacenter integration, including:
-- Registering ScyllaDBClusters with ScyllaDB Manager.
-- Registering ScyllaDBDatacenters with ScyllaDB Manager.
-- Scheduling backup and repair tasks, defined by ScyllaDBManagerTask objects, with ScyllaDB Manager.
+- Registering ScyllaDBDatacenters with global ScyllaDB Manager.
+- Registering ScyllaDBClusters with global ScyllaDB Manager.
+- Scheduling backup and repair tasks, defined by ScyllaDBManagerTask objects, with global ScyllaDB Manager.
   ScyllaDBManagerTasks will be tested with references to ScyllaDBClusters and ScyllaDBDatacenters.
   Tests for backup task scheduling will not cover the workaround for when AuthN is enabled [#2548][4].
 
@@ -401,36 +518,55 @@ No changes are expected in the CI tooling.
 
 ### Upgrade / Downgrade Strategy
 
-The new ScyllaDBManagerTask (scylla.scylladb.com/v1alpha1) CRD will have to be installed on Scylla Operator upgrade. The manager-controller will have to be upgraded together with Scylla Operator.
+The new ScyllaDBManagerClusterRegistration (scylla.scylladb.com/v1alpha1) and ScyllaDBManagerTask (scylla.scylladb.com/v1alpha1) CRDs will have to be installed ahead of Scylla Operator upgrade. 
+Our documentation and release notes cover this requirement for both GitOps and Helm installation paths on the regular basis.
 
-On a downgrade, users will have to manually delete the finalizers set on either resource on its deletion and manually delete the clusters/tasks from ScyllaDB Manager state.
+As the existing manager-controller deployment is dropped with this proposal, users following the Helm installation path will have to upgrade their scylla-manager release ahead of Scylla Operator upgrade. 
+Users following the GitOps installation path will have to manually delete the manager-controller deployment from `scylla-manager` namespace, and perform the regular update of ScyllaDB Manager manifests ahead of Scylla Operator upgrade.
+Release notes should explicitly mention and highlight the manual steps required on the GitOps path. 
+
+On a downgrade, users following the Helm installation path will have to downgrade their scylla-manager release after they downgrade Scylla Operator.
+Similarly, users following the GitOps path will have to apply ScyllaDB Manager manifests after they downgrade Scylla Operator.
+Users will have to return to using task specifications in ScyllaCluster (scylla.scylladb.com/v1). The new CRs will not be migrated back. 
+The new CR objects will be left behind and users might have to delete them manually from Kubernetes, as well as remove their corresponding objects from ScyllaDB Manager state.
 
 ### Version Skew Strategy
 
-#### New Scylla Operator vs current manager-controller
+#### New Scylla Operator with current global ScyllaDB Manager deployment mechanism (manager-controller not removed)
 
-Each ScyllaCluster (scylla.scylladb.com/v1) is going to have ScyllaDBManagerTasks (scylla.scylladb.com/v1alpha1) created by the translating controller for each of the specified tasks (`scyllaclusters.scylla.scylladb.com/v1.spec.backups` and `scyllaclusters.scylla.scylladb.com/v1.spec.repairs`).
-ScyllaDBManagerTasks will not be reconciled by manager-controller. Instead, manager-controller will operate on ScyllaClusters (scylla.scylladb.com/v1) as is.
+The new set of controllers extending Scylla Operator will register each ScyllaCluster (scylla.scylladb.com/v1) and schedule its specified tasks with the global ScyllaDB Manager instance.
+The migration controller will use the name overriding mechanism to ensure clusters and tasks already created in ScyllaDB Manager state by manager-controller are "adopted" by the new controllers. 
 
-ScyllaDBClusters (scylla.scylladb.com/v1alpha1) will not be reconciled by manager-controller.
+Not deleting the manager-controller instance could lead to conflicts between it and the new controllers. 
+To mitigate this, Scylla Operator will verify that `manager-controller` Deployment is not present in `scylla-manager` namespace. Otherwise, the command will fail and log a message with a reason and instructions explaining that `manager-controller` Deployment must be removed from `scylla-manager` namespace. 
 
-#### Current Scylla Operator vs new manager-controller
+#### Current Scylla Operator with new global ScyllaDB Manager deployment mechanism (manager-controller removed)
 
-Tasks defined in `scyllaclusters.scylla.scylladb.com/v1.spec.backups` and `scyllaclusters.scylla.scylladb.com/v1.spec.repairs` will not be translated into ScyllaDBManagerTasks (scylla.scylladb.com/v1alpha1) by the operator.
+No component will perform cluster registration or task scheduling with ScyllaDB Manager. ScyllaDB Manager state will not be lost.
 The manager-controller will not reconcile the tasks defined in ScyllaCluster (scylla.scylladb.com/v1).
-
-When rolled back, users will have to return to using task specifications in ScyllaCluster (scylla.scylladb.com/v1) and manager-controller will reconcile them as is.
 
 ## Implementation History
 
-- 2024-03-17: Initial enhancement proposal
+- 2024-03-17: Initial enhancement proposal.
+- 2024-04-02: Proposal extended with ScyllaDBManagerClusterRegistration (scylla.scylladb.com/v1alpha1) in an effort to future-proof the implementation for a move to managed ScyllaDB Manager deployments.
 
 ## Drawbacks
 
-### Manager-controller status conditions
+### No opt-out mechanism for ScyllaDB Manager integration
 
-The lack of a dedicated API object serving as declaration of intent to register ScyllaDBDatacenters/ScyllaDBClusters with ScyllaDBManager and not extending either ScyllaDBDatacenter's or ScyllaDBCluster's status does not provide an API for the manager-controller to set status conditions related to cluster registration on.
-We decided, however, that creating such an API object will add a superfluous abstraction layer. The status conditions related to cluster registration can be set on a dedicated Custom Resource when managed ScyllaDB Manager server deployments are introduced.
+Introducing a controller of a "virtual" global ScyllaDB Manager instance comes with a drawback of no mechanism to opt-out of ScyllaDB Manager integration, up to this point achieved by not deploying the standalone manager-controller.
+Users can still opt out of using ScyllaDB Manager with Scylla Operator by not deploying the global ScyllaDB Manager server instance. GlobalScyllaDBManager controller will not create any ScyllaDBClusterRegistration objects if `scylla-manager` namespace is not present. 
+Any existing ScyllaDBClusterRegistration objects created by GlobalScyllaDBManager controller will be pruned on `scylla-manager` namespace deletion.
+
+### No owner references for internal ScyllaDBManagerClusterRegistration (scylla.scylladb.com/v1alpha1)
+
+As the GlobalScyllaDBManager controller reconciles a "virtual" global ScyllaDB Manager instance, and not an actual Kubernetes object, ScyllaDBManagerClusterRegistration objects created can't have an owner set up.
+To address this, GlobalScyllaDBManager controller can be maintained after the global ScyllaDB Manager instance is sunsetted to prune all managed ScyllaDBManagerClusterRegistration objects.
+
+### ScyllaDBManagerClusterRegistration (scylla.scylladb.com/v1alpha1) status conditions
+
+With ScyllaDBManagerClusterRegistration (scylla.scylladb.com/v1alpha1) being introduced as an internal resource, status conditions related to cluster's state in ScyllaDB Manager set on the objects will not be intuitively accessible to the end user.
+This is not a regression compared to the existing manager-controller implementation with ScyllaCluster (scylla.scylladb.com/v1) API and the status conditions related to cluster registration can be later be aggregated when a custom resource representing managed ScyllaDB Manager server deployments is introduced.
 
 ### Task run status propagation
 
@@ -442,7 +578,15 @@ Therefore, the integration only covers operations on tasks, not task runs. The p
 ## Alternatives
 
 ### Managed deployments
-We considered introducing managed ScyllaDB Manager server deployments first, but with the proposed approach, the two features are orthogonal.
+We considered introducing managed ScyllaDB Manager server deployments first, but with the proposed approach, the two features are mostly orthogonal.
+
+### Preemptive introduction of ScyllaDBManager API
+
+We considered a preemptive introduction of ScyllaDBManager API, the purpose of which would be to eventually serve as a declaration of intent of creating ScyllaDB Manager infrastructure, while also specifying ScyllaDB clusters to be registered with ScyllaDB Manager server instance.
+Temporarily, ScyllaDBManager (scylla.scylladb.com/v1alpha1) would not involve infrastructure-related operations, but serve as a reflection of the unmanaged ScyllaDB Manager server.
+ScyllaDBManagerClusterRegistration (scylla.scylladb.com/v1alpha1) would reference a ScyllaDBManager object.
+
+We decided that the preemptive introduction of ScyllaDBManager (scylla.scylladb.com/v1alpha1) would be confusing without the infrastructure behind it, and wouldn't bring any value other than bringing the API closer to its eventual state, while also forcing us to make some decisions ahead of time.
 
 ### Addressing backup with AuthN regression
 We considered addressing the automated backup with AuthN regression within this proposal. However, a viable solution would require adjusting the communication channels encryption and means of authentication, including setting up the ScyllaDB Manager server to ScyllaDB CQL over SSL communication and switching from HTTP to HTTPS in manager-controller to ScyllaDB Manager server communication, as well as automated provisioning of CQL credentials to ScyllaDB Manager server, which would require implementing the managed ScyllaDB Manager server deployments first. Therefore, we decided to take an iterative approach.

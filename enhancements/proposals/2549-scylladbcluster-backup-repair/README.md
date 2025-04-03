@@ -40,6 +40,7 @@ To support task scheduling, I propose to add a new API object: `ScyllaDBManagerT
 The new API will allow for referencing both ScyllaDBClusters (scylla.scylladb.com/v1alpha1) and ScyllaDBDatacenters (scylla.scylladb.com/v1alpha1).
 
 Manager-controller, today deployed alongside ScyllaDB Manager server, will be removed in favour of a new set of controllers, extending Scylla Operator, responsible for registering ScyllaDB clusters and scheduling tasks with unmanaged ScyllaDB Manager server.
+This change is designed to decommission the external component (manager-controller) while maintaining full configuration compatibility on the Kubernetes object level.
 
 To support the legacy API without duplicating the reconciliation logic, the existing controller responsible for ScyllaCluster migration will translate tasks defined in `scyllaclusters.scylla.scylladb.com/v1.spec.backups` and `scyllaclusters.scylla.scylladb.com/v1.spec.repairs` into the new API objects.
 Correspondingly, all existing ScyllaCluster status fields related to ScyllaDB Manager will be updated by the translation controller. 
@@ -65,9 +66,9 @@ To do that, I create ScyllaDBManagerTask (scylla.scylladb.com/v1alpha1) objects 
 
 As a user, I want to maintain the possibility of scheduling backup and repair tasks for single-datacenter ScyllaDB clusters registered with ScyllaDB Manager.
 To do that, I either:
-- Create ScyllaDBManagerTask (scylla.scylladb.com/v1alpha1) objects referencing a single-datacenter ScyllaDBCluster.
-- Create ScyllaDBManagerTask (scylla.scylladb.com/v1alpha1) objects referencing a ScyllaDBDatacenter.
-- Configure the legacy ScyllaCluster (scylla.scylladb.com/v1) object with `scyllaclusters.scylla.scylladb.com/v1.spec.backups` and `scyllaclusters.scylla.scylladb.com/v1.spec.repairs`.
+- Use the legacy method: configure the legacy ScyllaCluster (scylla.scylladb.com/v1) object with `scyllaclusters.scylla.scylladb.com/v1.spec.backups` and `scyllaclusters.scylla.scylladb.com/v1.spec.repairs`.
+- Use the new method: create ScyllaDBManagerTask (scylla.scylladb.com/v1alpha1) objects referencing a single-datacenter ScyllaDBCluster.
+- Use the new method: create ScyllaDBManagerTask (scylla.scylladb.com/v1alpha1) objects referencing a ScyllaDBDatacenter.
 
 ### Risks and Mitigations
 
@@ -104,7 +105,7 @@ The standalone manager-controller must no longer be deployed. Its functionality 
 #### Deployment mechanism in multi-datacenter environments
 
 We introduce a new deployment mechanism for unmanaged ScyllaDB Manager server deployments in multi-datacenter environments.
-To work with ScyllaDBClusters in multi-datacenter environments, ScyllaDB Manager server must be deployed in the "meta" cluster, in which the ScyllaDBCluster, that the ScyllaDB Manager server should integrate with, is deployed.
+To work with ScyllaDBClusters in multi-datacenter environments, ScyllaDB Manager server must be deployed in the "control plane" cluster, in which the ScyllaDBCluster, that the ScyllaDB Manager server should integrate with, is deployed.
 ScyllaDB Manager server must be deployed in `scylla-manager` namespace.
 The standalone manager-controller must not be deployed.
 

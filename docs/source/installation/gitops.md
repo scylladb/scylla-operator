@@ -166,7 +166,7 @@ kubectl wait --for='condition=Reconciled' --timeout=10m nodeconfigs.scylla.scyll
 :::{code-block} shell
 :substitutions:
 
-kubectl -n=local-csi-driver apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/common/local-volume-provisioner/local-csi-driver/{00_namespace,00_scylladb-local-xfs.storageclass,10_csidriver,10_driver.serviceaccount,10_provisioner_clusterrole,20_provisioner_clusterrolebinding,50_daemonset}.yaml
+kubectl -n=local-csi-driver apply --server-side -f=https://raw.githubusercontent.com/s{{repository}}/{{revision}}/examples/common/local-volume-provisioner/local-csi-driver/{00_namespace,00_scylladb-local-xfs.storageclass,10_csidriver,10_serviceaccount,20_clusterrolebinding,50_daemonset}.yaml
 :::
 
 :::{code-block} shell

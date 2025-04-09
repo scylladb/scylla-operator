@@ -231,10 +231,15 @@ const (
 )
 
 const (
-	OperatorAppNameWithDomain = "scylla-operator.scylladb.com"
+	OperatorAppNameWithDomain       = "scylla-operator.scylladb.com"
+	RemoteOperatorAppNameWithDomain = "remote.scylla-operator.scylladb.com"
 )
 
 const (
 	RemoteKubernetesClusterFinalizer = "scylla-operator.scylladb.com/remotekubernetescluster-protection"
 	ScyllaDBClusterFinalizer         = "scylla-operator.scylladb.com/scylladbcluster-protection"
+)
+
+const (
+	KubernetesManagedByLabel = "app.kubernetes.io/managed-by"
 )

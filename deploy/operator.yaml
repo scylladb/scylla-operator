@@ -443,6 +443,8 @@ rules:
   - endpoints
   - namespaces
   - services
+  - secrets
+  - configmaps
   verbs:
   - create
   - delete

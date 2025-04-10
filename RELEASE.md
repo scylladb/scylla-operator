@@ -2,6 +2,20 @@
 
 ## Creating a release branch
 
+### Update dependencies versions
+
+Before branching out the new release, make sure to update all dependency versions on master branch.  
+Branch out only once updating PRs are merged.
+
+* Image dependencies
+   * Base image version
+   * Go version 
+* Go dependencies
+* Default versions of:
+  * ScyllaDB
+  * ScyllaDB Monitoring and it's dependencies (Grafana, Prometheus, Prometheus Operator)
+  * ScyllaDB Manager
+
 ### Mark `master` as the next release
 Moving `master` to the next release is done by creating a new `vX.Y+1.Z-alpha.0` tag for the next version.
 ```

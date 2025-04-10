@@ -111,7 +111,7 @@ var _ = g.Describe("RemoteKubernetesCluster finalizer", func() {
 		hasIsBeingUsedCondition := func(rkc *scyllav1alpha1.RemoteKubernetesCluster) (bool, error) {
 			cond := meta.FindStatusCondition(rkc.Status.Conditions, "RemoteKubernetesClusterFinalizerProgressing")
 			return cond != nil &&
-				cond.Reason == "RemoteKubernetesClusterFinalizerProgressing_IsBeingUsed" &&
+				cond.Reason == "IsBeingUsed" &&
 				cond.Status == metav1.ConditionTrue &&
 				cond.ObservedGeneration == rkc.Generation, nil
 		}

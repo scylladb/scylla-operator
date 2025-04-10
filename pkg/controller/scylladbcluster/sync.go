@@ -11,10 +11,12 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -267,8 +269,8 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 
 		err = controllerhelpers.RunSync(
 			&status.Conditions,
-			remoteNamespaceControllerProgressingCondition,
-			remoteNamespaceControllerDegradedCondition,
+			fmt.Sprintf(remoteNamespaceControllerDatacenterProgressingConditionFormat, dc.Name),
+			fmt.Sprintf(remoteNamespaceControllerDatacenterDegradedConditionFormat, dc.Name),
 			sc.Generation,
 			func() ([]metav1.Condition, error) {
 				return scc.syncRemoteNamespaces(ctx, sc, &dc, remoteNamespaceMap[dc.RemoteKubernetesClusterName], managingClusterDomain)
@@ -280,8 +282,8 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 
 		err = controllerhelpers.RunSync(
 			&status.Conditions,
-			remoteRemoteOwnerControllerProgressingCondition,
-			remoteRemoteOwnerControllerDegradedCondition,
+			fmt.Sprintf(remoteRemoteOwnerControllerDatacenterProgressingConditionFormat, dc.Name),
+			fmt.Sprintf(remoteRemoteOwnerControllerDatacenterDegradedConditionFormat, dc.Name),
 			sc.Generation,
 			func() ([]metav1.Condition, error) {
 				var progressingConditions []metav1.Condition
@@ -307,8 +309,8 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 
 		err = controllerhelpers.SyncRemoteNamespacedObject(
 			&status.Conditions,
-			remoteServiceControllerProgressingCondition,
-			remoteServiceControllerDegradedCondition,
+			fmt.Sprintf(remoteServiceControllerDatacenterProgressingConditionFormat, dc.Name),
+			fmt.Sprintf(remoteServiceControllerDatacenterDegradedConditionFormat, dc.Name),
 			sc.Generation,
 			dc.RemoteKubernetesClusterName,
 			remoteNamespaces[dc.RemoteKubernetesClusterName],
@@ -323,8 +325,8 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 
 		err = controllerhelpers.SyncRemoteNamespacedObject(
 			&status.Conditions,
-			remoteEndpointSliceControllerProgressingCondition,
-			remoteEndpointSliceControllerDegradedCondition,
+			fmt.Sprintf(remoteEndpointSliceControllerDatacenterProgressingConditionFormat, dc.Name),
+			fmt.Sprintf(remoteEndpointSliceControllerDatacenterDegradedConditionFormat, dc.Name),
 			sc.Generation,
 			dc.RemoteKubernetesClusterName,
 			remoteNamespaces[dc.RemoteKubernetesClusterName],
@@ -339,8 +341,8 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 
 		err = controllerhelpers.SyncRemoteNamespacedObject(
 			&status.Conditions,
-			remoteEndpointsControllerProgressingCondition,
-			remoteEndpointsControllerDegradedCondition,
+			fmt.Sprintf(remoteEndpointsControllerDatacenterProgressingConditionFormat, dc.Name),
+			fmt.Sprintf(remoteEndpointsControllerDatacenterDegradedConditionFormat, dc.Name),
 			sc.Generation,
 			dc.RemoteKubernetesClusterName,
 			remoteNamespaces[dc.RemoteKubernetesClusterName],
@@ -355,8 +357,8 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 
 		err = controllerhelpers.SyncRemoteNamespacedObject(
 			&status.Conditions,
-			remoteConfigMapControllerProgressingCondition,
-			remoteConfigMapControllerDegradedCondition,
+			fmt.Sprintf(remoteConfigMapControllerDatacenterProgressingConditionFormat, dc.Name),
+			fmt.Sprintf(remoteConfigMapControllerDatacenterDegradedConditionFormat, dc.Name),
 			sc.Generation,
 			dc.RemoteKubernetesClusterName,
 			remoteNamespaces[dc.RemoteKubernetesClusterName],
@@ -371,8 +373,8 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 
 		err = controllerhelpers.SyncRemoteNamespacedObject(
 			&status.Conditions,
-			remoteSecretControllerProgressingCondition,
-			remoteSecretControllerDegradedCondition,
+			fmt.Sprintf(remoteSecretControllerDatacenterProgressingConditionFormat, dc.Name),
+			fmt.Sprintf(remoteSecretControllerDatacenterDegradedConditionFormat, dc.Name),
 			sc.Generation,
 			dc.RemoteKubernetesClusterName,
 			remoteNamespaces[dc.RemoteKubernetesClusterName],
@@ -387,8 +389,8 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 
 		err = controllerhelpers.SyncRemoteNamespacedObject(
 			&status.Conditions,
-			remoteScyllaDBDatacenterControllerProgressingCondition,
-			remoteScyllaDBDatacenterControllerDegradedCondition,
+			fmt.Sprintf(remoteScyllaDBDatacenterControllerDatacenterProgressingConditionFormat, dc.Name),
+			fmt.Sprintf(remoteScyllaDBDatacenterControllerDatacenterDegradedConditionFormat, dc.Name),
 			sc.Generation,
 			dc.RemoteKubernetesClusterName,
 			remoteNamespaces[dc.RemoteKubernetesClusterName],
@@ -399,6 +401,12 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't sync remote scylladbdatacenters: %w", err))
+		}
+
+		// Aggregate datacenter conditions.
+		err = scc.aggregateDatacenterStatusConditions(sc.Generation, &status.Conditions, &dc)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("can't aggregate datacenter %q workload conditions: %w", dc.Name, err))
 		}
 	}
 
@@ -412,6 +420,55 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 	}
 
 	return utilerrors.NewAggregate(errs)
+}
+
+func (scc *Controller) aggregateDatacenterStatusConditions(generation int64, conditions *[]metav1.Condition, dc *scyllav1alpha1.ScyllaDBClusterDatacenter) error {
+	dcAvailableCondition, err := controllerhelpers.AggregateStatusConditions(
+		controllerhelpers.FindStatusConditionsWithSuffix(*conditions, fmt.Sprintf(internalapi.DatacenterAvailableConditionFormat, dc.Name)),
+		metav1.Condition{
+			Type:               fmt.Sprintf(internalapi.DatacenterAvailableConditionFormat, dc.Name),
+			Status:             metav1.ConditionTrue,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: generation,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("can't aggregate datacenter %q available status conditions: %w", dc.Name, err)
+	}
+	apimeta.SetStatusCondition(conditions, dcAvailableCondition)
+
+	dcProgressingCondition, err := controllerhelpers.AggregateStatusConditions(
+		controllerhelpers.FindStatusConditionsWithSuffix(*conditions, fmt.Sprintf(internalapi.DatacenterProgressingConditionFormat, dc.Name)),
+		metav1.Condition{
+			Type:               fmt.Sprintf(internalapi.DatacenterProgressingConditionFormat, dc.Name),
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: generation,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("can't aggregate datacenter %q progressing status conditions: %w", dc.Name, err)
+	}
+	apimeta.SetStatusCondition(conditions, dcProgressingCondition)
+
+	dcDegradedCondition, err := controllerhelpers.AggregateStatusConditions(
+		controllerhelpers.FindStatusConditionsWithSuffix(*conditions, fmt.Sprintf(internalapi.DatacenterDegradedConditionFormat, dc.Name)),
+		metav1.Condition{
+			Type:               fmt.Sprintf(internalapi.DatacenterDegradedConditionFormat, dc.Name),
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: generation,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("can't aggregate datacenter %q degraded status conditions: %w", dc.Name, err)
+	}
+	apimeta.SetStatusCondition(conditions, dcDegradedCondition)
+
+	return nil
 }
 
 func (scc *Controller) chooseRemoteControllers(sc *scyllav1alpha1.ScyllaDBCluster, remoteRemoteOwnersMap map[string]map[string]*scyllav1alpha1.RemoteOwner) map[string]metav1.Object {

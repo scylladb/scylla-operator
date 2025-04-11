@@ -14,6 +14,7 @@ rules:
   - scylladbmonitorings
   - scylladbdatacenters
   - scylladbclusters
+  - scylladbmanagerclusterregistrations
   verbs:
   - get
   - list

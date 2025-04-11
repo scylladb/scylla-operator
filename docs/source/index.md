@@ -54,7 +54,6 @@ You can also navigate through the documentation using the menu.
 :gutter: 4
 
 :::{grid-item-card} {material-regular}`architecture;2em` Architecture
-:link: architecture/overview
 
 Learn about the components of Scylla Operator and how they fit together.
 +++
@@ -62,7 +61,6 @@ Learn about the components of Scylla Operator and how they fit together.
 :::
 
 :::{grid-item-card} {material-regular}`electric_bolt;2em` Installation
-:link: installation/overview
 
 Configure your Kubernetes platform, install prerequisites and all components of {{productName}}.
 +++
@@ -70,14 +68,13 @@ Configure your Kubernetes platform, install prerequisites and all components of 
 :::
 
 :::{grid-item-card} {material-regular}`storage;2em` Working with Resources
-:link: resources/overview
+
 Learn about the APIs that {{productName}} provides. ScyllaClusters, ScyllaDBMonitorings and more.  
 +++
 [Learn more »](resources/overview)
 :::
 
 :::{grid-item-card} {material-regular}`explore;2em` Quickstarts
-:link: quickstarts/index
 
 Get it running right now. Simple GKE and EKS setups.
 
@@ -86,21 +83,21 @@ Get it running right now. Simple GKE and EKS setups.
 :::
 
 :::{grid-item-card} {material-regular}`fitness_center;2em` Performance Tuning
-:link: architecture/tuning
+
 Tune your infra and ScyllaDB cluster for the best performance and low latency. 
 +++
 [Learn more »](architecture/tuning)
 :::
 
 :::{grid-item-card} {material-regular}`build;2em` Support
-:link: support/overview
+
 FAQs, support matrix, must-gather and more. 
 +++
 [Learn more »](support/overview)
 :::
 
 :::{grid-item-card} {material-regular}`menu_book;2em` API Rererence
-:link: api-reference/index
+
 Visit the automatically generated API reference for all our APIs.
 +++
 [Learn more »](api-reference/index)

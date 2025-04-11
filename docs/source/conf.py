@@ -133,7 +133,13 @@ htmlhelp_basename = 'ScyllaDocumentationdoc'
 # URL which points to the root of the HTML documentation.
 html_baseurl = 'https://operator.docs.scylladb.com'
 
-# Dictionary of values to pass into the template engine’s context for all pages
+# Dictionary of values to pass into the template engine's context for all pages
 html_context = {'html_baseurl': html_baseurl}
+
+# Add the _static directory to the static path
+html_static_path = ['_static']
+
+# Add custom JavaScript files
+html_js_files = ['fix-cards.js']
 
 sitemap_url_scheme = "/stable/{link}"

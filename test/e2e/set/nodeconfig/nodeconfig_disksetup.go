@@ -644,8 +644,11 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 
 		framework.By("Verifying the filesystem's integrity")
-		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_repair", "-o", "force_geometry", "-f", "-n", hostDevicePath)
-		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+		// Try several times, as some of the corruption issues may resolve once filesystem is remounted.
+		o.Eventually(func(g o.Gomega) {
+			stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_repair", "-o", "force_geometry", "-f", "-n", hostDevicePath)
+			g.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+		}).WithContext(ctx).WithPolling(time.Second).WithTimeout(5 * time.Minute).Should(o.Succeed())
 
 		framework.By("Waiting for NodeConfig to roll out")
 		ctx3, ctx3Cancel := context.WithTimeout(ctx, nodeConfigRolloutTimeout)

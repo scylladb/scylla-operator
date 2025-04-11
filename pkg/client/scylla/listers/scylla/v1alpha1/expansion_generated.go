@@ -34,6 +34,14 @@ type ScyllaDBDatacenterListerExpansion interface{}
 // ScyllaDBDatacenterNamespaceLister.
 type ScyllaDBDatacenterNamespaceListerExpansion interface{}
 
+// ScyllaDBManagerClusterRegistrationListerExpansion allows custom methods to be added to
+// ScyllaDBManagerClusterRegistrationLister.
+type ScyllaDBManagerClusterRegistrationListerExpansion interface{}
+
+// ScyllaDBManagerClusterRegistrationNamespaceListerExpansion allows custom methods to be added to
+// ScyllaDBManagerClusterRegistrationNamespaceLister.
+type ScyllaDBManagerClusterRegistrationNamespaceListerExpansion interface{}
+
 // ScyllaDBMonitoringListerExpansion allows custom methods to be added to
 // ScyllaDBMonitoringLister.
 type ScyllaDBMonitoringListerExpansion interface{}

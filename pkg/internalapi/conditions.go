@@ -13,6 +13,10 @@ const (
 	NodeTuneProgressingConditionFormat = "NodeTune%sProgressing"
 	NodeTuneDegradedConditionFormat    = "NodeTune%sDegraded"
 
+	DatacenterAvailableConditionFormat   = "Datacenter%sAvailable"
+	DatacenterProgressingConditionFormat = "Datacenter%sProgressing"
+	DatacenterDegradedConditionFormat    = "Datacenter%sDegraded"
+
 	AsExpectedReason        = "AsExpected"
 	ErrorReason             = "Error"
 	ProgressingReason       = "Progressing"

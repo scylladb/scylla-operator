@@ -2,6 +2,7 @@ package scylladbcluster
 
 import (
 	"context"
+	"fmt"
 
 	o "github.com/onsi/gomega"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
@@ -54,72 +55,92 @@ func Verify(ctx context.Context, sc *scyllav1alpha1.ScyllaDBCluster, rkcClusterM
 				condType: "Degraded",
 				status:   metav1.ConditionFalse,
 			},
+		}
 
-			// Controller conditions
-			{
-				condType: "RemoteScyllaDBDatacenterControllerProgressing",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteScyllaDBDatacenterControllerDegraded",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteNamespaceControllerProgressing",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteNamespaceControllerDegraded",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteServiceControllerProgressing",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteServiceControllerDegraded",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteEndpointSliceControllerProgressing",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteEndpointSliceControllerDegraded",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteEndpointsControllerProgressing",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteEndpointsControllerDegraded",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteRemoteOwnerControllerProgressing",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteRemoteOwnerControllerDegraded",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteConfigMapControllerProgressing",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteConfigMapControllerDegraded",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteSecretControllerProgressing",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteSecretControllerDegraded",
-				status:   metav1.ConditionFalse,
-			},
+		for _, dc := range sc.Spec.Datacenters {
+			dcCondList := []condValue{
+				// Datacenter aggregated conditions
+				{
+					condType: fmt.Sprintf("Datacenter%sAvailable", dc.Name),
+					status:   metav1.ConditionTrue,
+				},
+				{
+					condType: fmt.Sprintf("Datacenter%sProgressing", dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("Datacenter%sDegraded", dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+
+				// Datacenter controller conditions
+				{
+					condType: fmt.Sprintf("RemoteScyllaDBDatacenterControllerDatacenter%sProgressing", dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("RemoteScyllaDBDatacenterControllerDatacenter%sDegraded", dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("RemoteNamespaceControllerDatacenter%sProgressing", dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("RemoteNamespaceControllerDatacenter%sDegraded", dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("RemoteServiceControllerDatacenter%sProgressing", dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("RemoteServiceControllerDatacenter%sDegraded", dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("RemoteEndpointSliceControllerDatacenter%sProgressing", dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("RemoteEndpointSliceControllerDatacenter%sDegraded", dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("RemoteEndpointsControllerDatacenter%sProgressing", dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("RemoteEndpointsControllerDatacenter%sDegraded", dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("RemoteRemoteOwnerControllerDatacenter%sProgressing", dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("RemoteRemoteOwnerControllerDatacenter%sDegraded", dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("RemoteConfigMapControllerDatacenter%sProgressing", dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("RemoteConfigMapControllerDatacenter%sDegraded", dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("RemoteSecretControllerDatacenter%sProgressing", dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: fmt.Sprintf("RemoteSecretControllerDatacenter%sDegraded", dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+			}
+
+			condList = append(condList, dcCondList...)
 		}
 
 		expectedConditions := make([]interface{}, 0, len(condList))

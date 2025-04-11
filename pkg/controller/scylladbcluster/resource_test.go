@@ -670,7 +670,7 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 		remoteScyllaDBDatacenters   map[string]map[string]*scyllav1alpha1.ScyllaDBDatacenter
 		remoteNamespace             *corev1.Namespace
 		remoteController            metav1.Object
-		expectedScyllaDBDatacenters []*scyllav1alpha1.ScyllaDBDatacenter
+		expectedScyllaDBDatacenters *scyllav1alpha1.ScyllaDBDatacenter
 	}{
 		{
 			name:       "basic single dc cluster",
@@ -688,9 +688,7 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 					UID:       "1234",
 				},
 			},
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				newBasicScyllaDBDatacenter("dc1", "scylla-abc", []string{}),
-			},
+			expectedScyllaDBDatacenters: newBasicScyllaDBDatacenter("dc1", "scylla-abc", []string{}),
 		},
 		{
 			name: "empty seeds when all three DCs are not reconciled",
@@ -737,9 +735,7 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 					"cluster-dc3": newBasicScyllaDBDatacenter("dc3", "scylla-ccc", []string{}),
 				},
 			},
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{}),
-			},
+			expectedScyllaDBDatacenters: newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{}),
 		},
 		{
 			name: "only first out of three DCs is reconciled, seeds of DC2 should point to DC1",
@@ -786,9 +782,7 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 					"cluster-dc3": newBasicScyllaDBDatacenter("dc3", "scylla-ccc", []string{}),
 				},
 			},
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				newBasicScyllaDBDatacenter("dc2", "scylla-bbb", []string{"cluster-dc1-seed.scylla-bbb.svc"}),
-			},
+			expectedScyllaDBDatacenters: newBasicScyllaDBDatacenter("dc2", "scylla-bbb", []string{"cluster-dc1-seed.scylla-bbb.svc"}),
 		},
 		{
 			name: "first two out of three DCs are reconciled, seeds of non-reconciled DC should point to reconciled ones",
@@ -835,9 +829,7 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 					"cluster-dc3": newBasicScyllaDBDatacenter("dc3", "scylla-ccc", []string{}),
 				},
 			},
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				newBasicScyllaDBDatacenter("dc3", "scylla-ccc", []string{"cluster-dc1-seed.scylla-ccc.svc", "cluster-dc2-seed.scylla-ccc.svc"}),
-			},
+			expectedScyllaDBDatacenters: newBasicScyllaDBDatacenter("dc3", "scylla-ccc", []string{"cluster-dc1-seed.scylla-ccc.svc", "cluster-dc2-seed.scylla-ccc.svc"}),
 		},
 		{
 			name: "not fully reconciled DC is part of other DC seeds if existing ScyllaDBDatacenters are referencing it",
@@ -884,9 +876,7 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 					"cluster-dc3": makeReconciledScyllaDBDatacenter(newBasicScyllaDBDatacenter("dc3", "scylla-ccc", []string{"cluster-dc1-seed.scylla-ccc.svc", "cluster-dc2-seed.scylla-ccc.svc"})),
 				},
 			},
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{"cluster-dc2-seed.scylla-aaa.svc", "cluster-dc3-seed.scylla-aaa.svc"}),
-			},
+			expectedScyllaDBDatacenters: newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{"cluster-dc2-seed.scylla-aaa.svc", "cluster-dc3-seed.scylla-aaa.svc"}),
 		},
 		{
 			name:       "metadata from ScyllaDBCluster spec are propagated into ScyllaDBDatacenter object metadata and spec metadata",
@@ -915,17 +905,15 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 				}
 				return cluster
 			}(),
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Labels["label"] = "foo"
-					dc.Annotations["annotation"] = "foo"
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Labels["label"] = "foo"
+				dc.Annotations["annotation"] = "foo"
 
-					dc.Spec.Metadata.Labels["label"] = "foo"
-					dc.Spec.Metadata.Annotations["annotation"] = "foo"
-					return dc
-				}(),
-			},
+				dc.Spec.Metadata.Labels["label"] = "foo"
+				dc.Spec.Metadata.Annotations["annotation"] = "foo"
+				return dc
+			}(),
 		},
 		{
 			name:       "metadata from database template overrides one specified on cluster level",
@@ -962,17 +950,15 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 				}
 				return cluster
 			}(),
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Labels["label"] = "bar"
-					dc.Annotations["annotation"] = "bar"
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Labels["label"] = "bar"
+				dc.Annotations["annotation"] = "bar"
 
-					dc.Spec.Metadata.Labels["label"] = "bar"
-					dc.Spec.Metadata.Annotations["annotation"] = "bar"
-					return dc
-				}(),
-			},
+				dc.Spec.Metadata.Labels["label"] = "bar"
+				dc.Spec.Metadata.Annotations["annotation"] = "bar"
+				return dc
+			}(),
 		},
 		{
 			name:       "metadata from datacenter spec overrides one specified on cluster and datacenter template level",
@@ -1017,17 +1003,15 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 				}
 				return cluster
 			}(),
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Labels["label"] = "dar"
-					dc.Annotations["annotation"] = "dar"
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Labels["label"] = "dar"
+				dc.Annotations["annotation"] = "dar"
 
-					dc.Spec.Metadata.Labels["label"] = "dar"
-					dc.Spec.Metadata.Annotations["annotation"] = "dar"
-					return dc
-				}(),
-			},
+				dc.Spec.Metadata.Labels["label"] = "dar"
+				dc.Spec.Metadata.Annotations["annotation"] = "dar"
+				return dc
+			}(),
 		},
 		{
 			name:       "forceRedeploymentReason on cluster level propagates into ScyllaDBDatacenter",
@@ -1049,13 +1033,11 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 				cluster.Spec.ForceRedeploymentReason = pointer.Ptr("foo")
 				return cluster
 			}(),
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.ForceRedeploymentReason = pointer.Ptr("foo")
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.ForceRedeploymentReason = pointer.Ptr("foo")
+				return dc
+			}(),
 		},
 		{
 			name: "forceRedeploymentReason on datacenter level is combined with one specified on cluster level",
@@ -1078,13 +1060,11 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 					UID:       "1234",
 				},
 			},
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.ForceRedeploymentReason = pointer.Ptr("foo,bar")
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.ForceRedeploymentReason = pointer.Ptr("foo,bar")
+				return dc
+			}(),
 		},
 		{
 			name: "exposeOptions are are propagated into ScyllaDBDatacenter",
@@ -1136,43 +1116,41 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 					UID:       "1234",
 				},
 			},
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.ExposeOptions = &scyllav1alpha1.ExposeOptions{
-						NodeService: &scyllav1alpha1.NodeServiceTemplate{
-							ObjectTemplateMetadata: scyllav1alpha1.ObjectTemplateMetadata{
-								Labels: map[string]string{
-									"label": "foo",
-								},
-								Annotations: map[string]string{
-									"annotation": "foo",
-								},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.ExposeOptions = &scyllav1alpha1.ExposeOptions{
+					NodeService: &scyllav1alpha1.NodeServiceTemplate{
+						ObjectTemplateMetadata: scyllav1alpha1.ObjectTemplateMetadata{
+							Labels: map[string]string{
+								"label": "foo",
 							},
-							Type:                          scyllav1alpha1.NodeServiceTypeHeadless,
-							ExternalTrafficPolicy:         pointer.Ptr(corev1.ServiceExternalTrafficPolicyCluster),
-							AllocateLoadBalancerNodePorts: pointer.Ptr(true),
-							LoadBalancerClass:             pointer.Ptr("load-balancer-class"),
-							InternalTrafficPolicy:         pointer.Ptr(corev1.ServiceInternalTrafficPolicyCluster),
-						},
-						BroadcastOptions: &scyllav1alpha1.NodeBroadcastOptions{
-							Nodes: scyllav1alpha1.BroadcastOptions{
-								Type: scyllav1alpha1.BroadcastAddressTypePodIP,
-								PodIP: &scyllav1alpha1.PodIPAddressOptions{
-									Source: scyllav1alpha1.StatusPodIPSource,
-								},
-							},
-							Clients: scyllav1alpha1.BroadcastOptions{
-								Type: scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
-								PodIP: &scyllav1alpha1.PodIPAddressOptions{
-									Source: scyllav1alpha1.StatusPodIPSource,
-								},
+							Annotations: map[string]string{
+								"annotation": "foo",
 							},
 						},
-					}
-					return dc
-				}(),
-			},
+						Type:                          scyllav1alpha1.NodeServiceTypeHeadless,
+						ExternalTrafficPolicy:         pointer.Ptr(corev1.ServiceExternalTrafficPolicyCluster),
+						AllocateLoadBalancerNodePorts: pointer.Ptr(true),
+						LoadBalancerClass:             pointer.Ptr("load-balancer-class"),
+						InternalTrafficPolicy:         pointer.Ptr(corev1.ServiceInternalTrafficPolicyCluster),
+					},
+					BroadcastOptions: &scyllav1alpha1.NodeBroadcastOptions{
+						Nodes: scyllav1alpha1.BroadcastOptions{
+							Type: scyllav1alpha1.BroadcastAddressTypePodIP,
+							PodIP: &scyllav1alpha1.PodIPAddressOptions{
+								Source: scyllav1alpha1.StatusPodIPSource,
+							},
+						},
+						Clients: scyllav1alpha1.BroadcastOptions{
+							Type: scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
+							PodIP: &scyllav1alpha1.PodIPAddressOptions{
+								Source: scyllav1alpha1.StatusPodIPSource,
+							},
+						},
+					},
+				}
+				return dc
+			}(),
 		},
 		{
 			name: "disableAutomaticOrphanedNodeReplacement is taken from cluster level",
@@ -1194,13 +1172,11 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 					UID:       "1234",
 				},
 			},
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.DisableAutomaticOrphanedNodeReplacement = pointer.Ptr(true)
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.DisableAutomaticOrphanedNodeReplacement = pointer.Ptr(true)
+				return dc
+			}(),
 		},
 		{
 			name: "minTerminationGracePeriodSeconds is taken from cluster level",
@@ -1222,13 +1198,11 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 					UID:       "1234",
 				},
 			},
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.MinTerminationGracePeriodSeconds = pointer.Ptr[int32](123)
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.MinTerminationGracePeriodSeconds = pointer.Ptr[int32](123)
+				return dc
+			}(),
 		},
 		{
 			name: "minReadySeconds is taken from cluster level",
@@ -1250,13 +1224,11 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 					UID:       "1234",
 				},
 			},
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.MinReadySeconds = pointer.Ptr[int32](123)
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.MinReadySeconds = pointer.Ptr[int32](123)
+				return dc
+			}(),
 		},
 		{
 			name: "readinessGates is taken from cluster level",
@@ -1282,17 +1254,15 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 					UID:       "1234",
 				},
 			},
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.ReadinessGates = []corev1.PodReadinessGate{
-						{
-							ConditionType: "foo",
-						},
-					}
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.ReadinessGates = []corev1.PodReadinessGate{
+					{
+						ConditionType: "foo",
+					},
+				}
+				return dc
+			}(),
 		},
 		{
 			name: "nodes in rack template in datacenter spec overrides ones specified in datacenter template",
@@ -1320,13 +1290,11 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 					UID:       "1234",
 				},
 			},
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.RackTemplate.Nodes = pointer.Ptr[int32](321)
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.RackTemplate.Nodes = pointer.Ptr[int32](321)
+				return dc
+			}(),
 		},
 		{
 			name: "topologyLabelSelector is merged from ones specified on each level",
@@ -1362,18 +1330,16 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 					UID:       "1234",
 				},
 			},
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.RackTemplate.TopologyLabelSelector = map[string]string{
-						"dcTemplateRackTemplate": "foo",
-						"dc":                     "foo",
-						"dcTemplate":             "foo",
-						"dcRackTemplate":         "foo",
-					}
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.RackTemplate.TopologyLabelSelector = map[string]string{
+					"dcTemplateRackTemplate": "foo",
+					"dc":                     "foo",
+					"dcTemplate":             "foo",
+					"dcRackTemplate":         "foo",
+				}
+				return dc
+			}(),
 		},
 		{
 			name: "collision on topologyLabelSelector key, datacenter rackTemplate takes precedence over all others",
@@ -1409,15 +1375,13 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 					UID:       "1234",
 				},
 			},
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.RackTemplate.TopologyLabelSelector = map[string]string{
-						"foo": "dcRackTemplate",
-					}
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.RackTemplate.TopologyLabelSelector = map[string]string{
+					"foo": "dcRackTemplate",
+				}
+				return dc
+			}(),
 		},
 		{
 			name: "collision on topologyLabelSelector key, datacenter takes precedence when datacenter rackTemplate is missing",
@@ -1448,15 +1412,13 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 					UID:       "1234",
 				},
 			},
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.RackTemplate.TopologyLabelSelector = map[string]string{
-						"foo": "dc",
-					}
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.RackTemplate.TopologyLabelSelector = map[string]string{
+					"foo": "dc",
+				}
+				return dc
+			}(),
 		},
 		{
 			name: "in case of collision on topologyLabelSelector key, datacenter template takes precedence when datacenter and datacenter rackTemplate is missing",
@@ -1484,15 +1446,13 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 					UID:       "1234",
 				},
 			},
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.RackTemplate.TopologyLabelSelector = map[string]string{
-						"foo": "dcTemplate",
-					}
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.RackTemplate.TopologyLabelSelector = map[string]string{
+					"foo": "dcTemplate",
+				}
+				return dc
+			}(),
 		},
 		{
 			name: "rackTemplate placement is merged from all levels",
@@ -1520,384 +1480,382 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 					UID:       "1234",
 				},
 			},
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.RackTemplate.Placement = &scyllav1alpha1.Placement{
-						NodeAffinity: &corev1.NodeAffinity{
-							PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{
-								{
-									Weight: 111,
-									Preference: corev1.NodeSelectorTerm{
-										MatchFields: []corev1.NodeSelectorRequirement{
-											{
-												Key:      "foo",
-												Operator: corev1.NodeSelectorOpIn,
-												Values:   []string{"foo"},
-											},
-										},
-										MatchExpressions: []corev1.NodeSelectorRequirement{
-											{
-												Key:      "foo",
-												Operator: corev1.NodeSelectorOpIn,
-												Values:   []string{"foo"},
-											},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.RackTemplate.Placement = &scyllav1alpha1.Placement{
+					NodeAffinity: &corev1.NodeAffinity{
+						PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{
+							{
+								Weight: 111,
+								Preference: corev1.NodeSelectorTerm{
+									MatchFields: []corev1.NodeSelectorRequirement{
+										{
+											Key:      "foo",
+											Operator: corev1.NodeSelectorOpIn,
+											Values:   []string{"foo"},
 										},
 									},
-								},
-								{
-									Weight: 111,
-									Preference: corev1.NodeSelectorTerm{
-										MatchFields: []corev1.NodeSelectorRequirement{
-											{
-												Key:      "bar",
-												Operator: corev1.NodeSelectorOpIn,
-												Values:   []string{"bar"},
-											},
-										},
-										MatchExpressions: []corev1.NodeSelectorRequirement{
-											{
-												Key:      "bar",
-												Operator: corev1.NodeSelectorOpIn,
-												Values:   []string{"bar"},
-											},
-										},
-									},
-								},
-								{
-									Weight: 111,
-									Preference: corev1.NodeSelectorTerm{
-										MatchFields: []corev1.NodeSelectorRequirement{
-											{
-												Key:      "dar",
-												Operator: corev1.NodeSelectorOpIn,
-												Values:   []string{"dar"},
-											},
-										},
-										MatchExpressions: []corev1.NodeSelectorRequirement{
-											{
-												Key:      "dar",
-												Operator: corev1.NodeSelectorOpIn,
-												Values:   []string{"dar"},
-											},
-										},
-									},
-								},
-								{
-									Weight: 111,
-									Preference: corev1.NodeSelectorTerm{
-										MatchFields: []corev1.NodeSelectorRequirement{
-											{
-												Key:      "zar",
-												Operator: corev1.NodeSelectorOpIn,
-												Values:   []string{"zar"},
-											},
-										},
-										MatchExpressions: []corev1.NodeSelectorRequirement{
-											{
-												Key:      "zar",
-												Operator: corev1.NodeSelectorOpIn,
-												Values:   []string{"zar"},
-											},
+									MatchExpressions: []corev1.NodeSelectorRequirement{
+										{
+											Key:      "foo",
+											Operator: corev1.NodeSelectorOpIn,
+											Values:   []string{"foo"},
 										},
 									},
 								},
 							},
-							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-								NodeSelectorTerms: []corev1.NodeSelectorTerm{
-									{
-										MatchFields: []corev1.NodeSelectorRequirement{
-											{
-												Key:      "foo",
-												Operator: corev1.NodeSelectorOpIn,
-												Values:   []string{"foo"},
-											},
-										},
-										MatchExpressions: []corev1.NodeSelectorRequirement{
-											{
-												Key:      "foo",
-												Operator: corev1.NodeSelectorOpIn,
-												Values:   []string{"foo"},
-											},
+							{
+								Weight: 111,
+								Preference: corev1.NodeSelectorTerm{
+									MatchFields: []corev1.NodeSelectorRequirement{
+										{
+											Key:      "bar",
+											Operator: corev1.NodeSelectorOpIn,
+											Values:   []string{"bar"},
 										},
 									},
-									{
-										MatchFields: []corev1.NodeSelectorRequirement{
-											{
-												Key:      "bar",
-												Operator: corev1.NodeSelectorOpIn,
-												Values:   []string{"bar"},
-											},
-										},
-										MatchExpressions: []corev1.NodeSelectorRequirement{
-											{
-												Key:      "bar",
-												Operator: corev1.NodeSelectorOpIn,
-												Values:   []string{"bar"},
-											},
+									MatchExpressions: []corev1.NodeSelectorRequirement{
+										{
+											Key:      "bar",
+											Operator: corev1.NodeSelectorOpIn,
+											Values:   []string{"bar"},
 										},
 									},
-									{
-										MatchFields: []corev1.NodeSelectorRequirement{
-											{
-												Key:      "dar",
-												Operator: corev1.NodeSelectorOpIn,
-												Values:   []string{"dar"},
-											},
-										},
-										MatchExpressions: []corev1.NodeSelectorRequirement{
-											{
-												Key:      "dar",
-												Operator: corev1.NodeSelectorOpIn,
-												Values:   []string{"dar"},
-											},
+								},
+							},
+							{
+								Weight: 111,
+								Preference: corev1.NodeSelectorTerm{
+									MatchFields: []corev1.NodeSelectorRequirement{
+										{
+											Key:      "dar",
+											Operator: corev1.NodeSelectorOpIn,
+											Values:   []string{"dar"},
 										},
 									},
-									{
-										MatchFields: []corev1.NodeSelectorRequirement{
-											{
-												Key:      "zar",
-												Operator: corev1.NodeSelectorOpIn,
-												Values:   []string{"zar"},
-											},
+									MatchExpressions: []corev1.NodeSelectorRequirement{
+										{
+											Key:      "dar",
+											Operator: corev1.NodeSelectorOpIn,
+											Values:   []string{"dar"},
 										},
-										MatchExpressions: []corev1.NodeSelectorRequirement{
-											{
-												Key:      "zar",
-												Operator: corev1.NodeSelectorOpIn,
-												Values:   []string{"zar"},
-											},
+									},
+								},
+							},
+							{
+								Weight: 111,
+								Preference: corev1.NodeSelectorTerm{
+									MatchFields: []corev1.NodeSelectorRequirement{
+										{
+											Key:      "zar",
+											Operator: corev1.NodeSelectorOpIn,
+											Values:   []string{"zar"},
+										},
+									},
+									MatchExpressions: []corev1.NodeSelectorRequirement{
+										{
+											Key:      "zar",
+											Operator: corev1.NodeSelectorOpIn,
+											Values:   []string{"zar"},
 										},
 									},
 								},
 							},
 						},
-						PodAffinity: &corev1.PodAffinity{
-							PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+						RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+							NodeSelectorTerms: []corev1.NodeSelectorTerm{
 								{
-									Weight: 222,
-									PodAffinityTerm: corev1.PodAffinityTerm{
-										LabelSelector: metav1.SetAsLabelSelector(map[string]string{
-											"foo": "foo",
-										}),
-										Namespaces:  []string{"foo"},
-										TopologyKey: "foo",
-										NamespaceSelector: metav1.SetAsLabelSelector(map[string]string{
-											"foo": "foo",
-										}),
-										MatchLabelKeys:    []string{"foo"},
-										MismatchLabelKeys: []string{"foo"},
+									MatchFields: []corev1.NodeSelectorRequirement{
+										{
+											Key:      "foo",
+											Operator: corev1.NodeSelectorOpIn,
+											Values:   []string{"foo"},
+										},
+									},
+									MatchExpressions: []corev1.NodeSelectorRequirement{
+										{
+											Key:      "foo",
+											Operator: corev1.NodeSelectorOpIn,
+											Values:   []string{"foo"},
+										},
 									},
 								},
 								{
-									Weight: 222,
-									PodAffinityTerm: corev1.PodAffinityTerm{
-										LabelSelector: metav1.SetAsLabelSelector(map[string]string{
-											"bar": "bar",
-										}),
-										Namespaces:  []string{"bar"},
-										TopologyKey: "bar",
-										NamespaceSelector: metav1.SetAsLabelSelector(map[string]string{
-											"bar": "bar",
-										}),
-										MatchLabelKeys:    []string{"bar"},
-										MismatchLabelKeys: []string{"bar"},
+									MatchFields: []corev1.NodeSelectorRequirement{
+										{
+											Key:      "bar",
+											Operator: corev1.NodeSelectorOpIn,
+											Values:   []string{"bar"},
+										},
+									},
+									MatchExpressions: []corev1.NodeSelectorRequirement{
+										{
+											Key:      "bar",
+											Operator: corev1.NodeSelectorOpIn,
+											Values:   []string{"bar"},
+										},
 									},
 								},
 								{
-									Weight: 222,
-									PodAffinityTerm: corev1.PodAffinityTerm{
-										LabelSelector: metav1.SetAsLabelSelector(map[string]string{
-											"dar": "dar",
-										}),
-										Namespaces:  []string{"dar"},
-										TopologyKey: "dar",
-										NamespaceSelector: metav1.SetAsLabelSelector(map[string]string{
-											"dar": "dar",
-										}),
-										MatchLabelKeys:    []string{"dar"},
-										MismatchLabelKeys: []string{"dar"},
+									MatchFields: []corev1.NodeSelectorRequirement{
+										{
+											Key:      "dar",
+											Operator: corev1.NodeSelectorOpIn,
+											Values:   []string{"dar"},
+										},
+									},
+									MatchExpressions: []corev1.NodeSelectorRequirement{
+										{
+											Key:      "dar",
+											Operator: corev1.NodeSelectorOpIn,
+											Values:   []string{"dar"},
+										},
 									},
 								},
 								{
-									Weight: 222,
-									PodAffinityTerm: corev1.PodAffinityTerm{
-										LabelSelector: metav1.SetAsLabelSelector(map[string]string{
-											"zar": "zar",
-										}),
-										Namespaces:  []string{"zar"},
-										TopologyKey: "zar",
-										NamespaceSelector: metav1.SetAsLabelSelector(map[string]string{
-											"zar": "zar",
-										}),
-										MatchLabelKeys:    []string{"zar"},
-										MismatchLabelKeys: []string{"zar"},
+									MatchFields: []corev1.NodeSelectorRequirement{
+										{
+											Key:      "zar",
+											Operator: corev1.NodeSelectorOpIn,
+											Values:   []string{"zar"},
+										},
+									},
+									MatchExpressions: []corev1.NodeSelectorRequirement{
+										{
+											Key:      "zar",
+											Operator: corev1.NodeSelectorOpIn,
+											Values:   []string{"zar"},
+										},
 									},
 								},
 							},
-							RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
-								{
-									LabelSelector: &metav1.LabelSelector{
-										MatchLabels: map[string]string{
-											"foo": "foo",
-										},
-									},
+						},
+					},
+					PodAffinity: &corev1.PodAffinity{
+						PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+							{
+								Weight: 222,
+								PodAffinityTerm: corev1.PodAffinityTerm{
+									LabelSelector: metav1.SetAsLabelSelector(map[string]string{
+										"foo": "foo",
+									}),
+									Namespaces:  []string{"foo"},
 									TopologyKey: "foo",
+									NamespaceSelector: metav1.SetAsLabelSelector(map[string]string{
+										"foo": "foo",
+									}),
+									MatchLabelKeys:    []string{"foo"},
+									MismatchLabelKeys: []string{"foo"},
 								},
-								{
-									LabelSelector: &metav1.LabelSelector{
-										MatchLabels: map[string]string{
-											"bar": "bar",
-										},
-									},
+							},
+							{
+								Weight: 222,
+								PodAffinityTerm: corev1.PodAffinityTerm{
+									LabelSelector: metav1.SetAsLabelSelector(map[string]string{
+										"bar": "bar",
+									}),
+									Namespaces:  []string{"bar"},
 									TopologyKey: "bar",
+									NamespaceSelector: metav1.SetAsLabelSelector(map[string]string{
+										"bar": "bar",
+									}),
+									MatchLabelKeys:    []string{"bar"},
+									MismatchLabelKeys: []string{"bar"},
 								},
-								{
-									LabelSelector: &metav1.LabelSelector{
-										MatchLabels: map[string]string{
-											"dar": "dar",
-										},
-									},
+							},
+							{
+								Weight: 222,
+								PodAffinityTerm: corev1.PodAffinityTerm{
+									LabelSelector: metav1.SetAsLabelSelector(map[string]string{
+										"dar": "dar",
+									}),
+									Namespaces:  []string{"dar"},
 									TopologyKey: "dar",
+									NamespaceSelector: metav1.SetAsLabelSelector(map[string]string{
+										"dar": "dar",
+									}),
+									MatchLabelKeys:    []string{"dar"},
+									MismatchLabelKeys: []string{"dar"},
 								},
-								{
-									LabelSelector: &metav1.LabelSelector{
-										MatchLabels: map[string]string{
-											"zar": "zar",
-										},
-									},
+							},
+							{
+								Weight: 222,
+								PodAffinityTerm: corev1.PodAffinityTerm{
+									LabelSelector: metav1.SetAsLabelSelector(map[string]string{
+										"zar": "zar",
+									}),
+									Namespaces:  []string{"zar"},
 									TopologyKey: "zar",
+									NamespaceSelector: metav1.SetAsLabelSelector(map[string]string{
+										"zar": "zar",
+									}),
+									MatchLabelKeys:    []string{"zar"},
+									MismatchLabelKeys: []string{"zar"},
 								},
 							},
 						},
-						PodAntiAffinity: &corev1.PodAntiAffinity{
-							PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
-								{
-									Weight: 333,
-									PodAffinityTerm: corev1.PodAffinityTerm{
-										LabelSelector: metav1.SetAsLabelSelector(map[string]string{
-											"foo": "foo",
-										}),
-										Namespaces:  []string{"foo"},
-										TopologyKey: "foo",
-										NamespaceSelector: metav1.SetAsLabelSelector(map[string]string{
-											"foo": "foo",
-										}),
-										MatchLabelKeys:    []string{"foo"},
-										MismatchLabelKeys: []string{"foo"},
+						RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+							{
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"foo": "foo",
 									},
 								},
-								{
-									Weight: 333,
-									PodAffinityTerm: corev1.PodAffinityTerm{
-										LabelSelector: metav1.SetAsLabelSelector(map[string]string{
-											"bar": "bar",
-										}),
-										Namespaces:  []string{"bar"},
-										TopologyKey: "bar",
-										NamespaceSelector: metav1.SetAsLabelSelector(map[string]string{
-											"bar": "bar",
-										}),
-										MatchLabelKeys:    []string{"bar"},
-										MismatchLabelKeys: []string{"bar"},
-									},
-								},
-								{
-									Weight: 333,
-									PodAffinityTerm: corev1.PodAffinityTerm{
-										LabelSelector: metav1.SetAsLabelSelector(map[string]string{
-											"dar": "dar",
-										}),
-										Namespaces:  []string{"dar"},
-										TopologyKey: "dar",
-										NamespaceSelector: metav1.SetAsLabelSelector(map[string]string{
-											"dar": "dar",
-										}),
-										MatchLabelKeys:    []string{"dar"},
-										MismatchLabelKeys: []string{"dar"},
-									},
-								},
-								{
-									Weight: 333,
-									PodAffinityTerm: corev1.PodAffinityTerm{
-										LabelSelector: metav1.SetAsLabelSelector(map[string]string{
-											"zar": "zar",
-										}),
-										Namespaces:  []string{"zar"},
-										TopologyKey: "zar",
-										NamespaceSelector: metav1.SetAsLabelSelector(map[string]string{
-											"zar": "zar",
-										}),
-										MatchLabelKeys:    []string{"zar"},
-										MismatchLabelKeys: []string{"zar"},
-									},
-								},
+								TopologyKey: "foo",
 							},
-							RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
-								{
-									LabelSelector: &metav1.LabelSelector{
-										MatchLabels: map[string]string{
-											"foo": "foo",
-										},
+							{
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"bar": "bar",
 									},
+								},
+								TopologyKey: "bar",
+							},
+							{
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"dar": "dar",
+									},
+								},
+								TopologyKey: "dar",
+							},
+							{
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"zar": "zar",
+									},
+								},
+								TopologyKey: "zar",
+							},
+						},
+					},
+					PodAntiAffinity: &corev1.PodAntiAffinity{
+						PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+							{
+								Weight: 333,
+								PodAffinityTerm: corev1.PodAffinityTerm{
+									LabelSelector: metav1.SetAsLabelSelector(map[string]string{
+										"foo": "foo",
+									}),
+									Namespaces:  []string{"foo"},
 									TopologyKey: "foo",
+									NamespaceSelector: metav1.SetAsLabelSelector(map[string]string{
+										"foo": "foo",
+									}),
+									MatchLabelKeys:    []string{"foo"},
+									MismatchLabelKeys: []string{"foo"},
 								},
-								{
-									LabelSelector: &metav1.LabelSelector{
-										MatchLabels: map[string]string{
-											"bar": "bar",
-										},
-									},
+							},
+							{
+								Weight: 333,
+								PodAffinityTerm: corev1.PodAffinityTerm{
+									LabelSelector: metav1.SetAsLabelSelector(map[string]string{
+										"bar": "bar",
+									}),
+									Namespaces:  []string{"bar"},
 									TopologyKey: "bar",
+									NamespaceSelector: metav1.SetAsLabelSelector(map[string]string{
+										"bar": "bar",
+									}),
+									MatchLabelKeys:    []string{"bar"},
+									MismatchLabelKeys: []string{"bar"},
 								},
-								{
-									LabelSelector: &metav1.LabelSelector{
-										MatchLabels: map[string]string{
-											"dar": "dar",
-										},
-									},
+							},
+							{
+								Weight: 333,
+								PodAffinityTerm: corev1.PodAffinityTerm{
+									LabelSelector: metav1.SetAsLabelSelector(map[string]string{
+										"dar": "dar",
+									}),
+									Namespaces:  []string{"dar"},
 									TopologyKey: "dar",
+									NamespaceSelector: metav1.SetAsLabelSelector(map[string]string{
+										"dar": "dar",
+									}),
+									MatchLabelKeys:    []string{"dar"},
+									MismatchLabelKeys: []string{"dar"},
 								},
-								{
-									LabelSelector: &metav1.LabelSelector{
-										MatchLabels: map[string]string{
-											"zar": "zar",
-										},
-									},
+							},
+							{
+								Weight: 333,
+								PodAffinityTerm: corev1.PodAffinityTerm{
+									LabelSelector: metav1.SetAsLabelSelector(map[string]string{
+										"zar": "zar",
+									}),
+									Namespaces:  []string{"zar"},
 									TopologyKey: "zar",
+									NamespaceSelector: metav1.SetAsLabelSelector(map[string]string{
+										"zar": "zar",
+									}),
+									MatchLabelKeys:    []string{"zar"},
+									MismatchLabelKeys: []string{"zar"},
 								},
 							},
 						},
-						Tolerations: []corev1.Toleration{
+						RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
 							{
-								Key:      "foo",
-								Operator: corev1.TolerationOpEqual,
-								Value:    "foo",
-								Effect:   corev1.TaintEffectNoSchedule,
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"foo": "foo",
+									},
+								},
+								TopologyKey: "foo",
 							},
 							{
-								Key:      "bar",
-								Operator: corev1.TolerationOpEqual,
-								Value:    "bar",
-								Effect:   corev1.TaintEffectNoSchedule,
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"bar": "bar",
+									},
+								},
+								TopologyKey: "bar",
 							},
 							{
-								Key:      "dar",
-								Operator: corev1.TolerationOpEqual,
-								Value:    "dar",
-								Effect:   corev1.TaintEffectNoSchedule,
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"dar": "dar",
+									},
+								},
+								TopologyKey: "dar",
 							},
 							{
-								Key:      "zar",
-								Operator: corev1.TolerationOpEqual,
-								Value:    "zar",
-								Effect:   corev1.TaintEffectNoSchedule,
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"zar": "zar",
+									},
+								},
+								TopologyKey: "zar",
 							},
 						},
-					}
-					return dc
-				}(),
-			},
+					},
+					Tolerations: []corev1.Toleration{
+						{
+							Key:      "foo",
+							Operator: corev1.TolerationOpEqual,
+							Value:    "foo",
+							Effect:   corev1.TaintEffectNoSchedule,
+						},
+						{
+							Key:      "bar",
+							Operator: corev1.TolerationOpEqual,
+							Value:    "bar",
+							Effect:   corev1.TaintEffectNoSchedule,
+						},
+						{
+							Key:      "dar",
+							Operator: corev1.TolerationOpEqual,
+							Value:    "dar",
+							Effect:   corev1.TaintEffectNoSchedule,
+						},
+						{
+							Key:      "zar",
+							Operator: corev1.TolerationOpEqual,
+							Value:    "zar",
+							Effect:   corev1.TaintEffectNoSchedule,
+						},
+					},
+				}
+				return dc
+			}(),
 		},
 		{
 			name:       "storage metadata is merged from all levels",
@@ -1966,28 +1924,26 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 				}
 				return cluster
 			}(),
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.RackTemplate.ScyllaDB.Storage = &scyllav1alpha1.StorageOptions{
-						Metadata: &scyllav1alpha1.ObjectTemplateMetadata{
-							Labels: map[string]string{
-								"foo": "foo",
-								"bar": "bar",
-								"dar": "dar",
-								"zar": "zar",
-							},
-							Annotations: map[string]string{
-								"foo": "foo",
-								"bar": "bar",
-								"dar": "dar",
-								"zar": "zar",
-							},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.RackTemplate.ScyllaDB.Storage = &scyllav1alpha1.StorageOptions{
+					Metadata: &scyllav1alpha1.ObjectTemplateMetadata{
+						Labels: map[string]string{
+							"foo": "foo",
+							"bar": "bar",
+							"dar": "dar",
+							"zar": "zar",
 						},
-					}
-					return dc
-				}(),
-			},
+						Annotations: map[string]string{
+							"foo": "foo",
+							"bar": "bar",
+							"dar": "dar",
+							"zar": "zar",
+						},
+					},
+				}
+				return dc
+			}(),
 		},
 		{
 			name:       "rack template capacity is taken from datacenter level when provided",
@@ -2028,15 +1984,13 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 				}
 				return cluster
 			}(),
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.RackTemplate.ScyllaDB.Storage = &scyllav1alpha1.StorageOptions{
-						Capacity: "4",
-					}
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.RackTemplate.ScyllaDB.Storage = &scyllav1alpha1.StorageOptions{
+					Capacity: "4",
+				}
+				return dc
+			}(),
 		},
 		{
 			name:       "rack template capacity is taken from datacenter level when provided and datacenter rack template is missing",
@@ -2070,15 +2024,13 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 				}
 				return cluster
 			}(),
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.RackTemplate.ScyllaDB.Storage = &scyllav1alpha1.StorageOptions{
-						Capacity: "3",
-					}
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.RackTemplate.ScyllaDB.Storage = &scyllav1alpha1.StorageOptions{
+					Capacity: "3",
+				}
+				return dc
+			}(),
 		},
 		{
 			name:       "rack template capacity is taken from datacenter template rack template level when provided and datacenter spec and datacenter rack template is missing",
@@ -2107,15 +2059,13 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 				}
 				return cluster
 			}(),
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.RackTemplate.ScyllaDB.Storage = &scyllav1alpha1.StorageOptions{
-						Capacity: "2",
-					}
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.RackTemplate.ScyllaDB.Storage = &scyllav1alpha1.StorageOptions{
+					Capacity: "2",
+				}
+				return dc
+			}(),
 		},
 		{
 			name:       "rack template capacity is taken from datacenter template level when provided all other are not provided",
@@ -2139,15 +2089,13 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 				}
 				return cluster
 			}(),
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.RackTemplate.ScyllaDB.Storage = &scyllav1alpha1.StorageOptions{
-						Capacity: "1",
-					}
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.RackTemplate.ScyllaDB.Storage = &scyllav1alpha1.StorageOptions{
+					Capacity: "1",
+				}
+				return dc
+			}(),
 		},
 		{
 			name:       "rack template storageClassName is taken from datacenter level when provided",
@@ -2188,15 +2136,13 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 				}
 				return cluster
 			}(),
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.RackTemplate.ScyllaDB.Storage = &scyllav1alpha1.StorageOptions{
-						StorageClassName: pointer.Ptr("d"),
-					}
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.RackTemplate.ScyllaDB.Storage = &scyllav1alpha1.StorageOptions{
+					StorageClassName: pointer.Ptr("d"),
+				}
+				return dc
+			}(),
 		},
 		{
 			name:       "rack template storageClassName is taken from datacenter level when provided and datacenter rack template is missing",
@@ -2230,15 +2176,13 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 				}
 				return cluster
 			}(),
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.RackTemplate.ScyllaDB.Storage = &scyllav1alpha1.StorageOptions{
-						StorageClassName: pointer.Ptr("c"),
-					}
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.RackTemplate.ScyllaDB.Storage = &scyllav1alpha1.StorageOptions{
+					StorageClassName: pointer.Ptr("c"),
+				}
+				return dc
+			}(),
 		},
 		{
 			name:       "rack template storageClassName is taken from datacenter template rack template level when provided and datacenter spec and datacenter rack template is missing",
@@ -2267,15 +2211,13 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 				}
 				return cluster
 			}(),
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.RackTemplate.ScyllaDB.Storage = &scyllav1alpha1.StorageOptions{
-						StorageClassName: pointer.Ptr("b"),
-					}
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.RackTemplate.ScyllaDB.Storage = &scyllav1alpha1.StorageOptions{
+					StorageClassName: pointer.Ptr("b"),
+				}
+				return dc
+			}(),
 		},
 		{
 			name:       "rack template storageClassName is taken from datacenter template level when provided all other are not provided",
@@ -2299,15 +2241,13 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 				}
 				return cluster
 			}(),
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.RackTemplate.ScyllaDB.Storage = &scyllav1alpha1.StorageOptions{
-						StorageClassName: pointer.Ptr("a"),
-					}
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.RackTemplate.ScyllaDB.Storage = &scyllav1alpha1.StorageOptions{
+					StorageClassName: pointer.Ptr("a"),
+				}
+				return dc
+			}(),
 		},
 		{
 			name:       "rack template scylladb custom ConfigMap ref is taken from datacenter level when provided",
@@ -2340,13 +2280,11 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 				}
 				return cluster
 			}(),
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.RackTemplate.ScyllaDB.CustomConfigMapRef = pointer.Ptr("d")
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.RackTemplate.ScyllaDB.CustomConfigMapRef = pointer.Ptr("d")
+				return dc
+			}(),
 		},
 		{
 			name:       "rack template scylladb custom ConfigMap ref is taken from datacenter level when provided and datacenter rack template is missing",
@@ -2374,13 +2312,11 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 				}
 				return cluster
 			}(),
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.RackTemplate.ScyllaDB.CustomConfigMapRef = pointer.Ptr("c")
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.RackTemplate.ScyllaDB.CustomConfigMapRef = pointer.Ptr("c")
+				return dc
+			}(),
 		},
 		{
 			name:       "rack template scylladb custom ConfigMap ref is taken from datacenter template rack template level when provided and datacenter spec and datacenter rack template is missing",
@@ -2405,13 +2341,11 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 				}
 				return cluster
 			}(),
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.RackTemplate.ScyllaDB.CustomConfigMapRef = pointer.Ptr("b")
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.RackTemplate.ScyllaDB.CustomConfigMapRef = pointer.Ptr("b")
+				return dc
+			}(),
 		},
 		{
 			name: "rack template scylladb custom ConfigMap ref is taken from datacenter template level when provided all other are not provided",
@@ -2433,13 +2367,11 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 				return cluster
 			}(),
 			datacenter: dcFromSpec(0),
-			expectedScyllaDBDatacenters: []*scyllav1alpha1.ScyllaDBDatacenter{
-				func() *scyllav1alpha1.ScyllaDBDatacenter {
-					dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
-					dc.Spec.RackTemplate.ScyllaDB.CustomConfigMapRef = pointer.Ptr("a")
-					return dc
-				}(),
-			},
+			expectedScyllaDBDatacenters: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				dc := newBasicScyllaDBDatacenter("dc1", "scylla-aaa", []string{})
+				dc.Spec.RackTemplate.ScyllaDB.CustomConfigMapRef = pointer.Ptr("a")
+				return dc
+			}(),
 		},
 	}
 

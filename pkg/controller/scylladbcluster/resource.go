@@ -107,9 +107,7 @@ func MakeRemoteServices(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.S
 	return remoteServices
 }
 
-func MakeRemoteScyllaDBDatacenters(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteScyllaDBDatacenters map[string]map[string]*scyllav1alpha1.ScyllaDBDatacenter, remoteNamespace *corev1.Namespace, remoteController metav1.Object, managingClusterDomain string) ([]*scyllav1alpha1.ScyllaDBDatacenter, error) {
-	var requiredRemoteScyllaDBDatacenters []*scyllav1alpha1.ScyllaDBDatacenter
-
+func MakeRemoteScyllaDBDatacenters(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteScyllaDBDatacenters map[string]map[string]*scyllav1alpha1.ScyllaDBDatacenter, remoteNamespace *corev1.Namespace, remoteController metav1.Object, managingClusterDomain string) (*scyllav1alpha1.ScyllaDBDatacenter, error) {
 	// Given DC is part of seed list if it's fully reconciled, or is part of another DC seeds list,
 	// meaning it was fully reconciled in the past, so DC is part of the cluster.
 	seedDCNamesSet := sets.New[string]()
@@ -156,7 +154,7 @@ func MakeRemoteScyllaDBDatacenters(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyll
 		}
 	}
 
-	requiredRemoteScyllaDBDatacenters = append(requiredRemoteScyllaDBDatacenters, &scyllav1alpha1.ScyllaDBDatacenter{
+	return &scyllav1alpha1.ScyllaDBDatacenter{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            naming.ScyllaDBDatacenterName(sc, dcSpec),
 			Namespace:       remoteNamespace.Name,
@@ -289,9 +287,7 @@ func MakeRemoteScyllaDBDatacenters(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyll
 			// Ref: https://github.com/scylladb/scylla-operator-enterprise/issues/55
 			DNSDomains: nil,
 		},
-	})
-
-	return requiredRemoteScyllaDBDatacenters, nil
+	}, nil
 }
 
 func MakeRemoteEndpointSlices(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteNamespace *corev1.Namespace, remoteController metav1.Object, remoteNamespaces map[string]*corev1.Namespace, remoteServiceLister remotelister.GenericClusterLister[corev1listers.ServiceLister], remotePodLister remotelister.GenericClusterLister[corev1listers.PodLister], managingClusterDomain string) ([]metav1.Condition, []*discoveryv1.EndpointSlice, error) {

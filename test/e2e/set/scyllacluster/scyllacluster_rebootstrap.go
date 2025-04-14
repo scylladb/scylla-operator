@@ -13,6 +13,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,7 +50,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(membersCount))
-		di := scyllaclusterverification.InsertAndVerifyCQLData(ctx, hosts)
+		di := verification.InsertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
 
 		framework.By("Deleting the ScyllaCluster")
@@ -113,6 +114,6 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(hosts).To(o.HaveLen(len(oldHosts)))
 		err = di.SetClientEndpoints(hosts)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		scyllaclusterverification.VerifyCQLData(ctx, di)
+		verification.VerifyCQLData(ctx, di)
 	})
 })

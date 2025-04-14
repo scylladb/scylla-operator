@@ -173,7 +173,7 @@ func TestAggregateStatusConditions(t *testing.T) {
 			expectedCondition: metav1.Condition{
 				Type:               "Available",
 				Status:             metav1.ConditionUnknown,
-				Reason:             "UnknownAvailableFoo_UnknownAvailableFooReason,UnknownAvailableBar_UnknownAvailableBarReason",
+				Reason:             "UnknownAvailableFooReason,UnknownAvailableBarReason",
 				Message:            "UnknownAvailableFoo: UnknownAvailableFoo message\nUnknownAvailableBar: UnknownAvailableBar message",
 				ObservedGeneration: 42,
 			},
@@ -217,7 +217,7 @@ func TestAggregateStatusConditions(t *testing.T) {
 			expectedCondition: metav1.Condition{
 				Type:               "Available",
 				Status:             metav1.ConditionFalse,
-				Reason:             "FooAvailable_FooAvailableReason,BarAvailable_BarAvailableReason",
+				Reason:             "FooAvailableReason,BarAvailableReason",
 				Message:            "FooAvailable: FooAvailable error\nBarAvailable: BarAvailable error",
 				ObservedGeneration: 42,
 			},
@@ -293,7 +293,7 @@ func TestAggregateStatusConditions(t *testing.T) {
 			expectedCondition: metav1.Condition{
 				Type:               "Degraded",
 				Status:             metav1.ConditionUnknown,
-				Reason:             "UnknownDegradedFoo_UnknownDegradedFooReason,UnknownDegradedBar_UnknownDegradedBar reason",
+				Reason:             "UnknownDegradedFooReason,UnknownDegradedBar reason",
 				Message:            "UnknownDegradedFoo: UnknownDegradedFoo message\nUnknownDegradedBar: UnknownDegradedBar message",
 				ObservedGeneration: 42,
 			},
@@ -337,7 +337,7 @@ func TestAggregateStatusConditions(t *testing.T) {
 			expectedCondition: metav1.Condition{
 				Type:               "Degraded",
 				Status:             metav1.ConditionTrue,
-				Reason:             "FooDegraded_FooDegradedReason,BarDegraded_BarDegradedReason",
+				Reason:             "FooDegradedReason,BarDegradedReason",
 				Message:            "FooDegraded: FooDegraded error\nBarDegraded: BarDegraded error",
 				ObservedGeneration: 42,
 			},

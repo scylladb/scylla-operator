@@ -61,7 +61,7 @@ func aggregateStatusConditionInfo(conditions []metav1.Condition) (string, string
 	messages := make([]string, 0, len(conditions))
 
 	for _, c := range conditions {
-		reasons = append(reasons, fmt.Sprintf("%s_%s", c.Type, c.Reason))
+		reasons = append(reasons, c.Reason)
 
 		for _, line := range strings.Split(c.Message, "\n") {
 			messages = append(messages, fmt.Sprintf("%s: %s", c.Type, line))

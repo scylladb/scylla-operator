@@ -1688,6 +1688,30 @@ exec scylla-manager-agent \
 			}(),
 			expectedError: nil,
 		},
+		{
+			name: "non-propagated annotations are not propagated",
+			rack: newBasicRack(),
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				metav1.SetMetaDataLabel(&sdc.ObjectMeta, "scylla-operator.scylladb.com/register-with-global-scylladb-manager", "true")
+				return sdc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: newBasicStatefulSet(),
+			expectedError:       nil,
+		},
+		{
+			name: "non-propagated labels are not propagated",
+			rack: newBasicRack(),
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				metav1.SetMetaDataAnnotation(&sdc.ObjectMeta, "internal.scylla-operator.scylladb.com/scylladb-manager-cluster-name-override", "scylla/scylla")
+				return sdc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: newBasicStatefulSet(),
+			expectedError:       nil,
+		},
 	}
 
 	for _, tc := range tt {

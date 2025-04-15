@@ -110,6 +110,7 @@ rules:
   - remotekubernetesclusters
   - scylladbclusters
   - scylladbmanagerclusterregistrations
+  - scylladbmanagertasks
   verbs:
   - create
   - delete
@@ -127,6 +128,7 @@ rules:
   - remotekubernetesclusters/status
   - scylladbclusters/status
   - scylladbmanagerclusterregistrations/status
+  - scylladbmanagertasks/status
   verbs:
   - get
   - list
@@ -304,6 +306,7 @@ rules:
   - scylladbdatacenters/finalizers
   - scylladbmonitorings/finalizers
   - scylladbmanagerclusterregistrations/finalizers
+  - scylladbmanagertasks/finalizers
   verbs:
   - update
 - apiGroups:

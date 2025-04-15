@@ -9,6 +9,7 @@ import (
 	"github.com/scylladb/scylla-manager/v3/pkg/managerclient"
 	"github.com/scylladb/scylla-manager/v3/swagger/gen/scylla-manager/models"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers/managerclienterrors"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
@@ -69,7 +70,7 @@ func (smcrc *Controller) syncManager(
 		return progressingConditions, fmt.Errorf("can't make required ScyllaDB Manager cluster: %w", err)
 	}
 
-	managerClient, err := smcrc.getManagerClient(ctx, smcr)
+	managerClient, err := controllerhelpers.GetScyllaDBManagerClient(ctx, smcr)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't get manager client: %w", err)
 	}

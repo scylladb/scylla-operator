@@ -9,11 +9,10 @@ import (
 	scyllaclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	scyllav1alpha1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1alpha1"
 	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -100,7 +99,7 @@ func NewController(
 func (gsmc *Controller) addScyllaDBManagerClusterRegistration(obj interface{}) {
 	smcr := obj.(*scyllav1alpha1.ScyllaDBManagerClusterRegistration)
 
-	if !isManagedByGlobalScyllaDBManagerInstance(smcr) {
+	if !controllerhelpers.IsManagedByGlobalScyllaDBManagerInstance(smcr) {
 		klog.V(4).InfoS("Not enqueueing ScyllaDBManagerClusterRegistration not owned by global ScyllaDB Manager", "ScyllaDBManagerClusterRegistration", klog.KObj(smcr), "RV", smcr.ResourceVersion)
 		return
 	}
@@ -130,7 +129,7 @@ func (gsmc *Controller) updateScyllaDBManagerClusterRegistration(old, cur interf
 		})
 	}
 
-	if !isManagedByGlobalScyllaDBManagerInstance(currentSMCR) {
+	if !controllerhelpers.IsManagedByGlobalScyllaDBManagerInstance(currentSMCR) {
 		klog.V(4).InfoS("Not enqueueing ScyllaDBManagerClusterRegistration not owned by global ScyllaDB Manager", "ScyllaDBManagerClusterRegistration", klog.KObj(currentSMCR), "RV", currentSMCR.ResourceVersion)
 		return
 	}
@@ -160,7 +159,7 @@ func (gsmc *Controller) deleteScyllaDBManagerClusterRegistration(obj interface{}
 		}
 	}
 
-	if !isManagedByGlobalScyllaDBManagerInstance(smcr) {
+	if !controllerhelpers.IsManagedByGlobalScyllaDBManagerInstance(smcr) {
 		klog.V(4).InfoS("Not enqueueing ScyllaDBManagerClusterRegistration not owned by global ScyllaDB Manager", "ScyllaDBManagerClusterRegistration", klog.KObj(smcr), "RV", smcr.ResourceVersion)
 		return
 	}
@@ -305,10 +304,6 @@ func (gsmc *Controller) deleteNamespace(obj interface{}) {
 		"RV", ns.ResourceVersion,
 	)
 	gsmc.Enqueue()
-}
-
-func isManagedByGlobalScyllaDBManagerInstance(obj metav1.Object) bool {
-	return naming.GlobalScyllaDBManagerClusterRegistrationSelector().Matches(labels.Set(obj.GetLabels()))
 }
 
 func isGlobalScyllaDBManagerNamespace(ns *corev1.Namespace) bool {

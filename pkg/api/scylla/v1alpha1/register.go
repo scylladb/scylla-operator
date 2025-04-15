@@ -50,6 +50,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&RemoteOwnerList{},
 		&ScyllaDBManagerClusterRegistration{},
 		&ScyllaDBManagerClusterRegistrationList{},
+		&ScyllaDBManagerTask{},
+		&ScyllaDBManagerTaskList{},
 	)
 	metav1.AddToGroupVersion(scheme, GroupVersion)
 	return nil

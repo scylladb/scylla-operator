@@ -110,6 +110,8 @@ func (o *Observer) processNextItem(ctx context.Context) bool {
 	default:
 		if IsNonRetriable(err) {
 			klog.InfoS("Hit non-retriable error. Dropping the item from the queue.", "Error", err)
+			o.queue.Forget(key)
+			return true
 		}
 		utilruntime.HandleError(fmt.Errorf("sync loop has failed: %w", err))
 	}

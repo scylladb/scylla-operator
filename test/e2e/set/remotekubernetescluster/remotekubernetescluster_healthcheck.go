@@ -76,9 +76,12 @@ var _ = g.Describe("RemoteKubernetesCluster", func() {
 			)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
+			framework.By("Breaking access to remote Kubernetes cluster")
 			cluster := f.Cluster(0)
 			kubeconfig, err := utils.GetKubeConfigHavingOperatorRemoteClusterRole(ctx, cluster.KubeAdminClient(), cluster.AdminClientConfig(), rkc.Name, rkc.Spec.KubeconfigSecretRef.Namespace)
 			o.Expect(err).NotTo(o.HaveOccurred())
+
+			validToken := kubeconfig.AuthInfos[kubeconfig.CurrentContext].Token
 
 			kubeconfig.AuthInfos[kubeconfig.CurrentContext].Token = "foo"
 
@@ -97,9 +100,9 @@ var _ = g.Describe("RemoteKubernetesCluster", func() {
 			)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
+			framework.By("Awaiting until RemoteKubernetesCluster %q becomes unavailable", rkc.Name)
 			waitCtx2, waitCtx2Cancel := utils.ContextForRemoteKubernetesClusterRollout(ctx, rkc)
 			defer waitCtx2Cancel()
-
 			rkc, err = controllerhelpers.WaitForRemoteKubernetesClusterState(waitCtx2, f.Cluster(0).ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters(), rkc.Name, controllerhelpers.WaitForStateOptions{},
 				func(rkc *scyllav1alpha1.RemoteKubernetesCluster) (bool, error) {
 					notAvailable := helpers.IsStatusConditionPresentAndFalse(rkc.Status.Conditions, scyllav1alpha1.AvailableCondition, rkc.Generation)
@@ -107,6 +110,30 @@ var _ = g.Describe("RemoteKubernetesCluster", func() {
 					notDegraded := helpers.IsStatusConditionPresentAndFalse(rkc.Status.Conditions, scyllav1alpha1.DegradedCondition, rkc.Generation)
 					return notAvailable && notProgressing && notDegraded, nil
 				},
+			)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			framework.By("Restoring access to remote Kubernetes cluster")
+			kubeconfig.AuthInfos[kubeconfig.CurrentContext].Token = validToken
+
+			fixedKubeconfig, err := clientcmd.Write(kubeconfig)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			_, err = f.Cluster(0).KubeAdminClient().CoreV1().Secrets(rkcSecret.Namespace).Patch(
+				ctx,
+				rkcSecret.Name,
+				types.MergePatchType,
+				[]byte(fmt.Sprintf(`{"stringData": {"kubeconfig": %q } }`, string(fixedKubeconfig))),
+				metav1.PatchOptions{},
+			)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			framework.By("Waiting for the RemoteKubernetesCluster %q to roll out (RV=%s)", rkc.Name, rkc.ResourceVersion)
+			waitCtx3, waitCtx3Cancel := utils.ContextForRemoteKubernetesClusterRollout(ctx, rkc)
+			defer waitCtx3Cancel()
+
+			rkc, err = controllerhelpers.WaitForRemoteKubernetesClusterState(waitCtx3, f.Cluster(0).ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters(), rkc.Name, controllerhelpers.WaitForStateOptions{},
+				utils.IsRemoteKubernetesClusterRolledOut,
 			)
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}

@@ -84,6 +84,14 @@ func (rkcc *Controller) syncClientHealthchecks(ctx context.Context, key string, 
 			Message:            strings.Join(messages, "\n"),
 			ObservedGeneration: rkc.Generation,
 		})
+	} else {
+		apimeta.SetStatusCondition(&status.Conditions, metav1.Condition{
+			Type:               clientHealthcheckControllerAvailableCondition,
+			Status:             metav1.ConditionTrue,
+			Reason:             "ClientProbeSucceded",
+			Message:            strings.Join(messages, "\n"),
+			ObservedGeneration: rkc.Generation,
+		})
 	}
 
 	err := errors.NewAggregate(errs)

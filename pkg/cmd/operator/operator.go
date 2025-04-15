@@ -21,6 +21,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controller/scylladbcluster"
 	"github.com/scylladb/scylla-operator/pkg/controller/scylladbdatacenter"
 	"github.com/scylladb/scylla-operator/pkg/controller/scylladbmanagerclusterregistration"
+	"github.com/scylladb/scylla-operator/pkg/controller/scylladbmanagertask"
 	"github.com/scylladb/scylla-operator/pkg/controller/scylladbmonitoring"
 	"github.com/scylladb/scylla-operator/pkg/controller/scyllaoperatorconfig"
 	"github.com/scylladb/scylla-operator/pkg/crypto"
@@ -700,6 +701,16 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		return fmt.Errorf("can't create ScyllaDBManagerClusterRegistration controller: %w", err)
 	}
 
+	smtc, err := scylladbmanagertask.NewController(
+		o.kubeClient,
+		o.scyllaClient.ScyllaV1alpha1(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBManagerTasks(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBManagerClusterRegistrations(),
+	)
+	if err != nil {
+		return fmt.Errorf("can't create ScyllaDBManagerTask controller: %w", err)
+	}
+
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
@@ -821,6 +832,12 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 	go func() {
 		defer wg.Done()
 		smcrc.Run(ctx, o.ConcurrentSyncs)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		smtc.Run(ctx, o.ConcurrentSyncs)
 	}()
 
 	<-ctx.Done()

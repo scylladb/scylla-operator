@@ -1,0 +1,29 @@
+version: 2
+updates:
+- package-ecosystem: gomod
+  directory: /
+  schedule:
+    interval: weekly
+    day: wednesday
+    time: '08:00' # UTC
+  labels:
+  - priority/important-longterm
+  - kind/dependency-bump
+  groups:
+    k8s.io:
+        applies-to: version-updates
+        patterns:
+          - "k8s.io/*"
+          - "sigs.k8s.io/*"
+    gomod:
+        applies-to: version-updates
+        patterns:
+          - "*"
+- package-ecosystem: github-actions
+  directory: /
+  schedule:
+    interval: weekly
+  labels:
+  - priority/important-longterm
+  - kind/dependency-bump
+vendor: true

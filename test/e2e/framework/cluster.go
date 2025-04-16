@@ -14,6 +14,8 @@ type ClusterInterface interface {
 	AdminClientInterface
 	DefaultNamespaceIfAny() (*corev1.Namespace, Client, bool)
 	CreateUserNamespace(ctx context.Context) (*corev1.Namespace, Client)
+	AddCleaners(cleaners ...Cleaner)
+	AddCollectors(collectors ...Collector)
 }
 
 type createNamespaceFunc func(ctx context.Context, adminClient kubernetes.Interface, adminClientConfig *restclient.Config) (*corev1.Namespace, Client)
@@ -28,7 +30,8 @@ type Cluster struct {
 	defaultNamespace *corev1.Namespace
 	defaultClient    Client
 
-	cleaners []CleanupInterface
+	cleaners   []Cleaner
+	collectors []Collector
 }
 
 var _ AdminClientInterface = &Cluster{}
@@ -50,7 +53,8 @@ func NewCluster(name string, artifactsDir string, restConfig *restclient.Config,
 		defaultClient: Client{
 			Config: nil,
 		},
-		cleaners: nil,
+		cleaners:   nil,
+		collectors: nil,
 	}
 }
 
@@ -62,8 +66,12 @@ func (c *Cluster) DefaultNamespaceIfAny() (*corev1.Namespace, Client, bool) {
 	return c.defaultNamespace, c.defaultClient, true
 }
 
-func (c *Cluster) AddCleaners(cleaners ...CleanupInterface) {
+func (c *Cluster) AddCleaners(cleaners ...Cleaner) {
 	c.cleaners = append(c.cleaners, cleaners...)
+}
+
+func (c *Cluster) AddCollectors(collectors ...Collector) {
+	c.collectors = append(c.collectors, collectors...)
 }
 
 func (c *Cluster) GetArtifactsDir() string {
@@ -73,22 +81,22 @@ func (c *Cluster) GetArtifactsDir() string {
 func (c *Cluster) CreateUserNamespace(ctx context.Context) (*corev1.Namespace, Client) {
 	ns, nsClient := c.createNamespace(ctx, c.KubeAdminClient(), c.AdminClientConfig())
 
-	c.AddCleaners(&NamespaceCleaner{
-		Client:        c.KubeAdminClient(),
-		DynamicClient: c.DynamicAdminClient(),
-		NS:            ns,
-	})
+	cc := NewNamespaceCleanerCollector(c.KubeAdminClient(), c.DynamicAdminClient(), ns)
+	c.AddCleaners(cc)
+	c.AddCollectors(cc)
 
 	return ns, nsClient
 }
 
 func (c *Cluster) Collect(ctx context.Context, ginkgoNamespace string) {
-	for _, cleaner := range c.cleaners {
-		cleaner.CollectToLog(ctx)
+	for _, collector := range c.collectors {
+		collector.CollectToLog(ctx)
 		if len(c.artifactsDir) != 0 {
-			cleaner.Collect(ctx, c.artifactsDir, ginkgoNamespace)
+			collector.Collect(ctx, c.artifactsDir, ginkgoNamespace)
 		}
 	}
+
+	c.collectors = c.collectors[:0]
 }
 
 func (c *Cluster) Cleanup(ctx context.Context) {

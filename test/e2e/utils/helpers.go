@@ -23,6 +23,7 @@ import (
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
@@ -209,6 +210,16 @@ func IsScyllaDBClusterRolledOut(sc *scyllav1alpha1.ScyllaDBCluster) (bool, error
 	framework.Infof("ScyllaDBCluster %s (RV=%s) is rolled out", klog.KObj(sc), sc.ResourceVersion)
 
 	return true, nil
+}
+
+func IsScyllaDBClusterDegraded(sc *scyllav1alpha1.ScyllaDBCluster) (bool, error) {
+	return helpers.IsStatusConditionPresentAndTrue(sc.Status.Conditions, scyllav1alpha1.DegradedCondition, sc.Generation), nil
+}
+
+func IsScyllaDBClusterDatacenterDegradedFunc(dc *scyllav1alpha1.ScyllaDBClusterDatacenter) func(sc *scyllav1alpha1.ScyllaDBCluster) (bool, error) {
+	return func(sc *scyllav1alpha1.ScyllaDBCluster) (bool, error) {
+		return helpers.IsStatusConditionPresentAndTrue(sc.Status.Conditions, fmt.Sprintf(internalapi.DatacenterDegradedConditionFormat, dc.Name), sc.Generation), nil
+	}
 }
 
 func RunEphemeralContainerAndWaitForCompletion(ctx context.Context, client corev1client.PodInterface, podName string, ec *corev1.EphemeralContainer) (*corev1.Pod, error) {

@@ -42,7 +42,7 @@ jobs:
         
         echo "current_tag=${current_tag}" | tee -a ${GITHUB_ENV}
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         path: ${{ github.workspace }}/go/src/github.com/scylladb/scylla-operator
         fetch-depth: 0

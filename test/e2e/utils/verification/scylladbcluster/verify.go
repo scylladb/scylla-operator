@@ -5,8 +5,10 @@ import (
 
 	o "github.com/onsi/gomega"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scylladbclustercontroller "github.com/scylladb/scylla-operator/pkg/controller/scylladbcluster"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
@@ -43,83 +45,103 @@ func Verify(ctx context.Context, sc *scyllav1alpha1.ScyllaDBCluster, rkcClusterM
 		condList := []condValue{
 			// Aggregated conditions
 			{
-				condType: "Available",
+				condType: scyllav1alpha1.AvailableCondition,
 				status:   metav1.ConditionTrue,
 			},
 			{
-				condType: "Progressing",
+				condType: scyllav1alpha1.ProgressingCondition,
 				status:   metav1.ConditionFalse,
 			},
 			{
-				condType: "Degraded",
+				condType: scyllav1alpha1.DegradedCondition,
 				status:   metav1.ConditionFalse,
 			},
+		}
 
-			// Controller conditions
-			{
-				condType: "RemoteScyllaDBDatacenterControllerProgressing",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteScyllaDBDatacenterControllerDegraded",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteNamespaceControllerProgressing",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteNamespaceControllerDegraded",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteServiceControllerProgressing",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteServiceControllerDegraded",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteEndpointSliceControllerProgressing",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteEndpointSliceControllerDegraded",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteEndpointsControllerProgressing",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteEndpointsControllerDegraded",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteRemoteOwnerControllerProgressing",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteRemoteOwnerControllerDegraded",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteConfigMapControllerProgressing",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteConfigMapControllerDegraded",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteSecretControllerProgressing",
-				status:   metav1.ConditionFalse,
-			},
-			{
-				condType: "RemoteSecretControllerDegraded",
-				status:   metav1.ConditionFalse,
-			},
+		for _, dc := range sc.Spec.Datacenters {
+			dcCondList := []condValue{
+				// Datacenter aggregated conditions
+				{
+					condType: internalapi.MakeDatacenterConditionFunc(scyllav1alpha1.AvailableCondition)(dc.Name),
+					status:   metav1.ConditionTrue,
+				},
+				{
+					condType: internalapi.MakeDatacenterConditionFunc(scyllav1alpha1.ProgressingCondition)(dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: internalapi.MakeDatacenterConditionFunc(scyllav1alpha1.DegradedCondition)(dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+
+				// Datacenter controller conditions
+				{
+					condType: scylladbclustercontroller.MakeRemoteKindControllerDatacenterConditionFunc("ScyllaDBDatacenter", scyllav1alpha1.ProgressingCondition)(dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: scylladbclustercontroller.MakeRemoteKindControllerDatacenterConditionFunc("ScyllaDBDatacenter", scyllav1alpha1.DegradedCondition)(dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: scylladbclustercontroller.MakeRemoteKindControllerDatacenterConditionFunc("Namespace", scyllav1alpha1.ProgressingCondition)(dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: scylladbclustercontroller.MakeRemoteKindControllerDatacenterConditionFunc("Namespace", scyllav1alpha1.DegradedCondition)(dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: scylladbclustercontroller.MakeRemoteKindControllerDatacenterConditionFunc("Service", scyllav1alpha1.ProgressingCondition)(dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: scylladbclustercontroller.MakeRemoteKindControllerDatacenterConditionFunc("Service", scyllav1alpha1.DegradedCondition)(dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: scylladbclustercontroller.MakeRemoteKindControllerDatacenterConditionFunc("EndpointSlice", scyllav1alpha1.ProgressingCondition)(dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: scylladbclustercontroller.MakeRemoteKindControllerDatacenterConditionFunc("EndpointSlice", scyllav1alpha1.DegradedCondition)(dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: scylladbclustercontroller.MakeRemoteKindControllerDatacenterConditionFunc("Endpoints", scyllav1alpha1.ProgressingCondition)(dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: scylladbclustercontroller.MakeRemoteKindControllerDatacenterConditionFunc("Endpoints", scyllav1alpha1.DegradedCondition)(dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: scylladbclustercontroller.MakeRemoteKindControllerDatacenterConditionFunc("RemoteOwner", scyllav1alpha1.ProgressingCondition)(dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: scylladbclustercontroller.MakeRemoteKindControllerDatacenterConditionFunc("RemoteOwner", scyllav1alpha1.DegradedCondition)(dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: scylladbclustercontroller.MakeRemoteKindControllerDatacenterConditionFunc("ConfigMap", scyllav1alpha1.ProgressingCondition)(dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: scylladbclustercontroller.MakeRemoteKindControllerDatacenterConditionFunc("ConfigMap", scyllav1alpha1.DegradedCondition)(dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: scylladbclustercontroller.MakeRemoteKindControllerDatacenterConditionFunc("Secret", scyllav1alpha1.ProgressingCondition)(dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: scylladbclustercontroller.MakeRemoteKindControllerDatacenterConditionFunc("Secret", scyllav1alpha1.DegradedCondition)(dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+			}
+
+			condList = append(condList, dcCondList...)
 		}
 
 		expectedConditions := make([]interface{}, 0, len(condList))

@@ -395,6 +395,12 @@ type QueryInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *QueryInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableName
+
+}
+
 // Represents the output of a Query operation.
 type QueryOutput struct {
 
@@ -517,6 +523,9 @@ func (c *Client) addOperationQueryMiddlewares(stack *middleware.Stack, options O
 		return err
 	}
 	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpQueryValidationMiddleware(stack); err != nil {

@@ -116,6 +116,12 @@ type RestoreTableToPointInTimeInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *RestoreTableToPointInTimeInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TargetTableName
+
+}
+
 type RestoreTableToPointInTimeOutput struct {
 
 	// Represents the properties of a table.
@@ -195,6 +201,9 @@ func (c *Client) addOperationRestoreTableToPointInTimeMiddlewares(stack *middlew
 		return err
 	}
 	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpRestoreTableToPointInTimeValidationMiddleware(stack); err != nil {

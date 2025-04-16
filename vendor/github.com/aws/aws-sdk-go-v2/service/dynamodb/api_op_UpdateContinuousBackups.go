@@ -24,7 +24,7 @@ import (
 //
 // LatestRestorableDateTime is typically 5 minutes before the current time. You
 // can restore your table to any point in time in the last 35 days. You can set the
-// recovery period to any value between 1 and 35 days.
+// RecoveryPeriodInDays to any value between 1 and 35 days.
 func (c *Client) UpdateContinuousBackups(ctx context.Context, params *UpdateContinuousBackupsInput, optFns ...func(*Options)) (*UpdateContinuousBackupsOutput, error) {
 	if params == nil {
 		params = &UpdateContinuousBackupsInput{}
@@ -54,6 +54,12 @@ type UpdateContinuousBackupsInput struct {
 	TableName *string
 
 	noSmithyDocumentSerde
+}
+
+func (in *UpdateContinuousBackupsInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableName
+
 }
 
 type UpdateContinuousBackupsOutput struct {
@@ -136,6 +142,9 @@ func (c *Client) addOperationUpdateContinuousBackupsMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpUpdateContinuousBackupsValidationMiddleware(stack); err != nil {

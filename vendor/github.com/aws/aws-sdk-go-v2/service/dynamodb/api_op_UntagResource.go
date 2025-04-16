@@ -61,6 +61,12 @@ type UntagResourceInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *UntagResourceInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.ResourceArn
+
+}
+
 type UntagResourceOutput struct {
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -136,6 +142,9 @@ func (c *Client) addOperationUntagResourceMiddlewares(stack *middleware.Stack, o
 		return err
 	}
 	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpUntagResourceValidationMiddleware(stack); err != nil {

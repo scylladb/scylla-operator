@@ -55,6 +55,12 @@ type DescribeContinuousBackupsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *DescribeContinuousBackupsInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableName
+
+}
+
 type DescribeContinuousBackupsOutput struct {
 
 	// Represents the continuous backups and point in time recovery settings on the
@@ -135,6 +141,9 @@ func (c *Client) addOperationDescribeContinuousBackupsMiddlewares(stack *middlew
 		return err
 	}
 	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeContinuousBackupsValidationMiddleware(stack); err != nil {

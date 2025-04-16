@@ -203,6 +203,12 @@ type DeleteItemInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *DeleteItemInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableName
+
+}
+
 // Represents the output of a DeleteItem operation.
 type DeleteItemOutput struct {
 
@@ -315,6 +321,9 @@ func (c *Client) addOperationDeleteItemMiddlewares(stack *middleware.Stack, opti
 		return err
 	}
 	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteItemValidationMiddleware(stack); err != nil {

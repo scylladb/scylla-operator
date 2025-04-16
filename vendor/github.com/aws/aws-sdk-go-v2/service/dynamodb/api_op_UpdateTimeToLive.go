@@ -74,6 +74,12 @@ type UpdateTimeToLiveInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *UpdateTimeToLiveInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableName
+
+}
+
 type UpdateTimeToLiveOutput struct {
 
 	// Represents the output of an UpdateTimeToLive operation.
@@ -153,6 +159,9 @@ func (c *Client) addOperationUpdateTimeToLiveMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpUpdateTimeToLiveValidationMiddleware(stack); err != nil {

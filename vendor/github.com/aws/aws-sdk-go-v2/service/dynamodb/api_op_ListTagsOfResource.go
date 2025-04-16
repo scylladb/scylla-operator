@@ -50,6 +50,12 @@ type ListTagsOfResourceInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *ListTagsOfResourceInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.ResourceArn
+
+}
+
 type ListTagsOfResourceOutput struct {
 
 	// If this value is returned, there are additional results to be displayed. To
@@ -133,6 +139,9 @@ func (c *Client) addOperationListTagsOfResourceMiddlewares(stack *middleware.Sta
 		return err
 	}
 	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListTagsOfResourceValidationMiddleware(stack); err != nil {

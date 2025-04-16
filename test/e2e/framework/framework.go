@@ -202,6 +202,10 @@ func (f *Framework) AddCleaners(cleaners ...CleanupInterface) {
 	f.defaultCluster().AddCleaners(cleaners...)
 }
 
+func (f *Framework) AddCollectors(collectors ...CollectInterface) {
+	f.defaultCluster().AddCollectors(collectors...)
+}
+
 func (f *Framework) CreateUserNamespace(ctx context.Context) (*corev1.Namespace, Client) {
 	return f.defaultCluster().CreateUserNamespace(ctx)
 }

@@ -135,6 +135,12 @@ type GetItemInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *GetItemInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableName
+
+}
+
 // Represents the output of a GetItem operation.
 type GetItemOutput struct {
 
@@ -225,6 +231,9 @@ func (c *Client) addOperationGetItemMiddlewares(stack *middleware.Stack, options
 		return err
 	}
 	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetItemValidationMiddleware(stack); err != nil {

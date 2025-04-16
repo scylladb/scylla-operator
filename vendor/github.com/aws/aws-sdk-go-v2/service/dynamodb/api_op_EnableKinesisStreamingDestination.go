@@ -50,6 +50,12 @@ type EnableKinesisStreamingDestinationInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *EnableKinesisStreamingDestinationInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableName
+
+}
+
 type EnableKinesisStreamingDestinationOutput struct {
 
 	// The current status of the replication.
@@ -138,6 +144,9 @@ func (c *Client) addOperationEnableKinesisStreamingDestinationMiddlewares(stack 
 		return err
 	}
 	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpEnableKinesisStreamingDestinationValidationMiddleware(stack); err != nil {

@@ -54,6 +54,12 @@ type DescribeTableInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *DescribeTableInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableName
+
+}
+
 // Represents the output of a DescribeTable operation.
 type DescribeTableOutput struct {
 
@@ -134,6 +140,9 @@ func (c *Client) addOperationDescribeTableMiddlewares(stack *middleware.Stack, o
 		return err
 	}
 	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeTableValidationMiddleware(stack); err != nil {

@@ -63,6 +63,12 @@ type TagResourceInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *TagResourceInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.ResourceArn
+
+}
+
 type TagResourceOutput struct {
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -138,6 +144,9 @@ func (c *Client) addOperationTagResourceMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpTagResourceValidationMiddleware(stack); err != nil {

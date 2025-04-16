@@ -73,6 +73,12 @@ type CreateBackupInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *CreateBackupInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableName
+
+}
+
 type CreateBackupOutput struct {
 
 	// Contains the details of the backup created for the table.
@@ -152,6 +158,9 @@ func (c *Client) addOperationCreateBackupMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateBackupValidationMiddleware(stack); err != nil {

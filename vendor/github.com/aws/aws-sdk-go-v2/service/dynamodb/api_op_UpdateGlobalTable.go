@@ -80,6 +80,12 @@ type UpdateGlobalTableInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *UpdateGlobalTableInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.GlobalTableName
+
+}
+
 type UpdateGlobalTableOutput struct {
 
 	// Contains the details of the global table.
@@ -159,6 +165,9 @@ func (c *Client) addOperationUpdateGlobalTableMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpUpdateGlobalTableValidationMiddleware(stack); err != nil {

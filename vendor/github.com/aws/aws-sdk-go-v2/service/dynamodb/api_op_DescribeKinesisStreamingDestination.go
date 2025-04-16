@@ -39,6 +39,12 @@ type DescribeKinesisStreamingDestinationInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *DescribeKinesisStreamingDestinationInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableName
+
+}
+
 type DescribeKinesisStreamingDestinationOutput struct {
 
 	// The list of replica structures for the table being described.
@@ -121,6 +127,9 @@ func (c *Client) addOperationDescribeKinesisStreamingDestinationMiddlewares(stac
 		return err
 	}
 	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeKinesisStreamingDestinationValidationMiddleware(stack); err != nil {

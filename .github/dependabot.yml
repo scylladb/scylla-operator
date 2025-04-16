@@ -2,11 +2,10 @@ version: 2
 updates:
 - package-ecosystem: gomod
   directory: /
-  vendor: true
   schedule:
     interval: weekly
     day: wednesday
-    time: '10:00' # UTC
+    time: '11:00' # UTC
   labels:
   - priority/important-longterm
   - kind/dependency-bump

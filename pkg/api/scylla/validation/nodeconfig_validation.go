@@ -14,7 +14,7 @@ func ValidateNodeConfig(nc *scyllav1alpha1.NodeConfig) field.ErrorList {
 }
 
 func ValidateNodeConfigSpec(spec *scyllav1alpha1.NodeConfigSpec, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if spec.LocalDiskSetup != nil {
 		allErrs = append(allErrs, ValidateLocalDiskSetup(spec.LocalDiskSetup, fldPath.Child("localDiskSetup"))...)
@@ -24,7 +24,7 @@ func ValidateNodeConfigSpec(spec *scyllav1alpha1.NodeConfigSpec, fldPath *field.
 }
 
 func ValidateLocalDiskSetup(lds *scyllav1alpha1.LocalDiskSetup, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	allErrs = append(allErrs, ValidateLocalDiskSetupFilesystems(lds.Filesystems, fldPath.Child("filesystems"))...)
 
@@ -36,13 +36,13 @@ func ValidateLocalDiskSetup(lds *scyllav1alpha1.LocalDiskSetup, fldPath *field.P
 }
 
 func ValidateLocalDiskSetupFilesystems(fcs []scyllav1alpha1.FilesystemConfiguration, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	return allErrs
 }
 
 func ValidateLocalDiskSetupMounts(mcs []scyllav1alpha1.MountConfiguration, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	mountPoints := map[string]struct{}{}
 
@@ -58,7 +58,7 @@ func ValidateLocalDiskSetupMounts(mcs []scyllav1alpha1.MountConfiguration, fldPa
 }
 
 func ValidateLocalDiskSetupRAIDs(rcs []scyllav1alpha1.RAIDConfiguration, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	names := map[string]struct{}{}
 
@@ -90,7 +90,7 @@ func ValidateNodeConfigUpdate(new, old *scyllav1alpha1.NodeConfig) field.ErrorLi
 }
 
 func ValidateNodeConfigSpecUpdate(new, old *scyllav1alpha1.NodeConfig, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	oldLoopDevicesSizes := make(map[string]resource.Quantity)
 	if old.Spec.LocalDiskSetup != nil {

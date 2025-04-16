@@ -66,7 +66,7 @@ func TestValidateScyllaDBDatacenter(t *testing.T) {
 		{
 			name:                "valid",
 			datacenter:          newValidScyllaDBDatacenter(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -224,7 +224,7 @@ func TestValidateScyllaDBDatacenter(t *testing.T) {
 
 				return sdc
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -382,7 +382,7 @@ func TestValidateScyllaDBDatacenter(t *testing.T) {
 				sdc.Spec.ScyllaDB.AlternatorOptions = &scyllav1alpha1.AlternatorOptions{}
 				return sdc
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -399,7 +399,7 @@ func TestValidateScyllaDBDatacenter(t *testing.T) {
 				}
 				return sdc
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -432,7 +432,7 @@ func TestValidateScyllaDBDatacenter(t *testing.T) {
 				}
 				return sdc
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -468,7 +468,7 @@ func TestValidateScyllaDBDatacenter(t *testing.T) {
 				}
 				return sdc
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -740,7 +740,7 @@ func TestValidateScyllaDBDatacenterUpdate(t *testing.T) {
 			name:                "same as old",
 			old:                 newValidScyllaDBDatacenter(),
 			new:                 newValidScyllaDBDatacenter(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -781,7 +781,7 @@ func TestValidateScyllaDBDatacenterUpdate(t *testing.T) {
 				sdc.Spec.Racks = []scyllav1alpha1.RackSpec{}
 				return sdc
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{

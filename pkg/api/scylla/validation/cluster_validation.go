@@ -45,7 +45,7 @@ func ValidateScyllaCluster(c *scyllav1.ScyllaCluster) field.ErrorList {
 }
 
 func ValidateUserManagedTLSCertificateOptions(opts *scyllav1.UserManagedTLSCertificateOptions, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if len(opts.SecretName) == 0 {
 		allErrs = append(allErrs, field.Required(fldPath.Child("secretName"), ""))
@@ -59,7 +59,7 @@ func ValidateUserManagedTLSCertificateOptions(opts *scyllav1.UserManagedTLSCerti
 }
 
 func ValidateOperatorManagedTLSCertificateOptions(opts *scyllav1.OperatorManagedTLSCertificateOptions, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	for _, dnsName := range opts.AdditionalDNSNames {
 		for _, msg := range apimachineryutilvalidation.IsDNS1123Subdomain(dnsName) {
@@ -77,7 +77,7 @@ func ValidateOperatorManagedTLSCertificateOptions(opts *scyllav1.OperatorManaged
 }
 
 func ValidateTLSCertificate(cert *scyllav1.TLSCertificate, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	switch cert.Type {
 	case scyllav1.TLSCertificateTypeOperatorManaged:
@@ -120,7 +120,7 @@ func ValidateTLSCertificate(cert *scyllav1.TLSCertificate, fldPath *field.Path) 
 }
 
 func ValidateAlternatorSpec(alternator *scyllav1.AlternatorSpec, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if alternator.WriteIsolation != "" {
 		found := slices.ContainsItem(AlternatorSupportedWriteIsolation, alternator.WriteIsolation)
@@ -150,7 +150,7 @@ func ValidateAlternatorSpec(alternator *scyllav1.AlternatorSpec, fldPath *field.
 }
 
 func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	rackNames := sets.NewString()
 
@@ -214,7 +214,7 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 }
 
 func ValidateRepairTaskSpec(repairTaskSpec *scyllav1.RepairTaskSpec, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	_, err := strconv.ParseFloat(repairTaskSpec.Intensity, 64)
 	if err != nil {
@@ -227,7 +227,7 @@ func ValidateRepairTaskSpec(repairTaskSpec *scyllav1.RepairTaskSpec, fldPath *fi
 }
 
 func ValidateBackupTaskSpec(backupTaskSpec *scyllav1.BackupTaskSpec, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	allErrs = append(allErrs, ValidateTaskSpec(&backupTaskSpec.TaskSpec, fldPath)...)
 
@@ -235,7 +235,7 @@ func ValidateBackupTaskSpec(backupTaskSpec *scyllav1.BackupTaskSpec, fldPath *fi
 }
 
 func ValidateTaskSpec(taskSpec *scyllav1.TaskSpec, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	allErrs = append(allErrs, ValidateSchedulerTaskSpec(&taskSpec.SchedulerTaskSpec, fldPath)...)
 
@@ -243,7 +243,7 @@ func ValidateTaskSpec(taskSpec *scyllav1.TaskSpec, fldPath *field.Path) field.Er
 }
 
 func ValidateSchedulerTaskSpec(schedulerTaskSpec *scyllav1.SchedulerTaskSpec, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if schedulerTaskSpec.Cron != nil {
 		_, err := cron.NewParser(schedulerTaskSpecCronParseOptions).Parse(*schedulerTaskSpec.Cron)
@@ -281,7 +281,7 @@ func ValidateSchedulerTaskSpec(schedulerTaskSpec *scyllav1.SchedulerTaskSpec, fl
 }
 
 func ValidateExposeOptions(options *scyllav1.ExposeOptions, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if options.CQL != nil && options.CQL.Ingress != nil {
 		allErrs = append(allErrs, ValidateIngressOptions(options.CQL.Ingress, fldPath.Child("cql", "ingress"))...)
@@ -299,7 +299,7 @@ func ValidateExposeOptions(options *scyllav1.ExposeOptions, fldPath *field.Path)
 }
 
 func ValidateNodeBroadcastOptions(options *scyllav1.NodeBroadcastOptions, nodeService *scyllav1.NodeServiceTemplate, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	allErrs = append(allErrs, ValidateBroadcastOptions(options.Clients, nodeService, fldPath.Child("clients"))...)
 	allErrs = append(allErrs, ValidateBroadcastOptions(options.Nodes, nodeService, fldPath.Child("nodes"))...)
@@ -308,7 +308,7 @@ func ValidateNodeBroadcastOptions(options *scyllav1.NodeBroadcastOptions, nodeSe
 }
 
 func ValidateBroadcastOptions(options scyllav1.BroadcastOptions, nodeService *scyllav1.NodeServiceTemplate, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if !slices.ContainsItem(SupportedScyllaV1BroadcastAddressTypes, options.Type) {
 		allErrs = append(allErrs, field.NotSupported(fldPath.Child("type"), options.Type, slices.ConvertSlice(SupportedScyllaV1BroadcastAddressTypes, slices.ToString[scyllav1.BroadcastAddressType])))
@@ -344,7 +344,7 @@ func ValidateBroadcastOptions(options scyllav1.BroadcastOptions, nodeService *sc
 }
 
 func ValidateNodeService(nodeService *scyllav1.NodeServiceTemplate, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	var supportedServiceTypes = []scyllav1.NodeServiceType{
 		scyllav1.NodeServiceTypeHeadless,
@@ -370,7 +370,7 @@ func ValidateNodeService(nodeService *scyllav1.NodeServiceTemplate, fldPath *fie
 }
 
 func ValidateIngressOptions(options *scyllav1.IngressOptions, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if len(options.IngressClassName) != 0 {
 		for _, msg := range apimachineryvalidation.NameIsDNSSubdomain(options.IngressClassName, false) {
@@ -386,7 +386,7 @@ func ValidateIngressOptions(options *scyllav1.IngressOptions, fldPath *field.Pat
 }
 
 func ValidateScyllaClusterRackSpec(rack scyllav1.RackSpec, rackNames sets.String, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	// Check that no two racks have the same name
 	if rackNames.Has(rack.Name) {
@@ -410,7 +410,7 @@ func ValidateScyllaClusterUpdate(new, old *scyllav1.ScyllaCluster) field.ErrorLi
 }
 
 func ValidateScyllaClusterSpecUpdate(new, old *scyllav1.ScyllaCluster, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	// Check that the datacenter name didn't change
 	if old.Spec.Datacenter.Name != new.Spec.Datacenter.Name {

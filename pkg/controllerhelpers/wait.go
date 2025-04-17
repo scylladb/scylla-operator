@@ -196,3 +196,11 @@ func WaitForRemoteKubernetesClusterState(ctx context.Context, client scyllav1alp
 func WaitForScyllaDBClusterState(ctx context.Context, client scyllav1alpha1client.ScyllaDBClusterInterface, name string, options WaitForStateOptions, condition func(cluster *scyllav1alpha1.ScyllaDBCluster) (bool, error), additionalConditions ...func(cluster *scyllav1alpha1.ScyllaDBCluster) (bool, error)) (*scyllav1alpha1.ScyllaDBCluster, error) {
 	return WaitForObjectState[*scyllav1alpha1.ScyllaDBCluster, *scyllav1alpha1.ScyllaDBClusterList](ctx, client, name, options, condition, additionalConditions...)
 }
+
+func WaitForScyllaDBDatacenterState(ctx context.Context, client scyllav1alpha1client.ScyllaDBDatacenterInterface, name string, options WaitForStateOptions, condition func(cluster *scyllav1alpha1.ScyllaDBDatacenter) (bool, error), additionalConditions ...func(*scyllav1alpha1.ScyllaDBDatacenter) (bool, error)) (*scyllav1alpha1.ScyllaDBDatacenter, error) {
+	return WaitForObjectState[*scyllav1alpha1.ScyllaDBDatacenter, *scyllav1alpha1.ScyllaDBDatacenterList](ctx, client, name, options, condition, additionalConditions...)
+}
+
+func WaitForScyllaDBManagerClusterRegistrationState(ctx context.Context, client scyllav1alpha1client.ScyllaDBManagerClusterRegistrationInterface, name string, options WaitForStateOptions, condition func(cluster *scyllav1alpha1.ScyllaDBManagerClusterRegistration) (bool, error), additionalConditions ...func(*scyllav1alpha1.ScyllaDBManagerClusterRegistration) (bool, error)) (*scyllav1alpha1.ScyllaDBManagerClusterRegistration, error) {
+	return WaitForObjectState[*scyllav1alpha1.ScyllaDBManagerClusterRegistration, *scyllav1alpha1.ScyllaDBManagerClusterRegistrationList](ctx, client, name, options, condition, additionalConditions...)
+}

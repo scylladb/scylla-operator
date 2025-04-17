@@ -46,6 +46,9 @@ var (
 	//go:embed "scylladbcluster.yaml.tmpl"
 	ScyllaDBClusterTemplateString string
 	ScyllaDBClusterTemplate       = ParseObjectTemplateOrDie[*scyllav1alpha1.ScyllaDBCluster]("scylladbcluster", ScyllaDBClusterTemplateString)
+
+	//go:embed "unauthorized.kubeconfig.yaml"
+	UnauthorizedKubeconfigBytes []byte
 )
 
 type NodeConfigBytes []byte

@@ -23,35 +23,37 @@ import (
 )
 
 type CleanupInterface interface {
-	CollectToLog(ctx context.Context)
-	Collect(ctx context.Context, artifactsDir string, ginkgoNamespace string)
 	Cleanup(ctx context.Context)
 }
 
-type NamespaceCleaner struct {
+type CollectInterface interface {
+	CollectToLog(ctx context.Context)
+	Collect(ctx context.Context, artifactsDir string, ginkgoNamespace string)
+}
+
+type CollectCleanupInterface interface {
+	CleanupInterface
+	CollectInterface
+}
+
+type NamespaceCleanerCollector struct {
 	Client        kubernetes.Interface
 	DynamicClient dynamic.Interface
 	NS            *corev1.Namespace
 }
 
-var _ CleanupInterface = &NamespaceCleaner{}
+var _ CleanupInterface = &NamespaceCleanerCollector{}
+var _ CollectInterface = &NamespaceCleanerCollector{}
 
-func (nc *NamespaceCleaner) CollectToLog(ctx context.Context) {
-	// Log events if the test failed.
-	if g.CurrentSpecReport().Failed() {
-		By("Collecting events from namespace %q.", nc.NS.Name)
-		DumpEventsInNamespace(ctx, nc.Client, nc.NS.Name)
+func NewNamespaceCleanerCollector(client kubernetes.Interface, dynamicClient dynamic.Interface, namespace *corev1.Namespace) *NamespaceCleanerCollector {
+	return &NamespaceCleanerCollector{
+		Client:        client,
+		DynamicClient: dynamicClient,
+		NS:            namespace,
 	}
 }
 
-func (nc *NamespaceCleaner) Collect(ctx context.Context, artifactsDir string, _ string) {
-	By("Collecting dumps from namespace %q.", nc.NS.Name)
-
-	err := DumpNamespace(ctx, cacheddiscovery.NewMemCacheClient(nc.Client.Discovery()), nc.DynamicClient, nc.Client.CoreV1(), artifactsDir, nc.NS.Name)
-	o.Expect(err).NotTo(o.HaveOccurred())
-}
-
-func (nc *NamespaceCleaner) Cleanup(ctx context.Context) {
+func (nc *NamespaceCleanerCollector) Cleanup(ctx context.Context) {
 	By("Destroying namespace %q.", nc.NS.Name)
 	err := nc.Client.CoreV1().Namespaces().Delete(
 		ctx,
@@ -71,6 +73,21 @@ func (nc *NamespaceCleaner) Cleanup(ctx context.Context) {
 	err = WaitForObjectDeletion(ctx, nc.DynamicClient, corev1.SchemeGroupVersion.WithResource("namespaces"), "", nc.NS.Name, &nc.NS.UID)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	klog.InfoS("Namespace removed.", "Namespace", nc.NS.Name)
+}
+
+func (nc *NamespaceCleanerCollector) CollectToLog(ctx context.Context) {
+	// Log events if the test failed.
+	if g.CurrentSpecReport().Failed() {
+		By("Collecting events from namespace %q.", nc.NS.Name)
+		DumpEventsInNamespace(ctx, nc.Client, nc.NS.Name)
+	}
+}
+
+func (nc *NamespaceCleanerCollector) Collect(ctx context.Context, artifactsDir string, _ string) {
+	By("Collecting dumps from namespace %q.", nc.NS.Name)
+
+	err := DumpNamespace(ctx, cacheddiscovery.NewMemCacheClient(nc.Client.Discovery()), nc.DynamicClient, nc.Client.CoreV1(), artifactsDir, nc.NS.Name)
+	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
 type RestoreStrategy string

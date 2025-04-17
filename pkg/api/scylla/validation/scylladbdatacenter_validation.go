@@ -51,7 +51,7 @@ var (
 )
 
 func ValidateScyllaDBDatacenter(sdc *scyllav1alpha1.ScyllaDBDatacenter) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	allErrs = append(allErrs, ValidateScyllaDBDatacenterSpec(&sdc.Spec, field.NewPath("spec"))...)
 
@@ -59,7 +59,7 @@ func ValidateScyllaDBDatacenter(sdc *scyllav1alpha1.ScyllaDBDatacenter) field.Er
 }
 
 func ValidateScyllaDBDatacenterSpec(spec *scyllav1alpha1.ScyllaDBDatacenterSpec, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	allErrs = append(allErrs, ValidateScyllaDBDatacenterScyllaDB(&spec.ScyllaDB, fldPath.Child("scyllaDB"))...)
 	allErrs = append(allErrs, ValidateScyllaDBDatacenterScyllaDBManagerAgent(spec.ScyllaDBManagerAgent, fldPath.Child("scyllaDBManagerAgent"))...)
@@ -98,7 +98,7 @@ func ValidateScyllaDBDatacenterSpec(spec *scyllav1alpha1.ScyllaDBDatacenterSpec,
 }
 
 func ValidateScyllaDBDatacenterRackTemplate(rackTemplate *scyllav1alpha1.RackTemplate, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if rackTemplate.Nodes != nil && *rackTemplate.Nodes < 0 {
 		allErrs = append(allErrs, apimachineryvalidation.ValidateNonnegativeField(int64(*rackTemplate.Nodes), fldPath.Child("nodes"))...)
@@ -122,7 +122,7 @@ func ValidateScyllaDBDatacenterRackTemplate(rackTemplate *scyllav1alpha1.RackTem
 }
 
 func ValidateScyllaDBDatacenterScyllaDBManagerAgentTemplate(scyllaDBManagerAgentTemplate *scyllav1alpha1.ScyllaDBManagerAgentTemplate, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if scyllaDBManagerAgentTemplate.CustomConfigSecretRef != nil {
 		for _, msg := range apimachineryvalidation.NameIsDNSSubdomain(*scyllaDBManagerAgentTemplate.CustomConfigSecretRef, false) {
@@ -134,7 +134,7 @@ func ValidateScyllaDBDatacenterScyllaDBManagerAgentTemplate(scyllaDBManagerAgent
 }
 
 func ValidateScyllaDBDatacenterScyllaDBTemplate(scyllaDBTemplate *scyllav1alpha1.ScyllaDBTemplate, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if scyllaDBTemplate.Storage != nil {
 		if scyllaDBTemplate.Storage.Metadata != nil {
@@ -166,7 +166,7 @@ func ValidateScyllaDBDatacenterScyllaDBTemplate(scyllaDBTemplate *scyllav1alpha1
 }
 
 func ValidateScyllaDBDatacenterScyllaDB(scyllaDB *scyllav1alpha1.ScyllaDB, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if len(scyllaDB.Image) == 0 {
 		allErrs = append(allErrs, field.Required(fldPath.Child("image"), "must not be empty"))
@@ -185,7 +185,7 @@ func ValidateScyllaDBDatacenterScyllaDB(scyllaDB *scyllav1alpha1.ScyllaDB, fldPa
 }
 
 func ValidateScyllaDBDatacenterScyllaDBManagerAgent(scyllaDBManagerAgent *scyllav1alpha1.ScyllaDBManagerAgent, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if scyllaDBManagerAgent == nil || scyllaDBManagerAgent.Image == nil || len(*scyllaDBManagerAgent.Image) == 0 {
 		allErrs = append(allErrs, field.Required(fldPath.Child("image"), "must not be empty"))
@@ -200,7 +200,7 @@ func ValidateScyllaDBDatacenterScyllaDBManagerAgent(scyllaDBManagerAgent *scylla
 }
 
 func ValidateScyllaDBDatacenterSpecExposeOptions(options *scyllav1alpha1.ExposeOptions, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if options.CQL != nil && options.CQL.Ingress != nil {
 		allErrs = append(allErrs, ValidateScyllaDBDatacenterIngressOptions(options, fldPath)...)
@@ -218,7 +218,7 @@ func ValidateScyllaDBDatacenterSpecExposeOptions(options *scyllav1alpha1.ExposeO
 }
 
 func ValidateScyllaDBDatacenterIngressOptions(options *scyllav1alpha1.ExposeOptions, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if len(options.CQL.Ingress.IngressClassName) != 0 {
 		for _, msg := range apimachineryvalidation.NameIsDNSSubdomain(options.CQL.Ingress.IngressClassName, false) {
@@ -233,7 +233,7 @@ func ValidateScyllaDBDatacenterIngressOptions(options *scyllav1alpha1.ExposeOpti
 }
 
 func ValidateScyllaDBDatacenterNodeService(options *scyllav1alpha1.ExposeOptions, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if len(options.NodeService.Type) == 0 {
 		allErrs = append(allErrs, field.Required(fldPath.Child("nodeService", "type"), fmt.Sprintf("supported values: %s", strings.Join(slices.ConvertSlice(supportedNodeServiceTypes, slices.ToString[scyllav1alpha1.NodeServiceType]), ", "))))
@@ -254,7 +254,7 @@ func ValidateScyllaDBDatacenterNodeService(options *scyllav1alpha1.ExposeOptions
 }
 
 func ValidateScyllaDBDatacenterSpecExposeOptionsNodeBroadcastOptions(options *scyllav1alpha1.NodeBroadcastOptions, nodeService *scyllav1alpha1.NodeServiceTemplate, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	var nodeServiceType *scyllav1alpha1.NodeServiceType
 	if nodeService != nil {
@@ -302,7 +302,7 @@ func ValidateScyllaDBDatacenterSpecExposeOptionsNodeBroadcastOptions(options *sc
 }
 
 func ValidateScyllaDBDatacenterBroadcastOptions[BT ~string, ST ~string](broadcastAddressType BT, supportedBroadcastedTypes []BT, defaultNodeServiceType ST, nodeServiceType *ST, allowedNodeServiceTypesByBroadcastAddressType map[BT][]ST, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	allErrs = append(allErrs, validateEnum(broadcastAddressType, supportedBroadcastedTypes, fldPath.Child("type"))...)
 
@@ -321,7 +321,7 @@ func ValidateScyllaDBDatacenterBroadcastOptions[BT ~string, ST ~string](broadcas
 }
 
 func ValidateScyllaDBDatacenterAlternatorOptions(alternator *scyllav1alpha1.AlternatorOptions, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if alternator.WriteIsolation != "" {
 		found := slices.ContainsItem(AlternatorSupportedWriteIsolation, alternator.WriteIsolation)
@@ -338,7 +338,7 @@ func ValidateScyllaDBDatacenterAlternatorOptions(alternator *scyllav1alpha1.Alte
 }
 
 func ValidateScyllaDBDatacenterTLSCertificate(servingCertificate *scyllav1alpha1.TLSCertificate, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	switch servingCertificate.Type {
 	case scyllav1alpha1.TLSCertificateTypeOperatorManaged:
@@ -376,7 +376,7 @@ func ValidateScyllaDBDatacenterTLSCertificate(servingCertificate *scyllav1alpha1
 }
 
 func ValidateScyllaDBDatacenterUserManagedTLSCertificateOptions(options *scyllav1alpha1.UserManagedTLSCertificateOptions, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if len(options.SecretName) == 0 {
 		allErrs = append(allErrs, field.Required(fldPath.Child("secretName"), ""))
@@ -389,7 +389,7 @@ func ValidateScyllaDBDatacenterUserManagedTLSCertificateOptions(options *scyllav
 }
 
 func ValidateScyllaDBDatacenterOperatorManagedTLSCertificateOptions(options *scyllav1alpha1.OperatorManagedTLSCertificateOptions, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	for _, dnsName := range options.AdditionalDNSNames {
 		for _, msg := range apimachineryutilvalidation.IsDNS1123Subdomain(dnsName) {
@@ -406,7 +406,7 @@ func ValidateScyllaDBDatacenterOperatorManagedTLSCertificateOptions(options *scy
 }
 
 func ValidateScyllaDBDatacenterPlacement(placement *scyllav1alpha1.Placement, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if placement.NodeAffinity != nil {
 		allErrs = append(allErrs, corevalidation.ValidateNodeAffinity(placement.NodeAffinity, fldPath.Child("nodeAffinity"))...)
@@ -428,7 +428,7 @@ func ValidateScyllaDBDatacenterPlacement(placement *scyllav1alpha1.Placement, fl
 }
 
 func ValidateScyllaDBDatacenterUpdate(new, old *scyllav1alpha1.ScyllaDBDatacenter) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	allErrs = append(allErrs, ValidateScyllaDBDatacenter(new)...)
 	allErrs = append(allErrs, ValidateScyllaDBDatacenterSpecUpdate(new, old, field.NewPath("spec"))...)
@@ -437,7 +437,7 @@ func ValidateScyllaDBDatacenterUpdate(new, old *scyllav1alpha1.ScyllaDBDatacente
 }
 
 func ValidateScyllaDBDatacenterSpecUpdate(new, old *scyllav1alpha1.ScyllaDBDatacenter, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	allErrs = append(allErrs, apimachineryvalidation.ValidateImmutableField(new.Spec.ClusterName, old.Spec.ClusterName, fldPath.Child("clusterName"))...)
 
@@ -552,7 +552,7 @@ func ValidateScyllaDBDatacenterSpecUpdate(new, old *scyllav1alpha1.ScyllaDBDatac
 }
 
 func validateStructSliceFieldUniqueness[E any, F comparable](s []E, mapFunc func(E) F, fieldSubPath string, structPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	set := sets.New[F]()
 	for i, e := range s {
@@ -568,7 +568,7 @@ func validateStructSliceFieldUniqueness[E any, F comparable](s []E, mapFunc func
 }
 
 func validateEnum[E ~string](value E, supported []E, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if !slices.ContainsItem(supported, value) {
 		allErrs = append(allErrs, field.NotSupported(fldPath, value, slices.ConvertSlice(supported, slices.ToString[E])))

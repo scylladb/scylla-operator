@@ -29,7 +29,7 @@ func TestValidateNodeConfig(t *testing.T) {
 		{
 			name:                "valid",
 			nodeConfig:          validNodeConfig,
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -100,7 +100,7 @@ func TestValidateNodeConfig(t *testing.T) {
 				}
 				return nc
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -116,7 +116,7 @@ func TestValidateNodeConfig(t *testing.T) {
 				}
 				return nc
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 	}
@@ -158,7 +158,7 @@ func TestValidateNodeConfigUpdate(t *testing.T) {
 			name:                "identity",
 			old:                 validNodeConfig,
 			new:                 validNodeConfig,
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{

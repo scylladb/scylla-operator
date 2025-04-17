@@ -25,7 +25,7 @@ func TestValidateScyllaOperatorConfig(t *testing.T) {
 		{
 			name:                 "empty config is valid",
 			ScyllaOperatorConfig: &scyllav1alpha1.ScyllaOperatorConfig{},
-			expectedErrorList:    field.ErrorList{},
+			expectedErrorList:    nil,
 			expectedErrorString:  "",
 		},
 		{

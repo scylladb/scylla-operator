@@ -85,7 +85,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 		{
 			name:                "valid",
 			cluster:             newValidScyllaDBCluster(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -262,7 +262,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 
 				return sc
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -385,7 +385,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				sc.Spec.ScyllaDB.AlternatorOptions = &scyllav1alpha1.AlternatorOptions{}
 				return sc
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -402,7 +402,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				}
 				return sc
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -435,7 +435,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				}
 				return sc
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -471,7 +471,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				}
 				return sc
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -2586,7 +2586,7 @@ func TestValidateScyllaDBClusterUpdate(t *testing.T) {
 			name:                "same as old",
 			old:                 newValidScyllaDBCluster(),
 			new:                 newValidScyllaDBCluster(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -2616,7 +2616,7 @@ func TestValidateScyllaDBClusterUpdate(t *testing.T) {
 				sc.Spec.Datacenters[0].Racks = nil
 				return sc
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{

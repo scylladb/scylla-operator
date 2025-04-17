@@ -18,7 +18,7 @@ import (
 )
 
 func ValidateScyllaDBCluster(sc *scyllav1alpha1.ScyllaDBCluster) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	allErrs = append(allErrs, ValidateScyllaDBClusterSpec(&sc.Spec, field.NewPath("spec"))...)
 
@@ -26,7 +26,7 @@ func ValidateScyllaDBCluster(sc *scyllav1alpha1.ScyllaDBCluster) field.ErrorList
 }
 
 func ValidateScyllaDBClusterSpec(spec *scyllav1alpha1.ScyllaDBClusterSpec, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if spec.Metadata != nil {
 		allErrs = append(allErrs, apimachinerymetav1validation.ValidateLabels(spec.Metadata.Labels, fldPath.Child("metadata", "labels"))...)
@@ -70,7 +70,7 @@ func ValidateScyllaDBClusterSpec(spec *scyllav1alpha1.ScyllaDBClusterSpec, fldPa
 }
 
 func ValidateScyllaDBClusterDatacenter(dc scyllav1alpha1.ScyllaDBClusterDatacenter, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if len(dc.Name) == 0 {
 		allErrs = append(allErrs, field.Required(fldPath.Child("name"), "datacenter name must not be empty"))
@@ -86,7 +86,7 @@ func ValidateScyllaDBClusterDatacenter(dc scyllav1alpha1.ScyllaDBClusterDatacent
 }
 
 func ValidateScyllaDBClusterDatacenterTemplate(dcTemplate *scyllav1alpha1.ScyllaDBClusterDatacenterTemplate, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if dcTemplate.Metadata != nil {
 		allErrs = append(allErrs, apimachinerymetav1validation.ValidateLabels(dcTemplate.Metadata.Labels, fldPath.Child("metadata", "labels"))...)
@@ -136,7 +136,7 @@ func ValidateScyllaDBClusterDatacenterTemplate(dcTemplate *scyllav1alpha1.Scylla
 }
 
 func ValidateScyllaDBClusterSpecExposeOptions(options *scyllav1alpha1.ScyllaDBClusterExposeOptions, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if options.NodeService != nil {
 		allErrs = append(allErrs, ValidateScyllaDBClusterNodeService(options.NodeService, fldPath.Child("nodeService"))...)
@@ -150,7 +150,7 @@ func ValidateScyllaDBClusterSpecExposeOptions(options *scyllav1alpha1.ScyllaDBCl
 }
 
 func ValidateScyllaDBClusterNodeService(nodeService *scyllav1alpha1.NodeServiceTemplate, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if len(nodeService.Type) == 0 {
 		allErrs = append(allErrs, field.Required(fldPath.Child("type"), fmt.Sprintf("supported values: %s", strings.Join(slices.ConvertSlice(supportedNodeServiceTypes, slices.ToString[scyllav1alpha1.NodeServiceType]), ", "))))
@@ -171,7 +171,7 @@ func ValidateScyllaDBClusterNodeService(nodeService *scyllav1alpha1.NodeServiceT
 }
 
 func ValidateScyllaDBClusterNodeBroadcastOptions(options *scyllav1alpha1.ScyllaDBClusterNodeBroadcastOptions, nodeService *scyllav1alpha1.NodeServiceTemplate, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	var nodeServiceType *scyllav1alpha1.NodeServiceType
 	if nodeService != nil {
@@ -204,7 +204,7 @@ func ValidateScyllaDBClusterNodeBroadcastOptions(options *scyllav1alpha1.ScyllaD
 }
 
 func ValidateScyllaDBClusterUpdate(new, old *scyllav1alpha1.ScyllaDBCluster) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	allErrs = append(allErrs, ValidateScyllaDBCluster(new)...)
 	allErrs = append(allErrs, ValidateScyllaDBClusterSpecUpdate(new, old, field.NewPath("spec"))...)
@@ -213,7 +213,7 @@ func ValidateScyllaDBClusterUpdate(new, old *scyllav1alpha1.ScyllaDBCluster) fie
 }
 
 func ValidateScyllaDBClusterSpecUpdate(new, old *scyllav1alpha1.ScyllaDBCluster, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	allErrs = append(allErrs, apimachineryvalidation.ValidateImmutableField(new.Spec.ClusterName, old.Spec.ClusterName, fldPath.Child("clusterName"))...)
 

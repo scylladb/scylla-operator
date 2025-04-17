@@ -34,7 +34,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 		{
 			name:                "valid",
 			cluster:             validCluster.DeepCopy(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -85,7 +85,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 				}
 				return cluster
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -334,7 +334,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 				})
 				return cluster
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -352,7 +352,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 				})
 				return cluster
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -371,7 +371,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 				})
 				return cluster
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -389,7 +389,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 				})
 				return cluster
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -408,7 +408,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 				})
 				return cluster
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -426,7 +426,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 				})
 				return cluster
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -508,7 +508,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 				}...)
 				return cluster
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -537,7 +537,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 				}...)
 				return cluster
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -721,7 +721,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 
 				return cluster
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -884,7 +884,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 				cluster.Spec.Alternator = &scyllav1.AlternatorSpec{}
 				return cluster
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -901,7 +901,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 				}
 				return cluster
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -934,7 +934,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 				}
 				return cluster
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -970,7 +970,7 @@ func TestValidateScyllaCluster(t *testing.T) {
 				}
 				return cluster
 			}(),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -1026,35 +1026,35 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 			name:                "same as old",
 			old:                 unit.NewSingleRackCluster(3),
 			new:                 unit.NewSingleRackCluster(3),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
 			name:                "major version changed",
 			old:                 unit.NewSingleRackCluster(3),
 			new:                 unit.NewDetailedSingleRackCluster("test-cluster", "test-ns", "repo", "3.3.1", "test-dc", "test-rack", 3),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
 			name:                "minor version changed",
 			old:                 unit.NewSingleRackCluster(3),
 			new:                 unit.NewDetailedSingleRackCluster("test-cluster", "test-ns", "repo", "2.4.2", "test-dc", "test-rack", 3),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
 			name:                "patch version changed",
 			old:                 unit.NewSingleRackCluster(3),
 			new:                 unit.NewDetailedSingleRackCluster("test-cluster", "test-ns", "repo", "2.3.2", "test-dc", "test-rack", 3),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
 			name:                "repo changed",
 			old:                 unit.NewSingleRackCluster(3),
 			new:                 unit.NewDetailedSingleRackCluster("test-cluster", "test-ns", "new-repo", "2.3.2", "test-dc", "test-rack", 3),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -1070,7 +1070,7 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 			name:                "rackPlacement changed",
 			old:                 unit.NewSingleRackCluster(3),
 			new:                 placementChanged(unit.NewSingleRackCluster(3)),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
@@ -1086,14 +1086,14 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 			name:                "rackResources changed",
 			old:                 unit.NewSingleRackCluster(3),
 			new:                 resourceChanged(unit.NewSingleRackCluster(3)),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
 			name:                "empty rack removed",
 			old:                 unit.NewSingleRackCluster(0),
 			new:                 racksDeleted(unit.NewSingleRackCluster(0)),
-			expectedErrorList:   field.ErrorList{},
+			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{

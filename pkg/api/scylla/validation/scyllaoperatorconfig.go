@@ -14,7 +14,7 @@ import (
 )
 
 func ValidateImageRef(imageRef string, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if len(imageRef) == 0 {
 		allErrs = append(allErrs, field.Required(fldPath, "image reference can't be empty"))
@@ -29,7 +29,7 @@ func ValidateImageRef(imageRef string, fldPath *field.Path) field.ErrorList {
 }
 
 func ValidateSemanticVersion(v string, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if len(v) == 0 {
 		allErrs = append(allErrs, field.Required(fldPath, "version can't be empty"))
@@ -50,7 +50,7 @@ func ValidateScyllaOperatorConfig(nc *scyllav1alpha1.ScyllaOperatorConfig) field
 }
 
 func ValidateScyllaOperatorConfigSpec(spec *scyllav1alpha1.ScyllaOperatorConfigSpec, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
+	var allErrs field.ErrorList
 
 	if spec.UnsupportedBashToolsImageOverride != nil {
 		allErrs = append(allErrs, ValidateImageRef(*spec.UnsupportedBashToolsImageOverride, fldPath.Child("unsupportedBashToolsImageOverride"))...)

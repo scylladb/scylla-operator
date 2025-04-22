@@ -198,8 +198,12 @@ func (f *Framework) GetDefaultScyllaDBCluster(rkcs []*scyllav1alpha1.RemoteKuber
 	return sc
 }
 
-func (f *Framework) AddCleaners(cleaners ...CleanupInterface) {
+func (f *Framework) AddCleaners(cleaners ...Cleaner) {
 	f.defaultCluster().AddCleaners(cleaners...)
+}
+
+func (f *Framework) AddCollectors(collectors ...Collector) {
+	f.defaultCluster().AddCollectors(collectors...)
 }
 
 func (f *Framework) CreateUserNamespace(ctx context.Context) (*corev1.Namespace, Client) {

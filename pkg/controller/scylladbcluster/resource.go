@@ -2,8 +2,6 @@ package scylladbcluster
 
 import (
 	"fmt"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/util/errors"
 	"maps"
 	"sort"
 	"strings"
@@ -16,7 +14,9 @@ import (
 	remotelister "github.com/scylladb/scylla-operator/pkg/remoteclient/lister"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
@@ -289,7 +289,7 @@ func MakeRemoteScyllaDBDatacenters(sc *scyllav1alpha1.ScyllaDBCluster, remoteScy
 				ExposeOptions: func() *scyllav1alpha1.ExposeOptions {
 					exposeOptions := &scyllav1alpha1.ExposeOptions{
 						// TODO: not supported yet
-						// Ref: https://github.com/scylladb/scylla-operator-enterprise/issues/55
+						// Ref: https://github.com/scylladb/scylla-operator/issues/2602
 						CQL: nil,
 						NodeService: &scyllav1alpha1.NodeServiceTemplate{
 							Type: scyllav1alpha1.NodeServiceTypeHeadless,
@@ -331,13 +331,13 @@ func MakeRemoteScyllaDBDatacenters(sc *scyllav1alpha1.ScyllaDBCluster, remoteScy
 				MinReadySeconds:                         sc.Spec.MinReadySeconds,
 				ReadinessGates:                          sc.Spec.ReadinessGates,
 				// TODO: not supported yet
-				// Ref: https://github.com/scylladb/scylla-operator-enterprise/issues/56
+				// Ref: https://github.com/scylladb/scylla-operator/issues/2262
 				ImagePullSecrets: nil,
 				// TODO not supported yet:
-				// Ref: https://github.com/scylladb/scylla-operator-enterprise/issues/57
+				// Ref: https://github.com/scylladb/scylla-operator/issues/2603
 				DNSPolicy: nil,
 				// TODO not supported yet:
-				// Ref: https://github.com/scylladb/scylla-operator-enterprise/issues/55
+				// Ref: https://github.com/scylladb/scylla-operator/issues/2602
 				DNSDomains: nil,
 			},
 		})

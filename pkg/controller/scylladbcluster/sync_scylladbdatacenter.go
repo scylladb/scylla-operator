@@ -48,7 +48,7 @@ func (scc *Controller) syncScyllaDBDatacenters(
 
 		// FIXME: This should first scale all racks to 0, only then remove.
 		//  	 Without graceful removal, state of other DC might be skewed.
-		// Ref: https://github.com/scylladb/scylla-operator-enterprise/issues/59
+		// Ref: https://github.com/scylladb/scylla-operator/issues/2604
 		err = controllerhelpers.Prune(ctx,
 			requiredScyllaDBDatacenters[dc.RemoteKubernetesClusterName],
 			remoteScyllaDBDatacenters[dc.RemoteKubernetesClusterName],

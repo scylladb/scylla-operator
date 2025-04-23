@@ -15,7 +15,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8
 	github.com/cenkalti/backoff v2.2.1+incompatible
-	github.com/containers/image/v5 v5.34.3
+	github.com/containers/image/v5 v5.35.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/evanphx/json-patch v5.9.11+incompatible
 	github.com/go-git/go-git/v5 v5.16.0
@@ -29,7 +29,7 @@ require (
 	github.com/magiconair/properties v1.8.10
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/onsi/ginkgo/v2 v2.23.4
-	github.com/onsi/gomega v1.36.3
+	github.com/onsi/gomega v1.37.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.22.0
 	github.com/robfig/cron/v3 v3.0.1
@@ -48,7 +48,7 @@ require (
 	golang.org/x/oauth2 v0.29.0
 	golang.org/x/sys v0.32.0
 	golang.org/x/time v0.11.0
-	google.golang.org/grpc v1.71.1
+	google.golang.org/grpc v1.72.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.32.4
 	k8s.io/apiextensions-apiserver v0.32.4
@@ -86,7 +86,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cloudflare/circl v1.6.1 // indirect
-	github.com/containers/storage v1.57.2 // indirect
+	github.com/containers/storage v1.58.0 // indirect
 	github.com/cyphar/filepath-securejoin v0.4.1 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.12.2 // indirect
@@ -100,12 +100,12 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/analysis v0.23.0 // indirect
-	github.com/go-openapi/errors v0.22.0 // indirect
+	github.com/go-openapi/errors v0.22.1 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.21.0 // indirect
 	github.com/go-openapi/loads v0.22.0 // indirect
 	github.com/go-openapi/spec v0.21.0 // indirect
-	github.com/go-openapi/swag v0.23.0 // indirect
+	github.com/go-openapi/swag v0.23.1 // indirect
 	github.com/go-openapi/validate v0.24.0 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/gobuffalo/flect v1.0.3 // indirect
@@ -176,8 +176,8 @@ require (
 	golang.org/x/term v0.31.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/tools v0.31.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250224174004-546df14abb99 // indirect
-	google.golang.org/protobuf v1.36.5 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250313205543-e70fdf4c4cb4 // indirect
+	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect

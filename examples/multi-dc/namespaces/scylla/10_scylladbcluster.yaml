@@ -1,0 +1,52 @@
+apiVersion: scylla.scylladb.com/v1alpha1
+kind: ScyllaDBCluster
+metadata:
+  name: dev-cluster
+  namespace: scylla
+spec:
+  scyllaDB:
+    enableDeveloperMode: true
+    image: docker.io/scylladb/scylla:6.2.0
+  scyllaDBManagerAgent:
+    image: docker.io/scylladb/scylla-manager-agent:3.4.0@sha256:441403aed8880cad1feef68aa7a8ee9ffd99a458dc1dcff3dc54ce5bf3cb07b7
+  datacenterTemplate:
+    placement:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: scylla.scylladb.com/node-type
+                  operator: In
+                  values:
+                    - scylla
+      tolerations:
+        - effect: NoSchedule
+          key: scylla-operator.scylladb.com/dedicated
+          operator: Equal
+          value: scyllaclusters
+    scyllaDBManagerAgent:
+      resources:
+        limits:
+          cpu: 100m
+          memory: 100Mi
+    scyllaDB:
+      customConfigMapRef: scylladb-config
+      resources:
+        limits:
+          cpu: 2
+          memory: 8Gi
+      storage:
+        capacity: 100Gi
+    rackTemplate:
+      nodes: 1
+    racks:
+      - name: a
+      - name: b
+      - name: c
+  datacenters:
+  - name: us-east-1
+    remoteKubernetesClusterName: dev-us-east-1
+  - name: us-central-1
+    remoteKubernetesClusterName: dev-us-central-1
+  - name: us-west-1
+    remoteKubernetesClusterName: dev-us-west-1

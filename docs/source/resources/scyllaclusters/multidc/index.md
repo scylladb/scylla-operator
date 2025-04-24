@@ -5,8 +5,8 @@ Prepare a platform for a multi datacenter ScyllaDB cluster deployment:
 :::{toctree}
 :maxdepth: 1
 
-eks
-gke
+../../common/multidc/eks
+../../common/multidc/gke
 :::
 
 Deploy a multi-datacenter ScyllaDB cluster in Kubernetes:

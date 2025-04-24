@@ -7,5 +7,5 @@ basics
 clients/index
 nodeoperations/index
 multidc/index
-exposing
+../common/exposing
 :::

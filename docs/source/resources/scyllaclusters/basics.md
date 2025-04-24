@@ -2,7 +2,7 @@
 
 ## Introduction
 
-[ScyllaCluster](../../api-reference/groups/scylla.scylladb.com/scyllaclusters.rst) defines a ScyllaDB datacenter and manages the racks within.
+[ScyllaCluster](../../api-reference/groups/scylla.scylladb.com/scyllaclusters.rst) defines a ScyllaDB **datacenter** and manages the racks within.
 This section aims to make you familiar with how it looks like and how to perform some of the basic configuration or accessing the APIs.
 By no means is this a complete description of what it can do. Please consult our [generated API reference](../../api-reference/groups/scylla.scylladb.com/scyllaclusters.rst) for a complete list of options.
 
@@ -14,7 +14,8 @@ kubectl explain --api-version='scylla.scylladb.com/v1' ScyllaCluster.spec
 ::::
 
 Note that the Kubernetes clusters are only a regional concept, availability-wise they map into a ScyllaDB datacenter.
-To deploy a ScyllaDB cluster with multiple datacenters, you have to combine multiple Kubernetes clusters, each running a [ScyllaCluster](../../api-reference/groups/scylla.scylladb.com/scyllaclusters.rst). To learn more, please see [the dedicated multi-datacenter guide](./multidc/multidc.md).
+To deploy a ScyllaDB cluster with multiple datacenters use our multi datacenter resource [ScyllaDBCluster](../scylladbclusters/scylladbclusters.md), or combine multiple Kubernetes clusters, each running a [ScyllaCluster](../../api-reference/groups/scylla.scylladb.com/scyllaclusters.rst),
+To learn more about **manual** multi-dc deployments using ScyllaCluster resource, please see [the dedicated multi-datacenter guide](./multidc/multidc.md).
 
 ## Creating a ScyllaCluster
 
@@ -104,8 +105,8 @@ Similarly, the tolerations will differ depending on how and whether you set up d
 :::{include} ../../.internal/tuning-qos-caution.md
 :::
 
-(scyllacluster-enterprise)=
 ::::{note}
+:name: scyllacluster-enterprise
 {{productName}} works with both ScyllaDB Open Source and ScyllaDB Enterprise.
 You only have to adjust the [repository and tag fields](api-scylla.scylladb.com-scyllaclusters-v1-.spec) for each ScyllaCluster.
 
@@ -135,11 +136,6 @@ kubectl wait --for='condition=Progressing=False' scyllacluster.scylla.scylladb.c
 kubectl wait --for='condition=Degraded=False' scyllacluster.scylla.scylladb.com/scylladb
 kubectl wait --for='condition=Available=True' scyllacluster.scylla.scylladb.com/scylladb
 :::
-
-## Performance tuning
-
-To get the best performance and latency, you should make sure you have the automatic tuning enabled.
-Please read our [dedicated section about tuning architecture](../../architecture/tuning.md) and get familiar with [NodeConfig resource](../nodeconfigs.md).
 
 ## Forcing a rolling restart
 

@@ -81,7 +81,7 @@ redirects_file = "./redirections.yaml"
 TAGS = []
 smv_tag_whitelist = multiversion_regex_builder(TAGS)
 # Whitelist pattern for branches (set to None to ignore all branches)
-BRANCHES = ['master', 'v1.13', 'v1.14', 'v1.15', 'v1.16']
+BRANCHES = ['master', 'v1.15', 'v1.16']
 # Set which versions are not released yet.
 UNSTABLE_VERSIONS = ["master"]
 smv_branch_whitelist = multiversion_regex_builder(BRANCHES)

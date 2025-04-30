@@ -45,13 +45,25 @@ func NewFilteredNodeConfigInformer(client versioned.Interface, resyncPeriod time
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ScyllaV1alpha1().NodeConfigs().List(context.TODO(), options)
+				return client.ScyllaV1alpha1().NodeConfigs().List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ScyllaV1alpha1().NodeConfigs().Watch(context.TODO(), options)
+				return client.ScyllaV1alpha1().NodeConfigs().Watch(context.Background(), options)
+			},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.ScyllaV1alpha1().NodeConfigs().List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.ScyllaV1alpha1().NodeConfigs().Watch(ctx, options)
 			},
 		},
 		&apiscyllav1alpha1.NodeConfig{},

@@ -45,13 +45,25 @@ func NewFilteredScyllaOperatorConfigInformer(client versioned.Interface, resyncP
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ScyllaV1alpha1().ScyllaOperatorConfigs().List(context.TODO(), options)
+				return client.ScyllaV1alpha1().ScyllaOperatorConfigs().List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ScyllaV1alpha1().ScyllaOperatorConfigs().Watch(context.TODO(), options)
+				return client.ScyllaV1alpha1().ScyllaOperatorConfigs().Watch(context.Background(), options)
+			},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.ScyllaV1alpha1().ScyllaOperatorConfigs().List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.ScyllaV1alpha1().ScyllaOperatorConfigs().Watch(ctx, options)
 			},
 		},
 		&apiscyllav1alpha1.ScyllaOperatorConfig{},

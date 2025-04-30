@@ -45,13 +45,25 @@ func NewFilteredRemoteKubernetesClusterInformer(client versioned.Interface, resy
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ScyllaV1alpha1().RemoteKubernetesClusters().List(context.TODO(), options)
+				return client.ScyllaV1alpha1().RemoteKubernetesClusters().List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ScyllaV1alpha1().RemoteKubernetesClusters().Watch(context.TODO(), options)
+				return client.ScyllaV1alpha1().RemoteKubernetesClusters().Watch(context.Background(), options)
+			},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.ScyllaV1alpha1().RemoteKubernetesClusters().List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.ScyllaV1alpha1().RemoteKubernetesClusters().Watch(ctx, options)
 			},
 		},
 		&apiscyllav1alpha1.RemoteKubernetesCluster{},

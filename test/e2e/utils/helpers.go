@@ -211,6 +211,10 @@ func IsScyllaDBClusterRolledOut(sc *scyllav1alpha1.ScyllaDBCluster) (bool, error
 	return true, nil
 }
 
+func IsScyllaDBClusterDegraded(sc *scyllav1alpha1.ScyllaDBCluster) (bool, error) {
+	return helpers.IsStatusConditionPresentAndTrue(sc.Status.Conditions, scyllav1alpha1.DegradedCondition, sc.Generation), nil
+}
+
 func RunEphemeralContainerAndWaitForCompletion(ctx context.Context, client corev1client.PodInterface, podName string, ec *corev1.EphemeralContainer) (*corev1.Pod, error) {
 	ephemeralPod := &corev1.Pod{
 		Spec: corev1.PodSpec{

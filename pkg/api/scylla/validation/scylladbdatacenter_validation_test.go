@@ -358,7 +358,7 @@ func TestValidateScyllaDBDatacenter(t *testing.T) {
 				return sdc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.minTerminationGracePeriodSeconds", BadValue: int64(-42), Detail: "must be greater than or equal to 0"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.minTerminationGracePeriodSeconds", BadValue: int64(-42), Detail: "must be greater than or equal to 0", Origin: "minimum"},
 			},
 			expectedErrorString: `spec.minTerminationGracePeriodSeconds: Invalid value: -42: must be greater than or equal to 0`,
 		},
@@ -371,7 +371,7 @@ func TestValidateScyllaDBDatacenter(t *testing.T) {
 				return sdc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.minReadySeconds", BadValue: int64(-42), Detail: "must be greater than or equal to 0"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.minReadySeconds", BadValue: int64(-42), Detail: "must be greater than or equal to 0", Origin: "minimum"},
 			},
 			expectedErrorString: `spec.minReadySeconds: Invalid value: -42: must be greater than or equal to 0`,
 		},
@@ -486,7 +486,7 @@ func TestValidateScyllaDBDatacenter(t *testing.T) {
 				return sdc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.scyllaDB.alternator.servingCertificate.operatorManagedOptions.additionalIPAddresses", BadValue: "0.not-an-ip.0.0", Detail: `must be a valid IP address, (e.g. 10.9.8.7 or 2001:db8::ffff)`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.scyllaDB.alternator.servingCertificate.operatorManagedOptions.additionalIPAddresses", BadValue: "0.not-an-ip.0.0", Detail: `must be a valid IP address, (e.g. 10.9.8.7 or 2001:db8::ffff)`, Origin: "format=ip-strict"},
 			},
 			expectedErrorString: `spec.scyllaDB.alternator.servingCertificate.operatorManagedOptions.additionalIPAddresses: Invalid value: "0.not-an-ip.0.0": must be a valid IP address, (e.g. 10.9.8.7 or 2001:db8::ffff)`,
 		},
@@ -501,7 +501,7 @@ func TestValidateScyllaDBDatacenter(t *testing.T) {
 				return sdc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.rackTemplate.nodes", BadValue: int64(-42), Detail: "must be greater than or equal to 0"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.rackTemplate.nodes", BadValue: int64(-42), Detail: "must be greater than or equal to 0", Origin: "minimum"},
 			},
 			expectedErrorString: `spec.rackTemplate.nodes: Invalid value: -42: must be greater than or equal to 0`,
 		},
@@ -518,7 +518,7 @@ func TestValidateScyllaDBDatacenter(t *testing.T) {
 				return sdc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.rackTemplate.topologyLabelSelector", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.rackTemplate.topologyLabelSelector", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`, Origin: "labelKey"},
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.rackTemplate.topologyLabelSelector", BadValue: "*321", Detail: `a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')`},
 			},
 			expectedErrorString: `[spec.rackTemplate.topologyLabelSelector: Invalid value: "-123": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]'), spec.rackTemplate.topologyLabelSelector: Invalid value: "*321": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')]`,
@@ -581,7 +581,7 @@ func TestValidateScyllaDBDatacenter(t *testing.T) {
 				return sdc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.rackTemplate.scyllaDB.storage.metadata.labels", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.rackTemplate.scyllaDB.storage.metadata.labels", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`, Origin: "labelKey"},
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.rackTemplate.scyllaDB.storage.metadata.labels", BadValue: "*321", Detail: `a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')`},
 			},
 			expectedErrorString: `[spec.rackTemplate.scyllaDB.storage.metadata.labels: Invalid value: "-123": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]'), spec.rackTemplate.scyllaDB.storage.metadata.labels: Invalid value: "*321": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')]`,

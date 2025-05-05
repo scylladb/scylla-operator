@@ -344,7 +344,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.minTerminationGracePeriodSeconds", BadValue: int64(-42), Detail: "must be greater than or equal to 0"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.minTerminationGracePeriodSeconds", BadValue: int64(-42), Detail: "must be greater than or equal to 0", Origin: "minimum"},
 			},
 			expectedErrorString: `spec.minTerminationGracePeriodSeconds: Invalid value: -42: must be greater than or equal to 0`,
 		},
@@ -357,7 +357,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.minReadySeconds", BadValue: int64(-42), Detail: "must be greater than or equal to 0"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.minReadySeconds", BadValue: int64(-42), Detail: "must be greater than or equal to 0", Origin: "minimum"},
 			},
 			expectedErrorString: `spec.minReadySeconds: Invalid value: -42: must be greater than or equal to 0`,
 		},
@@ -489,7 +489,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.scyllaDB.alternator.servingCertificate.operatorManagedOptions.additionalIPAddresses", BadValue: "0.not-an-ip.0.0", Detail: `must be a valid IP address, (e.g. 10.9.8.7 or 2001:db8::ffff)`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.scyllaDB.alternator.servingCertificate.operatorManagedOptions.additionalIPAddresses", BadValue: "0.not-an-ip.0.0", Detail: `must be a valid IP address, (e.g. 10.9.8.7 or 2001:db8::ffff)`, Origin: "format=ip-strict"},
 			},
 			expectedErrorString: `spec.scyllaDB.alternator.servingCertificate.operatorManagedOptions.additionalIPAddresses: Invalid value: "0.not-an-ip.0.0": must be a valid IP address, (e.g. 10.9.8.7 or 2001:db8::ffff)`,
 		},
@@ -504,7 +504,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.rackTemplate.nodes", BadValue: int64(-42), Detail: "must be greater than or equal to 0"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.rackTemplate.nodes", BadValue: int64(-42), Detail: "must be greater than or equal to 0", Origin: "minimum"},
 			},
 			expectedErrorString: `spec.datacenterTemplate.rackTemplate.nodes: Invalid value: -42: must be greater than or equal to 0`,
 		},
@@ -517,7 +517,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.racks[0].nodes", BadValue: int64(-42), Detail: "must be greater than or equal to 0"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.racks[0].nodes", BadValue: int64(-42), Detail: "must be greater than or equal to 0", Origin: "minimum"},
 			},
 			expectedErrorString: `spec.datacenterTemplate.racks[0].nodes: Invalid value: -42: must be greater than or equal to 0`,
 		},
@@ -532,7 +532,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.topologyLabelSelector", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.topologyLabelSelector", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`, Origin: "labelKey"},
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.topologyLabelSelector", BadValue: "*321", Detail: `a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')`},
 			},
 			expectedErrorString: `[spec.datacenterTemplate.topologyLabelSelector: Invalid value: "-123": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]'), spec.datacenterTemplate.topologyLabelSelector: Invalid value: "*321": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')]`,
@@ -550,7 +550,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.rackTemplate.topologyLabelSelector", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.rackTemplate.topologyLabelSelector", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`, Origin: "labelKey"},
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.rackTemplate.topologyLabelSelector", BadValue: "*321", Detail: `a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')`},
 			},
 			expectedErrorString: `[spec.datacenterTemplate.rackTemplate.topologyLabelSelector: Invalid value: "-123": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]'), spec.datacenterTemplate.rackTemplate.topologyLabelSelector: Invalid value: "*321": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')]`,
@@ -566,7 +566,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.racks[0].topologyLabelSelector", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.racks[0].topologyLabelSelector", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`, Origin: "labelKey"},
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.racks[0].topologyLabelSelector", BadValue: "*321", Detail: `a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')`},
 			},
 			expectedErrorString: `[spec.datacenterTemplate.racks[0].topologyLabelSelector: Invalid value: "-123": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]'), spec.datacenterTemplate.racks[0].topologyLabelSelector: Invalid value: "*321": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')]`,
@@ -690,7 +690,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.metadata.labels", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.metadata.labels", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`, Origin: "labelKey"},
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.metadata.labels", BadValue: "*321", Detail: `a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')`},
 			},
 			expectedErrorString: `[spec.metadata.labels: Invalid value: "-123": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]'), spec.metadata.labels: Invalid value: "*321": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')]`,
@@ -708,7 +708,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.metadata.labels", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.metadata.labels", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`, Origin: "labelKey"},
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.metadata.labels", BadValue: "*321", Detail: `a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')`},
 			},
 			expectedErrorString: `[spec.datacenterTemplate.metadata.labels: Invalid value: "-123": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]'), spec.datacenterTemplate.metadata.labels: Invalid value: "*321": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')]`,
@@ -731,7 +731,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.scyllaDB.storage.metadata.labels", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.scyllaDB.storage.metadata.labels", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`, Origin: "labelKey"},
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.scyllaDB.storage.metadata.labels", BadValue: "*321", Detail: `a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')`},
 			},
 			expectedErrorString: `[spec.datacenterTemplate.scyllaDB.storage.metadata.labels: Invalid value: "-123": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]'), spec.datacenterTemplate.scyllaDB.storage.metadata.labels: Invalid value: "*321": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')]`,
@@ -756,7 +756,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.rackTemplate.scyllaDB.storage.metadata.labels", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.rackTemplate.scyllaDB.storage.metadata.labels", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`, Origin: "labelKey"},
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.rackTemplate.scyllaDB.storage.metadata.labels", BadValue: "*321", Detail: `a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')`},
 			},
 			expectedErrorString: `[spec.datacenterTemplate.rackTemplate.scyllaDB.storage.metadata.labels: Invalid value: "-123": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]'), spec.datacenterTemplate.rackTemplate.scyllaDB.storage.metadata.labels: Invalid value: "*321": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')]`,
@@ -779,7 +779,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.racks[0].scyllaDB.storage.metadata.labels", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.racks[0].scyllaDB.storage.metadata.labels", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`, Origin: "labelKey"},
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.racks[0].scyllaDB.storage.metadata.labels", BadValue: "*321", Detail: `a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')`},
 			},
 			expectedErrorString: `[spec.datacenterTemplate.racks[0].scyllaDB.storage.metadata.labels: Invalid value: "-123": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]'), spec.datacenterTemplate.racks[0].scyllaDB.storage.metadata.labels: Invalid value: "*321": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')]`,
@@ -1047,7 +1047,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].rackTemplate.nodes", BadValue: int64(-42), Detail: "must be greater than or equal to 0"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].rackTemplate.nodes", BadValue: int64(-42), Detail: "must be greater than or equal to 0", Origin: "minimum"},
 			},
 			expectedErrorString: `spec.datacenters[0].rackTemplate.nodes: Invalid value: -42: must be greater than or equal to 0`,
 		},
@@ -1060,7 +1060,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].racks[0].nodes", BadValue: int64(-42), Detail: "must be greater than or equal to 0"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].racks[0].nodes", BadValue: int64(-42), Detail: "must be greater than or equal to 0", Origin: "minimum"},
 			},
 			expectedErrorString: `spec.datacenters[0].racks[0].nodes: Invalid value: -42: must be greater than or equal to 0`,
 		},
@@ -1075,7 +1075,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].topologyLabelSelector", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].topologyLabelSelector", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`, Origin: "labelKey"},
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].topologyLabelSelector", BadValue: "*321", Detail: `a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')`},
 			},
 			expectedErrorString: `[spec.datacenters[0].topologyLabelSelector: Invalid value: "-123": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]'), spec.datacenters[0].topologyLabelSelector: Invalid value: "*321": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')]`,
@@ -1093,7 +1093,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].rackTemplate.topologyLabelSelector", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].rackTemplate.topologyLabelSelector", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`, Origin: "labelKey"},
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].rackTemplate.topologyLabelSelector", BadValue: "*321", Detail: `a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')`},
 			},
 			expectedErrorString: `[spec.datacenters[0].rackTemplate.topologyLabelSelector: Invalid value: "-123": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]'), spec.datacenters[0].rackTemplate.topologyLabelSelector: Invalid value: "*321": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')]`,
@@ -1109,7 +1109,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].racks[0].topologyLabelSelector", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].racks[0].topologyLabelSelector", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`, Origin: "labelKey"},
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].racks[0].topologyLabelSelector", BadValue: "*321", Detail: `a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')`},
 			},
 			expectedErrorString: `[spec.datacenters[0].racks[0].topologyLabelSelector: Invalid value: "-123": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]'), spec.datacenters[0].racks[0].topologyLabelSelector: Invalid value: "*321": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')]`,
@@ -1238,7 +1238,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].scyllaDB.storage.metadata.labels", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].scyllaDB.storage.metadata.labels", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`, Origin: "labelKey"},
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].scyllaDB.storage.metadata.labels", BadValue: "*321", Detail: `a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')`},
 			},
 			expectedErrorString: `[spec.datacenters[0].scyllaDB.storage.metadata.labels: Invalid value: "-123": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]'), spec.datacenters[0].scyllaDB.storage.metadata.labels: Invalid value: "*321": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')]`,
@@ -1263,7 +1263,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].rackTemplate.scyllaDB.storage.metadata.labels", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].rackTemplate.scyllaDB.storage.metadata.labels", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`, Origin: "labelKey"},
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].rackTemplate.scyllaDB.storage.metadata.labels", BadValue: "*321", Detail: `a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')`},
 			},
 			expectedErrorString: `[spec.datacenters[0].rackTemplate.scyllaDB.storage.metadata.labels: Invalid value: "-123": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]'), spec.datacenters[0].rackTemplate.scyllaDB.storage.metadata.labels: Invalid value: "*321": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')]`,
@@ -1286,7 +1286,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].racks[0].scyllaDB.storage.metadata.labels", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].racks[0].scyllaDB.storage.metadata.labels", BadValue: "-123", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`, Origin: "labelKey"},
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].racks[0].scyllaDB.storage.metadata.labels", BadValue: "*321", Detail: `a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')`},
 			},
 			expectedErrorString: `[spec.datacenters[0].racks[0].scyllaDB.storage.metadata.labels: Invalid value: "-123": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]'), spec.datacenters[0].racks[0].scyllaDB.storage.metadata.labels: Invalid value: "*321": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')]`,
@@ -1511,7 +1511,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 		},
 		// PLACEMENT
 		{
-			name: "invalid node selector requirement in node affinity having invalid key in datacenter template placement",
+			name: "invalid node selector requirement in node affinity having invalid operator in datacenter template placement",
 			cluster: func() *scyllav1alpha1.ScyllaDBCluster {
 				sc := newValidScyllaDBCluster()
 				sc.Spec.DatacenterTemplate.Placement = &scyllav1alpha1.Placement{
@@ -1553,7 +1553,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key", BadValue: "invalid key ___@#", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key", BadValue: "invalid key ___@#", Detail: `name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`, Origin: "labelKey"},
 			},
 			expectedErrorString: `spec.datacenterTemplate.placement.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key: Invalid value: "invalid key ___@#": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`,
 		},
@@ -1861,8 +1861,8 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 			}(),
 			expectedErrorList: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeRequired, Field: "spec.datacenterTemplate.placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].topologyKey", BadValue: "", Detail: "can not be empty"},
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].topologyKey", BadValue: "", Detail: "name part must be non-empty"},
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].topologyKey", BadValue: "", Detail: "name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].topologyKey", BadValue: "", Detail: "name part must be non-empty", Origin: "labelKey"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].topologyKey", BadValue: "", Detail: "name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')", Origin: "labelKey"},
 			},
 			expectedErrorString: `[spec.datacenterTemplate.placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].topologyKey: Required value: can not be empty, spec.datacenterTemplate.placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].topologyKey: Invalid value: "": name part must be non-empty, spec.datacenterTemplate.placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].topologyKey: Invalid value: "": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')]`,
 		},
@@ -1888,8 +1888,8 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 			}(),
 			expectedErrorList: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeRequired, Field: "spec.datacenterTemplate.placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].topologyKey", BadValue: "", Detail: "can not be empty"},
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].topologyKey", BadValue: "", Detail: "name part must be non-empty"},
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].topologyKey", BadValue: "", Detail: "name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].topologyKey", BadValue: "", Detail: "name part must be non-empty", Origin: "labelKey"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].topologyKey", BadValue: "", Detail: "name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')", Origin: "labelKey"},
 			},
 			expectedErrorString: `[spec.datacenterTemplate.placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].topologyKey: Required value: can not be empty, spec.datacenterTemplate.placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].topologyKey: Invalid value: "": name part must be non-empty, spec.datacenterTemplate.placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].topologyKey: Invalid value: "": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')]`,
 		},
@@ -1918,8 +1918,8 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 			}(),
 			expectedErrorList: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeRequired, Field: "spec.datacenterTemplate.placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey", BadValue: "", Detail: "can not be empty"},
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey", BadValue: "", Detail: "name part must be non-empty"},
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey", BadValue: "", Detail: "name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey", BadValue: "", Detail: "name part must be non-empty", Origin: "labelKey"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey", BadValue: "", Detail: "name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')", Origin: "labelKey"},
 			},
 			expectedErrorString: `[spec.datacenterTemplate.placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey: Required value: can not be empty, spec.datacenterTemplate.placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey: Invalid value: "": name part must be non-empty, spec.datacenterTemplate.placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey: Invalid value: "": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')]`,
 		},
@@ -1948,8 +1948,8 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 			}(),
 			expectedErrorList: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeRequired, Field: "spec.datacenterTemplate.placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey", BadValue: "", Detail: "can not be empty"},
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey", BadValue: "", Detail: "name part must be non-empty"},
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey", BadValue: "", Detail: "name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey", BadValue: "", Detail: "name part must be non-empty", Origin: "labelKey"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey", BadValue: "", Detail: "name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')", Origin: "labelKey"},
 			},
 			expectedErrorString: `[spec.datacenterTemplate.placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey: Required value: can not be empty, spec.datacenterTemplate.placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey: Invalid value: "": name part must be non-empty, spec.datacenterTemplate.placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey: Invalid value: "": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')]`,
 		},
@@ -1978,7 +1978,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.matchLabelKeys[0]", BadValue: "/simple", Detail: "prefix part must be non-empty"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.matchLabelKeys[0]", BadValue: "/simple", Detail: "prefix part must be non-empty", Origin: "labelKey"},
 			},
 			expectedErrorString: `spec.datacenterTemplate.placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.matchLabelKeys[0]: Invalid value: "/simple": prefix part must be non-empty`,
 		},
@@ -2004,7 +2004,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].matchLabelKeys[0]", BadValue: "/simple", Detail: "prefix part must be non-empty"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].matchLabelKeys[0]", BadValue: "/simple", Detail: "prefix part must be non-empty", Origin: "labelKey"},
 			},
 			expectedErrorString: `spec.datacenterTemplate.placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].matchLabelKeys[0]: Invalid value: "/simple": prefix part must be non-empty`,
 		},
@@ -2033,7 +2033,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.matchLabelKeys[0]", BadValue: "/simple", Detail: "prefix part must be non-empty"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.matchLabelKeys[0]", BadValue: "/simple", Detail: "prefix part must be non-empty", Origin: "labelKey"},
 			},
 			expectedErrorString: `spec.datacenterTemplate.placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.matchLabelKeys[0]: Invalid value: "/simple": prefix part must be non-empty`,
 		},
@@ -2059,7 +2059,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].matchLabelKeys[0]", BadValue: "/simple", Detail: "prefix part must be non-empty"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].matchLabelKeys[0]", BadValue: "/simple", Detail: "prefix part must be non-empty", Origin: "labelKey"},
 			},
 			expectedErrorString: `spec.datacenterTemplate.placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].matchLabelKeys[0]: Invalid value: "/simple": prefix part must be non-empty`,
 		},
@@ -2088,7 +2088,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.mismatchLabelKeys[0]", BadValue: "/simple", Detail: "prefix part must be non-empty"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.mismatchLabelKeys[0]", BadValue: "/simple", Detail: "prefix part must be non-empty", Origin: "labelKey"},
 			},
 			expectedErrorString: `spec.datacenterTemplate.placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.mismatchLabelKeys[0]: Invalid value: "/simple": prefix part must be non-empty`,
 		},
@@ -2114,7 +2114,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].mismatchLabelKeys[0]", BadValue: "/simple", Detail: "prefix part must be non-empty"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].mismatchLabelKeys[0]", BadValue: "/simple", Detail: "prefix part must be non-empty", Origin: "labelKey"},
 			},
 			expectedErrorString: `spec.datacenterTemplate.placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].mismatchLabelKeys[0]: Invalid value: "/simple": prefix part must be non-empty`,
 		},
@@ -2143,7 +2143,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.mismatchLabelKeys[0]", BadValue: "/simple", Detail: "prefix part must be non-empty"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.mismatchLabelKeys[0]", BadValue: "/simple", Detail: "prefix part must be non-empty", Origin: "labelKey"},
 			},
 			expectedErrorString: `spec.datacenterTemplate.placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.mismatchLabelKeys[0]: Invalid value: "/simple": prefix part must be non-empty`,
 		},
@@ -2169,7 +2169,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].mismatchLabelKeys[0]", BadValue: "/simple", Detail: "prefix part must be non-empty"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].mismatchLabelKeys[0]", BadValue: "/simple", Detail: "prefix part must be non-empty", Origin: "labelKey"},
 			},
 			expectedErrorString: `spec.datacenterTemplate.placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].mismatchLabelKeys[0]: Invalid value: "/simple": prefix part must be non-empty`,
 		},
@@ -2442,7 +2442,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.tolerations[0].key", BadValue: "nospecialchars^=@", Detail: "name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')"},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.tolerations[0].key", BadValue: "nospecialchars^=@", Detail: "name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')", Origin: "labelKey"},
 			},
 			expectedErrorString: `spec.datacenterTemplate.placement.tolerations[0].key: Invalid value: "nospecialchars^=@": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`,
 		},

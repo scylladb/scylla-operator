@@ -359,3 +359,17 @@ func GetRemoteDatacenterScyllaConfigClient(ctx context.Context, sc *scyllav1alph
 
 	return scyllaclient.NewConfigClient(host, agentAuthToken), nil
 }
+
+func IsScyllaDBManagerTaskRolledOut(smt *scyllav1alpha1.ScyllaDBManagerTask) (bool, error) {
+	if !helpers.IsStatusConditionPresentAndFalse(smt.Status.Conditions, scyllav1.ProgressingCondition, smt.Generation) {
+		return false, nil
+	}
+
+	if !helpers.IsStatusConditionPresentAndFalse(smt.Status.Conditions, scyllav1.DegradedCondition, smt.Generation) {
+		return false, nil
+	}
+
+	framework.Infof("ScyllaDBManagerTask %s (RV=%s) is rolled out", klog.KObj(smt), smt.ResourceVersion)
+
+	return true, nil
+}

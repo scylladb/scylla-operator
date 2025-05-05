@@ -55,7 +55,7 @@ func (scc *Controller) syncRemoteNamespaces(
 			AllowMissingControllerRef: true,
 		})
 		if changed {
-			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, remoteNamespaceControllerProgressingCondition, rns, "apply", sc.Generation)
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, makeRemoteNamespaceControllerDatacenterProgressingCondition(dc.Name), rns, "apply", sc.Generation)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("can't apply namespace %q: %w", rns.Name, err)

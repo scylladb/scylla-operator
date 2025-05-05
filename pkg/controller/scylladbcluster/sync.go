@@ -11,6 +11,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
@@ -253,6 +254,13 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		return nil
 	}
 
+	type remoteNamespacedOwnedResourceSyncParameters struct {
+		kind                 string
+		progressingCondition string
+		degradedCondition    string
+		syncFn               func(remoteNamespace *corev1.Namespace, remoteController metav1.Object) ([]metav1.Condition, error)
+	}
+
 	var errs []error
 
 	for _, dc := range sc.Spec.Datacenters {
@@ -267,8 +275,8 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 
 		err = controllerhelpers.RunSync(
 			&status.Conditions,
-			remoteNamespaceControllerProgressingCondition,
-			remoteNamespaceControllerDegradedCondition,
+			makeRemoteNamespaceControllerDatacenterProgressingCondition(dc.Name),
+			makeRemoteNamespaceControllerDatacenterDegradedCondition(dc.Name),
 			sc.Generation,
 			func() ([]metav1.Condition, error) {
 				return scc.syncRemoteNamespaces(ctx, sc, &dc, remoteNamespaceMap[dc.RemoteKubernetesClusterName], managingClusterDomain)
@@ -278,10 +286,11 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 			errs = append(errs, fmt.Errorf("can't sync remote namespaces: %w", err))
 		}
 
+		// RemoteOwner resource is namespaced but not owned by anyone. It becomes our controllerRef handle for other remotely reconciled objects.
 		err = controllerhelpers.RunSync(
 			&status.Conditions,
-			remoteRemoteOwnerControllerProgressingCondition,
-			remoteRemoteOwnerControllerDegradedCondition,
+			makeRemoteRemoteOwnerControllerDatacenterProgressingCondition(dc.Name),
+			makeRemoteRemoteOwnerControllerDatacenterDegradedCondition(dc.Name),
 			sc.Generation,
 			func() ([]metav1.Condition, error) {
 				var progressingConditions []metav1.Condition
@@ -289,7 +298,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 				remoteNamespace := remoteNamespaces[dc.RemoteKubernetesClusterName]
 				if remoteNamespace == nil {
 					progressingConditions = append(progressingConditions, metav1.Condition{
-						Type:               fmt.Sprintf(remoteRemoteOwnerControllerDatacenterProgressingConditionFormat, dc.Name),
+						Type:               makeRemoteRemoteOwnerControllerDatacenterProgressingCondition(dc.Name),
 						Status:             metav1.ConditionTrue,
 						Reason:             "WaitingForRemoteNamespace",
 						Message:            fmt.Sprintf("Waiting for Namespace to be created in %q Cluster", dc.RemoteKubernetesClusterName),
@@ -305,100 +314,83 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 			errs = append(errs, fmt.Errorf("can't sync remote remoteowners: %w", err))
 		}
 
-		err = controllerhelpers.SyncRemoteNamespacedObject(
-			&status.Conditions,
-			remoteServiceControllerProgressingCondition,
-			remoteServiceControllerDegradedCondition,
-			sc.Generation,
-			dc.RemoteKubernetesClusterName,
-			remoteNamespaces[dc.RemoteKubernetesClusterName],
-			remoteControllers[dc.RemoteKubernetesClusterName],
-			func(remoteNamespace *corev1.Namespace, remoteController metav1.Object) ([]metav1.Condition, error) {
-				return scc.syncRemoteServices(ctx, sc, &dc, remoteNamespace, remoteController, remoteServiceMap[dc.RemoteKubernetesClusterName], managingClusterDomain)
+		remoteNamespacedOwnedSyncParams := []remoteNamespacedOwnedResourceSyncParameters{
+			{
+				kind:                 "Service",
+				progressingCondition: makeRemoteServiceControllerDatacenterProgressingCondition(dc.Name),
+				degradedCondition:    makeRemoteServiceControllerDatacenterDegradedCondition(dc.Name),
+				syncFn: func(remoteNamespace *corev1.Namespace, remoteController metav1.Object) ([]metav1.Condition, error) {
+					return scc.syncRemoteServices(ctx, sc, &dc, remoteNamespace, remoteController, remoteServiceMap[dc.RemoteKubernetesClusterName], managingClusterDomain)
+				},
 			},
-		)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("can't sync remote services: %w", err))
+			{
+				kind:                 "EndpointSlice",
+				progressingCondition: makeRemoteEndpointSliceControllerDatacenterProgressingCondition(dc.Name),
+				degradedCondition:    makeRemoteEndpointSliceControllerDatacenterDegradedCondition(dc.Name),
+				syncFn: func(remoteNamespace *corev1.Namespace, remoteController metav1.Object) ([]metav1.Condition, error) {
+					return scc.syncRemoteEndpointSlices(ctx, sc, &dc, remoteNamespace, remoteController, remoteEndpointSlicesMap[dc.RemoteKubernetesClusterName], remoteNamespaces, managingClusterDomain)
+				},
+			},
+			{
+				kind:                 "Endpoints",
+				progressingCondition: makeRemoteEndpointsControllerDatacenterProgressingCondition(dc.Name),
+				degradedCondition:    makeRemoteEndpointsControllerDatacenterDegradedCondition(dc.Name),
+				syncFn: func(remoteNamespace *corev1.Namespace, remoteController metav1.Object) ([]metav1.Condition, error) {
+					return scc.syncRemoteEndpoints(ctx, sc, &dc, remoteNamespace, remoteController, remoteEndpointsMap[dc.RemoteKubernetesClusterName], remoteNamespaces, managingClusterDomain)
+				},
+			},
+			{
+				kind:                 "ConfigMap",
+				progressingCondition: makeRemoteConfigMapControllerDatacenterProgressingCondition(dc.Name),
+				degradedCondition:    makeRemoteConfigMapControllerDatacenterDegradedCondition(dc.Name),
+				syncFn: func(remoteNamespace *corev1.Namespace, remoteController metav1.Object) ([]metav1.Condition, error) {
+					return scc.syncRemoteConfigMaps(ctx, sc, &dc, remoteNamespace, remoteController, remoteConfigMapMap[dc.RemoteKubernetesClusterName], managingClusterDomain)
+				},
+			},
+			{
+				kind:                 "Secret",
+				progressingCondition: makeRemoteSecretControllerDatacenterProgressingCondition(dc.Name),
+				degradedCondition:    makeRemoteSecretControllerDatacenterDegradedCondition(dc.Name),
+				syncFn: func(remoteNamespace *corev1.Namespace, remoteController metav1.Object) ([]metav1.Condition, error) {
+					return scc.syncRemoteSecrets(ctx, sc, &dc, remoteNamespace, remoteController, remoteSecretMap[dc.RemoteKubernetesClusterName], managingClusterDomain)
+				},
+			},
+			{
+				kind:                 "ScyllaDBDatacenter",
+				progressingCondition: makeRemoteScyllaDBDatacenterControllerDatacenterProgressingCondition(dc.Name),
+				degradedCondition:    makeRemoteScyllaDBDatacenterControllerDatacenterDegradedCondition(dc.Name),
+				syncFn: func(remoteNamespace *corev1.Namespace, remoteController metav1.Object) ([]metav1.Condition, error) {
+					return scc.syncRemoteScyllaDBDatacenters(ctx, sc, &dc, remoteNamespace, remoteController, remoteScyllaDBDatacenterMap, managingClusterDomain)
+				},
+			},
 		}
 
-		err = controllerhelpers.SyncRemoteNamespacedObject(
-			&status.Conditions,
-			remoteEndpointSliceControllerProgressingCondition,
-			remoteEndpointSliceControllerDegradedCondition,
-			sc.Generation,
-			dc.RemoteKubernetesClusterName,
-			remoteNamespaces[dc.RemoteKubernetesClusterName],
-			remoteControllers[dc.RemoteKubernetesClusterName],
-			func(remoteNamespace *corev1.Namespace, remoteController metav1.Object) ([]metav1.Condition, error) {
-				return scc.syncRemoteEndpointSlices(ctx, sc, &dc, remoteNamespace, remoteController, remoteEndpointSlicesMap[dc.RemoteKubernetesClusterName], remoteNamespaces, managingClusterDomain)
-			},
-		)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("can't sync remote endpointslices: %w", err))
+		for _, syncParams := range remoteNamespacedOwnedSyncParams {
+			err := controllerhelpers.SyncRemoteNamespacedObject(
+				&status.Conditions,
+				syncParams.progressingCondition,
+				syncParams.degradedCondition,
+				sc.Generation,
+				dc.RemoteKubernetesClusterName,
+				remoteNamespaces[dc.RemoteKubernetesClusterName],
+				remoteControllers[dc.RemoteKubernetesClusterName],
+				syncParams.syncFn,
+			)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("can't sync remote %s: %w", syncParams.kind, err))
+			}
 		}
 
-		err = controllerhelpers.SyncRemoteNamespacedObject(
+		// Aggregate datacenter conditions.
+		err = controllerhelpers.SetAggregatedWorkloadConditionsBySuffixes(
+			internalapi.MakeDatacenterAvailableCondition(dc.Name),
+			internalapi.MakeDatacenterProgressingCondition(dc.Name),
+			internalapi.MakeDatacenterDegradedCondition(dc.Name),
 			&status.Conditions,
-			remoteEndpointsControllerProgressingCondition,
-			remoteEndpointsControllerDegradedCondition,
 			sc.Generation,
-			dc.RemoteKubernetesClusterName,
-			remoteNamespaces[dc.RemoteKubernetesClusterName],
-			remoteControllers[dc.RemoteKubernetesClusterName],
-			func(remoteNamespace *corev1.Namespace, remoteController metav1.Object) ([]metav1.Condition, error) {
-				return scc.syncRemoteEndpoints(ctx, sc, &dc, remoteNamespace, remoteController, remoteEndpointsMap[dc.RemoteKubernetesClusterName], remoteNamespaces, managingClusterDomain)
-			},
 		)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("can't sync remote endpoints: %w", err))
-		}
-
-		err = controllerhelpers.SyncRemoteNamespacedObject(
-			&status.Conditions,
-			remoteConfigMapControllerProgressingCondition,
-			remoteConfigMapControllerDegradedCondition,
-			sc.Generation,
-			dc.RemoteKubernetesClusterName,
-			remoteNamespaces[dc.RemoteKubernetesClusterName],
-			remoteControllers[dc.RemoteKubernetesClusterName],
-			func(remoteNamespace *corev1.Namespace, remoteController metav1.Object) ([]metav1.Condition, error) {
-				return scc.syncRemoteConfigMaps(ctx, sc, &dc, remoteNamespace, remoteController, remoteConfigMapMap[dc.RemoteKubernetesClusterName], managingClusterDomain)
-			},
-		)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("can't sync remote configmaps: %w", err))
-		}
-
-		err = controllerhelpers.SyncRemoteNamespacedObject(
-			&status.Conditions,
-			remoteSecretControllerProgressingCondition,
-			remoteSecretControllerDegradedCondition,
-			sc.Generation,
-			dc.RemoteKubernetesClusterName,
-			remoteNamespaces[dc.RemoteKubernetesClusterName],
-			remoteControllers[dc.RemoteKubernetesClusterName],
-			func(remoteNamespace *corev1.Namespace, remoteController metav1.Object) ([]metav1.Condition, error) {
-				return scc.syncRemoteSecrets(ctx, sc, &dc, remoteNamespace, remoteController, remoteSecretMap[dc.RemoteKubernetesClusterName], managingClusterDomain)
-			},
-		)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("can't sync remote secrets: %w", err))
-		}
-
-		err = controllerhelpers.SyncRemoteNamespacedObject(
-			&status.Conditions,
-			remoteScyllaDBDatacenterControllerProgressingCondition,
-			remoteScyllaDBDatacenterControllerDegradedCondition,
-			sc.Generation,
-			dc.RemoteKubernetesClusterName,
-			remoteNamespaces[dc.RemoteKubernetesClusterName],
-			remoteControllers[dc.RemoteKubernetesClusterName],
-			func(remoteNamespace *corev1.Namespace, remoteController metav1.Object) ([]metav1.Condition, error) {
-				return scc.syncRemoteScyllaDBDatacenters(ctx, sc, &dc, remoteNamespace, remoteController, remoteScyllaDBDatacenterMap, managingClusterDomain)
-			},
-		)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("can't sync remote scylladbdatacenters: %w", err))
+			errs = append(errs, fmt.Errorf("can't aggregate datacenter %q workload conditions: %w", dc.Name, err))
 		}
 	}
 

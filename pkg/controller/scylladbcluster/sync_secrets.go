@@ -53,7 +53,7 @@ func (scc *Controller) syncRemoteSecrets(
 	for _, rs := range requiredRemoteSecrets {
 		_, changed, err := resourceapply.ApplySecret(ctx, clusterClient.CoreV1(), scc.remoteSecretLister.Cluster(dc.RemoteKubernetesClusterName), scc.eventRecorder, rs, resourceapply.ApplyOptions{})
 		if changed {
-			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, remoteSecretControllerProgressingCondition, rs, "apply", sc.Generation)
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, makeRemoteSecretControllerDatacenterProgressingCondition(dc.Name), rs, "apply", sc.Generation)
 		}
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't apply secret: %w", err))

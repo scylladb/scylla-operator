@@ -65,7 +65,7 @@ func (scc *Controller) syncRemoteScyllaDBDatacenters(
 			if !ok {
 				klog.V(4).InfoS("Waiting for datacenter to be created", "ScyllaDBCluster", klog.KObj(sc), "ScyllaDBDatacenter", klog.KObj(requiredScyllaDBDatacenter), "Datacenter", previousDCSpec.Name)
 				progressingConditions = append(progressingConditions, metav1.Condition{
-					Type:               fmt.Sprintf(remoteScyllaDBDatacenterControllerDatacenterProgressingConditionFormat, dc.Name),
+					Type:               makeRemoteScyllaDBDatacenterControllerDatacenterProgressingCondition(dc.Name),
 					Status:             metav1.ConditionTrue,
 					Reason:             "WaitingForScyllaDBDatacenterCreation",
 					Message:            fmt.Sprintf("Waiting for ScyllaDBDatacenter %q to be created.", previousDCSDCName),
@@ -82,7 +82,7 @@ func (scc *Controller) syncRemoteScyllaDBDatacenters(
 			if !rolledOut {
 				klog.V(4).InfoS("Waiting for datacenter to roll out", "ScyllaDBCluster", klog.KObj(sc), "ScyllaDBDatacenter", klog.KObj(requiredScyllaDBDatacenter), "Datacenter", previousDCSpec.Name)
 				progressingConditions = append(progressingConditions, metav1.Condition{
-					Type:               fmt.Sprintf(remoteScyllaDBDatacenterControllerDatacenterProgressingConditionFormat, dc.Name),
+					Type:               makeRemoteScyllaDBDatacenterControllerDatacenterProgressingCondition(dc.Name),
 					Status:             metav1.ConditionTrue,
 					Reason:             "WaitingForScyllaDBDatacenterRollout",
 					Message:            fmt.Sprintf("Waiting for ScyllaDBDatacenter %q to roll out.", naming.ObjRef(previousDCSDC)),
@@ -102,7 +102,7 @@ func (scc *Controller) syncRemoteScyllaDBDatacenters(
 	}
 
 	if changed {
-		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, fmt.Sprintf(remoteScyllaDBDatacenterControllerDatacenterProgressingConditionFormat, dc.Name), sdc, "apply", sc.Generation)
+		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, makeRemoteScyllaDBDatacenterControllerDatacenterProgressingCondition(dc.Name), sdc, "apply", sc.Generation)
 	}
 
 	rolledOut, err := controllerhelpers.IsScyllaDBDatacenterRolledOut(sdc)
@@ -113,7 +113,7 @@ func (scc *Controller) syncRemoteScyllaDBDatacenters(
 	if !rolledOut {
 		klog.V(4).InfoS("Waiting for ScyllaDBDatacenter to roll out", "ScyllaDBCluster", klog.KObj(sc), "ScyllaDBDatacenter", klog.KObj(sdc))
 		progressingConditions = append(progressingConditions, metav1.Condition{
-			Type:               fmt.Sprintf(remoteScyllaDBDatacenterControllerDatacenterProgressingConditionFormat, dc.Name),
+			Type:               makeRemoteScyllaDBDatacenterControllerDatacenterProgressingCondition(dc.Name),
 			Status:             metav1.ConditionTrue,
 			Reason:             "WaitingForScyllaDBDatacenterRollout",
 			Message:            fmt.Sprintf("Waiting for ScyllaDBDatacenter %q to roll out.", naming.ObjRef(sdc)),

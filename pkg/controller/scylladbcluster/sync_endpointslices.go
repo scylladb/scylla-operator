@@ -55,7 +55,7 @@ func (scc *Controller) syncRemoteEndpointSlices(
 	for _, es := range requiredEndpointSlices {
 		_, changed, err := resourceapply.ApplyEndpointSlice(ctx, clusterClient.DiscoveryV1(), scc.remoteEndpointSliceLister.Cluster(dc.RemoteKubernetesClusterName), scc.eventRecorder, es, resourceapply.ApplyOptions{})
 		if changed {
-			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, remoteEndpointSliceControllerProgressingCondition, es, "apply", sc.Generation)
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, makeRemoteEndpointSliceControllerDatacenterProgressingCondition(dc.Name), es, "apply", sc.Generation)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("can't apply endpointslice: %w", err)

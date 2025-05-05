@@ -49,7 +49,7 @@ func (scc *Controller) syncRemoteServices(
 	for _, svc := range requiredServices {
 		_, changed, err := resourceapply.ApplyService(ctx, clusterClient.CoreV1(), scc.remoteServiceLister.Cluster(dc.RemoteKubernetesClusterName), scc.eventRecorder, svc, resourceapply.ApplyOptions{})
 		if changed {
-			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, remoteServiceControllerProgressingCondition, svc, "apply", sc.Generation)
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, makeRemoteServiceControllerDatacenterProgressingCondition(dc.Name), svc, "apply", sc.Generation)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("can't apply service: %w", err)

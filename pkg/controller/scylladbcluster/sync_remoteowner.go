@@ -52,7 +52,7 @@ func (scc *Controller) syncRemoteRemoteOwners(
 			AllowMissingControllerRef: true,
 		})
 		if changed {
-			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, remoteRemoteOwnerControllerProgressingCondition, ro, "apply", sc.Generation)
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, makeRemoteRemoteOwnerControllerDatacenterProgressingCondition(dc.Name), ro, "apply", sc.Generation)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("can't apply remoteowner: %w", err)

@@ -53,7 +53,7 @@ func (scc *Controller) syncRemoteConfigMaps(
 	for _, cm := range requiredConfigMaps {
 		_, changed, err := resourceapply.ApplyConfigMap(ctx, clusterClient.CoreV1(), scc.remoteConfigMapLister.Cluster(dc.RemoteKubernetesClusterName), scc.eventRecorder, cm, resourceapply.ApplyOptions{})
 		if changed {
-			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, remoteConfigMapControllerProgressingCondition, cm, "apply", sc.Generation)
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, makeRemoteConfigMapControllerDatacenterProgressingCondition(dc.Name), cm, "apply", sc.Generation)
 		}
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't apply configmap: %w", err))

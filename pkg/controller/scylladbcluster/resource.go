@@ -344,7 +344,7 @@ func MakeRemoteEndpointSlices(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1al
 		otherDCNamespace, ok := remoteNamespaces[otherDC.RemoteKubernetesClusterName]
 		if !ok {
 			progressingConditions = append(progressingConditions, metav1.Condition{
-				Type:               remoteEndpointSliceControllerProgressingCondition,
+				Type:               makeRemoteEndpointSliceControllerDatacenterProgressingCondition(dc.Name),
 				Status:             metav1.ConditionTrue,
 				Reason:             "WaitingForRemoteNamespace",
 				Message:            fmt.Sprintf("Waiting for Namespace to be created in %q Cluster", otherDC.RemoteKubernetesClusterName),
@@ -861,7 +861,7 @@ func makeMirroredRemoteConfigMaps(sc *scyllav1alpha1.ScyllaDBCluster, dc *scylla
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				progressingConditions = append(progressingConditions, metav1.Condition{
-					Type:               remoteConfigMapControllerProgressingCondition,
+					Type:               makeRemoteConfigMapControllerDatacenterProgressingCondition(dc.Name),
 					Status:             metav1.ConditionTrue,
 					Reason:             "WaitingForConfigMap",
 					Message:            fmt.Sprintf("Waiting for ConfigMap %q to exist.", naming.ManualRef(sc.Namespace, cmName)),
@@ -942,7 +942,7 @@ func makeMirroredRemoteSecrets(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1a
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				progressingConditions = append(progressingConditions, metav1.Condition{
-					Type:               remoteSecretControllerProgressingCondition,
+					Type:               makeRemoteSecretControllerDatacenterProgressingCondition(dc.Name),
 					Status:             metav1.ConditionTrue,
 					Reason:             "WaitingForSecret",
 					Message:            fmt.Sprintf("Waiting for Secret %q to exist.", naming.ManualRef(sc.Namespace, secretName)),

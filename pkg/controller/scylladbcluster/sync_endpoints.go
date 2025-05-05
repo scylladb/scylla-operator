@@ -60,7 +60,7 @@ func (scc *Controller) syncRemoteEndpoints(
 	for _, e := range requiredEndpoints {
 		_, changed, err := resourceapply.ApplyEndpoints(ctx, clusterClient.CoreV1(), scc.remoteEndpointsLister.Cluster(dc.RemoteKubernetesClusterName), scc.eventRecorder, e, resourceapply.ApplyOptions{})
 		if changed {
-			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, remoteEndpointsControllerProgressingCondition, e, "apply", sc.Generation)
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, makeRemoteEndpointsControllerDatacenterProgressingCondition(dc.Name), e, "apply", sc.Generation)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("can't apply endpoints: %w", err)

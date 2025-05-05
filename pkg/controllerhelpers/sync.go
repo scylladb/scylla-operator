@@ -200,10 +200,20 @@ func SyncRemoteNamespacedObject(conditions *[]metav1.Condition, progressingCondi
 }
 
 func SetAggregatedWorkloadConditions(conditions *[]metav1.Condition, generation int64) error {
+	return SetAggregatedWorkloadConditionsBySuffixes(
+		scyllav1.AvailableCondition,
+		scyllav1.ProgressingCondition,
+		scyllav1.DegradedCondition,
+		conditions,
+		generation,
+	)
+}
+
+func SetAggregatedWorkloadConditionsBySuffixes(availableConditionType, progressingConditionType, degradedConditionType string, conditions *[]metav1.Condition, generation int64) error {
 	availableCondition, err := AggregateStatusConditions(
-		FindStatusConditionsWithSuffix(*conditions, scyllav1.AvailableCondition),
+		FindStatusConditionsWithSuffix(*conditions, availableConditionType),
 		metav1.Condition{
-			Type:               scyllav1.AvailableCondition,
+			Type:               availableConditionType,
 			Status:             metav1.ConditionTrue,
 			Reason:             internalapi.AsExpectedReason,
 			Message:            "",
@@ -216,9 +226,9 @@ func SetAggregatedWorkloadConditions(conditions *[]metav1.Condition, generation 
 	apimeta.SetStatusCondition(conditions, availableCondition)
 
 	progressingCondition, err := AggregateStatusConditions(
-		FindStatusConditionsWithSuffix(*conditions, scyllav1.ProgressingCondition),
+		FindStatusConditionsWithSuffix(*conditions, progressingConditionType),
 		metav1.Condition{
-			Type:               scyllav1.ProgressingCondition,
+			Type:               progressingConditionType,
 			Status:             metav1.ConditionFalse,
 			Reason:             internalapi.AsExpectedReason,
 			Message:            "",
@@ -231,9 +241,9 @@ func SetAggregatedWorkloadConditions(conditions *[]metav1.Condition, generation 
 	apimeta.SetStatusCondition(conditions, progressingCondition)
 
 	degradedCondition, err := AggregateStatusConditions(
-		FindStatusConditionsWithSuffix(*conditions, scyllav1.DegradedCondition),
+		FindStatusConditionsWithSuffix(*conditions, degradedConditionType),
 		metav1.Condition{
-			Type:               scyllav1.DegradedCondition,
+			Type:               degradedConditionType,
 			Status:             metav1.ConditionFalse,
 			Reason:             internalapi.AsExpectedReason,
 			Message:            "",

@@ -12,10 +12,12 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	remotelister "github.com/scylladb/scylla-operator/pkg/remoteclient/lister"
+	"github.com/scylladb/scylla-operator/pkg/scylla"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilsets "k8s.io/apimachinery/pkg/util/sets"
 	corev1listers "k8s.io/client-go/listers/core/v1"
@@ -60,12 +62,21 @@ func MakeRemoteNamespaces(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1
 func MakeRemoteServices(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteNamespace *corev1.Namespace, remoteController metav1.Object, managingClusterDomain string) []*corev1.Service {
 	var remoteServices []*corev1.Service
 
+	remoteServices = append(remoteServices, makeSeedServices(sc, dc, remoteNamespace, remoteController, managingClusterDomain)...)
+
+	return remoteServices
+}
+
+// makeSeedServices returns a list of seed services to other datacenters than one provided.
+func makeSeedServices(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteNamespace *corev1.Namespace, remoteController metav1.Object, managingClusterDomain string) []*corev1.Service {
+	var seedServices []*corev1.Service
+
 	for _, otherDC := range sc.Spec.Datacenters {
 		if dc.Name == otherDC.Name {
 			continue
 		}
 
-		remoteServices = append(remoteServices, &corev1.Service{
+		seedServices = append(seedServices, &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            naming.SeedService(sc, &otherDC),
 				Namespace:       remoteNamespace.Name,
@@ -74,28 +85,13 @@ func MakeRemoteServices(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.S
 				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(remoteController, remoteControllerGVK)},
 			},
 			Spec: corev1.ServiceSpec{
-				Ports: []corev1.ServicePort{
-					{
-						Name:     "inter-node",
-						Protocol: corev1.ProtocolTCP,
-						Port:     7000,
-					},
-					{
-						Name:     "inter-node-ssl",
-						Protocol: corev1.ProtocolTCP,
-						Port:     7001,
-					},
-					{
-						Name:     "cql",
-						Protocol: corev1.ProtocolTCP,
-						Port:     9042,
-					},
-					{
-						Name:     "cql-ssl",
-						Protocol: corev1.ProtocolTCP,
-						Port:     9142,
-					},
-				},
+				Ports: oslices.ConvertSlice(scyllaDBInterNodeCommunicationPorts, func(port portSpec) corev1.ServicePort {
+					return corev1.ServicePort{
+						Name:     port.name,
+						Protocol: port.protocol,
+						Port:     port.port,
+					}
+				}),
 				Selector:  nil,
 				ClusterIP: corev1.ClusterIPNone,
 				Type:      corev1.ServiceTypeClusterIP,
@@ -103,12 +99,12 @@ func MakeRemoteServices(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.S
 		})
 	}
 
-	return remoteServices
+	return seedServices
 }
 
-func MakeRemoteScyllaDBDatacenters(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteScyllaDBDatacenters map[string]map[string]*scyllav1alpha1.ScyllaDBDatacenter, remoteNamespace *corev1.Namespace, remoteController metav1.Object, managingClusterDomain string) (*scyllav1alpha1.ScyllaDBDatacenter, error) {
-	// Given DC is part of seed list if it's fully reconciled, or is part of another DC seeds list,
-	// meaning it was fully reconciled in the past, so DC is part of the cluster.
+// Given DC is part of seed list if it's fully reconciled, or is part of another DC seeds list,
+// meaning it was fully reconciled in the past, so DC is part of the cluster.
+func calculateSeedsForDatacenter(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteScyllaDBDatacenters map[string]map[string]*scyllav1alpha1.ScyllaDBDatacenter, remoteNamespace *corev1.Namespace) ([]string, error) {
 	seedDCNamesSet := apimachineryutilsets.New[string]()
 	for _, dcSpec := range sc.Spec.Datacenters {
 		sdc, ok := remoteScyllaDBDatacenters[dcSpec.RemoteKubernetesClusterName][naming.ScyllaDBDatacenterName(sc, &dcSpec)]
@@ -138,19 +134,28 @@ func MakeRemoteScyllaDBDatacenters(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyll
 		}
 	}
 
-	dcSpec := applyDatacenterTemplateOnDatacenter(sc.Spec.DatacenterTemplate, dc)
-
 	seeds := make([]string, 0, len(sc.Spec.ScyllaDB.ExternalSeeds)+seedDCNamesSet.Len())
 	seeds = append(seeds, sc.Spec.ScyllaDB.ExternalSeeds...)
 
 	for _, otherDC := range sc.Spec.Datacenters {
-		if otherDC.Name == dcSpec.Name {
+		if otherDC.Name == dc.Name {
 			continue
 		}
 
 		if seedDCNamesSet.Has(otherDC.Name) {
 			seeds = append(seeds, fmt.Sprintf("%s.%s.svc", naming.SeedService(sc, &otherDC), remoteNamespace.Name))
 		}
+	}
+
+	return seeds, nil
+}
+
+func MakeRemoteScyllaDBDatacenters(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteScyllaDBDatacenters map[string]map[string]*scyllav1alpha1.ScyllaDBDatacenter, remoteNamespace *corev1.Namespace, remoteController metav1.Object, managingClusterDomain string) (*scyllav1alpha1.ScyllaDBDatacenter, error) {
+	dcSpec := applyDatacenterTemplateOnDatacenter(sc.Spec.DatacenterTemplate, dc)
+
+	seeds, err := calculateSeedsForDatacenter(sc, dc, remoteScyllaDBDatacenters, remoteNamespace)
+	if err != nil {
+		return nil, fmt.Errorf("can't calculate seeds for datacenter %q: %w", dc.Name, err)
 	}
 
 	return &scyllav1alpha1.ScyllaDBDatacenter{
@@ -293,6 +298,22 @@ func MakeRemoteEndpointSlices(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1al
 	var progressingConditions []metav1.Condition
 	var remoteEndpointSlices []*discoveryv1.EndpointSlice
 
+	seedServiceEndpointSlicesProgressingConditions, seedServiceEndpointSlices, err := makeEndpointSlicesForSeedService(sc, dc, remoteNamespace, remoteController, remoteNamespaces, remoteServiceLister, remotePodLister, managingClusterDomain)
+	progressingConditions = append(progressingConditions, seedServiceEndpointSlicesProgressingConditions...)
+	if err != nil {
+		return progressingConditions, nil, fmt.Errorf("can't make endpoint slices for seed service: %w", err)
+	}
+
+	remoteEndpointSlices = append(remoteEndpointSlices, seedServiceEndpointSlices...)
+
+	return progressingConditions, remoteEndpointSlices, nil
+}
+
+// makeEndpointSlicesForSeedService creates EndpointSlice backing seed service, those endpoints are ScyllaDB nodes from other datacenters.
+func makeEndpointSlicesForSeedService(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteNamespace *corev1.Namespace, remoteController metav1.Object, remoteNamespaces map[string]*corev1.Namespace, remoteServiceLister remotelister.GenericClusterLister[corev1listers.ServiceLister], remotePodLister remotelister.GenericClusterLister[corev1listers.PodLister], managingClusterDomain string) ([]metav1.Condition, []*discoveryv1.EndpointSlice, error) {
+	var progressingConditions []metav1.Condition
+	var remoteEndpointSlices []*discoveryv1.EndpointSlice
+
 	nodeBroadcastType := scyllav1alpha1.BroadcastAddressTypePodIP
 	if sc.Spec.ExposeOptions != nil && sc.Spec.ExposeOptions.BroadcastOptions != nil {
 		nodeBroadcastType = sc.Spec.ExposeOptions.BroadcastOptions.Nodes.Type
@@ -301,43 +322,6 @@ func MakeRemoteEndpointSlices(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1al
 	for _, otherDC := range sc.Spec.Datacenters {
 		if dc.Name == otherDC.Name {
 			continue
-		}
-
-		dcLabels := naming.ScyllaDBClusterDatacenterEndpointsLabels(sc, dc, managingClusterDomain)
-		dcLabels[discoveryv1.LabelServiceName] = naming.SeedService(sc, &otherDC)
-		dcLabels[discoveryv1.LabelManagedBy] = naming.OperatorAppNameWithDomain
-
-		dcEs := &discoveryv1.EndpointSlice{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace:       remoteNamespace.Name,
-				Name:            naming.SeedService(sc, &otherDC),
-				Labels:          dcLabels,
-				Annotations:     naming.ScyllaDBClusterDatacenterAnnotations(sc, dc),
-				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(remoteController, remoteControllerGVK)},
-			},
-			AddressType: discoveryv1.AddressTypeIPv4,
-			Ports: []discoveryv1.EndpointPort{
-				{
-					Name:     pointer.Ptr("inter-node"),
-					Protocol: pointer.Ptr(corev1.ProtocolTCP),
-					Port:     pointer.Ptr(int32(7000)),
-				},
-				{
-					Name:     pointer.Ptr("inter-node-ssl"),
-					Protocol: pointer.Ptr(corev1.ProtocolTCP),
-					Port:     pointer.Ptr(int32(7001)),
-				},
-				{
-					Name:     pointer.Ptr("cql"),
-					Protocol: pointer.Ptr(corev1.ProtocolTCP),
-					Port:     pointer.Ptr(int32(9042)),
-				},
-				{
-					Name:     pointer.Ptr("cql-ssl"),
-					Protocol: pointer.Ptr(corev1.ProtocolTCP),
-					Port:     pointer.Ptr(int32(9142)),
-				},
-			},
 		}
 
 		otherDCPodSelector := naming.DatacenterPodsSelector(sc, &otherDC)
@@ -353,93 +337,155 @@ func MakeRemoteEndpointSlices(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1al
 			continue
 		}
 
-		switch nodeBroadcastType {
-		case scyllav1alpha1.BroadcastAddressTypePodIP:
-			dcPods, err := remotePodLister.Cluster(otherDC.RemoteKubernetesClusterName).Pods(otherDCNamespace.Name).List(otherDCPodSelector)
-			if err != nil {
-				return progressingConditions, nil, fmt.Errorf("can't list pods in %q ScyllaCluster %q Datacenter: %w", naming.ObjRef(sc), otherDC.Name, err)
-			}
+		dcLabels := naming.ScyllaDBClusterDatacenterEndpointsLabels(sc, dc, managingClusterDomain)
+		dcLabels[discoveryv1.LabelServiceName] = naming.SeedService(sc, &otherDC)
+		dcLabels[discoveryv1.LabelManagedBy] = naming.OperatorAppNameWithDomain
 
-			klog.V(4).InfoS("Found remote Scylla Pods", "Cluster", klog.KObj(sc), "Datacenter", otherDC.Name, "Pods", len(dcPods))
-
-			// Sort pods to have stable list of endpoints
-			sort.Slice(dcPods, func(i, j int) bool {
-				return dcPods[i].Name < dcPods[j].Name
-			})
-			for _, dcPod := range dcPods {
-				if len(dcPod.Status.PodIP) == 0 {
-					continue
-				}
-
-				ready := controllerhelpers.IsPodReady(dcPod)
-				terminating := dcPod.DeletionTimestamp != nil
-				serving := ready && !terminating
-
-				dcEs.Endpoints = append(dcEs.Endpoints, discoveryv1.Endpoint{
-					Addresses: []string{dcPod.Status.PodIP},
-					Conditions: discoveryv1.EndpointConditions{
-						Ready:       pointer.Ptr(ready),
-						Serving:     pointer.Ptr(serving),
-						Terminating: pointer.Ptr(terminating),
-					},
-				})
-			}
-
-		case scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress:
-			dcServices, err := remoteServiceLister.Cluster(otherDC.RemoteKubernetesClusterName).Services(otherDCNamespace.Name).List(otherDCPodSelector)
-			if err != nil {
-				return progressingConditions, nil, fmt.Errorf("can't list services in %q ScyllaDBCluster %q Datacenter: %w", naming.ObjRef(sc), otherDC.Name, err)
-			}
-
-			klog.V(4).InfoS("Found remote ScyllaDB Services", "ScyllaDBCluster", klog.KObj(sc), "Datacenter", otherDC.Name, "Services", len(dcServices))
-
-			// Sort objects to have stable list of endpoints
-			sort.Slice(dcServices, func(i, j int) bool {
-				return dcServices[i].Name < dcServices[j].Name
-			})
-
-			for _, dcService := range dcServices {
-				if dcService.Labels[naming.ScyllaServiceTypeLabel] != string(naming.ScyllaServiceTypeMember) {
-					continue
-				}
-
-				if len(dcService.Status.LoadBalancer.Ingress) < 1 {
-					continue
-				}
-
-				for _, ingress := range dcService.Status.LoadBalancer.Ingress {
-					ep := discoveryv1.Endpoint{
-						Conditions: discoveryv1.EndpointConditions{
-							Terminating: pointer.Ptr(dcService.DeletionTimestamp != nil),
-						},
-					}
-					if len(ingress.IP) != 0 {
-						ep.Addresses = append(ep.Addresses, ingress.IP)
-					}
-
-					if len(ingress.Hostname) != 0 {
-						ep.Addresses = append(ep.Addresses, ingress.Hostname)
-					}
-
-					if len(ep.Addresses) > 0 {
-						// LoadBalancer services are external to Kubernetes, and they don't report their readiness.
-						// Assume that if the address is there, it's ready and serving.
-						ep.Conditions.Ready = pointer.Ptr(true)
-						ep.Conditions.Serving = pointer.Ptr(true)
-					}
-
-					dcEs.Endpoints = append(dcEs.Endpoints, ep)
-				}
-			}
-
-		default:
-			return progressingConditions, nil, fmt.Errorf("unsupported node broadcast address type %v specified in %q ScyllaDBCluster", nodeBroadcastType, naming.ObjRef(sc))
+		endpoints, err := calculateEndpointsForRemoteDCPods(sc, nodeBroadcastType, otherDC, otherDCNamespace, otherDCPodSelector, remotePodLister, remoteServiceLister)
+		if err != nil {
+			return progressingConditions, nil, fmt.Errorf("can't calculate endpoints to dataceter %q for datacenter %q: %w", otherDC.Name, dc.Name, err)
 		}
 
-		remoteEndpointSlices = append(remoteEndpointSlices, dcEs)
+		remoteEndpointSlices = append(remoteEndpointSlices, &discoveryv1.EndpointSlice{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace:       remoteNamespace.Name,
+				Name:            naming.SeedService(sc, &otherDC),
+				Labels:          dcLabels,
+				Annotations:     naming.ScyllaDBClusterDatacenterAnnotations(sc, dc),
+				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(remoteController, remoteControllerGVK)},
+			},
+			AddressType: discoveryv1.AddressTypeIPv4,
+			Endpoints:   endpoints,
+			Ports: oslices.ConvertSlice(scyllaDBInterNodeCommunicationPorts, func(port portSpec) discoveryv1.EndpointPort {
+				return discoveryv1.EndpointPort{
+					Name:     pointer.Ptr(port.name),
+					Protocol: pointer.Ptr(port.protocol),
+					Port:     pointer.Ptr(port.port),
+				}
+			}),
+		})
 	}
 
 	return progressingConditions, remoteEndpointSlices, nil
+}
+
+type portSpec struct {
+	name     string
+	protocol corev1.Protocol
+	port     int32
+}
+
+var scyllaDBInterNodeCommunicationPorts = []portSpec{
+	{
+		name:     "inter-node",
+		protocol: corev1.ProtocolTCP,
+		port:     scylla.DefaultStoragePort,
+	},
+	{
+		name:     "inter-node-ssl",
+		protocol: corev1.ProtocolTCP,
+		port:     scylla.DefaultStoragePortSSL,
+	},
+	{
+		name:     "cql",
+		protocol: corev1.ProtocolTCP,
+		port:     scylla.DefaultNativeTransportPort,
+	},
+	{
+		name:     "cql-ssl",
+		protocol: corev1.ProtocolTCP,
+		port:     scylla.DefaultNativeTransportPortSSL,
+	},
+}
+
+// calculateEndpointsForRemoteDCPods computes endpoints for remote datacenter pods taking into account how nodes are being exposed.
+func calculateEndpointsForRemoteDCPods(sc *scyllav1alpha1.ScyllaDBCluster, nodeBroadcastType scyllav1alpha1.BroadcastAddressType, remoteDC scyllav1alpha1.ScyllaDBClusterDatacenter, remoteDCNamespace *corev1.Namespace, remoteDCPodSelector labels.Selector, remotePodLister remotelister.GenericClusterLister[corev1listers.PodLister], remoteServiceLister remotelister.GenericClusterLister[corev1listers.ServiceLister]) ([]discoveryv1.Endpoint, error) {
+	var endpoints []discoveryv1.Endpoint
+
+	switch nodeBroadcastType {
+	case scyllav1alpha1.BroadcastAddressTypePodIP:
+		dcPods, err := remotePodLister.Cluster(remoteDC.RemoteKubernetesClusterName).Pods(remoteDCNamespace.Name).List(remoteDCPodSelector)
+		if err != nil {
+			return nil, fmt.Errorf("can't list pods in %q ScyllaCluster %q Datacenter: %w", naming.ObjRef(sc), remoteDC.Name, err)
+		}
+
+		klog.V(4).InfoS("Found remote Scylla Pods", "Cluster", klog.KObj(sc), "Datacenter", remoteDC.Name, "Pods", len(dcPods))
+
+		// Sort pods to have stable list of endpoints
+		sort.Slice(dcPods, func(i, j int) bool {
+			return dcPods[i].Name < dcPods[j].Name
+		})
+		for _, dcPod := range dcPods {
+			if len(dcPod.Status.PodIP) == 0 {
+				continue
+			}
+
+			ready := controllerhelpers.IsPodReady(dcPod)
+			terminating := dcPod.DeletionTimestamp != nil
+			serving := ready && !terminating
+
+			endpoints = append(endpoints, discoveryv1.Endpoint{
+				Addresses: []string{dcPod.Status.PodIP},
+				Conditions: discoveryv1.EndpointConditions{
+					Ready:       pointer.Ptr(ready),
+					Serving:     pointer.Ptr(serving),
+					Terminating: pointer.Ptr(terminating),
+				},
+			})
+		}
+
+	case scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress:
+		dcServices, err := remoteServiceLister.Cluster(remoteDC.RemoteKubernetesClusterName).Services(remoteDCNamespace.Name).List(remoteDCPodSelector)
+		if err != nil {
+			return nil, fmt.Errorf("can't list services in %q ScyllaDBCluster %q Datacenter: %w", naming.ObjRef(sc), remoteDC.Name, err)
+		}
+
+		klog.V(4).InfoS("Found remote ScyllaDB Services", "ScyllaDBCluster", klog.KObj(sc), "Datacenter", remoteDC.Name, "Services", len(dcServices))
+
+		// Sort objects to have stable list of endpoints
+		sort.Slice(dcServices, func(i, j int) bool {
+			return dcServices[i].Name < dcServices[j].Name
+		})
+
+		for _, dcService := range dcServices {
+			if dcService.Labels[naming.ScyllaServiceTypeLabel] != string(naming.ScyllaServiceTypeMember) {
+				continue
+			}
+
+			if len(dcService.Status.LoadBalancer.Ingress) < 1 {
+				continue
+			}
+
+			for _, ingress := range dcService.Status.LoadBalancer.Ingress {
+				ep := discoveryv1.Endpoint{
+					Conditions: discoveryv1.EndpointConditions{
+						Terminating: pointer.Ptr(dcService.DeletionTimestamp != nil),
+					},
+				}
+				if len(ingress.IP) != 0 {
+					ep.Addresses = append(ep.Addresses, ingress.IP)
+				}
+
+				if len(ingress.Hostname) != 0 {
+					ep.Addresses = append(ep.Addresses, ingress.Hostname)
+				}
+
+				if len(ep.Addresses) > 0 {
+					// LoadBalancer services are external to Kubernetes, and they don't report their readiness.
+					// Assume that if the address is there, it's ready and serving.
+					ep.Conditions.Ready = pointer.Ptr(true)
+					ep.Conditions.Serving = pointer.Ptr(true)
+				}
+
+				endpoints = append(endpoints, ep)
+			}
+		}
+
+	default:
+		return nil, fmt.Errorf("unsupported node broadcast address type %v specified in %q ScyllaDBCluster", nodeBroadcastType, naming.ObjRef(sc))
+	}
+
+	return endpoints, nil
 }
 
 func mergeScyllaV1Alpha1Placement(placementGetters ...func() *scyllav1alpha1.Placement) *scyllav1alpha1.Placement {

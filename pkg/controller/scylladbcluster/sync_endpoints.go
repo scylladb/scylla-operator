@@ -12,78 +12,58 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
-func (scc *Controller) syncEndpoints(
+func (scc *Controller) syncRemoteEndpoints(
 	ctx context.Context,
 	sc *scyllav1alpha1.ScyllaDBCluster,
+	dc *scyllav1alpha1.ScyllaDBClusterDatacenter,
+	remoteNamespace *corev1.Namespace,
+	remoteController metav1.Object,
+	remoteEndpoints map[string]*corev1.Endpoints,
 	remoteNamespaces map[string]*corev1.Namespace,
-	remoteControllers map[string]metav1.Object,
-	remoteEndpoints map[string]map[string]*corev1.Endpoints,
 	managingClusterDomain string,
 ) ([]metav1.Condition, error) {
-	progressingConditions, requiredEndpointSlices, err := MakeRemoteEndpointSlices(sc, remoteNamespaces, remoteControllers, scc.remoteServiceLister, scc.remotePodLister, managingClusterDomain)
+	progressingConditions, requiredEndpointSlices, err := MakeRemoteEndpointSlices(sc, dc, remoteNamespace, remoteController, remoteNamespaces, scc.remoteServiceLister, scc.remotePodLister, managingClusterDomain)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't make endpointslices: %w", err)
 	}
 
-	requiredEndpoints := make(map[string][]*corev1.Endpoints, len(requiredEndpointSlices))
+	requiredEndpoints := make([]*corev1.Endpoints, 0, len(requiredEndpointSlices))
 
-	for _, dc := range sc.Spec.Datacenters {
-		re, err := controllerhelpers.ConvertEndpointSlicesToEndpoints(requiredEndpointSlices[dc.RemoteKubernetesClusterName])
-		if err != nil {
-			return progressingConditions, fmt.Errorf("can't convert endpointslices to endpoints: %w", err)
-		}
+	re, err := controllerhelpers.ConvertEndpointSlicesToEndpoints(requiredEndpointSlices)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't convert endpointslices to endpoints: %w", err)
+	}
 
-		requiredEndpoints[dc.RemoteKubernetesClusterName] = re
+	requiredEndpoints = append(requiredEndpoints, re...)
+
+	clusterClient, err := scc.kubeRemoteClient.Cluster(dc.RemoteKubernetesClusterName)
+	if err != nil {
+		return nil, fmt.Errorf("can't get client to %q cluster: %w", dc.RemoteKubernetesClusterName, err)
 	}
 
 	// Delete any excessive Endpoints.
 	// Delete has to be the first action to avoid getting stuck on quota.
-	var deletionErrors []error
-	for _, dc := range sc.Spec.Datacenters {
-		ns, ok := remoteNamespaces[dc.RemoteKubernetesClusterName]
-		if !ok {
-			continue
-		}
-
-		clusterClient, err := scc.kubeRemoteClient.Cluster(dc.RemoteKubernetesClusterName)
-		if err != nil {
-			return nil, fmt.Errorf("can't get client to %q cluster: %w", dc.RemoteKubernetesClusterName, err)
-		}
-
-		err = controllerhelpers.Prune(ctx,
-			requiredEndpoints[dc.RemoteKubernetesClusterName],
-			remoteEndpoints[dc.RemoteKubernetesClusterName],
-			&controllerhelpers.PruneControlFuncs{
-				DeleteFunc: clusterClient.CoreV1().Endpoints(ns.Name).Delete,
-			},
-			scc.eventRecorder,
-		)
-		if err != nil {
-			return progressingConditions, fmt.Errorf("can't prune endpoints in %q Datacenter of %q ScyllaDBCluster: %w", dc.Name, naming.ObjRef(sc), err)
-		}
+	err = controllerhelpers.Prune(ctx,
+		requiredEndpoints,
+		remoteEndpoints,
+		&controllerhelpers.PruneControlFuncs{
+			DeleteFunc: clusterClient.CoreV1().Endpoints(remoteNamespace.Name).Delete,
+		},
+		scc.eventRecorder,
+	)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't prune endpoints in %q Datacenter of %q ScyllaDBCluster: %w", dc.Name, naming.ObjRef(sc), err)
 	}
 
-	if err := utilerrors.NewAggregate(deletionErrors); err != nil {
-		return nil, fmt.Errorf("can't prune remote endpoints: %w", err)
-	}
-
-	for _, dc := range sc.Spec.Datacenters {
-		clusterClient, err := scc.kubeRemoteClient.Cluster(dc.RemoteKubernetesClusterName)
-		if err != nil {
-			return nil, fmt.Errorf("can't get client to %q cluster: %w", dc.Name, err)
+	for _, e := range requiredEndpoints {
+		_, changed, err := resourceapply.ApplyEndpoints(ctx, clusterClient.CoreV1(), scc.remoteEndpointsLister.Cluster(dc.RemoteKubernetesClusterName), scc.eventRecorder, e, resourceapply.ApplyOptions{})
+		if changed {
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, makeRemoteEndpointsControllerDatacenterProgressingCondition(dc.Name), e, "apply", sc.Generation)
 		}
-
-		for _, e := range requiredEndpoints[dc.RemoteKubernetesClusterName] {
-			_, changed, err := resourceapply.ApplyEndpoints(ctx, clusterClient.CoreV1(), scc.remoteEndpointsLister.Cluster(dc.RemoteKubernetesClusterName), scc.eventRecorder, e, resourceapply.ApplyOptions{})
-			if changed {
-				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, remoteEndpointsControllerProgressingCondition, e, "apply", sc.Generation)
-			}
-			if err != nil {
-				return nil, fmt.Errorf("can't apply endpoints: %w", err)
-			}
+		if err != nil {
+			return nil, fmt.Errorf("can't apply endpoints: %w", err)
 		}
 	}
 

@@ -22,492 +22,421 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func MakeRemoteRemoteOwners(sc *scyllav1alpha1.ScyllaDBCluster, remoteNamespaces map[string]*corev1.Namespace, existingRemoteOwners map[string]map[string]*scyllav1alpha1.RemoteOwner, managingClusterDomain string) ([]metav1.Condition, map[string][]*scyllav1alpha1.RemoteOwner, error) {
-	var progressingConditions []metav1.Condition
-	requiredRemoteOwners := make(map[string][]*scyllav1alpha1.RemoteOwner, len(sc.Spec.Datacenters))
-
-	for _, dc := range sc.Spec.Datacenters {
-		ns, ok := remoteNamespaces[dc.RemoteKubernetesClusterName]
-		if !ok {
-			progressingConditions = append(progressingConditions, metav1.Condition{
-				Type:               remoteRemoteOwnerControllerProgressingCondition,
-				Status:             metav1.ConditionTrue,
-				Reason:             "WaitingForRemoteNamespace",
-				Message:            fmt.Sprintf("Waiting for Namespace to be created in %q Cluster", dc.RemoteKubernetesClusterName),
-				ObservedGeneration: sc.Generation,
-			})
-			return progressingConditions, nil, nil
-		}
-
-		nameSuffix, err := naming.GenerateNameHash(sc.Namespace, dc.Name)
-		if err != nil {
-			return nil, nil, fmt.Errorf("can't generate remoteowner name suffix: %w", err)
-		}
-
-		ro := &scyllav1alpha1.RemoteOwner{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ns.Name,
-				Name:      fmt.Sprintf("%s-%s", sc.Name, nameSuffix),
-				Labels:    naming.RemoteOwnerLabels(sc, &dc, managingClusterDomain),
-			},
-		}
-
-		requiredRemoteOwners[dc.RemoteKubernetesClusterName] = append(requiredRemoteOwners[dc.RemoteKubernetesClusterName], ro)
+func MakeRemoteRemoteOwners(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteNamespace *corev1.Namespace, managingClusterDomain string) ([]*scyllav1alpha1.RemoteOwner, error) {
+	nameSuffix, err := naming.GenerateNameHash(sc.Namespace, dc.Name)
+	if err != nil {
+		return nil, fmt.Errorf("can't generate remoteowner name suffix: %w", err)
 	}
 
-	return progressingConditions, requiredRemoteOwners, nil
+	requiredRemoteOwners := []*scyllav1alpha1.RemoteOwner{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: remoteNamespace.Name,
+				Name:      fmt.Sprintf("%s-%s", sc.Name, nameSuffix),
+				Labels:    naming.RemoteOwnerLabels(sc, dc, managingClusterDomain),
+			},
+		},
+	}
+
+	return requiredRemoteOwners, nil
 }
 
-func MakeRemoteNamespaces(sc *scyllav1alpha1.ScyllaDBCluster, existingNamespaces map[string]map[string]*corev1.Namespace, managingClusterDomain string) (map[string][]*corev1.Namespace, error) {
-	requiredNamespaces := make(map[string][]*corev1.Namespace)
+func MakeRemoteNamespaces(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, managingClusterDomain string) ([]*corev1.Namespace, error) {
+	suffix, err := naming.GenerateNameHash(sc.Namespace, dc.Name)
+	if err != nil {
+		return nil, fmt.Errorf("can't generate namespace name suffix: %w", err)
+	}
 
-	for _, dc := range sc.Spec.Datacenters {
-		suffix, err := naming.GenerateNameHash(sc.Namespace, dc.Name)
-		if err != nil {
-			return nil, fmt.Errorf("can't generate namespace name suffix: %w", err)
-		}
-
-		ns := &corev1.Namespace{
+	return []*corev1.Namespace{
+		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:   fmt.Sprintf("%s-%s", sc.Namespace, suffix),
-				Labels: naming.ScyllaDBClusterDatacenterLabels(sc, &dc, managingClusterDomain),
+				Labels: naming.ScyllaDBClusterDatacenterLabels(sc, dc, managingClusterDomain),
 			},
-		}
-
-		requiredNamespaces[dc.RemoteKubernetesClusterName] = append(requiredNamespaces[dc.RemoteKubernetesClusterName], ns)
-	}
-
-	return requiredNamespaces, nil
+		},
+	}, nil
 }
 
-func MakeRemoteServices(sc *scyllav1alpha1.ScyllaDBCluster, remoteNamespaces map[string]*corev1.Namespace, remoteControllers map[string]metav1.Object, managingClusterDomain string) ([]metav1.Condition, map[string][]*corev1.Service) {
-	var progressingConditions []metav1.Condition
-	remoteServices := make(map[string][]*corev1.Service, len(sc.Spec.Datacenters))
+func MakeRemoteServices(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteNamespace *corev1.Namespace, remoteController metav1.Object, managingClusterDomain string) []*corev1.Service {
+	var remoteServices []*corev1.Service
 
-	for _, dc := range sc.Spec.Datacenters {
-		dcProgressingConditions, remoteNamespace, remoteController := getRemoteNamespaceAndController(
-			remoteServiceControllerProgressingCondition,
-			sc,
-			dc.RemoteKubernetesClusterName,
-			remoteNamespaces,
-			remoteControllers,
-		)
-		if len(dcProgressingConditions) > 0 {
-			progressingConditions = append(progressingConditions, dcProgressingConditions...)
+	for _, otherDC := range sc.Spec.Datacenters {
+		if dc.Name == otherDC.Name {
 			continue
 		}
 
-		for _, otherDC := range sc.Spec.Datacenters {
-			if dc.Name == otherDC.Name {
-				continue
-			}
-
-			remoteServices[dc.RemoteKubernetesClusterName] = append(remoteServices[dc.RemoteKubernetesClusterName], &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            naming.SeedService(sc, &otherDC),
-					Namespace:       remoteNamespace.Name,
-					Labels:          naming.ScyllaDBClusterDatacenterLabels(sc, &dc, managingClusterDomain),
-					Annotations:     naming.ScyllaDBClusterDatacenterAnnotations(sc, &dc),
-					OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(remoteController, remoteControllerGVK)},
-				},
-				Spec: corev1.ServiceSpec{
-					Ports: []corev1.ServicePort{
-						{
-							Name:     "inter-node",
-							Protocol: corev1.ProtocolTCP,
-							Port:     7000,
-						},
-						{
-							Name:     "inter-node-ssl",
-							Protocol: corev1.ProtocolTCP,
-							Port:     7001,
-						},
-						{
-							Name:     "cql",
-							Protocol: corev1.ProtocolTCP,
-							Port:     9042,
-						},
-						{
-							Name:     "cql-ssl",
-							Protocol: corev1.ProtocolTCP,
-							Port:     9142,
-						},
+		remoteServices = append(remoteServices, &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            naming.SeedService(sc, &otherDC),
+				Namespace:       remoteNamespace.Name,
+				Labels:          naming.ScyllaDBClusterDatacenterLabels(sc, dc, managingClusterDomain),
+				Annotations:     naming.ScyllaDBClusterDatacenterAnnotations(sc, dc),
+				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(remoteController, remoteControllerGVK)},
+			},
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{
+						Name:     "inter-node",
+						Protocol: corev1.ProtocolTCP,
+						Port:     7000,
 					},
-					Selector:  nil,
-					ClusterIP: corev1.ClusterIPNone,
-					Type:      corev1.ServiceTypeClusterIP,
+					{
+						Name:     "inter-node-ssl",
+						Protocol: corev1.ProtocolTCP,
+						Port:     7001,
+					},
+					{
+						Name:     "cql",
+						Protocol: corev1.ProtocolTCP,
+						Port:     9042,
+					},
+					{
+						Name:     "cql-ssl",
+						Protocol: corev1.ProtocolTCP,
+						Port:     9142,
+					},
 				},
-			})
-		}
+				Selector:  nil,
+				ClusterIP: corev1.ClusterIPNone,
+				Type:      corev1.ServiceTypeClusterIP,
+			},
+		})
 	}
 
-	return progressingConditions, remoteServices
+	return remoteServices
 }
 
-func MakeRemoteScyllaDBDatacenters(sc *scyllav1alpha1.ScyllaDBCluster, remoteScyllaDBDatacenters map[string]map[string]*scyllav1alpha1.ScyllaDBDatacenter, remoteNamespaces map[string]*corev1.Namespace, remoteControllers map[string]metav1.Object, managingClusterDomain string) ([]metav1.Condition, map[string][]*scyllav1alpha1.ScyllaDBDatacenter, error) {
-	var progressingConditions []metav1.Condition
-	requiredRemoteScyllaDBDatacenters := make(map[string][]*scyllav1alpha1.ScyllaDBDatacenter, len(sc.Spec.Datacenters))
-
+func MakeRemoteScyllaDBDatacenters(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteScyllaDBDatacenters map[string]map[string]*scyllav1alpha1.ScyllaDBDatacenter, remoteNamespace *corev1.Namespace, remoteController metav1.Object, managingClusterDomain string) (*scyllav1alpha1.ScyllaDBDatacenter, error) {
 	// Given DC is part of seed list if it's fully reconciled, or is part of another DC seeds list,
 	// meaning it was fully reconciled in the past, so DC is part of the cluster.
 	seedDCNamesSet := sets.New[string]()
-	for _, dc := range sc.Spec.Datacenters {
-		sdc, ok := remoteScyllaDBDatacenters[dc.RemoteKubernetesClusterName][naming.ScyllaDBDatacenterName(sc, &dc)]
+	for _, dcSpec := range sc.Spec.Datacenters {
+		sdc, ok := remoteScyllaDBDatacenters[dcSpec.RemoteKubernetesClusterName][naming.ScyllaDBDatacenterName(sc, &dcSpec)]
 		if !ok {
 			continue
 
 		}
 		dcIsRolledOut, err := controllerhelpers.IsScyllaDBDatacenterRolledOut(sdc)
 		if err != nil {
-			return progressingConditions, nil, fmt.Errorf("can't check if %q ScyllaDBDatacenter is rolled out: %w", naming.ObjRef(sdc), err)
+			return nil, fmt.Errorf("can't check if %q ScyllaDBDatacenter is rolled out: %w", naming.ObjRef(sdc), err)
 		}
 		if dcIsRolledOut {
-			seedDCNamesSet.Insert(dc.Name)
+			seedDCNamesSet.Insert(dcSpec.Name)
 			continue
 		}
 
 		for _, remoteSDCs := range remoteScyllaDBDatacenters {
 			for _, remoteSDC := range remoteSDCs {
 				isReferencedByOtherDCAsSeed := slices.Contains(remoteSDC.Spec.ScyllaDB.ExternalSeeds, func(remoteSDCSeed string) bool {
-					return naming.DCNameFromSeedServiceAddress(sc, remoteSDCSeed, remoteSDC.Namespace) == dc.Name
+					return naming.DCNameFromSeedServiceAddress(sc, remoteSDCSeed, remoteSDC.Namespace) == dcSpec.Name
 				})
 
 				if isReferencedByOtherDCAsSeed {
-					seedDCNamesSet.Insert(dc.Name)
+					seedDCNamesSet.Insert(dcSpec.Name)
 				}
 			}
 		}
 	}
 
-	for _, dcSpec := range sc.Spec.Datacenters {
-		dcProgressingConditions, remoteNamespace, remoteController := getRemoteNamespaceAndController(
-			remoteScyllaDBDatacenterControllerProgressingCondition,
-			sc,
-			dcSpec.RemoteKubernetesClusterName,
-			remoteNamespaces,
-			remoteControllers,
-		)
-		if len(dcProgressingConditions) > 0 {
-			progressingConditions = append(progressingConditions, dcProgressingConditions...)
+	dcSpec := applyDatacenterTemplateOnDatacenter(sc.Spec.DatacenterTemplate, dc)
+
+	seeds := make([]string, 0, len(sc.Spec.ScyllaDB.ExternalSeeds)+seedDCNamesSet.Len())
+	seeds = append(seeds, sc.Spec.ScyllaDB.ExternalSeeds...)
+
+	for _, otherDC := range sc.Spec.Datacenters {
+		if otherDC.Name == dcSpec.Name {
 			continue
 		}
 
-		dc := applyDatacenterTemplateOnDatacenter(sc.Spec.DatacenterTemplate, &dcSpec)
-
-		seeds := make([]string, 0, len(sc.Spec.ScyllaDB.ExternalSeeds)+seedDCNamesSet.Len())
-		seeds = append(seeds, sc.Spec.ScyllaDB.ExternalSeeds...)
-
-		for _, otherDC := range sc.Spec.Datacenters {
-			if otherDC.Name == dcSpec.Name {
-				continue
-			}
-
-			if seedDCNamesSet.Has(otherDC.Name) {
-				seeds = append(seeds, fmt.Sprintf("%s.%s.svc", naming.SeedService(sc, &otherDC), remoteNamespace.Name))
-			}
+		if seedDCNamesSet.Has(otherDC.Name) {
+			seeds = append(seeds, fmt.Sprintf("%s.%s.svc", naming.SeedService(sc, &otherDC), remoteNamespace.Name))
 		}
+	}
 
-		requiredRemoteScyllaDBDatacenters[dc.RemoteKubernetesClusterName] = append(requiredRemoteScyllaDBDatacenters[dc.RemoteKubernetesClusterName], &scyllav1alpha1.ScyllaDBDatacenter{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            naming.ScyllaDBDatacenterName(sc, dc),
-				Namespace:       remoteNamespace.Name,
-				Labels:          naming.ScyllaDBClusterDatacenterLabels(sc, dc, managingClusterDomain),
-				Annotations:     naming.ScyllaDBClusterDatacenterAnnotations(sc, dc),
-				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(remoteController, remoteControllerGVK)},
-			},
-			Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-				Metadata: func() *scyllav1alpha1.ObjectTemplateMetadata {
-					var metadata *scyllav1alpha1.ObjectTemplateMetadata
-					if sc.Spec.Metadata != nil {
-						metadata = &scyllav1alpha1.ObjectTemplateMetadata{
-							Labels:      map[string]string{},
-							Annotations: map[string]string{},
-						}
-						maps.Copy(metadata.Labels, sc.Spec.Metadata.Labels)
-						maps.Copy(metadata.Annotations, sc.Spec.Metadata.Annotations)
+	return &scyllav1alpha1.ScyllaDBDatacenter{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            naming.ScyllaDBDatacenterName(sc, dcSpec),
+			Namespace:       remoteNamespace.Name,
+			Labels:          naming.ScyllaDBClusterDatacenterLabels(sc, dcSpec, managingClusterDomain),
+			Annotations:     naming.ScyllaDBClusterDatacenterAnnotations(sc, dcSpec),
+			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(remoteController, remoteControllerGVK)},
+		},
+		Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+			Metadata: func() *scyllav1alpha1.ObjectTemplateMetadata {
+				var metadata *scyllav1alpha1.ObjectTemplateMetadata
+				if sc.Spec.Metadata != nil {
+					metadata = &scyllav1alpha1.ObjectTemplateMetadata{
+						Labels:      map[string]string{},
+						Annotations: map[string]string{},
 					}
+					maps.Copy(metadata.Labels, sc.Spec.Metadata.Labels)
+					maps.Copy(metadata.Annotations, sc.Spec.Metadata.Annotations)
+				}
 
-					if dc.Metadata != nil {
-						if metadata == nil {
-							metadata = &scyllav1alpha1.ObjectTemplateMetadata{
-								Labels:      map[string]string{},
-								Annotations: map[string]string{},
-							}
-						}
-						maps.Copy(metadata.Labels, dc.Metadata.Labels)
-						maps.Copy(metadata.Annotations, dc.Metadata.Annotations)
-					}
-
+				if dcSpec.Metadata != nil {
 					if metadata == nil {
 						metadata = &scyllav1alpha1.ObjectTemplateMetadata{
 							Labels:      map[string]string{},
 							Annotations: map[string]string{},
 						}
 					}
+					maps.Copy(metadata.Labels, dcSpec.Metadata.Labels)
+					maps.Copy(metadata.Annotations, dcSpec.Metadata.Annotations)
+				}
 
-					metadata.Labels[naming.ParentClusterNameLabel] = sc.Name
-					metadata.Labels[naming.ParentClusterNamespaceLabel] = sc.Namespace
-
-					return metadata
-				}(),
-				ClusterName:    sc.Name,
-				DatacenterName: pointer.Ptr(dc.Name),
-				ScyllaDB: scyllav1alpha1.ScyllaDB{
-					Image:                       sc.Spec.ScyllaDB.Image,
-					ExternalSeeds:               seeds,
-					AlternatorOptions:           sc.Spec.ScyllaDB.AlternatorOptions,
-					AdditionalScyllaDBArguments: sc.Spec.ScyllaDB.AdditionalScyllaDBArguments,
-					EnableDeveloperMode:         sc.Spec.ScyllaDB.EnableDeveloperMode,
-				},
-				ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgent{
-					Image: func() *string {
-						var image *string
-						if sc.Spec.ScyllaDBManagerAgent != nil {
-							image = sc.Spec.ScyllaDBManagerAgent.Image
-						}
-						return image
-					}(),
-				},
-				ForceRedeploymentReason: func() *string {
-					sb := strings.Builder{}
-					if sc.Spec.ForceRedeploymentReason != nil {
-						sb.WriteString(*sc.Spec.ForceRedeploymentReason)
+				if metadata == nil {
+					metadata = &scyllav1alpha1.ObjectTemplateMetadata{
+						Labels:      map[string]string{},
+						Annotations: map[string]string{},
 					}
+				}
 
-					if sc.Spec.ForceRedeploymentReason != nil && dc.ForceRedeploymentReason != nil {
-						sb.WriteByte(',')
-					}
+				metadata.Labels[naming.ParentClusterNameLabel] = sc.Name
+				metadata.Labels[naming.ParentClusterNamespaceLabel] = sc.Namespace
 
-					if dc.ForceRedeploymentReason != nil {
-						sb.WriteString(*dc.ForceRedeploymentReason)
-					}
-					if sb.Len() == 0 {
-						return nil
-					}
-					return pointer.Ptr(sb.String())
-				}(),
-				ExposeOptions: func() *scyllav1alpha1.ExposeOptions {
-					exposeOptions := &scyllav1alpha1.ExposeOptions{
-						// TODO: not supported yet
-						// Ref: https://github.com/scylladb/scylla-operator/issues/2602
-						CQL: nil,
-						NodeService: &scyllav1alpha1.NodeServiceTemplate{
-							Type: scyllav1alpha1.NodeServiceTypeHeadless,
-						},
-						BroadcastOptions: &scyllav1alpha1.NodeBroadcastOptions{
-							Nodes: scyllav1alpha1.BroadcastOptions{
-								Type: scyllav1alpha1.BroadcastAddressTypePodIP,
-							},
-							Clients: scyllav1alpha1.BroadcastOptions{
-								Type: scyllav1alpha1.BroadcastAddressTypePodIP,
-							},
-						},
-					}
-
-					if sc.Spec.ExposeOptions != nil {
-						if sc.Spec.ExposeOptions.NodeService != nil {
-							exposeOptions.NodeService = sc.Spec.ExposeOptions.NodeService
-						}
-
-						if sc.Spec.ExposeOptions.BroadcastOptions != nil {
-							exposeOptions.BroadcastOptions.Nodes = scyllav1alpha1.BroadcastOptions{
-								Type:  sc.Spec.ExposeOptions.BroadcastOptions.Nodes.Type,
-								PodIP: sc.Spec.ExposeOptions.BroadcastOptions.Nodes.PodIP,
-							}
-							exposeOptions.BroadcastOptions.Clients = scyllav1alpha1.BroadcastOptions{
-								Type:  sc.Spec.ExposeOptions.BroadcastOptions.Clients.Type,
-								PodIP: sc.Spec.ExposeOptions.BroadcastOptions.Clients.PodIP,
-							}
-						}
-						return exposeOptions
-					}
-
-					return exposeOptions
-				}(),
-				RackTemplate:                            dc.RackTemplate,
-				Racks:                                   dc.Racks,
-				DisableAutomaticOrphanedNodeReplacement: pointer.Ptr(sc.Spec.DisableAutomaticOrphanedNodeReplacement),
-				MinTerminationGracePeriodSeconds:        sc.Spec.MinTerminationGracePeriodSeconds,
-				MinReadySeconds:                         sc.Spec.MinReadySeconds,
-				ReadinessGates:                          sc.Spec.ReadinessGates,
-				// TODO: not supported yet
-				// Ref: https://github.com/scylladb/scylla-operator/issues/2262
-				ImagePullSecrets: nil,
-				// TODO not supported yet:
-				// Ref: https://github.com/scylladb/scylla-operator/issues/2603
-				DNSPolicy: nil,
-				// TODO not supported yet:
-				// Ref: https://github.com/scylladb/scylla-operator/issues/2602
-				DNSDomains: nil,
+				return metadata
+			}(),
+			ClusterName:    sc.Name,
+			DatacenterName: pointer.Ptr(dcSpec.Name),
+			ScyllaDB: scyllav1alpha1.ScyllaDB{
+				Image:                       sc.Spec.ScyllaDB.Image,
+				ExternalSeeds:               seeds,
+				AlternatorOptions:           sc.Spec.ScyllaDB.AlternatorOptions,
+				AdditionalScyllaDBArguments: sc.Spec.ScyllaDB.AdditionalScyllaDBArguments,
+				EnableDeveloperMode:         sc.Spec.ScyllaDB.EnableDeveloperMode,
 			},
-		})
-	}
+			ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgent{
+				Image: func() *string {
+					var image *string
+					if sc.Spec.ScyllaDBManagerAgent != nil {
+						image = sc.Spec.ScyllaDBManagerAgent.Image
+					}
+					return image
+				}(),
+			},
+			ForceRedeploymentReason: func() *string {
+				sb := strings.Builder{}
+				if sc.Spec.ForceRedeploymentReason != nil {
+					sb.WriteString(*sc.Spec.ForceRedeploymentReason)
+				}
 
-	return progressingConditions, requiredRemoteScyllaDBDatacenters, nil
+				if sc.Spec.ForceRedeploymentReason != nil && dcSpec.ForceRedeploymentReason != nil {
+					sb.WriteByte(',')
+				}
+
+				if dcSpec.ForceRedeploymentReason != nil {
+					sb.WriteString(*dcSpec.ForceRedeploymentReason)
+				}
+				if sb.Len() == 0 {
+					return nil
+				}
+				return pointer.Ptr(sb.String())
+			}(),
+			ExposeOptions: func() *scyllav1alpha1.ExposeOptions {
+				exposeOptions := &scyllav1alpha1.ExposeOptions{
+					// TODO: not supported yet
+					// Ref: https://github.com/scylladb/scylla-operator-enterprise/issues/55
+					CQL: nil,
+					NodeService: &scyllav1alpha1.NodeServiceTemplate{
+						Type: scyllav1alpha1.NodeServiceTypeHeadless,
+					},
+					BroadcastOptions: &scyllav1alpha1.NodeBroadcastOptions{
+						Nodes: scyllav1alpha1.BroadcastOptions{
+							Type: scyllav1alpha1.BroadcastAddressTypePodIP,
+						},
+						Clients: scyllav1alpha1.BroadcastOptions{
+							Type: scyllav1alpha1.BroadcastAddressTypePodIP,
+						},
+					},
+				}
+
+				if sc.Spec.ExposeOptions != nil {
+					if sc.Spec.ExposeOptions.NodeService != nil {
+						exposeOptions.NodeService = sc.Spec.ExposeOptions.NodeService
+					}
+
+					if sc.Spec.ExposeOptions.BroadcastOptions != nil {
+						exposeOptions.BroadcastOptions.Nodes = scyllav1alpha1.BroadcastOptions{
+							Type:  sc.Spec.ExposeOptions.BroadcastOptions.Nodes.Type,
+							PodIP: sc.Spec.ExposeOptions.BroadcastOptions.Nodes.PodIP,
+						}
+						exposeOptions.BroadcastOptions.Clients = scyllav1alpha1.BroadcastOptions{
+							Type:  sc.Spec.ExposeOptions.BroadcastOptions.Clients.Type,
+							PodIP: sc.Spec.ExposeOptions.BroadcastOptions.Clients.PodIP,
+						}
+					}
+					return exposeOptions
+				}
+
+				return exposeOptions
+			}(),
+			RackTemplate:                            dcSpec.RackTemplate,
+			Racks:                                   dcSpec.Racks,
+			DisableAutomaticOrphanedNodeReplacement: pointer.Ptr(sc.Spec.DisableAutomaticOrphanedNodeReplacement),
+			MinTerminationGracePeriodSeconds:        sc.Spec.MinTerminationGracePeriodSeconds,
+			MinReadySeconds:                         sc.Spec.MinReadySeconds,
+			ReadinessGates:                          sc.Spec.ReadinessGates,
+			// TODO: not supported yet
+			// Ref: https://github.com/scylladb/scylla-operator/issues/2262
+			ImagePullSecrets: nil,
+			// TODO not supported yet:
+			// Ref: https://github.com/scylladb/scylla-operator/issues/2603
+			DNSPolicy: nil,
+			// TODO not supported yet:
+			// Ref: https://github.com/scylladb/scylla-operator/issues/2602
+			DNSDomains: nil,
+		},
+	}, nil
 }
 
-func MakeRemoteEndpointSlices(sc *scyllav1alpha1.ScyllaDBCluster, remoteNamespaces map[string]*corev1.Namespace, remoteControllers map[string]metav1.Object, remoteServiceLister remotelister.GenericClusterLister[corev1listers.ServiceLister], remotePodLister remotelister.GenericClusterLister[corev1listers.PodLister], managingClusterDomain string) ([]metav1.Condition, map[string][]*discoveryv1.EndpointSlice, error) {
+func MakeRemoteEndpointSlices(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteNamespace *corev1.Namespace, remoteController metav1.Object, remoteNamespaces map[string]*corev1.Namespace, remoteServiceLister remotelister.GenericClusterLister[corev1listers.ServiceLister], remotePodLister remotelister.GenericClusterLister[corev1listers.PodLister], managingClusterDomain string) ([]metav1.Condition, []*discoveryv1.EndpointSlice, error) {
 	var progressingConditions []metav1.Condition
-	remoteEndpointSlices := make(map[string][]*discoveryv1.EndpointSlice, len(sc.Spec.Datacenters))
+	var remoteEndpointSlices []*discoveryv1.EndpointSlice
 
 	nodeBroadcastType := scyllav1alpha1.BroadcastAddressTypePodIP
 	if sc.Spec.ExposeOptions != nil && sc.Spec.ExposeOptions.BroadcastOptions != nil {
 		nodeBroadcastType = sc.Spec.ExposeOptions.BroadcastOptions.Nodes.Type
 	}
 
-	for _, dc := range sc.Spec.Datacenters {
-		dcProgressingConditions, remoteNamespace, remoteController := getRemoteNamespaceAndController(
-			remoteEndpointSliceControllerProgressingCondition,
-			sc,
-			dc.RemoteKubernetesClusterName,
-			remoteNamespaces,
-			remoteControllers,
-		)
-		if len(dcProgressingConditions) > 0 {
-			progressingConditions = append(progressingConditions, dcProgressingConditions...)
+	for _, otherDC := range sc.Spec.Datacenters {
+		if dc.Name == otherDC.Name {
 			continue
 		}
 
-		for _, otherDC := range sc.Spec.Datacenters {
-			if dc.Name == otherDC.Name {
-				continue
-			}
+		dcLabels := naming.ScyllaDBClusterDatacenterEndpointsLabels(sc, dc, managingClusterDomain)
+		dcLabels[discoveryv1.LabelServiceName] = naming.SeedService(sc, &otherDC)
+		dcLabels[discoveryv1.LabelManagedBy] = naming.OperatorAppNameWithDomain
 
-			dcLabels := naming.ScyllaDBClusterDatacenterEndpointsLabels(sc, dc, managingClusterDomain)
-			dcLabels[discoveryv1.LabelServiceName] = naming.SeedService(sc, &otherDC)
-			dcLabels[discoveryv1.LabelManagedBy] = naming.OperatorAppNameWithDomain
-
-			dcEs := &discoveryv1.EndpointSlice{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace:       remoteNamespace.Name,
-					Name:            naming.SeedService(sc, &otherDC),
-					Labels:          dcLabels,
-					Annotations:     naming.ScyllaDBClusterDatacenterAnnotations(sc, &dc),
-					OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(remoteController, remoteControllerGVK)},
+		dcEs := &discoveryv1.EndpointSlice{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace:       remoteNamespace.Name,
+				Name:            naming.SeedService(sc, &otherDC),
+				Labels:          dcLabels,
+				Annotations:     naming.ScyllaDBClusterDatacenterAnnotations(sc, dc),
+				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(remoteController, remoteControllerGVK)},
+			},
+			AddressType: discoveryv1.AddressTypeIPv4,
+			Ports: []discoveryv1.EndpointPort{
+				{
+					Name:     pointer.Ptr("inter-node"),
+					Protocol: pointer.Ptr(corev1.ProtocolTCP),
+					Port:     pointer.Ptr(int32(7000)),
 				},
-				AddressType: discoveryv1.AddressTypeIPv4,
-				Ports: []discoveryv1.EndpointPort{
-					{
-						Name:     pointer.Ptr("inter-node"),
-						Protocol: pointer.Ptr(corev1.ProtocolTCP),
-						Port:     pointer.Ptr(int32(7000)),
-					},
-					{
-						Name:     pointer.Ptr("inter-node-ssl"),
-						Protocol: pointer.Ptr(corev1.ProtocolTCP),
-						Port:     pointer.Ptr(int32(7001)),
-					},
-					{
-						Name:     pointer.Ptr("cql"),
-						Protocol: pointer.Ptr(corev1.ProtocolTCP),
-						Port:     pointer.Ptr(int32(9042)),
-					},
-					{
-						Name:     pointer.Ptr("cql-ssl"),
-						Protocol: pointer.Ptr(corev1.ProtocolTCP),
-						Port:     pointer.Ptr(int32(9142)),
-					},
+				{
+					Name:     pointer.Ptr("inter-node-ssl"),
+					Protocol: pointer.Ptr(corev1.ProtocolTCP),
+					Port:     pointer.Ptr(int32(7001)),
 				},
-			}
-
-			otherDCPodSelector := naming.DatacenterPodsSelector(sc, &otherDC)
-			otherDCNamespace, ok := remoteNamespaces[otherDC.RemoteKubernetesClusterName]
-			if !ok {
-				progressingConditions = append(progressingConditions, metav1.Condition{
-					Type:               remoteEndpointSliceControllerProgressingCondition,
-					Status:             metav1.ConditionTrue,
-					Reason:             "WaitingForRemoteNamespace",
-					Message:            fmt.Sprintf("Waiting for Namespace to be created in %q Cluster", otherDC.RemoteKubernetesClusterName),
-					ObservedGeneration: sc.Generation,
-				})
-				continue
-			}
-
-			switch nodeBroadcastType {
-			case scyllav1alpha1.BroadcastAddressTypePodIP:
-				dcPods, err := remotePodLister.Cluster(otherDC.RemoteKubernetesClusterName).Pods(otherDCNamespace.Name).List(otherDCPodSelector)
-				if err != nil {
-					return progressingConditions, nil, fmt.Errorf("can't list pods in %q ScyllaCluster %q Datacenter: %w", naming.ObjRef(sc), otherDC.Name, err)
-				}
-
-				klog.V(4).InfoS("Found remote Scylla Pods", "Cluster", klog.KObj(sc), "Datacenter", otherDC.Name, "Pods", len(dcPods))
-
-				// Sort pods to have stable list of endpoints
-				sort.Slice(dcPods, func(i, j int) bool {
-					return dcPods[i].Name < dcPods[j].Name
-				})
-				for _, dcPod := range dcPods {
-					if len(dcPod.Status.PodIP) == 0 {
-						continue
-					}
-
-					ready := controllerhelpers.IsPodReady(dcPod)
-					terminating := dcPod.DeletionTimestamp != nil
-					serving := ready && !terminating
-
-					dcEs.Endpoints = append(dcEs.Endpoints, discoveryv1.Endpoint{
-						Addresses: []string{dcPod.Status.PodIP},
-						Conditions: discoveryv1.EndpointConditions{
-							Ready:       pointer.Ptr(ready),
-							Serving:     pointer.Ptr(serving),
-							Terminating: pointer.Ptr(terminating),
-						},
-					})
-				}
-
-			case scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress:
-				dcServices, err := remoteServiceLister.Cluster(otherDC.RemoteKubernetesClusterName).Services(otherDCNamespace.Name).List(otherDCPodSelector)
-				if err != nil {
-					return progressingConditions, nil, fmt.Errorf("can't list services in %q ScyllaDBCluster %q Datacenter: %w", naming.ObjRef(sc), otherDC.Name, err)
-				}
-
-				klog.V(4).InfoS("Found remote ScyllaDB Services", "ScyllaDBCluster", klog.KObj(sc), "Datacenter", otherDC.Name, "Services", len(dcServices))
-
-				// Sort objects to have stable list of endpoints
-				sort.Slice(dcServices, func(i, j int) bool {
-					return dcServices[i].Name < dcServices[j].Name
-				})
-
-				for _, dcService := range dcServices {
-					if dcService.Labels[naming.ScyllaServiceTypeLabel] != string(naming.ScyllaServiceTypeMember) {
-						continue
-					}
-
-					if len(dcService.Status.LoadBalancer.Ingress) < 1 {
-						continue
-					}
-
-					for _, ingress := range dcService.Status.LoadBalancer.Ingress {
-						ep := discoveryv1.Endpoint{
-							Conditions: discoveryv1.EndpointConditions{
-								Terminating: pointer.Ptr(dcService.DeletionTimestamp != nil),
-							},
-						}
-						if len(ingress.IP) != 0 {
-							ep.Addresses = append(ep.Addresses, ingress.IP)
-						}
-
-						if len(ingress.Hostname) != 0 {
-							ep.Addresses = append(ep.Addresses, ingress.Hostname)
-						}
-
-						if len(ep.Addresses) > 0 {
-							// LoadBalancer services are external to Kubernetes, and they don't report their readiness.
-							// Assume that if the address is there, it's ready and serving.
-							ep.Conditions.Ready = pointer.Ptr(true)
-							ep.Conditions.Serving = pointer.Ptr(true)
-						}
-
-						dcEs.Endpoints = append(dcEs.Endpoints, ep)
-					}
-				}
-
-			default:
-				return progressingConditions, nil, fmt.Errorf("unsupported node broadcast address type %v specified in %q ScyllaDBCluster", nodeBroadcastType, naming.ObjRef(sc))
-			}
-
-			remoteEndpointSlices[dc.RemoteKubernetesClusterName] = append(remoteEndpointSlices[dc.RemoteKubernetesClusterName], dcEs)
+				{
+					Name:     pointer.Ptr("cql"),
+					Protocol: pointer.Ptr(corev1.ProtocolTCP),
+					Port:     pointer.Ptr(int32(9042)),
+				},
+				{
+					Name:     pointer.Ptr("cql-ssl"),
+					Protocol: pointer.Ptr(corev1.ProtocolTCP),
+					Port:     pointer.Ptr(int32(9142)),
+				},
+			},
 		}
+
+		otherDCPodSelector := naming.DatacenterPodsSelector(sc, &otherDC)
+		otherDCNamespace, ok := remoteNamespaces[otherDC.RemoteKubernetesClusterName]
+		if !ok {
+			progressingConditions = append(progressingConditions, metav1.Condition{
+				Type:               makeRemoteEndpointSliceControllerDatacenterProgressingCondition(dc.Name),
+				Status:             metav1.ConditionTrue,
+				Reason:             "WaitingForRemoteNamespace",
+				Message:            fmt.Sprintf("Waiting for Namespace to be created in %q Cluster", otherDC.RemoteKubernetesClusterName),
+				ObservedGeneration: sc.Generation,
+			})
+			continue
+		}
+
+		switch nodeBroadcastType {
+		case scyllav1alpha1.BroadcastAddressTypePodIP:
+			dcPods, err := remotePodLister.Cluster(otherDC.RemoteKubernetesClusterName).Pods(otherDCNamespace.Name).List(otherDCPodSelector)
+			if err != nil {
+				return progressingConditions, nil, fmt.Errorf("can't list pods in %q ScyllaCluster %q Datacenter: %w", naming.ObjRef(sc), otherDC.Name, err)
+			}
+
+			klog.V(4).InfoS("Found remote Scylla Pods", "Cluster", klog.KObj(sc), "Datacenter", otherDC.Name, "Pods", len(dcPods))
+
+			// Sort pods to have stable list of endpoints
+			sort.Slice(dcPods, func(i, j int) bool {
+				return dcPods[i].Name < dcPods[j].Name
+			})
+			for _, dcPod := range dcPods {
+				if len(dcPod.Status.PodIP) == 0 {
+					continue
+				}
+
+				ready := controllerhelpers.IsPodReady(dcPod)
+				terminating := dcPod.DeletionTimestamp != nil
+				serving := ready && !terminating
+
+				dcEs.Endpoints = append(dcEs.Endpoints, discoveryv1.Endpoint{
+					Addresses: []string{dcPod.Status.PodIP},
+					Conditions: discoveryv1.EndpointConditions{
+						Ready:       pointer.Ptr(ready),
+						Serving:     pointer.Ptr(serving),
+						Terminating: pointer.Ptr(terminating),
+					},
+				})
+			}
+
+		case scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress:
+			dcServices, err := remoteServiceLister.Cluster(otherDC.RemoteKubernetesClusterName).Services(otherDCNamespace.Name).List(otherDCPodSelector)
+			if err != nil {
+				return progressingConditions, nil, fmt.Errorf("can't list services in %q ScyllaDBCluster %q Datacenter: %w", naming.ObjRef(sc), otherDC.Name, err)
+			}
+
+			klog.V(4).InfoS("Found remote ScyllaDB Services", "ScyllaDBCluster", klog.KObj(sc), "Datacenter", otherDC.Name, "Services", len(dcServices))
+
+			// Sort objects to have stable list of endpoints
+			sort.Slice(dcServices, func(i, j int) bool {
+				return dcServices[i].Name < dcServices[j].Name
+			})
+
+			for _, dcService := range dcServices {
+				if dcService.Labels[naming.ScyllaServiceTypeLabel] != string(naming.ScyllaServiceTypeMember) {
+					continue
+				}
+
+				if len(dcService.Status.LoadBalancer.Ingress) < 1 {
+					continue
+				}
+
+				for _, ingress := range dcService.Status.LoadBalancer.Ingress {
+					ep := discoveryv1.Endpoint{
+						Conditions: discoveryv1.EndpointConditions{
+							Terminating: pointer.Ptr(dcService.DeletionTimestamp != nil),
+						},
+					}
+					if len(ingress.IP) != 0 {
+						ep.Addresses = append(ep.Addresses, ingress.IP)
+					}
+
+					if len(ingress.Hostname) != 0 {
+						ep.Addresses = append(ep.Addresses, ingress.Hostname)
+					}
+
+					if len(ep.Addresses) > 0 {
+						// LoadBalancer services are external to Kubernetes, and they don't report their readiness.
+						// Assume that if the address is there, it's ready and serving.
+						ep.Conditions.Ready = pointer.Ptr(true)
+						ep.Conditions.Serving = pointer.Ptr(true)
+					}
+
+					dcEs.Endpoints = append(dcEs.Endpoints, ep)
+				}
+			}
+
+		default:
+			return progressingConditions, nil, fmt.Errorf("unsupported node broadcast address type %v specified in %q ScyllaDBCluster", nodeBroadcastType, naming.ObjRef(sc))
+		}
+
+		remoteEndpointSlices = append(remoteEndpointSlices, dcEs)
 	}
 
 	return progressingConditions, remoteEndpointSlices, nil
@@ -885,122 +814,77 @@ func applyDatacenterTemplateOnDatacenter(dcTemplate *scyllav1alpha1.ScyllaDBClus
 	}
 }
 
-func getRemoteNamespaceAndController(controllerProgressingType string, sc *scyllav1alpha1.ScyllaDBCluster, clusterName string, remoteNamespaces map[string]*corev1.Namespace, remoteControllers map[string]metav1.Object) ([]metav1.Condition, *corev1.Namespace, metav1.Object) {
-	var progressingConditions []metav1.Condition
-	remoteNamespace, ok := remoteNamespaces[clusterName]
-	if !ok {
-		progressingConditions = append(progressingConditions, metav1.Condition{
-			Type:               controllerProgressingType,
-			Status:             metav1.ConditionTrue,
-			Reason:             "WaitingForRemoteNamespace",
-			Message:            fmt.Sprintf("Waiting for Namespace to be created in %q Cluster", clusterName),
-			ObservedGeneration: sc.Generation,
-		})
-		return progressingConditions, nil, nil
-	}
+func MakeRemoteConfigMaps(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteNamespace *corev1.Namespace, remoteController metav1.Object, localConfigMapLister corev1listers.ConfigMapLister, managingClusterDomain string) ([]metav1.Condition, []*corev1.ConfigMap, error) {
+	var requiredRemoteConfigMaps []*corev1.ConfigMap
 
-	remoteController, ok := remoteControllers[clusterName]
-	if !ok {
-		progressingConditions = append(progressingConditions, metav1.Condition{
-			Type:               controllerProgressingType,
-			Status:             metav1.ConditionTrue,
-			Reason:             "WaitingForRemoteController",
-			Message:            fmt.Sprintf("Waiting for controller object to be created in %q Cluster", clusterName),
-			ObservedGeneration: sc.Generation,
-		})
-		return progressingConditions, nil, nil
-	}
-
-	return progressingConditions, remoteNamespace, remoteController
-}
-
-func MakeRemoteConfigMaps(sc *scyllav1alpha1.ScyllaDBCluster, remoteNamespaces map[string]*corev1.Namespace, remoteControllers map[string]metav1.Object, localConfigMapLister corev1listers.ConfigMapLister, managingClusterDomain string) ([]metav1.Condition, map[string][]*corev1.ConfigMap, error) {
-	requiredRemoteConfigMaps := make(map[string][]*corev1.ConfigMap)
-
-	progressingConditions, mirroredConfigMaps, err := makeMirroredRemoteConfigMaps(sc, remoteNamespaces, remoteControllers, localConfigMapLister, managingClusterDomain)
+	progressingConditions, mirroredConfigMaps, err := makeMirroredRemoteConfigMaps(sc, dc, remoteNamespace, remoteController, localConfigMapLister, managingClusterDomain)
 	if err != nil {
 		return progressingConditions, nil, fmt.Errorf("can't make mirrored configmaps: %w", err)
 	}
 
-	for k, v := range mirroredConfigMaps {
-		requiredRemoteConfigMaps[k] = append(requiredRemoteConfigMaps[k], v...)
-	}
+	requiredRemoteConfigMaps = append(requiredRemoteConfigMaps, mirroredConfigMaps...)
 
 	return progressingConditions, requiredRemoteConfigMaps, nil
 }
 
-func makeMirroredRemoteConfigMaps(sc *scyllav1alpha1.ScyllaDBCluster, remoteNamespaces map[string]*corev1.Namespace, remoteControllers map[string]metav1.Object, localConfigMapLister corev1listers.ConfigMapLister, managingClusterDomain string) ([]metav1.Condition, map[string][]*corev1.ConfigMap, error) {
+func makeMirroredRemoteConfigMaps(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteNamespace *corev1.Namespace, remoteController metav1.Object, localConfigMapLister corev1listers.ConfigMapLister, managingClusterDomain string) ([]metav1.Condition, []*corev1.ConfigMap, error) {
 	var errs []error
 	var progressingConditions []metav1.Condition
-	requiredRemoteConfigMaps := make(map[string][]*corev1.ConfigMap, len(sc.Spec.Datacenters))
+	var requiredRemoteConfigMaps []*corev1.ConfigMap
 
-	for _, dc := range sc.Spec.Datacenters {
-		dcProgressingConditions, remoteNamespace, remoteController := getRemoteNamespaceAndController(
-			remoteConfigMapControllerProgressingCondition,
-			sc,
-			dc.RemoteKubernetesClusterName,
-			remoteNamespaces,
-			remoteControllers,
-		)
-		if len(dcProgressingConditions) > 0 {
-			progressingConditions = append(progressingConditions, dcProgressingConditions...)
+	var configMapsToMirror []string
+
+	if sc.Spec.DatacenterTemplate != nil && sc.Spec.DatacenterTemplate.ScyllaDB != nil && sc.Spec.DatacenterTemplate.ScyllaDB.CustomConfigMapRef != nil {
+		configMapsToMirror = append(configMapsToMirror, *sc.Spec.DatacenterTemplate.ScyllaDB.CustomConfigMapRef)
+	}
+
+	if sc.Spec.DatacenterTemplate != nil && sc.Spec.DatacenterTemplate.RackTemplate != nil && sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDB != nil && sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDB.CustomConfigMapRef != nil {
+		configMapsToMirror = append(configMapsToMirror, *sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDB.CustomConfigMapRef)
+	}
+
+	if dc.ScyllaDB != nil && dc.ScyllaDB.CustomConfigMapRef != nil {
+		configMapsToMirror = append(configMapsToMirror, *dc.ScyllaDB.CustomConfigMapRef)
+	}
+
+	if dc.RackTemplate != nil && dc.RackTemplate.ScyllaDB != nil && dc.RackTemplate.ScyllaDB.CustomConfigMapRef != nil {
+		configMapsToMirror = append(configMapsToMirror, *dc.RackTemplate.ScyllaDB.CustomConfigMapRef)
+	}
+
+	for _, rack := range dc.Racks {
+		if rack.ScyllaDB != nil && rack.ScyllaDB.CustomConfigMapRef != nil {
+			configMapsToMirror = append(configMapsToMirror, *rack.ScyllaDB.CustomConfigMapRef)
+		}
+	}
+
+	for _, cmName := range configMapsToMirror {
+		localConfigMap, err := localConfigMapLister.ConfigMaps(sc.Namespace).Get(cmName)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               makeRemoteConfigMapControllerDatacenterProgressingCondition(dc.Name),
+					Status:             metav1.ConditionTrue,
+					Reason:             "WaitingForConfigMap",
+					Message:            fmt.Sprintf("Waiting for ConfigMap %q to exist.", naming.ManualRef(sc.Namespace, cmName)),
+					ObservedGeneration: sc.Generation,
+				})
+				continue
+			}
+			errs = append(errs, fmt.Errorf("can't get %q ConfigMap: %w", naming.ManualRef(sc.Namespace, cmName), err))
 			continue
 		}
 
-		var configMapsToMirror []string
-
-		if sc.Spec.DatacenterTemplate != nil && sc.Spec.DatacenterTemplate.ScyllaDB != nil && sc.Spec.DatacenterTemplate.ScyllaDB.CustomConfigMapRef != nil {
-			configMapsToMirror = append(configMapsToMirror, *sc.Spec.DatacenterTemplate.ScyllaDB.CustomConfigMapRef)
-		}
-
-		if sc.Spec.DatacenterTemplate != nil && sc.Spec.DatacenterTemplate.RackTemplate != nil && sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDB != nil && sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDB.CustomConfigMapRef != nil {
-			configMapsToMirror = append(configMapsToMirror, *sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDB.CustomConfigMapRef)
-		}
-
-		if dc.ScyllaDB != nil && dc.ScyllaDB.CustomConfigMapRef != nil {
-			configMapsToMirror = append(configMapsToMirror, *dc.ScyllaDB.CustomConfigMapRef)
-		}
-
-		if dc.RackTemplate != nil && dc.RackTemplate.ScyllaDB != nil && dc.RackTemplate.ScyllaDB.CustomConfigMapRef != nil {
-			configMapsToMirror = append(configMapsToMirror, *dc.RackTemplate.ScyllaDB.CustomConfigMapRef)
-		}
-
-		for _, rack := range dc.Racks {
-			if rack.ScyllaDB != nil && rack.ScyllaDB.CustomConfigMapRef != nil {
-				configMapsToMirror = append(configMapsToMirror, *rack.ScyllaDB.CustomConfigMapRef)
-			}
-		}
-
-		for _, cmName := range configMapsToMirror {
-			localConfigMap, err := localConfigMapLister.ConfigMaps(sc.Namespace).Get(cmName)
-			if err != nil {
-				if apierrors.IsNotFound(err) {
-					progressingConditions = append(progressingConditions, metav1.Condition{
-						Type:               remoteConfigMapControllerProgressingCondition,
-						Status:             metav1.ConditionTrue,
-						Reason:             "WaitingForConfigMap",
-						Message:            fmt.Sprintf("Waiting for ConfigMap %q to exist.", naming.ManualRef(sc.Namespace, cmName)),
-						ObservedGeneration: sc.Generation,
-					})
-					continue
-				}
-				errs = append(errs, fmt.Errorf("can't get %q ConfigMap: %w", naming.ManualRef(sc.Namespace, cmName), err))
-				continue
-			}
-
-			requiredRemoteConfigMaps[dc.RemoteKubernetesClusterName] = append(requiredRemoteConfigMaps[dc.RemoteKubernetesClusterName], &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            cmName,
-					Namespace:       remoteNamespace.Name,
-					Labels:          naming.ScyllaDBClusterDatacenterLabels(sc, &dc, managingClusterDomain),
-					Annotations:     naming.ScyllaDBClusterDatacenterAnnotations(sc, &dc),
-					OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(remoteController, remoteControllerGVK)},
-				},
-				Immutable:  localConfigMap.Immutable,
-				Data:       maps.Clone(localConfigMap.Data),
-				BinaryData: maps.Clone(localConfigMap.BinaryData),
-			})
-		}
+		requiredRemoteConfigMaps = append(requiredRemoteConfigMaps, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            cmName,
+				Namespace:       remoteNamespace.Name,
+				Labels:          naming.ScyllaDBClusterDatacenterLabels(sc, dc, managingClusterDomain),
+				Annotations:     naming.ScyllaDBClusterDatacenterAnnotations(sc, dc),
+				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(remoteController, remoteControllerGVK)},
+			},
+			Immutable:  localConfigMap.Immutable,
+			Data:       maps.Clone(localConfigMap.Data),
+			BinaryData: maps.Clone(localConfigMap.BinaryData),
+		})
 	}
 
 	err := errors.NewAggregate(errs)
@@ -1011,93 +895,82 @@ func makeMirroredRemoteConfigMaps(sc *scyllav1alpha1.ScyllaDBCluster, remoteName
 	return progressingConditions, requiredRemoteConfigMaps, nil
 }
 
-func MakeRemoteSecrets(sc *scyllav1alpha1.ScyllaDBCluster, remoteNamespaces map[string]*corev1.Namespace, remoteControllers map[string]metav1.Object, localSecretLister corev1listers.SecretLister, managingClusterDomain string) ([]metav1.Condition, map[string][]*corev1.Secret, error) {
-	requiredRemoteSecrets := make(map[string][]*corev1.Secret)
+func MakeRemoteSecrets(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteNamespace *corev1.Namespace, remoteController metav1.Object, localSecretLister corev1listers.SecretLister, managingClusterDomain string) ([]metav1.Condition, []*corev1.Secret, error) {
+	var requiredRemoteSecrets []*corev1.Secret
 
-	progressingConditions, mirroredSecrets, err := makeMirroredRemoteSecrets(sc, remoteNamespaces, remoteControllers, localSecretLister, managingClusterDomain)
+	progressingConditions, mirroredSecrets, err := makeMirroredRemoteSecrets(sc, dc, remoteNamespace, remoteController, localSecretLister, managingClusterDomain)
 	if err != nil {
 		return progressingConditions, nil, fmt.Errorf("can't make mirrored secrets: %w", err)
 	}
 
-	for k, v := range mirroredSecrets {
-		requiredRemoteSecrets[k] = append(requiredRemoteSecrets[k], v...)
-	}
+	requiredRemoteSecrets = append(requiredRemoteSecrets, mirroredSecrets...)
 
 	return progressingConditions, requiredRemoteSecrets, nil
 }
 
-func makeMirroredRemoteSecrets(sc *scyllav1alpha1.ScyllaDBCluster, remoteNamespaces map[string]*corev1.Namespace, remoteControllers map[string]metav1.Object, localSecretLister corev1listers.SecretLister, managingClusterDomain string) ([]metav1.Condition, map[string][]*corev1.Secret, error) {
+func makeMirroredRemoteSecrets(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteNamespace *corev1.Namespace, remoteController metav1.Object, localSecretLister corev1listers.SecretLister, managingClusterDomain string) ([]metav1.Condition, []*corev1.Secret, error) {
 	var progressingConditions []metav1.Condition
-	requiredRemoteSecrets := make(map[string][]*corev1.Secret, len(sc.Spec.Datacenters))
+	var requiredRemoteSecrets []*corev1.Secret
+
+	var secretsToMirror []string
+
+	if sc.Spec.DatacenterTemplate != nil && sc.Spec.DatacenterTemplate.ScyllaDBManagerAgent != nil && sc.Spec.DatacenterTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+		secretsToMirror = append(secretsToMirror, *sc.Spec.DatacenterTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef)
+	}
+
+	if sc.Spec.DatacenterTemplate != nil && sc.Spec.DatacenterTemplate.RackTemplate != nil && sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDBManagerAgent != nil && sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+		secretsToMirror = append(secretsToMirror, *sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef)
+	}
+
+	if dc.ScyllaDBManagerAgent != nil && dc.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+		secretsToMirror = append(secretsToMirror, *dc.ScyllaDBManagerAgent.CustomConfigSecretRef)
+	}
+
+	if dc.RackTemplate != nil && dc.RackTemplate.ScyllaDBManagerAgent != nil && dc.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+		secretsToMirror = append(secretsToMirror, *dc.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef)
+	}
+
+	for _, rack := range dc.Racks {
+		if rack.ScyllaDBManagerAgent != nil && rack.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+			secretsToMirror = append(secretsToMirror, *rack.ScyllaDBManagerAgent.CustomConfigSecretRef)
+		}
+	}
 
 	var errs []error
-	for _, dc := range sc.Spec.Datacenters {
-		dcProgressingConditions, remoteNamespace, remoteController := getRemoteNamespaceAndController(
-			remoteConfigMapControllerProgressingCondition,
-			sc,
-			dc.RemoteKubernetesClusterName,
-			remoteNamespaces,
-			remoteControllers,
-		)
-		if len(dcProgressingConditions) > 0 {
-			progressingConditions = append(progressingConditions, dcProgressingConditions...)
+	for _, secretName := range secretsToMirror {
+		localSecret, err := localSecretLister.Secrets(sc.Namespace).Get(secretName)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               makeRemoteSecretControllerDatacenterProgressingCondition(dc.Name),
+					Status:             metav1.ConditionTrue,
+					Reason:             "WaitingForSecret",
+					Message:            fmt.Sprintf("Waiting for Secret %q to exist.", naming.ManualRef(sc.Namespace, secretName)),
+					ObservedGeneration: sc.Generation,
+				})
+				continue
+			}
+			errs = append(errs, fmt.Errorf("can't get %q Secret: %w", naming.ManualRef(sc.Namespace, secretName), err))
 			continue
 		}
 
-		var secretsToMirror []string
+		requiredRemoteSecrets = append(requiredRemoteSecrets, &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            secretName,
+				Namespace:       remoteNamespace.Name,
+				Labels:          naming.ScyllaDBClusterDatacenterLabels(sc, dc, managingClusterDomain),
+				Annotations:     naming.ScyllaDBClusterDatacenterAnnotations(sc, dc),
+				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(remoteController, remoteControllerGVK)},
+			},
+			Immutable: localSecret.Immutable,
+			Data:      maps.Clone(localSecret.Data),
+			Type:      localSecret.Type,
+		})
+	}
 
-		if sc.Spec.DatacenterTemplate != nil && sc.Spec.DatacenterTemplate.ScyllaDBManagerAgent != nil && sc.Spec.DatacenterTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
-			secretsToMirror = append(secretsToMirror, *sc.Spec.DatacenterTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef)
-		}
-
-		if sc.Spec.DatacenterTemplate != nil && sc.Spec.DatacenterTemplate.RackTemplate != nil && sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDBManagerAgent != nil && sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
-			secretsToMirror = append(secretsToMirror, *sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef)
-		}
-
-		if dc.ScyllaDBManagerAgent != nil && dc.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
-			secretsToMirror = append(secretsToMirror, *dc.ScyllaDBManagerAgent.CustomConfigSecretRef)
-		}
-
-		if dc.RackTemplate != nil && dc.RackTemplate.ScyllaDBManagerAgent != nil && dc.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
-			secretsToMirror = append(secretsToMirror, *dc.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef)
-		}
-
-		for _, rack := range dc.Racks {
-			if rack.ScyllaDBManagerAgent != nil && rack.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
-				secretsToMirror = append(secretsToMirror, *rack.ScyllaDBManagerAgent.CustomConfigSecretRef)
-			}
-		}
-
-		for _, secretName := range secretsToMirror {
-			localSecret, err := localSecretLister.Secrets(sc.Namespace).Get(secretName)
-			if err != nil {
-				if apierrors.IsNotFound(err) {
-					progressingConditions = append(progressingConditions, metav1.Condition{
-						Type:               remoteSecretControllerProgressingCondition,
-						Status:             metav1.ConditionTrue,
-						Reason:             "WaitingForSecret",
-						Message:            fmt.Sprintf("Waiting for Secret %q to exist.", naming.ManualRef(sc.Namespace, secretName)),
-						ObservedGeneration: sc.Generation,
-					})
-					continue
-				}
-				errs = append(errs, fmt.Errorf("can't get %q Secret: %w", naming.ManualRef(sc.Namespace, secretName), err))
-				continue
-			}
-
-			requiredRemoteSecrets[dc.RemoteKubernetesClusterName] = append(requiredRemoteSecrets[dc.RemoteKubernetesClusterName], &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            secretName,
-					Namespace:       remoteNamespace.Name,
-					Labels:          naming.ScyllaDBClusterDatacenterLabels(sc, &dc, managingClusterDomain),
-					Annotations:     naming.ScyllaDBClusterDatacenterAnnotations(sc, &dc),
-					OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(remoteController, remoteControllerGVK)},
-				},
-				Immutable: localSecret.Immutable,
-				Data:      maps.Clone(localSecret.Data),
-				Type:      localSecret.Type,
-			})
-		}
+	err := errors.NewAggregate(errs)
+	if err != nil {
+		return progressingConditions, requiredRemoteSecrets, fmt.Errorf("can't make mirrored Secrets: %w", err)
 	}
 
 	return progressingConditions, requiredRemoteSecrets, nil

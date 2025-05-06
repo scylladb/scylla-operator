@@ -5,7 +5,9 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllaclientset "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
@@ -15,6 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
@@ -160,4 +163,39 @@ func GetBroadcastAddress(ctx context.Context, client corev1client.CoreV1Interfac
 	}
 
 	return broadcastAddress, nil
+}
+
+func GetRemoteDatacenterScyllaConfigClient(ctx context.Context, sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteScyllaAdminClient *scyllaclientset.Clientset, remoteKubeAdminClient *kubernetes.Clientset, agentAuthToken string) (*scyllaclient.ConfigClient, error) {
+	dcStatus, _, ok := slices.Find(sc.Status.Datacenters, func(dcStatus scyllav1alpha1.ScyllaDBClusterDatacenterStatus) bool {
+		return dc.Name == dcStatus.Name
+	})
+	if !ok {
+		return nil, fmt.Errorf("can't find datacenter %q in ScyllaDBCluster %q status", dc.Name, naming.ObjRef(sc))
+	}
+
+	if dcStatus.RemoteNamespaceName == nil {
+		return nil, fmt.Errorf("empty remote namespace name in datacenter %q ScyllaDBCluster %q status", dc.Name, naming.ObjRef(sc))
+	}
+
+	sdc, err := remoteScyllaAdminClient.ScyllaV1alpha1().ScyllaDBDatacenters(*dcStatus.RemoteNamespaceName).Get(ctx, naming.ScyllaDBDatacenterName(sc, dc), metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("can't get ScyllaDBDatacenter %q: %w", naming.ScyllaDBDatacenterName(sc, dc), err)
+	}
+
+	svc, err := remoteKubeAdminClient.CoreV1().Services(*dcStatus.RemoteNamespaceName).Get(ctx, naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 0), metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("can't get Service %q: %w", naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 0), err)
+	}
+
+	pod, err := remoteKubeAdminClient.CoreV1().Pods(*dcStatus.RemoteNamespaceName).Get(ctx, naming.PodNameFromService(svc), metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("can't get Pod %q: %w", naming.PodNameFromService(svc), err)
+	}
+
+	host, err := controllerhelpers.GetScyllaHost(sdc, svc, pod)
+	if err != nil {
+		return nil, fmt.Errorf("can't get Scylla hosts: %w", err)
+	}
+
+	return scyllaclient.NewConfigClient(host, agentAuthToken), nil
 }

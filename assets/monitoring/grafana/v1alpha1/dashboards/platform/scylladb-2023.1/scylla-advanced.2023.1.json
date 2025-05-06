@@ -1136,7 +1136,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], scylla_io_queue_flow_ratio{iogroup=~\"$iogroup\", instance=~\"[[node]]\", cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) or on ([[by]]) bottomk([[bottomk]], scylla_io_queue_flow_ratio{iogroup=~\"$iogroup\", instance=~\"[[node]]\", cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"})",
+                    "expr": "$topbottom([[filter_limit]], scylla_io_queue_flow_ratio{iogroup=~\"$iogroup\", instance=~\"[[node]]\", cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"})",
                     "intervalFactor": 1,
                     "legendFormat": "Group {{iogroup}} {{dc}} {{instance}} {{shard}}",
                     "refId": "A",
@@ -1234,7 +1234,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], max(rate(scylla_io_queue_total_delay_sec{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])/rate(scylla_io_queue_total_operations{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) or on() max(scylla_io_queue_delay{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"} ) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], max(rate(scylla_io_queue_total_delay_sec{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])/rate(scylla_io_queue_total_operations{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) or on() max(scylla_io_queue_delay{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"} ) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], max(rate(scylla_io_queue_total_delay_sec{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])/rate(scylla_io_queue_total_operations{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) or on() max(scylla_io_queue_delay{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"} ) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -1317,7 +1317,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], max(scylla_io_queue_queue_length{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], max(scylla_io_queue_queue_length{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], max(scylla_io_queue_queue_length{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -1400,7 +1400,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], sum(rate(scylla_io_queue_total_bytes{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_io_queue_total_bytes{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_io_queue_total_bytes{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -1483,7 +1483,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], sum(rate(scylla_io_queue_total_operations{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_io_queue_total_operations{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_io_queue_total_operations{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -1566,7 +1566,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], max(rate(scylla_io_queue_total_exec_sec{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])/rate(scylla_io_queue_total_operations{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) or on() max(scylla_io_queue_delay{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"} ) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], max(rate(scylla_io_queue_total_exec_sec{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])/rate(scylla_io_queue_total_operations{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) or on() max(scylla_io_queue_delay{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"} ) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], max(rate(scylla_io_queue_total_exec_sec{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])/rate(scylla_io_queue_total_operations{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) or on() max(scylla_io_queue_delay{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"} ) by ([[by]]))",
                     "intervalFactor": 1,
                     "refId": "A",
                     "step": 30
@@ -1648,7 +1648,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], max(scylla_io_queue_disk_queue_length{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], max(scylla_io_queue_disk_queue_length{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], max(scylla_io_queue_disk_queue_length{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
                     "intervalFactor": 1,
                     "refId": "A",
                     "step": 30
@@ -1730,7 +1730,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], sum(rate(scylla_io_queue_starvation_time_sec{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_io_queue_starvation_time_sec{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_io_queue_starvation_time_sec{class=\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "refId": "A",
                     "step": 30
@@ -1874,7 +1874,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], $func(rate(scylla_scheduler_runtime_ms{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\",group=~\"$sg\", shard=~\"[[shard]]\"}[$__rate_interval])/1000) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], $func(rate(scylla_scheduler_runtime_ms{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\",group=~\"$sg\", shard=~\"[[shard]]\"}[$__rate_interval])/1000) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_scheduler_runtime_ms{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\",group=~\"$sg\", shard=~\"[[shard]]\"}[$__rate_interval])/1000) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -1959,7 +1959,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], $func(rate(scylla_scheduler_time_spent_on_task_quota_violations_ms{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\",group=~\"$sg\", shard=~\"[[shard]]\"}[$__rate_interval])/1000) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], $func(rate(scylla_scheduler_time_spent_on_task_quota_violations_ms{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\",group=~\"$sg\", shard=~\"[[shard]]\"}[$__rate_interval])/1000) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_scheduler_time_spent_on_task_quota_violations_ms{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\",group=~\"$sg\", shard=~\"[[shard]]\"}[$__rate_interval])/1000) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -2044,7 +2044,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], $func(rate(scylla_scheduler_starvetime_ms{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\",group=~\"$sg\", shard=~\"[[shard]]\"}[$__rate_interval])/1000) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], $func(rate(scylla_scheduler_starvetime_ms{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\",group=~\"$sg\", shard=~\"[[shard]]\"}[$__rate_interval])/1000) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_scheduler_starvetime_ms{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\",group=~\"$sg\", shard=~\"[[shard]]\"}[$__rate_interval])/1000) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -2128,7 +2128,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], $func(scylla_scheduler_shares{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\",group=~\"$sg\", shard=~\"[[shard]]\"}) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], $func(scylla_scheduler_shares{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\",group=~\"$sg\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], $func(scylla_scheduler_shares{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\",group=~\"$sg\", shard=~\"[[shard]]\"}) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -2256,7 +2256,7 @@
             "span": 4,
             "targets": [
                 {
-                    "expr": "topk([[topk]], avg(rate(scylla_storage_proxy_coordinator_read_errors_local_node{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], avg(rate(scylla_storage_proxy_coordinator_read_errors_local_node{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], avg(rate(scylla_storage_proxy_coordinator_read_errors_local_node{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -2339,7 +2339,7 @@
             "span": 4,
             "targets": [
                 {
-                    "expr": "topk([[topk]], avg(rate(scylla_storage_proxy_coordinator_write_errors_local_node{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], avg(rate(scylla_storage_proxy_coordinator_write_errors_local_node{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], avg(rate(scylla_storage_proxy_coordinator_write_errors_local_node{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -2451,7 +2451,7 @@
             "span": 4,
             "targets": [
                 {
-                    "expr": "topk([[topk]], avg(rate(scylla_storage_proxy_coordinator_read_unavailable{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], avg(rate(scylla_storage_proxy_coordinator_read_unavailable{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], avg(rate(scylla_storage_proxy_coordinator_read_unavailable{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -2534,7 +2534,7 @@
             "span": 4,
             "targets": [
                 {
-                    "expr": "topk([[topk]], avg(rate(scylla_storage_proxy_coordinator_write_unavailable{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], avg(rate(scylla_storage_proxy_coordinator_write_unavailable{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], avg(rate(scylla_storage_proxy_coordinator_write_unavailable{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -2620,7 +2620,7 @@
             "span": 4,
             "targets": [
                 {
-                    "expr": "topk([[topk]], avg(rate(scylla_storage_proxy_coordinator_range_unavailable{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], avg(rate(scylla_storage_proxy_coordinator_range_unavailable{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], avg(rate(scylla_storage_proxy_coordinator_range_unavailable{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -2706,7 +2706,7 @@
             "span": 4,
             "targets": [
                 {
-                    "expr": "topk([[topk]], avg(rate(scylla_reactor_aio_errors{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], avg(rate(scylla_reactor_aio_errors{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], avg(rate(scylla_reactor_aio_errors{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -2792,7 +2792,7 @@
             "span": 4,
             "targets": [
                 {
-                    "expr": "topk([[topk]], sum(rate(scylla_reactor_abandoned_failed_futures{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_reactor_abandoned_failed_futures{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_reactor_abandoned_failed_futures{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -2878,7 +2878,7 @@
             "span": 4,
             "targets": [
                 {
-                    "expr": "topk([[topk]], sum(rate(scylla_reactor_cpp_exceptions{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_reactor_cpp_exceptions{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_reactor_cpp_exceptions{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -3006,7 +3006,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], avg(scylla_commitlog_disk_total_bytes{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], avg(scylla_commitlog_disk_total_bytes{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], avg(scylla_commitlog_disk_total_bytes{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -3089,7 +3089,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], avg(scylla_commitlog_disk_active_bytes{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], avg(scylla_commitlog_disk_active_bytes{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], avg(scylla_commitlog_disk_active_bytes{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -3175,7 +3175,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], avg(rate(scylla_commitlog_flush{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], avg(rate(scylla_commitlog_flush{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], avg(rate(scylla_commitlog_flush{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -3261,7 +3261,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], avg(scylla_commitlog_segments{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], avg(scylla_commitlog_segments{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], avg(scylla_commitlog_segments{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -3347,7 +3347,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], avg(rate(scylla_commitlog_flush_limit_exceeded{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], avg(rate(scylla_commitlog_flush_limit_exceeded{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], avg(rate(scylla_commitlog_flush_limit_exceeded{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -3433,7 +3433,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], avg(scylla_commitlog_pending_allocations{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], avg(scylla_commitlog_pending_allocations{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], avg(scylla_commitlog_pending_allocations{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -3519,7 +3519,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], avg(scylla_commitlog_pending_flushes{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], avg(scylla_commitlog_pending_flushes{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], avg(scylla_commitlog_pending_flushes{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -3605,7 +3605,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], avg(scylla_commitlog_unused_segments{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], avg(scylla_commitlog_unused_segments{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], avg(scylla_commitlog_unused_segments{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -3691,7 +3691,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], avg(scylla_commitlog_allocating_segments{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], avg(scylla_commitlog_allocating_segments{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], avg(scylla_commitlog_allocating_segments{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -3921,7 +3921,7 @@
             "links": [],
             "mode": "html",
             "options": {
-                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.8.3</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.9.4</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                 "mode": "html"
             },
             "span": 12,
@@ -4166,6 +4166,38 @@
                 "useTags": false
             },
             {
+                "allValue": ".*",
+                "class": "template_variable_all",
+                "current": {
+                    "selected": true,
+                    "text": [
+                        "All"
+                    ],
+                    "value": [
+                        "$__all"
+                    ]
+                },
+                "datasource": "prometheus",
+                "definition": "",
+                "error": null,
+                "hide": 0,
+                "includeAll": true,
+                "label": "domain",
+                "multi": true,
+                "name": "domain",
+                "options": [],
+                "query": "label_values(scylla_rpc_client_count,domain)",
+                "refresh": 2,
+                "regex": "",
+                "skipUrlSync": false,
+                "sort": 1,
+                "tagValuesQuery": "",
+                "tags": [],
+                "tagsQuery": "",
+                "type": "query",
+                "useTags": false
+            },
+            {
                 "allValue": null,
                 "class": "aggregation_function",
                 "current": {
@@ -4216,7 +4248,41 @@
             },
             {
                 "allValue": null,
-                "class": "topk_limit",
+                "class": "topbottom",
+                "current": {
+                    "tags": [],
+                    "text": "top",
+                    "value": "topk"
+                },
+                "hide": 0,
+                "includeAll": false,
+                "label": "Filter",
+                "multi": false,
+                "name": "topbottom",
+                "options": [
+                    {
+                        "selected": true,
+                        "text": "top",
+                        "value": "topk"
+                    },
+                    {
+                        "selected": false,
+                        "text": "bottom",
+                        "value": "bottomk"
+                    },
+                    {
+                        "selected": false,
+                        "text": "limit",
+                        "value": "limitk"
+                    }
+                ],
+                "query": "top : topk,bottom : bottomk,limit : limitk",
+                "skipUrlSync": false,
+                "type": "custom"
+            },
+            {
+                "allValue": null,
+                "class": "filter_limit",
                 "current": {
                     "tags": [],
                     "text": "256",
@@ -4225,85 +4291,10 @@
                 "error": null,
                 "hide": 0,
                 "includeAll": false,
-                "label": "Filter Highest",
+                "label": "",
                 "multi": false,
-                "name": "topk",
+                "name": "filter_limit",
                 "options": [
-                    {
-                        "selected": false,
-                        "text": "0",
-                        "value": "0"
-                    },
-                    {
-                        "selected": false,
-                        "text": "5",
-                        "value": "5"
-                    },
-                    {
-                        "selected": false,
-                        "text": "10",
-                        "value": "10"
-                    },
-                    {
-                        "selected": false,
-                        "text": "20",
-                        "value": "20"
-                    },
-                    {
-                        "selected": false,
-                        "text": "50",
-                        "value": "50"
-                    },
-                    {
-                        "selected": false,
-                        "text": "100",
-                        "value": "100"
-                    },
-                    {
-                        "selected": true,
-                        "text": "256",
-                        "value": "256"
-                    },
-                    {
-                        "selected": false,
-                        "text": "512",
-                        "value": "512"
-                    },
-                    {
-                        "selected": false,
-                        "text": "1000",
-                        "value": "1000"
-                    },
-                    {
-                        "selected": false,
-                        "text": "10000",
-                        "value": "10000"
-                    }
-                ],
-                "query": "0, 5, 10, 20, 50, 100, 256, 500, 1000, 10000",
-                "skipUrlSync": false,
-                "type": "custom"
-            },
-            {
-                "allValue": null,
-                "class": "botomk_limit",
-                "current": {
-                    "tags": [],
-                    "text": "0",
-                    "value": "0"
-                },
-                "error": null,
-                "hide": 0,
-                "includeAll": false,
-                "label": "Filter Lowest",
-                "multi": false,
-                "name": "bottomk",
-                "options": [
-                    {
-                        "selected": true,
-                        "text": "0",
-                        "value": "0"
-                    },
                     {
                         "selected": false,
                         "text": "5",
@@ -4382,8 +4373,8 @@
                 "allValue": null,
                 "class": "monitor_version_var",
                 "current": {
-                    "text": "4.8.3",
-                    "value": "4.8.3"
+                    "text": "4.9.4",
+                    "value": "4.9.4"
                 },
                 "error": null,
                 "hide": 2,
@@ -4394,11 +4385,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "4.8.3",
-                        "value": "4.8.3"
+                        "text": "4.9.4",
+                        "value": "4.9.4"
                     }
                 ],
-                "query": "4.8.3",
+                "query": "4.9.4",
                 "skipUrlSync": false,
                 "type": "custom"
             }

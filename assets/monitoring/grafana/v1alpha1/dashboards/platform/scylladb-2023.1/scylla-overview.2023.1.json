@@ -1076,7 +1076,7 @@
                     "firing": true,
                     "noData": false,
                     "normal": false,
-                    "pending": true
+                    "pending": false
                 },
                 "viewMode": "list"
             },
@@ -1160,7 +1160,7 @@
                 {
                     "expr": "$func(rate(scylla_storage_proxy_coordinator_write_latency_count{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) or on ([[by]]) $func(rate(scylla_storage_proxy_coordinator_write_latency_summary_count{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval]))",
                     "intervalFactor": 1,
-                    "legendFormat": "",
+                    "legendFormat": "Writes",
                     "refId": "A",
                     "step": 1
                 }
@@ -1917,6 +1917,10 @@
                             {
                                 "id": "decimals",
                                 "value": 0
+                            },
+                            {
+                                "id": "unit",
+                                "value": "percent"
                             }
                         ]
                     },
@@ -2065,82 +2069,16 @@
                                         "to": "",
                                         "type": 1,
                                         "value": "8"
-                                    }
-                                ]
-                            }
-                        ]
-                    },
-                    {
-                        "matcher": {
-                            "id": "byName",
-                            "options": "Value #E"
-                        },
-                        "properties": [
-                            {
-                                "id": "links",
-                                "value": [
-                                    {
-                                        "title": "CQL Information Dashboard. Warning indicates that there are potential issues in the CQL Optimization",
-                                        "url": "/d/cql-[[dash_version]]/scylla-cql?refresh=30s&orgId=1&var-by=instance&var-node=${__data.fields[0]}&from=${__from}&to=${__to}"
-                                    }
-                                ]
-                            },
-                            {
-                                "id": "custom.width",
-                                "value": 90
-                            },
-                            {
-                                "id": "custom.filterable",
-                                "value": false
-                            },
-                            {
-                                "id": "mappings",
-                                "value": [
-                                    {
-                                        "from": "",
-                                        "id": 1,
-                                        "text": "CQL Info",
-                                        "to": "",
-                                        "type": 1,
-                                        "value": "0"
                                     },
                                     {
-                                        "from": "1",
-                                        "id": 1,
-                                        "text": "CQL Warnings",
-                                        "to": "20",
-                                        "type": 2,
-                                        "value": ""
+                                        "from": "",
+                                        "id": 9,
+                                        "text": "Split-Cluster",
+                                        "to": "",
+                                        "type": 1,
+                                        "value": "9"
                                     }
                                 ]
-                            },
-                            {
-                                "id": "thresholds",
-                                "value": {
-                                    "mode": "absolute",
-                                    "steps": [
-                                        {
-                                            "color": "rgb(87, 128, 193)",
-                                            "value": null
-                                        },
-                                        {
-                                            "color": "dark-orange",
-                                            "value": 1
-                                        }
-                                    ]
-                                }
-                            },
-                            {
-                                "id": "custom.displayMode",
-                                "value": "color-text"
-                            },
-                            {
-                                "id": "custom.align",
-                                "value": "left"
-                            },
-                            {
-                                "id": "displayName",
-                                "value": "CQL"
                             }
                         ]
                     },
@@ -2294,47 +2232,6 @@
                     },
                     {
                         "dashversion": [
-                            ">5.1",
-                            ">2022.2"
-                        ],
-                        "matcher": {
-                            "id": "byName",
-                            "options": "Value #F"
-                        },
-                        "properties": [
-                            {
-                                "id": "links",
-                                "value": [
-                                    {
-                                        "title": "How many live nodes this node sees",
-                                        "url": "/d/detailed-[[dash_version]]/detailed?refresh=30s&orgId=1&var-by=instance&var-node=${__data.fields[0]}&from=${__from}&to=${__to}"
-                                    }
-                                ]
-                            },
-                            {
-                                "id": "custom.width",
-                                "value": 80
-                            },
-                            {
-                                "id": "custom.filterable",
-                                "value": true
-                            },
-                            {
-                                "id": "custom.displayMode",
-                                "value": "color-text"
-                            },
-                            {
-                                "id": "custom.align",
-                                "value": "left"
-                            },
-                            {
-                                "id": "displayName",
-                                "value": "Live"
-                            }
-                        ]
-                    },
-                    {
-                        "dashversion": [
                             ">5.2",
                             ">2023.1"
                         ],
@@ -2382,6 +2279,10 @@
                                         }
                                     ]
                                 }
+                            },
+                            {
+                                "id": "unit",
+                                "value": "percent"
                             }
                         ]
                     }
@@ -2404,7 +2305,7 @@
             "span": 8,
             "targets": [
                 {
-                    "expr": "0*scylla_scylladb_current_version{cluster=\"$cluster\", dc=~\"$dc\"} + on (instance) group_left() scylla_node_operation_mode{cluster=\"$cluster\", dc=~\"$dc\"}",
+                    "expr": "0*scylla_scylladb_current_version{cluster=\"$cluster\", dc=~\"$dc\"} + on (instance) group_left() (scylla_node_operation_mode{cluster=\"$cluster\", dc=~\"$dc\"}!= 3 or on (instance) ((scylla_gossip_live{cluster=\"$cluster\", dc=~\"$dc\"}+1<  bool scalar(count(scylla_node_operation_mode{cluster=\"$cluster\"}==3)))*6 + 3))",
                     "format": "table",
                     "hide": false,
                     "instant": true,
@@ -2446,10 +2347,6 @@
                     "refId": "E"
                 },
                 {
-                    "dashversion": [
-                        ">5.1",
-                        ">2022.2"
-                    ],
                     "expr": "sum(scylla_gossip_live{cluster=\"$cluster\"})by (instance)",
                     "format": "table",
                     "instant": true,
@@ -3451,7 +3348,7 @@
             "links": [],
             "mode": "html",
             "options": {
-                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.8.3</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.9.4</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                 "mode": "html"
             },
             "span": 12,
@@ -3859,8 +3756,8 @@
                 "allValue": null,
                 "class": "monitor_version_var",
                 "current": {
-                    "text": "4.8.3",
-                    "value": "4.8.3"
+                    "text": "4.9.4",
+                    "value": "4.9.4"
                 },
                 "error": null,
                 "hide": 2,
@@ -3871,11 +3768,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "4.8.3",
-                        "value": "4.8.3"
+                        "text": "4.9.4",
+                        "value": "4.9.4"
                     }
                 ],
-                "query": "4.8.3",
+                "query": "4.9.4",
                 "skipUrlSync": false,
                 "type": "custom"
             }

@@ -6,7 +6,7 @@ fullnameOverride: ""
 image:
   repository: scylladb
   pullPolicy: IfNotPresent
-  tag: 3.4.0@sha256:6424c36929b39ef4e679ee7d61578b1070e28c186b23b278147fde8e391d9db1
+  tag: 3.5.0@sha256:c38c7f741e46ba5da3914eec9113b615bab779586ba4767605f0a3ebd494bcd2
 # Allows to customize Scylla Manager Controller image
 controllerImage:
   repository: scylladb
@@ -60,9 +60,9 @@ controllerServiceAccount:
 scylla:
   developerMode: true
   scyllaImage:
-    tag: 6.2.0
+    tag: 2025.1.2
   agentImage:
-    tag: 3.4.0@sha256:441403aed8880cad1feef68aa7a8ee9ffd99a458dc1dcff3dc54ce5bf3cb07b7
+    tag: 3.5.0@sha256:12755969f1b3258572c520aa82c2f18db52287b3dc7055a977072284f234da16
   datacenter: manager-dc
   racks:
     - name: manager-rack

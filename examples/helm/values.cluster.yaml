@@ -1,8 +1,8 @@
 # Version information
 scyllaImage:
-  tag: 6.2.0
+  tag: 2025.1.2
 agentImage:
-  tag: 3.4.0@sha256:441403aed8880cad1feef68aa7a8ee9ffd99a458dc1dcff3dc54ce5bf3cb07b7
+  tag: 3.5.0@sha256:12755969f1b3258572c520aa82c2f18db52287b3dc7055a977072284f234da16
 # Cluster information
 developerMode: true
 datacenter: us-east-1

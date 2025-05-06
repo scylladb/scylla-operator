@@ -1,18 +1,18 @@
 operator:
-  scyllaDBVersion: "6.2.0"
+  scyllaDBVersion: "2025.1.2"
   # scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride sets enterprise version
   # that requires consistent_cluster_management workaround for restore.
   # In the future, enterprise versions should be run as a different config instance in its own run.
   scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride: "2024.1.11"
-  scyllaDBUtilsImage: "docker.io/scylladb/scylla:6.2.0@sha256:5b53a7c60d9f9555bb87791ff29b2e633c6f472aec00de7afaf4db1addc6d594"
-  scyllaDBManagerVersion: "3.4.0@sha256:6424c36929b39ef4e679ee7d61578b1070e28c186b23b278147fde8e391d9db1"
-  scyllaDBManagerAgentVersion: "3.4.0@sha256:441403aed8880cad1feef68aa7a8ee9ffd99a458dc1dcff3dc54ce5bf3cb07b7"
-  bashToolsImage: "registry.access.redhat.com/ubi9/ubi:9.5-1731517889@sha256:2bae9062eddbbc18e76555972e7026ffe02cef560a0076e6d7f72bed2c05723f"
-  grafanaImage: "docker.io/grafana/grafana:11.3.0@sha256:a0f881232a6fb71a0554a47d0fe2203b6888fe77f4cefb7ea62bed7eb54e13c3"
-  grafanaDefaultPlatformDashboard: "scylladb-6.2/scylla-overview.6.2.json"
-  prometheusVersion: "v2.54.1"
+  scyllaDBUtilsImage: "docker.io/scylladb/scylla:2025.1.2@sha256:84e914792c61a7703ff616bf6ee6d4becbcf68845221bd2458fcab10ef64302c"
+  scyllaDBManagerVersion: "3.5.0@sha256:c38c7f741e46ba5da3914eec9113b615bab779586ba4767605f0a3ebd494bcd2"
+  scyllaDBManagerAgentVersion: "3.5.0@sha256:12755969f1b3258572c520aa82c2f18db52287b3dc7055a977072284f234da16"
+  bashToolsImage: "registry.access.redhat.com/ubi9/ubi:9.5-1745854298@sha256:f4ebd46d3ba96feb016d798009e1cc2404c3a4ebdac8b2479a2ac053e59f41b4"
+  grafanaImage: "docker.io/grafana/grafana:11.4.3@sha256:95eb8900c1e40e89b3e907094383b1c76c0c166ad5ec85e635de86f114aa7184" # Tracks scylla-monitoring/versions.sh GRAFANA_VERSION
+  grafanaDefaultPlatformDashboard: "scylladb-2025.1/scylla-overview.2025.1.json"
+  prometheusVersion: "v3.1.0" # Tracks scylla-monitoring/versions.sh PROMETHEUS_VERSION
 operatorTests:
   scyllaDBVersions:
-    updateFrom: "6.2.0-rc2"
-    upgradeFrom: "6.1.2"
+    updateFrom: "2025.1.1" # One patch lower than .operator.scyllaDBVersion
+    upgradeFrom: "6.2.3" # One minor lower than .operator.scyllaDBVersion
   nodeSetupImage: "quay.io/scylladb/scylla-operator-images:node-setup-v0.0.3@sha256:c6b3de240cc5c884d5c617485bae35c51572cdfd39b6431d2e1f759c7d7feea1"

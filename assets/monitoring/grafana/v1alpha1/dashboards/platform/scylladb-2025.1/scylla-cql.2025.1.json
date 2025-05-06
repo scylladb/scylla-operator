@@ -1258,6 +1258,89 @@
             "type": "timeseries"
         },
         {
+            "class": "graph_panel",
+            "datasource": "prometheus",
+            "description": "Requests by Consistency Level",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "short"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 6,
+                "y": 25
+            },
+            "id": 18,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "pointradius": 1,
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "topk([[topk]], sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])>0) by ([[by]], consistency_level)) or on ([[by]],consistency_level) bottomk([[bottomk]], sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])>0) by ([[by]], consistency_level))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "metric": "",
+                    "refId": "A",
+                    "step": 30
+                }
+            ],
+            "title": "Requests by Consistency Level [[by]]",
+            "type": "timeseries"
+        },
+        {
             "class": "text_panel",
             "datasource": null,
             "editable": true,
@@ -1274,7 +1357,7 @@
                 "x": 0,
                 "y": 31
             },
-            "id": 18,
+            "id": 19,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -1298,7 +1381,7 @@
                 "x": 0,
                 "y": 34
             },
-            "id": 19,
+            "id": 20,
             "panels": [
                 {
                     "class": "single_value_table",
@@ -1339,7 +1422,7 @@
                         "x": 0,
                         "y": 35
                     },
-                    "id": 20,
+                    "id": 21,
                     "links": [],
                     "options": {
                         "showHeader": true
@@ -1379,7 +1462,7 @@
                 "x": 0,
                 "y": 41
             },
-            "id": 21,
+            "id": 22,
             "panels": [
                 {
                     "class": "single_value_table",
@@ -1433,7 +1516,7 @@
                         "x": 0,
                         "y": 42
                     },
-                    "id": 22,
+                    "id": 23,
                     "links": [],
                     "options": {
                         "showHeader": true
@@ -1473,7 +1556,7 @@
                 "x": 0,
                 "y": 48
             },
-            "id": 23,
+            "id": 24,
             "panels": [
                 {
                     "class": "single_value_table",
@@ -1527,7 +1610,7 @@
                         "x": 0,
                         "y": 49
                     },
-                    "id": 24,
+                    "id": 25,
                     "links": [],
                     "options": {
                         "showHeader": true
@@ -1567,7 +1650,7 @@
                 "x": 0,
                 "y": 55
             },
-            "id": 25,
+            "id": 26,
             "panels": [
                 {
                     "class": "single_value_table",
@@ -1621,7 +1704,7 @@
                         "x": 0,
                         "y": 56
                     },
-                    "id": 26,
+                    "id": 27,
                     "links": [],
                     "options": {
                         "showHeader": true
@@ -1661,7 +1744,7 @@
                 "x": 0,
                 "y": 62
             },
-            "id": 27,
+            "id": 28,
             "panels": [
                 {
                     "class": "text_panel",
@@ -1680,7 +1763,7 @@
                         "x": 0,
                         "y": 63
                     },
-                    "id": 28,
+                    "id": 29,
                     "isNew": true,
                     "links": [],
                     "mode": "html",
@@ -1747,7 +1830,7 @@
                         "x": 0,
                         "y": 65
                     },
-                    "id": 29,
+                    "id": 30,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -1832,7 +1915,7 @@
                         "x": 6,
                         "y": 65
                     },
-                    "id": 30,
+                    "id": 31,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -1917,7 +2000,7 @@
                         "x": 12,
                         "y": 65
                     },
-                    "id": 31,
+                    "id": 32,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -2002,7 +2085,7 @@
                         "x": 18,
                         "y": 65
                     },
-                    "id": 32,
+                    "id": 33,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -2049,7 +2132,7 @@
                 "x": 0,
                 "y": 71
             },
-            "id": 33,
+            "id": 34,
             "panels": [],
             "repeat": "",
             "title": "LWT",
@@ -2072,7 +2155,7 @@
                 "x": 0,
                 "y": 72
             },
-            "id": 34,
+            "id": 35,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -2139,7 +2222,7 @@
                 "x": 0,
                 "y": 74
             },
-            "id": 35,
+            "id": 36,
             "isNew": true,
             "links": [],
             "options": {
@@ -2224,7 +2307,7 @@
                 "x": 6,
                 "y": 74
             },
-            "id": 36,
+            "id": 37,
             "isNew": true,
             "links": [],
             "options": {
@@ -2309,7 +2392,7 @@
                 "x": 12,
                 "y": 74
             },
-            "id": 37,
+            "id": 38,
             "isNew": true,
             "links": [],
             "options": {
@@ -2394,7 +2477,7 @@
                 "x": 18,
                 "y": 74
             },
-            "id": 38,
+            "id": 39,
             "isNew": true,
             "links": [],
             "options": {
@@ -2434,7 +2517,7 @@
                 "x": 0,
                 "y": 80
             },
-            "id": 39,
+            "id": 40,
             "panels": [],
             "repeat": "",
             "title": "Optimization",
@@ -2457,7 +2540,7 @@
                 "x": 0,
                 "y": 81
             },
-            "id": 40,
+            "id": 41,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -2521,7 +2604,7 @@
                 "x": 0,
                 "y": 83
             },
-            "id": 41,
+            "id": 42,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -2606,7 +2689,7 @@
                 "x": 2,
                 "y": 83
             },
-            "id": 42,
+            "id": 43,
             "isNew": true,
             "links": [],
             "options": {
@@ -2687,7 +2770,7 @@
                 "x": 8,
                 "y": 83
             },
-            "id": 43,
+            "id": 44,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -2772,7 +2855,7 @@
                 "x": 10,
                 "y": 83
             },
-            "id": 44,
+            "id": 45,
             "isNew": true,
             "links": [],
             "options": {
@@ -2853,7 +2936,7 @@
                 "x": 16,
                 "y": 83
             },
-            "id": 45,
+            "id": 46,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -2936,7 +3019,7 @@
                 "x": 18,
                 "y": 83
             },
-            "id": 46,
+            "id": 47,
             "isNew": true,
             "links": [],
             "options": {
@@ -3017,7 +3100,7 @@
                 "x": 0,
                 "y": 89
             },
-            "id": 47,
+            "id": 48,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -3102,7 +3185,7 @@
                 "x": 2,
                 "y": 89
             },
-            "id": 48,
+            "id": 49,
             "isNew": true,
             "links": [],
             "options": {
@@ -3183,7 +3266,7 @@
                 "x": 8,
                 "y": 89
             },
-            "id": 49,
+            "id": 50,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -3266,7 +3349,7 @@
                 "x": 10,
                 "y": 89
             },
-            "id": 50,
+            "id": 51,
             "isNew": true,
             "links": [],
             "options": {
@@ -3344,7 +3427,7 @@
                 "x": 16,
                 "y": 89
             },
-            "id": 51,
+            "id": 52,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -3429,7 +3512,7 @@
                 "x": 18,
                 "y": 89
             },
-            "id": 52,
+            "id": 53,
             "isNew": true,
             "links": [],
             "options": {
@@ -3524,7 +3607,7 @@
                 "x": 0,
                 "y": 95
             },
-            "id": 53,
+            "id": 54,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -3609,7 +3692,7 @@
                 "x": 2,
                 "y": 95
             },
-            "id": 54,
+            "id": 55,
             "isNew": true,
             "links": [],
             "options": {
@@ -3690,7 +3773,7 @@
                 "x": 8,
                 "y": 95
             },
-            "id": 55,
+            "id": 56,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -3775,7 +3858,7 @@
                 "x": 10,
                 "y": 95
             },
-            "id": 56,
+            "id": 57,
             "isNew": true,
             "links": [],
             "options": {
@@ -3856,7 +3939,7 @@
                 "x": 16,
                 "y": 95
             },
-            "id": 57,
+            "id": 58,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -3941,7 +4024,7 @@
                 "x": 18,
                 "y": 95
             },
-            "id": 58,
+            "id": 59,
             "isNew": true,
             "links": [],
             "options": {
@@ -3989,7 +4072,7 @@
                 "x": 0,
                 "y": 101
             },
-            "id": 59,
+            "id": 60,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -4053,7 +4136,7 @@
                 "x": 0,
                 "y": 104
             },
-            "id": 60,
+            "id": 61,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -4138,7 +4221,7 @@
                 "x": 2,
                 "y": 104
             },
-            "id": 61,
+            "id": 62,
             "isNew": true,
             "links": [],
             "options": {
@@ -4219,7 +4302,7 @@
                 "x": 8,
                 "y": 104
             },
-            "id": 62,
+            "id": 63,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -4304,7 +4387,7 @@
                 "x": 10,
                 "y": 104
             },
-            "id": 63,
+            "id": 64,
             "isNew": true,
             "links": [],
             "options": {
@@ -4385,7 +4468,7 @@
                 "x": 0,
                 "y": 110
             },
-            "id": 64,
+            "id": 65,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -4431,12 +4514,12 @@
                 "x": 0,
                 "y": 116
             },
-            "id": 65,
+            "id": 66,
             "isNew": true,
             "links": [],
             "mode": "html",
             "options": {
-                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.8.3</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.9.4</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                 "mode": "html"
             },
             "span": 12,
@@ -4450,7 +4533,7 @@
     "schemaVersion": 26,
     "style": "dark",
     "tags": [
-        "2022.1"
+        "2025.1"
     ],
     "templating": {
         "list": [
@@ -4763,8 +4846,8 @@
                 "allValue": null,
                 "class": "template_variable_custom",
                 "current": {
-                    "text": "2022-1",
-                    "value": "2022-1"
+                    "text": "2025-1",
+                    "value": "2025-1"
                 },
                 "error": null,
                 "hide": 2,
@@ -4775,11 +4858,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "2022-1",
-                        "value": "2022-1"
+                        "text": "2025-1",
+                        "value": "2025-1"
                     }
                 ],
-                "query": "2022-1",
+                "query": "2025-1",
                 "skipUrlSync": false,
                 "type": "custom"
             },
@@ -4787,8 +4870,8 @@
                 "allValue": null,
                 "class": "template_variable_custom",
                 "current": {
-                    "text": "2022.1",
-                    "value": "2022.1"
+                    "text": "2025.1",
+                    "value": "2025.1"
                 },
                 "error": null,
                 "hide": 2,
@@ -4799,11 +4882,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "2022.1",
-                        "value": "2022.1"
+                        "text": "2025.1",
+                        "value": "2025.1"
                     }
                 ],
-                "query": "2022.1",
+                "query": "2025.1",
                 "skipUrlSync": false,
                 "type": "custom"
             },
@@ -4811,8 +4894,8 @@
                 "allValue": null,
                 "class": "monitor_version_var",
                 "current": {
-                    "text": "4.8.3",
-                    "value": "4.8.3"
+                    "text": "4.9.4",
+                    "value": "4.9.4"
                 },
                 "error": null,
                 "hide": 2,
@@ -4823,11 +4906,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "4.8.3",
-                        "value": "4.8.3"
+                        "text": "4.9.4",
+                        "value": "4.9.4"
                     }
                 ],
-                "query": "4.8.3",
+                "query": "4.9.4",
                 "skipUrlSync": false,
                 "type": "custom"
             }
@@ -4865,6 +4948,6 @@
     },
     "timezone": "utc",
     "title": "Scylla CQL",
-    "uid": "cql-2022-1",
+    "uid": "cql-2025-1",
     "version": 1
 }

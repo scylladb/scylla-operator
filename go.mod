@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/config v1.29.14
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.67
-	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.18.14
+	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.19.0
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.30
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.43.1
 	github.com/aws/smithy-go v1.22.3
@@ -45,8 +45,8 @@ require (
 	go.uber.org/atomic v1.11.0
 	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/config v1.4.0
-	golang.org/x/oauth2 v0.29.0
-	golang.org/x/sys v0.32.0
+	golang.org/x/oauth2 v0.30.0
+	golang.org/x/sys v0.33.0
 	golang.org/x/time v0.11.0
 	google.golang.org/grpc v1.72.0
 	gopkg.in/yaml.v2 v2.4.0

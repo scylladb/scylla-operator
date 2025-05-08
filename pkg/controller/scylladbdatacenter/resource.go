@@ -60,17 +60,30 @@ const (
 	alternatorTLSPortName      = "alternator-tls"
 )
 
+var (
+	// Annotation keys excluded from propagation to underlying resources.
+	nonPropagatedAnnotationKeys = []string{
+		naming.ScyllaDBManagerClusterRegistrationNameOverrideAnnotation,
+	}
+
+	// Label keys excluded from propagation to underlying resources.
+	nonPropagatedLabelKeys = []string{
+		naming.GlobalScyllaDBManagerRegistrationLabel,
+	}
+)
+
 func IdentityService(sdc *scyllav1alpha1.ScyllaDBDatacenter) (*corev1.Service, error) {
+	sdcLabels := getPropagableScyllaDBDatacenterLabels(sdc)
 	svcLabels := map[string]string{}
-	maps.Copy(svcLabels, sdc.Labels)
+	maps.Copy(svcLabels, sdcLabels)
 	maps.Copy(svcLabels, naming.ClusterLabels(sdc))
 	svcLabels[naming.ScyllaServiceTypeLabel] = string(naming.ScyllaServiceTypeIdentity)
 
 	svcAnnotations := map[string]string{}
 
+	sdcAnnotations := getPropagableScyllaDBDatacenterAnnotations(sdc)
 	// As ScyllaDBDatacenter may be managed object (when user is using scyllav1.ScyllaCluster API), managed
 	// hash from it shouldn't propagate into dependency objects to not trigger unnecessary double rollouts.
-	sdcAnnotations := maps.Clone(sdc.Annotations)
 	delete(sdcAnnotations, naming.ManagedHash)
 
 	maps.Copy(svcAnnotations, sdcAnnotations)
@@ -99,12 +112,13 @@ func IdentityService(sdc *scyllav1alpha1.ScyllaDBDatacenter) (*corev1.Service, e
 }
 
 func MemberService(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName, name string, oldService *corev1.Service, jobs map[string]*batchv1.Job) (*corev1.Service, error) {
+	sdcLabels := getPropagableScyllaDBDatacenterLabels(sdc)
 	svcLabels := map[string]string{}
 
 	if sdc.Spec.ExposeOptions != nil && sdc.Spec.ExposeOptions.NodeService.Labels != nil {
 		maps.Copy(svcLabels, sdc.Spec.ExposeOptions.NodeService.Labels)
 	} else {
-		maps.Copy(svcLabels, sdc.Labels)
+		maps.Copy(svcLabels, sdcLabels)
 	}
 
 	maps.Copy(svcLabels, naming.ClusterLabels(sdc))
@@ -114,9 +128,9 @@ func MemberService(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName, name string
 
 	svcAnnotations := map[string]string{}
 
+	sdcAnnotations := getPropagableScyllaDBDatacenterAnnotations(sdc)
 	// As ScyllaDBDatacenter may be managed object (when user is using scyllav1.ScyllaCluster API), managed
 	// hash from it shouldn't propagate into dependency objects to not trigger unnecessary double rollouts.
-	sdcAnnotations := maps.Clone(sdc.Annotations)
 	delete(sdcAnnotations, naming.ManagedHash)
 
 	if sdc.Spec.ExposeOptions != nil && sdc.Spec.ExposeOptions.NodeService.Annotations != nil {
@@ -316,21 +330,23 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 	requiredLabels[naming.ScyllaVersionLabel] = scyllaDBVersion
 	maps.Copy(requiredLabels, selectorLabels)
 
+	sdcLabels := getPropagableScyllaDBDatacenterLabels(sdc)
+
 	rackLabels := map[string]string{}
-	maps.Copy(rackLabels, sdc.Labels)
+	maps.Copy(rackLabels, sdcLabels)
 	maps.Copy(rackLabels, requiredLabels)
 
 	rackTemplateLabels := map[string]string{}
 	if sdc.Spec.Metadata != nil && sdc.Spec.Metadata.Labels != nil {
 		maps.Copy(rackTemplateLabels, sdc.Spec.Metadata.Labels)
 	} else {
-		maps.Copy(rackTemplateLabels, sdc.Labels)
+		maps.Copy(rackTemplateLabels, sdcLabels)
 	}
 	maps.Copy(rackTemplateLabels, requiredLabels)
 
+	sdcAnnotations := getPropagableScyllaDBDatacenterAnnotations(sdc)
 	// As ScyllaDBDatacenter may be managed object (when user is using scyllav1.ScyllaCluster API), managed
 	// hash from it shouldn't propagate into dependency objects to not trigger unnecessary double rollouts.
-	sdcAnnotations := maps.Clone(sdc.Annotations)
 	delete(sdcAnnotations, naming.ManagedHash)
 
 	rackAnnotations := map[string]string{}
@@ -366,7 +382,7 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 	if rack.ScyllaDB != nil && rack.ScyllaDB.Storage != nil && rack.ScyllaDB.Storage.Metadata != nil && rack.ScyllaDB.Storage.Metadata.Labels != nil {
 		maps.Copy(dataVolumeClaimLabels, rack.ScyllaDB.Storage.Metadata.Labels)
 	} else if existingSts == nil {
-		maps.Copy(dataVolumeClaimLabels, sdc.Labels)
+		maps.Copy(dataVolumeClaimLabels, sdcLabels)
 	} else {
 		if existingDataPVCTemplate == nil {
 			return nil, fmt.Errorf("data PVC template %q in existing %q StatefulSet spec is missing", naming.PVCTemplateName, naming.ObjRef(existingSts))
@@ -1282,17 +1298,19 @@ exec scylla-manager-agent \
 }
 
 func MakePodDisruptionBudget(sdc *scyllav1alpha1.ScyllaDBDatacenter) *policyv1.PodDisruptionBudget {
+	sdcLabels := getPropagableScyllaDBDatacenterLabels(sdc)
+
 	maxUnavailable := intstr.FromInt(1)
 
 	selectorLabels := naming.ClusterLabels(sdc)
 
 	labels := map[string]string{}
-	maps.Copy(labels, sdc.Labels)
+	maps.Copy(labels, sdcLabels)
 	maps.Copy(labels, selectorLabels)
 
+	sdcAnnotations := getPropagableScyllaDBDatacenterAnnotations(sdc)
 	// As ScyllaDBDatacenter may be managed object (when user is using scyllav1.ScyllaCluster API), managed
 	// hash from it shouldn't propagate into dependency objects to not trigger unnecessary double rollouts.
-	sdcAnnotations := maps.Clone(sdc.Annotations)
 	delete(sdcAnnotations, naming.ManagedHash)
 
 	// Ignore any Job Pods that share the selector with ScyllaDB Pods, they shouldn't be accounted for PDB.
@@ -1346,9 +1364,11 @@ func MakeIngresses(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*
 
 	var ingresses []*networkingv1.Ingress
 
+	sdcLabels := getPropagableScyllaDBDatacenterLabels(sdc)
+
+	sdcAnnotations := getPropagableScyllaDBDatacenterAnnotations(sdc)
 	// As ScyllaDBDatacenter may be managed object (when user is using scyllav1.ScyllaCluster API), managed
 	// hash from it shouldn't propagate into dependency objects to not trigger unnecessary double rollouts.
-	sdcAnnotations := maps.Clone(sdc.Annotations)
 	delete(sdcAnnotations, naming.ManagedHash)
 
 	for _, ip := range ingressParams {
@@ -1363,7 +1383,7 @@ func MakeIngresses(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*
 			}
 
 			labels := map[string]string{}
-			maps.Copy(labels, sdc.Labels)
+			maps.Copy(labels, sdcLabels)
 			maps.Copy(labels, naming.ClusterLabels(sdc))
 
 			switch naming.ScyllaServiceType(service.Labels[naming.ScyllaServiceTypeLabel]) {
@@ -1452,13 +1472,14 @@ func MakeAgentAuthTokenSecret(sdc *scyllav1alpha1.ScyllaDBDatacenter, authToken 
 		return nil, err
 	}
 
+	sdcLabels := getPropagableScyllaDBDatacenterLabels(sdc)
 	labels := map[string]string{}
-	maps.Copy(labels, sdc.Labels)
+	maps.Copy(labels, sdcLabels)
 	maps.Copy(labels, naming.ClusterLabels(sdc))
 
+	sdcAnnotations := getPropagableScyllaDBDatacenterAnnotations(sdc)
 	// As ScyllaDBDatacenter may be managed object (when user is using scyllav1.ScyllaCluster API), managed
 	// hash from it shouldn't propagate into dependency objects to not trigger unnecessary double rollouts.
-	sdcAnnotations := maps.Clone(sdc.Annotations)
 	delete(sdcAnnotations, naming.ManagedHash)
 
 	return &corev1.Secret{
@@ -1497,15 +1518,17 @@ func copyReferencedValue[T any](v *T) *T {
 }
 
 func MakeServiceAccount(sdc *scyllav1alpha1.ScyllaDBDatacenter) *corev1.ServiceAccount {
+	sdcLabels := getPropagableScyllaDBDatacenterLabels(sdc)
+
 	labels := map[string]string{}
-	maps.Copy(labels, sdc.Labels)
+	maps.Copy(labels, sdcLabels)
 	maps.Copy(labels, naming.ClusterLabels(sdc))
 
 	annotations := map[string]string{}
 
+	sdcAnnotations := getPropagableScyllaDBDatacenterAnnotations(sdc)
 	// As ScyllaDBDatacenter may be managed object (when user is using scyllav1.ScyllaCluster API), managed
 	// hash from it shouldn't propagate into dependency objects to not trigger unnecessary double rollouts.
-	sdcAnnotations := maps.Clone(sdc.Annotations)
 	delete(sdcAnnotations, naming.ManagedHash)
 	maps.Copy(annotations, sdcAnnotations)
 
@@ -1524,14 +1547,15 @@ func MakeServiceAccount(sdc *scyllav1alpha1.ScyllaDBDatacenter) *corev1.ServiceA
 
 func MakeRoleBinding(sdc *scyllav1alpha1.ScyllaDBDatacenter) *rbacv1.RoleBinding {
 	saName := naming.MemberServiceAccountNameForScyllaDBDatacenter(sdc.Name)
+	sdcLabels := getPropagableScyllaDBDatacenterLabels(sdc)
 
 	labels := map[string]string{}
-	maps.Copy(labels, sdc.Labels)
+	maps.Copy(labels, sdcLabels)
 	maps.Copy(labels, naming.ClusterLabels(sdc))
 
+	sdcAnnotations := getPropagableScyllaDBDatacenterAnnotations(sdc)
 	// As ScyllaDBDatacenter may be managed object (when user is using scyllav1.ScyllaCluster API), managed
 	// hash from it shouldn't propagate into dependency objects to not trigger unnecessary double rollouts.
-	sdcAnnotations := maps.Clone(sdc.Annotations)
 	delete(sdcAnnotations, naming.ManagedHash)
 
 	annotations := map[string]string{}
@@ -1567,6 +1591,7 @@ func MakeJobs(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev
 	var jobs []*batchv1.Job
 	var progressingConditions []metav1.Condition
 
+	sdcLabels := getPropagableScyllaDBDatacenterLabels(sdc)
 	for _, rack := range sdc.Spec.Racks {
 		rackNodes, err := controllerhelpers.GetRackNodeCount(sdc, rack.Name)
 		if err != nil {
@@ -1643,7 +1668,7 @@ func MakeJobs(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev
 			klog.InfoS("Node requires a cleanup", "Node", naming.ObjRef(svc), "CurrentHash", currentTokenRingHash, "LastCleanedUpHash", lastCleanedUpTokenRingHash)
 
 			jobLabels := map[string]string{}
-			maps.Copy(jobLabels, sdc.Labels)
+			maps.Copy(jobLabels, sdcLabels)
 			maps.Copy(jobLabels, map[string]string{
 				naming.ClusterNameLabel: sdc.Name,
 				naming.NodeJobLabel:     svcName,
@@ -1652,9 +1677,9 @@ func MakeJobs(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev
 
 			annotations := map[string]string{}
 
+			sdcAnnotations := getPropagableScyllaDBDatacenterAnnotations(sdc)
 			// As ScyllaDBDatacenter may be managed object (when user is using scyllav1.ScyllaCluster API), managed
 			// hash from it shouldn't propagate into dependency objects to not trigger unnecessary double rollouts.
-			sdcAnnotations := maps.Clone(sdc.Annotations)
 			delete(sdcAnnotations, naming.ManagedHash)
 			maps.Copy(annotations, sdcAnnotations)
 
@@ -1755,6 +1780,7 @@ func MakeManagedScyllaDBConfigMaps(sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]*c
 
 func MakeManagedScyllaDBSnitchConfig(sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]*corev1.ConfigMap, error) {
 	snitchConfigsCMs := make([]*corev1.ConfigMap, 0, len(sdc.Spec.Racks))
+	sdcLabels := getPropagableScyllaDBDatacenterLabels(sdc)
 
 	for _, rack := range sdc.Spec.Racks {
 		cm, _, err := scylladbassets.ScyllaDBSnitchConfigTemplate.Get().RenderObject(
@@ -1784,15 +1810,16 @@ func MakeManagedScyllaDBSnitchConfig(sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]
 		if cm.Labels == nil {
 			cm.Labels = map[string]string{}
 		}
-		maps.Copy(cm.Labels, sdc.Labels)
+		maps.Copy(cm.Labels, sdcLabels)
 		maps.Copy(cm.Labels, naming.ClusterLabels(sdc))
 
 		if cm.Annotations == nil {
 			cm.Annotations = map[string]string{}
 		}
+
+		sdcAnnotations := getPropagableScyllaDBDatacenterAnnotations(sdc)
 		// As ScyllaDBDatacenter may be managed object (when user is using scyllav1.ScyllaCluster API), managed
 		// hash from it shouldn't propagate into dependency objects to not trigger unnecessary double rollouts.
-		sdcAnnotations := maps.Clone(sdc.Annotations)
 		delete(sdcAnnotations, naming.ManagedHash)
 
 		maps.Copy(cm.Annotations, sdcAnnotations)
@@ -1857,15 +1884,17 @@ func MakeManagedScyllaDBConfig(sdc *scyllav1alpha1.ScyllaDBDatacenter) (*corev1.
 	if cm.Labels == nil {
 		cm.Labels = map[string]string{}
 	}
-	maps.Copy(cm.Labels, sdc.Labels)
+	sdcLabels := getPropagableScyllaDBDatacenterLabels(sdc)
+	maps.Copy(cm.Labels, sdcLabels)
 	maps.Copy(cm.Labels, naming.ClusterLabels(sdc))
 
 	if cm.Annotations == nil {
 		cm.Annotations = map[string]string{}
 	}
+
+	sdcAnnotations := getPropagableScyllaDBDatacenterAnnotations(sdc)
 	// As ScyllaDBDatacenter may be managed object (when user is using scyllav1.ScyllaCluster API), managed
 	// hash from it shouldn't propagate into dependency objects to not trigger unnecessary double rollouts.
-	sdcAnnotations := maps.Clone(sdc.Annotations)
 	delete(sdcAnnotations, naming.ManagedHash)
 
 	maps.Copy(cm.Annotations, sdcAnnotations)
@@ -2096,8 +2125,11 @@ func MakeUpgradeContextConfigMap(sdc *scyllav1alpha1.ScyllaDBDatacenter, uc *int
 	labels := make(map[string]string)
 	annotations := make(map[string]string)
 
-	maps.Copy(labels, sdc.Labels)
-	maps.Copy(annotations, sdc.Annotations)
+	sdcLabels := getPropagableScyllaDBDatacenterLabels(sdc)
+	maps.Copy(labels, sdcLabels)
+
+	sdcAnnotations := getPropagableScyllaDBDatacenterAnnotations(sdc)
+	maps.Copy(annotations, sdcAnnotations)
 
 	maps.Copy(labels, naming.ClusterLabels(sdc))
 
@@ -2115,4 +2147,20 @@ func MakeUpgradeContextConfigMap(sdc *scyllav1alpha1.ScyllaDBDatacenter, uc *int
 			naming.UpgradeContextConfigMapKey: string(data),
 		},
 	}, nil
+}
+
+func getPropagableScyllaDBDatacenterLabels(sdc *scyllav1alpha1.ScyllaDBDatacenter) map[string]string {
+	sdcLabels := maps.Clone(sdc.Labels)
+	for _, k := range nonPropagatedLabelKeys {
+		delete(sdcLabels, k)
+	}
+	return sdcLabels
+}
+
+func getPropagableScyllaDBDatacenterAnnotations(sdc *scyllav1alpha1.ScyllaDBDatacenter) map[string]string {
+	sdcAnnotations := maps.Clone(sdc.Annotations)
+	for _, k := range nonPropagatedAnnotationKeys {
+		delete(sdcAnnotations, k)
+	}
+	return sdcAnnotations
 }

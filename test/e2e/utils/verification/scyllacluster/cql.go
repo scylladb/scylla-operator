@@ -9,6 +9,7 @@ import (
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/scheme"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	scylladbdatacenterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scylladbdatacenter"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -27,22 +28,11 @@ func WaitForFullMultiDCQuorum(ctx context.Context, dcClientMap map[string]corev1
 }
 
 func VerifyCQLData(ctx context.Context, di *utils.DataInserter) {
-	err := di.AwaitSchemaAgreement(ctx)
-	o.Expect(err).NotTo(o.HaveOccurred())
-
-	framework.By("Verifying the data")
-	data, err := di.Read()
-	o.Expect(err).NotTo(o.HaveOccurred())
-	o.Expect(data).To(o.Equal(di.GetExpected()))
+	scylladbdatacenterverification.VerifyCQLData(ctx, di)
 }
 
 func InsertAndVerifyCQLData(ctx context.Context, hosts []string, options ...utils.DataInserterOption) *utils.DataInserter {
-	framework.By("Inserting data")
-	di, err := utils.NewDataInserter(hosts, options...)
-	o.Expect(err).NotTo(o.HaveOccurred())
-
-	InsertAndVerifyCQLDataUsingDataInserter(ctx, di)
-	return di
+	return scylladbdatacenterverification.InsertAndVerifyCQLData(ctx, hosts, options...)
 }
 
 func InsertAndVerifyCQLDataByDC(ctx context.Context, hosts map[string][]string) *utils.DataInserter {
@@ -54,13 +44,7 @@ func InsertAndVerifyCQLDataByDC(ctx context.Context, hosts map[string][]string) 
 }
 
 func InsertAndVerifyCQLDataUsingDataInserter(ctx context.Context, di *utils.DataInserter) *utils.DataInserter {
-	framework.By("Inserting data")
-	err := di.Insert()
-	o.Expect(err).NotTo(o.HaveOccurred())
-
-	VerifyCQLData(ctx, di)
-
-	return di
+	return scylladbdatacenterverification.InsertAndVerifyCQLDataUsingDataInserter(ctx, di)
 }
 
 type VerifyCQLConnectionConfigsOptions struct {

@@ -57,6 +57,10 @@ var (
 			ValidateCreateFunc: validation.ValidateScyllaDBCluster,
 			ValidateUpdateFunc: validation.ValidateScyllaDBClusterUpdate,
 		},
+		scyllav1alpha1.GroupVersion.WithResource("scylladbmanagerclusterregistrations"): &GenericValidator[*scyllav1alpha1.ScyllaDBManagerClusterRegistration]{
+			ValidateCreateFunc: validation.ValidateScyllaDBManagerClusterRegistration,
+			ValidateUpdateFunc: validation.ValidateScyllaDBManagerClusterRegistrationUpdate,
+		},
 	}
 )
 

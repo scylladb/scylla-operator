@@ -19,6 +19,7 @@ import (
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	apiserverinternalv1alpha1 "k8s.io/api/apiserverinternal/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -60,6 +61,12 @@ func TestMustGatherOptions_Run(t *testing.T) {
 			GroupVersion: apiserverinternalv1alpha1.SchemeGroupVersion.String(),
 			APIResources: []metav1.APIResource{
 				{Name: "storageversions", Namespaced: true, Kind: "StorageVersion", Verbs: []string{"list"}},
+			},
+		},
+		{
+			GroupVersion: storagev1.SchemeGroupVersion.String(),
+			APIResources: []metav1.APIResource{
+				{Name: "storageclasses", Namespaced: false, Kind: "StorageClass", Verbs: []string{"list"}},
 			},
 		},
 		{
@@ -119,6 +126,11 @@ func TestMustGatherOptions_Run(t *testing.T) {
 				&corev1.Node{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "fedora",
+					},
+				},
+				&storagev1.StorageClass{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "my-storage-class",
 					},
 				},
 				&corev1.Namespace{
@@ -223,6 +235,17 @@ status:
     operatingSystem: ""
     osImage: ""
     systemUUID: ""
+`, "\n"),
+					},
+					{
+						Name: "cluster-scoped/storageclasses.storage.k8s.io/my-storage-class.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  creationTimestamp: null
+  name: my-storage-class
+provisioner: ""
 `, "\n"),
 					},
 					{

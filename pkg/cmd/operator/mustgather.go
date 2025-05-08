@@ -224,6 +224,14 @@ var DefaultCollectedResourceGroups = []GroupResourceSpec{
 	},
 	{
 		GroupResource: schema.GroupResource{
+			Resource: "storageclasses",
+			Group:    "storage.k8s.io",
+		},
+		Namespace: corev1.NamespaceAll,
+		Name:      "",
+	},
+	{
+		GroupResource: schema.GroupResource{
 			Resource: "validatingwebhookconfigurations",
 			Group:    "admissionregistration.k8s.io",
 		},

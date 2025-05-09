@@ -5,7 +5,9 @@
 
 overview
 scyllaclusters/index
+scylladbclusters/index
 scylladbmonitorings
 nodeconfigs
 scyllaoperatorconfigs
+remotekubernetesclusters
 :::

@@ -1,0 +1,8 @@
+apiVersion: scylla.scylladb.com/v1alpha1
+kind: RemoteKubernetesCluster
+metadata:
+    name: dev-us-west-1
+spec:
+  kubeconfigSecretRef:
+    name: dev-us-west-1
+    namespace: remotekubernetescluster-credentials

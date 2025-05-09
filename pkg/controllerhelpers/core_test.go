@@ -3,6 +3,7 @@ package controllerhelpers
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -339,6 +340,74 @@ func TestAggregateStatusConditions(t *testing.T) {
 				Status:             metav1.ConditionTrue,
 				Reason:             "FooDegradedReason,BarDegradedReason",
 				Message:            "FooDegraded: FooDegraded error\nBarDegraded: BarDegraded error",
+				ObservedGeneration: 42,
+			},
+			expectedError: nil,
+		},
+		{
+			name: "aggregated condition's message exceeds API limit",
+			conditions: []metav1.Condition{
+				{
+					Type:    "FooDegraded",
+					Status:  metav1.ConditionTrue,
+					Reason:  "FooDegradedReason",
+					Message: strings.Repeat("a", maxMessageLength/2),
+				},
+				{
+					Type:    "BarDegraded",
+					Status:  metav1.ConditionTrue,
+					Reason:  "BarDegradedReason",
+					Message: strings.Repeat("b", maxMessageLength/2+1),
+				},
+			},
+			condition: metav1.Condition{
+				Type:               "Degraded",
+				Status:             metav1.ConditionFalse,
+				Reason:             "AsExpected",
+				Message:            "AsExpected",
+				ObservedGeneration: 42,
+			},
+			expectedCondition: metav1.Condition{
+				Type:   "Degraded",
+				Status: metav1.ConditionTrue,
+				Reason: "FooDegradedReason,BarDegradedReason",
+				Message: ("FooDegraded: " + strings.Repeat("a", maxMessageLength/2) + "\n" +
+					"BarDegraded: " + strings.Repeat("b", maxMessageLength/2))[:maxMessageLength-len(truncationIndicator)] +
+					truncationIndicator,
+				ObservedGeneration: 42,
+			},
+			expectedError: nil,
+		},
+		{
+			name: "aggregated condition's reason exceeds API limit",
+			conditions: []metav1.Condition{
+				{
+					Type:    "FooDegraded",
+					Status:  metav1.ConditionTrue,
+					Reason:  strings.Repeat("a", maxReasonLength/2),
+					Message: "FooDegraded error",
+				},
+				{
+					Type:    "BarDegraded",
+					Status:  metav1.ConditionTrue,
+					Reason:  strings.Repeat("b", maxReasonLength/2+1),
+					Message: "BarDegraded error",
+				},
+			},
+			condition: metav1.Condition{
+				Type:               "Degraded",
+				Status:             metav1.ConditionFalse,
+				Reason:             "AsExpected",
+				Message:            "AsExpected",
+				ObservedGeneration: 42,
+			},
+			expectedCondition: metav1.Condition{
+				Type:    "Degraded",
+				Status:  metav1.ConditionTrue,
+				Message: "FooDegraded: FooDegraded error\nBarDegraded: BarDegraded error",
+				Reason: (strings.Repeat("a", maxReasonLength/2) + "," +
+					strings.Repeat("b", maxReasonLength/2))[:maxReasonLength-len(truncationIndicator)] +
+					truncationIndicator,
 				ObservedGeneration: 42,
 			},
 			expectedError: nil,

@@ -56,6 +56,15 @@ func FindStatusConditionsWithSuffix(conditions []metav1.Condition, suffix string
 	return res
 }
 
+const (
+	// https://github.com/kubernetes/apimachinery/blob/f7c43800319c674eecce7c80a6ac7521a9b50aa8/pkg/apis/meta/v1/types.go#L1640
+	maxReasonLength = 1024
+	// https://github.com/kubernetes/apimachinery/blob/f7c43800319c674eecce7c80a6ac7521a9b50aa8/pkg/apis/meta/v1/types.go#L1648
+	maxMessageLength = 32768
+
+	truncationIndicator = "[truncated]"
+)
+
 func aggregateStatusConditionInfo(conditions []metav1.Condition) (string, string) {
 	reasons := make([]string, 0, len(conditions))
 	messages := make([]string, 0, len(conditions))
@@ -68,8 +77,15 @@ func aggregateStatusConditionInfo(conditions []metav1.Condition) (string, string
 		}
 	}
 
-	// TODO: Strip aggregated reasons and messages to fit into API limits.
-	return strings.Join(reasons, ","), strings.Join(messages, "\n")
+	return truncateIfNecessary(strings.Join(reasons, ","), maxReasonLength),
+		truncateIfNecessary(strings.Join(messages, "\n"), maxMessageLength)
+}
+
+func truncateIfNecessary(input string, limit int) string {
+	if len(input) <= limit {
+		return input
+	}
+	return input[:limit-len(truncationIndicator)] + truncationIndicator
 }
 
 func AggregateStatusConditions(conditions []metav1.Condition, condition metav1.Condition) (metav1.Condition, error) {

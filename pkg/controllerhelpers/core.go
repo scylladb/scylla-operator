@@ -56,6 +56,17 @@ func FindStatusConditionsWithSuffix(conditions []metav1.Condition, suffix string
 	return res
 }
 
+const (
+	// https://github.com/kubernetes/apimachinery/blob/f7c43800319c674eecce7c80a6ac7521a9b50aa8/pkg/apis/meta/v1/types.go#L1640
+	maxReasonLength = 1024
+	// https://github.com/kubernetes/apimachinery/blob/f7c43800319c674eecce7c80a6ac7521a9b50aa8/pkg/apis/meta/v1/types.go#L1648
+	maxMessageLength = 32768
+
+	omissionIndicatorFmt = "(%d more omitted)"
+)
+
+// aggregateStatusConditionInfo aggregates status conditions reasons and messages into a single reason and message.
+// It ensures that the length of the reason and message does not exceed the maximum allowed length.
 func aggregateStatusConditionInfo(conditions []metav1.Condition) (string, string) {
 	reasons := make([]string, 0, len(conditions))
 	messages := make([]string, 0, len(conditions))
@@ -68,8 +79,49 @@ func aggregateStatusConditionInfo(conditions []metav1.Condition) (string, string
 		}
 	}
 
-	// TODO: Strip aggregated reasons and messages to fit into API limits.
-	return strings.Join(reasons, ","), strings.Join(messages, "\n")
+	return joinWithLimit(reasons, ",", maxReasonLength, " "),
+		joinWithLimit(messages, "\n", maxMessageLength, "\n")
+}
+
+// joinWithLimit joins the elements of the slice into a single string, separated by the specified separator.
+// If the length of the resulting string exceeds the specified limit, it omits the remaining elements and appends an
+// indication of how many were omitted.
+func joinWithLimit(elems []string, elemsSeparator string, limit int, omissionIndicatorSeparator string) string {
+	var joined strings.Builder
+	for i, elem := range elems {
+		sep := ""
+		if i > 0 {
+			sep = elemsSeparator
+		}
+
+		var (
+			currentLen            = joined.Len() + len(sep) + len(elem)
+			nextOmissionIndicator = omissionIndicatorSeparator + fmt.Sprintf(omissionIndicatorFmt, len(elems)-i-1)
+		)
+
+		var (
+			// Check if adding the current element and the potential next omission indicator exceeds the limit.
+			elemWithNextOmissionExceedsLimit = currentLen+len(nextOmissionIndicator) > limit
+			// Check if adding just the last element fits within the limit.
+			lastAndFits = currentLen <= limit && i == len(elems)-1
+		)
+		if elemWithNextOmissionExceedsLimit && !lastAndFits {
+			omissionSep := ""
+			if i > 0 {
+				omissionSep = omissionIndicatorSeparator
+			}
+			// We're safe to add the current omission indicator as we've verified in the previous iteration it would fit.
+			currentOmissionIndicator := omissionSep + fmt.Sprintf(omissionIndicatorFmt, len(elems)-i)
+			joined.WriteString(currentOmissionIndicator)
+			break
+		}
+
+		// It's verified that either the current element + the potential next omission indicator fits,
+		// or it's the last element and it fits.
+		joined.WriteString(sep + elem)
+	}
+
+	return strings.TrimSpace(joined.String())
 }
 
 func AggregateStatusConditions(conditions []metav1.Condition, condition metav1.Condition) (metav1.Condition, error) {

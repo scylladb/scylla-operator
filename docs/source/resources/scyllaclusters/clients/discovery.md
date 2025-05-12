@@ -51,7 +51,7 @@ Having a stable contact point is especially important when using ephemeral Pod I
 Services configure internal load balancer using provider-specific annotations, so this may differ with your provider.
 
 :::{tip}
-To learn more about exposing ScyllaClusters, visit our dedicated documentation [page](../exposing.md).
+To learn more about exposing ScyllaClusters, visit our dedicated documentation [page](../../common/exposing.md).
 :::
 
 ::::{tab-set}

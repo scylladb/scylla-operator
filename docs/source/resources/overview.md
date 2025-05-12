@@ -20,10 +20,18 @@ kubectl explain --api-version='scylla.scylladb.com/v1alpha1' NodeConfig.spec
 
 :::{grid-item-card} {material-regular}`storage;2em` ScyllaClusters
 
-ScyllaCluster defines a ScyllaDB datacenter and manages the racks within.
+ScyllaCluster defines a **single datacenter** ScyllaDB cluster and manages the racks within.
 +++
 [Learn more »](scyllaclusters/basics)
 :::
+
+:::{grid-item-card} {material-regular}`storage;2em` ScyllaDBClusters
+
+ScyllaDBCluster defines a **multi datacenter** ScyllaDB cluster spanned across multiple Kubernetes clusters and manages the datacenters and racks within.
++++
+[Learn more »](scylladbclusters/scylladbclusters)
+:::
+
 
 :::{grid-item-card} {material-round}`insights;2em` ScyllaDBMonitorings
 
@@ -31,6 +39,7 @@ ScyllaDBMonitoring defines and manages a ScyllaDB monitoring stack.
 +++
 [Learn more »](scylladbmonitorings)
 :::
+
 
 ::::
 
@@ -56,6 +65,13 @@ NodeConfig manages setup and tuning for a set of Kubernetes nodes.
 ScyllaOperatorConfig configures the {{productName}} deployment and reports the status.
 +++
 [Learn more »](scyllaoperatorconfigs)
+:::
+
+:::{grid-item-card} {material-regular}`settings;2em` RemoteKubernetesClusters
+
+RemoteKubernetesCluster configures the access for {{productName}} to remotely deployed Kubernetes clusters.
++++
+[Learn more »](remotekubernetesclusters)
 :::
 
 ::::

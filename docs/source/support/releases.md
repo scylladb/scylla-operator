@@ -6,7 +6,7 @@ We are aiming to ship a new release approximately every 2 months. The following 
 :::{table}
 | Release | Code freeze | General availability |
 |:-------:|:-----------:|:--------------------:|
-|  1.17   | 2025-05-05  |      2025-05-12      |
+|  1.18   | 2025-07-21  |      2025-08-04      |
 :::
 
 ## Supported releases
@@ -15,8 +15,9 @@ We support the latest 2 releases of Scylla Operator to give everyone time to upg
 :::{table}
 | Release | General availability |  Support ends   |
 |:-------:|:--------------------:|:---------------:|
+|  1.17   |      2025-05-12      | Release of 1.19 |
 |  1.16   |      2025-03-03      | Release of 1.18 |
-|  1.15   |      2024-12-19      | Release of 1.17 |
+|  1.15   |      2024-12-19      |   2025-05-12    |
 |  1.14   |      2024-09-19      |   2025-03-03    |
 |  1.13   |      2024-06-20      |   2024-12-19    |
 |  1.12   |      2024-03-28      |   2024-09-19    |
@@ -62,12 +63,12 @@ GA images aren't built from scratch but rather promoted from an existing release
 The support matrix table shows version requirements for a particular **Scylla Operator** version. Be sure to match these requirements, otherwise some functionality will not work.
 
 :::{table}
-| Component         | master                       | v1.16                        | v1.15                                 |
+| Component         | master                       | v1.17                        | v1.16                                 |
 |:-----------------:|:----------------------------:|:----------------------------:|:-------------------------------------:|
-| Kubernetes        | `>=1.25`                     | `>=1.25`                     | `>=1.21`                              |
+| Kubernetes        | `>=1.25`                     | `>=1.25`                     | `>=1.25`                              |
 | CRI API           | `v1`                         | `v1`                         | `v1`                                  |
-| ScyllaDB          | `>=6.0`, `2023.1 ... 2025.1` | `>=6.0`, `2023.1 ... 2025.1` | `>=6.0 && <=6.2`, `2023.1 ... 2024.2` |
-| Scylla Manager    | `>=3.3.3 && <=3.4`           | `>=3.3.3 && <=3.4`           | `>=3.3.3 && <=3.4`                    |
+| ScyllaDB          | `>=6.0`, `2023.1 ... 2025.1` | `>=6.0`, `2023.1 ... 2025.1` | `>=6.0`, `2023.1 ... 2025.1`          |
+| Scylla Manager    | `>=3.3.3 && <=3.5`           | `>=3.3.3 && <=3.5`           | `>=3.3.3 && <=3.4`                    |
 | Scylla Monitoring | `(CRD)`                      | `(CRD)`                      | `(CRD)`                               |
 :::
 

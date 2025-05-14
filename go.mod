@@ -3,7 +3,7 @@ module github.com/scylladb/scylla-operator
 go 1.24.1
 
 require (
-	cloud.google.com/go/compute/metadata v0.6.0
+	cloud.google.com/go/compute/metadata v0.7.0
 	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/config v1.29.14
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.67

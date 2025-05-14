@@ -3,6 +3,7 @@ package controllerhelpers
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -343,6 +344,70 @@ func TestAggregateStatusConditions(t *testing.T) {
 			},
 			expectedError: nil,
 		},
+		{
+			name: "aggregated condition's message exceeds API limit",
+			conditions: []metav1.Condition{
+				{
+					Type:    "FooDegraded",
+					Status:  metav1.ConditionTrue,
+					Reason:  "FooDegradedReason",
+					Message: strings.Repeat("a", maxMessageLength/2),
+				},
+				{
+					Type:    "BarDegraded",
+					Status:  metav1.ConditionTrue,
+					Reason:  "BarDegradedReason",
+					Message: strings.Repeat("b", maxMessageLength/2+1),
+				},
+			},
+			condition: metav1.Condition{
+				Type:               "Degraded",
+				Status:             metav1.ConditionFalse,
+				Reason:             "AsExpected",
+				Message:            "AsExpected",
+				ObservedGeneration: 42,
+			},
+			expectedCondition: metav1.Condition{
+				Type:               "Degraded",
+				Status:             metav1.ConditionTrue,
+				Reason:             "FooDegradedReason,BarDegradedReason",
+				Message:            "FooDegraded: " + strings.Repeat("a", maxMessageLength/2) + "\n(1 more omitted)",
+				ObservedGeneration: 42,
+			},
+			expectedError: nil,
+		},
+		{
+			name: "aggregated condition's reason exceeds API limit",
+			conditions: []metav1.Condition{
+				{
+					Type:    "FooDegraded",
+					Status:  metav1.ConditionTrue,
+					Reason:  strings.Repeat("a", maxReasonLength/2),
+					Message: "FooDegraded error",
+				},
+				{
+					Type:    "BarDegraded",
+					Status:  metav1.ConditionTrue,
+					Reason:  strings.Repeat("b", maxReasonLength/2+1),
+					Message: "BarDegraded error",
+				},
+			},
+			condition: metav1.Condition{
+				Type:               "Degraded",
+				Status:             metav1.ConditionFalse,
+				Reason:             "AsExpected",
+				Message:            "AsExpected",
+				ObservedGeneration: 42,
+			},
+			expectedCondition: metav1.Condition{
+				Type:               "Degraded",
+				Status:             metav1.ConditionTrue,
+				Message:            "FooDegraded: FooDegraded error\nBarDegraded: BarDegraded error",
+				Reason:             strings.Repeat("a", maxReasonLength/2) + " (1 more omitted)",
+				ObservedGeneration: 42,
+			},
+			expectedError: nil,
+		},
 	}
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
@@ -354,6 +419,122 @@ func TestAggregateStatusConditions(t *testing.T) {
 
 			if !apiequality.Semantic.DeepEqual(got, tc.expectedCondition) {
 				t.Errorf("expected and got differ: %s", cmp.Diff(tc.expectedCondition, got))
+			}
+		})
+	}
+}
+
+func TestJoinWithLimit(t *testing.T) {
+	t.Parallel()
+
+	const (
+		testSep         = ","
+		testOmissionSep = " "
+	)
+
+	tt := []struct {
+		name                       string
+		elems                      []string
+		separator                  string
+		limit                      int
+		omissionIndicatorSeparator string
+		expected                   string
+	}{
+		{
+			name:                       "empty slice",
+			elems:                      []string{},
+			separator:                  testSep,
+			limit:                      1,
+			omissionIndicatorSeparator: testOmissionSep,
+			expected:                   "",
+		},
+		{
+			name:                       "nil slice",
+			elems:                      nil,
+			separator:                  testSep,
+			limit:                      1,
+			omissionIndicatorSeparator: testOmissionSep,
+			expected:                   "",
+		},
+		{
+			name: "single element exceeds limit",
+			elems: []string{
+				"A_20__CharactersLong",
+			},
+			separator:                  testSep,
+			limit:                      20 - 1, // 1 less than the length of the element
+			omissionIndicatorSeparator: testOmissionSep,
+			expected:                   "(1 more omitted)",
+		},
+		{
+			name: "joined length is less than limit",
+			elems: []string{
+				"A_20__CharactersLong",
+				"B_20__CharactersLong",
+			},
+			separator: testSep,
+			limit:     20*2 + 1 + 10, // 10 more than sum of elements length + separator
+			expected:  "A_20__CharactersLong,B_20__CharactersLong",
+		},
+		{
+			name: "joined length is equal to limit",
+			elems: []string{
+				"A_20__CharactersLong",
+				"B_20__CharactersLong",
+			},
+			separator:                  testSep,
+			limit:                      20*2 + 1, // sum of elements length + separator
+			omissionIndicatorSeparator: testOmissionSep,
+			expected:                   "A_20__CharactersLong,B_20__CharactersLong",
+		},
+		{
+			name: "joined length is greater than limit",
+			elems: []string{
+				"A_20__CharactersLong",
+				"B_20__CharactersLong",
+			},
+			separator:                  testSep,
+			limit:                      20 * 2, // 1 less than the sum of elements length + separator
+			omissionIndicatorSeparator: testOmissionSep,
+			expected:                   "A_20__CharactersLong (1 more omitted)",
+		},
+		{
+			name: "joined length is greater than limit and omission indicator doesn't fit",
+			elems: []string{
+				"A_20__CharactersLong",
+				// This elem will be omitted as well as the next omission indicator wouldn't fit if we added it.
+				"B_20__CharactersLong",
+				"C_20__CharactersLong",
+			},
+			separator:                  testSep,
+			limit:                      20*2 + 1, // sum of two first elements length + separator, but not enough space for the omission indicator
+			omissionIndicatorSeparator: testOmissionSep,
+			expected:                   "A_20__CharactersLong (2 more omitted)",
+		},
+		{
+			name: "joined length is greater than limit and omission indicator fits perfectly",
+			elems: []string{
+				"A_20__CharactersLong",
+				// This elem will be included because the next omission indicator fits just fine.
+				"B_20__CharactersLong",
+				"C_20__CharactersLong",
+			},
+			separator:                  testSep,
+			limit:                      20*2 + 1 + 18, // sum of two first elements length + separator + omission indicator
+			omissionIndicatorSeparator: testOmissionSep,
+			expected:                   "A_20__CharactersLong,B_20__CharactersLong (1 more omitted)",
+		},
+	}
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := joinWithLimit(tc.elems, tc.separator, tc.limit, tc.omissionIndicatorSeparator)
+			if got != tc.expected {
+				t.Errorf("expected %q, got %q", tc.expected, got)
+			}
+			if len(got) > tc.limit {
+				t.Errorf("expected joined length to be less than limit of %d, got %d", tc.limit, len(got))
 			}
 		})
 	}

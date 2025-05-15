@@ -87,7 +87,7 @@ func IdentityService(sdc *scyllav1alpha1.ScyllaDBDatacenter) (*corev1.Service, e
 			Labels:      svcLabels,
 			Annotations: svcAnnotations,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(sdc, scyllaDBDatacenterControllerGVK),
+				*metav1.NewControllerRef(sdc, scyllav1alpha1.ScyllaDBDatacenterGVK),
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -150,7 +150,7 @@ func MemberService(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName, name string
 			Name:      name,
 			Namespace: sdc.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(sdc, scyllaDBDatacenterControllerGVK),
+				*metav1.NewControllerRef(sdc, scyllav1alpha1.ScyllaDBDatacenterGVK),
 			},
 			Labels:      svcLabels,
 			Annotations: svcAnnotations,
@@ -440,7 +440,7 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 			Labels:      rackLabels,
 			Annotations: rackAnnotations,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(sdc, scyllaDBDatacenterControllerGVK),
+				*metav1.NewControllerRef(sdc, scyllav1alpha1.ScyllaDBDatacenterGVK),
 			},
 		},
 		Spec: appsv1.StatefulSetSpec{
@@ -1307,7 +1307,7 @@ func MakePodDisruptionBudget(sdc *scyllav1alpha1.ScyllaDBDatacenter) *policyv1.P
 			Name:      naming.PodDisruptionBudgetName(sdc),
 			Namespace: sdc.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(sdc, scyllaDBDatacenterControllerGVK),
+				*metav1.NewControllerRef(sdc, scyllav1alpha1.ScyllaDBDatacenterGVK),
 			},
 			Labels:      labels,
 			Annotations: maps.Clone(sdcAnnotations),
@@ -1402,7 +1402,7 @@ func MakeIngresses(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*
 					Labels:      labels,
 					Annotations: annotations,
 					OwnerReferences: []metav1.OwnerReference{
-						*metav1.NewControllerRef(sdc, scyllaDBDatacenterControllerGVK),
+						*metav1.NewControllerRef(sdc, scyllav1alpha1.ScyllaDBDatacenterGVK),
 					},
 				},
 				Spec: networkingv1.IngressSpec{
@@ -1466,7 +1466,7 @@ func MakeAgentAuthTokenSecret(sdc *scyllav1alpha1.ScyllaDBDatacenter, authToken 
 			Name:      naming.AgentAuthTokenSecretName(sdc),
 			Namespace: sdc.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(sdc, scyllaDBDatacenterControllerGVK),
+				*metav1.NewControllerRef(sdc, scyllav1alpha1.ScyllaDBDatacenterGVK),
 			},
 			Labels:      labels,
 			Annotations: sdcAnnotations,
@@ -1514,7 +1514,7 @@ func MakeServiceAccount(sdc *scyllav1alpha1.ScyllaDBDatacenter) *corev1.ServiceA
 			Name:      naming.MemberServiceAccountNameForScyllaDBDatacenter(sdc.Name),
 			Namespace: sdc.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(sdc, scyllaDBDatacenterControllerGVK),
+				*metav1.NewControllerRef(sdc, scyllav1alpha1.ScyllaDBDatacenterGVK),
 			},
 			Labels:      labels,
 			Annotations: annotations,
@@ -1542,7 +1542,7 @@ func MakeRoleBinding(sdc *scyllav1alpha1.ScyllaDBDatacenter) *rbacv1.RoleBinding
 			Name:      saName,
 			Namespace: sdc.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(sdc, scyllaDBDatacenterControllerGVK),
+				*metav1.NewControllerRef(sdc, scyllav1alpha1.ScyllaDBDatacenterGVK),
 			},
 			Labels:      labels,
 			Annotations: annotations,
@@ -1676,7 +1676,7 @@ func MakeJobs(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev
 					Name:      naming.CleanupJobForService(svc.Name),
 					Namespace: sdc.Namespace,
 					OwnerReferences: []metav1.OwnerReference{
-						*metav1.NewControllerRef(sdc, scyllaDBDatacenterControllerGVK),
+						*metav1.NewControllerRef(sdc, scyllav1alpha1.ScyllaDBDatacenterGVK),
 					},
 					Labels:      jobLabels,
 					Annotations: annotations,
@@ -1772,8 +1772,8 @@ func MakeManagedScyllaDBSnitchConfig(sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]
 
 		cm.SetOwnerReferences([]metav1.OwnerReference{
 			{
-				APIVersion:         scyllaDBDatacenterControllerGVK.GroupVersion().String(),
-				Kind:               scyllaDBDatacenterControllerGVK.Kind,
+				APIVersion:         scyllav1alpha1.ScyllaDBDatacenterGVK.GroupVersion().String(),
+				Kind:               scyllav1alpha1.ScyllaDBDatacenterGVK.Kind,
 				Name:               sdc.Name,
 				UID:                sdc.UID,
 				Controller:         pointer.Ptr(true),
@@ -1845,8 +1845,8 @@ func MakeManagedScyllaDBConfig(sdc *scyllav1alpha1.ScyllaDBDatacenter) (*corev1.
 
 	cm.SetOwnerReferences([]metav1.OwnerReference{
 		{
-			APIVersion:         scyllaDBDatacenterControllerGVK.GroupVersion().String(),
-			Kind:               scyllaDBDatacenterControllerGVK.Kind,
+			APIVersion:         scyllav1alpha1.ScyllaDBDatacenterGVK.GroupVersion().String(),
+			Kind:               scyllav1alpha1.ScyllaDBDatacenterGVK.Kind,
 			Name:               sdc.Name,
 			UID:                sdc.UID,
 			Controller:         pointer.Ptr(true),
@@ -2108,7 +2108,7 @@ func MakeUpgradeContextConfigMap(sdc *scyllav1alpha1.ScyllaDBDatacenter, uc *int
 			Labels:      labels,
 			Annotations: annotations,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(sdc, scyllaDBDatacenterControllerGVK),
+				*metav1.NewControllerRef(sdc, scyllav1alpha1.ScyllaDBDatacenterGVK),
 			},
 		},
 		Data: map[string]string{

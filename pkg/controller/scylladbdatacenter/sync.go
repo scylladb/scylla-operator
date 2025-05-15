@@ -54,7 +54,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 	statefulSetMap, err := controllerhelpers.GetObjects[CT, *appsv1.StatefulSet](
 		ctx,
 		sdc,
-		scyllaDBDatacenterControllerGVK,
+		scyllav1alpha1.ScyllaDBDatacenterGVK,
 		sdcSelector,
 		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *appsv1.StatefulSet]{
 			GetControllerUncachedFunc: sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
@@ -69,7 +69,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 	serviceMap, err := controllerhelpers.GetObjects[CT, *corev1.Service](
 		ctx,
 		sdc,
-		scyllaDBDatacenterControllerGVK,
+		scyllav1alpha1.ScyllaDBDatacenterGVK,
 		sdcSelector,
 		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.Service]{
 			GetControllerUncachedFunc: sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
@@ -84,7 +84,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 	secretMap, err := controllerhelpers.GetObjects[CT, *corev1.Secret](
 		ctx,
 		sdc,
-		scyllaDBDatacenterControllerGVK,
+		scyllav1alpha1.ScyllaDBDatacenterGVK,
 		sdcSelector,
 		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.Secret]{
 			GetControllerUncachedFunc: sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
@@ -99,7 +99,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 	configMapMap, err := controllerhelpers.GetObjects[CT, *corev1.ConfigMap](
 		ctx,
 		sdc,
-		scyllaDBDatacenterControllerGVK,
+		scyllav1alpha1.ScyllaDBDatacenterGVK,
 		sdcSelector,
 		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.ConfigMap]{
 			GetControllerUncachedFunc: sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
@@ -114,7 +114,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 	serviceAccounts, err := controllerhelpers.GetObjects[CT, *corev1.ServiceAccount](
 		ctx,
 		sdc,
-		scyllaDBDatacenterControllerGVK,
+		scyllav1alpha1.ScyllaDBDatacenterGVK,
 		sdcSelector,
 		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.ServiceAccount]{
 			GetControllerUncachedFunc: sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
@@ -129,7 +129,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 	roleBindings, err := controllerhelpers.GetObjects[CT, *rbacv1.RoleBinding](
 		ctx,
 		sdc,
-		scyllaDBDatacenterControllerGVK,
+		scyllav1alpha1.ScyllaDBDatacenterGVK,
 		sdcSelector,
 		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *rbacv1.RoleBinding]{
 			GetControllerUncachedFunc: sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
@@ -144,7 +144,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 	pdbMap, err := controllerhelpers.GetObjects[CT, *policyv1.PodDisruptionBudget](
 		ctx,
 		sdc,
-		scyllaDBDatacenterControllerGVK,
+		scyllav1alpha1.ScyllaDBDatacenterGVK,
 		sdcSelector,
 		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *policyv1.PodDisruptionBudget]{
 			GetControllerUncachedFunc: sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
@@ -159,7 +159,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 	ingressMap, err := controllerhelpers.GetObjects[CT, *networkingv1.Ingress](
 		ctx,
 		sdc,
-		scyllaDBDatacenterControllerGVK,
+		scyllav1alpha1.ScyllaDBDatacenterGVK,
 		sdcSelector,
 		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *networkingv1.Ingress]{
 			GetControllerUncachedFunc: sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
@@ -174,7 +174,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 	jobMap, err := controllerhelpers.GetObjects[CT, *batchv1.Job](
 		ctx,
 		sdc,
-		scyllaDBDatacenterControllerGVK,
+		scyllav1alpha1.ScyllaDBDatacenterGVK,
 		sdcSelector,
 		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *batchv1.Job]{
 			GetControllerUncachedFunc: sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,

@@ -53,9 +53,8 @@ const (
 )
 
 var (
-	keyFunc                         = cache.DeletionHandlingMetaNamespaceKeyFunc
-	scyllaDBDatacenterControllerGVK = scyllav1alpha1.GroupVersion.WithKind("ScyllaDBDatacenter")
-	statefulSetControllerGVK        = appsv1.SchemeGroupVersion.WithKind("StatefulSet")
+	keyFunc                  = cache.DeletionHandlingMetaNamespaceKeyFunc
+	statefulSetControllerGVK = appsv1.SchemeGroupVersion.WithKind("StatefulSet")
 )
 
 type Controller struct {
@@ -154,7 +153,7 @@ func NewController(
 		sdcc.queue,
 		keyFunc,
 		scheme.Scheme,
-		scyllaDBDatacenterControllerGVK,
+		scyllav1alpha1.ScyllaDBDatacenterGVK,
 		kubeinterfaces.NamespacedGetList[*scyllav1alpha1.ScyllaDBDatacenter]{
 			GetFunc: func(namespace, name string) (*scyllav1alpha1.ScyllaDBDatacenter, error) {
 				return sdcc.scyllaDBDatacenterLister.ScyllaDBDatacenters(namespace).Get(name)
@@ -307,7 +306,7 @@ func (sdcc *Controller) resolveScyllaDBDatacenterController(obj metav1.Object) *
 		return nil
 	}
 
-	if controllerRef.Kind != scyllaDBDatacenterControllerGVK.Kind {
+	if controllerRef.Kind != scyllav1alpha1.ScyllaDBDatacenterGVK.Kind {
 		return nil
 	}
 

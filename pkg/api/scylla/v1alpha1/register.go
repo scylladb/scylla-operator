@@ -21,6 +21,10 @@ var (
 	AddToScheme = schemeBuilder.AddToScheme
 )
 
+var (
+	ScyllaDBDatacenterGVK = GroupVersion.WithKind("ScyllaDBDatacenter")
+)
+
 // Resource generated code relies on this being here, but it logically belongs to the group
 // DEPRECATED
 func Resource(resource string) schema.GroupResource {

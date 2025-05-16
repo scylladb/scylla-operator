@@ -2880,6 +2880,23 @@ func TestMakeJobs(t *testing.T) {
 }
 
 func Test_MakeManagedScyllaDBConfig(t *testing.T) {
+	newBasicScyllaDBDatacenter := func() *scyllav1alpha1.ScyllaDBDatacenter {
+		return &scyllav1alpha1.ScyllaDBDatacenter{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace:   "foo-ns",
+				Name:        "foo",
+				UID:         "uid-42",
+				Annotations: map[string]string{},
+				Labels: map[string]string{
+					"user-label": "user-label-value",
+				},
+			},
+			Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+				ClusterName: "foo-cluster",
+			},
+		}
+	}
+
 	tt := []struct {
 		name                 string
 		sdc                  *scyllav1alpha1.ScyllaDBDatacenter
@@ -2888,20 +2905,8 @@ func Test_MakeManagedScyllaDBConfig(t *testing.T) {
 		expectedErr          error
 	}{
 		{
-			name: "no TLS config when the feature is disabled",
-			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo-ns",
-					Name:      "foo",
-					UID:       "uid-42",
-					Labels: map[string]string{
-						"user-label": "user-label-value",
-					},
-				},
-				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-					ClusterName: "foo-cluster",
-				},
-			},
+			name:                 "no TLS config when the feature is disabled",
+			sdc:                  newBasicScyllaDBDatacenter(),
 			enableTLSFeatureGate: false,
 			expectedCM: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
@@ -2941,20 +2946,8 @@ internode_compression: "all"
 			expectedErr: nil,
 		},
 		{
-			name: "TLS config present when the feature is enabled",
-			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo-ns",
-					Name:      "foo",
-					UID:       "uid-42",
-					Labels: map[string]string{
-						"user-label": "user-label-value",
-					},
-				},
-				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-					ClusterName: "foo-cluster",
-				},
-			},
+			name:                 "TLS config present when the feature is enabled",
+			sdc:                  newBasicScyllaDBDatacenter(),
 			enableTLSFeatureGate: true,
 			expectedCM: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
@@ -2962,8 +2955,9 @@ internode_compression: "all"
 					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo-ns",
-					Name:      "foo-managed-config",
+					Namespace:   "foo-ns",
+					Name:        "foo-managed-config",
+					Annotations: map[string]string{},
 					Labels: map[string]string{
 						"app":                          "scylla",
 						"app.kubernetes.io/managed-by": "scylla-operator",
@@ -3004,22 +2998,11 @@ client_encryption_options:
 		},
 		{
 			name: "alternator is setup on TLS-only with authorization by default",
-			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo-ns",
-					Name:      "foo",
-					UID:       "uid-42",
-					Labels: map[string]string{
-						"user-label": "user-label-value",
-					},
-				},
-				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-					ClusterName: "foo-cluster",
-					ScyllaDB: scyllav1alpha1.ScyllaDB{
-						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
-					},
-				},
-			},
+			sdc: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				sdc.Spec.ScyllaDB.AlternatorOptions = &scyllav1alpha1.AlternatorOptions{}
+				return sdc
+			}(),
 			enableTLSFeatureGate: true,
 			expectedCM: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
@@ -3075,25 +3058,12 @@ alternator_encryption_options:
 		},
 		{
 			name: "alternator is setup on TLS-only when insecure port is disabled",
-			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo-ns",
-					Name:      "foo",
-					UID:       "uid-42",
-					Labels: map[string]string{
-						"user-label": "user-label-value",
-					},
-					Annotations: map[string]string{
-						"internal.scylla-operator.scylladb.com/alternator-insecure-enable-http": "false",
-					},
-				},
-				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-					ClusterName: "foo-cluster",
-					ScyllaDB: scyllav1alpha1.ScyllaDB{
-						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
-					},
-				},
-			},
+			sdc: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				metav1.SetMetaDataAnnotation(&sdc.ObjectMeta, "internal.scylla-operator.scylladb.com/alternator-insecure-enable-http", "false")
+				sdc.Spec.ScyllaDB.AlternatorOptions = &scyllav1alpha1.AlternatorOptions{}
+				return sdc
+			}(),
 			enableTLSFeatureGate: true,
 			expectedCM: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
@@ -3152,25 +3122,12 @@ alternator_encryption_options:
 		},
 		{
 			name: "alternator is setup both on TLS and insecure when insecure port is enabled",
-			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo-ns",
-					Name:      "foo",
-					UID:       "uid-42",
-					Labels: map[string]string{
-						"user-label": "user-label-value",
-					},
-					Annotations: map[string]string{
-						"internal.scylla-operator.scylladb.com/alternator-insecure-enable-http": "true",
-					},
-				},
-				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-					ClusterName: "foo-cluster",
-					ScyllaDB: scyllav1alpha1.ScyllaDB{
-						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
-					},
-				},
-			},
+			sdc: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				metav1.SetMetaDataAnnotation(&sdc.ObjectMeta, "internal.scylla-operator.scylladb.com/alternator-insecure-enable-http", "true")
+				sdc.Spec.ScyllaDB.AlternatorOptions = &scyllav1alpha1.AlternatorOptions{}
+				return sdc
+			}(),
 			enableTLSFeatureGate: true,
 			expectedCM: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
@@ -3230,25 +3187,12 @@ alternator_encryption_options:
 		},
 		{
 			name: "alternator is setup without authorization when manual port is specified for backwards compatibility",
-			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo-ns",
-					Name:      "foo",
-					UID:       "uid-42",
-					Labels: map[string]string{
-						"user-label": "user-label-value",
-					},
-					Annotations: map[string]string{
-						"internal.scylla-operator.scylladb.com/alternator-port": "42",
-					},
-				},
-				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-					ClusterName: "foo-cluster",
-					ScyllaDB: scyllav1alpha1.ScyllaDB{
-						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
-					},
-				},
-			},
+			sdc: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				metav1.SetMetaDataAnnotation(&sdc.ObjectMeta, "internal.scylla-operator.scylladb.com/alternator-port", "42")
+				sdc.Spec.ScyllaDB.AlternatorOptions = &scyllav1alpha1.AlternatorOptions{}
+				return sdc
+			}(),
 			enableTLSFeatureGate: true,
 			expectedCM: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
@@ -3308,26 +3252,13 @@ alternator_encryption_options:
 		},
 		{
 			name: "alternator is setup with authorization when manual port is specified and authorization is enabled",
-			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo-ns",
-					Name:      "foo",
-					UID:       "uid-42",
-					Labels: map[string]string{
-						"user-label": "user-label-value",
-					},
-					Annotations: map[string]string{
-						"internal.scylla-operator.scylladb.com/alternator-port":                           "42",
-						"internal.scylla-operator.scylladb.com/alternator-insecure-disable-authorization": "false",
-					},
-				},
-				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-					ClusterName: "foo-cluster",
-					ScyllaDB: scyllav1alpha1.ScyllaDB{
-						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
-					},
-				},
-			},
+			sdc: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				metav1.SetMetaDataAnnotation(&sdc.ObjectMeta, "internal.scylla-operator.scylladb.com/alternator-port", "42")
+				metav1.SetMetaDataAnnotation(&sdc.ObjectMeta, "internal.scylla-operator.scylladb.com/alternator-insecure-disable-authorization", "false")
+				sdc.Spec.ScyllaDB.AlternatorOptions = &scyllav1alpha1.AlternatorOptions{}
+				return sdc
+			}(),
 			enableTLSFeatureGate: true,
 			expectedCM: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
@@ -3388,26 +3319,13 @@ alternator_encryption_options:
 		},
 		{
 			name: "alternator is setup without authorization when it's disabled and using manual port",
-			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo-ns",
-					Name:      "foo",
-					UID:       "uid-42",
-					Labels: map[string]string{
-						"user-label": "user-label-value",
-					},
-					Annotations: map[string]string{
-						"internal.scylla-operator.scylladb.com/alternator-port":                           "42",
-						"internal.scylla-operator.scylladb.com/alternator-insecure-disable-authorization": "true",
-					},
-				},
-				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-					ClusterName: "foo-cluster",
-					ScyllaDB: scyllav1alpha1.ScyllaDB{
-						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
-					},
-				},
-			},
+			sdc: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				metav1.SetMetaDataAnnotation(&sdc.ObjectMeta, "internal.scylla-operator.scylladb.com/alternator-port", "42")
+				metav1.SetMetaDataAnnotation(&sdc.ObjectMeta, "internal.scylla-operator.scylladb.com/alternator-insecure-disable-authorization", "true")
+				sdc.Spec.ScyllaDB.AlternatorOptions = &scyllav1alpha1.AlternatorOptions{}
+				return sdc
+			}(),
 			enableTLSFeatureGate: true,
 			expectedCM: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
@@ -3467,106 +3385,13 @@ alternator_encryption_options:
 			expectedErr: nil,
 		},
 		{
-			name: "alternator is setup with authorization when manual port is specified and authorization is enabled",
-			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo-ns",
-					Name:      "foo",
-					UID:       "uid-42",
-					Labels: map[string]string{
-						"user-label": "user-label-value",
-					},
-					Annotations: map[string]string{
-						"internal.scylla-operator.scylladb.com/alternator-port":                           "42",
-						"internal.scylla-operator.scylladb.com/alternator-insecure-disable-authorization": "false",
-					},
-				},
-				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-					ClusterName: "foo-cluster",
-					ScyllaDB: scyllav1alpha1.ScyllaDB{
-						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
-					},
-				},
-			},
-			enableTLSFeatureGate: true,
-			expectedCM: &corev1.ConfigMap{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "ConfigMap",
-					APIVersion: "v1",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo-ns",
-					Name:      "foo-managed-config",
-					Labels: map[string]string{
-						"app":                          "scylla",
-						"app.kubernetes.io/managed-by": "scylla-operator",
-						"app.kubernetes.io/name":       "scylla",
-						"scylla/cluster":               "foo",
-						"user-label":                   "user-label-value",
-					},
-					Annotations: map[string]string{
-						"internal.scylla-operator.scylladb.com/alternator-port":                           "42",
-						"internal.scylla-operator.scylladb.com/alternator-insecure-disable-authorization": "false",
-					},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         "scylla.scylladb.com/v1alpha1",
-							Kind:               "ScyllaDBDatacenter",
-							Name:               "foo",
-							UID:                "uid-42",
-							Controller:         pointer.Ptr(true),
-							BlockOwnerDeletion: pointer.Ptr(true),
-						},
-					},
-				},
-				Data: map[string]string{
-					"scylladb-managed-config.yaml": strings.TrimPrefix(`
-cluster_name: "foo-cluster"
-rpc_address: "0.0.0.0"
-endpoint_snitch: "GossipingPropertyFileSnitch"
-internode_compression: "all"
-native_transport_port_ssl: 9142
-native_shard_aware_transport_port_ssl: 19142
-client_encryption_options:
-  enabled: true
-  optional: false
-  certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.crt"
-  keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/serving-certs/tls.key"
-  require_client_auth: true
-  truststore: "/var/run/configmaps/scylla-operator.scylladb.com/scylladb/client-ca/ca-bundle.crt"
-alternator_write_isolation: always_use_lwt
-alternator_enforce_authorization: true
-alternator_port: 42
-alternator_https_port: 8043
-alternator_encryption_options:
-  certificate: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/alternator-serving-certs/tls.crt"
-  keyfile: "/var/run/secrets/scylla-operator.scylladb.com/scylladb/alternator-serving-certs/tls.key"
-`, "\n"),
-				},
-			},
-			expectedErr: nil,
-		},
-		{
 			name: "alternator is setup without authorization when it's disabled",
-			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo-ns",
-					Name:      "foo",
-					UID:       "uid-42",
-					Labels: map[string]string{
-						"user-label": "user-label-value",
-					},
-					Annotations: map[string]string{
-						"internal.scylla-operator.scylladb.com/alternator-insecure-disable-authorization": "true",
-					},
-				},
-				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
-					ClusterName: "foo-cluster",
-					ScyllaDB: scyllav1alpha1.ScyllaDB{
-						AlternatorOptions: &scyllav1alpha1.AlternatorOptions{},
-					},
-				},
-			},
+			sdc: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				metav1.SetMetaDataAnnotation(&sdc.ObjectMeta, "internal.scylla-operator.scylladb.com/alternator-insecure-disable-authorization", "true")
+				sdc.Spec.ScyllaDB.AlternatorOptions = &scyllav1alpha1.AlternatorOptions{}
+				return sdc
+			}(),
 			enableTLSFeatureGate: true,
 			expectedCM: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{

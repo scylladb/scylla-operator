@@ -177,6 +177,10 @@ type FilesystemConfiguration struct {
 
 	// type is a desired filesystem type.
 	Type FilesystemType `json:"type"`
+
+	// flags contains filesystem-specific flags to be used during filesystem creation
+	// +optional
+	Flags []string `json:"flags,omitempty"`
 }
 
 // MountConfiguration specifies mount configuration options.

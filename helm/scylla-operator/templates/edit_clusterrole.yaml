@@ -13,6 +13,8 @@ rules:
   - scylladbmonitorings
   - scylladbdatacenters
   - scylladbclusters
+  - scylladbmanagerclusterregistrations
+  - scylladbmanagertasks
   verbs:
   - create
   - patch

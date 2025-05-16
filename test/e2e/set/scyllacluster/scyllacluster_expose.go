@@ -26,6 +26,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	verificationutils "github.com/scylladb/scylla-operator/test/e2e/utils/verification"
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	"github.com/scylladb/scylla-operator/test/e2e/verification"
 	corev1 "k8s.io/api/core/v1"
@@ -138,7 +139,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 				session, err := gocqlx.WrapSession(cluster.CreateSession())
 				g.Expect(err).NotTo(o.HaveOccurred())
 
-				di := scyllaclusterverification.InsertAndVerifyCQLData(ctx, hosts, utils.WithSession(&session))
+				di := verificationutils.InsertAndVerifyCQLData(ctx, hosts, utils.WithSession(&session))
 				di.Close()
 			}).WithTimeout(30 * time.Second).WithPolling(time.Second).Should(o.Succeed())
 		}

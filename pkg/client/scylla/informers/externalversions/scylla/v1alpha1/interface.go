@@ -18,6 +18,10 @@ type Interface interface {
 	ScyllaDBClusters() ScyllaDBClusterInformer
 	// ScyllaDBDatacenters returns a ScyllaDBDatacenterInformer.
 	ScyllaDBDatacenters() ScyllaDBDatacenterInformer
+	// ScyllaDBManagerClusterRegistrations returns a ScyllaDBManagerClusterRegistrationInformer.
+	ScyllaDBManagerClusterRegistrations() ScyllaDBManagerClusterRegistrationInformer
+	// ScyllaDBManagerTasks returns a ScyllaDBManagerTaskInformer.
+	ScyllaDBManagerTasks() ScyllaDBManagerTaskInformer
 	// ScyllaDBMonitorings returns a ScyllaDBMonitoringInformer.
 	ScyllaDBMonitorings() ScyllaDBMonitoringInformer
 	// ScyllaOperatorConfigs returns a ScyllaOperatorConfigInformer.
@@ -58,6 +62,16 @@ func (v *version) ScyllaDBClusters() ScyllaDBClusterInformer {
 // ScyllaDBDatacenters returns a ScyllaDBDatacenterInformer.
 func (v *version) ScyllaDBDatacenters() ScyllaDBDatacenterInformer {
 	return &scyllaDBDatacenterInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// ScyllaDBManagerClusterRegistrations returns a ScyllaDBManagerClusterRegistrationInformer.
+func (v *version) ScyllaDBManagerClusterRegistrations() ScyllaDBManagerClusterRegistrationInformer {
+	return &scyllaDBManagerClusterRegistrationInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// ScyllaDBManagerTasks returns a ScyllaDBManagerTaskInformer.
+func (v *version) ScyllaDBManagerTasks() ScyllaDBManagerTaskInformer {
+	return &scyllaDBManagerTaskInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // ScyllaDBMonitorings returns a ScyllaDBMonitoringInformer.

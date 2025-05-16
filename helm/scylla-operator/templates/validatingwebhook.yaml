@@ -37,3 +37,5 @@ webhooks:
     - scyllaoperatorconfigs
     - scylladbdatacenters
     - scylladbclusters
+    - scylladbmanagerclusterregistrations
+    - scylladbmanagertasks

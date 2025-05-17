@@ -16,6 +16,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -48,7 +49,7 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(1))
-		di := scyllaclusterverification.InsertAndVerifyCQLData(ctx, hosts)
+		di := verification.InsertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
 
 		framework.By("Waiting for ScyllaCluster to register with Scylla Manager")

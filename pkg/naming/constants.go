@@ -153,8 +153,9 @@ const (
 )
 
 const (
-	ScyllaManagerNamespace   = "scylla-manager"
-	ScyllaManagerServiceName = "scylla-manager"
+	ScyllaManagerNamespace      = "scylla-manager"
+	ScyllaManagerServiceName    = "scylla-manager"
+	ScyllaManagerDeploymentName = "scylla-manager"
 
 	ScyllaOperatorNodeTuningNamespace = "scylla-operator-node-tuning"
 
@@ -242,4 +243,12 @@ const (
 
 const (
 	KubernetesManagedByLabel = "app.kubernetes.io/managed-by"
+)
+
+const (
+	GlobalScyllaDBManagerRegistrationLabel = "scylla-operator.scylladb.com/register-with-global-scylladb-manager"
+	GlobalScyllaDBManagerLabel             = "internal.scylla-operator.scylladb.com/global-scylladb-manager"
+
+	ScyllaDBManagerClusterRegistrationFinalizer              = "scylla-operator.scylladb.com/scylladbmanagerclusterregistration-deletion"
+	ScyllaDBManagerClusterRegistrationNameOverrideAnnotation = "internal.scylla-operator.scylladb.com/scylladb-manager-cluster-name-override"
 )

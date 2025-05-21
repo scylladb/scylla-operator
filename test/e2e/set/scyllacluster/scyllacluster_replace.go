@@ -15,6 +15,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -77,7 +78,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(int(utils.GetMemberCount(sc))))
-		di := scyllaclusterverification.InsertAndVerifyCQLData(ctx, hosts)
+		di := verification.InsertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
 
 		replacedNodeService, err := f.KubeClient().CoreV1().Services(sc.Namespace).Get(ctx, utils.GetNodeName(sc, 0), metav1.GetOptions{})
@@ -157,7 +158,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(int(utils.GetMemberCount(sc))))
 
-		scyllaclusterverification.VerifyCQLData(ctx, di)
+		verification.VerifyCQLData(ctx, di)
 
 		framework.By("Verifying ScyllaDB config")
 

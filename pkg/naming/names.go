@@ -2,7 +2,6 @@ package naming
 
 import (
 	"fmt"
-	"github.com/scylladb/scylla-operator/pkg/util/hash"
 	"strconv"
 	"strings"
 
@@ -10,8 +9,10 @@ import (
 	"github.com/pkg/errors"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/util/hash"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apimachineryvalidationutils "k8s.io/apimachinery/pkg/util/validation"
 )
 
 const (
@@ -84,6 +85,10 @@ func PodDisruptionBudgetName(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
 
 func PodDisruptionBudgetNameForScyllaCluster(sc *scyllav1.ScyllaCluster) string {
 	return sc.Name
+}
+
+func CrossNamespaceServiceName(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
+	return fmt.Sprintf("%s.%s.svc", IdentityServiceName(sdc), sdc.Namespace)
 }
 
 func CrossNamespaceServiceNameForCluster(sc *scyllav1.ScyllaCluster) string {
@@ -280,4 +285,19 @@ func GenerateNameHash(parts ...string) (string, error) {
 		return "", fmt.Errorf("can't hash name parts: %w", err)
 	}
 	return strconv.FormatUint(h, 36)[:lengthOfNameSuffixHash], nil
+}
+
+func ScyllaDBManagerClusterRegistrationNameForScyllaDBDatacenter(sdc *scyllav1alpha1.ScyllaDBDatacenter) (string, error) {
+	return scyllaDBManagerClusterRegistrationName(scyllav1alpha1.ScyllaDBDatacenterGVK.Kind, sdc.Name)
+}
+
+func scyllaDBManagerClusterRegistrationName(kind, name string) (string, error) {
+	nameSuffix, err := GenerateNameHash(kind, name)
+	if err != nil {
+		return "", fmt.Errorf("can't generate name hash: %w", err)
+	}
+
+	fullName := strings.ToLower(fmt.Sprintf("%s-%s", kind, name))
+	fullNameWithSuffix := fmt.Sprintf("%s-%s", fullName[:min(len(fullName), apimachineryvalidationutils.DNS1123SubdomainMaxLength-len(nameSuffix)-1)], nameSuffix)
+	return fullNameWithSuffix, nil
 }

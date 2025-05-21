@@ -19,7 +19,9 @@ package validation
 import (
 	"strings"
 
+	"github.com/scylladb/scylla-operator/pkg/thirdparty/k8s.io/kubernetes/pkg/apis/core/helper"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	unversionedvalidation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
@@ -27,6 +29,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
+
+const isNegativeErrorMsg string = apimachineryvalidation.IsNegativeErrorMsg
+const isNotIntegerErrorMsg string = `must be an integer`
 
 // ValidateNodeName can be used to check whether the given node name is valid.
 // Prefix indicates this name will be used as part of generation, in which case
@@ -40,6 +45,15 @@ var ValidateNamespaceName = apimachineryvalidation.ValidateNamespaceName
 
 var nodeFieldSelectorValidators = map[string]func(string, bool) []string{
 	metav1.ObjectNameField: ValidateNodeName,
+}
+
+// Validates that a Quantity is not negative
+func ValidateNonnegativeQuantity(value resource.Quantity, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if value.Cmp(resource.Quantity{}) < 0 {
+		allErrs = append(allErrs, field.Invalid(fldPath, value.String(), isNegativeErrorMsg))
+	}
+	return allErrs
 }
 
 // ValidateNodeSelectorRequirement tests that the specified NodeSelectorRequirement fields has valid data
@@ -377,4 +391,16 @@ func validateTaintEffect(effect *corev1.TaintEffect, allowEmpty bool, fldPath *f
 		allErrors = append(allErrors, field.NotSupported(fldPath, *effect, validValues))
 	}
 	return allErrors
+}
+
+// ValidateResourceQuantityValue enforces that specified quantity is valid for specified resource
+func ValidateResourceQuantityValue(resource corev1.ResourceName, value resource.Quantity, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	allErrs = append(allErrs, ValidateNonnegativeQuantity(value, fldPath)...)
+	if helper.IsIntegerResourceName(resource) {
+		if value.MilliValue()%int64(1000) != int64(0) {
+			allErrs = append(allErrs, field.Invalid(fldPath, value, isNotIntegerErrorMsg))
+		}
+	}
+	return allErrs
 }

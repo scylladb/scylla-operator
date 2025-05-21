@@ -24,6 +24,7 @@ import (
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/scheme"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	verificationutils "github.com/scylladb/scylla-operator/test/e2e/utils/verification"
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	"github.com/scylladb/scylla-operator/test/e2e/verification"
 	corev1 "k8s.io/api/core/v1"
@@ -72,7 +73,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		initialHosts, initialHostIDs, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(initialHosts).To(o.HaveLen(1))
-		di := scyllaclusterverification.InsertAndVerifyCQLData(ctx, initialHosts)
+		di := verificationutils.InsertAndVerifyCQLData(ctx, initialHosts)
 		defer di.Close()
 
 		for _, tc := range []struct {
@@ -287,7 +288,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 		initialHosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(initialHosts).To(o.HaveLen(1))
-		di := scyllaclusterverification.InsertAndVerifyCQLData(ctx, initialHosts)
+		di := verificationutils.InsertAndVerifyCQLData(ctx, initialHosts)
 		defer di.Close()
 
 		// This test rotates CAs which makes it dependent on the order.

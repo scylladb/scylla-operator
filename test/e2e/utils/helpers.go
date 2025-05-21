@@ -28,6 +28,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/pkg/util/hash"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
+	utilsv1alpha1 "github.com/scylladb/scylla-operator/test/e2e/utils/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -285,24 +286,7 @@ func GetStatefulSetsForScyllaCluster(ctx context.Context, client appv1client.App
 }
 
 func GetPodsForStatefulSet(ctx context.Context, client corev1client.CoreV1Interface, sts *appsv1.StatefulSet) (map[string]*corev1.Pod, error) {
-	selector, err := metav1.LabelSelectorAsSelector(sts.Spec.Selector)
-	if err != nil {
-		return nil, fmt.Errorf("can't convert StatefulSet %q selector: %w", naming.ObjRef(sts), err)
-	}
-
-	podList, err := client.Pods(sts.Namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: selector.String(),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("can't list Pods for StatefulSet %q: %w", naming.ObjRef(sts), err)
-	}
-
-	res := map[string]*corev1.Pod{}
-	for _, pod := range podList.Items {
-		res[pod.Name] = &pod
-	}
-
-	return res, nil
+	return utilsv1alpha1.GetPodsForStatefulSet(ctx, client, sts)
 }
 
 func GetDaemonSetsForNodeConfig(ctx context.Context, client appv1client.AppsV1Interface, nc *scyllav1alpha1.NodeConfig) ([]*appsv1.DaemonSet, error) {

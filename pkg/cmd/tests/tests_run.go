@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -264,6 +265,11 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 	if len(o.SkipStrings) != 0 {
 		klog.InfoS("Overriding SkipStrings", "From", suiteConfig.SkipStrings, "To", o.SkipStrings)
 		suiteConfig.SkipStrings = o.SkipStrings
+	}
+
+	if len(o.ArtifactsDir) != 0 {
+		reporterConfig.JUnitReport = path.Join(o.ArtifactsDir, "junit.e2e.xml")
+		reporterConfig.JSONReport = path.Join(o.ArtifactsDir, "e2e.json")
 	}
 
 	// Not configurable. We are opinionated about these.

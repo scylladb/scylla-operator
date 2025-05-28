@@ -82,6 +82,10 @@ func (o *Observer) GetGenericHandlers() cache.ResourceEventHandlerFuncs {
 	}
 }
 
+func (o *Observer) EventRecorder() record.EventRecorder {
+	return o.eventRecorder
+}
+
 func (o *Observer) processNextItem(ctx context.Context) bool {
 	key, quit := o.queue.Get()
 	if quit {

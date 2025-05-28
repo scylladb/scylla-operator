@@ -72,7 +72,7 @@ func makeScyllaConnectionConfig(
 			Name:      naming.GetScyllaClusterLocalAdminCQLConnectionConfigsName(sdc.Name),
 			Labels:    naming.ClusterLabels(sdc),
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(sdc, scyllaDBDatacenterControllerGVK),
+				*metav1.NewControllerRef(sdc, scyllav1alpha1.ScyllaDBDatacenterGVK),
 			},
 		},
 		Data: make(map[string][]byte, len(sdc.Spec.DNSDomains)),
@@ -152,7 +152,7 @@ func (sdcc *Controller) syncCerts(
 			ctx,
 			time.Now,
 			&sdc.ObjectMeta,
-			scyllaDBDatacenterControllerGVK,
+			scyllav1alpha1.ScyllaDBDatacenterGVK,
 			&okubecrypto.CAConfig{
 				MetaConfig: okubecrypto.MetaConfig{
 					Name:   naming.GetScyllaClusterLocalClientCAName(sdc.Name),
@@ -352,7 +352,7 @@ func (sdcc *Controller) syncCerts(
 			ctx,
 			time.Now,
 			&sdc.ObjectMeta,
-			scyllaDBDatacenterControllerGVK,
+			scyllav1alpha1.ScyllaDBDatacenterGVK,
 			&okubecrypto.CAConfig{
 				MetaConfig: okubecrypto.MetaConfig{
 					Name:   naming.GetScyllaClusterLocalServingCAName(sdc.Name),
@@ -430,7 +430,7 @@ func (sdcc *Controller) syncCerts(
 			ctx,
 			time.Now,
 			&sdc.ObjectMeta,
-			scyllaDBDatacenterControllerGVK,
+			scyllav1alpha1.ScyllaDBDatacenterGVK,
 			&okubecrypto.CAConfig{
 				MetaConfig: okubecrypto.MetaConfig{
 					Name:   naming.GetScyllaClusterAlternatorLocalServingCAName(sdc.Name),

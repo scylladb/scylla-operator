@@ -74,3 +74,35 @@ func ApplyRemoteOwner(
 		options,
 	)
 }
+
+func ApplyScyllaDBManagerClusterRegistrationWithControl(
+	ctx context.Context,
+	control ApplyControlInterface[*scyllav1alpha1.ScyllaDBManagerClusterRegistration],
+	recorder record.EventRecorder,
+	required *scyllav1alpha1.ScyllaDBManagerClusterRegistration,
+	options ApplyOptions,
+) (*scyllav1alpha1.ScyllaDBManagerClusterRegistration, bool, error) {
+	return ApplyGeneric[*scyllav1alpha1.ScyllaDBManagerClusterRegistration](ctx, control, recorder, required, options)
+}
+
+func ApplyScyllaDBManagerClusterRegistration(
+	ctx context.Context,
+	client scyllav1alpha1client.ScyllaDBManagerClusterRegistrationsGetter,
+	lister scyllav1alpha1listers.ScyllaDBManagerClusterRegistrationLister,
+	recorder record.EventRecorder,
+	required *scyllav1alpha1.ScyllaDBManagerClusterRegistration,
+	options ApplyOptions,
+) (*scyllav1alpha1.ScyllaDBManagerClusterRegistration, bool, error) {
+	return ApplyScyllaDBManagerClusterRegistrationWithControl(
+		ctx,
+		ApplyControlFuncs[*scyllav1alpha1.ScyllaDBManagerClusterRegistration]{
+			GetCachedFunc: lister.ScyllaDBManagerClusterRegistrations(required.Namespace).Get,
+			CreateFunc:    client.ScyllaDBManagerClusterRegistrations(required.Namespace).Create,
+			UpdateFunc:    client.ScyllaDBManagerClusterRegistrations(required.Namespace).Update,
+			DeleteFunc:    client.ScyllaDBManagerClusterRegistrations(required.Namespace).Delete,
+		},
+		recorder,
+		required,
+		options,
+	)
+}

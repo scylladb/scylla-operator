@@ -109,6 +109,7 @@ rules:
   - scylladbdatacenters
   - remotekubernetesclusters
   - scylladbclusters
+  - scylladbmanagerclusterregistrations
   verbs:
   - create
   - delete
@@ -125,6 +126,7 @@ rules:
   - scylladbdatacenters/status
   - remotekubernetesclusters/status
   - scylladbclusters/status
+  - scylladbmanagerclusterregistrations/status
   verbs:
   - get
   - list
@@ -301,6 +303,7 @@ rules:
   - scyllaclusters/finalizers
   - scylladbdatacenters/finalizers
   - scylladbmonitorings/finalizers
+  - scylladbmanagerclusterregistrations/finalizers
   verbs:
   - update
 - apiGroups:
@@ -330,22 +333,9 @@ rules:
   verbs:
   - update
 - apiGroups:
-  - scylla.scylladb.com
-  resources:
-  - scyllaclusters/finalizers
-  - scylladbdatacenters/finalizers
-  - scylladbmonitorings/finalizers
-  verbs:
-  - update
-- apiGroups:
   - policy
   resources:
   - poddisruptionbudgets/finalizers
   verbs:
   - update
-- apiGroups:
-  - scylla.scylladb.com
-  resources:
-  - nodeconfigs/finalizers
-  verbs:
-  - update
+

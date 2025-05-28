@@ -11,6 +11,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -50,7 +51,7 @@ var _ = g.Describe("MultiDC cluster", func() {
 		o.Expect(hosts1).To(o.HaveLen(int(utils.GetMemberCount(sc1))))
 		o.Expect(hostIDs1).To(o.HaveLen(int(utils.GetMemberCount(sc1))))
 
-		di1 := scyllaclusterverification.InsertAndVerifyCQLData(ctx, hosts1)
+		di1 := verification.InsertAndVerifyCQLData(ctx, hosts1)
 		defer di1.Close()
 
 		seeds1, err := utils.GetBroadcastAddresses(ctx, ns1Client.KubeClient().CoreV1(), sc1)
@@ -91,11 +92,11 @@ var _ = g.Describe("MultiDC cluster", func() {
 		o.Expect(hostIDsByDC[sc1.Spec.Datacenter.Name]).To(o.ConsistOf(hostIDs1))
 		o.Expect(hostIDsByDC[sc2.Spec.Datacenter.Name]).To(o.HaveLen(int(utils.GetMemberCount(sc2))))
 
-		di2 := scyllaclusterverification.InsertAndVerifyCQLDataByDC(ctx, hostsByDC)
+		di2 := verification.InsertAndVerifyCQLDataByDC(ctx, hostsByDC)
 		defer di2.Close()
 
 		framework.By("Verifying data of datacenter %q", sc1.Spec.Datacenter.Name)
-		scyllaclusterverification.VerifyCQLData(ctx, di1)
+		verification.VerifyCQLData(ctx, di1)
 
 		framework.By("Verifying datacenter allocation of hosts")
 		scyllaClient, _, err := utils.GetScyllaClient(ctx, ns2Client.KubeClient().CoreV1(), sc2)

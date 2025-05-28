@@ -556,6 +556,68 @@ func TestMemberService(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "non-propagated annotations are not propagated",
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := basicSC.DeepCopy()
+				if len(nonPropagatedAnnotationKeys) == 0 {
+					panic("nonPropagatedAnnotationKeys can't be empty")
+				}
+				for _, k := range nonPropagatedAnnotationKeys {
+					metav1.SetMetaDataAnnotation(&sdc.ObjectMeta, k, "")
+				}
+				return sdc
+			}(),
+			rackName:   basicRackName,
+			svcName:    basicSVCName,
+			oldService: nil,
+			jobs:       nil,
+			expectedService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            basicSVCName,
+					Labels:          basicSVCLabels(),
+					Annotations:     basicSVCAnnotations(),
+					OwnerReferences: basicSCOwnerRefs,
+				},
+				Spec: corev1.ServiceSpec{
+					Type:                     corev1.ServiceTypeClusterIP,
+					Selector:                 basicSVCSelector,
+					PublishNotReadyAddresses: true,
+					Ports:                    basicPorts,
+				},
+			},
+		},
+		{
+			name: "non-propagated labels are not propagated",
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := basicSC.DeepCopy()
+				if len(nonPropagatedLabelKeys) == 0 {
+					panic("nonPropagatedLabelKeys can't be empty")
+				}
+				for _, k := range nonPropagatedLabelKeys {
+					metav1.SetMetaDataLabel(&sdc.ObjectMeta, k, "")
+				}
+				return sdc
+			}(),
+			rackName:   basicRackName,
+			svcName:    basicSVCName,
+			oldService: nil,
+			jobs:       nil,
+			expectedService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            basicSVCName,
+					Labels:          basicSVCLabels(),
+					Annotations:     basicSVCAnnotations(),
+					OwnerReferences: basicSCOwnerRefs,
+				},
+				Spec: corev1.ServiceSpec{
+					Type:                     corev1.ServiceTypeClusterIP,
+					Selector:                 basicSVCSelector,
+					PublishNotReadyAddresses: true,
+					Ports:                    basicPorts,
+				},
+			},
+		},
 	}
 
 	for _, tc := range tt {
@@ -1688,6 +1750,40 @@ exec scylla-manager-agent \
 			}(),
 			expectedError: nil,
 		},
+		{
+			name: "non-propagated annotations are not propagated",
+			rack: newBasicRack(),
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				if len(nonPropagatedAnnotationKeys) == 0 {
+					panic("nonPropagatedAnnotationKeys can't be empty")
+				}
+				for _, k := range nonPropagatedAnnotationKeys {
+					metav1.SetMetaDataAnnotation(&sdc.ObjectMeta, k, "")
+				}
+				return sdc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: newBasicStatefulSet(),
+			expectedError:       nil,
+		},
+		{
+			name: "non-propagated labels are not propagated",
+			rack: newBasicRack(),
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				if len(nonPropagatedLabelKeys) == 0 {
+					panic("nonPropagatedLabelKeys can't be empty")
+				}
+				for _, k := range nonPropagatedLabelKeys {
+					metav1.SetMetaDataLabel(&sdc.ObjectMeta, k, "")
+				}
+				return sdc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: newBasicStatefulSet(),
+			expectedError:       nil,
+		},
 	}
 
 	for _, tc := range tt {
@@ -2148,6 +2244,178 @@ func TestMakeIngresses(t *testing.T) {
 					},
 				}
 
+				return sdc
+			}(),
+			expectedIngresses: []*networkingv1.Ingress{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "any-cql",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/name":       "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"default-sc-label":             "foo",
+							"scylla/cluster":               "basic",
+							"scylla-operator.scylladb.com/scylla-ingress-type": "AnyNode",
+						},
+						Annotations: map[string]string{
+							"default-sc-annotation": "bar",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Spec: networkingv1.IngressSpec{
+						IngressClassName: pointer.Ptr("cql-ingress-class"),
+						Rules:            []networkingv1.IngressRule{},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-1-cql",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/name":       "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"default-sc-label":             "foo",
+							"scylla/cluster":               "basic",
+							"scylla-operator.scylladb.com/scylla-ingress-type": "Node",
+						},
+						Annotations: map[string]string{
+							"default-sc-annotation": "bar",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Spec: networkingv1.IngressSpec{
+						IngressClassName: pointer.Ptr("cql-ingress-class"),
+						Rules:            []networkingv1.IngressRule{},
+					},
+				},
+			},
+		},
+		{
+			name: "non-propagated annotations are not propagated",
+			services: map[string]*corev1.Service{
+				"any":    newIdentityService("any"),
+				"node-1": newMemberService("node-1", "host-id-1"),
+			},
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := basicScyllaCluster.DeepCopy()
+				sdc.Spec.ExposeOptions = &scyllav1alpha1.ExposeOptions{
+					CQL: &scyllav1alpha1.CQLExposeOptions{
+						Ingress: &scyllav1alpha1.CQLExposeIngressOptions{
+							IngressClassName: "cql-ingress-class",
+						},
+					},
+				}
+				if len(nonPropagatedAnnotationKeys) == 0 {
+					panic("nonPropagatedAnnotationKeys can't be empty")
+				}
+				for _, k := range nonPropagatedAnnotationKeys {
+					metav1.SetMetaDataAnnotation(&sdc.ObjectMeta, k, "")
+				}
+				return sdc
+			}(),
+			expectedIngresses: []*networkingv1.Ingress{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "any-cql",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/name":       "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"default-sc-label":             "foo",
+							"scylla/cluster":               "basic",
+							"scylla-operator.scylladb.com/scylla-ingress-type": "AnyNode",
+						},
+						Annotations: map[string]string{
+							"default-sc-annotation": "bar",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Spec: networkingv1.IngressSpec{
+						IngressClassName: pointer.Ptr("cql-ingress-class"),
+						Rules:            []networkingv1.IngressRule{},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-1-cql",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/name":       "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"default-sc-label":             "foo",
+							"scylla/cluster":               "basic",
+							"scylla-operator.scylladb.com/scylla-ingress-type": "Node",
+						},
+						Annotations: map[string]string{
+							"default-sc-annotation": "bar",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Spec: networkingv1.IngressSpec{
+						IngressClassName: pointer.Ptr("cql-ingress-class"),
+						Rules:            []networkingv1.IngressRule{},
+					},
+				},
+			},
+		},
+		{
+			name: "non-propagated labels are not propagated",
+			services: map[string]*corev1.Service{
+				"any":    newIdentityService("any"),
+				"node-1": newMemberService("node-1", "host-id-1"),
+			},
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := basicScyllaCluster.DeepCopy()
+				sdc.Spec.ExposeOptions = &scyllav1alpha1.ExposeOptions{
+					CQL: &scyllav1alpha1.CQLExposeOptions{
+						Ingress: &scyllav1alpha1.CQLExposeIngressOptions{
+							IngressClassName: "cql-ingress-class",
+						},
+					},
+				}
+				if len(nonPropagatedLabelKeys) == 0 {
+					panic("nonPropagatedLabelKeys can't be empty")
+				}
+				for _, k := range nonPropagatedLabelKeys {
+					metav1.SetMetaDataLabel(&sdc.ObjectMeta, k, "")
+				}
 				return sdc
 			}(),
 			expectedIngresses: []*networkingv1.Ingress{
@@ -2859,6 +3127,98 @@ func TestMakeJobs(t *testing.T) {
 			},
 			expectedConditions: nil,
 		},
+		{
+			name:               "non-propagated labels are not propagated",
+			scyllaDBDatacenter: basicScyllaDBDatacenter,
+			services: func() map[string]*corev1.Service {
+				return map[string]*corev1.Service{
+					"basic-dc-rack-0": newMemberService("basic-dc-rack-0", map[string]string{
+						"internal.scylla-operator.scylladb.com/current-token-ring-hash":         "abc",
+						"internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash": "def",
+					}),
+				}
+			}(),
+			expectedJobs: []*batchv1.Job{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cleanup-basic-dc-rack-0",
+						Namespace: "default",
+						Annotations: map[string]string{
+							"default-sc-annotation": "bar",
+							"internal.scylla-operator.scylladb.com/cleanup-token-ring-hash": "abc",
+						},
+						Labels: map[string]string{
+							"default-sc-label":                           "foo",
+							"scylla/cluster":                             "basic",
+							"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-0",
+							"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Spec: batchv1.JobSpec{
+						Selector:       nil,
+						ManualSelector: pointer.Ptr(false),
+						Template: corev1.PodTemplateSpec{
+							ObjectMeta: metav1.ObjectMeta{
+								Annotations: map[string]string{
+									"default-sc-annotation": "bar",
+									"internal.scylla-operator.scylladb.com/cleanup-token-ring-hash": "abc",
+								},
+								Labels: map[string]string{
+									"default-sc-label":                           "foo",
+									"scylla/cluster":                             "basic",
+									"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-0",
+									"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+								},
+							},
+							Spec: corev1.PodSpec{
+								RestartPolicy: corev1.RestartPolicyOnFailure,
+								Containers: []corev1.Container{
+									{
+										Name:            naming.CleanupContainerName,
+										Image:           "scylladb/scylla-operator:latest",
+										ImagePullPolicy: corev1.PullIfNotPresent,
+										Args: []string{
+											"cleanup-job",
+											"--manager-auth-config-path=/etc/scylla-cleanup-job/auth-token.yaml",
+											"--node-address=basic-dc-rack-0.default.svc",
+										},
+										VolumeMounts: []corev1.VolumeMount{
+											{
+												Name:      "scylla-manager-agent-token",
+												ReadOnly:  true,
+												MountPath: "/etc/scylla-cleanup-job/auth-token.yaml",
+												SubPath:   "auth-token.yaml",
+											},
+										},
+									},
+								},
+								Volumes: []corev1.Volume{
+									{
+										Name: "scylla-manager-agent-token",
+										VolumeSource: corev1.VolumeSource{
+											Secret: &corev1.SecretVolumeSource{
+												SecretName: "basic-auth-token",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedConditions: nil,
+		},
 	}
 
 	for _, tc := range tt {
@@ -2914,8 +3274,9 @@ func Test_MakeManagedScyllaDBConfig(t *testing.T) {
 					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo-ns",
-					Name:      "foo-managed-config",
+					Namespace:   "foo-ns",
+					Name:        "foo-managed-config",
+					Annotations: map[string]string{},
 					Labels: map[string]string{
 						"app":                          "scylla",
 						"app.kubernetes.io/managed-by": "scylla-operator",
@@ -3448,6 +3809,108 @@ alternator_encryption_options:
 			},
 			expectedErr: nil,
 		},
+		{
+			name: "non-propagated annotations are not propagated",
+			sdc: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				if len(nonPropagatedAnnotationKeys) == 0 {
+					panic("nonPropagatedAnnotationKeys can't be empty")
+				}
+				for _, k := range nonPropagatedAnnotationKeys {
+					metav1.SetMetaDataAnnotation(&sdc.ObjectMeta, k, "")
+				}
+				return sdc
+			}(),
+			enableTLSFeatureGate: false,
+			expectedCM: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace:   "foo-ns",
+					Name:        "foo-managed-config",
+					Annotations: map[string]string{},
+					Labels: map[string]string{
+						"app":                          "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"app.kubernetes.io/name":       "scylla",
+						"scylla/cluster":               "foo",
+						"user-label":                   "user-label-value",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBDatacenter",
+							Name:               "foo",
+							UID:                "uid-42",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"scylladb-managed-config.yaml": strings.TrimPrefix(`
+cluster_name: "foo-cluster"
+rpc_address: "0.0.0.0"
+endpoint_snitch: "GossipingPropertyFileSnitch"
+internode_compression: "all"
+`, "\n"),
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "non-propagated labels are not propagated",
+			sdc: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				if len(nonPropagatedLabelKeys) == 0 {
+					panic("nonPropagatedLabelKeys can't be empty")
+				}
+				for _, k := range nonPropagatedLabelKeys {
+					metav1.SetMetaDataLabel(&sdc.ObjectMeta, k, "")
+				}
+				return sdc
+			}(),
+			enableTLSFeatureGate: false,
+			expectedCM: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace:   "foo-ns",
+					Name:        "foo-managed-config",
+					Annotations: map[string]string{},
+					Labels: map[string]string{
+						"app":                          "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"app.kubernetes.io/name":       "scylla",
+						"scylla/cluster":               "foo",
+						"user-label":                   "user-label-value",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBDatacenter",
+							Name:               "foo",
+							UID:                "uid-42",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"scylladb-managed-config.yaml": strings.TrimPrefix(`
+cluster_name: "foo-cluster"
+rpc_address: "0.0.0.0"
+endpoint_snitch: "GossipingPropertyFileSnitch"
+internode_compression: "all"
+`, "\n"),
+				},
+			},
+			expectedErr: nil,
+		},
 	}
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
@@ -3646,6 +4109,232 @@ prefer_local=false
 			},
 			expectedErr: nil,
 		},
+		{
+			name: "non-propagated annotations are not propagated",
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo",
+					UID:       "uid-42",
+					Labels: map[string]string{
+						"user-label": "user-label-value",
+					},
+					Annotations: func() map[string]string {
+						annotations := map[string]string{
+							"user-annotation": "user-annotation-value",
+						}
+						if len(nonPropagatedAnnotationKeys) == 0 {
+							panic("nonPropagatedAnnotationKeys can't be empty")
+						}
+						for _, k := range nonPropagatedAnnotationKeys {
+							annotations[k] = ""
+						}
+						return annotations
+					}(),
+				},
+				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+					ClusterName: "foo-cluster",
+					Racks: []scyllav1alpha1.RackSpec{
+						{
+							Name: "rack0",
+						},
+						{
+							Name: "rack1",
+						},
+					},
+				},
+			},
+			expectedCMs: []*corev1.ConfigMap{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "ConfigMap",
+						APIVersion: "v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "foo-ns",
+						Name:      "foo-rack0-snitch-config",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"app.kubernetes.io/name":       "scylla",
+							"scylla/cluster":               "foo",
+							"user-label":                   "user-label-value",
+						},
+						Annotations: map[string]string{
+							"user-annotation": "user-annotation-value",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
+								Name:               "foo",
+								UID:                "uid-42",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Data: map[string]string{
+						"cassandra-rackdc.properties": strings.TrimLeft(`
+dc=foo
+rack=rack0
+prefer_local=false
+`, "\n"),
+					},
+				},
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "ConfigMap",
+						APIVersion: "v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "foo-ns",
+						Name:      "foo-rack1-snitch-config",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"app.kubernetes.io/name":       "scylla",
+							"scylla/cluster":               "foo",
+							"user-label":                   "user-label-value",
+						},
+						Annotations: map[string]string{
+							"user-annotation": "user-annotation-value",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
+								Name:               "foo",
+								UID:                "uid-42",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Data: map[string]string{
+						"cassandra-rackdc.properties": strings.TrimLeft(`
+dc=foo
+rack=rack1
+prefer_local=false
+`, "\n"),
+					},
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "non-propagated labels are not propagated",
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo",
+					UID:       "uid-42",
+					Labels: func() map[string]string {
+						labels := map[string]string{
+							"user-label": "user-label-value",
+						}
+						if len(nonPropagatedLabelKeys) == 0 {
+							panic("nonPropagatedLabelKeys can't be empty")
+						}
+						for _, k := range nonPropagatedLabelKeys {
+							labels[k] = ""
+						}
+						return labels
+					}(),
+					Annotations: map[string]string{
+						"user-annotation": "user-annotation-value",
+					},
+				},
+				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+					ClusterName: "foo-cluster",
+					Racks: []scyllav1alpha1.RackSpec{
+						{
+							Name: "rack0",
+						},
+						{
+							Name: "rack1",
+						},
+					},
+				},
+			},
+			expectedCMs: []*corev1.ConfigMap{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "ConfigMap",
+						APIVersion: "v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "foo-ns",
+						Name:      "foo-rack0-snitch-config",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"app.kubernetes.io/name":       "scylla",
+							"scylla/cluster":               "foo",
+							"user-label":                   "user-label-value",
+						},
+						Annotations: map[string]string{
+							"user-annotation": "user-annotation-value",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
+								Name:               "foo",
+								UID:                "uid-42",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Data: map[string]string{
+						"cassandra-rackdc.properties": strings.TrimLeft(`
+dc=foo
+rack=rack0
+prefer_local=false
+`, "\n"),
+					},
+				},
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "ConfigMap",
+						APIVersion: "v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "foo-ns",
+						Name:      "foo-rack1-snitch-config",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"app.kubernetes.io/name":       "scylla",
+							"scylla/cluster":               "foo",
+							"user-label":                   "user-label-value",
+						},
+						Annotations: map[string]string{
+							"user-annotation": "user-annotation-value",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
+								Name:               "foo",
+								UID:                "uid-42",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Data: map[string]string{
+						"cassandra-rackdc.properties": strings.TrimLeft(`
+dc=foo
+rack=rack1
+prefer_local=false
+`, "\n"),
+					},
+				},
+			},
+			expectedErr: nil,
+		},
 	}
 
 	for _, tc := range tt {
@@ -3657,6 +4346,65 @@ prefer_local=false
 
 			if !apiequality.Semantic.DeepEqual(got, tc.expectedCMs) {
 				t.Errorf("expected and actual configmaps differ:\n%s", cmp.Diff(tc.expectedCMs, got))
+			}
+		})
+	}
+}
+
+func Test_cloneMapExcludingKeysOrEmpty(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name         string
+		m            map[string]string
+		excludedKeys []string
+		expected     map[string]string
+	}{
+		{
+			name:         "return empty map on nil input",
+			m:            nil,
+			excludedKeys: []string{"key1"},
+			expected:     map[string]string{},
+		},
+		{
+			name:         "return empty map on empty input",
+			m:            map[string]string{},
+			excludedKeys: []string{"key1"},
+			expected:     map[string]string{},
+		},
+		{
+			name:         "return full copy on empty excluded keys",
+			m:            map[string]string{"key1": "value1", "key2": "value2"},
+			excludedKeys: nil,
+			expected:     map[string]string{"key1": "value1", "key2": "value2"},
+		},
+		{
+			name:         "return full copy on excluded keys not in input",
+			m:            map[string]string{"key1": "value1", "key2": "value2"},
+			excludedKeys: []string{"key3"},
+			expected:     map[string]string{"key1": "value1", "key2": "value2"},
+		},
+		{
+			name:         "return filtered copy on excluded keys in input",
+			m:            map[string]string{"key1": "value1", "key2": "value2", "key3": "value3"},
+			excludedKeys: []string{"key1", "key3"},
+			expected:     map[string]string{"key2": "value2"},
+		},
+		{
+			name:         "return empty map on all excluded keys in input",
+			m:            map[string]string{"key1": "value1", "key2": "value2"},
+			excludedKeys: []string{"key1", "key2"},
+			expected:     map[string]string{},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := cloneMapExcludingKeysOrEmpty(tc.m, tc.excludedKeys)
+			if !reflect.DeepEqual(got, tc.expected) {
+				t.Errorf("expected and got differ:\n%s\n", cmp.Diff(tc.expected, got))
 			}
 		})
 	}

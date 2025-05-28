@@ -15,6 +15,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -48,7 +49,7 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 		hosts, hostIDs, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(1))
-		di := scyllaclusterverification.InsertAndVerifyCQLData(ctx, hosts)
+		di := verification.InsertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
 
 		framework.By("Rejecting an unauthorized request")
@@ -129,7 +130,7 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 		// Reset hosts as the client won't be able to discover a single node after rollout.
 		err = di.SetClientEndpoints(hosts)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		scyllaclusterverification.VerifyCQLData(ctx, di)
+		verification.VerifyCQLData(ctx, di)
 
 		framework.By("Accepting requests authorized using token from user agent config")
 		_, err = getScyllaClientStatus(ctx, hosts, agentConfig.AuthToken)
@@ -173,7 +174,7 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 		// Reset hosts as the client won't be able to discover a single node after rollout.
 		err = di.SetClientEndpoints(hosts)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		scyllaclusterverification.VerifyCQLData(ctx, di)
+		verification.VerifyCQLData(ctx, di)
 
 		framework.By("Accepting requests authorized using token from user agent config")
 		_, err = getScyllaClientStatus(ctx, hosts, agentConfig.AuthToken)

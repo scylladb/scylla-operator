@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_ImageToVersion(t *testing.T) {
@@ -59,6 +62,54 @@ func Test_ImageToVersion(t *testing.T) {
 			}
 			if !reflect.DeepEqual(version, tc.expectedVersion) {
 				t.Fatalf("expected version: %s, got: %s", tc.expectedVersion, version)
+			}
+		})
+	}
+}
+
+func Test_ScyllaDBManagerClusterRegistrationNameForScyllaDBDatacenter(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name          string
+		sdc           *scyllav1alpha1.ScyllaDBDatacenter
+		expectedName  string
+		expectedError error
+	}{
+		{
+			name: "not truncated",
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "basic",
+				},
+			},
+			expectedName:  "scylladbdatacenter-basic-3tpwb",
+			expectedError: nil,
+		},
+		{
+			name: "truncated",
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "hzz5k3svtyvz2xza2md1mnurkzo41548jhoo22mqyuq40cdpqmga47287s5tqk7hd0zv1wizww7fn5e8nk3i4ckohflxo9tjao3zqlbxvkv724nozd267lr2r7u48dnua9jhalkjdyhoputvppmmungliyc16lqqkga2fg9ircczyp7ekjkuo35nbaevx88d72312c5s19goq6aehyun71bxrnjf95oklso5ykdvw93ya3jd15bs3gmqm71g4ncq",
+				},
+			},
+			expectedName:  "scylladbdatacenter-hzz5k3svtyvz2xza2md1mnurkzo41548jhoo22mqyuq40cdpqmga47287s5tqk7hd0zv1wizww7fn5e8nk3i4ckohflxo9tjao3zqlbxvkv724nozd267lr2r7u48dnua9jhalkjdyhoputvppmmungliyc16lqqkga2fg9ircczyp7ekjkuo35nbaevx88d72312c5s19goq6aehyun71bxrnjf95oklso5-2c7e7",
+			expectedError: nil,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			name, err := ScyllaDBManagerClusterRegistrationNameForScyllaDBDatacenter(tc.sdc)
+
+			if !reflect.DeepEqual(err, tc.expectedError) {
+				t.Fatalf("expected error: %#v, got: %#v", tc.expectedError, err)
+			}
+
+			if !reflect.DeepEqual(name, tc.expectedName) {
+				t.Errorf("expected name: %s, got: %s", tc.expectedName, name)
 			}
 		})
 	}

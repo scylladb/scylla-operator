@@ -206,3 +206,13 @@ func RemoteOwnerLabels(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.Sc
 
 	return remoteOwnerLabels
 }
+
+func GlobalScyllaDBManagerClusterRegistrationSelectorLabels() map[string]string {
+	return map[string]string{
+		GlobalScyllaDBManagerLabel: LabelValueTrue,
+	}
+}
+
+func GlobalScyllaDBManagerClusterRegistrationSelector() labels.Selector {
+	return labels.SelectorFromSet(GlobalScyllaDBManagerClusterRegistrationSelectorLabels())
+}

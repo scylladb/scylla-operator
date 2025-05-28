@@ -21,6 +21,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -87,7 +88,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		sourceHosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sourceSC)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(sourceHosts).To(o.HaveLen(int(utils.GetMemberCount(sourceSC))))
-		di := scyllaclusterverification.InsertAndVerifyCQLData(ctx, sourceHosts)
+		di := verification.InsertAndVerifyCQLData(ctx, sourceHosts)
 		defer di.Close()
 
 		framework.By("Waiting for source ScyllaCluster to register with Scylla Manager")
@@ -454,7 +455,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		err = di.SetClientEndpoints(targetHosts)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		scyllaclusterverification.VerifyCQLData(ctx, di)
+		verification.VerifyCQLData(ctx, di)
 	},
 		g.Entry("using default ScyllaDB version", entry{}),
 		// Restoring schema with ScyllaDB OS 5.4.X or ScyllaDB Enterprise 2024.1.X and consistent_cluster_management isn’t supported.
@@ -529,7 +530,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(1))
-		di := scyllaclusterverification.InsertAndVerifyCQLData(ctx, hosts)
+		di := verification.InsertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
 
 		framework.By("Waiting for ScyllaCluster to register with Scylla Manager")

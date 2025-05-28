@@ -19,6 +19,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -291,7 +292,7 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 		hosts, _, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(3))
-		di := scyllaclusterverification.InsertAndVerifyCQLData(ctx, hosts)
+		di := verification.InsertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
 
 		framework.By("Simulating a PV on node that's gone")
@@ -369,7 +370,7 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 		hosts, err = utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(3))
-		scyllaclusterverification.VerifyCQLData(ctx, di)
+		verification.VerifyCQLData(ctx, di)
 
 		// Stop fake provisioner
 		provisionerCancel()

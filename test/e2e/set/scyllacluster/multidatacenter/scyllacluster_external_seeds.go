@@ -4,12 +4,14 @@ package multidatacenter
 
 import (
 	"context"
+
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -49,7 +51,7 @@ var _ = g.Describe("MultiDC cluster", framework.MultiDatacenter, func() {
 		o.Expect(hosts0).To(o.HaveLen(int(utils.GetMemberCount(sc0))))
 		o.Expect(hostIDs0).To(o.HaveLen(int(utils.GetMemberCount(sc0))))
 
-		di0 := scyllaclusterverification.InsertAndVerifyCQLData(ctx, hosts0)
+		di0 := verification.InsertAndVerifyCQLData(ctx, hosts0)
 		defer di0.Close()
 
 		seeds0, err := utils.GetBroadcastAddresses(ctx, ns0Client.KubeClient().CoreV1(), sc0)
@@ -92,11 +94,11 @@ var _ = g.Describe("MultiDC cluster", framework.MultiDatacenter, func() {
 
 		hostIDs1 := hostIDsByDC[sc1.Spec.Datacenter.Name]
 
-		di1 := scyllaclusterverification.InsertAndVerifyCQLDataByDC(ctx, hostsByDC)
+		di1 := verification.InsertAndVerifyCQLDataByDC(ctx, hostsByDC)
 		defer di1.Close()
 
 		framework.By("Verifying data of datacenter %q", sc0.Spec.Datacenter.Name)
-		scyllaclusterverification.VerifyCQLData(ctx, di0)
+		verification.VerifyCQLData(ctx, di0)
 
 		framework.By("Verifying datacenter allocation of hosts")
 		scyllaClient, _, err := utils.GetScyllaClient(ctx, ns1Client.KubeClient().CoreV1(), sc1)
@@ -152,14 +154,14 @@ var _ = g.Describe("MultiDC cluster", framework.MultiDatacenter, func() {
 		o.Expect(hostIDsByDC[sc1.Spec.Datacenter.Name]).To(o.ConsistOf(hostIDs1))
 		o.Expect(hostIDsByDC[sc2.Spec.Datacenter.Name]).To(o.HaveLen(int(utils.GetMemberCount(sc2))))
 
-		di2 := scyllaclusterverification.InsertAndVerifyCQLDataByDC(ctx, hostsByDC)
+		di2 := verification.InsertAndVerifyCQLDataByDC(ctx, hostsByDC)
 		defer di2.Close()
 
 		framework.By("Verifying data of datacenter %q", sc0.Spec.Datacenter.Name)
-		scyllaclusterverification.VerifyCQLData(ctx, di0)
+		verification.VerifyCQLData(ctx, di0)
 
 		framework.By("Verifying data of datacenter %q", sc1.Spec.Datacenter.Name)
-		scyllaclusterverification.VerifyCQLData(ctx, di1)
+		verification.VerifyCQLData(ctx, di1)
 
 		framework.By("Verifying datacenter allocation of hosts")
 		scyllaClient, _, err = utils.GetScyllaClient(ctx, ns2Client.KubeClient().CoreV1(), sc2)

@@ -12,6 +12,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -70,7 +71,7 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			o.Expect(hosts).To(o.HaveLen(numNodes))
 			o.Expect(hostIDs).To(o.HaveLen(numNodes))
 
-			di := scyllaclusterverification.InsertAndVerifyCQLData(ctx, hosts)
+			di := verification.InsertAndVerifyCQLData(ctx, hosts)
 			defer di.Close()
 
 			framework.By("triggering and update")
@@ -108,7 +109,7 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 				err = di.SetClientEndpoints(hosts)
 				o.Expect(err).NotTo(o.HaveOccurred())
 			}
-			scyllaclusterverification.VerifyCQLData(ctx, di)
+			verification.VerifyCQLData(ctx, di)
 
 			framework.By("Validating if all snapshots created by upgrade hooks are cleared for every node")
 			scyllaClient, hosts, err := utils.GetScyllaClient(ctx, f.KubeClient().CoreV1(), sc)

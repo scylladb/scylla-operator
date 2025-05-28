@@ -10,3 +10,4 @@ Node operations using Scylla Operator
    automatic-cleanup
    maintenance-mode
    restore
+   volume-expansion

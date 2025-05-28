@@ -5,16 +5,11 @@ updates:
   schedule:
     interval: weekly
     day: wednesday
-    time: '11:00' # UTC
+    time: '5:00' # UTC
   labels:
   - priority/important-longterm
   - kind/dependency-bump
   groups:
-    k8s.io:
-        applies-to: version-updates
-        patterns:
-          - "k8s.io/*"
-          - "sigs.k8s.io/*"
     gomod:
         applies-to: version-updates
         patterns:

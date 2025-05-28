@@ -22,8 +22,6 @@ GO_MODULE ?=$(shell $(GO) list -m)$(if $(filter $(.SHELLSTATUS),0),,$(error fail
 GOPATH ?=$(shell $(GO) env GOPATH)
 GOOS ?=$(shell $(GO) env GOOS)
 GOEXE ?=$(shell $(GO) env GOEXE)
-GOFMT ?=gofmt
-GOFMT_FLAGS ?=-s -l
 
 GO_VERSION :=$(shell $(GO) version | sed -E -e 's/.*go([0-9]+.[0-9]+.[0-9]+).*/\1/')
 GO_PACKAGE ?=$(shell $(GO) list -m -f '{{ .Path }}' || echo 'no_package_detected')
@@ -47,6 +45,7 @@ GO_TEST_E2E_EXTRA_ARGS ?=
 JQ ?=jq
 YQ ?=yq -e
 GSUTIL ?=gsutil -m -q
+GOLANGCI_LINT ?=golangci-lint
 
 CODEGEN_PKG ?=./vendor/k8s.io/code-generator
 CODEGEN_HEADER_FILE ?=/dev/null
@@ -163,13 +162,19 @@ submodules:
 	$(GIT) submodule update --init --recursive
 .PHONY: submodules
 
-verify-govet:
-	$(GO) vet $(GO_PACKAGES)
-.PHONY: verify-govet
+verify-lint:
+	@$(GOLANGCI_LINT) run || \
+		(echo "$(GOLANGCI_LINT) run failed. You can run \`make update-lint\` to auto-fix some of the issues (e.g., formatting)." && \
+		exit 1)
+.PHONY: verify-lint
+
+update-lint:
+	$(GOLANGCI_LINT) run --fix
+.PHONY: update-lint
 
 verify-gofmt:
-	$(info Running $(GOFMT) $(GOFMT_FLAGS))
-	@output=$$( $(GOFMT) $(GOFMT_FLAGS) $(go_packages_dirs) ); \
+	$(info Running $(GOLANGCI_LINT) fmt --diff)
+	@output=$$( $(GOLANGCI_LINT) fmt --diff ); \
 	if [ -n "$${output}" ]; then \
 		echo "$@ failed - please run \`make update-gofmt\` to fix following files:"; \
 		echo "$${output}"; \
@@ -178,8 +183,8 @@ verify-gofmt:
 .PHONY: verify-gofmt
 
 update-gofmt:
-	$(info Running $(GOFMT) $(GOFMT_FLAGS) -w)
-	@$(GOFMT) $(GOFMT_FLAGS) -w $(go_packages_dirs)
+	$(info Running $(GOLANGCI_LINT) fmt)
+	@$(GOLANGCI_LINT) fmt
 .PHONY: update-gofmt
 
 # We need to force locale so different envs sort files the same way for recursive traversals
@@ -646,10 +651,10 @@ verify-links:
 	fi;
 .PHONY: verify-links
 
-verify: verify-gofmt verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-govet verify-helm-lint verify-links verify-examples verify-docs-api verify-monitoring
+verify: verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-lint verify-helm-lint verify-links verify-examples verify-docs-api verify-monitoring
 .PHONY: verify
 
-update: update-gofmt update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-docs-api update-monitoring
+update: update-lint update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-docs-api update-monitoring
 .PHONY: update
 
 test-unit:

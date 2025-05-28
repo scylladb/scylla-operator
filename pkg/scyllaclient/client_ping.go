@@ -4,8 +4,6 @@ package scyllaclient
 
 import (
 	"context"
-	"net"
-	"net/url"
 	"time"
 
 	"github.com/scylladb/scylla-operator/pkg/util/timeutc"
@@ -20,19 +18,6 @@ func (c *Client) Ping(ctx context.Context, host string) (time.Duration, error) {
 	t := timeutc.Now()
 	err := c.ping(ctx, host)
 	return timeutc.Since(t), err
-}
-
-func (c *Client) newURL(host, path string) url.URL {
-	port := "80"
-	if c.config.Scheme == "https" {
-		port = "443"
-	}
-
-	return url.URL{
-		Scheme: c.config.Scheme,
-		Host:   net.JoinHostPort(host, port),
-		Path:   path,
-	}
 }
 
 func (c *Client) ping(ctx context.Context, host string) error {

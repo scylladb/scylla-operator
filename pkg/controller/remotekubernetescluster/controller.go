@@ -205,17 +205,6 @@ func (rkcc *Controller) Run(ctx context.Context, workers int) {
 	<-ctx.Done()
 }
 
-func (rkcc *Controller) enqueue(rkc *scyllav1alpha1.RemoteKubernetesCluster) {
-	key, err := keyFunc(rkc)
-	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", rkc, err))
-		return
-	}
-
-	klog.V(4).InfoS("Enqueuing", "RemoteKubernetesCluster", klog.KObj(rkc))
-	rkcc.queue.Add(key)
-}
-
 func (rkcc *Controller) addRemoteKubernetesCluster(obj interface{}) {
 	rkcc.handlers.HandleAdd(
 		obj.(*scyllav1alpha1.RemoteKubernetesCluster),

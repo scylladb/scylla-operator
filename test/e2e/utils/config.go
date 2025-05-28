@@ -26,6 +26,4 @@ const (
 
 	baseManagerSyncTimeout = 3 * time.Minute
 	managerTaskSyncTimeout = 30 * time.Second
-
-	nodeConfigRolloutTimeout = 3 * time.Minute
 )

@@ -3,11 +3,9 @@ package tests
 import (
 	"fmt"
 	"os"
-	"path"
 	"regexp"
 	"strings"
 
-	"github.com/onsi/ginkgo/v2"
 	configassets "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
@@ -308,12 +306,6 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 			IngressClassName:  o.IngressController.IngressClassName,
 			CustomAnnotations: o.IngressController.CustomAnnotations,
 		}
-	}
-
-	if len(o.ArtifactsDir) != 0 {
-		_, reporterConfig := ginkgo.GinkgoConfiguration()
-		reporterConfig.JUnitReport = path.Join(o.ArtifactsDir, "e2e.junit.xml")
-		reporterConfig.JSONReport = path.Join(o.ArtifactsDir, "e2e.json")
 	}
 
 	return nil

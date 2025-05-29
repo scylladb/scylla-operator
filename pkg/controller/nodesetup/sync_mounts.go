@@ -11,7 +11,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/disks"
 	"github.com/scylladb/scylla-operator/pkg/systemd"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 )
 
@@ -62,7 +62,7 @@ func (nsc *Controller) syncMounts(ctx context.Context, nc *scyllav1alpha1.NodeCo
 		errs = append(errs, fmt.Errorf("can't ensure units: %w", err))
 	}
 
-	err = utilerrors.NewAggregate(errs)
+	err = apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't create mounts: %w", err)
 	}

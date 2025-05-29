@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	osscyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func (socc *Controller) syncClusterDomain(
 	ctx context.Context,
-	soc *osscyllav1alpha1.ScyllaOperatorConfig,
-	status *osscyllav1alpha1.ScyllaOperatorConfigStatus,
+	soc *scyllav1alpha1.ScyllaOperatorConfig,
+	status *scyllav1alpha1.ScyllaOperatorConfigStatus,
 ) ([]metav1.Condition, error) {
 	var progressingConditions []metav1.Condition
 

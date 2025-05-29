@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	"github.com/scylladb/scylla-operator/pkg/resource"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -62,7 +62,7 @@ func ReleaseObjects[CT, T kubeinterfaces.ObjectInterface](ctx context.Context, c
 }
 
 func GetDeleteOwnerReferenceMergePatchBytes(obj metav1.Object, controllerUID types.UID) ([]byte, error) {
-	newOwnerRefs := slices.FilterOut(obj.GetOwnerReferences(), func(ownerRef metav1.OwnerReference) bool {
+	newOwnerRefs := oslices.FilterOut(obj.GetOwnerReferences(), func(ownerRef metav1.OwnerReference) bool {
 		return ownerRef.UID == controllerUID
 	})
 

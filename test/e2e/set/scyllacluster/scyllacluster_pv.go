@@ -27,8 +27,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/wait"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
@@ -70,7 +70,7 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 			}).String(),
 		}))
 
-		o.Expect(utilerrors.NewAggregate(errs)).NotTo(o.HaveOccurred())
+		o.Expect(apimachineryutilerrors.NewAggregate(errs)).NotTo(o.HaveOccurred())
 	})
 
 	g.It("should replace a node with orphaned PV", func() {
@@ -270,7 +270,7 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 				}
 				return false, nil
 			})
-			if errors.Is(err, wait.ErrWaitTimeout) && errors.Is(provisionerCtx.Err(), context.Canceled) {
+			if errors.Is(err, apimachineryutilwait.ErrWaitTimeout) && errors.Is(provisionerCtx.Err(), context.Canceled) {
 				return
 			}
 			o.Expect(err).NotTo(o.HaveOccurred())

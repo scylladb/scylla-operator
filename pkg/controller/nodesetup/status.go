@@ -7,10 +7,10 @@ import (
 	"fmt"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/sets"
+	apimachineryutilsets "k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 )
 
@@ -28,12 +28,12 @@ var deprecatedConditionTypeFormats = []string{
 func (nsc *Controller) calculateStatus(nc *scyllav1alpha1.NodeConfig) *scyllav1alpha1.NodeConfigStatus {
 	status := nc.Status.DeepCopy()
 
-	deprecatedConditionTypes := sets.New(slices.ConvertSlice(deprecatedConditionTypeFormats, func(conditionTypeFormat string) string {
+	deprecatedConditionTypes := apimachineryutilsets.New(oslices.ConvertSlice(deprecatedConditionTypeFormats, func(conditionTypeFormat string) string {
 		return fmt.Sprintf(conditionTypeFormat, nsc.nodeName)
 	})...)
 
 	statusConditions := status.Conditions.ToMetaV1Conditions()
-	status.Conditions = scyllav1alpha1.NewNodeConfigConditions(slices.FilterOut(statusConditions, func(c metav1.Condition) bool {
+	status.Conditions = scyllav1alpha1.NewNodeConfigConditions(oslices.FilterOut(statusConditions, func(c metav1.Condition) bool {
 		return deprecatedConditionTypes.Has(c.Type)
 	}))
 

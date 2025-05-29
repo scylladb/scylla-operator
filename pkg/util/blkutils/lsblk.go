@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	oexec "github.com/scylladb/scylla-operator/pkg/util/exec"
-	"k8s.io/apimachinery/pkg/util/json"
+	apimachineryutiljson "k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/utils/exec"
 )
 
@@ -69,7 +69,7 @@ func ListBlockDevices(ctx context.Context, executor exec.Interface, devices ...s
 	}
 
 	output := &lsblkOutput{}
-	err = json.Unmarshal(stdout.Bytes(), output)
+	err = apimachineryutiljson.Unmarshal(stdout.Bytes(), output)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal lsblk output %q: %w", stdout.String(), err)
 	}

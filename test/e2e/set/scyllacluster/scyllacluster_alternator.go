@@ -24,7 +24,7 @@ import (
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
@@ -153,7 +153,7 @@ authorizer: CassandraAuthorizer
 			fmt.Sprintf("%s.%s.svc", naming.MemberServiceNameForScyllaCluster(sc.Spec.Datacenter.Racks[0], sc, 0), sc.Namespace),
 			"scylla.operator.rocks",
 		))
-		alternatorServingCertIPStrings := slices.ConvertSlice[string](
+		alternatorServingCertIPStrings := oslices.ConvertSlice[string](
 			alternatorServingCert.IPAddresses,
 			func(from net.IP) string {
 				return from.String()

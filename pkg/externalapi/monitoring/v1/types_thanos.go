@@ -17,7 +17,7 @@
 package v1
 
 import (
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -93,12 +93,12 @@ type ThanosRulerSpec struct {
 	// Image pull policy for the 'thanos', 'init-config-reloader' and 'config-reloader' containers.
 	// See https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy for more details.
 	// +kubebuilder:validation:Enum="";Always;Never;IfNotPresent
-	ImagePullPolicy v1.PullPolicy `json:"imagePullPolicy,omitempty"`
+	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 	// An optional list of references to secrets in the same namespace
 	// to use for pulling thanos images from registries
 	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
 	// +optional
-	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 
 	// When a ThanosRuler deployment is paused, no actions except for deletion
 	// will be performed on the underlying objects.
@@ -114,22 +114,22 @@ type ThanosRulerSpec struct {
 
 	// Resources defines the resource requirements for single Pods.
 	// If not provided, no requests/limits will be set
-	Resources v1.ResourceRequirements `json:"resources,omitempty"`
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 
 	// If specified, the pod's scheduling constraints.
 	// +optional
-	Affinity *v1.Affinity `json:"affinity,omitempty"`
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 	// If specified, the pod's tolerations.
 	// +optional
-	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 	// If specified, the pod's topology spread constraints.
 	// +optional
-	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+	TopologySpreadConstraints []corev1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 
 	// SecurityContext holds pod-level security attributes and common container settings.
 	// This defaults to the default PodSecurityContext.
 	// +optional
-	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
+	SecurityContext *corev1.PodSecurityContext `json:"securityContext,omitempty"`
 
 	// Defines the DNS policy for the pods.
 	//
@@ -153,12 +153,12 @@ type ThanosRulerSpec struct {
 	// Volumes allows configuration of additional volumes on the output StatefulSet definition. Volumes specified will
 	// be appended to other volumes that are generated as a result of StorageSpec objects.
 	// +optional
-	Volumes []v1.Volume `json:"volumes,omitempty"`
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
 	// VolumeMounts allows configuration of additional VolumeMounts on the output StatefulSet definition.
 	// VolumeMounts specified will be appended to other VolumeMounts in the ruler container,
 	// that are generated as a result of StorageSpec objects.
 	// +optional
-	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
 
 	// Configures object storage.
 	//
@@ -169,7 +169,7 @@ type ThanosRulerSpec struct {
 	// `objectStorageConfigFile` takes precedence over this field.
 	//
 	// +optional
-	ObjectStorageConfig *v1.SecretKeySelector `json:"objectStorageConfig,omitempty"`
+	ObjectStorageConfig *corev1.SecretKeySelector `json:"objectStorageConfig,omitempty"`
 	// Configures the path of the object storage configuration file.
 	//
 	// The configuration format is defined at https://thanos.io/tip/thanos/storage.md/#configuring-access-to-object-storage
@@ -205,7 +205,7 @@ type ThanosRulerSpec struct {
 	// This field takes precedence over `queryEndpoints`.
 	//
 	// +optional
-	QueryConfig *v1.SecretKeySelector `json:"queryConfig,omitempty"`
+	QueryConfig *corev1.SecretKeySelector `json:"queryConfig,omitempty"`
 
 	// Configures the list of Alertmanager endpoints to send alerts to.
 	//
@@ -226,7 +226,7 @@ type ThanosRulerSpec struct {
 	// This field takes precedence over `alertmanagersUrl`.
 	//
 	// +optional
-	AlertManagersConfig *v1.SecretKeySelector `json:"alertmanagersConfig,omitempty"`
+	AlertManagersConfig *corev1.SecretKeySelector `json:"alertmanagersConfig,omitempty"`
 
 	// PrometheusRule objects to be selected for rule evaluation. An empty
 	// label selector matches all objects. A null label selector matches no
@@ -285,7 +285,7 @@ type ThanosRulerSpec struct {
 	// Overriding containers is entirely outside the scope of what the maintainers will support and by doing
 	// so, you accept that this behaviour may break at any time without notice.
 	// +optional
-	Containers []v1.Container `json:"containers,omitempty"`
+	Containers []corev1.Container `json:"containers,omitempty"`
 	// InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
 	// fetch secrets for injection into the ThanosRuler configuration from external sources. Any
 	// errors during the execution of an initContainer will lead to a restart of the Pod.
@@ -294,7 +294,7 @@ type ThanosRulerSpec struct {
 	// of what the maintainers will support and by doing so, you accept that this behaviour may break
 	// at any time without notice.
 	// +optional
-	InitContainers []v1.Container `json:"initContainers,omitempty"`
+	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 
 	// Configures tracing.
 	//
@@ -308,7 +308,7 @@ type ThanosRulerSpec struct {
 	// `tracingConfigFile` takes precedence over this field.
 	//
 	//+optional
-	TracingConfig *v1.SecretKeySelector `json:"tracingConfig,omitempty"`
+	TracingConfig *corev1.SecretKeySelector `json:"tracingConfig,omitempty"`
 	// Configures the path of the tracing configuration file.
 	//
 	// The configuration format is defined at https://thanos.io/tip/thanos/tracing.md/#configuration
@@ -376,7 +376,7 @@ type ThanosRulerSpec struct {
 	// `alertRelabelConfigFile` takes precedence over this field.
 	//
 	// +optional
-	AlertRelabelConfigs *v1.SecretKeySelector `json:"alertRelabelConfigs,omitempty"`
+	AlertRelabelConfigs *corev1.SecretKeySelector `json:"alertRelabelConfigs,omitempty"`
 	// Configures the path to the alert relabeling configuration file.
 	//
 	// Alert relabel configuration must have the form as specified in the

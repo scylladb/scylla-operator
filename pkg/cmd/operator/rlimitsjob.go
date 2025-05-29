@@ -16,7 +16,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
-	apierrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
 )
@@ -75,7 +75,7 @@ func (o *RlimitsJobOptions) Validate() error {
 		errs = append(errs, fmt.Errorf("pid cannot be zero"))
 	}
 
-	return apierrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (o *RlimitsJobOptions) Complete() error {

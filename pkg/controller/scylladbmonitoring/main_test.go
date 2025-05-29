@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	prometheusv1assets "github.com/scylladb/scylla-operator/assets/monitoring/prometheus/v1"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 func TestMain(m *testing.M) {
@@ -21,7 +21,7 @@ func TestMain(m *testing.M) {
 		}
 	}
 
-	err := utilerrors.NewAggregate(errs)
+	err := apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		_, _ = fmt.Fprint(os.Stderr, err)
 		os.Exit(1)

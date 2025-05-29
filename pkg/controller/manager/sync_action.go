@@ -12,11 +12,11 @@ import (
 	"github.com/scylladb/scylla-manager/v3/pkg/util/uuid"
 	"github.com/scylladb/scylla-manager/v3/swagger/gen/scylla-manager/models"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	hashutil "github.com/scylladb/scylla-operator/pkg/util/hash"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/sets"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilsets "k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 )
 
@@ -105,7 +105,7 @@ func syncTasks(clusterID string, sc *scyllav1.ScyllaCluster, state *managerClust
 	var errs []error
 	var actions []action
 
-	repairTaskSpecNames := sets.New(slices.ConvertSlice(sc.Spec.Repairs, func(b scyllav1.RepairTaskSpec) string {
+	repairTaskSpecNames := apimachineryutilsets.New(oslices.ConvertSlice(sc.Spec.Repairs, func(b scyllav1.RepairTaskSpec) string {
 		return b.Name
 	})...)
 	for taskName, task := range state.RepairTasks {
@@ -120,7 +120,7 @@ func syncTasks(clusterID string, sc *scyllav1.ScyllaCluster, state *managerClust
 		})
 	}
 
-	backupTaskSpecNames := sets.New(slices.ConvertSlice(sc.Spec.Backups, func(b scyllav1.BackupTaskSpec) string {
+	backupTaskSpecNames := apimachineryutilsets.New(oslices.ConvertSlice(sc.Spec.Backups, func(b scyllav1.BackupTaskSpec) string {
 		return b.Name
 	})...)
 	for taskName, task := range state.BackupTasks {
@@ -147,7 +147,7 @@ func syncTasks(clusterID string, sc *scyllav1.ScyllaCluster, state *managerClust
 	}
 	actions = append(actions, backupActions...)
 
-	err = utilerrors.NewAggregate(errs)
+	err = apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +183,7 @@ func syncBackupTasks(clusterID string, cluster *scyllav1.ScyllaCluster, state *m
 		}
 	}
 
-	err := utilerrors.NewAggregate(errs)
+	err := apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +219,7 @@ func syncRepairTasks(clusterID string, cluster *scyllav1.ScyllaCluster, state *m
 		}
 	}
 
-	err := utilerrors.NewAggregate(errs)
+	err := apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return nil, err
 	}
@@ -456,7 +456,7 @@ func setTaskStatusError(taskType string, taskName string, taskErr string, status
 }
 
 func updateRepairTaskStatusError(repairTaskStatuses *[]scyllav1.RepairTaskStatus, repairTaskStatus scyllav1.RepairTaskStatus) {
-	_, i, ok := slices.Find(*repairTaskStatuses, func(rts scyllav1.RepairTaskStatus) bool {
+	_, i, ok := oslices.Find(*repairTaskStatuses, func(rts scyllav1.RepairTaskStatus) bool {
 		return rts.Name == repairTaskStatus.Name
 	})
 
@@ -469,7 +469,7 @@ func updateRepairTaskStatusError(repairTaskStatuses *[]scyllav1.RepairTaskStatus
 }
 
 func updateBackupTaskStatusError(backupTaskStatuses *[]scyllav1.BackupTaskStatus, backupTaskStatus scyllav1.BackupTaskStatus) {
-	_, i, ok := slices.Find(*backupTaskStatuses, func(bts scyllav1.BackupTaskStatus) bool {
+	_, i, ok := oslices.Find(*backupTaskStatuses, func(bts scyllav1.BackupTaskStatus) bool {
 		return bts.Name == backupTaskStatus.Name
 	})
 

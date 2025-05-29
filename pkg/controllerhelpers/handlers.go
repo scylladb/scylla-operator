@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
@@ -79,7 +79,7 @@ func (h *Handlers[T]) Enqueue(depth int, untypedObj kubeinterfaces.ObjectInterfa
 
 	key, err := h.keyFunc(obj)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", obj, err))
+		apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", obj, err))
 		return
 	}
 
@@ -107,7 +107,7 @@ func (h *Handlers[T]) EnqueueAllFunc(enqueueFunc EnqueueFuncType) EnqueueFuncTyp
 	return func(depth int, untypedObj kubeinterfaces.ObjectInterface, op HandlerOperationType) {
 		controllerObjs, err := h.getterLister.List(untypedObj.GetNamespace(), labels.Everything())
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't list all controller objects for %T: %w", untypedObj, err))
+			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't list all controller objects for %T: %w", untypedObj, err))
 			return
 		}
 
@@ -130,12 +130,12 @@ func (h *Handlers[QT]) EnqueueOwnerFunc(enqueueFunc EnqueueFuncType) EnqueueFunc
 
 		owner, err := h.getterLister.Get(obj.GetNamespace(), controllerRef.Name)
 		if err != nil {
-			utilruntime.HandleError(err)
+			apimachineryutilruntime.HandleError(err)
 			return
 		}
 
 		if owner.GetUID() != controllerRef.UID {
-			utilruntime.HandleError(err)
+			apimachineryutilruntime.HandleError(err)
 			return
 		}
 
@@ -167,7 +167,7 @@ func (h *Handlers[QT]) HandleUpdateWithDepth(depth int, oldUntyped, curUntyped a
 	if cur.GetUID() != old.GetUID() {
 		key, err := h.keyFunc(old)
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", old, err))
+			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", old, err))
 			return
 		}
 

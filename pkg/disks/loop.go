@@ -13,7 +13,7 @@ import (
 	"slices"
 
 	"github.com/scylladb/scylla-operator/pkg/util/losetup"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/exec"
 )
@@ -203,7 +203,7 @@ func deleteEmptyDeviceSymlinkDir(symlinksDir string) (err error) {
 	defer func() {
 		dirCloseErr := d.Close()
 		if dirCloseErr != nil {
-			err = utilerrors.NewAggregate([]error{err, dirCloseErr})
+			err = apimachineryutilerrors.NewAggregate([]error{err, dirCloseErr})
 		}
 	}()
 

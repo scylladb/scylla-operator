@@ -9,7 +9,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	"github.com/scylladb/scylla-operator/pkg/scyllafeatures"
@@ -19,7 +19,7 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 )
 
@@ -86,7 +86,7 @@ func (sdcc *Controller) pruneServices(
 			errs = append(errs, fmt.Errorf("service %s/%s is missing %q label", svc.Namespace, svc.Name, naming.RackNameLabel))
 			continue
 		}
-		rackSpec, _, ok := slices.Find(sdc.Spec.Racks, func(spec scyllav1alpha1.RackSpec) bool {
+		rackSpec, _, ok := oslices.Find(sdc.Spec.Racks, func(spec scyllav1alpha1.RackSpec) bool {
 			return spec.Name == rackName
 		})
 		if !ok {
@@ -195,7 +195,7 @@ func (sdcc *Controller) pruneServices(
 			continue
 		}
 	}
-	return progressingConditions, utilerrors.NewAggregate(errs)
+	return progressingConditions, apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (sdcc *Controller) syncServices(

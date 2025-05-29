@@ -17,7 +17,7 @@
 package v1
 
 import (
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -71,7 +71,7 @@ type ProbeSpec struct {
 	// Secret to mount to read bearer token for scraping targets. The secret
 	// needs to be in the same namespace as the probe and accessible by
 	// the Prometheus Operator.
-	BearerTokenSecret v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
+	BearerTokenSecret corev1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
 	// BasicAuth allow an endpoint to authenticate over basic authentication.
 	// More info: https://prometheus.io/docs/operating/configuration/#endpoint
 	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`

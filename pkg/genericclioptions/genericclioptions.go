@@ -9,7 +9,7 @@ import (
 
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -99,7 +99,7 @@ func (ccs *ClientConfigSet) Validate() error {
 		}
 	}
 
-	return utilerrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (ccs *ClientConfigSet) Complete() error {
@@ -172,7 +172,7 @@ func (cc *ClientConfig) Validate() error {
 		errs = append(errs, fmt.Errorf("invalid client config base: %w", err))
 	}
 
-	return utilerrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (cc *ClientConfig) Complete() error {

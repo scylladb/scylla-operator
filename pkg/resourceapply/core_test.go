@@ -16,7 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -48,7 +48,7 @@ func TestApplyService(t *testing.T) {
 
 	newServiceWithHash := func() *corev1.Service {
 		svc := newService()
-		utilruntime.Must(SetHashAnnotation(svc))
+		apimachineryutilruntime.Must(SetHashAnnotation(svc))
 		return svc
 	}
 
@@ -135,7 +135,7 @@ func TestApplyService(t *testing.T) {
 				svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
 					Name: "https",
 				})
-				utilruntime.Must(SetHashAnnotation(svc))
+				apimachineryutilruntime.Must(SetHashAnnotation(svc))
 				return svc
 			}(),
 			expectedChanged: true,
@@ -155,7 +155,7 @@ func TestApplyService(t *testing.T) {
 			expectedService: func() *corev1.Service {
 				svc := newService()
 				svc.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(svc))
+				apimachineryutilruntime.Must(SetHashAnnotation(svc))
 				return svc
 			}(),
 			expectedChanged: true,
@@ -207,7 +207,7 @@ func TestApplyService(t *testing.T) {
 				svc := newService()
 				svc.ResourceVersion = "21"
 				svc.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(svc))
+				apimachineryutilruntime.Must(SetHashAnnotation(svc))
 				return svc
 			}(),
 			expectedChanged: true,
@@ -236,7 +236,7 @@ func TestApplyService(t *testing.T) {
 				func() *corev1.Service {
 					svc := newService()
 					svc.OwnerReferences = nil
-					utilruntime.Must(SetHashAnnotation(svc))
+					apimachineryutilruntime.Must(SetHashAnnotation(svc))
 					return svc
 				}(),
 			},
@@ -256,7 +256,7 @@ func TestApplyService(t *testing.T) {
 				func() *corev1.Service {
 					svc := newService()
 					svc.OwnerReferences = nil
-					utilruntime.Must(SetHashAnnotation(svc))
+					apimachineryutilruntime.Must(SetHashAnnotation(svc))
 					return svc
 				}(),
 			},
@@ -269,7 +269,7 @@ func TestApplyService(t *testing.T) {
 			expectedService: func() *corev1.Service {
 				svc := newService()
 				svc.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(svc))
+				apimachineryutilruntime.Must(SetHashAnnotation(svc))
 				return svc
 			}(),
 			expectedChanged: true,
@@ -282,7 +282,7 @@ func TestApplyService(t *testing.T) {
 				func() *corev1.Service {
 					svc := newService()
 					svc.OwnerReferences[0].Kind = "WrongKind"
-					utilruntime.Must(SetHashAnnotation(svc))
+					apimachineryutilruntime.Must(SetHashAnnotation(svc))
 					return svc
 				}(),
 			},
@@ -292,7 +292,7 @@ func TestApplyService(t *testing.T) {
 			}(),
 			expectedService: func() *corev1.Service {
 				svc := newService()
-				utilruntime.Must(SetHashAnnotation(svc))
+				apimachineryutilruntime.Must(SetHashAnnotation(svc))
 				return svc
 			}(),
 			expectedChanged: true,
@@ -305,7 +305,7 @@ func TestApplyService(t *testing.T) {
 				func() *corev1.Service {
 					svc := newService()
 					svc.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(svc))
+					apimachineryutilruntime.Must(SetHashAnnotation(svc))
 					return svc
 				}(),
 			},
@@ -325,7 +325,7 @@ func TestApplyService(t *testing.T) {
 				func() *corev1.Service {
 					svc := newService()
 					svc.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(svc))
+					apimachineryutilruntime.Must(SetHashAnnotation(svc))
 					return svc
 				}(),
 			},
@@ -355,7 +355,7 @@ func TestApplyService(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "",
 					}
-					utilruntime.Must(SetHashAnnotation(svc))
+					apimachineryutilruntime.Must(SetHashAnnotation(svc))
 					svc.Annotations["a-1"] = "a-alpha-changed"
 					svc.Annotations["a-3"] = "a-resurrected"
 					svc.Annotations["a-custom"] = "custom-value"
@@ -392,7 +392,7 @@ func TestApplyService(t *testing.T) {
 					"l-2":  "l-beta",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(svc))
+				apimachineryutilruntime.Must(SetHashAnnotation(svc))
 				svc.Annotations["a-1"] = "a-alpha-changed"
 				svc.Annotations["a-3"] = "a-resurrected"
 				svc.Annotations["a-custom"] = "custom-value"
@@ -420,7 +420,7 @@ func TestApplyService(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "l-resurrected",
 					}
-					utilruntime.Must(SetHashAnnotation(svc))
+					apimachineryutilruntime.Must(SetHashAnnotation(svc))
 					svc.Annotations["a-1"] = "a-alpha-changed"
 					svc.Annotations["a-custom"] = "a-custom-value"
 					svc.Labels["l-1"] = "l-alpha-changed"
@@ -455,7 +455,7 @@ func TestApplyService(t *testing.T) {
 					"l-2":  "l-beta-x",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(svc))
+				apimachineryutilruntime.Must(SetHashAnnotation(svc))
 				delete(svc.Annotations, "a-3-")
 				svc.Annotations["a-custom"] = "a-custom-value"
 				delete(svc.Labels, "l-3-")
@@ -591,7 +591,7 @@ func TestApplySecret(t *testing.T) {
 
 	newSecretWithHash := func() *corev1.Secret {
 		secret := newSecret()
-		utilruntime.Must(SetHashAnnotation(secret))
+		apimachineryutilruntime.Must(SetHashAnnotation(secret))
 		return secret
 	}
 
@@ -674,7 +674,7 @@ func TestApplySecret(t *testing.T) {
 			expectedSecret: func() *corev1.Secret {
 				secret := newSecret()
 				secret.Data["tls.key"] = []byte("foo")
-				utilruntime.Must(SetHashAnnotation(secret))
+				apimachineryutilruntime.Must(SetHashAnnotation(secret))
 				return secret
 			}(),
 			expectedChanged: true,
@@ -694,7 +694,7 @@ func TestApplySecret(t *testing.T) {
 			expectedSecret: func() *corev1.Secret {
 				secret := newSecret()
 				secret.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(secret))
+				apimachineryutilruntime.Must(SetHashAnnotation(secret))
 				return secret
 			}(),
 			expectedChanged: true,
@@ -742,7 +742,7 @@ func TestApplySecret(t *testing.T) {
 				secret := newSecret()
 				secret.ResourceVersion = "21"
 				secret.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(secret))
+				apimachineryutilruntime.Must(SetHashAnnotation(secret))
 				return secret
 			}(),
 			expectedChanged: true,
@@ -771,7 +771,7 @@ func TestApplySecret(t *testing.T) {
 				func() *corev1.Secret {
 					secret := newSecret()
 					secret.OwnerReferences = nil
-					utilruntime.Must(SetHashAnnotation(secret))
+					apimachineryutilruntime.Must(SetHashAnnotation(secret))
 					return secret
 				}(),
 			},
@@ -791,7 +791,7 @@ func TestApplySecret(t *testing.T) {
 				func() *corev1.Secret {
 					secret := newSecret()
 					secret.OwnerReferences = nil
-					utilruntime.Must(SetHashAnnotation(secret))
+					apimachineryutilruntime.Must(SetHashAnnotation(secret))
 					return secret
 				}(),
 			},
@@ -804,7 +804,7 @@ func TestApplySecret(t *testing.T) {
 			expectedSecret: func() *corev1.Secret {
 				secret := newSecret()
 				secret.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(secret))
+				apimachineryutilruntime.Must(SetHashAnnotation(secret))
 				return secret
 			}(),
 			expectedChanged: true,
@@ -817,7 +817,7 @@ func TestApplySecret(t *testing.T) {
 				func() *corev1.Secret {
 					secret := newSecret()
 					secret.OwnerReferences[0].Kind = "WrongKind"
-					utilruntime.Must(SetHashAnnotation(secret))
+					apimachineryutilruntime.Must(SetHashAnnotation(secret))
 					return secret
 				}(),
 			},
@@ -827,7 +827,7 @@ func TestApplySecret(t *testing.T) {
 			}(),
 			expectedSecret: func() *corev1.Secret {
 				secret := newSecret()
-				utilruntime.Must(SetHashAnnotation(secret))
+				apimachineryutilruntime.Must(SetHashAnnotation(secret))
 				return secret
 			}(),
 			expectedChanged: true,
@@ -840,7 +840,7 @@ func TestApplySecret(t *testing.T) {
 				func() *corev1.Secret {
 					secret := newSecret()
 					secret.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(secret))
+					apimachineryutilruntime.Must(SetHashAnnotation(secret))
 					return secret
 				}(),
 			},
@@ -860,7 +860,7 @@ func TestApplySecret(t *testing.T) {
 				func() *corev1.Secret {
 					secret := newSecret()
 					secret.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(secret))
+					apimachineryutilruntime.Must(SetHashAnnotation(secret))
 					return secret
 				}(),
 			},
@@ -890,7 +890,7 @@ func TestApplySecret(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "",
 					}
-					utilruntime.Must(SetHashAnnotation(secret))
+					apimachineryutilruntime.Must(SetHashAnnotation(secret))
 					secret.Annotations["a-1"] = "a-alpha-changed"
 					secret.Annotations["a-3"] = "a-resurrected"
 					secret.Annotations["a-custom"] = "custom-value"
@@ -927,7 +927,7 @@ func TestApplySecret(t *testing.T) {
 					"l-2":  "l-beta",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(secret))
+				apimachineryutilruntime.Must(SetHashAnnotation(secret))
 				secret.Annotations["a-1"] = "a-alpha-changed"
 				secret.Annotations["a-3"] = "a-resurrected"
 				secret.Annotations["a-custom"] = "custom-value"
@@ -955,7 +955,7 @@ func TestApplySecret(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "l-resurrected",
 					}
-					utilruntime.Must(SetHashAnnotation(secret))
+					apimachineryutilruntime.Must(SetHashAnnotation(secret))
 					secret.Annotations["a-1"] = "a-alpha-changed"
 					secret.Annotations["a-custom"] = "a-custom-value"
 					secret.Labels["l-1"] = "l-alpha-changed"
@@ -990,7 +990,7 @@ func TestApplySecret(t *testing.T) {
 					"l-2":  "l-beta-x",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(secret))
+				apimachineryutilruntime.Must(SetHashAnnotation(secret))
 				delete(secret.Annotations, "a-3-")
 				secret.Annotations["a-custom"] = "a-custom-value"
 				delete(secret.Labels, "l-3-")
@@ -1131,7 +1131,7 @@ func TestApplyServiceAccount(t *testing.T) {
 
 	newSAWithHash := func() *corev1.ServiceAccount {
 		sa := newSA()
-		utilruntime.Must(SetHashAnnotation(sa))
+		apimachineryutilruntime.Must(SetHashAnnotation(sa))
 		return sa
 	}
 
@@ -1221,7 +1221,7 @@ func TestApplyServiceAccount(t *testing.T) {
 			expectedSA: func() *corev1.ServiceAccount {
 				sa := newSA()
 				sa.AutomountServiceAccountToken = pointer.Ptr(true)
-				utilruntime.Must(SetHashAnnotation(sa))
+				apimachineryutilruntime.Must(SetHashAnnotation(sa))
 				return sa
 			}(),
 			expectedChanged: true,
@@ -1242,7 +1242,7 @@ func TestApplyServiceAccount(t *testing.T) {
 			expectedSA: func() *corev1.ServiceAccount {
 				sa := newSA()
 				sa.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(sa))
+				apimachineryutilruntime.Must(SetHashAnnotation(sa))
 				return sa
 			}(),
 			expectedChanged: true,
@@ -1292,7 +1292,7 @@ func TestApplyServiceAccount(t *testing.T) {
 				sa := newSA()
 				sa.ResourceVersion = "21"
 				sa.AutomountServiceAccountToken = pointer.Ptr(true)
-				utilruntime.Must(SetHashAnnotation(sa))
+				apimachineryutilruntime.Must(SetHashAnnotation(sa))
 				return sa
 			}(),
 			expectedChanged: true,
@@ -1321,7 +1321,7 @@ func TestApplyServiceAccount(t *testing.T) {
 			existing: []runtime.Object{
 				func() *corev1.ServiceAccount {
 					sa := newSAWithControllerRef()
-					utilruntime.Must(SetHashAnnotation(sa))
+					apimachineryutilruntime.Must(SetHashAnnotation(sa))
 					return sa
 				}(),
 			},
@@ -1337,7 +1337,7 @@ func TestApplyServiceAccount(t *testing.T) {
 			existing: []runtime.Object{
 				func() *corev1.ServiceAccount {
 					sa := newSA()
-					utilruntime.Must(SetHashAnnotation(sa))
+					apimachineryutilruntime.Must(SetHashAnnotation(sa))
 					return sa
 				}(),
 			},
@@ -1350,7 +1350,7 @@ func TestApplyServiceAccount(t *testing.T) {
 			expectedSA: func() *corev1.ServiceAccount {
 				sa := newSAWithControllerRef()
 				sa.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(sa))
+				apimachineryutilruntime.Must(SetHashAnnotation(sa))
 				return sa
 			}(),
 			expectedChanged: true,
@@ -1363,7 +1363,7 @@ func TestApplyServiceAccount(t *testing.T) {
 				func() *corev1.ServiceAccount {
 					sa := newSAWithControllerRef()
 					sa.OwnerReferences[0].Kind = "WrongKind"
-					utilruntime.Must(SetHashAnnotation(sa))
+					apimachineryutilruntime.Must(SetHashAnnotation(sa))
 					return sa
 				}(),
 			},
@@ -1373,7 +1373,7 @@ func TestApplyServiceAccount(t *testing.T) {
 			}(),
 			expectedSA: func() *corev1.ServiceAccount {
 				sa := newSAWithControllerRef()
-				utilruntime.Must(SetHashAnnotation(sa))
+				apimachineryutilruntime.Must(SetHashAnnotation(sa))
 				return sa
 			}(),
 			expectedChanged: true,
@@ -1386,7 +1386,7 @@ func TestApplyServiceAccount(t *testing.T) {
 				func() *corev1.ServiceAccount {
 					sa := newSAWithControllerRef()
 					sa.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(sa))
+					apimachineryutilruntime.Must(SetHashAnnotation(sa))
 					return sa
 				}(),
 			},
@@ -1406,7 +1406,7 @@ func TestApplyServiceAccount(t *testing.T) {
 				func() *corev1.ServiceAccount {
 					sa := newSAWithControllerRef()
 					sa.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(sa))
+					apimachineryutilruntime.Must(SetHashAnnotation(sa))
 					return sa
 				}(),
 			},
@@ -1436,7 +1436,7 @@ func TestApplyServiceAccount(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "",
 					}
-					utilruntime.Must(SetHashAnnotation(sa))
+					apimachineryutilruntime.Must(SetHashAnnotation(sa))
 					sa.Annotations["a-1"] = "a-alpha-changed"
 					sa.Annotations["a-3"] = "a-resurrected"
 					sa.Annotations["a-custom"] = "custom-value"
@@ -1473,7 +1473,7 @@ func TestApplyServiceAccount(t *testing.T) {
 					"l-2":  "l-beta",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(sa))
+				apimachineryutilruntime.Must(SetHashAnnotation(sa))
 				sa.Annotations["a-1"] = "a-alpha-changed"
 				sa.Annotations["a-3"] = "a-resurrected"
 				sa.Annotations["a-custom"] = "custom-value"
@@ -1501,7 +1501,7 @@ func TestApplyServiceAccount(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "l-resurrected",
 					}
-					utilruntime.Must(SetHashAnnotation(sa))
+					apimachineryutilruntime.Must(SetHashAnnotation(sa))
 					sa.Annotations["a-1"] = "a-alpha-changed"
 					sa.Annotations["a-custom"] = "a-custom-value"
 					sa.Labels["l-1"] = "l-alpha-changed"
@@ -1536,7 +1536,7 @@ func TestApplyServiceAccount(t *testing.T) {
 					"l-2":  "l-beta-x",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(sa))
+				apimachineryutilruntime.Must(SetHashAnnotation(sa))
 				delete(sa.Annotations, "a-3-")
 				sa.Annotations["a-custom"] = "a-custom-value"
 				delete(sa.Labels, "l-3-")
@@ -1673,7 +1673,7 @@ func TestApplyConfigMap(t *testing.T) {
 
 	newConfigMapWithHash := func() *corev1.ConfigMap {
 		cm := newConfigMap()
-		utilruntime.Must(SetHashAnnotation(cm))
+		apimachineryutilruntime.Must(SetHashAnnotation(cm))
 		return cm
 	}
 
@@ -1755,7 +1755,7 @@ func TestApplyConfigMap(t *testing.T) {
 			expectedCM: func() *corev1.ConfigMap {
 				cm := newConfigMap()
 				cm.Data["tls.key"] = "foo"
-				utilruntime.Must(SetHashAnnotation(cm))
+				apimachineryutilruntime.Must(SetHashAnnotation(cm))
 				return cm
 			}(),
 			expectedChanged: true,
@@ -1775,7 +1775,7 @@ func TestApplyConfigMap(t *testing.T) {
 			expectedCM: func() *corev1.ConfigMap {
 				cm := newConfigMap()
 				cm.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(cm))
+				apimachineryutilruntime.Must(SetHashAnnotation(cm))
 				return cm
 			}(),
 			expectedChanged: true,
@@ -1823,7 +1823,7 @@ func TestApplyConfigMap(t *testing.T) {
 				cm := newConfigMap()
 				cm.ResourceVersion = "21"
 				cm.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(cm))
+				apimachineryutilruntime.Must(SetHashAnnotation(cm))
 				return cm
 			}(),
 			expectedChanged: true,
@@ -1852,7 +1852,7 @@ func TestApplyConfigMap(t *testing.T) {
 				func() *corev1.ConfigMap {
 					cm := newConfigMap()
 					cm.OwnerReferences = nil
-					utilruntime.Must(SetHashAnnotation(cm))
+					apimachineryutilruntime.Must(SetHashAnnotation(cm))
 					return cm
 				}(),
 			},
@@ -1872,7 +1872,7 @@ func TestApplyConfigMap(t *testing.T) {
 				func() *corev1.ConfigMap {
 					cm := newConfigMap()
 					cm.OwnerReferences[0].Kind = "WrongKind"
-					utilruntime.Must(SetHashAnnotation(cm))
+					apimachineryutilruntime.Must(SetHashAnnotation(cm))
 					return cm
 				}(),
 			},
@@ -1882,7 +1882,7 @@ func TestApplyConfigMap(t *testing.T) {
 			}(),
 			expectedCM: func() *corev1.ConfigMap {
 				cm := newConfigMap()
-				utilruntime.Must(SetHashAnnotation(cm))
+				apimachineryutilruntime.Must(SetHashAnnotation(cm))
 				return cm
 			}(),
 			expectedChanged: true,
@@ -1895,7 +1895,7 @@ func TestApplyConfigMap(t *testing.T) {
 				func() *corev1.ConfigMap {
 					cm := newConfigMap()
 					cm.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(cm))
+					apimachineryutilruntime.Must(SetHashAnnotation(cm))
 					return cm
 				}(),
 			},
@@ -1924,7 +1924,7 @@ func TestApplyConfigMap(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "",
 					}
-					utilruntime.Must(SetHashAnnotation(cm))
+					apimachineryutilruntime.Must(SetHashAnnotation(cm))
 					cm.Annotations["a-1"] = "a-alpha-changed"
 					cm.Annotations["a-3"] = "a-resurrected"
 					cm.Annotations["a-custom"] = "custom-value"
@@ -1960,7 +1960,7 @@ func TestApplyConfigMap(t *testing.T) {
 					"l-2":  "l-beta",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(cm))
+				apimachineryutilruntime.Must(SetHashAnnotation(cm))
 				cm.Annotations["a-1"] = "a-alpha-changed"
 				cm.Annotations["a-3"] = "a-resurrected"
 				cm.Annotations["a-custom"] = "custom-value"
@@ -1988,7 +1988,7 @@ func TestApplyConfigMap(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "l-resurrected",
 					}
-					utilruntime.Must(SetHashAnnotation(cm))
+					apimachineryutilruntime.Must(SetHashAnnotation(cm))
 					cm.Annotations["a-1"] = "a-alpha-changed"
 					cm.Annotations["a-custom"] = "a-custom-value"
 					cm.Labels["l-1"] = "l-alpha-changed"
@@ -2022,7 +2022,7 @@ func TestApplyConfigMap(t *testing.T) {
 					"l-2":  "l-beta-x",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(configMap))
+				apimachineryutilruntime.Must(SetHashAnnotation(configMap))
 				delete(configMap.Annotations, "a-3-")
 				configMap.Annotations["a-custom"] = "a-custom-value"
 				delete(configMap.Labels, "l-3-")
@@ -2146,7 +2146,7 @@ func TestApplyNamespace(t *testing.T) {
 
 	newNSWithHash := func() *corev1.Namespace {
 		ns := newNS()
-		utilruntime.Must(SetHashAnnotation(ns))
+		apimachineryutilruntime.Must(SetHashAnnotation(ns))
 		return ns
 	}
 
@@ -2235,7 +2235,7 @@ func TestApplyNamespace(t *testing.T) {
 			expectedNS: func() *corev1.Namespace {
 				ns := newNS()
 				ns.Finalizers = []string{"boop"}
-				utilruntime.Must(SetHashAnnotation(ns))
+				apimachineryutilruntime.Must(SetHashAnnotation(ns))
 				return ns
 			}(),
 			expectedChanged: true,
@@ -2256,7 +2256,7 @@ func TestApplyNamespace(t *testing.T) {
 			expectedNS: func() *corev1.Namespace {
 				ns := newNS()
 				ns.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(ns))
+				apimachineryutilruntime.Must(SetHashAnnotation(ns))
 				return ns
 			}(),
 			expectedChanged: true,
@@ -2306,7 +2306,7 @@ func TestApplyNamespace(t *testing.T) {
 				ns := newNS()
 				ns.ResourceVersion = "21"
 				ns.Finalizers = []string{"boop"}
-				utilruntime.Must(SetHashAnnotation(ns))
+				apimachineryutilruntime.Must(SetHashAnnotation(ns))
 				return ns
 			}(),
 			expectedChanged: true,
@@ -2345,7 +2345,7 @@ func TestApplyNamespace(t *testing.T) {
 							BlockOwnerDeletion: pointer.Ptr(true),
 						},
 					}
-					utilruntime.Must(SetHashAnnotation(ns))
+					apimachineryutilruntime.Must(SetHashAnnotation(ns))
 					return ns
 				}(),
 			},
@@ -2371,7 +2371,7 @@ func TestApplyNamespace(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "",
 					}
-					utilruntime.Must(SetHashAnnotation(ns))
+					apimachineryutilruntime.Must(SetHashAnnotation(ns))
 					ns.Annotations["a-1"] = "a-alpha-changed"
 					ns.Annotations["a-3"] = "a-resurrected"
 					ns.Annotations["a-custom"] = "custom-value"
@@ -2408,7 +2408,7 @@ func TestApplyNamespace(t *testing.T) {
 					"l-2":  "l-beta",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(ns))
+				apimachineryutilruntime.Must(SetHashAnnotation(ns))
 				ns.Annotations["a-1"] = "a-alpha-changed"
 				ns.Annotations["a-3"] = "a-resurrected"
 				ns.Annotations["a-custom"] = "custom-value"
@@ -2436,7 +2436,7 @@ func TestApplyNamespace(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "l-resurrected",
 					}
-					utilruntime.Must(SetHashAnnotation(ns))
+					apimachineryutilruntime.Must(SetHashAnnotation(ns))
 					ns.Annotations["a-1"] = "a-alpha-changed"
 					ns.Annotations["a-custom"] = "a-custom-value"
 					ns.Labels["l-1"] = "l-alpha-changed"
@@ -2471,7 +2471,7 @@ func TestApplyNamespace(t *testing.T) {
 					"l-2":  "l-beta-x",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(ns))
+				apimachineryutilruntime.Must(SetHashAnnotation(ns))
 				delete(ns.Annotations, "a-3-")
 				ns.Annotations["a-custom"] = "a-custom-value"
 				delete(ns.Labels, "l-3-")
@@ -2624,7 +2624,7 @@ func TestApplyEndpoints(t *testing.T) {
 
 	newEndpointsWithHash := func() *corev1.Endpoints {
 		Endpoints := newEndpoints()
-		utilruntime.Must(SetHashAnnotation(Endpoints))
+		apimachineryutilruntime.Must(SetHashAnnotation(Endpoints))
 		return Endpoints
 	}
 
@@ -2710,7 +2710,7 @@ func TestApplyEndpoints(t *testing.T) {
 				endpoints.Subsets[0].Addresses = append(endpoints.Subsets[0].Addresses, corev1.EndpointAddress{
 					IP: "2.2.2.2",
 				})
-				utilruntime.Must(SetHashAnnotation(endpoints))
+				apimachineryutilruntime.Must(SetHashAnnotation(endpoints))
 				return endpoints
 			}(),
 			expectedChanged: true,
@@ -2730,7 +2730,7 @@ func TestApplyEndpoints(t *testing.T) {
 			expectedEndpoints: func() *corev1.Endpoints {
 				Endpoints := newEndpoints()
 				Endpoints.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(Endpoints))
+				apimachineryutilruntime.Must(SetHashAnnotation(Endpoints))
 				return Endpoints
 			}(),
 			expectedChanged: true,
@@ -2782,7 +2782,7 @@ func TestApplyEndpoints(t *testing.T) {
 				Endpoints := newEndpoints()
 				Endpoints.ResourceVersion = "21"
 				Endpoints.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(Endpoints))
+				apimachineryutilruntime.Must(SetHashAnnotation(Endpoints))
 				return Endpoints
 			}(),
 			expectedChanged: true,
@@ -2811,7 +2811,7 @@ func TestApplyEndpoints(t *testing.T) {
 				func() *corev1.Endpoints {
 					Endpoints := newEndpoints()
 					Endpoints.OwnerReferences = nil
-					utilruntime.Must(SetHashAnnotation(Endpoints))
+					apimachineryutilruntime.Must(SetHashAnnotation(Endpoints))
 					return Endpoints
 				}(),
 			},
@@ -2831,7 +2831,7 @@ func TestApplyEndpoints(t *testing.T) {
 				func() *corev1.Endpoints {
 					Endpoints := newEndpoints()
 					Endpoints.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(Endpoints))
+					apimachineryutilruntime.Must(SetHashAnnotation(Endpoints))
 					return Endpoints
 				}(),
 			},
@@ -2860,7 +2860,7 @@ func TestApplyEndpoints(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "",
 					}
-					utilruntime.Must(SetHashAnnotation(Endpoints))
+					apimachineryutilruntime.Must(SetHashAnnotation(Endpoints))
 					Endpoints.Annotations["a-1"] = "a-alpha-changed"
 					Endpoints.Annotations["a-3"] = "a-resurrected"
 					Endpoints.Annotations["a-custom"] = "custom-value"
@@ -2896,7 +2896,7 @@ func TestApplyEndpoints(t *testing.T) {
 					"l-2":  "l-beta",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(Endpoints))
+				apimachineryutilruntime.Must(SetHashAnnotation(Endpoints))
 				Endpoints.Annotations["a-1"] = "a-alpha-changed"
 				Endpoints.Annotations["a-3"] = "a-resurrected"
 				Endpoints.Annotations["a-custom"] = "custom-value"
@@ -2924,7 +2924,7 @@ func TestApplyEndpoints(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "l-resurrected",
 					}
-					utilruntime.Must(SetHashAnnotation(Endpoints))
+					apimachineryutilruntime.Must(SetHashAnnotation(Endpoints))
 					Endpoints.Annotations["a-1"] = "a-alpha-changed"
 					Endpoints.Annotations["a-custom"] = "a-custom-value"
 					Endpoints.Labels["l-1"] = "l-alpha-changed"
@@ -2958,7 +2958,7 @@ func TestApplyEndpoints(t *testing.T) {
 					"l-2":  "l-beta-x",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(Endpoints))
+				apimachineryutilruntime.Must(SetHashAnnotation(Endpoints))
 				delete(Endpoints.Annotations, "a-3-")
 				Endpoints.Annotations["a-custom"] = "a-custom-value"
 				delete(Endpoints.Labels, "l-3-")
@@ -3106,7 +3106,7 @@ func TestApplyPod(t *testing.T) {
 
 	newPodWithHash := func() *corev1.Pod {
 		pod := newPod()
-		utilruntime.Must(SetHashAnnotation(pod))
+		apimachineryutilruntime.Must(SetHashAnnotation(pod))
 		return pod
 	}
 
@@ -3189,7 +3189,7 @@ func TestApplyPod(t *testing.T) {
 			expectedPod: func() *corev1.Pod {
 				pod := newPod()
 				pod.Spec.Containers[0].Resources.Limits[corev1.ResourceCPU] = resource.MustParse("20m")
-				utilruntime.Must(SetHashAnnotation(pod))
+				apimachineryutilruntime.Must(SetHashAnnotation(pod))
 				return pod
 			}(),
 			expectedChanged: true,
@@ -3209,7 +3209,7 @@ func TestApplyPod(t *testing.T) {
 			expectedPod: func() *corev1.Pod {
 				pod := newPod()
 				pod.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(pod))
+				apimachineryutilruntime.Must(SetHashAnnotation(pod))
 				return pod
 			}(),
 			expectedChanged: true,
@@ -3257,7 +3257,7 @@ func TestApplyPod(t *testing.T) {
 				pod := newPod()
 				pod.ResourceVersion = "21"
 				pod.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(pod))
+				apimachineryutilruntime.Must(SetHashAnnotation(pod))
 				return pod
 			}(),
 			expectedChanged: true,
@@ -3286,7 +3286,7 @@ func TestApplyPod(t *testing.T) {
 				func() *corev1.Pod {
 					pod := newPod()
 					pod.OwnerReferences = nil
-					utilruntime.Must(SetHashAnnotation(pod))
+					apimachineryutilruntime.Must(SetHashAnnotation(pod))
 					return pod
 				}(),
 			},
@@ -3306,7 +3306,7 @@ func TestApplyPod(t *testing.T) {
 				func() *corev1.Pod {
 					pod := newPod()
 					pod.OwnerReferences = nil
-					utilruntime.Must(SetHashAnnotation(pod))
+					apimachineryutilruntime.Must(SetHashAnnotation(pod))
 					return pod
 				}(),
 			},
@@ -3319,7 +3319,7 @@ func TestApplyPod(t *testing.T) {
 			expectedPod: func() *corev1.Pod {
 				pod := newPod()
 				pod.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(pod))
+				apimachineryutilruntime.Must(SetHashAnnotation(pod))
 				return pod
 			}(),
 			expectedChanged: true,
@@ -3332,7 +3332,7 @@ func TestApplyPod(t *testing.T) {
 				func() *corev1.Pod {
 					pod := newPod()
 					pod.OwnerReferences[0].Kind = "WrongKind"
-					utilruntime.Must(SetHashAnnotation(pod))
+					apimachineryutilruntime.Must(SetHashAnnotation(pod))
 					return pod
 				}(),
 			},
@@ -3342,7 +3342,7 @@ func TestApplyPod(t *testing.T) {
 			}(),
 			expectedPod: func() *corev1.Pod {
 				pod := newPod()
-				utilruntime.Must(SetHashAnnotation(pod))
+				apimachineryutilruntime.Must(SetHashAnnotation(pod))
 				return pod
 			}(),
 			expectedChanged: true,
@@ -3355,7 +3355,7 @@ func TestApplyPod(t *testing.T) {
 				func() *corev1.Pod {
 					pod := newPod()
 					pod.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(pod))
+					apimachineryutilruntime.Must(SetHashAnnotation(pod))
 					return pod
 				}(),
 			},
@@ -3375,7 +3375,7 @@ func TestApplyPod(t *testing.T) {
 				func() *corev1.Pod {
 					pod := newPod()
 					pod.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(pod))
+					apimachineryutilruntime.Must(SetHashAnnotation(pod))
 					return pod
 				}(),
 			},
@@ -3405,7 +3405,7 @@ func TestApplyPod(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "",
 					}
-					utilruntime.Must(SetHashAnnotation(pod))
+					apimachineryutilruntime.Must(SetHashAnnotation(pod))
 					pod.Annotations["a-1"] = "a-alpha-changed"
 					pod.Annotations["a-3"] = "a-resurrected"
 					pod.Annotations["a-custom"] = "custom-value"
@@ -3442,7 +3442,7 @@ func TestApplyPod(t *testing.T) {
 					"l-2":  "l-beta",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(pod))
+				apimachineryutilruntime.Must(SetHashAnnotation(pod))
 				pod.Annotations["a-1"] = "a-alpha-changed"
 				pod.Annotations["a-3"] = "a-resurrected"
 				pod.Annotations["a-custom"] = "custom-value"
@@ -3470,7 +3470,7 @@ func TestApplyPod(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "l-resurrected",
 					}
-					utilruntime.Must(SetHashAnnotation(pod))
+					apimachineryutilruntime.Must(SetHashAnnotation(pod))
 					pod.Annotations["a-1"] = "a-alpha-changed"
 					pod.Annotations["a-custom"] = "a-custom-value"
 					pod.Labels["l-1"] = "l-alpha-changed"
@@ -3505,7 +3505,7 @@ func TestApplyPod(t *testing.T) {
 					"l-2":  "l-beta-x",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(pod))
+				apimachineryutilruntime.Must(SetHashAnnotation(pod))
 				delete(pod.Annotations, "a-3-")
 				pod.Annotations["a-custom"] = "a-custom-value"
 				delete(pod.Labels, "l-3-")
@@ -3650,7 +3650,7 @@ func TestApplyPersistentVolumeClaim(t *testing.T) {
 
 	newPersistentVolumeClaimWithHash := func() *corev1.PersistentVolumeClaim {
 		pvc := newPersistentVolumeClaim()
-		utilruntime.Must(SetHashAnnotation(pvc))
+		apimachineryutilruntime.Must(SetHashAnnotation(pvc))
 		return pvc
 	}
 
@@ -3737,7 +3737,7 @@ func TestApplyPersistentVolumeClaim(t *testing.T) {
 				pvc.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{
 					corev1.ReadWriteMany,
 				}
-				utilruntime.Must(SetHashAnnotation(pvc))
+				apimachineryutilruntime.Must(SetHashAnnotation(pvc))
 				return pvc
 			}(),
 			expectedChanged: true,
@@ -3757,7 +3757,7 @@ func TestApplyPersistentVolumeClaim(t *testing.T) {
 			expectedPersistentVolumeClaim: func() *corev1.PersistentVolumeClaim {
 				pvc := newPersistentVolumeClaim()
 				pvc.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(pvc))
+				apimachineryutilruntime.Must(SetHashAnnotation(pvc))
 				return pvc
 			}(),
 			expectedChanged: true,
@@ -3805,7 +3805,7 @@ func TestApplyPersistentVolumeClaim(t *testing.T) {
 				pvc := newPersistentVolumeClaim()
 				pvc.ResourceVersion = "21"
 				pvc.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(pvc))
+				apimachineryutilruntime.Must(SetHashAnnotation(pvc))
 				return pvc
 			}(),
 			expectedChanged: true,
@@ -3834,7 +3834,7 @@ func TestApplyPersistentVolumeClaim(t *testing.T) {
 				func() *corev1.PersistentVolumeClaim {
 					pvc := newPersistentVolumeClaim()
 					pvc.OwnerReferences = nil
-					utilruntime.Must(SetHashAnnotation(pvc))
+					apimachineryutilruntime.Must(SetHashAnnotation(pvc))
 					return pvc
 				}(),
 			},
@@ -3854,7 +3854,7 @@ func TestApplyPersistentVolumeClaim(t *testing.T) {
 				func() *corev1.PersistentVolumeClaim {
 					pvc := newPersistentVolumeClaim()
 					pvc.OwnerReferences = nil
-					utilruntime.Must(SetHashAnnotation(pvc))
+					apimachineryutilruntime.Must(SetHashAnnotation(pvc))
 					return pvc
 				}(),
 			},
@@ -3867,7 +3867,7 @@ func TestApplyPersistentVolumeClaim(t *testing.T) {
 			expectedPersistentVolumeClaim: func() *corev1.PersistentVolumeClaim {
 				pvc := newPersistentVolumeClaim()
 				pvc.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(pvc))
+				apimachineryutilruntime.Must(SetHashAnnotation(pvc))
 				return pvc
 			}(),
 			expectedChanged: true,
@@ -3880,7 +3880,7 @@ func TestApplyPersistentVolumeClaim(t *testing.T) {
 				func() *corev1.PersistentVolumeClaim {
 					pvc := newPersistentVolumeClaim()
 					pvc.OwnerReferences[0].Kind = "WrongKind"
-					utilruntime.Must(SetHashAnnotation(pvc))
+					apimachineryutilruntime.Must(SetHashAnnotation(pvc))
 					return pvc
 				}(),
 			},
@@ -3890,7 +3890,7 @@ func TestApplyPersistentVolumeClaim(t *testing.T) {
 			}(),
 			expectedPersistentVolumeClaim: func() *corev1.PersistentVolumeClaim {
 				pvc := newPersistentVolumeClaim()
-				utilruntime.Must(SetHashAnnotation(pvc))
+				apimachineryutilruntime.Must(SetHashAnnotation(pvc))
 				return pvc
 			}(),
 			expectedChanged: true,
@@ -3903,7 +3903,7 @@ func TestApplyPersistentVolumeClaim(t *testing.T) {
 				func() *corev1.PersistentVolumeClaim {
 					pvc := newPersistentVolumeClaim()
 					pvc.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(pvc))
+					apimachineryutilruntime.Must(SetHashAnnotation(pvc))
 					return pvc
 				}(),
 			},
@@ -3923,7 +3923,7 @@ func TestApplyPersistentVolumeClaim(t *testing.T) {
 				func() *corev1.PersistentVolumeClaim {
 					pvc := newPersistentVolumeClaim()
 					pvc.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(pvc))
+					apimachineryutilruntime.Must(SetHashAnnotation(pvc))
 					return pvc
 				}(),
 			},
@@ -3953,7 +3953,7 @@ func TestApplyPersistentVolumeClaim(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "",
 					}
-					utilruntime.Must(SetHashAnnotation(pvc))
+					apimachineryutilruntime.Must(SetHashAnnotation(pvc))
 					pvc.Annotations["a-1"] = "a-alpha-changed"
 					pvc.Annotations["a-3"] = "a-resurrected"
 					pvc.Annotations["a-custom"] = "custom-value"
@@ -3990,7 +3990,7 @@ func TestApplyPersistentVolumeClaim(t *testing.T) {
 					"l-2":  "l-beta",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(pvc))
+				apimachineryutilruntime.Must(SetHashAnnotation(pvc))
 				pvc.Annotations["a-1"] = "a-alpha-changed"
 				pvc.Annotations["a-3"] = "a-resurrected"
 				pvc.Annotations["a-custom"] = "custom-value"
@@ -4018,7 +4018,7 @@ func TestApplyPersistentVolumeClaim(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "l-resurrected",
 					}
-					utilruntime.Must(SetHashAnnotation(pvc))
+					apimachineryutilruntime.Must(SetHashAnnotation(pvc))
 					pvc.Annotations["a-1"] = "a-alpha-changed"
 					pvc.Annotations["a-custom"] = "a-custom-value"
 					pvc.Labels["l-1"] = "l-alpha-changed"
@@ -4053,7 +4053,7 @@ func TestApplyPersistentVolumeClaim(t *testing.T) {
 					"l-2":  "l-beta-x",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(pvc))
+				apimachineryutilruntime.Must(SetHashAnnotation(pvc))
 				delete(pvc.Annotations, "a-3-")
 				pvc.Annotations["a-custom"] = "a-custom-value"
 				delete(pvc.Labels, "l-3-")

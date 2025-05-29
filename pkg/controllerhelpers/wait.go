@@ -18,7 +18,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
+	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -136,7 +136,7 @@ func WaitForObjectState[Object, ListObject runtime.Object](ctx context.Context, 
 		}
 	})
 	if err != nil {
-		if wait.Interrupted(err) {
+		if apimachineryutilwait.Interrupted(err) {
 			err = fmt.Errorf("waiting has been interupted (%s): %w", acs.GetStateString(), err)
 		}
 		return *new(Object), err

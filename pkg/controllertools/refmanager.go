@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 )
 
@@ -137,7 +137,7 @@ func (m *ControllerRefManager[T]) ClaimObjects(objects []T) (map[string]T, error
 			claimedMap[obj.GetName()] = obj
 		}
 	}
-	return claimedMap, utilerrors.NewAggregate(errors)
+	return claimedMap, apimachineryutilerrors.NewAggregate(errors)
 }
 
 func (m *ControllerRefManager[T]) AdoptObject(obj T) error {

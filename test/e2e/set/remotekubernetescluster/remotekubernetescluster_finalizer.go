@@ -10,7 +10,7 @@ import (
 	o "github.com/onsi/gomega"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -54,7 +54,7 @@ var _ = g.Describe("RemoteKubernetesCluster finalizer", func() {
 
 		const expectedFinalizer = "scylla-operator.scylladb.com/remotekubernetescluster-protection"
 		hasRKCFinalizer := func(rkc *scyllav1alpha1.RemoteKubernetesCluster) (bool, error) {
-			return slices.ContainsItem(rkc.Finalizers, expectedFinalizer), nil
+			return oslices.ContainsItem(rkc.Finalizers, expectedFinalizer), nil
 		}
 
 		rkc, err = controllerhelpers.WaitForRemoteKubernetesClusterState(waitCtx1, cluster.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters(), rkc.Name, controllerhelpers.WaitForStateOptions{},

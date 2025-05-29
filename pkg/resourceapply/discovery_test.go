@@ -18,7 +18,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	discoveryv1listers "k8s.io/client-go/listers/discovery/v1"
 	"k8s.io/client-go/tools/cache"
@@ -69,7 +69,7 @@ func TestApplyEndpointSlice(t *testing.T) {
 
 	newEndpointSliceWithHash := func() *discoveryv1.EndpointSlice {
 		endpointSlice := newEndpointSlice()
-		utilruntime.Must(SetHashAnnotation(endpointSlice))
+		apimachineryutilruntime.Must(SetHashAnnotation(endpointSlice))
 		return endpointSlice
 	}
 
@@ -151,7 +151,7 @@ func TestApplyEndpointSlice(t *testing.T) {
 			expectedEndpointSlice: func() *discoveryv1.EndpointSlice {
 				endpointSlice := newEndpointSlice()
 				endpointSlice.Endpoints[0].Addresses = append(endpointSlice.Endpoints[0].Addresses, "1.1.1.1")
-				utilruntime.Must(SetHashAnnotation(endpointSlice))
+				apimachineryutilruntime.Must(SetHashAnnotation(endpointSlice))
 				return endpointSlice
 			}(),
 			expectedChanged: true,
@@ -171,7 +171,7 @@ func TestApplyEndpointSlice(t *testing.T) {
 			expectedEndpointSlice: func() *discoveryv1.EndpointSlice {
 				endpointSlice := newEndpointSlice()
 				endpointSlice.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(endpointSlice))
+				apimachineryutilruntime.Must(SetHashAnnotation(endpointSlice))
 				return endpointSlice
 			}(),
 			expectedChanged: true,
@@ -219,7 +219,7 @@ func TestApplyEndpointSlice(t *testing.T) {
 				endpointSlice := newEndpointSlice()
 				endpointSlice.ResourceVersion = "21"
 				endpointSlice.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(endpointSlice))
+				apimachineryutilruntime.Must(SetHashAnnotation(endpointSlice))
 				return endpointSlice
 			}(),
 			expectedChanged: true,
@@ -248,7 +248,7 @@ func TestApplyEndpointSlice(t *testing.T) {
 				func() *discoveryv1.EndpointSlice {
 					endpointSlice := newEndpointSlice()
 					endpointSlice.OwnerReferences = nil
-					utilruntime.Must(SetHashAnnotation(endpointSlice))
+					apimachineryutilruntime.Must(SetHashAnnotation(endpointSlice))
 					return endpointSlice
 				}(),
 			},
@@ -268,7 +268,7 @@ func TestApplyEndpointSlice(t *testing.T) {
 				func() *discoveryv1.EndpointSlice {
 					endpointSlice := newEndpointSlice()
 					endpointSlice.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(endpointSlice))
+					apimachineryutilruntime.Must(SetHashAnnotation(endpointSlice))
 					return endpointSlice
 				}(),
 			},
@@ -297,7 +297,7 @@ func TestApplyEndpointSlice(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "",
 					}
-					utilruntime.Must(SetHashAnnotation(endpointSlice))
+					apimachineryutilruntime.Must(SetHashAnnotation(endpointSlice))
 					endpointSlice.Annotations["a-1"] = "a-alpha-changed"
 					endpointSlice.Annotations["a-3"] = "a-resurrected"
 					endpointSlice.Annotations["a-custom"] = "custom-value"
@@ -333,7 +333,7 @@ func TestApplyEndpointSlice(t *testing.T) {
 					"l-2":  "l-beta",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(endpointSlice))
+				apimachineryutilruntime.Must(SetHashAnnotation(endpointSlice))
 				endpointSlice.Annotations["a-1"] = "a-alpha-changed"
 				endpointSlice.Annotations["a-3"] = "a-resurrected"
 				endpointSlice.Annotations["a-custom"] = "custom-value"
@@ -361,7 +361,7 @@ func TestApplyEndpointSlice(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "l-resurrected",
 					}
-					utilruntime.Must(SetHashAnnotation(endpointSlice))
+					apimachineryutilruntime.Must(SetHashAnnotation(endpointSlice))
 					endpointSlice.Annotations["a-1"] = "a-alpha-changed"
 					endpointSlice.Annotations["a-custom"] = "a-custom-value"
 					endpointSlice.Labels["l-1"] = "l-alpha-changed"
@@ -395,7 +395,7 @@ func TestApplyEndpointSlice(t *testing.T) {
 					"l-2":  "l-beta-x",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(endpointSlice))
+				apimachineryutilruntime.Must(SetHashAnnotation(endpointSlice))
 				delete(endpointSlice.Annotations, "a-3-")
 				endpointSlice.Annotations["a-custom"] = "a-custom-value"
 				delete(endpointSlice.Labels, "l-3-")

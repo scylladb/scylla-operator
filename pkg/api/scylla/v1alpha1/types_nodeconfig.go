@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -88,13 +88,13 @@ type NodeConfigNodeStatus struct {
 }
 
 func (c NodeConfigConditions) ToMetaV1Conditions() []metav1.Condition {
-	return slices.ConvertSlice(c, func(from NodeConfigCondition) metav1.Condition {
+	return oslices.ConvertSlice(c, func(from NodeConfigCondition) metav1.Condition {
 		return from.ToMetaV1Condition()
 	})
 }
 
 func NewNodeConfigConditions(cs []metav1.Condition) NodeConfigConditions {
-	return slices.ConvertSlice(cs, func(from metav1.Condition) NodeConfigCondition {
+	return oslices.ConvertSlice(cs, func(from metav1.Condition) NodeConfigCondition {
 		return NewNodeConfigCondition(from)
 	})
 }

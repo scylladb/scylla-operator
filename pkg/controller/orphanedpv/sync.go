@@ -13,7 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
@@ -68,7 +68,7 @@ func (opc *Controller) getPVsForScyllaDBDatacenter(ctx context.Context, sdc *scy
 		}
 	}
 
-	return pis, requeueReasons, utilerrors.NewAggregate(errs)
+	return pis, requeueReasons, apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (opc *Controller) sync(ctx context.Context, key string) error {
@@ -164,7 +164,7 @@ func (opc *Controller) sync(ctx context.Context, key string) error {
 		klog.V(2).InfoS("Marked service for replacement", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KRef(sdc.Namespace, pi.ServiceName))
 	}
 
-	err = utilerrors.NewAggregate(errs)
+	err = apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return err
 	}

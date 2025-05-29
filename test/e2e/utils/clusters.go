@@ -8,7 +8,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/gather/collect"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	corev1 "k8s.io/api/core/v1"
@@ -236,7 +236,7 @@ func RegisterCollectionOfRemoteScyllaDBClusterNamespaces(ctx context.Context, sc
 	for _, dc := range sc.Spec.Datacenters {
 		cluster := rkcClusterMap[dc.RemoteKubernetesClusterName]
 
-		dcStatus, _, ok := slices.Find(sc.Status.Datacenters, func(status scyllav1alpha1.ScyllaDBClusterDatacenterStatus) bool {
+		dcStatus, _, ok := oslices.Find(sc.Status.Datacenters, func(status scyllav1alpha1.ScyllaDBClusterDatacenterStatus) bool {
 			return status.Name == dc.Name
 		})
 		if !ok {

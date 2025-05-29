@@ -10,13 +10,13 @@ import (
 
 	imgreference "github.com/containers/image/v5/docker/reference"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corevalidation "github.com/scylladb/scylla-operator/pkg/thirdparty/k8s.io/kubernetes/pkg/apis/core/validation"
 	"k8s.io/apimachinery/pkg/api/resource"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
-	apimachinerymetav1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
-	"k8s.io/apimachinery/pkg/util/sets"
+	metav1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
+	apimachineryutilsets "k8s.io/apimachinery/pkg/util/sets"
 	apimachineryutilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -105,7 +105,7 @@ func ValidateScyllaDBDatacenterRackTemplate(rackTemplate *scyllav1alpha1.RackTem
 	}
 
 	if rackTemplate.TopologyLabelSelector != nil {
-		allErrs = append(allErrs, apimachinerymetav1validation.ValidateLabels(rackTemplate.TopologyLabelSelector, fldPath.Child("topologyLabelSelector"))...)
+		allErrs = append(allErrs, metav1validation.ValidateLabels(rackTemplate.TopologyLabelSelector, fldPath.Child("topologyLabelSelector"))...)
 	}
 
 	if rackTemplate.ScyllaDB != nil {
@@ -138,7 +138,7 @@ func ValidateScyllaDBDatacenterScyllaDBTemplate(scyllaDBTemplate *scyllav1alpha1
 
 	if scyllaDBTemplate.Storage != nil {
 		if scyllaDBTemplate.Storage.Metadata != nil {
-			allErrs = append(allErrs, apimachinerymetav1validation.ValidateLabels(scyllaDBTemplate.Storage.Metadata.Labels, fldPath.Child("storage", "metadata", "labels"))...)
+			allErrs = append(allErrs, metav1validation.ValidateLabels(scyllaDBTemplate.Storage.Metadata.Labels, fldPath.Child("storage", "metadata", "labels"))...)
 			allErrs = append(allErrs, apimachineryvalidation.ValidateAnnotations(scyllaDBTemplate.Storage.Metadata.Annotations, fldPath.Child("storage", "metadata", "annotations"))...)
 		}
 
@@ -236,7 +236,7 @@ func ValidateScyllaDBDatacenterNodeService(options *scyllav1alpha1.ExposeOptions
 	var allErrs field.ErrorList
 
 	if len(options.NodeService.Type) == 0 {
-		allErrs = append(allErrs, field.Required(fldPath.Child("nodeService", "type"), fmt.Sprintf("supported values: %s", strings.Join(slices.ConvertSlice(supportedNodeServiceTypes, slices.ToString[scyllav1alpha1.NodeServiceType]), ", "))))
+		allErrs = append(allErrs, field.Required(fldPath.Child("nodeService", "type"), fmt.Sprintf("supported values: %s", strings.Join(oslices.ConvertSlice(supportedNodeServiceTypes, oslices.ToString[scyllav1alpha1.NodeServiceType]), ", "))))
 	} else {
 		allErrs = append(allErrs, validateEnum(options.NodeService.Type, supportedNodeServiceTypes, fldPath.Child("nodeService", "type"))...)
 	}
@@ -313,7 +313,7 @@ func ValidateScyllaDBDatacenterBroadcastOptions[BT ~string, ST ~string](broadcas
 
 	// Skipping an error when chosen option type is unsupported as it won't help anyhow users reading it.
 	allowedNodeServiceTypes, ok := allowedNodeServiceTypesByBroadcastAddressType[broadcastAddressType]
-	if ok && !slices.ContainsItem(allowedNodeServiceTypes, serviceType) {
+	if ok && !oslices.ContainsItem(allowedNodeServiceTypes, serviceType) {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("type"), broadcastAddressType, fmt.Sprintf("can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: %v", allowedNodeServiceTypes)))
 	}
 
@@ -324,7 +324,7 @@ func ValidateScyllaDBDatacenterAlternatorOptions(alternator *scyllav1alpha1.Alte
 	var allErrs field.ErrorList
 
 	if alternator.WriteIsolation != "" {
-		found := slices.ContainsItem(AlternatorSupportedWriteIsolation, alternator.WriteIsolation)
+		found := oslices.ContainsItem(AlternatorSupportedWriteIsolation, alternator.WriteIsolation)
 		if !found {
 			allErrs = append(allErrs, field.NotSupported(fldPath, alternator.WriteIsolation, AlternatorSupportedWriteIsolation))
 		}
@@ -441,14 +441,14 @@ func ValidateScyllaDBDatacenterSpecUpdate(new, old *scyllav1alpha1.ScyllaDBDatac
 
 	allErrs = append(allErrs, apimachineryvalidation.ValidateImmutableField(new.Spec.ClusterName, old.Spec.ClusterName, fldPath.Child("clusterName"))...)
 
-	oldRackNames := slices.ConvertSlice(old.Spec.Racks, func(rackSpec scyllav1alpha1.RackSpec) string {
+	oldRackNames := oslices.ConvertSlice(old.Spec.Racks, func(rackSpec scyllav1alpha1.RackSpec) string {
 		return rackSpec.Name
 	})
-	newRackNames := slices.ConvertSlice(new.Spec.Racks, func(rackSpec scyllav1alpha1.RackSpec) string {
+	newRackNames := oslices.ConvertSlice(new.Spec.Racks, func(rackSpec scyllav1alpha1.RackSpec) string {
 		return rackSpec.Name
 	})
 
-	removedRackNames := sets.New(oldRackNames...).Difference(sets.New(newRackNames...)).UnsortedList()
+	removedRackNames := apimachineryutilsets.New(oldRackNames...).Difference(apimachineryutilsets.New(newRackNames...)).UnsortedList()
 	sort.Strings(removedRackNames)
 
 	isRackStatusUpToDate := func(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackStatus scyllav1alpha1.RackStatus) bool {
@@ -474,7 +474,7 @@ func ValidateScyllaDBDatacenterSpecUpdate(new, old *scyllav1alpha1.ScyllaDBDatac
 				continue
 			}
 
-			oldRackStatus, _, ok := slices.Find(old.Status.Racks, func(rackStatus scyllav1alpha1.RackStatus) bool {
+			oldRackStatus, _, ok := oslices.Find(old.Status.Racks, func(rackStatus scyllav1alpha1.RackStatus) bool {
 				return rackStatus.Name == removedRackName
 			})
 			if !ok {
@@ -493,7 +493,7 @@ func ValidateScyllaDBDatacenterSpecUpdate(new, old *scyllav1alpha1.ScyllaDBDatac
 	}
 
 	for i, newRack := range new.Spec.Racks {
-		oldRack, _, ok := slices.Find(old.Spec.Racks, func(spec scyllav1alpha1.RackSpec) bool {
+		oldRack, _, ok := oslices.Find(old.Spec.Racks, func(spec scyllav1alpha1.RackSpec) bool {
 			return spec.Name == newRack.Name
 		})
 		if !ok {
@@ -554,7 +554,7 @@ func ValidateScyllaDBDatacenterSpecUpdate(new, old *scyllav1alpha1.ScyllaDBDatac
 func validateStructSliceFieldUniqueness[E any, F comparable](s []E, mapFunc func(E) F, fieldSubPath string, structPath *field.Path) field.ErrorList {
 	var allErrs field.ErrorList
 
-	set := sets.New[F]()
+	set := apimachineryutilsets.New[F]()
 	for i, e := range s {
 		f := mapFunc(e)
 
@@ -570,8 +570,8 @@ func validateStructSliceFieldUniqueness[E any, F comparable](s []E, mapFunc func
 func validateEnum[E ~string](value E, supported []E, fldPath *field.Path) field.ErrorList {
 	var allErrs field.ErrorList
 
-	if !slices.ContainsItem(supported, value) {
-		allErrs = append(allErrs, field.NotSupported(fldPath, value, slices.ConvertSlice(supported, slices.ToString[E])))
+	if !oslices.ContainsItem(supported, value) {
+		allErrs = append(allErrs, field.NotSupported(fldPath, value, oslices.ConvertSlice(supported, oslices.ToString[E])))
 	}
 
 	return allErrs

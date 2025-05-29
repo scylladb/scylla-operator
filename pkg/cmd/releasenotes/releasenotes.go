@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sort"
 
-	"k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 )
 
@@ -66,7 +66,7 @@ func (o *GenerateOptions) Run(ctx context.Context) error {
 		filteredPRs = append(filteredPRs, pr)
 	}
 	if errs != nil {
-		return errors.NewAggregate(errs)
+		return apimachineryutilerrors.NewAggregate(errs)
 	}
 
 	if err := renderReleaseNotes(o.Out, o.ContainerImageName, o.ReleaseName, o.PreviousReleaseName, filteredPRs); err != nil {

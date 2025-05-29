@@ -11,7 +11,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers/managerclienterrors"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	hashutil "github.com/scylladb/scylla-operator/pkg/util/hash"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -216,7 +216,7 @@ func getScyllaDBManagerCluster(ctx context.Context, smcr *scyllav1alpha1.ScyllaD
 	}
 
 	// Cluster names in manager state are unique, so it suffices to only find one with a matching name.
-	managerCluster, _, found := slices.Find(managerClusters, func(c *models.Cluster) bool {
+	managerCluster, _, found := oslices.Find(managerClusters, func(c *models.Cluster) bool {
 		return c.Name == managerClusterName
 	})
 

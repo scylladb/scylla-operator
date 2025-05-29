@@ -16,7 +16,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -28,7 +28,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
+	apimachineryutilintstr "k8s.io/apimachinery/pkg/util/intstr"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/klog/v2"
 )
@@ -194,7 +194,7 @@ func MemberService(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName, name string
 		svc.Spec.ExternalTrafficPolicy = getValueOrDefault(ns.ExternalTrafficPolicy, "")
 	}
 
-	rackSpec, _, ok := slices.Find(sdc.Spec.Racks, func(rs scyllav1alpha1.RackSpec) bool {
+	rackSpec, _, ok := oslices.Find(sdc.Spec.Racks, func(rs scyllav1alpha1.RackSpec) bool {
 		return rs.Name == rackName
 	})
 	if !ok {
@@ -361,7 +361,7 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 
 	var existingDataPVCTemplate *corev1.PersistentVolumeClaim
 	if existingSts != nil {
-		pvc, _, ok := slices.Find(existingSts.Spec.VolumeClaimTemplates, func(pvc corev1.PersistentVolumeClaim) bool {
+		pvc, _, ok := oslices.Find(existingSts.Spec.VolumeClaimTemplates, func(pvc corev1.PersistentVolumeClaim) bool {
 			return pvc.Name == naming.PVCTemplateName
 		})
 		if !ok {
@@ -830,7 +830,7 @@ exec /mnt/shared/scylla-operator sidecar \
 								PeriodSeconds:    int32(10),
 								ProbeHandler: corev1.ProbeHandler{
 									HTTPGet: &corev1.HTTPGetAction{
-										Port: intstr.FromInt(naming.ScyllaDBAPIStatusProbePort),
+										Port: apimachineryutilintstr.FromInt(naming.ScyllaDBAPIStatusProbePort),
 										Path: naming.LivenessProbePath,
 									},
 								},
@@ -843,7 +843,7 @@ exec /mnt/shared/scylla-operator sidecar \
 								PeriodSeconds:    int32(10),
 								ProbeHandler: corev1.ProbeHandler{
 									HTTPGet: &corev1.HTTPGetAction{
-										Port: intstr.FromInt(naming.ScyllaDBAPIStatusProbePort),
+										Port: apimachineryutilintstr.FromInt(naming.ScyllaDBAPIStatusProbePort),
 										Path: naming.LivenessProbePath,
 									},
 								},
@@ -857,7 +857,7 @@ exec /mnt/shared/scylla-operator sidecar \
 								PeriodSeconds:    int32(readinessPeriodSeconds),
 								ProbeHandler: corev1.ProbeHandler{
 									HTTPGet: &corev1.HTTPGetAction{
-										Port: intstr.FromInt(naming.ScyllaDBAPIStatusProbePort),
+										Port: apimachineryutilintstr.FromInt(naming.ScyllaDBAPIStatusProbePort),
 										Path: naming.ReadinessProbePath,
 									},
 								},
@@ -919,7 +919,7 @@ wait
 								PeriodSeconds:    int32(5),
 								ProbeHandler: corev1.ProbeHandler{
 									TCPSocket: &corev1.TCPSocketAction{
-										Port: intstr.FromInt32(naming.ScyllaDBAPIStatusProbePort),
+										Port: apimachineryutilintstr.FromInt32(naming.ScyllaDBAPIStatusProbePort),
 									},
 								},
 							},
@@ -972,7 +972,7 @@ wait
 								PeriodSeconds:    int32(5),
 								ProbeHandler: corev1.ProbeHandler{
 									HTTPGet: &corev1.HTTPGetAction{
-										Port: intstr.FromInt32(naming.ScyllaDBIgnitionProbePort),
+										Port: apimachineryutilintstr.FromInt32(naming.ScyllaDBIgnitionProbePort),
 										Path: naming.ReadinessProbePath,
 									},
 								},
@@ -1245,7 +1245,7 @@ exec scylla-manager-agent \
 		ReadinessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				TCPSocket: &corev1.TCPSocketAction{
-					Port: intstr.FromInt32(10001),
+					Port: apimachineryutilintstr.FromInt32(10001),
 				},
 			},
 		},
@@ -1290,7 +1290,7 @@ exec scylla-manager-agent \
 }
 
 func MakePodDisruptionBudget(sdc *scyllav1alpha1.ScyllaDBDatacenter) *policyv1.PodDisruptionBudget {
-	maxUnavailable := intstr.FromInt(1)
+	maxUnavailable := apimachineryutilintstr.FromInt(1)
 
 	selectorLabels := naming.ClusterLabels(sdc)
 

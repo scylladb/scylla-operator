@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"k8s.io/apimachinery/pkg/util/wait"
+	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 )
 
@@ -109,7 +109,7 @@ func (g *Generator[T]) runUnlimitedWorker(ctx context.Context) {
 func (g *Generator[T]) runRateLimitedWorker(ctx context.Context) {
 	klog.V(4).InfoS("Generator is starting rate limited worker", "Name", g.name)
 
-	wait.UntilWithContext(ctx, func(ctx context.Context) {
+	apimachineryutilwait.UntilWithContext(ctx, func(ctx context.Context) {
 		err := g.runWorker(ctx, g.rateLimitedBuffer)
 		if err != nil {
 			klog.ErrorS(err, "Generator rate limited worker encountered error", "Name", g.name)

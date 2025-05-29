@@ -9,7 +9,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 func (sdcc *Controller) syncPodDisruptionBudgets(
@@ -44,7 +44,7 @@ func (sdcc *Controller) syncPodDisruptionBudgets(
 		})
 		deletionErrors = append(deletionErrors, err)
 	}
-	err = utilerrors.NewAggregate(deletionErrors)
+	err = apimachineryutilerrors.NewAggregate(deletionErrors)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't delete pdb(s): %w", err)
 	}

@@ -9,7 +9,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/validation"
+	apimachineryutilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -55,7 +55,7 @@ func ValidateLocalScyllaDBReference(localScyllaDBReference *scyllav1alpha1.Local
 	if len(localScyllaDBReference.Name) == 0 {
 		allErrs = append(allErrs, field.Required(fldPath.Child("name"), ""))
 	} else {
-		for _, msg := range validation.IsDNS1123Subdomain(localScyllaDBReference.Name) {
+		for _, msg := range apimachineryutilvalidation.IsDNS1123Subdomain(localScyllaDBReference.Name) {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("name"), localScyllaDBReference.Name, msg))
 		}
 	}

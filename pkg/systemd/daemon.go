@@ -8,9 +8,9 @@ import (
 
 	"github.com/coreos/go-systemd/v22/dbus"
 	godbus "github.com/godbus/dbus/v5"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/sets"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilsets "k8s.io/apimachinery/pkg/util/sets"
 )
 
 var ErrNotExist = errors.New("unit does not exist")
@@ -135,12 +135,12 @@ func (c *SystemdControl) GetUnitStatuses(ctx context.Context, unitFiles []string
 		return nil, fmt.Errorf("can't list units %q: %w", strings.Join(unitFiles, ", "), transformSystemdError(err))
 	}
 
-	unitNameSet := sets.New(unitFiles...)
-	dbusUnitStatuses = slices.Filter(dbusUnitStatuses, func(us dbus.UnitStatus) bool {
+	unitNameSet := apimachineryutilsets.New(unitFiles...)
+	dbusUnitStatuses = oslices.Filter(dbusUnitStatuses, func(us dbus.UnitStatus) bool {
 		return unitNameSet.Has(us.Name)
 	})
 
-	unitStatuses := slices.ConvertSlice(dbusUnitStatuses, func(us dbus.UnitStatus) UnitStatus {
+	unitStatuses := oslices.ConvertSlice(dbusUnitStatuses, func(us dbus.UnitStatus) UnitStatus {
 		return UnitStatus{
 			Name:        us.Name,
 			LoadState:   us.LoadState,
@@ -151,7 +151,7 @@ func (c *SystemdControl) GetUnitStatuses(ctx context.Context, unitFiles []string
 	getUnitName := func(us UnitStatus) string {
 		return us.Name
 	}
-	missingUnitNames := unitNameSet.Difference(sets.New(slices.ConvertSlice(unitStatuses, getUnitName)...)).UnsortedList()
+	missingUnitNames := unitNameSet.Difference(apimachineryutilsets.New(oslices.ConvertSlice(unitStatuses, getUnitName)...)).UnsortedList()
 
 	var unitPropertiesErrs []error
 	for _, name := range missingUnitNames {
@@ -179,7 +179,7 @@ func (c *SystemdControl) GetUnitStatuses(ctx context.Context, unitFiles []string
 		unitStatuses = append(unitStatuses, us)
 	}
 
-	err = utilerrors.NewAggregate(unitPropertiesErrs)
+	err = apimachineryutilerrors.NewAggregate(unitPropertiesErrs)
 	if err != nil {
 		return nil, err
 	}

@@ -12,7 +12,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -20,7 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
@@ -121,7 +121,7 @@ func (smcrc *Controller) sync(ctx context.Context, key string) error {
 
 	if len(aggregationErrs) > 0 {
 		errs = append(errs, aggregationErrs...)
-		return utilerrors.NewAggregate(errs)
+		return apimachineryutilerrors.NewAggregate(errs)
 	}
 
 	apimeta.SetStatusCondition(&status.Conditions, progressingCondition)
@@ -132,7 +132,7 @@ func (smcrc *Controller) sync(ctx context.Context, key string) error {
 		errs = append(errs, fmt.Errorf("can't update status: %w", err))
 	}
 
-	return utilerrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (smcrc *Controller) getManagerClient(_ context.Context, _ *scyllav1alpha1.ScyllaDBManagerClusterRegistration) (*managerclient.Client, error) {
@@ -156,7 +156,7 @@ func isManagedByGlobalScyllaDBManagerInstance(smcr *scyllav1alpha1.ScyllaDBManag
 }
 
 func (smcrc *Controller) hasFinalizer(finalizers []string) bool {
-	return slices.ContainsItem(finalizers, naming.ScyllaDBManagerClusterRegistrationFinalizer)
+	return oslices.ContainsItem(finalizers, naming.ScyllaDBManagerClusterRegistrationFinalizer)
 }
 
 func (smcrc *Controller) addFinalizer(ctx context.Context, smcr *scyllav1alpha1.ScyllaDBManagerClusterRegistration) error {

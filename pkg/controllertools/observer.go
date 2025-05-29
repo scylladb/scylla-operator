@@ -9,9 +9,9 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
@@ -99,7 +99,7 @@ func (o *Observer) processNextItem(ctx context.Context) bool {
 
 	err := o.syncFunc(ctx)
 	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
-	err = utilerrors.Reduce(err)
+	err = apimachineryutilerrors.Reduce(err)
 	switch {
 	case err == nil:
 		o.queue.Forget(key)
@@ -117,7 +117,7 @@ func (o *Observer) processNextItem(ctx context.Context) bool {
 		return true
 
 	default:
-		utilruntime.HandleError(fmt.Errorf("sync loop has failed: %w", err))
+		apimachineryutilruntime.HandleError(fmt.Errorf("sync loop has failed: %w", err))
 
 	}
 
@@ -132,7 +132,7 @@ func (o *Observer) runWorker(ctx context.Context) {
 }
 
 func (o *Observer) Run(ctx context.Context) {
-	defer utilruntime.HandleCrash()
+	defer apimachineryutilruntime.HandleCrash()
 
 	klog.InfoS("Starting observer", "Name", o.name)
 
@@ -152,7 +152,7 @@ func (o *Observer) Run(ctx context.Context) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		wait.UntilWithContext(ctx, o.runWorker, time.Second)
+		apimachineryutilwait.UntilWithContext(ctx, o.runWorker, time.Second)
 	}()
 
 	<-ctx.Done()

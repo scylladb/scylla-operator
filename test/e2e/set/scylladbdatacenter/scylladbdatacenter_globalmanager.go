@@ -10,7 +10,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers/managerclienterrors"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
@@ -26,7 +26,7 @@ var _ = g.Describe("ScyllaDBDatacenter integration with global ScyllaDB Manager"
 	f := framework.NewFramework("scylladbdatacenter")
 
 	hasDeletionFinalizer := func(smcr *scyllav1alpha1.ScyllaDBManagerClusterRegistration) (bool, error) {
-		return slices.ContainsItem(smcr.Finalizers, naming.ScyllaDBManagerClusterRegistrationFinalizer), nil
+		return oslices.ContainsItem(smcr.Finalizers, naming.ScyllaDBManagerClusterRegistrationFinalizer), nil
 	}
 
 	g.It("should register labeled ScyllaDBDatacenter and deregister it when it's unlabeled", func(ctx g.SpecContext) {

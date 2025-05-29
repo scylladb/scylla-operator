@@ -8,7 +8,7 @@ import (
 	"io"
 	"net/http"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
@@ -38,7 +38,7 @@ func ExecWithOptions(ctx context.Context, config *rest.Config, client corev1clie
 		Namespace(options.Namespace).
 		SubResource("exec").
 		Param("container", options.ContainerName)
-	req.VersionedParams(&v1.PodExecOptions{
+	req.VersionedParams(&corev1.PodExecOptions{
 		Container: options.ContainerName,
 		Command:   options.Command,
 		Stdin:     options.Stdin != nil,

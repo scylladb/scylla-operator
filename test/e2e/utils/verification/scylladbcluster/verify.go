@@ -7,7 +7,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	scylladbclustercontroller "github.com/scylladb/scylla-operator/pkg/controller/scylladbcluster"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -15,7 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
+	apimachineryutilintstr "k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func Verify(ctx context.Context, sc *scyllav1alpha1.ScyllaDBCluster, rkcClusterMap map[string]framework.ClusterInterface) {
@@ -179,7 +179,7 @@ func Verify(ctx context.Context, sc *scyllav1alpha1.ScyllaDBCluster, rkcClusterM
 		cluster := rkcClusterMap[dc.RemoteKubernetesClusterName]
 		o.Expect(cluster).NotTo(o.BeNil())
 
-		dcStatus, _, ok := slices.Find(sc.Status.Datacenters, func(dcStatus scyllav1alpha1.ScyllaDBClusterDatacenterStatus) bool {
+		dcStatus, _, ok := oslices.Find(sc.Status.Datacenters, func(dcStatus scyllav1alpha1.ScyllaDBClusterDatacenterStatus) bool {
 			return dcStatus.Name == dc.Name
 		})
 		o.Expect(ok).To(o.BeTrue())
@@ -210,7 +210,7 @@ func Verify(ctx context.Context, sc *scyllav1alpha1.ScyllaDBCluster, rkcClusterM
 		o.Expect(dcStatus.AvailableNodes).ToNot(o.BeNil())
 		o.Expect(*dcStatus.AvailableNodes).To(o.Equal(dcNodeCount))
 
-		otherDCs := slices.FilterOut(sc.Spec.Datacenters, func(otherDC scyllav1alpha1.ScyllaDBClusterDatacenter) bool {
+		otherDCs := oslices.FilterOut(sc.Spec.Datacenters, func(otherDC scyllav1alpha1.ScyllaDBClusterDatacenter) bool {
 			return dc.Name == otherDC.Name
 		})
 
@@ -226,25 +226,25 @@ func Verify(ctx context.Context, sc *scyllav1alpha1.ScyllaDBCluster, rkcClusterM
 					Name:       "inter-node",
 					Protocol:   corev1.ProtocolTCP,
 					Port:       7000,
-					TargetPort: intstr.IntOrString{IntVal: 7000},
+					TargetPort: apimachineryutilintstr.IntOrString{IntVal: 7000},
 				},
 				{
 					Name:       "inter-node-ssl",
 					Protocol:   corev1.ProtocolTCP,
 					Port:       7001,
-					TargetPort: intstr.IntOrString{IntVal: 7001},
+					TargetPort: apimachineryutilintstr.IntOrString{IntVal: 7001},
 				},
 				{
 					Name:       "cql",
 					Protocol:   corev1.ProtocolTCP,
 					Port:       9042,
-					TargetPort: intstr.IntOrString{IntVal: 9042},
+					TargetPort: apimachineryutilintstr.IntOrString{IntVal: 9042},
 				},
 				{
 					Name:       "cql-ssl",
 					Protocol:   corev1.ProtocolTCP,
 					Port:       9142,
-					TargetPort: intstr.IntOrString{IntVal: 9142},
+					TargetPort: apimachineryutilintstr.IntOrString{IntVal: 9142},
 				},
 			}))
 

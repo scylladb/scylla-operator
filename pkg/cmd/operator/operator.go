@@ -40,8 +40,8 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	apierrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/validation"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -188,12 +188,12 @@ func (o *OperatorOptions) Validate() error {
 		))
 	}
 
-	msg := validation.IsInRange(o.CQLSIngressPort, 0, 65535)
+	msg := apimachineryutilvalidation.IsInRange(o.CQLSIngressPort, 0, 65535)
 	if len(msg) != 0 {
 		errs = append(errs, fmt.Errorf("invalid secure cql ingress port %d: %s", o.CQLSIngressPort, msg))
 	}
 
-	return apierrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (o *OperatorOptions) Complete(cmd *cobra.Command) error {

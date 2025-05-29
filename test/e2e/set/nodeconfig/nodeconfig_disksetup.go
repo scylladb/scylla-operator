@@ -24,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/rand"
+	apimachineryutilrand "k8s.io/apimachinery/pkg/util/rand"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
@@ -71,7 +71,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		clientPod, err = controllerhelpers.WaitForPodState(waitCtx1, f.KubeClient().CoreV1().Pods(clientPod.Namespace), clientPod.Name, controllerhelpers.WaitForStateOptions{}, utils.PodIsRunning)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		raidName := rand.String(8)
+		raidName := apimachineryutilrand.String(8)
 		mountPath := fmt.Sprintf("/var/lib/disk-setup-%s", f.Namespace())
 		hostMountPath := path.Join("/host", mountPath)
 

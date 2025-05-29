@@ -12,7 +12,7 @@ import (
 	"github.com/scylladb/go-set/strset"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/cri"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/kubelet"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/util/cpuset"
@@ -108,7 +108,7 @@ func cpusetFromKubelet(ctx context.Context, podResourcesClient kubelet.PodResour
 			continue
 		}
 
-		cr, _, ok := slices.Find(pr.Containers, func(cr *podresourcesv1.ContainerResources) bool {
+		cr, _, ok := oslices.Find(pr.Containers, func(cr *podresourcesv1.ContainerResources) bool {
 			return cr.Name == containerName
 		})
 		if !ok {
@@ -116,7 +116,7 @@ func cpusetFromKubelet(ctx context.Context, podResourcesClient kubelet.PodResour
 			continue
 		}
 
-		cpuIDs := slices.ConvertSlice(cr.CpuIds, func(cpuid int64) int {
+		cpuIDs := oslices.ConvertSlice(cr.CpuIds, func(cpuid int64) int {
 			return int(cpuid)
 		})
 		sort.Ints(cpuIDs)

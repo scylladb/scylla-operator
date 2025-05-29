@@ -14,7 +14,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
-	apierrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
 )
@@ -41,7 +41,7 @@ func (o *ServeProbesOptions) AddFlags(cmd *cobra.Command) {
 func (o *ServeProbesOptions) Validate(args []string) error {
 	var errs []error
 
-	return apierrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (o *ServeProbesOptions) Complete(args []string) error {

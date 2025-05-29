@@ -22,8 +22,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/types"
-	apierrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/wait"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
@@ -143,7 +143,7 @@ func (o *NodeSetupDaemonOptions) Validate() error {
 		errs = append(errs, fmt.Errorf("kubelet-pod-resources-endpoint can't be empty"))
 	}
 
-	return apierrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (o *NodeSetupDaemonOptions) Complete() error {
@@ -209,7 +209,7 @@ func (o *NodeSetupDaemonOptions) Run(streams genericclioptions.IOStreams, cmd *c
 	))
 
 	var node *corev1.Node
-	err = wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func(fCtx context.Context) (bool, error) {
+	err = apimachineryutilwait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func(fCtx context.Context) (bool, error) {
 		node, err = o.kubeClient.CoreV1().Nodes().Get(fCtx, o.NodeName, metav1.GetOptions{})
 		if err != nil {
 			klog.V(2).InfoS("Can't get Node", "Node", o.NodeName, "Error", err.Error())

@@ -10,13 +10,13 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/disks"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/util/losetup"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/exec"
 )
@@ -76,7 +76,7 @@ func (nsc *Controller) syncLoopDevices(ctx context.Context, nc *scyllav1alpha1.N
 		)
 	}
 
-	err = utilerrors.NewAggregate(errs)
+	err = apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("failed to create loop devices: %w", err)
 	}
@@ -87,7 +87,7 @@ func (nsc *Controller) syncLoopDevices(ctx context.Context, nc *scyllav1alpha1.N
 func (nsc *Controller) pruneLoopDevices(ctx context.Context, nc *scyllav1alpha1.NodeConfig, existingLoopDevices []loopDevice, requiredLoopDeviceImages []loopDevice) error {
 	var errs []error
 	for _, ld := range existingLoopDevices {
-		_, _, isRequired := slices.Find(requiredLoopDeviceImages, func(rld loopDevice) bool {
+		_, _, isRequired := oslices.Find(requiredLoopDeviceImages, func(rld loopDevice) bool {
 			return equality.Semantic.DeepEqual(ld, rld)
 		})
 		if isRequired {
@@ -114,7 +114,7 @@ func (nsc *Controller) pruneLoopDevices(ctx context.Context, nc *scyllav1alpha1.
 		)
 	}
 
-	err := utilerrors.NewAggregate(errs)
+	err := apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return fmt.Errorf("failed to delete stale loop devices: %w", err)
 	}
@@ -148,7 +148,7 @@ func discoverNodeConfigLoopDevices(ctx context.Context, executor exec.Interface,
 		loopDeviceToSymlink[ldName] = ds
 	}
 
-	ncSystemLoopDevices := slices.Filter(systemLoopDevices, func(device *losetup.LoopDevice) bool {
+	ncSystemLoopDevices := oslices.Filter(systemLoopDevices, func(device *losetup.LoopDevice) bool {
 		_, ok := loopDeviceToSymlink[device.Name]
 		return ok
 	})

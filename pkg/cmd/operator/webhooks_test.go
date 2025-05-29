@@ -22,7 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
-	"k8s.io/apimachinery/pkg/util/wait"
+	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/server/dynamiccertificates"
 )
 
@@ -183,7 +183,7 @@ func TestWebhookOptionsRunWithReload(t *testing.T) {
 		}
 	}
 
-	err = wait.PollImmediate(pollInterval, pollTimeout, hasExpectedCertificate(initialCertSerialNumber))
+	err = apimachineryutilwait.PollImmediate(pollInterval, pollTimeout, hasExpectedCertificate(initialCertSerialNumber))
 	if err != nil {
 		t.Fatalf("can't observe the initial certificate: %v", err)
 	}
@@ -204,7 +204,7 @@ func TestWebhookOptionsRunWithReload(t *testing.T) {
 		t.Fatalf("can't create a file: %v", err)
 	}
 
-	err = wait.PollImmediate(pollInterval, pollTimeout, hasExpectedCertificate(updatedCertSerialNumber))
+	err = apimachineryutilwait.PollImmediate(pollInterval, pollTimeout, hasExpectedCertificate(updatedCertSerialNumber))
 	if err != nil {
 		t.Errorf("certificate wasn't updated: %v", err)
 	}

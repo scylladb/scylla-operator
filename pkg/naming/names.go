@@ -12,7 +12,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/util/hash"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	apimachineryvalidationutils "k8s.io/apimachinery/pkg/util/validation"
+	apimachineryutilvalidation "k8s.io/apimachinery/pkg/util/validation"
 )
 
 const (
@@ -298,6 +298,6 @@ func scyllaDBManagerClusterRegistrationName(kind, name string) (string, error) {
 	}
 
 	fullName := strings.ToLower(fmt.Sprintf("%s-%s", kind, name))
-	fullNameWithSuffix := fmt.Sprintf("%s-%s", fullName[:min(len(fullName), apimachineryvalidationutils.DNS1123SubdomainMaxLength-len(nameSuffix)-1)], nameSuffix)
+	fullNameWithSuffix := fmt.Sprintf("%s-%s", fullName[:min(len(fullName), apimachineryutilvalidation.DNS1123SubdomainMaxLength-len(nameSuffix)-1)], nameSuffix)
 	return fullNameWithSuffix, nil
 }

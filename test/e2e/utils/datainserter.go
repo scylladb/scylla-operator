@@ -13,9 +13,9 @@ import (
 	"github.com/scylladb/gocqlx/v2"
 	"github.com/scylladb/gocqlx/v2/table"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
-	utilrand "k8s.io/apimachinery/pkg/util/rand"
+	apimachineryutilrand "k8s.io/apimachinery/pkg/util/rand"
 )
 
 const nRows = 10
@@ -47,7 +47,7 @@ func NewDataInserter(hosts []string, options ...DataInserterOption) (*DataInsert
 }
 
 func NewMultiDCDataInserter(dcHosts map[string][]string, options ...DataInserterOption) (*DataInserter, error) {
-	keyspace := utilrand.String(8)
+	keyspace := apimachineryutilrand.String(8)
 	table := table.New(table.Metadata{
 		Name:    fmt.Sprintf(`"%s"."test"`, keyspace),
 		Columns: []string{"id", "data"},
@@ -55,7 +55,7 @@ func NewMultiDCDataInserter(dcHosts map[string][]string, options ...DataInserter
 	})
 	data := make([]*TestData, 0, nRows)
 	for i := range nRows {
-		data = append(data, &TestData{Id: i, Data: utilrand.String(32)})
+		data = append(data, &TestData{Id: i, Data: apimachineryutilrand.String(32)})
 	}
 
 	replicationFactor := make(map[string]int, len(dcHosts))
@@ -75,7 +75,7 @@ func NewMultiDCDataInserter(dcHosts map[string][]string, options ...DataInserter
 	}
 
 	if di.session == nil {
-		err := di.SetClientEndpoints(slices.Flatten(helpers.GetMapValues(dcHosts)))
+		err := di.SetClientEndpoints(oslices.Flatten(helpers.GetMapValues(dcHosts)))
 		if err != nil {
 			return nil, fmt.Errorf("can't set client endpoints: %w", err)
 		}

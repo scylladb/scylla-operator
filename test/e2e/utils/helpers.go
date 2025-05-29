@@ -22,7 +22,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
@@ -34,7 +34,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
+	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	appv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/klog/v2"
@@ -388,7 +388,7 @@ func GetBroadcastAddresses(ctx context.Context, client corev1client.CoreV1Interf
 	}
 
 	var broadcastAddresses []string
-	for _, svc := range slices.ConvertSlice(serviceList.Items, pointer.Ptr[corev1.Service]) {
+	for _, svc := range oslices.ConvertSlice(serviceList.Items, pointer.Ptr[corev1.Service]) {
 		podName := naming.PodNameFromService(svc)
 		pod, err := client.Pods(sc.Namespace).Get(ctx, podName, metav1.GetOptions{})
 		if err != nil {
@@ -683,7 +683,7 @@ func waitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface,
 
 	// Wait for node status to propagate and reach consistency.
 	// This can take a while so let's set a large enough timeout to avoid flakes.
-	return wait.PollImmediateWithContext(ctx, 1*time.Second, 5*time.Minute, func(ctx context.Context) (done bool, err error) {
+	return apimachineryutilwait.PollImmediateWithContext(ctx, 1*time.Second, 5*time.Minute, func(ctx context.Context) (done bool, err error) {
 		allSeeAllAsUN := true
 		infoMessages := make([]string, 0, len(hosts))
 		var errs []error

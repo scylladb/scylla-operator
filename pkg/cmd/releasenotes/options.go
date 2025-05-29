@@ -10,7 +10,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	githubql "github.com/shurcooL/githubv4"
 	"golang.org/x/oauth2"
-	"k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 type GenerateOptions struct {
@@ -79,7 +79,7 @@ func (o *GenerateOptions) Validate() error {
 		errs = append(errs, fmt.Errorf(`repository must be in "owner/name" format`))
 	}
 
-	return errors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (o *GenerateOptions) Complete(ctx context.Context) error {

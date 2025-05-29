@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"maps"
 
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	osnaming "github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
@@ -49,7 +49,7 @@ func ConvertEndpointSlicesToEndpoints(endpointSlices []*discoveryv1.EndpointSlic
 				}
 			}
 
-			ports := slices.ConvertSlice[corev1.EndpointPort, discoveryv1.EndpointPort](es.Ports, func(port discoveryv1.EndpointPort) corev1.EndpointPort {
+			ports := oslices.ConvertSlice[corev1.EndpointPort, discoveryv1.EndpointPort](es.Ports, func(port discoveryv1.EndpointPort) corev1.EndpointPort {
 				ep := corev1.EndpointPort{
 					AppProtocol: port.AppProtocol,
 				}

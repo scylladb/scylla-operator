@@ -17,7 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
@@ -186,7 +186,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		objectErrs = append(objectErrs, err)
 	}
 
-	objectErr := utilerrors.NewAggregate(objectErrs)
+	objectErr := apimachineryutilerrors.NewAggregate(objectErrs)
 	if objectErr != nil {
 		return objectErr
 	}
@@ -343,5 +343,5 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		errs = append(errs, err)
 	}
 
-	return utilerrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }

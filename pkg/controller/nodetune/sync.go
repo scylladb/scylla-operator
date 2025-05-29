@@ -17,7 +17,7 @@ import (
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 )
 
@@ -85,7 +85,7 @@ func (ncdc *Controller) sync(ctx context.Context) error {
 		objectErrs = append(objectErrs, err)
 	}
 
-	objectErr := utilerrors.NewAggregate(objectErrs)
+	objectErr := apimachineryutilerrors.NewAggregate(objectErrs)
 	if objectErr != nil {
 		return objectErr
 	}
@@ -157,7 +157,7 @@ func (ncdc *Controller) sync(ctx context.Context) error {
 
 	if len(aggregationErrs) > 0 {
 		errs = append(errs, aggregationErrs...)
-		return utilerrors.NewAggregate(errs)
+		return apimachineryutilerrors.NewAggregate(errs)
 	}
 
 	apimeta.SetStatusCondition(&statusConditions, nodeTuneAvailableCondition)
@@ -172,5 +172,5 @@ func (ncdc *Controller) sync(ctx context.Context) error {
 		errs = append(errs, fmt.Errorf("can't update status: %w", err))
 	}
 
-	return utilerrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }

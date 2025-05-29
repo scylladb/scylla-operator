@@ -11,7 +11,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/rand"
+	apimachineryutilrand "k8s.io/apimachinery/pkg/util/rand"
 )
 
 func (sdcc *Controller) getAgentTokenFromAgentConfig(sdc *scyllav1alpha1.ScyllaDBDatacenter) (string, error) {
@@ -73,7 +73,7 @@ func (sdcc *Controller) syncAgentToken(
 
 	// If we still don't have the token, we generate a random one.
 	if len(token) == 0 {
-		token = rand.String(128)
+		token = apimachineryutilrand.String(128)
 	}
 
 	secret, err := MakeAgentAuthTokenSecret(sdc, token)

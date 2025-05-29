@@ -20,7 +20,7 @@ import (
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
+	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 )
 
 var _ = g.Describe("Scylla Manager integration", func() {
@@ -175,7 +175,7 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		o.Expect(sc.Status.ManagerID).NotTo(o.BeNil())
 
 		framework.By("Waiting for repair to finish")
-		err = wait.PollUntilContextTimeout(ctx, 5*time.Second, 10*time.Minute, true, func(context.Context) (done bool, err error) {
+		err = apimachineryutilwait.PollUntilContextTimeout(ctx, 5*time.Second, 10*time.Minute, true, func(context.Context) (done bool, err error) {
 			repairProgress, err := managerClient.RepairProgress(ctx, *sc.Status.ManagerID, repairTask.ID, "latest")
 			if err != nil {
 				return false, err

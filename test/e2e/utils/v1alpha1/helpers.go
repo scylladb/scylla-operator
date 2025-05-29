@@ -16,7 +16,7 @@ import (
 	scyllaclientset "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
@@ -25,7 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/util/wait"
+	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	appv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -140,7 +140,7 @@ func GetBroadcastAddresses(ctx context.Context, client corev1client.CoreV1Interf
 	}
 
 	var broadcastAddresses []string
-	for _, svc := range slices.ConvertSlice(serviceList.Items, pointer.Ptr[corev1.Service]) {
+	for _, svc := range oslices.ConvertSlice(serviceList.Items, pointer.Ptr[corev1.Service]) {
 		podName := naming.PodNameFromService(svc)
 		pod, err := client.Pods(sdc.Namespace).Get(ctx, podName, metav1.GetOptions{})
 		if err != nil {
@@ -286,7 +286,7 @@ func WaitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface,
 
 	// Wait for node status to propagate and reach consistency.
 	// This can take a while so let's set a large enough timeout to avoid flakes.
-	return wait.PollImmediateWithContext(ctx, 1*time.Second, 5*time.Minute, func(ctx context.Context) (done bool, err error) {
+	return apimachineryutilwait.PollImmediateWithContext(ctx, 1*time.Second, 5*time.Minute, func(ctx context.Context) (done bool, err error) {
 		allSeeAllAsUN := true
 		infoMessages := make([]string, 0, len(hosts))
 		var errs []error
@@ -326,7 +326,7 @@ func WaitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface,
 }
 
 func GetRemoteDatacenterScyllaConfigClient(ctx context.Context, sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteScyllaAdminClient *scyllaclientset.Clientset, remoteKubeAdminClient *kubernetes.Clientset, agentAuthToken string) (*scyllaclient.ConfigClient, error) {
-	dcStatus, _, ok := slices.Find(sc.Status.Datacenters, func(dcStatus scyllav1alpha1.ScyllaDBClusterDatacenterStatus) bool {
+	dcStatus, _, ok := oslices.Find(sc.Status.Datacenters, func(dcStatus scyllav1alpha1.ScyllaDBClusterDatacenterStatus) bool {
 		return dc.Name == dcStatus.Name
 	})
 	if !ok {

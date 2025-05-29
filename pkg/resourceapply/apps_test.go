@@ -16,7 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/tools/cache"
@@ -72,7 +72,7 @@ func TestApplyStatefulSet(t *testing.T) {
 
 	newStsWithHash := func() *appsv1.StatefulSet {
 		sts := newSts()
-		utilruntime.Must(SetHashAnnotation(sts))
+		apimachineryutilruntime.Must(SetHashAnnotation(sts))
 		return sts
 	}
 
@@ -155,7 +155,7 @@ func TestApplyStatefulSet(t *testing.T) {
 			expectedSts: func() *appsv1.StatefulSet {
 				sts := newSts()
 				sts.Spec.Replicas = pointer.Ptr(*sts.Spec.Replicas + 1)
-				utilruntime.Must(SetHashAnnotation(sts))
+				apimachineryutilruntime.Must(SetHashAnnotation(sts))
 				return sts
 			}(),
 			expectedChanged: true,
@@ -175,7 +175,7 @@ func TestApplyStatefulSet(t *testing.T) {
 			expectedSts: func() *appsv1.StatefulSet {
 				sts := newSts()
 				sts.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(sts))
+				apimachineryutilruntime.Must(SetHashAnnotation(sts))
 				return sts
 			}(),
 			expectedChanged: true,
@@ -195,7 +195,7 @@ func TestApplyStatefulSet(t *testing.T) {
 			expectedSts: func() *appsv1.StatefulSet {
 				sts := newSts()
 				sts.Spec.Template.Spec.Containers[0].Image += "-rc.0"
-				utilruntime.Must(SetHashAnnotation(sts))
+				apimachineryutilruntime.Must(SetHashAnnotation(sts))
 				return sts
 			}(),
 			expectedChanged: true,
@@ -243,7 +243,7 @@ func TestApplyStatefulSet(t *testing.T) {
 				sts := newSts()
 				sts.ResourceVersion = "21"
 				sts.Spec.Template.Spec.Containers[0].Image += "-rc.0"
-				utilruntime.Must(SetHashAnnotation(sts))
+				apimachineryutilruntime.Must(SetHashAnnotation(sts))
 				return sts
 			}(),
 			expectedChanged: true,
@@ -272,7 +272,7 @@ func TestApplyStatefulSet(t *testing.T) {
 				func() *appsv1.StatefulSet {
 					sts := newSts()
 					sts.OwnerReferences = nil
-					utilruntime.Must(SetHashAnnotation(sts))
+					apimachineryutilruntime.Must(SetHashAnnotation(sts))
 					return sts
 				}(),
 			},
@@ -292,7 +292,7 @@ func TestApplyStatefulSet(t *testing.T) {
 				func() *appsv1.StatefulSet {
 					sts := newSts()
 					sts.OwnerReferences = nil
-					utilruntime.Must(SetHashAnnotation(sts))
+					apimachineryutilruntime.Must(SetHashAnnotation(sts))
 					return sts
 				}(),
 			},
@@ -305,7 +305,7 @@ func TestApplyStatefulSet(t *testing.T) {
 			expectedSts: func() *appsv1.StatefulSet {
 				sts := newSts()
 				sts.Spec.Template.Spec.Containers[0].Image += "-rc.0"
-				utilruntime.Must(SetHashAnnotation(sts))
+				apimachineryutilruntime.Must(SetHashAnnotation(sts))
 				return sts
 			}(),
 			expectedChanged: true,
@@ -318,7 +318,7 @@ func TestApplyStatefulSet(t *testing.T) {
 				func() *appsv1.StatefulSet {
 					sts := newSts()
 					sts.OwnerReferences[0].Kind = "WrongKind"
-					utilruntime.Must(SetHashAnnotation(sts))
+					apimachineryutilruntime.Must(SetHashAnnotation(sts))
 					return sts
 				}(),
 			},
@@ -328,7 +328,7 @@ func TestApplyStatefulSet(t *testing.T) {
 			}(),
 			expectedSts: func() *appsv1.StatefulSet {
 				sts := newSts()
-				utilruntime.Must(SetHashAnnotation(sts))
+				apimachineryutilruntime.Must(SetHashAnnotation(sts))
 				return sts
 			}(),
 			expectedChanged: true,
@@ -341,7 +341,7 @@ func TestApplyStatefulSet(t *testing.T) {
 				func() *appsv1.StatefulSet {
 					sts := newSts()
 					sts.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(sts))
+					apimachineryutilruntime.Must(SetHashAnnotation(sts))
 					return sts
 				}(),
 			},
@@ -361,7 +361,7 @@ func TestApplyStatefulSet(t *testing.T) {
 				func() *appsv1.StatefulSet {
 					sts := newSts()
 					sts.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(sts))
+					apimachineryutilruntime.Must(SetHashAnnotation(sts))
 					return sts
 				}(),
 			},
@@ -391,7 +391,7 @@ func TestApplyStatefulSet(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "",
 					}
-					utilruntime.Must(SetHashAnnotation(sts))
+					apimachineryutilruntime.Must(SetHashAnnotation(sts))
 					sts.Annotations["a-1"] = "a-alpha-changed"
 					sts.Annotations["a-3"] = "a-resurrected"
 					sts.Annotations["a-custom"] = "custom-value"
@@ -428,7 +428,7 @@ func TestApplyStatefulSet(t *testing.T) {
 					"l-2":  "l-beta",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(sts))
+				apimachineryutilruntime.Must(SetHashAnnotation(sts))
 				sts.Annotations["a-1"] = "a-alpha-changed"
 				sts.Annotations["a-3"] = "a-resurrected"
 				sts.Annotations["a-custom"] = "custom-value"
@@ -456,7 +456,7 @@ func TestApplyStatefulSet(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "l-resurrected",
 					}
-					utilruntime.Must(SetHashAnnotation(sts))
+					apimachineryutilruntime.Must(SetHashAnnotation(sts))
 					sts.Annotations["a-1"] = "a-alpha-changed"
 					sts.Annotations["a-custom"] = "a-custom-value"
 					sts.Labels["l-1"] = "l-alpha-changed"
@@ -491,7 +491,7 @@ func TestApplyStatefulSet(t *testing.T) {
 					"l-2":  "l-beta-x",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(sts))
+				apimachineryutilruntime.Must(SetHashAnnotation(sts))
 				delete(sts.Annotations, "a-3-")
 				sts.Annotations["a-custom"] = "a-custom-value"
 				delete(sts.Labels, "l-3-")
@@ -544,7 +544,7 @@ func TestApplyStatefulSet(t *testing.T) {
 						"foo": "bar",
 					},
 				}
-				utilruntime.Must(SetHashAnnotation(sts))
+				apimachineryutilruntime.Must(SetHashAnnotation(sts))
 				return sts
 			}(),
 			expectedChanged: true,
@@ -729,7 +729,7 @@ func TestApplyDaemonSet(t *testing.T) {
 
 	newDsWithHash := func() *appsv1.DaemonSet {
 		ds := newDS()
-		utilruntime.Must(SetHashAnnotation(ds))
+		apimachineryutilruntime.Must(SetHashAnnotation(ds))
 		return ds
 	}
 
@@ -811,7 +811,7 @@ func TestApplyDaemonSet(t *testing.T) {
 			expectedDaemonSet: func() *appsv1.DaemonSet {
 				ds := newDS()
 				ds.Spec.Template.Spec.Containers[0].Image = "differentimage:latest"
-				utilruntime.Must(SetHashAnnotation(ds))
+				apimachineryutilruntime.Must(SetHashAnnotation(ds))
 				return ds
 			}(),
 			expectedChanged: true,
@@ -831,7 +831,7 @@ func TestApplyDaemonSet(t *testing.T) {
 			expectedDaemonSet: func() *appsv1.DaemonSet {
 				ds := newDS()
 				ds.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(ds))
+				apimachineryutilruntime.Must(SetHashAnnotation(ds))
 				return ds
 			}(),
 			expectedChanged: true,
@@ -879,7 +879,7 @@ func TestApplyDaemonSet(t *testing.T) {
 				ds := newDS()
 				ds.ResourceVersion = "21"
 				ds.Spec.Template.Spec.Containers[0].Image += "-rc.0"
-				utilruntime.Must(SetHashAnnotation(ds))
+				apimachineryutilruntime.Must(SetHashAnnotation(ds))
 				return ds
 			}(),
 			expectedChanged: true,
@@ -908,7 +908,7 @@ func TestApplyDaemonSet(t *testing.T) {
 				func() *appsv1.DaemonSet {
 					sts := newDS()
 					sts.OwnerReferences = nil
-					utilruntime.Must(SetHashAnnotation(sts))
+					apimachineryutilruntime.Must(SetHashAnnotation(sts))
 					return sts
 				}(),
 			},
@@ -928,7 +928,7 @@ func TestApplyDaemonSet(t *testing.T) {
 				func() *appsv1.DaemonSet {
 					ds := newDS()
 					ds.OwnerReferences[0].Kind = "WrongKind"
-					utilruntime.Must(SetHashAnnotation(ds))
+					apimachineryutilruntime.Must(SetHashAnnotation(ds))
 					return ds
 				}(),
 			},
@@ -938,7 +938,7 @@ func TestApplyDaemonSet(t *testing.T) {
 			}(),
 			expectedDaemonSet: func() *appsv1.DaemonSet {
 				ds := newDS()
-				utilruntime.Must(SetHashAnnotation(ds))
+				apimachineryutilruntime.Must(SetHashAnnotation(ds))
 				return ds
 			}(),
 			expectedChanged: true,
@@ -951,7 +951,7 @@ func TestApplyDaemonSet(t *testing.T) {
 				func() *appsv1.DaemonSet {
 					ds := newDS()
 					ds.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(ds))
+					apimachineryutilruntime.Must(SetHashAnnotation(ds))
 					return ds
 				}(),
 			},
@@ -980,7 +980,7 @@ func TestApplyDaemonSet(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "",
 					}
-					utilruntime.Must(SetHashAnnotation(ds))
+					apimachineryutilruntime.Must(SetHashAnnotation(ds))
 					ds.Annotations["a-1"] = "a-alpha-changed"
 					ds.Annotations["a-3"] = "a-resurrected"
 					ds.Annotations["a-custom"] = "custom-value"
@@ -1016,7 +1016,7 @@ func TestApplyDaemonSet(t *testing.T) {
 					"l-2":  "l-beta",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(ds))
+				apimachineryutilruntime.Must(SetHashAnnotation(ds))
 				ds.Annotations["a-1"] = "a-alpha-changed"
 				ds.Annotations["a-3"] = "a-resurrected"
 				ds.Annotations["a-custom"] = "custom-value"
@@ -1044,7 +1044,7 @@ func TestApplyDaemonSet(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "l-resurrected",
 					}
-					utilruntime.Must(SetHashAnnotation(ds))
+					apimachineryutilruntime.Must(SetHashAnnotation(ds))
 					ds.Annotations["a-1"] = "a-alpha-changed"
 					ds.Annotations["a-custom"] = "a-custom-value"
 					ds.Labels["l-1"] = "l-alpha-changed"
@@ -1078,7 +1078,7 @@ func TestApplyDaemonSet(t *testing.T) {
 					"l-2":  "l-beta-x",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(ds))
+				apimachineryutilruntime.Must(SetHashAnnotation(ds))
 				delete(ds.Annotations, "a-3-")
 				ds.Annotations["a-custom"] = "a-custom-value"
 				delete(ds.Labels, "l-3-")

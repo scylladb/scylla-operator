@@ -3,7 +3,7 @@
 package parallel
 
 import (
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 func ForEach(length int, f func(i int) error) error {
@@ -21,5 +21,5 @@ func ForEach(length int, f func(i int) error) error {
 		errs = append(errs, <-errCh)
 	}
 
-	return utilerrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }

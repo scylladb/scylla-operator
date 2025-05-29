@@ -6,7 +6,7 @@ import (
 
 	o "github.com/onsi/gomega"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
@@ -249,6 +249,6 @@ func verifyNodeConfig(ctx context.Context, kubeClient kubernetes.Interface, nc *
 		return nodeStatus.Name
 	}
 
-	tunedNodes := slices.ConvertSlice(slices.Filter(nc.Status.NodeStatuses, isNodeStatusNodeTuned), getNodeStatusName)
+	tunedNodes := oslices.ConvertSlice(oslices.Filter(nc.Status.NodeStatuses, isNodeStatusNodeTuned), getNodeStatusName)
 	o.Expect(tunedNodes).To(o.ConsistOf(dsNodeNames))
 }

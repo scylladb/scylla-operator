@@ -11,7 +11,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 func (ncc *Controller) makeClusterRoles() []*rbacv1.ClusterRole {
@@ -52,7 +52,7 @@ func (ncc *Controller) pruneClusterRoles(ctx context.Context, requiredClusterRol
 			continue
 		}
 	}
-	return utilerrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (ncc *Controller) syncClusterRoles(ctx context.Context, nc *scyllav1alpha1.NodeConfig, clusterRoles map[string]*rbacv1.ClusterRole) ([]metav1.Condition, error) {
@@ -80,5 +80,5 @@ func (ncc *Controller) syncClusterRoles(ctx context.Context, nc *scyllav1alpha1.
 		}
 	}
 
-	return progressingConditions, utilerrors.NewAggregate(errs)
+	return progressingConditions, apimachineryutilerrors.NewAggregate(errs)
 }

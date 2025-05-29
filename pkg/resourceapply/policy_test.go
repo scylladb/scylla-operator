@@ -15,7 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	policyv1listers "k8s.io/client-go/listers/policy/v1"
 	"k8s.io/client-go/tools/cache"
@@ -51,7 +51,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 
 	newPDBWithHash := func() *policyv1.PodDisruptionBudget {
 		pdb := newPDB()
-		utilruntime.Must(SetHashAnnotation(pdb))
+		apimachineryutilruntime.Must(SetHashAnnotation(pdb))
 		return pdb
 	}
 
@@ -134,7 +134,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 			expectedPDB: func() *policyv1.PodDisruptionBudget {
 				pdb := newPDB()
 				pdb.Spec.Selector.MatchLabels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(pdb))
+				apimachineryutilruntime.Must(SetHashAnnotation(pdb))
 				return pdb
 			}(),
 			expectedChanged: true,
@@ -154,7 +154,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 			expectedPDB: func() *policyv1.PodDisruptionBudget {
 				pdb := newPDB()
 				pdb.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(pdb))
+				apimachineryutilruntime.Must(SetHashAnnotation(pdb))
 				return pdb
 			}(),
 			expectedChanged: true,
@@ -202,7 +202,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 				pdb := newPDB()
 				pdb.ResourceVersion = "21"
 				pdb.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(pdb))
+				apimachineryutilruntime.Must(SetHashAnnotation(pdb))
 				return pdb
 			}(),
 			expectedChanged: true,
@@ -231,7 +231,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 				func() *policyv1.PodDisruptionBudget {
 					pdb := newPDB()
 					pdb.OwnerReferences = nil
-					utilruntime.Must(SetHashAnnotation(pdb))
+					apimachineryutilruntime.Must(SetHashAnnotation(pdb))
 					return pdb
 				}(),
 			},
@@ -251,7 +251,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 				func() *policyv1.PodDisruptionBudget {
 					pdb := newPDB()
 					pdb.OwnerReferences = nil
-					utilruntime.Must(SetHashAnnotation(pdb))
+					apimachineryutilruntime.Must(SetHashAnnotation(pdb))
 					return pdb
 				}(),
 			},
@@ -264,7 +264,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 			expectedPDB: func() *policyv1.PodDisruptionBudget {
 				pdb := newPDB()
 				pdb.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(pdb))
+				apimachineryutilruntime.Must(SetHashAnnotation(pdb))
 				return pdb
 			}(),
 			expectedChanged: true,
@@ -277,7 +277,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 				func() *policyv1.PodDisruptionBudget {
 					pdb := newPDB()
 					pdb.OwnerReferences[0].Kind = "WrongKind"
-					utilruntime.Must(SetHashAnnotation(pdb))
+					apimachineryutilruntime.Must(SetHashAnnotation(pdb))
 					return pdb
 				}(),
 			},
@@ -287,7 +287,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 			}(),
 			expectedPDB: func() *policyv1.PodDisruptionBudget {
 				pdb := newPDB()
-				utilruntime.Must(SetHashAnnotation(pdb))
+				apimachineryutilruntime.Must(SetHashAnnotation(pdb))
 				return pdb
 			}(),
 			expectedChanged: true,
@@ -300,7 +300,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 				func() *policyv1.PodDisruptionBudget {
 					pdb := newPDB()
 					pdb.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(pdb))
+					apimachineryutilruntime.Must(SetHashAnnotation(pdb))
 					return pdb
 				}(),
 			},
@@ -320,7 +320,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 				func() *policyv1.PodDisruptionBudget {
 					pdb := newPDB()
 					pdb.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(pdb))
+					apimachineryutilruntime.Must(SetHashAnnotation(pdb))
 					return pdb
 				}(),
 			},
@@ -350,7 +350,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "",
 					}
-					utilruntime.Must(SetHashAnnotation(pdb))
+					apimachineryutilruntime.Must(SetHashAnnotation(pdb))
 					pdb.Annotations["a-1"] = "a-alpha-changed"
 					pdb.Annotations["a-3"] = "a-resurrected"
 					pdb.Annotations["a-custom"] = "custom-value"
@@ -387,7 +387,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 					"l-2":  "l-beta",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(pdb))
+				apimachineryutilruntime.Must(SetHashAnnotation(pdb))
 				pdb.Annotations["a-1"] = "a-alpha-changed"
 				pdb.Annotations["a-3"] = "a-resurrected"
 				pdb.Annotations["a-custom"] = "custom-value"
@@ -415,7 +415,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "l-resurrected",
 					}
-					utilruntime.Must(SetHashAnnotation(pdb))
+					apimachineryutilruntime.Must(SetHashAnnotation(pdb))
 					pdb.Annotations["a-1"] = "a-alpha-changed"
 					pdb.Annotations["a-custom"] = "a-custom-value"
 					pdb.Labels["l-1"] = "l-alpha-changed"
@@ -450,7 +450,7 @@ func TestApplyPodDisruptionBudget(t *testing.T) {
 					"l-2":  "l-beta-x",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(podDisruptionBudget))
+				apimachineryutilruntime.Must(SetHashAnnotation(podDisruptionBudget))
 				delete(podDisruptionBudget.Annotations, "a-3-")
 				podDisruptionBudget.Annotations["a-custom"] = "a-custom-value"
 				delete(podDisruptionBudget.Labels, "l-3-")

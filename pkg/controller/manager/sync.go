@@ -9,10 +9,10 @@ import (
 	"github.com/scylladb/scylla-manager/v3/swagger/gen/scylla-manager/models"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
@@ -35,7 +35,7 @@ func (c *Controller) getManagerClusterState(ctx context.Context, sc *scyllav1.Sc
 
 	clusterName := naming.ManagerClusterName(sc)
 	// Cluster names in manager state are unique, so it suffices to only find one with a matching name.
-	managerCluster, _, found := slices.Find(managerClusters, func(c *models.Cluster) bool {
+	managerCluster, _, found := oslices.Find(managerClusters, func(c *models.Cluster) bool {
 		return c.Name == clusterName
 	})
 	if !found {
@@ -155,10 +155,10 @@ func (c *Controller) sync(ctx context.Context, key string) error {
 	err = c.updateStatus(ctx, sc, status)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't update status: %w", err))
-		return utilerrors.NewAggregate(errs)
+		return apimachineryutilerrors.NewAggregate(errs)
 	}
 
-	err = utilerrors.NewAggregate(errs)
+	err = apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return err
 	}

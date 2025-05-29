@@ -29,8 +29,8 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	kutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/rand"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilrand "k8s.io/apimachinery/pkg/util/rand"
 )
 
 const (
@@ -133,7 +133,7 @@ func makeGrafanaAdminCredentials(sm *scyllav1alpha1.ScyllaDBMonitoring, secrets 
 	}
 
 	if len(existingPassword) == 0 {
-		existingPassword = []byte(rand.String(grafanaPasswordLength))
+		existingPassword = []byte(apimachineryutilrand.String(grafanaPasswordLength))
 	}
 
 	return grafanav1alpha1assets.GrafanaAdminCredentialsSecretTemplate.Get().RenderObject(map[string]any{
@@ -350,7 +350,7 @@ func (smc *Controller) syncGrafana(
 	requiredIngress, _, err := makeGrafanaIngress(sm)
 	renderErrors = append(renderErrors, err)
 
-	renderError := kutilerrors.NewAggregate(renderErrors)
+	renderError := apimachineryutilerrors.NewAggregate(renderErrors)
 	if renderError != nil {
 		return progressingConditions, renderError
 	}
@@ -441,7 +441,7 @@ func (smc *Controller) syncGrafana(
 	)
 	pruneErrors = append(pruneErrors, err)
 
-	pruneError := kutilerrors.NewAggregate(pruneErrors)
+	pruneError := apimachineryutilerrors.NewAggregate(pruneErrors)
 	if pruneError != nil {
 		return progressingConditions, pruneError
 	}
@@ -597,7 +597,7 @@ func (smc *Controller) syncGrafana(
 		}
 	}
 
-	applyError := kutilerrors.NewAggregate(applyErrors)
+	applyError := apimachineryutilerrors.NewAggregate(applyErrors)
 	if applyError != nil {
 		return progressingConditions, applyError
 	}

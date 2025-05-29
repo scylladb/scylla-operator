@@ -18,9 +18,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -146,7 +146,7 @@ func (ncpc *Controller) enqueueAllScyllaPodsOnNode(depth int, obj kubeinterfaces
 
 	allPods, err := ncpc.podLister.List(naming.ScyllaSelector())
 	if err != nil {
-		utilruntime.HandleError(err)
+		apimachineryutilruntime.HandleError(err)
 		return
 	}
 
@@ -170,7 +170,7 @@ func (ncpc *Controller) enqueueAllScyllaPodsForNodeConfig(depth int, obj kubeint
 
 	allNodes, err := ncpc.nodeLister.List(labels.Everything())
 	if err != nil {
-		utilruntime.HandleError(err)
+		apimachineryutilruntime.HandleError(err)
 		return
 	}
 
@@ -178,7 +178,7 @@ func (ncpc *Controller) enqueueAllScyllaPodsForNodeConfig(depth int, obj kubeint
 	for _, node := range allNodes {
 		matching, err := controllerhelpers.IsNodeConfigSelectingNode(nodeConfig, node)
 		if err != nil {
-			utilruntime.HandleError(err)
+			apimachineryutilruntime.HandleError(err)
 			return
 		}
 
@@ -275,7 +275,7 @@ func (ncpc *Controller) processNextItem(ctx context.Context) bool {
 	defer cancel()
 	err := ncpc.sync(ctx, key.(string))
 	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
-	err = utilerrors.Reduce(err)
+	err = apimachineryutilerrors.Reduce(err)
 	switch {
 	case err == nil:
 		ncpc.queue.Forget(key)
@@ -288,7 +288,7 @@ func (ncpc *Controller) processNextItem(ctx context.Context) bool {
 		klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", key, "Error", err)
 
 	default:
-		utilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
+		apimachineryutilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
 	}
 
 	ncpc.queue.AddRateLimited(key)
@@ -302,7 +302,7 @@ func (ncpc *Controller) runWorker(ctx context.Context) {
 }
 
 func (ncpc *Controller) Run(ctx context.Context, workers int) {
-	defer utilruntime.HandleCrash()
+	defer apimachineryutilruntime.HandleCrash()
 
 	klog.InfoS("Starting controller", "controller", ControllerName)
 
@@ -322,7 +322,7 @@ func (ncpc *Controller) Run(ctx context.Context, workers int) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			wait.UntilWithContext(ctx, ncpc.runWorker, time.Second)
+			apimachineryutilwait.UntilWithContext(ctx, ncpc.runWorker, time.Second)
 		}()
 	}
 

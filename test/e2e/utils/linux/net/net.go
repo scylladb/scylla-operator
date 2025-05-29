@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 )
 
 const (
@@ -225,10 +225,10 @@ func ParseProcNetEntries(data string) (ProcNetEntries, error) {
 }
 
 func (pe ProcNetEntries) FilterListen() []AddressPort {
-	filtered := slices.Filter(pe, func(entry ProcNetEntry) bool {
+	filtered := oslices.Filter(pe, func(entry ProcNetEntry) bool {
 		return entry.State == EntryStateListen
 	})
-	return slices.ConvertSlice(filtered, func(from ProcNetEntry) AddressPort {
+	return oslices.ConvertSlice(filtered, func(from ProcNetEntry) AddressPort {
 		return from.LocalAddress
 	})
 }

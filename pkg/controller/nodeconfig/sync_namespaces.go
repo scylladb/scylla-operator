@@ -11,7 +11,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 func (ncc *Controller) makeNamespaces() []*corev1.Namespace {
@@ -52,7 +52,7 @@ func (ncc *Controller) pruneNamespaces(ctx context.Context, requiredNamespaces [
 			continue
 		}
 	}
-	return utilerrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (ncc *Controller) syncNamespaces(ctx context.Context, nc *scyllav1alpha1.NodeConfig, namespaces map[string]*corev1.Namespace) ([]metav1.Condition, error) {
@@ -80,5 +80,5 @@ func (ncc *Controller) syncNamespaces(ctx context.Context, nc *scyllav1alpha1.No
 			continue
 		}
 	}
-	return progressingConditions, utilerrors.NewAggregate(errs)
+	return progressingConditions, apimachineryutilerrors.NewAggregate(errs)
 }

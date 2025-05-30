@@ -213,6 +213,7 @@ function run-e2e {
   FIELD_MANAGER="${FIELD_MANAGER:-run-e2e-script}"
   SO_BUCKET_NAME="${SO_BUCKET_NAME:-}"
   SO_E2E_PARALLELISM="${SO_E2E_PARALLELISM:-0}"
+  SO_E2E_TIMEOUT="${SO_E2E_TIMEOUT:-24h}"
 
   config_file="$(realpath "$(dirname "${BASH_SOURCE[0]}")/../../../assets/config/config.yaml")"
   SCYLLADB_VERSION="${SCYLLADB_VERSION:-$(yq '.operator.scyllaDBVersion' "$config_file")}"
@@ -278,6 +279,7 @@ spec:
     - --color=false
     - --artifacts-dir=/tmp/artifacts
     - "--parallelism=${SO_E2E_PARALLELISM}"
+    - "--timeout=${SO_E2E_TIMEOUT}"
     - "--feature-gates=${SCYLLA_OPERATOR_FEATURE_GATES}"
     - "--ingress-controller-address=${ingress_controller_address}"
     - "--ingress-controller-ingress-class-name=${ingress_class_name}"

@@ -11,7 +11,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	utilsv1alpha1 "github.com/scylladb/scylla-operator/test/e2e/utils/v1alpha1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func WaitForFullQuorum(ctx context.Context, rkcClusterMap map[string]framework.ClusterInterface, sc *v1alpha1.ScyllaDBCluster) error {
@@ -36,7 +36,7 @@ func WaitForFullQuorum(ctx context.Context, rkcClusterMap map[string]framework.C
 			return fmt.Errorf("unexpected nil remote namespace name in %q datacenter status", dc.Name)
 		}
 
-		sdc, err := clusterClient.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBDatacenters(*dcStatus.RemoteNamespaceName).Get(ctx, naming.ScyllaDBDatacenterName(sc, &dc), v1.GetOptions{})
+		sdc, err := clusterClient.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBDatacenters(*dcStatus.RemoteNamespaceName).Get(ctx, naming.ScyllaDBDatacenterName(sc, &dc), metav1.GetOptions{})
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't get ScyllaDBDatacenter %q: %w", dc.Name, err))
 			continue
@@ -73,7 +73,7 @@ func WaitForFullQuorum(ctx context.Context, rkcClusterMap map[string]framework.C
 			return fmt.Errorf("unexpected nil remote namespace name in %q datacenter status", dc.Name)
 		}
 
-		sdc, err := clusterClient.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBDatacenters(*dcStatus.RemoteNamespaceName).Get(ctx, naming.ScyllaDBDatacenterName(sc, &dc), v1.GetOptions{})
+		sdc, err := clusterClient.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBDatacenters(*dcStatus.RemoteNamespaceName).Get(ctx, naming.ScyllaDBDatacenterName(sc, &dc), metav1.GetOptions{})
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't get ScyllaDBDatacenter %q: %w", dc.Name, err))
 			continue

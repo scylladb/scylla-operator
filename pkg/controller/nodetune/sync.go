@@ -21,25 +21,6 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func (ncdc *Controller) getCanAdoptFunc(ctx context.Context) func() error {
-	return func() error {
-		fresh, err := ncdc.scyllaClient.ScyllaV1alpha1().NodeConfigs().Get(ctx, ncdc.nodeConfigName, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		if fresh.UID != ncdc.nodeConfigUID {
-			return fmt.Errorf("original NodeConfig %v is gone: got uid %v, wanted %v", ncdc.nodeConfigName, fresh.UID, ncdc.nodeConfigUID)
-		}
-
-		if fresh.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%v has just been deleted at %v", fresh.Name, fresh.DeletionTimestamp)
-		}
-
-		return nil
-	}
-}
-
 func (ncdc *Controller) sync(ctx context.Context) error {
 	startTime := time.Now()
 	klog.V(4).InfoS("Started sync", "startTime", startTime)

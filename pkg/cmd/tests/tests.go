@@ -7,15 +7,13 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	ginkgotest "github.com/scylladb/scylla-operator/pkg/test/ginkgo"
+	_ "github.com/scylladb/scylla-operator/test/e2e" // Include suites
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/spf13/cobra"
 	"go.uber.org/automaxprocs/maxprocs"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/klog/v2"
 	"k8s.io/kubectl/pkg/util/templates"
-
-	// Include suites
-	_ "github.com/scylladb/scylla-operator/test/e2e"
 )
 
 const (

@@ -9,7 +9,6 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
-	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	sidecarcontroller "github.com/scylladb/scylla-operator/pkg/controller/sidecar"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
@@ -42,8 +41,7 @@ type SidecarOptions struct {
 	nodesBroadcastAddressType   scyllav1alpha1.BroadcastAddressType
 	clientsBroadcastAddressType scyllav1alpha1.BroadcastAddressType
 
-	kubeClient   kubernetes.Interface
-	scyllaClient scyllaversionedclient.Interface
+	kubeClient kubernetes.Interface
 }
 
 func NewSidecarOptions(streams genericclioptions.IOStreams) *SidecarOptions {

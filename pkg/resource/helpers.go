@@ -11,14 +11,6 @@ import (
 
 var Scheme = scheme.Scheme
 
-func newUnknownGVK() *schema.GroupVersionKind {
-	return &schema.GroupVersionKind{
-		Group:   "unknown",
-		Version: "unknown",
-		Kind:    "unknown",
-	}
-}
-
 func GetObjectGVK(object runtime.Object) (*schema.GroupVersionKind, error) {
 	gvk := object.GetObjectKind().GroupVersionKind()
 	if len(gvk.Kind) > 0 {

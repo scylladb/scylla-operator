@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	corev1informers "k8s.io/client-go/informers/core/v1"
-
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	scyllaclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	scyllav1alpha1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1alpha1"
@@ -28,6 +26,7 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
@@ -417,29 +416,6 @@ func (scc *Controller) deleteRemoteRemoteOwner(obj interface{}) {
 	scc.handlers.HandleDelete(
 		obj,
 		scc.enqueueThroughRemoteOwnerLabel,
-	)
-}
-
-func (scc *Controller) addScyllaDBDatacenter(obj interface{}) {
-	scc.handlers.HandleAdd(
-		obj.(*scyllav1alpha1.ScyllaDBDatacenter),
-		scc.enqueueThroughParentLabel,
-	)
-}
-
-func (scc *Controller) updateScyllaDBDatacenter(old, cur interface{}) {
-	scc.handlers.HandleUpdate(
-		old.(*scyllav1alpha1.ScyllaDBDatacenter),
-		cur.(*scyllav1alpha1.ScyllaDBDatacenter),
-		scc.enqueueThroughParentLabel,
-		scc.deleteScyllaDBDatacenter,
-	)
-}
-
-func (scc *Controller) deleteScyllaDBDatacenter(obj interface{}) {
-	scc.handlers.HandleDelete(
-		obj,
-		scc.enqueueThroughParentLabel,
 	)
 }
 

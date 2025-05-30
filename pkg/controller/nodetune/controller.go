@@ -63,7 +63,6 @@ type Controller struct {
 
 	nodeConfigLister          scyllav1alpha1listers.NodeConfigLister
 	localScyllaPodsLister     corev1listers.PodLister
-	configMapLister           corev1listers.ConfigMapLister
 	namespacedDaemonSetLister appsv1listers.DaemonSetLister
 	namespacedJobLister       batchv1listers.JobLister
 	selfPodLister             corev1listers.PodLister

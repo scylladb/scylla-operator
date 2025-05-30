@@ -1,8 +1,6 @@
 package config
 
 import (
-	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -273,22 +271,6 @@ func TestAllowedCPUs(t *testing.T) {
 		t.Error(err)
 	}
 	t.Log(cpusAllowed)
-}
-
-func writeTempFile(t *testing.T, namePattern, content string) string {
-	tmp, err := ioutil.TempFile(os.TempDir(), namePattern)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if _, err := io.WriteString(tmp, content); err != nil {
-		t.Error(err)
-	}
-	if err := tmp.Close(); err != nil {
-		t.Error(err)
-	}
-
-	return tmp.Name()
 }
 
 func TestScyllaArguments(t *testing.T) {

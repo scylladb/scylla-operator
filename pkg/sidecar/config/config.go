@@ -14,7 +14,6 @@ import (
 
 	"github.com/magiconair/properties"
 	"github.com/pkg/errors"
-	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
@@ -35,12 +34,9 @@ const (
 	entrypointPath                      = "/docker-entrypoint.py"
 )
 
-var scyllaJMXPaths = []string{"/usr/lib/scylla/jmx/scylla-jmx", "/opt/scylladb/jmx/scylla-jmx"}
-
 type ScyllaConfig struct {
 	member        *identity.Member
 	kubeClient    kubernetes.Interface
-	scyllaClient  scyllaversionedclient.Interface
 	cpuCount      int
 	externalSeeds []string
 }

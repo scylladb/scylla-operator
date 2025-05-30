@@ -1,0 +1,16 @@
+version: "2"
+linters:
+  default: none
+  enable:
+    - unused
+    - govet
+    # More linters can be added, see supported ones: https://golangci-lint.run/usage/linters/
+  exclusions:
+    presets:
+      - common-false-positives
+      - std-error-handling
+formatters:
+  enable:
+    - gofmt
+    - goimports
+    - gci

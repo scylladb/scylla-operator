@@ -13,11 +13,11 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
-	"k8s.io/kubelet/pkg/apis/podresources/v1"
+	podresourcesv1 "k8s.io/kubelet/pkg/apis/podresources/v1"
 )
 
 type PodResourcesClient interface {
-	List(ctx context.Context) ([]*v1.PodResources, error)
+	List(ctx context.Context) ([]*podresourcesv1.PodResources, error)
 	Close() error
 }
 
@@ -54,17 +54,17 @@ func NewPodResourcesClient(ctx context.Context, endpoint string) (*PodResourcesC
 
 	return &PodResourcesClientImpl{
 		conn:   conn,
-		client: v1.NewPodResourcesListerClient(conn),
+		client: podresourcesv1.NewPodResourcesListerClient(conn),
 	}, nil
 }
 
 type PodResourcesClientImpl struct {
 	conn   *grpc.ClientConn
-	client v1.PodResourcesListerClient
+	client podresourcesv1.PodResourcesListerClient
 }
 
-func (c *PodResourcesClientImpl) List(ctx context.Context) ([]*v1.PodResources, error) {
-	resp, err := c.client.List(ctx, &v1.ListPodResourcesRequest{})
+func (c *PodResourcesClientImpl) List(ctx context.Context) ([]*podresourcesv1.PodResources, error) {
+	resp, err := c.client.List(ctx, &podresourcesv1.ListPodResourcesRequest{})
 	if err != nil {
 		if st, ok := status.FromError(err); ok && st.Code() == codes.NotFound {
 			return nil, nil

@@ -2590,6 +2590,19 @@ func TestValidateScyllaDBClusterUpdate(t *testing.T) {
 			expectedErrorString: "",
 		},
 		{
+			name: "cluster name changed",
+			old:  newValidScyllaDBCluster(),
+			new: func() *scyllav1alpha1.ScyllaDBCluster {
+				sc := newValidScyllaDBCluster()
+				sc.Spec.ClusterName = pointer.Ptr("foo")
+				return sc
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.clusterName", BadValue: pointer.Ptr("foo"), Detail: `field is immutable`},
+			},
+			expectedErrorString: `spec.clusterName: Invalid value: "foo": field is immutable`,
+		},
+		{
 			name: "empty rack removed",
 			old: func() *scyllav1alpha1.ScyllaDBCluster {
 				sc := newValidScyllaDBCluster()

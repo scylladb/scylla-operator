@@ -17,6 +17,16 @@ A subset of useful commands:
 
 Check `make help` for more.
 
+### Dependencies
+
+Most of the dependencies are managed by Go modules. Some Makefile targets require additional tools to be installed, and
+it's up to the developer to ensure they are available in the environment:
+
+- [yq](https://github.com/mikefarah/yq)
+- [jq](https://github.com/jqlang/jq)
+- [helm](https://github.com/helm/helm)
+- [golangci-lint](https://github.com/golangci/golangci-lint)
+
 ## Coding convention
 
 Follow these guidelines for writing and structuring your code:

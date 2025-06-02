@@ -18,7 +18,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/util/cpuset"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
-	"k8s.io/kubelet/pkg/apis/podresources/v1"
+	podresourcesv1 "k8s.io/kubelet/pkg/apis/podresources/v1"
 )
 
 const (
@@ -108,7 +108,7 @@ func cpusetFromKubelet(ctx context.Context, podResourcesClient kubelet.PodResour
 			continue
 		}
 
-		cr, _, ok := slices.Find(pr.Containers, func(cr *v1.ContainerResources) bool {
+		cr, _, ok := slices.Find(pr.Containers, func(cr *podresourcesv1.ContainerResources) bool {
 			return cr.Name == containerName
 		})
 		if !ok {

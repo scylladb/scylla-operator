@@ -8,7 +8,7 @@ import (
 
 	"github.com/scylladb/scylla-operator/pkg/util/blkutils"
 	"github.com/scylladb/scylla-operator/pkg/util/exectest"
-	"k8s.io/utils/exec/testing"
+	testingexec "k8s.io/utils/exec/testing"
 )
 
 func TestGetPartitionUUID(t *testing.T) {

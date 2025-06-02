@@ -10,10 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/scylladb/scylla-operator/pkg/util/timeutc"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/scylladb/scylla-operator/pkg/util/httpx"
+	"github.com/scylladb/scylla-operator/pkg/util/timeutc"
 )
 
 func TestParseBearerAuth(t *testing.T) {

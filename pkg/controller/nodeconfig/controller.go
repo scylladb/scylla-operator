@@ -48,7 +48,6 @@ const (
 var (
 	keyFunc                 = cache.DeletionHandlingMetaNamespaceKeyFunc
 	nodeConfigControllerGVK = scyllav1alpha1.GroupVersion.WithKind("NodeConfig")
-	daemonSetControllerGVK  = appsv1.SchemeGroupVersion.WithKind("DaemonSet")
 )
 
 type Controller struct {

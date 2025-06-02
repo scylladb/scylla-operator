@@ -1,1 +1,26 @@
 *.cast binary
+
+# Mark files as generated with linguist-generated=true so GitHub collapses them and excludes from PR stats.
+
+# Match files starting with 'zz_generated.'
+*zz_generated.* linguist-generated=true
+
+# Exact file paths
+deploy/operator.yaml linguist-generated=true
+deploy/manager-dev.yaml linguist-generated=true
+deploy/manager-prod.yaml linguist-generated=true
+examples/prometheus-operator.yaml linguist-generated=true
+examples/haproxy-ingress.yaml linguist-generated=true
+
+# Exact file names
+values.schema.json linguist-generated=true
+
+# Path prefixes
+vendor/** linguist-generated=true
+docs/source/api-reference/** linguist-generated=true
+pkg/client/** linguist-generated=true
+pkg/externalclient/** linguist-generated=true
+deploy/operator/** linguist-generated=true
+deploy/manager/** linguist-generated=true
+assets/monitoring/grafana/v1alpha1/dashboards/** linguist-generated=true
+assets/monitoring/prometheus/v1/rules/** linguist-generated=true

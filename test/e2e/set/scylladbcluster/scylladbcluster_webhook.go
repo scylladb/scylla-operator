@@ -8,7 +8,6 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -23,15 +22,10 @@ var _ = g.Describe("ScyllaDBCluster webhook", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		rkcName := fmt.Sprintf("%s-0", f.Namespace())
-		framework.By("Creating RemoteKubernetesCluster %q with credentials to cluster #0", rkcName)
-		rkc, err := utils.GetRemoteKubernetesClusterWithOperatorClusterRole(ctx, f.KubeAdminClient(), f.AdminClientConfig(), rkcName, f.Namespace())
+		rkcs, _, err := utils.SetUpRemoteKubernetesClustersFromRestConfigs(ctx, framework.TestContext.RestConfigs, f)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		rkc, err = f.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters().Create(ctx, rkc, metav1.CreateOptions{})
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		validSC := f.GetDefaultScyllaDBCluster([]*scyllav1alpha1.RemoteKubernetesCluster{rkc})
+		validSC := f.GetDefaultScyllaDBCluster(rkcs)
 		validSC.Name = names.SimpleNameGenerator.GenerateName(validSC.GenerateName)
 
 		framework.By("Rejecting a creation of ScyllaDBCluster with duplicated datacenters")

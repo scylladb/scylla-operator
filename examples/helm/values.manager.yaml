@@ -9,14 +9,6 @@ resources:
   requests:
     cpu: 200m
     memory: 32Mi
-# Resources allocated to Scylla Manager Controller pods
-controllerResources:
-  limits:
-    cpu: 200m
-    memory: 128Mi
-  requests:
-    cpu: 200m
-    memory: 32Mi
 # Scylla instance for Manager
 scylla:
   developerMode: true

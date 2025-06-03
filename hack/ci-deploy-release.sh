@@ -236,21 +236,6 @@ else
   echo "Skipping CSI driver creation"
 fi
 
-cat > "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" << EOF
-resources:
-- ${source_url}/${revision}/deploy/manager-prod.yaml
-patches:
-- patch: |-
-    - op: add
-      path: /spec/template/spec/containers/0/args/-
-      value: "--loglevel=${SO_SCYLLA_OPERATOR_LOGLEVEL}"
-  target:
-    group: apps
-    version: v1
-    kind: Deployment
-    name: scylla-manager-controller
-EOF
-
 if [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME:-}" ]]; then
   # SO_SCYLLACLUSTER_STORAGECLASS_NAME is set and nonempty.
   cat << EOF | \
@@ -331,7 +316,6 @@ kubectl -n=scylla-manager wait --timeout=5m --for='condition=Progressing=False' 
 kubectl -n=scylla-manager wait --timeout=5m --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
 kubectl -n=scylla-manager wait --timeout=5m --for='condition=Available=True' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
 kubectl -n=scylla-manager rollout status --timeout=5m deployment.apps/scylla-manager
-kubectl -n=scylla-manager rollout status --timeout=5m deployment.apps/scylla-manager-controller
 
 kubectl -n=haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-ingress
 

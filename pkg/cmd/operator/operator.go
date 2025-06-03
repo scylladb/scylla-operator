@@ -266,6 +266,7 @@ func (o *OperatorOptions) Complete(cmd *cobra.Command) error {
 	return nil
 }
 
+// TODO: add a gate checking for manager-controller's presence in the cluster.
 func (o *OperatorOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command) error {
 	klog.Infof("%s version %s", cmd.Name(), version.Get())
 	cliflag.PrintFlags(cmd.Flags())

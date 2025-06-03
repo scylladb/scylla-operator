@@ -5,6 +5,7 @@ metadata:
   namespace: scylla-operator
   labels:
     {{- include "scylla-operator.labels" . | nindent 4 }}
+    testLabel: someValue
 spec:
   replicas: {{ .Values.replicas }}
   strategy:

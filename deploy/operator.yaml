@@ -46768,6 +46768,7 @@ metadata:
   labels:
     app.kubernetes.io/name: scylla-operator
     app.kubernetes.io/instance: scylla-operator
+    testLabel: someValue
 spec:
   replicas: 2
   strategy:

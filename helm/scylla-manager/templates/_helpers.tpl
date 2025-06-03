@@ -23,10 +23,6 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 {{- end }}
 
-{{- define "scylla-manager.controllerName" -}}
-{{- printf "%s-controller" ( include "scylla-manager.fullname" . ) }}
-{{- end }}
-
 {{/*
 Create chart name and version as used by the chart label.
 */}}
@@ -42,21 +38,11 @@ app.kubernetes.io/name: {{ include "scylla-manager.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{- define "scylla-manager.controllerSelectorLabels" -}}
-app.kubernetes.io/name: {{ include "scylla-manager.name" . }}-controller
-app.kubernetes.io/instance: {{ .Release.Name }}
-{{- end }}
-
-
 {{/*
 Common labels
 */}}
 {{- define "scylla-manager.labels" -}}
 {{ include "scylla-manager.selectorLabels" . }}
-{{- end }}
-
-{{- define "scylla-manager.controllerLabels" -}}
-{{ include "scylla-manager.controllerSelectorLabels" . }}
 {{- end }}
 
 {{/*
@@ -67,17 +53,6 @@ Create the name of the service account to use
 {{- default (include "scylla-manager.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
-
-{{/*
-Create the name of the service account to use by Scylla Manager Controller
-*/}}
-{{- define "scylla-manager.controllerServiceAccountName" -}}
-{{- if .Values.controllerServiceAccount.create }}
-{{- default ( printf "%s-controller" ( include "scylla-manager.fullname" . ) ) .Values.controllerServiceAccount.name }}
-{{- else }}
-{{- default "default" .Values.controllerServiceAccount.name }}
 {{- end }}
 {{- end }}
 

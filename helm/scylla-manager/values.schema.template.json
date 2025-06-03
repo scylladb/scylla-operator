@@ -5,49 +5,6 @@
     "affinity": {
       "type": "object"
     },
-    "controllerAffinity": {
-      "type": "object"
-    },
-    "controllerImage": {
-      "type": "object",
-      "properties": {
-        "pullPolicy": {
-          "type": "string"
-        },
-        "repository": {
-          "type": "string"
-        },
-        "tag": {
-          "type": "string"
-        }
-      }
-    },
-    "controllerResources": {
-      "type": "object",
-      "properties": {
-        "requests": {
-          "additionalProperties": {
-            "anyOf": [
-              {"type": "string"},
-              {"type": "integer"}
-            ]
-          },
-          "type": "object"
-        },
-        "limits": {
-          "additionalProperties": {
-            "anyOf": [
-              {"type": "string"},
-              {"type": "integer"}
-            ]
-          },
-          "type": "object"
-        }
-      }
-    },
-    "controllerSecurityContext": {
-      "type": "object"
-    },
     "image": {
       "type": "object",
       "properties": {
@@ -66,9 +23,6 @@
       "type": "string"
     },
     "nodeSelector": {
-      "type": "object"
-    },
-    "controllerNodeSelector": {
       "type": "object"
     },
     "resources": {
@@ -116,9 +70,6 @@
       "type": "object"
     },
     "tolerations": {
-      "type": "array"
-    },
-    "controllerTolerations": {
       "type": "array"
     },
     "serviceMonitor": {

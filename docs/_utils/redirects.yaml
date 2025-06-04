@@ -2,8 +2,8 @@
 #old path: new path
 #
 
-/stable/resources/scyllaclusters/nodeoperations/restore.html: https://operator.docs.scylladb.com/stable/resources/scyllaclusters/nodeoperations/restore.html
-/stable/manager.html: https://operator.docs.scylladb.com/stable/architecture/manager.html
+/stable/resources/scyllaclusters/nodeoperations/restore.html: /stable/resources/scyllaclusters/nodeoperations/restore.html
+/stable/manager.html: /stable/architecture/manager.html
 
 # removing redirection html script files
 # test: /

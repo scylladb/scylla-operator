@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/go-openapi/runtime"
+	"github.com/scylladb/scylla-manager/v3/pkg/managerclient"
 )
 
 func IsNotFound(err error) bool {
@@ -28,4 +29,20 @@ func codeForError(err error) int {
 	}
 
 	return 0
+}
+
+// GetPayloadMessage extracts the message from an error that implements the GetPayload method.
+// If the error does not implement the GetPayload method, it returns the error's string representation.
+func GetPayloadMessage(err error) string {
+	var payloadResponse interface {
+		GetPayload() *managerclient.ErrorResponse
+	}
+	if errors.As(err, &payloadResponse) {
+		payload := payloadResponse.GetPayload()
+		if payload != nil {
+			return payload.Message
+		}
+	}
+
+	return err.Error()
 }

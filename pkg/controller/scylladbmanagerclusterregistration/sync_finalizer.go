@@ -59,6 +59,7 @@ func (smcrc *Controller) syncFinalizer(ctx context.Context, smcr *scyllav1alpha1
 	if found {
 		err = managerClient.DeleteCluster(ctx, managerCluster.ID)
 		if err != nil {
+			klog.V(4).InfoS("Failed to delete ScyllaDB Manager cluster", "ScyllaDBManagerClusterRegistration", klog.KObj(smcr), "UID", smcr.UID, "ScyllaDBManagerClusterName", managerCluster.Name, "ScyllaDBManagerClusterID", managerCluster.ID, "Error", err)
 			return progressingConditions, fmt.Errorf("can't delete ScyllaDB Manager cluster: %w", err)
 		}
 

@@ -80,12 +80,13 @@ func (smcrc *Controller) syncManager(
 	}
 
 	if !found {
-		klog.V(2).InfoS("Creating ScyllaDB Manager cluster.", "ScyllaDBManagerClusterRegistration", klog.KObj(smcr), "ScyllaDBManagerClusterName", requiredManagerCluster.Name)
+		klog.V(4).InfoS("Creating ScyllaDB Manager cluster.", "ScyllaDBManagerClusterRegistration", klog.KObj(smcr), "ScyllaDBManagerClusterName", requiredManagerCluster.Name)
 
 		var managerClusterID string
 		managerClusterID, err = managerClient.CreateCluster(ctx, requiredManagerCluster)
 		if err != nil {
-			return progressingConditions, fmt.Errorf("can't create ScyllaDB Manager cluster %q: %w", requiredManagerCluster.Name, err)
+			klog.V(4).InfoS("Failed to create ScyllaDB Manager cluster", "ScyllaDBManagerClusterRegistration", klog.KObj(smcr), "ScyllaDBManagerClusterName", requiredManagerCluster.Name, "Error", err)
+			return progressingConditions, fmt.Errorf("can't create ScyllaDB Manager cluster %q: %s", requiredManagerCluster.Name, managerclienterrors.GetPayloadMessage(err))
 		}
 
 		status.ClusterID = &managerClusterID
@@ -100,7 +101,8 @@ func (smcrc *Controller) syncManager(
 
 		err = managerClient.DeleteCluster(ctx, managerCluster.ID)
 		if err != nil {
-			return progressingConditions, fmt.Errorf("can't delete ScyllaDB Manager cluster %q: %w ", managerCluster.Name, err)
+			klog.V(4).InfoS("Failed to delete ScyllaDB Manager cluster", "ScyllaDBManagerClusterRegistration", klog.KObj(smcr), "ScyllaDBManagerClusterName", managerCluster.Name, "ScyllaDBManagerClusterID", managerCluster.ID, "Error", err)
+			return progressingConditions, fmt.Errorf("can't delete ScyllaDB Manager cluster %q: %s", managerCluster.Name, managerclienterrors.GetPayloadMessage(err))
 		}
 
 		progressingConditions = append(progressingConditions, metav1.Condition{
@@ -126,10 +128,11 @@ func (smcrc *Controller) syncManager(
 
 	requiredManagerCluster.ID = managerCluster.ID
 
-	klog.V(2).InfoS("Updating ScyllaDB Manager cluster.", "ScyllaDBManagerClusterRegistration", klog.KObj(smcr), "ScyllaDBManagerClusterName", requiredManagerCluster.Name, "ScyllaDBManagerClusterID", requiredManagerCluster.ID)
+	klog.V(4).InfoS("Updating ScyllaDB Manager cluster.", "ScyllaDBManagerClusterRegistration", klog.KObj(smcr), "ScyllaDBManagerClusterName", requiredManagerCluster.Name, "ScyllaDBManagerClusterID", requiredManagerCluster.ID)
 	err = managerClient.UpdateCluster(ctx, requiredManagerCluster)
 	if err != nil {
-		return progressingConditions, fmt.Errorf("can't update ScyllaDB Manager cluster %q: %w", managerCluster.Name, err)
+		klog.V(4).InfoS("Failed to update ScyllaDB Manager cluster", "ScyllaDBManagerClusterRegistration", klog.KObj(smcr), "ScyllaDBManagerClusterName", requiredManagerCluster.Name, "ScyllaDBManagerClusterID", requiredManagerCluster.ID, "Error", err)
+		return progressingConditions, fmt.Errorf("can't update ScyllaDB Manager cluster %q: %s", managerCluster.Name, managerclienterrors.GetPayloadMessage(err))
 	}
 
 	return progressingConditions, nil
@@ -194,7 +197,8 @@ func getScyllaDBManagerCluster(ctx context.Context, smcr *scyllav1alpha1.ScyllaD
 		managerCluster, err := managerClient.GetCluster(ctx, *smcr.Status.ClusterID)
 		if err != nil {
 			if !managerclienterrors.IsNotFound(err) {
-				return nil, false, fmt.Errorf("can't get ScyllaDB Manager cluster: %w", err)
+				klog.V(4).InfoS("Failed to get ScyllaDB Manager cluster by ID", "ScyllaDBManagerClusterRegistration", klog.KObj(smcr), "ScyllaDBManagerClusterID", *smcr.Status.ClusterID, "Error", err)
+				return nil, false, fmt.Errorf("can't get ScyllaDB Manager cluster: %s", managerclienterrors.GetPayloadMessage(err))
 			}
 
 			klog.Warningf("Cluster %q (%q) owned by ScyllaDBManagerClusterRegistration %q has been removed from ScyllaDB Manager state.", managerClusterName, *smcr.Status.ClusterID, klog.KObj(smcr))
@@ -207,7 +211,8 @@ func getScyllaDBManagerCluster(ctx context.Context, smcr *scyllav1alpha1.ScyllaD
 	// TODO: get a single cluster instead when https://github.com/scylladb/scylla-manager/issues/4350 is implemented.
 	managerClusters, err := managerClient.ListClusters(ctx)
 	if err != nil {
-		return nil, false, fmt.Errorf("can't list ScyllaDB Manager clusters: %w", err)
+		klog.V(4).InfoS("Failed to list ScyllaDB Manager clusters", "ScyllaDBManagerClusterRegistration", klog.KObj(smcr), "Error", err)
+		return nil, false, fmt.Errorf("can't list ScyllaDB Manager clusters: %s", managerclienterrors.GetPayloadMessage(err))
 	}
 
 	// Cluster names in manager state are unique, so it suffices to only find one with a matching name.

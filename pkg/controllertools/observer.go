@@ -111,13 +111,14 @@ func (o *Observer) processNextItem(ctx context.Context) bool {
 	case apierrors.IsAlreadyExists(err):
 		klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", key, "Error", err)
 
+	case IsNonRetriable(err):
+		klog.InfoS("Hit non-retriable error. Dropping the item from the queue.", "Error", err)
+		o.queue.Forget(key)
+		return true
+
 	default:
-		if IsNonRetriable(err) {
-			klog.InfoS("Hit non-retriable error. Dropping the item from the queue.", "Error", err)
-			o.queue.Forget(key)
-			return true
-		}
 		utilruntime.HandleError(fmt.Errorf("sync loop has failed: %w", err))
+
 	}
 
 	o.queue.AddRateLimited(key)

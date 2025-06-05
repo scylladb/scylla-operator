@@ -3,6 +3,8 @@
 package scyllacluster
 
 const (
-	scyllaDBDatacenterControllerProgressingCondition = "ScyllaDBDatacenterControllerProgressing"
-	scyllaDBDatacenterControllerDegradedCondition    = "ScyllaDBDatacenterControllerDegraded"
+	scyllaDBDatacenterControllerProgressingCondition  = "ScyllaDBDatacenterControllerProgressing"
+	scyllaDBDatacenterControllerDegradedCondition     = "ScyllaDBDatacenterControllerDegraded"
+	scyllaDBManagerTaskControllerProgressingCondition = "ScyllaDBManagerTaskControllerProgressing"
+	scyllaDBManagerTaskControllerDegradedCondition    = "ScyllaDBManagerTaskControllerDegraded"
 )

@@ -385,6 +385,8 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		kubeInformers.Batch().V1().Jobs(),
 		scyllaInformers.Scylla().V1().ScyllaClusters(),
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBManagerClusterRegistrations(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBManagerTasks(),
 	)
 	if err != nil {
 		return fmt.Errorf("can't create scyllacluster controller: %w", err)

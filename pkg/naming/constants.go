@@ -264,4 +264,5 @@ const (
 	ScyllaDBManagerTaskRepairParallelDisableValidationAnnotation   = "internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-parallel-disable-validation"
 	ScyllaDBManagerTaskRepairIntensityOverrideAnnotation           = "internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-intensity-override"
 	ScyllaDBManagerTaskRepairSmallTableThresholdOverrideAnnotation = "internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-small-table-threshold-override"
+	ScyllaDBManagerTaskStatusAnnotation                            = "internal.scylla-operator.scylladb.com/scylladb-manager-task-status"
 )

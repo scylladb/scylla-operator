@@ -19,7 +19,7 @@ import (
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
@@ -102,7 +102,7 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 		objectErrs = append(objectErrs, err)
 	}
 
-	objectErr := utilerrors.NewAggregate(objectErrs)
+	objectErr := apimachineryutilerrors.NewAggregate(objectErrs)
 	if objectErr != nil {
 		return objectErr
 	}
@@ -355,7 +355,7 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 
 	if len(aggregationErrs) > 0 {
 		errs = append(errs, aggregationErrs...)
-		return utilerrors.NewAggregate(errs)
+		return apimachineryutilerrors.NewAggregate(errs)
 	}
 
 	for _, c := range nodeAvailableConditions {
@@ -383,7 +383,7 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 		errs = append(errs, fmt.Errorf("can't update status: %w", err))
 	}
 
-	return utilerrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (ncc *Controller) getNamespaces() (map[string]*corev1.Namespace, error) {
@@ -501,7 +501,7 @@ func (ncc *Controller) getMatchingNodes(nc *scyllav1alpha1.NodeConfig) ([]*corev
 		}
 	}
 
-	err = utilerrors.NewAggregate(errs)
+	err = apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return nil, err
 	}
@@ -558,7 +558,7 @@ func aggregateNodeStatusConditions(generation int64, conditions []metav1.Conditi
 		nodeAggregateConditions = append(nodeAggregateConditions, nodeAggregateCondition)
 	}
 
-	err := utilerrors.NewAggregate(errs)
+	err := apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return nil, err
 	}

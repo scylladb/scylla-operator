@@ -23,9 +23,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	appsv1informers "k8s.io/client-go/informers/apps/v1"
 	batchv1informers "k8s.io/client-go/informers/batch/v1"
 	corev1informers "k8s.io/client-go/informers/core/v1"
@@ -174,13 +174,13 @@ func (ncdc *Controller) processNextItem(ctx context.Context) bool {
 	defer cancel()
 	err := ncdc.sync(ctx)
 	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
-	err = utilerrors.Reduce(err)
+	err = apimachineryutilerrors.Reduce(err)
 	switch {
 	case err == nil:
 		ncdc.queue.Forget(key)
 		return true
 	default:
-		utilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
+		apimachineryutilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
 	}
 
 	ncdc.queue.AddRateLimited(key)
@@ -194,7 +194,7 @@ func (ncdc *Controller) runWorker(ctx context.Context) {
 }
 
 func (ncdc *Controller) Run(ctx context.Context) {
-	defer utilruntime.HandleCrash()
+	defer apimachineryutilruntime.HandleCrash()
 
 	klog.InfoS("Starting controller", "controller", ControllerName)
 
@@ -213,7 +213,7 @@ func (ncdc *Controller) Run(ctx context.Context) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		wait.UntilWithContext(ctx, ncdc.runWorker, time.Second)
+		apimachineryutilwait.UntilWithContext(ctx, ncdc.runWorker, time.Second)
 	}()
 
 	<-ctx.Done()
@@ -242,7 +242,7 @@ func (ncdc *Controller) updateNodeConfig(old, cur interface{}) {
 	if currentNC.UID != oldNC.UID {
 		key, err := keyFunc(oldNC)
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldNC, err))
+			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldNC, err))
 			return
 		}
 		ncdc.deleteNodeConfig(cache.DeletedFinalStateUnknown{
@@ -271,12 +271,12 @@ func (ncdc *Controller) deleteNodeConfig(obj interface{}) {
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
+			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
 			return
 		}
 		nc, ok = tombstone.Obj.(*scyllav1alpha1.NodeConfig)
 		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a NodeConfig %#v", obj))
+			apimachineryutilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a NodeConfig %#v", obj))
 			return
 		}
 	}
@@ -328,7 +328,7 @@ func (ncdc *Controller) addJob(obj interface{}) {
 
 	owned, err := ncdc.ownsObject(job)
 	if err != nil {
-		utilruntime.HandleError(err)
+		apimachineryutilruntime.HandleError(err)
 		return
 	}
 
@@ -348,7 +348,7 @@ func (ncdc *Controller) updateJob(old, cur interface{}) {
 	if currentJob.UID != oldJob.UID {
 		key, err := keyFunc(oldJob)
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldJob, err))
+			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldJob, err))
 			return
 		}
 		ncdc.deleteJob(cache.DeletedFinalStateUnknown{
@@ -359,7 +359,7 @@ func (ncdc *Controller) updateJob(old, cur interface{}) {
 
 	owned, err := ncdc.ownsObject(currentJob)
 	if err != nil {
-		utilruntime.HandleError(err)
+		apimachineryutilruntime.HandleError(err)
 		return
 	}
 
@@ -382,19 +382,19 @@ func (ncdc *Controller) deleteJob(obj interface{}) {
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
+			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
 			return
 		}
 		job, ok = tombstone.Obj.(*batchv1.Job)
 		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a Job %#v", obj))
+			apimachineryutilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a Job %#v", obj))
 			return
 		}
 	}
 
 	owned, err := ncdc.ownsObject(job)
 	if err != nil {
-		utilruntime.HandleError(err)
+		apimachineryutilruntime.HandleError(err)
 		return
 	}
 

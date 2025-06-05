@@ -13,9 +13,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -132,7 +132,7 @@ func (c *Controller) processNextItem(ctx context.Context) bool {
 	defer c.queue.Done(key)
 
 	if key != c.key {
-		utilruntime.HandleError(fmt.Errorf("got unsupported key %q (singleton key is %q)", key, c.key))
+		apimachineryutilruntime.HandleError(fmt.Errorf("got unsupported key %q (singleton key is %q)", key, c.key))
 		return true
 	}
 
@@ -140,7 +140,7 @@ func (c *Controller) processNextItem(ctx context.Context) bool {
 	defer cancel()
 	err := c.sync(ctx)
 	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
-	err = utilerrors.Reduce(err)
+	err = apimachineryutilerrors.Reduce(err)
 	switch {
 	case err == nil:
 		c.queue.Forget(key)
@@ -153,7 +153,7 @@ func (c *Controller) processNextItem(ctx context.Context) bool {
 		klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", key, "Error", err)
 
 	default:
-		utilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
+		apimachineryutilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
 	}
 
 	c.queue.AddRateLimited(key)
@@ -167,7 +167,7 @@ func (c *Controller) runWorker(ctx context.Context) {
 }
 
 func (c *Controller) Run(ctx context.Context) {
-	defer utilruntime.HandleCrash()
+	defer apimachineryutilruntime.HandleCrash()
 
 	klog.InfoS("Starting controller", "Controller", ControllerName)
 
@@ -186,19 +186,19 @@ func (c *Controller) Run(ctx context.Context) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		wait.UntilWithContext(ctx, c.runWorker, time.Second)
+		apimachineryutilwait.UntilWithContext(ctx, c.runWorker, time.Second)
 	}()
 
 	// Periodically reconcile Member Service to make sure values projected from Scylla API are up-to-date.
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		wait.UntilWithContext(ctx, func(ctx context.Context) {
+		apimachineryutilwait.UntilWithContext(ctx, func(ctx context.Context) {
 			klog.V(4).InfoS("Periodically enqueuing Member Service")
 
 			svc, err := c.singleServiceLister.Services(c.namespace).Get(c.serviceName)
 			if err != nil {
-				utilruntime.HandleError(err)
+				apimachineryutilruntime.HandleError(err)
 				return
 			}
 
@@ -212,7 +212,7 @@ func (c *Controller) Run(ctx context.Context) {
 func (c *Controller) enqueue(svc *corev1.Service) {
 	key, err := keyFunc(svc)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", svc, err))
+		apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", svc, err))
 		return
 	}
 
@@ -233,7 +233,7 @@ func (c *Controller) updateService(old, cur interface{}) {
 	if currentService.UID != oldService.UID {
 		key, err := keyFunc(oldService)
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldService, err))
+			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldService, err))
 			return
 		}
 		c.deleteService(cache.DeletedFinalStateUnknown{
@@ -251,12 +251,12 @@ func (c *Controller) deleteService(obj interface{}) {
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
+			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
 			return
 		}
 		svc, ok = tombstone.Obj.(*corev1.Service)
 		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a Service %#v", obj))
+			apimachineryutilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a Service %#v", obj))
 			return
 		}
 	}

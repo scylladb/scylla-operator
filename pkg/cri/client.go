@@ -16,7 +16,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
-	apierrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	pb "k8s.io/cri-api/pkg/apis/runtime/v1"
 	"k8s.io/klog/v2"
 )
@@ -135,10 +135,10 @@ func getConnection(ctx context.Context, endpoints []string) (conn *grpc.ClientCo
 	}
 
 	if len(successfulConns) == 0 {
-		return nil, apierrors.NewAggregate(errs)
+		return nil, apimachineryutilerrors.NewAggregate(errs)
 	}
 
-	klog.V(2).InfoS("Connected to CRI endpoint", "Successful", successfulEndpoints, "Other attempts", apierrors.NewAggregate(errs))
+	klog.V(2).InfoS("Connected to CRI endpoint", "Successful", successfulEndpoints, "Other attempts", apimachineryutilerrors.NewAggregate(errs))
 
 	return successfulConns[0], nil
 }

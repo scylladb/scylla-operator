@@ -17,9 +17,9 @@
 package v1
 
 import (
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
+	apimachineryutilintstr "k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
@@ -201,7 +201,7 @@ type PodMetricsEndpoint struct {
 	// port must be specified with container port property.
 	//
 	// Deprecated: use 'port' or 'portNumber' instead.
-	TargetPort *intstr.IntOrString `json:"targetPort,omitempty"`
+	TargetPort *apimachineryutilintstr.IntOrString `json:"targetPort,omitempty"`
 
 	// HTTP path from which to scrape for metrics.
 	//
@@ -245,7 +245,7 @@ type PodMetricsEndpoint struct {
 	// +optional
 	//
 	// Deprecated: use `authorization` instead.
-	BearerTokenSecret v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
+	BearerTokenSecret corev1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
 
 	// When true, `honorLabels` preserves the metric's labels when they collide
 	// with the target's labels.

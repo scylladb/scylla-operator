@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/strategicpatch"
+	apimachineryutilstrategicpatch "k8s.io/apimachinery/pkg/util/strategicpatch"
 )
 
 func CreateTwoWayMergePatch[T runtime.Object](original, modified T) ([]byte, error) {
@@ -21,5 +21,5 @@ func CreateTwoWayMergePatch[T runtime.Object](original, modified T) ([]byte, err
 		return nil, fmt.Errorf("can't marshal new object: %w", err)
 	}
 
-	return strategicpatch.CreateTwoWayMergePatch(oldJson, newJson, modified)
+	return apimachineryutilstrategicpatch.CreateTwoWayMergePatch(oldJson, newJson, modified)
 }

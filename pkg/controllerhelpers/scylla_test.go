@@ -10,7 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
@@ -511,7 +511,7 @@ func TestGetRequiredScyllaHosts(t *testing.T) {
 				secondPod,
 			},
 			expected: nil,
-			expectedError: utilerrors.NewAggregate([]error{
+			expectedError: apimachineryutilerrors.NewAggregate([]error{
 				fmt.Errorf(`service "test/simple-cluster-us-east1-us-east1-b-1" does not exist`),
 			}),
 		},
@@ -526,7 +526,7 @@ func TestGetRequiredScyllaHosts(t *testing.T) {
 				firstPod,
 			},
 			expected: nil,
-			expectedError: utilerrors.NewAggregate([]error{
+			expectedError: apimachineryutilerrors.NewAggregate([]error{
 				fmt.Errorf(`can't get pod "test/simple-cluster-us-east1-us-east1-b-1": %w`, apierrors.NewNotFound(corev1.Resource("pod"), "simple-cluster-us-east1-us-east1-b-1")),
 			}),
 		},
@@ -594,7 +594,7 @@ func TestGetRequiredScyllaHosts(t *testing.T) {
 				secondPod,
 			},
 			expected: nil,
-			expectedError: utilerrors.NewAggregate([]error{
+			expectedError: apimachineryutilerrors.NewAggregate([]error{
 				fmt.Errorf(`can't get scylla host for service "test/simple-cluster-us-east1-us-east1-b-1": %w`, fmt.Errorf(`service "test/simple-cluster-us-east1-us-east1-b-1" does not have a ClusterIP address`)),
 			}),
 		},

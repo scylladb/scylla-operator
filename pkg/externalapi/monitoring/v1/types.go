@@ -17,10 +17,10 @@
 package v1
 
 import (
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
+	apimachineryutilintstr "k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
@@ -97,7 +97,7 @@ type ProxyConfig struct {
 	// It requires Prometheus >= v2.43.0 or Alertmanager >= 0.25.0.
 	// +optional
 	// +mapType:=atomic
-	ProxyConnectHeader map[string][]v1.SecretKeySelector `json:"proxyConnectHeader,omitempty"`
+	ProxyConnectHeader map[string][]corev1.SecretKeySelector `json:"proxyConnectHeader,omitempty"`
 }
 
 // ObjectReference references a PodMonitor, ServiceMonitor, Probe or PrometheusRule object.
@@ -202,11 +202,11 @@ type EmbeddedPersistentVolumeClaim struct {
 	// Defines the desired characteristics of a volume requested by a pod author.
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
 	// +optional
-	Spec v1.PersistentVolumeClaimSpec `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+	Spec corev1.PersistentVolumeClaimSpec `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
 
 	// +optional
 	// Deprecated: this field is never set.
-	Status v1.PersistentVolumeClaimStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+	Status corev1.PersistentVolumeClaimStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
 // EmbeddedObjectMetadata contains a subset of the fields included in k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta
@@ -309,7 +309,7 @@ type WebTLSConfig struct {
 	// It is mutually exclusive with `keyFile`.
 	//
 	// +optional
-	KeySecret v1.SecretKeySelector `json:"keySecret,omitempty"`
+	KeySecret corev1.SecretKeySelector `json:"keySecret,omitempty"`
 	// Path to the TLS private key file in the container for the web server.
 	//
 	// If defined, either `cert` or `certFile` must be defined.
@@ -396,7 +396,7 @@ type Endpoint struct {
 	// Service. The port must be specified with the container's port property.
 	//
 	// +optional
-	TargetPort *intstr.IntOrString `json:"targetPort,omitempty"`
+	TargetPort *apimachineryutilintstr.IntOrString `json:"targetPort,omitempty"`
 
 	// HTTP path from which to scrape for metrics.
 	//
@@ -445,7 +445,7 @@ type Endpoint struct {
 	// +optional
 	//
 	// Deprecated: use `authorization` instead.
-	BearerTokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
+	BearerTokenSecret *corev1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
 
 	// `authorization` configures the Authorization header credentials to use when
 	// scraping the target.
@@ -556,7 +556,7 @@ type OAuth2 struct {
 
 	// `clientSecret` specifies a key of a Secret containing the OAuth2
 	// client's secret.
-	ClientSecret v1.SecretKeySelector `json:"clientSecret"`
+	ClientSecret corev1.SecretKeySelector `json:"clientSecret"`
 
 	// `tokenURL` configures the URL to fetch the token from.
 	//
@@ -591,19 +591,19 @@ type OAuth2 struct {
 type BasicAuth struct {
 	// `username` specifies a key of a Secret containing the username for
 	// authentication.
-	Username v1.SecretKeySelector `json:"username,omitempty"`
+	Username corev1.SecretKeySelector `json:"username,omitempty"`
 
 	// `password` specifies a key of a Secret containing the password for
 	// authentication.
-	Password v1.SecretKeySelector `json:"password,omitempty"`
+	Password corev1.SecretKeySelector `json:"password,omitempty"`
 }
 
 // SecretOrConfigMap allows to specify data as a Secret or ConfigMap. Fields are mutually exclusive.
 type SecretOrConfigMap struct {
 	// Secret containing data to use for the targets.
-	Secret *v1.SecretKeySelector `json:"secret,omitempty"`
+	Secret *corev1.SecretKeySelector `json:"secret,omitempty"`
 	// ConfigMap containing data to use for the targets.
-	ConfigMap *v1.ConfigMapKeySelector `json:"configMap,omitempty"`
+	ConfigMap *corev1.ConfigMapKeySelector `json:"configMap,omitempty"`
 }
 
 // +kubebuilder:validation:Enum=TLS10;TLS11;TLS12;TLS13
@@ -625,7 +625,7 @@ type SafeTLSConfig struct {
 	Cert SecretOrConfigMap `json:"cert,omitempty"`
 
 	// Secret containing the client key file for the targets.
-	KeySecret *v1.SecretKeySelector `json:"keySecret,omitempty"`
+	KeySecret *corev1.SecretKeySelector `json:"keySecret,omitempty"`
 
 	// Used to verify the hostname for the targets.
 	// +optional

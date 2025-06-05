@@ -23,9 +23,9 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -250,7 +250,7 @@ func NewController(
 		},
 	)
 
-	err = utilerrors.NewAggregate(errs)
+	err = apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return nil, fmt.Errorf("can't register event handlers: %w", err)
 	}
@@ -267,7 +267,7 @@ func (scc *Controller) processNextItem(ctx context.Context) bool {
 
 	err := scc.sync(ctx, key.(string))
 	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
-	err = utilerrors.Reduce(err)
+	err = apimachineryutilerrors.Reduce(err)
 	switch {
 	case err == nil:
 		scc.queue.Forget(key)
@@ -280,7 +280,7 @@ func (scc *Controller) processNextItem(ctx context.Context) bool {
 		klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", key, "Error", err)
 
 	default:
-		utilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
+		apimachineryutilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
 	}
 
 	scc.queue.AddRateLimited(key)
@@ -294,7 +294,7 @@ func (scc *Controller) runWorker(ctx context.Context) {
 }
 
 func (scc *Controller) Run(ctx context.Context, workers int) {
-	defer utilruntime.HandleCrash()
+	defer apimachineryutilruntime.HandleCrash()
 
 	klog.InfoS("Starting controller", "controller", "ScyllaDBCluster")
 
@@ -314,7 +314,7 @@ func (scc *Controller) Run(ctx context.Context, workers int) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			wait.UntilWithContext(ctx, scc.runWorker, time.Second)
+			apimachineryutilwait.UntilWithContext(ctx, scc.runWorker, time.Second)
 		}()
 	}
 
@@ -331,13 +331,13 @@ func (scc *Controller) enqueueThroughParentLabel(depth int, obj kubeinterfaces.O
 
 	sc, err := scc.scyllaDBClusterLister.ScyllaDBClusters(parentNamespace).Get(parentName)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("couldn't find parent ScyllaDBCluster for object %#v", obj))
+		apimachineryutilruntime.HandleError(fmt.Errorf("couldn't find parent ScyllaDBCluster for object %#v", obj))
 		return
 	}
 
 	gvk, err := resource.GetObjectGVK(obj.(runtime.Object))
 	if err != nil {
-		utilruntime.HandleError(err)
+		apimachineryutilruntime.HandleError(err)
 		return
 	}
 
@@ -359,13 +359,13 @@ func (scc *Controller) enqueueThroughRemoteOwnerLabel(depth int, obj kubeinterfa
 
 	sc, err := scc.scyllaDBClusterLister.ScyllaDBClusters(namespace).Get(name)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("couldn't find parent ScyllaDBCluster for object %#v", obj))
+		apimachineryutilruntime.HandleError(fmt.Errorf("couldn't find parent ScyllaDBCluster for object %#v", obj))
 		return
 	}
 
 	gvk, err := resource.GetObjectGVK(obj.(runtime.Object))
 	if err != nil {
-		utilruntime.HandleError(err)
+		apimachineryutilruntime.HandleError(err)
 		return
 	}
 

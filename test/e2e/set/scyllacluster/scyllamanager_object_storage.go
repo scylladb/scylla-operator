@@ -26,7 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
+	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
@@ -220,7 +220,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 
 		var backupProgress managerclient.BackupProgress
 		framework.By("Waiting for backup to finish")
-		err = wait.PollUntilContextTimeout(ctx, 5*time.Second, 10*time.Minute, true, func(context.Context) (done bool, err error) {
+		err = apimachineryutilwait.PollUntilContextTimeout(ctx, 5*time.Second, 10*time.Minute, true, func(context.Context) (done bool, err error) {
 			backupProgress, err = managerClient.BackupProgress(ctx, *sourceSC.Status.ManagerID, backupTask.ID, "latest")
 			if err != nil {
 				return false, err

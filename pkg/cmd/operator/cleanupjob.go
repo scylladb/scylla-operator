@@ -15,8 +15,8 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
-	apierrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/wait"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
 )
@@ -83,7 +83,7 @@ func (o *CleanupJobOptions) Validate() error {
 		errs = append(errs, fmt.Errorf("node-address cannot be empty"))
 	}
 
-	return apierrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (o *CleanupJobOptions) Complete() error {
@@ -148,7 +148,7 @@ func (o *CleanupJobOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.
 		stopCleanupCtx, stopCleanupCtxCancel := context.WithTimeout(context.Background(), stopCleanupOperationTimeout)
 		defer stopCleanupCtxCancel()
 
-		wait.UntilWithContext(stopCleanupCtx, func(ctx context.Context) {
+		apimachineryutilwait.UntilWithContext(stopCleanupCtx, func(ctx context.Context) {
 			err := o.scyllaClient.StopCleanup(ctx, o.NodeAddress)
 			if err != nil {
 				errs = append(errs, fmt.Errorf("can't stop the cleanup: %w", err))
@@ -159,7 +159,7 @@ func (o *CleanupJobOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.
 	default:
 	}
 
-	err := apierrors.NewAggregate(errs)
+	err := apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return fmt.Errorf("can't clean up: %w", err)
 	}
@@ -196,7 +196,7 @@ func (o *CleanupJobOptions) runCleanup(ctx context.Context) error {
 		klog.InfoS("Finished keyspace cleanup", "keyspace", keyspace, "duration", time.Since(startTime))
 	}
 
-	err = apierrors.NewAggregate(errs)
+	err = apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return err
 	}

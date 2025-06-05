@@ -19,7 +19,7 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
+	apimachineryutilintstr "k8s.io/apimachinery/pkg/util/intstr"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
 )
@@ -1046,7 +1046,7 @@ exec /mnt/shared/scylla-operator sidecar \
 									PeriodSeconds:    int32(10),
 									ProbeHandler: corev1.ProbeHandler{
 										HTTPGet: &corev1.HTTPGetAction{
-											Port: intstr.FromInt(8080),
+											Port: apimachineryutilintstr.FromInt(8080),
 											Path: "/healthz",
 										},
 									},
@@ -1057,7 +1057,7 @@ exec /mnt/shared/scylla-operator sidecar \
 									PeriodSeconds:    int32(10),
 									ProbeHandler: corev1.ProbeHandler{
 										HTTPGet: &corev1.HTTPGetAction{
-											Port: intstr.FromInt(8080),
+											Port: apimachineryutilintstr.FromInt(8080),
 											Path: "/healthz",
 										},
 									},
@@ -1068,7 +1068,7 @@ exec /mnt/shared/scylla-operator sidecar \
 									PeriodSeconds:    int32(10),
 									ProbeHandler: corev1.ProbeHandler{
 										HTTPGet: &corev1.HTTPGetAction{
-											Port: intstr.FromInt(8080),
+											Port: apimachineryutilintstr.FromInt(8080),
 											Path: "/readyz",
 										},
 									},
@@ -1123,7 +1123,7 @@ wait`),
 									PeriodSeconds:    int32(5),
 									ProbeHandler: corev1.ProbeHandler{
 										TCPSocket: &corev1.TCPSocketAction{
-											Port: intstr.FromInt32(naming.ScyllaDBAPIStatusProbePort),
+											Port: apimachineryutilintstr.FromInt32(naming.ScyllaDBAPIStatusProbePort),
 										},
 									},
 								},
@@ -1166,7 +1166,7 @@ wait`),
 									PeriodSeconds:    int32(5),
 									ProbeHandler: corev1.ProbeHandler{
 										HTTPGet: &corev1.HTTPGetAction{
-											Port: intstr.FromInt32(42081),
+											Port: apimachineryutilintstr.FromInt32(42081),
 											Path: "/readyz",
 										},
 									},
@@ -1225,7 +1225,7 @@ exec scylla-manager-agent \
 								ReadinessProbe: &corev1.Probe{
 									ProbeHandler: corev1.ProbeHandler{
 										TCPSocket: &corev1.TCPSocketAction{
-											Port: intstr.FromInt32(10001),
+											Port: apimachineryutilintstr.FromInt32(10001),
 										},
 									},
 								},

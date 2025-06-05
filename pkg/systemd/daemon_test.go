@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/util/rand"
+	apimachineryutilrand "k8s.io/apimachinery/pkg/util/rand"
 )
 
 func hasSystemdRunning() (bool, error) {
@@ -51,7 +51,7 @@ func TestSystemdControl_ErrNotExist(t *testing.T) {
 	}
 	defer sc.Close()
 
-	notExistingUnitName := fmt.Sprintf("%s.mount", rand.String(32))
+	notExistingUnitName := fmt.Sprintf("%s.mount", apimachineryutilrand.String(32))
 
 	err = sc.EnableUnits(ctx, []string{notExistingUnitName})
 	verifyError(err)

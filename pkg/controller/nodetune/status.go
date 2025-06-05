@@ -6,19 +6,19 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
 
-func (ncdc *Controller) calculateStatus(nc *v1alpha1.NodeConfig) *v1alpha1.NodeConfigStatus {
+func (ncdc *Controller) calculateStatus(nc *scyllav1alpha1.NodeConfig) *scyllav1alpha1.NodeConfigStatus {
 	status := nc.Status.DeepCopy()
 
 	return status
 }
 
-func (ncdc *Controller) updateStatus(ctx context.Context, currentNC *v1alpha1.NodeConfig, status *v1alpha1.NodeConfigStatus) error {
+func (ncdc *Controller) updateStatus(ctx context.Context, currentNC *scyllav1alpha1.NodeConfig, status *scyllav1alpha1.NodeConfigStatus) error {
 	if apiequality.Semantic.DeepEqual(currentNC.Status, status) {
 		return nil
 	}

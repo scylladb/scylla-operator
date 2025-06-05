@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	apierrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 // Config specifies the Client configuration.
@@ -54,5 +54,5 @@ func (c *Config) Validate() error {
 		errs = append(errs, fmt.Errorf("missing port"))
 	}
 
-	return apierrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }

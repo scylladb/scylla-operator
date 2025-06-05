@@ -6,15 +6,15 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	utilsv1alpha1 "github.com/scylladb/scylla-operator/test/e2e/utils/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func WaitForFullQuorum(ctx context.Context, rkcClusterMap map[string]framework.ClusterInterface, sc *v1alpha1.ScyllaDBCluster) error {
+func WaitForFullQuorum(ctx context.Context, rkcClusterMap map[string]framework.ClusterInterface, sc *scyllav1alpha1.ScyllaDBCluster) error {
 	allBroadcastAddresses := map[string][]string{}
 	var sortedAllBroadcastAddresses []string
 
@@ -26,7 +26,7 @@ func WaitForFullQuorum(ctx context.Context, rkcClusterMap map[string]framework.C
 			continue
 		}
 
-		dcStatus, _, ok := slices.Find(sc.Status.Datacenters, func(dcStatus v1alpha1.ScyllaDBClusterDatacenterStatus) bool {
+		dcStatus, _, ok := oslices.Find(sc.Status.Datacenters, func(dcStatus scyllav1alpha1.ScyllaDBClusterDatacenterStatus) bool {
 			return dcStatus.Name == dc.Name
 		})
 		if !ok {
@@ -63,7 +63,7 @@ func WaitForFullQuorum(ctx context.Context, rkcClusterMap map[string]framework.C
 			continue
 		}
 
-		dcStatus, _, ok := slices.Find(sc.Status.Datacenters, func(dcStatus v1alpha1.ScyllaDBClusterDatacenterStatus) bool {
+		dcStatus, _, ok := oslices.Find(sc.Status.Datacenters, func(dcStatus scyllav1alpha1.ScyllaDBClusterDatacenterStatus) bool {
 			return dcStatus.Name == dc.Name
 		})
 		if !ok {

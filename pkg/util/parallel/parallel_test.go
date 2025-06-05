@@ -8,7 +8,7 @@ import (
 	"sort"
 	"testing"
 
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 func TestForEach(t *testing.T) {
@@ -59,7 +59,7 @@ func TestForEach(t *testing.T) {
 					panic("out of range")
 				}
 			},
-			expectedErr: utilerrors.NewAggregate([]error{anError(0)}),
+			expectedErr: apimachineryutilerrors.NewAggregate([]error{anError(0)}),
 		},
 		{
 			name:   "two errors",
@@ -72,7 +72,7 @@ func TestForEach(t *testing.T) {
 					panic("out of range")
 				}
 			},
-			expectedErr: utilerrors.NewAggregate([]error{anError(0), anError(1)}),
+			expectedErr: apimachineryutilerrors.NewAggregate([]error{anError(0), anError(1)}),
 		},
 		{
 			name:   "mixed",
@@ -87,7 +87,7 @@ func TestForEach(t *testing.T) {
 					panic("out of range")
 				}
 			},
-			expectedErr: utilerrors.NewAggregate([]error{nil, anError(1), nil, anError(3), nil}),
+			expectedErr: apimachineryutilerrors.NewAggregate([]error{nil, anError(1), nil, anError(3), nil}),
 		},
 	}
 
@@ -97,7 +97,7 @@ func TestForEach(t *testing.T) {
 
 			// Sort the errors to avoid random ordering from parallelism.
 			if gotErr != nil {
-				errs := gotErr.(utilerrors.Aggregate).Errors()
+				errs := gotErr.(apimachineryutilerrors.Aggregate).Errors()
 				sort.Slice(errs, func(i, j int) bool {
 					return errs[i].Error() < errs[j].Error()
 				})

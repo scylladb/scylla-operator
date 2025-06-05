@@ -9,7 +9,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,7 +22,7 @@ func (rkcc *Controller) syncFinalizer(ctx context.Context, rkc *scyllav1alpha1.R
 	var progressingConditions []metav1.Condition
 	var err error
 
-	if !slices.ContainsItem(rkc.GetFinalizers(), naming.RemoteKubernetesClusterFinalizer) {
+	if !oslices.ContainsItem(rkc.GetFinalizers(), naming.RemoteKubernetesClusterFinalizer) {
 		klog.V(4).InfoS("Object is already finalized", "RemoteKubernetesCluster", klog.KObj(rkc), "UID", rkc.UID)
 		return progressingConditions, nil
 	}

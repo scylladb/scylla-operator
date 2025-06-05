@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"k8s.io/apimachinery/pkg/util/uuid"
+	apimachineryutiluuid "k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
@@ -34,7 +34,7 @@ func Run(ctx context.Context, programName, lockName, lockNamespace string, clien
 		return err
 	}
 	// add a uniquifier so that two processes on the same host don't accidentally both become active
-	id := hostname + "_" + string(uuid.NewUUID())
+	id := hostname + "_" + string(apimachineryutiluuid.NewUUID())
 	klog.V(4).Infof("Leader election ID is %q", id)
 
 	lock, err := resourcelock.New(

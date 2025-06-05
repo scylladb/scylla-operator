@@ -20,7 +20,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
+	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/storage/names"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
@@ -293,7 +293,7 @@ func CreateUserNamespace(ctx context.Context, clusterName string, labels map[str
 	}
 	name := generateName()
 	sr := g.CurrentSpecReport()
-	err := wait.PollImmediate(2*time.Second, 30*time.Second, func() (bool, error) {
+	err := apimachineryutilwait.PollImmediate(2*time.Second, 30*time.Second, func() (bool, error) {
 		var err error
 		// We want to know the name ahead, even if the api call fails.
 		ns, err = adminClient.CoreV1().Namespaces().Create(

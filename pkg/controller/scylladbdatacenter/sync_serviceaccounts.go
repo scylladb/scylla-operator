@@ -9,7 +9,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 func (sdcc *Controller) syncServiceAccounts(
@@ -44,7 +44,7 @@ func (sdcc *Controller) syncServiceAccounts(
 		})
 		deletionErrors = append(deletionErrors, err)
 	}
-	err = utilerrors.NewAggregate(deletionErrors)
+	err = apimachineryutilerrors.NewAggregate(deletionErrors)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't delete service account(s): %w", err)
 	}

@@ -13,7 +13,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 )
 
@@ -58,7 +58,7 @@ func ReadFlagsFromEnv(prefix string, cmd *cobra.Command) error {
 		return
 	})
 
-	return utilerrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }
 
 func InstallKlog(cmd *cobra.Command) {

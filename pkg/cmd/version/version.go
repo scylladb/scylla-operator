@@ -8,7 +8,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/kubectl/pkg/util/templates"
 )
 
@@ -62,7 +62,7 @@ func NewCmd(streams genericclioptions.IOStreams) *cobra.Command {
 func (o *Options) Validate() error {
 	var errs []error
 
-	return utilerrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (o *Options) Complete() error {

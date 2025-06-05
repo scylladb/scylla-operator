@@ -12,7 +12,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 func (ncc *Controller) syncRoles(ctx context.Context, nc *scyllav1alpha1.NodeConfig, roles map[string]*rbacv1.Role) ([]metav1.Condition, error) {
@@ -51,5 +51,5 @@ func (ncc *Controller) syncRoles(ctx context.Context, nc *scyllav1alpha1.NodeCon
 		}
 	}
 
-	return progressingConditions, utilerrors.NewAggregate(errs)
+	return progressingConditions, apimachineryutilerrors.NewAggregate(errs)
 }

@@ -18,7 +18,7 @@ package v1
 
 import (
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -82,7 +82,7 @@ type AlertmanagerSpec struct {
 	// Image pull policy for the 'alertmanager', 'init-config-reloader' and 'config-reloader' containers.
 	// See https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy for more details.
 	// +kubebuilder:validation:Enum="";Always;Never;IfNotPresent
-	ImagePullPolicy v1.PullPolicy `json:"imagePullPolicy,omitempty"`
+	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 	// Version the cluster should be on.
 	Version string `json:"version,omitempty"`
 	// Tag of Alertmanager container image to be deployed. Defaults to the value of `version`.
@@ -100,7 +100,7 @@ type AlertmanagerSpec struct {
 	// An optional list of references to secrets in the same namespace
 	// to use for pulling prometheus and alertmanager images from registries
 	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
-	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// Secrets is a list of Secrets in the same namespace as the Alertmanager
 	// object, which shall be mounted into the Alertmanager Pods.
 	// Each Secret is added to the StatefulSet definition as a volume named `secret-<secret-name>`.
@@ -144,11 +144,11 @@ type AlertmanagerSpec struct {
 	// Volumes allows configuration of additional volumes on the output StatefulSet definition.
 	// Volumes specified will be appended to other volumes that are generated as a result of
 	// StorageSpec objects.
-	Volumes []v1.Volume `json:"volumes,omitempty"`
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
 	// VolumeMounts allows configuration of additional VolumeMounts on the output StatefulSet definition.
 	// VolumeMounts specified will be appended to other VolumeMounts in the alertmanager container,
 	// that are generated as a result of StorageSpec objects.
-	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
 	// The field controls if and how PVCs are deleted during the lifecycle of a StatefulSet.
 	// The default behavior is all PVCs are retained.
 	// This is an alpha field from kubernetes 1.23 until 1.26 and a beta field from 1.26.
@@ -171,16 +171,16 @@ type AlertmanagerSpec struct {
 	// Define which Nodes the Pods are scheduled on.
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 	// Define resources requests and limits for single Pods.
-	Resources v1.ResourceRequirements `json:"resources,omitempty"`
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 	// If specified, the pod's scheduling constraints.
-	Affinity *v1.Affinity `json:"affinity,omitempty"`
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 	// If specified, the pod's tolerations.
-	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 	// If specified, the pod's topology spread constraints.
-	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+	TopologySpreadConstraints []corev1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 	// SecurityContext holds pod-level security attributes and common container settings.
 	// This defaults to the default PodSecurityContext.
-	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
+	SecurityContext *corev1.PodSecurityContext `json:"securityContext,omitempty"`
 	// Defines the DNS policy for the pods.
 	//
 	// +optional
@@ -204,7 +204,7 @@ type AlertmanagerSpec struct {
 	// `config-reloader`. Overriding containers is entirely outside the scope
 	// of what the maintainers will support and by doing so, you accept that
 	// this behaviour may break at any time without notice.
-	Containers []v1.Container `json:"containers,omitempty"`
+	Containers []corev1.Container `json:"containers,omitempty"`
 	// InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
 	// fetch secrets for injection into the Alertmanager configuration from external sources. Any
 	// errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
@@ -214,7 +214,7 @@ type AlertmanagerSpec struct {
 	// `init-config-reloader`. Overriding init containers is entirely outside the
 	// scope of what the maintainers will support and by doing so, you accept that
 	// this behaviour may break at any time without notice.
-	InitContainers []v1.Container `json:"initContainers,omitempty"`
+	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 	// Priority class assigned to the Pods
 	PriorityClassName string `json:"priorityClassName,omitempty"`
 	// AdditionalPeers allows injecting a set of additional Alertmanagers to peer with to form a highly available cluster.
@@ -340,13 +340,13 @@ type AlertmanagerGlobalConfig struct {
 	HTTPConfig *HTTPConfig `json:"httpConfig,omitempty"`
 
 	// The default Slack API URL.
-	SlackAPIURL *v1.SecretKeySelector `json:"slackApiUrl,omitempty"`
+	SlackAPIURL *corev1.SecretKeySelector `json:"slackApiUrl,omitempty"`
 
 	// The default OpsGenie API URL.
-	OpsGenieAPIURL *v1.SecretKeySelector `json:"opsGenieApiUrl,omitempty"`
+	OpsGenieAPIURL *corev1.SecretKeySelector `json:"opsGenieApiUrl,omitempty"`
 
 	// The default OpsGenie API Key.
-	OpsGenieAPIKey *v1.SecretKeySelector `json:"opsGenieApiKey,omitempty"`
+	OpsGenieAPIKey *corev1.SecretKeySelector `json:"opsGenieApiKey,omitempty"`
 
 	// The default Pagerduty URL.
 	PagerdutyURL *string `json:"pagerdutyUrl,omitempty"`
@@ -413,7 +413,7 @@ type GlobalSMTPConfig struct {
 
 	// SMTP Auth using LOGIN and PLAIN.
 	// +optional
-	AuthPassword *v1.SecretKeySelector `json:"authPassword,omitempty"`
+	AuthPassword *corev1.SecretKeySelector `json:"authPassword,omitempty"`
 
 	// SMTP Auth using PLAIN
 	// +optional
@@ -421,7 +421,7 @@ type GlobalSMTPConfig struct {
 
 	// SMTP Auth using CRAM-MD5.
 	// +optional
-	AuthSecret *v1.SecretKeySelector `json:"authSecret,omitempty"`
+	AuthSecret *corev1.SecretKeySelector `json:"authSecret,omitempty"`
 
 	// The default SMTP TLS requirement.
 	// Note that Go does not support unencrypted connections to remote SMTP endpoints.
@@ -458,7 +458,7 @@ type HTTPConfig struct {
 	// The secret needs to be in the same namespace as the Alertmanager
 	// object and accessible by the Prometheus Operator.
 	// +optional
-	BearerTokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
+	BearerTokenSecret *corev1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
 	// TLS configuration for the client.
 	// +optional
 	TLSConfig *SafeTLSConfig `json:"tlsConfig,omitempty"`

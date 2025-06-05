@@ -18,10 +18,10 @@ package v1
 
 import (
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
+	apimachineryutilintstr "k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
@@ -68,7 +68,7 @@ const (
 	ShardAndResourceNameLabelSelector AdditionalLabelSelectors = "OnShard"
 )
 
-type CoreV1TopologySpreadConstraint v1.TopologySpreadConstraint
+type CoreV1TopologySpreadConstraint corev1.TopologySpreadConstraint
 
 type TopologySpreadConstraint struct {
 	CoreV1TopologySpreadConstraint `json:",inline"`
@@ -200,11 +200,11 @@ type CommonPrometheusFields struct {
 	// Image pull policy for the 'prometheus', 'init-config-reloader' and 'config-reloader' containers.
 	// See https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy for more details.
 	// +kubebuilder:validation:Enum="";Always;Never;IfNotPresent
-	ImagePullPolicy v1.PullPolicy `json:"imagePullPolicy,omitempty"`
+	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 	// An optional list of references to Secrets in the same namespace
 	// to use for pulling images from registries.
 	// See http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
-	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 
 	// Number of replicas of each shard to deploy for a Prometheus deployment.
 	// `spec.replicas` multiplied by `spec.shards` is the total number of Pods
@@ -350,12 +350,12 @@ type CommonPrometheusFields struct {
 	// Volumes allows the configuration of additional volumes on the output
 	// StatefulSet definition. Volumes specified will be appended to other
 	// volumes that are generated as a result of StorageSpec objects.
-	Volumes []v1.Volume `json:"volumes,omitempty"`
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
 	// VolumeMounts allows the configuration of additional VolumeMounts.
 	//
 	// VolumeMounts will be appended to other VolumeMounts in the 'prometheus'
 	// container, that are generated as a result of StorageSpec objects.
-	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
 
 	// The field controls if and how PVCs are deleted during the lifecycle of a StatefulSet.
 	// The default behavior is all PVCs are retained.
@@ -369,7 +369,7 @@ type CommonPrometheusFields struct {
 	Web *PrometheusWebSpec `json:"web,omitempty"`
 
 	// Defines the resources requests and limits of the 'prometheus' container.
-	Resources v1.ResourceRequirements `json:"resources,omitempty"`
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 
 	// Defines on which Nodes the Pods are scheduled.
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
@@ -400,10 +400,10 @@ type CommonPrometheusFields struct {
 
 	// Defines the Pods' affinity scheduling rules if specified.
 	// +optional
-	Affinity *v1.Affinity `json:"affinity,omitempty"`
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 	// Defines the Pods' tolerations if specified.
 	// +optional
-	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
 	// Defines the pod's topology spread constraints if specified.
 	//+optional
@@ -422,7 +422,7 @@ type CommonPrometheusFields struct {
 	// SecurityContext holds pod-level security attributes and common container settings.
 	// This defaults to the default PodSecurityContext.
 	// +optional
-	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
+	SecurityContext *corev1.PodSecurityContext `json:"securityContext,omitempty"`
 
 	// Defines the DNS policy for the pods.
 	//
@@ -452,7 +452,7 @@ type CommonPrometheusFields struct {
 	// maintainers will support and by doing so, you accept that this behaviour
 	// may break at any time without notice.
 	// +optional
-	Containers []v1.Container `json:"containers,omitempty"`
+	Containers []corev1.Container `json:"containers,omitempty"`
 	// InitContainers allows injecting initContainers to the Pod definition. Those
 	// can be used to e.g.  fetch secrets for injection into the Prometheus
 	// configuration from external sources. Any errors during the execution of
@@ -469,7 +469,7 @@ type CommonPrometheusFields struct {
 	// maintainers will support and by doing so, you accept that this behaviour
 	// may break at any time without notice.
 	// +optional
-	InitContainers []v1.Container `json:"initContainers,omitempty"`
+	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 
 	// AdditionalScrapeConfigs allows specifying a key of a Secret containing
 	// additional Prometheus scrape configurations. Scrape configurations
@@ -483,7 +483,7 @@ type CommonPrometheusFields struct {
 	// notes to ensure that no incompatible scrape configs are going to break
 	// Prometheus after the upgrade.
 	// +optional
-	AdditionalScrapeConfigs *v1.SecretKeySelector `json:"additionalScrapeConfigs,omitempty"`
+	AdditionalScrapeConfigs *corev1.SecretKeySelector `json:"additionalScrapeConfigs,omitempty"`
 
 	// APIServerConfig allows specifying a host and auth methods to access the
 	// Kuberntees API server.
@@ -1004,7 +1004,7 @@ type PrometheusSpec struct {
 	// to ensure that no incompatible alert relabel configs are going to break
 	// Prometheus after the upgrade.
 	// +optional
-	AdditionalAlertRelabelConfigs *v1.SecretKeySelector `json:"additionalAlertRelabelConfigs,omitempty"`
+	AdditionalAlertRelabelConfigs *corev1.SecretKeySelector `json:"additionalAlertRelabelConfigs,omitempty"`
 	// AdditionalAlertManagerConfigs specifies a key of a Secret containing
 	// additional Prometheus Alertmanager configurations. The Alertmanager
 	// configurations are appended to the configuration generated by the
@@ -1020,7 +1020,7 @@ type PrometheusSpec struct {
 	// to ensure that no incompatible AlertManager configs are going to break
 	// Prometheus after the upgrade.
 	// +optional
-	AdditionalAlertManagerConfigs *v1.SecretKeySelector `json:"additionalAlertManagerConfigs,omitempty"`
+	AdditionalAlertManagerConfigs *corev1.SecretKeySelector `json:"additionalAlertManagerConfigs,omitempty"`
 
 	// Defines the list of remote read configurations.
 	// +optional
@@ -1167,12 +1167,12 @@ type StorageSpec struct {
 	// EmptyDirVolumeSource to be used by the StatefulSet.
 	// If specified, it takes precedence over `ephemeral` and `volumeClaimTemplate`.
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes/#emptydir
-	EmptyDir *v1.EmptyDirVolumeSource `json:"emptyDir,omitempty"`
+	EmptyDir *corev1.EmptyDirVolumeSource `json:"emptyDir,omitempty"`
 	// EphemeralVolumeSource to be used by the StatefulSet.
 	// This is a beta field in k8s 1.21 and GA in 1.15.
 	// For lower versions, starting with k8s 1.19, it requires enabling the GenericEphemeralVolume feature gate.
 	// More info: https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes
-	Ephemeral *v1.EphemeralVolumeSource `json:"ephemeral,omitempty"`
+	Ephemeral *corev1.EphemeralVolumeSource `json:"ephemeral,omitempty"`
 	// Defines the PVC spec to be used by the Prometheus StatefulSets.
 	// The easiest way to use a volume that cannot be automatically provisioned
 	// is to use a label selector alongside manually created PersistentVolumes.
@@ -1250,7 +1250,7 @@ type ThanosSpec struct {
 	BaseImage *string `json:"baseImage,omitempty"`
 
 	// Defines the resources requests and limits of the Thanos sidecar.
-	Resources v1.ResourceRequirements `json:"resources,omitempty"`
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 
 	// Defines the Thanos sidecar's configuration to upload TSDB blocks to object storage.
 	//
@@ -1258,7 +1258,7 @@ type ThanosSpec struct {
 	//
 	// objectStorageConfigFile takes precedence over this field.
 	// +optional
-	ObjectStorageConfig *v1.SecretKeySelector `json:"objectStorageConfig,omitempty"`
+	ObjectStorageConfig *corev1.SecretKeySelector `json:"objectStorageConfig,omitempty"`
 	// Defines the Thanos sidecar's configuration file to upload TSDB blocks to object storage.
 	//
 	// More info: https://thanos.io/tip/thanos/storage.md/
@@ -1292,7 +1292,7 @@ type ThanosSpec struct {
 	// in a breaking way.
 	//
 	// +optional
-	TracingConfig *v1.SecretKeySelector `json:"tracingConfig,omitempty"`
+	TracingConfig *corev1.SecretKeySelector `json:"tracingConfig,omitempty"`
 	// Defines the tracing configuration file for the Thanos sidecar.
 	//
 	// This field takes precedence over `tracingConfig`.
@@ -1347,7 +1347,7 @@ type ThanosSpec struct {
 	// VolumeMounts specified will be appended to other VolumeMounts in the
 	// 'thanos-sidecar' container.
 	// +optional
-	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
 
 	// AdditionalArgs allows setting additional arguments for the Thanos container.
 	// The arguments are passed as-is to the Thanos container which may cause issues
@@ -1558,11 +1558,11 @@ type Sigv4 struct {
 	// AccessKey is the AWS API key. If not specified, the environment variable
 	// `AWS_ACCESS_KEY_ID` is used.
 	// +optional
-	AccessKey *v1.SecretKeySelector `json:"accessKey,omitempty"`
+	AccessKey *corev1.SecretKeySelector `json:"accessKey,omitempty"`
 	// SecretKey is the AWS API secret. If not specified, the environment
 	// variable `AWS_SECRET_ACCESS_KEY` is used.
 	// +optional
-	SecretKey *v1.SecretKeySelector `json:"secretKey,omitempty"`
+	SecretKey *corev1.SecretKeySelector `json:"secretKey,omitempty"`
 	// Profile is the named AWS profile used to authenticate.
 	Profile string `json:"profile,omitempty"`
 	// RoleArn is the named AWS profile used to authenticate.
@@ -1603,7 +1603,7 @@ type AzureOAuth struct {
 	ClientID string `json:"clientId"`
 	// `clientSecret` specifies a key of a Secret containing the client secret of the Azure Active Directory application that is being used to authenticate.
 	// +required
-	ClientSecret v1.SecretKeySelector `json:"clientSecret"`
+	ClientSecret corev1.SecretKeySelector `json:"clientSecret"`
 	// `tenantId` is the tenant ID of the Azure Active Directory application that is being used to authenticate.
 	// +required
 	// +kubebuilder:validation:MinLength=1
@@ -1836,7 +1836,7 @@ type AlertmanagerEndpoints struct {
 	Name string `json:"name"`
 
 	// Port on which the Alertmanager API is exposed.
-	Port intstr.IntOrString `json:"port"`
+	Port apimachineryutilintstr.IntOrString `json:"port"`
 
 	// Scheme to use when firing alerts.
 	Scheme string `json:"scheme,omitempty"`
@@ -1999,7 +1999,7 @@ type SafeAuthorization struct {
 	Type string `json:"type,omitempty"`
 
 	// Selects a key of a Secret in the namespace that contains the credentials for authentication.
-	Credentials *v1.SecretKeySelector `json:"credentials,omitempty"`
+	Credentials *corev1.SecretKeySelector `json:"credentials,omitempty"`
 }
 
 type Authorization struct {

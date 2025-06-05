@@ -16,7 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	rbacv1listers "k8s.io/client-go/listers/rbac/v1"
 	"k8s.io/client-go/tools/cache"
@@ -45,7 +45,7 @@ func TestApplyClusterRole(t *testing.T) {
 
 	newCrWithHash := func() *rbacv1.ClusterRole {
 		cr := newCr()
-		utilruntime.Must(SetHashAnnotation(cr))
+		apimachineryutilruntime.Must(SetHashAnnotation(cr))
 		return cr
 	}
 
@@ -134,7 +134,7 @@ func TestApplyClusterRole(t *testing.T) {
 			expectedCr: func() *rbacv1.ClusterRole {
 				cr := newCr()
 				cr.Rules[0].Verbs = []string{"update"}
-				utilruntime.Must(SetHashAnnotation(cr))
+				apimachineryutilruntime.Must(SetHashAnnotation(cr))
 				return cr
 			}(),
 			expectedChanged: true,
@@ -155,7 +155,7 @@ func TestApplyClusterRole(t *testing.T) {
 			expectedCr: func() *rbacv1.ClusterRole {
 				cr := newCr()
 				cr.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(cr))
+				apimachineryutilruntime.Must(SetHashAnnotation(cr))
 				return cr
 			}(),
 			expectedChanged: true,
@@ -184,7 +184,7 @@ func TestApplyClusterRole(t *testing.T) {
 					Resources: []string{"daemonsets"},
 					Verbs:     []string{"get", "list", "watch"},
 				})
-				utilruntime.Must(SetHashAnnotation(cr))
+				apimachineryutilruntime.Must(SetHashAnnotation(cr))
 				return cr
 			}(),
 			expectedChanged: true,
@@ -234,7 +234,7 @@ func TestApplyClusterRole(t *testing.T) {
 				cr := newCr()
 				cr.ResourceVersion = "21"
 				cr.Rules[0].Verbs = []string{"update"}
-				utilruntime.Must(SetHashAnnotation(cr))
+				apimachineryutilruntime.Must(SetHashAnnotation(cr))
 				return cr
 			}(),
 			expectedChanged: true,
@@ -271,7 +271,7 @@ func TestApplyClusterRole(t *testing.T) {
 						Name:               "basic",
 						BlockOwnerDeletion: pointer.Ptr(true),
 					}}
-					utilruntime.Must(SetHashAnnotation(cr))
+					apimachineryutilruntime.Must(SetHashAnnotation(cr))
 					return cr
 				}(),
 			},
@@ -297,7 +297,7 @@ func TestApplyClusterRole(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "",
 					}
-					utilruntime.Must(SetHashAnnotation(cr))
+					apimachineryutilruntime.Must(SetHashAnnotation(cr))
 					cr.Annotations["a-1"] = "a-alpha-changed"
 					cr.Annotations["a-3"] = "a-resurrected"
 					cr.Annotations["a-custom"] = "custom-value"
@@ -334,7 +334,7 @@ func TestApplyClusterRole(t *testing.T) {
 					"l-2":  "l-beta",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(cr))
+				apimachineryutilruntime.Must(SetHashAnnotation(cr))
 				cr.Annotations["a-1"] = "a-alpha-changed"
 				cr.Annotations["a-3"] = "a-resurrected"
 				cr.Annotations["a-custom"] = "custom-value"
@@ -362,7 +362,7 @@ func TestApplyClusterRole(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "l-resurrected",
 					}
-					utilruntime.Must(SetHashAnnotation(cr))
+					apimachineryutilruntime.Must(SetHashAnnotation(cr))
 					cr.Annotations["a-1"] = "a-alpha-changed"
 					cr.Annotations["a-custom"] = "a-custom-value"
 					cr.Labels["l-1"] = "l-alpha-changed"
@@ -397,7 +397,7 @@ func TestApplyClusterRole(t *testing.T) {
 					"l-2":  "l-beta-x",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(clusterRole))
+				apimachineryutilruntime.Must(SetHashAnnotation(clusterRole))
 				delete(clusterRole.Annotations, "a-3-")
 				clusterRole.Annotations["a-custom"] = "a-custom-value"
 				delete(clusterRole.Labels, "l-3-")
@@ -535,7 +535,7 @@ func TestApplyClusterRoleBinding(t *testing.T) {
 
 	newCrbWithHash := func() *rbacv1.ClusterRoleBinding {
 		cr := newCrb()
-		utilruntime.Must(SetHashAnnotation(cr))
+		apimachineryutilruntime.Must(SetHashAnnotation(cr))
 		return cr
 	}
 
@@ -624,7 +624,7 @@ func TestApplyClusterRoleBinding(t *testing.T) {
 			expectedCrb: func() *rbacv1.ClusterRoleBinding {
 				crb := newCrb()
 				crb.Subjects[0].Name = "different-name"
-				utilruntime.Must(SetHashAnnotation(crb))
+				apimachineryutilruntime.Must(SetHashAnnotation(crb))
 				return crb
 			}(),
 			expectedChanged: true,
@@ -653,7 +653,7 @@ func TestApplyClusterRoleBinding(t *testing.T) {
 					Kind:     "ClusterRole",
 					Name:     "different-name",
 				}
-				utilruntime.Must(SetHashAnnotation(crb))
+				apimachineryutilruntime.Must(SetHashAnnotation(crb))
 				return crb
 			}(),
 			expectedChanged: true,
@@ -677,7 +677,7 @@ func TestApplyClusterRoleBinding(t *testing.T) {
 			expectedCrb: func() *rbacv1.ClusterRoleBinding {
 				crb := newCrb()
 				crb.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(crb))
+				apimachineryutilruntime.Must(SetHashAnnotation(crb))
 				return crb
 			}(),
 			expectedChanged: true,
@@ -727,7 +727,7 @@ func TestApplyClusterRoleBinding(t *testing.T) {
 				crb := newCrb()
 				crb.ResourceVersion = "21"
 				crb.Subjects[0].Name = "different-name"
-				utilruntime.Must(SetHashAnnotation(crb))
+				apimachineryutilruntime.Must(SetHashAnnotation(crb))
 				return crb
 			}(),
 			expectedChanged: true,
@@ -766,7 +766,7 @@ func TestApplyClusterRoleBinding(t *testing.T) {
 							BlockOwnerDeletion: pointer.Ptr(true),
 						},
 					}
-					utilruntime.Must(SetHashAnnotation(crb))
+					apimachineryutilruntime.Must(SetHashAnnotation(crb))
 					return crb
 				}(),
 			},
@@ -792,7 +792,7 @@ func TestApplyClusterRoleBinding(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "",
 					}
-					utilruntime.Must(SetHashAnnotation(crb))
+					apimachineryutilruntime.Must(SetHashAnnotation(crb))
 					crb.Annotations["a-1"] = "a-alpha-changed"
 					crb.Annotations["a-3"] = "a-resurrected"
 					crb.Annotations["a-custom"] = "custom-value"
@@ -829,7 +829,7 @@ func TestApplyClusterRoleBinding(t *testing.T) {
 					"l-2":  "l-beta",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(crb))
+				apimachineryutilruntime.Must(SetHashAnnotation(crb))
 				crb.Annotations["a-1"] = "a-alpha-changed"
 				crb.Annotations["a-3"] = "a-resurrected"
 				crb.Annotations["a-custom"] = "custom-value"
@@ -857,7 +857,7 @@ func TestApplyClusterRoleBinding(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "l-resurrected",
 					}
-					utilruntime.Must(SetHashAnnotation(crb))
+					apimachineryutilruntime.Must(SetHashAnnotation(crb))
 					crb.Annotations["a-1"] = "a-alpha-changed"
 					crb.Annotations["a-custom"] = "a-custom-value"
 					crb.Labels["l-1"] = "l-alpha-changed"
@@ -892,7 +892,7 @@ func TestApplyClusterRoleBinding(t *testing.T) {
 					"l-2":  "l-beta-x",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(crb))
+				apimachineryutilruntime.Must(SetHashAnnotation(crb))
 				delete(crb.Annotations, "a-3-")
 				crb.Annotations["a-custom"] = "a-custom-value"
 				delete(crb.Labels, "l-3-")
@@ -1036,7 +1036,7 @@ func TestApplyRoleBinding(t *testing.T) {
 
 	newRBWithHash := func() *rbacv1.RoleBinding {
 		rb := newRB()
-		utilruntime.Must(SetHashAnnotation(rb))
+		apimachineryutilruntime.Must(SetHashAnnotation(rb))
 		return rb
 	}
 
@@ -1126,7 +1126,7 @@ func TestApplyRoleBinding(t *testing.T) {
 			expectedRB: func() *rbacv1.RoleBinding {
 				rb := newRB()
 				rb.RoleRef.Name = "changed"
-				utilruntime.Must(SetHashAnnotation(rb))
+				apimachineryutilruntime.Must(SetHashAnnotation(rb))
 				return rb
 			}(),
 			expectedChanged: true,
@@ -1150,7 +1150,7 @@ func TestApplyRoleBinding(t *testing.T) {
 			expectedRB: func() *rbacv1.RoleBinding {
 				rb := newRB()
 				rb.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(rb))
+				apimachineryutilruntime.Must(SetHashAnnotation(rb))
 				return rb
 			}(),
 			expectedChanged: true,
@@ -1208,7 +1208,7 @@ func TestApplyRoleBinding(t *testing.T) {
 				rb := newRB()
 				rb.ResourceVersion = "21"
 				rb.Labels = map[string]string{"changed": "changed"}
-				utilruntime.Must(SetHashAnnotation(rb))
+				apimachineryutilruntime.Must(SetHashAnnotation(rb))
 				return rb
 			}(),
 			expectedChanged: true,
@@ -1237,7 +1237,7 @@ func TestApplyRoleBinding(t *testing.T) {
 			existing: []runtime.Object{
 				func() *rbacv1.RoleBinding {
 					rb := newRBWithControllerRef()
-					utilruntime.Must(SetHashAnnotation(rb))
+					apimachineryutilruntime.Must(SetHashAnnotation(rb))
 					return rb
 				}(),
 			},
@@ -1253,7 +1253,7 @@ func TestApplyRoleBinding(t *testing.T) {
 			existing: []runtime.Object{
 				func() *rbacv1.RoleBinding {
 					rb := newRB()
-					utilruntime.Must(SetHashAnnotation(rb))
+					apimachineryutilruntime.Must(SetHashAnnotation(rb))
 					return rb
 				}(),
 			},
@@ -1266,7 +1266,7 @@ func TestApplyRoleBinding(t *testing.T) {
 			expectedRB: func() *rbacv1.RoleBinding {
 				rb := newRBWithControllerRef()
 				rb.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(rb))
+				apimachineryutilruntime.Must(SetHashAnnotation(rb))
 				return rb
 			}(),
 			expectedChanged: true,
@@ -1279,7 +1279,7 @@ func TestApplyRoleBinding(t *testing.T) {
 				func() *rbacv1.RoleBinding {
 					rb := newRBWithControllerRef()
 					rb.OwnerReferences[0].Kind = "WrongKind"
-					utilruntime.Must(SetHashAnnotation(rb))
+					apimachineryutilruntime.Must(SetHashAnnotation(rb))
 					return rb
 				}(),
 			},
@@ -1289,7 +1289,7 @@ func TestApplyRoleBinding(t *testing.T) {
 			}(),
 			expectedRB: func() *rbacv1.RoleBinding {
 				rb := newRBWithControllerRef()
-				utilruntime.Must(SetHashAnnotation(rb))
+				apimachineryutilruntime.Must(SetHashAnnotation(rb))
 				return rb
 			}(),
 			expectedChanged: true,
@@ -1302,7 +1302,7 @@ func TestApplyRoleBinding(t *testing.T) {
 				func() *rbacv1.RoleBinding {
 					rb := newRBWithControllerRef()
 					rb.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(rb))
+					apimachineryutilruntime.Must(SetHashAnnotation(rb))
 					return rb
 				}(),
 			},
@@ -1322,7 +1322,7 @@ func TestApplyRoleBinding(t *testing.T) {
 				func() *rbacv1.RoleBinding {
 					rb := newRBWithControllerRef()
 					rb.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(rb))
+					apimachineryutilruntime.Must(SetHashAnnotation(rb))
 					return rb
 				}(),
 			},
@@ -1352,7 +1352,7 @@ func TestApplyRoleBinding(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "",
 					}
-					utilruntime.Must(SetHashAnnotation(rb))
+					apimachineryutilruntime.Must(SetHashAnnotation(rb))
 					rb.Annotations["a-1"] = "a-alpha-changed"
 					rb.Annotations["a-3"] = "a-resurrected"
 					rb.Annotations["a-custom"] = "custom-value"
@@ -1390,7 +1390,7 @@ func TestApplyRoleBinding(t *testing.T) {
 					"l-2":  "l-beta",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(roleBinding))
+				apimachineryutilruntime.Must(SetHashAnnotation(roleBinding))
 				roleBinding.Annotations["a-1"] = "a-alpha-changed"
 				roleBinding.Annotations["a-3"] = "a-resurrected"
 				roleBinding.Annotations["a-custom"] = "custom-value"
@@ -1418,7 +1418,7 @@ func TestApplyRoleBinding(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "l-resurrected",
 					}
-					utilruntime.Must(SetHashAnnotation(rb))
+					apimachineryutilruntime.Must(SetHashAnnotation(rb))
 					rb.Annotations["a-1"] = "a-alpha-changed"
 					rb.Annotations["a-custom"] = "a-custom-value"
 					rb.Labels["l-1"] = "l-alpha-changed"
@@ -1454,7 +1454,7 @@ func TestApplyRoleBinding(t *testing.T) {
 					"l-2":  "l-beta-x",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(rb))
+				apimachineryutilruntime.Must(SetHashAnnotation(rb))
 				delete(rb.Annotations, "a-3-")
 				rb.Annotations["a-custom"] = "a-custom-value"
 				delete(rb.Labels, "l-3-")
@@ -1597,7 +1597,7 @@ func TestApplyRole(t *testing.T) {
 
 	newRoleWithHash := func() *rbacv1.Role {
 		role := newRole()
-		utilruntime.Must(SetHashAnnotation(role))
+		apimachineryutilruntime.Must(SetHashAnnotation(role))
 		return role
 	}
 
@@ -1679,7 +1679,7 @@ func TestApplyRole(t *testing.T) {
 			expectedRole: func() *rbacv1.Role {
 				role := newRole()
 				role.Rules[0].Verbs = []string{"update"}
-				utilruntime.Must(SetHashAnnotation(role))
+				apimachineryutilruntime.Must(SetHashAnnotation(role))
 				return role
 			}(),
 			expectedChanged: true,
@@ -1699,7 +1699,7 @@ func TestApplyRole(t *testing.T) {
 			expectedRole: func() *rbacv1.Role {
 				cm := newRole()
 				cm.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(cm))
+				apimachineryutilruntime.Must(SetHashAnnotation(cm))
 				return cm
 			}(),
 			expectedChanged: true,
@@ -1747,7 +1747,7 @@ func TestApplyRole(t *testing.T) {
 				role := newRole()
 				role.ResourceVersion = "21"
 				role.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(role))
+				apimachineryutilruntime.Must(SetHashAnnotation(role))
 				return role
 			}(),
 			expectedChanged: true,
@@ -1776,7 +1776,7 @@ func TestApplyRole(t *testing.T) {
 				func() *rbacv1.Role {
 					role := newRole()
 					role.OwnerReferences = nil
-					utilruntime.Must(SetHashAnnotation(role))
+					apimachineryutilruntime.Must(SetHashAnnotation(role))
 					return role
 				}(),
 			},
@@ -1796,7 +1796,7 @@ func TestApplyRole(t *testing.T) {
 				func() *rbacv1.Role {
 					role := newRole()
 					role.OwnerReferences[0].Kind = "WrongKind"
-					utilruntime.Must(SetHashAnnotation(role))
+					apimachineryutilruntime.Must(SetHashAnnotation(role))
 					return role
 				}(),
 			},
@@ -1806,7 +1806,7 @@ func TestApplyRole(t *testing.T) {
 			}(),
 			expectedRole: func() *rbacv1.Role {
 				role := newRole()
-				utilruntime.Must(SetHashAnnotation(role))
+				apimachineryutilruntime.Must(SetHashAnnotation(role))
 				return role
 			}(),
 			expectedChanged: true,
@@ -1819,7 +1819,7 @@ func TestApplyRole(t *testing.T) {
 				func() *rbacv1.Role {
 					role := newRole()
 					role.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(role))
+					apimachineryutilruntime.Must(SetHashAnnotation(role))
 					return role
 				}(),
 			},
@@ -1848,7 +1848,7 @@ func TestApplyRole(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "",
 					}
-					utilruntime.Must(SetHashAnnotation(role))
+					apimachineryutilruntime.Must(SetHashAnnotation(role))
 					role.Annotations["a-1"] = "a-alpha-changed"
 					role.Annotations["a-3"] = "a-resurrected"
 					role.Annotations["a-custom"] = "custom-value"
@@ -1884,7 +1884,7 @@ func TestApplyRole(t *testing.T) {
 					"l-2":  "l-beta",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(role))
+				apimachineryutilruntime.Must(SetHashAnnotation(role))
 				role.Annotations["a-1"] = "a-alpha-changed"
 				role.Annotations["a-3"] = "a-resurrected"
 				role.Annotations["a-custom"] = "custom-value"
@@ -1912,7 +1912,7 @@ func TestApplyRole(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "l-resurrected",
 					}
-					utilruntime.Must(SetHashAnnotation(role))
+					apimachineryutilruntime.Must(SetHashAnnotation(role))
 					role.Annotations["a-1"] = "a-alpha-changed"
 					role.Annotations["a-custom"] = "a-custom-value"
 					role.Labels["l-1"] = "l-alpha-changed"
@@ -1946,7 +1946,7 @@ func TestApplyRole(t *testing.T) {
 					"l-2":  "l-beta-x",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(role))
+				apimachineryutilruntime.Must(SetHashAnnotation(role))
 				delete(role.Annotations, "a-3-")
 				role.Annotations["a-custom"] = "a-custom-value"
 				delete(role.Labels, "l-3-")

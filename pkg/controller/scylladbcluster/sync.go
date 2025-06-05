@@ -10,7 +10,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
@@ -18,7 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
@@ -64,7 +64,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 	type remoteCT = *scyllav1alpha1.RemoteOwner
 	var objectErrMaps map[string][]error
 
-	remoteClusterNames := slices.ConvertSlice(sc.Spec.Datacenters, func(dc scyllav1alpha1.ScyllaDBClusterDatacenter) string {
+	remoteClusterNames := oslices.ConvertSlice(sc.Spec.Datacenters, func(dc scyllav1alpha1.ScyllaDBClusterDatacenter) string {
 		return dc.RemoteKubernetesClusterName
 	})
 
@@ -267,7 +267,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		objectErrs := objectErrMaps[dc.RemoteKubernetesClusterName]
 
 		var err error
-		err = utilerrors.NewAggregate(objectErrs)
+		err = apimachineryutilerrors.NewAggregate(objectErrs)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't sync remote datacenter %q: %w", dc.RemoteKubernetesClusterName, err))
 			continue
@@ -403,7 +403,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		errs = append(errs, err)
 	}
 
-	return utilerrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (scc *Controller) chooseRemoteControllers(sc *scyllav1alpha1.ScyllaDBCluster, remoteRemoteOwnersMap map[string]map[string]*scyllav1alpha1.RemoteOwner) map[string]metav1.Object {

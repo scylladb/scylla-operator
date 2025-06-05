@@ -7,7 +7,7 @@ import (
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -71,6 +71,6 @@ func isOwnedByAnyFunc[T kubeinterfaces.ObjectInterface](allowedOwners []types.UI
 			return false
 		}
 
-		return slices.ContainsItem(allowedOwners, controllerRef.UID)
+		return oslices.ContainsItem(allowedOwners, controllerRef.UID)
 	}
 }

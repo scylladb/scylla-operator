@@ -8,7 +8,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	remotelister "github.com/scylladb/scylla-operator/pkg/remoteclient/lister"
@@ -16,8 +16,8 @@ import (
 	discoveryv1 "k8s.io/api/discovery/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/sets"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilsets "k8s.io/apimachinery/pkg/util/sets"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 )
@@ -109,7 +109,7 @@ func MakeRemoteServices(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.S
 func MakeRemoteScyllaDBDatacenters(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteScyllaDBDatacenters map[string]map[string]*scyllav1alpha1.ScyllaDBDatacenter, remoteNamespace *corev1.Namespace, remoteController metav1.Object, managingClusterDomain string) (*scyllav1alpha1.ScyllaDBDatacenter, error) {
 	// Given DC is part of seed list if it's fully reconciled, or is part of another DC seeds list,
 	// meaning it was fully reconciled in the past, so DC is part of the cluster.
-	seedDCNamesSet := sets.New[string]()
+	seedDCNamesSet := apimachineryutilsets.New[string]()
 	for _, dcSpec := range sc.Spec.Datacenters {
 		sdc, ok := remoteScyllaDBDatacenters[dcSpec.RemoteKubernetesClusterName][naming.ScyllaDBDatacenterName(sc, &dcSpec)]
 		if !ok {
@@ -127,7 +127,7 @@ func MakeRemoteScyllaDBDatacenters(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyll
 
 		for _, remoteSDCs := range remoteScyllaDBDatacenters {
 			for _, remoteSDC := range remoteSDCs {
-				isReferencedByOtherDCAsSeed := slices.Contains(remoteSDC.Spec.ScyllaDB.ExternalSeeds, func(remoteSDCSeed string) bool {
+				isReferencedByOtherDCAsSeed := oslices.Contains(remoteSDC.Spec.ScyllaDB.ExternalSeeds, func(remoteSDCSeed string) bool {
 					return naming.DCNameFromSeedServiceAddress(sc, remoteSDCSeed, remoteSDC.Namespace) == dcSpec.Name
 				})
 
@@ -443,7 +443,7 @@ func MakeRemoteEndpointSlices(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1al
 }
 
 func mergeScyllaV1Alpha1Placement(placementGetters ...func() *scyllav1alpha1.Placement) *scyllav1alpha1.Placement {
-	placementGetters = slices.FilterOut(placementGetters, func(getter func() *scyllav1alpha1.Placement) bool {
+	placementGetters = oslices.FilterOut(placementGetters, func(getter func() *scyllav1alpha1.Placement) bool {
 		return getter() == nil
 	})
 	if len(placementGetters) == 0 {
@@ -506,7 +506,7 @@ func mergeScyllaV1Alpha1Placement(placementGetters ...func() *scyllav1alpha1.Pla
 }
 
 func mergeScyllaV1Alpha1ScyllaDB(scyllaDBTemplateGetters ...func() *scyllav1alpha1.ScyllaDBTemplate) *scyllav1alpha1.ScyllaDBTemplate {
-	scyllaDBTemplateGetters = slices.FilterOut(scyllaDBTemplateGetters, func(getter func() *scyllav1alpha1.ScyllaDBTemplate) bool {
+	scyllaDBTemplateGetters = oslices.FilterOut(scyllaDBTemplateGetters, func(getter func() *scyllav1alpha1.ScyllaDBTemplate) bool {
 		return getter() == nil
 	})
 	if len(scyllaDBTemplateGetters) == 0 {
@@ -568,7 +568,7 @@ func mergeScyllaV1Alpha1ScyllaDB(scyllaDBTemplateGetters ...func() *scyllav1alph
 }
 
 func mergeScyllaV1Alpha1ScyllaDBManagerAgent(scyllaDBManagerAgentTemplateGetters ...func() *scyllav1alpha1.ScyllaDBManagerAgentTemplate) *scyllav1alpha1.ScyllaDBManagerAgentTemplate {
-	scyllaDBManagerAgentTemplateGetters = slices.FilterOut(scyllaDBManagerAgentTemplateGetters, func(getter func() *scyllav1alpha1.ScyllaDBManagerAgentTemplate) bool {
+	scyllaDBManagerAgentTemplateGetters = oslices.FilterOut(scyllaDBManagerAgentTemplateGetters, func(getter func() *scyllav1alpha1.ScyllaDBManagerAgentTemplate) bool {
 		return getter() == nil
 	})
 	if len(scyllaDBManagerAgentTemplateGetters) == 0 {
@@ -887,7 +887,7 @@ func makeMirroredRemoteConfigMaps(sc *scyllav1alpha1.ScyllaDBCluster, dc *scylla
 		})
 	}
 
-	err := errors.NewAggregate(errs)
+	err := apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return progressingConditions, requiredRemoteConfigMaps, fmt.Errorf("can't make mirrored ConfigMaps: %w", err)
 	}
@@ -968,7 +968,7 @@ func makeMirroredRemoteSecrets(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1a
 		})
 	}
 
-	err := errors.NewAggregate(errs)
+	err := apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return progressingConditions, requiredRemoteSecrets, fmt.Errorf("can't make mirrored Secrets: %w", err)
 	}

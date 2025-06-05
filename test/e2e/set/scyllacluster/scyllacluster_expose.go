@@ -36,7 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/rand"
+	apimachineryutilrand "k8s.io/apimachinery/pkg/util/rand"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
@@ -350,7 +350,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 				NodeService: &scyllav1.NodeServiceTemplate{
 					Type: scyllav1.NodeServiceTypeLoadBalancer,
 					// Change to non-default LB class to avoid conflicts on status when running in cloud
-					LoadBalancerClass: pointer.Ptr(fmt.Sprintf("lb-class-%s", rand.String(6))),
+					LoadBalancerClass: pointer.Ptr(fmt.Sprintf("lb-class-%s", apimachineryutilrand.String(6))),
 				},
 				BroadcastOptions: &scyllav1.NodeBroadcastOptions{
 					Nodes: scyllav1.BroadcastOptions{

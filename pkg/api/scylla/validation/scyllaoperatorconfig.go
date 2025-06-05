@@ -9,7 +9,7 @@ import (
 	"github.com/blang/semver/v4"
 	imgreference "github.com/containers/image/v5/docker/reference"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	apimachineryvalidationutils "k8s.io/apimachinery/pkg/util/validation"
+	apimachineryutilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -65,8 +65,8 @@ func ValidateScyllaOperatorConfigSpec(spec *scyllav1alpha1.ScyllaOperatorConfigS
 	}
 
 	if spec.ConfiguredClusterDomain != nil {
-		allErrs = append(allErrs, apimachineryvalidationutils.IsFullyQualifiedDomainName(fldPath.Child("configuredClusterDomain"), *spec.ConfiguredClusterDomain)...)
-		for _, msg := range apimachineryvalidationutils.IsValidLabelValue(*spec.ConfiguredClusterDomain) {
+		allErrs = append(allErrs, apimachineryutilvalidation.IsFullyQualifiedDomainName(fldPath.Child("configuredClusterDomain"), *spec.ConfiguredClusterDomain)...)
+		for _, msg := range apimachineryutilvalidation.IsValidLabelValue(*spec.ConfiguredClusterDomain) {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("configuredClusterDomain"), *spec.ConfiguredClusterDomain, msg))
 		}
 	}

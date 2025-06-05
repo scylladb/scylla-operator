@@ -17,7 +17,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
-	apierrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	cliflag "k8s.io/component-base/cli/flag"
@@ -92,7 +92,7 @@ func (o *ManagerControllerOptions) Validate() error {
 	errs = append(errs, o.InClusterReflection.Validate())
 	errs = append(errs, o.LeaderElection.Validate())
 
-	return apierrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (o *ManagerControllerOptions) Complete() error {

@@ -9,7 +9,7 @@ import (
 	o "github.com/onsi/gomega"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
@@ -105,7 +105,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 			}
 		}
 
-		cleanupJobsCreated := slices.Filter(jobEvents, func(e utils.ObserverEvent[*batchv1.Job]) bool {
+		cleanupJobsCreated := oslices.Filter(jobEvents, func(e utils.ObserverEvent[*batchv1.Job]) bool {
 			return e.Action == watch.Added &&
 				e.Obj.Labels[naming.NodeJobTypeLabel] == string(naming.JobTypeCleanup) &&
 				e.Obj.Annotations[naming.CleanupJobTokenRingHashAnnotation] == tokenRingHash
@@ -152,7 +152,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 		o.Expect(jobEvents).NotTo(o.BeEmpty())
 
-		cleanupJobsCreated = slices.Filter(jobEvents, func(e utils.ObserverEvent[*batchv1.Job]) bool {
+		cleanupJobsCreated = oslices.Filter(jobEvents, func(e utils.ObserverEvent[*batchv1.Job]) bool {
 			return e.Action == watch.Added &&
 				e.Obj.Labels[naming.NodeJobTypeLabel] == string(naming.JobTypeCleanup) &&
 				e.Obj.Annotations[naming.CleanupJobTokenRingHashAnnotation] == tokenRingHash

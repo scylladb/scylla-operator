@@ -17,7 +17,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	oexec "github.com/scylladb/scylla-operator/pkg/util/exec"
 	"k8s.io/apimachinery/pkg/api/equality"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/exec"
 )
@@ -106,7 +106,7 @@ func MakeRAID0(ctx context.Context, executor exec.Interface, sysfsPath, devtmpfs
 			// It's idempotent.
 			stdout, stderr, startErr := oexec.RunCommand(ctx, executor, "udevadm", "control", "--start-exec-queue")
 			if startErr != nil {
-				err = utilerrors.NewAggregate([]error{err, fmt.Errorf("can't start udevadm exec queue: %w, stdout: %q, stderr: %q", startErr, stdout.String(), stderr.String())})
+				err = apimachineryutilerrors.NewAggregate([]error{err, fmt.Errorf("can't start udevadm exec queue: %w, stdout: %q, stderr: %q", startErr, stdout.String(), stderr.String())})
 			}
 		}()
 	}

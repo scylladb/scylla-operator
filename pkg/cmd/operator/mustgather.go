@@ -15,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/discovery"
 	"k8s.io/klog/v2"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -108,7 +108,7 @@ func (o *MustGatherOptions) Validate() error {
 
 	errs = append(errs, o.GatherBaseOptions.Validate())
 
-	return utilerrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (o *MustGatherOptions) Complete() error {
@@ -342,5 +342,5 @@ func (o *MustGatherOptions) run(ctx context.Context) error {
 		}
 	}
 
-	return utilerrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }

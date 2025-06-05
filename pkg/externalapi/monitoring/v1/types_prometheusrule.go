@@ -18,7 +18,7 @@ package v1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
+	apimachineryutilintstr "k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
@@ -99,7 +99,7 @@ type Rule struct {
 	// Only one of `record` and `alert` must be set.
 	Alert string `json:"alert,omitempty"`
 	// PromQL expression to evaluate.
-	Expr intstr.IntOrString `json:"expr"`
+	Expr apimachineryutilintstr.IntOrString `json:"expr"`
 	// Alerts are considered firing once they have been returned for this long.
 	// +optional
 	For *Duration `json:"for,omitempty"`

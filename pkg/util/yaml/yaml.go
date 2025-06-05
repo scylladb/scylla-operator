@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	apiyaml "k8s.io/apimachinery/pkg/util/yaml"
+	apimachineryutilyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/yaml"
 )
 
@@ -16,7 +16,7 @@ import (
 func ToUnstructured(rawyaml io.Reader) ([]unstructured.Unstructured, error) {
 	var objs []unstructured.Unstructured
 
-	reader := apiyaml.NewYAMLReader(bufio.NewReader(rawyaml))
+	reader := apimachineryutilyaml.NewYAMLReader(bufio.NewReader(rawyaml))
 	count := 1
 	for {
 		// Read one YAML document at a time, until io.EOF is returned

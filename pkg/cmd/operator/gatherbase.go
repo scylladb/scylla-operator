@@ -12,8 +12,8 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	apierrors "k8s.io/apimachinery/pkg/util/errors"
-	utilrand "k8s.io/apimachinery/pkg/util/rand"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilrand "k8s.io/apimachinery/pkg/util/rand"
 	kgenericclioptions "k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
 	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
@@ -82,7 +82,7 @@ func (o *GatherBaseOptions) Validate() error {
 		}
 	}
 
-	return apierrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (o *GatherBaseOptions) Complete() error {
@@ -105,7 +105,7 @@ func (o *GatherBaseOptions) Complete() error {
 
 	ignoreDestDirExists := false
 	if len(o.DestDir) == 0 {
-		o.DestDir = fmt.Sprintf("%s-%s", o.GathererName, utilrand.String(12))
+		o.DestDir = fmt.Sprintf("%s-%s", o.GathererName, apimachineryutilrand.String(12))
 	} else {
 		// We have already made sure that the dir doesn't exist or is empty in validation.
 		ignoreDestDirExists = true

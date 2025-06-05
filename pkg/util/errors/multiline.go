@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 type aggregate struct {
@@ -12,7 +12,7 @@ type aggregate struct {
 	sep     string
 }
 
-var _ utilerrors.Aggregate = &aggregate{}
+var _ apimachineryutilerrors.Aggregate = &aggregate{}
 
 func NewAggregate(errList []error, sep string) error {
 	var errs []error
@@ -70,7 +70,7 @@ func (agg *aggregate) visit(f func(err error) bool) bool {
 				return match
 			}
 
-		case utilerrors.Aggregate:
+		case apimachineryutilerrors.Aggregate:
 			for _, nestedErr := range err.Errors() {
 				match := f(nestedErr)
 				if match {

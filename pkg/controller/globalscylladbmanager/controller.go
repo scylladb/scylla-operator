@@ -14,7 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	corev1listers "k8s.io/client-go/listers/core/v1"
@@ -120,7 +120,7 @@ func (gsmc *Controller) updateScyllaDBManagerClusterRegistration(old, cur interf
 	if currentSMCR.UID != oldSMCR.UID {
 		key, err := keyFunc(oldSMCR)
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("can't get key for object %#v: %w", oldSMCR, err))
+			apimachineryutilruntime.HandleError(fmt.Errorf("can't get key for object %#v: %w", oldSMCR, err))
 			return
 		}
 
@@ -150,12 +150,12 @@ func (gsmc *Controller) deleteScyllaDBManagerClusterRegistration(obj interface{}
 		var tombstone cache.DeletedFinalStateUnknown
 		tombstone, ok = obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
-			utilruntime.HandleError(fmt.Errorf("can't get object from tombstone %#v", obj))
+			apimachineryutilruntime.HandleError(fmt.Errorf("can't get object from tombstone %#v", obj))
 			return
 		}
 		smcr, ok = tombstone.Obj.(*scyllav1alpha1.ScyllaDBManagerClusterRegistration)
 		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contains an object that is not a ScyllaDBManagerClusterRegistration %#v", obj))
+			apimachineryutilruntime.HandleError(fmt.Errorf("tombstone contains an object that is not a ScyllaDBManagerClusterRegistration %#v", obj))
 			return
 		}
 	}
@@ -191,7 +191,7 @@ func (gsmc *Controller) updateScyllaDBDatacenter(old, cur interface{}) {
 	if currentSDC.UID != oldSDC.UID {
 		key, err := keyFunc(oldSDC)
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("can't get key for object %#v: %w", oldSDC, err))
+			apimachineryutilruntime.HandleError(fmt.Errorf("can't get key for object %#v: %w", oldSDC, err))
 			return
 		}
 
@@ -216,12 +216,12 @@ func (gsmc *Controller) deleteScyllaDBDatacenter(obj interface{}) {
 		var tombstone cache.DeletedFinalStateUnknown
 		tombstone, ok = obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
-			utilruntime.HandleError(fmt.Errorf("can't get object from tombstone %#v", obj))
+			apimachineryutilruntime.HandleError(fmt.Errorf("can't get object from tombstone %#v", obj))
 			return
 		}
 		sdc, ok = tombstone.Obj.(*scyllav1alpha1.ScyllaDBDatacenter)
 		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contains an object that is not a ScyllaDBDatacenter %#v", obj))
+			apimachineryutilruntime.HandleError(fmt.Errorf("tombstone contains an object that is not a ScyllaDBDatacenter %#v", obj))
 			return
 		}
 	}
@@ -256,7 +256,7 @@ func (gsmc *Controller) updateNamespace(old, cur interface{}) {
 	if currentNS.UID != oldNS.UID {
 		key, err := keyFunc(oldNS)
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("can't get key for object %#v: %w", oldNS, err))
+			apimachineryutilruntime.HandleError(fmt.Errorf("can't get key for object %#v: %w", oldNS, err))
 			return
 		}
 
@@ -285,12 +285,12 @@ func (gsmc *Controller) deleteNamespace(obj interface{}) {
 		var tombstone cache.DeletedFinalStateUnknown
 		tombstone, ok = obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
-			utilruntime.HandleError(fmt.Errorf("can't get object from tombstone %#v", obj))
+			apimachineryutilruntime.HandleError(fmt.Errorf("can't get object from tombstone %#v", obj))
 			return
 		}
 		ns, ok = tombstone.Obj.(*corev1.Namespace)
 		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contains an object that is not a Namespace %#v", obj))
+			apimachineryutilruntime.HandleError(fmt.Errorf("tombstone contains an object that is not a Namespace %#v", obj))
 			return
 		}
 	}

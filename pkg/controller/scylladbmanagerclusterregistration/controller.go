@@ -21,9 +21,9 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -156,7 +156,7 @@ func (smcrc *Controller) processNextItem(ctx context.Context) bool {
 	defer cancel()
 	err := smcrc.sync(ctx, key.(string))
 	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
-	err = utilerrors.Reduce(err)
+	err = apimachineryutilerrors.Reduce(err)
 	switch {
 	case err == nil:
 		smcrc.queue.Forget(key)
@@ -174,7 +174,7 @@ func (smcrc *Controller) processNextItem(ctx context.Context) bool {
 		return true
 
 	default:
-		utilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
+		apimachineryutilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
 
 	}
 
@@ -189,7 +189,7 @@ func (smcrc *Controller) runWorker(ctx context.Context) {
 }
 
 func (smcrc *Controller) Run(ctx context.Context, workers int) {
-	defer utilruntime.HandleCrash()
+	defer apimachineryutilruntime.HandleCrash()
 
 	klog.InfoS("Starting controller", "controller", ControllerName)
 
@@ -209,7 +209,7 @@ func (smcrc *Controller) Run(ctx context.Context, workers int) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			wait.UntilWithContext(ctx, smcrc.runWorker, time.Second)
+			apimachineryutilwait.UntilWithContext(ctx, smcrc.runWorker, time.Second)
 		}()
 	}
 
@@ -313,7 +313,7 @@ func (smcrc *Controller) enqueueThroughScyllaDBDatacenter(depth int, obj kubeint
 
 	smcrName, err := naming.ScyllaDBManagerClusterRegistrationNameForScyllaDBDatacenter(sdc)
 	if err != nil {
-		utilruntime.HandleError(err)
+		apimachineryutilruntime.HandleError(err)
 		return
 	}
 
@@ -336,7 +336,7 @@ func (smcrc *Controller) enqueueThroughOwner(depth int, obj kubeinterfaces.Objec
 	case scyllav1alpha1.ScyllaDBDatacenterGVK.Kind:
 		sdc, err := smcrc.scyllaDBDatacenterLister.ScyllaDBDatacenters(obj.GetNamespace()).Get(controllerRef.Name)
 		if err != nil {
-			utilruntime.HandleError(err)
+			apimachineryutilruntime.HandleError(err)
 			return
 		}
 
@@ -359,7 +359,7 @@ func (smcrc *Controller) enqueueThroughGlobalScyllaDBManagerNamespace(depth int,
 
 	smcrs, err := smcrc.scyllaDBManagerClusterRegistrationLister.ScyllaDBManagerClusterRegistrations(corev1.NamespaceAll).List(naming.GlobalScyllaDBManagerClusterRegistrationSelector())
 	if err != nil {
-		utilruntime.HandleError(err)
+		apimachineryutilruntime.HandleError(err)
 		return
 	}
 

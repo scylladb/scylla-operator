@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
-	"k8s.io/apimachinery/pkg/util/wait"
+	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	watchutils "k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/watch"
@@ -55,7 +55,7 @@ func (o *ObjectObserver[T]) Start(ctx context.Context) error {
 		})
 
 		if err != nil {
-			if errors.Is(ctx.Err(), context.Canceled) && wait.Interrupted(err) {
+			if errors.Is(ctx.Err(), context.Canceled) && apimachineryutilwait.Interrupted(err) {
 				o.errChan <- nil
 				return
 			}

@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	apierrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 type GenerateAPIRefsOptions struct {
@@ -50,7 +50,7 @@ func (o *GenerateAPIRefsOptions) Validate(args []string) error {
 		}
 	}
 
-	return apierrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (o *GenerateAPIRefsOptions) Complete(args []string) error {

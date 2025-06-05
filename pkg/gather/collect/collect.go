@@ -11,7 +11,7 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -21,8 +21,8 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	apierrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/sets"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilsets "k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -82,7 +82,7 @@ type Collector struct {
 	keepGoing        bool
 	logsLimitBytes   int64
 
-	collectedResources sets.Set[string]
+	collectedResources apimachineryutilsets.Set[string]
 }
 
 func NewCollector(
@@ -104,7 +104,7 @@ func NewCollector(
 		relatedResources:   relatedResources,
 		keepGoing:          keepGoing,
 		logsLimitBytes:     logsLimitBytes,
-		collectedResources: sets.Set[string]{},
+		collectedResources: apimachineryutilsets.Set[string]{},
 	}
 }
 
@@ -241,7 +241,7 @@ func retrieveContainerLogs(ctx context.Context, podClient corev1client.PodInterf
 func (c *Collector) collectContainerLogs(ctx context.Context, logsDir string, podMeta *metav1.ObjectMeta, podCSs []corev1.ContainerStatus, containerName string) error {
 	var err error
 
-	cs, _, found := slices.Find(podCSs, func(s corev1.ContainerStatus) bool {
+	cs, _, found := oslices.Find(podCSs, func(s corev1.ContainerStatus) bool {
 		return s.Name == containerName
 	})
 	if !found {
@@ -558,5 +558,5 @@ func (c *Collector) CollectResources(ctx context.Context, resourceInfo *Resource
 		}
 	}
 
-	return apierrors.NewAggregate(errs)
+	return apimachineryutilerrors.NewAggregate(errs)
 }

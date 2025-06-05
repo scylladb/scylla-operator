@@ -8,7 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	kscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
@@ -37,5 +37,5 @@ var (
 )
 
 func init() {
-	utilruntime.Must(AddToScheme(Scheme))
+	apimachineryutilruntime.Must(AddToScheme(Scheme))
 }

@@ -12,7 +12,7 @@ import (
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
 	monitoringv1 "github.com/scylladb/scylla-operator/pkg/externalapi/monitoring/v1"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	okubecrypto "github.com/scylladb/scylla-operator/pkg/kubecrypto"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -24,7 +24,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	kutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 func getPrometheusLabels(sm *scyllav1alpha1.ScyllaDBMonitoring) labels.Set {
@@ -323,7 +323,7 @@ func (smc *Controller) syncPrometheus(
 	requiredScyllaDBServiceMonitor, _, err := makeScyllaDBServiceMonitor(sm)
 	renderErrors = append(renderErrors, err)
 
-	renderError := kutilerrors.NewAggregate(renderErrors)
+	renderError := apimachineryutilerrors.NewAggregate(renderErrors)
 	if renderError != nil {
 		return progressingConditions, renderError
 	}
@@ -333,7 +333,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		slices.ToSlice(requiredPrometheusSA),
+		oslices.ToSlice(requiredPrometheusSA),
 		serviceAccounts,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Delete,
@@ -344,7 +344,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		slices.ToSlice(requiredPrometheusService),
+		oslices.ToSlice(requiredPrometheusService),
 		services,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.CoreV1().Services(sm.Namespace).Delete,
@@ -355,7 +355,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		slices.ToSlice(requiredPrometheusRoleBinding),
+		oslices.ToSlice(requiredPrometheusRoleBinding),
 		roleBindings,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.RbacV1().RoleBindings(sm.Namespace).Delete,
@@ -366,7 +366,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		slices.ToSlice(requiredPrometheus),
+		oslices.ToSlice(requiredPrometheus),
 		prometheuses,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.monitoringClient.Prometheuses(sm.Namespace).Delete,
@@ -377,7 +377,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		slices.FilterOutNil(slices.ToSlice(requiredIngress)),
+		oslices.FilterOutNil(oslices.ToSlice(requiredIngress)),
 		ingresses,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.NetworkingV1().Ingresses(sm.Namespace).Delete,
@@ -388,7 +388,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		slices.ToSlice(requiredLatencyPrometheusRule, requiredAlertsPrometheusRule, requiredTablePrometheusRule),
+		oslices.ToSlice(requiredLatencyPrometheusRule, requiredAlertsPrometheusRule, requiredTablePrometheusRule),
 		prometheusRules,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.monitoringClient.PrometheusRules(sm.Namespace).Delete,
@@ -399,7 +399,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		slices.ToSlice(requiredScyllaDBServiceMonitor),
+		oslices.ToSlice(requiredScyllaDBServiceMonitor),
 		serviceMonitors,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.monitoringClient.ServiceMonitors(sm.Namespace).Delete,
@@ -430,7 +430,7 @@ func (smc *Controller) syncPrometheus(
 	)
 	pruneErrors = append(pruneErrors, err)
 
-	pruneError := kutilerrors.NewAggregate(pruneErrors)
+	pruneError := apimachineryutilerrors.NewAggregate(pruneErrors)
 	if pruneError != nil {
 		return progressingConditions, pruneError
 	}
@@ -577,7 +577,7 @@ func (smc *Controller) syncPrometheus(
 		))
 	}
 
-	applyError := kutilerrors.NewAggregate(applyErrors)
+	applyError := apimachineryutilerrors.NewAggregate(applyErrors)
 	if applyError != nil {
 		return progressingConditions, applyError
 	}

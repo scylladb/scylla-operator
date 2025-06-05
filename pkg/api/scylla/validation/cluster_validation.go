@@ -9,11 +9,11 @@ import (
 
 	"github.com/robfig/cron/v3"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/util/duration"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
-	"k8s.io/apimachinery/pkg/util/sets"
+	apimachineryutilsets "k8s.io/apimachinery/pkg/util/sets"
 	apimachineryutilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -123,7 +123,7 @@ func ValidateAlternatorSpec(alternator *scyllav1.AlternatorSpec, fldPath *field.
 	var allErrs field.ErrorList
 
 	if alternator.WriteIsolation != "" {
-		found := slices.ContainsItem(AlternatorSupportedWriteIsolation, alternator.WriteIsolation)
+		found := oslices.ContainsItem(AlternatorSupportedWriteIsolation, alternator.WriteIsolation)
 		if !found {
 			allErrs = append(
 				allErrs,
@@ -152,7 +152,7 @@ func ValidateAlternatorSpec(alternator *scyllav1.AlternatorSpec, fldPath *field.
 func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.Path) field.ErrorList {
 	var allErrs field.ErrorList
 
-	rackNames := sets.NewString()
+	rackNames := apimachineryutilsets.NewString()
 
 	if spec.Alternator != nil {
 		allErrs = append(allErrs, ValidateAlternatorSpec(spec.Alternator, fldPath.Child("alternator"))...)
@@ -162,7 +162,7 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 		allErrs = append(allErrs, ValidateScyllaClusterRackSpec(rack, rackNames, fldPath.Child("datacenter", "racks").Index(i))...)
 	}
 
-	managerRepairTaskNames := sets.New[string]()
+	managerRepairTaskNames := apimachineryutilsets.New[string]()
 	for i, r := range spec.Repairs {
 		if managerRepairTaskNames.Has(r.Name) {
 			allErrs = append(allErrs, field.Duplicate(fldPath.Child("repairs").Index(i).Child("name"), r.Name))
@@ -172,7 +172,7 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 		allErrs = append(allErrs, ValidateRepairTaskSpec(&r, fldPath.Child("repairs").Index(i))...)
 	}
 
-	managerBackupTaskNames := sets.New[string]()
+	managerBackupTaskNames := apimachineryutilsets.New[string]()
 	for i, b := range spec.Backups {
 		if managerBackupTaskNames.Has(b.Name) {
 			allErrs = append(allErrs, field.Duplicate(fldPath.Child("backups").Index(i).Child("name"), b.Name))
@@ -310,8 +310,8 @@ func ValidateNodeBroadcastOptions(options *scyllav1.NodeBroadcastOptions, nodeSe
 func ValidateBroadcastOptions(options scyllav1.BroadcastOptions, nodeService *scyllav1.NodeServiceTemplate, fldPath *field.Path) field.ErrorList {
 	var allErrs field.ErrorList
 
-	if !slices.ContainsItem(SupportedScyllaV1BroadcastAddressTypes, options.Type) {
-		allErrs = append(allErrs, field.NotSupported(fldPath.Child("type"), options.Type, slices.ConvertSlice(SupportedScyllaV1BroadcastAddressTypes, slices.ToString[scyllav1.BroadcastAddressType])))
+	if !oslices.ContainsItem(SupportedScyllaV1BroadcastAddressTypes, options.Type) {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("type"), options.Type, oslices.ConvertSlice(SupportedScyllaV1BroadcastAddressTypes, oslices.ToString[scyllav1.BroadcastAddressType])))
 	}
 
 	var allowedNodeServiceTypesByBroadcastAddressType = map[scyllav1.BroadcastAddressType][]scyllav1.NodeServiceType{
@@ -336,7 +336,7 @@ func ValidateBroadcastOptions(options scyllav1.BroadcastOptions, nodeService *sc
 
 	// Skipping an error when chosen option type is unsupported as it won't help anyhow users reading it.
 	allowedNodeServiceTypes, ok := allowedNodeServiceTypesByBroadcastAddressType[options.Type]
-	if ok && !slices.ContainsItem(allowedNodeServiceTypes, nodeServiceType) {
+	if ok && !oslices.ContainsItem(allowedNodeServiceTypes, nodeServiceType) {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("type"), options.Type, fmt.Sprintf("can't broadcast address unavailable within the selected node service type, allowed types for chosen broadcast address type are: %v", allowedNodeServiceTypes)))
 	}
 
@@ -352,8 +352,8 @@ func ValidateNodeService(nodeService *scyllav1.NodeServiceTemplate, fldPath *fie
 		scyllav1.NodeServiceTypeLoadBalancer,
 	}
 
-	if !slices.ContainsItem(supportedServiceTypes, nodeService.Type) {
-		allErrs = append(allErrs, field.NotSupported(fldPath.Child("type"), nodeService.Type, slices.ConvertSlice(supportedServiceTypes, slices.ToString[scyllav1.NodeServiceType])))
+	if !oslices.ContainsItem(supportedServiceTypes, nodeService.Type) {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("type"), nodeService.Type, oslices.ConvertSlice(supportedServiceTypes, oslices.ToString[scyllav1.NodeServiceType])))
 	}
 
 	if nodeService.LoadBalancerClass != nil && len(*nodeService.LoadBalancerClass) != 0 {
@@ -385,7 +385,7 @@ func ValidateIngressOptions(options *scyllav1.IngressOptions, fldPath *field.Pat
 	return allErrs
 }
 
-func ValidateScyllaClusterRackSpec(rack scyllav1.RackSpec, rackNames sets.String, fldPath *field.Path) field.ErrorList {
+func ValidateScyllaClusterRackSpec(rack scyllav1.RackSpec, rackNames apimachineryutilsets.String, fldPath *field.Path) field.ErrorList {
 	var allErrs field.ErrorList
 
 	// Check that no two racks have the same name
@@ -418,7 +418,7 @@ func ValidateScyllaClusterSpecUpdate(new, old *scyllav1.ScyllaCluster, fldPath *
 	}
 
 	// Check that all rack names are the same as before
-	oldRackNames, newRackNames := sets.NewString(), sets.NewString()
+	oldRackNames, newRackNames := apimachineryutilsets.NewString(), apimachineryutilsets.NewString()
 	for _, rack := range old.Spec.Datacenter.Racks {
 		oldRackNames.Insert(rack.Name)
 	}

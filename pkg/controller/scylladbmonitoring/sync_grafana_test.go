@@ -19,7 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 func Test_makeGrafanaIngress(t *testing.T) {
@@ -244,7 +244,7 @@ func Test_makeGrafanaDashboards(t *testing.T) {
 			if err == nil {
 				for _, cm := range cms {
 					errMessages := apimachineryvalidation.NameIsDNSSubdomain(cm.Name, false)
-					validationErr := utilerrors.NewAggregate(oslices.ConvertSlice[error](errMessages, func(s string) error {
+					validationErr := apimachineryutilerrors.NewAggregate(oslices.ConvertSlice[error](errMessages, func(s string) error {
 						return errors.New(s)
 					}))
 
@@ -704,7 +704,7 @@ spec:
 			if err == nil {
 				for _, v := range deployment.Spec.Template.Spec.Volumes {
 					errMessages := apimachineryvalidation.NameIsDNSSubdomain(v.Name, false)
-					validationErr := utilerrors.NewAggregate(oslices.ConvertSlice[error](errMessages, func(s string) error {
+					validationErr := apimachineryutilerrors.NewAggregate(oslices.ConvertSlice[error](errMessages, func(s string) error {
 						return errors.New(s)
 					}))
 

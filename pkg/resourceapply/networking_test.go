@@ -15,7 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	networkingv1listers "k8s.io/client-go/listers/networking/v1"
 	"k8s.io/client-go/tools/cache"
@@ -56,7 +56,7 @@ func TestApplyIngress(t *testing.T) {
 
 	newIngressWithHash := func() *networkingv1.Ingress {
 		ingress := newIngress()
-		utilruntime.Must(SetHashAnnotation(ingress))
+		apimachineryutilruntime.Must(SetHashAnnotation(ingress))
 		return ingress
 	}
 
@@ -138,7 +138,7 @@ func TestApplyIngress(t *testing.T) {
 			expectedIngress: func() *networkingv1.Ingress {
 				ingress := newIngress()
 				ingress.Spec.DefaultBackend.Service.Port.Number = 42
-				utilruntime.Must(SetHashAnnotation(ingress))
+				apimachineryutilruntime.Must(SetHashAnnotation(ingress))
 				return ingress
 			}(),
 			expectedChanged: true,
@@ -158,7 +158,7 @@ func TestApplyIngress(t *testing.T) {
 			expectedIngress: func() *networkingv1.Ingress {
 				ingress := newIngress()
 				ingress.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(ingress))
+				apimachineryutilruntime.Must(SetHashAnnotation(ingress))
 				return ingress
 			}(),
 			expectedChanged: true,
@@ -206,7 +206,7 @@ func TestApplyIngress(t *testing.T) {
 				ingress := newIngress()
 				ingress.ResourceVersion = "21"
 				ingress.Labels["foo"] = "bar"
-				utilruntime.Must(SetHashAnnotation(ingress))
+				apimachineryutilruntime.Must(SetHashAnnotation(ingress))
 				return ingress
 			}(),
 			expectedChanged: true,
@@ -235,7 +235,7 @@ func TestApplyIngress(t *testing.T) {
 				func() *networkingv1.Ingress {
 					ingress := newIngress()
 					ingress.OwnerReferences = nil
-					utilruntime.Must(SetHashAnnotation(ingress))
+					apimachineryutilruntime.Must(SetHashAnnotation(ingress))
 					return ingress
 				}(),
 			},
@@ -255,7 +255,7 @@ func TestApplyIngress(t *testing.T) {
 				func() *networkingv1.Ingress {
 					ingress := newIngress()
 					ingress.OwnerReferences[0].UID = "42"
-					utilruntime.Must(SetHashAnnotation(ingress))
+					apimachineryutilruntime.Must(SetHashAnnotation(ingress))
 					return ingress
 				}(),
 			},
@@ -284,7 +284,7 @@ func TestApplyIngress(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "",
 					}
-					utilruntime.Must(SetHashAnnotation(ingress))
+					apimachineryutilruntime.Must(SetHashAnnotation(ingress))
 					ingress.Annotations["a-1"] = "a-alpha-changed"
 					ingress.Annotations["a-3"] = "a-resurrected"
 					ingress.Annotations["a-custom"] = "custom-value"
@@ -320,7 +320,7 @@ func TestApplyIngress(t *testing.T) {
 					"l-2":  "l-beta",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(ingress))
+				apimachineryutilruntime.Must(SetHashAnnotation(ingress))
 				ingress.Annotations["a-1"] = "a-alpha-changed"
 				ingress.Annotations["a-3"] = "a-resurrected"
 				ingress.Annotations["a-custom"] = "custom-value"
@@ -348,7 +348,7 @@ func TestApplyIngress(t *testing.T) {
 						"l-2":  "l-beta",
 						"l-3-": "l-resurrected",
 					}
-					utilruntime.Must(SetHashAnnotation(ingress))
+					apimachineryutilruntime.Must(SetHashAnnotation(ingress))
 					ingress.Annotations["a-1"] = "a-alpha-changed"
 					ingress.Annotations["a-custom"] = "a-custom-value"
 					ingress.Labels["l-1"] = "l-alpha-changed"
@@ -382,7 +382,7 @@ func TestApplyIngress(t *testing.T) {
 					"l-2":  "l-beta-x",
 					"l-3-": "",
 				}
-				utilruntime.Must(SetHashAnnotation(ingress))
+				apimachineryutilruntime.Must(SetHashAnnotation(ingress))
 				delete(ingress.Annotations, "a-3-")
 				ingress.Annotations["a-custom"] = "a-custom-value"
 				delete(ingress.Labels, "l-3-")

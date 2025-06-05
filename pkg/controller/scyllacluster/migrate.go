@@ -12,13 +12,13 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 )
 
@@ -219,8 +219,8 @@ func MigrateV1ScyllaClusterSpecToV1Alpha1ScyllaDBDatacenterSpec(scName string, s
 								}
 								return nil
 							}(),
-							Volumes: slices.Filter(rack.Volumes, func(v corev1.Volume) bool {
-								return slices.Contains(rack.VolumeMounts, func(vm corev1.VolumeMount) bool {
+							Volumes: oslices.Filter(rack.Volumes, func(v corev1.Volume) bool {
+								return oslices.Contains(rack.VolumeMounts, func(vm corev1.VolumeMount) bool {
 									return vm.Name == v.Name
 								})
 							}),
@@ -234,8 +234,8 @@ func MigrateV1ScyllaClusterSpecToV1Alpha1ScyllaDBDatacenterSpec(scName string, s
 								}
 								return nil
 							}(),
-							Volumes: slices.Filter(rack.Volumes, func(v corev1.Volume) bool {
-								return slices.Contains(rack.AgentVolumeMounts, func(vm corev1.VolumeMount) bool {
+							Volumes: oslices.Filter(rack.Volumes, func(v corev1.Volume) bool {
+								return oslices.Contains(rack.AgentVolumeMounts, func(vm corev1.VolumeMount) bool {
 									return vm.Name == v.Name
 								})
 							}),
@@ -271,7 +271,7 @@ func MigrateV1ScyllaClusterSpecToV1Alpha1ScyllaDBDatacenterSpec(scName string, s
 		MinTerminationGracePeriodSeconds:        scSpec.MinTerminationGracePeriodSeconds,
 		MinReadySeconds:                         scSpec.MinReadySeconds,
 		ReadinessGates:                          scSpec.ReadinessGates,
-	}, errors.NewAggregate(migrateErrs)
+	}, apimachineryutilerrors.NewAggregate(migrateErrs)
 }
 
 func MigrateV1ScyllaClusterToV1Alpha1ScyllaDBDatacenter(sc *scyllav1.ScyllaCluster) (*scyllav1alpha1.ScyllaDBDatacenter, *internalapi.DatacenterUpgradeContext, error) {
@@ -355,7 +355,7 @@ func MigrateV1ScyllaClusterToV1Alpha1ScyllaDBDatacenter(sc *scyllav1.ScyllaClust
 		}
 	}
 
-	return sdc, upgradeContext, errors.NewAggregate(migrateErrs)
+	return sdc, upgradeContext, apimachineryutilerrors.NewAggregate(migrateErrs)
 }
 
 func migrateV1Alpha1ScyllaDBDatacenterStatusToV1ScyllaClusterStatus(sdc *scyllav1alpha1.ScyllaDBDatacenter, configMaps []*corev1.ConfigMap, services []*corev1.Service) scyllav1.ScyllaClusterStatus {
@@ -389,18 +389,18 @@ func migrateV1Alpha1ScyllaDBDatacenterStatusToV1ScyllaClusterStatus(sdc *scyllav
 					Conditions:       nil,
 				}
 
-				rackServices := slices.Filter(services, func(svc *corev1.Service) bool {
+				rackServices := oslices.Filter(services, func(svc *corev1.Service) bool {
 					return svc.Labels[naming.RackNameLabel] == rackStatus.Name
 				})
 
-				anyIsDecommissioning := slices.Contains(rackServices, func(svc *corev1.Service) bool {
+				anyIsDecommissioning := oslices.Contains(rackServices, func(svc *corev1.Service) bool {
 					return svc.Labels[naming.DecommissionedLabel] == naming.LabelValueFalse
 				})
 				if anyIsDecommissioning {
 					controllerhelpers.SetRackCondition(&migratedRackStatus, scyllav1.RackConditionTypeMemberDecommissioning)
 				}
 
-				anyIsReplacing := slices.Contains(rackServices, func(svc *corev1.Service) bool {
+				anyIsReplacing := oslices.Contains(rackServices, func(svc *corev1.Service) bool {
 					_, ok := svc.Labels[naming.ReplaceLabel]
 					return ok
 				})
@@ -409,7 +409,7 @@ func migrateV1Alpha1ScyllaDBDatacenterStatusToV1ScyllaClusterStatus(sdc *scyllav
 					controllerhelpers.SetRackCondition(&migratedRackStatus, scyllav1.RackConditionTypeMemberReplacing)
 				}
 
-				anyIsLeaving := slices.Contains(rackServices, func(svc *corev1.Service) bool {
+				anyIsLeaving := oslices.Contains(rackServices, func(svc *corev1.Service) bool {
 					_, ok := svc.Labels[naming.DecommissionedLabel]
 					return ok
 				})
@@ -429,7 +429,7 @@ func migrateV1Alpha1ScyllaDBDatacenterStatusToV1ScyllaClusterStatus(sdc *scyllav
 		Upgrade: func() *scyllav1.UpgradeStatus {
 			cmName := naming.UpgradeContextConfigMapName(sdc)
 
-			cm, _, ok := slices.Find(configMaps, func(cm *corev1.ConfigMap) bool {
+			cm, _, ok := oslices.Find(configMaps, func(cm *corev1.ConfigMap) bool {
 				return cm.Name == cmName
 			})
 			if !ok {

@@ -18,7 +18,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/util/blkutils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/exec"
 )
@@ -97,7 +97,7 @@ func (nsc *Controller) syncRAIDs(ctx context.Context, nc *scyllav1alpha1.NodeCon
 		}
 	}
 
-	err = utilerrors.NewAggregate(errs)
+	err = apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("failed to create raids: %w", err)
 	}

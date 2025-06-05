@@ -8,11 +8,11 @@ import (
 	"strings"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
-	apimachinerymetav1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
-	"k8s.io/apimachinery/pkg/util/sets"
+	metav1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
+	apimachineryutilsets "k8s.io/apimachinery/pkg/util/sets"
 	apimachineryutilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -29,7 +29,7 @@ func ValidateScyllaDBClusterSpec(spec *scyllav1alpha1.ScyllaDBClusterSpec, fldPa
 	var allErrs field.ErrorList
 
 	if spec.Metadata != nil {
-		allErrs = append(allErrs, apimachinerymetav1validation.ValidateLabels(spec.Metadata.Labels, fldPath.Child("metadata", "labels"))...)
+		allErrs = append(allErrs, metav1validation.ValidateLabels(spec.Metadata.Labels, fldPath.Child("metadata", "labels"))...)
 		allErrs = append(allErrs, apimachineryvalidation.ValidateAnnotations(spec.Metadata.Annotations, fldPath.Child("metadata", "annotations"))...)
 	}
 
@@ -89,7 +89,7 @@ func ValidateScyllaDBClusterDatacenterTemplate(dcTemplate *scyllav1alpha1.Scylla
 	var allErrs field.ErrorList
 
 	if dcTemplate.Metadata != nil {
-		allErrs = append(allErrs, apimachinerymetav1validation.ValidateLabels(dcTemplate.Metadata.Labels, fldPath.Child("metadata", "labels"))...)
+		allErrs = append(allErrs, metav1validation.ValidateLabels(dcTemplate.Metadata.Labels, fldPath.Child("metadata", "labels"))...)
 		allErrs = append(allErrs, apimachineryvalidation.ValidateAnnotations(dcTemplate.Metadata.Annotations, fldPath.Child("metadata", "annotations"))...)
 	}
 
@@ -117,7 +117,7 @@ func ValidateScyllaDBClusterDatacenterTemplate(dcTemplate *scyllav1alpha1.Scylla
 	}
 
 	if dcTemplate.TopologyLabelSelector != nil {
-		allErrs = append(allErrs, apimachinerymetav1validation.ValidateLabels(dcTemplate.TopologyLabelSelector, fldPath.Child("topologyLabelSelector"))...)
+		allErrs = append(allErrs, metav1validation.ValidateLabels(dcTemplate.TopologyLabelSelector, fldPath.Child("topologyLabelSelector"))...)
 	}
 
 	if dcTemplate.ScyllaDB != nil {
@@ -153,7 +153,7 @@ func ValidateScyllaDBClusterNodeService(nodeService *scyllav1alpha1.NodeServiceT
 	var allErrs field.ErrorList
 
 	if len(nodeService.Type) == 0 {
-		allErrs = append(allErrs, field.Required(fldPath.Child("type"), fmt.Sprintf("supported values: %s", strings.Join(slices.ConvertSlice(supportedNodeServiceTypes, slices.ToString[scyllav1alpha1.NodeServiceType]), ", "))))
+		allErrs = append(allErrs, field.Required(fldPath.Child("type"), fmt.Sprintf("supported values: %s", strings.Join(oslices.ConvertSlice(supportedNodeServiceTypes, oslices.ToString[scyllav1alpha1.NodeServiceType]), ", "))))
 	} else {
 		allErrs = append(allErrs, validateEnum(nodeService.Type, supportedNodeServiceTypes, fldPath.Child("type"))...)
 	}
@@ -217,14 +217,14 @@ func ValidateScyllaDBClusterSpecUpdate(new, old *scyllav1alpha1.ScyllaDBCluster,
 
 	allErrs = append(allErrs, apimachineryvalidation.ValidateImmutableField(new.Spec.ClusterName, old.Spec.ClusterName, fldPath.Child("clusterName"))...)
 
-	oldDatacenterNames := slices.ConvertSlice(old.Spec.Datacenters, func(dc scyllav1alpha1.ScyllaDBClusterDatacenter) string {
+	oldDatacenterNames := oslices.ConvertSlice(old.Spec.Datacenters, func(dc scyllav1alpha1.ScyllaDBClusterDatacenter) string {
 		return dc.Name
 	})
-	newDatacenterNames := slices.ConvertSlice(new.Spec.Datacenters, func(dc scyllav1alpha1.ScyllaDBClusterDatacenter) string {
+	newDatacenterNames := oslices.ConvertSlice(new.Spec.Datacenters, func(dc scyllav1alpha1.ScyllaDBClusterDatacenter) string {
 		return dc.Name
 	})
 
-	removedDatacenterNames := sets.New(oldDatacenterNames...).Difference(sets.New(newDatacenterNames...)).UnsortedList()
+	removedDatacenterNames := apimachineryutilsets.New(oldDatacenterNames...).Difference(apimachineryutilsets.New(newDatacenterNames...)).UnsortedList()
 	sort.Strings(removedDatacenterNames)
 
 	isDatacenterStatusUpToDate := func(sc *scyllav1alpha1.ScyllaDBCluster, dcStatus scyllav1alpha1.ScyllaDBClusterDatacenterStatus) bool {
@@ -237,7 +237,7 @@ func ValidateScyllaDBClusterSpecUpdate(new, old *scyllav1alpha1.ScyllaDBCluster,
 				continue
 			}
 
-			oldDCStatus, _, ok := slices.Find(old.Status.Datacenters, func(dcStatus scyllav1alpha1.ScyllaDBClusterDatacenterStatus) bool {
+			oldDCStatus, _, ok := oslices.Find(old.Status.Datacenters, func(dcStatus scyllav1alpha1.ScyllaDBClusterDatacenterStatus) bool {
 				return dcStatus.Name == removedDCName
 			})
 			if !ok {
@@ -302,8 +302,8 @@ func ValidateScyllaDBClusterSpecUpdate(new, old *scyllav1alpha1.ScyllaDBCluster,
 	newRacks := collectRacks(new)
 	oldRacks := collectRacks(old)
 
-	removedRacks := slices.Filter(oldRacks, func(odr dcRackProperties) bool {
-		_, _, ok := slices.Find(newRacks, func(ndr dcRackProperties) bool {
+	removedRacks := oslices.Filter(oldRacks, func(odr dcRackProperties) bool {
+		_, _, ok := oslices.Find(newRacks, func(ndr dcRackProperties) bool {
 			return ndr.rack == odr.rack && ndr.datacenter == odr.datacenter
 		})
 		return !ok
@@ -314,7 +314,7 @@ func ValidateScyllaDBClusterSpecUpdate(new, old *scyllav1alpha1.ScyllaDBCluster,
 	}
 
 	for _, removedRack := range removedRacks {
-		oldDCStatus, _, ok := slices.Find(old.Status.Datacenters, func(dcStatus scyllav1alpha1.ScyllaDBClusterDatacenterStatus) bool {
+		oldDCStatus, _, ok := oslices.Find(old.Status.Datacenters, func(dcStatus scyllav1alpha1.ScyllaDBClusterDatacenterStatus) bool {
 			return dcStatus.Name == removedRack.datacenter
 		})
 		if !ok {
@@ -322,7 +322,7 @@ func ValidateScyllaDBClusterSpecUpdate(new, old *scyllav1alpha1.ScyllaDBCluster,
 			continue
 		}
 
-		oldRackStatus, _, ok := slices.Find(oldDCStatus.Racks, func(rackStatus scyllav1alpha1.ScyllaDBClusterRackStatus) bool {
+		oldRackStatus, _, ok := oslices.Find(oldDCStatus.Racks, func(rackStatus scyllav1alpha1.ScyllaDBClusterRackStatus) bool {
 			return rackStatus.Name == removedRack.rack
 		})
 
@@ -356,7 +356,7 @@ func ValidateScyllaDBClusterSpecUpdate(new, old *scyllav1alpha1.ScyllaDBCluster,
 
 	for _, newRack := range newRacks {
 		var oldRackStorage *scyllav1alpha1.StorageOptions
-		oldRack, _, ok := slices.Find(oldRacks, func(oldRack dcRackProperties) bool {
+		oldRack, _, ok := oslices.Find(oldRacks, func(oldRack dcRackProperties) bool {
 			return oldRack.datacenter == newRack.datacenter && oldRack.rack == newRack.rack && oldRack.level == newRack.level
 		})
 		if ok {
@@ -370,7 +370,7 @@ func ValidateScyllaDBClusterSpecUpdate(new, old *scyllav1alpha1.ScyllaDBCluster,
 		var oldDatacenterStorage, newDatacenterStorage *scyllav1alpha1.StorageOptions
 		var oldDatacenterRackTemplateStorage, newDatacenterRackTemplateStorage *scyllav1alpha1.StorageOptions
 
-		oldDC, _, ok := slices.Find(old.Spec.Datacenters, func(oldDC scyllav1alpha1.ScyllaDBClusterDatacenter) bool {
+		oldDC, _, ok := oslices.Find(old.Spec.Datacenters, func(oldDC scyllav1alpha1.ScyllaDBClusterDatacenter) bool {
 			return oldDC.Name == newDC.Name
 		})
 		if ok {

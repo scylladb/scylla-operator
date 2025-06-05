@@ -9,7 +9,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/discovery"
 	"k8s.io/klog/v2"
 )
@@ -94,7 +94,7 @@ func (rkcc *Controller) syncClientHealthchecks(ctx context.Context, key string, 
 		})
 	}
 
-	err := errors.NewAggregate(errs)
+	err := apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't run healthcheck probes: %w", err)
 	}

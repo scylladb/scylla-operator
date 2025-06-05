@@ -15,9 +15,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -128,7 +128,7 @@ func (opc *Controller) processNextItem(ctx context.Context) bool {
 	}
 
 	// Make sure we always have an aggregate to process and all nested errors are flattened.
-	allErrors := utilerrors.Flatten(utilerrors.NewAggregate([]error{syncErr}))
+	allErrors := apimachineryutilerrors.Flatten(apimachineryutilerrors.NewAggregate([]error{syncErr}))
 	var remainingErrors []error
 	for _, err := range allErrors.Errors() {
 		switch {
@@ -146,9 +146,9 @@ func (opc *Controller) processNextItem(ctx context.Context) bool {
 		}
 	}
 
-	err := utilerrors.NewAggregate(remainingErrors)
+	err := apimachineryutilerrors.NewAggregate(remainingErrors)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
+		apimachineryutilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
 	}
 
 	opc.queue.AddRateLimited(key)
@@ -162,7 +162,7 @@ func (opc *Controller) runWorker(ctx context.Context) {
 }
 
 func (opc *Controller) Run(ctx context.Context, workers int) {
-	defer utilruntime.HandleCrash()
+	defer apimachineryutilruntime.HandleCrash()
 
 	klog.InfoS("Starting controller", "controller", "OrphanedPV")
 
@@ -181,7 +181,7 @@ func (opc *Controller) Run(ctx context.Context, workers int) {
 		opc.wg.Add(1)
 		go func() {
 			defer opc.wg.Done()
-			wait.UntilWithContext(ctx, opc.runWorker, time.Second)
+			apimachineryutilwait.UntilWithContext(ctx, opc.runWorker, time.Second)
 		}()
 	}
 
@@ -189,12 +189,12 @@ func (opc *Controller) Run(ctx context.Context, workers int) {
 	opc.wg.Add(1)
 	go func() {
 		defer opc.wg.Done()
-		wait.UntilWithContext(ctx, func(ctx context.Context) {
+		apimachineryutilwait.UntilWithContext(ctx, func(ctx context.Context) {
 			klog.V(4).InfoS("Periodically enqueuing all ScyllaClusters")
 
 			sdcs, err := opc.scyllaDBDatacenterLister.ScyllaDBDatacenters(corev1.NamespaceAll).List(labels.Everything())
 			if err != nil {
-				utilruntime.HandleError(err)
+				apimachineryutilruntime.HandleError(err)
 				return
 			}
 
@@ -210,7 +210,7 @@ func (opc *Controller) Run(ctx context.Context, workers int) {
 func (opc *Controller) enqueue(sdc *scyllav1alpha1.ScyllaDBDatacenter) {
 	key, err := keyFunc(sdc)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", sdc, err))
+		apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", sdc, err))
 		return
 	}
 
@@ -228,7 +228,7 @@ func (opc *Controller) enqueueAllScyllaDBDatacentersOnBackground() {
 		// by the ScyllaDBDatacenter handler.
 		sdcs, err := opc.scyllaDBDatacenterLister.ScyllaDBDatacenters(corev1.NamespaceAll).List(labels.Everything())
 		if err != nil {
-			utilruntime.HandleError(err)
+			apimachineryutilruntime.HandleError(err)
 			return
 		}
 
@@ -245,7 +245,7 @@ func (opc *Controller) updateNode(old, cur interface{}) {
 	if currentNode.UID != oldNode.UID {
 		key, err := keyFunc(oldNode)
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldNode, err))
+			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldNode, err))
 			return
 		}
 		opc.deleteNode(cache.DeletedFinalStateUnknown{
@@ -260,12 +260,12 @@ func (opc *Controller) deleteNode(obj interface{}) {
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
+			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
 			return
 		}
 		node, ok = tombstone.Obj.(*corev1.Node)
 		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a Node %#v", obj))
+			apimachineryutilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a Node %#v", obj))
 			return
 		}
 	}
@@ -289,7 +289,7 @@ func (opc *Controller) updateScyllaDBDatacenter(old, cur interface{}) {
 	if currentSDC.UID != oldSDC.UID {
 		key, err := keyFunc(oldSDC)
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldSDC, err))
+			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldSDC, err))
 			return
 		}
 		opc.deleteScyllaDBDatacenter(cache.DeletedFinalStateUnknown{
@@ -307,12 +307,12 @@ func (opc *Controller) deleteScyllaDBDatacenter(obj interface{}) {
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
+			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
 			return
 		}
 		sdc, ok = tombstone.Obj.(*scyllav1alpha1.ScyllaDBDatacenter)
 		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ScyllaDBDatacenter %#v", obj))
+			apimachineryutilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ScyllaDBDatacenter %#v", obj))
 			return
 		}
 	}

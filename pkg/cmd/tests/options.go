@@ -9,11 +9,11 @@ import (
 	configassets "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
-	"github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/spf13/cobra"
-	apierrors "k8s.io/apimachinery/pkg/util/errors"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/rest"
 )
 
@@ -110,7 +110,7 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 		},
 		", ",
 	)))
-	utilruntime.Must(cmd.PersistentFlags().MarkDeprecated("delete-namespace-policy", "--delete-namespace-policy is deprecated - please use --cleanup-policy instead"))
+	apimachineryutilruntime.Must(cmd.PersistentFlags().MarkDeprecated("delete-namespace-policy", "--delete-namespace-policy is deprecated - please use --cleanup-policy instead"))
 	cmd.PersistentFlags().StringVarP(&o.CleanupPolicyUntyped, "cleanup-policy", "", o.CleanupPolicyUntyped, fmt.Sprintf("Cleanup policy. Allowed values are [%s].", strings.Join(
 		[]string{
 			string(framework.CleanupPolicyAlways),
@@ -123,15 +123,15 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVarP(&o.IngressController.IngressClassName, "ingress-controller-ingress-class-name", "", o.IngressController.IngressClassName, "Ingress class name under which ingress controller is registered")
 	cmd.PersistentFlags().StringToStringVarP(&o.IngressController.CustomAnnotations, "ingress-controller-custom-annotations", "", o.IngressController.CustomAnnotations, "Custom annotations required by the ingress controller")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaClusterOptionsUntyped.NodeServiceType, "scyllacluster-node-service-type", "", o.ScyllaClusterOptionsUntyped.NodeServiceType, fmt.Sprintf("Kubernetes service type that the ScyllaCluster nodes are exposed with. Allowed values are [%s].", strings.Join(
-		slices.ConvertSlice(supportedNodeServiceTypes, slices.ToString[scyllav1.NodeServiceType]),
+		oslices.ConvertSlice(supportedNodeServiceTypes, oslices.ToString[scyllav1.NodeServiceType]),
 		", ",
 	)))
 	cmd.PersistentFlags().StringVarP(&o.ScyllaClusterOptionsUntyped.NodesBroadcastAddressType, "scyllacluster-nodes-broadcast-address-type", "", o.ScyllaClusterOptionsUntyped.NodesBroadcastAddressType, fmt.Sprintf("Type of address that the ScyllaCluster nodes broadcast for communication with other nodes. Allowed values are [%s].", strings.Join(
-		slices.ConvertSlice(supportedBroadcastAddressTypes, slices.ToString[scyllav1.BroadcastAddressType]),
+		oslices.ConvertSlice(supportedBroadcastAddressTypes, oslices.ToString[scyllav1.BroadcastAddressType]),
 		", ",
 	)))
 	cmd.PersistentFlags().StringVarP(&o.ScyllaClusterOptionsUntyped.ClientsBroadcastAddressType, "scyllacluster-clients-broadcast-address-type", "", o.ScyllaClusterOptionsUntyped.ClientsBroadcastAddressType, fmt.Sprintf("Type of address that the ScyllaCluster nodes broadcast for communication with clients. Allowed values are [%s].", strings.Join(
-		slices.ConvertSlice(supportedBroadcastAddressTypes, slices.ToString[scyllav1.BroadcastAddressType]),
+		oslices.ConvertSlice(supportedBroadcastAddressTypes, oslices.ToString[scyllav1.BroadcastAddressType]),
 		", ",
 	)))
 	cmd.PersistentFlags().StringVarP(&o.ScyllaClusterOptionsUntyped.StorageClassName, "scyllacluster-storageclass-name", "", o.ScyllaClusterOptionsUntyped.StorageClassName, fmt.Sprintf("Name of the StorageClass to request for ScyllaCluster storage."))
@@ -161,15 +161,15 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 		errors = append(errors, fmt.Errorf("invalid DeleteTestingNSPolicy: %q", p))
 	}
 
-	if !slices.ContainsItem(supportedNodeServiceTypes, scyllav1.NodeServiceType(o.ScyllaClusterOptionsUntyped.NodeServiceType)) {
+	if !oslices.ContainsItem(supportedNodeServiceTypes, scyllav1.NodeServiceType(o.ScyllaClusterOptionsUntyped.NodeServiceType)) {
 		errors = append(errors, fmt.Errorf("invalid scylla-cluster-node-service-type: %q", o.ScyllaClusterOptionsUntyped.NodeServiceType))
 	}
 
-	if !slices.ContainsItem(supportedBroadcastAddressTypes, scyllav1.BroadcastAddressType(o.ScyllaClusterOptionsUntyped.NodesBroadcastAddressType)) {
+	if !oslices.ContainsItem(supportedBroadcastAddressTypes, scyllav1.BroadcastAddressType(o.ScyllaClusterOptionsUntyped.NodesBroadcastAddressType)) {
 		errors = append(errors, fmt.Errorf("invalid scylla-cluster-nodes-broadcast-address-type: %q", o.ScyllaClusterOptionsUntyped.NodesBroadcastAddressType))
 	}
 
-	if !slices.ContainsItem(supportedBroadcastAddressTypes, scyllav1.BroadcastAddressType(o.ScyllaClusterOptionsUntyped.ClientsBroadcastAddressType)) {
+	if !oslices.ContainsItem(supportedBroadcastAddressTypes, scyllav1.BroadcastAddressType(o.ScyllaClusterOptionsUntyped.ClientsBroadcastAddressType)) {
 		errors = append(errors, fmt.Errorf("invalid scylla-cluster-clients-broadcast-address-type: %q", o.ScyllaClusterOptionsUntyped.ClientsBroadcastAddressType))
 	}
 
@@ -235,7 +235,7 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 		}
 	}
 
-	return apierrors.NewAggregate(errors)
+	return apimachineryutilerrors.NewAggregate(errors)
 }
 
 func (o *TestFrameworkOptions) Complete(args []string) error {
@@ -283,7 +283,7 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 	}
 
 	framework.TestContext = &framework.TestContextType{
-		RestConfigs: slices.ConvertSlice(o.ClientConfigs, func(cc genericclioptions.ClientConfig) *rest.Config {
+		RestConfigs: oslices.ConvertSlice(o.ClientConfigs, func(cc genericclioptions.ClientConfig) *rest.Config {
 			return cc.RestConfig
 		}),
 		ArtifactsDir:                o.ArtifactsDir,

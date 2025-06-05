@@ -8,6 +8,10 @@ type NonRetriableError struct {
 	error
 }
 
+func (e NonRetriableError) Unwrap() error {
+	return e.error
+}
+
 func NonRetriable(err error) error {
 	return NonRetriableError{err}
 }
@@ -17,5 +21,5 @@ func NewNonRetriable(message string) error {
 }
 
 func IsNonRetriable(err error) bool {
-	return errors.Is(err, NonRetriableError{})
+	return errors.As(err, &NonRetriableError{})
 }

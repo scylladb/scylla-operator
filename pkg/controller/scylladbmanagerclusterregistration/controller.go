@@ -168,13 +168,12 @@ func (smcrc *Controller) processNextItem(ctx context.Context) bool {
 	case apierrors.IsAlreadyExists(err):
 		klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", key, "Error", err)
 
-	default:
-		if controllertools.IsNonRetriable(err) {
-			klog.InfoS("Hit non-retriable error. Dropping the item from the queue.", "Error", err)
-			smcrc.queue.Forget(key)
-			return true
-		}
+	case controllertools.IsNonRetriable(err):
+		klog.InfoS("Hit non-retriable error. Dropping the item from the queue.", "Error", err)
+		smcrc.queue.Forget(key)
+		return true
 
+	default:
 		utilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
 
 	}

@@ -34,6 +34,9 @@ var _ = g.Describe("ScyllaDBCluster finalizer", framework.MultiDatacenter, func(
 		sc, err = f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
+		err = utils.RegisterCollectionOfRemoteScyllaDBClusterNamespaces(ctx, sc, rkcClusterMap)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
 		framework.By("Waiting for the ScyllaDBCluster %q roll out (RV=%s)", sc.Name, sc.ResourceVersion)
 		waitCtx2, waitCtx2Cancel := utils.ContextForMultiDatacenterScyllaDBClusterRollout(ctx, sc)
 		defer waitCtx2Cancel()

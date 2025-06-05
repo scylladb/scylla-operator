@@ -164,28 +164,28 @@ submodules:
 
 verify-lint:
 	@$(GOLANGCI_LINT) run || \
-		(echo "$(GOLANGCI_LINT) run failed. You can run \`make update-lint\` to auto-fix some of the issues (e.g., formatting)." && \
+		(echo "$(GOLANGCI_LINT) run failed. You can run \`make lint\` to automatically apply fixes for some of the issues (e.g., formatting)." && \
 		exit 1)
 .PHONY: verify-lint
 
-update-lint:
+lint:
 	$(GOLANGCI_LINT) run --fix
-.PHONY: update-lint
+.PHONY: lint
 
 verify-gofmt:
 	$(info Running $(GOLANGCI_LINT) fmt --diff)
 	@output=$$( $(GOLANGCI_LINT) fmt --diff ); \
 	if [ -n "$${output}" ]; then \
-		echo "$@ failed - please run \`make update-gofmt\` to fix following files:"; \
+		echo "$@ failed - please run \`make gofmt\` to fix following files:"; \
 		echo "$${output}"; \
 		exit 1; \
 	fi;
 .PHONY: verify-gofmt
 
-update-gofmt:
+gofmt:
 	$(info Running $(GOLANGCI_LINT) fmt)
 	@$(GOLANGCI_LINT) fmt
-.PHONY: update-gofmt
+.PHONY: gofmt
 
 # We need to force locale so different envs sort files the same way for recursive traversals
 diff :=LC_COLLATE=C diff --no-dereference -N
@@ -654,7 +654,7 @@ verify-links:
 verify: verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-lint verify-helm-lint verify-links verify-examples verify-docs-api verify-monitoring
 .PHONY: verify
 
-update: update-lint update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-docs-api update-monitoring
+update: update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-docs-api update-monitoring
 .PHONY: update
 
 test-unit:

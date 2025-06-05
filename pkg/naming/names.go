@@ -305,3 +305,12 @@ func scyllaDBManagerClusterRegistrationName(kind, name string) (string, error) {
 	fullNameWithSuffix := fmt.Sprintf("%s-%s", fullName[:min(len(fullName), apimachineryutilvalidation.DNS1123SubdomainMaxLength-len(nameSuffix)-1)], nameSuffix)
 	return fullNameWithSuffix, nil
 }
+
+func RemoteNamespaceName(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter) (string, error) {
+	suffix, err := GenerateNameHash(sc.Namespace, dc.Name)
+	if err != nil {
+		return "", fmt.Errorf("can't generate namespace name suffix: %w", err)
+	}
+
+	return fmt.Sprintf("%s-%s", sc.Namespace, suffix), nil
+}

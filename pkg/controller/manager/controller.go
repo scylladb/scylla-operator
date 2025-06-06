@@ -63,6 +63,7 @@ type Controller struct {
 	handlers *controllerhelpers.Handlers[*scyllav1.ScyllaCluster]
 }
 
+// TODO: drop this
 func NewController(
 	kubeClient kubernetes.Interface,
 	scyllaClient scyllav1client.ScyllaV1Interface,

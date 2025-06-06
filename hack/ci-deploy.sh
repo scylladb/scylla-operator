@@ -42,7 +42,6 @@ done
 SO_SCYLLA_OPERATOR_LOGLEVEL="${SO_SCYLLA_OPERATOR_LOGLEVEL:-4}"
 export SO_SCYLLA_OPERATOR_LOGLEVEL
 yq e --inplace '.spec.template.spec.containers[0].args += "--loglevel=" + env(SO_SCYLLA_OPERATOR_LOGLEVEL)' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
-yq e --inplace '.spec.template.spec.containers[0].args += "--loglevel=" + env(SO_SCYLLA_OPERATOR_LOGLEVEL)' "${DEPLOY_DIR}/manager/50_controller_deployment.yaml"
 
 if [[ -n "${SO_SCYLLA_OPERATOR_REPLICAS:-}" ]]; then
   yq e --inplace '.spec.replicas = env(SO_SCYLLA_OPERATOR_REPLICAS)' "${DEPLOY_DIR}/operator/50_operator.deployment.yaml"
@@ -134,7 +133,6 @@ kubectl -n=scylla-manager wait --timeout=10m --for='condition=Progressing=False'
 kubectl -n=scylla-manager wait --timeout=10m --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
 kubectl -n=scylla-manager wait --timeout=10m --for='condition=Available=True' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
 kubectl -n scylla-manager rollout status --timeout=10m deployment.apps/scylla-manager
-kubectl -n scylla-manager rollout status --timeout=10m deployment.apps/scylla-manager-controller
 
 kubectl -n haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-ingress
 kubectl -n haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-ingress deploy/ingress-default-backend deploy/prometheus

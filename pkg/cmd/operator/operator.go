@@ -21,6 +21,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controller/scylladbcluster"
 	"github.com/scylladb/scylla-operator/pkg/controller/scylladbdatacenter"
 	"github.com/scylladb/scylla-operator/pkg/controller/scylladbmanagerclusterregistration"
+	"github.com/scylladb/scylla-operator/pkg/controller/scylladbmanagertask"
 	"github.com/scylladb/scylla-operator/pkg/controller/scylladbmonitoring"
 	"github.com/scylladb/scylla-operator/pkg/controller/scyllaoperatorconfig"
 	"github.com/scylladb/scylla-operator/pkg/crypto"
@@ -265,6 +266,7 @@ func (o *OperatorOptions) Complete(cmd *cobra.Command) error {
 	return nil
 }
 
+// TODO: add a gate checking for manager-controller's presence in the cluster.
 func (o *OperatorOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command) error {
 	klog.Infof("%s version %s", cmd.Name(), version.Get())
 	cliflag.PrintFlags(cmd.Flags())
@@ -383,6 +385,8 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		kubeInformers.Batch().V1().Jobs(),
 		scyllaInformers.Scylla().V1().ScyllaClusters(),
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBManagerClusterRegistrations(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBManagerTasks(),
 	)
 	if err != nil {
 		return fmt.Errorf("can't create scyllacluster controller: %w", err)
@@ -700,6 +704,16 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		return fmt.Errorf("can't create ScyllaDBManagerClusterRegistration controller: %w", err)
 	}
 
+	smtc, err := scylladbmanagertask.NewController(
+		o.kubeClient,
+		o.scyllaClient.ScyllaV1alpha1(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBManagerTasks(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBManagerClusterRegistrations(),
+	)
+	if err != nil {
+		return fmt.Errorf("can't create ScyllaDBManagerTask controller: %w", err)
+	}
+
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
@@ -821,6 +835,12 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 	go func() {
 		defer wg.Done()
 		smcrc.Run(ctx, o.ConcurrentSyncs)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		smtc.Run(ctx, o.ConcurrentSyncs)
 	}()
 
 	<-ctx.Done()

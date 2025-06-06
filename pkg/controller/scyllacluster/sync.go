@@ -213,6 +213,21 @@ func (scmc *Controller) sync(ctx context.Context, key string) error {
 		objectErrs = append(objectErrs, err)
 	}
 
+	scyllaDBManagerTaskMap, err := controllerhelpers.GetCustomResourceObjects[CT, *scyllav1alpha1.ScyllaDBManagerTask](
+		ctx,
+		sc,
+		scyllaClusterControllerGVK,
+		scSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *scyllav1alpha1.ScyllaDBManagerTask]{
+			GetControllerUncachedFunc: scmc.scyllaClient.ScyllaV1().ScyllaClusters(sc.Namespace).Get,
+			ListObjectsFunc:           scmc.scyllaDBManagerTaskLister.ScyllaDBManagerTasks(sc.Namespace).List,
+			PatchObjectFunc:           scmc.scyllaClient.ScyllaV1alpha1().ScyllaDBManagerTasks(sc.Namespace).Patch,
+		},
+	)
+	if err != nil {
+		objectErrs = append(objectErrs, fmt.Errorf("can't get ScyllaDBManagerTasks: %w", err))
+	}
+
 	// List objects matching our cluster selector and owned either by ScyllaCluster or already migrated ScyllaDBDatacenter
 	configMaps, err := scmc.configMapLister.ConfigMaps(sc.Namespace).List(labels.SelectorFromSet(naming.ClusterLabelsForScyllaCluster(sc)))
 	if err != nil {
@@ -235,12 +250,18 @@ func (scmc *Controller) sync(ctx context.Context, key string) error {
 	configMaps = oslices.Filter(configMaps, isOwnedByAnyFunc[*corev1.ConfigMap](allowedOwnerUIDs))
 	services = oslices.Filter(services, isOwnedByAnyFunc[*corev1.Service](allowedOwnerUIDs))
 
+	// TODO: comment
+	scyllaDBManagerClusterRegistrations, err := scmc.scyllaDBManagerClusterRegistrationLister.ScyllaDBManagerClusterRegistrations(sc.Namespace).List(labels.Everything())
+	if err != nil {
+		objectErrs = append(objectErrs, fmt.Errorf("can't list ScyllaDBManagerClusterRegistrations: %w", err))
+	}
+
 	objectErr := apimachineryutilerrors.NewAggregate(objectErrs)
 	if objectErr != nil {
 		return objectErr
 	}
 
-	status := scmc.calculateStatus(sc, scyllaDBDatacenterMap, configMaps, services)
+	status := scmc.calculateStatus(sc, scyllaDBDatacenterMap, configMaps, services, scyllaDBManagerClusterRegistrations, scyllaDBManagerTaskMap)
 
 	if sc.DeletionTimestamp != nil {
 		return scmc.updateStatus(ctx, sc, status)
@@ -258,7 +279,20 @@ func (scmc *Controller) sync(ctx context.Context, key string) error {
 		},
 	)
 	if err != nil {
-		errs = append(errs, fmt.Errorf("can't sync scylladbdatacenter: %w", err))
+		errs = append(errs, fmt.Errorf("can't sync ScyllaDBDatacenter: %w", err))
+	}
+
+	err = controllerhelpers.RunSync(
+		&status.Conditions,
+		scyllaDBManagerTaskControllerProgressingCondition,
+		scyllaDBManagerTaskControllerDegradedCondition,
+		sc.Generation,
+		func() ([]metav1.Condition, error) {
+			return scmc.syncScyllaDBManagerTasks(ctx, sc, scyllaDBManagerTaskMap)
+		},
+	)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't sync ScyllaDBManagerTasks: %w", err))
 	}
 
 	err = scmc.updateStatus(ctx, sc, status)

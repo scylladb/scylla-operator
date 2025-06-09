@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  namespace: scylla-manager
+  namespace: {{ .Release.Namespace }}
   name: scylla-manager-to-scylla-pod
 spec:
   policyTypes:

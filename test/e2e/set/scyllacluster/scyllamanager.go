@@ -14,6 +14,8 @@ import (
 	"github.com/scylladb/scylla-manager/v3/pkg/managerclient"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers/managerclienterrors"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
@@ -173,10 +175,11 @@ var _ = g.Describe("Scylla Manager integration", func() {
 
 		// Sanity check to avoid panics in the polling func.
 		o.Expect(sc.Status.ManagerID).NotTo(o.BeNil())
+		managerClusterID := *sc.Status.ManagerID
 
 		framework.By("Waiting for repair to finish")
 		err = apimachineryutilwait.PollUntilContextTimeout(ctx, 5*time.Second, 10*time.Minute, true, func(context.Context) (done bool, err error) {
-			repairProgress, err := managerClient.RepairProgress(ctx, *sc.Status.ManagerID, repairTask.ID, "latest")
+			repairProgress, err := managerClient.RepairProgress(ctx, managerClusterID, repairTask.ID, "latest")
 			if err != nil {
 				return false, err
 			}
@@ -207,8 +210,53 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Verifying that repair task deletion was synchronized")
-		tasks, err = managerClient.ListTasks(ctx, *sc.Status.ManagerID, "repair", false, "", "")
+		// Progressing conditions of the underlying ScyllaDBManagerTasks are not propagated to ScyllaClusters by the migration controller,
+		// neither does the controller await the deletion of ScyllaDBManagerTasks.
+		// Task deletion from ScyllaDB Manager state is asynchronous to ScyllaCluster state update.
+		o.Eventually(func(eo o.Gomega, ctx context.Context) {
+			tasks, err = managerClient.ListTasks(ctx, managerClusterID, "repair", false, "", "")
+			eo.Expect(err).NotTo(o.HaveOccurred())
+			eo.Expect(tasks.TaskListItemSlice).To(o.BeEmpty())
+		}).
+			WithContext(ctx).
+			WithTimeout(utils.SyncTimeout).
+			WithPolling(5 * time.Second).
+			Should(o.Succeed())
+
+		framework.By("Deleting ScyllaCluster")
+		err = f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace).Delete(
+			ctx,
+			sc.Name,
+			metav1.DeleteOptions{
+				PropagationPolicy: pointer.Ptr(metav1.DeletePropagationForeground),
+				Preconditions: &metav1.Preconditions{
+					UID: &sc.UID,
+				},
+			})
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(tasks.TaskListItemSlice).To(o.BeEmpty())
+
+		framework.By("Waiting for ScyllaCluster to be deleted")
+		deletionCtx, deletionCtxCancel := context.WithTimeout(ctx, utils.SyncTimeout)
+		defer deletionCtxCancel()
+		err = framework.WaitForObjectDeletion(
+			deletionCtx,
+			f.DynamicClient(),
+			scyllav1.GroupVersion.WithResource("scyllaclusters"),
+			sc.Namespace,
+			sc.Name,
+			&sc.UID,
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Verifying that the cluster was removed from the global ScyllaDB Manager state")
+		o.Eventually(func(eo o.Gomega, ctx context.Context) {
+			_, err := managerClient.GetCluster(ctx, managerClusterID)
+			eo.Expect(err).To(o.HaveOccurred())
+			eo.Expect(err).To(o.Satisfy(managerclienterrors.IsNotFound))
+		}).
+			WithContext(ctx).
+			WithTimeout(utils.SyncTimeout).
+			WithPolling(5 * time.Second).
+			Should(o.Succeed())
 	})
 })

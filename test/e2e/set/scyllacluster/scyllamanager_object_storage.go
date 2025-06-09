@@ -17,6 +17,7 @@ import (
 	configassests "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers/managerclienterrors"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
@@ -217,11 +218,12 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 
 		// Sanity check to avoid panics in the polling func.
 		o.Expect(sourceSC.Status.ManagerID).NotTo(o.BeNil())
+		sourceManagerClusterID := *sourceSC.Status.ManagerID
 
 		var backupProgress managerclient.BackupProgress
 		framework.By("Waiting for backup to finish")
 		err = apimachineryutilwait.PollUntilContextTimeout(ctx, 5*time.Second, 10*time.Minute, true, func(context.Context) (done bool, err error) {
-			backupProgress, err = managerClient.BackupProgress(ctx, *sourceSC.Status.ManagerID, backupTask.ID, "latest")
+			backupProgress, err = managerClient.BackupProgress(ctx, sourceManagerClusterID, backupTask.ID, "latest")
 			if err != nil {
 				return false, err
 			}
@@ -253,9 +255,18 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Verifying that backup task deletion was synchronized")
-		tasks, err = managerClient.ListTasks(ctx, *sourceSC.Status.ManagerID, "backup", false, "", "")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(tasks.TaskListItemSlice).To(o.BeEmpty())
+		// Progressing conditions of the underlying ScyllaDBManagerTasks are not propagated to ScyllaClusters by the migration controller,
+		// neither does the controller await the deletion of ScyllaDBManagerTasks.
+		// Task deletion from ScyllaDB Manager state is asynchronous to ScyllaCluster state update.
+		o.Eventually(func(eo o.Gomega, ctx context.Context) {
+			tasks, err = managerClient.ListTasks(ctx, sourceManagerClusterID, "backup", false, "", "")
+			eo.Expect(err).NotTo(o.HaveOccurred())
+			eo.Expect(tasks.TaskListItemSlice).To(o.BeEmpty())
+		}).
+			WithContext(ctx).
+			WithTimeout(utils.SyncTimeout).
+			WithPolling(5 * time.Second).
+			Should(o.Succeed())
 
 		// Close the existing session to avoid polluting the logs.
 		di.Close()
@@ -270,6 +281,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
+		framework.By("Waiting for source ScyllaCluster to be deleted")
 		waitCtx6, waitCtx6Cancel := context.WithCancel(ctx)
 		defer waitCtx6Cancel()
 		err = framework.WaitForObjectDeletion(
@@ -281,6 +293,17 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 			&sourceSC.UID,
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Verifying that the source cluster was removed from the global ScyllaDB Manager state")
+		o.Eventually(func(eo o.Gomega, ctx context.Context) {
+			_, err := managerClient.GetCluster(ctx, sourceManagerClusterID)
+			eo.Expect(err).To(o.HaveOccurred())
+			eo.Expect(err).To(o.Satisfy(managerclienterrors.IsNotFound))
+		}).
+			WithContext(ctx).
+			WithTimeout(utils.SyncTimeout).
+			WithPolling(5 * time.Second).
+			Should(o.Succeed())
 
 		targetSC := f.GetDefaultScyllaCluster()
 		targetSC.Spec.Datacenter.Racks[0].Members = sourceSC.Spec.Datacenter.Racks[0].Members
@@ -607,11 +630,12 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		framework.By("Verifying that tasks are not in manager state")
 		// Sanity check.
 		o.Expect(sc.Status.ManagerID).NotTo(o.BeNil())
+		managerClusterID := *sc.Status.ManagerID
 
-		repairTasks, err := managerClient.ListTasks(ctx, *sc.Status.ManagerID, "repair", false, "", "")
+		repairTasks, err := managerClient.ListTasks(ctx, managerClusterID, "repair", false, "", "")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(repairTasks.TaskListItemSlice).To(o.BeEmpty())
-		backupTasks, err := managerClient.ListTasks(ctx, *sc.Status.ManagerID, "backup", false, "", "")
+		backupTasks, err := managerClient.ListTasks(ctx, managerClusterID, "backup", false, "", "")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(backupTasks.TaskListItemSlice).To(o.BeEmpty())
 
@@ -697,15 +721,16 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		framework.By("Verifying that valid task statuses were synchronized")
 		// Sanity check.
 		o.Expect(sc.Status.ManagerID).NotTo(o.BeNil())
+		managerClusterID = *sc.Status.ManagerID
 
-		backupTasks, err = managerClient.ListTasks(ctx, *sc.Status.ManagerID, "backup", false, "", "")
+		backupTasks, err = managerClient.ListTasks(ctx, managerClusterID, "backup", false, "", "")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(backupTasks.TaskListItemSlice).To(o.HaveLen(1))
 		backupTask := backupTasks.TaskListItemSlice[0]
 		o.Expect(backupTask.Name).To(o.Equal(sc.Status.Backups[0].Name))
 		o.Expect(backupTask.ID).To(o.Equal(*sc.Status.Backups[0].ID))
 
-		repairTasks, err = managerClient.ListTasks(ctx, *sc.Status.ManagerID, "repair", false, "", "")
+		repairTasks, err = managerClient.ListTasks(ctx, managerClusterID, "repair", false, "", "")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(repairTasks.TaskListItemSlice).To(o.HaveLen(1))
 		repairTask := repairTasks.TaskListItemSlice[0]
@@ -768,9 +793,10 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		framework.By("Verifying that tasks in manager state weren't modified")
 		// Sanity check.
 		o.Expect(sc.Status.ManagerID).NotTo(o.BeNil())
+		managerClusterID = *sc.Status.ManagerID
 
 		previousBackupTask := backupTask
-		backupTasks, err = managerClient.ListTasks(ctx, *sc.Status.ManagerID, "backup", false, "", "")
+		backupTasks, err = managerClient.ListTasks(ctx, managerClusterID, "backup", false, "", "")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(backupTasks.TaskListItemSlice).To(o.HaveLen(1))
 		backupTask = backupTasks.TaskListItemSlice[0]
@@ -779,13 +805,49 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		o.Expect(backupTask.Properties).To(o.Equal(previousBackupTask.Properties))
 
 		previousRepairTask := repairTask
-		repairTasks, err = managerClient.ListTasks(ctx, *sc.Status.ManagerID, "repair", false, "", "")
+		repairTasks, err = managerClient.ListTasks(ctx, managerClusterID, "repair", false, "", "")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(repairTasks.TaskListItemSlice).To(o.HaveLen(1))
 		repairTask = repairTasks.TaskListItemSlice[0]
 		o.Expect(repairTask.Name).To(o.Equal(sc.Status.Repairs[0].Name))
 		o.Expect(repairTask.ID).To(o.Equal(*sc.Status.Repairs[0].ID))
 		o.Expect(repairTask.Properties).To(o.Equal(previousRepairTask.Properties))
+
+		framework.By("Deleting ScyllaCluster")
+		err = f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace).Delete(
+			ctx,
+			sc.Name,
+			metav1.DeleteOptions{
+				PropagationPolicy: pointer.Ptr(metav1.DeletePropagationForeground),
+				Preconditions: &metav1.Preconditions{
+					UID: &sc.UID,
+				},
+			})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for ScyllaCluster to be deleted")
+		deletionCtx, deletionCtxCancel := context.WithTimeout(ctx, utils.SyncTimeout)
+		defer deletionCtxCancel()
+		err = framework.WaitForObjectDeletion(
+			deletionCtx,
+			f.DynamicClient(),
+			scyllav1.GroupVersion.WithResource("scyllaclusters"),
+			sc.Namespace,
+			sc.Name,
+			&sc.UID,
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Verifying that the cluster was removed from the global ScyllaDB Manager state")
+		o.Eventually(func(eo o.Gomega, ctx context.Context) {
+			_, err := managerClient.GetCluster(ctx, managerClusterID)
+			eo.Expect(err).To(o.HaveOccurred())
+			eo.Expect(err).To(o.Satisfy(managerclienterrors.IsNotFound))
+		}).
+			WithContext(ctx).
+			WithTimeout(utils.SyncTimeout).
+			WithPolling(5 * time.Second).
+			Should(o.Succeed())
 	})
 })
 

@@ -6,7 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   dnsNames:
-  - {{ include "scylla-operator.webhookServiceName" . }}.scylla-operator.svc
+  - {{ include "scylla-operator.webhookServiceName" . }}.{{ .Release.Namespace }}.svc
   issuerRef:
     kind: Issuer
     name: scylla-operator-selfsigned-issuer

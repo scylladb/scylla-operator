@@ -60,6 +60,7 @@ func SetUpRemoteKubernetesClustersFromRestConfigs(ctx context.Context, restConfi
 
 		rc := framework.NewRestoringCleaner(
 			ctx,
+			f.AdminClientConfig(),
 			f.KubeAdminClient(),
 			f.DynamicAdminClient(),
 			remoteKubernetesClusterResourceInfo,

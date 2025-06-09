@@ -18,6 +18,7 @@ import (
 	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 )
@@ -60,6 +61,7 @@ func (nc *namespaceCleaner) Cleanup(ctx context.Context) {
 }
 
 type namespaceCollector struct {
+	RestConfig    *rest.Config
 	Client        kubernetes.Interface
 	DynamicClient dynamic.Interface
 	NamespaceName string
@@ -76,7 +78,7 @@ func (nc *namespaceCollector) CollectToLog(ctx context.Context) {
 func (nc *namespaceCollector) Collect(ctx context.Context, artifactsDir string, _ string) {
 	By("Collecting dumps from namespace %q.", nc.NamespaceName)
 
-	err := DumpNamespace(ctx, cacheddiscovery.NewMemCacheClient(nc.Client.Discovery()), nc.DynamicClient, nc.Client.CoreV1(), artifactsDir, nc.NamespaceName)
+	err := DumpNamespace(ctx, nc.RestConfig, cacheddiscovery.NewMemCacheClient(nc.Client.Discovery()), nc.DynamicClient, nc.Client.CoreV1(), artifactsDir, nc.NamespaceName)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
@@ -88,7 +90,7 @@ type NamespaceCleanerCollector struct {
 var _ Cleaner = &NamespaceCleanerCollector{}
 var _ Collector = &NamespaceCleanerCollector{}
 
-func NewNamespaceCleanerCollector(client kubernetes.Interface, dynamicClient dynamic.Interface, namespace *corev1.Namespace) *NamespaceCleanerCollector {
+func NewNamespaceCleanerCollector(restConfig *rest.Config, client kubernetes.Interface, dynamicClient dynamic.Interface, namespace *corev1.Namespace) *NamespaceCleanerCollector {
 	return &NamespaceCleanerCollector{
 		namespaceCleaner: &namespaceCleaner{
 			Client:        client,
@@ -96,6 +98,7 @@ func NewNamespaceCleanerCollector(client kubernetes.Interface, dynamicClient dyn
 			NS:            namespace,
 		},
 		namespaceCollector: &namespaceCollector{
+			RestConfig:    restConfig,
 			Client:        client,
 			DynamicClient: dynamicClient,
 			NamespaceName: namespace.Name,
@@ -120,7 +123,7 @@ func NewNotFoundTolerantNamespaceCollector(client kubernetes.Interface, dynamicC
 func (nc *NotFoundTolerantNamespaceCollector) Collect(ctx context.Context, artifactsDir string, _ string) {
 	By("Collecting dumps from namespace %q.", nc.NamespaceName)
 
-	err := DumpNamespace(ctx, cacheddiscovery.NewMemCacheClient(nc.Client.Discovery()), nc.DynamicClient, nc.Client.CoreV1(), artifactsDir, nc.NamespaceName)
+	err := DumpNamespace(ctx, nc.RestConfig, cacheddiscovery.NewMemCacheClient(nc.Client.Discovery()), nc.DynamicClient, nc.Client.CoreV1(), artifactsDir, nc.NamespaceName)
 	if apierrors.IsNotFound(err) {
 		By("Namespace %q doesn't exists, it won't be collected.", nc.NamespaceName)
 		return
@@ -136,6 +139,7 @@ const (
 )
 
 type RestoringCleaner struct {
+	restConfig    *rest.Config
 	client        kubernetes.Interface
 	dynamicClient dynamic.Interface
 	resourceInfo  collect.ResourceInfo
@@ -146,7 +150,7 @@ type RestoringCleaner struct {
 var _ Cleaner = &RestoringCleaner{}
 var _ Collector = &RestoringCleaner{}
 
-func NewRestoringCleaner(ctx context.Context, client kubernetes.Interface, dynamicClient dynamic.Interface, resourceInfo collect.ResourceInfo, namespace string, name string, strategy RestoreStrategy) *RestoringCleaner {
+func NewRestoringCleaner(ctx context.Context, restConfig *rest.Config, client kubernetes.Interface, dynamicClient dynamic.Interface, resourceInfo collect.ResourceInfo, namespace string, name string, strategy RestoreStrategy) *RestoringCleaner {
 	g.By(fmt.Sprintf("Snapshotting object %s %q", resourceInfo.Resource, naming.ManualRef(namespace, name)))
 
 	if resourceInfo.Scope.Name() == meta.RESTScopeNameNamespace {
@@ -168,6 +172,7 @@ func NewRestoringCleaner(ctx context.Context, client kubernetes.Interface, dynam
 	}
 
 	return &RestoringCleaner{
+		restConfig:    restConfig,
 		client:        client,
 		dynamicClient: dynamicClient,
 		resourceInfo:  resourceInfo,
@@ -198,6 +203,7 @@ func (rc *RestoringCleaner) Collect(ctx context.Context, clusterArtifactsDir str
 
 	err := DumpResource(
 		ctx,
+		rc.restConfig,
 		rc.client.Discovery(),
 		rc.dynamicClient,
 		rc.client.CoreV1(),

@@ -52,6 +52,7 @@ var _ = g.Describe("ScyllaOperatorConfig ", framework.Serial, func() {
 
 		rc := framework.NewRestoringCleaner(
 			ctx,
+			f.AdminClientConfig(),
 			f.KubeAdminClient(),
 			f.DynamicAdminClient(),
 			socResourceInfo,

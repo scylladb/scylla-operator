@@ -5,7 +5,7 @@ filters:
     approvers:
     - operator-approvers
     reviewers:
-    - operator-reviewers
+    - operator-review-autoassignees
   "go\\.(mod|sum)$":
     required_reviewers:
     - operator-approvers

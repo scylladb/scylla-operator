@@ -90,10 +90,15 @@ func (smcrc *Controller) syncManager(
 		}
 
 		status.ClusterID = &managerClusterID
+		progressingConditions = append(progressingConditions, metav1.Condition{
+			Type:               managerControllerProgressingCondition,
+			Status:             metav1.ConditionTrue,
+			ObservedGeneration: smcr.Generation,
+			Reason:             "CreatedScyllaDBManagerCluster",
+			Message:            fmt.Sprintf("Created a ScyllaDB Manager cluster: %s (%s).", requiredManagerCluster.Name, managerClusterID),
+		})
 		return progressingConditions, nil
 	}
-
-	status.ClusterID = &managerCluster.ID
 
 	ownerUIDLabelValue, hasOwnerUIDLabel := managerCluster.Labels[naming.OwnerUIDLabel]
 	if !hasOwnerUIDLabel {
@@ -115,6 +120,8 @@ func (smcrc *Controller) syncManager(
 		return progressingConditions, nil
 	}
 
+	status.ClusterID = &managerCluster.ID
+
 	if ownerUIDLabelValue == string(smcr.UID) && requiredManagerCluster.Labels[naming.ManagedHash] == managerCluster.Labels[naming.ManagedHash] {
 		// Cluster matches the desired state, nothing to do.
 		return progressingConditions, nil
@@ -135,6 +142,13 @@ func (smcrc *Controller) syncManager(
 		return progressingConditions, fmt.Errorf("can't update ScyllaDB Manager cluster %q: %s", managerCluster.Name, managerclienterrors.GetPayloadMessage(err))
 	}
 
+	progressingConditions = append(progressingConditions, metav1.Condition{
+		Type:               managerControllerProgressingCondition,
+		Status:             metav1.ConditionTrue,
+		ObservedGeneration: smcr.Generation,
+		Reason:             "UpdatedScyllaDBManagerCluster",
+		Message:            fmt.Sprintf("Updated a ScyllaDB Manager cluster: %s (%s).", managerCluster.Name, managerCluster.ID),
+	})
 	return progressingConditions, nil
 }
 

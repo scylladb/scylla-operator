@@ -36,9 +36,9 @@ func NewObserver(name string, eventsClient corev1client.EventInterface, syncFunc
 
 	return &Observer{
 		name: name,
-		queue: workqueue.NewRateLimitingQueueWithConfig(
-			workqueue.DefaultControllerRateLimiter(),
-			workqueue.RateLimitingQueueConfig{
+		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
+			workqueue.DefaultTypedControllerRateLimiter[any](),
+			workqueue.TypedRateLimitingQueueConfig[any]{
 				Name: name,
 			}),
 		syncFunc:      syncFunc,

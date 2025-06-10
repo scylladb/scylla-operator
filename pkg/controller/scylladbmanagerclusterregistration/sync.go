@@ -65,6 +65,10 @@ func (smcrc *Controller) sync(ctx context.Context, key string) error {
 				return smcrc.syncFinalizer(ctx, smcr)
 			},
 		)
+		if err != nil {
+			return fmt.Errorf("can't finalize: %w", err)
+		}
+
 		return smcrc.updateStatus(ctx, smcr, status)
 	}
 

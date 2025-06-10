@@ -472,7 +472,7 @@ func (sdcc *Controller) createMissingStatefulSets(
 
 func (sdcc *Controller) syncStatefulSets(
 	ctx context.Context,
-	key string,
+	key types.NamespacedName,
 	sdc *scyllav1alpha1.ScyllaDBDatacenter,
 	status *scyllav1alpha1.ScyllaDBDatacenterStatus,
 	statefulSets map[string]*appsv1.StatefulSet,

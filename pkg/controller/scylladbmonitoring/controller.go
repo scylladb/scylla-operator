@@ -24,6 +24,7 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
@@ -50,7 +51,7 @@ const (
 )
 
 var (
-	keyFunc                         = cache.DeletionHandlingMetaNamespaceKeyFunc
+	keyFunc                         = controllerhelpers.DeletionHandlingObjectToNamespacedName
 	scylladbMonitoringControllerGVK = scyllav1alpha1.GroupVersion.WithKind("ScyllaDBMonitoring")
 )
 
@@ -79,7 +80,7 @@ type Controller struct {
 
 	eventRecorder record.EventRecorder
 
-	queue    workqueue.RateLimitingInterface
+	queue    workqueue.TypedRateLimitingInterface[types.NamespacedName]
 	handlers *controllerhelpers.Handlers[*scyllav1alpha1.ScyllaDBMonitoring]
 
 	keyGetter crypto.RSAKeyGetter
@@ -149,7 +150,12 @@ func NewController(
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scylladbmonitoring-controller"}),
 
-		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "scylladbmonitoring"),
+		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
+			workqueue.DefaultTypedControllerRateLimiter[types.NamespacedName](),
+			workqueue.TypedRateLimitingQueueConfig[types.NamespacedName]{
+				Name: "scylladbmonitoring",
+			},
+		),
 
 		keyGetter: keyGetter,
 	}
@@ -530,7 +536,7 @@ func (smc *Controller) processNextItem(ctx context.Context) bool {
 	}
 	defer smc.queue.Done(key)
 
-	err := smc.sync(ctx, key.(string))
+	err := smc.sync(ctx, key)
 	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
 	err = apimachineryutilerrors.Reduce(err)
 	switch {

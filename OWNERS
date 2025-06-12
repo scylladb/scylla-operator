@@ -7,7 +7,7 @@ filters:
     reviewers:
     - operator-review-autoassignees
   "go\\.(mod|sum)$":
-    required_reviewers:
+    reviewers:
     - operator-approvers
     labels:
     - area/dependency

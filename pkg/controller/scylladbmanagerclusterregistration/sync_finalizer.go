@@ -30,7 +30,7 @@ func (smcrc *Controller) syncFinalizer(ctx context.Context, smcr *scyllav1alpha1
 	// global ScyllaDB Manager instance can be deleted independently, in which case ScyllaDBManagerClusterRegistration can get stuck on finalization as the manager client connection can no longer be established.
 	// We treat the `scylla-manager` namespace as the umbrella resource for the global ScyllaDB Manager instance.
 	// Clusters are considered deleted from global ScyllaDB Manager instance's state when `scylla-manager` namespace is not present.
-	if isManagedByGlobalScyllaDBManagerInstance(smcr) {
+	if controllerhelpers.IsManagedByGlobalScyllaDBManagerInstance(smcr) {
 		_, err = smcrc.namespaceLister.Get(naming.ScyllaManagerNamespace)
 		if err != nil {
 			if !apierrors.IsNotFound(err) {
@@ -46,7 +46,7 @@ func (smcrc *Controller) syncFinalizer(ctx context.Context, smcr *scyllav1alpha1
 		}
 	}
 
-	managerClient, err := smcrc.getManagerClient(ctx, smcr)
+	managerClient, err := controllerhelpers.GetScyllaDBManagerClient(ctx, smcr)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't get manager client: %w", err)
 	}

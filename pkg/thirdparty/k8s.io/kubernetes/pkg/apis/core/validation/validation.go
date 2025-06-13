@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
@@ -27,6 +28,8 @@ import (
 	apimachineryutilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
+
+const isNotPositiveErrorMsg string = `must be greater than zero`
 
 // ValidateNodeName can be used to check whether the given node name is valid.
 // Prefix indicates this name will be used as part of generation, in which case
@@ -40,6 +43,15 @@ var ValidateNamespaceName = apimachineryvalidation.ValidateNamespaceName
 
 var nodeFieldSelectorValidators = map[string]func(string, bool) []string{
 	metav1.ObjectNameField: ValidateNodeName,
+}
+
+// Validates that a Quantity is positive
+func ValidatePositiveQuantityValue(value resource.Quantity, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if value.Cmp(resource.Quantity{}) <= 0 {
+		allErrs = append(allErrs, field.Invalid(fldPath, value.String(), isNotPositiveErrorMsg))
+	}
+	return allErrs
 }
 
 // ValidateNodeSelectorRequirement tests that the specified NodeSelectorRequirement fields has valid data

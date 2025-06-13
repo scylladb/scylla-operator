@@ -41,6 +41,7 @@ const (
 	// but rather use the queue.
 	// Unfortunately, Scylla Manager calls are synchronous, internally retried and can take ages.
 	// Contrary to what it should be, this needs to be quite high.
+	// FIXME: https://github.com/scylladb/scylla-operator/issues/2686
 	maxSyncDuration = 2 * time.Minute
 )
 

@@ -18,6 +18,7 @@ type ScyllaV1alpha1Interface interface {
 	ScyllaDBClustersGetter
 	ScyllaDBDatacentersGetter
 	ScyllaDBManagerClusterRegistrationsGetter
+	ScyllaDBManagerTasksGetter
 	ScyllaDBMonitoringsGetter
 	ScyllaOperatorConfigsGetter
 }
@@ -49,6 +50,10 @@ func (c *ScyllaV1alpha1Client) ScyllaDBDatacenters(namespace string) ScyllaDBDat
 
 func (c *ScyllaV1alpha1Client) ScyllaDBManagerClusterRegistrations(namespace string) ScyllaDBManagerClusterRegistrationInterface {
 	return newScyllaDBManagerClusterRegistrations(c, namespace)
+}
+
+func (c *ScyllaV1alpha1Client) ScyllaDBManagerTasks(namespace string) ScyllaDBManagerTaskInterface {
+	return newScyllaDBManagerTasks(c, namespace)
 }
 
 func (c *ScyllaV1alpha1Client) ScyllaDBMonitorings(namespace string) ScyllaDBMonitoringInterface {

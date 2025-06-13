@@ -291,6 +291,10 @@ func ScyllaDBManagerClusterRegistrationNameForScyllaDBDatacenter(sdc *scyllav1al
 	return scyllaDBManagerClusterRegistrationName(scyllav1alpha1.ScyllaDBDatacenterGVK.Kind, sdc.Name)
 }
 
+func ScyllaDBManagerClusterRegistrationNameForScyllaDBManagerTask(smt *scyllav1alpha1.ScyllaDBManagerTask) (string, error) {
+	return scyllaDBManagerClusterRegistrationName(smt.Spec.ScyllaDBClusterRef.Kind, smt.Spec.ScyllaDBClusterRef.Name)
+}
+
 func scyllaDBManagerClusterRegistrationName(kind, name string) (string, error) {
 	nameSuffix, err := GenerateNameHash(kind, name)
 	if err != nil {

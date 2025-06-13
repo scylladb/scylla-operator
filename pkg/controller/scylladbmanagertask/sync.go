@@ -1,6 +1,6 @@
 // Copyright (C) 2025 ScyllaDB
 
-package scylladbmanagerclusterregistration
+package scylladbmanagertask
 
 import (
 	"context"
@@ -9,11 +9,10 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -22,7 +21,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func (smcrc *Controller) sync(ctx context.Context, key string) error {
+func (smtc *Controller) sync(ctx context.Context, key string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		klog.ErrorS(err, "Failed to split meta namespace cache key", "cacheKey", key)
@@ -30,47 +29,38 @@ func (smcrc *Controller) sync(ctx context.Context, key string) error {
 	}
 
 	startTime := time.Now()
-	klog.V(4).InfoS("Started syncing ScyllaDBManagerClusterRegistration", "ScyllaDBManagerClusterRegistration", klog.KRef(namespace, name), "startTime", startTime)
+	klog.V(4).InfoS("Started syncing ScyllaDBManagerTask", "ScyllaDBManagerTask", klog.KRef(namespace, name), "startTime", startTime)
 	defer func() {
-		klog.V(4).InfoS("Finished syncing ScyllaDBManagerClusterRegistration", "ScyllaDBManagerClusterRegistration", klog.KRef(namespace, name), "duration", time.Since(startTime))
+		klog.V(4).InfoS("Finished syncing ScyllaDBManagerTask", "ScyllaDBManagerTask", klog.KRef(namespace, name), "duration", time.Since(startTime))
 	}()
 
-	smcr, err := smcrc.scyllaDBManagerClusterRegistrationLister.ScyllaDBManagerClusterRegistrations(namespace).Get(name)
+	smt, err := smtc.scyllaDBManagerTaskLister.ScyllaDBManagerTasks(namespace).Get(name)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			klog.V(2).InfoS("ScyllaDBManagerClusterRegistration has been deleted", "ScyllaDBManagerClusterRegistration", klog.KRef(namespace, name))
+		if apierrors.IsNotFound(err) {
+			klog.V(2).InfoS("ScyllaDBManagerTask has been deleted", "ScyllaDBManagerTask", klog.KRef(namespace, name))
 			return nil
 		}
 
-		return fmt.Errorf("can't get ScyllaDBManagerClusterRegistration %q: %w", naming.ManualRef(namespace, name), err)
+		return fmt.Errorf("can't get ScyllaDBManagerTask %q: %w", naming.ManualRef(namespace, name), err)
 	}
 
-	// Sanity check.
-	if !controllerhelpers.IsManagedByGlobalScyllaDBManagerInstance(smcr) {
-		return controllertools.NewNonRetriable(fmt.Sprintf("ScyllaDBManagerClusterRegistration %q is not supported as it is not managed by the global ScyllaDB Manager instance", naming.ObjRef(smcr)))
-	}
+	status := smtc.calculateStatus(smt)
 
-	status := smcrc.calculateStatus(smcr)
-
-	if smcr.DeletionTimestamp != nil {
+	if smt.DeletionTimestamp != nil {
 		err = controllerhelpers.RunSync(
 			&status.Conditions,
-			scyllaDBManagerClusterRegistrationFinalizerProgressingCondition,
-			scyllaDBManagerClusterRegistrationFinalizerDegradedCondition,
-			smcr.Generation,
+			scyllaDBManagerTaskFinalizerProgressingCondition,
+			scyllaDBManagerTaskFinalizerDegradedCondition,
+			smt.Generation,
 			func() ([]metav1.Condition, error) {
-				return smcrc.syncFinalizer(ctx, smcr)
+				return smtc.syncFinalizer(ctx, smt)
 			},
 		)
-		if err != nil {
-			return fmt.Errorf("can't finalize: %w", err)
-		}
-
-		return smcrc.updateStatus(ctx, smcr, status)
+		return smtc.updateStatus(ctx, smt, status)
 	}
 
-	if !smcrc.hasFinalizer(smcr.GetFinalizers()) {
-		err = smcrc.addFinalizer(ctx, smcr)
+	if !smtc.hasFinalizer(smt.GetFinalizers()) {
+		err = smtc.addFinalizer(ctx, smt)
 		if err != nil {
 			return fmt.Errorf("can't add finalizer: %w", err)
 		}
@@ -82,13 +72,13 @@ func (smcrc *Controller) sync(ctx context.Context, key string) error {
 		&status.Conditions,
 		managerControllerProgressingCondition,
 		managerControllerDegradedCondition,
-		smcr.Generation,
+		smt.Generation,
 		func() ([]metav1.Condition, error) {
-			return smcrc.syncManager(ctx, smcr, status)
+			return smtc.syncManager(ctx, smt, status)
 		},
 	)
 	if err != nil {
-		errs = append(errs, fmt.Errorf("can't sync registration: %w", err))
+		errs = append(errs, fmt.Errorf("can't sync manager: %w", err))
 	}
 
 	var aggregationErrs []error
@@ -99,7 +89,7 @@ func (smcrc *Controller) sync(ctx context.Context, key string) error {
 			Status:             metav1.ConditionFalse,
 			Reason:             internalapi.AsExpectedReason,
 			Message:            "",
-			ObservedGeneration: smcr.Generation,
+			ObservedGeneration: smt.Generation,
 		},
 	)
 	if err != nil {
@@ -113,7 +103,7 @@ func (smcrc *Controller) sync(ctx context.Context, key string) error {
 			Status:             metav1.ConditionFalse,
 			Reason:             internalapi.AsExpectedReason,
 			Message:            "",
-			ObservedGeneration: smcr.Generation,
+			ObservedGeneration: smt.Generation,
 		},
 	)
 	if err != nil {
@@ -128,7 +118,7 @@ func (smcrc *Controller) sync(ctx context.Context, key string) error {
 	apimeta.SetStatusCondition(&status.Conditions, progressingCondition)
 	apimeta.SetStatusCondition(&status.Conditions, degradedCondition)
 
-	err = smcrc.updateStatus(ctx, smcr, status)
+	err = smtc.updateStatus(ctx, smt, status)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't update status: %w", err))
 	}
@@ -136,25 +126,21 @@ func (smcrc *Controller) sync(ctx context.Context, key string) error {
 	return apimachineryutilerrors.NewAggregate(errs)
 }
 
-func (smcrc *Controller) hasFinalizer(finalizers []string) bool {
-	return oslices.ContainsItem(finalizers, naming.ScyllaDBManagerClusterRegistrationFinalizer)
+func (smtc *Controller) hasFinalizer(finalizers []string) bool {
+	return oslices.ContainsItem(finalizers, naming.ScyllaDBManagerTaskFinalizer)
 }
 
-func (smcrc *Controller) addFinalizer(ctx context.Context, smcr *scyllav1alpha1.ScyllaDBManagerClusterRegistration) error {
-	if smcrc.hasFinalizer(smcr.GetFinalizers()) {
-		return nil
-	}
-
-	patch, err := controllerhelpers.AddFinalizerPatch(smcr, naming.ScyllaDBManagerClusterRegistrationFinalizer)
+func (smtc *Controller) addFinalizer(ctx context.Context, smt *scyllav1alpha1.ScyllaDBManagerTask) error {
+	patch, err := controllerhelpers.AddFinalizerPatch(smt, naming.ScyllaDBManagerTaskFinalizer)
 	if err != nil {
 		return fmt.Errorf("can't create add finalizer patch: %w", err)
 	}
 
-	_, err = smcrc.scyllaClient.ScyllaV1alpha1().ScyllaDBManagerClusterRegistrations(smcr.Namespace).Patch(ctx, smcr.Name, types.MergePatchType, patch, metav1.PatchOptions{})
+	_, err = smtc.scyllaClient.ScyllaDBManagerTasks(smt.Namespace).Patch(ctx, smt.Name, types.MergePatchType, patch, metav1.PatchOptions{})
 	if err != nil {
-		return fmt.Errorf("can't patch ScyllaDBManagerClusterRegistration %q: %w", naming.ObjRef(smcr), err)
+		return fmt.Errorf("can't patch ScyllaDBManagerTask %q: %w", naming.ObjRef(smt), err)
 	}
 
-	klog.V(2).InfoS("Added finalizer to ScyllaDBManagerClusterRegistration", "ScyllaDBManagerClusterRegistration", klog.KObj(smcr))
+	klog.V(2).InfoS("Added finalizer to ScyllaDBManagerTask", "ScyllaDBManagerTask", klog.KObj(smt))
 	return nil
 }

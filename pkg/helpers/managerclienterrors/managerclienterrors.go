@@ -10,6 +10,10 @@ import (
 	"github.com/scylladb/scylla-manager/v3/pkg/managerclient"
 )
 
+func IsBadRequest(err error) bool {
+	return codeForError(err) == http.StatusBadRequest
+}
+
 func IsNotFound(err error) bool {
 	return codeForError(err) == http.StatusNotFound
 }

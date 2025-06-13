@@ -1,5 +1,5 @@
 operator:
-  scyllaDBVersion: "2025.1.2"
+  scyllaDBVersion: "2025.1.3"
   # scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride sets enterprise version
   # that requires consistent_cluster_management workaround for restore.
   # In the future, enterprise versions should be run as a different config instance in its own run.

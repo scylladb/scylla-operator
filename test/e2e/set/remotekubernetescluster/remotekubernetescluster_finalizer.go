@@ -36,6 +36,7 @@ var _ = g.Describe("RemoteKubernetesCluster finalizer", func() {
 
 		rc := framework.NewRestoringCleaner(
 			ctx,
+			f.AdminClientConfig(),
 			f.KubeAdminClient(),
 			f.DynamicAdminClient(),
 			remoteKubernetesClusterResourceInfo,

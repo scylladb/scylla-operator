@@ -37,6 +37,7 @@ import (
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
@@ -46,6 +47,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	cliflag "k8s.io/component-base/cli/flag"
@@ -301,6 +303,12 @@ func (o *OperatorOptions) Execute(ctx context.Context, streams genericclioptions
 }
 
 func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOStreams) error {
+	if ok, err := isStandaloneScyllaDBManagerControllerDeployed(ctx, o.kubeClient.AppsV1()); err != nil {
+		return fmt.Errorf("can't check for standalone ScyllaDB Manager controller presence: %w", err)
+	} else if ok {
+		return fmt.Errorf("Standalone ScyllaDB Manager controller Deployment %q should not be running alongside Scylla Operator. Delete it before starting Scylla Operator.", naming.ManualRef(naming.ScyllaManagerNamespace, naming.StandaloneScyllaDBManagerControllerName))
+	}
+
 	rsaKeyGenerator, err := crypto.NewRSAKeyGenerator(
 		o.CryptoKeyBufferSizeMin,
 		o.CryptoKeyBufferSizeMax,
@@ -384,6 +392,8 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		kubeInformers.Batch().V1().Jobs(),
 		scyllaInformers.Scylla().V1().ScyllaClusters(),
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBManagerClusterRegistrations(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBManagerTasks(),
 	)
 	if err != nil {
 		return fmt.Errorf("can't create scyllacluster controller: %w", err)
@@ -843,4 +853,17 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 	<-ctx.Done()
 
 	return nil
+}
+
+func isStandaloneScyllaDBManagerControllerDeployed(ctx context.Context, appsV1Client appsv1client.AppsV1Interface) (bool, error) {
+	_, err := appsV1Client.Deployments(naming.ScyllaManagerNamespace).Get(ctx, naming.StandaloneScyllaDBManagerControllerName, metav1.GetOptions{})
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return false, fmt.Errorf("can't get Deployment %q: %w", naming.ManualRef(naming.ScyllaManagerNamespace, naming.StandaloneScyllaDBManagerControllerName), err)
+		}
+
+		return false, nil
+	}
+
+	return true, nil
 }

@@ -3,8 +3,11 @@
 package scylladbmanagertask
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"maps"
 	"math"
 	"regexp"
 	"slices"
@@ -13,9 +16,11 @@ import (
 	"time"
 
 	"github.com/go-openapi/strfmt"
+	"github.com/mitchellh/mapstructure"
 	"github.com/scylladb/scylla-manager/v3/pkg/managerclient"
 	"github.com/scylladb/scylla-manager/v3/pkg/util/timeutc"
 	"github.com/scylladb/scylla-manager/v3/pkg/util/uuid"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
@@ -26,6 +31,7 @@ import (
 	hashutil "github.com/scylladb/scylla-operator/pkg/util/hash"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 )
@@ -128,6 +134,11 @@ func (smtc *Controller) syncManager(
 	}
 
 	status.TaskID = &managerTask.ID
+
+	err = smtc.syncScyllaV1TaskStatusAnnotation(ctx, smt, managerTask)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't sync scyllav1 task status annotation for ScyllaDBManagerTask %q: %w", naming.ObjRef(smt), err)
+	}
 
 	if ownerUIDLabelValue == string(smt.UID) && requiredManagerTask.Labels[naming.ManagedHash] == managerTask.Labels[naming.ManagedHash] {
 		// Cluster matches the desired state, nothing to do.
@@ -644,4 +655,114 @@ func scyllaDBManagerClientTaskName(smt *scyllav1alpha1.ScyllaDBManagerTask) stri
 	}
 
 	return smt.Name
+}
+
+func (smtc *Controller) syncScyllaV1TaskStatusAnnotation(ctx context.Context, smt *scyllav1alpha1.ScyllaDBManagerTask, managerClientTask *managerclient.TaskListItem) error {
+	scyllaV1TaskStatusAnnotationValue, err := makeScyllaV1TaskStatusAnnotationValue(managerClientTask)
+	if err != nil {
+		return fmt.Errorf("can't make scyllav1 task status annotation value: %w", err)
+	}
+
+	if controllerhelpers.HasMatchingAnnotation(smt, naming.ScyllaDBManagerTaskStatusAnnotation, scyllaV1TaskStatusAnnotationValue) {
+		return nil
+	}
+
+	patch, err := controllerhelpers.PrepareSetAnnotationPatch(smt, naming.ScyllaDBManagerTaskStatusAnnotation, &scyllaV1TaskStatusAnnotationValue)
+	if err != nil {
+		return fmt.Errorf("can't prepare patch setting annotation: %w", err)
+	}
+
+	_, err = smtc.scyllaClient.ScyllaDBManagerTasks(smt.Namespace).Patch(ctx, smt.Name, types.MergePatchType, patch, metav1.PatchOptions{})
+	if err != nil {
+		return fmt.Errorf("can't patch ScyllaDBManagerTask: %w", err)
+	}
+
+	return nil
+}
+
+func makeScyllaV1TaskStatusAnnotationValue(t *managerclient.TaskListItem) (string, error) {
+	buf := bytes.Buffer{}
+
+	switch t.Type {
+	case managerclient.BackupTask:
+		backupTaskStatus, err := newScyllaV1BackupTaskStatus(t)
+		if err != nil {
+			return "", fmt.Errorf("can't make scyllav1.BackupTaskStatus: %w", err)
+		}
+
+		err = json.NewEncoder(&buf).Encode(backupTaskStatus)
+		if err != nil {
+			return "", fmt.Errorf("can't encode scyllav1.BackupTaskStatus: %w", err)
+		}
+
+	case managerclient.RepairTask:
+		repairTaskStatus, err := newScyllaV1RepairTaskStatus(t)
+		if err != nil {
+			return "", fmt.Errorf("can't make scyllav1.RepairTaskStatus: %w", err)
+		}
+
+		err = json.NewEncoder(&buf).Encode(repairTaskStatus)
+		if err != nil {
+			return "", fmt.Errorf("can't encode scyllav1.RepairTaskStatus: %w", err)
+		}
+
+	default:
+		return "", fmt.Errorf("unsupported manager client task type: %q", t.Type)
+
+	}
+
+	return buf.String(), nil
+}
+
+func newScyllaV1BackupTaskStatus(t *managerclient.TaskListItem) (*scyllav1.BackupTaskStatus, error) {
+	bts := &scyllav1.BackupTaskStatus{}
+
+	bts.TaskStatus = newScyllaV1TaskStatus(t)
+
+	if t.Properties != nil {
+		props := t.Properties.(map[string]interface{})
+		if err := mapstructure.Decode(props, bts); err != nil {
+			return nil, fmt.Errorf("can't decode properties: %w", err)
+		}
+	}
+
+	return bts, nil
+}
+
+func newScyllaV1RepairTaskStatus(t *managerclient.TaskListItem) (*scyllav1.RepairTaskStatus, error) {
+	rts := &scyllav1.RepairTaskStatus{}
+
+	rts.TaskStatus = newScyllaV1TaskStatus(t)
+
+	if t.Properties != nil {
+		props := t.Properties.(map[string]interface{})
+		if err := mapstructure.Decode(props, rts); err != nil {
+			return nil, fmt.Errorf("can't decode properties: %w", err)
+		}
+	}
+
+	return rts, nil
+}
+
+func newScyllaV1TaskStatus(t *managerclient.TaskListItem) scyllav1.TaskStatus {
+	taskStatus := scyllav1.TaskStatus{
+		SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{},
+		Name:                t.Name,
+		Labels:              maps.Clone(t.Labels),
+		ID:                  pointer.Ptr(t.ID),
+	}
+
+	taskStatus.SchedulerTaskStatus = newScyllaV1SchedulerTaskStatus(t.Schedule)
+
+	return taskStatus
+}
+
+func newScyllaV1SchedulerTaskStatus(schedule *managerclient.Schedule) scyllav1.SchedulerTaskStatus {
+	return scyllav1.SchedulerTaskStatus{
+		StartDate:  pointer.Ptr(schedule.StartDate.String()),
+		Interval:   pointer.Ptr(schedule.Interval),
+		NumRetries: pointer.Ptr(schedule.NumRetries),
+		Cron:       pointer.Ptr(schedule.Cron),
+		Timezone:   pointer.Ptr(schedule.Timezone),
+	}
 }

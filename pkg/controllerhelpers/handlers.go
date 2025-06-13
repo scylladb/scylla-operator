@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -20,7 +21,7 @@ type InformerHandler struct {
 	Handler  cache.ResourceEventHandler
 }
 
-type KeyFuncType func(obj interface{}) (string, error)
+type KeyFuncType func(obj interface{}) (types.NamespacedName, error)
 
 type HandlerOperationType string
 
@@ -45,14 +46,14 @@ type EnqueueFuncType func(int, kubeinterfaces.ObjectInterface, HandlerOperationT
 type DeleteFuncType = func(any)
 
 type Handlers[T kubeinterfaces.ObjectInterface] struct {
-	queue        workqueue.RateLimitingInterface
+	queue        workqueue.TypedRateLimitingInterface[types.NamespacedName]
 	keyFunc      KeyFuncType
 	scheme       *runtime.Scheme
 	gvk          schema.GroupVersionKind
 	getterLister kubeinterfaces.GetterLister[T]
 }
 
-func NewHandlers[T kubeinterfaces.ObjectInterface](queue workqueue.RateLimitingInterface, keyFunc KeyFuncType, scheme *runtime.Scheme, gvk schema.GroupVersionKind, getterLister kubeinterfaces.GetterLister[T]) (*Handlers[T], error) {
+func NewHandlers[T kubeinterfaces.ObjectInterface](queue workqueue.TypedRateLimitingInterface[types.NamespacedName], keyFunc KeyFuncType, scheme *runtime.Scheme, gvk schema.GroupVersionKind, getterLister kubeinterfaces.GetterLister[T]) (*Handlers[T], error) {
 	return &Handlers[T]{
 		queue:        queue,
 		keyFunc:      keyFunc,
@@ -172,7 +173,7 @@ func (h *Handlers[QT]) HandleUpdateWithDepth(depth int, oldUntyped, curUntyped a
 		}
 
 		if deleteFunc != nil {
-			deleteFunc(cache.DeletedFinalStateUnknown{
+			deleteFunc(DeletedStronglyTypedFinalStateUnknown{
 				Key: key,
 				Obj: old,
 			})
@@ -187,7 +188,7 @@ func (h *Handlers[QT]) HandleUpdate(old, cur any, enqueueFunc EnqueueFuncType, d
 }
 
 func (h *Handlers[T]) HandleDeleteWithDepth(depth int, obj any, enqueueFunc EnqueueFuncType) {
-	tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+	tombstone, ok := obj.(DeletedStronglyTypedFinalStateUnknown)
 	if ok {
 		klog.V(5).InfoSDepth(depth, "Observed deletion", getObjectLogContext(tombstone.Obj.(kubeinterfaces.ObjectInterface), nil)...)
 		enqueueFunc(depth+1, tombstone.Obj.(kubeinterfaces.ObjectInterface), HandlerOperationTypeDelete)
@@ -201,4 +202,37 @@ func (h *Handlers[T]) HandleDeleteWithDepth(depth int, obj any, enqueueFunc Enqu
 
 func (h *Handlers[T]) HandleDelete(obj any, enqueueFunc EnqueueFuncType) {
 	h.HandleDeleteWithDepth(2, obj, enqueueFunc)
+}
+
+// DeletedStronglyTypedFinalStateUnknown is like DeletedFinalStateUnknown, but
+// uses a types.NamespacedName as the key. This is useful for objects that are
+// namespaced, as it allows for more precise identification of the object.
+type DeletedStronglyTypedFinalStateUnknown struct {
+	Key types.NamespacedName
+	Obj interface{}
+}
+
+// DeletionHandlingTypedKeyFunc checks for
+// DeletedStronglyTypedFinalStateUnknown objects before calling
+// MetaNamespaceKeyFuncWithStrongType. This function is essentially the
+// same as the function DeletionHandlingMetaNamespaceKeyFunc
+// but it handles keys of the types.NamespacedName type.
+// This is required for queues that use strongly typed keys of the same type
+func DeletionHandlingTypedKeyFunc(obj interface{}) (types.NamespacedName, error) {
+	if d, ok := obj.(DeletedStronglyTypedFinalStateUnknown); ok {
+		return d.Key, nil
+	}
+	return MetaNamespaceKeyFuncWithStrongType(obj)
+}
+
+// MetaNamespaceKeyFuncWithStrongType is a KeyFunc that returns
+// types.NamespacedName. This function is similar to
+// MetaNamespaceKeyFunc, but it returns a structured key instead of a string.
+// It is useful for queues that use strongly typed keys of the same type.
+func MetaNamespaceKeyFuncWithStrongType(obj interface{}) (types.NamespacedName, error) {
+	objName, err := cache.ObjectToName(obj)
+	if err != nil {
+		return types.NamespacedName{}, err
+	}
+	return types.NamespacedName{Namespace: objName.Namespace, Name: objName.Name}, nil
 }

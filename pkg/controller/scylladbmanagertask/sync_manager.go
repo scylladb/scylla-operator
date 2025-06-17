@@ -105,7 +105,12 @@ func (smtc *Controller) syncManager(
 	}
 
 	ownerUIDLabelValue, hasOwnerUIDLabel := managerTask.Labels[naming.OwnerUIDLabel]
-	if !hasOwnerUIDLabel {
+	_, hasMissingOwnerUIDForceAdoptAnnotation := smt.Annotations[naming.ScyllaDBManagerTaskMissingOwnerUIDForceAdoptAnnotation]
+	if !hasOwnerUIDLabel && hasMissingOwnerUIDForceAdoptAnnotation {
+		// The task could have been created by the legacy component (manager-controller), in which case it does not have the owner UID label.
+		// For backward compatibility, we adopt it instead of recreating it if the internal annotation forcing adoption is set.
+		klog.Warningf("Task %q (%q) already exists in ScyllaDB Manager state with no owner UID label. ScyllaDBManagerTask %q will adopt it as it has the annotation forcing its adoption: %q.", managerTask.Name, managerTask.ID, klog.KObj(smt), naming.ScyllaDBManagerTaskMissingOwnerUIDForceAdoptAnnotation)
+	} else if !hasOwnerUIDLabel {
 		var missingOwnerUIDProgressingConditions []metav1.Condition
 		missingOwnerUIDProgressingConditions, err = smtc.syncManagerClientTaskMissingOwnerUID(ctx, smt, managerClient, clusterID, managerTask)
 		progressingConditions = append(progressingConditions, missingOwnerUIDProgressingConditions...)
@@ -114,6 +119,12 @@ func (smtc *Controller) syncManager(
 		}
 
 		return progressingConditions, nil
+	} else if ownerUIDLabelValue != string(smt.UID) {
+		// The task already exists in ScyllaDB Manager state, but it has a different owner.
+		// This can happen if the task was created by a different ScyllaDBManagerTask instance and a name collision occurred.
+		// Adopting the task could hinder bugs, so we return an error instead.
+		klog.Warningf("Task %q (%q) already exists in ScyllaDB Manager state with a mismatching owner UID label value: %q. ScyllaDBManagerTask %q will not adopt it.", managerTask.Name, managerTask.ID, ownerUIDLabelValue, klog.KObj(smt))
+		return progressingConditions, controllertools.NonRetriable(fmt.Errorf("task %q already exists in ScyllaDB Manager state with a mismatching owner UID label value (%q)", managerTask.Name, ownerUIDLabelValue))
 	}
 
 	status.TaskID = &managerTask.ID
@@ -121,12 +132,6 @@ func (smtc *Controller) syncManager(
 	if ownerUIDLabelValue == string(smt.UID) && requiredManagerTask.Labels[naming.ManagedHash] == managerTask.Labels[naming.ManagedHash] {
 		// Cluster matches the desired state, nothing to do.
 		return progressingConditions, nil
-	}
-
-	if ownerUIDLabelValue != string(smt.UID) {
-		// Ideally, we wouldn't do anything here as this is error-prone and might hinder discovering bugs.
-		// However, the task could have been created by the legacy component (manager-controller), so we update it to become a new owner without disrupting the state.
-		klog.Warningf("Task %q already exists in ScyllaDB Manager state and has an owner UID label (%q), but it has a different owner. ScyllaDBManagerTask %q will adopt it.", managerTask.Name, ownerUIDLabelValue, klog.KObj(smt))
 	}
 
 	requiredManagerTask.ID = managerTask.ID

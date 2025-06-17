@@ -252,7 +252,9 @@ const (
 	ScyllaDBManagerClusterRegistrationFinalizer              = "scylla-operator.scylladb.com/scylladbmanagerclusterregistration-deletion"
 	ScyllaDBManagerClusterRegistrationNameOverrideAnnotation = "internal.scylla-operator.scylladb.com/scylladb-manager-cluster-name-override"
 
-	ScyllaDBManagerTaskFinalizer                                   = "scylla-operator.scylladb.com/scylladbmanagertask-deletion"
+	ScyllaDBManagerTaskFinalizer = "scylla-operator.scylladb.com/scylladbmanagertask-deletion"
+	// ScyllaDBManagerTaskMissingOwnerUIDForceAdoptAnnotation is used to annotate a ScyllaDBManagerTask to force adoption of a matching task in ScyllaDB Manager state that is missing an owner UID label.
+	ScyllaDBManagerTaskMissingOwnerUIDForceAdoptAnnotation         = "internal.scylla-operator.scylladb.com/scylladb-manager-task-missing-owner-uid-force-adopt"
 	ScyllaDBManagerTaskNameOverrideAnnotation                      = "internal.scylla-operator.scylladb.com/scylladb-manager-task-name-override"
 	ScyllaDBManagerTaskScheduleIntervalOverrideAnnotation          = "internal.scylla-operator.scylladb.com/scylladb-manager-task-schedule-interval-override"
 	ScyllaDBManagerTaskScheduleStartDateOverrideAnnotation         = "internal.scylla-operator.scylladb.com/scylladb-manager-task-schedule-start-date-override"

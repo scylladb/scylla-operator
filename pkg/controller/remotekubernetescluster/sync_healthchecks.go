@@ -9,6 +9,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/discovery"
 	"k8s.io/klog/v2"
@@ -19,7 +20,7 @@ const (
 	remoteKubeClientName   = "RemoteKubernetes"
 )
 
-func (rkcc *Controller) syncClientHealthchecks(ctx context.Context, key string, rkc *scyllav1alpha1.RemoteKubernetesCluster, status *scyllav1alpha1.RemoteKubernetesClusterStatus) ([]metav1.Condition, error) {
+func (rkcc *Controller) syncClientHealthchecks(ctx context.Context, key types.NamespacedName, rkc *scyllav1alpha1.RemoteKubernetesCluster, status *scyllav1alpha1.RemoteKubernetesClusterStatus) ([]metav1.Condition, error) {
 	var progressingConditions []metav1.Condition
 	var errs []error
 

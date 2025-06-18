@@ -49,7 +49,7 @@ spec:
         operator: Equal
         value: scyllaclusters
   datacenters:
-  {{- range $rkcIdx, $rkc := .remoteKubernetesClusters }}
-  - name: dc-{{ $rkcIdx }}
+  {{- range $rkcKey, $rkc := .remoteKubernetesClusterMap }}
+  - name: {{ $rkcKey }}
     remoteKubernetesClusterName: {{ $rkc.Name }}
   {{- end }}

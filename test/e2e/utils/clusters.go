@@ -28,61 +28,59 @@ var (
 	}
 )
 
-func SetUpRemoteKubernetesClustersFromRestConfigs(ctx context.Context, restConfigs []*rest.Config, f *framework.Framework) ([]*scyllav1alpha1.RemoteKubernetesCluster, map[string]framework.ClusterInterface, error) {
-	availableClusters := len(restConfigs)
-
+// SetUpRemoteKubernetesClusters creates RemoteKubernetesCluster objects for each worker cluster.
+// It returns a map of RemoteKubernetesCluster objects keyed by cluster name and a map of clusters keyed by RemoteKubernetesCluster name.
+func SetUpRemoteKubernetesClusters(ctx context.Context, metaCluster framework.ClusterInterface, workerClusters map[string]framework.ClusterInterface) (map[string]*scyllav1alpha1.RemoteKubernetesCluster, map[string]framework.ClusterInterface, error) {
 	framework.By("Creating RemoteKubernetesClusters")
-	rkcs := make([]*scyllav1alpha1.RemoteKubernetesCluster, 0, availableClusters)
-	rkcClusterMap := make(map[string]framework.ClusterInterface, availableClusters)
+	rkcMap := make(map[string]*scyllav1alpha1.RemoteKubernetesCluster, len(workerClusters))
+	rkcClusterMap := make(map[string]framework.ClusterInterface, len(workerClusters))
 
-	metaCluster := f.Cluster(0)
 	rkcSecretsNs, _ := metaCluster.CreateUserNamespace(ctx)
-	for idx := range availableClusters {
-		cluster := f.Cluster(idx)
+	for key, cluster := range workerClusters {
 		tokenNs, _ := cluster.CreateUserNamespace(ctx)
 
-		clusterName := fmt.Sprintf("%s-%d", f.Namespace(), idx)
+		clusterName := cluster.Name()
 
-		framework.By("Creating SA having Operator ClusterRole in #%d cluster", idx)
+		framework.By("Creating SA having Operator ClusterRole in cluster %q", clusterName)
 		adminKubeconfig, err := GetKubeConfigHavingOperatorRemoteClusterRole(ctx, cluster.KubeAdminClient(), cluster.AdminClientConfig(), clusterName, tokenNs.Name)
 		if err != nil {
-			return nil, nil, fmt.Errorf("can't get kubeconfig for %d'th cluster: %w", idx, err)
+			return nil, nil, fmt.Errorf("can't get kubeconfig for cluster %q: %w", clusterName, err)
 		}
 
 		kubeconfig, err := clientcmd.Write(adminKubeconfig)
 		if err != nil {
-			return nil, nil, fmt.Errorf("can't write kubeconfig for %d'th cluster: %w", idx, err)
+			return nil, nil, fmt.Errorf("can't write kubeconfig for cluster %q: %w", clusterName, err)
 		}
 
 		rkc, err := GetRemoteKubernetesClusterWithKubeconfig(ctx, metaCluster.KubeAdminClient(), kubeconfig, clusterName, rkcSecretsNs.Name)
 		if err != nil {
-			return nil, nil, fmt.Errorf("can't make remotekubernetescluster for %d'th cluster: %w", idx, err)
+			return nil, nil, fmt.Errorf("can't make remotekubernetescluster for cluster %q: %w", clusterName, err)
 		}
 
 		rc := framework.NewRestoringCleaner(
 			ctx,
-			f.AdminClientConfig(),
-			f.KubeAdminClient(),
-			f.DynamicAdminClient(),
+			metaCluster.AdminClientConfig(),
+			metaCluster.KubeAdminClient(),
+			metaCluster.DynamicAdminClient(),
 			remoteKubernetesClusterResourceInfo,
 			rkc.Namespace,
 			rkc.Name,
 			framework.RestoreStrategyRecreate,
 		)
-		f.AddCleaners(rc)
+		metaCluster.AddCleaners(rc)
 		rc.DeleteObject(ctx, true)
 
-		framework.By("Creating RemoteKubernetesCluster %q with credentials to cluster #%d", clusterName, idx)
+		framework.By("Creating RemoteKubernetesCluster %q with credentials to cluster %q", rkc.Name, clusterName)
 		rkc, err = metaCluster.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters().Create(ctx, rkc, metav1.CreateOptions{})
 		if err != nil {
-			return nil, nil, fmt.Errorf("can't create remotekubernetescluster for %d'th cluster: %w", idx, err)
+			return nil, nil, fmt.Errorf("can't create remotekubernetescluster for cluster %q: %w", clusterName, err)
 		}
 
-		rkcs = append(rkcs, rkc)
+		rkcMap[key] = rkc
 		rkcClusterMap[rkc.Name] = cluster
 	}
 
-	for _, rkc := range rkcs {
+	for _, rkc := range rkcMap {
 		err := func() error {
 			framework.By("Waiting for the RemoteKubernetesCluster %q to roll out (RV=%s)", rkc.Name, rkc.ResourceVersion)
 			waitCtx1, waitCtx1Cancel := ContextForRemoteKubernetesClusterRollout(ctx, rkc)
@@ -100,7 +98,7 @@ func SetUpRemoteKubernetesClustersFromRestConfigs(ctx context.Context, restConfi
 		}
 	}
 
-	return rkcs, rkcClusterMap, nil
+	return rkcMap, rkcClusterMap, nil
 }
 
 func GetRemoteKubernetesClusterWithOperatorClusterRole(ctx context.Context, kubeAdminClient kubernetes.Interface, adminConfig *rest.Config, name, namespace string) (*scyllav1alpha1.RemoteKubernetesCluster, error) {

@@ -51,7 +51,7 @@ var supportedBroadcastAddressTypes = []scyllav1.BroadcastAddressType{
 }
 
 type TestFrameworkOptions struct {
-	genericclioptions.ClientConfigSet
+	genericclioptions.MultiDatacenterClientConfig
 
 	ArtifactsDir                string
 	CleanupPolicyUntyped        string
@@ -74,10 +74,10 @@ type TestFrameworkOptions struct {
 
 func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent string) *TestFrameworkOptions {
 	return &TestFrameworkOptions{
-		ClientConfigSet:      genericclioptions.NewClientConfigSet(userAgent),
-		ArtifactsDir:         "",
-		CleanupPolicyUntyped: string(framework.CleanupPolicyAlways),
-		IngressController:    &IngressControllerOptions{},
+		MultiDatacenterClientConfig: genericclioptions.NewMultiDatacenterClientConfig(userAgent),
+		ArtifactsDir:                "",
+		CleanupPolicyUntyped:        string(framework.CleanupPolicyAlways),
+		IngressController:           &IngressControllerOptions{},
 		ScyllaClusterOptionsUntyped: &ScyllaClusterOptions{
 			NodeServiceType:             string(scyllav1.NodeServiceTypeHeadless),
 			NodesBroadcastAddressType:   string(scyllav1.BroadcastAddressTypePodIP),
@@ -99,7 +99,7 @@ func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent stri
 }
 
 func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
-	o.ClientConfigSet.AddFlags(cmd)
+	o.MultiDatacenterClientConfig.AddFlags(cmd)
 
 	cmd.PersistentFlags().StringVarP(&o.ArtifactsDir, "artifacts-dir", "", o.ArtifactsDir, "A directory for storing test artifacts. No data is collected until set.")
 	cmd.PersistentFlags().StringVarP(&o.CleanupPolicyUntyped, "delete-namespace-policy", "", o.CleanupPolicyUntyped, fmt.Sprintf("Namespace deletion policy. Allowed values are [%s].", strings.Join(
@@ -148,7 +148,7 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 func (o *TestFrameworkOptions) Validate(args []string) error {
 	var errors []error
 
-	err := o.ClientConfigSet.Validate()
+	err := o.MultiDatacenterClientConfig.Validate()
 	if err != nil {
 		errors = append(errors, err)
 	}
@@ -239,7 +239,7 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 }
 
 func (o *TestFrameworkOptions) Complete(args []string) error {
-	err := o.ClientConfigSet.Complete()
+	err := o.MultiDatacenterClientConfig.Complete()
 	if err != nil {
 		return err
 	}
@@ -282,10 +282,14 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 		o.s3CredentialsFile = s3CredentialsFile
 	}
 
+	workerRestConfigs := make(map[string]*rest.Config, len(o.MultiDatacenterClientConfig.WorkerClientConfigs))
+	for k, v := range o.MultiDatacenterClientConfig.WorkerClientConfigs {
+		workerRestConfigs[k] = v.RestConfig
+	}
+
 	framework.TestContext = &framework.TestContextType{
-		RestConfigs: oslices.ConvertSlice(o.ClientConfigs, func(cc genericclioptions.ClientConfig) *rest.Config {
-			return cc.RestConfig
-		}),
+		RestConfig:                  o.ClientConfig.RestConfig,
+		WorkerRestConfigs:           workerRestConfigs,
 		ArtifactsDir:                o.ArtifactsDir,
 		CleanupPolicy:               o.CleanupPolicy,
 		ScyllaClusterOptions:        o.scyllaClusterOptions,

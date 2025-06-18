@@ -4,7 +4,6 @@ package remotekubernetescluster
 
 import (
 	"context"
-	"fmt"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
@@ -24,14 +23,14 @@ var _ = g.Describe("RemoteKubernetesCluster finalizer", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		idx := 0
-		cluster := f.Cluster(idx)
-		userNs, _ := cluster.CreateUserNamespace(ctx)
+		cluster := f.Cluster()
+		userNs, _ := f.CreateUserNamespace(ctx)
 
-		rkcName := fmt.Sprintf("%s-%d", f.Namespace(), idx)
+		rkcClusterKey := "dc-1"
+		rkcName := cluster.Name()
 
-		framework.By("Creating RemoteKubernetesCluster %q with credentials to cluster #%d", rkcName, idx)
-		originalRKC, err := utils.GetRemoteKubernetesClusterWithOperatorClusterRole(ctx, cluster.KubeAdminClient(), cluster.AdminClientConfig(), rkcName, userNs.Name)
+		framework.By("Creating RemoteKubernetesCluster %q with credentials to cluster %q", rkcName, cluster.Name())
+		originalRKC, err := utils.GetRemoteKubernetesClusterWithOperatorClusterRole(ctx, f.KubeAdminClient(), f.AdminClientConfig(), rkcName, userNs.Name)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		rc := framework.NewRestoringCleaner(
@@ -88,7 +87,7 @@ var _ = g.Describe("RemoteKubernetesCluster finalizer", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Creating ScyllaDBCluster using RemoteKubernetesCluster %q", rkcName)
-		sc1 := f.GetDefaultScyllaDBCluster([]*scyllav1alpha1.RemoteKubernetesCluster{rkc})
+		sc1 := f.GetDefaultScyllaDBCluster(map[string]*scyllav1alpha1.RemoteKubernetesCluster{rkcClusterKey: rkc})
 
 		sc1, err = cluster.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(f.Namespace()).Create(ctx, sc1, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())

@@ -24,4 +24,4 @@ export SO_NODECONFIG_PATH
 # We need to strip the tag because skopeo doesn't support references with both a tag and a digest.
 SO_IMAGE="${SO_IMAGE/:*([^:\/])@/@}"
 echo "${SO_IMAGE}"
-ARTIFACTS_DEPLOY_DIR="${ARTIFACTS}/deploy" timeout --foreground -v 10m "${parent_dir}/../ci-deploy-release.sh" "${SO_IMAGE}"
+run-deploy-script-in-all-clusters "${parent_dir}/../ci-deploy-release.sh"

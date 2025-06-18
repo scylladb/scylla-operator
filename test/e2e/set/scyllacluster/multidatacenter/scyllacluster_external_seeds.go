@@ -4,6 +4,8 @@ package multidatacenter
 
 import (
 	"context"
+	"maps"
+	"slices"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
@@ -26,12 +28,15 @@ var _ = g.Describe("MultiDC cluster", framework.MultiDatacenter, func() {
 
 		const clusterName = "multi-datacenter-cluster"
 
+		clusters := slices.Collect(maps.Values(f.WorkerClusters()))
+		o.Expect(len(clusters)).To(o.BeNumerically(">=", 3), "This test requires at least 3 worker clusters")
+
 		sc0 := f.GetDefaultZonalScyllaClusterWithThreeRacks()
 		sc0.Name = clusterName
 		sc0.Spec.Datacenter.Name = "dc0"
 
-		ns0, ns0Client, ok := f.Cluster(0).DefaultNamespaceIfAny()
-		o.Expect(ok).To(o.BeTrue())
+		framework.By("Creating namespace in cluster #0")
+		ns0, ns0Client := clusters[0].CreateUserNamespace(ctx)
 
 		framework.By("Creating ScyllaCluster #0")
 		sc0, err := ns0Client.ScyllaClient().ScyllaV1().ScyllaClusters(ns0.GetName()).Create(ctx, sc0, metav1.CreateOptions{})
@@ -64,7 +69,7 @@ var _ = g.Describe("MultiDC cluster", framework.MultiDatacenter, func() {
 		sc1.Spec.ExternalSeeds = append(make([]string, 0, len(seeds0)), seeds0...)
 
 		framework.By("Creating namespace in cluster #1")
-		ns1, ns1Client := f.Cluster(1).CreateUserNamespace(ctx)
+		ns1, ns1Client := clusters[1].CreateUserNamespace(ctx)
 
 		framework.By("Creating ScyllaCluster #1")
 		sc1, err = ns1Client.ScyllaClient().ScyllaV1().ScyllaClusters(ns1.GetName()).Create(ctx, sc1, metav1.CreateOptions{})
@@ -123,7 +128,7 @@ var _ = g.Describe("MultiDC cluster", framework.MultiDatacenter, func() {
 		sc2.Spec.ExternalSeeds = append(append(make([]string, 0, len(seeds0)+len(seeds1)), seeds0...), seeds1...)
 
 		framework.By("Creating namespace in cluster #2")
-		ns2, ns2Client := f.Cluster(2).CreateUserNamespace(ctx)
+		ns2, ns2Client := clusters[2].CreateUserNamespace(ctx)
 
 		framework.By("Creating ScyllaCluster #2")
 		sc2, err = ns2Client.ScyllaClient().ScyllaV1().ScyllaClusters(ns2.GetName()).Create(ctx, sc2, metav1.CreateOptions{})

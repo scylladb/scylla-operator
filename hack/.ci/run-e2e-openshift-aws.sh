@@ -34,14 +34,7 @@ export SO_NODECONFIG_PATH
 SO_CSI_DRIVER_PATH="${SO_CSI_DRIVER_PATH=${parent_dir}/manifests/namespaces/local-csi-driver/}"
 export SO_CSI_DRIVER_PATH
 
-for i in "${!KUBECONFIGS[@]}"; do
-  KUBECONFIG="${KUBECONFIGS[$i]}" DEPLOY_DIR="${ARTIFACTS}/deploy/${i}" timeout --foreground -v 10m "${parent_dir}/../ci-deploy.sh" "${SO_IMAGE}" &
-  ci_deploy_bg_pids["${i}"]=$!
-done
+run-deploy-script-in-all-clusters "${parent_dir}/../ci-deploy.sh"
 
-for pid in "${ci_deploy_bg_pids[@]}"; do
-  wait "${pid}"
-done
-
-KUBECONFIG="${KUBECONFIGS[0]}" apply-e2e-workarounds
-KUBECONFIG="${KUBECONFIGS[0]}" run-e2e
+apply-e2e-workarounds
+run-e2e

@@ -28,10 +28,13 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		rkcs, rkcClusterMap, err := utils.SetUpRemoteKubernetesClustersFromRestConfigs(ctx, framework.TestContext.RestConfigs, f)
+		workerClusters := f.WorkerClusters()
+		o.Expect(workerClusters).NotTo(o.BeEmpty(), "At least 1 worker cluster is required")
+
+		rkcMap, rkcClusterMap, err := utils.SetUpRemoteKubernetesClusters(ctx, f, workerClusters)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		o.Expect(len(rkcs)).To(o.BeNumerically(">=", 2))
+		o.Expect(len(rkcMap)).To(o.BeNumerically(">=", 2))
 
 		framework.By("Creating ScyllaDBCluster")
 		scyllaConfigCM := &corev1.ConfigMap{
@@ -59,32 +62,32 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 		scyllaManagerAgentConfigSecret, err = f.KubeClient().CoreV1().Secrets(f.Namespace()).Create(ctx, scyllaManagerAgentConfigSecret, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		sc := f.GetDefaultScyllaDBCluster(rkcs)
+		sc := f.GetDefaultScyllaDBCluster(rkcMap)
 		sc.Spec.DatacenterTemplate.ScyllaDB.CustomConfigMapRef = pointer.Ptr(scyllaConfigCM.Name)
 		sc.Spec.DatacenterTemplate.ScyllaDBManagerAgent = &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
 			CustomConfigSecretRef: pointer.Ptr(scyllaManagerAgentConfigSecret.Name),
 		}
 
-		metaCluster := f.Cluster(0)
-		sc, err = metaCluster.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+		sc, err = f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the ScyllaDBCluster %q roll out (RV=%s)", sc.Name, sc.ResourceVersion)
 		waitCtx2, waitCtx2Cancel := utils.ContextForMultiDatacenterScyllaDBClusterRollout(ctx, sc)
 		defer waitCtx2Cancel()
-		sc, err = controllerhelpers.WaitForScyllaDBClusterState(waitCtx2, metaCluster.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaDBClusterRolledOut)
+		sc, err = controllerhelpers.WaitForScyllaDBClusterState(waitCtx2, f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaDBClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		utils.RegisterCollectionOfRemoteScyllaDBClusterNamespaces(ctx, sc, rkcClusterMap)
+		err = utils.RegisterCollectionOfRemoteScyllaDBClusterNamespaces(ctx, sc, rkcClusterMap)
+		o.Expect(err).NotTo(o.HaveOccurred())
 
 		scylladbclusterverification.Verify(ctx, sc, rkcClusterMap)
 		err = scylladbclusterverification.WaitForFullQuorum(ctx, rkcClusterMap, sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Removing Operator access to remote Kubernetes cluster associated with last DC")
-		lastDCRKC := rkcs[len(rkcs)-1]
+		lastDCRKC := rkcMap[sc.Spec.Datacenters[len(sc.Spec.Datacenters)-1].Name]
 
-		lastDCRKCKubeconfigSecret, err := metaCluster.KubeAdminClient().CoreV1().Secrets(lastDCRKC.Spec.KubeconfigSecretRef.Namespace).Get(ctx, lastDCRKC.Spec.KubeconfigSecretRef.Name, metav1.GetOptions{})
+		lastDCRKCKubeconfigSecret, err := f.KubeAdminClient().CoreV1().Secrets(lastDCRKC.Spec.KubeconfigSecretRef.Namespace).Get(ctx, lastDCRKC.Spec.KubeconfigSecretRef.Name, metav1.GetOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		const kubeconfigKey = "kubeconfig"
@@ -93,7 +96,7 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 		o.Expect(lastDCRKCKubeconfigSecret.Data[kubeconfigKey]).ToNot(o.BeEmpty())
 		lastDCRKCWorkingKubeconfigBytes := lastDCRKCKubeconfigSecret.Data[kubeconfigKey]
 
-		_, err = metaCluster.KubeAdminClient().CoreV1().Secrets(lastDCRKCKubeconfigSecret.Namespace).Patch(
+		_, err = f.KubeAdminClient().CoreV1().Secrets(lastDCRKCKubeconfigSecret.Namespace).Patch(
 			ctx,
 			lastDCRKCKubeconfigSecret.Name,
 			types.JSONPatchType,
@@ -130,7 +133,7 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 		framework.By("Awaiting until ScyllaDBCluster is degraded")
 		waitCtx3, waitCtx3Cancel := utils.ContextForMultiDatacenterScyllaDBClusterRollout(ctx, sc)
 		defer waitCtx3Cancel()
-		sc, err = controllerhelpers.WaitForScyllaDBClusterState(waitCtx3, metaCluster.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{},
+		sc, err = controllerhelpers.WaitForScyllaDBClusterState(waitCtx3, f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{},
 			utils.IsScyllaDBClusterDegraded,
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -151,7 +154,7 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 		}).WithContext(waitCtx3).WithPolling(time.Second).Should(o.Succeed())
 
 		framework.By("Fixing Operator access to remote Kubernetes cluster associated with last DC")
-		_, err = metaCluster.KubeAdminClient().CoreV1().Secrets(lastDCRKCKubeconfigSecret.Namespace).Patch(
+		_, err = f.KubeAdminClient().CoreV1().Secrets(lastDCRKCKubeconfigSecret.Namespace).Patch(
 			ctx,
 			lastDCRKCKubeconfigSecret.Name,
 			types.JSONPatchType,
@@ -165,7 +168,7 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 		framework.By("Waiting for the ScyllaDBCluster %q roll out (RV=%s)", sc.Name, sc.ResourceVersion)
 		waitCtx4, waitCtx4Cancel := utils.ContextForMultiDatacenterScyllaDBClusterRollout(ctx, sc)
 		defer waitCtx4Cancel()
-		sc, err = controllerhelpers.WaitForScyllaDBClusterState(waitCtx4, metaCluster.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaDBClusterRolledOut)
+		sc, err = controllerhelpers.WaitForScyllaDBClusterState(waitCtx4, f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaDBClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Verifying if configuration change of ScyllaDB has been applied on all datacenters")

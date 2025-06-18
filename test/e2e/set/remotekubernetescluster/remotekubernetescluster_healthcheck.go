@@ -20,30 +20,32 @@ var _ = g.Describe("RemoteKubernetesCluster", func() {
 	f := framework.NewFramework("remotekubernetescluster")
 
 	var (
-		rkcs []*scyllav1alpha1.RemoteKubernetesCluster
+		rkcs          []*scyllav1alpha1.RemoteKubernetesCluster
+		rkcClusterMap map[string]framework.ClusterInterface
 	)
 
 	g.JustBeforeEach(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testSetupTimeout)
 		defer cancel()
 
-		availableClusters := len(framework.TestContext.RestConfigs)
-		o.Expect(availableClusters).ToNot(o.Equal(0))
+		workerClusters := f.WorkerClusters()
+		o.Expect(workerClusters).NotTo(o.BeEmpty(), "At least 1 worker cluster is required")
 
-		rkcs = make([]*scyllav1alpha1.RemoteKubernetesCluster, 0, availableClusters)
-		for idx := range availableClusters {
-			cluster := f.Cluster(idx)
-			userNs, _ := f.Cluster(idx).CreateUserNamespace(ctx)
+		rkcs = make([]*scyllav1alpha1.RemoteKubernetesCluster, 0, len(workerClusters))
+		rkcClusterMap = make(map[string]framework.ClusterInterface, len(workerClusters))
+		for _, rkcCluster := range workerClusters {
+			userNs, _ := rkcCluster.CreateUserNamespace(ctx)
 
-			rkcName := fmt.Sprintf("%s-%d", f.Namespace(), idx)
-			framework.By("Creating RemoteKubernetesCluster %q with credentials to cluster #%d", rkcName, idx)
-			rkc, err := utils.GetRemoteKubernetesClusterWithOperatorClusterRole(ctx, cluster.KubeAdminClient(), cluster.AdminClientConfig(), rkcName, userNs.Name)
+			rkcName := rkcCluster.Name()
+			framework.By("Creating RemoteKubernetesCluster %q with credentials to cluster %q", rkcName, rkcCluster.Name())
+			rkc, err := utils.GetRemoteKubernetesClusterWithOperatorClusterRole(ctx, rkcCluster.KubeAdminClient(), rkcCluster.AdminClientConfig(), rkcName, userNs.Name)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			rkc, err = cluster.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters().Create(ctx, rkc, metav1.CreateOptions{})
+			rkc, err = rkcCluster.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters().Create(ctx, rkc, metav1.CreateOptions{})
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			rkcs = append(rkcs, rkc)
+			rkcClusterMap[rkc.Name] = rkcCluster
 		}
 	})
 
@@ -51,12 +53,13 @@ var _ = g.Describe("RemoteKubernetesCluster", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTeardownTimeout)
 		defer cancel()
 
-		availableClusters := len(framework.TestContext.RestConfigs)
-		for idx := range availableClusters {
-			cluster := f.Cluster(idx)
+		for _, rkc := range rkcs {
+			rkcCluster, ok := rkcClusterMap[rkc.Name]
+			// Sanity check
+			o.Expect(ok).To(o.BeTrue())
 
 			// The framework does not clean non-namespaced resources.
-			err := cluster.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters().Delete(ctx, rkcs[idx].Name, metav1.DeleteOptions{})
+			err := rkcCluster.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters().Delete(ctx, rkc.Name, metav1.DeleteOptions{})
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
 	})
@@ -71,14 +74,13 @@ var _ = g.Describe("RemoteKubernetesCluster", func() {
 			defer waitCtx1Cancel()
 
 			var err error
-			rkc, err = controllerhelpers.WaitForRemoteKubernetesClusterState(waitCtx1, f.Cluster(0).ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters(), rkc.Name, controllerhelpers.WaitForStateOptions{},
+			rkc, err = controllerhelpers.WaitForRemoteKubernetesClusterState(waitCtx1, f.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters(), rkc.Name, controllerhelpers.WaitForStateOptions{},
 				utils.IsRemoteKubernetesClusterRolledOut,
 			)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			framework.By("Breaking access to remote Kubernetes cluster")
-			cluster := f.Cluster(0)
-			kubeconfig, err := utils.GetKubeConfigHavingOperatorRemoteClusterRole(ctx, cluster.KubeAdminClient(), cluster.AdminClientConfig(), rkc.Name, rkc.Spec.KubeconfigSecretRef.Namespace)
+			kubeconfig, err := utils.GetKubeConfigHavingOperatorRemoteClusterRole(ctx, f.KubeAdminClient(), f.AdminClientConfig(), rkc.Name, rkc.Spec.KubeconfigSecretRef.Namespace)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			validToken := kubeconfig.AuthInfos[kubeconfig.CurrentContext].Token
@@ -88,10 +90,10 @@ var _ = g.Describe("RemoteKubernetesCluster", func() {
 			noAccessKubeconfig, err := clientcmd.Write(kubeconfig)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			rkcSecret, err := f.Cluster(0).KubeAdminClient().CoreV1().Secrets(rkc.Spec.KubeconfigSecretRef.Namespace).Get(ctx, rkc.Spec.KubeconfigSecretRef.Name, metav1.GetOptions{})
+			rkcSecret, err := f.KubeAdminClient().CoreV1().Secrets(rkc.Spec.KubeconfigSecretRef.Namespace).Get(ctx, rkc.Spec.KubeconfigSecretRef.Name, metav1.GetOptions{})
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			_, err = f.Cluster(0).KubeAdminClient().CoreV1().Secrets(rkcSecret.Namespace).Patch(
+			_, err = f.KubeAdminClient().CoreV1().Secrets(rkcSecret.Namespace).Patch(
 				ctx,
 				rkcSecret.Name,
 				types.MergePatchType,
@@ -103,7 +105,7 @@ var _ = g.Describe("RemoteKubernetesCluster", func() {
 			framework.By("Awaiting until RemoteKubernetesCluster %q becomes unavailable", rkc.Name)
 			waitCtx2, waitCtx2Cancel := utils.ContextForRemoteKubernetesClusterRollout(ctx, rkc)
 			defer waitCtx2Cancel()
-			rkc, err = controllerhelpers.WaitForRemoteKubernetesClusterState(waitCtx2, f.Cluster(0).ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters(), rkc.Name, controllerhelpers.WaitForStateOptions{},
+			rkc, err = controllerhelpers.WaitForRemoteKubernetesClusterState(waitCtx2, f.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters(), rkc.Name, controllerhelpers.WaitForStateOptions{},
 				func(rkc *scyllav1alpha1.RemoteKubernetesCluster) (bool, error) {
 					notAvailable := helpers.IsStatusConditionPresentAndFalse(rkc.Status.Conditions, scyllav1alpha1.AvailableCondition, rkc.Generation)
 					notProgressing := helpers.IsStatusConditionPresentAndFalse(rkc.Status.Conditions, scyllav1alpha1.ProgressingCondition, rkc.Generation)
@@ -119,7 +121,7 @@ var _ = g.Describe("RemoteKubernetesCluster", func() {
 			fixedKubeconfig, err := clientcmd.Write(kubeconfig)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			_, err = f.Cluster(0).KubeAdminClient().CoreV1().Secrets(rkcSecret.Namespace).Patch(
+			_, err = f.KubeAdminClient().CoreV1().Secrets(rkcSecret.Namespace).Patch(
 				ctx,
 				rkcSecret.Name,
 				types.MergePatchType,
@@ -132,7 +134,7 @@ var _ = g.Describe("RemoteKubernetesCluster", func() {
 			waitCtx3, waitCtx3Cancel := utils.ContextForRemoteKubernetesClusterRollout(ctx, rkc)
 			defer waitCtx3Cancel()
 
-			rkc, err = controllerhelpers.WaitForRemoteKubernetesClusterState(waitCtx3, f.Cluster(0).ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters(), rkc.Name, controllerhelpers.WaitForStateOptions{},
+			rkc, err = controllerhelpers.WaitForRemoteKubernetesClusterState(waitCtx3, f.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters(), rkc.Name, controllerhelpers.WaitForStateOptions{},
 				utils.IsRemoteKubernetesClusterRolledOut,
 			)
 			o.Expect(err).NotTo(o.HaveOccurred())

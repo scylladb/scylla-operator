@@ -25,9 +25,15 @@ if [ -z "${DEPLOY_DIR+x}" ]; then
   DEPLOY_DIR=${ARTIFACTS}/deploy
 fi
 
-mkdir -p "${DEPLOY_DIR}/"{operator,manager,prometheus-operator,haproxy-ingress}
+SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT=${SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT:-false}
 
-cp ./deploy/manager/dev/*.yaml "${DEPLOY_DIR}/manager"
+mkdir -p "${DEPLOY_DIR}/"{operator,prometheus-operator,haproxy-ingress}
+
+if [[ "${SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT}" != "true" ]]; then
+  mkdir -p -p "${DEPLOY_DIR}/manager"
+  cp ./deploy/manager/dev/*.yaml "${DEPLOY_DIR}/manager"
+fi
+
 cp ./deploy/operator/*.yaml "${DEPLOY_DIR}/operator"
 cp ./examples/third-party/prometheus-operator/*.yaml "${DEPLOY_DIR}/prometheus-operator"
 cp ./examples/third-party/haproxy-ingress/*.yaml "${DEPLOY_DIR}/haproxy-ingress"
@@ -109,30 +115,32 @@ else
   kubectl -n=local-csi-driver rollout status daemonset.apps/local-csi-driver
 fi
 
-if [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME:-}" ]]; then
-  yq e --inplace '.spec.datacenter.racks[0].storage.storageClassName = env(SO_SCYLLACLUSTER_STORAGECLASS_NAME)' "${DEPLOY_DIR}/manager/50_scyllacluster.yaml"
-elif [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME+x}" ]]; then
-  yq e --inplace 'del(.spec.datacenter.racks[0].storage.storageClassName)' "${DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+if [[ "${SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT}" != "true" ]]; then
+  if [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME:-}" ]]; then
+    yq e --inplace '.spec.datacenter.racks[0].storage.storageClassName = env(SO_SCYLLACLUSTER_STORAGECLASS_NAME)' "${DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+  elif [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME+x}" ]]; then
+    yq e --inplace 'del(.spec.datacenter.racks[0].storage.storageClassName)' "${DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+  fi
+
+  if [[ -n "${SCYLLADB_VERSION:-}" ]]; then
+    yq e --inplace '.spec.version = env(SCYLLADB_VERSION)' "${DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+  fi
+
+  if [[ -n "${SCYLLA_MANAGER_VERSION:-}" ]]; then
+    yq e --inplace '.spec.template.spec.containers[0].image |= "docker.io/scylladb/scylla-manager:" + env(SCYLLA_MANAGER_VERSION)' "${DEPLOY_DIR}/manager/50_manager_deployment.yaml"
+  fi
+
+  if [[ -n "${SCYLLA_MANAGER_AGENT_VERSION:-}" ]]; then
+    yq e --inplace '.spec.agentVersion = env(SCYLLA_MANAGER_AGENT_VERSION)' "${DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+  fi
+
+  kubectl_create -f "${DEPLOY_DIR}"/manager
+
+  kubectl -n=scylla-manager wait --timeout=10m --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
+  kubectl -n=scylla-manager wait --timeout=10m --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
+  kubectl -n=scylla-manager wait --timeout=10m --for='condition=Available=True' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
+  kubectl -n scylla-manager rollout status --timeout=10m deployment.apps/scylla-manager
 fi
-
-if [[ -n "${SCYLLADB_VERSION:-}" ]]; then
-  yq e --inplace '.spec.version = env(SCYLLADB_VERSION)' "${DEPLOY_DIR}/manager/50_scyllacluster.yaml"
-fi
-
-if [[ -n "${SCYLLA_MANAGER_VERSION:-}" ]]; then
-  yq e --inplace '.spec.template.spec.containers[0].image |= "docker.io/scylladb/scylla-manager:" + env(SCYLLA_MANAGER_VERSION)' "${DEPLOY_DIR}/manager/50_manager_deployment.yaml"
-fi
-
-if [[ -n "${SCYLLA_MANAGER_AGENT_VERSION:-}" ]]; then
-  yq e --inplace '.spec.agentVersion = env(SCYLLA_MANAGER_AGENT_VERSION)' "${DEPLOY_DIR}/manager/50_scyllacluster.yaml"
-fi
-
-kubectl_create -f "${DEPLOY_DIR}"/manager
-
-kubectl -n=scylla-manager wait --timeout=10m --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
-kubectl -n=scylla-manager wait --timeout=10m --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
-kubectl -n=scylla-manager wait --timeout=10m --for='condition=Available=True' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
-kubectl -n scylla-manager rollout status --timeout=10m deployment.apps/scylla-manager
 
 kubectl -n haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-ingress
 kubectl -n haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-ingress deploy/ingress-default-backend deploy/prometheus

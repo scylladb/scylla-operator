@@ -9,13 +9,17 @@ shopt -s inherit_errexit
 source "$( dirname "${BASH_SOURCE[0]}" )/../../lib/bash.sh"
 source "$( dirname "${BASH_SOURCE[0]}" )/../../lib/kube.sh"
 
-if [ -z "${KUBECONFIG_DIR+x}" ]; then
-  KUBECONFIGS=("${KUBECONFIG}")
-else
-  KUBECONFIGS=()
+declare -A WORKER_KUBECONFIGS
+
+# TODO: remove once CI job is updated to define WORKER_KUBECONFIGS instead of KUBECONFIG_DIR
+if [[ -n "${KUBECONFIG_DIR+x}" ]]; then
   for f in $( find "$( realpath "${KUBECONFIG_DIR}" )" -maxdepth 1 -type f -name '*.kubeconfig' ); do
-    KUBECONFIGS+=("${f}")
+    # For multi-datacenter suites, designate the first kubeconfig as the "control plane" cluster.
+    kubeconfig="${kubeconfig:-${f}}"
+    WORKER_KUBECONFIGS["$( basename "${f}" '.kubeconfig' )"]="${f}"
   done
+
+  KUBECONFIG="${kubeconfig}"
 fi
 
 # gather-artifacts is a self sufficient function that collects artifacts without depending on any external objects.
@@ -88,14 +92,26 @@ EOF
 function gather-artifacts-on-exit {
   ec=$?
 
-  for i in "${!KUBECONFIGS[@]}"; do
-    KUBECONFIG="${KUBECONFIGS[$i]}" gather-artifacts "${ARTIFACTS}/must-gather/${i}" &
-    gather_artifacts_bg_pids["${i}"]=$!
+  gather-artifacts "${ARTIFACTS}/must-gather/cluster" &
+  gather_artifacts_bg_pids=( $! )
+
+  for name in "${!WORKER_KUBECONFIGS[@]}"; do
+    if [[ "${WORKER_KUBECONFIGS[$name]}" == "${KUBECONFIG}" ]]; then
+      worker_as_control_plane="${name}"
+      continue
+    fi
+
+    KUBECONFIG="${WORKER_KUBECONFIGS[$name]}" gather-artifacts "${ARTIFACTS}/must-gather/workers/${name}" &
+    gather_artifacts_bg_pids+=( $! )
   done
 
   for pid in "${gather_artifacts_bg_pids[@]}"; do
     wait "${pid}"
   done
+
+  if [[ -n "${worker_as_control_plane+x}" ]]; then
+    ln -s "${ARTIFACTS}/must-gather/workers/${worker_as_control_plane}" "${ARTIFACTS}/must-gather/cluster"
+  fi
 
   cleanup-bg-jobs "${ec}"
 }
@@ -226,8 +242,17 @@ function run-e2e {
   kubectl create clusterrolebinding e2e --clusterrole=cluster-admin --serviceaccount=e2e:default --dry-run=client -o=yaml | kubectl_create -f=-
   kubectl create -n=e2e pdb my-pdb --selector='app=e2e' --min-available=1 --dry-run=client -o=yaml | kubectl_create -f=-
 
-  kubectl create -n=e2e secret generic kubeconfigs ${KUBECONFIGS[@]/#/--from-file=} --dry-run=client -o=yaml | kubectl_create -f=-
-  kubeconfigs_in_container_path=$( IFS=','; basenames=( "${KUBECONFIGS[@]##*/}" ) && in_container_paths="${basenames[@]/#//var/run/secrets/kubeconfigs/}" && echo "${in_container_paths[*]}" )
+  kubectl create -n=e2e secret generic worker-kubeconfigs ${WORKER_KUBECONFIGS[@]/#/--from-file=} --dry-run=client -o=yaml | kubectl_create -f=-
+  worker_kubeconfigs_in_container_paths=$(
+    res=()
+    for key in "${!WORKER_KUBECONFIGS[@]}"; do
+      basename="${WORKER_KUBECONFIGS[$key]##*/}"
+      in_container_path="${basename/#//var/run/secrets/kubeconfigs/}"
+      res+=( "${key}=${in_container_path}" )
+    done
+    IFS=','
+    echo "${res[*]}"
+  )
 
   gcs_sa_in_container_path=""
   if [[ -n "${SO_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATH+x}" ]]; then
@@ -274,7 +299,7 @@ spec:
     - run
     - "${SO_SUITE}"
     - "--skip=${SO_SKIPPED_TESTS}"
-    - "--kubeconfig=${kubeconfigs_in_container_path}"
+    - "--worker-kubeconfigs=${worker_kubeconfigs_in_container_paths}"
     - --loglevel=2
     - --color=false
     - --artifacts-dir=/tmp/artifacts
@@ -305,8 +330,8 @@ spec:
       mountPath: /var/run/secrets/gcs-service-account-credentials
     - name: s3-credentials
       mountPath: /var/run/secrets/s3-credentials
-    - name: kubeconfigs
-      mountPath: /var/run/secrets/kubeconfigs
+    - name: worker-kubeconfigs
+      mountPath: /var/run/secrets/worker-kubeconfigs
       readOnly: true
   volumes:
   - name: artifacts
@@ -317,9 +342,9 @@ spec:
   - name: s3-credentials
     secret:
       secretName: s3-credentials
-  - name: kubeconfigs
+  - name: worker-kubeconfigs
     secret:
-      secretName: kubeconfigs
+      secretName: worker-kubeconfigs
 EOF
   kubectl -n=e2e wait --for=condition=Ready pod/e2e
 

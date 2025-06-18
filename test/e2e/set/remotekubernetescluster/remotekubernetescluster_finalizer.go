@@ -4,7 +4,8 @@ package remotekubernetescluster
 
 import (
 	"context"
-	"fmt"
+	"maps"
+	"slices"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
@@ -24,14 +25,18 @@ var _ = g.Describe("RemoteKubernetesCluster finalizer", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		idx := 0
-		cluster := f.Cluster(idx)
-		userNs, _ := cluster.CreateUserNamespace(ctx)
+		userNs, _ := f.CreateUserNamespace(ctx)
 
-		rkcName := fmt.Sprintf("%s-%d", f.Namespace(), idx)
+		workerClusters := f.WorkerClusters()
+		o.Expect(workerClusters).NotTo(o.BeEmpty(), "At least 1 worker cluster is required")
 
-		framework.By("Creating RemoteKubernetesCluster %q with credentials to cluster #%d", rkcName, idx)
-		originalRKC, err := utils.GetRemoteKubernetesClusterWithOperatorClusterRole(ctx, cluster.KubeAdminClient(), cluster.AdminClientConfig(), rkcName, userNs.Name)
+		rkcClusterKey := slices.Collect(maps.Keys(workerClusters))[0]
+		rkcCluster := workerClusters[rkcClusterKey]
+		rkcName := rkcCluster.Name()
+
+		// TODO: try to use helpers?
+		framework.By("Creating RemoteKubernetesCluster %q with credentials to cluster %q", rkcName, rkcCluster.Name())
+		originalRKC, err := utils.GetRemoteKubernetesClusterWithOperatorClusterRole(ctx, f.KubeAdminClient(), f.AdminClientConfig(), rkcName, userNs.Name)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		rc := framework.NewRestoringCleaner(
@@ -45,7 +50,7 @@ var _ = g.Describe("RemoteKubernetesCluster finalizer", func() {
 		)
 		f.AddCleaners(rc)
 
-		rkc, err := cluster.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters().Create(ctx, originalRKC, metav1.CreateOptions{})
+		rkc, err := f.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters().Create(ctx, originalRKC, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the RemoteKubernetesCluster %q to roll out (RV=%s)", rkc.Name, rkc.ResourceVersion)
@@ -57,14 +62,14 @@ var _ = g.Describe("RemoteKubernetesCluster finalizer", func() {
 			return oslices.ContainsItem(rkc.Finalizers, expectedFinalizer), nil
 		}
 
-		rkc, err = controllerhelpers.WaitForRemoteKubernetesClusterState(waitCtx1, cluster.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters(), rkc.Name, controllerhelpers.WaitForStateOptions{},
+		rkc, err = controllerhelpers.WaitForRemoteKubernetesClusterState(waitCtx1, f.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters(), rkc.Name, controllerhelpers.WaitForStateOptions{},
 			utils.IsRemoteKubernetesClusterRolledOut,
 			hasRKCFinalizer,
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Deleting RemoteKubernetesCluster %q", rkc.Name)
-		err = cluster.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters().Delete(ctx, rkcName, metav1.DeleteOptions{})
+		err = f.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters().Delete(ctx, rkcName, metav1.DeleteOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Awaiting RemoteKubernetesCluster %q deletion", rkc.Name)
@@ -73,38 +78,38 @@ var _ = g.Describe("RemoteKubernetesCluster finalizer", func() {
 
 		framework.By("Recreating RemoteKubernetesCluster %q", rkcName)
 		rkc = originalRKC.DeepCopy()
-		rkc, err = cluster.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters().Create(ctx, rkc, metav1.CreateOptions{})
+		rkc, err = f.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters().Create(ctx, rkc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the RemoteKubernetesCluster %q to roll out (RV=%s)", rkc.Name, rkc.ResourceVersion)
 		waitCtx2, waitCtx2Cancel := utils.ContextForRemoteKubernetesClusterRollout(ctx, rkc)
 		defer waitCtx2Cancel()
 
-		rkc, err = controllerhelpers.WaitForRemoteKubernetesClusterState(waitCtx2, cluster.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters(), rkc.Name, controllerhelpers.WaitForStateOptions{},
+		rkc, err = controllerhelpers.WaitForRemoteKubernetesClusterState(waitCtx2, f.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters(), rkc.Name, controllerhelpers.WaitForStateOptions{},
 			utils.IsRemoteKubernetesClusterRolledOut,
 			hasRKCFinalizer,
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Creating ScyllaDBCluster using RemoteKubernetesCluster %q", rkcName)
-		sc1 := f.GetDefaultScyllaDBCluster([]*scyllav1alpha1.RemoteKubernetesCluster{rkc})
+		sc1 := f.GetDefaultScyllaDBCluster(map[string]*scyllav1alpha1.RemoteKubernetesCluster{rkcClusterKey: rkc})
 
-		sc1, err = cluster.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(f.Namespace()).Create(ctx, sc1, metav1.CreateOptions{})
+		sc1, err = f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(f.Namespace()).Create(ctx, sc1, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the ScyllaDBCluster %q to roll out (RV=%s)", sc1.Name, sc1.ResourceVersion)
 		waitCtx3, waitCtx3Cancel := utils.ContextForMultiDatacenterScyllaDBClusterRollout(ctx, sc1)
 		defer waitCtx3Cancel()
-		sc1, err = controllerhelpers.WaitForScyllaDBClusterState(waitCtx3, cluster.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(f.Namespace()), sc1.Name, controllerhelpers.WaitForStateOptions{},
+		sc1, err = controllerhelpers.WaitForScyllaDBClusterState(waitCtx3, f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(f.Namespace()), sc1.Name, controllerhelpers.WaitForStateOptions{},
 			utils.IsScyllaDBClusterRolledOut,
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Deleting RemoteKubernetesCluster %q", rkc.Name)
-		err = cluster.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters().Delete(ctx, rkcName, metav1.DeleteOptions{})
+		err = f.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters().Delete(ctx, rkcName, metav1.DeleteOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		rkc, err = cluster.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters().Get(ctx, rkcName, metav1.GetOptions{})
+		rkc, err = f.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters().Get(ctx, rkcName, metav1.GetOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(rkc.DeletionTimestamp).NotTo(o.BeNil())
 
@@ -118,14 +123,14 @@ var _ = g.Describe("RemoteKubernetesCluster finalizer", func() {
 		framework.By("Awaiting IsBeingUsed condition on RemoteKubernetesCluster %q", rkc.Name)
 		waitCtx4, waitCtx4Cancel := utils.ContextForRemoteKubernetesClusterRollout(ctx, rkc)
 		defer waitCtx4Cancel()
-		rkc, err = controllerhelpers.WaitForRemoteKubernetesClusterState(waitCtx4, cluster.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters(), rkc.Name, controllerhelpers.WaitForStateOptions{},
+		rkc, err = controllerhelpers.WaitForRemoteKubernetesClusterState(waitCtx4, f.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters(), rkc.Name, controllerhelpers.WaitForStateOptions{},
 			hasRKCFinalizer,
 			hasIsBeingUsedCondition,
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Deleting ScyllaDBCluster %q", sc1.Name)
-		err = cluster.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(sc1.Namespace).Delete(ctx, sc1.Name, metav1.DeleteOptions{})
+		err = f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(sc1.Namespace).Delete(ctx, sc1.Name, metav1.DeleteOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Awaiting ScyllaDBCluster %q deletion", sc1.Name)

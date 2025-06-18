@@ -24,10 +24,13 @@ var _ = g.Describe("ScyllaDBCluster webhook", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		rkcs, _, err := utils.SetUpRemoteKubernetesClustersFromRestConfigs(ctx, framework.TestContext.RestConfigs, f)
+		workerClusters := f.WorkerClusters()
+		o.Expect(workerClusters).NotTo(o.BeEmpty(), "At least 1 worker cluster is required")
+
+		rkcMap, _, err := utils.SetUpRemoteKubernetesClusters(ctx, f, workerClusters)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		validSC := f.GetDefaultScyllaDBCluster(rkcs)
+		validSC := f.GetDefaultScyllaDBCluster(rkcMap)
 		validSC.Name = names.SimpleNameGenerator.GenerateName(validSC.GenerateName)
 
 		framework.By("Rejecting a creation of ScyllaDBCluster with duplicated datacenters")

@@ -3,7 +3,7 @@ package genericclioptions
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	goruntime "runtime"
 	"time"
 
@@ -28,113 +28,92 @@ type IOStreams struct {
 	ErrOut io.Writer
 }
 
-type ClientConfigBase struct {
-	QPS           float32
-	Burst         int
-	UserAgentName string
+type MultiClusterClientConfig struct {
+	ClientConfig
+
+	workerKubeconfigs map[string]string
+
+	WorkerClientConfigs map[string]ClientConfig
 }
 
-func NewDefaultClientConfigBase(userAgentName string) ClientConfigBase {
-	return ClientConfigBase{
-		QPS:           50,
-		Burst:         75,
-		UserAgentName: userAgentName,
+func NewMultiClusterClientConfig(userAgentName string) MultiClusterClientConfig {
+	return MultiClusterClientConfig{
+		ClientConfig: NewClientConfig(userAgentName),
+
+		workerKubeconfigs: map[string]string{},
+
+		WorkerClientConfigs: map[string]ClientConfig{},
 	}
 }
 
-func (ccb *ClientConfigBase) AddFlags(cmd *cobra.Command) {
-	cmd.PersistentFlags().Float32VarP(&ccb.QPS, "qps", "", ccb.QPS, "Maximum allowed number of queries per second.")
-	cmd.PersistentFlags().IntVarP(&ccb.Burst, "burst", "", ccb.Burst, "Allows extra queries to accumulate when a client is exceeding its rate.")
+func (mccc *MultiClusterClientConfig) AddFlags(cmd *cobra.Command) {
+	mccc.ClientConfig.AddFlags(cmd)
+
+	// TODO: comment about multi-cluster setup
+	// TODO: description
+	cmd.PersistentFlags().StringToStringVarP(&mccc.workerKubeconfigs, "worker-kubeconfigs", "", mccc.workerKubeconfigs, "")
 }
 
-func (ccb *ClientConfigBase) Validate() error {
-	return nil
-}
-
-func (ccb *ClientConfigBase) Complete() error {
-	return nil
-}
-
-type ClientConfigSet struct {
-	ClientConfigBase
-	kubeconfigs   []string
-	ClientConfigs []ClientConfig
-}
-
-func NewClientConfigSet(userAgentName string) ClientConfigSet {
-	return ClientConfigSet{
-		ClientConfigBase: NewDefaultClientConfigBase(userAgentName),
-		kubeconfigs:      []string{defaultKubeconfig},
-	}
-}
-
-func (ccs *ClientConfigSet) AddFlags(cmd *cobra.Command) {
-	ccs.ClientConfigBase.AddFlags(cmd)
-
-	cmd.PersistentFlags().StringSliceVarP(&ccs.kubeconfigs, "kubeconfig", "", ccs.kubeconfigs, "Path to kubeconfig file(s).")
-}
-
-func (ccs *ClientConfigSet) Validate() error {
+func (mccc *MultiClusterClientConfig) Validate() error {
 	var errs []error
 	var err error
 
-	err = ccs.ClientConfigBase.Validate()
+	err = mccc.ClientConfig.Validate()
 	if err != nil {
-		errs = append(errs, fmt.Errorf("invalid client config base: %w", err))
+		errs = append(errs, fmt.Errorf("invalid client config: %w", err))
 	}
 
-	if len(ccs.kubeconfigs) == 0 {
-		errs = append(errs, fmt.Errorf("at least one kubeconfig must be provided"))
-	}
-
-	for _, kubeconfig := range ccs.kubeconfigs {
-		cc := NewClientConfig(ccs.UserAgentName)
+	for name, kubeconfig := range mccc.workerKubeconfigs {
+		cc := NewClientConfig(mccc.UserAgentName)
 		cc.Kubeconfig = kubeconfig
-		cc.QPS = ccs.QPS
-		cc.Burst = ccs.Burst
+		cc.QPS = mccc.QPS
+		cc.Burst = mccc.Burst
 
 		err = cc.Validate()
 		if err != nil {
-			errs = append(errs, fmt.Errorf("invalid client config for kubeconfig %q: %w", kubeconfig, err))
+			errs = append(errs, fmt.Errorf("invalid client config for %q kubeconfig at %q: %w", name, kubeconfig, err))
 		}
 	}
 
 	return apimachineryutilerrors.NewAggregate(errs)
 }
 
-func (ccs *ClientConfigSet) Complete() error {
+func (mccc *MultiClusterClientConfig) Complete() error {
 	var err error
 
-	err = ccs.ClientConfigBase.Complete()
+	err = mccc.ClientConfig.Complete()
 	if err != nil {
-		return fmt.Errorf("can't complete client config base: %w", err)
+		return fmt.Errorf("can't complete client config: %w", err)
 	}
 
-	clientConfigs := make([]ClientConfig, 0, len(ccs.kubeconfigs))
-	for _, kubeconfig := range ccs.kubeconfigs {
-		cc := NewClientConfig(ccs.UserAgentName)
+	dataplaneClientConfigMap := make(map[string]ClientConfig, len(mccc.workerKubeconfigs))
+	for dataplaneClusterName, kubeconfig := range mccc.workerKubeconfigs {
+		cc := NewClientConfig(mccc.UserAgentName)
 		cc.Kubeconfig = kubeconfig
-		cc.QPS = ccs.QPS
-		cc.Burst = ccs.Burst
+		cc.QPS = mccc.QPS
+		cc.Burst = mccc.Burst
 
 		err = cc.Complete()
 		if err != nil {
+			// TODO: use key in the error message
 			return fmt.Errorf("can't complete client config for kubeconfig %q: %w", kubeconfig, err)
 		}
 
-		clientConfigs = append(clientConfigs, cc)
+		dataplaneClientConfigMap[dataplaneClusterName] = cc
 	}
 
-	ccs.ClientConfigs = clientConfigs
+	mccc.WorkerClientConfigs = dataplaneClientConfigMap
 
 	return nil
 }
 
 type ClientConfig struct {
-	ClientConfigBase
-	Kubeconfig  string
-	RestConfig  *restclient.Config
-	ProtoConfig *restclient.Config
+	QPS           float32
+	Burst         int
+	UserAgentName string
+	Kubeconfig    string
+	RestConfig    *restclient.Config
+	ProtoConfig   *restclient.Config
 }
 
 func MakeVersionedUserAgent(baseName string) string {
@@ -150,38 +129,27 @@ func MakeVersionedUserAgent(baseName string) string {
 
 func NewClientConfig(userAgentName string) ClientConfig {
 	return ClientConfig{
-		ClientConfigBase: NewDefaultClientConfigBase(userAgentName),
-		Kubeconfig:       defaultKubeconfig,
-		RestConfig:       nil,
-		ProtoConfig:      nil,
+		QPS:           50,
+		Burst:         75,
+		UserAgentName: userAgentName,
+		Kubeconfig:    defaultKubeconfig,
+		RestConfig:    nil,
+		ProtoConfig:   nil,
 	}
 }
 
 func (cc *ClientConfig) AddFlags(cmd *cobra.Command) {
-	cc.ClientConfigBase.AddFlags(cmd)
-
+	cmd.PersistentFlags().Float32VarP(&cc.QPS, "qps", "", cc.QPS, "Maximum allowed number of queries per second.")
+	cmd.PersistentFlags().IntVarP(&cc.Burst, "burst", "", cc.Burst, "Allows extra queries to accumulate when a client is exceeding its rate.")
 	cmd.PersistentFlags().StringVarP(&cc.Kubeconfig, "kubeconfig", "", cc.Kubeconfig, "Path to the kubeconfig file.")
 }
 
 func (cc *ClientConfig) Validate() error {
-	var errs []error
-	var err error
-
-	err = cc.ClientConfigBase.Validate()
-	if err != nil {
-		errs = append(errs, fmt.Errorf("invalid client config base: %w", err))
-	}
-
-	return apimachineryutilerrors.NewAggregate(errs)
+	return nil
 }
 
 func (cc *ClientConfig) Complete() error {
 	var err error
-
-	err = cc.ClientConfigBase.Complete()
-	if err != nil {
-		return fmt.Errorf("can't complete client config base: %w", err)
-	}
 
 	loader := clientcmd.NewDefaultClientConfigLoadingRules()
 	// Use explicit kubeconfig if set.
@@ -220,7 +188,7 @@ func (o *InClusterReflection) Validate() error {
 func (o *InClusterReflection) Complete() error {
 	if len(o.Namespace) == 0 {
 		// Autodetect if running inside a cluster
-		bytes, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+		bytes, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
 		if err != nil {
 			return fmt.Errorf("can't autodetect controller namespace: %w", err)
 		}

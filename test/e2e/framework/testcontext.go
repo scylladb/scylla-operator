@@ -43,7 +43,9 @@ const (
 )
 
 type TestContextType struct {
-	RestConfigs                 []*restclient.Config
+	RestConfig *restclient.Config
+	// TODO: comment?
+	WorkerRestConfigs           map[string]*restclient.Config
 	ArtifactsDir                string
 	CleanupPolicy               CleanupPolicyType
 	IngressController           *IngressController

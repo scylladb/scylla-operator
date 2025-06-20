@@ -127,6 +127,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 
 		rc := framework.NewRestoringCleaner(
 			ctx,
+			f.AdminClientConfig(),
 			f.KubeAdminClient(),
 			f.DynamicAdminClient(),
 			nodeConfigResourceInfo,
@@ -266,6 +267,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 
 		rc := framework.NewRestoringCleaner(
 			ctx,
+			f.AdminClientConfig(),
 			f.KubeAdminClient(),
 			f.DynamicAdminClient(),
 			nodeConfigResourceInfo,
@@ -551,6 +553,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 
 		rc := framework.NewRestoringCleaner(
 			ctx,
+			f.AdminClientConfig(),
 			f.KubeAdminClient(),
 			f.DynamicAdminClient(),
 			nodeConfigResourceInfo,

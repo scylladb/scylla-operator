@@ -81,7 +81,7 @@ func (c *Cluster) GetArtifactsDir() string {
 func (c *Cluster) CreateUserNamespace(ctx context.Context) (*corev1.Namespace, Client) {
 	ns, nsClient := c.createNamespace(ctx, c.KubeAdminClient(), c.AdminClientConfig())
 
-	cc := NewNamespaceCleanerCollector(c.KubeAdminClient(), c.DynamicAdminClient(), ns)
+	cc := NewNamespaceCleanerCollector(c.AdminClientConfig(), c.KubeAdminClient(), c.DynamicAdminClient(), ns)
 	c.AddCleaners(cc)
 	c.AddCollectors(cc)
 

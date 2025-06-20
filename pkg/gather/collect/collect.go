@@ -5,16 +5,19 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
+	"github.com/scylladb/scylla-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,6 +29,8 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/klog/v2"
 )
 
@@ -72,9 +77,15 @@ func getResourceKey(obj *unstructured.Unstructured, resourceInfo *ResourceInfo) 
 	return nsPrefix + fmt.Sprintf("%s/%s/%s", resourceInfo.Resource.Group, resourceInfo.Resource.Resource, obj.GetName())
 }
 
+type PodRuntimeCollector struct {
+	Filter  func(pod *corev1.Pod) bool
+	Collect func(context.Context, *corev1.Pod, *ResourceInfo) error
+}
+
 type Collector struct {
 	baseDir          string
 	printers         []ResourcePrinterInterface
+	restConfig       *rest.Config
 	discoveryClient  discovery.DiscoveryInterface
 	corev1Client     corev1client.CoreV1Interface
 	dynamicClient    dynamic.Interface
@@ -82,12 +93,14 @@ type Collector struct {
 	keepGoing        bool
 	logsLimitBytes   int64
 
-	collectedResources apimachineryutilsets.Set[string]
+	podRuntimeCollectors []PodRuntimeCollector
+	collectedResources   apimachineryutilsets.Set[string]
 }
 
 func NewCollector(
 	baseDir string,
 	printers []ResourcePrinterInterface,
+	restConfig *rest.Config,
 	discoveryClient discovery.DiscoveryInterface,
 	corev1Client corev1client.CoreV1Interface,
 	dynamicClient dynamic.Interface,
@@ -95,9 +108,10 @@ func NewCollector(
 	keepGoing bool,
 	logsLimitBytes int64,
 ) *Collector {
-	return &Collector{
+	c := &Collector{
 		baseDir:            baseDir,
 		printers:           printers,
+		restConfig:         restConfig,
 		discoveryClient:    discoveryClient,
 		corev1Client:       corev1Client,
 		dynamicClient:      dynamicClient,
@@ -106,6 +120,30 @@ func NewCollector(
 		logsLimitBytes:     logsLimitBytes,
 		collectedResources: apimachineryutilsets.Set[string]{},
 	}
+
+	c.podRuntimeCollectors = []PodRuntimeCollector{
+		{
+			Collect: c.collectPodLogs,
+		},
+		{
+			Filter:  controllerhelpers.IsScyllaContainerRunning,
+			Collect: c.collectContainerCommandOutputFunc(naming.ScyllaContainerName, "nodetool-status.log", []string{"nodetool", "status"}),
+		},
+		{
+			Filter:  controllerhelpers.IsScyllaContainerRunning,
+			Collect: c.collectContainerCommandOutputFunc(naming.ScyllaContainerName, "nodetool-gossipinfo.log", []string{"nodetool", "gossipinfo"}),
+		},
+		{
+			Filter:  controllerhelpers.IsScyllaContainerRunning,
+			Collect: c.collectContainerCommandOutputFunc(naming.ScyllaContainerName, "df.log", []string{"df", "-h"}),
+		},
+		{
+			Filter:  controllerhelpers.IsNodeConfigPod,
+			Collect: c.collectContainerCommandOutputFunc(naming.NodeConfigAppName, "kubelet-cpu_manager_state.log", []string{"cat", "/host/var/lib/kubelet/cpu_manager_state"}),
+		},
+	}
+
+	return c
 }
 
 func (c *Collector) getResourceDir(obj kubeinterfaces.ObjectInterface, resourceInfo *ResourceInfo) (string, error) {
@@ -297,39 +335,136 @@ func (c *Collector) collectPod(ctx context.Context, u *unstructured.Unstructured
 		return fmt.Errorf("can't write resource %q: %w", resourceInfo, err)
 	}
 
-	resourceDir, err := c.getResourceDir(pod, resourceInfo)
+	err = c.collectPodRuntimeInformation(ctx, pod, resourceInfo)
 	if err != nil {
-		return fmt.Errorf("can't get resourceDir: %q", err)
+		return fmt.Errorf("can't collect runtime information: %w", err)
 	}
-	logsDir := filepath.Join(resourceDir, pod.GetName())
 
-	err = os.MkdirAll(logsDir, 0770)
+	return nil
+}
+
+func (c *Collector) collectPodRuntimeInformation(ctx context.Context, pod *corev1.Pod, resourceInfo *ResourceInfo) error {
+	var errs []error
+	for _, fc := range c.podRuntimeCollectors {
+		if fc.Filter != nil && !fc.Filter(pod) {
+			continue
+		}
+
+		err := fc.Collect(ctx, pod, resourceInfo)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("can't collect Pod %q runtime information: %w", naming.ObjRef(pod), err))
+		}
+	}
+
+	return nil
+}
+
+func (c *Collector) collectPodLogs(ctx context.Context, pod *corev1.Pod, resourceInfo *ResourceInfo) error {
+	podDir, err := c.createPodDirectory(pod, resourceInfo)
 	if err != nil {
-		return fmt.Errorf("can't create logs dir %q: %w", logsDir, err)
+		return fmt.Errorf("can't create pod directory: %w", err)
 	}
 
 	for _, container := range pod.Spec.InitContainers {
-		err = c.collectContainerLogs(ctx, logsDir, &pod.ObjectMeta, pod.Status.InitContainerStatuses, container.Name)
+		err := c.collectContainerLogs(ctx, podDir, &pod.ObjectMeta, pod.Status.InitContainerStatuses, container.Name)
 		if err != nil {
 			return fmt.Errorf("can't collect logs for init container %q in pod %q: %w", container.Name, naming.ObjRef(pod), err)
 		}
 	}
 
 	for _, container := range pod.Spec.Containers {
-		err = c.collectContainerLogs(ctx, logsDir, &pod.ObjectMeta, pod.Status.ContainerStatuses, container.Name)
+		err := c.collectContainerLogs(ctx, podDir, &pod.ObjectMeta, pod.Status.ContainerStatuses, container.Name)
 		if err != nil {
 			return fmt.Errorf("can't collect logs for container %q in pod %q: %w", container.Name, naming.ObjRef(pod), err)
 		}
 	}
 
 	for _, container := range pod.Spec.EphemeralContainers {
-		err = c.collectContainerLogs(ctx, logsDir, &pod.ObjectMeta, pod.Status.EphemeralContainerStatuses, container.Name)
+		err := c.collectContainerLogs(ctx, podDir, &pod.ObjectMeta, pod.Status.EphemeralContainerStatuses, container.Name)
 		if err != nil {
 			return fmt.Errorf("can't collect logs for ephemeral container %q in pod %q: %w", container.Name, naming.ObjRef(pod), err)
 		}
 	}
 
 	return nil
+}
+
+func (c *Collector) createPodDirectory(pod *corev1.Pod, resourceInfo *ResourceInfo) (string, error) {
+	resourceDir, err := c.getResourceDir(pod, resourceInfo)
+	if err != nil {
+		return "", fmt.Errorf("can't get resourceDir: %q", err)
+	}
+	podDir := filepath.Join(resourceDir, pod.GetName())
+
+	err = os.MkdirAll(podDir, 0770)
+	if err != nil {
+		return "", fmt.Errorf("can't create pod dir %q: %w", podDir, err)
+	}
+
+	return podDir, nil
+}
+
+func (c *Collector) executeRemoteCommand(ctx context.Context, pod *corev1.Pod, containerName string, command []string) (stdout, stderr bytes.Buffer, err error) {
+	execReq := c.corev1Client.RESTClient().Post().
+		Resource("pods").
+		Name(pod.Name).
+		Namespace(pod.Namespace).
+		SubResource("exec").
+		VersionedParams(&corev1.PodExecOptions{
+			Container: containerName,
+			Command:   command,
+			Stdin:     false,
+			Stdout:    true,
+			Stderr:    true,
+			TTY:       false,
+		}, runtime.NewParameterCodec(scheme.Scheme))
+
+	executor, err := remotecommand.NewWebSocketExecutor(c.restConfig, http.MethodPost, execReq.URL().String())
+	if err != nil {
+		return stdout, stderr, fmt.Errorf("can't create websocket executor for pod %q: %w", naming.ObjRef(pod), err)
+	}
+
+	err = executor.StreamWithContext(
+		ctx,
+		remotecommand.StreamOptions{
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Tty:    false,
+		})
+	if err != nil {
+		return stdout, stderr, fmt.Errorf("can't execute command %q on Pod %q: %w", command, naming.ObjRef(pod), err)
+	}
+
+	return stdout, stderr, nil
+}
+
+func (c *Collector) collectContainerCommandOutputFunc(containerName string, filename string, command []string) func(context.Context, *corev1.Pod, *ResourceInfo) error {
+	return func(ctx context.Context, pod *corev1.Pod, resourceInfo *ResourceInfo) error {
+		klog.V(4).InfoS("Collecting ScyllaDB runtime information", "Namespace", pod.Namespace, "Pod", pod.Name, "Command", command)
+
+		podDir, err := c.createPodDirectory(pod, resourceInfo)
+		if err != nil {
+			return fmt.Errorf("can't create pod directory: %w", err)
+		}
+
+		stdout, stderr, err := c.executeRemoteCommand(ctx, pod, containerName, command)
+		if err != nil {
+			return fmt.Errorf("can't execute remote command %q on Pod %q: %w", command, naming.ObjRef(pod), err)
+		}
+
+		filePath := filepath.Join(podDir, filename)
+		err = saveNonEmptyBufferToFile(&stdout, filePath)
+		if err != nil {
+			return fmt.Errorf("can't save stdout: %w", err)
+		}
+
+		err = saveNonEmptyBufferToFile(&stderr, fmt.Sprintf("%s.stderr", filePath))
+		if err != nil {
+			return fmt.Errorf("can't save stderr: %w", err)
+		}
+
+		return nil
+	}
 }
 
 func (c *Collector) DiscoverResources(ctx context.Context, filter discovery.ResourcePredicateFunc) ([]*ResourceInfo, error) {
@@ -559,4 +694,17 @@ func (c *Collector) CollectResources(ctx context.Context, resourceInfo *Resource
 	}
 
 	return apimachineryutilerrors.NewAggregate(errs)
+}
+
+func saveNonEmptyBufferToFile(buffer *bytes.Buffer, filePath string) error {
+	if buffer.Len() == 0 {
+		return nil
+	}
+
+	err := os.WriteFile(filePath, buffer.Bytes(), 0666)
+	if err != nil {
+		return fmt.Errorf("can't write to file %q: %w", filePath, err)
+	}
+
+	return nil
 }

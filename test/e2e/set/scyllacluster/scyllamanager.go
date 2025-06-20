@@ -14,6 +14,8 @@ import (
 	"github.com/scylladb/scylla-manager/v3/pkg/managerclient"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers/managerclienterrors"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
@@ -25,6 +27,97 @@ import (
 
 var _ = g.Describe("Scylla Manager integration", func() {
 	f := framework.NewFramework("scyllacluster")
+
+	g.It("should register and deregister a ScyllaCluster", func(ctx g.SpecContext) {
+		ns, nsClient, ok := f.DefaultNamespaceIfAny()
+		o.Expect(ok).To(o.BeTrue())
+
+		sc := f.GetDefaultScyllaCluster()
+
+		framework.By(`Creating a ScyllaCluster`)
+		sc, err := nsClient.ScyllaClient().ScyllaV1().ScyllaClusters(ns.Name).Create(ctx, sc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
+		rolloutCtx, rolloutCtxCancel := utils.ContextForRollout(ctx, sc)
+		defer rolloutCtxCancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(rolloutCtx, nsClient.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		scyllaclusterverification.Verify(ctx, nsClient.KubeClient(), nsClient.ScyllaClient(), sc)
+		scyllaclusterverification.WaitForFullQuorum(ctx, nsClient.KubeClient().CoreV1(), sc)
+
+		hosts, err := utils.GetBroadcastRPCAddresses(ctx, nsClient.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(hosts).To(o.HaveLen(1))
+		di := verification.InsertAndVerifyCQLData(ctx, hosts)
+		defer di.Close()
+
+		framework.By("Waiting for ScyllaDB Manager cluster ID to propagate to ScyllaCluster's status")
+		registrationCtx, registrationCtxCancel := context.WithTimeout(ctx, utils.SyncTimeout)
+		defer registrationCtxCancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(
+			registrationCtx,
+			nsClient.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace),
+			sc.Name,
+			controllerhelpers.WaitForStateOptions{},
+			utils.IsScyllaClusterRegisteredWithManager,
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		// Sanity check to avoid panics in the polling func.
+		o.Expect(sc.Status.ManagerID).NotTo(o.BeNil())
+		o.Expect(*sc.Status.ManagerID).NotTo(o.BeEmpty())
+		managerClusterID := *sc.Status.ManagerID
+
+		managerClient, err := utils.GetManagerClient(ctx, f.KubeAdminClient().CoreV1())
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Verifying that ScyllaCluster is registered with ScyllaDB Manager")
+		o.Eventually(func(eo o.Gomega, ctx context.Context) {
+			_, err := managerClient.GetCluster(ctx, managerClusterID)
+			eo.Expect(err).NotTo(o.HaveOccurred())
+		}).
+			WithContext(ctx).
+			WithTimeout(utils.SyncTimeout).
+			WithPolling(5 * time.Second).
+			Should(o.Succeed())
+
+		framework.By("Deleting ScyllaCluster")
+		err = f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace).Delete(
+			ctx,
+			sc.Name,
+			metav1.DeleteOptions{
+				PropagationPolicy: pointer.Ptr(metav1.DeletePropagationForeground),
+				Preconditions: &metav1.Preconditions{
+					UID: &sc.UID,
+				},
+			})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for ScyllaCluster to be deleted")
+		deletionCtx, deletionCtxCancel := context.WithTimeout(ctx, utils.SyncTimeout)
+		defer deletionCtxCancel()
+		err = framework.WaitForObjectDeletion(
+			deletionCtx,
+			f.DynamicClient(),
+			scyllav1.GroupVersion.WithResource("scyllaclusters"),
+			sc.Namespace,
+			sc.Name,
+			&sc.UID,
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Verifying that the cluster was removed from the global ScyllaDB Manager state")
+		o.Eventually(func(eo o.Gomega, ctx context.Context) {
+			_, err := managerClient.GetCluster(ctx, managerClusterID)
+			eo.Expect(err).To(o.HaveOccurred())
+			eo.Expect(err).To(o.Satisfy(managerclienterrors.IsNotFound))
+		}).
+			WithContext(ctx).
+			WithTimeout(utils.SyncTimeout).
+			WithPolling(5 * time.Second).
+			Should(o.Succeed())
+	})
 
 	g.It("should register cluster and sync repair tasks", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
@@ -173,10 +266,11 @@ var _ = g.Describe("Scylla Manager integration", func() {
 
 		// Sanity check to avoid panics in the polling func.
 		o.Expect(sc.Status.ManagerID).NotTo(o.BeNil())
+		managerClusterID := *sc.Status.ManagerID
 
 		framework.By("Waiting for repair to finish")
 		err = apimachineryutilwait.PollUntilContextTimeout(ctx, 5*time.Second, 10*time.Minute, true, func(context.Context) (done bool, err error) {
-			repairProgress, err := managerClient.RepairProgress(ctx, *sc.Status.ManagerID, repairTask.ID, "latest")
+			repairProgress, err := managerClient.RepairProgress(ctx, managerClusterID, repairTask.ID, "latest")
 			if err != nil {
 				return false, err
 			}
@@ -207,8 +301,17 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Verifying that repair task deletion was synchronized")
-		tasks, err = managerClient.ListTasks(ctx, *sc.Status.ManagerID, "repair", false, "", "")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(tasks.TaskListItemSlice).To(o.BeEmpty())
+		// Progressing conditions of the underlying ScyllaDBManagerTasks are not propagated to ScyllaClusters by the migration controller,
+		// neither does the controller await the deletion of ScyllaDBManagerTasks.
+		// Task deletion from ScyllaDB Manager state is asynchronous to ScyllaCluster state update.
+		o.Eventually(func(eo o.Gomega, ctx context.Context) {
+			tasks, err = managerClient.ListTasks(ctx, managerClusterID, "repair", false, "", "")
+			eo.Expect(err).NotTo(o.HaveOccurred())
+			eo.Expect(tasks.TaskListItemSlice).To(o.BeEmpty())
+		}).
+			WithContext(ctx).
+			WithTimeout(utils.SyncTimeout).
+			WithPolling(5 * time.Second).
+			Should(o.Succeed())
 	})
 })

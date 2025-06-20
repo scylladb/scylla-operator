@@ -7,21 +7,10 @@ image:
   repository: scylladb
   pullPolicy: IfNotPresent
   tag: 3.5.0@sha256:c38c7f741e46ba5da3914eec9113b615bab779586ba4767605f0a3ebd494bcd2
-# Allows to customize Scylla Manager Controller image
-controllerImage:
-  repository: scylladb
-  pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
 # Scylla Manager log level, allowed values are: error, warn, info, debug, trace
 logLevel: info
 # Resources allocated to Scylla Manager pods
 resources:
-  requests:
-    cpu: 10m
-    memory: 20Mi
-# Resources allocated to Scylla Manager pods
-controllerResources:
   requests:
     cpu: 10m
     memory: 20Mi
@@ -33,23 +22,7 @@ tolerations: []
 affinity: {}
 ## SecurityContext holds pod-level security attributes
 securityContext: {}
-# Node selector for Scylla Manager Controller pod
-controllerNodeSelector: {}
-# Tolerations for Scylla Manager Controller pod
-controllerTolerations: []
-# Affinity for Scylla Manager Controller pod
-controllerAffinity: {}
-## ControllerSecurityContext holds pod-level security attributes
-controllerSecurityContext: {}
 serviceAccount:
-  # Specifies whether a service account should be created
-  create: true
-  # Annotations to add to the service account
-  annotations: {}
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
-  name: ""
-controllerServiceAccount:
   # Specifies whether a service account should be created
   create: true
   # Annotations to add to the service account

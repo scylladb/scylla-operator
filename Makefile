@@ -433,20 +433,12 @@ endef
 define generate-manager-manifests-prod
 	$(call generate-manifests-from-helm,scylla-manager,helm/scylla-manager,$(1),$(3))
 
-	mv '$(3)'/scylla-manager/templates/controller_clusterrole.yaml '$(2)'/00_controller_clusterrole.yaml
-	mv '$(3)'/scylla-manager/templates/controller_clusterrole_def.yaml '$(2)'/00_controller_clusterrole_def.yaml
-
-	mv '$(3)'/scylla-manager/templates/controller_serviceaccount.yaml '$(2)'/10_controller_serviceaccount.yaml
-	mv '$(3)'/scylla-manager/templates/controller_pdb.yaml '$(2)'/10_controller_pdb.yaml
 	mv '$(3)'/scylla-manager/templates/manager_service.yaml '$(2)'/10_manager_service.yaml
 	mv '$(3)'/scylla-manager/templates/manager_serviceaccount.yaml '$(2)'/10_manager_serviceaccount.yaml
 	mv '$(3)'/scylla-manager/templates/manager_configmap.yaml '$(2)'/10_manager_configmap.yaml
 	mv '$(3)'/scylla-manager/templates/manager_networkpolicy.yaml '$(2)'/10_manager_networkpolicy.yaml
 
-	mv '$(3)'/scylla-manager/templates/controller_clusterrolebinding.yaml '$(2)'/20_controller_clusterrolebinding.yaml
-
 	mv '$(3)'/scylla-manager/charts/scylla/templates/scyllacluster.yaml '$(2)'/50_scyllacluster.yaml
-	mv '$(3)'/scylla-manager/templates/controller_deployment.yaml '$(2)'/50_controller_deployment.yaml
 	mv '$(3)'/scylla-manager/templates/manager_deployment.yaml '$(2)'/50_manager_deployment.yaml
 
 	@leftovers=$$( find '$(3)'/scylla-manager/ -mindepth 1 -type f ) && [[ "$${leftovers}" == "" ]] || \

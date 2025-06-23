@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/pkg/util/hash"
@@ -14,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
@@ -37,7 +35,7 @@ const (
 )
 
 var (
-	keyFunc = controllerhelpers.DeletionHandlingObjectToNamespacedName
+	keyFunc = cache.DeletionHandlingMetaNamespaceKeyFunc
 )
 
 type hostID struct {
@@ -56,8 +54,8 @@ type Controller struct {
 
 	eventRecorder record.EventRecorder
 
-	queue workqueue.TypedRateLimitingInterface[types.NamespacedName]
-	key   types.NamespacedName
+	queue workqueue.RateLimitingInterface
+	key   string
 
 	hostID hostID
 }
@@ -102,16 +100,16 @@ func NewController(
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scyllasidecar-controller"}),
 
-		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
-			workqueue.NewTypedMaxOfRateLimiter[types.NamespacedName](
-				workqueue.NewTypedItemExponentialFailureRateLimiter[types.NamespacedName](
+		queue: workqueue.NewRateLimitingQueueWithConfig(
+			workqueue.NewMaxOfRateLimiter(
+				workqueue.NewItemExponentialFailureRateLimiter(
 					5*time.Millisecond,
 					// This is a single key controller just for its node, the upper bound should be fairly low.
 					10*time.Second,
 				),
-				&workqueue.TypedBucketRateLimiter[types.NamespacedName]{Limiter: rate.NewLimiter(rate.Limit(10), 100)},
+				&workqueue.BucketRateLimiter{Limiter: rate.NewLimiter(rate.Limit(10), 100)},
 			),
-			workqueue.TypedRateLimitingQueueConfig[types.NamespacedName]{
+			workqueue.RateLimitingQueueConfig{
 				Name: "scyllasidecar",
 			},
 		),
@@ -238,7 +236,7 @@ func (c *Controller) updateService(old, cur interface{}) {
 			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldService, err))
 			return
 		}
-		c.deleteService(controllerhelpers.DeletedFinalStateUnknown{
+		c.deleteService(cache.DeletedFinalStateUnknown{
 			Key: key,
 			Obj: oldService,
 		})
@@ -251,7 +249,7 @@ func (c *Controller) updateService(old, cur interface{}) {
 func (c *Controller) deleteService(obj interface{}) {
 	svc, ok := obj.(*corev1.Service)
 	if !ok {
-		tombstone, ok := obj.(controllerhelpers.DeletedFinalStateUnknown)
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
 			return

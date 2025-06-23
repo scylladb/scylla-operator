@@ -20,7 +20,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
@@ -41,7 +40,7 @@ const (
 )
 
 var (
-	keyFunc                           = controllerhelpers.DeletionHandlingObjectToNamespacedName
+	keyFunc                           = cache.DeletionHandlingMetaNamespaceKeyFunc
 	scyllaOperatorConfigControllerGVK = scyllav1.GroupVersion.WithKind("ScyllaOperatorConfig")
 )
 
@@ -59,7 +58,7 @@ type Controller struct {
 
 	eventRecorder record.EventRecorder
 
-	queue    workqueue.TypedRateLimitingInterface[types.NamespacedName]
+	queue    workqueue.RateLimitingInterface
 	handlers *controllerhelpers.Handlers[*scyllav1alpha1.ScyllaOperatorConfig]
 
 	wg sync.WaitGroup
@@ -89,12 +88,7 @@ func NewController(
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "orphanedpv-controller"}),
 
-		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
-			workqueue.DefaultTypedControllerRateLimiter[types.NamespacedName](),
-			workqueue.TypedRateLimitingQueueConfig[types.NamespacedName]{
-				Name: "orphanedpv",
-			},
-		),
+		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "orphanedpv"),
 	}
 
 	var err error
@@ -122,10 +116,7 @@ func NewController(
 		DeleteFunc: opc.deleteScyllaOperatorConfig,
 	})
 
-	opc.queue.Add(types.NamespacedName{
-		Name:      naming.SingletonName,
-		Namespace: "",
-	})
+	opc.queue.Add(naming.SingletonName)
 
 	return opc, nil
 }

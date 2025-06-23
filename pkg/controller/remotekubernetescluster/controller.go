@@ -58,7 +58,7 @@ type Controller struct {
 
 	eventRecorder record.EventRecorder
 
-	queue    workqueue.RateLimitingInterface
+	queue    workqueue.TypedRateLimitingInterface[string]
 	handlers *controllerhelpers.Handlers[*scyllav1alpha1.RemoteKubernetesCluster]
 }
 
@@ -97,9 +97,12 @@ func NewController(
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "remotekubernetescluster-controller"}),
 
-		queue: workqueue.NewRateLimitingQueueWithConfig(workqueue.DefaultControllerRateLimiter(), workqueue.RateLimitingQueueConfig{
-			Name: "remotekubernetescluster",
-		}),
+		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
+			workqueue.DefaultTypedControllerRateLimiter[string](),
+			workqueue.TypedRateLimitingQueueConfig[string]{
+				Name: "remotekubernetescluster",
+			},
+		),
 	}
 
 	var err error
@@ -149,7 +152,7 @@ func (rkcc *Controller) processNextItem(ctx context.Context) bool {
 	}
 	defer rkcc.queue.Done(key)
 
-	err := rkcc.sync(ctx, key.(string))
+	err := rkcc.sync(ctx, key)
 	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
 	err = apimachineryutilerrors.Reduce(err)
 	switch {

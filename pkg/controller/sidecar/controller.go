@@ -54,7 +54,7 @@ type Controller struct {
 
 	eventRecorder record.EventRecorder
 
-	queue workqueue.RateLimitingInterface
+	queue workqueue.TypedRateLimitingInterface[string]
 	key   string
 
 	hostID hostID
@@ -100,16 +100,16 @@ func NewController(
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scyllasidecar-controller"}),
 
-		queue: workqueue.NewRateLimitingQueueWithConfig(
-			workqueue.NewMaxOfRateLimiter(
-				workqueue.NewItemExponentialFailureRateLimiter(
+		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
+			workqueue.NewTypedMaxOfRateLimiter[string](
+				workqueue.NewTypedItemExponentialFailureRateLimiter[string](
 					5*time.Millisecond,
 					// This is a single key controller just for its node, the upper bound should be fairly low.
 					10*time.Second,
 				),
-				&workqueue.BucketRateLimiter{Limiter: rate.NewLimiter(rate.Limit(10), 100)},
+				&workqueue.TypedBucketRateLimiter[string]{Limiter: rate.NewLimiter(rate.Limit(10), 100)},
 			),
-			workqueue.RateLimitingQueueConfig{
+			workqueue.TypedRateLimitingQueueConfig[string]{
 				Name: "scyllasidecar",
 			},
 		),

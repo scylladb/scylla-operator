@@ -45,14 +45,14 @@ type EnqueueFuncType func(int, kubeinterfaces.ObjectInterface, HandlerOperationT
 type DeleteFuncType = func(any)
 
 type Handlers[T kubeinterfaces.ObjectInterface] struct {
-	queue        workqueue.RateLimitingInterface
+	queue        workqueue.TypedRateLimitingInterface[string]
 	keyFunc      KeyFuncType
 	scheme       *runtime.Scheme
 	gvk          schema.GroupVersionKind
 	getterLister kubeinterfaces.GetterLister[T]
 }
 
-func NewHandlers[T kubeinterfaces.ObjectInterface](queue workqueue.RateLimitingInterface, keyFunc KeyFuncType, scheme *runtime.Scheme, gvk schema.GroupVersionKind, getterLister kubeinterfaces.GetterLister[T]) (*Handlers[T], error) {
+func NewHandlers[T kubeinterfaces.ObjectInterface](queue workqueue.TypedRateLimitingInterface[string], keyFunc KeyFuncType, scheme *runtime.Scheme, gvk schema.GroupVersionKind, getterLister kubeinterfaces.GetterLister[T]) (*Handlers[T], error) {
 	return &Handlers[T]{
 		queue:        queue,
 		keyFunc:      keyFunc,

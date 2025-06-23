@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"maps"
 	"os"
 	"os/exec"
 	"path"
@@ -174,28 +175,30 @@ func mergeSnitchConfigProperties(userConfig, operatorConfig *properties.Properti
 
 var scyllaArgumentsRegexp = regexp.MustCompile(`--([^= ]+)(="[^"]+"|=\S+|\s+"[^"]+"|\s+[^\s-]+|\s+-?\d*\.?\d+[^\s-]+|)`)
 
-func convertScyllaArguments(scyllaArguments string) map[string]string {
-	output := make(map[string]string)
+func parseScyllaArguments(scyllaArguments string) map[string]*string {
+	output := make(map[string]*string)
 	for _, value := range scyllaArgumentsRegexp.FindAllStringSubmatch(scyllaArguments, -1) {
 		if value[2] == "" {
-			output[value[1]] = ""
-		} else if value[2][0] == '=' {
-			output[value[1]] = strings.TrimSpace(value[2][1:])
+			output[value[1]] = nil
 		} else {
-			output[value[1]] = strings.TrimSpace(value[2])
+			output[value[1]] = pointer.Ptr(strings.TrimSpace(strings.TrimPrefix(value[2], "=")))
 		}
 	}
 	return output
 }
 
-func appendScyllaArguments(ctx context.Context, s *ScyllaConfig, scyllaArgs string, scyllaFinalArgs map[string]*string) {
-	for argName, argValue := range convertScyllaArguments(scyllaArgs) {
-		if existing := scyllaFinalArgs[argName]; existing == nil {
-			scyllaFinalArgs[argName] = pointer.Ptr(strings.TrimSpace(argValue))
+// mergeArguments merges two sets of arguments.
+// Arguments managed by the operator take precedence and cannot be overridden by user-provided arguments.
+func mergeArguments(operatorManagedArguments, userProvidedArguments map[string]*string) map[string]*string {
+	finalArguments := maps.Clone(operatorManagedArguments)
+	for argName, argValue := range userProvidedArguments {
+		if _, ok := operatorManagedArguments[argName]; !ok {
+			finalArguments[argName] = argValue
 		} else {
-			klog.Infof("ScyllaArgs: argument '%s' is ignored, it is already in the list", argName)
+			klog.Infof("ScyllaArgs: argument '%s' is ignored, it's managed by Operator", argName)
 		}
 	}
+	return finalArguments
 }
 
 func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
@@ -241,7 +244,7 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	}
 
 	if len(m.AdditionalScyllaDBArguments) > 0 {
-		appendScyllaArguments(ctx, s, strings.Join(m.AdditionalScyllaDBArguments, " "), args)
+		args = mergeArguments(parseScyllaArguments(strings.Join(m.AdditionalScyllaDBArguments, " ")), args)
 	}
 
 	if _, err := os.Stat(scyllaIOPropertiesPath); err == nil {

@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
 
@@ -70,8 +71,12 @@ func (opc *Controller) getPVsForScyllaDBDatacenter(ctx context.Context, sdc *scy
 	return pis, requeueReasons, apimachineryutilerrors.NewAggregate(errs)
 }
 
-func (opc *Controller) sync(ctx context.Context, key types.NamespacedName) error {
-	namespace, name := key.Namespace, key.Name
+func (opc *Controller) sync(ctx context.Context, key string) error {
+	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		klog.ErrorS(err, "Failed to split meta namespace cache key", "cacheKey", key)
+		return err
+	}
 
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing ScyllaDBDatacenter", "ScyllaDBDatacenter", klog.KRef(namespace, name), "startTime", startTime)

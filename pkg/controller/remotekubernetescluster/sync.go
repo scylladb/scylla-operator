@@ -12,13 +12,17 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
 
-func (rkcc *Controller) sync(ctx context.Context, key types.NamespacedName) error {
-	_, name := key.Namespace, key.Name
+func (rkcc *Controller) sync(ctx context.Context, key string) error {
+	_, name, err := cache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		klog.ErrorS(err, "Failed to split meta namespace cache key", "cacheKey", key)
+		return err
+	}
 
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing remote kubernetes cluster", "RemoteKubernetesCluster", name, "startTime", startTime)

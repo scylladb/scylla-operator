@@ -37,7 +37,7 @@ const (
 )
 
 var (
-	keyFunc                 = controllerhelpers.DeletionHandlingObjectToNamespacedName
+	keyFunc                 = cache.DeletionHandlingMetaNamespaceKeyFunc
 	nodeConfigControllerGVK = scyllav1alpha1.GroupVersion.WithKind("NodeConfig")
 )
 
@@ -51,7 +51,7 @@ type Controller struct {
 
 	eventRecorder record.EventRecorder
 
-	queue    workqueue.TypedRateLimitingInterface[types.NamespacedName]
+	queue    workqueue.RateLimitingInterface
 	handlers *controllerhelpers.Handlers[*scyllav1alpha1.NodeConfig]
 
 	nodeName       string
@@ -97,12 +97,7 @@ func NewController(
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "nodesetup-controller"}),
 
-		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
-			workqueue.DefaultTypedControllerRateLimiter[types.NamespacedName](),
-			workqueue.TypedRateLimitingQueueConfig[types.NamespacedName]{
-				Name: "NodeSetup",
-			},
-		),
+		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "NodeSetup"),
 
 		nodeName:       nodeName,
 		nodeUID:        nodeUID,

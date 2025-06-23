@@ -26,7 +26,6 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
@@ -55,7 +54,7 @@ const (
 )
 
 var (
-	keyFunc                    = controllerhelpers.DeletionHandlingObjectToNamespacedName
+	keyFunc                    = cache.DeletionHandlingMetaNamespaceKeyFunc
 	scyllaClusterControllerGVK = scyllav1.GroupVersion.WithKind("ScyllaCluster")
 )
 
@@ -79,7 +78,7 @@ type Controller struct {
 
 	eventRecorder record.EventRecorder
 
-	queue    workqueue.TypedRateLimitingInterface[types.NamespacedName]
+	queue    workqueue.RateLimitingInterface
 	handlers *controllerhelpers.Handlers[*scyllav1.ScyllaCluster]
 }
 
@@ -134,12 +133,7 @@ func NewController(
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scyllaclustermigration-controller"}),
 
-		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
-			workqueue.DefaultTypedControllerRateLimiter[types.NamespacedName](),
-			workqueue.TypedRateLimitingQueueConfig[types.NamespacedName]{
-				Name: "scyllaclustermigration",
-			},
-		),
+		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "scyllaclustermigration"),
 	}
 
 	var err error
@@ -237,7 +231,7 @@ func (scmc *Controller) processNextItem(ctx context.Context) bool {
 	}
 	defer scmc.queue.Done(key)
 
-	err := scmc.sync(ctx, key)
+	err := scmc.sync(ctx, key.(string))
 	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
 	err = apimachineryutilerrors.Reduce(err)
 	switch {

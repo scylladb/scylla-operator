@@ -15,7 +15,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
@@ -37,7 +36,7 @@ const (
 )
 
 var (
-	keyFunc = controllerhelpers.DeletionHandlingObjectToNamespacedName
+	keyFunc = cache.DeletionHandlingMetaNamespaceKeyFunc
 )
 
 // Controller watches all PVs actively belonging to a ScyllaDBDatacenter and replace scylla node
@@ -64,7 +63,7 @@ type Controller struct {
 
 	eventRecorder record.EventRecorder
 
-	queue workqueue.TypedRateLimitingInterface[types.NamespacedName]
+	queue workqueue.RateLimitingInterface
 
 	wg sync.WaitGroup
 }
@@ -96,12 +95,7 @@ func NewController(
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "orphanedpv-controller"}),
 
-		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
-			workqueue.DefaultTypedControllerRateLimiter[types.NamespacedName](),
-			workqueue.TypedRateLimitingQueueConfig[types.NamespacedName]{
-				Name: "orphanedpv",
-			},
-		),
+		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "orphanedpv"),
 	}
 
 	nodeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -127,7 +121,7 @@ func (opc *Controller) processNextItem(ctx context.Context) bool {
 
 	ctx, cancel := context.WithTimeout(ctx, maxSyncDuration)
 	defer cancel()
-	syncErr := opc.sync(ctx, key)
+	syncErr := opc.sync(ctx, key.(string))
 	if syncErr == nil {
 		opc.queue.Forget(key)
 		return true
@@ -254,7 +248,7 @@ func (opc *Controller) updateNode(old, cur interface{}) {
 			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldNode, err))
 			return
 		}
-		opc.deleteNode(controllerhelpers.DeletedFinalStateUnknown{
+		opc.deleteNode(cache.DeletedFinalStateUnknown{
 			Key: key,
 			Obj: oldNode,
 		})
@@ -264,7 +258,7 @@ func (opc *Controller) updateNode(old, cur interface{}) {
 func (opc *Controller) deleteNode(obj interface{}) {
 	node, ok := obj.(*corev1.Node)
 	if !ok {
-		tombstone, ok := obj.(controllerhelpers.DeletedFinalStateUnknown)
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
 			return
@@ -298,7 +292,7 @@ func (opc *Controller) updateScyllaDBDatacenter(old, cur interface{}) {
 			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldSDC, err))
 			return
 		}
-		opc.deleteScyllaDBDatacenter(controllerhelpers.DeletedFinalStateUnknown{
+		opc.deleteScyllaDBDatacenter(cache.DeletedFinalStateUnknown{
 			Key: key,
 			Obj: oldSDC,
 		})
@@ -311,7 +305,7 @@ func (opc *Controller) updateScyllaDBDatacenter(old, cur interface{}) {
 func (opc *Controller) deleteScyllaDBDatacenter(obj interface{}) {
 	sdc, ok := obj.(*scyllav1alpha1.ScyllaDBDatacenter)
 	if !ok {
-		tombstone, ok := obj.(controllerhelpers.DeletedFinalStateUnknown)
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
 			return

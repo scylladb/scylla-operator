@@ -23,7 +23,7 @@ type ObserverSyncFunc = func(ctx context.Context) error
 
 type Observer struct {
 	name          string
-	queue         workqueue.TypedRateLimitingInterface[string]
+	queue         workqueue.RateLimitingInterface
 	syncFunc      ObserverSyncFunc
 	eventRecorder record.EventRecorder
 	cachesToSync  []cache.InformerSynced
@@ -36,9 +36,9 @@ func NewObserver(name string, eventsClient corev1client.EventInterface, syncFunc
 
 	return &Observer{
 		name: name,
-		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
-			workqueue.DefaultTypedControllerRateLimiter[string](),
-			workqueue.TypedRateLimitingQueueConfig[string]{
+		queue: workqueue.NewRateLimitingQueueWithConfig(
+			workqueue.DefaultControllerRateLimiter(),
+			workqueue.RateLimitingQueueConfig{
 				Name: name,
 			}),
 		syncFunc:      syncFunc,

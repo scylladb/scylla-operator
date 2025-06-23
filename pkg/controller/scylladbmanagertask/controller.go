@@ -20,7 +20,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
@@ -44,7 +43,7 @@ const (
 )
 
 var (
-	keyFunc                          = controllerhelpers.DeletionHandlingObjectToNamespacedName
+	keyFunc                          = cache.DeletionHandlingMetaNamespaceKeyFunc
 	scyllaDBManagerTaskControllerGVK = scyllav1alpha1.GroupVersion.WithKind("ScyllaDBManagerTask")
 )
 
@@ -60,7 +59,7 @@ type Controller struct {
 	eventRecorder record.EventRecorder
 
 	// FIXME: https://github.com/scylladb/scylla-operator/pull/2685
-	queue    workqueue.TypedRateLimitingInterface[types.NamespacedName]
+	queue    workqueue.RateLimitingInterface
 	handlers *controllerhelpers.Handlers[*scyllav1alpha1.ScyllaDBManagerTask]
 }
 
@@ -88,9 +87,7 @@ func NewController(
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scylladbmanagertask-controller"}),
 
-		queue: workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[types.NamespacedName](), workqueue.TypedRateLimitingQueueConfig[types.NamespacedName]{
-			Name: "scylladbmanagertask",
-		}),
+		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "scylladbmanagertask"),
 	}
 
 	var err error
@@ -136,7 +133,7 @@ func (smtc *Controller) processNextItem(ctx context.Context) bool {
 
 	ctx, cancel := context.WithTimeout(ctx, maxSyncDuration)
 	defer cancel()
-	err := smtc.sync(ctx, key)
+	err := smtc.sync(ctx, key.(string))
 	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
 	err = apimachineryutilerrors.Reduce(err)
 	switch {

@@ -18,7 +18,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
@@ -41,7 +40,7 @@ const (
 )
 
 var (
-	keyFunc          = controllerhelpers.DeletionHandlingObjectToNamespacedName
+	keyFunc          = cache.DeletionHandlingMetaNamespaceKeyFunc
 	podControllerGVK = corev1.SchemeGroupVersion.WithKind("Pod")
 )
 
@@ -58,7 +57,7 @@ type Controller struct {
 
 	eventRecorder record.EventRecorder
 
-	queue    workqueue.TypedRateLimitingInterface[types.NamespacedName]
+	queue    workqueue.RateLimitingInterface
 	handlers *controllerhelpers.Handlers[*corev1.Pod]
 }
 
@@ -91,12 +90,8 @@ func NewController(
 		},
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "NodeConfigCM-controller"}),
-		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
-			workqueue.DefaultTypedControllerRateLimiter[types.NamespacedName](),
-			workqueue.TypedRateLimitingQueueConfig[types.NamespacedName]{
-				Name: "NodeConfigCM",
-			},
-		),
+
+		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "NodeConfigCM"),
 	}
 
 	var err error
@@ -278,7 +273,7 @@ func (ncpc *Controller) processNextItem(ctx context.Context) bool {
 
 	ctx, cancel := context.WithTimeout(ctx, maxSyncDuration)
 	defer cancel()
-	err := ncpc.sync(ctx, key)
+	err := ncpc.sync(ctx, key.(string))
 	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
 	err = apimachineryutilerrors.Reduce(err)
 	switch {

@@ -6,12 +6,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -202,9 +206,7 @@ func TestMigrateV1ScyllaClusterToV1Alpha1ScyllaDBDatacenter(t *testing.T) {
 			}(),
 			expectedScyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
 				sd := newBasicScyllaDBDatacenterWithNoStatus()
-				sd.Annotations = map[string]string{
-					"internal.scylla-operator.scylladb.com/host-networking": "true",
-				}
+				metav1.SetMetaDataAnnotation(&sd.ObjectMeta, naming.TransformScyllaClusterToScyllaDBDatacenterHostNetworkingAnnotation, "true")
 				return sd
 			}(),
 		},
@@ -217,9 +219,7 @@ func TestMigrateV1ScyllaClusterToV1Alpha1ScyllaDBDatacenter(t *testing.T) {
 			}(),
 			expectedScyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
 				sd := newBasicScyllaDBDatacenterWithNoStatus()
-				sd.Annotations = map[string]string{
-					"internal.scylla-operator.scylladb.com/sysctls": "[\"foo=bar\",\"zoo=foo\"]\n",
-				}
+				metav1.SetMetaDataAnnotation(&sd.ObjectMeta, naming.TransformScyllaClusterToScyllaDBDatacenterSysctlsAnnotation, "[\"foo=bar\",\"zoo=foo\"]\n")
 				return sd
 			}(),
 		},
@@ -232,9 +232,7 @@ func TestMigrateV1ScyllaClusterToV1Alpha1ScyllaDBDatacenter(t *testing.T) {
 			}(),
 			expectedScyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
 				sd := newBasicScyllaDBDatacenterWithNoStatus()
-				sd.Annotations = map[string]string{
-					"internal.scylla-operator.scylladb.com/alternator-port": "9000",
-				}
+				metav1.SetMetaDataAnnotation(&sd.ObjectMeta, naming.TransformScyllaClusterToScyllaDBDatacenterAlternatorPortAnnotation, "9000")
 				return sd
 			}(),
 		},
@@ -247,9 +245,7 @@ func TestMigrateV1ScyllaClusterToV1Alpha1ScyllaDBDatacenter(t *testing.T) {
 			}(),
 			expectedScyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
 				sd := newBasicScyllaDBDatacenterWithNoStatus()
-				sd.Annotations = map[string]string{
-					"internal.scylla-operator.scylladb.com/alternator-insecure-enable-http": "true",
-				}
+				metav1.SetMetaDataAnnotation(&sd.ObjectMeta, naming.TransformScyllaClusterToScyllaDBDatacenterInsecureEnableHTTPAnnotation, "true")
 				return sd
 			}(),
 		},
@@ -262,9 +258,7 @@ func TestMigrateV1ScyllaClusterToV1Alpha1ScyllaDBDatacenter(t *testing.T) {
 			}(),
 			expectedScyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
 				sd := newBasicScyllaDBDatacenterWithNoStatus()
-				sd.Annotations = map[string]string{
-					"internal.scylla-operator.scylladb.com/alternator-insecure-disable-authorization": "true",
-				}
+				metav1.SetMetaDataAnnotation(&sd.ObjectMeta, naming.TransformScyllaClusterToScyllaDBDatacenterInsecureDisableAuthorizationAnnotation, "true")
 				return sd
 			}(),
 		},
@@ -313,7 +307,8 @@ func TestMigrateV1ScyllaClusterToV1Alpha1ScyllaDBDatacenter(t *testing.T) {
 func newBasicScyllaCluster() *scyllav1.ScyllaCluster {
 	return &scyllav1.ScyllaCluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "simple-cluster",
+			Name:      "simple-cluster",
+			Namespace: "scylla",
 		},
 		Spec: scyllav1.ScyllaClusterSpec{
 			PodMetadata: &scyllav1.ObjectTemplateMetadata{
@@ -541,7 +536,14 @@ func newBasicScyllaCluster() *scyllav1.ScyllaCluster {
 func newBasicScyllaDBDatacenter() *scyllav1alpha1.ScyllaDBDatacenter {
 	return &scyllav1alpha1.ScyllaDBDatacenter{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "simple-cluster",
+			Name:      "simple-cluster",
+			Namespace: "scylla",
+			Labels: map[string]string{
+				naming.GlobalScyllaDBManagerRegistrationLabel: "true",
+			},
+			Annotations: map[string]string{
+				naming.ScyllaDBManagerClusterRegistrationNameOverrideAnnotation: "scylla/simple-cluster",
+			},
 		},
 		Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
 			Metadata: &scyllav1alpha1.ObjectTemplateMetadata{
@@ -823,6 +825,771 @@ func newBasicScyllaDBTemplate() scyllav1alpha1.ScyllaDBTemplate {
 				Name:      "custom-scylla-config-map-volume-name",
 				ReadOnly:  true,
 				MountPath: "/var/foo/bar",
+			},
+		},
+	}
+}
+
+func TestMigrateV1ScyllaClusterToV1Alpha1ScyllaDBManagerTasks(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name                         string
+		scyllaCluster                *scyllav1.ScyllaCluster
+		expectedScyllaDBManagerTasks []*scyllav1alpha1.ScyllaDBManagerTask
+		expectedErr                  error
+	}{
+		{
+			name:                         "cluster with no tasks",
+			scyllaCluster:                newBasicScyllaCluster(),
+			expectedScyllaDBManagerTasks: nil,
+			expectedErr:                  nil,
+		},
+		{
+			name: "cluster with backup and repair tasks",
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := newBasicScyllaCluster()
+
+				sc.Spec.Backups = []scyllav1.BackupTaskSpec{
+					newScyllaV1BackupTaskSpec(),
+				}
+				sc.Spec.Repairs = []scyllav1.RepairTaskSpec{
+					newScyllaV1RepairTaskSpec(),
+				}
+
+				return sc
+			}(),
+			expectedScyllaDBManagerTasks: []*scyllav1alpha1.ScyllaDBManagerTask{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "simple-cluster-backup-task1-1a8wu",
+						Namespace: "scylla",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"app.kubernetes.io/name":       "scylla",
+							"scylla/cluster":               "simple-cluster",
+						},
+						Annotations: map[string]string{
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-name-override":                        "task1",
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-missing-owner-uid-force-adopt":        "",
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-schedule-interval-override":           "5m",
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-schedule-start-date-override":         "now+3d2h10m",
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-schedule-timezone-override":           "CET",
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-backup-dc-no-validate":                "",
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-backup-keyspace-no-validate":          "",
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-backup-location-no-validate":          "",
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-backup-rate-limit-no-validate":        "",
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-backup-retention-no-validate":         "",
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-backup-snapshot-parallel-no-validate": "",
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-backup-upload-parallel-no-validate":   "",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1",
+								Kind:               "ScyllaCluster",
+								Name:               "simple-cluster",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Spec: scyllav1alpha1.ScyllaDBManagerTaskSpec{
+						Type: scyllav1alpha1.ScyllaDBManagerTaskTypeBackup,
+						ScyllaDBClusterRef: scyllav1alpha1.LocalScyllaDBReference{
+							Name: "simple-cluster",
+							Kind: "ScyllaDBDatacenter",
+						},
+						Backup: &scyllav1alpha1.ScyllaDBManagerBackupTaskOptions{
+							ScyllaDBManagerTaskSchedule: scyllav1alpha1.ScyllaDBManagerTaskSchedule{
+								Cron:       pointer.Ptr("0 23 * * SAT"),
+								NumRetries: pointer.Ptr[int64](3),
+							},
+							DC:               []string{"dc1", "!otherdc*"},
+							Keyspace:         []string{"keyspace", "!keyspace.table_prefix_*"},
+							Location:         []string{"s3:bucket.domain", "dc:s3:otherbucket.otherdomain"},
+							RateLimit:        []string{"dc1:100", "dc2:200"},
+							Retention:        pointer.Ptr[int64](3),
+							SnapshotParallel: []string{"dc1:1", "dc2:2"},
+							UploadParallel:   []string{"dc3:3", "dc4:4"},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "simple-cluster-repair-task1-1ml5z",
+						Namespace: "scylla",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"app.kubernetes.io/name":       "scylla",
+							"scylla/cluster":               "simple-cluster",
+						},
+						Annotations: map[string]string{
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-name-override":                         "task1",
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-missing-owner-uid-force-adopt":         "",
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-schedule-interval-override":            "7d",
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-schedule-start-date-override":          "now+4d3h20m",
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-schedule-timezone-override":            "Europe/Warsaw",
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-dc-no-validate":                 "",
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-intensity-override":             "0.5",
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-keyspace-no-validate":           "",
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-parallel-no-validate":           "",
+							"internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-small-table-threshold-override": "1GiB",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1",
+								Kind:               "ScyllaCluster",
+								Name:               "simple-cluster",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Spec: scyllav1alpha1.ScyllaDBManagerTaskSpec{
+						Type: scyllav1alpha1.ScyllaDBManagerTaskTypeRepair,
+						ScyllaDBClusterRef: scyllav1alpha1.LocalScyllaDBReference{
+							Name: "simple-cluster",
+							Kind: "ScyllaDBDatacenter",
+						},
+						Repair: &scyllav1alpha1.ScyllaDBManagerRepairTaskOptions{
+							ScyllaDBManagerTaskSchedule: scyllav1alpha1.ScyllaDBManagerTaskSchedule{
+								Cron:       pointer.Ptr("0 5 * * *"),
+								NumRetries: pointer.Ptr[int64](1),
+							},
+							DC:                  []string{"dc1", "!otherdc*"},
+							Keyspace:            []string{"keyspace", "!keyspace.table_prefix_*"},
+							FailFast:            pointer.Ptr(false),
+							Host:                pointer.Ptr("10.0.0.1"),
+							Intensity:           nil,
+							Parallel:            pointer.Ptr[int64](2),
+							SmallTableThreshold: nil,
+						},
+					},
+				},
+			},
+			expectedErr: nil,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := MigrateV1ScyllaClusterToV1Alpha1ScyllaDBManagerTasks(tc.scyllaCluster)
+			if !equality.Semantic.DeepEqual(err, tc.expectedErr) {
+				t.Fatalf("expected error %v, got %v", tc.expectedErr, err)
+			}
+
+			if !equality.Semantic.DeepEqual(got, tc.expectedScyllaDBManagerTasks) {
+				t.Errorf("expected and got ScyllaDBManagerTasks differ: %v", cmp.Diff(tc.expectedScyllaDBManagerTasks, got))
+			}
+		})
+	}
+}
+
+func TestMigrateV1Alpha1ScyllaDBManagerTaskStatusToV1BackupTaskStatus(t *testing.T) {
+	t.Parallel()
+
+	const taskName = "task1"
+	const taskID = "1856aa51-5712-4b39-a7a5-41cee77ac50f"
+	statusAnnotation := strings.TrimSpace(`{
+"startDate":"2025-06-12T21:44:34.694Z",
+"interval":"5m",
+"numRetries":3,
+"cron":"{\"spec\":\"0 23 * * SAT\",\"start_date\":\"0001-01-01T00:00:00Z\"}",
+"timezone":"CET",
+"name":"task1",
+"id":"1856aa51-5712-4b39-a7a5-41cee77ac50f",
+"labels":{
+	"scylla-operator.scylladb.com/managed-hash":"IaWoli79Qzq+PWK0ZbW6KQseXZpmkvH4ix9QWWrVGITcSCCntWych/2YGr+7VD69H6INyr7S+Ajjp079YqJypw==",
+	"scylla-operator.scylladb.com/owner-uid":"74ab78ad-686e-47f0-983f-d2aae618473c"
+},
+"dc": ["dc1", "!otherdc*"],
+"keyspace": ["keyspace", "!keyspace.table_prefix_*"],
+"location": ["s3:bucket.domain", "dc:s3:otherbucket.otherdomain"],
+"rateLimit": ["dc1:100", "dc2:200"],
+"retention": 3,
+"snapshotParallel": ["dc1:1", "dc2:2"],
+"uploadParallel": ["dc3:3", "dc4:4"]
+}`)
+
+	tests := []struct {
+		name                string
+		scyllaDBManagerTask *scyllav1alpha1.ScyllaDBManagerTask
+		taskName            string
+		expected            scyllav1.BackupTaskStatus
+		expectedOK          bool
+		expectedErr         error
+	}{
+		{
+			name: "no status annotation, no degraded condition",
+			scyllaDBManagerTask: func() *scyllav1alpha1.ScyllaDBManagerTask {
+				smt := newBackupScyllaDBManagerTask()
+
+				smt.Status.TaskID = pointer.Ptr(taskID)
+
+				return smt
+			}(),
+			taskName:    taskName,
+			expected:    scyllav1.BackupTaskStatus{},
+			expectedOK:  false,
+			expectedErr: nil,
+		},
+		{
+			name: "no status annotation, degraded condition present",
+			scyllaDBManagerTask: func() *scyllav1alpha1.ScyllaDBManagerTask {
+				smt := newBackupScyllaDBManagerTask()
+
+				smt.Status.TaskID = pointer.Ptr(taskID)
+				smt.Status.Conditions = []metav1.Condition{
+					{
+						Type:               scyllav1alpha1.DegradedCondition,
+						Status:             metav1.ConditionTrue,
+						ObservedGeneration: 123,
+						Reason:             "TaskDegradedReason",
+						Message:            "task degraded message",
+					},
+				}
+
+				return smt
+			}(),
+			taskName: taskName,
+			expected: scyllav1.BackupTaskStatus{
+				TaskStatus: scyllav1.TaskStatus{
+					Name:  "task1",
+					ID:    pointer.Ptr("1856aa51-5712-4b39-a7a5-41cee77ac50f"),
+					Error: pointer.Ptr("task degraded message"),
+				},
+			},
+			expectedOK:  true,
+			expectedErr: nil,
+		},
+		{
+			name: "status annotation present, no degraded condition",
+			scyllaDBManagerTask: func() *scyllav1alpha1.ScyllaDBManagerTask {
+				smt := newBackupScyllaDBManagerTask()
+
+				smt.Status.TaskID = pointer.Ptr(taskID)
+				smt.ObjectMeta.Annotations = map[string]string{
+					naming.ScyllaDBManagerTaskStatusAnnotation: statusAnnotation,
+				}
+
+				return smt
+			}(),
+			taskName: taskName,
+			expected: scyllav1.BackupTaskStatus{
+				TaskStatus: scyllav1.TaskStatus{
+					SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
+						StartDate:  pointer.Ptr("2025-06-12T21:44:34.694Z"),
+						Interval:   pointer.Ptr("5m"),
+						NumRetries: pointer.Ptr[int64](3),
+						Cron:       pointer.Ptr(`{"spec":"0 23 * * SAT","start_date":"0001-01-01T00:00:00Z"}`),
+						Timezone:   pointer.Ptr("CET"),
+					},
+					Name: "task1",
+					ID:   pointer.Ptr("1856aa51-5712-4b39-a7a5-41cee77ac50f"),
+					Labels: map[string]string{
+						"scylla-operator.scylladb.com/managed-hash": "IaWoli79Qzq+PWK0ZbW6KQseXZpmkvH4ix9QWWrVGITcSCCntWych/2YGr+7VD69H6INyr7S+Ajjp079YqJypw==",
+						"scylla-operator.scylladb.com/owner-uid":    "74ab78ad-686e-47f0-983f-d2aae618473c",
+					},
+					Error: nil,
+				},
+				DC:               []string{"dc1", "!otherdc*"},
+				Keyspace:         []string{"keyspace", "!keyspace.table_prefix_*"},
+				Location:         []string{"s3:bucket.domain", "dc:s3:otherbucket.otherdomain"},
+				RateLimit:        []string{"dc1:100", "dc2:200"},
+				Retention:        pointer.Ptr[int64](3),
+				SnapshotParallel: []string{"dc1:1", "dc2:2"},
+				UploadParallel:   []string{"dc3:3", "dc4:4"},
+			},
+			expectedOK:  true,
+			expectedErr: nil,
+		},
+		{
+			name: "status annotation present, degraded condition present",
+			scyllaDBManagerTask: func() *scyllav1alpha1.ScyllaDBManagerTask {
+				smt := newBackupScyllaDBManagerTask()
+
+				smt.Status.TaskID = pointer.Ptr(taskID)
+				smt.ObjectMeta.Annotations = map[string]string{
+					naming.ScyllaDBManagerTaskStatusAnnotation: statusAnnotation,
+				}
+				smt.Status.Conditions = []metav1.Condition{
+					{
+						Type:               scyllav1alpha1.DegradedCondition,
+						Status:             metav1.ConditionTrue,
+						ObservedGeneration: 123,
+						Reason:             "TaskDegradedReason",
+						Message:            "task degraded message",
+					},
+				}
+
+				return smt
+			}(),
+			taskName: taskName,
+			expected: scyllav1.BackupTaskStatus{
+				TaskStatus: scyllav1.TaskStatus{
+					SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
+						StartDate:  pointer.Ptr("2025-06-12T21:44:34.694Z"),
+						Interval:   pointer.Ptr("5m"),
+						NumRetries: pointer.Ptr[int64](3),
+						Cron:       pointer.Ptr(`{"spec":"0 23 * * SAT","start_date":"0001-01-01T00:00:00Z"}`),
+						Timezone:   pointer.Ptr("CET"),
+					},
+					Name: "task1",
+					ID:   pointer.Ptr("1856aa51-5712-4b39-a7a5-41cee77ac50f"),
+					Labels: map[string]string{
+						"scylla-operator.scylladb.com/managed-hash": "IaWoli79Qzq+PWK0ZbW6KQseXZpmkvH4ix9QWWrVGITcSCCntWych/2YGr+7VD69H6INyr7S+Ajjp079YqJypw==",
+						"scylla-operator.scylladb.com/owner-uid":    "74ab78ad-686e-47f0-983f-d2aae618473c",
+					},
+					Error: pointer.Ptr("task degraded message"),
+				},
+				DC:               []string{"dc1", "!otherdc*"},
+				Keyspace:         []string{"keyspace", "!keyspace.table_prefix_*"},
+				Location:         []string{"s3:bucket.domain", "dc:s3:otherbucket.otherdomain"},
+				RateLimit:        []string{"dc1:100", "dc2:200"},
+				Retention:        pointer.Ptr[int64](3),
+				SnapshotParallel: []string{"dc1:1", "dc2:2"},
+				UploadParallel:   []string{"dc3:3", "dc4:4"},
+			},
+			expectedOK:  true,
+			expectedErr: nil,
+		},
+		{
+			name: "empty status annotation",
+			scyllaDBManagerTask: func() *scyllav1alpha1.ScyllaDBManagerTask {
+				smt := newBackupScyllaDBManagerTask()
+
+				smt.Status.TaskID = pointer.Ptr(taskID)
+				smt.ObjectMeta.Annotations = map[string]string{
+					naming.ScyllaDBManagerTaskStatusAnnotation: ``,
+				}
+
+				return smt
+			}(),
+			taskName:    taskName,
+			expected:    scyllav1.BackupTaskStatus{},
+			expectedOK:  false,
+			expectedErr: fmt.Errorf("can't decode ScyllaDBManagerTask status annotation: %w", io.EOF),
+		},
+		{
+			name: "invalid status annotation",
+			scyllaDBManagerTask: func() *scyllav1alpha1.ScyllaDBManagerTask {
+				smt := newBackupScyllaDBManagerTask()
+
+				smt.Status.TaskID = pointer.Ptr(taskID)
+				smt.ObjectMeta.Annotations = map[string]string{
+					naming.ScyllaDBManagerTaskStatusAnnotation: `{"invalid":`,
+				}
+
+				return smt
+			}(),
+			taskName:    taskName,
+			expected:    scyllav1.BackupTaskStatus{},
+			expectedOK:  false,
+			expectedErr: fmt.Errorf("can't decode ScyllaDBManagerTask status annotation: %w", io.ErrUnexpectedEOF),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, gotOK, err := migrateV1Alpha1ScyllaDBManagerTaskStatusToV1BackupTaskStatus(tt.scyllaDBManagerTask, tt.taskName)
+
+			if !reflect.DeepEqual(err, tt.expectedErr) {
+				t.Fatalf("expected error %v, got %v", tt.expectedErr, err)
+			}
+
+			if gotOK != tt.expectedOK {
+				t.Fatalf("expected ok %v, got %v", tt.expectedOK, gotOK)
+			}
+
+			if !equality.Semantic.DeepEqual(got, tt.expected) {
+				t.Errorf("expected and got statuses differ: %v", cmp.Diff(tt.expected, got))
+			}
+		})
+	}
+}
+
+func TestMigrateV1Alpha1ScyllaDBManagerTaskStatusToV1RepairTaskStatus(t *testing.T) {
+	t.Parallel()
+
+	const taskName = "task1"
+	const taskID = "1856aa51-5712-4b39-a7a5-41cee77ac50f"
+	statusAnnotation := strings.TrimSpace(`{
+"startDate":"2025-06-12T21:44:34.694Z",
+"interval":"5m",
+"numRetries":3,
+"cron":"{\"spec\":\"0 23 * * SAT\",\"start_date\":\"0001-01-01T00:00:00Z\"}",
+"timezone":"CET",
+"name":"task1",
+"id":"1856aa51-5712-4b39-a7a5-41cee77ac50f",
+"labels":{
+	"scylla-operator.scylladb.com/managed-hash":"IaWoli79Qzq+PWK0ZbW6KQseXZpmkvH4ix9QWWrVGITcSCCntWych/2YGr+7VD69H6INyr7S+Ajjp079YqJypw==",
+	"scylla-operator.scylladb.com/owner-uid":"74ab78ad-686e-47f0-983f-d2aae618473c"
+},
+"dc": ["dc1", "!otherdc*"],
+"keyspace": ["keyspace", "!keyspace.table_prefix_*"],
+"host": "10.0.0.1",
+"failFast": false,
+"intensity": "0.5",
+"parallel": 2,
+"smallTableThreshold": "1GiB"
+}`)
+
+	tests := []struct {
+		name                string
+		scyllaDBManagerTask *scyllav1alpha1.ScyllaDBManagerTask
+		taskName            string
+		expected            scyllav1.RepairTaskStatus
+		expectedOK          bool
+		expectedErr         error
+	}{
+		{
+			name: "no status annotation, no degraded condition",
+			scyllaDBManagerTask: func() *scyllav1alpha1.ScyllaDBManagerTask {
+				smt := newRepairScyllaDBManagerTask()
+
+				smt.Status.TaskID = pointer.Ptr(taskID)
+
+				return smt
+			}(),
+			taskName:    taskName,
+			expected:    scyllav1.RepairTaskStatus{},
+			expectedOK:  false,
+			expectedErr: nil,
+		},
+		{
+			name: "no status annotation, degraded condition present",
+			scyllaDBManagerTask: func() *scyllav1alpha1.ScyllaDBManagerTask {
+				smt := newRepairScyllaDBManagerTask()
+
+				smt.Status.TaskID = pointer.Ptr(taskID)
+				smt.Status.Conditions = []metav1.Condition{
+					{
+						Type:               scyllav1alpha1.DegradedCondition,
+						Status:             metav1.ConditionTrue,
+						ObservedGeneration: 123,
+						Reason:             "TaskDegradedReason",
+						Message:            "task degraded message",
+					},
+				}
+
+				return smt
+			}(),
+			taskName: taskName,
+			expected: scyllav1.RepairTaskStatus{
+				TaskStatus: scyllav1.TaskStatus{
+					Name:  "task1",
+					ID:    pointer.Ptr("1856aa51-5712-4b39-a7a5-41cee77ac50f"),
+					Error: pointer.Ptr("task degraded message"),
+				},
+			},
+			expectedOK:  true,
+			expectedErr: nil,
+		},
+		{
+			name: "status annotation present, no degraded condition",
+			scyllaDBManagerTask: func() *scyllav1alpha1.ScyllaDBManagerTask {
+				smt := newRepairScyllaDBManagerTask()
+
+				smt.Status.TaskID = pointer.Ptr(taskID)
+				smt.ObjectMeta.Annotations = map[string]string{
+					naming.ScyllaDBManagerTaskStatusAnnotation: statusAnnotation,
+				}
+
+				return smt
+			}(),
+			taskName: taskName,
+			expected: scyllav1.RepairTaskStatus{
+				TaskStatus: scyllav1.TaskStatus{
+					SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
+						StartDate:  pointer.Ptr("2025-06-12T21:44:34.694Z"),
+						Interval:   pointer.Ptr("5m"),
+						NumRetries: pointer.Ptr[int64](3),
+						Cron:       pointer.Ptr(`{"spec":"0 23 * * SAT","start_date":"0001-01-01T00:00:00Z"}`),
+						Timezone:   pointer.Ptr("CET"),
+					},
+					Name: "task1",
+					ID:   pointer.Ptr("1856aa51-5712-4b39-a7a5-41cee77ac50f"),
+					Labels: map[string]string{
+						"scylla-operator.scylladb.com/managed-hash": "IaWoli79Qzq+PWK0ZbW6KQseXZpmkvH4ix9QWWrVGITcSCCntWych/2YGr+7VD69H6INyr7S+Ajjp079YqJypw==",
+						"scylla-operator.scylladb.com/owner-uid":    "74ab78ad-686e-47f0-983f-d2aae618473c",
+					},
+					Error: nil,
+				},
+				DC:                  []string{"dc1", "!otherdc*"},
+				FailFast:            pointer.Ptr(false),
+				Intensity:           pointer.Ptr("0.5"),
+				Parallel:            pointer.Ptr[int64](2),
+				Keyspace:            []string{"keyspace", "!keyspace.table_prefix_*"},
+				SmallTableThreshold: pointer.Ptr("1GiB"),
+				Host:                pointer.Ptr("10.0.0.1"),
+			},
+			expectedOK:  true,
+			expectedErr: nil,
+		},
+		{
+			name: "status annotation present, degraded condition present",
+			scyllaDBManagerTask: func() *scyllav1alpha1.ScyllaDBManagerTask {
+				smt := newRepairScyllaDBManagerTask()
+
+				smt.Status.TaskID = pointer.Ptr(taskID)
+				smt.ObjectMeta.Annotations = map[string]string{
+					naming.ScyllaDBManagerTaskStatusAnnotation: statusAnnotation,
+				}
+				smt.Status.Conditions = []metav1.Condition{
+					{
+						Type:               scyllav1alpha1.DegradedCondition,
+						Status:             metav1.ConditionTrue,
+						ObservedGeneration: 123,
+						Reason:             "TaskDegradedReason",
+						Message:            "task degraded message",
+					},
+				}
+
+				return smt
+			}(),
+			taskName: taskName,
+			expected: scyllav1.RepairTaskStatus{
+				TaskStatus: scyllav1.TaskStatus{
+					SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{
+						StartDate:  pointer.Ptr("2025-06-12T21:44:34.694Z"),
+						Interval:   pointer.Ptr("5m"),
+						NumRetries: pointer.Ptr[int64](3),
+						Cron:       pointer.Ptr(`{"spec":"0 23 * * SAT","start_date":"0001-01-01T00:00:00Z"}`),
+						Timezone:   pointer.Ptr("CET"),
+					},
+					Name: "task1",
+					ID:   pointer.Ptr("1856aa51-5712-4b39-a7a5-41cee77ac50f"),
+					Labels: map[string]string{
+						"scylla-operator.scylladb.com/managed-hash": "IaWoli79Qzq+PWK0ZbW6KQseXZpmkvH4ix9QWWrVGITcSCCntWych/2YGr+7VD69H6INyr7S+Ajjp079YqJypw==",
+						"scylla-operator.scylladb.com/owner-uid":    "74ab78ad-686e-47f0-983f-d2aae618473c",
+					},
+					Error: pointer.Ptr("task degraded message"),
+				},
+				DC:                  []string{"dc1", "!otherdc*"},
+				FailFast:            pointer.Ptr(false),
+				Intensity:           pointer.Ptr("0.5"),
+				Parallel:            pointer.Ptr[int64](2),
+				Keyspace:            []string{"keyspace", "!keyspace.table_prefix_*"},
+				SmallTableThreshold: pointer.Ptr("1GiB"),
+				Host:                pointer.Ptr("10.0.0.1"),
+			},
+			expectedOK:  true,
+			expectedErr: nil,
+		},
+		{
+			name: "empty status annotation",
+			scyllaDBManagerTask: func() *scyllav1alpha1.ScyllaDBManagerTask {
+				smt := newRepairScyllaDBManagerTask()
+
+				smt.Status.TaskID = pointer.Ptr(taskID)
+				smt.ObjectMeta.Annotations = map[string]string{
+					naming.ScyllaDBManagerTaskStatusAnnotation: ``,
+				}
+
+				return smt
+			}(),
+			taskName:    taskName,
+			expected:    scyllav1.RepairTaskStatus{},
+			expectedOK:  false,
+			expectedErr: fmt.Errorf("can't decode ScyllaDBManagerTask status annotation: %w", io.EOF),
+		},
+		{
+			name: "invalid status annotation",
+			scyllaDBManagerTask: func() *scyllav1alpha1.ScyllaDBManagerTask {
+				smt := newRepairScyllaDBManagerTask()
+
+				smt.Status.TaskID = pointer.Ptr(taskID)
+				smt.ObjectMeta.Annotations = map[string]string{
+					naming.ScyllaDBManagerTaskStatusAnnotation: `{"invalid":`,
+				}
+
+				return smt
+			}(),
+			taskName:    taskName,
+			expected:    scyllav1.RepairTaskStatus{},
+			expectedOK:  false,
+			expectedErr: fmt.Errorf("can't decode ScyllaDBManagerTask status annotation: %w", io.ErrUnexpectedEOF),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, gotOK, err := migrateV1Alpha1ScyllaDBManagerTaskStatusToV1RepairTaskStatus(tt.scyllaDBManagerTask, tt.taskName)
+
+			if !reflect.DeepEqual(err, tt.expectedErr) {
+				t.Fatalf("expected error %v, got %v", tt.expectedErr, err)
+			}
+
+			if gotOK != tt.expectedOK {
+				t.Fatalf("expected ok %v, got %v", tt.expectedOK, gotOK)
+			}
+
+			if !equality.Semantic.DeepEqual(got, tt.expected) {
+				t.Errorf("expected and got statuses differ: %v", cmp.Diff(tt.expected, got))
+			}
+		})
+	}
+}
+
+func newScyllaV1BackupTaskSpec() scyllav1.BackupTaskSpec {
+	return scyllav1.BackupTaskSpec{
+		TaskSpec: scyllav1.TaskSpec{
+			Name: "task1",
+			SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+				StartDate:  pointer.Ptr("now+3d2h10m"),
+				Interval:   pointer.Ptr("5m"),
+				NumRetries: pointer.Ptr[int64](3),
+				Cron:       pointer.Ptr("0 23 * * SAT"),
+				Timezone:   pointer.Ptr("CET"),
+			},
+		},
+		DC:               []string{"dc1", "!otherdc*"},
+		Keyspace:         []string{"keyspace", "!keyspace.table_prefix_*"},
+		Location:         []string{"s3:bucket.domain", "dc:s3:otherbucket.otherdomain"},
+		RateLimit:        []string{"dc1:100", "dc2:200"},
+		Retention:        3,
+		SnapshotParallel: []string{"dc1:1", "dc2:2"},
+		UploadParallel:   []string{"dc3:3", "dc4:4"},
+	}
+}
+
+func newScyllaV1RepairTaskSpec() scyllav1.RepairTaskSpec {
+	return scyllav1.RepairTaskSpec{
+		TaskSpec: scyllav1.TaskSpec{
+			Name: "task1",
+			SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+				StartDate:  pointer.Ptr("now+4d3h20m"),
+				Interval:   pointer.Ptr("7d"),
+				NumRetries: pointer.Ptr[int64](1),
+				Cron:       pointer.Ptr("0 5 * * *"),
+				Timezone:   pointer.Ptr("Europe/Warsaw"),
+			},
+		},
+		DC:                  []string{"dc1", "!otherdc*"},
+		FailFast:            false,
+		Intensity:           "0.5",
+		Parallel:            2,
+		Keyspace:            []string{"keyspace", "!keyspace.table_prefix_*"},
+		SmallTableThreshold: "1GiB",
+		Host:                pointer.Ptr("10.0.0.1"),
+	}
+}
+
+func newBackupScyllaDBManagerTask() *scyllav1alpha1.ScyllaDBManagerTask {
+	return &scyllav1alpha1.ScyllaDBManagerTask{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "simple-cluster-backup-task1-1a8wu",
+			Namespace: "scylla",
+			Labels: map[string]string{
+				"app":                          "scylla",
+				"app.kubernetes.io/managed-by": "scylla-operator",
+				"app.kubernetes.io/name":       "scylla",
+				"scylla/cluster":               "simple-cluster",
+			},
+			Annotations: map[string]string{
+				naming.ScyllaDBManagerTaskNameOverrideAnnotation:                     "task1",
+				naming.ScyllaDBManagerTaskScheduleIntervalOverrideAnnotation:         "5m",
+				naming.ScyllaDBManagerTaskScheduleStartDateOverrideAnnotation:        "now+3d2h10m",
+				naming.ScyllaDBManagerTaskScheduleTimezoneOverrideAnnotation:         "CET",
+				naming.ScyllaDBManagerTaskBackupDCNoValidateAnnotation:               "",
+				naming.ScyllaDBManagerTaskBackupKeyspaceNoValidateAnnotation:         "",
+				naming.ScyllaDBManagerTaskBackupLocationNoValidateAnnotation:         "",
+				naming.ScyllaDBManagerTaskBackupRateLimitNoValidateAnnotation:        "",
+				naming.ScyllaDBManagerTaskBackupRetentionNoValidateAnnotation:        "",
+				naming.ScyllaDBManagerTaskBackupSnapshotParallelNoValidateAnnotation: "",
+				naming.ScyllaDBManagerTaskBackupUploadParallelNoValidateAnnotation:   "",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "scylla.scylladb.com/v1",
+					Kind:               "ScyllaCluster",
+					Name:               "simple-cluster",
+					Controller:         pointer.Ptr(true),
+					BlockOwnerDeletion: pointer.Ptr(true),
+				},
+			},
+		},
+		Spec: scyllav1alpha1.ScyllaDBManagerTaskSpec{
+			Type: scyllav1alpha1.ScyllaDBManagerTaskTypeBackup,
+			ScyllaDBClusterRef: scyllav1alpha1.LocalScyllaDBReference{
+				Name: "simple-cluster",
+				Kind: "ScyllaDBDatacenter",
+			},
+			Backup: &scyllav1alpha1.ScyllaDBManagerBackupTaskOptions{
+				ScyllaDBManagerTaskSchedule: scyllav1alpha1.ScyllaDBManagerTaskSchedule{
+					Cron:       pointer.Ptr("0 23 * * SAT"),
+					NumRetries: pointer.Ptr[int64](3),
+				},
+				DC:               []string{"dc1", "!otherdc*"},
+				Keyspace:         []string{"keyspace", "!keyspace.table_prefix_*"},
+				Location:         []string{"s3:bucket.domain", "dc:s3:otherbucket.otherdomain"},
+				RateLimit:        []string{"dc1:100", "dc2:200"},
+				Retention:        pointer.Ptr[int64](3),
+				SnapshotParallel: []string{"dc1:1", "dc2:2"},
+				UploadParallel:   []string{"dc3:3", "dc4:4"},
+			},
+		},
+	}
+}
+
+func newRepairScyllaDBManagerTask() *scyllav1alpha1.ScyllaDBManagerTask {
+	return &scyllav1alpha1.ScyllaDBManagerTask{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "simple-cluster-repair-task1-1ml5z",
+			Namespace: "scylla",
+			Labels: map[string]string{
+				"app":                          "scylla",
+				"app.kubernetes.io/managed-by": "scylla-operator",
+				"app.kubernetes.io/name":       "scylla",
+				"scylla/cluster":               "simple-cluster",
+			},
+			Annotations: map[string]string{
+				naming.ScyllaDBManagerTaskNameOverrideAnnotation:                      "task1",
+				naming.ScyllaDBManagerTaskScheduleIntervalOverrideAnnotation:          "7d",
+				naming.ScyllaDBManagerTaskScheduleStartDateOverrideAnnotation:         "now+4d3h20m",
+				naming.ScyllaDBManagerTaskScheduleTimezoneOverrideAnnotation:          "Europe/Warsaw",
+				naming.ScyllaDBManagerTaskRepairDCNoValidateAnnotation:                "",
+				naming.ScyllaDBManagerTaskRepairIntensityOverrideAnnotation:           "0.5",
+				naming.ScyllaDBManagerTaskRepairKeyspaceNoValidateAnnotation:          "",
+				naming.ScyllaDBManagerTaskRepairParallelNoValidateAnnotation:          "",
+				naming.ScyllaDBManagerTaskRepairSmallTableThresholdOverrideAnnotation: "1GiB",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "scylla.scylladb.com/v1",
+					Kind:               "ScyllaCluster",
+					Name:               "simple-cluster",
+					Controller:         pointer.Ptr(true),
+					BlockOwnerDeletion: pointer.Ptr(true),
+				},
+			},
+		},
+		Spec: scyllav1alpha1.ScyllaDBManagerTaskSpec{
+			Type: scyllav1alpha1.ScyllaDBManagerTaskTypeRepair,
+			ScyllaDBClusterRef: scyllav1alpha1.LocalScyllaDBReference{
+				Name: "simple-cluster",
+				Kind: "ScyllaDBDatacenter",
+			},
+			Repair: &scyllav1alpha1.ScyllaDBManagerRepairTaskOptions{
+				ScyllaDBManagerTaskSchedule: scyllav1alpha1.ScyllaDBManagerTaskSchedule{
+					Cron:       pointer.Ptr("0 5 * * *"),
+					NumRetries: pointer.Ptr[int64](1),
+				},
+				DC:                  []string{"dc1", "!otherdc*"},
+				Keyspace:            []string{"keyspace", "!keyspace.table_prefix_*"},
+				FailFast:            pointer.Ptr(false),
+				Host:                pointer.Ptr("10.0.0.1"),
+				Intensity:           nil,
+				Parallel:            pointer.Ptr[int64](2),
+				SmallTableThreshold: nil,
 			},
 		},
 	}

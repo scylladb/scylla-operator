@@ -153,9 +153,9 @@ const (
 )
 
 const (
-	ScyllaManagerNamespace      = "scylla-manager"
-	ScyllaManagerServiceName    = "scylla-manager"
-	ScyllaManagerDeploymentName = "scylla-manager"
+	ScyllaManagerNamespace                  = "scylla-manager"
+	ScyllaManagerServiceName                = "scylla-manager"
+	StandaloneScyllaDBManagerControllerName = "scylla-manager-controller"
 
 	ScyllaOperatorNodeTuningNamespace = "scylla-operator-node-tuning"
 
@@ -271,4 +271,5 @@ const (
 	ScyllaDBManagerTaskRepairKeyspaceNoValidateAnnotation          = "internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-keyspace-no-validate"
 	ScyllaDBManagerTaskRepairIntensityOverrideAnnotation           = "internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-intensity-override"
 	ScyllaDBManagerTaskRepairSmallTableThresholdOverrideAnnotation = "internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-small-table-threshold-override"
+	ScyllaDBManagerTaskStatusAnnotation                            = "internal.scylla-operator.scylladb.com/scylladb-manager-task-status"
 )

@@ -106,3 +106,35 @@ func ApplyScyllaDBManagerClusterRegistration(
 		options,
 	)
 }
+
+func ApplyScyllaDBManagerTaskWithControl(
+	ctx context.Context,
+	control ApplyControlInterface[*scyllav1alpha1.ScyllaDBManagerTask],
+	recorder record.EventRecorder,
+	required *scyllav1alpha1.ScyllaDBManagerTask,
+	options ApplyOptions,
+) (*scyllav1alpha1.ScyllaDBManagerTask, bool, error) {
+	return ApplyGeneric[*scyllav1alpha1.ScyllaDBManagerTask](ctx, control, recorder, required, options)
+}
+
+func ApplyScyllaDBManagerTask(
+	ctx context.Context,
+	client scyllav1alpha1client.ScyllaDBManagerTasksGetter,
+	lister scyllav1alpha1listers.ScyllaDBManagerTaskLister,
+	recorder record.EventRecorder,
+	required *scyllav1alpha1.ScyllaDBManagerTask,
+	options ApplyOptions,
+) (*scyllav1alpha1.ScyllaDBManagerTask, bool, error) {
+	return ApplyScyllaDBManagerTaskWithControl(
+		ctx,
+		ApplyControlFuncs[*scyllav1alpha1.ScyllaDBManagerTask]{
+			GetCachedFunc: lister.ScyllaDBManagerTasks(required.Namespace).Get,
+			CreateFunc:    client.ScyllaDBManagerTasks(required.Namespace).Create,
+			UpdateFunc:    client.ScyllaDBManagerTasks(required.Namespace).Update,
+			DeleteFunc:    client.ScyllaDBManagerTasks(required.Namespace).Delete,
+		},
+		recorder,
+		required,
+		options,
+	)
+}

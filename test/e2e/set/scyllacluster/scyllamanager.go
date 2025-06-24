@@ -64,10 +64,9 @@ var _ = g.Describe("Scylla Manager integration", func() {
 			utils.IsScyllaClusterRegisteredWithManager,
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		// Sanity check to avoid panics in the polling func.
 		o.Expect(sc.Status.ManagerID).NotTo(o.BeNil())
-		o.Expect(*sc.Status.ManagerID).NotTo(o.BeEmpty())
 		managerClusterID := *sc.Status.ManagerID
+		o.Expect(managerClusterID).NotTo(o.BeEmpty())
 
 		managerClient, err := utils.GetManagerClient(ctx, f.KubeAdminClient().CoreV1())
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -119,10 +118,7 @@ var _ = g.Describe("Scylla Manager integration", func() {
 			Should(o.Succeed())
 	})
 
-	g.It("should register cluster and sync repair tasks", func() {
-		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
-		defer cancel()
-
+	g.It("should register cluster and sync repair tasks", func(ctx g.SpecContext) {
 		sc := f.GetDefaultScyllaCluster()
 		sc.Spec.Datacenter.Racks[0].Members = 1
 
@@ -131,9 +127,9 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
-		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
-		defer waitCtx1Cancel()
-		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		rolloutCtx, rolloutCtxCancel := utils.ContextForRollout(ctx, sc)
+		defer rolloutCtxCancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(rolloutCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
@@ -144,12 +140,6 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		o.Expect(hosts).To(o.HaveLen(1))
 		di := verification.InsertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
-
-		framework.By("Waiting for ScyllaCluster to register with Scylla Manager")
-		waitCtx2, waitCtx2Cancel := utils.ContextForManagerSync(ctx, sc)
-		defer waitCtx2Cancel()
-		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRegisteredWithManager)
-		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Scheduling a repair task")
 		scCopy := sc.DeepCopy()
@@ -188,9 +178,9 @@ var _ = g.Describe("Scylla Manager integration", func() {
 			return false, nil
 		}
 
-		waitCtx3, waitCtx3Cancel := utils.ContextForManagerSync(ctx, sc)
-		defer waitCtx3Cancel()
-		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx3, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, repairTaskScheduledCond)
+		taskSchedulingCtx, taskSchedulingCtxCancel := utils.ContextForManagerSync(ctx, sc)
+		defer taskSchedulingCtxCancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(taskSchedulingCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, repairTaskScheduledCond)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(sc.Status.Repairs).To(o.HaveLen(1))
 		o.Expect(sc.Status.Repairs[0].ID).NotTo(o.BeNil())
@@ -199,11 +189,16 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		o.Expect(*sc.Status.Repairs[0].Parallel).To(o.Equal(sc.Spec.Repairs[0].Parallel))
 		o.Expect(sc.Status.Backups).To(o.BeEmpty())
 
+		// Sanity check to avoid panics.
+		o.Expect(sc.Status.ManagerID).NotTo(o.BeNil())
+		managerClusterID := *sc.Status.ManagerID
+		o.Expect(managerClusterID).NotTo(o.BeEmpty())
+
 		managerClient, err := utils.GetManagerClient(ctx, f.KubeAdminClient().CoreV1())
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Verifying that repair task status was synchronized")
-		tasks, err := managerClient.ListTasks(ctx, *sc.Status.ManagerID, "repair", false, "", "")
+		tasks, err := managerClient.ListTasks(ctx, managerClusterID, "repair", false, "", "")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(tasks.TaskListItemSlice).To(o.HaveLen(1))
 		repairTask := tasks.TaskListItemSlice[0]
@@ -243,9 +238,9 @@ var _ = g.Describe("Scylla Manager integration", func() {
 			return false, nil
 		}
 
-		waitCtx4, waitCtx4Cancel := utils.ContextForManagerSync(ctx, sc)
-		defer waitCtx4Cancel()
-		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx4, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, repairTaskUpdatedCond)
+		taskUpdateCtx, taskUpdateCtxCancel := utils.ContextForManagerSync(ctx, sc)
+		defer taskUpdateCtxCancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(taskUpdateCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, repairTaskUpdatedCond)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(sc.Status.Repairs).To(o.HaveLen(1))
 		o.Expect(sc.Status.Repairs[0].Name).To(o.Equal(sc.Spec.Repairs[0].Name))
@@ -256,17 +251,13 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		o.Expect(sc.Status.Backups).To(o.BeEmpty())
 
 		framework.By("Verifying that updated repair task status was synchronized")
-		tasks, err = managerClient.ListTasks(ctx, *sc.Status.ManagerID, "repair", false, "", "")
+		tasks, err = managerClient.ListTasks(ctx, managerClusterID, "repair", false, "", "")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(tasks.TaskListItemSlice).To(o.HaveLen(1))
 		repairTask = tasks.TaskListItemSlice[0]
 		o.Expect(repairTask.Name).To(o.Equal(sc.Status.Repairs[0].Name))
 		o.Expect(repairTask.ID).To(o.Equal(*sc.Status.Repairs[0].ID))
 		o.Expect(repairTask.Properties.(map[string]interface{})["parallel"].(json.Number).Int64()).To(o.Equal(*sc.Status.Repairs[0].Parallel))
-
-		// Sanity check to avoid panics in the polling func.
-		o.Expect(sc.Status.ManagerID).NotTo(o.BeNil())
-		managerClusterID := *sc.Status.ManagerID
 
 		framework.By("Waiting for repair to finish")
 		err = apimachineryutilwait.PollUntilContextTimeout(ctx, 5*time.Second, 10*time.Minute, true, func(context.Context) (done bool, err error) {
@@ -295,9 +286,9 @@ var _ = g.Describe("Scylla Manager integration", func() {
 			return len(cluster.Status.Repairs) == 0, nil
 		}
 
-		waitCtx5, waitCtx5Cancel := utils.ContextForManagerSync(ctx, sc)
-		defer waitCtx5Cancel()
-		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx5, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, repairTaskDeletedCond)
+		taskDeletionCtx, taskDeletionCtxCancel := utils.ContextForManagerSync(ctx, sc)
+		defer taskDeletionCtxCancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(taskDeletionCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, repairTaskDeletedCond)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Verifying that repair task deletion was synchronized")

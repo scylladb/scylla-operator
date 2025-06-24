@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/magiconair/properties"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"k8s.io/apimachinery/pkg/api/equality"
 )
 
@@ -273,96 +274,101 @@ func TestAllowedCPUs(t *testing.T) {
 	t.Log(cpusAllowed)
 }
 
-func TestScyllaArguments(t *testing.T) {
+func TestParseScyllaArguments(t *testing.T) {
 	ts := []struct {
 		Name         string
 		Args         string
-		ExpectedArgs map[string]string
+		ExpectedArgs map[string]*string
 	}{
 		{
 			Name: "all combinations in one",
-			Args: `--arg1 --arg2=val2 --arg3 "val3" --arg4="val4" --arg5=-1.23 --arg6 -123 --arg7 123`,
-			ExpectedArgs: map[string]string{
-				"arg1": "",
-				"arg2": "val2",
-				"arg3": `"val3"`,
-				"arg4": `"val4"`,
-				"arg5": "-1.23",
-				"arg6": "-123",
-				"arg7": "123",
+			Args: `--arg1 --arg2=val2 --arg3 "val3" --arg4="val4" --arg5=-1.23 --arg6 -123 --arg7 123 --arg8="" --arg9 ""`,
+			ExpectedArgs: map[string]*string{
+				"arg1": nil,
+				"arg2": pointer.Ptr("val2"),
+				"arg3": pointer.Ptr(`"val3"`),
+				"arg4": pointer.Ptr(`"val4"`),
+				"arg5": pointer.Ptr("-1.23"),
+				"arg6": pointer.Ptr("-123"),
+				"arg7": pointer.Ptr("123"),
+				"arg8": pointer.Ptr(`""`),
+				"arg9": pointer.Ptr(`""`),
 			},
 		},
 		{
 			Name:         "single empty flag",
 			Args:         "--arg",
-			ExpectedArgs: map[string]string{"arg": ""},
+			ExpectedArgs: map[string]*string{"arg": nil},
 		},
 		{
 			Name:         "single flag",
 			Args:         "--arg val",
-			ExpectedArgs: map[string]string{"arg": "val"},
+			ExpectedArgs: map[string]*string{"arg": pointer.Ptr("val")},
 		},
 		{
 			Name:         "integer value",
 			Args:         "--arg 123",
-			ExpectedArgs: map[string]string{"arg": "123"},
+			ExpectedArgs: map[string]*string{"arg": pointer.Ptr("123")},
 		},
 		{
 			Name:         "negative integer value",
 			Args:         "--arg -123",
-			ExpectedArgs: map[string]string{"arg": "-123"},
+			ExpectedArgs: map[string]*string{"arg": pointer.Ptr("-123")},
 		},
 		{
 			Name:         "float value",
 			Args:         "--arg 1.23",
-			ExpectedArgs: map[string]string{"arg": "1.23"},
+			ExpectedArgs: map[string]*string{"arg": pointer.Ptr("1.23")},
 		},
 		{
 			Name:         "negative float value",
 			Args:         "--arg -1.23",
-			ExpectedArgs: map[string]string{"arg": "-1.23"},
+			ExpectedArgs: map[string]*string{"arg": pointer.Ptr("-1.23")},
 		},
 		{
-			Name:         "negative float value and string parameter",
-			Args:         "--arg1 -1.23 --arg2 val",
-			ExpectedArgs: map[string]string{"arg1": "-1.23", "arg2": "val"},
+			Name: "negative float value and string parameter",
+			Args: "--arg1 -1.23 --arg2 val",
+			ExpectedArgs: map[string]*string{
+				"arg1": pointer.Ptr("-1.23"),
+				"arg2": pointer.Ptr("val"),
+			},
 		},
 		{
 			Name:         "bool value",
 			Args:         "--arg true",
-			ExpectedArgs: map[string]string{"arg": "true"},
+			ExpectedArgs: map[string]*string{"arg": pointer.Ptr("true")},
 		},
 		{
 			Name:         "flag quoted",
 			Args:         `--arg "val"`,
-			ExpectedArgs: map[string]string{"arg": `"val"`},
+			ExpectedArgs: map[string]*string{"arg": pointer.Ptr(`"val"`)},
 		},
 		{
 			Name:         "flag quoted with equal sign",
 			Args:         `--arg="val"`,
-			ExpectedArgs: map[string]string{"arg": `"val"`},
+			ExpectedArgs: map[string]*string{"arg": pointer.Ptr(`"val"`)},
 		},
 		{
 			Name:         "empty",
 			Args:         "",
-			ExpectedArgs: map[string]string{},
+			ExpectedArgs: map[string]*string{},
 		},
 		{
 			Name: "garbage inside",
 			Args: "--arg1 val asdasdasdas --arg2=val",
-			ExpectedArgs: map[string]string{
-				"arg1": "val",
-				"arg2": "val",
+			ExpectedArgs: map[string]*string{
+				"arg1": pointer.Ptr("val"),
+				"arg2": pointer.Ptr("val"),
 			},
 		},
 		{
 			Name: "mixed types",
 			Args: "--skip-wait-for-gossip-to-settle 0 --ring-delay-ms 5000 --compaction-enforce-min-threshold true --shadow-round-ms 1",
-			ExpectedArgs: map[string]string{
-				"skip-wait-for-gossip-to-settle":   "0",
-				"ring-delay-ms":                    "5000",
-				"compaction-enforce-min-threshold": "true",
-				"shadow-round-ms":                  "1",
+			ExpectedArgs: map[string]*string{
+				"skip-wait-for-gossip-to-settle":   pointer.Ptr("0"),
+				"ring-delay-ms":                    pointer.Ptr("5000"),
+				"compaction-enforce-min-threshold": pointer.Ptr("true"),
+				"shadow-round-ms":                  pointer.Ptr("1"),
 			},
 		},
 	}
@@ -371,9 +377,56 @@ func TestScyllaArguments(t *testing.T) {
 		t.Run(test.Name, func(t *testing.T) {
 			t.Parallel()
 
-			argumentsMap := convertScyllaArguments(test.Args)
+			argumentsMap := parseScyllaArguments(test.Args)
 			if !reflect.DeepEqual(test.ExpectedArgs, argumentsMap) {
 				t.Errorf("expected %+v, got %+v", test.ExpectedArgs, argumentsMap)
+			}
+		})
+	}
+}
+
+func TestMergeArguments(t *testing.T) {
+	t.Parallel()
+
+	ts := []struct {
+		name                     string
+		operatorManagedArguments map[string]*string
+		userProvidedArguments    map[string]*string
+		expectedArguments        map[string]*string
+	}{
+		{
+			name: "no conflicts",
+			operatorManagedArguments: map[string]*string{
+				"foo": pointer.Ptr("bar"),
+			},
+			userProvidedArguments: map[string]*string{
+				"bar": pointer.Ptr("foo"),
+			},
+			expectedArguments: map[string]*string{
+				"foo": pointer.Ptr("bar"),
+				"bar": pointer.Ptr("foo"),
+			},
+		},
+		{
+			name: "operator wins on conflicts",
+			operatorManagedArguments: map[string]*string{
+				"foo": pointer.Ptr("bar"),
+			},
+			userProvidedArguments: map[string]*string{
+				"foo": pointer.Ptr("buzz"),
+			},
+			expectedArguments: map[string]*string{
+				"foo": pointer.Ptr("bar"),
+			},
+		},
+	}
+	for _, test := range ts {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			gotArguments := mergeArguments(test.operatorManagedArguments, test.userProvidedArguments)
+			if !reflect.DeepEqual(test.expectedArguments, gotArguments) {
+				t.Errorf("expected %+v, got %+v", test.expectedArguments, gotArguments)
 			}
 		})
 	}

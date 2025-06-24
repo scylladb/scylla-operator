@@ -58,8 +58,7 @@ type Controller struct {
 
 	eventRecorder record.EventRecorder
 
-	// FIXME: https://github.com/scylladb/scylla-operator/pull/2685
-	queue    workqueue.RateLimitingInterface
+	queue    workqueue.TypedRateLimitingInterface[string]
 	handlers *controllerhelpers.Handlers[*scyllav1alpha1.ScyllaDBManagerTask]
 }
 
@@ -87,7 +86,12 @@ func NewController(
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scylladbmanagertask-controller"}),
 
-		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "scylladbmanagertask"),
+		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
+			workqueue.DefaultTypedControllerRateLimiter[string](),
+			workqueue.TypedRateLimitingQueueConfig[string]{
+				Name: "scylladbmanagertask",
+			},
+		),
 	}
 
 	var err error
@@ -133,7 +137,7 @@ func (smtc *Controller) processNextItem(ctx context.Context) bool {
 
 	ctx, cancel := context.WithTimeout(ctx, maxSyncDuration)
 	defer cancel()
-	err := smtc.sync(ctx, key.(string))
+	err := smtc.sync(ctx, key)
 	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
 	err = apimachineryutilerrors.Reduce(err)
 	switch {

@@ -80,7 +80,7 @@ type Controller struct {
 
 	eventRecorder record.EventRecorder
 
-	queue workqueue.RateLimitingInterface
+	queue workqueue.TypedRateLimitingInterface[string]
 }
 
 func NewController(
@@ -137,7 +137,12 @@ func NewController(
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "nodeconfigdaemon-controller"}),
 
-		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "nodeconfigdaemon"),
+		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
+			workqueue.DefaultTypedControllerRateLimiter[string](),
+			workqueue.TypedRateLimitingQueueConfig[string]{
+				Name: "nodeconfigdaemon",
+			},
+		),
 	}
 
 	nodeConfigInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{

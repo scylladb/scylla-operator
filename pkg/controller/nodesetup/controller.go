@@ -51,7 +51,7 @@ type Controller struct {
 
 	eventRecorder record.EventRecorder
 
-	queue    workqueue.RateLimitingInterface
+	queue    workqueue.TypedRateLimitingInterface[string]
 	handlers *controllerhelpers.Handlers[*scyllav1alpha1.NodeConfig]
 
 	nodeName       string
@@ -97,7 +97,12 @@ func NewController(
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "nodesetup-controller"}),
 
-		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "NodeSetup"),
+		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
+			workqueue.DefaultTypedControllerRateLimiter[string](),
+			workqueue.TypedRateLimitingQueueConfig[string]{
+				Name: "NodeSetup",
+			},
+		),
 
 		nodeName:       nodeName,
 		nodeUID:        nodeUID,

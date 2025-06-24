@@ -80,7 +80,7 @@ type Controller struct {
 
 	eventRecorder record.EventRecorder
 
-	queue    workqueue.RateLimitingInterface
+	queue    workqueue.TypedRateLimitingInterface[string]
 	handlers *controllerhelpers.Handlers[*scyllav1alpha1.ScyllaDBDatacenter]
 
 	keyGetter crypto.RSAKeyGetter
@@ -143,7 +143,12 @@ func NewController(
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scylladbdatacenter-controller"}),
 
-		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "scylladbdatacenter"),
+		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
+			workqueue.DefaultTypedControllerRateLimiter[string](),
+			workqueue.TypedRateLimitingQueueConfig[string]{
+				Name: "scylladbdatacenter",
+			},
+		),
 
 		keyGetter: keyGetter,
 	}
@@ -244,7 +249,7 @@ func (sdcc *Controller) processNextItem(ctx context.Context) bool {
 	}
 	defer sdcc.queue.Done(key)
 
-	err := sdcc.sync(ctx, key.(string))
+	err := sdcc.sync(ctx, key)
 	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
 	err = apimachineryutilerrors.Reduce(err)
 	switch {

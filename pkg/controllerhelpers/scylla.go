@@ -21,12 +21,21 @@ import (
 
 func GetScyllaHost(sdc *scyllav1alpha1.ScyllaDBDatacenter, svc *corev1.Service, pod *corev1.Pod) (string, error) {
 	// Assume API's default.
-	nodeBroadcastAddressType := scyllav1alpha1.BroadcastAddressTypeServiceClusterIP
+	nodeBroadcastAddressType := scyllav1alpha1.ScyllaDBDatacenterDefaultNodesBroadcastAddressType
 	if sdc.Spec.ExposeOptions != nil && sdc.Spec.ExposeOptions.BroadcastOptions != nil {
 		nodeBroadcastAddressType = sdc.Spec.ExposeOptions.BroadcastOptions.Nodes.Type
 	}
 
 	return GetScyllaBroadcastAddress(nodeBroadcastAddressType, svc, pod)
+}
+
+func GetScyllaClientBroadcastHost(sdc *scyllav1alpha1.ScyllaDBDatacenter, svc *corev1.Service, pod *corev1.Pod) (string, error) {
+	clientsBroadcastAddressType := scyllav1alpha1.ScyllaDBDatacenterDefaultClientsBroadcastAddressType
+	if sdc.Spec.ExposeOptions != nil && sdc.Spec.ExposeOptions.BroadcastOptions != nil {
+		clientsBroadcastAddressType = sdc.Spec.ExposeOptions.BroadcastOptions.Clients.Type
+	}
+
+	return GetScyllaBroadcastAddress(clientsBroadcastAddressType, svc, pod)
 }
 
 func GetScyllaHostForScyllaCluster(sc *scyllav1.ScyllaCluster, svc *corev1.Service, pod *corev1.Pod) (string, error) {

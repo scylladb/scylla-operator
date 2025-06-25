@@ -30,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilintstr "k8s.io/apimachinery/pkg/util/intstr"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -693,13 +694,13 @@ exec /mnt/shared/scylla-operator sidecar \
 										if sdc.Spec.ExposeOptions != nil && sdc.Spec.ExposeOptions.BroadcastOptions != nil {
 											return string(sdc.Spec.ExposeOptions.BroadcastOptions.Nodes.Type)
 										}
-										return string(scyllav1alpha1.BroadcastAddressTypeServiceClusterIP)
+										return string(scyllav1alpha1.ScyllaDBDatacenterDefaultNodesBroadcastAddressType)
 									}() + ` \
 --clients-broadcast-address-type=` + func() string {
 										if sdc.Spec.ExposeOptions != nil && sdc.Spec.ExposeOptions.BroadcastOptions != nil {
 											return string(sdc.Spec.ExposeOptions.BroadcastOptions.Clients.Type)
 										}
-										return string(scyllav1alpha1.BroadcastAddressTypeServiceClusterIP)
+										return string(scyllav1alpha1.ScyllaDBDatacenterDefaultClientsBroadcastAddressType)
 									}() + ` \
 --service-name=$(SERVICE_NAME) \
 --cpu-count=$(CPU_COUNT) \
@@ -1548,7 +1549,7 @@ func MakeRoleBinding(sdc *scyllav1alpha1.ScyllaDBDatacenter) *rbacv1.RoleBinding
 	}
 }
 
-func MakeJobs(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev1.Service, image string) ([]*batchv1.Job, []metav1.Condition, error) {
+func MakeJobs(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev1.Service, podLister corev1listers.PodLister, image string) ([]*batchv1.Job, []metav1.Condition, error) {
 	var jobs []*batchv1.Job
 	var progressingConditions []metav1.Condition
 
@@ -1649,6 +1650,16 @@ func MakeJobs(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev
 				}
 			}
 
+			pod, err := podLister.Pods(sdc.Namespace).Get(naming.PodNameFromService(svc))
+			if err != nil {
+				return jobs, progressingConditions, fmt.Errorf("can't get Pod %q: %w", naming.ManualRef(sdc.Namespace, naming.PodNameFromService(svc)), err)
+			}
+
+			clientBroadcastAddress, err := controllerhelpers.GetScyllaClientBroadcastHost(sdc, svc, pod)
+			if err != nil {
+				return jobs, progressingConditions, fmt.Errorf("can't get node address of %q Pod: %w", naming.ManualRef(sdc.Namespace, naming.PodNameFromService(svc)), err)
+			}
+
 			jobs = append(jobs, &batchv1.Job{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      naming.CleanupJobForService(svc.Name),
@@ -1679,7 +1690,7 @@ func MakeJobs(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev
 									Args: []string{
 										"cleanup-job",
 										"--manager-auth-config-path=/etc/scylla-cleanup-job/auth-token.yaml",
-										fmt.Sprintf("--node-address=%s", fmt.Sprintf("%s.%s.svc", svcName, sdc.Namespace)),
+										fmt.Sprintf("--node-address=%s", clientBroadcastAddress),
 									},
 									VolumeMounts: []corev1.VolumeMount{
 										{

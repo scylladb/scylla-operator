@@ -306,6 +306,11 @@ const (
 	BroadcastAddressTypeServiceLoadBalancerIngress BroadcastAddressType = "ServiceLoadBalancerIngress"
 )
 
+const (
+	ScyllaDBDatacenterDefaultClientsBroadcastAddressType = BroadcastAddressTypeServiceClusterIP
+	ScyllaDBDatacenterDefaultNodesBroadcastAddressType   = BroadcastAddressTypeServiceClusterIP
+)
+
 // BroadcastOptions hold options related to address broadcasted by ScyllaDB node.
 type BroadcastOptions struct {
 	// type specifies the address type that is broadcasted.

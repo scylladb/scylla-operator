@@ -26,7 +26,7 @@ func (sdcc *Controller) syncJobs(
 	services map[string]*corev1.Service,
 	jobs map[string]*batchv1.Job,
 ) ([]metav1.Condition, error) {
-	requiredJobs, progressingConditions, err := MakeJobs(sdc, services, sdcc.operatorImage)
+	requiredJobs, progressingConditions, err := MakeJobs(sdc, services, sdcc.podLister, sdcc.operatorImage)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't make jobs: %w", err)
 	}

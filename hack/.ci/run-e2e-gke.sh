@@ -32,14 +32,25 @@ if [[ "${SO_DISABLE_NODECONFIG:-false}" == "true" ]]; then
   SO_CSI_DRIVER_PATH=""
 fi
 
-for i in "${!KUBECONFIGS[@]}"; do
-  KUBECONFIG="${KUBECONFIGS[$i]}" DEPLOY_DIR="${ARTIFACTS}/deploy/${i}" timeout --foreground -v 10m "${parent_dir}/../ci-deploy.sh" "${SO_IMAGE}" &
-  ci_deploy_bg_pids["${i}"]=$!
+DEPLOY_DIR="${ARTIFACTS}/deploy/cluster" timeout --foreground -v 10m "${parent_dir}/../ci-deploy.sh" "${SO_IMAGE}" &
+ci_deploy_bg_pids=( $! )
+
+for name in "${!WORKER_KUBECONFIGS[@]}"; do
+  if [[ "${WORKER_KUBECONFIGS[$name]}" == "${KUBECONFIG}" ]]; then
+    # Skip if the control plane cluster is also among the worker clusters.
+    continue
+  fi
+
+  KUBECONFIG="${WORKER_KUBECONFIGS[$name]}" DEPLOY_DIR="${ARTIFACTS}/deploy/workers/${name}" SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT=true timeout --foreground -v 10m "${parent_dir}/../ci-deploy.sh" "${SO_IMAGE}" &
+  ci_deploy_bg_pids+=( $! )
 done
 
 for pid in "${ci_deploy_bg_pids[@]}"; do
   wait "${pid}"
 done
 
-KUBECONFIG="${KUBECONFIGS[0]}" apply-e2e-workarounds
-KUBECONFIG="${KUBECONFIGS[0]}" run-e2e
+# TODO: move ci-deployment to func in lib/e2e.sh
+# TODO: link control plane to worker deploy dir
+
+apply-e2e-workarounds
+run-e2e

@@ -18,6 +18,7 @@ import (
 	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 )
@@ -31,24 +32,13 @@ type Collector interface {
 	Collect(ctx context.Context, artifactsDir string, ginkgoNamespace string)
 }
 
-type NamespaceCleanerCollector struct {
+type namespaceCleaner struct {
 	Client        kubernetes.Interface
 	DynamicClient dynamic.Interface
 	NS            *corev1.Namespace
 }
 
-var _ Cleaner = &NamespaceCleanerCollector{}
-var _ Collector = &NamespaceCleanerCollector{}
-
-func NewNamespaceCleanerCollector(client kubernetes.Interface, dynamicClient dynamic.Interface, namespace *corev1.Namespace) *NamespaceCleanerCollector {
-	return &NamespaceCleanerCollector{
-		Client:        client,
-		DynamicClient: dynamicClient,
-		NS:            namespace,
-	}
-}
-
-func (nc *NamespaceCleanerCollector) Cleanup(ctx context.Context) {
+func (nc *namespaceCleaner) Cleanup(ctx context.Context) {
 	By("Destroying namespace %q.", nc.NS.Name)
 	err := nc.Client.CoreV1().Namespaces().Delete(
 		ctx,
@@ -70,18 +60,74 @@ func (nc *NamespaceCleanerCollector) Cleanup(ctx context.Context) {
 	klog.InfoS("Namespace removed.", "Namespace", nc.NS.Name)
 }
 
-func (nc *NamespaceCleanerCollector) CollectToLog(ctx context.Context) {
+type namespaceCollector struct {
+	RestConfig    *rest.Config
+	Client        kubernetes.Interface
+	DynamicClient dynamic.Interface
+	NamespaceName string
+}
+
+func (nc *namespaceCollector) CollectToLog(ctx context.Context) {
 	// Log events if the test failed.
 	if g.CurrentSpecReport().Failed() {
-		By("Collecting events from namespace %q.", nc.NS.Name)
-		DumpEventsInNamespace(ctx, nc.Client, nc.NS.Name)
+		By("Collecting events from namespace %q.", nc.NamespaceName)
+		DumpEventsInNamespace(ctx, nc.Client, nc.NamespaceName)
 	}
 }
 
-func (nc *NamespaceCleanerCollector) Collect(ctx context.Context, artifactsDir string, _ string) {
-	By("Collecting dumps from namespace %q.", nc.NS.Name)
+func (nc *namespaceCollector) Collect(ctx context.Context, artifactsDir string, _ string) {
+	By("Collecting dumps from namespace %q.", nc.NamespaceName)
 
-	err := DumpNamespace(ctx, cacheddiscovery.NewMemCacheClient(nc.Client.Discovery()), nc.DynamicClient, nc.Client.CoreV1(), artifactsDir, nc.NS.Name)
+	err := DumpNamespace(ctx, nc.RestConfig, cacheddiscovery.NewMemCacheClient(nc.Client.Discovery()), nc.DynamicClient, nc.Client.CoreV1(), artifactsDir, nc.NamespaceName)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+type NamespaceCleanerCollector struct {
+	*namespaceCleaner
+	*namespaceCollector
+}
+
+var _ Cleaner = &NamespaceCleanerCollector{}
+var _ Collector = &NamespaceCleanerCollector{}
+
+func NewNamespaceCleanerCollector(restConfig *rest.Config, client kubernetes.Interface, dynamicClient dynamic.Interface, namespace *corev1.Namespace) *NamespaceCleanerCollector {
+	return &NamespaceCleanerCollector{
+		namespaceCleaner: &namespaceCleaner{
+			Client:        client,
+			DynamicClient: dynamicClient,
+			NS:            namespace,
+		},
+		namespaceCollector: &namespaceCollector{
+			RestConfig:    restConfig,
+			Client:        client,
+			DynamicClient: dynamicClient,
+			NamespaceName: namespace.Name,
+		},
+	}
+}
+
+type NotFoundTolerantNamespaceCollector struct {
+	*namespaceCollector
+}
+
+func NewNotFoundTolerantNamespaceCollector(client kubernetes.Interface, dynamicClient dynamic.Interface, namespace string) *NotFoundTolerantNamespaceCollector {
+	return &NotFoundTolerantNamespaceCollector{
+		namespaceCollector: &namespaceCollector{
+			Client:        client,
+			DynamicClient: dynamicClient,
+			NamespaceName: namespace,
+		},
+	}
+}
+
+func (nc *NotFoundTolerantNamespaceCollector) Collect(ctx context.Context, artifactsDir string, _ string) {
+	By("Collecting dumps from namespace %q.", nc.NamespaceName)
+
+	err := DumpNamespace(ctx, nc.RestConfig, cacheddiscovery.NewMemCacheClient(nc.Client.Discovery()), nc.DynamicClient, nc.Client.CoreV1(), artifactsDir, nc.NamespaceName)
+	if apierrors.IsNotFound(err) {
+		By("Namespace %q doesn't exists, it won't be collected.", nc.NamespaceName)
+		return
+	}
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
@@ -93,6 +139,7 @@ const (
 )
 
 type RestoringCleaner struct {
+	restConfig    *rest.Config
 	client        kubernetes.Interface
 	dynamicClient dynamic.Interface
 	resourceInfo  collect.ResourceInfo
@@ -103,7 +150,7 @@ type RestoringCleaner struct {
 var _ Cleaner = &RestoringCleaner{}
 var _ Collector = &RestoringCleaner{}
 
-func NewRestoringCleaner(ctx context.Context, client kubernetes.Interface, dynamicClient dynamic.Interface, resourceInfo collect.ResourceInfo, namespace string, name string, strategy RestoreStrategy) *RestoringCleaner {
+func NewRestoringCleaner(ctx context.Context, restConfig *rest.Config, client kubernetes.Interface, dynamicClient dynamic.Interface, resourceInfo collect.ResourceInfo, namespace string, name string, strategy RestoreStrategy) *RestoringCleaner {
 	g.By(fmt.Sprintf("Snapshotting object %s %q", resourceInfo.Resource, naming.ManualRef(namespace, name)))
 
 	if resourceInfo.Scope.Name() == meta.RESTScopeNameNamespace {
@@ -125,6 +172,7 @@ func NewRestoringCleaner(ctx context.Context, client kubernetes.Interface, dynam
 	}
 
 	return &RestoringCleaner{
+		restConfig:    restConfig,
 		client:        client,
 		dynamicClient: dynamicClient,
 		resourceInfo:  resourceInfo,
@@ -155,6 +203,7 @@ func (rc *RestoringCleaner) Collect(ctx context.Context, clusterArtifactsDir str
 
 	err := DumpResource(
 		ctx,
+		rc.restConfig,
 		rc.client.Discovery(),
 		rc.dynamicClient,
 		rc.client.CoreV1(),

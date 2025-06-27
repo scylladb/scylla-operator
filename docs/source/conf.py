@@ -55,7 +55,7 @@ myst_heading_anchors = 6
 myst_substitutions = {
   "productName": "Scylla Operator",
   "repository": "scylladb/scylla-operator",
-  "revision": "master",
+  "revision": "v1.17",
   "imageRepository": "docker.io/scylladb/scylla",
   "imageTag": "2025.1.2",
   "enterpriseImageRepository": "docker.io/scylladb/scylla-enterprise",

@@ -57,7 +57,7 @@ var _ = g.Describe("ScyllaCluster sysctl", func() {
 			f.ClientConfig(),
 			f.Namespace(),
 			podName,
-			"scylla",
+			naming.ScyllaDBIgnitionContainerName,
 			[]string{"/usr/sbin/sysctl", "--values", fsAIOMaxNRKey},
 			nil,
 		)

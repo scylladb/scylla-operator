@@ -13,6 +13,7 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	configassests "github.com/scylladb/scylla-operator/assets/config"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -160,39 +161,36 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 
 		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
 
-		framework.By("Validating soft file limit of Scylla process")
 		podName := fmt.Sprintf("%s-%d", naming.StatefulSetNameForRackForScyllaCluster(sc.Spec.Datacenter.Racks[0], sc), 0)
-		scyllaPod, err := f.KubeClient().CoreV1().Pods(sc.Namespace).Get(ctx, podName, metav1.GetOptions{})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		for _, rlimit := range []string{"SOFT", "HARD"} {
+			framework.By("Validating %s file limit of Scylla process", rlimit)
 
-		stdout, stderr, err := executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), scyllaPod,
-			"bash",
-			"-euExo",
-			"pipefail",
-			"-O",
-			"inherit_errexit",
-			"-c",
-			`prlimit --pid=$(pidof scylla) --nofile --noheadings --output=SOFT`,
-		)
-		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+			ec := &corev1.EphemeralContainer{
+				TargetContainerName: naming.ScyllaContainerName,
+				EphemeralContainerCommon: corev1.EphemeralContainerCommon{
+					Name:            fmt.Sprintf("e2e-prlimits-%s", strings.ToLower(rlimit)),
+					Image:           configassests.Project.OperatorTests.NodeSetupImage,
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					Command:         []string{"bash"},
+					Args: []string{
+						"-euEo",
+						"pipefail",
+						"-O",
+						"inherit_errexit",
+						"-c",
+						fmt.Sprintf(`prlimit --pid=$(pidof scylla) --nofile --noheadings --output=%s`, rlimit),
+					},
+				},
+			}
 
-		stdout = strings.TrimSpace(stdout)
-		o.Expect(stdout).To(o.Equal(nrOpenLimit))
-
-		framework.By("Validating hard file limit of Scylla process")
-		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), scyllaPod,
-			"bash",
-			"-euExo",
-			"pipefail",
-			"-O",
-			"inherit_errexit",
-			"-c",
-			`prlimit --pid=$(pidof scylla) --nofile --noheadings --output=HARD`,
-		)
-		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
-
-		stdout = strings.TrimSpace(stdout)
-		o.Expect(stdout).To(o.Equal(nrOpenLimit))
+			pod, ecLogs, err := utils.RunEphemeralContainerAndCollectLogs(ctx, f.KubeAdminClient().CoreV1().Pods(sc.Namespace), podName, ec)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			ephemeralContainerState := controllerhelpers.FindContainerStatus(pod, ec.Name)
+			o.Expect(ephemeralContainerState).NotTo(o.BeNil())
+			o.Expect(ephemeralContainerState.State.Terminated).NotTo(o.BeNil())
+			o.Expect(ephemeralContainerState.State.Terminated.ExitCode).To(o.BeEquivalentTo(0))
+			o.Expect(strings.TrimSpace(string(ecLogs))).To(o.Equal(nrOpenLimit))
+		}
 	})
 
 	g.It("should correctly project state for each scylla pod", func() {

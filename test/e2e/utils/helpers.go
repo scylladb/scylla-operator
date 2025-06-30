@@ -3,6 +3,7 @@
 package utils
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -21,6 +22,7 @@ import (
 	scyllav1alpha1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
+	"github.com/scylladb/scylla-operator/pkg/gather/collect"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -214,6 +216,25 @@ func IsScyllaDBClusterRolledOut(sc *scyllav1alpha1.ScyllaDBCluster) (bool, error
 
 func IsScyllaDBClusterDegraded(sc *scyllav1alpha1.ScyllaDBCluster) (bool, error) {
 	return helpers.IsStatusConditionPresentAndTrue(sc.Status.Conditions, scyllav1alpha1.DegradedCondition, sc.Generation), nil
+}
+
+func RunEphemeralContainerAndCollectLogs(ctx context.Context, client corev1client.PodInterface, podName string, ec *corev1.EphemeralContainer) (*corev1.Pod, []byte, error) {
+	pod, err := RunEphemeralContainerAndWaitForCompletion(ctx, client, podName, ec)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can't run ephemeral container: %w", err)
+	}
+
+	logOptions := &corev1.PodLogOptions{
+		Container: ec.EphemeralContainerCommon.Name,
+	}
+	logs := &bytes.Buffer{}
+
+	err = collect.GetPodLogs(ctx, client, logs, podName, logOptions)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can't collect Pod logs: %w", err)
+	}
+
+	return pod, logs.Bytes(), nil
 }
 
 func RunEphemeralContainerAndWaitForCompletion(ctx context.Context, client corev1client.PodInterface, podName string, ec *corev1.EphemeralContainer) (*corev1.Pod, error) {

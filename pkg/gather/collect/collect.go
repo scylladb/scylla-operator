@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
@@ -218,21 +217,9 @@ func retrieveContainerLogs(ctx context.Context, podClient corev1client.PodInterf
 		}
 	}()
 
-	logsReq := podClient.GetLogs(podName, logOptions)
-	readCloser, err := logsReq.Stream(ctx)
+	err = GetPodLogs(ctx, podClient, dest, podName, logOptions)
 	if err != nil {
-		return fmt.Errorf("can't create a log stream: %w", err)
-	}
-	defer func() {
-		err := readCloser.Close()
-		if err != nil {
-			klog.ErrorS(err, "can't close log stream", "Path", destinationPath, "Pod", podName, "Container", logOptions.Container)
-		}
-	}()
-
-	_, err = io.Copy(dest, readCloser)
-	if err != nil {
-		return fmt.Errorf("can't read logs: %w", err)
+		return fmt.Errorf("can't get pod logs: %w", err)
 	}
 
 	return nil

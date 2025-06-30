@@ -301,3 +301,8 @@ func GetScyllaContainerID(pod *corev1.Pod) (string, error) {
 
 	return cs.ContainerID, nil
 }
+
+func IsNodeConfigPod(pod *corev1.Pod) bool {
+	_, ok := pod.Labels[naming.NodeConfigNameLabel]
+	return ok
+}

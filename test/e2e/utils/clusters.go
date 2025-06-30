@@ -61,6 +61,7 @@ func SetUpRemoteKubernetesClustersFromRestConfigs(ctx context.Context, restConfi
 
 		rc := framework.NewRestoringCleaner(
 			ctx,
+			f.AdminClientConfig(),
 			f.KubeAdminClient(),
 			f.DynamicAdminClient(),
 			remoteKubernetesClusterResourceInfo,
@@ -252,7 +253,7 @@ func RegisterCollectionOfRemoteScyllaDBClusterNamespaces(ctx context.Context, sc
 			return fmt.Errorf("can't get remote Namespace %q: %w", *dcStatus.RemoteNamespaceName, err)
 		}
 
-		cluster.AddCollectors(framework.NewNamespaceCleanerCollector(cluster.KubeAdminClient(), cluster.DynamicAdminClient(), dcNs))
+		cluster.AddCollectors(framework.NewNamespaceCleanerCollector(cluster.AdminClientConfig(), cluster.KubeAdminClient(), cluster.DynamicAdminClient(), dcNs))
 	}
 
 	return nil

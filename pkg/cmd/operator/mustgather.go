@@ -258,6 +258,7 @@ func (o *MustGatherOptions) run(ctx context.Context) error {
 	collector := collect.NewCollector(
 		o.DestDir,
 		o.GetPrinters(),
+		o.restConfig,
 		o.discoveryClient,
 		o.kubeClient.CoreV1(),
 		o.dynamicClient,

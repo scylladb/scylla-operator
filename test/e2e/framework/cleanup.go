@@ -32,6 +32,11 @@ type Collector interface {
 	Collect(ctx context.Context, artifactsDir string, ginkgoNamespace string)
 }
 
+type CleanerCollector interface {
+	Cleaner
+	Collector
+}
+
 type namespaceCleaner struct {
 	Client        kubernetes.Interface
 	DynamicClient dynamic.Interface

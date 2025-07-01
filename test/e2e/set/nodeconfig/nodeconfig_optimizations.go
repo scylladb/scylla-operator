@@ -136,7 +136,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 			nc.Name,
 			framework.RestoreStrategyRecreate,
 		)
-		f.AddCleaners(ncRC)
+		f.AddCleanerCollectors(ncRC)
 		ncRC.DeleteObject(ctx, true)
 
 		g.By("Creating a NodeConfig")
@@ -235,7 +235,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 			rq.Name,
 			framework.RestoreStrategyUpdate,
 		)
-		f.AddCleaners(rqRC)
+		f.AddCleanerCollectors(rqRC)
 		rqRC.DeleteObject(ctx, true)
 
 		rq, err = f.KubeAdminClient().CoreV1().ResourceQuotas(naming.ScyllaOperatorNodeTuningNamespace).Create(
@@ -257,8 +257,19 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 			nc.Name,
 			framework.RestoreStrategyRecreate,
 		)
-		f.AddCleaners(ncRC)
+		f.AddCleanerCollectors(ncRC)
 		ncRC.DeleteObject(ctx, true)
+
+		// Register `scylla-operator-node-tuning` namespace collection, it's useful for debugging issues with test NodeConfig.
+		sontNs, err := f.KubeAdminClient().CoreV1().Namespaces().Get(ctx, naming.ScyllaOperatorNodeTuningNamespace, metav1.GetOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		f.AddCollectors(framework.NewNamespaceCleanerCollector(
+			f.AdminClientConfig(),
+			f.KubeAdminClient(),
+			f.DynamicAdminClient(),
+			sontNs,
+		))
 
 		g.By("Creating a NodeConfig")
 		nc, err = f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Create(ctx, nc, metav1.CreateOptions{})

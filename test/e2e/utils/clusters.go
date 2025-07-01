@@ -66,7 +66,7 @@ func SetUpRemoteKubernetesClusters(ctx context.Context, metaCluster framework.Cl
 			rkc.Name,
 			framework.RestoreStrategyRecreate,
 		)
-		metaCluster.AddCleaners(rc)
+		metaCluster.AddCleanerCollectors(rc)
 		rc.DeleteObject(ctx, true)
 
 		framework.By("Creating RemoteKubernetesCluster %q with credentials to cluster %q", rkc.Name, clusterName)

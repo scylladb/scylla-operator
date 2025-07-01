@@ -135,7 +135,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 			nc.Name,
 			framework.RestoreStrategyRecreate,
 		)
-		f.AddCleaners(rc)
+		f.AddCleanerCollectors(rc)
 		rc.DeleteObject(ctx, true)
 
 		g.By("Creating a NodeConfig")
@@ -275,7 +275,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 			nc.Name,
 			framework.RestoreStrategyRecreate,
 		)
-		f.AddCleaners(rc)
+		f.AddCleanerCollectors(rc)
 		rc.DeleteObject(ctx, true)
 
 		g.By("Creating NodeConfig")
@@ -565,7 +565,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 			nc.Name,
 			framework.RestoreStrategyRecreate,
 		)
-		f.AddCleaners(rc)
+		f.AddCleanerCollectors(rc)
 		rc.DeleteObject(ctx, true)
 
 		g.By("Creating NodeConfig")

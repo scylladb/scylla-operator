@@ -17,6 +17,7 @@ type ClusterInterface interface {
 	CreateUserNamespace(ctx context.Context) (*corev1.Namespace, Client)
 	AddCleaners(cleaners ...Cleaner)
 	AddCollectors(collectors ...Collector)
+	AddCleanerCollectors(cc ...CleanerCollector)
 }
 
 type createNamespaceFunc func(ctx context.Context, adminClient kubernetes.Interface, adminClientConfig *restclient.Config) (*corev1.Namespace, Client)
@@ -77,6 +78,13 @@ func (c *Cluster) AddCleaners(cleaners ...Cleaner) {
 
 func (c *Cluster) AddCollectors(collectors ...Collector) {
 	c.collectors = append(c.collectors, collectors...)
+}
+
+func (c *Cluster) AddCleanerCollectors(cleanerCollectors ...CleanerCollector) {
+	for _, cc := range cleanerCollectors {
+		c.cleaners = append(c.cleaners, cc)
+		c.collectors = append(c.collectors, cc)
+	}
 }
 
 func (c *Cluster) GetArtifactsDir() string {

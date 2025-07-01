@@ -37,9 +37,6 @@ export SO_NODECONFIG_PATH
 SO_CSI_DRIVER_PATH="${SO_CSI_DRIVER_PATH=${parent_dir}/manifests/namespaces/local-csi-driver/}"
 export SO_CSI_DRIVER_PATH
 
-SO_SCYLLACLUSTER_STORAGECLASS_NAME="${SO_SCYLLACLUSTER_STORAGECLASS_NAME=scylladb-local-xfs}"
-export SO_SCYLLACLUSTER_STORAGECLASS_NAME
-
 for i in "${!KUBECONFIGS[@]}"; do
   KUBECONFIG="${KUBECONFIGS[$i]}" DEPLOY_DIR="${ARTIFACTS}/deploy/${i}" timeout --foreground -v 10m "${parent_dir}/../ci-deploy.sh" "${SO_IMAGE}" &
   ci_deploy_bg_pids["${i}"]=$!

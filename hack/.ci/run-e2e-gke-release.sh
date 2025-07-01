@@ -23,9 +23,6 @@ trap gracefully-shutdown-e2es INT
 SO_NODECONFIG_PATH="${SO_NODECONFIG_PATH=${parent_dir}/manifests/cluster/nodeconfig.yaml}"
 export SO_NODECONFIG_PATH
 
-SO_SCYLLACLUSTER_STORAGECLASS_NAME="${SO_SCYLLACLUSTER_STORAGECLASS_NAME=scylladb-local-xfs}"
-export SO_SCYLLACLUSTER_STORAGECLASS_NAME
-
 for i in "${!KUBECONFIGS[@]}"; do
   KUBECONFIG="${KUBECONFIGS[$i]}" ARTIFACTS_DEPLOY_DIR="${ARTIFACTS}/deploy/${i}" timeout --foreground -v 10m "${parent_dir}/../ci-deploy-release.sh" "${SO_IMAGE}" &
   ci_deploy_bg_pids["${i}"]=$!

@@ -43,7 +43,7 @@ var _ = g.Describe("RemoteKubernetesCluster finalizer", func() {
 			originalRKC.Name,
 			framework.RestoreStrategyRecreate,
 		)
-		f.AddCleaners(rc)
+		f.AddCleanerCollectors(rc)
 
 		rkc, err := cluster.ScyllaAdminClient().ScyllaV1alpha1().RemoteKubernetesClusters().Create(ctx, originalRKC, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())

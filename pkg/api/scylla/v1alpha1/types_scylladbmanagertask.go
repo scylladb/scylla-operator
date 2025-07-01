@@ -91,6 +91,10 @@ type ScyllaDBManagerRepairTaskOptions struct {
 	// +optional
 	Host *string `json:"host,omitempty"`
 
+	// ignoreDownHosts indicates that the nodes in down state should be ignored during repair.
+	// +optional
+	IgnoreDownHosts *bool `json:"ignoreDownHosts,omitempty"`
+
 	// intensity specifies the number of token ranges to repair in a single ScyllaDB node at the same time.
 	// Changing the intensity impacts the repair granularity in case it is resumed. The higher the value, the more work on resumption.
 	// When set to zero, the number of token ranges is adjusted to the maximum supported number.

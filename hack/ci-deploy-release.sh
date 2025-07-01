@@ -117,15 +117,15 @@ if [[ -n "${SO_SCYLLA_OPERATOR_REPLICAS:-}" ]]; then
   # SO_SCYLLA_OPERATOR_REPLICAS is set and nonempty.
   cat << EOF | \
 yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/operator/kustomization.yaml" -
-patch: |-
-  - op: replace
-    path: /spec/replicas
-    value: ${SO_SCYLLA_OPERATOR_REPLICAS}
-target:
-  group: apps
-  version: v1
-  kind: Deployment
-  name: scylla-operator
+- patch: |-
+    - op: replace
+      path: /spec/replicas
+      value: ${SO_SCYLLA_OPERATOR_REPLICAS}
+  target:
+    group: apps
+    version: v1
+    kind: Deployment
+    name: scylla-operator
 EOF
 fi
 
@@ -245,73 +245,73 @@ if [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME:-}" ]]; then
   # SO_SCYLLACLUSTER_STORAGECLASS_NAME is set and nonempty.
   cat << EOF | \
 yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" -
-patch: |-
-  - op: replace
-    path: /spec/datacenter/racks/0/storage/storageClassName
-    value: "${SO_SCYLLACLUSTER_STORAGECLASS_NAME}"
-target:
-  group: scylla.scylladb.com
-  version: v1
-  kind: ScyllaCluster
-  name: scylla-manager-cluster
+- patch: |-
+    - op: replace
+      path: /spec/datacenter/racks/0/storage/storageClassName
+      value: "${SO_SCYLLACLUSTER_STORAGECLASS_NAME}"
+  target:
+    group: scylla.scylladb.com
+    version: v1
+    kind: ScyllaCluster
+    name: scylla-manager-cluster
 EOF
 elif [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME+x}" ]]; then
   # SO_SCYLLACLUSTER_STORAGECLASS_NAME is set and empty.
   cat << EOF | \
 yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" -
-patch: |-
-  - op: remove
-    path: /spec/datacenter/racks/0/storage/storageClassName
-target:
-  group: scylla.scylladb.com
-  version: v1
-  kind: ScyllaCluster
-  name: scylla-manager-cluster
+- patch: |-
+    - op: remove
+      path: /spec/datacenter/racks/0/storage/storageClassName
+  target:
+    group: scylla.scylladb.com
+    version: v1
+    kind: ScyllaCluster
+    name: scylla-manager-cluster
 EOF
 fi
 
 if [[ -n "${SCYLLADB_VERSION:-}" ]]; then
   cat << EOF | \
   yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" -
-patch: |-
-  - op: replace
-    path: /spec/version
-    value: "${SCYLLADB_VERSION}"
-target:
-  group: scylla.scylladb.com
-  version: v1
-  kind: ScyllaCluster
-  name: scylla-manager-cluster
+- patch: |-
+    - op: replace
+      path: /spec/version
+      value: "${SCYLLADB_VERSION}"
+  target:
+    group: scylla.scylladb.com
+    version: v1
+    kind: ScyllaCluster
+    name: scylla-manager-cluster
 EOF
 fi
 
 if [[ -n "${SCYLLA_MANAGER_VERSION:-}" ]]; then
   cat << EOF | \
   yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" -
-patch: |-
-  - op: replace
-    path: /spec/template/spec/containers/0/image
-    value: "docker.io/scylladb/scylla-manager:${SCYLLA_MANAGER_VERSION}"
-target:
-  group: apps
-  version: v1
-  kind: Deployment
-  name: scylla-manager
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/image
+      value: "docker.io/scylladb/scylla-manager:${SCYLLA_MANAGER_VERSION}"
+  target:
+    group: apps
+    version: v1
+    kind: Deployment
+    name: scylla-manager
 EOF
 fi
 
 if [[ -n "${SCYLLA_MANAGER_AGENT_VERSION:-}" ]]; then
   cat << EOF | \
   yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" -
-patch: |-
-  - op: replace
-    path: /spec/agentVersion
-    value: "${SCYLLA_MANAGER_AGENT_VERSION}"
-target:
-  group: scylla.scylladb.com
-  version: v1
-  kind: ScyllaCluster
-  name: scylla-manager-cluster
+- patch: |-
+    - op: replace
+      path: /spec/agentVersion
+      value: "${SCYLLA_MANAGER_AGENT_VERSION}"
+  target:
+    group: scylla.scylladb.com
+    version: v1
+    kind: ScyllaCluster
+    name: scylla-manager-cluster
 EOF
 fi
 

@@ -4782,6 +4782,9 @@ object
    * - host
      - string
      - host specifies a host to repair. If empty, all hosts are repaired.
+   * - ignoreDownHosts
+     - boolean
+     - ignoreDownHosts indicates that the nodes in down state should be ignored during repair.
    * - intensity
      - string
      - intensity indicates how many token ranges (per shard) to repair in a single Scylla repair job. By default this is 1. If you set it to 0 the number of token ranges is adjusted to the maximum supported by node (see max_repair_ranges_in_parallel in Scylla logs). Valid values are 0 and integers >= 1. Higher values will result in increased cluster load and slightly faster repairs. Changing the intensity impacts repair granularity if you need to resume it, the higher the value the more work on resume. For Scylla clusters that *do not support row-level repair*, intensity can be a decimal between (0,1). In that case it specifies percent of shards that can be repaired in parallel on a repair master node. For Scylla clusters that are row-level repair enabled, setting intensity below 1 has the same effect as setting intensity 1.
@@ -5042,6 +5045,9 @@ object
    * - id
      - string
      - id reflects identification number of the repair task.
+   * - ignoreDownHosts
+     - boolean
+     - ignoreDownHosts reflects whether the nodes in down state are ignored during repair.
    * - intensity
      - string
      - intensity indicates how many token ranges (per shard) to repair in a single Scylla repair job. By default this is 1.

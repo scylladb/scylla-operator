@@ -21,9 +21,6 @@ parent_dir="$( dirname "${BASH_SOURCE[0]}" )"
 trap gather-artifacts-on-exit EXIT
 trap gracefully-shutdown-e2es INT
 
-REENTRANT="${REENTRANT=false}"
-export REENTRANT
-
 # Test cases including $test_disable_tag in their name will be skipped.
 # TODO: Get rid of this tagging method in favor of defined test suites, and mapping
 # specific test suites to specific runtime configurations.

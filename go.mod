@@ -7,9 +7,9 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.36.5
 	github.com/aws/aws-sdk-go-v2/config v1.29.17
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.70
-	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.19.3
+	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.19.4
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.32
-	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.43.4
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.44.0
 	github.com/aws/smithy-go v1.22.4
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/blang/semver/v4 v4.0.0
@@ -64,7 +64,7 @@ require (
 	k8s.io/kubectl v0.33.2
 	k8s.io/kubelet v0.33.2
 	k8s.io/utils v0.0.0-20241210054802-24370beab758
-	sigs.k8s.io/yaml v1.4.0
+	sigs.k8s.io/yaml v1.5.0
 )
 
 require (
@@ -166,6 +166,8 @@ require (
 	go.opentelemetry.io/otel/metric v1.35.0 // indirect
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
+	go.yaml.in/yaml/v2 v2.4.2 // indirect
+	go.yaml.in/yaml/v3 v3.0.3 // indirect
 	golang.org/x/crypto v0.37.0 // indirect
 	golang.org/x/lint v0.0.0-20241112194109-818c5a804067 // indirect
 	golang.org/x/mod v0.24.0 // indirect

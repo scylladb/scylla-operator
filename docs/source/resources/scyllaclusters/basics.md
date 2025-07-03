@@ -46,6 +46,9 @@ IOW, please stay away from touching networking, listen or published addresses an
 
 Now we can create a simple ScyllaCluster to get ScyllaDB running.
 
+:::{include} ../../.internal/rf-warning.md
+:::
+
 :::{code-block} bash
 :linenos:
 :substitutions:
@@ -65,34 +68,100 @@ spec:
   - fs.aio-max-nr=30000000
   datacenter:
     name: us-east-1
-    racks:
-    - name: us-east-1a
-      members: 1
-      scyllaConfig: scylladb-config
-      storage:
-        capacity: 100Gi
-        storageClassName: scylladb-local-xfs
-      resources:
-        requests:
-          cpu: 1
-          memory: 8Gi
-        limits:
-          cpu: 1
-          memory: 8Gi
-      placement:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: scylla.scylladb.com/node-type
-                operator: In
-                values:
-                - scylla
-        tolerations:
-        - key: scylla-operator.scylladb.com/dedicated
-          operator: Equal
-          value: scyllaclusters
-          effect: NoSchedule
+  racks:
+  - name: us-east-1a
+    members: 1
+    scyllaConfig: scylladb-config
+    storage:
+      capacity: 100Gi
+      storageClassName: scylladb-local-xfs
+    resources:
+      requests:
+        cpu: 1
+        memory: 8Gi
+      limits:
+        cpu: 1
+        memory: 8Gi
+    placement:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values:
+              - us-east-1a 
+            - key: scylla.scylladb.com/node-type
+              operator: In
+              values:
+              - scylla
+      tolerations:
+      - key: scylla-operator.scylladb.com/dedicated
+        operator: Equal
+        value: scyllaclusters
+        effect: NoSchedule
+  - name: us-east-1b
+    members: 1
+    scyllaConfig: scylladb-config
+    storage:
+      capacity: 100Gi
+      storageClassName: scylladb-local-xfs
+    resources:
+      requests:
+        cpu: 1
+        memory: 8Gi
+      limits:
+        cpu: 1
+        memory: 8Gi
+    placement:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values:
+              - us-east-1b
+            - key: scylla.scylladb.com/node-type
+              operator: In
+              values:
+              - scylla
+      tolerations:
+      - key: scylla-operator.scylladb.com/dedicated
+        operator: Equal
+        value: scyllaclusters
+        effect: NoSchedule
+  - name: us-east-1c
+    members: 1
+    scyllaConfig: scylladb-config
+    storage:
+      capacity: 100Gi
+      storageClassName: scylladb-local-xfs
+    resources:
+      requests:
+        cpu: 1
+        memory: 8Gi
+      limits:
+        cpu: 1
+        memory: 8Gi
+    placement:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values:
+              - us-east-1c
+            - key: scylla.scylladb.com/node-type
+              operator: In
+              values:
+              - scylla
+      tolerations:
+      - key: scylla-operator.scylladb.com/dedicated
+        operator: Equal
+        value: scyllaclusters
+        effect: NoSchedule
 EOF
 :::
 
@@ -145,6 +214,9 @@ When you change a ScyllaDB config option that's not live reloaded by ScyllaDB, o
 
 ScyllaCluster give you the freedom to chose how you want to spread you rack over your Kubernetes nodes with generic [placement options](api-scylla.scylladb.com-scyllaclusters-v1-.spec.datacenter.racks[].placement).
 Here is a quick example of how you'd use them to spread your racks across different availability zone:
+
+:::{include} ../../.internal/rf-warning.md
+:::
 
 :::::{tab-set}
 

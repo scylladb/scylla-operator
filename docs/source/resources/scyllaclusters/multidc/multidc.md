@@ -92,6 +92,9 @@ kubectl --context="${CONTEXT_DC1}" create ns scylla
 
 For this guide, let's assume that your cluster is running in `us-east-1` region and the nodes dedicated to running ScyllaDB nodes are running in zones `us-east-1a`, `us-east-1b` and `us-east-1c` correspondingly. If that is not the case, adjust the manifest accordingly.
 
+:::{include} ../../../.internal/rf-warning.md
+:::
+
 :::{caution}
 The `.spec.name` field of the ScyllaCluster objects represents the ScyllaDB cluster name and has to be consistent across all datacenters of this ScyllaDB cluster.
 The names of the datacenters, specified in `.spec.datacenter.name`, have to be unique across the entire multi-datacenter cluster.
@@ -349,6 +352,10 @@ Replace the values in `.spec.externalSeeds` of the below manifest with the Pod I
 The provided values are going to serve as initial contact points for the joining nodes of the second datacenter.
 
 For this guide, let's assume that the second cluster is running in `us-east-2` region and the nodes dedicated for running ScyllaDB nodes are running in zones `us-east-2a`, `us-east-2b` and `us-east-2c` correspondingly. If that is not the case, adjust the manifest accordingly.
+
+:::{include} ../../../.internal/rf-warning.md
+:::
+
 Having configured it, save the manifest as `dc2.yaml`:
 ```yaml
 apiVersion: scylla.scylladb.com/v1

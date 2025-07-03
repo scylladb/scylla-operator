@@ -71,6 +71,10 @@ func PodNameForScyllaCluster(r scyllav1.RackSpec, sc *scyllav1.ScyllaCluster, id
 	return MemberServiceNameForScyllaCluster(r, sc, idx)
 }
 
+func LocalIdentityServiceName(sc *scyllav1alpha1.ScyllaDBCluster) (string, error) {
+	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1035LabelMaxLength, sc.Name, "client")
+}
+
 func IdentityServiceName(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
 	return fmt.Sprintf("%s-client", sdc.Name)
 }
@@ -296,13 +300,21 @@ func ScyllaDBManagerClusterRegistrationNameForScyllaDBManagerTask(smt *scyllav1a
 }
 
 func scyllaDBManagerClusterRegistrationName(kind, name string) (string, error) {
-	nameSuffix, err := GenerateNameHash(kind, name)
+	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1123SubdomainMaxLength, kind, name)
+}
+
+func generateTruncatedHashedName(maxLength int, parts ...string) (string, error) {
+	nameSuffix, err := GenerateNameHash(parts...)
 	if err != nil {
 		return "", fmt.Errorf("can't generate name hash: %w", err)
 	}
 
-	fullName := strings.ToLower(fmt.Sprintf("%s-%s", kind, name))
-	fullNameWithSuffix := fmt.Sprintf("%s-%s", fullName[:min(len(fullName), apimachineryutilvalidation.DNS1123SubdomainMaxLength-len(nameSuffix)-1)], nameSuffix)
+	if len(nameSuffix) > maxLength {
+		return "", fmt.Errorf("maximum length cannot be lower than the length of the name suffix hash: %d", len(nameSuffix))
+	}
+
+	fullName := strings.ToLower(strings.Join(parts, "-"))
+	fullNameWithSuffix := fmt.Sprintf("%s-%s", fullName[:min(len(fullName), maxLength-len(nameSuffix)-1)], nameSuffix)
 	return fullNameWithSuffix, nil
 }
 

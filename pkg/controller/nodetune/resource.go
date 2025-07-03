@@ -18,6 +18,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+const (
+	rootUID int64 = 0
+	rootGID int64 = 0
+)
+
 // TODO: set anti affinities so config jobs don't run on the same node at the same time
 
 func makePerftuneJobForNode(controllerRef *metav1.OwnerReference, namespace, nodeConfigName, nodeName string, nodeUID types.UID, image string, podSpec *corev1.PodSpec) *batchv1.Job {
@@ -149,6 +154,10 @@ func makeRlimitsJobForContainer(controllerRef *metav1.OwnerReference, namespace,
 					RestartPolicy:      corev1.RestartPolicyOnFailure,
 					HostPID:            true,
 					ServiceAccountName: naming.RlimitsJobServiceAccountName,
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsUser:  pointer.Ptr(rootUID),
+						RunAsGroup: pointer.Ptr(rootGID),
+					},
 					Containers: []corev1.Container{
 						{
 							Name:            naming.RLimitsContainerName,
@@ -247,6 +256,10 @@ func makePerftuneJobForContainers(controllerRef *metav1.OwnerReference, namespac
 					HostPID:            true,
 					HostNetwork:        true,
 					ServiceAccountName: naming.PerftuneServiceAccountName,
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsUser:  pointer.Ptr(rootUID),
+						RunAsGroup: pointer.Ptr(rootGID),
+					},
 					Containers: []corev1.Container{
 						{
 							Name:            naming.PerftuneContainerName,

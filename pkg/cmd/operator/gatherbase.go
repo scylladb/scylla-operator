@@ -28,6 +28,7 @@ type GatherBaseOptions struct {
 	GathererName string
 	ConfigFlags  *kgenericclioptions.ConfigFlags
 
+	restConfig      *rest.Config
 	kubeClient      kubernetes.Interface
 	dynamicClient   dynamic.Interface
 	discoveryClient discovery.DiscoveryInterface
@@ -90,6 +91,8 @@ func (o *GatherBaseOptions) Complete() error {
 	if err != nil {
 		return fmt.Errorf("can't create RESTConfig: %w", err)
 	}
+
+	o.restConfig = restConfig
 
 	o.kubeClient, err = kubernetes.NewForConfig(restConfig)
 	if err != nil {

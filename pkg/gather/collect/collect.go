@@ -1,19 +1,14 @@
 package collect
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
-	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,6 +20,7 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 )
 
@@ -45,23 +41,6 @@ func NewResourceInfoFromMapping(mapping *meta.RESTMapping) *ResourceInfo {
 	}
 }
 
-func writeObject(printer ResourcePrinterInterface, filePath string, resourceInfo *ResourceInfo, obj kubeinterfaces.ObjectInterface) error {
-	buf := bytes.NewBuffer(nil)
-	err := printer.PrintObj(resourceInfo, obj, buf)
-	if err != nil {
-		return fmt.Errorf("can't print object %q (%s): %w", naming.ObjRef(obj), resourceInfo.Resource, err)
-	}
-
-	err = os.WriteFile(filePath, buf.Bytes(), 0770)
-	if err != nil {
-		return fmt.Errorf("can't write file %q: %w", filePath, err)
-	}
-
-	klog.V(4).InfoS("Written resource", "Path", filePath)
-
-	return nil
-}
-
 func getResourceKey(obj *unstructured.Unstructured, resourceInfo *ResourceInfo) string {
 	var nsPrefix string
 	if resourceInfo.Scope.Name() == meta.RESTScopeNameNamespace {
@@ -72,14 +51,12 @@ func getResourceKey(obj *unstructured.Unstructured, resourceInfo *ResourceInfo) 
 }
 
 type Collector struct {
-	baseDir          string
-	printers         []ResourcePrinterInterface
 	discoveryClient  discovery.DiscoveryInterface
-	corev1Client     corev1client.CoreV1Interface
 	dynamicClient    dynamic.Interface
+	podCollector     *PodCollector
+	resourceWriter   *ResourceWriter
 	relatedResources bool
 	keepGoing        bool
-	logsLimitBytes   int64
 
 	collectedResources apimachineryutilsets.Set[string]
 }
@@ -87,6 +64,7 @@ type Collector struct {
 func NewCollector(
 	baseDir string,
 	printers []ResourcePrinterInterface,
+	restConfig *rest.Config,
 	discoveryClient discovery.DiscoveryInterface,
 	corev1Client corev1client.CoreV1Interface,
 	dynamicClient dynamic.Interface,
@@ -94,72 +72,18 @@ func NewCollector(
 	keepGoing bool,
 	logsLimitBytes int64,
 ) *Collector {
+	rw := NewResourceWriter(baseDir, printers)
+	pc := NewPodCollector(restConfig, corev1Client, rw, logsLimitBytes)
+
 	return &Collector{
-		baseDir:            baseDir,
-		printers:           printers,
 		discoveryClient:    discoveryClient,
-		corev1Client:       corev1Client,
 		dynamicClient:      dynamicClient,
+		podCollector:       pc,
+		resourceWriter:     rw,
 		relatedResources:   relatedResources,
 		keepGoing:          keepGoing,
-		logsLimitBytes:     logsLimitBytes,
 		collectedResources: apimachineryutilsets.Set[string]{},
 	}
-}
-
-func (c *Collector) getResourceDir(obj kubeinterfaces.ObjectInterface, resourceInfo *ResourceInfo) (string, error) {
-	scope := resourceInfo.Scope.Name()
-	switch scope {
-	case meta.RESTScopeNameNamespace:
-		return filepath.Join(
-			c.baseDir,
-			namespacesDirName,
-			obj.GetNamespace(),
-			resourceInfo.Resource.GroupResource().String(),
-		), nil
-
-	case meta.RESTScopeNameRoot:
-		return filepath.Join(
-			c.baseDir,
-			clusterScopedDirName,
-			resourceInfo.Resource.GroupResource().String(),
-		), nil
-
-	default:
-		return "", fmt.Errorf("unrecognized scope %q", scope)
-	}
-}
-
-func (c *Collector) writeObject(ctx context.Context, dirPath string, obj kubeinterfaces.ObjectInterface, resourceInfo *ResourceInfo) error {
-	var err error
-	for _, printer := range c.printers {
-		filePath := filepath.Join(dirPath, obj.GetName()+printer.GetSuffix())
-		err = writeObject(printer, filePath, resourceInfo, obj)
-		if err != nil {
-			return fmt.Errorf("can't write object: %w", err)
-		}
-	}
-
-	return nil
-}
-
-func (c *Collector) writeResource(ctx context.Context, obj kubeinterfaces.ObjectInterface, resourceInfo *ResourceInfo) error {
-	resourceDir, err := c.getResourceDir(obj, resourceInfo)
-	if err != nil {
-		return fmt.Errorf("can't get resourceDir: %q", err)
-	}
-
-	err = os.MkdirAll(resourceDir, 0770)
-	if err != nil {
-		return fmt.Errorf("can't create resource dir %q: %w", resourceDir, err)
-	}
-
-	err = c.writeObject(ctx, resourceDir, obj, resourceInfo)
-	if err != nil {
-		return fmt.Errorf("can't write object: %w", err)
-	}
-
-	return nil
 }
 
 func (c *Collector) collect(
@@ -167,7 +91,7 @@ func (c *Collector) collect(
 	obj kubeinterfaces.ObjectInterface,
 	resourceInfo *ResourceInfo,
 ) error {
-	err := c.writeResource(ctx, obj, resourceInfo)
+	err := c.resourceWriter.WriteResource(ctx, obj, resourceInfo)
 	if err != nil {
 		return fmt.Errorf("can't write resource %q: %w", resourceInfo, err)
 	}
@@ -197,123 +121,9 @@ func (c *Collector) collectSecret(ctx context.Context, u *unstructured.Unstructu
 		}
 	}
 
-	err = c.writeResource(ctx, secret, resourceInfo)
+	err = c.resourceWriter.WriteResource(ctx, secret, resourceInfo)
 	if err != nil {
 		return fmt.Errorf("can't write resource %q: %w", resourceInfo, err)
-	}
-
-	return nil
-}
-
-func retrieveContainerLogs(ctx context.Context, podClient corev1client.PodInterface, destinationPath string, podName string, logOptions *corev1.PodLogOptions) error {
-	dest, err := os.OpenFile(destinationPath, os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		return fmt.Errorf("can't open file %q: %w", destinationPath, err)
-	}
-	defer func() {
-		err := dest.Close()
-		if err != nil {
-			klog.ErrorS(err, "can't close file", "Path", destinationPath)
-		}
-	}()
-
-	err = GetPodLogs(ctx, podClient, dest, podName, logOptions)
-	if err != nil {
-		return fmt.Errorf("can't get pod logs: %w", err)
-	}
-
-	return nil
-}
-
-func (c *Collector) collectContainerLogs(ctx context.Context, logsDir string, podMeta *metav1.ObjectMeta, podCSs []corev1.ContainerStatus, containerName string) error {
-	var err error
-
-	cs, _, found := oslices.Find(podCSs, func(s corev1.ContainerStatus) bool {
-		return s.Name == containerName
-	})
-	if !found {
-		klog.InfoS("Container doesn't yet have a status", "Pod", naming.ObjRef(podMeta), "Container", containerName)
-		return nil
-	}
-
-	var limitBytes *int64
-	if c.logsLimitBytes > 0 {
-		limitBytes = pointer.Ptr(c.logsLimitBytes)
-	}
-
-	logOptions := &corev1.PodLogOptions{
-		Container:  containerName,
-		Timestamps: true,
-		Follow:     false,
-		LimitBytes: limitBytes,
-	}
-
-	// TODO: Tolerate errors in case state changes in the meantime (like when a pod is being restarted in backoff)
-	//       It's error prone to just ignore it, maybe we should retry and refreshing the state and retrying instead.
-	//       https://github.com/scylladb/scylla-operator/issues/1400
-
-	if cs.State.Running != nil {
-		// Retrieve current logs.
-		logOptions.Previous = false
-		err = retrieveContainerLogs(ctx, c.corev1Client.Pods(podMeta.Namespace), filepath.Join(logsDir, containerName+".current"), podMeta.Name, logOptions)
-		if err != nil {
-			return fmt.Errorf("can't retrieve pod logs for container %q in pod %q: %w", containerName, naming.ObjRef(podMeta), err)
-		}
-	}
-
-	if cs.LastTerminationState.Terminated != nil {
-		logOptions.Previous = true
-		err = retrieveContainerLogs(ctx, c.corev1Client.Pods(podMeta.Namespace), filepath.Join(logsDir, containerName+".previous"), podMeta.Name, logOptions)
-		if err != nil {
-			return fmt.Errorf("can't retrieve previous pod logs for container %q in pod %q: %w", containerName, naming.ObjRef(podMeta), err)
-		}
-	}
-
-	return nil
-}
-
-func (c *Collector) collectPod(ctx context.Context, u *unstructured.Unstructured, resourceInfo *ResourceInfo) error {
-	pod := &corev1.Pod{}
-	err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, pod)
-	if err != nil {
-		return fmt.Errorf("can't convert secret from unstructured: %w", err)
-	}
-
-	err = c.writeResource(ctx, pod, resourceInfo)
-	if err != nil {
-		return fmt.Errorf("can't write resource %q: %w", resourceInfo, err)
-	}
-
-	resourceDir, err := c.getResourceDir(pod, resourceInfo)
-	if err != nil {
-		return fmt.Errorf("can't get resourceDir: %q", err)
-	}
-	logsDir := filepath.Join(resourceDir, pod.GetName())
-
-	err = os.MkdirAll(logsDir, 0770)
-	if err != nil {
-		return fmt.Errorf("can't create logs dir %q: %w", logsDir, err)
-	}
-
-	for _, container := range pod.Spec.InitContainers {
-		err = c.collectContainerLogs(ctx, logsDir, &pod.ObjectMeta, pod.Status.InitContainerStatuses, container.Name)
-		if err != nil {
-			return fmt.Errorf("can't collect logs for init container %q in pod %q: %w", container.Name, naming.ObjRef(pod), err)
-		}
-	}
-
-	for _, container := range pod.Spec.Containers {
-		err = c.collectContainerLogs(ctx, logsDir, &pod.ObjectMeta, pod.Status.ContainerStatuses, container.Name)
-		if err != nil {
-			return fmt.Errorf("can't collect logs for container %q in pod %q: %w", container.Name, naming.ObjRef(pod), err)
-		}
-	}
-
-	for _, container := range pod.Spec.EphemeralContainers {
-		err = c.collectContainerLogs(ctx, logsDir, &pod.ObjectMeta, pod.Status.EphemeralContainerStatuses, container.Name)
-		if err != nil {
-			return fmt.Errorf("can't collect logs for ephemeral container %q in pod %q: %w", container.Name, naming.ObjRef(pod), err)
-		}
 	}
 
 	return nil
@@ -388,7 +198,7 @@ func ReplaceIsometricResourceInfosIfPresent(resourceInfos []*ResourceInfo) ([]*R
 }
 
 func (c *Collector) collectNamespace(ctx context.Context, u *unstructured.Unstructured, resourceInfo *ResourceInfo) error {
-	err := c.writeResource(ctx, u, resourceInfo)
+	err := c.resourceWriter.WriteResource(ctx, u, resourceInfo)
 	if err != nil {
 		return fmt.Errorf("can't write resource %q: %w", resourceInfo, err)
 	}
@@ -452,7 +262,7 @@ func (c *Collector) collectNamespaceForObject(ctx context.Context, u *unstructur
 }
 
 func (c *Collector) collectScyllaCluster(ctx context.Context, u *unstructured.Unstructured, resourceInfo *ResourceInfo) error {
-	err := c.writeResource(ctx, u, resourceInfo)
+	err := c.resourceWriter.WriteResource(ctx, u, resourceInfo)
 	if err != nil {
 		return fmt.Errorf("can't write resource %q: %w", resourceInfo, err)
 	}
@@ -470,7 +280,7 @@ func (c *Collector) collectScyllaCluster(ctx context.Context, u *unstructured.Un
 }
 
 func (c *Collector) collectScyllaDBMonitoring(ctx context.Context, u *unstructured.Unstructured, resourceInfo *ResourceInfo) error {
-	err := c.writeResource(ctx, u, resourceInfo)
+	err := c.resourceWriter.WriteResource(ctx, u, resourceInfo)
 	if err != nil {
 		return fmt.Errorf("can't write resource %q: %w", resourceInfo, err)
 	}
@@ -500,7 +310,7 @@ func (c *Collector) CollectObject(ctx context.Context, u *unstructured.Unstructu
 		return c.collectSecret(ctx, u, resourceInfo)
 
 	case corev1.SchemeGroupVersion.WithResource("pods").GroupResource():
-		return c.collectPod(ctx, u, resourceInfo)
+		return c.podCollector.Collect(ctx, u, resourceInfo)
 
 	case corev1.SchemeGroupVersion.WithResource("namespaces").GroupResource():
 		return c.collectNamespace(ctx, u, resourceInfo)

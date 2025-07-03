@@ -60,6 +60,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		nc := ncTemplate.DeepCopy()
 		rc := framework.NewRestoringCleaner(
 			ctx,
+			f.AdminClientConfig(),
 			f.KubeAdminClient(),
 			f.DynamicAdminClient(),
 			nodeConfigResourceInfo,
@@ -127,6 +128,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 
 		ncRC := framework.NewRestoringCleaner(
 			ctx,
+			f.AdminClientConfig(),
 			f.KubeAdminClient(),
 			f.DynamicAdminClient(),
 			nodeConfigResourceInfo,
@@ -225,6 +227,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		}
 		rqRC := framework.NewRestoringCleaner(
 			ctx,
+			f.AdminClientConfig(),
 			f.KubeAdminClient(),
 			f.DynamicAdminClient(),
 			resourceQuotaResourceInfo,
@@ -246,6 +249,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 
 		ncRC := framework.NewRestoringCleaner(
 			ctx,
+			f.AdminClientConfig(),
 			f.KubeAdminClient(),
 			f.DynamicAdminClient(),
 			nodeConfigResourceInfo,

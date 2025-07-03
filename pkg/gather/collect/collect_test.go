@@ -17,6 +17,7 @@ import (
 	dynamicfakeclient "k8s.io/client-go/dynamic/fake"
 	kubefakeclient "k8s.io/client-go/kubernetes/fake"
 	kubernetesscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 )
 
@@ -716,6 +717,7 @@ metadata:
 				[]ResourcePrinterInterface{
 					&OmitManagedFieldsPrinter{Delegate: &YAMLPrinter{}},
 				},
+				&rest.Config{},
 				fakeDiscoveryClient,
 				fakeKubeClient.CoreV1(),
 				fakeDynamicClient,

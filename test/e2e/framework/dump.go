@@ -12,9 +12,10 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/rest"
 )
 
-func DumpResource(ctx context.Context, discoveryClient discovery.DiscoveryInterface, dynamicClient dynamic.Interface, corev1Client corev1client.CoreV1Interface, artifactsDir string, resourceInfo *collect.ResourceInfo, namespace string, name string) error {
+func DumpResource(ctx context.Context, restConfig *rest.Config, discoveryClient discovery.DiscoveryInterface, dynamicClient dynamic.Interface, corev1Client corev1client.CoreV1Interface, artifactsDir string, resourceInfo *collect.ResourceInfo, namespace string, name string) error {
 	collector := collect.NewCollector(
 		artifactsDir,
 		[]collect.ResourcePrinterInterface{
@@ -22,6 +23,7 @@ func DumpResource(ctx context.Context, discoveryClient discovery.DiscoveryInterf
 				Delegate: &collect.YAMLPrinter{},
 			},
 		},
+		restConfig,
 		discoveryClient,
 		corev1Client,
 		dynamicClient,
@@ -42,9 +44,10 @@ func DumpResource(ctx context.Context, discoveryClient discovery.DiscoveryInterf
 	return nil
 }
 
-func DumpNamespace(ctx context.Context, discoveryClient discovery.DiscoveryInterface, dynamicClient dynamic.Interface, corev1Client corev1client.CoreV1Interface, artifactsDir string, name string) error {
+func DumpNamespace(ctx context.Context, restConfig *rest.Config, discoveryClient discovery.DiscoveryInterface, dynamicClient dynamic.Interface, corev1Client corev1client.CoreV1Interface, artifactsDir string, name string) error {
 	return DumpResource(
 		ctx,
+		restConfig,
 		discoveryClient,
 		dynamicClient,
 		corev1Client,

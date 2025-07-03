@@ -71,7 +71,11 @@ func PodNameForScyllaCluster(r scyllav1.RackSpec, sc *scyllav1.ScyllaCluster, id
 	return MemberServiceNameForScyllaCluster(r, sc, idx)
 }
 
-func IdentityServiceName(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
+func IdentityServiceName(sc *scyllav1alpha1.ScyllaDBCluster) (string, error) {
+	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1035LabelMaxLength, sc.Name, "client")
+}
+
+func IdentityServiceNameForScyllaDBDatacenter(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
 	return fmt.Sprintf("%s-client", sdc.Name)
 }
 
@@ -88,7 +92,7 @@ func PodDisruptionBudgetNameForScyllaCluster(sc *scyllav1.ScyllaCluster) string 
 }
 
 func CrossNamespaceServiceName(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
-	return fmt.Sprintf("%s.%s.svc", IdentityServiceName(sdc), sdc.Namespace)
+	return fmt.Sprintf("%s.%s.svc", IdentityServiceNameForScyllaDBDatacenter(sdc), sdc.Namespace)
 }
 
 func CrossNamespaceServiceNameForCluster(sc *scyllav1.ScyllaCluster) string {
@@ -296,12 +300,16 @@ func ScyllaDBManagerClusterRegistrationNameForScyllaDBManagerTask(smt *scyllav1a
 }
 
 func scyllaDBManagerClusterRegistrationName(kind, name string) (string, error) {
-	nameSuffix, err := GenerateNameHash(kind, name)
+	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1123SubdomainMaxLength, kind, name)
+}
+
+func generateTruncatedHashedName(maxLength int, parts ...string) (string, error) {
+	nameSuffix, err := GenerateNameHash(parts...)
 	if err != nil {
 		return "", fmt.Errorf("can't generate name hash: %w", err)
 	}
 
-	fullName := strings.ToLower(fmt.Sprintf("%s-%s", kind, name))
-	fullNameWithSuffix := fmt.Sprintf("%s-%s", fullName[:min(len(fullName), apimachineryutilvalidation.DNS1123SubdomainMaxLength-len(nameSuffix)-1)], nameSuffix)
+	fullName := strings.ToLower(strings.Join(parts, "-"))
+	fullNameWithSuffix := fmt.Sprintf("%s-%s", fullName[:min(len(fullName), maxLength-len(nameSuffix)-1)], nameSuffix)
 	return fullNameWithSuffix, nil
 }

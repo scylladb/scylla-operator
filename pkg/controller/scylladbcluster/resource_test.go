@@ -2,15 +2,23 @@ package scylladbcluster
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
+	remotelister "github.com/scylladb/scylla-operator/pkg/remoteclient/lister"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	corev1listers "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
 )
 
 const (
@@ -152,7 +160,7 @@ func TestMakeNamespaces(t *testing.T) {
 	}
 }
 
-func TestMakeServices(t *testing.T) {
+func TestMakeRemoteServices(t *testing.T) {
 	t.Parallel()
 
 	makeSeedServiceSpec := func() corev1.ServiceSpec {
@@ -462,82 +470,6 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 					UID:       "1234",
 				},
 			}, remoteControllerGVK),
-		}
-	}
-
-	newBasicScyllaDBCluster := func() *scyllav1alpha1.ScyllaDBCluster {
-		return &scyllav1alpha1.ScyllaDBCluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "cluster",
-				Namespace: "scylla",
-			},
-			Spec: scyllav1alpha1.ScyllaDBClusterSpec{
-				Metadata:    nil,
-				ClusterName: pointer.Ptr("cluster"),
-				ScyllaDB: scyllav1alpha1.ScyllaDB{
-					Image: "repo/scylla:version",
-				},
-				ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgent{
-					Image: pointer.Ptr("repo/agent:version"),
-				},
-				DatacenterTemplate: &scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
-					ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
-						Resources: &corev1.ResourceRequirements{
-							Limits: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("2"),
-								corev1.ResourceMemory: resource.MustParse("2Gi"),
-							},
-							Requests: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("1"),
-								corev1.ResourceMemory: resource.MustParse("1Gi"),
-							},
-						},
-						Storage: &scyllav1alpha1.StorageOptions{
-							Capacity: "100Gi",
-						},
-					},
-					ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
-						Resources: &corev1.ResourceRequirements{
-							Limits: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("4"),
-								corev1.ResourceMemory: resource.MustParse("4Gi"),
-							},
-							Requests: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("3"),
-								corev1.ResourceMemory: resource.MustParse("3Gi"),
-							},
-						},
-					},
-					RackTemplate: &scyllav1alpha1.RackTemplate{
-						Nodes: pointer.Ptr[int32](3),
-					},
-					Racks: []scyllav1alpha1.RackSpec{
-						{
-							Name: "a",
-						},
-						{
-							Name: "b",
-						},
-						{
-							Name: "c",
-						},
-					},
-				},
-				Datacenters: []scyllav1alpha1.ScyllaDBClusterDatacenter{
-					{
-						Name:                        "dc1",
-						RemoteKubernetesClusterName: "dc1-rkc",
-					},
-				},
-			},
-			Status: scyllav1alpha1.ScyllaDBClusterStatus{
-				Datacenters: []scyllav1alpha1.ScyllaDBClusterDatacenterStatus{
-					{
-						Name:  "dc1",
-						Nodes: pointer.Ptr[int32](3),
-					},
-				},
-			},
 		}
 	}
 
@@ -2396,5 +2328,1182 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 				t.Errorf("expected and got datacenters differ, diff: %s", cmp.Diff(gotDatacenters, tc.expectedScyllaDBDatacenters))
 			}
 		})
+	}
+}
+
+func TestMakeLocalServices(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name             string
+		sc               *scyllav1alpha1.ScyllaDBCluster
+		expectedServices []*corev1.Service
+		expectedErr      error
+	}{
+		{
+			name: "basic identity service for ScyllaDBCluster",
+			sc:   newBasicScyllaDBCluster(),
+			expectedServices: []*corev1.Service{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cluster-client-bowxv",
+						Namespace: "scylla",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/name":       "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"scylla-operator.scylladb.com/scylladbcluster-name": "cluster",
+						},
+						Annotations: map[string]string{},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBCluster",
+								Name:               "cluster",
+								UID:                "uid",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							{
+								Name:     "cql",
+								Protocol: corev1.ProtocolTCP,
+								Port:     9042,
+							},
+							{
+								Name:     "cql-ssl",
+								Protocol: corev1.ProtocolTCP,
+								Port:     9142,
+							},
+							{
+								Name:     "agent-api",
+								Protocol: corev1.ProtocolTCP,
+								Port:     10001,
+							},
+						},
+						Selector:  nil,
+						ClusterIP: corev1.ClusterIPNone,
+						Type:      corev1.ServiceTypeClusterIP,
+					},
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "identity service with custom labels",
+			sc: func() *scyllav1alpha1.ScyllaDBCluster {
+				sc := newBasicScyllaDBCluster()
+				sc.Spec.Metadata = &scyllav1alpha1.ObjectTemplateMetadata{
+					Labels: map[string]string{
+						"custom-label1": "value1",
+						"custom-label2": "value2",
+					},
+				}
+				return sc
+			}(),
+			expectedServices: []*corev1.Service{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cluster-client-bowxv",
+						Namespace: "scylla",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/name":       "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"scylla-operator.scylladb.com/scylladbcluster-name": "cluster",
+							"custom-label1": "value1",
+							"custom-label2": "value2",
+						},
+						Annotations: map[string]string{},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBCluster",
+								Name:               "cluster",
+								UID:                "uid",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							{
+								Name:     "cql",
+								Protocol: corev1.ProtocolTCP,
+								Port:     9042,
+							},
+							{
+								Name:     "cql-ssl",
+								Protocol: corev1.ProtocolTCP,
+								Port:     9142,
+							},
+							{
+								Name:     "agent-api",
+								Protocol: corev1.ProtocolTCP,
+								Port:     10001,
+							},
+						},
+						Selector:  nil,
+						ClusterIP: corev1.ClusterIPNone,
+						Type:      corev1.ServiceTypeClusterIP,
+					},
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "identity service with custom annotations",
+			sc: func() *scyllav1alpha1.ScyllaDBCluster {
+				sc := newBasicScyllaDBCluster()
+				sc.Spec.Metadata = &scyllav1alpha1.ObjectTemplateMetadata{
+					Annotations: map[string]string{
+						"custom.annotation/one": "value1",
+						"custom.annotation/two": "value2",
+					},
+				}
+				return sc
+			}(),
+			expectedServices: []*corev1.Service{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cluster-client-bowxv",
+						Namespace: "scylla",
+						Labels: map[string]string{
+							"app":                          "scylla",
+							"app.kubernetes.io/name":       "scylla",
+							"app.kubernetes.io/managed-by": "scylla-operator",
+							"scylla-operator.scylladb.com/scylladbcluster-name": "cluster",
+						},
+						Annotations: map[string]string{
+							"custom.annotation/one": "value1",
+							"custom.annotation/two": "value2",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBCluster",
+								Name:               "cluster",
+								UID:                "uid",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							{
+								Name:     "cql",
+								Protocol: corev1.ProtocolTCP,
+								Port:     9042,
+							},
+							{
+								Name:     "cql-ssl",
+								Protocol: corev1.ProtocolTCP,
+								Port:     9142,
+							},
+							{
+								Name:     "agent-api",
+								Protocol: corev1.ProtocolTCP,
+								Port:     10001,
+							},
+						},
+						Selector:  nil,
+						ClusterIP: corev1.ClusterIPNone,
+						Type:      corev1.ServiceTypeClusterIP,
+					},
+				},
+			},
+			expectedErr: nil,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			services, err := makeLocalServices(tc.sc)
+
+			if !reflect.DeepEqual(err, tc.expectedErr) {
+				t.Fatalf("expected error %v, got %v", tc.expectedErr, err)
+			}
+
+			if !equality.Semantic.DeepEqual(services, tc.expectedServices) {
+				t.Errorf("expected and got services differ, diff: %s", cmp.Diff(tc.expectedServices, services))
+			}
+		})
+	}
+}
+
+func TestMakeEndpointSliceForIdentityService(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name                          string
+		sc                            *scyllav1alpha1.ScyllaDBCluster
+		remoteNamespaces              map[string]*corev1.Namespace
+		existing                      map[string][]apimachineryruntime.Object
+		expected                      *discoveryv1.EndpointSlice
+		expectedProgressingConditions []metav1.Condition
+		expectedErr                   error
+	}{
+		{
+			name:             "remote namespace missing",
+			sc:               newBasicScyllaDBCluster(),
+			remoteNamespaces: map[string]*corev1.Namespace{},
+			existing:         map[string][]apimachineryruntime.Object{},
+			expected: &discoveryv1.EndpointSlice{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cluster-client-bowxv",
+					Namespace: "scylla",
+					Labels: map[string]string{
+						"app":                                               "scylla",
+						"app.kubernetes.io/managed-by":                      "scylla-operator",
+						"app.kubernetes.io/name":                            "scylla",
+						"endpointslice.kubernetes.io/managed-by":            "scylla-operator.scylladb.com",
+						"kubernetes.io/service-name":                        "cluster-client-bowxv",
+						"scylla-operator.scylladb.com/cluster-endpoints":    "cluster",
+						"scylla-operator.scylladb.com/scylladbcluster-name": "cluster",
+					},
+					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBCluster",
+							Name:               "cluster",
+							UID:                "uid",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				AddressType: discoveryv1.AddressTypeIPv4,
+				Endpoints:   nil,
+				Ports: []discoveryv1.EndpointPort{
+					{
+						Name:     pointer.Ptr("cql"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](9042),
+					},
+					{
+						Name:     pointer.Ptr("cql-ssl"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](9142),
+					},
+					{
+						Name:     pointer.Ptr("agent-api"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](10001),
+					},
+				},
+			},
+			expectedProgressingConditions: []metav1.Condition{
+				{
+					Type:    "EndpointSliceControllerProgressing",
+					Status:  "True",
+					Reason:  "WaitingForRemoteNamespace",
+					Message: `Waiting for Namespace to be created in "dc1-rkc" Cluster`,
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "node broadcast type podIP, no pods",
+			sc:   newBasicScyllaDBCluster(),
+			remoteNamespaces: map[string]*corev1.Namespace{
+				"dc1-rkc": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dc1-rkc-ns",
+					},
+				},
+			},
+			existing: map[string][]apimachineryruntime.Object{
+				"dc1-rkc": {},
+			},
+			expected: &discoveryv1.EndpointSlice{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cluster-client-bowxv",
+					Namespace: "scylla",
+					Labels: map[string]string{
+						"app":                                               "scylla",
+						"app.kubernetes.io/managed-by":                      "scylla-operator",
+						"app.kubernetes.io/name":                            "scylla",
+						"endpointslice.kubernetes.io/managed-by":            "scylla-operator.scylladb.com",
+						"kubernetes.io/service-name":                        "cluster-client-bowxv",
+						"scylla-operator.scylladb.com/cluster-endpoints":    "cluster",
+						"scylla-operator.scylladb.com/scylladbcluster-name": "cluster",
+					},
+					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBCluster",
+							Name:               "cluster",
+							UID:                "uid",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				AddressType: discoveryv1.AddressTypeIPv4,
+				Endpoints:   nil,
+				Ports: []discoveryv1.EndpointPort{
+					{
+						Name:     pointer.Ptr("cql"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](9042),
+					},
+					{
+						Name:     pointer.Ptr("cql-ssl"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](9142),
+					},
+					{
+						Name:     pointer.Ptr("agent-api"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](10001),
+					},
+				},
+			},
+			expectedProgressingConditions: []metav1.Condition{},
+			expectedErr:                   nil,
+		},
+		{
+			name: "node broadcast type podIP, pod not ready, not serving, not terminating",
+			sc:   newBasicScyllaDBCluster(),
+			remoteNamespaces: map[string]*corev1.Namespace{
+				"dc1-rkc": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dc1-rkc-ns",
+					},
+				},
+			},
+			existing: map[string][]apimachineryruntime.Object{
+				"dc1-rkc": {
+					&corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "dc1-rkc-a-0",
+							Namespace: "dc1-rkc-ns",
+							Labels: map[string]string{
+								"app":                          "scylla",
+								"app.kubernetes.io/name":       "scylla",
+								"app.kubernetes.io/managed-by": "scylla-operator",
+								"scylla/cluster":               "cluster-dc1",
+							},
+							DeletionTimestamp: nil,
+						},
+						Status: corev1.PodStatus{
+							PodIP: "10.0.0.1",
+							Conditions: []corev1.PodCondition{
+								{
+									Type:   corev1.PodReady,
+									Status: corev1.ConditionFalse,
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: &discoveryv1.EndpointSlice{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cluster-client-bowxv",
+					Namespace: "scylla",
+					Labels: map[string]string{
+						"app":                                               "scylla",
+						"app.kubernetes.io/managed-by":                      "scylla-operator",
+						"app.kubernetes.io/name":                            "scylla",
+						"endpointslice.kubernetes.io/managed-by":            "scylla-operator.scylladb.com",
+						"kubernetes.io/service-name":                        "cluster-client-bowxv",
+						"scylla-operator.scylladb.com/cluster-endpoints":    "cluster",
+						"scylla-operator.scylladb.com/scylladbcluster-name": "cluster",
+					},
+					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBCluster",
+							Name:               "cluster",
+							UID:                "uid",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				AddressType: discoveryv1.AddressTypeIPv4,
+				Endpoints: []discoveryv1.Endpoint{
+					{
+						Addresses: []string{"10.0.0.1"},
+						Conditions: discoveryv1.EndpointConditions{
+							Ready:       pointer.Ptr(false),
+							Serving:     pointer.Ptr(false),
+							Terminating: pointer.Ptr(false),
+						},
+					},
+				},
+				Ports: []discoveryv1.EndpointPort{
+					{
+						Name:     pointer.Ptr("cql"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](9042),
+					},
+					{
+						Name:     pointer.Ptr("cql-ssl"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](9142),
+					},
+					{
+						Name:     pointer.Ptr("agent-api"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](10001),
+					},
+				},
+			},
+			expectedProgressingConditions: []metav1.Condition{},
+			expectedErr:                   nil,
+		},
+		{
+			name: "node broadcast type podIP, pod ready, serving, not terminating",
+			sc:   newBasicScyllaDBCluster(),
+			remoteNamespaces: map[string]*corev1.Namespace{
+				"dc1-rkc": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dc1-rkc-ns",
+					},
+				},
+			},
+			existing: map[string][]apimachineryruntime.Object{
+				"dc1-rkc": {
+					&corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "dc1-rkc-a-0",
+							Namespace: "dc1-rkc-ns",
+							Labels: map[string]string{
+								"app":                          "scylla",
+								"app.kubernetes.io/name":       "scylla",
+								"app.kubernetes.io/managed-by": "scylla-operator",
+								"scylla/cluster":               "cluster-dc1",
+							},
+						},
+						Status: corev1.PodStatus{
+							PodIP: "10.0.0.1",
+							Conditions: []corev1.PodCondition{
+								{
+									Type:   corev1.PodReady,
+									Status: corev1.ConditionTrue,
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: &discoveryv1.EndpointSlice{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cluster-client-bowxv",
+					Namespace: "scylla",
+					Labels: map[string]string{
+						"app":                                               "scylla",
+						"app.kubernetes.io/managed-by":                      "scylla-operator",
+						"app.kubernetes.io/name":                            "scylla",
+						"endpointslice.kubernetes.io/managed-by":            "scylla-operator.scylladb.com",
+						"kubernetes.io/service-name":                        "cluster-client-bowxv",
+						"scylla-operator.scylladb.com/cluster-endpoints":    "cluster",
+						"scylla-operator.scylladb.com/scylladbcluster-name": "cluster",
+					},
+					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBCluster",
+							Name:               "cluster",
+							UID:                "uid",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				AddressType: discoveryv1.AddressTypeIPv4,
+				Endpoints: []discoveryv1.Endpoint{
+					{
+						Addresses: []string{"10.0.0.1"},
+						Conditions: discoveryv1.EndpointConditions{
+							Ready:       pointer.Ptr(true),
+							Serving:     pointer.Ptr(true),
+							Terminating: pointer.Ptr(false),
+						},
+					},
+				},
+				Ports: []discoveryv1.EndpointPort{
+					{
+						Name:     pointer.Ptr("cql"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](9042),
+					},
+					{
+						Name:     pointer.Ptr("cql-ssl"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](9142),
+					},
+					{
+						Name:     pointer.Ptr("agent-api"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](10001),
+					},
+				},
+			},
+			expectedProgressingConditions: []metav1.Condition{},
+			expectedErr:                   nil,
+		},
+		{
+			name: "node broadcast type podIP, pod not ready, not serving, terminating",
+			sc:   newBasicScyllaDBCluster(),
+			remoteNamespaces: map[string]*corev1.Namespace{
+				"dc1-rkc": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dc1-rkc-ns",
+					},
+				},
+			},
+			existing: map[string][]apimachineryruntime.Object{
+				"dc1-rkc": {
+					&corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "dc1-rkc-a-0",
+							Namespace: "dc1-rkc-ns",
+							Labels: map[string]string{
+								"app":                          "scylla",
+								"app.kubernetes.io/name":       "scylla",
+								"app.kubernetes.io/managed-by": "scylla-operator",
+								"scylla/cluster":               "cluster-dc1",
+							},
+							DeletionTimestamp: &metav1.Time{},
+						},
+						Status: corev1.PodStatus{
+							PodIP: "10.0.0.1",
+							Conditions: []corev1.PodCondition{
+								{
+									Type:   corev1.PodReady,
+									Status: corev1.ConditionFalse,
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: &discoveryv1.EndpointSlice{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cluster-client-bowxv",
+					Namespace: "scylla",
+					Labels: map[string]string{
+						"app":                                               "scylla",
+						"app.kubernetes.io/managed-by":                      "scylla-operator",
+						"app.kubernetes.io/name":                            "scylla",
+						"endpointslice.kubernetes.io/managed-by":            "scylla-operator.scylladb.com",
+						"kubernetes.io/service-name":                        "cluster-client-bowxv",
+						"scylla-operator.scylladb.com/cluster-endpoints":    "cluster",
+						"scylla-operator.scylladb.com/scylladbcluster-name": "cluster",
+					},
+					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBCluster",
+							Name:               "cluster",
+							UID:                "uid",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				AddressType: discoveryv1.AddressTypeIPv4,
+				Endpoints: []discoveryv1.Endpoint{
+					{
+						Addresses: []string{"10.0.0.1"},
+						Conditions: discoveryv1.EndpointConditions{
+							Ready:       pointer.Ptr(false),
+							Serving:     pointer.Ptr(false),
+							Terminating: pointer.Ptr(true),
+						},
+					},
+				},
+				Ports: []discoveryv1.EndpointPort{
+					{
+						Name:     pointer.Ptr("cql"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](9042),
+					},
+					{
+						Name:     pointer.Ptr("cql-ssl"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](9142),
+					},
+					{
+						Name:     pointer.Ptr("agent-api"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](10001),
+					},
+				},
+			},
+			expectedProgressingConditions: []metav1.Condition{},
+			expectedErr:                   nil,
+		},
+		{
+			name: "node broadcast type ServiceLoadBalancerIngress, no services",
+			sc: func() *scyllav1alpha1.ScyllaDBCluster {
+				sc := newBasicScyllaDBCluster()
+				sc.Spec.ExposeOptions = &scyllav1alpha1.ScyllaDBClusterExposeOptions{
+					BroadcastOptions: &scyllav1alpha1.ScyllaDBClusterNodeBroadcastOptions{
+						Nodes: scyllav1alpha1.BroadcastOptions{
+							Type: scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
+						},
+					},
+				}
+				return sc
+			}(),
+			remoteNamespaces: map[string]*corev1.Namespace{
+				"dc1-rkc": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dc1-rkc-ns",
+					},
+				},
+			},
+			existing: map[string][]apimachineryruntime.Object{},
+			expected: &discoveryv1.EndpointSlice{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cluster-client-bowxv",
+					Namespace: "scylla",
+					Labels: map[string]string{
+						"app":                                               "scylla",
+						"app.kubernetes.io/managed-by":                      "scylla-operator",
+						"app.kubernetes.io/name":                            "scylla",
+						"endpointslice.kubernetes.io/managed-by":            "scylla-operator.scylladb.com",
+						"kubernetes.io/service-name":                        "cluster-client-bowxv",
+						"scylla-operator.scylladb.com/cluster-endpoints":    "cluster",
+						"scylla-operator.scylladb.com/scylladbcluster-name": "cluster",
+					},
+					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBCluster",
+							Name:               "cluster",
+							UID:                "uid",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				AddressType: discoveryv1.AddressTypeIPv4,
+				Endpoints:   nil,
+				Ports: []discoveryv1.EndpointPort{
+					{
+						Name:     pointer.Ptr("cql"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](9042),
+					},
+					{
+						Name:     pointer.Ptr("cql-ssl"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](9142),
+					},
+					{
+						Name:     pointer.Ptr("agent-api"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](10001),
+					},
+				},
+			},
+			expectedProgressingConditions: []metav1.Condition{},
+			expectedErr:                   nil,
+		},
+		{
+			name: "node broadcast type ServiceLoadBalancerIngress, service without load balancer status",
+			sc: func() *scyllav1alpha1.ScyllaDBCluster {
+				sc := newBasicScyllaDBCluster()
+				sc.Spec.ExposeOptions = &scyllav1alpha1.ScyllaDBClusterExposeOptions{
+					BroadcastOptions: &scyllav1alpha1.ScyllaDBClusterNodeBroadcastOptions{
+						Nodes: scyllav1alpha1.BroadcastOptions{
+							Type: scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
+						},
+					},
+				}
+				return sc
+			}(),
+			remoteNamespaces: map[string]*corev1.Namespace{
+				"dc1-rkc": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dc1-rkc-ns",
+					},
+				},
+			},
+			existing: map[string][]apimachineryruntime.Object{
+				"dc1-rkc": {
+					&corev1.Service{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "dc1-rkc-a-0",
+							Namespace: "dc1-rkc-ns",
+							Labels: map[string]string{
+								"app":                          "scylla",
+								"app.kubernetes.io/name":       "scylla",
+								"app.kubernetes.io/managed-by": "scylla-operator",
+								"scylla/cluster":               "cluster-dc1",
+								"scylla-operator.scylladb.com/scylla-service-type": "member",
+							},
+						},
+						Spec: corev1.ServiceSpec{
+							Type: corev1.ServiceTypeLoadBalancer,
+						},
+						Status: corev1.ServiceStatus{},
+					},
+				},
+			},
+			expected: &discoveryv1.EndpointSlice{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cluster-client-bowxv",
+					Namespace: "scylla",
+					Labels: map[string]string{
+						"app":                                               "scylla",
+						"app.kubernetes.io/managed-by":                      "scylla-operator",
+						"app.kubernetes.io/name":                            "scylla",
+						"endpointslice.kubernetes.io/managed-by":            "scylla-operator.scylladb.com",
+						"kubernetes.io/service-name":                        "cluster-client-bowxv",
+						"scylla-operator.scylladb.com/cluster-endpoints":    "cluster",
+						"scylla-operator.scylladb.com/scylladbcluster-name": "cluster",
+					},
+					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBCluster",
+							Name:               "cluster",
+							UID:                "uid",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				AddressType: discoveryv1.AddressTypeIPv4,
+				Endpoints:   nil,
+				Ports: []discoveryv1.EndpointPort{
+					{
+						Name:     pointer.Ptr("cql"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](9042),
+					},
+					{
+						Name:     pointer.Ptr("cql-ssl"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](9142),
+					},
+					{
+						Name:     pointer.Ptr("agent-api"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](10001),
+					},
+				},
+			},
+			expectedProgressingConditions: []metav1.Condition{},
+			expectedErr:                   nil,
+		},
+		{
+			name: "node broadcast type ServiceLoadBalancerIngress, service with load balancer IP",
+			sc: func() *scyllav1alpha1.ScyllaDBCluster {
+				sc := newBasicScyllaDBCluster()
+				sc.Spec.ExposeOptions = &scyllav1alpha1.ScyllaDBClusterExposeOptions{
+					BroadcastOptions: &scyllav1alpha1.ScyllaDBClusterNodeBroadcastOptions{
+						Nodes: scyllav1alpha1.BroadcastOptions{
+							Type: scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
+						},
+					},
+				}
+				return sc
+			}(),
+			remoteNamespaces: map[string]*corev1.Namespace{
+				"dc1-rkc": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dc1-rkc-ns",
+					},
+				},
+			},
+			existing: map[string][]apimachineryruntime.Object{
+				"dc1-rkc": {
+					&corev1.Service{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "dc1-rkc-a-0",
+							Namespace: "dc1-rkc-ns",
+							Labels: map[string]string{
+								"app":                          "scylla",
+								"app.kubernetes.io/name":       "scylla",
+								"app.kubernetes.io/managed-by": "scylla-operator",
+								"scylla/cluster":               "cluster-dc1",
+								"scylla-operator.scylladb.com/scylla-service-type": "member",
+							},
+						},
+						Spec: corev1.ServiceSpec{
+							Type: corev1.ServiceTypeLoadBalancer,
+						},
+						Status: corev1.ServiceStatus{
+							LoadBalancer: corev1.LoadBalancerStatus{
+								Ingress: []corev1.LoadBalancerIngress{
+									{
+										IP: "192.168.1.100",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: &discoveryv1.EndpointSlice{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cluster-client-bowxv",
+					Namespace: "scylla",
+					Labels: map[string]string{
+						"app":                                               "scylla",
+						"app.kubernetes.io/managed-by":                      "scylla-operator",
+						"app.kubernetes.io/name":                            "scylla",
+						"endpointslice.kubernetes.io/managed-by":            "scylla-operator.scylladb.com",
+						"kubernetes.io/service-name":                        "cluster-client-bowxv",
+						"scylla-operator.scylladb.com/cluster-endpoints":    "cluster",
+						"scylla-operator.scylladb.com/scylladbcluster-name": "cluster",
+					},
+					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBCluster",
+							Name:               "cluster",
+							UID:                "uid",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				AddressType: discoveryv1.AddressTypeIPv4,
+				Endpoints: []discoveryv1.Endpoint{
+					{
+						Addresses: []string{"192.168.1.100"},
+						Conditions: discoveryv1.EndpointConditions{
+							Ready:       pointer.Ptr(true),
+							Serving:     pointer.Ptr(true),
+							Terminating: pointer.Ptr(false),
+						},
+					},
+				},
+				Ports: []discoveryv1.EndpointPort{
+					{
+						Name:     pointer.Ptr("cql"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](9042),
+					},
+					{
+						Name:     pointer.Ptr("cql-ssl"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](9142),
+					},
+					{
+						Name:     pointer.Ptr("agent-api"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](10001),
+					},
+				},
+			},
+			expectedProgressingConditions: []metav1.Condition{},
+			expectedErr:                   nil,
+		},
+		{
+			name: "node broadcast type ServiceLoadBalancerIngress, service with load balancer hostname",
+			sc: func() *scyllav1alpha1.ScyllaDBCluster {
+				sc := newBasicScyllaDBCluster()
+				sc.Spec.ExposeOptions = &scyllav1alpha1.ScyllaDBClusterExposeOptions{
+					BroadcastOptions: &scyllav1alpha1.ScyllaDBClusterNodeBroadcastOptions{
+						Nodes: scyllav1alpha1.BroadcastOptions{
+							Type: scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
+						},
+					},
+				}
+				return sc
+			}(),
+			remoteNamespaces: map[string]*corev1.Namespace{
+				"dc1-rkc": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dc1-rkc-ns",
+					},
+				},
+			},
+			existing: map[string][]apimachineryruntime.Object{
+				"dc1-rkc": {
+					&corev1.Service{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "dc1-rkc-a-0",
+							Namespace: "dc1-rkc-ns",
+							Labels: map[string]string{
+								"app":                          "scylla",
+								"app.kubernetes.io/name":       "scylla",
+								"app.kubernetes.io/managed-by": "scylla-operator",
+								"scylla/cluster":               "cluster-dc1",
+								"scylla-operator.scylladb.com/scylla-service-type": "member",
+							},
+						},
+						Spec: corev1.ServiceSpec{
+							Type: corev1.ServiceTypeLoadBalancer,
+						},
+						Status: corev1.ServiceStatus{
+							LoadBalancer: corev1.LoadBalancerStatus{
+								Ingress: []corev1.LoadBalancerIngress{
+									{
+										Hostname: "example.com",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: &discoveryv1.EndpointSlice{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cluster-client-bowxv",
+					Namespace: "scylla",
+					Labels: map[string]string{
+						"app":                                               "scylla",
+						"app.kubernetes.io/managed-by":                      "scylla-operator",
+						"app.kubernetes.io/name":                            "scylla",
+						"endpointslice.kubernetes.io/managed-by":            "scylla-operator.scylladb.com",
+						"kubernetes.io/service-name":                        "cluster-client-bowxv",
+						"scylla-operator.scylladb.com/cluster-endpoints":    "cluster",
+						"scylla-operator.scylladb.com/scylladbcluster-name": "cluster",
+					},
+					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBCluster",
+							Name:               "cluster",
+							UID:                "uid",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				AddressType: discoveryv1.AddressTypeIPv4,
+				Endpoints: []discoveryv1.Endpoint{
+					{
+						Addresses: []string{"example.com"},
+						Conditions: discoveryv1.EndpointConditions{
+							Ready:       pointer.Ptr(true),
+							Serving:     pointer.Ptr(true),
+							Terminating: pointer.Ptr(false),
+						},
+					},
+				},
+				Ports: []discoveryv1.EndpointPort{
+					{
+						Name:     pointer.Ptr("cql"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](9042),
+					},
+					{
+						Name:     pointer.Ptr("cql-ssl"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](9142),
+					},
+					{
+						Name:     pointer.Ptr("agent-api"),
+						Protocol: pointer.Ptr(corev1.ProtocolTCP),
+						Port:     pointer.Ptr[int32](10001),
+					},
+				},
+			},
+			expectedProgressingConditions: []metav1.Condition{},
+			expectedErr:                   nil,
+		},
+		// TODO: change to regular test cases for ServiceClusterIP node broadcast address type as part of https://github.com/scylladb/scylla-operator/issues/2746
+		{
+			name: "unsupported node broadcast type ServiceClusterIP",
+			sc: func() *scyllav1alpha1.ScyllaDBCluster {
+				sc := newBasicScyllaDBCluster()
+				sc.Spec.ExposeOptions = &scyllav1alpha1.ScyllaDBClusterExposeOptions{
+					BroadcastOptions: &scyllav1alpha1.ScyllaDBClusterNodeBroadcastOptions{
+						Nodes: scyllav1alpha1.BroadcastOptions{
+							Type: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+						},
+					},
+				}
+				return sc
+			}(),
+			remoteNamespaces: map[string]*corev1.Namespace{
+				"dc1-rkc": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dc1-rkc-ns",
+					},
+				},
+			},
+			existing: map[string][]apimachineryruntime.Object{
+				"dc1-rkc": {
+					&corev1.Service{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "dc1-rkc-a-0",
+							Namespace: "dc1-rkc-ns",
+							Labels: map[string]string{
+								"app":                          "scylla",
+								"app.kubernetes.io/name":       "scylla",
+								"app.kubernetes.io/managed-by": "scylla-operator",
+								"scylla/cluster":               "cluster-dc1",
+								"scylla-operator.scylladb.com/scylla-service-type": "member",
+							},
+						},
+						Spec: corev1.ServiceSpec{
+							Type:      corev1.ServiceTypeClusterIP,
+							ClusterIP: "172.17.17.1",
+						},
+						Status: corev1.ServiceStatus{},
+					},
+				},
+			},
+			expected:                      nil,
+			expectedProgressingConditions: []metav1.Condition{},
+			expectedErr: apimachineryutilerrors.NewAggregate([]error{
+				fmt.Errorf(`can't calculate endpoints for "scylla/cluster" ScyllaDBCluster "dc1" Datacenter: %w`, fmt.Errorf(`unsupported node broadcast address type ServiceClusterIP specified in "scylla/cluster" ScyllaDBCluster`)),
+			}),
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			fakeClusterIndexer := newFakeClusterIndexer(t, tc.existing)
+			remoteServiceLister := remotelister.NewClusterLister(corev1listers.NewServiceLister, fakeClusterIndexer)
+			remotePodLister := remotelister.NewClusterLister(corev1listers.NewPodLister, fakeClusterIndexer)
+
+			progressingConditions, endpointSlice, err := makeEndpointSliceForIdentityService(
+				tc.sc,
+				tc.remoteNamespaces,
+				remoteServiceLister,
+				remotePodLister,
+			)
+
+			if !reflect.DeepEqual(err, tc.expectedErr) {
+				t.Fatalf("expected and got errors differ:\n%s\n", cmp.Diff(tc.expectedErr, err, cmpopts.EquateErrors()))
+			}
+
+			if !equality.Semantic.DeepEqual(progressingConditions, tc.expectedProgressingConditions) {
+				t.Errorf("expected and got progressing conditions differ: %s", cmp.Diff(tc.expectedProgressingConditions, progressingConditions))
+			}
+
+			if !equality.Semantic.DeepEqual(endpointSlice, tc.expected) {
+				t.Errorf("expected and got endpointslice differs: %s", cmp.Diff(tc.expected, endpointSlice))
+			}
+		})
+	}
+}
+
+func newBasicScyllaDBCluster() *scyllav1alpha1.ScyllaDBCluster {
+	return &scyllav1alpha1.ScyllaDBCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cluster",
+			Namespace: "scylla",
+			UID:       "uid",
+		},
+		Spec: scyllav1alpha1.ScyllaDBClusterSpec{
+			Metadata:    nil,
+			ClusterName: pointer.Ptr("cluster"),
+			ScyllaDB: scyllav1alpha1.ScyllaDB{
+				Image: "repo/scylla:version",
+			},
+			ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgent{
+				Image: pointer.Ptr("repo/agent:version"),
+			},
+			DatacenterTemplate: &scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
+				ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+					Resources: &corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("2"),
+							corev1.ResourceMemory: resource.MustParse("2Gi"),
+						},
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("1"),
+							corev1.ResourceMemory: resource.MustParse("1Gi"),
+						},
+					},
+					Storage: &scyllav1alpha1.StorageOptions{
+						Capacity: "100Gi",
+					},
+				},
+				ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
+					Resources: &corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("4"),
+							corev1.ResourceMemory: resource.MustParse("4Gi"),
+						},
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("3"),
+							corev1.ResourceMemory: resource.MustParse("3Gi"),
+						},
+					},
+				},
+				RackTemplate: &scyllav1alpha1.RackTemplate{
+					Nodes: pointer.Ptr[int32](3),
+				},
+				Racks: []scyllav1alpha1.RackSpec{
+					{
+						Name: "a",
+					},
+					{
+						Name: "b",
+					},
+					{
+						Name: "c",
+					},
+				},
+			},
+			Datacenters: []scyllav1alpha1.ScyllaDBClusterDatacenter{
+				{
+					Name:                        "dc1",
+					RemoteKubernetesClusterName: "dc1-rkc",
+				},
+			},
+		},
+		Status: scyllav1alpha1.ScyllaDBClusterStatus{
+			Datacenters: []scyllav1alpha1.ScyllaDBClusterDatacenterStatus{
+				{
+					Name:  "dc1",
+					Nodes: pointer.Ptr[int32](3),
+				},
+			},
+		},
+	}
+}
+
+func newFakeClusterIndexer(t testing.TB, clusterObjectMap map[string][]apimachineryruntime.Object) func(name string) cache.Indexer {
+	t.Helper()
+
+	newIndexer := func() cache.Indexer {
+		return cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	}
+
+	cacheMap := map[string]cache.Indexer{}
+	for name, objs := range clusterObjectMap {
+		clusterCache := newIndexer()
+
+		for _, obj := range objs {
+			err := clusterCache.Add(obj)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		cacheMap[name] = clusterCache
+	}
+
+	return func(name string) cache.Indexer {
+		c, ok := cacheMap[name]
+		if !ok {
+			return newIndexer()
+		}
+
+		return c
 	}
 }

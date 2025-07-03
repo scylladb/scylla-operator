@@ -60,18 +60,11 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - configmaps
+  - endpoints
+  - namespaces
   - secrets
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - delete
-  - update
-  - patch
-- apiGroups:
-  - ""
-  resources:
+  - serviceaccounts
   - services
   verbs:
   - create
@@ -136,18 +129,6 @@ rules:
   - update
   - watch
 - apiGroups:
-  - ""
-  resources:
-  - configmaps
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
   - coordination.k8s.io
   resources:
   - leases
@@ -175,18 +156,6 @@ rules:
   - scylla.scylladb.com
   resources:
   - nodeconfigs
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - serviceaccounts
   verbs:
   - create
   - delete
@@ -226,18 +195,6 @@ rules:
   - batch
   resources:
   - jobs
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - namespaces
   verbs:
   - create
   - delete
@@ -341,3 +298,15 @@ rules:
   - poddisruptionbudgets/finalizers
   verbs:
   - update
+- apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch

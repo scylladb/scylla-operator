@@ -23,19 +23,21 @@ var _ = g.Describe("ScyllaDBCluster finalizer", framework.MultiDatacenter, func(
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
-		rkcs, rkcClusterMap, err := utils.SetUpRemoteKubernetesClustersFromRestConfigs(ctx, framework.TestContext.RestConfigs, f)
+		workerClusters := f.WorkerClusters()
+		o.Expect(workerClusters).NotTo(o.BeEmpty(), "At least 1 worker cluster is required")
+
+		rkcMap, rkcClusterMap, err := utils.SetUpRemoteKubernetesClusters(ctx, f, workerClusters)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Creating ScyllaDBCluster")
-		sc := f.GetDefaultScyllaDBCluster(rkcs)
-		metaCluster := f.Cluster(0)
-		sc, err = metaCluster.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+		sc := f.GetDefaultScyllaDBCluster(rkcMap)
+		sc, err = f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the ScyllaDBCluster %q roll out (RV=%s)", sc.Name, sc.ResourceVersion)
 		waitCtx2, waitCtx2Cancel := utils.ContextForMultiDatacenterScyllaDBClusterRollout(ctx, sc)
 		defer waitCtx2Cancel()
-		sc, err = controllerhelpers.WaitForScyllaDBClusterState(waitCtx2, metaCluster.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaDBClusterRolledOut)
+		sc, err = controllerhelpers.WaitForScyllaDBClusterState(waitCtx2, f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaDBClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		scylladbcluster.Verify(ctx, sc, rkcClusterMap)
@@ -46,9 +48,9 @@ var _ = g.Describe("ScyllaDBCluster finalizer", framework.MultiDatacenter, func(
 		o.Expect(sc.Finalizers).To(o.ContainElement(expectedFinalizer))
 
 		framework.By("Validating there are remote Namespaces matching ScyllaDBCluster selector")
-		o.Expect(rkcs).NotTo(o.BeEmpty())
-		for i := range rkcs {
-			namespaces, err := f.Cluster(i).KubeAdminClient().CoreV1().Namespaces().List(ctx, metav1.ListOptions{
+		o.Expect(rkcClusterMap).NotTo(o.BeEmpty())
+		for _, rkcCluster := range rkcClusterMap {
+			namespaces, err := rkcCluster.KubeAdminClient().CoreV1().Namespaces().List(ctx, metav1.ListOptions{
 				LabelSelector: naming.ScyllaDBClusterSelector(sc).String(),
 			})
 			o.Expect(err).NotTo(o.HaveOccurred())
@@ -56,7 +58,7 @@ var _ = g.Describe("ScyllaDBCluster finalizer", framework.MultiDatacenter, func(
 		}
 
 		framework.By("Deleting ScyllaDBCluster")
-		err = metaCluster.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(f.Namespace()).Delete(ctx, sc.Name, metav1.DeleteOptions{})
+		err = f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(f.Namespace()).Delete(ctx, sc.Name, metav1.DeleteOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for ScyllaDBCluster %q to be removed.", sc.Name)
@@ -65,8 +67,8 @@ var _ = g.Describe("ScyllaDBCluster finalizer", framework.MultiDatacenter, func(
 
 		framework.By("Verifying if all remote Namespaces having ScyllaDBCluster %q selector are gone.", sc.Name)
 		o.Expect(sc.Spec.Datacenters).ToNot(o.BeEmpty())
-		for i := range rkcs {
-			namespaces, err := f.Cluster(i).KubeAdminClient().CoreV1().Namespaces().List(ctx, metav1.ListOptions{
+		for _, rkcCluster := range rkcClusterMap {
+			namespaces, err := rkcCluster.KubeAdminClient().CoreV1().Namespaces().List(ctx, metav1.ListOptions{
 				LabelSelector: naming.ScyllaDBClusterSelector(sc).String(),
 			})
 			o.Expect(err).NotTo(o.HaveOccurred())

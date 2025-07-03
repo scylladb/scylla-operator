@@ -69,3 +69,48 @@ func (scc *Controller) syncRemoteEndpoints(
 
 	return progressingConditions, nil
 }
+
+func (scc *Controller) syncLocalEndpoints(
+	ctx context.Context,
+	sc *scyllav1alpha1.ScyllaDBCluster,
+	endpoints map[string]*corev1.Endpoints,
+	remoteNamespaces map[string]*corev1.Namespace,
+) ([]metav1.Condition, error) {
+	progressingConditions, requiredEndpointSlices, err := makeLocalEndpointSlices(sc, remoteNamespaces, scc.remoteServiceLister, scc.remotePodLister)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't make endpointslices: %w", err)
+	}
+	if len(progressingConditions) > 0 {
+		return progressingConditions, nil
+	}
+
+	requiredEndpoints, err := controllerhelpers.ConvertEndpointSlicesToEndpoints(requiredEndpointSlices)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't convert endpointslices to endpoints: %w", err)
+	}
+
+	err = controllerhelpers.Prune(
+		ctx,
+		requiredEndpoints,
+		endpoints,
+		&controllerhelpers.PruneControlFuncs{
+			DeleteFunc: scc.kubeClient.CoreV1().Endpoints(sc.Namespace).Delete,
+		},
+		scc.eventRecorder,
+	)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't prune endpoints of %q ScyllaDBCluster: %w", naming.ObjRef(sc), err)
+	}
+
+	for _, e := range requiredEndpoints {
+		_, changed, err := resourceapply.ApplyEndpoints(ctx, scc.kubeClient.CoreV1(), scc.endpointsLister, scc.eventRecorder, e, resourceapply.ApplyOptions{})
+		if changed {
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, endpointsControllerProgressingCondition, e, "apply", sc.Generation)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("can't apply endpoints: %w", err)
+		}
+	}
+
+	return progressingConditions, nil
+}

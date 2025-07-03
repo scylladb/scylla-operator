@@ -23,6 +23,7 @@ var (
 
 var (
 	ScyllaDBDatacenterGVK = GroupVersion.WithKind("ScyllaDBDatacenter")
+	ScyllaDBClusterGVK    = GroupVersion.WithKind("ScyllaDBCluster")
 )
 
 // Resource generated code relies on this being here, but it logically belongs to the group

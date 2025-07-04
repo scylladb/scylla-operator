@@ -400,6 +400,51 @@ func GetScyllaConfigClient(ctx context.Context, client corev1client.CoreV1Interf
 	return configClient, nil
 }
 
+func GetHostIDs(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
+	serviceList, err := client.Services(sc.Namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: GetMemberServiceSelector(sc).String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var broadcastAddresses []string
+	for _, svc := range oslices.ConvertSlice(serviceList.Items, pointer.Ptr[corev1.Service]) {
+		podName := naming.PodNameFromService(svc)
+		pod, err := client.Pods(sc.Namespace).Get(ctx, podName, metav1.GetOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sc.Namespace, podName), err)
+		}
+
+		broadcastAddress, err := GetHostID(ctx, client, sc, svc, pod)
+		if err != nil {
+			return nil, fmt.Errorf("can't get broadcast address of Service %q: %w", naming.ObjRef(svc), err)
+		}
+
+		broadcastAddresses = append(broadcastAddresses, broadcastAddress)
+	}
+
+	return broadcastAddresses, nil
+}
+
+func GetHostID(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, svc *corev1.Service, pod *corev1.Pod) (string, error) {
+	host, err := controllerhelpers.GetScyllaHostForScyllaCluster(sc, svc, pod)
+	if err != nil {
+		return "", fmt.Errorf("can't get Scylla host for Service %q: %w", naming.ObjRef(svc), err)
+	}
+
+	scyllaClient, _, err := GetScyllaClient(ctx, client, sc)
+	if err != nil {
+		return "", fmt.Errorf("can't create scylla config client with host %q: %w", host, err)
+	}
+	hostID, err := scyllaClient.GetLocalHostId(ctx, host, false)
+	if err != nil {
+		return "", fmt.Errorf("can't get broadcast_address of host %q: %w", host, err)
+	}
+
+	return hostID, nil
+}
+
 func GetBroadcastAddresses(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) ([]string, error) {
 	serviceList, err := client.Services(sc.Namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: GetMemberServiceSelector(sc).String(),
@@ -658,7 +703,7 @@ func WaitForFullMultiDCQuorum(ctx context.Context, dcClientMap map[string]corev1
 			continue
 		}
 
-		_, hostIDs, err := GetBroadcastRPCAddressesAndUUIDs(ctx, client, sc)
+		hostIDs, err := GetHostIDs(ctx, client, sc)
 		if err != nil {
 			return fmt.Errorf("can't get host IDs for ScyllaCluster %q: %w", naming.ObjRef(sc), err)
 		}

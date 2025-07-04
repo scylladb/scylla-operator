@@ -13,8 +13,8 @@ When following the steps for schema restore, ensure you follow the additional st
 
 In the following example, the ScyllaCluster, which was used to take the backup, is called `source`. Backup will be restored into the ScyllaCluster named `target`.
 
-:::::{tab-set}
-::::{tab-item} Source ScyllaCluster
+:::::{tabs}
+::::{group-tab} Source ScyllaCluster
 :::{code-block} yaml
 :substitutions:
 apiVersion: scylla.scylladb.com/v1
@@ -44,7 +44,7 @@ spec:
           memory: 1Gi
 :::
 ::::
-::::{tab-item} Target ScyllaCluster
+::::{group-tab} Target ScyllaCluster
 :::{code-block} yaml
 :substitutions:
 apiVersion: scylla.scylladb.com/v1
@@ -66,7 +66,7 @@ spec:
         limits:
           cpu: 1
           memory: 1Gi
-:::{code-block}
+:::
 ::::
 :::::
 

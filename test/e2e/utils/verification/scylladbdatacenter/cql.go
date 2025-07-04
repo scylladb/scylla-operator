@@ -23,14 +23,14 @@ func WaitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface,
 }
 
 func waitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface, sdc *scyllav1alpha1.ScyllaDBDatacenter) error {
-	broadcastAddresses, err := utilsv1alpha1.GetBroadcastAddresses(ctx, client, sdc)
+	hostIDs, err := utilsv1alpha1.GetHostIDs(ctx, client, sdc)
 	if err != nil {
 		return fmt.Errorf("can't get broadcast addresses for ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
 	}
 
-	sort.Strings(broadcastAddresses)
+	sort.Strings(hostIDs)
 
-	err = utilsv1alpha1.WaitForFullQuorum(ctx, client, sdc, broadcastAddresses)
+	err = utilsv1alpha1.WaitForFullQuorum(ctx, client, sdc, hostIDs)
 	if err != nil {
 		return fmt.Errorf("can't wait for scylla nodes to reach status consistency: %w", err)
 	}

@@ -113,34 +113,34 @@ The following step heavily depends on the platform that you use, the machine typ
 Please review the [NodeConfig](../resources/nodeconfigs.md) and adjust it for your platform!
 :::
 
-:::::{tab-set}
+```{eval-rst}
+.. tabs::
 
-::::{tab-item} GKE (NVMe)
-:::{code-block} shell
-:substitutions:
-kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/gke/nodeconfig-alpha.yaml
-:::
-::::
+   .. group-tab:: GKE (NVMe)
 
-::::{tab-item} EKS (NVMe)
-:::{code-block} shell
-:substitutions:
-kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/eks/nodeconfig-alpha.yaml
-:::
-::::
+      .. code-block:: shell
+         :substitutions:
 
-::::{tab-item} Any platform (Loop devices)
-:::{caution}
-This NodeConfig sets up loop devices instead of NVMe disks and is only intended for development purposes when you don't have the NVMe disks available.
-Do not expect meaningful performance with this setup.
-:::
-:::{code-block} shell
-:substitutions:
-kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/generic/nodeconfig-alpha.yaml
-:::
-::::
+         kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/gke/nodeconfig-alpha.yaml
 
-:::::
+   .. group-tab:: EKS (NVMe)
+
+      .. code-block:: shell
+         :substitutions:
+
+         kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/eks/nodeconfig-alpha.yaml
+
+   .. group-tab:: Any platform (Loop devices)
+
+      .. caution::
+         This NodeConfig sets up loop devices instead of NVMe disks and is only intended for development purposes when you don't have the NVMe disks available.
+         Do not expect meaningful performance with this setup.
+
+      .. code-block:: shell
+         :substitutions:
+
+         kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/generic/nodeconfig-alpha.yaml
+```
 
 :::{note}
 Performance tuning is enabled for all nodes that are selected by [NodeConfig](../resources/nodeconfigs.md) by default, unless opted-out.
@@ -169,23 +169,23 @@ kubectl -n=local-csi-driver rollout status --timeout=10m daemonset.apps/local-cs
 :::{include} ../.internal/manager-license-note.md
 :::
 
-:::::{tab-set}
+```{eval-rst}
+.. tabs::
 
-::::{tab-item} Production (sized)
-:::{code-block} shell
-:substitutions:
-kubectl -n=scylla-manager apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/deploy/manager-prod.yaml
-:::
-::::
+   .. group-tab:: Production (sized)
 
-::::{tab-item} Development (sized)
-:::{code-block} shell
-:substitutions:
-kubectl -n=scylla-manager apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/deploy/manager-dev.yaml
-:::
-::::
+      .. code-block:: shell
+         :substitutions:
 
-:::::
+         kubectl -n=scylla-manager apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/deploy/manager-prod.yaml
+
+   .. group-tab:: Development (sized)
+
+      .. code-block:: shell
+         :substitutions:
+
+         kubectl -n=scylla-manager apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/deploy/manager-dev.yaml
+```
 
 :::{code-block} shell
 # Wait for it to deploy.

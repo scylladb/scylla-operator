@@ -63,20 +63,21 @@ In this guide, we assume that the credential Secrets are placed in the `remoteku
 However, you are free to use your own naming conventions.
 
 Create three RemoteKubernetesCluster resources in the Control Plane cluster—one for each Worker cluster.
-::::{tab-set}
-:::{tab-item} dev-us-east-1
-```{literalinclude} ../../../../examples/multi-dc/cluster-wide-resources/00_dev-us-east-1.remotekubernetescluster.yaml
+```{eval-rst}
+.. tabs::
+
+   .. group-tab:: dev-us-east-1
+
+      .. literalinclude:: ../../../../examples/multi-dc/cluster-wide-resources/00_dev-us-east-1.remotekubernetescluster.yaml
+
+   .. group-tab:: dev-us-central-1
+
+      .. literalinclude:: ../../../../examples/multi-dc/cluster-wide-resources/00_dev-us-central-1.remotekubernetescluster.yaml
+
+   .. group-tab:: dev-us-west-1
+
+      .. literalinclude:: ../../../../examples/multi-dc/cluster-wide-resources/00_dev-us-west-1.remotekubernetescluster.yaml
 ```
-:::
-:::{tab-item} dev-us-central-1
-```{literalinclude} ../../../../examples/multi-dc/cluster-wide-resources/00_dev-us-central-1.remotekubernetescluster.yaml
-```
-:::
-:::{tab-item} dev-us-west-1
-```{literalinclude} ../../../../examples/multi-dc/cluster-wide-resources/00_dev-us-west-1.remotekubernetescluster.yaml
-```
-:::
-::::
 
 ### Enable authorization and authentication in ScyllaDB cluster
 :::{code-block} bash

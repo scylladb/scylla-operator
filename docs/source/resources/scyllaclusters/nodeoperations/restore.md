@@ -13,60 +13,63 @@ When following the steps for schema restore, ensure you follow the additional st
 
 In the following example, the ScyllaCluster, which was used to take the backup, is called `source`. Backup will be restored into the ScyllaCluster named `target`.
 
-::::{tab-set}
-:::{tab-item} Source ScyllaCluster
-```yaml
-apiVersion: scylla.scylladb.com/v1
-kind: ScyllaCluster
-metadata:
-  name: source
-spec:
-  agentVersion: 3.5.0
-  version: 2025.1.2
-  developerMode: true
-  backups:
-  - name: foo
-    location:
-    - s3:source-backup
-    keyspace:
-    - '*'
-  datacenter:
-    name: us-east-1
-    racks:
-    - name: us-east-1a
-      members: 1
-      storage:
-        capacity: 1Gi
-      resources:
-        limits:
-          cpu: 1
-          memory: 1Gi
+```{eval-rst}
+.. tabs::
+
+   .. group-tab:: Source ScyllaCluster
+
+      .. code-block:: yaml
+
+         apiVersion: scylla.scylladb.com/v1
+         kind: ScyllaCluster
+         metadata:
+           name: source
+         spec:
+           agentVersion: 3.5.0
+           version: 2025.1.2
+           developerMode: true
+           backups:
+           - name: foo
+             location:
+             - s3:source-backup
+             keyspace:
+             - '*'
+           datacenter:
+             name: us-east-1
+             racks:
+             - name: us-east-1a
+               members: 1
+               storage:
+                 capacity: 1Gi
+               resources:
+                 limits:
+                   cpu: 1
+                   memory: 1Gi
+
+   .. group-tab:: Target ScyllaCluster
+
+      .. code-block:: yaml
+
+         apiVersion: scylla.scylladb.com/v1
+         kind: ScyllaCluster
+         metadata:
+           name: target
+         spec:
+           agentVersion: 3.5.0
+           version: 2025.1.2
+           developerMode: true
+           datacenter:
+             name: us-east-1
+             racks:
+             - name: us-east-1a
+               members: 1
+               storage:
+                 capacity: 1Gi
+               resources:
+                 limits:
+                   cpu: 1
+                   memory: 1Gi
 ```
-:::
-:::{tab-item} Target ScyllaCluster
-```yaml
-apiVersion: scylla.scylladb.com/v1
-kind: ScyllaCluster
-metadata:
-  name: target
-spec:
-  agentVersion: 3.5.0
-  version: 2025.1.2
-  developerMode: true
-  datacenter:
-    name: us-east-1
-    racks:
-    - name: us-east-1a
-      members: 1
-      storage:
-        capacity: 1Gi
-      resources:
-        limits:
-          cpu: 1
-          memory: 1Gi
-```
-:::
-::::
 
 Make sure your target cluster is already registered in Scylla Manager. To get a list of all registered clusters, execute the following command:
 ```console

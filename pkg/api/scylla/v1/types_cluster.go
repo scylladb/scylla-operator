@@ -400,6 +400,10 @@ type RepairTaskSpec struct {
 
 	// host specifies a host to repair. If empty, all hosts are repaired.
 	Host *string `json:"host,omitempty"`
+
+	// ignoreDownHosts indicates that the nodes in down state should be ignored during repair.
+	// +optional
+	IgnoreDownHosts *bool `json:"ignoreDownHosts,omitempty"`
 }
 
 type BackupTaskSpec struct {
@@ -687,6 +691,10 @@ type RepairTaskStatus struct {
 
 	// host reflects a host to repair.
 	Host *string `json:"host,omitempty" mapstructure:"host,omitempty"`
+
+	// ignoreDownHosts reflects whether the nodes in down state are ignored during repair.
+	// +optional
+	IgnoreDownHosts *bool `json:"ignoreDownHosts,omitempty" mapstructure:"ignore_down_hosts,omitempty"`
 }
 
 type BackupTaskStatus struct {

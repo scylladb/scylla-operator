@@ -110,6 +110,26 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		return err
 	}
 
+	localSecretMap, err := controllerhelpers.GetObjects[localCT, *corev1.Secret](
+		ctx,
+		sc,
+		scyllav1alpha1.ScyllaDBClusterGVK,
+		scLocalSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[localCT, *corev1.Secret]{
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace).Get,
+			ListObjectsFunc:           scc.secretLister.Secrets(sc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.CoreV1().Secrets(sc.Namespace).Patch,
+		},
+	)
+	if err != nil {
+		localObjectErrs = append(localObjectErrs, fmt.Errorf("can't get secrets: %w", err))
+	}
+
+	localObjectErr := apimachineryutilerrors.NewAggregate(localObjectErrs)
+	if localObjectErr != nil {
+		return localObjectErr
+	}
+
 	scRemoteSelector := naming.ScyllaDBClusterRemoteSelector(sc)
 
 	// OS Operator rewrites ScyllaDBDatacenter labels into managed Service objects, and
@@ -490,6 +510,19 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 	)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't sync Endpoints: %w", err))
+	}
+
+	err = controllerhelpers.RunSync(
+		&status.Conditions,
+		secretControllerProgressingCondition,
+		secretControllerDegradedCondition,
+		sc.Generation,
+		func() ([]metav1.Condition, error) {
+			return scc.syncLocalSecrets(ctx, sc, localSecretMap)
+		},
+	)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't sync Secrets: %w", err))
 	}
 
 	// Aggregate conditions.

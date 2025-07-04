@@ -6,6 +6,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
@@ -67,4 +68,62 @@ func (scc *Controller) syncRemoteSecrets(
 	}
 
 	return progressingConditions, nil
+}
+
+func (scc *Controller) syncLocalSecrets(
+	ctx context.Context,
+	sc *scyllav1alpha1.ScyllaDBCluster,
+	localSecrets map[string]*corev1.Secret,
+) ([]metav1.Condition, error) {
+	existingAgentAuthToken, err := getExistingAgentAuthToken(sc, localSecrets)
+	if err != nil {
+		return nil, fmt.Errorf("can't get existing agent auth token: %w", err)
+	}
+
+	progressingConditions, requiredSecrets, err := makeLocalSecrets(sc, scc.secretLister, existingAgentAuthToken)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't make local secrets: %w", err)
+	}
+
+	err = controllerhelpers.Prune(ctx,
+		requiredSecrets,
+		localSecrets,
+		&controllerhelpers.PruneControlFuncs{
+			DeleteFunc: scc.kubeClient.CoreV1().Secrets(sc.Namespace).Delete,
+		},
+		scc.eventRecorder,
+	)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't prune secret(s) of %q ScyllaDBCluster: %w", naming.ObjRef(sc), err)
+	}
+
+	for _, s := range requiredSecrets {
+		_, changed, err := resourceapply.ApplySecret(ctx, scc.kubeClient.CoreV1(), scc.secretLister, scc.eventRecorder, s, resourceapply.ApplyOptions{})
+		if changed {
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, secretControllerProgressingCondition, s, "apply", sc.Generation)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("can't apply secret: %w", err)
+		}
+	}
+
+	return progressingConditions, nil
+}
+
+func getExistingAgentAuthToken(
+	sc *scyllav1alpha1.ScyllaDBCluster,
+	localSecrets map[string]*corev1.Secret,
+) (string, error) {
+	// TODO: move to naming
+	agentAuthTokenSecret, ok := localSecrets[naming.AgentAuthTokenSecretNameForScyllaDBCluster(sc)]
+	if !ok {
+		return "", nil
+	}
+
+	token, err := helpers.GetAgentAuthTokenFromSecret(agentAuthTokenSecret)
+	if err != nil {
+		return "", fmt.Errorf("can't get agent auth token from secret %q: %w", naming.ObjRef(agentAuthTokenSecret), err)
+	}
+
+	return token, nil
 }

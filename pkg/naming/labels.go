@@ -130,6 +130,8 @@ func ScyllaDBClusterDatacenterAnnotations(sc *scyllav1alpha1.ScyllaDBCluster, dc
 		maps.Copy(dcAnnotations, dc.Metadata.Annotations)
 	}
 
+	dcAnnotations[ScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotation] = AgentAuthTokenSecretNameForScyllaDBCluster(sc)
+
 	return dcAnnotations
 }
 

@@ -14,6 +14,7 @@ import (
 	apimachineryutilrand "k8s.io/apimachinery/pkg/util/rand"
 )
 
+// TODO: fix agent config?
 func (sdcc *Controller) getAgentTokenFromAgentConfig(sdc *scyllav1alpha1.ScyllaDBDatacenter) (string, error) {
 	if len(sdc.Spec.Racks) == 0 {
 		return "", nil
@@ -55,6 +56,20 @@ func (sdcc *Controller) syncAgentToken(
 		tokenErr = fmt.Errorf("can't get agent token: %w", tokenErr)
 		sdcc.eventRecorder.Eventf(sdc, corev1.EventTypeWarning, "InvalidManagerAgentConfig", "Can't gent agent token: %s", tokenErr.Error())
 	}
+
+	agentAuthTokenOverrideSecretRefAnnotationValue, hasAgentAuthTokenOverrideSecretRefAnnotation := sdc.Annotations[naming.ScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotation]
+	if len(token) == 0 && hasAgentAuthTokenOverrideSecretRefAnnotation {
+		agentAuthTokenOverrideSecret, err := sdcc.secretLister.Secrets(sdc.Namespace).Get(agentAuthTokenOverrideSecretRefAnnotationValue)
+		if err != nil {
+			return progressingConditions, fmt.Errorf("can't get secret %q: %w", naming.ManualRef(sdc.Namespace, agentAuthTokenOverrideSecretRefAnnotationValue), err)
+		}
+
+		token, err = helpers.GetAgentAuthTokenFromSecret(agentAuthTokenOverrideSecret)
+		if err != nil {
+			return progressingConditions, fmt.Errorf("can't read token from secret %q: %w", naming.ObjRef(agentAuthTokenOverrideSecret), err)
+		}
+	}
+
 	// If we can't read a token we still need to secure the manager agent by creating a random one.
 	// We handle the error at the end.
 

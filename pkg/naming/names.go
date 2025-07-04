@@ -59,6 +59,11 @@ func AgentAuthTokenSecretNameForScyllaCluster(sc *scyllav1.ScyllaCluster) string
 	})
 }
 
+func AgentAuthTokenSecretNameForScyllaDBCluster(sc *scyllav1alpha1.ScyllaDBCluster) string {
+	// TODO: generate name with max length
+	return fmt.Sprintf("%s-auth-token", sc.Name)
+}
+
 func MemberServiceName(r scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.ScyllaDBDatacenter, idx int) string {
 	return fmt.Sprintf("%s-%d", StatefulSetNameForRack(r, sdc), idx)
 }
@@ -73,6 +78,15 @@ func PodNameForScyllaCluster(r scyllav1.RackSpec, sc *scyllav1.ScyllaCluster, id
 
 func IdentityServiceName(sc *scyllav1alpha1.ScyllaDBCluster) (string, error) {
 	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1035LabelMaxLength, sc.Name, "client")
+}
+
+func InterNamespaceIdentityServiceAddress(sc *scyllav1alpha1.ScyllaDBCluster) (string, error) {
+	name, err := IdentityServiceName(sc)
+	if err != nil {
+		return "", fmt.Errorf("can't get identity service name for ScyllaDBCluster %q: %w", ObjRef(sc), err)
+	}
+
+	return fmt.Sprintf("%s.%s.svc", name, sc.Namespace), nil
 }
 
 func IdentityServiceNameForScyllaDBDatacenter(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
@@ -293,6 +307,10 @@ func GenerateNameHash(parts ...string) (string, error) {
 
 func ScyllaDBManagerClusterRegistrationNameForScyllaDBDatacenter(sdc *scyllav1alpha1.ScyllaDBDatacenter) (string, error) {
 	return scyllaDBManagerClusterRegistrationName(scyllav1alpha1.ScyllaDBDatacenterGVK.Kind, sdc.Name)
+}
+
+func ScyllaDBManagerClusterRegistrationNameForScyllaDBCluster(sc *scyllav1alpha1.ScyllaDBCluster) (string, error) {
+	return scyllaDBManagerClusterRegistrationName(scyllav1alpha1.ScyllaDBClusterGVK.Kind, sc.Name)
 }
 
 func ScyllaDBManagerClusterRegistrationNameForScyllaDBManagerTask(smt *scyllav1alpha1.ScyllaDBManagerTask) (string, error) {

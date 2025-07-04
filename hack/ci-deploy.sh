@@ -83,7 +83,13 @@ if [[ -n ${SCYLLA_OPERATOR_FEATURE_GATES+x} ]]; then
     yq e --inplace '.spec.template.spec.containers[0].args += "--feature-gates="+ env(SCYLLA_OPERATOR_FEATURE_GATES)' "${ARTIFACTS_DEPLOY_DIR}/operator/50_operator.deployment.yaml"
 fi
 
-kubectl_create -n prometheus-operator -f "${ARTIFACTS_DEPLOY_DIR}/prometheus-operator"
+# Do not install prometheus-operator if the platform already has it (e.g., OpenShift).
+if [[ -n "${SO_DISABLE_PROMETHEUS_OPERATOR:-}" ]]; then
+  echo "Skipping prometheus-operator deployment"
+else
+  kubectl_create -n prometheus-operator -f "${ARTIFACTS_DEPLOY_DIR}/prometheus-operator"
+fi
+
 kubectl_create -n haproxy-ingress -f "${ARTIFACTS_DEPLOY_DIR}/haproxy-ingress"
 kubectl_create -f "${ARTIFACTS_DEPLOY_DIR}"/cert-manager.yaml
 

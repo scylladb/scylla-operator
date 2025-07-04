@@ -34,6 +34,9 @@ export SO_NODECONFIG_PATH
 SO_CSI_DRIVER_PATH="${SO_CSI_DRIVER_PATH=${parent_dir}/manifests/namespaces/local-csi-driver/}"
 export SO_CSI_DRIVER_PATH
 
+SO_DISABLE_PROMETHEUS_OPERATOR="${SO_DISABLE_PROMETHEUS_OPERATOR:-true}"
+export SO_DISABLE_PROMETHEUS_OPERATOR
+
 run-deploy-script-in-all-clusters "${parent_dir}/../ci-deploy.sh"
 
 apply-e2e-workarounds

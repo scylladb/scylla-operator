@@ -51,13 +51,92 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		return fmt.Errorf("can't get ScyllaOperatorConfig %q: %w", naming.SingletonName, err)
 	}
 
-	scRemoteSelector := naming.ScyllaDBClusterSelector(sc)
+	scLocalSelector := naming.ScyllaDBClusterSelector(sc)
+
+	// Kubernetes' controller-manager copies Service's labels into managed Endpoints.
+	// As a result, we can't distinguish Endpoints managed by us from these managed by Kubernetes.
+	// To overcome this, the selector we use for Endpoints is a superset of the selector of other managed objects.
+	scLocalEndpointsSelector := naming.ScyllaDBClusterEndpointsSelector(sc)
+
+	type localCT = *scyllav1alpha1.ScyllaDBCluster
+	var localObjectErrs []error
+
+	localServiceMap, err := controllerhelpers.GetObjects[localCT, *corev1.Service](
+		ctx,
+		sc,
+		scyllav1alpha1.ScyllaDBClusterGVK,
+		scLocalSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[localCT, *corev1.Service]{
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace).Get,
+			ListObjectsFunc:           scc.serviceLister.Services(sc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.CoreV1().Services(sc.Namespace).Patch,
+		},
+	)
+	if err != nil {
+		localObjectErrs = append(localObjectErrs, fmt.Errorf("can't get services: %w", err))
+	}
+
+	localEndpointSlicesMap, err := controllerhelpers.GetObjects[localCT, *discoveryv1.EndpointSlice](
+		ctx,
+		sc,
+		scyllav1alpha1.ScyllaDBClusterGVK,
+		scLocalEndpointsSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[localCT, *discoveryv1.EndpointSlice]{
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace).Get,
+			ListObjectsFunc:           scc.endpointSliceLister.EndpointSlices(sc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.DiscoveryV1().EndpointSlices(sc.Namespace).Patch,
+		},
+	)
+	if err != nil {
+		localObjectErrs = append(localObjectErrs, fmt.Errorf("can't get endpointslices: %w", err))
+	}
+
+	localEndpointsMap, err := controllerhelpers.GetObjects[localCT, *corev1.Endpoints](
+		ctx,
+		sc,
+		scyllav1alpha1.ScyllaDBClusterGVK,
+		scLocalEndpointsSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[localCT, *corev1.Endpoints]{
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace).Get,
+			ListObjectsFunc:           scc.endpointsLister.Endpoints(sc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.CoreV1().Endpoints(sc.Namespace).Patch,
+		},
+	)
+	if err != nil {
+		localObjectErrs = append(localObjectErrs, fmt.Errorf("can't get endpoints: %w", err))
+	}
+
+	if err = apimachineryutilerrors.NewAggregate(localObjectErrs); err != nil {
+		return err
+	}
+
+	localSecretMap, err := controllerhelpers.GetObjects[localCT, *corev1.Secret](
+		ctx,
+		sc,
+		scyllav1alpha1.ScyllaDBClusterGVK,
+		scLocalSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[localCT, *corev1.Secret]{
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace).Get,
+			ListObjectsFunc:           scc.secretLister.Secrets(sc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.CoreV1().Secrets(sc.Namespace).Patch,
+		},
+	)
+	if err != nil {
+		localObjectErrs = append(localObjectErrs, fmt.Errorf("can't get secrets: %w", err))
+	}
+
+	localObjectErr := apimachineryutilerrors.NewAggregate(localObjectErrs)
+	if localObjectErr != nil {
+		return localObjectErr
+	}
+
+	scRemoteSelector := naming.ScyllaDBClusterRemoteSelector(sc)
 
 	// OS Operator rewrites ScyllaDBDatacenter labels into managed Service objects, and
 	// Kubernetes controller reconciling Endpoints for Services rewrites them to Endpoints.
 	// As a result, we can't distinguish Endpoints managed by us from these managed by Kubernetes.
 	// To overcome this, the selector we use for Endpoints is a superset of the selector of other managed objects.
-	scRemoteEndpointsSelector := naming.ScyllaDBClusterEndpointsSelector(sc)
+	scRemoteEndpointsSelector := naming.ScyllaDBClusterRemoteEndpointsSelector(sc)
 
 	// Operator reconciles objects in remote Kubernetes clusters, hence we can't set up a OwnerReference to ScyllaDBCluster
 	// because it's not there. Instead, we will manage dependent object ownership via a RemoteOwner.
@@ -392,6 +471,58 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't aggregate datacenter %q workload conditions: %w", dc.Name, err))
 		}
+	}
+
+	err = controllerhelpers.RunSync(
+		&status.Conditions,
+		serviceControllerProgressingCondition,
+		serviceControllerDegradedCondition,
+		sc.Generation,
+		func() ([]metav1.Condition, error) {
+			return scc.syncLocalServices(ctx, sc, localServiceMap)
+		},
+	)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't sync Services: %w", err))
+	}
+
+	err = controllerhelpers.RunSync(
+		&status.Conditions,
+		endpointSliceControllerProgressingCondition,
+		endpointSliceControllerDegradedCondition,
+		sc.Generation,
+		func() ([]metav1.Condition, error) {
+			return scc.syncLocalEndpointSlices(ctx, sc, localEndpointSlicesMap, remoteNamespaces)
+		},
+	)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't sync EndpointSlices: %w", err))
+	}
+
+	err = controllerhelpers.RunSync(
+		&status.Conditions,
+		endpointsControllerProgressingCondition,
+		endpointsControllerDegradedCondition,
+		sc.Generation,
+		func() ([]metav1.Condition, error) {
+			return scc.syncLocalEndpoints(ctx, sc, localEndpointsMap, remoteNamespaces)
+		},
+	)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't sync Endpoints: %w", err))
+	}
+
+	err = controllerhelpers.RunSync(
+		&status.Conditions,
+		secretControllerProgressingCondition,
+		secretControllerDegradedCondition,
+		sc.Generation,
+		func() ([]metav1.Condition, error) {
+			return scc.syncLocalSecrets(ctx, sc, localSecretMap)
+		},
+	)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't sync Secrets: %w", err))
 	}
 
 	// Aggregate conditions.

@@ -211,6 +211,7 @@ const (
 )
 
 const (
+	ScyllaDBClusterNameLabel         = "scylla-operator.scylladb.com/scylladbcluster-name"
 	ParentClusterNameLabel           = "scylla-operator.scylladb.com/parent-scylladbcluster-name"
 	ParentClusterNamespaceLabel      = "scylla-operator.scylladb.com/parent-scylladbcluster-namespace"
 	ParentClusterDatacenterNameLabel = "scylla-operator.scylladb.com/parent-scylladbcluster-datacenter-name"
@@ -224,7 +225,8 @@ const (
 )
 
 const (
-	ClusterEndpointsLabel = "scylla-operator.scylladb.com/cluster-endpoints"
+	ClusterEndpointsLabel       = "scylla-operator.scylladb.com/cluster-endpoints"
+	RemoteClusterEndpointsLabel = "scylla-operator.scylladb.com/remote-cluster-endpoints"
 )
 
 const (
@@ -248,6 +250,8 @@ const (
 const (
 	GlobalScyllaDBManagerRegistrationLabel = "scylla-operator.scylladb.com/register-with-global-scylladb-manager"
 	GlobalScyllaDBManagerLabel             = "internal.scylla-operator.scylladb.com/global-scylladb-manager"
+
+	ScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotation = "internal.scylla-operator.scylladb.com/scylladb-manager-agent-auth-token-override-secret-ref"
 
 	ScyllaDBManagerClusterRegistrationFinalizer              = "scylla-operator.scylladb.com/scylladbmanagerclusterregistration-deletion"
 	ScyllaDBManagerClusterRegistrationNameOverrideAnnotation = "internal.scylla-operator.scylladb.com/scylladb-manager-cluster-name-override"

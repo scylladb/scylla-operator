@@ -503,6 +503,9 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		scyllaInformers.Scylla().V1alpha1().ScyllaOperatorConfigs(),
 		kubeInformers.Core().V1().ConfigMaps(),
 		kubeInformers.Core().V1().Secrets(),
+		kubeInformers.Core().V1().Services(),
+		kubeInformers.Discovery().V1().EndpointSlices(),
+		kubeInformers.Core().V1().Endpoints(),
 		remoteScyllaInformer.ForResource(&scyllav1alpha1.RemoteOwner{}, remoteinformers.ClusterListWatch[scyllaversionedclient.Interface]{
 			ListFunc: func(client remoteclient.ClusterClientInterface[scyllaversionedclient.Interface], cluster, ns string) cache.ListFunc {
 				return func(options metav1.ListOptions) (runtime.Object, error) {
@@ -693,6 +696,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		o.scyllaClient,
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBManagerClusterRegistrations(),
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBClusters(),
 		kubeInformers.Core().V1().Namespaces(),
 	)
 	if err != nil {
@@ -704,6 +708,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		o.scyllaClient,
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBManagerClusterRegistrations(),
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBClusters(),
 		kubeInformers.Core().V1().Secrets(),
 		kubeInformers.Core().V1().Namespaces(),
 	)

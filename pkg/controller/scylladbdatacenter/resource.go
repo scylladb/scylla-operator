@@ -20,6 +20,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
+	"github.com/scylladb/scylla-operator/pkg/scylla"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -216,27 +217,27 @@ func getServicePorts(sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]corev1.ServicePo
 	ports := []corev1.ServicePort{
 		{
 			Name: "inter-node-communication",
-			Port: 7000,
+			Port: scylla.DefaultStoragePort,
 		},
 		{
 			Name: "ssl-inter-node-communication",
-			Port: 7001,
+			Port: scylla.DefaultStoragePortSSL,
 		},
 		{
 			Name: portNameCQL,
-			Port: 9042,
+			Port: scylla.DefaultNativeTransportPort,
 		},
 		{
 			Name: portNameCQLSSL,
-			Port: 9142,
+			Port: scylla.DefaultNativeTransportPortSSL,
 		},
 		{
 			Name: portNameCQLShardAware,
-			Port: 19042,
+			Port: scylla.DefaultShardAwareNativeTransportPort,
 		},
 		{
 			Name: portNameCQLSSLShardAware,
-			Port: 19142,
+			Port: scylla.DefaultShardAwareNativeTransportPortSSL,
 		},
 		{
 			Name: "jmx-monitoring",
@@ -244,15 +245,15 @@ func getServicePorts(sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]corev1.ServicePo
 		},
 		{
 			Name: "agent-api",
-			Port: 10001,
+			Port: scylla.DefaultScyllaManagerAgentPort,
 		},
 		{
 			Name: "prometheus",
-			Port: 9180,
+			Port: scylla.DefaultScyllaDBMetricsPort,
 		},
 		{
 			Name: "agent-prometheus",
-			Port: 5090,
+			Port: scylla.DefaultScyllaDBManagerAgentMetricsPort,
 		},
 		{
 			Name: "node-exporter",
@@ -1090,19 +1091,19 @@ func containerPorts(sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]corev1.ContainerP
 	ports := []corev1.ContainerPort{
 		{
 			Name:          "intra-node",
-			ContainerPort: 7000,
+			ContainerPort: scylla.DefaultStoragePort,
 		},
 		{
 			Name:          "tls-intra-node",
-			ContainerPort: 7001,
+			ContainerPort: scylla.DefaultStoragePortSSL,
 		},
 		{
 			Name:          "cql",
-			ContainerPort: 9042,
+			ContainerPort: scylla.DefaultNativeTransportPort,
 		},
 		{
 			Name:          "cql-ssl",
-			ContainerPort: 9142,
+			ContainerPort: scylla.DefaultNativeTransportPortSSL,
 		},
 		{
 			Name:          "jmx",
@@ -1110,7 +1111,7 @@ func containerPorts(sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]corev1.ContainerP
 		},
 		{
 			Name:          "prometheus",
-			ContainerPort: 9180,
+			ContainerPort: scylla.DefaultScyllaDBMetricsPort,
 		},
 		{
 			Name:          "node-exporter",

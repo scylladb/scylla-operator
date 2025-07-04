@@ -490,16 +490,20 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 				)
 				o.Expect(err).NotTo(o.HaveOccurred())
 
+				framework.By("Resolving the host device path symbolic link")
+				devicePathInContainer, err := resolveHostSymlinkToContainerPath(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, hostDevicePath)
+				o.Expect(err).NotTo(o.HaveOccurred())
+
 				framework.By("Verifying XFS filesystem integrity")
-				stdout, stderr, err := executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_repair", "-o", "force_geometry", "-f", "-n", hostDevicePath)
+				stdout, stderr, err := executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_repair", "-o", "force_geometry", "-f", "-n", devicePathInContainer)
 				o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 
 				framework.By("Corrupting XFS filesystem")
-				stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_db", "-x", "-c", "blockget", "-c", "blocktrash -s 12345678 -n 1000", hostDevicePath)
+				stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_db", "-x", "-c", "blockget", "-c", "blocktrash -s 12345678 -n 1000", devicePathInContainer)
 				o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 
 				framework.By("Verifying that XFS filesystem is corrupted")
-				stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_repair", "-o", "force_geometry", "-f", "-n", hostDevicePath)
+				stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_repair", "-o", "force_geometry", "-f", "-n", devicePathInContainer)
 				o.Expect(err).To(o.HaveOccurred())
 
 				framework.By("Patching NodeConfig's mount configuration with a mount over a corrupted filesystem")
@@ -589,22 +593,26 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
+		framework.By("Resolving the host device path symbolic link")
+		devicePathInContainer, err := resolveHostSymlinkToContainerPath(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, hostDevicePath)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
 		framework.By("Verifying the filesystem's integrity")
-		stdout, stderr, err := executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_repair", "-o", "force_geometry", "-f", "-n", hostDevicePath)
+		stdout, stderr, err := executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_repair", "-o", "force_geometry", "-f", "-n", devicePathInContainer)
 		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 
 		framework.By("Getting the filesystem's block size")
-		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "stat", "--file-system", "--format=%s", hostDevicePath)
+		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "stat", "--file-system", "--format=%s", devicePathInContainer)
 		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 
 		blockSize := strings.TrimSpace(stdout)
 
 		framework.By("Corrupting the filesystem")
-		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_db", "-x", "-c", "blockget", "-c", "blocktrash -s 12345678 -n 1000", hostDevicePath)
+		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_db", "-x", "-c", "blockget", "-c", "blocktrash -s 12345678 -n 1000", devicePathInContainer)
 		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 
 		framework.By("Verifying that the filesystem is corrupted")
-		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_repair", "-o", "force_geometry", "-f", "-n", hostDevicePath)
+		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_repair", "-o", "force_geometry", "-f", "-n", devicePathInContainer)
 		o.Expect(err).To(o.HaveOccurred())
 
 		framework.By("Patching NodeConfig's mount configuration with a mount over a corrupted filesystem")
@@ -735,6 +743,26 @@ func newClientPod(nc *scyllav1alpha1.NodeConfig) *corev1.Pod {
 			RestartPolicy:                 corev1.RestartPolicyNever,
 		},
 	}
+}
+
+// resolveHostSymlinkToContainerPath resolves a symlink on the host to its actual path in the container.
+//
+// It can be useful to get container paths to loop devices. Each loop device created by NodeConfig has a symlink in
+// `/dev/loops/<name>` on the host. We need to resolve the symlink to get the actual device path (e.g.,
+// `/dev/loops/disk -> /dev/loop1`). To access that path from the Pod, we need to prepend the resolved link with `/host`
+// (as that's where the host root filesystem is mounted in the Pod).
+func resolveHostSymlinkToContainerPath(
+	ctx context.Context,
+	config *rest.Config,
+	client corev1client.CoreV1Interface,
+	pod *corev1.Pod,
+	hostPath string,
+) (string, error) {
+	stdout, stderr, err := executeInPod(ctx, config, client, pod, "readlink", "-f", hostPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve symlink for %s: %v\nstdout: %s\nstderr: %s", hostPath, err, stdout, stderr)
+	}
+	return path.Join("/host", strings.TrimSpace(stdout)), nil
 }
 
 func executeInPod(ctx context.Context, config *rest.Config, client corev1client.CoreV1Interface, pod *corev1.Pod, command string, args ...string) (string, string, error) {

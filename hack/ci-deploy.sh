@@ -34,8 +34,13 @@ if [[ "${SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT}" != "true" ]]; then
   cp ./deploy/manager/dev/*.yaml "${ARTIFACTS_DEPLOY_DIR}/manager"
 fi
 
+if [[ -n "${SO_DISABLE_PROMETHEUS_OPERATOR:-}" ]]; then
+  echo "Skipping copying prometheus-operator manifests to ${ARTIFACTS_DEPLOY_DIR}"
+else
+  cp ./examples/third-party/prometheus-operator/*.yaml "${ARTIFACTS_DEPLOY_DIR}/prometheus-operator"
+fi
+
 cp ./deploy/operator/*.yaml "${ARTIFACTS_DEPLOY_DIR}/operator"
-cp ./examples/third-party/prometheus-operator/*.yaml "${ARTIFACTS_DEPLOY_DIR}/prometheus-operator"
 cp ./examples/third-party/haproxy-ingress/*.yaml "${ARTIFACTS_DEPLOY_DIR}/haproxy-ingress"
 cp ./examples/third-party/cert-manager.yaml "${ARTIFACTS_DEPLOY_DIR}/"
 
@@ -83,7 +88,13 @@ if [[ -n ${SCYLLA_OPERATOR_FEATURE_GATES+x} ]]; then
     yq e --inplace '.spec.template.spec.containers[0].args += "--feature-gates="+ env(SCYLLA_OPERATOR_FEATURE_GATES)' "${ARTIFACTS_DEPLOY_DIR}/operator/50_operator.deployment.yaml"
 fi
 
-kubectl_create -n prometheus-operator -f "${ARTIFACTS_DEPLOY_DIR}/prometheus-operator"
+# Do not install prometheus-operator if the platform already has it (e.g., OpenShift).
+if [[ -n "${SO_DISABLE_PROMETHEUS_OPERATOR:-}" ]]; then
+  echo "Skipping prometheus-operator deployment"
+else
+  kubectl_create -n prometheus-operator -f "${ARTIFACTS_DEPLOY_DIR}/prometheus-operator"
+fi
+
 kubectl_create -n haproxy-ingress -f "${ARTIFACTS_DEPLOY_DIR}/haproxy-ingress"
 kubectl_create -f "${ARTIFACTS_DEPLOY_DIR}"/cert-manager.yaml
 
@@ -148,5 +159,10 @@ kubectl -n haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-i
 kubectl wait --for condition=established crd/nodeconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scyllaoperatorconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scylladbmonitorings.scylla.scylladb.com
-kubectl wait --for condition=established $( find "${ARTIFACTS_DEPLOY_DIR}/prometheus-operator/" -name '*.crd.yaml' -printf '-f=%p\n' )
-kubectl -n=prometheus-operator rollout status deploy/prometheus-operator
+
+if [[ -n "${SO_DISABLE_PROMETHEUS_OPERATOR:-}" ]]; then
+  echo "Skipping waiting for prometheus-operator"
+else
+  kubectl wait --for condition=established $( find "${ARTIFACTS_DEPLOY_DIR}/prometheus-operator/" -name '*.crd.yaml' -printf '-f=%p\n' )
+  kubectl -n=prometheus-operator rollout status deploy/prometheus-operator
+fi

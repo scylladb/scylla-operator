@@ -42,7 +42,13 @@ fi
 
 mkdir -p "${ARTIFACTS_DEPLOY_DIR}/"{operator,manager}
 
-kubectl_create -n=prometheus-operator -f="${source_url}/${revision}/examples/third-party/prometheus-operator.yaml"
+# Do not install prometheus-operator if the platform already has it (e.g., OpenShift).
+if [[ -n "${SO_DISABLE_PROMETHEUS_OPERATOR:-}" ]]; then
+  echo "Skipping prometheus-operator deployment"
+else
+  kubectl_create -n=prometheus-operator -f="${source_url}/${revision}/examples/third-party/prometheus-operator.yaml"
+fi
+
 kubectl_create -n=haproxy-ingress -f="${source_url}/${revision}/examples/third-party/haproxy-ingress.yaml"
 
 kubectl_create -f="${source_url}/${revision}/examples/third-party/cert-manager.yaml"
@@ -325,4 +331,9 @@ kubectl -n=scylla-manager rollout status --timeout=5m deployment.apps/scylla-man
 kubectl -n=haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-ingress
 
 kubectl wait --for condition=established crd/{scyllaoperatorconfigs,scylladbmonitorings}.scylla.scylladb.com
-kubectl wait --for condition=established crd/{prometheuses,prometheusrules,servicemonitors}.monitoring.coreos.com
+
+if [[ -n "${SO_DISABLE_PROMETHEUS_OPERATOR:-}" ]]; then
+  echo "Skipping waiting for prometheus-operator"
+else
+  kubectl wait --for condition=established crd/{prometheuses,prometheusrules,servicemonitors}.monitoring.coreos.com
+fi

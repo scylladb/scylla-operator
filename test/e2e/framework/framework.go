@@ -224,6 +224,13 @@ func (f *Framework) GetDefaultScyllaDBCluster(rkcMap map[string]*scyllav1alpha1.
 	return sc
 }
 
+func (f *Framework) AddCleanerCollectors(cleanerCollectors ...CleanerCollector) {
+	for _, cc := range cleanerCollectors {
+		f.cluster.AddCleaners(cc)
+		f.cluster.AddCollectors(cc)
+	}
+}
+
 func (f *Framework) AddCleaners(cleaners ...Cleaner) {
 	f.cluster.AddCleaners(cleaners...)
 }

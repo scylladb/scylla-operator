@@ -157,6 +157,15 @@ func (s NodeStatusInfoSlice) Hosts() []string {
 	return hosts
 }
 
+// HostIDs returns slice of HostID of all nodes.
+func (s NodeStatusInfoSlice) HostIDs() []string {
+	var hostIDs []string
+	for _, h := range s {
+		hostIDs = append(hostIDs, h.HostID)
+	}
+	return hostIDs
+}
+
 // LiveHosts returns slice of address of nodes in UN state.
 func (s NodeStatusInfoSlice) LiveHosts() []string {
 	var hosts []string
@@ -177,4 +186,15 @@ func (s NodeStatusInfoSlice) DownHosts() []string {
 		}
 	}
 	return hosts
+}
+
+// DownHostIDs returns slice of HostID of nodes that are down.
+func (s NodeStatusInfoSlice) DownHostIDs() []string {
+	var hostIDs []string
+	for _, h := range s {
+		if h.Status == NodeStatusDown {
+			hostIDs = append(hostIDs, h.HostID)
+		}
+	}
+	return hostIDs
 }

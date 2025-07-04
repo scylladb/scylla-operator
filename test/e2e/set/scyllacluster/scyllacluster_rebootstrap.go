@@ -47,10 +47,10 @@ var _ = g.Describe("ScyllaCluster", func() {
 		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
 		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
-		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
+		hostAddresses, hostUUIDs, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(hosts).To(o.HaveLen(membersCount))
-		di := verification.InsertAndVerifyCQLData(ctx, hosts)
+		o.Expect(hostUUIDs).To(o.HaveLen(membersCount))
+		di := verification.InsertAndVerifyCQLData(ctx, hostAddresses)
 		defer di.Close()
 
 		framework.By("Deleting the ScyllaCluster")
@@ -108,11 +108,11 @@ var _ = g.Describe("ScyllaCluster", func() {
 		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
 		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
-		oldHosts := hosts
-		hosts, err = utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
+		oldHostUUIDs := hostUUIDs
+		hostAddresses, hostUUIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(hosts).To(o.HaveLen(len(oldHosts)))
-		err = di.SetClientEndpoints(hosts)
+		o.Expect(hostUUIDs).To(o.HaveLen(len(oldHostUUIDs)))
+		err = di.SetClientEndpoints(hostAddresses)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		verification.VerifyCQLData(ctx, di)
 	})

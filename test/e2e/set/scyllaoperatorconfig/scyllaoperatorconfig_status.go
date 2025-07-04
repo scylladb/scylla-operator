@@ -60,7 +60,7 @@ var _ = g.Describe("ScyllaOperatorConfig ", framework.Serial, func() {
 			soc.Name,
 			framework.RestoreStrategyUpdate,
 		)
-		f.AddCleaners(rc)
+		f.AddCleanerCollectors(rc)
 
 		framework.By("Replacing ScyllaOperatorConfig")
 		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {

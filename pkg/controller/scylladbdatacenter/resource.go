@@ -96,7 +96,7 @@ func IdentityService(sdc *scyllav1alpha1.ScyllaDBDatacenter) (*corev1.Service, e
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        naming.IdentityServiceName(sdc),
+			Name:        naming.IdentityServiceNameForScyllaDBDatacenter(sdc),
 			Namespace:   sdc.Namespace,
 			Labels:      labels,
 			Annotations: annotations,
@@ -456,7 +456,7 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: rackNodeCount,
 			// Use a common Headless Service for all StatefulSets
-			ServiceName: naming.IdentityServiceName(sdc),
+			ServiceName: naming.IdentityServiceNameForScyllaDBDatacenter(sdc),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: selectorLabels,
 			},

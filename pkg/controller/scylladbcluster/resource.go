@@ -17,7 +17,7 @@ import (
 	discoveryv1 "k8s.io/api/discovery/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
+	apimachinerylabels "k8s.io/apimachinery/pkg/labels"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilsets "k8s.io/apimachinery/pkg/util/sets"
 	corev1listers "k8s.io/client-go/listers/core/v1"
@@ -337,7 +337,7 @@ func makeEndpointSlicesForSeedService(sc *scyllav1alpha1.ScyllaDBCluster, dc *sc
 			continue
 		}
 
-		dcLabels := naming.ScyllaDBClusterDatacenterEndpointsLabels(sc, dc, managingClusterDomain)
+		dcLabels := naming.ScyllaDBClusterDatacenterRemoteEndpointsLabels(sc, dc, managingClusterDomain)
 		dcLabels[discoveryv1.LabelServiceName] = naming.SeedService(sc, &otherDC)
 		dcLabels[discoveryv1.LabelManagedBy] = naming.OperatorAppNameWithDomain
 
@@ -398,8 +398,26 @@ var scyllaDBInterNodeCommunicationPorts = []portSpec{
 	},
 }
 
+var scyllaDBClientCommunicationPorts = []portSpec{
+	{
+		name:     "cql",
+		protocol: corev1.ProtocolTCP,
+		port:     scylla.DefaultNativeTransportPort,
+	},
+	{
+		name:     "cql-ssl",
+		protocol: corev1.ProtocolTCP,
+		port:     scylla.DefaultNativeTransportPortSSL,
+	},
+	{
+		name:     "agent-api",
+		protocol: corev1.ProtocolTCP,
+		port:     scylla.DefaultScyllaManagerAgentPort,
+	},
+}
+
 // calculateEndpointsForRemoteDCPods computes endpoints for remote datacenter pods taking into account how nodes are being exposed.
-func calculateEndpointsForRemoteDCPods(sc *scyllav1alpha1.ScyllaDBCluster, nodeBroadcastType scyllav1alpha1.BroadcastAddressType, remoteDC scyllav1alpha1.ScyllaDBClusterDatacenter, remoteDCNamespace *corev1.Namespace, remoteDCPodSelector labels.Selector, remotePodLister remotelister.GenericClusterLister[corev1listers.PodLister], remoteServiceLister remotelister.GenericClusterLister[corev1listers.ServiceLister]) ([]discoveryv1.Endpoint, error) {
+func calculateEndpointsForRemoteDCPods(sc *scyllav1alpha1.ScyllaDBCluster, nodeBroadcastType scyllav1alpha1.BroadcastAddressType, remoteDC scyllav1alpha1.ScyllaDBClusterDatacenter, remoteDCNamespace *corev1.Namespace, remoteDCPodSelector apimachinerylabels.Selector, remotePodLister remotelister.GenericClusterLister[corev1listers.PodLister], remoteServiceLister remotelister.GenericClusterLister[corev1listers.ServiceLister]) ([]discoveryv1.Endpoint, error) {
 	var endpoints []discoveryv1.Endpoint
 
 	switch nodeBroadcastType {
@@ -430,6 +448,45 @@ func calculateEndpointsForRemoteDCPods(sc *scyllav1alpha1.ScyllaDBCluster, nodeB
 					Ready:       pointer.Ptr(ready),
 					Serving:     pointer.Ptr(serving),
 					Terminating: pointer.Ptr(terminating),
+				},
+			})
+		}
+
+	case scyllav1alpha1.BroadcastAddressTypeServiceClusterIP:
+		// TODO: deduplicate with the other type
+		dcServices, err := remoteServiceLister.Cluster(remoteDC.RemoteKubernetesClusterName).Services(remoteDCNamespace.Name).List(remoteDCPodSelector)
+		if err != nil {
+			return nil, fmt.Errorf("can't list services in %q ScyllaDBCluster %q Datacenter: %w", naming.ObjRef(sc), remoteDC.Name, err)
+		}
+
+		klog.V(4).InfoS("Found remote ScyllaDB Services", "ScyllaDBCluster", klog.KObj(sc), "Datacenter", remoteDC.Name, "Services", len(dcServices))
+
+		// Sort objects to have stable list of endpoints
+		sort.Slice(dcServices, func(i, j int) bool {
+			return dcServices[i].Name < dcServices[j].Name
+		})
+
+		for _, dcService := range dcServices {
+			if dcService.Labels[naming.ScyllaServiceTypeLabel] != string(naming.ScyllaServiceTypeMember) {
+				continue
+			}
+
+			if dcService.Spec.ClusterIP == corev1.ClusterIPNone {
+				continue
+			}
+
+			addresses := []string{dcService.Spec.ClusterIP}
+			clusterIPs := oslices.FilterOut(dcService.Spec.ClusterIPs, func(clusterIP string) bool {
+				return clusterIP == corev1.ClusterIPNone || clusterIP == dcService.Spec.ClusterIP
+			})
+			addresses = append(addresses, clusterIPs...)
+
+			endpoints = append(endpoints, discoveryv1.Endpoint{
+				Addresses: addresses,
+				Conditions: discoveryv1.EndpointConditions{
+					Ready:       pointer.Ptr(true),
+					Serving:     pointer.Ptr(true),
+					Terminating: pointer.Ptr(dcService.DeletionTimestamp != nil),
 				},
 			})
 		}
@@ -1020,4 +1077,162 @@ func makeMirroredRemoteSecrets(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1a
 	}
 
 	return progressingConditions, requiredRemoteSecrets, nil
+}
+
+// makeLocalServices creates a slice of control-plane Services for the ScyllaDBCluster.
+func makeLocalServices(sc *scyllav1alpha1.ScyllaDBCluster) ([]*corev1.Service, error) {
+	identityService, err := makeIdentityService(sc)
+	if err != nil {
+		return nil, fmt.Errorf("can't make identity Service for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
+	}
+
+	return []*corev1.Service{identityService}, nil
+}
+
+// makeIdentityService creates a Service for the ScyllaDBCluster that allows clients to connect to it.
+func makeIdentityService(sc *scyllav1alpha1.ScyllaDBCluster) (*corev1.Service, error) {
+	name, err := naming.IdentityServiceName(sc)
+	if err != nil {
+		return nil, fmt.Errorf("can't get identity Service name for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
+	}
+
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: sc.Namespace,
+			Labels: func() map[string]string {
+				labels := make(map[string]string)
+
+				if sc.Spec.Metadata != nil {
+					maps.Copy(labels, sc.Spec.Metadata.Labels)
+				}
+
+				maps.Copy(labels, naming.ScyllaDBClusterSelectorLabels(sc))
+
+				return labels
+			}(),
+			Annotations: func() map[string]string {
+				annotations := make(map[string]string)
+
+				if sc.Spec.Metadata != nil {
+					maps.Copy(annotations, sc.Spec.Metadata.Annotations)
+				}
+
+				return annotations
+			}(),
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(sc, scyllav1alpha1.ScyllaDBClusterGVK),
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: oslices.ConvertSlice(scyllaDBClientCommunicationPorts, func(port portSpec) corev1.ServicePort {
+				return corev1.ServicePort{
+					Name:     port.name,
+					Protocol: port.protocol,
+					Port:     port.port,
+				}
+			}),
+			Selector:  nil,
+			ClusterIP: corev1.ClusterIPNone,
+			Type:      corev1.ServiceTypeClusterIP,
+		},
+	}, nil
+}
+
+// makeLocalEndpointSlices creates a slice of control-plane EndpointSlices for the ScyllaDBCluster.
+func makeLocalEndpointSlices(sc *scyllav1alpha1.ScyllaDBCluster, remoteNamespaces map[string]*corev1.Namespace, remoteServiceLister remotelister.GenericClusterLister[corev1listers.ServiceLister], remotePodLister remotelister.GenericClusterLister[corev1listers.PodLister]) ([]metav1.Condition, []*discoveryv1.EndpointSlice, error) {
+	progressingConditions, identityEndpointSlice, err := makeEndpointSliceForIdentityService(sc, remoteNamespaces, remoteServiceLister, remotePodLister)
+	if err != nil {
+		return progressingConditions, nil, fmt.Errorf("can't make local identity EndpointSlice for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
+	}
+
+	return progressingConditions, []*discoveryv1.EndpointSlice{identityEndpointSlice}, nil
+}
+
+func makeEndpointSliceForIdentityService(sc *scyllav1alpha1.ScyllaDBCluster, remoteNamespaces map[string]*corev1.Namespace, remoteServiceLister remotelister.GenericClusterLister[corev1listers.ServiceLister], remotePodLister remotelister.GenericClusterLister[corev1listers.PodLister]) ([]metav1.Condition, *discoveryv1.EndpointSlice, error) {
+	var progressingConditions []metav1.Condition
+
+	identityServiceName, err := naming.IdentityServiceName(sc)
+	if err != nil {
+		return progressingConditions, nil, fmt.Errorf("can't get identity Service name for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
+	}
+
+	nodeBroadcastType := scyllav1alpha1.BroadcastAddressTypePodIP
+	if sc.Spec.ExposeOptions != nil && sc.Spec.ExposeOptions.BroadcastOptions != nil {
+		nodeBroadcastType = sc.Spec.ExposeOptions.BroadcastOptions.Nodes.Type
+	}
+
+	var errs []error
+	var endpoints []discoveryv1.Endpoint
+	for _, dc := range sc.Spec.Datacenters {
+		dcPodSelector := naming.DatacenterPodsSelector(sc, &dc)
+		dcNamespace, ok := remoteNamespaces[dc.RemoteKubernetesClusterName]
+		if !ok {
+			progressingConditions = append(progressingConditions, metav1.Condition{
+				Type:               endpointSliceControllerProgressingCondition,
+				Status:             metav1.ConditionTrue,
+				Reason:             "WaitingForRemoteNamespace",
+				Message:            fmt.Sprintf("Waiting for Namespace to be created in %q Cluster", dc.RemoteKubernetesClusterName),
+				ObservedGeneration: sc.Generation,
+			})
+
+			continue
+		}
+
+		dcEndpoints, err := calculateEndpointsForRemoteDCPods(sc, nodeBroadcastType, dc, dcNamespace, dcPodSelector, remotePodLister, remoteServiceLister)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("can't calculate endpoints for %q ScyllaDBCluster %q Datacenter: %w", naming.ObjRef(sc), dc.Name, err))
+			continue
+		}
+
+		endpoints = append(endpoints, dcEndpoints...)
+	}
+
+	err = apimachineryutilerrors.NewAggregate(errs)
+	if err != nil {
+		return progressingConditions, nil, err
+	}
+
+	return progressingConditions,
+		&discoveryv1.EndpointSlice{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      identityServiceName,
+				Namespace: sc.Namespace,
+				Labels: func() map[string]string {
+					labels := make(map[string]string)
+
+					if sc.Spec.Metadata != nil {
+						maps.Copy(labels, sc.Spec.Metadata.Labels)
+					}
+
+					maps.Copy(labels, naming.ScyllaDBClusterEndpointsSelectorLabels(sc))
+					labels[discoveryv1.LabelServiceName] = identityServiceName
+					labels[discoveryv1.LabelManagedBy] = naming.OperatorAppNameWithDomain
+
+					return labels
+				}(),
+				Annotations: func() map[string]string {
+					annotations := make(map[string]string)
+
+					if sc.Spec.Metadata != nil {
+						maps.Copy(annotations, sc.Spec.Metadata.Annotations)
+					}
+
+					return annotations
+				}(),
+				OwnerReferences: []metav1.OwnerReference{
+					*metav1.NewControllerRef(sc, scyllav1alpha1.ScyllaDBClusterGVK),
+				},
+			},
+			AddressType: discoveryv1.AddressTypeIPv4,
+			Ports: oslices.ConvertSlice(scyllaDBClientCommunicationPorts, func(spec portSpec) discoveryv1.EndpointPort {
+				return discoveryv1.EndpointPort{
+					Name:     pointer.Ptr(spec.name),
+					Protocol: pointer.Ptr(spec.protocol),
+					Port:     pointer.Ptr(spec.port),
+				}
+			}),
+			Endpoints: endpoints,
+		},
+		nil
 }

@@ -58,3 +58,41 @@ func (scc *Controller) syncRemoteServices(
 
 	return progressingConditions, nil
 }
+
+func (scc *Controller) syncLocalServices(
+	ctx context.Context,
+	sc *scyllav1alpha1.ScyllaDBCluster,
+	localServices map[string]*corev1.Service,
+) ([]metav1.Condition, error) {
+	var progressingConditions []metav1.Condition
+	var err error
+
+	requiredServices, err := makeLocalServices(sc)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't make local services for %q ScyllaDBCluster: %w", naming.ObjRef(sc), err)
+	}
+
+	err = controllerhelpers.Prune(ctx,
+		requiredServices,
+		localServices,
+		&controllerhelpers.PruneControlFuncs{
+			DeleteFunc: scc.kubeClient.CoreV1().Services(sc.Namespace).Delete,
+		},
+		scc.eventRecorder,
+	)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't prune service(s) of %q ScyllaDBCluster: %w", naming.ObjRef(sc), err)
+	}
+
+	for _, svc := range requiredServices {
+		_, changed, err := resourceapply.ApplyService(ctx, scc.kubeClient.CoreV1(), scc.serviceLister, scc.eventRecorder, svc, resourceapply.ApplyOptions{})
+		if changed {
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, svc, "apply", sc.Generation)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("can't apply service: %w", err)
+		}
+	}
+
+	return progressingConditions, nil
+}

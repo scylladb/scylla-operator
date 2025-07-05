@@ -27,6 +27,7 @@ import (
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	corev1informers "k8s.io/client-go/informers/core/v1"
+	discoveryv1informers "k8s.io/client-go/informers/discovery/v1"
 	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
@@ -42,9 +43,8 @@ const (
 )
 
 var (
-	keyFunc                      = cache.DeletionHandlingMetaNamespaceKeyFunc
-	scyllaDBClusterControllerGVK = scyllav1alpha1.GroupVersion.WithKind("ScyllaDBCluster")
-	remoteControllerGVK          = scyllav1alpha1.GroupVersion.WithKind("RemoteOwner")
+	keyFunc             = cache.DeletionHandlingMetaNamespaceKeyFunc
+	remoteControllerGVK = scyllav1alpha1.GroupVersion.WithKind("RemoteOwner")
 )
 
 type Controller struct {
@@ -57,6 +57,9 @@ type Controller struct {
 	scyllaOperatorConfigLister scyllav1alpha1listers.ScyllaOperatorConfigLister
 	configMapLister            corev1listers.ConfigMapLister
 	secretLister               corev1listers.SecretLister
+	serviceLister              corev1listers.ServiceLister
+	endpointSliceLister        discoveryv1listers.EndpointSliceLister
+	endpointsLister            corev1listers.EndpointsLister
 
 	remoteRemoteOwnerLister        remotelister.GenericClusterLister[scyllav1alpha1listers.RemoteOwnerLister]
 	remoteScyllaDBDatacenterLister remotelister.GenericClusterLister[scyllav1alpha1listers.ScyllaDBDatacenterLister]
@@ -85,6 +88,9 @@ func NewController(
 	scyllaOperatorConfigInformer scyllav1alpha1informers.ScyllaOperatorConfigInformer,
 	configMapInformer corev1informers.ConfigMapInformer,
 	secretInformer corev1informers.SecretInformer,
+	serviceInformer corev1informers.ServiceInformer,
+	endpointSliceInformer discoveryv1informers.EndpointSliceInformer,
+	endpointsInformer corev1informers.EndpointsInformer,
 	remoteRemoteOwnerInformer remoteinformers.GenericClusterInformer,
 	remoteScyllaDBDatacenterInformer remoteinformers.GenericClusterInformer,
 	remoteNamespaceInformer remoteinformers.GenericClusterInformer,
@@ -109,6 +115,9 @@ func NewController(
 		scyllaOperatorConfigLister: scyllaOperatorConfigInformer.Lister(),
 		configMapLister:            configMapInformer.Lister(),
 		secretLister:               secretInformer.Lister(),
+		serviceLister:              serviceInformer.Lister(),
+		endpointSliceLister:        endpointSliceInformer.Lister(),
+		endpointsLister:            endpointsInformer.Lister(),
 
 		remoteRemoteOwnerLister:        remotelister.NewClusterLister(scyllav1alpha1listers.NewRemoteOwnerLister, remoteRemoteOwnerInformer.Indexer().Cluster),
 		remoteScyllaDBDatacenterLister: remotelister.NewClusterLister(scyllav1alpha1listers.NewScyllaDBDatacenterLister, remoteScyllaDBDatacenterInformer.Indexer().Cluster),
@@ -125,6 +134,9 @@ func NewController(
 			scyllaOperatorConfigInformer.Informer().HasSynced,
 			configMapInformer.Informer().HasSynced,
 			secretInformer.Informer().HasSynced,
+			serviceInformer.Informer().HasSynced,
+			endpointSliceInformer.Informer().HasSynced,
+			endpointsInformer.Informer().HasSynced,
 			remoteRemoteOwnerInformer.Informer().HasSynced,
 			remoteScyllaDBDatacenterInformer.Informer().HasSynced,
 			remoteNamespaceInformer.Informer().HasSynced,
@@ -151,7 +163,7 @@ func NewController(
 		scc.queue,
 		keyFunc,
 		scheme.Scheme,
-		scyllaDBClusterControllerGVK,
+		scyllav1alpha1.ScyllaDBClusterGVK,
 		kubeinterfaces.NamespacedGetList[*scyllav1alpha1.ScyllaDBCluster]{
 			GetFunc: func(namespace, name string) (*scyllav1alpha1.ScyllaDBCluster, error) {
 				return scc.scyllaDBClusterLister.ScyllaDBClusters(namespace).Get(name)
@@ -176,6 +188,30 @@ func NewController(
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't register to ScyllaDBCluster events: %w", err))
 	}
+
+	serviceInformer.Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc:    scc.addService,
+			UpdateFunc: scc.updateService,
+			DeleteFunc: scc.deleteService,
+		},
+	)
+
+	endpointSliceInformer.Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc:    scc.addEndpointSlice,
+			UpdateFunc: scc.updateEndpointSlice,
+			DeleteFunc: scc.deleteEndpointSlice,
+		},
+	)
+
+	endpointsInformer.Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc:    scc.addEndpoints,
+			UpdateFunc: scc.updateEndpoints,
+			DeleteFunc: scc.deleteEndpoints,
+		},
+	)
 
 	// Local ConfigMap and Secret handlers are skipped to optimize number of syncs which doesn't do anything.
 	// Applying configuration change requires rolling restart of ScyllaDBCluster, so these resources will be synced upon
@@ -605,5 +641,74 @@ func (scc *Controller) deleteRemoteSecret(obj interface{}) {
 	scc.handlers.HandleDelete(
 		obj,
 		scc.enqueueThroughParentLabel,
+	)
+}
+
+func (scc *Controller) addService(obj interface{}) {
+	scc.handlers.HandleAdd(
+		obj.(*corev1.Service),
+		scc.handlers.EnqueueOwner,
+	)
+}
+
+func (scc *Controller) updateService(old, cur interface{}) {
+	scc.handlers.HandleUpdate(
+		old.(*corev1.Service),
+		cur.(*corev1.Service),
+		scc.handlers.EnqueueOwner,
+		scc.deleteService,
+	)
+}
+
+func (scc *Controller) deleteService(obj interface{}) {
+	scc.handlers.HandleDelete(
+		obj,
+		scc.handlers.EnqueueOwner,
+	)
+}
+
+func (scc *Controller) addEndpointSlice(obj interface{}) {
+	scc.handlers.HandleAdd(
+		obj.(*discoveryv1.EndpointSlice),
+		scc.handlers.EnqueueOwner,
+	)
+}
+
+func (scc *Controller) updateEndpointSlice(old, cur interface{}) {
+	scc.handlers.HandleUpdate(
+		old.(*discoveryv1.EndpointSlice),
+		cur.(*discoveryv1.EndpointSlice),
+		scc.handlers.EnqueueOwner,
+		scc.deleteEndpointSlice,
+	)
+}
+
+func (scc *Controller) deleteEndpointSlice(obj interface{}) {
+	scc.handlers.HandleDelete(
+		obj,
+		scc.handlers.EnqueueOwner,
+	)
+}
+
+func (scc *Controller) addEndpoints(obj interface{}) {
+	scc.handlers.HandleAdd(
+		obj.(*corev1.Endpoints),
+		scc.handlers.EnqueueOwner,
+	)
+}
+
+func (scc *Controller) updateEndpoints(old, cur interface{}) {
+	scc.handlers.HandleUpdate(
+		old.(*corev1.Endpoints),
+		cur.(*corev1.Endpoints),
+		scc.handlers.EnqueueOwner,
+		scc.deleteEndpoints,
+	)
+}
+
+func (scc *Controller) deleteEndpoints(obj interface{}) {
+	scc.handlers.HandleDelete(
+		obj,
+		scc.handlers.EnqueueOwner,
 	)
 }

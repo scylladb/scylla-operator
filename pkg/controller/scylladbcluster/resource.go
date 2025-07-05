@@ -452,6 +452,45 @@ func calculateEndpointsForRemoteDCPods(sc *scyllav1alpha1.ScyllaDBCluster, nodeB
 			})
 		}
 
+	case scyllav1alpha1.BroadcastAddressTypeServiceClusterIP:
+		// TODO: deduplicate with the other type
+		dcServices, err := remoteServiceLister.Cluster(remoteDC.RemoteKubernetesClusterName).Services(remoteDCNamespace.Name).List(remoteDCPodSelector)
+		if err != nil {
+			return nil, fmt.Errorf("can't list services in %q ScyllaDBCluster %q Datacenter: %w", naming.ObjRef(sc), remoteDC.Name, err)
+		}
+
+		klog.V(4).InfoS("Found remote ScyllaDB Services", "ScyllaDBCluster", klog.KObj(sc), "Datacenter", remoteDC.Name, "Services", len(dcServices))
+
+		// Sort objects to have stable list of endpoints
+		sort.Slice(dcServices, func(i, j int) bool {
+			return dcServices[i].Name < dcServices[j].Name
+		})
+
+		for _, dcService := range dcServices {
+			if dcService.Labels[naming.ScyllaServiceTypeLabel] != string(naming.ScyllaServiceTypeMember) {
+				continue
+			}
+
+			if dcService.Spec.ClusterIP == corev1.ClusterIPNone {
+				continue
+			}
+
+			addresses := []string{dcService.Spec.ClusterIP}
+			clusterIPs := oslices.FilterOut(dcService.Spec.ClusterIPs, func(clusterIP string) bool {
+				return clusterIP == corev1.ClusterIPNone || clusterIP == dcService.Spec.ClusterIP
+			})
+			addresses = append(addresses, clusterIPs...)
+
+			endpoints = append(endpoints, discoveryv1.Endpoint{
+				Addresses: addresses,
+				Conditions: discoveryv1.EndpointConditions{
+					Ready:       pointer.Ptr(true),
+					Serving:     pointer.Ptr(true),
+					Terminating: pointer.Ptr(dcService.DeletionTimestamp != nil),
+				},
+			})
+		}
+
 	case scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress:
 		dcServices, err := remoteServiceLister.Cluster(remoteDC.RemoteKubernetesClusterName).Services(remoteDCNamespace.Name).List(remoteDCPodSelector)
 		if err != nil {

@@ -20,6 +20,7 @@ In case you already have a supported version of each of these dependencies insta
 
 #### Cert Manager
 
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
 {{"""
 BEGIN_CODE_BLOCK
 kubectl apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/examples/third-party/cert-manager.yaml
@@ -44,7 +45,7 @@ done
 
 #### Prometheus Operator
 
-
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
 {{"""
 BEGIN_CODE_BLOCK
 kubectl -n=prometheus-operator apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/examples/third-party/prometheus-operator.yaml
@@ -63,6 +64,7 @@ kubectl -n=prometheus-operator rollout status --timeout=10m deployment.apps/prom
 
 Once you have the dependencies installed and available in your cluster, it is the time to install {{productName}}.
 
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
 {{"""
 BEGIN_CODE_BLOCK
 kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/deploy/operator.yaml
@@ -118,6 +120,7 @@ Please review the [NodeConfig](../resources/nodeconfigs.md) and adjust it for yo
 :::::{tab-set}
 
 ::::{tab-item} GKE (NVMe)
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
 {{"""
 BEGIN_CODE_BLOCK
 kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/examples/gke/nodeconfig-alpha.yaml
@@ -126,6 +129,7 @@ END_CODE_BLOCK
 ::::
 
 ::::{tab-item} EKS (NVMe)
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
 {{"""
 BEGIN_CODE_BLOCK
 kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/examples/eks/nodeconfig-alpha.yaml
@@ -139,6 +143,7 @@ This NodeConfig sets up loop devices instead of NVMe disks and is only intended 
 Do not expect meaningful performance with this setup.
 :::
 
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
 {{"""
 BEGIN_CODE_BLOCK
 kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/examples/generic/nodeconfig-alpha.yaml
@@ -159,6 +164,7 @@ kubectl wait --for='condition=Reconciled' --timeout=10m nodeconfigs.scylla.scyll
 
 ### Local CSI driver
 
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
 {{"""
 BEGIN_CODE_BLOCK
 kubectl -n=local-csi-driver apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/examples/common/local-volume-provisioner/local-csi-driver/{00_clusterrole_def,00_clusterrole_def_openshift,00_clusterrole,00_namespace,00_scylladb-local-xfs.storageclass,10_csidriver,10_serviceaccount,20_clusterrolebinding,50_daemonset}.yaml
@@ -179,6 +185,7 @@ kubectl -n=local-csi-driver rollout status --timeout=10m daemonset.apps/local-cs
 
 ::::{tab-item} Production (sized)
 
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
 {{"""
 BEGIN_CODE_BLOCK
 kubectl -n=scylla-manager apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/deploy/manager-prod.yaml
@@ -189,6 +196,7 @@ END_CODE_BLOCK
 
 ::::{tab-item} Development (sized)
 
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
 {{"""
 BEGIN_CODE_BLOCK
 kubectl -n=scylla-manager apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/deploy/manager-dev.yaml

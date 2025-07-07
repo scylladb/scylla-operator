@@ -88,7 +88,6 @@ func TestValidateScyllaDBManagerTask(t *testing.T) {
 			},
 			expectedErrorString: `spec.type: Unsupported value: "Unsupported": supported values: "Backup", "Repair"`,
 		},
-
 		{
 			name: "missing required options for repair type",
 			scyllaDBManagerTask: &scyllav1alpha1.ScyllaDBManagerTask{
@@ -1734,6 +1733,114 @@ func TestValidateScyllaDBManagerTask(t *testing.T) {
 				},
 			},
 			expectedErrorString: `spec.backup.cron: Invalid value: "CRON_TZ=Europe/Warsaw 0 0 * * *": TZ and CRON_TZ prefixes are forbidden`,
+		},
+		{
+			name: "backup with empty scyllaDBClusterRef kind",
+			scyllaDBManagerTask: &scyllav1alpha1.ScyllaDBManagerTask{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "random",
+				},
+				Spec: scyllav1alpha1.ScyllaDBManagerTaskSpec{
+					ScyllaDBClusterRef: scyllav1alpha1.LocalScyllaDBReference{
+						Name: "basic",
+						Kind: "",
+					},
+					Type: scyllav1alpha1.ScyllaDBManagerTaskTypeBackup,
+					Backup: &scyllav1alpha1.ScyllaDBManagerBackupTaskOptions{
+						Location: []string{
+							"gcs:test",
+						},
+					},
+				},
+			},
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeRequired,
+					Field:    "spec.scyllaDBClusterRef.kind",
+					BadValue: ``,
+					Detail:   ``,
+				},
+			},
+			expectedErrorString: `spec.scyllaDBClusterRef.kind: Required value`,
+		},
+		{
+			name: "repair with empty scyllaDBClusterRef kind",
+			scyllaDBManagerTask: &scyllav1alpha1.ScyllaDBManagerTask{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "random",
+				},
+				Spec: scyllav1alpha1.ScyllaDBManagerTaskSpec{
+					ScyllaDBClusterRef: scyllav1alpha1.LocalScyllaDBReference{
+						Name: "basic",
+						Kind: "",
+					},
+					Type:   scyllav1alpha1.ScyllaDBManagerTaskTypeRepair,
+					Repair: &scyllav1alpha1.ScyllaDBManagerRepairTaskOptions{},
+				},
+			},
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeRequired,
+					Field:    "spec.scyllaDBClusterRef.kind",
+					BadValue: ``,
+					Detail:   ``,
+				},
+			},
+			expectedErrorString: `spec.scyllaDBClusterRef.kind: Required value`,
+		},
+		{
+			name: "backup with unsupported scyllaDBClusterRef kind",
+			scyllaDBManagerTask: &scyllav1alpha1.ScyllaDBManagerTask{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "random",
+				},
+				Spec: scyllav1alpha1.ScyllaDBManagerTaskSpec{
+					ScyllaDBClusterRef: scyllav1alpha1.LocalScyllaDBReference{
+						Name: "basic",
+						Kind: "ScyllaCluster",
+					},
+					Type: scyllav1alpha1.ScyllaDBManagerTaskTypeBackup,
+					Backup: &scyllav1alpha1.ScyllaDBManagerBackupTaskOptions{
+						Location: []string{
+							"gcs:test",
+						},
+					},
+				},
+			},
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeNotSupported,
+					Field:    "spec.scyllaDBClusterRef.kind",
+					BadValue: "ScyllaCluster",
+					Detail:   `supported values: "ScyllaDBDatacenter"`,
+				},
+			},
+			expectedErrorString: `spec.scyllaDBClusterRef.kind: Unsupported value: "ScyllaCluster": supported values: "ScyllaDBDatacenter"`,
+		},
+		{
+			name: "repair with unsupported scyllaDBClusterRef kind",
+			scyllaDBManagerTask: &scyllav1alpha1.ScyllaDBManagerTask{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "random",
+				},
+				Spec: scyllav1alpha1.ScyllaDBManagerTaskSpec{
+					ScyllaDBClusterRef: scyllav1alpha1.LocalScyllaDBReference{
+						Name: "basic",
+						Kind: "ScyllaCluster",
+					},
+					Type:   scyllav1alpha1.ScyllaDBManagerTaskTypeRepair,
+					Repair: &scyllav1alpha1.ScyllaDBManagerRepairTaskOptions{},
+				},
+			},
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeNotSupported,
+					Field:    "spec.scyllaDBClusterRef.kind",
+					BadValue: "ScyllaCluster",
+					Detail:   `supported values: "ScyllaDBDatacenter"`,
+				},
+			},
+			expectedErrorString: `spec.scyllaDBClusterRef.kind: Unsupported value: "ScyllaCluster": supported values: "ScyllaDBDatacenter"`,
 		},
 	}
 

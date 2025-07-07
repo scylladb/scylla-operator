@@ -151,10 +151,10 @@ func TestValidateScyllaDBManagerClusterRegistration(t *testing.T) {
 					Type:     field.ErrorTypeNotSupported,
 					Field:    "spec.scyllaDBClusterRef.kind",
 					BadValue: "ScyllaCluster",
-					Detail:   `supported values: "ScyllaDBDatacenter"`,
+					Detail:   `supported values: "ScyllaDBDatacenter", "ScyllaDBCluster"`,
 				},
 			},
-			expectedErrorString: `spec.scyllaDBClusterRef.kind: Unsupported value: "ScyllaCluster": supported values: "ScyllaDBDatacenter"`,
+			expectedErrorString: `spec.scyllaDBClusterRef.kind: Unsupported value: "ScyllaCluster": supported values: "ScyllaDBDatacenter", "ScyllaDBCluster"`,
 		},
 	}
 
@@ -251,19 +251,13 @@ func TestValidateScyllaDBManagerClusterRegistrationUpdate(t *testing.T) {
 			}(),
 			expectedErrorList: field.ErrorList{
 				&field.Error{
-					Type:     field.ErrorTypeNotSupported,
-					Field:    "spec.scyllaDBClusterRef.kind",
-					BadValue: "ScyllaDBCluster",
-					Detail:   `supported values: "ScyllaDBDatacenter"`,
-				},
-				&field.Error{
 					Type:     field.ErrorTypeInvalid,
 					Field:    "spec.scyllaDBClusterRef.kind",
 					BadValue: "ScyllaDBCluster",
 					Detail:   "field is immutable",
 				},
 			},
-			expectedErrorString: `[spec.scyllaDBClusterRef.kind: Unsupported value: "ScyllaDBCluster": supported values: "ScyllaDBDatacenter", spec.scyllaDBClusterRef.kind: Invalid value: "ScyllaDBCluster": field is immutable]`,
+			expectedErrorString: `spec.scyllaDBClusterRef.kind: Invalid value: "ScyllaDBCluster": field is immutable`,
 		},
 		{
 			name: "internal.scylla-operator.scylladb.com/scylladb-manager-cluster-name-override annotation changed",

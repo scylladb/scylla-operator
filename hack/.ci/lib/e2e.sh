@@ -13,18 +13,6 @@ source "$( dirname "${BASH_SOURCE[0]}" )/../../lib/kube.sh"
 # It is used in multi-datacenter setups.
 declare -A WORKER_KUBECONFIGS
 
-# TODO: remove once CI job is updated to define KUBECONFIG and WORKER_KUBECONFIGS instead of KUBECONFIG_DIR
-if [[ -n "${KUBECONFIG_DIR+x}" ]]; then
-  unset KUBECONFIG
-  for f in $( find "$( realpath "${KUBECONFIG_DIR}" )" -maxdepth 1 -type f -name '*.kubeconfig' ); do
-    # For multi-datacenter suites, designate the first kubeconfig as the "control plane" cluster.
-    KUBECONFIG="${KUBECONFIG:-${f}}"
-    WORKER_KUBECONFIGS["$( basename "${f}" '.kubeconfig' )"]="${f}"
-  done
-
-  export KUBECONFIG
-fi
-
 # KUBECONFIG is the kubeconfig file used to connect to the cluster.
 # In multi-datacenter setups, it is the control plane cluster kubeconfig.
 if [ -z "${KUBECONFIG+x}" ]; then

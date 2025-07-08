@@ -20,13 +20,15 @@ In case you already have a supported version of each of these dependencies insta
 
 #### Cert Manager
 
-:::{code-block} shell
-:substitutions:
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
+{{"""
+BEGIN_CODE_BLOCK
+kubectl apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/examples/third-party/cert-manager.yaml
+END_CODE_BLOCK
+""".replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} shell").replace("END_CODE_BLOCK", ":::")}}
 
-kubectl apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/third-party/cert-manager.yaml
-:::
-
 :::{code-block} shell
+
 # Wait for CRDs to propagate to all apiservers.
 kubectl wait --for condition=established --timeout=60s crd/certificates.cert-manager.io crd/issuers.cert-manager.io
 
@@ -43,11 +45,12 @@ done
 
 #### Prometheus Operator
 
-:::{code-block} shell
-:substitutions:
-
-kubectl -n=prometheus-operator apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/third-party/prometheus-operator.yaml
-:::
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
+{{"""
+BEGIN_CODE_BLOCK
+kubectl -n=prometheus-operator apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/examples/third-party/prometheus-operator.yaml
+END_CODE_BLOCK
+""".replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} shell").replace("END_CODE_BLOCK", ":::")}}
 
 :::{code-block} shell
 # Wait for CRDs to propagate to all apiservers.
@@ -61,11 +64,12 @@ kubectl -n=prometheus-operator rollout status --timeout=10m deployment.apps/prom
 
 Once you have the dependencies installed and available in your cluster, it is the time to install {{productName}}.
 
-:::{code-block} shell
-:substitutions:
-
-kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/deploy/operator.yaml
-:::
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
+{{"""
+BEGIN_CODE_BLOCK
+kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/deploy/operator.yaml
+END_CODE_BLOCK
+""".replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} shell").replace("END_CODE_BLOCK", ":::")}}
 
 ::::{caution}
 {{productName}} deployment references its own image that it later runs alongside each ScyllaDB instance. Therefore, you have to also replace the image in the environment variable called `SCYLLA_OPERATOR_IMAGE`:
@@ -116,17 +120,21 @@ Please review the [NodeConfig](../resources/nodeconfigs.md) and adjust it for yo
 :::::{tab-set}
 
 ::::{tab-item} GKE (NVMe)
-:::{code-block} shell
-:substitutions:
-kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/gke/nodeconfig-alpha.yaml
-:::
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
+{{"""
+BEGIN_CODE_BLOCK
+kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/examples/gke/nodeconfig-alpha.yaml
+END_CODE_BLOCK
+""".replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} shell").replace("END_CODE_BLOCK", ":::")}}
 ::::
 
 ::::{tab-item} EKS (NVMe)
-:::{code-block} shell
-:substitutions:
-kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/eks/nodeconfig-alpha.yaml
-:::
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
+{{"""
+BEGIN_CODE_BLOCK
+kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/examples/eks/nodeconfig-alpha.yaml
+END_CODE_BLOCK
+""".replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} shell").replace("END_CODE_BLOCK", ":::")}}
 ::::
 
 ::::{tab-item} Any platform (Loop devices)
@@ -134,10 +142,13 @@ kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.
 This NodeConfig sets up loop devices instead of NVMe disks and is only intended for development purposes when you don't have the NVMe disks available.
 Do not expect meaningful performance with this setup.
 :::
-:::{code-block} shell
-:substitutions:
-kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/generic/nodeconfig-alpha.yaml
-:::
+
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
+{{"""
+BEGIN_CODE_BLOCK
+kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/examples/generic/nodeconfig-alpha.yaml
+END_CODE_BLOCK
+""".replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} shell").replace("END_CODE_BLOCK", ":::")}}
 ::::
 
 :::::
@@ -153,11 +164,12 @@ kubectl wait --for='condition=Reconciled' --timeout=10m nodeconfigs.scylla.scyll
 
 ### Local CSI driver
 
-:::{code-block} shell
-:substitutions:
-
-kubectl -n=local-csi-driver apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/common/local-volume-provisioner/local-csi-driver/{00_clusterrole_def,00_clusterrole_def_openshift,00_clusterrole,00_namespace,00_scylladb-local-xfs.storageclass,10_csidriver,10_serviceaccount,20_clusterrolebinding,50_daemonset}.yaml
-:::
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
+{{"""
+BEGIN_CODE_BLOCK
+kubectl -n=local-csi-driver apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/examples/common/local-volume-provisioner/local-csi-driver/{00_clusterrole_def,00_clusterrole_def_openshift,00_clusterrole,00_namespace,00_scylladb-local-xfs.storageclass,10_csidriver,10_serviceaccount,20_clusterrolebinding,50_daemonset}.yaml
+END_CODE_BLOCK
+""".replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} shell").replace("END_CODE_BLOCK", ":::")}}
 
 :::{code-block} shell
 # Wait for it to deploy.
@@ -172,17 +184,25 @@ kubectl -n=local-csi-driver rollout status --timeout=10m daemonset.apps/local-cs
 :::::{tab-set}
 
 ::::{tab-item} Production (sized)
-:::{code-block} shell
-:substitutions:
-kubectl -n=scylla-manager apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/deploy/manager-prod.yaml
-:::
+
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
+{{"""
+BEGIN_CODE_BLOCK
+kubectl -n=scylla-manager apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/deploy/manager-prod.yaml
+END_CODE_BLOCK
+""".replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} shell").replace("END_CODE_BLOCK", ":::")}}
+
 ::::
 
 ::::{tab-item} Development (sized)
-:::{code-block} shell
-:substitutions:
-kubectl -n=scylla-manager apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/deploy/manager-dev.yaml
-:::
+
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
+{{"""
+BEGIN_CODE_BLOCK
+kubectl -n=scylla-manager apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/deploy/manager-dev.yaml
+END_CODE_BLOCK
+""".replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} shell").replace("END_CODE_BLOCK", ":::")}}
+
 ::::
 
 :::::

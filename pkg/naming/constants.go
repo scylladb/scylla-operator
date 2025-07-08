@@ -262,6 +262,9 @@ const (
 	GlobalScyllaDBManagerRegistrationLabel = "scylla-operator.scylladb.com/register-with-global-scylladb-manager"
 	GlobalScyllaDBManagerLabel             = "internal.scylla-operator.scylladb.com/global-scylladb-manager"
 
+	// ScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotation is used to override the auth tokens generated for specific ScyllaDBDatacenters with a shared one, common for the entire ScyllaDBCluster.
+	ScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotation = "internal.scylla-operator.scylladb.com/scylladb-manager-agent-auth-token-override-secret-ref"
+
 	ScyllaDBManagerClusterRegistrationFinalizer              = "scylla-operator.scylladb.com/scylladbmanagerclusterregistration-deletion"
 	ScyllaDBManagerClusterRegistrationNameOverrideAnnotation = "internal.scylla-operator.scylladb.com/scylladb-manager-cluster-name-override"
 

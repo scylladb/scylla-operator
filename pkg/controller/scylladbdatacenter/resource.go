@@ -72,6 +72,9 @@ var (
 		// object created on migration from scyllav1.ScyllaCluster object. Setting it shouldn't trigger a rollout as it
 		// doesn't affect the ScyllaDB cluster itself.
 		naming.ScyllaDBManagerClusterRegistrationNameOverrideAnnotation,
+		// This annotation is set by controllers to override the ScyllaDB Manager auth token generated for a particular ScyllaDBDatacenter.
+		// Setting it shouldn't trigger a rollout as the value is propagated to a Secret used by ScyllaDB Manager agent, which should be reloaded dynamically.
+		naming.ScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotation,
 	}
 
 	// Label keys excluded from propagation to underlying resources.
@@ -1451,12 +1454,7 @@ func MakeIngresses(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*
 	return ingresses
 }
 
-func MakeAgentAuthTokenSecret(sdc *scyllav1alpha1.ScyllaDBDatacenter, authToken string) (*corev1.Secret, error) {
-	data, err := helpers.GetAgentAuthTokenConfig(authToken)
-	if err != nil {
-		return nil, err
-	}
-
+func makeAgentAuthTokenSecret(sdc *scyllav1alpha1.ScyllaDBDatacenter, agentAuthTokenConfig []byte) (*corev1.Secret, error) {
 	labels := cloneMapExcludingKeysOrEmpty(sdc.Labels, nonPropagatedLabelKeys)
 	maps.Copy(labels, naming.ClusterLabels(sdc))
 
@@ -1474,7 +1472,7 @@ func MakeAgentAuthTokenSecret(sdc *scyllav1alpha1.ScyllaDBDatacenter, authToken 
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
-			naming.ScyllaAgentAuthTokenFileName: data,
+			naming.ScyllaAgentAuthTokenFileName: agentAuthTokenConfig,
 		},
 	}, nil
 }

@@ -23,7 +23,7 @@ spec:
       serviceAccountName: scylla-manager
       containers:
       - name: scylla-manager
-        image: docker.io/scylladb/scylla-manager:3.5.0@sha256:c38c7f741e46ba5da3914eec9113b615bab779586ba4767605f0a3ebd494bcd2
+        image: docker.io/scylladb/scylla-manager:3.6.0-0.20250708.829437aa2
         imagePullPolicy: IfNotPresent
         command:
         - /usr/bin/scylla-manager

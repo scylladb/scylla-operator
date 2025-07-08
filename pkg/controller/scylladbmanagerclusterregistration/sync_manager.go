@@ -50,6 +50,35 @@ func (smcrc *Controller) syncManager(
 		host = naming.CrossNamespaceServiceName(sdc)
 		authTokenSecretName = naming.AgentAuthTokenSecretName(sdc)
 
+	case scyllav1alpha1.ScyllaDBClusterGVK.Kind:
+		sc, err := smcrc.scyllaDBClusterLister.ScyllaDBClusters(smcr.Namespace).Get(smcr.Spec.ScyllaDBClusterRef.Name)
+		if err != nil {
+			return progressingConditions, fmt.Errorf("can't get ScyllaDBCluster %q: %w", naming.ManualRef(smcr.Namespace, smcr.Spec.ScyllaDBClusterRef.Name), err)
+		}
+
+		isScyllaDBClusterAvailable := sc.Status.AvailableNodes != nil && *sc.Status.AvailableNodes > 0
+		if !isScyllaDBClusterAvailable {
+			progressingConditions = append(progressingConditions, metav1.Condition{
+				Type:               managerControllerProgressingCondition,
+				Status:             metav1.ConditionTrue,
+				ObservedGeneration: smcr.Generation,
+				Reason:             "AwaitingScyllaDBClusterAvailability",
+				Message:            fmt.Sprintf("Awaiting ScyllaDBCluster %q availability.", naming.ObjRef(sc)),
+			})
+
+			return progressingConditions, nil
+		}
+
+		host, err = naming.InterNamespaceLocalIdentityServiceAddress(sc)
+		if err != nil {
+			return progressingConditions, fmt.Errorf("can't get inter-namespace local identity service address for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
+		}
+
+		authTokenSecretName, err = naming.ScyllaDBManagerAgentAuthTokenSecretNameForScyllaDBCluster(sc)
+		if err != nil {
+			return progressingConditions, fmt.Errorf("can't get agent auth token secret name for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
+		}
+
 	default:
 		return progressingConditions, fmt.Errorf("unsupported scyllaDBClusterRef Kind: %q", smcr.Spec.ScyllaDBClusterRef.Kind)
 

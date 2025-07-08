@@ -80,6 +80,15 @@ func LocalIdentityServiceName(sc *scyllav1alpha1.ScyllaDBCluster) (string, error
 	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1035LabelMaxLength, sc.Name, "client")
 }
 
+func InterNamespaceLocalIdentityServiceAddress(sc *scyllav1alpha1.ScyllaDBCluster) (string, error) {
+	name, err := LocalIdentityServiceName(sc)
+	if err != nil {
+		return "", fmt.Errorf("can't get local identity service name for ScyllaDBCluster %q: %w", ObjRef(sc), err)
+	}
+
+	return fmt.Sprintf("%s.%s.svc", name, sc.Namespace), nil
+}
+
 func IdentityServiceName(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
 	return fmt.Sprintf("%s-client", sdc.Name)
 }
@@ -298,6 +307,10 @@ func GenerateNameHash(parts ...string) (string, error) {
 
 func ScyllaDBManagerClusterRegistrationNameForScyllaDBDatacenter(sdc *scyllav1alpha1.ScyllaDBDatacenter) (string, error) {
 	return scyllaDBManagerClusterRegistrationName(scyllav1alpha1.ScyllaDBDatacenterGVK.Kind, sdc.Name)
+}
+
+func ScyllaDBManagerClusterRegistrationNameForScyllaDBCluster(sc *scyllav1alpha1.ScyllaDBCluster) (string, error) {
+	return scyllaDBManagerClusterRegistrationName(scyllav1alpha1.ScyllaDBClusterGVK.Kind, sc.Name)
 }
 
 func ScyllaDBManagerClusterRegistrationNameForScyllaDBManagerTask(smt *scyllav1alpha1.ScyllaDBManagerTask) (string, error) {

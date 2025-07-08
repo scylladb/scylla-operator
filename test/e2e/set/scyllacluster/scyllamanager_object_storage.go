@@ -51,15 +51,18 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 			sourceSC.Spec.Version = e.scyllaVersion
 		}
 
-		objectStorageType := f.GetObjectStorageType()
-		switch objectStorageType {
+		objectStorageSettings, ok := f.GetClusterObjectStorageSettings()
+		if !ok {
+			g.Fail("cluster object storage settings are not configured")
+		}
+		switch objectStorageSettings.Type() {
 		case framework.ObjectStorageTypeGCS:
-			gcServiceAccountKey := f.GetGCSServiceAccountKey()
+			gcServiceAccountKey := objectStorageSettings.GCSServiceAccountKey()
 			o.Expect(gcServiceAccountKey).NotTo(o.BeEmpty())
 
 			sourceSC = setUpGCSCredentials(ctx, f.KubeClient().CoreV1(), sourceSC, f.Namespace(), gcServiceAccountKey)
 		case framework.ObjectStorageTypeS3:
-			s3CredentialsFile := f.GetS3CredentialsFile()
+			s3CredentialsFile := objectStorageSettings.S3CredentialsFile()
 			o.Expect(s3CredentialsFile).NotTo(o.BeEmpty())
 
 			sourceSC = setUpS3Credentials(ctx, f.KubeClient().CoreV1(), sourceSC, f.Namespace(), s3CredentialsFile)
@@ -67,7 +70,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 			g.Fail("unsupported object storage type")
 		}
 
-		objectStorageLocation := fmt.Sprintf("%s:%s", f.GetObjectStorageProvider(), f.GetObjectStorageBucket())
+		objectStorageLocation := utils.LocationForScyllaManager(objectStorageSettings)
 
 		framework.By("Creating source ScyllaCluster")
 		sourceSC, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sourceSC, metav1.CreateOptions{})
@@ -292,14 +295,14 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 			e.preTargetClusterCreateHook(targetSC)
 		}
 
-		switch objectStorageType {
+		switch objectStorageSettings.Type() {
 		case framework.ObjectStorageTypeGCS:
-			gcServiceAccountKey := f.GetGCSServiceAccountKey()
+			gcServiceAccountKey := objectStorageSettings.GCSServiceAccountKey()
 			o.Expect(gcServiceAccountKey).NotTo(o.BeEmpty())
 
 			targetSC = setUpGCSCredentials(ctx, f.KubeClient().CoreV1(), targetSC, f.Namespace(), gcServiceAccountKey)
 		case framework.ObjectStorageTypeS3:
-			s3CredentialsFile := f.GetS3CredentialsFile()
+			s3CredentialsFile := objectStorageSettings.S3CredentialsFile()
 			o.Expect(s3CredentialsFile).NotTo(o.BeEmpty())
 
 			targetSC = setUpS3Credentials(ctx, f.KubeClient().CoreV1(), targetSC, f.Namespace(), s3CredentialsFile)
@@ -490,23 +493,24 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		sc := f.GetDefaultScyllaCluster()
 		sc.Spec.Datacenter.Racks[0].Members = 1
 
-		objectStorageType := f.GetObjectStorageType()
-		switch objectStorageType {
+		objectStorageSettings, ok := f.GetClusterObjectStorageSettings()
+		o.Expect(ok).To(o.BeTrue(), "cluster object storage settings must be configured for this test")
+
+		o.Expect(objectStorageSettings.Type()).To(o.BeElementOf(framework.ObjectStorageTypeGCS, framework.ObjectStorageTypeS3))
+		switch objectStorageSettings.Type() {
 		case framework.ObjectStorageTypeGCS:
-			gcServiceAccountKey := f.GetGCSServiceAccountKey()
+			gcServiceAccountKey := objectStorageSettings.GCSServiceAccountKey()
 			o.Expect(gcServiceAccountKey).NotTo(o.BeEmpty())
 
 			sc = setUpGCSCredentials(ctx, f.KubeClient().CoreV1(), sc, f.Namespace(), gcServiceAccountKey)
 		case framework.ObjectStorageTypeS3:
-			s3CredentialsFile := f.GetS3CredentialsFile()
+			s3CredentialsFile := objectStorageSettings.S3CredentialsFile()
 			o.Expect(s3CredentialsFile).NotTo(o.BeEmpty())
 
 			sc = setUpS3Credentials(ctx, f.KubeClient().CoreV1(), sc, f.Namespace(), s3CredentialsFile)
-		default:
-			g.Fail("unsupported object storage type")
 		}
 
-		validObjectStorageLocation := fmt.Sprintf("%s:%s", f.GetObjectStorageProvider(), f.GetObjectStorageBucket())
+		validObjectStorageLocation := utils.LocationForScyllaManager(objectStorageSettings)
 
 		framework.By("Creating a ScyllaCluster")
 		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})

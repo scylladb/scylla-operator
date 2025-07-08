@@ -52,6 +52,7 @@ var supportedBroadcastAddressTypes = []scyllav1.BroadcastAddressType{
 
 type TestFrameworkOptions struct {
 	genericclioptions.MultiDatacenterClientConfig
+	ObjectStorageOptions
 
 	ArtifactsDir                string
 	CleanupPolicyUntyped        string
@@ -59,12 +60,6 @@ type TestFrameworkOptions struct {
 	IngressController           *IngressControllerOptions
 	ScyllaClusterOptionsUntyped *ScyllaClusterOptions
 	scyllaClusterOptions        *framework.ScyllaClusterOptions
-	ObjectStorageBucket         string
-	GCSServiceAccountKeyPath    string
-	S3CredentialsFilePath       string
-	objectStorageType           framework.ObjectStorageType
-	gcsServiceAccountKey        []byte
-	s3CredentialsFile           []byte
 	ScyllaDBVersion             string
 	ScyllaDBManagerVersion      string
 	ScyllaDBManagerAgentVersion string
@@ -84,12 +79,7 @@ func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent stri
 			ClientsBroadcastAddressType: string(scyllav1.BroadcastAddressTypePodIP),
 			StorageClassName:            "",
 		},
-		ObjectStorageBucket:         "",
-		GCSServiceAccountKeyPath:    "",
-		S3CredentialsFilePath:       "",
-		objectStorageType:           framework.ObjectStorageTypeNone,
-		gcsServiceAccountKey:        []byte{},
-		s3CredentialsFile:           []byte{},
+		ObjectStorageOptions:        NewObjectStorageOptions(),
 		ScyllaDBVersion:             configassets.Project.Operator.ScyllaDBVersion,
 		ScyllaDBManagerVersion:      configassets.Project.Operator.ScyllaDBManagerVersion,
 		ScyllaDBManagerAgentVersion: configassets.Project.Operator.ScyllaDBManagerAgentVersion,
@@ -100,6 +90,7 @@ func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent stri
 
 func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 	o.MultiDatacenterClientConfig.AddFlags(cmd)
+	o.ObjectStorageOptions.AddFlags(cmd)
 
 	cmd.PersistentFlags().StringVarP(&o.ArtifactsDir, "artifacts-dir", "", o.ArtifactsDir, "A directory for storing test artifacts. No data is collected until set.")
 	cmd.PersistentFlags().StringVarP(&o.CleanupPolicyUntyped, "delete-namespace-policy", "", o.CleanupPolicyUntyped, fmt.Sprintf("Namespace deletion policy. Allowed values are [%s].", strings.Join(
@@ -135,9 +126,6 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 		", ",
 	)))
 	cmd.PersistentFlags().StringVarP(&o.ScyllaClusterOptionsUntyped.StorageClassName, "scyllacluster-storageclass-name", "", o.ScyllaClusterOptionsUntyped.StorageClassName, fmt.Sprintf("Name of the StorageClass to request for ScyllaCluster storage."))
-	cmd.PersistentFlags().StringVarP(&o.ObjectStorageBucket, "object-storage-bucket", "", o.ObjectStorageBucket, "Name of the object storage bucket.")
-	cmd.PersistentFlags().StringVarP(&o.GCSServiceAccountKeyPath, "gcs-service-account-key-path", "", o.GCSServiceAccountKeyPath, "Path to a file containing a GCS service account key.")
-	cmd.PersistentFlags().StringVarP(&o.S3CredentialsFilePath, "s3-credentials-file-path", "", o.S3CredentialsFilePath, "Path to the AWS credentials file providing access to the S3 bucket.")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBVersion, "scylladb-version", "", o.ScyllaDBVersion, "Version of ScyllaDB to use.")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBManagerVersion, "scylladb-manager-version", "", o.ScyllaDBManagerVersion, "Version of Scylla Manager to use.")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBManagerAgentVersion, "scylladb-manager-agent-version", "", o.ScyllaDBManagerAgentVersion, "Version of Scylla Manager Agent to use.")
@@ -171,22 +159,6 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 
 	if !oslices.ContainsItem(supportedBroadcastAddressTypes, scyllav1.BroadcastAddressType(o.ScyllaClusterOptionsUntyped.ClientsBroadcastAddressType)) {
 		errors = append(errors, fmt.Errorf("invalid scylla-cluster-clients-broadcast-address-type: %q", o.ScyllaClusterOptionsUntyped.ClientsBroadcastAddressType))
-	}
-
-	if len(o.GCSServiceAccountKeyPath) > 0 && len(o.ObjectStorageBucket) == 0 {
-		errors = append(errors, fmt.Errorf("object-storage-bucket can't be empty when gcs-service-account-key-path is provided"))
-	}
-
-	if len(o.S3CredentialsFilePath) > 0 && len(o.ObjectStorageBucket) == 0 {
-		errors = append(errors, fmt.Errorf("object-storage-bucket can't be empty when s3-credentials-file-path is provided"))
-	}
-
-	if len(o.ObjectStorageBucket) > 0 && len(o.GCSServiceAccountKeyPath) == 0 && len(o.S3CredentialsFilePath) == 0 {
-		errors = append(errors, fmt.Errorf("either gcs-service-account-key-path or s3-credentials-file-path must be set when object-storage-bucket is provided"))
-	}
-
-	if len(o.GCSServiceAccountKeyPath) > 0 && len(o.S3CredentialsFilePath) > 0 {
-		errors = append(errors, fmt.Errorf("gcs-service-account-key-path and s3-credentials-file-path can't be set simultanously"))
 	}
 
 	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBVersion) {
@@ -239,9 +211,11 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 }
 
 func (o *TestFrameworkOptions) Complete(args []string) error {
-	err := o.MultiDatacenterClientConfig.Complete()
-	if err != nil {
-		return err
+	if err := o.MultiDatacenterClientConfig.Complete(); err != nil {
+		return fmt.Errorf("can't complete multi-datacenter client config: %w", err)
+	}
+	if err := o.ObjectStorageOptions.Complete(); err != nil {
+		return fmt.Errorf("can't complete object storage options: %w", err)
 	}
 
 	o.CleanupPolicy = framework.CleanupPolicyType(o.CleanupPolicyUntyped)
@@ -258,50 +232,24 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 		StorageClassName: o.ScyllaClusterOptionsUntyped.StorageClassName,
 	}
 
-	if len(o.GCSServiceAccountKeyPath) > 0 {
-		o.objectStorageType = framework.ObjectStorageTypeGCS
-		gcsServiceAccountKey, err := os.ReadFile(o.GCSServiceAccountKeyPath)
-		if err != nil {
-			return fmt.Errorf("can't read gcs service account key file %q: %w", o.GCSServiceAccountKeyPath, err)
-		}
-		if len(gcsServiceAccountKey) == 0 {
-			return fmt.Errorf("gcs service account key file %q can't be empty", o.GCSServiceAccountKeyPath)
-		}
-		o.gcsServiceAccountKey = gcsServiceAccountKey
-	}
-
-	if len(o.S3CredentialsFilePath) > 0 {
-		o.objectStorageType = framework.ObjectStorageTypeS3
-		s3CredentialsFile, err := os.ReadFile(o.S3CredentialsFilePath)
-		if err != nil {
-			return fmt.Errorf("can't read s3 credentials file %q: %w", o.S3CredentialsFilePath, err)
-		}
-		if len(s3CredentialsFile) == 0 {
-			return fmt.Errorf("s3 credentials file %q can't be empty", o.S3CredentialsFilePath)
-		}
-		o.s3CredentialsFile = s3CredentialsFile
-	}
-
-	workerRestConfigs := make(map[string]*rest.Config, len(o.MultiDatacenterClientConfig.WorkerClientConfigs))
-	for k, v := range o.MultiDatacenterClientConfig.WorkerClientConfigs {
-		workerRestConfigs[k] = v.RestConfig
+	workerRestConfigs := make(map[string]*rest.Config, len(o.WorkerClientConfigs))
+	for worker, config := range o.WorkerClientConfigs {
+		workerRestConfigs[worker] = config.RestConfig
 	}
 
 	framework.TestContext = &framework.TestContextType{
-		RestConfig:                  o.ClientConfig.RestConfig,
-		WorkerRestConfigs:           workerRestConfigs,
-		ArtifactsDir:                o.ArtifactsDir,
-		CleanupPolicy:               o.CleanupPolicy,
-		ScyllaClusterOptions:        o.scyllaClusterOptions,
-		ObjectStorageType:           o.objectStorageType,
-		ObjectStorageBucket:         o.ObjectStorageBucket,
-		GCSServiceAccountKey:        o.gcsServiceAccountKey,
-		S3CredentialsFile:           o.s3CredentialsFile,
-		ScyllaDBVersion:             o.ScyllaDBVersion,
-		ScyllaDBManagerVersion:      o.ScyllaDBManagerVersion,
-		ScyllaDBManagerAgentVersion: o.ScyllaDBManagerAgentVersion,
-		ScyllaDBUpdateFrom:          o.ScyllaDBUpdateFrom,
-		ScyllaDBUpgradeFrom:         o.ScyllaDBUpgradeFrom,
+		RestConfig:                         o.ClientConfig.RestConfig,
+		WorkerRestConfigs:                  workerRestConfigs,
+		ArtifactsDir:                       o.ArtifactsDir,
+		CleanupPolicy:                      o.CleanupPolicy,
+		ScyllaClusterOptions:               o.scyllaClusterOptions,
+		ScyllaDBVersion:                    o.ScyllaDBVersion,
+		ScyllaDBManagerVersion:             o.ScyllaDBManagerVersion,
+		ScyllaDBManagerAgentVersion:        o.ScyllaDBManagerAgentVersion,
+		ScyllaDBUpdateFrom:                 o.ScyllaDBUpdateFrom,
+		ScyllaDBUpgradeFrom:                o.ScyllaDBUpgradeFrom,
+		ClusterObjectStorageSettings:       o.ClusterObjectStorageSettings,
+		WorkerClusterObjectStorageSettings: o.WorkerClusterObjectStorageSettings,
 	}
 
 	if o.IngressController != nil {

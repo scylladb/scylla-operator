@@ -53,23 +53,22 @@ var _ = g.Describe("ScyllaDBManagerTask integration with global ScyllaDB Manager
 
 		metav1.SetMetaDataLabel(&sourceSDC.ObjectMeta, naming.GlobalScyllaDBManagerRegistrationLabel, naming.LabelValueTrue)
 
-		objectStorageType := f.GetObjectStorageType()
-		switch objectStorageType {
+		objectStorageSettings, ok := f.GetClusterObjectStorageSettings()
+		o.Expect(ok).To(o.BeTrue(), "cluster object storage settings must be configured for this test")
+
+		o.Expect(objectStorageSettings.Type()).To(o.BeElementOf(framework.ObjectStorageTypeGCS, framework.ObjectStorageTypeS3))
+		switch objectStorageSettings.Type() {
 		case framework.ObjectStorageTypeGCS:
-			gcServiceAccountKey := f.GetGCSServiceAccountKey()
+			gcServiceAccountKey := objectStorageSettings.GCSServiceAccountKey()
 			o.Expect(gcServiceAccountKey).NotTo(o.BeEmpty())
 
 			sourceSDC = setUpGCSCredentials(ctx, nsClient.KubeClient().CoreV1(), sourceSDC, ns.Name, gcServiceAccountKey)
 		case framework.ObjectStorageTypeS3:
-			s3CredentialsFile := f.GetS3CredentialsFile()
+			s3CredentialsFile := objectStorageSettings.S3CredentialsFile()
 			o.Expect(s3CredentialsFile).NotTo(o.BeEmpty())
 
 			sourceSDC = setUpS3Credentials(ctx, nsClient.KubeClient().CoreV1(), sourceSDC, ns.Name, s3CredentialsFile)
-		default:
-			g.Fail("unsupported object storage type")
 		}
-
-		objectStorageLocation := fmt.Sprintf("%s:%s", f.GetObjectStorageProvider(), f.GetObjectStorageBucket())
 
 		framework.By("Creating a ScyllaDBDatacenter with the global ScyllaDB Manager registration label")
 		sourceSDC, err := nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(ns.Name).Create(ctx, sourceSDC, metav1.CreateOptions{})
@@ -106,7 +105,7 @@ var _ = g.Describe("ScyllaDBManagerTask integration with global ScyllaDB Manager
 						NumRetries: pointer.Ptr[int64](1),
 					},
 					Location: []string{
-						objectStorageLocation,
+						utils.LocationForScyllaManager(objectStorageSettings),
 					},
 					Retention: pointer.Ptr[int64](2),
 				},
@@ -280,14 +279,14 @@ var _ = g.Describe("ScyllaDBManagerTask integration with global ScyllaDB Manager
 			e.preTargetClusterCreateHook(targetSDC)
 		}
 
-		switch objectStorageType {
+		switch objectStorageSettings.Type() {
 		case framework.ObjectStorageTypeGCS:
-			gcServiceAccountKey := f.GetGCSServiceAccountKey()
+			gcServiceAccountKey := objectStorageSettings.GCSServiceAccountKey()
 			o.Expect(gcServiceAccountKey).NotTo(o.BeEmpty())
 
 			targetSDC = setUpGCSCredentials(ctx, nsClient.KubeClient().CoreV1(), targetSDC, ns.Name, gcServiceAccountKey)
 		case framework.ObjectStorageTypeS3:
-			s3CredentialsFile := f.GetS3CredentialsFile()
+			s3CredentialsFile := objectStorageSettings.S3CredentialsFile()
 			o.Expect(s3CredentialsFile).NotTo(o.BeEmpty())
 
 			targetSDC = setUpS3Credentials(ctx, nsClient.KubeClient().CoreV1(), targetSDC, ns.Name, s3CredentialsFile)
@@ -353,7 +352,7 @@ var _ = g.Describe("ScyllaDBManagerTask integration with global ScyllaDB Manager
 				"sctool",
 				"restore",
 				fmt.Sprintf("--cluster=%s", targetManagerClusterID),
-				fmt.Sprintf("--location=%s", objectStorageLocation),
+				fmt.Sprintf("--location=%s", utils.LocationForScyllaManager(objectStorageSettings)),
 				fmt.Sprintf("--snapshot-tag=%s", backupProgress.Progress.SnapshotTag),
 				"--restore-schema",
 			},
@@ -416,7 +415,7 @@ var _ = g.Describe("ScyllaDBManagerTask integration with global ScyllaDB Manager
 				"sctool",
 				"restore",
 				fmt.Sprintf("--cluster=%s", targetManagerClusterID),
-				fmt.Sprintf("--location=%s", objectStorageLocation),
+				fmt.Sprintf("--location=%s", utils.LocationForScyllaManager(objectStorageSettings)),
 				fmt.Sprintf("--snapshot-tag=%s", backupProgress.Progress.SnapshotTag),
 				"--restore-tables",
 			},

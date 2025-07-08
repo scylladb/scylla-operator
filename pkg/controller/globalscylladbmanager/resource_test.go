@@ -95,3 +95,87 @@ func Test_makeScyllaDBManagerClusterRegistrationForScyllaDBDatacenter(t *testing
 		})
 	}
 }
+
+func Test_makeScyllaDBManagerClusterRegistrationForScyllaDBCluster(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name        string
+		sc          *scyllav1alpha1.ScyllaDBCluster
+		expected    *scyllav1alpha1.ScyllaDBManagerClusterRegistration
+		expectedErr error
+	}{
+		{
+			name: "basic",
+			sc: &scyllav1alpha1.ScyllaDBCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "basic",
+					Namespace: "scylla",
+				},
+			},
+			expected: &scyllav1alpha1.ScyllaDBManagerClusterRegistration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "scylladbcluster-basic-2klpv",
+					Namespace:   "scylla",
+					Annotations: map[string]string{},
+					Labels: map[string]string{
+						"internal.scylla-operator.scylladb.com/global-scylladb-manager": "true",
+					},
+				},
+				Spec: scyllav1alpha1.ScyllaDBManagerClusterRegistrationSpec{
+					ScyllaDBClusterRef: scyllav1alpha1.LocalScyllaDBReference{
+						Kind: "ScyllaDBCluster",
+						Name: "basic",
+					},
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "with name override annotation",
+			sc: &scyllav1alpha1.ScyllaDBCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "basic",
+					Namespace: "scylla",
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/scylladb-manager-cluster-name-override": "name-override",
+					},
+				},
+			},
+			expected: &scyllav1alpha1.ScyllaDBManagerClusterRegistration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "scylladbcluster-basic-2klpv",
+					Namespace: "scylla",
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/scylladb-manager-cluster-name-override": "name-override",
+					},
+					Labels: map[string]string{
+						"internal.scylla-operator.scylladb.com/global-scylladb-manager": "true",
+					},
+				},
+				Spec: scyllav1alpha1.ScyllaDBManagerClusterRegistrationSpec{
+					ScyllaDBClusterRef: scyllav1alpha1.LocalScyllaDBReference{
+						Kind: "ScyllaDBCluster",
+						Name: "basic",
+					},
+				},
+			},
+			expectedErr: nil,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := makeScyllaDBManagerClusterRegistrationForScyllaDBCluster(tc.sc)
+			if !reflect.DeepEqual(err, tc.expectedErr) {
+				t.Fatalf("expected and got errors differ:\n%s", cmp.Diff(tc.expectedErr, err))
+			}
+
+			if !apiequality.Semantic.DeepEqual(got, tc.expected) {
+				t.Errorf("expected and got ScyllaDBManagerClusterRegistrations differ:\n%s", cmp.Diff(tc.expected, got))
+			}
+		})
+	}
+}

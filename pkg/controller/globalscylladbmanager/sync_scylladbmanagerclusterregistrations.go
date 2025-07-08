@@ -13,11 +13,17 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 )
 
-func (gsmc *Controller) syncScyllaDBManagerClusterRegistrations(ctx context.Context, scyllaDBDatacenters []*scyllav1alpha1.ScyllaDBDatacenter, scyllaDBManagerClusterRegistrations map[string]map[string]*scyllav1alpha1.ScyllaDBManagerClusterRegistration) error {
+func (gsmc *Controller) syncScyllaDBManagerClusterRegistrations(
+	ctx context.Context,
+	scyllaDBDatacenters []*scyllav1alpha1.ScyllaDBDatacenter,
+	scyllaDBClusters []*scyllav1alpha1.ScyllaDBCluster,
+	scyllaDBManagerClusterRegistrations map[string]map[string]*scyllav1alpha1.ScyllaDBManagerClusterRegistration,
+) error {
 	var errs []error
 	requiredScyllaDBManagerClusterRegistrations := map[string][]*scyllav1alpha1.ScyllaDBManagerClusterRegistration{}
 
@@ -38,6 +44,14 @@ func (gsmc *Controller) syncScyllaDBManagerClusterRegistrations(ctx context.Cont
 		}
 
 		maps.Copy(requiredScyllaDBManagerClusterRegistrations, requiredScyllaDBManagerClusterRegistrationsForScyllaDBDatacenters)
+
+		var requiredScyllaDBManagerClusterRegistrationsForScyllaDBClusters map[string][]*scyllav1alpha1.ScyllaDBManagerClusterRegistration
+		requiredScyllaDBManagerClusterRegistrationsForScyllaDBClusters, err = makeScyllaDBManagerClusterRegistrationsForScyllaDBClusters(scyllaDBClusters)
+		if err != nil {
+			return fmt.Errorf("can't make required ScyllaDBManagerClusterRegistration objects for ScyllaDBClusters(s): %w", err)
+		}
+
+		maps.Copy(requiredScyllaDBManagerClusterRegistrations, requiredScyllaDBManagerClusterRegistrationsForScyllaDBClusters)
 	}
 
 	for ns, existing := range scyllaDBManagerClusterRegistrations {
@@ -72,16 +86,27 @@ func (gsmc *Controller) syncScyllaDBManagerClusterRegistrations(ctx context.Cont
 }
 
 func makeScyllaDBManagerClusterRegistrationsForScyllaDBDatacenters(sdcs []*scyllav1alpha1.ScyllaDBDatacenter) (map[string][]*scyllav1alpha1.ScyllaDBManagerClusterRegistration, error) {
+	return makeScyllaDBManagerClusterRegistrationsForObjects(sdcs, makeScyllaDBManagerClusterRegistrationForScyllaDBDatacenter)
+}
+
+func makeScyllaDBManagerClusterRegistrationsForScyllaDBClusters(scs []*scyllav1alpha1.ScyllaDBCluster) (map[string][]*scyllav1alpha1.ScyllaDBManagerClusterRegistration, error) {
+	return makeScyllaDBManagerClusterRegistrationsForObjects(scs, makeScyllaDBManagerClusterRegistrationForScyllaDBCluster)
+}
+
+func makeScyllaDBManagerClusterRegistrationsForObjects[S ~[]E, E metav1.Object](
+	objs S,
+	makeScyllaDBManagerClusterRegistrationForObject func(E) (*scyllav1alpha1.ScyllaDBManagerClusterRegistration, error),
+) (map[string][]*scyllav1alpha1.ScyllaDBManagerClusterRegistration, error) {
 	var errs []error
 	requiredScyllaDBManagerClusterRegistrations := map[string][]*scyllav1alpha1.ScyllaDBManagerClusterRegistration{}
-	for _, sdc := range sdcs {
-		required, err := makeScyllaDBManagerClusterRegistrationForScyllaDBDatacenter(sdc)
+	for _, obj := range objs {
+		required, err := makeScyllaDBManagerClusterRegistrationForObject(obj)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("can't make ScyllaDBManagerClusterRegistration for ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err))
+			errs = append(errs, fmt.Errorf("can't make ScyllaDBManagerClusterRegistration for object %q: %w", naming.ObjRef(obj), err))
 			continue
 		}
 
-		requiredScyllaDBManagerClusterRegistrations[sdc.Namespace] = append(requiredScyllaDBManagerClusterRegistrations[sdc.Namespace], required)
+		requiredScyllaDBManagerClusterRegistrations[obj.GetNamespace()] = append(requiredScyllaDBManagerClusterRegistrations[obj.GetNamespace()], required)
 	}
 
 	return requiredScyllaDBManagerClusterRegistrations, apimachineryutilerrors.NewAggregate(errs)

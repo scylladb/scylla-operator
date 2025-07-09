@@ -647,8 +647,8 @@ func GetMemberServiceSelector(sc *scyllav1.ScyllaCluster) labels.Selector {
 }
 
 func WaitForFullMultiDCQuorum(ctx context.Context, dcClientMap map[string]corev1client.CoreV1Interface, scs []*scyllav1.ScyllaCluster) error {
-	allBroadcastAddresses := map[string][]string{}
-	var sortedAllBroadcastAddresses []string
+	allHostIDs := map[string][]string{}
+	var sortedAllHostIDs []string
 
 	var errs []error
 	for _, sc := range scs {
@@ -658,19 +658,19 @@ func WaitForFullMultiDCQuorum(ctx context.Context, dcClientMap map[string]corev1
 			continue
 		}
 
-		hosts, err := GetBroadcastAddresses(ctx, client, sc)
+		_, hostIDs, err := GetBroadcastRPCAddressesAndUUIDs(ctx, client, sc)
 		if err != nil {
-			return fmt.Errorf("can't get broadcast addresses for ScyllaCluster %q: %w", naming.ObjRef(sc), err)
+			return fmt.Errorf("can't get host IDs for ScyllaCluster %q: %w", naming.ObjRef(sc), err)
 		}
-		allBroadcastAddresses[sc.Spec.Datacenter.Name] = hosts
-		sortedAllBroadcastAddresses = append(sortedAllBroadcastAddresses, hosts...)
+		allHostIDs[sc.Spec.Datacenter.Name] = hostIDs
+		sortedAllHostIDs = append(sortedAllHostIDs, hostIDs...)
 	}
 	err := errors.Join(errs...)
 	if err != nil {
 		return err
 	}
 
-	sort.Strings(sortedAllBroadcastAddresses)
+	sort.Strings(sortedAllHostIDs)
 
 	for _, sc := range scs {
 		client, ok := dcClientMap[sc.Spec.Datacenter.Name]
@@ -679,7 +679,7 @@ func WaitForFullMultiDCQuorum(ctx context.Context, dcClientMap map[string]corev1
 			continue
 		}
 
-		err = waitForFullQuorum(ctx, client, sc, sortedAllBroadcastAddresses)
+		err = waitForFullQuorum(ctx, client, sc, sortedAllHostIDs)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -695,7 +695,7 @@ func WaitForFullMultiDCQuorum(ctx context.Context, dcClientMap map[string]corev1
 	return nil
 }
 
-func waitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, sortedExpectedHosts []string) error {
+func waitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, sortedExpectedHostIDs []string) error {
 	scyllaClient, hosts, err := GetScyllaClient(ctx, client, sc)
 	if err != nil {
 		return fmt.Errorf("can't get scylla client: %w", err)
@@ -714,13 +714,13 @@ func waitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface,
 				return true, fmt.Errorf("can't get scylla status on node %q: %w", h, err)
 			}
 
-			sHosts := s.Hosts()
-			sort.Strings(sHosts)
-			if !reflect.DeepEqual(sHosts, sortedExpectedHosts) {
-				errs = append(errs, fmt.Errorf("node %q thinks the cluster consists of different nodes: %s", h, sHosts))
+			sHostIDs := s.HostIDs()
+			sort.Strings(sHostIDs)
+			if !reflect.DeepEqual(sHostIDs, sortedExpectedHostIDs) {
+				errs = append(errs, fmt.Errorf("node %q thinks the cluster consists of different nodes, got %s, expected %s", h, sHostIDs, sortedExpectedHostIDs))
 			}
 
-			downHosts := s.DownHosts()
+			downHosts := s.DownHostIDs()
 			infoMessages = append(infoMessages, fmt.Sprintf("Node %q, down: %q, up: %q", h, strings.Join(downHosts, "\n"), strings.Join(s.LiveHosts(), ",")))
 
 			if len(downHosts) != 0 {

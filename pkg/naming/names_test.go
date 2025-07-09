@@ -5,8 +5,11 @@ package naming
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -110,6 +113,63 @@ func Test_ScyllaDBManagerClusterRegistrationNameForScyllaDBDatacenter(t *testing
 
 			if !reflect.DeepEqual(name, tc.expectedName) {
 				t.Errorf("expected name: %s, got: %s", tc.expectedName, name)
+			}
+		})
+	}
+}
+
+func Test_generateTruncatedHashedName(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name        string
+		maxLength   int
+		parts       []string
+		expected    string
+		expectedErr error
+	}{
+		{
+			name:        "not truncated",
+			maxLength:   64,
+			parts:       []string{"a", "b", "c"},
+			expected:    "a-b-c-i79jb",
+			expectedErr: nil,
+		},
+		{
+			name:        "truncated, single element",
+			maxLength:   64,
+			parts:       []string{strings.Repeat("a", 64)},
+			expected:    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-3eemq",
+			expectedErr: nil,
+		},
+		{
+			name:        "truncated, multiple elements",
+			maxLength:   64,
+			parts:       []string{strings.Repeat("a", 32), strings.Repeat("b", 32)},
+			expected:    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbbbbbbbbbbb-37s7n",
+			expectedErr: nil,
+		},
+		{
+			name:        "max length lower than name suffix hash length",
+			maxLength:   0,
+			parts:       []string{"a", "b", "c"},
+			expected:    "",
+			expectedErr: fmt.Errorf("maximum length cannot be lower than the length of the name suffix hash: 5"),
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			name, err := generateTruncatedHashedName(tc.maxLength, tc.parts...)
+
+			if !reflect.DeepEqual(err, tc.expectedErr) {
+				t.Fatalf("expected and got errors differ: %s", cmp.Diff(tc.expectedErr, err, cmpopts.EquateErrors()))
+			}
+
+			if !reflect.DeepEqual(name, tc.expected) {
+				t.Errorf("expected name: %s, got: %s", tc.expected, name)
 			}
 		})
 	}

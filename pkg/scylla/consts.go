@@ -14,4 +14,7 @@ const (
 
 	DefaultScyllaDBMetricsPort             = 9180
 	DefaultScyllaDBManagerAgentMetricsPort = 5090
+
+	DefaultScyllaDBAlternatorPort    = 8000
+	DefaultScyllaDBAlternatorPortTLS = 8043
 )

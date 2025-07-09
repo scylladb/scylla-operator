@@ -7,6 +7,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	ScyllaDBClusterDefaultNodeServiceType             = NodeServiceTypeHeadless
+	ScyllaDBClusterDefaultClientsBroadcastAddressType = BroadcastAddressTypePodIP
+	ScyllaDBClusterDefaultNodesBroadcastAddressType   = BroadcastAddressTypePodIP
+)
+
 // ScyllaDBClusterSpec defines the desired state of ScyllaDBCluster.
 type ScyllaDBClusterSpec struct {
 	// metadata controls shared metadata for all resources created based on this spec.

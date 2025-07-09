@@ -54,7 +54,7 @@ var _ = g.Describe("ScyllaDBCluster finalizer", framework.MultiDatacenter, func(
 		o.Expect(rkcClusterMap).NotTo(o.BeEmpty())
 		for _, rkcCluster := range rkcClusterMap {
 			namespaces, err := rkcCluster.KubeAdminClient().CoreV1().Namespaces().List(ctx, metav1.ListOptions{
-				LabelSelector: naming.ScyllaDBClusterSelector(sc).String(),
+				LabelSelector: naming.ScyllaDBClusterRemoteSelector(sc).String(),
 			})
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(namespaces.Items).NotTo(o.BeEmpty())
@@ -72,7 +72,7 @@ var _ = g.Describe("ScyllaDBCluster finalizer", framework.MultiDatacenter, func(
 		o.Expect(sc.Spec.Datacenters).ToNot(o.BeEmpty())
 		for _, rkcCluster := range rkcClusterMap {
 			namespaces, err := rkcCluster.KubeAdminClient().CoreV1().Namespaces().List(ctx, metav1.ListOptions{
-				LabelSelector: naming.ScyllaDBClusterSelector(sc).String(),
+				LabelSelector: naming.ScyllaDBClusterRemoteSelector(sc).String(),
 			})
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(namespaces.Items).To(o.BeEmpty())

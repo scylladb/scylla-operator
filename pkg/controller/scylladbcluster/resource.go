@@ -44,15 +44,15 @@ func MakeRemoteRemoteOwners(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alph
 }
 
 func MakeRemoteNamespaces(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, managingClusterDomain string) ([]*corev1.Namespace, error) {
-	suffix, err := naming.GenerateNameHash(sc.Namespace, dc.Name)
+	name, err := naming.RemoteNamespaceName(sc, dc)
 	if err != nil {
-		return nil, fmt.Errorf("can't generate namespace name suffix: %w", err)
+		return nil, fmt.Errorf("can't get namespace name: %w", err)
 	}
 
 	return []*corev1.Namespace{
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:   fmt.Sprintf("%s-%s", sc.Namespace, suffix),
+				Name:   name,
 				Labels: naming.ScyllaDBClusterDatacenterLabels(sc, dc, managingClusterDomain),
 			},
 		},

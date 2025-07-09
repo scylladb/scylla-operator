@@ -26,7 +26,12 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Creating ScyllaDBCluster")
+
 		sc := f.GetDefaultScyllaDBCluster(rkcMap)
+
+		err = utils.RegisterCollectionOfRemoteScyllaDBClusterNamespaces(ctx, sc, rkcClusterMap)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
 		sc, err = f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -34,9 +39,6 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 		waitCtx2, waitCtx2Cancel := utils.ContextForMultiDatacenterScyllaDBClusterRollout(ctx, sc)
 		defer waitCtx2Cancel()
 		sc, err = controllerhelpers.WaitForScyllaDBClusterState(waitCtx2, f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaDBClusterRolledOut)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		err = utils.RegisterCollectionOfRemoteScyllaDBClusterNamespaces(ctx, sc, rkcClusterMap)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		scylladbclusterverification.Verify(ctx, sc, rkcClusterMap)

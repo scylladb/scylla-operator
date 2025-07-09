@@ -29,11 +29,6 @@ SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT=${SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT:
 
 mkdir -p "${ARTIFACTS_DEPLOY_DIR}/"{operator,prometheus-operator,haproxy-ingress}
 
-if [[ "${SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT}" != "true" ]]; then
-  mkdir -p "${ARTIFACTS_DEPLOY_DIR}/manager"
-  cp ./deploy/manager/dev/*.yaml "${ARTIFACTS_DEPLOY_DIR}/manager"
-fi
-
 if [[ -n "${SO_DISABLE_PROMETHEUS_OPERATOR:-}" ]]; then
   echo "Skipping copying prometheus-operator manifests to ${ARTIFACTS_DEPLOY_DIR}"
 else
@@ -126,7 +121,12 @@ else
   kubectl -n=local-csi-driver rollout status daemonset.apps/local-csi-driver
 fi
 
-if [[ "${SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT}" != "true" ]]; then
+if [[ "${SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT}" == "true" ]]; then
+  echo "Skipping ScyllaDBManager deployment"
+else
+  mkdir -p "${ARTIFACTS_DEPLOY_DIR}/manager"
+  cp ./deploy/manager/dev/*.yaml "${ARTIFACTS_DEPLOY_DIR}/manager"
+
   if [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME:-}" ]]; then
     yq e --inplace '.spec.datacenter.racks[0].storage.storageClassName = env(SO_SCYLLACLUSTER_STORAGECLASS_NAME)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
   elif [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME+x}" ]]; then
